@@ -17,6 +17,7 @@ export {
   type KeyOriginQuestion,
   keyOriginWaitMs,
 } from "./key-origin-ask.ts";
+export { type WorkspaceModelSettings, workspaceModelSettings } from "./model-settings-gate.ts";
 export type { ModelText } from "./model-texts.ts";
 export { type KeyDestination, keyDestination } from "./provider-origin.ts";
 export {

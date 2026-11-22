@@ -1,5 +1,6 @@
 import { runExecutorVersion } from "@halonicjs/ports";
 import type { ServerPorts } from "./api.ts";
+import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
 import type { EngineHelloBody, EngineRoutines } from "./engine-api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { streamRunEvents } from "./event-stream.ts";
@@ -8,10 +9,17 @@ import { createRunRoutes, isJsonRequest, parseRunId, waitingRunsPath } from "./r
 import { type RunUpdates, streamRunUpdates } from "./run-updates.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
 
-/** What the engine role's routes need: the run routes' ports, the workspace's routines and the feed of run changes. */
+/**
+ * What the engine role's routes need: the run routes' ports, the workspace's
+ * routines, the feed of run changes and the check on a chat turn's model
+ * settings. `modelSettings` is required, not optional: the chat-turn route
+ * sends a stored key to the address its caller names, so no engine host can
+ * serve that route without the check that the trusted live version's
+ * provider files name that key at that address (HAL-15894).
+ */
 export type EngineRoutePorts = Pick<
   ServerPorts,
-  "runs" | "runStore" | "trust" | "errorLog" | "clock"
+  "runs" | "runStore" | "trust" | "errorLog" | "clock" | "modelSettings"
 > & { readonly routines: EngineRoutines; readonly runUpdates: RunUpdates };
 
 /** One route of the engine role. There is no token-free kind: every route needs the launch token. */
@@ -27,16 +35,19 @@ type RunHandler = (request: Request, runId: string, body: Uint8Array) => Promise
 
 /**
  * Every route the engine role serves, built from the route factories: its own
- * hello, the run routes, the run-updates stream and the two routine routes,
- * nothing else. It never takes
- * `createServer`'s set, so no trust, provider-key, webhook, connector-call,
- * chat-turn, Google, workspace or page route is ever served (security review
- * on HAL-14212). A test lists these and fails if another appears.
+ * hello, the run routes, the run-updates stream, the two routine routes and
+ * the chat-turn route, nothing else. It never takes `createServer`'s set, so
+ * no trust, provider-key, webhook, connector-call, Google, workspace or page
+ * route is ever served (security review on HAL-14212). The chat-turn route is
+ * `serve`'s own handler, so every check it makes comes along, the address
+ * check on a stored key included (HAL-15894). A test lists these and fails if
+ * another appears.
  */
 export function engineRoutes(ports: EngineRoutePorts): readonly EngineRoute[] {
   const runRoutes = createRunRoutes(ports);
   const trustRoutes = createTrustRoutes(ports);
   const routineRoutes = createRoutineRoutes(ports);
+  const chatTurnRoutes = createChatTurnRoutes(ports);
 
   /** A run route, given the run id from the address; a segment that isn't one answers 404. */
   const forRun =
@@ -87,6 +98,11 @@ export function engineRoutes(ports: EngineRoutePorts): readonly EngineRoute[] {
       path: "/api/routines/<scope>/<routine>/run",
       handle: (request, [scope, routine], body) =>
         routineRoutes.runNow(request, scope ?? "", routine ?? "", body),
+    },
+    {
+      method: "POST",
+      path: chatTurnPath,
+      handle: (request, _segments, body) => chatTurnRoutes.chatTurn(request, body),
     },
   ];
 }

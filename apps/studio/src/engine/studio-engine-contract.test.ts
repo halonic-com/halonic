@@ -1,5 +1,6 @@
 import { TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { workspaceModelSettings } from "@halonicjs/adapter-workspace-models";
 import { placedRoutines } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import { createEngineServer } from "@halonicjs/host-server";
@@ -221,6 +222,7 @@ async function backgroundEngine(): Promise<ContractEngine> {
       // The send route logs each answer it refuses, on purpose; the refusal shows in its answer.
       errorLog: { record: () => {} },
       clock,
+      modelSettings: workspaceModelSettings(() => loadWorkspace(files)),
       routines: { list: async () => placedRoutines(await loadWorkspace(files)), timeZone: "UTC" },
       runUpdates: { follow: () => () => {} },
     },

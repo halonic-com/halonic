@@ -45,6 +45,9 @@ export interface EngineCalls {
   readonly following: Set<(update: RunUpdateFrame) => void>;
   readonly listed: number[];
   readonly logged: unknown[];
+  /** The chat turns that reached the model, and the settings the address check was asked about. */
+  readonly chatTurns: unknown[];
+  readonly settingsAsked: unknown[];
 }
 
 /** An engine server over fakes: the routines given, trusted unless `trust` says otherwise. */
@@ -55,15 +58,30 @@ export function testEngine(
     startFails?: Error;
     listFails?: Error;
     maxBodyBytes?: number;
+    /** Whether the address check lets a turn's settings through; it does unless this says otherwise. */
+    settingsAllowed?: boolean;
+    chatTurnFails?: Error;
   } = {},
 ): { server: Server; calls: EngineCalls } {
-  const calls: EngineCalls = { started: [], following: new Set(), listed: [], logged: [] };
+  const calls: EngineCalls = {
+    started: [],
+    following: new Set(),
+    listed: [],
+    logged: [],
+    chatTurns: [],
+    settingsAsked: [],
+  };
   const start = async (request: unknown) => {
     calls.started.push(request);
     if (options.startFails !== undefined) throw options.startFails;
     return { id: "run_1", status: "running" };
   };
-  const runs = { start, startAgent: start } as unknown as RunExecutor;
+  const chatTurn = async (request: unknown) => {
+    calls.chatTurns.push(request);
+    if (options.chatTurnFails !== undefined) throw options.chatTurnFails;
+    return { message: { role: "assistant", content: "Hello from acme." } };
+  };
+  const runs = { start, startAgent: start, chatTurn } as unknown as RunExecutor;
   const runStore = {
     list: async () => [],
     get: async () => null,
@@ -77,6 +95,12 @@ export function testEngine(
       runStore,
       trust: { check: async () => options.trust ?? { state: "trusted", message: "Trusted." } },
       errorLog: { record: (error) => calls.logged.push(error) },
+      modelSettings: {
+        allows: async (_hubId, settings) => {
+          calls.settingsAsked.push(settings);
+          return options.settingsAllowed ?? true;
+        },
+      },
       clock: new TestClock(),
       routines: {
         list: async () => {

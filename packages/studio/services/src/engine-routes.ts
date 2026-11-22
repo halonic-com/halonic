@@ -16,6 +16,7 @@ const engineRoutes = [
   { name: "GET /api/run-updates", answer: "stream" },
   { name: "GET /api/routines", answer: "json" },
   { name: "POST /api/routines/{hub}/{routine}/run", answer: "json" },
+  { name: "POST /api/chat-turn", answer: "json" },
 ] as const satisfies readonly EngineRouteEntry[];
 
 interface EngineRouteEntry {

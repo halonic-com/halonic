@@ -51,7 +51,7 @@ import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { agentHostPlacement } from "../agents/agent-host-placement.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { provideChangesServices } from "../changes/provide-changes-services.ts";
-import { answerChatOn } from "../engine/answer-chat-on.ts";
+import { answerChatOn, chatExecutorOf } from "../engine/answer-chat-on.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { provideFilesServices } from "../files/provide-files-services.ts";
@@ -189,8 +189,7 @@ export function provideFolderServices(
       files: services.get(workspaceFilesKey),
       onChange: onLivenessChange,
       liveness: async (path) => (await liveness.liveState(path)).state,
-      // The background engine has no chat route yet, so its window answers "not answering".
-      ...(engine instanceof EngineService ? { answerChat: answerChatOn(engine, refusals) } : {}),
+      answerChat: answerChatOn(chatExecutorOf(engine), refusals),
       ...(transport === undefined || placed === undefined
         ? {}
         : {

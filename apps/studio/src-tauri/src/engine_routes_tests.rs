@@ -49,6 +49,20 @@ fn engine_routes_build_each_path_from_its_params() {
         ),
         Ok("/api/routines/@workspace/nightly-report/run".to_owned())
     );
+    assert_eq!(
+        path("POST /api/chat-turn", Answer::Json, json!({})),
+        Ok("/api/chat-turn".to_owned())
+    );
+}
+
+#[test]
+fn engine_routes_give_the_chat_turn_no_params_and_no_stream() {
+    assert_eq!(
+        refused_param("POST /api/chat-turn", Answer::Json, json!({"run": "r"})),
+        None
+    );
+    assert!(find_engine_route("POST /api/chat-turn", Answer::Stream).is_none());
+    assert!(find_engine_route("GET /api/chat-turn", Answer::Json).is_none());
 }
 
 #[test]
@@ -58,7 +72,7 @@ fn engine_routes_name_a_route_only_with_its_own_answer() {
     for name in [
         "GET http://example.com/",
         "GET /api/hello?x=1",
-        "POST /api/chat-turn",
+        "POST /api/connector-calls",
         "GET /api/runs/abc",
     ] {
         assert!(find_engine_route(name, Answer::Json).is_none(), "{name}");
