@@ -3,6 +3,10 @@
  * deployment, that user's own storage. It holds only what `UserSecrets` hands
  * it, which is never a value in the clear. Secret names arrive in `secretKey`
  * form.
+ *
+ * The storage is trusted to keep values current: it could hand back an older
+ * sealed value of the same name for the same user, or drop one, and the
+ * encryption can't tell. Sealing protects only what the values say.
  */
 export interface UserSecretStorage {
   /** The wrapped data key, or `null` before the first secret is stored. */
