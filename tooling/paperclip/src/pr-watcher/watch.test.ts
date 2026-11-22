@@ -63,7 +63,7 @@ verifies("paperclip.pr-watcher-done", () => {
     expect(lines[0]).toContain("more pull requests are coming");
     // A newer comment from the author without the line lifts the hold.
     paperclip.comments["task-4485"]?.push(
-      agentComment(agents.priya, "2026-11-21T21:00:00Z", "Last PR is linked."),
+      agentComment(agents.priya, "2026-11-21T20:30:00Z", "Last PR is linked."),
     );
     expect((await run(github, paperclip).summary).done).toBe(1);
   });

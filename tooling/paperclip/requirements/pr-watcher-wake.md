@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-15359; the PR watcher rules in the seat plan on HAL-15298 (section 3, item 2), approved by the board on 21 Nov
+- Source: HAL-15359; the PR watcher rules in the seat plan on HAL-15298 (section 3, item 2), approved by the board on 21 Nov; the dry-run check on HAL-15929 (22 Nov)
 
-When the PR watcher checks an open task whose author holds it and has no run going, the PR watcher shall comment on the task and ask Paperclip to wake its author, once per pull request head and reason, if one of its open pull requests has a failed `ci-ok` on its head, conflicts with its base branch while it is not in the merge queue, or has a review comment, by the repository's owner, a member of its organization or a collaborator, newer than the watcher's and the author's last comments on the task.
+When the PR watcher checks an open task whose author holds it and has no run going, the PR watcher shall comment on the task and ask Paperclip to wake its author, once per pull request head and reason, if one of its open pull requests has a failed `ci-ok` on its head, conflicts with its base branch while it is neither in the merge queue nor a draft, or has a review comment, by the repository's owner, a member of its organization or a collaborator, newer than the watcher's and the author's last comments on the task.
 
 ## Examples
 
@@ -29,3 +29,6 @@ When the PR watcher checks an open task whose author holds it and has no run goi
 - Given a person's comment on the task that copies an earlier watcher report, marker included,
   when the watcher runs,
   then it still wakes the author, because only its own comments count as an earlier report.
+- Given pull request 4614, a draft whose `ci-ok` failed and which conflicts with its base branch,
+  when the watcher runs,
+  then it wakes the author for the failed `ci-ok` only.

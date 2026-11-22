@@ -1,6 +1,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { agents, fakeGitHub, fakePaperclip, recording, task } from "./fakes.test-helper.ts";
+import {
+  agentComment,
+  agents,
+  fakeGitHub,
+  fakePaperclip,
+  recording,
+  task,
+} from "./fakes.test-helper.ts";
 import { isSelf, marker, tick } from "./watch.ts";
 
 /**
@@ -91,6 +98,30 @@ verifies("paperclip.pr-watcher-done", () => {
     const finished = fakePaperclip([{ ...parent, openChildren: false }]);
     expect((await run(github, finished).summary).done).toBe(1);
   });
+
+  // HAL-12499, HAL-15492 and HAL-15889 in the 22 Nov dry run: merged green, still open work.
+  test("wakes the author once, instead of closing, when the task got a comment after the merge", async () => {
+    const github = fakeGitHub(recording("merged-green"));
+    // #4485 merged at 20:48; this comment adds a follow-up to the same task.
+    const later = agentComment(agents.liam, "2026-11-21T21:30:00Z", "Also reword the changeset.");
+    const paperclip = fakePaperclip([task(4485, agents.priya)], { "task-4485": [later] });
+    const first = run(github, paperclip);
+    expect(await first.summary).toEqual({ checked: 1, done: 0, woken: 1, failed: [] });
+    expect(paperclip.wakes).toEqual([
+      { taskId: "task-4485", key: "halonic-com/halonic#4485 c0f13fa merged" },
+    ]);
+    expect(paperclip.comments["task-4485"]?.at(-1)?.body).toContain("Mark it done if nothing");
+    const second = run(github, paperclip);
+    expect(await second.summary).toEqual({ checked: 1, done: 0, woken: 0, failed: [] });
+    expect(second.lines[0]).toContain("it got comments after its merge");
+  });
+
+  test("still closes the task when every comment is older than the merge", async () => {
+    const github = fakeGitHub(recording("merged-green"));
+    const earlier = agentComment(agents.priya, "2026-11-21T20:00:00Z", "Ready for review.");
+    const paperclip = fakePaperclip([task(4485, agents.priya)], { "task-4485": [earlier] });
+    expect((await run(github, paperclip).summary).done).toBe(1);
+  });
 });
 
 verifies("paperclip.pr-watcher-wake", () => {
@@ -112,6 +143,17 @@ verifies("paperclip.pr-watcher-wake", () => {
         taskId: "task-4614",
         key: "halonic-com/halonic#4614 7dd0ccf ci-red | halonic-com/halonic#4614 7dd0ccf conflict",
       },
+    ]);
+  });
+
+  test("doesn't wake for a conflict on a draft, only for its red ci-ok", async () => {
+    const red = recording("red-and-conflicting");
+    const path = "/repos/halonic-com/halonic/pulls/4614";
+    const draft = { ...red, [path]: { ...(red[path] as object), draft: true } };
+    const paperclip = fakePaperclip([task(4614, agents.mateo)]);
+    expect((await run(fakeGitHub(draft), paperclip).summary).woken).toBe(1);
+    expect(paperclip.wakes).toEqual([
+      { taskId: "task-4614", key: "halonic-com/halonic#4614 7dd0ccf ci-red" },
     ]);
   });
 });
