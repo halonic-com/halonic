@@ -101,6 +101,17 @@ verifies("app.failed-call-line", () => {
       expect(names.some((part) => part.plugin === true)).toBe(false);
     });
 
+    it("says the sandbox a plugin runs in can't start on this computer, with or without a name", () => {
+      expect(
+        shown("t", {
+          cause: { code: "connector-not-started", why: "sandbox-not-ready" },
+          connector: "orders",
+        }),
+      ).toBe(
+        "Didn't work: the connector *orders* didn't start: the sandbox its plugin runs in can't start on this computer.",
+      );
+    });
+
     it("says only that a connector didn't start when the cause names nothing", () => {
       expect(shown("t", started({ code: "connector-not-started", why: "other", name: "x" }))).toBe(
         "Didn't work: the connector of the tool `t` didn't start.",
@@ -126,6 +137,9 @@ verifies("app.failed-call-line", () => {
     expect(
       listing({ code: "connector-not-started", why: "program-missing", name: "notes-mcp" }),
     ).toBe("Couldn't list the tools from notes: its program notes-mcp isn't on this computer.");
+    expect(listing({ code: "connector-not-started", why: "sandbox-not-ready" })).toBe(
+      "Couldn't list the tools from notes: the sandbox its plugin runs in can't start on this computer.",
+    );
     expect(listing({ code: "connector-not-started", why: "other" })).toBe(
       "Couldn't list the tools from notes.",
     );

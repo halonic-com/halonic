@@ -107,6 +107,21 @@ verifies("routines.list.rows-and-states", () => {
     expect(rowOf(page, "Quiet").textContent).not.toContain("Not live yet");
   });
 
+  it("leaves Paused until trusted off a routine that is on and was never live, since trusting wouldn't start it", async () => {
+    const rows = [
+      listing("acme", "hourly", "Hourly ping", {
+        summary: "Every hour → Ping",
+        neverLive: true,
+        pausedUntilTrusted: true,
+      }),
+    ];
+    const page = await show(<RoutinesView host={memoryHost(hubs, rows).host} />);
+    const hourly = rowOf(page, "Hourly ping").textContent;
+
+    expect(hourly).toContain("Every hour → Ping · Not live yet");
+    expect(hourly).not.toContain("Paused until trusted");
+  });
+
   it("shows one chip: Off, else Paused until trusted, else Needs sign-in again, else Needs you", async () => {
     const rows = [
       listing("acme", "a", "A", { enabled: false, needsSignIn: true, pausedUntilTrusted: true }),

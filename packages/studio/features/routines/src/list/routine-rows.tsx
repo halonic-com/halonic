@@ -14,14 +14,16 @@ export function rowId(ref: RoutineRef): string {
  * trusted", else "Needs sign-in", else "Needs you"; a routine that is fine and on has none. "Can't
  * start" comes first because turning the routine on or trusting the workspace wouldn't help: only
  * picking another workflow or agent, or fixing its file, does (HAL-14940). The row's detail line
- * says which (HAL-15082).
+ * says which (HAL-15082). A routine that is on and was never live gets no "Paused until trusted":
+ * trusting wouldn't start it, so its line's "Not live yet" says why, as `halonic routines` does
+ * (HAL-15664, C655-15).
  */
 function Chip({ listing }: { readonly listing: RoutineListing }) {
   if (cantStartReason(listing) !== undefined) {
     return <StatusChip tone="danger">{cantStartWords.chip}</StatusChip>;
   }
   if (!listing.enabled) return <StatusChip tone="neutral">{listWords.off}</StatusChip>;
-  if (listing.pausedUntilTrusted) {
+  if (pausedUntilTrusted(listing)) {
     return <StatusChip tone="attention">{listWords.pausedUntilTrusted}</StatusChip>;
   }
   if (listing.needsSignIn) return <StatusChip tone="warning">{listWords.needsSignIn}</StatusChip>;
@@ -36,9 +38,14 @@ function Chip({ listing }: { readonly listing: RoutineListing }) {
 }
 
 function hasChip(listing: RoutineListing): boolean {
-  const { enabled, pausedUntilTrusted, needsSignIn, needsYou } = listing;
+  const { enabled, needsSignIn, needsYou } = listing;
   const cantStart = cantStartReason(listing) !== undefined;
-  return cantStart || !enabled || pausedUntilTrusted || needsSignIn || needsYou > 0;
+  return cantStart || !enabled || pausedUntilTrusted(listing) || needsSignIn || needsYou > 0;
+}
+
+/** Whether the row says "Paused until trusted": only when trusting the workspace would start it. */
+function pausedUntilTrusted(listing: RoutineListing): boolean {
+  return listing.pausedUntilTrusted && !notLiveYet(listing);
 }
 
 /** Whether the routine is on but was never live, so the scheduler doesn't start it (HAL-15667). */
