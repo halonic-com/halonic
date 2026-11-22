@@ -78,15 +78,18 @@ export const pageWords = {
     firstStep:
       "This is the first step. Pick another first step in Configuration › General before removing it.",
   },
-  /** The toasts of a removed step or arrow (flow-workflows 4.6; microcopy 9.3). */
+  /**
+   * The toasts of a removed step or arrow (flow-workflows 4.6; microcopy 9.3), each step named as
+   * its card names it (C637).
+   */
   removed: {
-    step: (stepId: string, arrows: number) =>
+    step: (step: string, arrows: number) =>
       arrows === 0
-        ? `Removed step ${stepId}`
-        : `Removed step ${stepId} and ${arrows} ${arrows === 1 ? "arrow" : "arrows"}`,
+        ? `Removed step ${step}`
+        : `Removed step ${step} and ${arrows} ${arrows === 1 ? "arrow" : "arrows"}`,
     arrow: (from: string, to: string) => `Removed the arrow from ${from} to ${to}`,
     undo: "Undo",
-    couldntPutBackStep: (stepId: string) => `Couldn't put back step ${stepId}`,
+    couldntPutBackStep: (step: string) => `Couldn't put back step ${step}`,
     couldntPutBackArrow: (from: string, to: string) =>
       `Couldn't put back the arrow from ${from} to ${to}`,
   },
