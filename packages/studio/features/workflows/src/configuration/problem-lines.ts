@@ -1,4 +1,4 @@
-import type { WorkflowProblem } from "../api.ts";
+import type { WorkflowArrow, WorkflowProblem } from "../api.ts";
 
 /** The glyph before a problem: ✕ for an error, △ for a warning, so colour is never the only sign. */
 export const problemGlyph = { error: "✕", warning: "△" } as const;
@@ -35,6 +35,16 @@ const stepLines: Readonly<Record<string, string>> = {
 };
 
 /**
+ * Studio's sentence for an arrow that's never taken: `who` is the arrow ("This arrow is"), `event`
+ * the one it shares with the earlier arrow that beats it, and `card` the step whose Arrows fix it.
+ * The core says "transition" and "can never fire"; Studio says arrow (microcopy 1.2) and "never
+ * taken", as the card's row and the arrow's plate do (C591 row 13, C633 2).
+ */
+function neverTakenSentence(who: string, event: string, card: string): string {
+  return `${who} never taken: an earlier arrow on ${event} always matches first. Change the order or the conditions in Arrows on ${card}.`;
+}
+
+/**
  * The sentence of Configuration › Problems for a step's check, in Studio's words where the core's
  * message speaks the file's (`agent: <id>`, "transitions", "final"). A newly added step gets these
  * checks, so they are the first problems a person meets (C544, HAL-15120). It leaves out the step's
@@ -47,9 +57,20 @@ const rowSentences: Readonly<Record<string, string>> = {
   unreachable: "Can't be reached: no arrow leads to it.",
   "wait-without-events":
     "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
-  // The core says "transition"; Studio says arrow (microcopy 1.2), as the card's row does (C591 row 13).
-  "unguarded-shadow":
-    "Has an arrow that's never taken: an earlier arrow on the same event always matches first. Change the order or the conditions in Arrows on its card.",
+  "unguarded-shadow": neverTakenSentence("Has an arrow that's", "the same event", "its card"),
+};
+
+/**
+ * The sentence of an arrow's label plate for its check, in the same words as the Problems row, but
+ * about this arrow: it names the arrow's event and its step, since the plate is away from the card.
+ * The other checks' plates keep the core's full message.
+ */
+const plateSentences: Readonly<
+  Record<string, (arrow: WorkflowArrow, nameOf: StepNames) => string>
+> = {
+  // An arrow without an event fires on done; a timer arrow is never shadowed.
+  "unguarded-shadow": (arrow, nameOf) =>
+    neverTakenSentence("This arrow is", arrow.event ?? "done", `${nameOf(arrow.from)}'s card`),
 };
 
 /** The sentence of a check that is about the whole workflow, not one step. */
@@ -157,7 +178,10 @@ export interface ProblemMark {
    * shows one problem; the Problems list counts them (HAL-15171).
    */
   readonly line: string;
-  /** The line's tooltip: each problem's full message, errors first, one per line. */
+  /**
+   * The line's tooltip, errors first, one per line: each problem's full message, or on an arrow's
+   * plate Studio's sentence for it where one is written.
+   */
   readonly detail: string;
 }
 
@@ -172,33 +196,39 @@ export function cardProblems(
 ): ProblemMark | undefined {
   return markOf(
     problems.filter((problem) => problem.stepId === stepId && !arrowChecks.has(problem.code)),
-    nameOf,
+    (problem) => namedMessage(problem, nameOf),
   );
 }
 
 /**
- * What the label plate of the step's arrow at `arrowIndex` (among the step's arrows, in the file's
- * order) shows of the workflow's problems: those about that arrow. `undefined` when it has none.
+ * What the label plate of `arrow`, at `arrowIndex` among its step's arrows (in the file's order),
+ * shows of the workflow's problems: those about that arrow. `undefined` when it has none.
  */
 export function arrowProblems(
   problems: readonly WorkflowProblem[],
-  stepId: string,
+  arrow: WorkflowArrow,
   arrowIndex: number,
   nameOf: StepNames = byId,
 ): ProblemMark | undefined {
   return markOf(
     problems.filter(
       (problem) =>
-        problem.stepId === stepId &&
+        problem.stepId === arrow.from &&
         problem.arrowIndex === arrowIndex &&
         arrowChecks.has(problem.code),
     ),
-    nameOf,
+    (problem) => plateSentences[problem.code]?.(arrow, nameOf) ?? namedMessage(problem, nameOf),
   );
 }
 
-/** The mark of these problems, in the colour of the worst; `undefined` when there are none. */
-function markOf(problems: readonly WorkflowProblem[], nameOf: StepNames): ProblemMark | undefined {
+/**
+ * The mark of these problems, in the colour of the worst, with `detailOf` each one's line of the
+ * tooltip; `undefined` when there are none.
+ */
+function markOf(
+  problems: readonly WorkflowProblem[],
+  detailOf: (problem: WorkflowProblem) => string,
+): ProblemMark | undefined {
   const sorted = errorsFirst(problems);
   const [first] = sorted;
   if (first === undefined) return undefined;
@@ -206,7 +236,7 @@ function markOf(problems: readonly WorkflowProblem[], nameOf: StepNames): Proble
     severity: first.severity,
     glyph: problemGlyph[first.severity],
     line: problemLine(first),
-    detail: sorted.map((problem) => namedMessage(problem, nameOf)).join("\n"),
+    detail: sorted.map(detailOf).join("\n"),
   };
 }
 

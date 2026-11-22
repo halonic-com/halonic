@@ -185,6 +185,7 @@ verifies("workflows.page.step-problems", () => {
     expect(cardProblems([], "first")).toBeUndefined();
   });
   it("marks an arrow's plate with that arrow's problems only, the worst first", () => {
+    const review = { from: "review", to: "ship", event: "answer" };
     const onArrow = (code: string, severity: WorkflowProblem["severity"], arrowIndex: number) => ({
       ...problem(code, severity, "review"),
       message: `"review" ${code}`,
@@ -197,16 +198,29 @@ verifies("workflows.page.step-problems", () => {
       { ...problem("dead-end", "error", "review"), arrowIndex: 1 },
     ];
 
-    expect(arrowProblems(problems, "review", 1, () => "Check")).toEqual({
+    expect(arrowProblems(problems, review, 1, () => "Check")).toEqual({
       severity: "error",
       glyph: "✕",
       line: "Goes to a missing step",
-      detail: '"Check" unknown-target\n"Check" unguarded-shadow',
+      detail:
+        '"Check" unknown-target\nThis arrow is never taken: an earlier arrow on answer always matches first. Change the order or the conditions in Arrows on Check\'s card.',
     });
-    expect(arrowProblems(problems, "review", 2)).toMatchObject({
+    expect(arrowProblems(problems, review, 2)).toMatchObject({
       line: "Goes to a missing step",
     });
-    expect(arrowProblems(problems, "review", 0)).toBeUndefined();
-    expect(arrowProblems(problems, "other", 1)).toBeUndefined();
+    expect(arrowProblems(problems, review, 0)).toBeUndefined();
+    expect(arrowProblems(problems, { ...review, from: "other" }, 1)).toBeUndefined();
+  });
+
+  it("says a never-taken arrow on its plate as its Problems row does, naming its event and step", () => {
+    const shadow = { ...problem("unguarded-shadow", "warning", "review"), arrowIndex: 1 };
+    const onDone = { from: "review", to: "draft" };
+
+    expect(arrowProblems([shadow], onDone, 1, () => "Check the reply")?.detail).toBe(
+      "This arrow is never taken: an earlier arrow on done always matches first. Change the order or the conditions in Arrows on Check the reply's card.",
+    );
+    expect(problemRows([shadow])[0]?.text).toBe(
+      "Has an arrow that's never taken: an earlier arrow on the same event always matches first. Change the order or the conditions in Arrows on its card.",
+    );
   });
 });
