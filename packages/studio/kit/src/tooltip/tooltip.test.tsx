@@ -201,6 +201,17 @@ verifies("kit.tooltip", () => {
       `why ${tooltip.id}`,
     );
   });
+
+  it("shows nothing and throws nothing on a page with no Popover API, as in jsdom (HAL-15559)", () => {
+    restorePopover();
+    const { button, tooltip } = renderTooltip();
+    expect(typeof tooltip.showPopover).toBe("undefined");
+
+    focus(button);
+    pointer(button, "pointerover");
+    act(() => vi.advanceTimersByTime(TOOLTIP_DELAY_MS));
+    expect(isOpen(tooltip)).toBe(false);
+  });
 });
 
 /** A tab with the full path as its tooltip, from `useTooltip` and with no wrapper. */
