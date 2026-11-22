@@ -2,7 +2,6 @@
 
 - Approval: HAL-15608 (Paperclip task), from flow check C600 #4 on HAL-15594; lines in the shape of the approved plugin lines of `halonic run` and the step panel (HAL-14974, HAL-15278), words decided by the team with Sofia (HAL-15616) under HAL-2282; the reviewer signs this note with the pull request
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qxyagbj4tvFm1V6aypz+9YdA8euJ3NAyYT8W+/G6Eagzdd+wzrIqQ7LM7cHCh6FaEPM9i1fK/0xPqaP5HaDjDg==
 - Task: HAL-15608
 
 ## What changes
@@ -46,3 +45,4 @@ No test was weakened or skipped: each package's test gets the new cause next to 
 - cli.run-connector-warning
 - runs.run-view.step-failed-call
 - runs.run-view.step-connector-not-started
+- app.failed-call-line
