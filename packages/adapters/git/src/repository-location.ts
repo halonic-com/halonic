@@ -1,5 +1,6 @@
 import { lstat, readdir, readFile, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
+import { RepositoryRefusedError } from "./repository-refused.ts";
 
 // Where a repository's git files are: all of them must be inside the
 // workspace folder, or a call would work on another repository.
@@ -8,9 +9,10 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 const maxAlternateDepth = 5;
 
 /** The error for a repository whose git files are outside its folder. */
-export function outsideFolder(top: string): Error {
-  return new Error(
+export function outsideFolder(top: string): RepositoryRefusedError {
+  return new RepositoryRefusedError(
     `The repository at ${top} keeps its git files outside the folder, which Halonic doesn't allow.`,
+    "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule.",
   );
 }
 
@@ -109,8 +111,9 @@ export async function checkAlternates(top: string, objects: string, depth: numbe
     if (line === "" || line.startsWith("#")) continue;
     const alternate = await realAlternate(top, resolve(objects, line));
     if (!isInside(top, alternate)) {
-      throw new Error(
+      throw new RepositoryRefusedError(
         `The repository at ${top} reads objects from outside the folder, which Halonic doesn't allow.`,
+        "Run git repack -a -d in the folder, then delete .git/objects/info/alternates, and try again.",
       );
     }
     if (depth < maxAlternateDepth) await checkAlternates(top, alternate, depth + 1);
@@ -121,15 +124,16 @@ export async function checkAlternates(top: string, objects: string, depth: numbe
  * The real path of an alternate objects folder. A missing one is refused:
  * it could be made inside or outside the folder after the check.
  *
- * @throws Error that says which alternate is missing
+ * @throws RepositoryRefusedError that says which alternate is missing
  */
 async function realAlternate(top: string, alternate: string): Promise<string> {
   try {
     return await realpath(alternate);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    throw new Error(
-      `The repository at ${top} reads objects from ${alternate}, which doesn't exist. Remove that line from .git/objects/info/alternates and try again.`,
+    throw new RepositoryRefusedError(
+      `The repository at ${top} reads objects from ${alternate}, which doesn't exist.`,
+      "Remove that line from .git/objects/info/alternates and try again.",
       { cause: error },
     );
   }
@@ -155,7 +159,7 @@ export const locateNestedArgs: readonly string[] = [
  * so git says where they are: `stdout` is its answer to
  * {@link locateNestedArgs}.
  *
- * @throws Error when one of them is outside `top`
+ * @throws RepositoryRefusedError when one of them is outside `top`
  */
 export async function checkNestedInside(
   top: string,
@@ -165,8 +169,9 @@ export async function checkNestedInside(
   const folders = stdout.split("\n").filter((line) => line !== "");
   for (const folder of folders) {
     if (!isInside(top, await realpath(folder))) {
-      throw new Error(
+      throw new RepositoryRefusedError(
         `The repository nested at ${nested} keeps its git files outside the workspace, which Halonic doesn't allow.`,
+        "Move its git files into the workspace, as git submodule absorbgitdirs does for a submodule, then try again.",
       );
     }
   }

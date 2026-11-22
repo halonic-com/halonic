@@ -1,4 +1,5 @@
 import type { ConfigEntry } from "./hardening.ts";
+import { RepositoryRefusedError } from "./repository-refused.ts";
 
 /** One entry of `git config --list --show-scope --includes -z`. */
 export interface ListedConfig {
@@ -62,13 +63,14 @@ export function parseConfigListing(listing: Buffer): ListedConfig[] {
  * Refuses a repository whose own config sets a key no override neutralises
  * safely (see {@link isRefusedKey}).
  *
- * @throws Error naming the key
+ * @throws RepositoryRefusedError naming the key
  */
 export function checkRefusedKeys(entries: readonly ListedConfig[]): void {
   const refused = fromRepository(entries).find((entry) => isRefusedKey(entry.key));
   if (refused !== undefined) {
-    throw new Error(
-      `The repository's config sets ${refused.key}, which Halonic doesn't allow. Remove it from .git/config and try again.`,
+    throw new RepositoryRefusedError(
+      `The repository's config sets ${refused.key}, which Halonic doesn't allow.`,
+      "Remove it from .git/config and try again.",
     );
   }
 }

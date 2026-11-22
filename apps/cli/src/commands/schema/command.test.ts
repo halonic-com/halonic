@@ -1,9 +1,19 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  linkSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
-import { jsonSchemaOf, kindNames } from "@halonicjs/format";
+import { jsonSchemaOf, type KindName, kindNames } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { shownPath } from "../../shown-path.ts";
@@ -98,5 +108,40 @@ verifies("cli.commands.schema.write-every-kind", () => {
     expect(shownPath(cwd, cwd)).toBe(".");
     expect(shownPath(cwd, join(tmpdir(), "out"))).toBe(join("..", "out"));
     expect(shownPath(cwd, join(cwd, "..schemas"))).toBe(`.${sep}..schemas`);
+  });
+});
+
+verifies("cli.commands.schema.replace-links", () => {
+  describe("a link where a schema file goes", () => {
+    const schemaText = (kind: KindName) => `${JSON.stringify(jsonSchemaOf(kind), null, 2)}\n`;
+
+    beforeEach(() => {
+      mkdirSync(join(folder, "schemas"));
+      writeFileSync(join(folder, "notes.txt"), "keep\n");
+    });
+
+    it("replaces a symbolic link and leaves the file it led to as it was", async () => {
+      const path = join(folder, "schemas", schemaFileName("agent"));
+      symlinkSync(join(folder, "notes.txt"), path);
+
+      expect(await runCli(["schema"], captureIo(folder), [schemaCommand])).toBe(exitCode.ok);
+
+      expect(lstatSync(path).isSymbolicLink()).toBe(false);
+      expect(readFileSync(path, "utf8")).toBe(schemaText("agent"));
+      expect(readFileSync(join(folder, "notes.txt"), "utf8")).toBe("keep\n");
+    });
+
+    it("replaces a hard link and leaves the file it shared as it was", async () => {
+      const path = join(folder, "schemas", schemaFileName("workflow"));
+      linkSync(join(folder, "notes.txt"), path);
+
+      expect(await runCli(["schema"], captureIo(folder), [schemaCommand])).toBe(exitCode.ok);
+
+      expect(readFileSync(path, "utf8")).toBe(schemaText("workflow"));
+      expect(readFileSync(join(folder, "notes.txt"), "utf8")).toBe("keep\n");
+      expect(readdirSync(join(folder, "schemas")).filter((name) => name.endsWith(".tmp"))).toEqual(
+        [],
+      );
+    });
   });
 });
