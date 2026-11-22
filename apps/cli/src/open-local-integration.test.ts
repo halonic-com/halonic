@@ -339,10 +339,10 @@ verifies("cli.open-local-integration", () => {
       expect(seen.starts).toBe(0);
     });
 
-    it("sends the run to Studio when Studio's yes doesn't reach the command", async () => {
+    it("points to WSL 2 when Studio's yes doesn't reach the command", async () => {
       const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
-        /^Connector "notes" didn't start: on Windows, integration code can't run in the sandbox in this version of Halonic\. Use Halonic inside WSL 2 on this computer\. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio\.$/,
+        /^Connector "notes" didn't start: on Windows, integration code can't run in the sandbox in this version of Halonic\. Use Halonic inside WSL 2 on this computer\.$/,
       );
       expect(seen.starts).toBe(0);
     });
@@ -429,15 +429,15 @@ verifies("cli.local-integration-unfenced-yes", () => {
       expect(seen.starts).toBe(0);
     });
 
-    it("sends the run to Studio when Studio's yes doesn't reach the command", async () => {
+    it("points to WSL 2 when Studio's yes doesn't reach the command", async () => {
       const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
-        /^Connector "notes" didn't start: on Windows, integration code can't run in the sandbox in this version of Halonic\. Use Halonic inside WSL 2 on this computer\. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio\.$/,
+        /^Connector "notes" didn't start: on Windows, integration code can't run in the sandbox in this version of Halonic\. Use Halonic inside WSL 2 on this computer\.$/,
       );
       expect(seen.starts).toBe(0);
     });
 
-    it("sends the run to Studio for a yes it can't read when Studio's yes doesn't reach the command", async () => {
+    it("points to WSL 2 for a yes it can't read when Studio's yes doesn't reach the command", async () => {
       const file = join(root, "profile", "unfenced-runs", "consent.json");
       const { seen, client } = await setup({
         check: onWindows,
@@ -445,7 +445,7 @@ verifies("cli.local-integration-unfenced-yes", () => {
         studioYesReaches: false,
       });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
-        `the saved yes to run without it can't be read (${JSON.stringify(file)}), so nothing runs. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio.`,
+        `the saved yes to run without the sandbox can't be read (${JSON.stringify(file)}), and on Windows, integration code can't run in the sandbox in this version of Halonic. Use Halonic inside WSL 2 on this computer.`,
       );
       expect(seen.starts).toBe(0);
     });

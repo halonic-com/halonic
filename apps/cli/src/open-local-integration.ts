@@ -205,22 +205,22 @@ class LocalIntegrationOpening {
    * Why a start that needs the user's yes started nothing, and where to give
    * it (microcopy 24.1 R18, its fix decided by the team on HAL-15144). A
    * saved yes that can't be read blocks the start too, and names its file. Where Studio's yes
-   * doesn't reach the command (Windows with the WSL sandbox), the fix sends the run to Studio,
-   * where the yes applies, and says why (C612, then C666 #3); the reason before it is R3's, with
-   * its fix, in place of the raw code (C665-57).
+   * doesn't reach the command (Windows with the WSL sandbox), Studio can't start the run either,
+   * so the refusal ends with R3's reason and its fix, in place of the raw code (C665-57, C681).
    */
   async #needsYes(reason: string): Promise<string> {
     const reaches = (await this.#machine.studioYesReaches?.()) ?? true;
-    const allow = reaches
-      ? " To allow it, trust this workspace in Studio on this computer."
-      : " Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio.";
     const unreadable = this.#machine.unreadableYes?.();
-    if (unreadable !== undefined) {
-      return `the sandbox isn't available here (${reason}) and the saved yes to run without it can't be read (${JSON.stringify(unreadable)}), so nothing runs.${allow}`;
-    }
     if (!reaches) {
       const words = runnerUnfencedWords(reason, "integration");
-      return `${afterColon(words.reason)} ${words.fix}${allow}`;
+      const why = `${afterColon(words.reason)} ${words.fix}`;
+      return unreadable === undefined
+        ? why
+        : `the saved yes to run without the sandbox can't be read (${JSON.stringify(unreadable)}), and ${why}`;
+    }
+    const allow = " To allow it, trust this workspace in Studio on this computer.";
+    if (unreadable !== undefined) {
+      return `the sandbox isn't available here (${reason}) and the saved yes to run without it can't be read (${JSON.stringify(unreadable)}), so nothing runs.${allow}`;
     }
     return `the sandbox isn't available here (${reason}) and running without it isn't allowed yet.${allow}`;
   }

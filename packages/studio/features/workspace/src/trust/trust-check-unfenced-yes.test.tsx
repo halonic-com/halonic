@@ -155,18 +155,26 @@ verifies("workspace.trust-check-unfenced-yes", () => {
     expect(await politeText()).toBe("");
   });
 
-  it("unticks the box when the host saved no yes and the status names the same reason (C665-54)", () => {
+  it("unticks the box, moves focus to it and reads the reason once when the host saved no yes for the same reason (C665-54, C681)", async () => {
     const trusted: boolean[] = [];
     render(review, trusted);
     act(() => box()?.click());
     act(() => trustButton().click());
     // A Take back under way: the host saves nothing, and the reason read again is the same.
     render(review, trusted, 1);
+    expect(await politeText()).toBe("");
     const { unfencedYes: _, ...checking } = review;
     render(checking, trusted, 1);
-    render(review, trusted, 1);
+    const readAgain = { ...review };
+    render(readAgain, trusted, 1);
 
     expect(box()?.checked).toBe(false);
+    expect(document.activeElement).toBe(box());
+    expect(await politeText()).toBe(containerLine);
+    const region = dialog().querySelector('[aria-live="polite"]');
+    if (region !== null) region.textContent = "";
+    render(readAgain, trusted, 1);
+    expect(await politeText()).toBe("");
     expect(trustButton().getAttribute("aria-disabled")).toBe("true");
     act(() => trustButton().click());
     expect(trusted).toEqual([true]);

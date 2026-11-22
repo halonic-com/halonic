@@ -67,9 +67,9 @@ On Windows with the default sandbox, WSL, Studio's agent host runs in
 Halonic's WSL distro with its own profile, so the yes applies to Studio only:
 the command in a Windows terminal reads your Windows profile, never sees it,
 and still runs integrations only in the sandbox. Where the sandbox can't start,
-its refusal says so and ends with "Start the run in Halonic Studio, where you
-can allow it: on this computer, the halonic command can't see a yes given in
-Studio." The command shares the yes only when your saved sandbox choice isn't
+its refusal says so and ends with "on Windows, integration code can't run in
+the sandbox in this version of Halonic. Use Halonic inside WSL 2 on this
+computer." The command shares the yes only when your saved sandbox choice isn't
 the WSL one.
 
 When the sandbox stops an agent, the CLI ends with exit 9 and names one reason
