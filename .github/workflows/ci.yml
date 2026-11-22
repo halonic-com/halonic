@@ -2707,6 +2707,11 @@ jobs:
       # Last, because it takes Halonic and the sandbox away.
       - name: Uninstall through its pages, with the sandbox removal
         run: pwsh apps/studio/src-tauri/windows/test-uninstall.ps1 -InstallFolder $env:HALONIC_TEST_DIR -OutFolder installer-uninstall
+      # A standard user's reinstall takes back what a removal as administrator
+      # kept on that user's folders (HAL-16084). After the uninstall, so it
+      # starts without a sandbox; it leaves none behind.
+      - name: A reinstall as a standard user takes back what a removal as administrator kept
+        run: pwsh apps/studio/src-tauri/windows/test-take-back.ps1 -Setup (Resolve-Path "dist/Halonic-*-windows-x64-setup.exe")
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

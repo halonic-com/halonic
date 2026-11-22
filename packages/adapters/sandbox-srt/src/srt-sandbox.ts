@@ -1,23 +1,20 @@
 import { mkdir } from "node:fs/promises";
-import { isIP } from "node:net";
-import { isAbsolute } from "node:path";
-import { NetworkConfigSchema } from "@anthropic-ai/sandbox-runtime";
 import type {
   Sandbox,
   SandboxCapabilities,
   SandboxCheck,
-  SandboxNetwork,
   SandboxProfile,
   SandboxResidual,
   SandboxSession,
 } from "@halonicjs/ports";
+import { checkBridge } from "./bridge-check.ts";
 import { HelperError } from "./elevate-helper.ts";
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
-import { removedGrantsKept, takeBackOrphaned } from "./orphaned-grants.ts";
+import { removedGrantsKept, type TakeBack, takeBackOrphaned } from "./orphaned-grants.ts";
 import { appArmorFix, installFix } from "./package-manager.ts";
 import { startSmallestSandbox } from "./ready-check.ts";
-import { assertSrtDeniesKeychain, bridgeNetwork } from "./srt-config.ts";
+import { assertSrtDeniesKeychain } from "./srt-config.ts";
 import { type Runner, srtRunner } from "./srt-runner.ts";
 import { SrtSession } from "./srt-session.ts";
 import { firstWindowsUnavailable, type Unavailable } from "./unavailable.ts";
@@ -201,6 +198,18 @@ export class SrtSandbox implements Sandbox {
   }
 
   /**
+   * What the installer runs as the user before its sandbox step, whatever
+   * sandbox is chosen (HAL-16084): {@link takeBackOrphaned} alone, while
+   * srt's sandbox account is still gone, so a reinstall doesn't leave the
+   * grants a removal with administrator rights kept. `ok` when it took them
+   * back or there was nothing to take back. Never throws.
+   */
+  async takeBack(): Promise<{ ok: boolean; outcome: TakeBack }> {
+    const outcome = await takeBackOrphaned(this.#machine, this.#grants, this.#warn);
+    return { ok: outcome === "taken_back" || outcome === "none", outcome };
+  }
+
+  /**
    * Whether another program may use this sandbox too, for the warning before
    * {@link SrtSandbox.remove} (HAL-7414, S-7): on Windows, the folders srt
    * keeps write access to for this user outside `known`, the folders Halonic
@@ -240,7 +249,7 @@ export class SrtSandbox implements Sandbox {
    * Opens a session whose fence is proven before it returns.
    *
    * @throws when {@link SrtSandbox.check} isn't `ok`, the profile's bridge is neither a loopback address nor a
-   *   host name on an absolute socket path no longer than {@link MAX_SOCKET_PATH_BYTES} allows here, or it
+   *   host name on an absolute socket path no longer than `MAX_SOCKET_PATH_BYTES` (bridge-check.ts) allows here, or it
    *   denies the key store and srt would drop that deny
    */
   async open(profile: SandboxProfile, options?: { signal?: AbortSignal }): Promise<SandboxSession> {
@@ -422,58 +431,4 @@ function oneLine(text: string): string {
     .map((line) => line.trim())
     .filter((line) => line !== "")
     .join(" ");
-}
-
-/**
- * The longest Unix socket path each system takes, without the closing zero:
- * `sun_path` holds 108 bytes on Linux and 104 on macOS. A longer path fails
- * `listen` (EINVAL on Linux).
- */
-export const MAX_SOCKET_PATH_BYTES: Readonly<Partial<Record<NodeJS.Platform, number>>> = {
-  linux: 107,
-  darwin: 103,
-};
-
-/**
- * Refuses a bridge srt can't serve as the only way to Halonic: a loopback
- * address, or a host name on a socket. The name must be one srt accepts in
- * both its allowed list and its `mitmProxy` list, and not one the program
- * dials directly (`localhost` or an address, which srt puts in NO_PROXY).
- */
-function checkBridge(bridge: SandboxNetwork["bridge"], platform: NodeJS.Platform): void {
-  if (bridge === null) return;
-  if (bridge.kind !== "socket") {
-    if (!isLoopback(bridge.host)) {
-      throw new Error(`the bridge must be a loopback address, not ${bridge.host}`);
-    }
-    return;
-  }
-  const { name, socketPath } = bridge;
-  if (!isAbsolute(socketPath)) {
-    throw new Error(`the bridge's socket path must be absolute, not ${socketPath}`);
-  }
-  const bytes = Buffer.byteLength(socketPath);
-  const limit = MAX_SOCKET_PATH_BYTES[platform] ?? MAX_SOCKET_PATH_BYTES.darwin ?? 0;
-  if (bytes > limit) {
-    throw new Error(
-      `the bridge's socket path is ${bytes} bytes, more than the ${limit} a Unix socket allows on ${platform}: ${socketPath}`,
-    );
-  }
-  const parsed = NetworkConfigSchema.safeParse({ ...bridgeNetwork(bridge), deniedDomains: [] });
-  if (
-    name.includes("*") ||
-    isLoopback(name) ||
-    isIP(name.replace(/^\[|\]$/g, "")) !== 0 ||
-    !parsed.success
-  ) {
-    throw new Error(`the bridge's name must be a plain host name, not ${name}`);
-  }
-}
-
-/** Whether `host` is `localhost` or a loopback address (`127.0.0.0/8`, `::1`). */
-function isLoopback(host: string): boolean {
-  const bare = host.replace(/^\[|\]$/g, "");
-  if (bare === "localhost") return true;
-  if (isIP(bare) === 4) return bare.startsWith("127.");
-  return bare === "::1";
 }
