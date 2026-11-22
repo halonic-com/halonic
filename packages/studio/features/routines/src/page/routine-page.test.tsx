@@ -396,21 +396,27 @@ verifies("routines.page.run-now", () => {
     expect(runNowButton(page)).toBeUndefined();
   });
 
-  it("starts the run, also while the routine is off, and offers Open run", async () => {
+  it("starts the run, also while the routine is off, says it stays off, and offers Open run", async () => {
     const opened: string[] = [];
-    const { host, runNow } = hostRunning(
+    const { host: running, runNow } = hostRunning(
       { started: true, runId: "run_1", shortId: "abc123" },
       { ...daily, enabled: false },
     );
+    const runs = vi.fn(running.runs);
+    const host = { ...running, runs } as RoutinesHost;
     const { page, toasts } = await showWithToasts(host, (runId) => opened.push(runId));
+    const readsBefore = runs.mock.calls.length;
 
     await act(async () => runNowButton(page)?.click());
 
     expect(runNow).toHaveBeenCalledWith(expect.objectContaining({ hubId: "acme", id: "daily" }));
     expect(toasts.list()[0]).toMatchObject({
       title: "Run started · Daily · Run abc123",
+      text: "It stays off, so it runs only when you press Run now.",
       action: { label: "Open run" },
     });
+    // The Runs view reads the runs again at once, not on the host's next notice (C587 #4).
+    expect(runs.mock.calls.length).toBeGreaterThan(readsBefore);
     toasts.list()[0]?.action?.onClick();
     expect(opened).toEqual(["run_1"]);
   });

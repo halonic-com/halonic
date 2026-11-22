@@ -1,6 +1,7 @@
 import { EmptyState, SkeletonBar, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { RoutineRun, RoutineRuns, RoutinesHost, RoutineView } from "../api.ts";
+import { viewCantStartReason } from "../cant-start.ts";
 import { useNextTimes } from "../when/use-next-times.ts";
 import {
   nextRunWords,
@@ -126,13 +127,27 @@ function Section({ title, children }: { readonly title: string; readonly childre
   );
 }
 
-/** "No runs yet." with when it runs next, or how to start one by hand. */
+/**
+ * "No runs yet." with what the Routines list's row says: why it can't start, that it is off or
+ * paused until trusted, in the row's order; else when it runs next, or how to start one by hand. A
+ * next time shows only for a routine that will start on its own then (C587 #1).
+ */
 function NoRuns({ host, routine }: { readonly host: RoutinesHost; readonly routine: RoutineView }) {
-  const automatic = routine.enabled && routine.trigger.kind !== "manual";
+  const held = heldWords(routine);
+  const automatic = held === undefined && routine.trigger.kind !== "manual";
   const next = useNextTimes(host, routine, automatic, routine)?.times[0];
   const description =
-    next === undefined ? runsWords.emptyManual : runsWords.emptyAfter(nextRunWords(next));
+    held ?? (next === undefined ? runsWords.emptyManual : runsWords.emptyAfter(nextRunWords(next)));
   return <EmptyState title={runsWords.emptyTitle} description={description} />;
+}
+
+/** Why the routine won't start on its own, as its row's chip and line say; `undefined` when it will. */
+function heldWords(routine: RoutineView): string | undefined {
+  const cantStart = viewCantStartReason(routine);
+  if (cantStart !== undefined) return cantStart;
+  if (!routine.enabled) return runsWords.emptyOff;
+  if (routine.pausedUntilTrusted === true) return runsWords.emptyPaused;
+  return undefined;
 }
 
 const outcomeTone = {

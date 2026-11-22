@@ -44,3 +44,13 @@ export function pageStartFacts(
     problems: routine.problems,
   };
 }
+
+/** {@link cantStartReason} for a routine as its page reads it, so its Runs view agrees with its row. */
+export function viewCantStartReason(routine: RoutineView): string | undefined {
+  return cantStartReason({
+    targetFound: routine.targetState !== "not-found",
+    targetName: routine.targetName,
+    targetKind: routine.target.kind,
+    problems: routine.startErrors ?? [],
+  });
+}

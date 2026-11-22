@@ -41,6 +41,8 @@ export function failureReason(
 /** The toasts of Run now (flow-routines 3.8, microcopy 12.3). */
 export const runNowWords = {
   started: (name: string, shortId: string) => `Run started · ${name} · Run ${shortId}`,
+  /** Under a run started while the routine is off, as its empty Runs view says (C587 #4). */
+  staysOff: "It stays off, so it runs only when you press Run now.",
   openRun: "Open run",
   signedOut: (account: string) => `Not started: ${account} is signed out.`,
   notTrusted: (name: string) => `Not started: ${name} isn't trusted yet.`,

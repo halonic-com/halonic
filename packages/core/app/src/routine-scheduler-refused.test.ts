@@ -1,3 +1,4 @@
+import { RunTargetNotFound } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -110,6 +111,29 @@ verifies("app.scheduler-keeps-refused-starts", () => {
         { reason: "start-refused", sentence: undefined, count: 2 },
       ]);
       expect(rows[1]).not.toHaveProperty("sentence");
+    });
+
+    it("records a target that doesn't exist as target-unavailable, not-found, not as an unexplained refusal", async () => {
+      const { scheduler, at, state } = refusing();
+      await scheduler.tick();
+      state.refusal = new RunTargetNotFound(
+        "workflow",
+        "gone-report",
+        'The hub "reports" has no workflow "gone-report".',
+      );
+      at("2026-11-03T08:00:20Z");
+      const tick = await scheduler.tick();
+      expect(tick.failed).toHaveLength(1);
+      expect(await scheduler.skippedTimes("p/hourly")).toEqual([
+        {
+          reason: "target-unavailable",
+          why: "not-found",
+          from: "2026-11-03T08:00:00.000Z",
+          to: "2026-11-03T08:00:00.000Z",
+          count: 1,
+          decidedAt: "2026-11-03T08:00:20.000Z",
+        },
+      ]);
     });
 
     it("names the routine in skipsSaved when a tick adds to its skips, and none when it drops nothing", async () => {

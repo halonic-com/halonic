@@ -16,6 +16,10 @@ export const runsWords = {
   emptyTitle: "No runs yet",
   emptyManual: "Press Run now to start one.",
   emptyAfter: (when: string) => `It runs next on ${when}, or press Run now.`,
+  /** A routine that is off runs only by hand, as Run now's toast says too (C587 #4). */
+  emptyOff: "It's off, so it runs only when you press Run now.",
+  /** The list's "Paused until trusted" as a sentence (C587 #1). */
+  emptyPaused: "It's paused until this workspace is trusted.",
   /** Said by a screen reader before a queued row's text; not drawn. */
   queuedPrefix: "Queued, ",
   tabNeedsYou: (count: number) => `${count} needs you`,
@@ -123,7 +127,10 @@ function refusal(skip: RoutineSkip): string {
 }
 
 const skipReasons: Record<
-  Exclude<RoutineSkipReason, "target-never-live" | "target-in-trash" | "start-refused">,
+  Exclude<
+    RoutineSkipReason,
+    "target-never-live" | "target-in-trash" | "target-not-found" | "start-refused"
+  >,
   string
 > = {
   busy: "the last run was still busy",
@@ -142,6 +149,8 @@ export function skipSentence(skip: RoutineSkip, targetName: string, now: Date): 
       return `${when}: ${targetName} isn't live yet`;
     case "target-in-trash":
       return `${when}: ${targetName} was deleted`;
+    case "target-not-found":
+      return `${when}: ${targetName} isn't in this workspace`;
     case "start-refused":
       return `${when}: couldn't start. ${refusal(skip)}`;
     default:

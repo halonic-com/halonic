@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: design check C533 (C533-5, HAL-15056) of halonic#4172; flow-routines rev 23, 3.9 (the eighth reason); task HAL-15068; HAL-15228 (the next step, words check C553 row 9 of halonic#4460; a step that leads to a command, microcopy rev 124, 12.3); flow check 38 (C552-5, HAL-15269: telling the page)
+- Source: design check C533 (C533-5, HAL-15056) of halonic#4172; flow-routines rev 23, 3.9 (the eighth reason); task HAL-15068; HAL-15228 (the next step, words check C553 row 9 of halonic#4460; a step that leads to a command, microcopy rev 124, 12.3); flow check 38 (C552-5, HAL-15269: telling the page); flow check C587 #2 (HAL-15524: a target that doesn't exist)
 
-When the routine scheduler asks for a due run and the start is refused (the host's checks or the executor throw, or what to start can't be worked out), the routine scheduler shall still report the time as failed, and shall add it to the routine's skip records (`app.skip-records`) with the reason `start-refused` after the tick's starts, with the error's message as its `sentence` and the error's `fix` as its `fix` when the error has a kind other than `internal`, and neither otherwise, and with `toCommand` when it keeps a `fix` and the error also has a `command`. Refused times with the same sentence, `fix` and `toCommand` shall continue one row until a run of the routine starts; times with a different sentence, `fix` or `toCommand`, or one with a sentence and one without, shall make different rows. The tick's result shall name, in `skipsSaved`, every routine whose skip records the tick added to, for a refused start or any other dropped time, and none when it dropped nothing, so a host can tell a page that shows them.
+When the routine scheduler asks for a due run and the start is refused (the host's checks or the executor throw, or what to start can't be worked out), the routine scheduler shall still report the time as failed, and shall add it to the routine's skip records (`app.skip-records`) with the reason `start-refused` after the tick's starts, with the error's message as its `sentence` and the error's `fix` as its `fix` when the error has a kind other than `internal`, and neither otherwise, and with `toCommand` when it keeps a `fix` and the error also has a `command`. A start refused because the hub, workflow or agent it names doesn't exist (`RunTargetNotFound`, as `isRunTargetNotFound` tells it) shall be added with the reason `target-unavailable` and the `why` `not-found` instead, since that cause is known. Refused times with the same sentence, `fix` and `toCommand` shall continue one row until a run of the routine starts; times with a different sentence, `fix` or `toCommand`, or one with a sentence and one without, shall make different rows. The tick's result shall name, in `skipsSaved`, every routine whose skip records the tick added to, for a refused start or any other dropped time, and none when it dropped nothing, so a host can tell a page that shows them.
 
 ## Examples
 
@@ -18,5 +18,7 @@ When the routine scheduler asks for a due run and the start is refused (the host
 - Given a start refused with the fix "Run it in a terminal:" and the command "halonic run briefing",
   then its `start-refused` row keeps that `fix` with `toCommand`.
 - Given a refused start at 08:00, then the tick's `skipsSaved` names the routine; given a tick that starts the routine's run and drops nothing, then its `skipsSaved` is empty.
+- Given a routine that starts the workflow `gone-report`, which the hub `reports` doesn't have, and a start refused with `RunTargetNotFound` at 23:32,
+  then the routine has a `target-unavailable` row with the `why` `not-found` at 23:32, and no `start-refused` row.
 - Given starts refused with a system error ("EIO: i/o error, read"), then with an `internal` error,
   then the routine has one `start-refused` row without a sentence, 2 times.
