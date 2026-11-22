@@ -24,7 +24,8 @@ say so.
 read, or a local integration's connector doesn't say `local: true`, the error now starts with
 `Connector "notes" isn't local, and the workspace is local only:`, as the check's other lines do,
 then gives the reason: "its plugin acme-orders isn't added here or can't be read, so Halonic can't
-tell which hosts it reaches. Add the plugin first, then Halonic can tell whether it's local", or
+tell which hosts it reaches. Add it, or fix what halonic plugin list says about it, then Halonic
+can tell whether it's local" (main's fix from HAL-15898, kept on the rebase), or
 "the sheet of its integration in integrations/notes can't be read, so Halonic can't tell which
 hosts it reaches. Set privacy.localOnly: false in workspace.yaml to use it", or "its file doesn't say
 local: true, though the local integration in integrations/notes reaches nothing outside this
@@ -52,11 +53,12 @@ requirement `runs.run-view.failed-child-run` and its tests say so. Under a cance
 said "See the run that started it: halonic runs show 4f2a1b"; the active requirement
 `cli.commands.runs.show` and its tests say so.
 
-**C641: two `halonic routines` lines.** Under the list, a routine never live now says "! Hourly
-ping isn't live yet, so it doesn't run. It runs once you commit it." (was "…Commit it to start
-it."), and saved changes with errors say "! Minute ping has changes that aren't live yet, with
-errors. It runs as last committed. See the errors with halonic validate." (was "…, and they have
-errors (halonic validate). It runs as last committed."). The active requirement
+**C641: a `halonic routines` line.** Under the list, saved changes with errors say "! Minute ping
+has changes that aren't live yet, with errors. It runs as last committed. See the errors with
+halonic validate." (was "…, and they have errors (halonic validate). It runs as last committed.").
+The never-live line keeps main's "To start it, commit it or make it live in Halonic Studio." from
+HAL-15863, which replaced C641's "It runs once you commit it." before this merged. The active
+requirement
 `cli.commands.routines.list-live-version` and its tests say so.
 
 **C641: a workflow routine's input.** `halonic validate` now says "A workflow routine's input needs
