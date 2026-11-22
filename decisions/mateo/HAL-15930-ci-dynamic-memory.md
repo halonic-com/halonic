@@ -3,6 +3,7 @@
 - Task: HAL-15930 (the board supervisor's comment of 22 Nov 07:10 UTC on HAL-14831: dynamic memory per CI job is live since 07:04 UTC)
 - Approval: the board asked for the repo to match the live slot script (HAL-15930, Timothy: "Act now", 22 Nov); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:H6omAGM3N40FNBT6zZis6gg6hfM6CF3P9XwPVh3r3j/CR3JkMNQIsNYGxrw+Im88cYwr0aabnd/k8xIygLP4CA==
 
 ## What changes
 
