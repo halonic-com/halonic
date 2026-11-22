@@ -278,7 +278,7 @@ verifies("source-control.get-updates-per-item", () => {
         s.publish({ ".env.example": "SAM=1\n", "logs/NOTES~1.md": "x\n", "b.md": "two\n" });
         s.commit({ ".env.example": "ME=1\n", "a.md": "mine\n" });
         await expect(s.open().startMerge()).rejects.toThrow(
-          "updates change .env.example and logs/NOTES~1.md, which Halonic leaves to git. Get these updates with git instead.",
+          "updates change .env.example and logs/NOTES~1.md, which Halonic leaves to git. Get these updates with git instead: open a terminal in this workspace's folder and run git pull --no-rebase. If git reports conflicts, settle them and commit, then come back here.",
         );
         expect(s.read(".env.example")).toBe("ME=1\n");
         expect(existsSync(join(s.mine, "b.md"))).toBe(false);
