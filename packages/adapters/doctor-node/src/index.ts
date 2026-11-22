@@ -28,6 +28,7 @@ export {
   type ReadWorkspaceOptions,
   readDoctorWorkspace,
 } from "./read-workspace.ts";
+export { type SandboxKind, sandboxKindOf } from "./sandbox-kind.ts";
 export { studioWatchedFileLimit } from "./studio-watch-limit.ts";
 export { windowsDriveOf } from "./windows-drive.ts";
 export { workspaceIntegrations } from "./workspace-integrations.ts";
