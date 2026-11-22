@@ -2032,7 +2032,7 @@ Function un.RemoveSandbox
   ${ElseIf} $2 == "3"
     StrCpy $SandboxOutcome "removed_manual"
     DetailPrint "✓ Removed the agent sandbox"
-    DetailPrint "   It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again and remove the sandbox in Settings › Agent sandbox."
+    DetailPrint "   It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again, start it normally, not as administrator, and remove the sandbox in Settings › Agent sandbox."
   ${ElseIf} $2 == "20"
     StrCpy $SandboxOutcome "none"
   ${ElseIf} $2 == "10"
@@ -2082,12 +2082,12 @@ Function un.PageDone
       System::Free $3
       IntOp $5 $5 - $4
       ; Halonic is gone now, so the next start that takes the access back is
-      ; one after installing it again (HAL-15836). Two lines high, three for
+      ; one after installing it again (HAL-15836). Two lines high, four for
       ; the longer one, so a wrap at a larger scaling isn't cut off.
       ${If} $SandboxOutcome == "removed_kept"
         ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders stays until you install ${PRODUCTNAME} again and start it."
       ${Else}
-        ${NSD_CreateLabel} $4 12u $5 30u "It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again and remove the sandbox in Settings › Agent sandbox."
+        ${NSD_CreateLabel} $4 12u $5 40u "It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again, start it normally, not as administrator, and remove the sandbox in Settings › Agent sandbox."
       ${EndIf}
       Pop $0
     ${EndIf}
