@@ -2,7 +2,6 @@
 
 - Approval: /HAL/issues/HAL-15897 (from the words check C645 on HAL-15886)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kEC/lr18nw18nY0oCbSFribWaR3Bc5nBAxbzASjGU2Qrae5ugEFqWM/IYWcjpgy4xpOIEkzQUSLT0gcV43KpCA==
 - Task: HAL-15897
 
 ## What changes
