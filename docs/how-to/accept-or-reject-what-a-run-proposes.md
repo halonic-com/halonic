@@ -72,9 +72,9 @@ and the proposal leaves the list. The command has no Undo, so check the diff
 before you accept.
 
 If a proposal's changes were deleted outside Halonic, `show` and `accept`
-say so ("Run 01jd8q's changes were deleted outside Halonic, so they can't be
-shown or accepted.") and "Remove them from the list with halonic proposals
-reject 01jd8q." Run that command to remove the proposal.
+say so: "Run 01jd8q's changes were deleted outside Halonic, so they can't be
+shown or accepted. Remove them from the list with halonic proposals reject
+01jd8q." Run that command to remove the proposal.
 
 All four take `--dir <folder>` for a workspace other than the current
 folder. `halonic proposals` and `halonic proposals show` also take `--json`
@@ -94,11 +94,3 @@ keep it as it is now, reject it." and has only **Reject**: use
 `halonic proposals show` to see the run's text, copy what you want by hand,
 then reject the file. The served Studio and the
 phone list no proposals; see them with `halonic proposals` on the computer.
-
-### A run waiting for "Allow this address?"
-
-A run whose model call waits for the answer to "Allow this address?" shows as
-"! Needs you" in `halonic runs`, and `halonic runs show` ends with "! Waiting
-for your answer in Studio: may provider "gateway" send key "gateway-key" to
-https://gw.example?" Answer it in Studio. `halonic runs send` can't answer it.
-Without an answer within 10 minutes, the model call fails.
