@@ -141,11 +141,25 @@ export const RoutineTarget = s.union(
 
 /** Which key a target that is neither kind needs, by the keys it has. */
 function targetMessage(target: unknown): string {
-  const has = (key: string) => typeof target === "object" && target !== null && key in target;
+  if (!isFields(target)) {
+    return "run needs a workflow, with its input, or an agent, with its prompt.";
+  }
+  const has = (key: string) => key in target;
   if (has("agent") && has("input") && !has("prompt")) {
     return "An agent routine takes prompt, not input.";
   }
+  // `input: "{{trigger.body}}"` has both a workflow and an input, so "run needs
+  // a workflow, with its input" would send the reader looking for neither
+  // (HAL-15734). The input has to be named fields.
+  if (has("workflow") && !has("agent") && has("input") && !isFields(target["input"])) {
+    return 'A workflow routine\'s input is a list of fields, such as input: { mail: "{{trigger.body}}" }.';
+  }
   return "run needs a workflow, with its input, or an agent, with its prompt.";
+}
+
+/** Whether a value is named fields (a YAML map), not a text, a list or nothing. */
+function isFields(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** `workflows/routines/<id>.routine.yaml`: when something runs on its own. */
