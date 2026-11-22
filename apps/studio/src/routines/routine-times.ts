@@ -50,8 +50,8 @@ export async function nextTimesOf(
 }
 
 /**
- * The next time `routine`, as it runs, starts on its own, in `timeZone` for a schedule that names
- * none; none when it is off or its trigger isn't a clock or doesn't parse.
+ * The next time `routine`, as it runs, starts on its own; none when it is off or its trigger isn't
+ * a clock or doesn't parse.
  */
 export function nextRunOf(routine: Routine, now: Date, timeZone: string): string | undefined {
   if (!routine.enabled) return undefined;
