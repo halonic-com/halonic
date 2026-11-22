@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-15891 (from Iris's flow check C646 on HAL-15887)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yxRfeXCs7MH6kEKiIAoO/cmaGqyHP32PvCgQIi5JDQvCIoQe/H4yVya6nQ3kn4d7vUbmVlOV5TnWdtywuy90Aw==
 - Task: HAL-15891
 
 ## What changes
