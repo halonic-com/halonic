@@ -98,7 +98,8 @@ verifies("check.affected-tests", () => {
     test("selects every package for a file outside every package that isn't docs", () => {
       expect(testSelection(["infra/wsl-image/runtime-archive.sh"], packages)).toEqual({
         kind: "all",
-        reason: "infra/wsl-image/runtime-archive.sh is outside every package, so any test may read it",
+        reason:
+          "infra/wsl-image/runtime-archive.sh is outside every package, so any test may read it",
       });
     });
 
@@ -114,7 +115,10 @@ verifies("check.affected-tests", () => {
 
     test("selects no package for the Cloudflare workers, whose tests ci.yml runs itself", () => {
       expect(
-        testSelection(["infra/turbo-cache/worker.mjs", "infra/spend-guard/src/guard.mjs"], packages),
+        testSelection(
+          ["infra/turbo-cache/worker.mjs", "infra/spend-guard/src/guard.mjs"],
+          packages,
+        ),
       ).toEqual({ kind: "some", packages: [] });
       expect(testSelection(["infra/turbo-cache-old/worker.mjs"], packages).kind).toBe("all");
     });
