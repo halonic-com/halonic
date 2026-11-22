@@ -3,6 +3,7 @@
 - Task: HAL-15490
 - Approval: Liam approves this change on HAL-15490 (https://paperclip.halonic.com/HAL/issues/HAL-15490), for HAL-15490. A team decision with no board card (HAL-2282 rule): it makes Studio say what the scheduler already does.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JkYbyO+SmMfiaJ3MA5CAd+GPTkr5tJcrfFeAqkt1tzXTh7mcWi52iiUNk4DzdXAsnY3UEGGJkafGb1ekyf81DA==
 
 ## What changes
 
