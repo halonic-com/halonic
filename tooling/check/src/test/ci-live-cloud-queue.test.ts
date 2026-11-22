@@ -114,16 +114,20 @@ function groupForks(sha: string, entries: readonly QueueEntry[], onMain = ["main
   stub(folder, "gh", [`cat "${join(folder, "entries.json")}"`]);
   const output = join(folder, "output.txt");
   writeFileSync(output, "");
-  const result = spawnSync("bash", ["-e", "-c", stepScript(live, "Fork pull requests in the group")], {
-    encoding: "utf8",
-    env: {
-      PATH: `${folder}:${process.env["PATH"] ?? ""}`,
-      REPO: "acme/halonic",
-      GROUP_SHA: sha,
-      RUNNER_TEMP: folder,
-      GITHUB_OUTPUT: output,
+  const result = spawnSync(
+    "bash",
+    ["-e", "-c", stepScript(live, "Fork pull requests in the group")],
+    {
+      encoding: "utf8",
+      env: {
+        PATH: `${folder}:${process.env["PATH"] ?? ""}`,
+        REPO: "acme/halonic",
+        GROUP_SHA: sha,
+        RUNNER_TEMP: folder,
+        GITHUB_OUTPUT: output,
+      },
     },
-  });
+  );
   expect(result.status, result.stderr).toBe(0);
   return readFileSync(output, "utf8").trim();
 }
