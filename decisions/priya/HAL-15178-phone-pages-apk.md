@@ -3,6 +3,7 @@
 - Task: HAL-15178
 - Approval: the D7 design note on HAL-15159, section 4, signed by Liam (maintainer) and Julian (security, HAL-15181); Liam signs this note in review on HAL-15178
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:e/CGQIhGoostxlzW9tbSWW6IONAoAIRsqgWR/O3snVAjABCeUCsFgzjY9ygRxkaxmKEfAhdQZ8phybQxt37cDQ==
 
 ## What changes
 
