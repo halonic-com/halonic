@@ -1,10 +1,10 @@
 # studio.src-tauri.crates.git-guard.trusted-filters
 
-- Status: draft
+- Status: active
 - Since: unreleased
-- Source: HAL-16434 (the user's own filters run again in trusted folders, decided by Liam on HAL-16363); requirements `repo-config` and `filter-writes`
+- Source: HAL-16434 (the user's own filters run again in trusted folders, decided by Liam on HAL-16363); HAL-16569 (the refusal says when trusting would run the filter, C724 on HAL-16565); requirements `repo-config` and `filter-writes`
 
-When the shell runs git in a repository where every folder of it and of every repository nested in it as a gitlink (its top, its git folder and its common git folder) is a folder the person trusted or inside one, it shall let the filter drivers that only the user's own config defines run, and shall still blank every filter driver a `local` or `worktree` entry defines, also one the user's own config defines too, and still refuse the repository's git-lfs keys that name a program (requirement `repo-config`). A folder counts as trusted while the profile's trust records hold one for it or for a folder above it, read on every call, so revoking trust counts from the next call; a record that can't be read counts as none. Elsewhere every filter driver stays blanked, and a call that would store or write files without one is refused (requirement `filter-writes`).
+When the shell runs git in a repository where every folder of it and of every repository nested in it as a gitlink (its top, its git folder and its common git folder) is a folder the person trusted or inside one, it shall let the filter drivers that only the user's own config defines run, and shall still blank every filter driver a `local` or `worktree` entry defines, also one the user's own config defines too, and still refuse the repository's git-lfs keys that name a program (requirement `repo-config`). A folder counts as trusted while the profile's trust records hold one for it or for a folder above it, read on every call, so revoking trust counts from the next call; a record that can't be read counts as none. Elsewhere every filter driver stays blanked, and a call that would store or write files without one is refused (requirement `filter-writes`). That refusal shall name a filter a repository's own config defines when the attribute files name one, and say to make the change with git in a terminal; when every filter they name is the user's own and the folder isn't trusted, it shall say that the Studio runs it only in a workspace the person trusts, and to press Review in the header to trust it and try again.
 
 ## Examples
 
@@ -13,10 +13,13 @@ When the shell runs git in a repository where every folder of it and of every re
   then the filter runs and the index holds what it wrote.
 - Given the same repository in a folder the person didn't trust,
   when the shell runs `add -A`,
-  then the call is refused with `filter_not_run` and the filter doesn't run.
+  then the call is refused with `filter_not_run` and the filter doesn't run, and the refusal says to press Review in the header to trust the workspace, then try again.
 - Given a trusted folder whose repository's own config defines a filter its attributes use,
   when the shell runs `add -A`,
   then the call is refused with `filter_not_run`, naming that filter.
+- Given a folder the person didn't trust, whose attributes use the user's own filter and, after it, a filter the repository's own config defines,
+  when the shell runs `add -A`,
+  then the call is refused with `filter_not_run`, naming the repository's filter, and the refusal says to make the change with git in a terminal.
 - Given a trusted folder whose repository's own config sets a key of a filter the user's global config defines,
   when the shell runs `add -A` or `status`,
   then the filter doesn't run, and `add -A` is refused with `filter_not_run`.

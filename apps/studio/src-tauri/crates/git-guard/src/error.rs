@@ -46,8 +46,15 @@ pub enum GitError {
     ConfigNotAllowed { key: String },
     /// A call that stores files or writes them into the working tree, in a
     /// repository whose attribute files name a filter the runner blanked:
-    /// git would store or write those files without it.
-    FilterNotRun { subcommand: String, filter: String },
+    /// git would store or write those files without it. `trust_runs` is true
+    /// when every such filter is the user's own and the folder isn't
+    /// trusted, so trusting it would let them run (requirement
+    /// `trusted-filters`).
+    FilterNotRun {
+        subcommand: String,
+        filter: String,
+        trust_runs: bool,
+    },
     /// The empty hooks folder has files in it, so it no longer stops hooks.
     HooksFolderNotEmpty,
     /// The empty hooks folder is gone or cannot be read.
@@ -175,9 +182,19 @@ impl fmt::Display for GitError {
                     "the repository's config sets {key}, which is not allowed"
                 )
             }
-            GitError::FilterNotRun { subcommand, filter } => write!(
+            GitError::FilterNotRun {
+                subcommand,
+                filter,
+                trust_runs: true,
+            } => write!(
                 formatter,
-                "git {subcommand} would store or write files without their {filter} filter, which the Studio doesn't run; make this change with git in a terminal"
+                "git {subcommand} would store or write files without their {filter} filter, which the Studio runs only in a workspace you trust; press Review in the header to trust it, then try again"
+            ),
+            GitError::FilterNotRun {
+                subcommand, filter, ..
+            } => write!(
+                formatter,
+                "git {subcommand} would store or write files without their {filter} filter, which the repository's own config defines and the Studio never runs; make this change with git in a terminal"
             ),
             GitError::HooksFolderNotEmpty => write!(formatter, "the empty hooks folder has files"),
             GitError::HooksFolderUnreadable => {

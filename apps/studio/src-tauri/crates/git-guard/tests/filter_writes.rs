@@ -14,6 +14,7 @@ fn refused(subcommand: &str) -> Result<(), GitError> {
     Err(GitError::FilterNotRun {
         subcommand: subcommand.to_owned(),
         filter: "x".to_owned(),
+        trust_runs: false,
     })
 }
 

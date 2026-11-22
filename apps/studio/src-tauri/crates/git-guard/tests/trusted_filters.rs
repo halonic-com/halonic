@@ -62,13 +62,20 @@ fn check_in_child(home: &Path) {
     let acme = std::fs::canonicalize(&sandbox.acme).expect("acme is a folder");
     let trusted = |folder: &Path| folder.starts_with(&acme);
 
-    // Not trusted: the user's filter is blanked, so `add` is refused.
+    // Not trusted: the user's filter is blanked, so `add` is refused, and
+    // the refusal says trusting the workspace would run it.
+    let refused = sandbox.git("add -A").expect_err("add is refused");
     assert_eq!(
-        sandbox.git("add -A").map(|_| ()),
-        Err(GitError::FilterNotRun {
+        refused.to_string(),
+        "git add would store or write files without their acme filter, which the Studio runs only in a workspace you trust; press Review in the header to trust it, then try again"
+    );
+    assert_eq!(
+        refused,
+        GitError::FilterNotRun {
             subcommand: "add".to_owned(),
             filter: "acme".to_owned(),
-        })
+            trust_runs: true,
+        }
     );
     assert!(!mark.exists(), "the filter ran outside a trusted folder");
 
@@ -96,7 +103,24 @@ fn check_in_child(home: &Path) {
         Err(GitError::FilterNotRun {
             subcommand: "add".to_owned(),
             filter: "crypt".to_owned(),
+            trust_runs: false,
         })
+    );
+    // Not trusted either: trust wouldn't run the repository's filter, so
+    // the refusal names it, though the user's comes first, and keeps the
+    // terminal advice.
+    let refused = sandbox.git("add -A").expect_err("add is refused");
+    assert_eq!(
+        refused,
+        GitError::FilterNotRun {
+            subcommand: "add".to_owned(),
+            filter: "crypt".to_owned(),
+            trust_runs: false,
+        }
+    );
+    assert_eq!(
+        refused.to_string(),
+        "git add would store or write files without their crypt filter, which the repository's own config defines and the Studio never runs; make this change with git in a terminal"
     );
 
     // The repository's config redefines the user's filter: the user's is
@@ -110,6 +134,7 @@ fn check_in_child(home: &Path) {
         Err(GitError::FilterNotRun {
             subcommand: "add".to_owned(),
             filter: "acme".to_owned(),
+            trust_runs: false,
         })
     );
     sandbox.git_ok("status --porcelain");
