@@ -256,30 +256,38 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
 
 /**
  * A cancelled run's note: in its step or before it started, and, for a child run its parent's end
- * cancelled (the engine's typed cause), why, with **Open run** for the parent (UX check R9).
+ * cancelled (the engine's typed cause), why (UX check R9). Any child run, whatever ended it, gets
+ * **Open run** for the run that started it, so a for-each item whose parent the person cancelled
+ * still leads there (C626 on HAL-15755).
  */
 function cancelledNote(summary: RunSummary, workflow: string, step: string): RunBanner {
-  const started = summary.statesVisited.length > 0;
+  const text = cancelledText(summary, workflow, step);
   const parentId = summary.parentRunId;
-  if (parentId === null || !endedWithParent(summary.cause)) {
-    return {
-      kind: "note",
-      text: started
-        ? runPageWords.cancelledIn(workflow, step)
-        : runPageWords.cancelledBeforeStart(workflow),
-    };
+  if (parentId === null) {
+    return { kind: "note", text };
   }
   return {
     kind: "note",
-    text: started
-      ? runPageWords.cancelledWithParentIn(workflow, step)
-      : runPageWords.cancelledWithParent(workflow),
+    text,
     parent: {
       kind: "open-run",
       runId: parentId,
       label: runPageWords.openRun(shortRunId(parentId)),
     },
   };
+}
+
+/** Where the cancel landed, and whether the run's parent's end cancelled it. */
+function cancelledText(summary: RunSummary, workflow: string, step: string): string {
+  const started = summary.statesVisited.length > 0;
+  if (endedWithParent(summary.cause)) {
+    return started
+      ? runPageWords.cancelledWithParentIn(workflow, step)
+      : runPageWords.cancelledWithParent(workflow);
+  }
+  return started
+    ? runPageWords.cancelledIn(workflow, step)
+    : runPageWords.cancelledBeforeStart(workflow);
 }
 
 /** The CLI's first line for a budget stop, in the budget's currency. */
