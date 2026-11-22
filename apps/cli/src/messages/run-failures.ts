@@ -23,6 +23,7 @@ import {
   tryLater,
 } from "./run-failure-words.ts";
 import { sandboxMessages } from "./sandbox.ts";
+import { unreadableSecretsFileFix } from "./secrets-file-failures.ts";
 import { asSentence } from "./sentence.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
@@ -155,6 +156,8 @@ const lineOne = {
   // The same words as `halonic secret list` for the same file (HAL-12569).
   "secrets-file-readable": (run, failure) =>
     failedIn(run, phrase`the secrets file ${failure.file} can be read by other users.`),
+  "secrets-file-unreadable": (run, failure) =>
+    failedIn(run, phrase`the secrets file ${failure.file} can't be read by your user account.`),
   "unknown-provider": (run, failure) =>
     failedIn(
       run,
@@ -320,6 +323,7 @@ const lineTwo = {
     phrase`Add ${failure.alias} to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.`,
   "secrets-file-readable": (_run, failure) =>
     phrase`Run chmod 600 ${shellWord(failure.file)}, then run again.`,
+  "secrets-file-unreadable": (_run, failure) => unreadableSecretsFileFix(failure),
   "unknown-provider": (_run, failure) =>
     "alias" in failure
       ? phrase`Add providers/${failure.provider}.yaml, or point the model alias ${failure.alias} at a provider the workspace has.`
