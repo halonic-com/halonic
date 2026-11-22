@@ -245,7 +245,7 @@ verifies("remote.pair-a-phone-problems", () => {
     const tries = await openDialog();
     for (let left = 5; left > 0; left--) tries.remote.wrongTry();
     await settle();
-    expect(dialog()?.textContent).toContain("Too many wrong tries");
+    expect(dialog()?.textContent).toContain("The code was typed wrong 5 times");
     expect(fadedCode()).not.toBeNull();
     unmountAll();
 

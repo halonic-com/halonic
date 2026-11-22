@@ -62,11 +62,12 @@ export const pairWords = {
     pairReason: "Choose a computer and enter all 12 characters.",
     wrong: (triesLeft: number) => `That code doesn't match. ${triesLeftText(triesLeft)}.`,
   },
+  /** The computer shows the code as ended, so its button is **Make a new code** there too (C618). */
   ended: {
     title: "This code no longer works",
-    body: "A code works once and for 5 minutes, and stops after 5 wrong tries. On your computer, choose New code, then try again.",
+    body: "A code works once and for 5 minutes, and stops after 5 wrong tries. On your computer, choose **Make a new code**, then try again.",
     bodyNoAllow: (computer: string) =>
-      `Allow wasn't pressed on ${computer} in time. On your computer, choose New code, then try again.`,
+      `Allow wasn't pressed on ${computer} in time. On your computer, choose **Make a new code**, then try again.`,
   },
   used: {
     title: "This code was already used",
@@ -92,6 +93,7 @@ export const pairWords = {
   rateLimited: {
     title: (computer: string) => `Too many tries on ${computer}`,
     body: "Too many codes were tried in the last minute. Wait a minute, then try again.",
+    tryAgain: "Try again",
   },
   cantConfirm: {
     /** `phone.cantConfirm.heading`, shared with the status sheet `s-m9`. */

@@ -38,11 +38,11 @@ export function problemWords(
     actionLabel: typed ? pairWords.typeAgain : pairWords.scanAgain,
     cancel: false,
   });
-  const tryAgain = (title: string, line: string): ProblemWords => ({
+  const tryAgain = (title: string, line: string, label: string): ProblemWords => ({
     title,
     lines: [line],
     action: "tryAgain",
-    actionLabel: pairWords.unreachable.tryAgain,
+    actionLabel: label,
     cancel: true,
   });
   switch (problem.screen) {
@@ -68,15 +68,24 @@ export function problemWords(
         cancel: true,
       };
     case "rateLimited":
-      return tryAgain(pairWords.rateLimited.title(computer), pairWords.rateLimited.body);
+      return tryAgain(
+        pairWords.rateLimited.title(computer),
+        pairWords.rateLimited.body,
+        pairWords.rateLimited.tryAgain,
+      );
     case "unreachable":
       if (problem.phoneOffline) {
         const body = problem.wifi ? pairWords.phoneOffline.bodyWifi : pairWords.phoneOffline.body;
-        return tryAgain(pairWords.phoneOffline.title, body(computer));
+        return tryAgain(
+          pairWords.phoneOffline.title,
+          body(computer),
+          pairWords.unreachable.tryAgain,
+        );
       }
       return tryAgain(
         pairWords.unreachable.title(computer),
         problem.wifi ? pairWords.unreachable.bodyWifi : pairWords.unreachable.body,
+        pairWords.unreachable.tryAgain,
       );
   }
 }
