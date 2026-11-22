@@ -8,6 +8,7 @@ import { databaseTables } from "./paperclip-tables.ts";
 import { runSeatsRead } from "./read-job.ts";
 import { handleSeatsRequest } from "./routes.ts";
 import { registerSeatUsageTool } from "./seat-usage-tool.ts";
+import { seatsNow } from "./seats-now.ts";
 import { SeatsReader } from "./seats-reader.ts";
 import { readSeatsSettings } from "./settings.ts";
 import { databaseStore } from "./store.ts";
@@ -83,6 +84,17 @@ export const plugin = definePlugin({
       store: databaseStore(ctx.db),
       now: () => new Date(),
       reads: (seats) => ({ readerStartedAt: reader.startedAt, seats: reader.status(seats) }),
+      seatsNow: (companyId, settings, now) =>
+        seatsNow(
+          companyId,
+          settings,
+          {
+            tables: databaseTables(ctx.db),
+            readings: databaseRecentReadings(ctx.db),
+            store: databaseStore(ctx.db),
+          },
+          now,
+        ),
     });
   },
 });

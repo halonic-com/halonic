@@ -306,8 +306,8 @@ turned dry run off.
 usage limits, keeps the history the seat forecast needs and proposes moves.
 It is its own plugin, `halonic.seats`, so the board installs, stops and
 trusts it apart from Agent tools. So far it has its settings, its tables,
-two board-only routes, the `seats.read`, `seats.history` and `seats.check`
-jobs and the `seat_usage` tool; the page comes next.
+three board-only routes, the `seats.read`, `seats.history` and `seats.check`
+jobs and the `seat_usage` tool; the page's view comes next.
 
 - **Settings** (board-only, empty by default): the seats in reading order,
   each with an id, a role (`pool`, `reserve` or `paid-api`), its Claude
@@ -324,7 +324,8 @@ jobs and the `seat_usage` tool; the page comes next.
   starts and refuses `DROP` and `DELETE` there, so a change adds a file.
 - **Routes**, board users only (the worker checks again), under
   `/api/plugins/<plugin id>/api/`: `GET /seats` lists the seats with their
-  id, role and reset group only, and `POST /seats/:seatId/manual-reset`
+  id, role and reset group only, `GET /seats/page` gives the "AI seats"
+  page's data (below), and `POST /seats/:seatId/manual-reset`
   records a manual reset by the board user. Seats in one reset group share
   one manual reset, so a second one in the group is refused (409); a seat
   without a group is a group of its own. Manual resets stay when old rows go.
@@ -364,6 +365,14 @@ jobs and the `seat_usage` tool; the page comes next.
   listed in the board-only setting **Agents that may call seat_usage**
   (the Seat Supervisor and Chief, HAL-16192), which is empty by default.
   The database's error goes to the plugin's log, not to the agent.
+- **The page's data** (`GET /seats/page`, `src/seats/plugin/seats-page.ts`):
+  the pool's weekly points left over the readable pool seats and its points
+  per hour now, the pool seats' weekly refills of the next 7 days, a row per
+  seat (state, reading age, next read, sign-in expiry, alerts, both windows
+  with when each reaches 80% and 90% before its reset, and its agents by
+  name), and the moves `seats.check` would propose now. It moves no one. The
+  run-out time, the sustainable rate and the forecast at reset come with the
+  seat forecast (HAL-16026).
 
 Build it with `pnpm --filter @halonicjs/tooling-paperclip run
 build:seats-plugin`. That writes `dist/seats/`: the bundles, the migrations

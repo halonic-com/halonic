@@ -36,6 +36,7 @@ function setup(settings: Record<string, unknown> = config) {
     },
     now: () => new Date("2026-11-22T11:00:00.000Z"),
     reads: () => ({ readerStartedAt: "2026-11-22T10:00:00.000Z", seats: [] }),
+    seatsNow: async () => ({ seats: [], placements: new Map(), agentNames: new Map() }),
   };
   return { deps, events, settingsRead };
 }
@@ -65,6 +66,7 @@ verifies("paperclip.seats-routes", () => {
   test("every route the manifest declares is board-only", () => {
     expect(manifest.apiRoutes?.map((route) => [route.routeKey, route.auth])).toEqual([
       ["seats.list", "board"],
+      ["seats.page", "board"],
       ["seats.manual-reset", "board"],
     ]);
   });
