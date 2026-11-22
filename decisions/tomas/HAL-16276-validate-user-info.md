@@ -2,7 +2,7 @@
 
 - Approval: the task HAL-16276 asks for this change, from Iris's flow check C692 on HAL-16271 (item 3); wording decided by the team under the HAL-2282 rule; Liam signs this note in review.
 - Kind: user-visible
-- Signature:
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QadloWlZumQLka1UnAFUvB5JYmegy3m94lbiGlHEZ/ANDaAVSY1piZzoS6pDzR5DfxRJhLGrhm8a1cUMCPaGCg==
 
 ## What changes
 
