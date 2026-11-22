@@ -11,6 +11,11 @@ export interface CheckLine {
   readonly text: string;
   /** What only the report adds: the cause id, the phase and the exit code of a failed start. */
   readonly reportOnly?: string;
+  /**
+   * What only the screen shows in place of `text`: the CLI's sentence and fix for a relative
+   * `HALONIC_HOME`, which holds the person's value, so the report keeps `text` (HAL-15963).
+   */
+  readonly screenText?: string;
 }
 
 /** The glyph each mark has on screen and in the report. */
@@ -53,6 +58,8 @@ export const liteCheckWords = {
   profileNotWritable:
     "Halonic can't write to it. Check that your account can change files in your home folder.",
   profileNotFound: "Couldn't check: Halonic couldn't find it",
+  /** The report's words for a relative `HALONIC_HOME`: the fact, never the value (HAL-15963). */
+  halonicHomeRelative: "HALONIC_HOME isn't a full path",
   disk: "Disk",
   diskEnough: "Enough free space",
   lowOnDisk: (free: string) => `Low on disk space: ${free} free`,
@@ -91,6 +98,13 @@ function resultLine(result: LiteCheckResult): CheckLine | undefined {
         return { label: w.profile, mark: "pass", text: w.profileWritable };
       if (result.fact === "not_writable")
         return { label: w.profile, mark: "problem", text: w.profileNotWritable };
+      if (result.fact === "halonic_home_relative")
+        return {
+          label: w.profile,
+          mark: "problem",
+          text: w.halonicHomeRelative,
+          screenText: result.message,
+        };
       return { label: w.profile, mark: "info", text: w.profileNotFound };
     case "disk_space":
       if (result.fact === "enough") return { label: w.disk, mark: "pass", text: w.diskEnough };

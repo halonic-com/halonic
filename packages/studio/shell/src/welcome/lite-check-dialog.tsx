@@ -173,7 +173,7 @@ function CheckList({ lines }: { readonly lines: readonly CheckLine[] }) {
           <span className="min-w-0 flex-1 wrap-break-word">
             <span className="text-fg">{line.label}</span>
             <span className="sr-only">, {markNames[line.mark]}:</span>{" "}
-            <span className="text-fg-muted">{line.text}</span>
+            <span className="text-fg-muted">{line.screenText ?? line.text}</span>
           </span>
         </li>
       ))}
