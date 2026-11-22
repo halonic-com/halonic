@@ -24,6 +24,7 @@ verifies("events.harness-allowed", () => {
       tool: string;
       detail: string;
       rule: "asks-in-sandbox";
+      waitedMs?: number;
     }>();
   });
 
