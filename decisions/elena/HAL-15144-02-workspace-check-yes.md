@@ -3,6 +3,7 @@
 - Task: HAL-15144
 - Approval: Liam approved the plan on HAL-15144 (https://paperclip.halonic.com/HAL/issues/HAL-15144#document-plan), PR 2, after his option B on HAL-3384 part 6. It builds the board's approved "Runs" line decisions on HAL-1949 (R-D1 A), microcopy 24.1 R5, R6 and R12, and the design on HAL-1873, sections 4 and 7.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sY5fCxgc63QlcTnZEf342ini80jVkH87yIRzjkEjJcU99BUcuVy1ANwVq1qg/hQYnv5dfBa+KgGQ12YDN6qnBQ==
 
 ## What changes
 
