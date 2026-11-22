@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { KindedError } from "@halonicjs/std";
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { createToastStore, OpenExternalProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -40,13 +40,19 @@ async function openPage(options: { started?: UpdateMerge; left?: UpdateMerge } =
   if (options.left !== undefined) fake.setMerge(options.left);
   const toasts = createToastStore();
   const list = new ChangesList(fake.source);
+  const opened: string[] = [];
+  const openExternal = async (address: string | Promise<string>) => {
+    opened.push(await address);
+  };
   const root = render(
-    <ToastStoreProvider store={toasts}>
-      <ChangesView list={list} />
-    </ToastStoreProvider>,
+    <OpenExternalProvider openExternal={openExternal}>
+      <ToastStoreProvider store={toasts}>
+        <ChangesView list={list} />
+      </ToastStoreProvider>
+    </OpenExternalProvider>,
   );
   await act(settle);
-  return { fake, root, toasts, list };
+  return { fake, root, toasts, list, opened };
 }
 
 /** A button by its label; the busy label a button also holds is ignored. */
@@ -232,8 +238,10 @@ verifies("source-control.get-updates-per-item", () => {
       expect(root.textContent).toContain("Choose for 1 more item.");
     });
 
-    it("refuses a file Halonic leaves to git with no Try again, while other failures keep it", async () => {
-      const { fake, toasts } = await openPage({ started: merge([item("a.md", "m\n", "s\n")]) });
+    it("refuses a file Halonic leaves to git with Show how instead of Try again, while other failures keep Try again", async () => {
+      const { fake, toasts, opened } = await openPage({
+        started: merge([item("a.md", "m\n", "s\n")]),
+      });
       const reason =
         "updates change .env.example, which Halonic leaves to git. Get these updates with git instead.";
       fake.failMerge(new KindedError("conflict", reason));
@@ -243,7 +251,12 @@ verifies("source-control.get-updates-per-item", () => {
       expect(refused?.text).toBe(
         `Updates change .env.example, which Halonic leaves to git. Get these updates with git instead. Nothing changed here.`,
       );
-      expect(refused?.action).toBeUndefined();
+      expect(refused?.action?.label).toBe("Show how");
+      expect(refused?.action?.keepOpen).toBe(true);
+      await act(async () => refused?.action?.onClick());
+      expect(opened).toEqual([
+        "https://github.com/halonic-com/halonic/blob/main/docs/how-to/get-updates-for-files-halonic-leaves-to-git.md",
+      ]);
       fake.failMerge(new KindedError("unavailable", "The shared copy can't be reached."));
       await press("Get updates");
       expect(toasts.list().at(-1)?.action?.label).toBe("Try again");

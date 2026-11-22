@@ -72,9 +72,11 @@ lists, in this order (requirement `cli.trust-check`):
 
 Studio's trust check marks hidden characters, such as control, zero-width and
 text-direction characters, tabs and newlines, with an amber marker such as
-`⟦U+202E⟧`, so nothing in the text stays hidden and it shows in the order it is
-written. `halonic trust` writes them as codes such as `\u202e`
-(`workspace.trust-check-escaped`).
+`⟦U+202E⟧`, as the Inbox does, so nothing in the text stays hidden and it shows
+in the order it is written. `halonic trust` writes them as codes such as
+`\u202e` (`workspace.trust-check-escaped`), as it does for all outside text it
+prints. The two forms differ on purpose: a terminal may show no colour, and the
+code is plain text you can copy and search for.
 
 When the workspace changed since you trusted it, the check shows only what is
 new or changed. When it is unchanged, you get one line with the date.
