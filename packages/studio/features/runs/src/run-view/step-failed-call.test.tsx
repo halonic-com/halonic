@@ -179,9 +179,9 @@ verifies("runs.run-view.step-failed-call", () => {
     );
   });
 
-  it("names the plugin, by its name, whose sandbox didn't work as it started", () => {
+  it("names the plugin, by its name, whose sandbox didn't work when it started", () => {
     expect(lineFor({ code: "connector-not-started", why: "plugin-stopped", name: "Weather" })).toBe(
-      "✕ Didn't work: the connector notes-mcp didn't start: the sandbox didn't work as its plugin Weather started.",
+      "✕ Didn't work: the connector notes-mcp didn't start. The sandbox didn't work when its plugin Weather started.",
     );
   });
 

@@ -129,7 +129,7 @@ verifies("runs.run-view.step-connector-not-started", () => {
     expect(lines).toEqual([
       "✕ Couldn't list the tools from handbook: its plugin files isn't trusted yet.",
       "✕ Couldn't list the tools from wiki: its plugin pages changed since you trusted it.",
-      "✕ Couldn't list the tools from weather: the sandbox didn't work as its plugin Weather started.",
+      "✕ Couldn't list the tools from weather: the sandbox didn't work when its plugin Weather started.",
     ]);
     expect(root.querySelector("aside section > p em + em")?.textContent).toBe("files");
   });

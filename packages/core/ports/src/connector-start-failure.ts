@@ -3,7 +3,7 @@
  * (requirement `ports.connector-start-failure`): its program isn't on this
  * computer, a secret it needs isn't set, or the plugin it comes from isn't
  * trusted yet or changed since the person trusted it, or its sandbox didn't
- * work as it started. `program` and `secret` are names as the connector's
+ * work when it started. `program` and `secret` are names as the connector's
  * file writes them, never a secret's value; `plugin` is the plugin's id, and
  * `pluginName` its name as a person sees it.
  */
@@ -30,7 +30,7 @@ const maxCauseDepth = 8;
  *   connector in `@halonicjs/app` throws it);
  * - an `Error` named `PluginBackendStoppedError` with the plugin's name in
  *   `pluginName` (as `@halonicjs/adapter-integration-runner` throws it when
- *   the sandbox didn't work as the plugin's backend started).
+ *   the sandbox didn't work when the plugin's backend started).
  *
  * It reads them by name and field, not `instanceof`, so the engine needs no
  * adapter, and an adapter with its own copy of this package works too. It

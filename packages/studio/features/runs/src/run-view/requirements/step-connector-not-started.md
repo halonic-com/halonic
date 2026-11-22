@@ -10,7 +10,7 @@ When a step's log has a `connector.listing-failed` event (`events.connector-list
 - `secret-not-set`: "✕ Couldn't list the tools from *mailbox*: it needs the secret `mailbox-token`, which isn't set.";
 - `plugin-not-trusted`: "✕ Couldn't list the tools from *handbook*: its plugin *files* isn't trusted yet.";
 - `plugin-changed`: "✕ Couldn't list the tools from *handbook*: its plugin *files* changed since you trusted it.";
-- `plugin-stopped`: "✕ Couldn't list the tools from *weather*: the sandbox didn't work as its plugin *Weather* started.";
+- `plugin-stopped`: "✕ Couldn't list the tools from *weather*: the sandbox didn't work when its plugin *Weather* started.";
 - `other`, a cause without a `name`, or a cause the events package's reader `toolFailureCauseOf` can't read: "✕ Couldn't list the tools from *notes*.".
 
 The connector is its id in the workspace, in italics; the program, the secret and the plugin are the names the cause holds, the program and the secret in code style and the plugin in italics, and the line never shows a secret's value. Every name shall be plain text, with hidden and direction-changing characters escaped (`std.hidden-characters`). A connector shall get one line however many of the step's turns it failed in, in the order it first failed. A connector that the line under one of the step's tool calls already says didn't start (an approved call whose connector didn't start, `runs.run-view.step-failed-call`) shall get no line of its own. Tool calls shall show for such a step even when it made no tool call, and the step shall not read "This step made no model or tool calls.".

@@ -45,7 +45,7 @@ export const connectorStartMessages = defineMessages("connectorStart", {
    * next, so it needs no id (C600 #4, HAL-15608, words with Sofia on HAL-15616).
    */
   pluginStopped: (plugin: string) =>
-    phrase`The sandbox didn't work as the plugin ${plugin} started, so nothing ran.`,
+    phrase`The sandbox didn't work when the plugin ${plugin} started, so none of it ran.`,
   pluginStoppedNext: (plugin: string) =>
     phrase`Halonic tries ${plugin} in the sandbox again the next time a run uses it.`,
   /** HAL-13829: line 1 of `tools review | approve` for a connector whose program isn't on this computer. */

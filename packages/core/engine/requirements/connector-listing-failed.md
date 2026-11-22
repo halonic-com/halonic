@@ -14,7 +14,7 @@ When a connector an agent's file lists can't list its tools at the start of a mo
 - Given a run whose writer lists a connector from the plugin `files`, which is added but not trusted yet,
   when the writer's turn starts,
   then the log's `connector.listing-failed` has `cause: { code: "connector-not-started", why: "plugin-not-trusted", name: "files" }`.
-- Given a run whose writer lists a connector from the plugin Weather, whose sandbox doesn't work as its backend starts,
+- Given a run whose writer lists a connector from the plugin Weather, whose sandbox doesn't work when its backend starts,
   when the writer's turn starts,
   then the log's `connector.listing-failed` has `cause: { code: "connector-not-started", why: "plugin-stopped", name: "Weather" }`.
 - Given a connector whose listing fails with an error that names a secret's value,

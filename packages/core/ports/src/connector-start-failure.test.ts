@@ -41,7 +41,7 @@ verifies("ports.connector-start-failure", () => {
     expect(connectorStartFailureOf(changed)).toEqual({ reason: "plugin-changed", plugin: "files" });
   });
 
-  it("reads a plugin whose sandbox didn't work as it started by its name", () => {
+  it("reads a plugin whose sandbox didn't work when it started by its name", () => {
     const stopped = adapterError("PluginBackendStoppedError", {
       plugin: "weather",
       pluginName: "Weather",

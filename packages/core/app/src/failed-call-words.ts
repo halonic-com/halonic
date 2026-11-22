@@ -35,9 +35,12 @@ export const failedCallWords = {
     "Didn't work: the connector {connector} didn't start: its plugin {name} isn't trusted yet.",
   pluginChanged:
     "Didn't work: the connector {connector} didn't start: its plugin {name} changed since you trusted it.",
-  /** C600 #4 (HAL-15608): the sandbox didn't work as the plugin started, as `halonic run` says it. */
+  /**
+   * C600 #4 (HAL-15608): the sandbox didn't work when the plugin started, as `halonic run` says it;
+   * two sentences, so there is no second colon (Sofia, HAL-15616).
+   */
   pluginStopped:
-    "Didn't work: the connector {connector} didn't start: the sandbox didn't work as its plugin {name} started.",
+    "Didn't work: the connector {connector} didn't start. The sandbox didn't work when its plugin {name} started.",
   notStarted: "Didn't work: the connector {connector} didn't start.",
   /**
    * The line above a step's tool calls for a connector that couldn't list its tools when a turn
@@ -53,7 +56,7 @@ export const failedCallWords = {
   listingPluginChanged:
     "Couldn't list the tools from {connector}: its plugin {name} changed since you trusted it.",
   listingPluginStopped:
-    "Couldn't list the tools from {connector}: the sandbox didn't work as its plugin {name} started.",
+    "Couldn't list the tools from {connector}: the sandbox didn't work when its plugin {name} started.",
   listingFailed: "Couldn't list the tools from {connector}.",
   /** `{connector}` when the log doesn't name the connector: "the connector of the tool `create_note` didn't start". */
   connectorOfTool: "of the tool {tool}",

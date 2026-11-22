@@ -151,7 +151,7 @@ export type ToolNotMadeReason = "not-connected" | "tool-gone" | "sending-off" | 
  * `events.tool-result-cause`): `plugin-not-trusted` and `plugin-changed` are
  * for a connector from a plugin the person hasn't trusted yet, or that
  * changed since they trusted it; `plugin-stopped` for one whose sandbox
- * didn't work as the plugin started, so nothing of it ran.
+ * didn't work when the plugin started, so nothing of it ran.
  */
 export type ConnectorStartReason =
   | "program-missing"
