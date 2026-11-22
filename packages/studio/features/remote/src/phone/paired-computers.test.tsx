@@ -131,9 +131,15 @@ verifies("remote.phone-paired-computers", () => {
       "Studio PC, Tailscale, paired 3 Nov. Can't reach",
     ]);
     expect(rows[0]?.textContent).toContain("Tailscale · Paired 14 Nov");
-    // Only Can't reach dims.
-    expect(rows[0]?.className).not.toContain("opacity");
-    expect(rows[1]?.className).toContain("opacity-60");
+    // Each row starts with the laptop tile, hidden from screen readers. Only Can't reach dims,
+    // and only its tile: the name, lines and Forget keep their contrast (C662 #1, HAL-16002).
+    const tiles = rows.map((row) => row.firstElementChild);
+    expect(tiles.map((tile) => tile?.getAttribute("aria-hidden"))).toEqual(["true", "true"]);
+    expect(tiles.every((tile) => tile?.querySelector("svg") !== null)).toBe(true);
+    expect(tiles[0]?.className).not.toContain("opacity");
+    expect(tiles[1]?.className).toContain("opacity-60");
+    expect(rows[1]?.querySelectorAll(".opacity-60")).toHaveLength(1);
+    expect(screen.querySelectorAll("li[class*=opacity]")).toHaveLength(0);
     expect(screen.textContent).toContain(
       "Forget only removes a computer from this phone. To cut this phone off for good, use Revoke in Settings › Remote on the computer.",
     );
@@ -154,7 +160,7 @@ verifies("remote.phone-paired-computers", () => {
     expect(computerRowState(laptop, { state: "closed" })).toBeUndefined();
     const { screen } = show([{ ...laptop, standing: "removed" }]);
     const row = screen.querySelector("li");
-    expect(row?.className).not.toContain("opacity");
+    expect(row?.querySelector(".opacity-60")).toBeNull();
     expect(row?.textContent).toContain("Removed");
   });
 
@@ -170,6 +176,11 @@ verifies("remote.phone-paired-computers", () => {
     expect(sheet?.textContent).toContain(
       "The computer still lists this phone as paired. To cut it off there, use Revoke in Settings › Remote.",
     );
+    // The action in the text colour, then the second paragraph muted, with space between.
+    const [action, still] = [...(sheet?.querySelectorAll("p") ?? [])];
+    expect(action?.className).toContain("text-fg");
+    expect(still?.className).toContain("mt-2");
+    expect(still?.className).toContain("text-fg-muted");
     expect(onForget).not.toHaveBeenCalled();
     const confirm = [...(sheet?.querySelectorAll("button") ?? [])].find((each) =>
       each.textContent?.startsWith("Forget"),
@@ -206,6 +217,8 @@ verifies("remote.phone-paired-computers", () => {
   it("shows the empty state with Pair with a computer when nothing is paired", async () => {
     const { screen, onPair } = show([]);
     expect(screen.querySelector("h2, h3")?.textContent).toBe("No computers paired");
+    // The laptop on the empty state's tile.
+    expect(screen.querySelector("[aria-hidden=true] svg")).not.toBeNull();
     expect(screen.textContent).toContain(
       "Pair with a computer to see your agents, approve and send prompts.",
     );

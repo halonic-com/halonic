@@ -1,4 +1,4 @@
-import { Button, EmptyState, PlusIcon } from "@halonicjs/studio-kit";
+import { Button, EmptyState, LaptopIcon, PlusIcon } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import { computerMeta, computersWords } from "./computers-words.ts";
 import { ForgetDialog, forgottenWords, isUnreadable } from "./forget-dialog.tsx";
@@ -113,6 +113,7 @@ export function PairedComputers({
       {listed.length === 0 ? (
         <div className="flex flex-1 flex-col justify-center">
           <EmptyState
+            icon={<LaptopIcon />}
             title={computersWords.empty.title}
             titleRef={emptyTitle}
             description={computersWords.empty.body}
@@ -181,7 +182,24 @@ export function PairedComputers({
   );
 }
 
-/** One computer: its name, route and day, its state in words with a dot, and Forget. */
+/**
+ * The laptop on its 40px tile at the start of a row. It's decoration: the row's words name the
+ * computer. `dim` fades only the tile, so the words and Forget keep their contrast (G16).
+ */
+function LaptopTile({ dim = false }: { readonly dim?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-grid size-10 shrink-0 place-items-center rounded-md bg-surface-subtle text-fg-muted ${dim ? "opacity-60" : ""}`}
+    >
+      <span className="inline-grid size-icon-md place-items-center *:size-full">
+        <LaptopIcon />
+      </span>
+    </span>
+  );
+}
+
+/** One computer: its tile, name, route and day, its state in words with a dot, and Forget. */
 function ComputerRow({
   computer,
   state,
@@ -198,10 +216,9 @@ function ComputerRow({
 }) {
   const said = [computer.name, spoken(meta).replace("Paired", "paired")].join(", ");
   return (
-    // Only Can't reach dims: Removed and Can't confirm keep a working Forget (G16).
-    <li
-      className={`flex items-center gap-4 px-4 py-3 ${state === "unreachable" ? "opacity-60" : ""}`}
-    >
+    <li className="flex items-center gap-4 px-4 py-3">
+      {/* Only Can't reach dims, and only its tile: the name, lines and Forget stay readable (G16). */}
+      <LaptopTile dim={state === "unreachable"} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="sr-only">
           {state === undefined ? said : `${said}. ${computersWords.row[state]}`}
@@ -254,6 +271,7 @@ function UnreadableRow({
 }) {
   return (
     <li className="flex items-center gap-4 px-4 py-3">
+      <LaptopTile dim />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 opacity-60">
         <p className="text-fg">{computersWords.unreadable.name}</p>
         <p className="text-small text-fg-muted">{computersWords.unreadable.body}</p>
