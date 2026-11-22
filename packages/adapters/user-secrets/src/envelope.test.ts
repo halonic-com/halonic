@@ -102,6 +102,32 @@ verifies("user-secrets.envelope", () => {
     },
   );
 
+  it.each(["01", "1e0", "0x1", " 1"])(
+    "refuses the version %s, which isn't in the one form it writes",
+    async (version) => {
+      const kek = await kekFilledWith(1);
+      const { dataKey, wrapped } = await makeDataKey(kek, "eu_acme", 1);
+      const sealed = await sealSecret(dataKey, "github-token", value);
+      await expect(
+        openSecret(dataKey, "github-token", sealed.replace(/^us1\.1\./, `us1.${version}.`)),
+      ).rejects.toThrow(UnreadableUserSecretError);
+      const rewrapped = wrapped.replace(/^uk1\.([0-9a-f]+)\.1\./, `uk1.$1.${version}.`);
+      await expect(unwrapDataKey(kek, "eu_acme", rewrapped)).rejects.toThrow(
+        UnreadableUserSecretError,
+      );
+    },
+  );
+
+  it("says which data key version a secret needs when another one is given", async () => {
+    const kek = await kekFilledWith(1);
+    const first = await makeDataKey(kek, "eu_acme", 1);
+    const second = await makeDataKey(kek, "eu_acme", 2);
+    const sealed = await sealSecret(first.dataKey, "github-token", value);
+    await expect(openSecret(second.dataKey, "github-token", sealed)).rejects.toThrow(
+      "sealed with version 1 of the user's data key, but version 2 was given",
+    );
+  });
+
   it("refuses a sealed value that isn't UTF-8 text", async () => {
     // Sealing bytes that aren't UTF-8 needs the same context `sealSecret` uses.
     const { dataKey } = await makeDataKey(await kekFilledWith(1), "eu_acme", 1);

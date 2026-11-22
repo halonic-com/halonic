@@ -30,6 +30,11 @@ verifies("user-secrets.storage", () => {
       await secrets.remove("github-token");
     });
 
+    it("refuses an empty end user's id up front", async () => {
+      const kek = await kekFilledWith(1);
+      expect(() => new UserSecrets(kek, "", new MemoryUserSecretStorage())).toThrow(RangeError);
+    });
+
     it("keeps only sealed values, never the value in the clear", async () => {
       const storage = new MemoryUserSecretStorage();
       await new UserSecrets(await kekFilledWith(1), "eu_acme", storage).set("github-token", value);

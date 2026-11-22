@@ -3,8 +3,9 @@ import { bytesToHex, decodeBase64url } from "@halonicjs/std";
 
 /**
  * The deployment's secret that holds the key-encryption key. Under the
- * environment adapter it is `HALONIC_SECRET_USER_SECRETS_KEY`. It is one of
- * the ports' `deploymentSecretNames`, so no workspace can read it.
+ * environment adapter it is `HALONIC_SECRET_USER_SECRETS_KEY`. It must be one
+ * of the ports' `deploymentSecretNames` before anything uses this package, so
+ * no workspace can read it.
  */
 export const keyEncryptionKeySecret = "user-secrets-key";
 

@@ -20,6 +20,10 @@ through Web Crypto: each end user has a data key, which the deployment's key-enc
 - Every seal takes a new random 96-bit nonce. That is safe here: one data key seals one
   person's secrets, far below the 2^32 messages per key that random nonces allow.
 
+The storage is trusted to keep values current. It could hand back an older sealed value of the
+same name for the same user, or drop one, and AES-GCM can't tell: envelope encryption protects
+what the values say, not whether they are the newest.
+
 This package only seals and keeps values. Where the storage lives and which run step may
 read a secret are the caller's job.
 

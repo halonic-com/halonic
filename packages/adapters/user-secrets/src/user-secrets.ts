@@ -1,5 +1,6 @@
 import { checkSecretValue, secretKey } from "@halonicjs/ports";
 import {
+  checkEndUserId,
   type DataKey,
   makeDataKey,
   openSecret,
@@ -25,8 +26,13 @@ export class UserSecrets {
   readonly #endUserId: string;
   readonly #storage: UserSecretStorage;
 
-  /** Opens the secrets of `endUserId` in `storage`, which must be that user's own. */
+  /**
+   * Opens the secrets of `endUserId` in `storage`, which must be that user's own.
+   *
+   * @throws RangeError when the end user's id is empty
+   */
   constructor(kek: KeyEncryptionKey, endUserId: string, storage: UserSecretStorage) {
+    checkEndUserId(endUserId);
     this.#kek = kek;
     this.#endUserId = endUserId;
     this.#storage = storage;

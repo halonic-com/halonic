@@ -63,7 +63,7 @@ export async function unwrapDataKey(
   wrapped: string,
 ): Promise<DataKey> {
   const [format, kekId, versionText, sealedText, ...rest] = wrapped.split(".");
-  const version = Number(versionText);
+  const version = parseVersion(versionText);
   const sealed = sealedText === undefined ? undefined : decodeBase64url(sealedText);
   if (format !== dataKeyFormat || rest.length > 0 || !isVersion(version) || sealed === undefined) {
     throw new UnreadableUserSecretError("The stored data key is damaged or in an unknown format.");
@@ -98,8 +98,8 @@ export async function sealSecret(dataKey: DataKey, name: string, value: string):
 /**
  * Decrypts a sealed secret with the data key it was sealed with.
  *
- * @throws UnreadableUserSecretError when it is damaged, or was sealed for
- *   another end user, another name or another version of the data key; the
+ * @throws UnreadableUserSecretError when it is damaged, was sealed with
+ *   another version of the data key, or for another end user or name; the
  *   message names the secret, never its value
  */
 export async function openSecret(
@@ -113,10 +113,15 @@ export async function openSecret(
       { cause },
     );
   const [format, versionText, sealedText, ...rest] = sealedSecret.split(".");
-  const version = Number(versionText);
+  const version = parseVersion(versionText);
   const sealed = sealedText === undefined ? undefined : decodeBase64url(sealedText);
   if (format !== secretFormat || rest.length > 0 || !isVersion(version) || sealed === undefined) {
     throw unreadable();
+  }
+  if (version !== dataKey.version) {
+    throw new UnreadableUserSecretError(
+      `${describeSecretName(name)} was sealed with version ${version} of the user's data key, but version ${dataKey.version} was given.`,
+    );
   }
   const context = secretContext(dataKey.endUserId, secretKey(name), version);
   const plain = await open(dataKey.key, context, sealed, unreadable);
@@ -139,15 +144,30 @@ async function importDataKey(raw: Bytes): Promise<CryptoKey> {
   return await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
+// Only the form `sealSecret` and `makeDataKey` write, so each stored value has
+// exactly one valid form: `Number()` alone would also take `01`, `1e0` and `0x1`.
+function parseVersion(text: string | undefined): number {
+  return text !== undefined && /^[1-9][0-9]*$/.test(text) ? Number(text) : Number.NaN;
+}
+
 function isVersion(version: number): boolean {
   return Number.isSafeInteger(version) && version > 0;
 }
 
 function checkEndUser(endUserId: string, version: number): void {
-  if (endUserId === "") {
-    throw new RangeError("A data key needs the end user's id.");
-  }
+  checkEndUserId(endUserId);
   if (!isVersion(version)) {
     throw new RangeError("A data key's version must be a positive whole number.");
+  }
+}
+
+/**
+ * Refuses an empty end user's id, which would bind sealed values to no one.
+ *
+ * @throws RangeError when the id is empty
+ */
+export function checkEndUserId(endUserId: string): void {
+  if (endUserId === "") {
+    throw new RangeError("End-user secrets need the end user's id.");
   }
 }
