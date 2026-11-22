@@ -28,9 +28,10 @@ verifies("first-run.guide-card", () => {
       {
         text: "This is Acme, an example company. Its support workflow reads a customer email, drafts a reply, and then waits for you to approve it.",
       },
-      { label: "The email:", text: "Sam writes that an order arrived damaged." },
+      { label: "The email", text: "Sam writes that an order arrived damaged." },
     ]);
     expect(card?.action.label).toBe("Run your first workflow");
+    expect(card?.action.again).toBe(false);
   });
 
   it("opens the page's Run form from its button", () => {
@@ -41,7 +42,10 @@ verifies("first-run.guide-card", () => {
 
   it("reads Run again after a run that ended without a win", () => {
     const ended: FirstRunState = { kind: "on", folder, since: "", step: "run", ended: true };
-    expect(firstRunGuide(firstRunOf(ended)).card(supportReply)?.action.label).toBe("Run again");
+    expect(firstRunGuide(firstRunOf(ended)).card(supportReply)?.action).toMatchObject({
+      label: "Run again",
+      again: true,
+    });
   });
 
   it("shows none on another workflow, outside the demo, or once the first run is paused or won", () => {

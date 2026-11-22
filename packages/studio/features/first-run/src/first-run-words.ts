@@ -22,7 +22,7 @@ export const guideWords = {
   title: "Your first run",
   about:
     "This is Acme, an example company. Its support workflow reads a customer email, drafts a reply, and then waits for you to approve it.",
-  emailLabel: "The email:",
+  emailLabel: "The email",
   email: "Sam writes that an order arrived damaged.",
   run: "Run your first workflow",
   /** After a run that ended without a win (3.4, 8b). */

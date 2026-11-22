@@ -26,7 +26,7 @@ const firstRunCard: WorkflowGuideCard = {
   title: "Your first run",
   lines: [
     { text: "This is Acme, an example company." },
-    { label: "The email:", text: "Sam writes that an order arrived damaged." },
+    { label: "The email", text: "Sam writes that an order arrived damaged." },
   ],
   action: { label: "Run your first workflow", run: (page) => page.openRunForm() },
 };
@@ -80,11 +80,55 @@ verifies("workflows.page.guide-card", () => {
     expect(card?.tagName).toBe("ASIDE");
     expect(card?.getAttribute("aria-labelledby")).toBe(card?.querySelector("h2")?.id);
     expect(card?.querySelector("h2")?.textContent).toBe("Your first run");
-    expect(card?.textContent).toContain("The email: Sam writes that an order arrived damaged.");
     expect(card?.querySelector("[aria-label=Close]")).toBeNull();
+    // Sheet 05: its own border and corners, as tall as its content, the title over a divider.
+    expect(card?.className).toContain("rounded-md");
+    expect(card?.className).toContain("self-start");
+    // A card as the kit's, not a popup: `surface`, and a gap from the canvas on every side.
+    expect(card?.className.split(" ")).toContain("bg-surface");
+    expect(card?.className.split(" ")).toContain("m-4");
+    expect(card?.className).not.toContain("ms-0");
+    expect(card?.querySelector("h2")?.className).toContain("border-b");
+    expect(card?.querySelector("h2")?.className).toContain("text-section");
     // At the right: after the canvas's panel, in the same row.
     const panel = page.querySelector("[role=tabpanel]") as HTMLElement;
     expect(panel.parentElement).toBe(card?.parentElement);
+  });
+
+  it("shows a labelled line as a quote, the label small above the text", async () => {
+    const page = await show(screen(guideFor(firstRunCard).guide));
+    const quote = [...(guideCardOf(page)?.querySelectorAll("div") ?? [])].find((box) =>
+      box.className.includes("border-s-2"),
+    );
+    expect([...(quote?.children ?? [])].map((line) => line.textContent)).toEqual([
+      "The email",
+      "Sam writes that an order arrived damaged.",
+    ]);
+    expect(quote?.firstElementChild?.className).toContain("text-caption");
+    // Square on the bar's side, so the bar stays straight.
+    expect(quote?.className).toContain("rounded-e-sm");
+  });
+
+  it("draws the button full width with a ›, or with the refresh mark when it runs again", async () => {
+    const { guide, change } = guideFor(firstRunCard);
+    const page = await show(screen(guide));
+    const first = buttonNamed(page, "Run your first workflow") as HTMLButtonElement;
+    expect(first.className).toContain("w-full");
+    expect(first.className).toContain("min-h-control-lg");
+    expect(first.lastElementChild?.getAttribute("aria-hidden")).toBe("true");
+    expect(first.querySelectorAll("svg")).toHaveLength(1);
+    const chevron = first.querySelector("svg")?.outerHTML;
+    act(() =>
+      change({
+        ...firstRunCard,
+        action: { ...firstRunCard.action, label: "Run again", again: true },
+      }),
+    );
+    const again = buttonNamed(page, "Run again") as HTMLButtonElement;
+    expect(again.className).toContain("w-full");
+    expect(again.querySelectorAll("svg")).toHaveLength(1);
+    expect(again.querySelector("svg")?.outerHTML).not.toBe(chevron);
+    expect(again.textContent?.trim()).toBe("Run again");
   });
 
   it("opens the Run form from the button, and the card goes while the form is docked", async () => {
