@@ -45,7 +45,9 @@ verifies("studio.workspace-routines", () => {
     expect(await untrusted.host.read(weekly)).toMatchObject({ pausedUntilTrusted: true });
     expect(await gone.host.read({ hubId: "acme", id: "lost" })).toMatchObject({
       targetState: "not-found",
-      startErrors: ["Weekly report: nobody isn't in this workspace. Pick another agent for run.agent."],
+      startErrors: [
+        "Weekly report: nobody isn't in this workspace. Pick another agent for run.agent.",
+      ],
       pausedUntilTrusted: false,
     });
   });
