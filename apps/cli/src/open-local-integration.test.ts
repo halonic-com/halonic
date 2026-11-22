@@ -339,10 +339,10 @@ verifies("cli.open-local-integration", () => {
       expect(seen.starts).toBe(0);
     });
 
-    it("leaves out where to give the yes when Studio's yes doesn't reach the command", async () => {
+    it("sends the run to Studio when Studio's yes doesn't reach the command", async () => {
       const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
-        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\.$/,
+        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio\.$/,
       );
       expect(seen.starts).toBe(0);
     });
@@ -399,14 +399,6 @@ verifies("format.integration-host-class", () => {
       );
       expect(seen.starts).toBe(0);
     });
-
-    it("leaves out where to give the yes when Studio's yes doesn't reach the command", async () => {
-      const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
-      await expect(client().callTool("read-note", {})).rejects.toThrow(
-        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\.$/,
-      );
-      expect(seen.starts).toBe(0);
-    });
   });
 });
 
@@ -437,10 +429,23 @@ verifies("cli.local-integration-unfenced-yes", () => {
       expect(seen.starts).toBe(0);
     });
 
-    it("leaves out where to give the yes when Studio's yes doesn't reach the command", async () => {
+    it("sends the run to Studio when Studio's yes doesn't reach the command", async () => {
       const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
-        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\.$/,
+        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio\.$/,
+      );
+      expect(seen.starts).toBe(0);
+    });
+
+    it("sends the run to Studio for a yes it can't read when Studio's yes doesn't reach the command", async () => {
+      const file = join(root, "profile", "unfenced-runs", "consent.json");
+      const { seen, client } = await setup({
+        check: onWindows,
+        unreadableYes: file,
+        studioYesReaches: false,
+      });
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        `the saved yes to run without it can't be read (${JSON.stringify(file)}), so nothing runs. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio.`,
       );
       expect(seen.starts).toBe(0);
     });

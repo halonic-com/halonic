@@ -160,10 +160,12 @@ Linux, Seatbelt on macOS).
   goes through one gate that reads the plugin's folder and checks trust again,
   also on the restart after an idle stop. A sandbox check that fails means the
   backend stays stopped; it never falls back to running without the sandbox.
-  The `halonic` command never offers the yes to run without the sandbox: its
-  store holds nothing (`app.no-unfenced-run-consent`). Studio asks for it
-  in the plugin's trust check, and its agent host keeps it
-  (`agent-host.unfenced-runs-routes`). Taking the yes back stops runs in every
+  The `halonic` command never gives the yes to run without the sandbox, and
+  never uses it for a backend: its store for plugin backends holds nothing
+  (`app.no-unfenced-run-consent`). It reads the yes only for a workspace's
+  local integrations (`cli.local-integration-unfenced-yes`). Studio asks for
+  it in the plugin's trust check and in the workspace's trust check, and its
+  agent host keeps it (`agent-host.unfenced-runs-routes`). Taking the yes back stops runs in every
   process within a second, waits for starts in progress, and keeps checking
   past a stop that never returns (`app.unfenced-runs`,
   `app.runner-start-gate`).
