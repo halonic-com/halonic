@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowView } from "../api.ts";
 import { pageWords } from "./page-words.ts";
+import { nameOf, stepNames } from "./step-names.ts";
 import type { WorkflowLoad } from "./use-workflow.ts";
 
 /**
@@ -55,5 +56,10 @@ function outlineLine(workflow: WorkflowView, ids: readonly string[] | undefined)
   const agent = steps[0]?.agent;
   if (agent === undefined || steps.some((step) => step.agent !== agent)) return undefined;
   const name = workflow.agents?.find((one) => one.id === agent)?.name ?? agent;
-  return pageWords.outlined(steps.map(pageWords.stepCard.title), name);
+  // As the cards read them, and the arrows' announcements do (C595-32, C617-4).
+  const names = stepNames(workflow.steps);
+  return pageWords.outlined(
+    steps.map((step) => nameOf(names, step.id)),
+    name,
+  );
 }

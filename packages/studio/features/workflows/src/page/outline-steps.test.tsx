@@ -106,6 +106,31 @@ verifies("workflows.page.outline-steps", () => {
     expect(said).toEqual(["1 step uses Sorter: Read the email"]);
   });
 
+  it("says the steps by the titles their cards show, with the id when two titles clash", async () => {
+    const titled: WorkflowView = {
+      ...sorted,
+      steps: [
+        { id: "triage", type: "task", agent: "sorter", title: "Triage" },
+        { id: "draft", type: "task", agent: "sorter", title: "Reply" },
+        { id: "polish", type: "task", agent: "sorter", title: "Reply" },
+        { id: "done", type: "final" },
+      ],
+    };
+    const { host } = memoryHost([], [], [titled], [settings]);
+    const said: string[] = [];
+    await show(
+      <WorkflowScreen
+        host={host}
+        runs={memoryRuns().source}
+        hubId="acme"
+        id="reply"
+        outline={["triage", "draft", "polish"]}
+        announce={(line) => said.push(line)}
+      />,
+    );
+    expect(said).toEqual(["3 steps use Sorter: Triage, Reply (draft), Reply (polish)"]);
+  });
+
   it("goes back to Flow and outlines again when an open page is asked", async () => {
     const { host } = memoryHost([], [], [sorted], [settings]);
     const said: string[] = [];

@@ -8,23 +8,26 @@
 
 import type { RunnerUnfencedReason } from "@halonicjs/app";
 import type { Message } from "../messages/define.ts";
+import { errorMessages } from "../messages/general.ts";
 import { markPart, type Phrase, phrase } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
-import { sandboxMessages } from "../messages/sandbox.ts";
+import { sandboxDocsLink, sandboxMessages } from "../messages/sandbox.ts";
 import { rowIndent } from "./trust-check-rows.ts";
 
 /**
- * The reason and its fix, then where the yes can be given, each indented
- * under the line that names the plugin. `name` is the plugin's printable
- * name, as Studio's Plugins list shows it.
+ * The reason and its fix, `doctor`'s dimmed docs line, since some fixes
+ * point to that page (C617-3, HAL-15716), then where the yes can be given,
+ * each indented under the line that names the plugin. `name` is the
+ * plugin's printable name, as Studio's Plugins list shows it.
  *
  * @example
  * offHereReasonLines("container", "Weather");
- * // ["  Plugin code can't run in the sandbox inside a container. …", "  Or allow this in the Halonic desktop app: Settings › Plugins › Weather › Review. …"]
+ * // ["  Plugin code can't run in the sandbox inside a container. …", "  More: https://docs.halonic.dev/security/sandbox/#container (container)", "  Or allow this in the Halonic desktop app: Settings › Plugins › Weather › Review. …"]
  */
 export function offHereReasonLines(reason: RunnerUnfencedReason, name: string): Phrase[] {
   return [
     phrase`${rowIndent}${sandboxMessages.reasonAndFix(reason).phrase}`,
+    phrase`${rowIndent}${errorMessages.more(sandboxDocsLink(reason), reason).phrase}`,
     phrase`${rowIndent}${pluginMessages.offHereAllow(name).phrase}`,
   ];
 }

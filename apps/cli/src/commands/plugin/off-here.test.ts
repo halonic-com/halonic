@@ -111,6 +111,7 @@ async function addOff(): Promise<string> {
 
 const reasonLines = [
   "  Halonic is running inside a container, and the sandbox can't start there. Run Halonic on the computer itself, not in a container.",
+  "  More: https://docs.halonic.dev/security/sandbox/#container (container)",
   "  Or allow this in the Halonic desktop app: Settings › Plugins › Weather › Review. The halonic command runs plugin code only in the sandbox.",
 ];
 
@@ -160,7 +161,7 @@ verifies("cli.commands.plugin.off-here", () => {
     const json = await plugin("add", folderOf, "--yes", "--fingerprint", fingerprint, "--json");
 
     expect(added.code).toBe(exitCode.ok);
-    expect(added.io.stdout.slice(-3)).toEqual([
+    expect(added.io.stdout.slice(-4)).toEqual([
       "! Added Weather 1.2.0. It's trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.",
       ...reasonLines,
     ]);
@@ -192,7 +193,8 @@ verifies("cli.commands.plugin.off-here", () => {
 
     expect(listed.io.stdout.slice(1)).toEqual([
       "  The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer.",
-      reasonLines[1],
+      "  More: https://docs.halonic.dev/security/sandbox/ (setup-needed)",
+      reasonLines[2],
     ]);
     // Only the place line names the desktop app's Settings; the fix doesn't.
     expect(listed.io.stdout[1]).not.toContain("Settings");
@@ -218,7 +220,7 @@ verifies("cli.commands.plugin.off-here", () => {
 
     expect(added.code).toBe(exitCode.notTrusted);
     expect(added.io.stderr[0]).toBe("Trust Weather?");
-    expect(added.io.stderr.slice(-6)).toEqual([
+    expect(added.io.stderr.slice(-7)).toEqual([
       "",
       "! Trusting Weather won't turn it on: it stays off on this computer until you allow plugins and integrations to run without the sandbox.",
       ...reasonLines,

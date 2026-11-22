@@ -23,10 +23,11 @@ describe("nextWhen", () => {
 });
 
 describe("refusedWhen", () => {
-  it("says the refused time today, yesterday, this week and then with its date", () => {
-    expect(refusedWhen(at(10, 18, 9, 41), now)).toBe("couldn't start at 09:41");
+  it("says the refused time today, yesterday, this week and then with its date and another year", () => {
+    expect(refusedWhen(at(10, 18, 9, 41), now)).toBe("couldn't start today 09:41");
     expect(refusedWhen(at(10, 17, 19, 41), now)).toBe("couldn't start yesterday 19:41");
     expect(refusedWhen(at(10, 14, 7, 30), now)).toBe("couldn't start Sat 07:30");
     expect(refusedWhen(at(10, 6, 7, 30), now)).toBe("couldn't start Fri 6 Nov 07:30");
+    expect(refusedWhen(at(11, 30, 7, 30, 2025), now)).toBe("couldn't start Tue 30 Dec 2025 07:30");
   });
 });
