@@ -23,6 +23,8 @@ const commonFirstWords = new Set([
   "You're",
   "Some",
   "Something",
+  // "Local only was turned on in Acme…": the setting's name, read as words (C701 row 5).
+  "Local",
 ]);
 
 /**

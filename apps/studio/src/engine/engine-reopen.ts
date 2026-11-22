@@ -11,9 +11,8 @@ import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { EngineLockHold } from "./engine-lock.ts";
 import {
   hasRunGoing,
-  localOnlyChangedRefusal,
+  localOnlyChangedForRoutine,
   refuseWhileRunsGo,
-  routineLocalOnlyStep,
   type SavedWorkspace,
 } from "./engine-saved-files.ts";
 
@@ -48,14 +47,14 @@ export interface EngineOpener {
  * The open engine on the files as saved now, which its runs read from here on. A save that turned
  * local only on or off closes it and opens a new one.
  *
- * @throws KindedError `unavailable` when local only changed while a run is going, which closing
- *   would stop, or what opening the engine throws
+ * @throws TryAgainLater when local only changed while a run is going, which closing would stop,
+ *   or what opening the engine throws
  */
 export async function openOnSavedFiles(opener: EngineOpener): Promise<OpenEngine> {
   const opening = opener.open();
   const open = await opening;
   if (open.saved.take(await opener.load())) return open;
-  await refuseWhileRunsGo(open.engine.executor, open.runs, opener.name);
+  await refuseWhileRunsGo(open.engine.executor, open.runs, opener.name, open.saved);
   return reopen(opener, opening);
 }
 
@@ -82,7 +81,7 @@ export async function takeForRoutine(
       if (!going && opening !== undefined) await reopen(opener, opening);
     })
     .catch(opener.reportError);
-  throw localOnlyChangedRefusal(opener.name, routineLocalOnlyStep);
+  throw localOnlyChangedForRoutine(opener.name, saved);
 }
 
 /**

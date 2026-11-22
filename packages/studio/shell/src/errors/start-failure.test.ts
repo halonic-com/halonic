@@ -5,6 +5,7 @@ import { EngineNotAnswering } from "../engine/engine-not-answering.ts";
 import { engineWords } from "../engine/engine-words.ts";
 import { detailsOf, ErrorWithDetails } from "./copy-details-words.ts";
 import { startFailureOf } from "./start-failure.ts";
+import { TryAgainLater } from "./try-again-later.ts";
 
 const desktop = engineWords["desktop-app"].notAnswering;
 
@@ -57,6 +58,20 @@ verifies("shell.start-failure", () => {
       expect(startFailureOf(held, desktop)).toEqual({
         reason: "Acme is already running in another Halonic on this computer.",
         fix: "Stop that one, then try again.",
+        command: undefined,
+        tryAgain: true,
+        copyDetails: false,
+      });
+    });
+
+    it("shows the next step of a refusal to try again later with Try again", () => {
+      const going = new TryAgainLater(
+        "Local only was turned on in Acme while a run was going.",
+        "Try again once that run ends.",
+      );
+      expect(startFailureOf(going, desktop)).toEqual({
+        reason: "local only was turned on in Acme while a run was going.",
+        fix: "Try again once that run ends.",
         command: undefined,
         tryAgain: true,
         copyDetails: false,

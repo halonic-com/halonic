@@ -1,11 +1,12 @@
 // How the window's engine refuses an answer to a waiting run (HAL-13318): an Approve of a
 // connector's tool call the window can't run, and a send while another engine holds the
-// workspace, which is a failure to try again, not a run that moved on.
+// workspace or a run is going, which is a failure to try again, not a run that moved on.
 import type { TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import { shortRunId } from "@halonicjs/app";
 import { readRun } from "@halonicjs/engine";
 import type { SendOptions } from "@halonicjs/ports";
 import { errorKindOf, KindedError } from "@halonicjs/std";
+import { TryAgainLater } from "@halonicjs/studio-shell";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 
 /** What {@link refuseConnectorApprove} reads. */
@@ -55,11 +56,14 @@ export async function refuseConnectorApprove(
 }
 
 /**
- * The lock's `conflict` as `unavailable`, its sentence naming the other engine and what to stop;
- * any other error as it is.
+ * The lock's `conflict` as `unavailable`, its sentence naming the other engine and what to stop,
+ * and a {@link TryAgainLater}, such as Local only turned on while a run was going, with its next
+ * step in the one sentence too: the Inbox shows only the sentence (C701 row 5). Any other error as
+ * it is.
  */
 export function answerRefusalOf(error: unknown): unknown {
-  if (!(error instanceof KindedError) || errorKindOf(error) !== "conflict") return error;
+  if (!(error instanceof KindedError)) return error;
+  if (errorKindOf(error) !== "conflict" && !(error instanceof TryAgainLater)) return error;
   return new KindedError("unavailable", `${error.message} ${error.fix ?? ""}`.trim(), {
     cause: error,
   });
