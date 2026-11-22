@@ -6,6 +6,7 @@
 import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { profileFolder, tokenFolders } from "@halonicjs/profile";
+import { KindedError } from "@halonicjs/std";
 import {
   type CommandContext,
   type CommandInput,
@@ -15,6 +16,7 @@ import {
 import { exitCode } from "../../exit-code.ts";
 import type { GoogleSetup } from "../../google-host.ts";
 import { googleMessages } from "../../messages/google.ts";
+import { plainText } from "../../messages/phrase.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 
 /**
@@ -25,9 +27,11 @@ import { nodeProfileEnvironment } from "../../workspace-runs.ts";
  * for new secrets, and without one a new key is made at the next setup.
  * Answering No, or Enter, removes nothing and exits 1. When there is
  * nothing to remove it says so without asking and succeeds, so a second run
- * does too.
+ * does too. A folder that is there but can't be read stops it before it
+ * asks, with the `denied` kind (exit 7), so a script can tell it from No.
  *
  * @throws UsageError with an argument, or when there's no terminal to ask and no `--yes`
+ * @throws KindedError (`denied`) when a folder it removes can't be read
  */
 export async function resetGoogle(
   input: CommandInput,
@@ -78,7 +82,7 @@ function sealedFolders(setup: GoogleSetup): readonly string[] {
 /**
  * Whether any of the folders is there and holds at least one entry.
  *
- * @throws the read error of a folder that is there but can't be read, so it isn't taken for empty
+ * @throws KindedError (`denied`) for a folder that is there but can't be read, so it isn't taken for empty
  */
 async function anyHoldsSomething(folders: readonly string[]): Promise<boolean> {
   for (const folder of folders) {
@@ -90,12 +94,29 @@ async function anyHoldsSomething(folders: readonly string[]): Promise<boolean> {
   return false;
 }
 
+/**
+ * Node's codes for a folder that is there but can't be listed: no read
+ * access, or a file where the folder belongs.
+ */
+const unreadableCodes: ReadonlySet<string | undefined> = new Set(["EACCES", "EPERM", "ENOTDIR"]);
+
 /** The entries in `folder`, or none when it doesn't exist. */
 async function entriesOf(folder: string): Promise<string[]> {
   try {
     return await readdir(folder);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return [];
+    if (unreadableCodes.has(code)) {
+      throw new KindedError(
+        "denied",
+        plainText(googleMessages.resetFolderUnreadable(folder).phrase),
+        {
+          fix: plainText(googleMessages.resetFolderUnreadableFix().phrase),
+          cause: error,
+        },
+      );
+    }
     throw error;
   }
 }
