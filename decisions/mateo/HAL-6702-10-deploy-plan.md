@@ -2,6 +2,7 @@
 
 - Approval: the build plan was approved by Liam on HAL-13512, and the entry's design is on HAL-6702 (deploy-target-entry); the reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:LmwV79jSPjMlmdcjIZmIVRXlJpgsHhgExoaaHobE7rBlLv1Gar0SGJl/7zcqU65huNEs0LBM3p60hbkFQsb/BQ==
 
 ## What changes
 
