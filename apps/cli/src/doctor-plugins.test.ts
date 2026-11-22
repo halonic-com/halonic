@@ -44,4 +44,19 @@ verifies("cli.doctor-plugins", () => {
     ).toBe(workspace);
     expect(await withPluginProblems(workspace, orders, undefined)).toBe(workspace);
   });
+
+  it("says each plugin can't be read when the plugins folder can't be listed", async () => {
+    const workspace = { name: "acme" } as DoctorWorkspace;
+    const unlistable = async (): Promise<never> => {
+      throw new Error("EACCES: permission denied, scandir");
+    };
+
+    const found = await withPluginProblems(
+      workspace,
+      [connector("orders", "acme-orders"), connector("refunds", "acme-orders")],
+      unlistable,
+    );
+
+    expect(found.pluginProblems).toEqual([{ problem: "broken", plugin: "acme-orders" }]);
+  });
 });
