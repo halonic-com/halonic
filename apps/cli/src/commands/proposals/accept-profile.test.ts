@@ -40,7 +40,9 @@ verifies("cli.commands.proposals.accept-profile", () => {
 
     expect(io.stdout[0]).toBe("Wrote 1 file: notes/new.md.");
     expect(io.stdout[1]).toContain(inProfile);
-    expect(io.stdout[1]).toContain("can't be written");
+    expect(io.stdout[1]).toContain(
+      "can't be written: Halonic never writes inside .git, .halonic or its own data folder.",
+    );
     expect(await savedFile(acmeRuns, "notes/new.md")).toBe("New.\n");
     await expect(readFile(join(profile, "unfenced-runs", "x"))).rejects.toMatchObject({
       code: "ENOENT",

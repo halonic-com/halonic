@@ -81,7 +81,7 @@ export const proposalsMessages = defineMessages("proposals", {
   changedOnDiskFailure: () => phrase`Some files changed since the run, so they weren't written.`,
   /** Files Accept may never write. */
   cantWrite: (paths: readonly string[]) =>
-    phrase`${listInWords(paths)} can't be written: Halonic never writes inside .git or .halonic.`,
+    phrase`${listInWords(paths)} can't be written: Halonic never writes inside .git, .halonic or its own data folder.`,
   /** `discard`. */
   discarded: (files: number) =>
     phrase`Discarded the changes to ${counted(files, "file", "files")}. Your files stay as they are.`,
