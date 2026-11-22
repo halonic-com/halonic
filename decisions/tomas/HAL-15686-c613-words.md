@@ -3,6 +3,7 @@
 - Task: HAL-15686
 - Approval: Sofia's words check C613, rows 23 and 43 (https://paperclip.halonic.com/HAL/issues/HAL-15673#document-c613), assigned on HAL-15686. A team decision on approved screens and command output, with no board card (HAL-2282 rule). Liam approves it in the review of this pull request.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:unqdt14pbSiui05ueONk0kzjc+dUY/bsvMWk0oJ9scVpg3uTWPfBfwcDjBMaOjl8nORz/bjbzDURgj5IM6yDAA==
 
 ## What changes
 
