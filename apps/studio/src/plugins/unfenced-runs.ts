@@ -1,3 +1,7 @@
+import {
+  type AgentHostTransport,
+  AgentHostUnfencedRuns,
+} from "@halonicjs/adapter-agent-host-client";
 import type { RunnerUnfencedReason } from "@halonicjs/app";
 import type { PluginUnfencedRuns, UnfencedRunStatus } from "@halonicjs/studio-feature-plugins/api";
 
@@ -10,7 +14,7 @@ export interface UnfencedRunsRoutes {
   takeBack(): Promise<void>;
 }
 
-/** The window's yes to run plugin code without the sandbox: the trust check's and Take back's. */
+/** The window's yes to run plugins and integrations without the sandbox: the trust checks' and Take back's. */
 export interface DesktopUnfencedRuns extends PluginUnfencedRuns {
   /** Takes the yes back and stops every plugin running without the sandbox. */
   readonly takeBack: () => Promise<void>;
@@ -80,4 +84,22 @@ export function desktopUnfencedRuns(routes: UnfencedRunsRoutes): DesktopUnfenced
       return run;
     },
   };
+}
+
+const windows = new WeakMap<object, DesktopUnfencedRuns>();
+
+/**
+ * The window's one {@link desktopUnfencedRuns}: the plugin check, Settings › Agent sandbox and the
+ * workspace trust check all give and take back the yes through it, so a yes from either check
+ * waits for a Take back under way in Settings (HAL-15144). It lives as long as the window.
+ */
+export function windowUnfencedRuns(
+  window: object,
+  transport: AgentHostTransport,
+): DesktopUnfencedRuns {
+  const known = windows.get(window);
+  if (known !== undefined) return known;
+  const runs = desktopUnfencedRuns(new AgentHostUnfencedRuns(transport));
+  windows.set(window, runs);
+  return runs;
 }

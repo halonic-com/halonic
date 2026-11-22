@@ -1,7 +1,10 @@
 import type { TrustAsks } from "./trust-asks.ts";
 
-/** A line under a trust check row: its label, its value and, for amber, its tone. */
-export type TrustLine = readonly [label: string, value: string, tone?: "attention"];
+/**
+ * A line under a trust check row: its label, its value and, for amber, its tone: `attention` is
+ * amber, `warning` amber with the triangle.
+ */
+export type TrustLine = readonly [label: string, value: string, tone?: "attention" | "warning"];
 
 /** One row of the trust check: a program, an agent, an address, or a change to one. */
 export interface TrustRowView {
@@ -11,12 +14,14 @@ export interface TrustRowView {
   readonly detail: string;
   /**
    * Label and value lines under the row, such as **Gets secrets** and its names. An empty label
-   * continues the line above it; `attention` shows the value in amber, as **Runs** is where an
-   * integration doesn't start.
+   * continues the line above it; `attention` shows the value in amber, and `warning` in amber with
+   * the triangle, as **Runs** is where an integration isn't in the sandbox.
    */
   readonly lines: readonly TrustLine[];
   /** The amber line for a program whose version isn't pinned. */
   readonly warning?: string | undefined;
+  /** Words after the name, with the triangle, such as "not in the sandbox" (R12). */
+  readonly flag?: string | undefined;
   /** Set in "What changed". */
   readonly tag?: "New" | "Changed" | undefined;
 }
@@ -29,6 +34,19 @@ export interface TrustSectionView {
   readonly rows: readonly TrustRowView[];
   /** Whether the section opens by itself: when a program isn't pinned. */
   readonly open: boolean;
+  /** The triangle before the heading, when a row in it carries a warning. */
+  readonly mark?: "warning" | undefined;
+}
+
+/**
+ * The person's yes to run integrations without the sandbox on this computer (R5), asked while
+ * the check lists one and the host has no yes for this reason. **Trust** waits for the tick.
+ */
+export interface UnfencedYesAsk {
+  /** The reason the yes is for, such as `windows`: a new reason clears the tick. */
+  readonly reason: string;
+  /** "I understand plugins and integrations run without the sandbox on this computer". */
+  readonly checkbox: string;
 }
 
 /**
@@ -58,6 +76,8 @@ export interface TrustReview {
   readonly refused?: string | undefined;
   /** The fixed last line: what a trusted program can do. */
   readonly footnote: string;
+  /** The checkbox for integrations that run without the sandbox here, else absent. */
+  readonly unfencedYes?: UnfencedYesAsk | undefined;
 }
 
 /**
@@ -67,7 +87,16 @@ export interface TrustReview {
  */
 export type TrustGrantResult =
   | { readonly ok: true }
-  | { readonly ok: false; readonly reason: string; readonly error?: unknown };
+  | {
+      readonly ok: false;
+      readonly reason: string;
+      readonly error?: unknown;
+      /**
+       * The sandbox status changed while the yes was saved, so nothing was saved: the check reads
+       * it again and shows the reason that holds now, with the box to tick again. Nothing to say.
+       */
+      readonly checkAgain?: boolean;
+    };
 
 /**
  * What the workspace window needs of one workspace's trust: whether to show the badge, what the
@@ -100,8 +129,12 @@ export interface WorkspaceTrustControl {
   readonly trustedAt: string | undefined;
   /** The check to show now, `undefined` until the first answer or when the workspace is trusted. */
   review(): TrustReview | undefined;
-  /** Saves the person's trust in exactly the check with this fingerprint. Never rejects. */
-  grant(fingerprint: string): Promise<TrustGrantResult>;
+  /**
+   * Saves the person's trust in exactly the check with this fingerprint. With `allowUnfenced`, the
+   * person ticked the check's `unfencedYes`: the yes is saved first, and trust only once it is.
+   * Never rejects.
+   */
+  grant(fingerprint: string, allowUnfenced?: boolean): Promise<TrustGrantResult>;
   /** Forgets the person's trust, so the workspace asks again. Never rejects. */
   remove(): Promise<TrustGrantResult>;
   /**

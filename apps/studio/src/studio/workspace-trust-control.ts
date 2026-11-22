@@ -1,6 +1,12 @@
-import { isRunnerUnfencedReason } from "@halonicjs/app";
+import type { RunnerUnfencedReason } from "@halonicjs/app";
 import type { InstalledPluginFeed } from "@halonicjs/studio-feature-plugins";
-import type { UnfencedRunStatus } from "@halonicjs/studio-feature-plugins/api";
+import {
+  type PluginUnfencedRuns,
+  trustStatusOf,
+  UNFENCED_CHECKBOX,
+  type UnfencedRunStatus,
+  YES_NOT_SAVED,
+} from "@halonicjs/studio-feature-plugins/api";
 import {
   TrustAsks,
   type TrustGrantResult,
@@ -22,6 +28,8 @@ type PluginsRead = Pick<InstalledPluginFeed, "current" | "subscribe">;
  * whether integration code runs in the sandbox here, which it asks each time the check opens. A
  * plugin connector's Reaches line comes from the installed plugins (`plugins`), so the check is
  * built again, and its listeners told, when they are read again.
+ * Where integration code doesn't run in the sandbox, the check asks for the person's yes, which
+ * **Trust** saves first.
  *
  * @example
  * const control = new WorkspaceTrustView(trust, "/work/acme");
@@ -33,7 +41,7 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
   readonly #plugins: () => PluginsRead | undefined;
   /** The starts that ask for the check after a refusal: Run now, the Run panel and Run again. */
   readonly asks = new TrustAsks();
-  readonly #runsStatus: (() => Promise<UnfencedRunStatus>) | undefined;
+  readonly #unfencedRuns: PluginUnfencedRuns | undefined;
   readonly #listeners = new Set<() => void>();
   #runs: IntegrationRuns;
   #reads = 0;
@@ -43,19 +51,20 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
   #built: TrustReview | undefined;
 
   /**
-   * @param runsStatus - the agent host's word on whether integration code runs in the sandbox,
-   *   the same as the plugin check reads; left out, the check doesn't say how integrations run
+   * @param unfencedRuns - the agent host's word on whether integration code runs in the sandbox,
+   *   and the way to save the yes to run it without: the window's one object, which the plugin
+   *   check and Settings use too; left out, the check doesn't say how integrations run
    * @param plugins - the installed plugins, once and where the window has them
    */
   constructor(
     trust: WorkspaceTrust,
     folder: string,
-    runsStatus?: () => Promise<UnfencedRunStatus>,
+    unfencedRuns?: PluginUnfencedRuns,
     plugins: () => PluginsRead | undefined = () => undefined,
   ) {
     this.#trust = trust;
     this.#folder = folder;
-    this.#runsStatus = runsStatus;
+    this.#unfencedRuns = unfencedRuns;
     this.#plugins = plugins;
   }
 
@@ -65,12 +74,12 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
    * dropped. Only a workspace with local integrations asks.
    */
   checkRuns(): void {
-    const status = this.#runsStatus;
-    if (status === undefined || (this.#integrations() ?? 0) === 0) return;
+    const unfencedRuns = this.#unfencedRuns;
+    if (unfencedRuns === undefined || (this.#integrations() ?? 0) === 0) return;
     this.#reads += 1;
     const read = this.#reads;
     this.#setRuns({ state: "checking" });
-    status().then(
+    unfencedRuns.status().then(
       (answer) => {
         if (this.#reads === read) this.#setRuns(integrationRunsOf(answer));
       },
@@ -139,20 +148,66 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
       this.#builtWith = this.#runs;
       this.#builtForPlugins = plugins;
       this.#built =
-        check === undefined || this.needsNoTrust
-          ? undefined
-          : trustReviewOf(check, {
-              name: this.#trust.name ?? this.#folder,
-              folder: this.#folder,
-              runs: this.#runs,
-              ...(plugins === undefined ? {} : { pluginHosts: pluginHostsOf(plugins) }),
-            });
+        check === undefined || this.needsNoTrust ? undefined : this.#reviewOf(check, plugins);
     }
     return this.#built;
   }
 
-  grant(fingerprint: string): Promise<TrustGrantResult> {
+  #reviewOf(
+    check: NonNullable<WorkspaceTrust["check"]>,
+    plugins: ReturnType<PluginsRead["current"]> | undefined,
+  ): TrustReview | undefined {
+    const review = trustReviewOf(check, {
+      name: this.#trust.name ?? this.#folder,
+      folder: this.#folder,
+      runs: this.#runs,
+      ...(plugins === undefined ? {} : { pluginHosts: pluginHostsOf(plugins) }),
+    });
+    const asking = this.#asking();
+    return review === undefined || asking === undefined
+      ? review
+      : { ...review, unfencedYes: { reason: asking, checkbox: UNFENCED_CHECKBOX } };
+  }
+
+  /** The reason to ask the yes for: the check lists integrations, and none is saved for it. */
+  #asking(): RunnerUnfencedReason | undefined {
+    const runs = this.#runs;
+    if (runs?.state !== "not-fenced" || runs.allowedOn !== undefined) return undefined;
+    return (this.#integrations() ?? 0) > 0 ? runs.reason : undefined;
+  }
+
+  async grant(fingerprint: string, allowUnfenced = false): Promise<TrustGrantResult> {
+    const asking = this.#asking();
+    if (allowUnfenced && asking !== undefined && this.#unfencedRuns !== undefined) {
+      const saved = await this.#allow(this.#unfencedRuns, asking);
+      if (saved !== undefined) return saved;
+    }
     return this.#trust.grant(fingerprint);
+  }
+
+  /**
+   * Saves the yes, the same way the plugin check does (design section 7): when the reason changed
+   * in between, nothing is saved, and the check reads the status again; answers `undefined` once
+   * the yes is saved, else why trust wasn't.
+   */
+  async #allow(
+    unfencedRuns: PluginUnfencedRuns,
+    reason: RunnerUnfencedReason,
+  ): Promise<TrustGrantResult | undefined> {
+    try {
+      const yes = await unfencedRuns.allow(reason);
+      if (yes !== null) {
+        // Shows the yes just saved; an older status answer is dropped.
+        this.#reads += 1;
+        this.#setRuns(integrationRunsOf({ run: "allowed", ...yes }));
+        return undefined;
+      }
+      this.checkRuns();
+      return { ok: false, reason: "the sandbox status changed", checkAgain: true };
+    } catch (error) {
+      if (kindOf(error) === "allow_failed") return { ok: false, reason: YES_NOT_SAVED, error };
+      return { ok: false, reason: error instanceof Error ? error.message : String(error), error };
+    }
   }
 
   remove(): Promise<TrustGrantResult> {
@@ -174,20 +229,19 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
 }
 
 /**
- * The Runs row's state for the host's answer. A saved yes doesn't make an integration start
- * (the CLI ignores it, HAL-12639), so `allowed` reads as `needs-yes`: it doesn't start. A reason
- * Studio has no words for, and `stopped`, which isn't a trust-check state, leave the row out.
+ * The Runs row's state for the host's answer, read as the plugin check reads it (`trustStatusOf`):
+ * `allowed` is not in the sandbox with the day of the saved yes, which the command line honours
+ * too (`cli.local-integration-unfenced-yes`). A reason Studio has no words for, a yes with no
+ * readable day, and `stopped`, which isn't a trust-check state, leave the row out.
  */
-export function integrationRunsOf(status: UnfencedRunStatus): IntegrationRuns {
-  switch (status.run) {
-    case "fenced":
-      return { state: "fenced" };
-    case "allowed":
-    case "needs-yes":
-      return isRunnerUnfencedReason(status.reason)
-        ? { state: "not-fenced", reason: status.reason }
-        : undefined;
-    case "stopped":
-      return undefined;
-  }
+export function integrationRunsOf(status: UnfencedRunStatus, now = new Date()): IntegrationRuns {
+  const { fence, yes } = trustStatusOf(status, now);
+  if (fence?.state === "fenced") return { state: "fenced" };
+  if (fence?.state !== "not-fenced") return undefined;
+  return { state: "not-fenced", reason: fence.reason, allowedOn: yes?.on };
+}
+
+/** A host refusal's `kind` (the agent host client's `AgentHostError`), if it has one. */
+function kindOf(error: unknown): unknown {
+  return typeof error === "object" && error !== null && "kind" in error ? error.kind : undefined;
 }

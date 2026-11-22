@@ -11,7 +11,11 @@
 // it back; there is no flag for it.
 
 import { FileUnfencedRunConsentStore } from "@halonicjs/adapter-fs-node";
-import type { UnfencedRunConsent, UnfencedRunConsentStore } from "@halonicjs/ports";
+import type {
+  SandboxSettingStore,
+  UnfencedRunConsent,
+  UnfencedRunConsentStore,
+} from "@halonicjs/ports";
 
 /**
  * The profile's saved yes, read-only. `save` throws. `remove` passes
@@ -64,5 +68,30 @@ export class SavedUnfencedYes implements UnfencedRunConsentStore {
 
   async remove(): Promise<void> {
     await this.#store.remove();
+  }
+}
+
+/**
+ * Whether a yes given in Studio reaches the command, read from the saved
+ * sandbox choice at each refusal. On Windows with the WSL choice, or with
+ * none (WSL is the default there), Studio's agent host runs in Halonic's WSL
+ * distro with its own profile, so the command never sees its yes (the shell's
+ * `host_for`). A choice that can't be read counts as not reaching, so the
+ * refusal never sends the person to Studio for a yes the command can't see.
+ *
+ * @example
+ * await studioYesReaches("win32", { get: async () => null }); // false
+ * await studioYesReaches("linux", { get: async () => null }); // true
+ */
+export async function studioYesReaches(
+  platform: string,
+  settings: Pick<SandboxSettingStore, "get">,
+): Promise<boolean> {
+  if (platform !== "win32") return true;
+  try {
+    const setting = await settings.get();
+    return setting !== null && setting.backend !== "srt-wsl";
+  } catch {
+    return false;
   }
 }

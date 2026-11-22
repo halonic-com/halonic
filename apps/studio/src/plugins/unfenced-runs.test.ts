@@ -1,11 +1,16 @@
 import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import { ServiceRegistry } from "@halonicjs/app";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
+import { UnfencedYesService } from "@halonicjs/studio-feature-settings/api";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { providePlugins } from "./provide-plugins.ts";
-import { desktopUnfencedRuns, type UnfencedRunsRoutes } from "./unfenced-runs.ts";
+import {
+  desktopUnfencedRuns,
+  type UnfencedRunsRoutes,
+  windowUnfencedRuns,
+} from "./unfenced-runs.ts";
 
 /** A promise the test settles by hand. */
 function later<T>() {
@@ -203,6 +208,29 @@ verifies("studio.desktop-unfenced-runs", () => {
 
     expect(status).toEqual({ run: "fenced" });
     expect(routes).toContain("GET /v1/unfenced-runs");
+  });
+});
+
+verifies("studio.desktop-unfenced-runs", () => {
+  it("gives the workspace trust check the same object as the plugin check and Take back", () => {
+    const transport = {
+      request: async () => ({ status: 200, body: { run: "fenced" } }),
+    } as unknown as AgentHostTransport;
+    const window = {};
+    const services = new ServiceRegistry();
+    providePlugins(services, {
+      ipc: { invoke: async () => [] },
+      window,
+      transport,
+      platform: "linux",
+      onFocus: () => () => {},
+      onReloadFailed: () => {},
+    });
+
+    const shared = windowUnfencedRuns(window, transport);
+
+    expect(services.get(UnfencedYesService)).toBe(shared);
+    expect(windowUnfencedRuns({}, transport)).not.toBe(shared);
   });
 });
 

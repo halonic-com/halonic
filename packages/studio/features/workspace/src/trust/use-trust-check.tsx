@@ -54,16 +54,18 @@ export function useTrustCheck(
     answer.current = undefined;
     asked?.(said);
   };
-  const trustIt = async (fingerprint: string) => {
+  const trustIt = async (fingerprint: string, allowUnfenced: boolean) => {
     setBusy(true);
     setError(undefined);
-    const result = await trust.grant(fingerprint);
+    const result = await trust.grant(fingerprint, allowUnfenced);
     if (result.ok) {
       close("trusted");
       toasts.show({ tone: "success", title: `${name} can run now` });
       return;
     }
     setBusy(false);
+    // The check shows the reason that holds now, with the box to tick again (design section 7).
+    if (result.checkAgain === true) return;
     setError(`Couldn't save trust: ${result.reason}. Nothing was started.`);
   };
   const open = () => {
@@ -89,7 +91,7 @@ export function useTrustCheck(
           busy={busy}
           error={error}
           onNotNow={() => close("declined")}
-          onTrust={() => void trustIt(review.fingerprint)}
+          onTrust={(allowUnfenced) => void trustIt(review.fingerprint, allowUnfenced)}
           returnFocus={returnFocus}
         />
       ),
