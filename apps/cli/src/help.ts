@@ -100,6 +100,11 @@ export function commandWords(path: CommandPath): string {
   return path.map((command) => command.name).join(" ");
 }
 
+/** Whether the word typed names the command: its name, or one of its old words. */
+export function namedBy(command: CliCommand, word: string): boolean {
+  return command.name === word || (command.aliases ?? []).includes(word);
+}
+
 /** The command that runs: the last word of the path. */
 export function lastOf(path: CommandPath): CliCommand {
   return path[path.length - 1] ?? path[0];

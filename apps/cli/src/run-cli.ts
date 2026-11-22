@@ -12,7 +12,7 @@ import {
 import { type ExitCode, exitCode } from "./exit-code.ts";
 import { exitCodeOfError } from "./exit-code-for.ts";
 import { type GlobalOptions, readGlobalOptions } from "./global-options.ts";
-import { commandHelp, commandWords, lastOf, overallHelp, usageLine } from "./help.ts";
+import { commandHelp, commandWords, lastOf, namedBy, overallHelp, usageLine } from "./help.ts";
 import type { Message } from "./messages/define.ts";
 import { usageMessages } from "./messages/general.ts";
 import { helpMessages } from "./messages/help.ts";
@@ -288,7 +288,7 @@ function findSubcommand(path: CommandPath, args: readonly string[]): FoundComman
   if (subcommands.length === 0 || word === undefined || word.startsWith("-")) {
     return { path, args };
   }
-  const subcommand = subcommands.find((candidate) => candidate.name === word);
+  const subcommand = subcommands.find((candidate) => namedBy(candidate, word));
   if (subcommand === undefined) {
     // `deploy web`: the word is the command's own argument when it takes one.
     return lastOf(path).argumentsBesideSubcommands === true
@@ -469,7 +469,7 @@ function strayArguments(path: CommandPath, given: readonly string[]): UsageError
  * wrong, line 2 is the fix). Any other word gets {@link unknownSubcommand}.
  */
 function wordAfterOptions(path: CommandPath, word: string): UsageError {
-  const subcommand = (lastOf(path).subcommands ?? []).find((candidate) => candidate.name === word);
+  const subcommand = (lastOf(path).subcommands ?? []).find((candidate) => namedBy(candidate, word));
   if (subcommand === undefined) {
     return unknownSubcommand(path, word);
   }
@@ -490,7 +490,7 @@ function misplacedWord(path: CommandPath, word: string | undefined): UsageError 
   if (command.subcommands === undefined || word === undefined) {
     return undefined;
   }
-  const isSubcommand = command.subcommands.some((candidate) => candidate.name === word);
+  const isSubcommand = command.subcommands.some((candidate) => namedBy(candidate, word));
   if (command.argumentsBesideSubcommands === true && !isSubcommand) {
     return undefined;
   }

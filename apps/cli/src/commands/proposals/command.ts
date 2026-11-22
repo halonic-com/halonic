@@ -2,7 +2,7 @@ import type { CliCommand } from "../../command.ts";
 import { proposalsMessages } from "../../messages/proposals.ts";
 import { printable } from "../../output/printable.ts";
 import { dirOption, workspaceDir } from "../../workspace-dir.ts";
-import { acceptProposal, discardProposal } from "./decide.ts";
+import { acceptProposal, rejectProposal } from "./decide.ts";
 import { listProposals } from "./list.ts";
 import type { ProposalsSetup } from "./open-proposals.ts";
 import { showProposal } from "./show.ts";
@@ -42,18 +42,19 @@ export function proposalsCommandWith(setup: ProposalsSetup): CliCommand {
         run: (input, context) => acceptProposal(input, context, setup),
       },
       {
-        name: "discard",
+        name: "reject",
+        aliases: ["discard"],
         usage: "<run-id> [<file>] [--dir <folder>]",
         takesArguments: true,
-        summary: proposalsMessages.discardSummary(),
-        action: (input) => proposalsMessages.discardAction(printable(input.positionals[0] ?? "")),
+        summary: proposalsMessages.rejectSummary(),
+        action: (input) => proposalsMessages.rejectAction(printable(input.positionals[0] ?? "")),
         options: { dir: dirOption },
-        run: (input, context) => discardProposal(input, context, setup),
+        run: (input, context) => rejectProposal(input, context, setup),
       },
     ],
     run: (input, context) => listProposals(input, context, setup),
   };
 }
 
-/** `halonic proposals`: what agents' runs propose to change, and accepting or discarding it. */
+/** `halonic proposals`: what agents' runs propose to change, and accepting or rejecting it. */
 export const proposalsCommand: CliCommand = proposalsCommandWith(computerProposalsSetup);

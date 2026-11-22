@@ -65,7 +65,7 @@ verifies("cli.commands.proposals.decide", () => {
       expect(code).toBe(exitCode.conflict);
       expect(io.stdout).toEqual([
         "Wrote 1 file: notes/new.md.",
-        "notes/today.md changed since the run, so it wasn't written. Edit by hand, or discard.",
+        "notes/today.md changed since the run, so it wasn't written. Edit by hand, or reject.",
         "1 file is still to decide: halonic proposals show 01jd8q.",
       ]);
       expect(await savedFile(acmeRuns, "notes/today.md")).toBe("Four tickets.\n");
@@ -85,26 +85,34 @@ verifies("cli.commands.proposals.decide", () => {
     });
   });
 
-  describe("discard", () => {
+  describe("reject", () => {
     it("leaves the saved files as they are, and the proposal is done", async () => {
-      const { code, io } = await proposalsIn("discard", "01jd8q");
+      const { code, io } = await proposalsIn("reject", "01jd8q");
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
-        "Discarded the changes to 2 files. Your files stay as they are.",
+        "Rejected the changes to 2 files. Your files stay as they are.",
         "Run 01jd8q's proposal is done.",
       ]);
       expect(await savedFile(acmeRuns, "notes/today.md")).toBe("Two tickets.\n");
       expect(await savedFile(acmeRuns, "notes/new.md")).toBeNull();
     });
 
-    it("discards only the file named", async () => {
-      const { io } = await proposalsIn("discard", "01jd8q", "notes/today.md");
+    it("rejects only the file named", async () => {
+      const { io } = await proposalsIn("reject", "01jd8q", "notes/today.md");
 
       expect(io.stdout).toEqual([
-        "Discarded the changes to 1 file. Your files stay as they are.",
+        "Rejected the changes to 1 file. Your files stay as they are.",
         "1 file is still to decide: halonic proposals show 01jd8q.",
       ]);
+    });
+
+    it("still answers to discard, its word before Studio's Reject", async () => {
+      const { code, io } = await proposalsIn("discard", "01jd8q", "notes/today.md");
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout[0]).toBe("Rejected the changes to 1 file. Your files stay as they are.");
+      expect(await savedFile(acmeRuns, "notes/today.md")).toBe("Two tickets.\n");
     });
   });
 });

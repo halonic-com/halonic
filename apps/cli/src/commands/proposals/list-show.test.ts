@@ -90,7 +90,7 @@ verifies("cli.commands.proposals.show", () => {
         "  -Two tickets.",
         "  +Three tickets.",
         "",
-        "Accept with halonic proposals accept 01jd8q, or discard with halonic proposals discard 01jd8q.",
+        "Accept with halonic proposals accept 01jd8q, or reject with halonic proposals reject 01jd8q.",
       ]);
     });
 

@@ -204,6 +204,13 @@ export interface StoppedResult {
 export interface CliCommand {
   /** The word after `halonic`, the same as its folder name. */
   readonly name: string;
+  /**
+   * Old words that still run a subcommand after it was renamed, such as
+   * `discard` for `proposals reject`, so a script written before keeps
+   * working. The help, the usage lines and "Did you mean" name only
+   * {@link CliCommand.name} (requirement `cli.subcommand-aliases`).
+   */
+  readonly aliases?: readonly string[];
   /** The arguments after the name, for the help, such as `<dir> [--hub <id>]`. */
   readonly usage: string;
   /**
