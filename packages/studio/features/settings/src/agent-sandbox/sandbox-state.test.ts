@@ -304,14 +304,17 @@ verifies("settings.agent-sandbox-setup-again", () => {
     const v = view({ check: { state: "needs-setup", setupAgain: true } });
     expect(v.chip).toEqual({ label: "Needs setting up", tone: "warning" });
     expect(v.primary).toEqual({ action: "set-up", label: "Set up the sandbox", busy: false });
-    expect(v.hint).toBe(
-      "This version of Halonic needs the sandbox set up again. Windows asks for administrator rights once.",
+    expect(v.lead).toBe(
+      "This version of Halonic needs the sandbox set up again, with administrator rights. Until then, agents set to run in a sandbox don't start.",
     );
+    expect(v.hint).toBe("Windows asks for administrator rights once.");
   });
 
-  it("keeps the one-prompt line for a computer that was never set up", () => {
-    expect(view({ check: { state: "needs-setup" } }).hint).toBe(
-      "Windows asks for administrator rights once.",
+  it("keeps the one-time setup lead for a computer that was never set up", () => {
+    const v = view({ check: { state: "needs-setup" } });
+    expect(v.lead).toBe(
+      "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.",
     );
+    expect(v.hint).toBe("Windows asks for administrator rights once.");
   });
 });

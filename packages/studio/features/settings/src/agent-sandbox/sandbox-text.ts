@@ -16,9 +16,6 @@ export const BUSY_SET_UP = "Setting up…";
 export const BUSY_REPAIR = "Repairing…";
 
 export const ADMIN_ONCE = "Windows asks for administrator rights once.";
-/** In place of {@link ADMIN_ONCE} when the setup is there but older (HAL-14804, Noah). */
-export const SETUP_AGAIN =
-  "This version of Halonic needs the sandbox set up again. Windows asks for administrator rights once.";
 export const REPAIR_HINT =
   "Windows asks for administrator rights once. Your agents and workspaces don't change.";
 export const VIEW_ONLY = "View only here. Set up the sandbox on the computer running Halonic.";
@@ -27,6 +24,9 @@ export const NOT_AVAILABLE =
   "The sandbox isn't available on this computer, so Claude Code and Codex agents can't run here yet. Agents set to Halonic on their Harness page still run.";
 export const NEEDS_SETUP =
   "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.";
+/** In place of {@link NEEDS_SETUP} when the setup is there but older: Noah's sentence (HAL-14804), C633. */
+export const NEEDS_SETUP_AGAIN =
+  "This version of Halonic needs the sandbox set up again, with administrator rights. Until then, agents set to run in a sandbox don't start.";
 export const needsRepair = (reason: string) =>
   `The sandbox is set up, but part of it is missing or out of date: ${reason} Until it's repaired, agents set to run in a sandbox don't start.`;
 /** After a reason the check found: the way round it (23.3, 13.1's second sentence). */
