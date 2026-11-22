@@ -32,9 +32,20 @@ export interface RemoteLanEndpoint {
   readonly advert: PairAdvert;
 }
 
+/**
+ * The remote gateway's loopback listener, which runs only while remote is
+ * on: the only thing the tunnel may point at. Starts and stops take effect
+ * in the order they were called.
+ */
+export interface GatewaySwitch {
+  /** Starts the listener, or keeps the one running; `undefined` when it couldn't start. */
+  start(): Promise<number | undefined>;
+  stop(): Promise<void>;
+}
+
 /** What a {@link HostRemoteControl} puts together. */
 export interface HostRemoteControlOptions {
-  /** Whether the host offers remote; `false` until B8 turns it on. */
+  /** Whether the host offers remote: only a host with a tunnel provider does. */
   readonly available: boolean;
   /** The name the computer gives itself in the dialog and the QR code. */
   readonly hostName: string;
@@ -43,8 +54,8 @@ export interface HostRemoteControlOptions {
   readonly settings: RemoteSettings;
   readonly hostKey: () => Promise<HostKey>;
   readonly tunnel: TunnelProvider;
-  /** The port of the remote gateway's loopback listener: the only thing the tunnel may point at. */
-  readonly gatewayPort: number;
+  /** The remote gateway, started when remote turns on and stopped when it turns off. */
+  readonly gateway: GatewaySwitch;
   /** The gateway's LAN endpoint, when it listens on the Wi-Fi. */
   readonly lanEndpoint?: RemoteLanEndpoint;
   readonly time: RemoteTime;
@@ -85,7 +96,7 @@ interface Pairing {
  * ran out or it left.
  *
  * @example
- * const remote = await HostRemoteControl.open({ available, hostName, desk, phones, settings, hostKey, tunnel, gatewayPort, time, log });
+ * const remote = await HostRemoteControl.open({ available, hostName, desk, phones, settings, hostKey, tunnel, gateway, time, log });
  * const pairing = await remote.startPairing();
  */
 export class HostRemoteControl implements RemoteControl {
@@ -176,6 +187,19 @@ export class HostRemoteControl implements RemoteControl {
     const changed = this.#options.settings.change({ allowRiskyRemotely: allow });
     this.#publish();
     await changed;
+  }
+
+  /**
+   * Stops the tunnel and the gateway when the host stops. An open pairing
+   * ends as closed; the switches stay as the person left them, so remote
+   * comes back on with the next launch.
+   */
+  async close(): Promise<void> {
+    await this.#endPairing("closed");
+    this.#tunnelRun += 1;
+    this.#endpoint = Promise.resolve(undefined);
+    const { gateway, settings, tunnel } = this.#options;
+    await Promise.all([gateway.stop(), settings.values.on ? tunnel.stop() : undefined]);
   }
 
   /** Shows the first code once the tunnel is up, or ends the pairing when it isn't. */
@@ -281,16 +305,33 @@ export class HostRemoteControl implements RemoteControl {
   }
 
   async #turnOn(): Promise<void> {
-    const { gatewayPort, settings, tunnel } = this.#options;
-    const config = { gateway: { host: "127.0.0.1" as const, port: gatewayPort } };
-    assertGatewayTunnelConfig(config, gatewayPort);
     this.#tunnelRun += 1;
-    this.#background(this.#watchTunnel(this.#tunnelRun));
-    // A start that fails says why on the status stream, which the watch shows.
-    this.#endpoint = tunnel.start(config).catch(() => undefined);
-    const changed = settings.change({ on: true });
+    this.#endpoint = this.#startTunnel(this.#tunnelRun);
+    const changed = this.#options.settings.change({ on: true });
     this.#publish();
     await changed;
+  }
+
+  /**
+   * Starts the gateway, then the tunnel pointed only at its port. A gateway
+   * that can't start shows as the tunnel down, and starts no tunnel.
+   */
+  async #startTunnel(run: number): Promise<TunnelEndpoint | undefined> {
+    const { gateway, tunnel } = this.#options;
+    const port = await gateway.start();
+    // Remote turned off meanwhile: its stop, called after this start, closes the gateway.
+    if (run !== this.#tunnelRun) return undefined;
+    if (port === undefined) {
+      // A pairing waiting for this endpoint ends with `tunnel-down` when it sees the status.
+      this.#tunnelStatus = this.#down("provider-error");
+      this.#publish();
+      return undefined;
+    }
+    const config = { gateway: { host: "127.0.0.1" as const, port } };
+    assertGatewayTunnelConfig(config, port);
+    this.#background(this.#watchTunnel(run));
+    // A start that fails says why on the status stream, which the watch shows.
+    return tunnel.start(config).catch(() => undefined);
   }
 
   async #turnOff(): Promise<void> {
@@ -301,7 +342,8 @@ export class HostRemoteControl implements RemoteControl {
     this.#tunnelStatus = this.#stopped();
     const changed = this.#options.settings.change({ on: false });
     this.#publish();
-    await Promise.all([changed, this.#options.tunnel.stop()]);
+    // The gateway's stop is called now, so a start called after it, remote on again, wins.
+    await Promise.all([changed, this.#options.tunnel.stop(), this.#options.gateway.stop()]);
   }
 
   /** Shows each status of the tunnel of `run`; one that goes down ends an open pairing. */
@@ -348,7 +390,11 @@ export class HostRemoteControl implements RemoteControl {
   }
 
   #stopped(): TunnelStatus {
-    return { state: "down", reason: "stopped", at: this.#options.time.now().toISOString() };
+    return this.#down("stopped");
+  }
+
+  #down(reason: TunnelReason): TunnelStatus {
+    return { state: "down", reason, at: this.#options.time.now().toISOString() };
   }
 
   /** Runs work nobody awaits, and says why when it fails. */

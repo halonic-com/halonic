@@ -11,11 +11,6 @@ export interface HostServices {
   stop(): Promise<void>;
   /** Tells the host which port its own server listens on, so no provider's address may be that port. */
   listeningOn(port: number): void;
-  /**
-   * Starts the remote gateway's listener when the setting turns it on, and does nothing otherwise.
-   * A listener that can't start is told to `log` and the host serves without it.
-   */
-  startGateway(log: (text: string) => void): Promise<void>;
 }
 
 /** What `--relay-host` may name: the relay's port on Windows' own loopback address. */
@@ -60,7 +55,6 @@ async function serveOnLoopback(
   const token = randomLaunchToken();
   const server = await startHostServer(token, host.routes);
   host.listeningOn(Number(new URL(server.url).port));
-  await host.startGateway((text) => io.writeError(text));
   const handshake: Handshake = { url: server.url, token };
   io.write(`${JSON.stringify(handshake)}\n`);
   const ended =
@@ -104,7 +98,6 @@ async function serveOverFrames(
   const handshake: FramedHandshake = { token };
   output.write(`${JSON.stringify(handshake)}\n`);
   host.listeningOn(relayPort);
-  await host.startGateway((text) => io.writeError(text));
   const server = serveHostOverFrames(
     token,
     host.routes,
