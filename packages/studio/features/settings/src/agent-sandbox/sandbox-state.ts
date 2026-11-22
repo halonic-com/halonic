@@ -147,8 +147,11 @@ export interface SandboxView {
     readonly note?: true;
   } | null;
   readonly steps: readonly SandboxStep[];
-  /** The guide for what the check found, after the buttons. */
-  readonly docs: { readonly name: string; readonly href: string } | null;
+  /**
+   * The check found why the sandbox can't run: the section draws these words, with their own
+   * **Check again** and guide, in place of the lead and the buttons.
+   */
+  readonly notAvailable: NotAvailableWords | null;
   /** Under the buttons. */
   readonly hint: string | null;
   /** The primary button, if one shows, and whether it is busy. */
@@ -164,11 +167,19 @@ export interface SandboxView {
   readonly details: string | null;
 }
 
+/** What Not available says when a check found why (23.3): the reason, its fix and the guide. */
+export interface NotAvailableWords {
+  readonly reason: string;
+  /** None where the section's own set-up button is the fix (23.3a). */
+  readonly fix: string | null;
+  readonly docs: { readonly name: string; readonly href: string };
+}
+
 const none = {
   chip: null,
   callout: null,
   steps: [],
-  docs: null,
+  notAvailable: null,
   hint: null,
   primary: null,
   secondary: [],
@@ -262,20 +273,32 @@ function checkedView(
 
 /**
  * A reason the person or an administrator fixes (23.3, "Settings › Agent sandbox, not available"):
- * the chip, the reason and its fix, **Check again**, the guide, then the way round it. Where the
- * section's own button is the fix, the fix line is left out (23.3a); served Studio is used from
- * another device, so it gets the fix that says to do it on the computer.
+ * the chip, then the reason, its fix, **Check again**, the guide and the way round it, which the
+ * section draws as it does for the start check's reason (C701-1).
  */
 function unavailableView(code: string, viewOnly: boolean): SandboxView {
-  const words = sandboxStartWords(code);
-  const fix = viewOnly ? words.phoneFix : words.settingsFix;
   return {
     ...none,
     chip: { label: "Not available", tone: "attention" },
-    lead: fix === null ? words.reason : `${words.reason} ${fix}`,
+    lead: "",
+    notAvailable: notAvailableWords(code, viewOnly),
+  };
+}
+
+/**
+ * The words for a reason code, from the sandbox-start catalogue. Where the section's own button is
+ * the fix, there is none (23.3a); served Studio is used from another device, so `viewOnly` gets the
+ * fix that says to do it on the computer.
+ *
+ * @example
+ * notAvailableWords("setup-needed", false).fix; // null
+ */
+export function notAvailableWords(code: string, viewOnly: boolean): NotAvailableWords {
+  const words = sandboxStartWords(code);
+  return {
+    reason: words.reason,
+    fix: viewOnly ? words.phoneFix : words.settingsFix,
     docs: { name: words.docsName, href: `${text.DOCS_ADDRESS}/${words.docsKey}` },
-    hint: text.RUN_HERE_AFTER_WARNING,
-    secondary: ["check-again"],
   };
 }
 

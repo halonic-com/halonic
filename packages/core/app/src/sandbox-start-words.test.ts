@@ -3,6 +3,9 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { sandboxStartWords } from "./sandbox-start-words.ts";
 
+/** The reasons whose phone fix isn't the desktop's after "On the computer Halonic runs on: " (C701). */
+const phoneWordsOfTheirOwn: readonly string[] = ["distro-missing", "runtime-missing"];
+
 verifies("app.sandbox-start-words", () => {
   it("words bubblewrap-missing with a Callout fix that is the fix with a capital letter", () => {
     const words = sandboxStartWords("bubblewrap-missing");
@@ -36,6 +39,8 @@ verifies("app.sandbox-start-words", () => {
     for (const code of sandboxUnavailableReasons) {
       const { cantRunFix, cantRunPhoneFix } = sandboxStartWords(code);
       expect(cantRunFix, code).not.toMatch(/\b(it|them)\b/i);
+      expect(cantRunPhoneFix, code).not.toMatch(/^On the computer Halonic runs on: (it|them)\b/i);
+      if (phoneWordsOfTheirOwn.includes(code)) continue;
       expect(cantRunPhoneFix, code).toBe(
         `On the computer Halonic runs on: ${cantRunFix.charAt(0).toLowerCase()}${cantRunFix.slice(1)}`,
       );
@@ -105,18 +110,37 @@ verifies("app.sandbox-start-words", () => {
     expect(words.settingsFix).toBe(words.calloutFix);
   });
 
-  it("says to try again for runtime-missing, then to reinstall Halonic Studio, Settings with Check again", () => {
+  it("says computer only once in distro-missing's fix on a phone", () => {
+    const words = sandboxStartWords("distro-missing");
+    const onThePhone = "On the computer Halonic runs on: use Halonic inside WSL 2.";
+    expect(words.phoneFix).toBe(onThePhone);
+    expect(words.cantRunPhoneFix).toBe(onThePhone);
+  });
+
+  it("says to choose Check again for runtime-missing, then to reinstall Halonic Studio", () => {
     const words = sandboxStartWords("runtime-missing");
     expect(words.calloutFix).toBe(
-      "Try again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall Halonic Studio.",
+      "Choose Check again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall Halonic Studio.",
     );
     expect(words.cantRunFix).toBe(
-      "Try again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall Halonic Studio.",
+      "Choose Check again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall Halonic Studio.",
     );
     expect(words.settingsFix).toBe(
       "Choose Check again, and Halonic finishes the setup. If it still doesn't finish, reinstall Halonic Studio.",
     );
     expect(words.fix).not.toContain("WSL 2");
+    // No screen that shows it has a Try again button (C701-2).
+    for (const part of [words.fix, words.cantRunFix, words.phoneFix, words.cantRunPhoneFix]) {
+      expect(part).not.toMatch(/try again/i);
+    }
+  });
+
+  it("tells a phone to open Halonic Studio for runtime-missing, whose Check again there can't finish it", () => {
+    const words = sandboxStartWords("runtime-missing");
+    const onThePhone =
+      "On the computer Halonic runs on: open Halonic Studio, and it finishes the setup. If it still doesn't finish, reinstall Halonic Studio.";
+    expect(words.phoneFix).toBe(onThePhone);
+    expect(words.cantRunPhoneFix).toBe(onThePhone);
   });
 
   it("says to remove the other program's setup for setup-conflict, then where to go on", () => {

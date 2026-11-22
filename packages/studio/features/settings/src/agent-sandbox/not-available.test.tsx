@@ -4,6 +4,7 @@ import { cantRunWords } from "@halonicjs/studio-feature-runs/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import type { AgentSandboxHost } from "../api.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { AgentSandboxHostView } from "./agent-sandbox-section.tsx";
 import * as text from "./sandbox-text.ts";
@@ -57,6 +58,41 @@ verifies("settings.agent-sandbox-not-available", () => {
     expect(root.querySelector("a")?.getAttribute("href")).toBe(
       "https://docs.halonic.dev/security/sandbox/#bubblewrap",
     );
+  });
+
+  it("draws the fix on its own line, Check again as the section's ghost button beside the guide, and a muted way round", async () => {
+    const { root } = await open(refused("distro-missing"));
+    const words = sandboxStartWords("distro-missing");
+    const lines = [...root.querySelectorAll("p")].map((line) => line.textContent);
+    expect(lines).toContain(words.reason);
+    expect(lines).toContain(words.settingsFix);
+    const checkAgain = checkAgainOf(root);
+    expect(checkAgain.querySelector("svg")).not.toBeNull();
+    expect(checkAgain.parentElement?.querySelector("a")?.textContent).toContain(words.docsName);
+    const wayRound = [...root.querySelectorAll("p")].find(
+      (line) => line.textContent === text.RUN_HERE_AFTER_WARNING,
+    );
+    expect(wayRound?.className).toContain("text-fg-muted");
+  });
+
+  it("looks the same whichever check found the reason (C701-1)", async () => {
+    for (const code of ["distro-missing", "setup-needed", "bubblewrap-missing"]) {
+      const fromStartCheck = await open(refused(code));
+      const host = {
+        available: true,
+        check: vi.fn(async () => ({ state: "unavailable", code }) as const),
+        running: vi.fn(async () => null),
+        setUp: vi.fn(async () => null),
+        remove: vi.fn(async () => null),
+        follow: vi.fn(async () => null),
+      } satisfies AgentSandboxHost;
+      const fromHostCheck = render(
+        <AgentSandboxHostView host={host} place="app" announce={vi.fn()} />,
+      );
+      await act(async () => {});
+      expect(fromHostCheck.innerHTML, code).toBe(fromStartCheck.root.innerHTML);
+      unmountAll();
+    }
   });
 
   it("leaves the fix out where it is to set the sandbox up in Settings", async () => {
