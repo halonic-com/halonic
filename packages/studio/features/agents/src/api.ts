@@ -282,6 +282,8 @@ export interface AgentRoutine {
   readonly name: string;
 }
 
+export { selectStepsStep, stepsToSelect } from "./select-steps.ts";
+
 /**
  * The workspace's agents, as the app reads and changes them. The app saves to the workspace's files
  * itself, so listing and creating work while the engine is stopped.

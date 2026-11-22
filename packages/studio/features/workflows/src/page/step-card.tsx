@@ -17,6 +17,8 @@ export interface StepCardProps {
   /** The first step carries the "Start" chip. */
   readonly first: boolean;
   readonly selected: boolean;
+  /** One of the steps the page was opened to outline, such as those that run an agent (flow-workflows 9). */
+  readonly outlined?: boolean;
   /** The step the shown run failed in: ringed in danger with its **Failed** chip (D8). */
   readonly failed?: boolean;
   /** How the step stands in the shown run: draws its status dot; absent when it was not reached. */
@@ -48,6 +50,7 @@ export function StepCard({
   box,
   first,
   selected,
+  outlined,
   failed,
   mark,
   problems,
@@ -80,7 +83,7 @@ export function StepCard({
   useEffect(() => {
     if (focusOnMount) button.current?.focus();
   }, [focusOnMount]);
-  const ring = ringOf(failed === true, selected, problems?.severity);
+  const ring = ringOf(failed === true, selected, problems?.severity, outlined === true);
   const outline = outlineOf(connectTarget);
   return (
     <>
@@ -237,14 +240,18 @@ function ProblemLine({ id, problems }: { readonly id: string; readonly problems:
 /**
  * A failed step shows the danger ring over the selection's: the run's outcome is the news (D8). A
  * step with a problem has a border in its colour, which the selection's ring covers while it's picked.
+ * An outlined step that isn't picked and has no problem has a dashed accent border, so it doesn't
+ * read as the selection.
  */
 function ringOf(
   failed: boolean,
   selected: boolean,
   problem: CardProblems["severity"] | undefined,
+  outlined: boolean,
 ): string {
   if (failed) return "border-danger ring-2 ring-danger";
   if (selected) return "border-accent ring-2 ring-accent";
   if (problem === "error") return "border-danger";
-  return problem === "warning" ? "border-attention" : "border-border";
+  if (problem === "warning") return "border-attention";
+  return outlined ? "border-2 border-dashed border-accent" : "border-border";
 }

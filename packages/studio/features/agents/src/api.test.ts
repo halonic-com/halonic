@@ -1,7 +1,13 @@
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { AgentsHostService, alreadyHandsWork, handOffPath } from "./api.ts";
+import {
+  AgentsHostService,
+  alreadyHandsWork,
+  handOffPath,
+  selectStepsStep,
+  stepsToSelect,
+} from "./api.ts";
 import { memoryAgentsHost } from "./memory-host.ts";
 
 const acme = { id: "acme", name: "Acme" };
@@ -202,5 +208,16 @@ verifies("agents.host-chat", () => {
     await expect(host.answer({ hubId: "acme", id: "ghost" }, { messages })).rejects.toMatchObject({
       kind: "not_found",
     });
+  });
+});
+
+verifies("agents.map.clicks", () => {
+  it("hands a workflow the steps to outline in a step it reads back, whatever their ids hold", () => {
+    expect(selectStepsStep(["triage", "draft"])).toBe("select:triage,draft");
+    expect(stepsToSelect(selectStepsStep(["triage", "draft"]))).toEqual(["triage", "draft"]);
+    expect(stepsToSelect(selectStepsStep(["a,b", "c%d"]))).toEqual(["a,b", "c%d"]);
+    expect(stepsToSelect("tests")).toBeUndefined();
+    expect(stepsToSelect(undefined)).toBeUndefined();
+    expect(stepsToSelect("select:%E0")).toBeUndefined();
   });
 });

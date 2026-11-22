@@ -38,6 +38,13 @@ export interface WorkflowScreenProps {
    * already goes to Tests again when this changes, also when it is asked for the same step twice.
    */
   readonly testsAsked?: number;
+  /**
+   * The steps to outline on Flow with no step card open, as `openItem`'s `select:` step asks
+   * (`stepsToSelect`, flow-workflows 9); absent outlines none.
+   */
+  readonly outline?: readonly string[] | undefined;
+  /** How many times the tab was asked to outline steps; a page that is open outlines them again when it changes. */
+  readonly outlineAsked?: number;
   /** Reads a state change to screen readers (`announcer.announceState`); without it nothing is read. */
   readonly announceState?: AnnounceState;
   /**
