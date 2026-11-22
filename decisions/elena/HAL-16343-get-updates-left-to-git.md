@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16343 (triaged on HAL-16327: refuse, or list these paths)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:R7Mrf0D2mnFRzDB/YneJj12RnZTr8RBBTPkd38rwL7oOuCm+wpm7ZA9dE7WnRcFLLb4gPf3V5+SOoVOaJN2EDA==
 
 Get updates starts with `merge -s ours`, which keeps this workspace's side of every file, and then
 writes in what only the shared copy changed. It never writes a file Halonic leaves to git (a private
