@@ -25,7 +25,7 @@ const goneAgent = "This agent isn't on your computer any more.";
 const notConnected = "Not sent. Try again once your phone reconnects.";
 
 /**
- * The line under Approve and Deny, or under the prompt box, after `outcome`; `undefined` when
+ * The line under Approve and Reject, or under the prompt box, after `outcome`; `undefined` when
  * there's nothing to add: it was done (the approval settles, or the box says {@link
  * promptWords.sent}), or it was off and the reason already shows.
  */

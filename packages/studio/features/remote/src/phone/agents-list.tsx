@@ -28,12 +28,12 @@ type OnAnswer = (
 
 const decisionWords: Record<(typeof decisions)[number], string> = {
   approve: "Approve",
-  deny: "Deny",
+  deny: "Reject",
 };
 
 /**
  * `s-m2`, `s-m3`: the agents of one computer, each with its name, a line and its state, in the
- * order the host listed them. An agent that needs you shows Approve and Deny for its oldest open
+ * order the host listed them. An agent that needs you shows Approve and Reject for its oldest open
  * approval. While the view is stale, each line ends with "as of 14:02" and both buttons are off
  * with "You can answer once your phone reconnects." under them; a risky approval says to answer it on the computer. The
  * page round it draws the header, the stale banner and the prompt box.
@@ -69,7 +69,7 @@ export function AgentsList({
   );
 }
 
-/** One agent: the letter tile, its name and line, its state, and Approve and Deny when it asks. */
+/** One agent: the letter tile, its name and line, its state, and Approve and Reject when it asks. */
 function AgentRow({
   session,
   line,
@@ -114,7 +114,7 @@ function AgentRow({
 }
 
 /**
- * Approve and Deny for one approval. Off with the view's reason written under them; off and busy
+ * Approve and Reject for one approval. Off with the view's reason written under them; off and busy
  * on the one the phone sent while the host hasn't confirmed it, which it never sends again, and
  * the other one gone meanwhile. Once the host answers, a refusal or a cut-off connection is
  * written under them; nothing is sent again by itself.

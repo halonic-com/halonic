@@ -18,7 +18,7 @@ import type {
 import type { PhoneStatusLabel } from "./phone-status.ts";
 
 /**
- * Why Approve, Deny and the prompt box are off while the view is stale
+ * Why Approve, Reject and the prompt box are off while the view is stale
  * (design decision 6 on HAL-12206). It says when they come back, not an
  * order: the phone reconnects by itself, and Try again is only in the
  * banner (C672).
@@ -62,7 +62,7 @@ export interface RemoteApproval {
   readonly approval: GatewayApproval;
   /** When it was requested, by the host's clock. */
   readonly requestedAt: string;
-  /** Whether Approve and Deny are on for this one: off too while {@link sent} is set. */
+  /** Whether Approve and Reject are on for this one: off too while {@link sent} is set. */
   readonly canAnswer: boolean;
   /**
    * Why they are off, in words the screen shows next to them; `undefined`
@@ -98,7 +98,7 @@ export interface RemoteView {
   /**
    * Whether the view is live: connected, with a session list since the last
    * reconnect. While it isn't, the screens keep showing the last sessions
-   * and approvals with `asOf`, and Approve, Deny and the prompt box are off.
+   * and approvals with `asOf`, and Approve, Reject and the prompt box are off.
    */
   readonly canAnswer: boolean;
   /** Why they are off, while `canAnswer` is false; `undefined` while it is true. */

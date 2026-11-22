@@ -8,16 +8,24 @@ export const isUnreadable = (computer: ListedComputer): computer is UnreadableCo
 
 /**
  * What Forget asks and says when it fails, for a computer with or without a name. A computer
- * that removed this phone no longer lists it, so its question doesn't say it does (C666).
+ * that removed this phone no longer lists it, so its question doesn't say it does (C666); one
+ * that can't confirm who it is may or may not (C665-5).
  */
 function forgetWords(computer: ListedComputer) {
   if (isUnreadable(computer)) return computersWords.unreadable.forget;
   return {
     title: computersWords.forget.title(computer.name),
     body: computersWords.forget.body,
-    stillPaired: computer.standing === "removed" ? undefined : computersWords.forget.stillPaired,
+    stillPaired: stillPairedLine(computer.standing, computer.name),
     failed: computersWords.forget.failed(computer.name),
+    keysUnavailable: computersWords.forget.keysUnavailable(computer.name),
   };
+}
+
+function stillPairedLine(standing: "paired" | "removed" | "cant-confirm", name: string) {
+  if (standing === "removed") return undefined;
+  if (standing === "cant-confirm") return computersWords.forget.maybePaired(name);
+  return computersWords.forget.stillPaired;
 }
 
 /** What the phone says politely once a computer is forgotten (microcopy 28). */
@@ -65,7 +73,7 @@ export function ForgetDialog({
       onForgotten();
       return;
     }
-    setError(outcome === undefined ? asking.failed : computersWords.forget.keysUnavailable);
+    setError(outcome === undefined ? asking.failed : asking.keysUnavailable);
   };
 
   return (
