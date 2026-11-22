@@ -206,7 +206,7 @@ What starts such an agent:
   9 Nov."
 - Studio doesn't start it yet: its run fails before the agent's program starts.
   The Harness page says so under **On this computer**: "Studio can't start it
-  this way yet; halonic run and halonic serve on this computer can."
+  this way yet; halonic in a terminal on this computer can."
 - `halonic routines watch` refuses a routine whose agent runs in Claude Code or
   Codex, wherever that agent runs, so it doesn't start this one either (exit 9).
 

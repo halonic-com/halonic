@@ -48,7 +48,7 @@ function readyHost(studioStartsUnfenced: boolean): AgentSandboxHost {
 }
 
 const studioCantStart =
-  "Studio can't start agents outside the sandbox yet; halonic run and halonic serve on this computer can.";
+  "Studio can't start agents outside the sandbox yet; halonic in a terminal on this computer can.";
 
 /** The open dialog's text: the hint under the Select says the same line. */
 const dialogText = () => document.querySelector("dialog[open]")?.textContent ?? "";

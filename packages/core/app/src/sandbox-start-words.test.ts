@@ -117,11 +117,11 @@ verifies("app.sandbox-start-words", () => {
     expect(sandboxStartWords("not-supported").docsKey).toBe("security/sandbox/#wsl1");
   });
 
-  it("says Studio can't start an agent set to this computer but halonic serve can, not that something is missing", () => {
+  it("says Studio can't start an agent set to this computer yet but halonic in a terminal can, not that something is missing", () => {
     const words = sandboxStartWords("not-offered");
     expect(words.key).toBe("sandbox-start.not-offered");
     expect(words.reason).toBe(
-      "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can.",
+      "Studio can't start Claude Code or Codex agents outside the sandbox yet; halonic in a terminal on this computer can.",
     );
     expect(words.calloutFix).toBe("Set this agent back to In a sandbox on its Harness page.");
   });

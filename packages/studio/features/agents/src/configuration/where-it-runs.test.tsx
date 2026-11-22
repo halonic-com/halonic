@@ -267,9 +267,11 @@ verifies("agents.configuration.where-it-runs", () => {
     it("says under On this computer that Studio can't start it, only while the host says so", async () => {
       const cant = await open(agentsHost());
       expect(cant.textContent).toContain(words.studioCantStart);
-      // HAL-15508: both CLI commands that can start it are named, not only the heavier one.
-      expect(words.studioCantStart).toContain("halonic run");
-      expect(words.studioCantStart).toContain("halonic serve");
+      // HAL-15848: it points to halonic in a terminal rather than a list of commands that goes stale.
+      expect(words.studioCantStart).toBe(
+        "Studio can't start it this way yet; halonic in a terminal on this computer can.",
+      );
+      expect(words.studioCantStart).not.toContain("halonic serve");
       unmount();
       const can = await open(agentsHost({ studioStartsUnfenced: true }));
       expect(can.textContent).toContain(words.onThisComputerNote);
