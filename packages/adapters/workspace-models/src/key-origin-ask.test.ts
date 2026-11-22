@@ -218,3 +218,46 @@ verifies("cli.key-origin-ask", () => {
     expect(ask.asked).toEqual([{ provider: "gateway", key: "fake-key", origin: gateway }]);
   });
 });
+
+verifies("cli.key-origin-ask-refused-once", () => {
+  it("asks nobody again after Don't allow in the same run, but asks in another run", async () => {
+    const ask = askOf("not-allowed");
+    const resolveModel = askingModelResolver(resolverOf(refusal()).resolve, ask.options);
+    const firstCall = scopeOf();
+    const laterCall = scopeOf();
+    const otherRun = { ...scopeOf(), runId: "run_2" };
+
+    await expect(resolveModel(call, firstCall)).rejects.toMatchObject({
+      code: "key-origin-not-allowed",
+    });
+    await expect(resolveModel(call, laterCall)).rejects.toMatchObject({
+      code: "key-origin-not-allowed",
+    });
+    expect(ask.asked).toHaveLength(1);
+    expect(laterCall.written).toEqual([]);
+
+    await expect(resolveModel(call, otherRun)).rejects.toMatchObject({
+      code: "key-origin-not-allowed",
+    });
+    expect(ask.asked.map((question) => question.runId)).toEqual(["run_1", "run_2"]);
+  });
+
+  it("asks again in the same run about another address after Don't allow", async () => {
+    const other = new WorkspaceModelError(
+      "key-origin-not-allowed",
+      modelTexts.originNotAllowed("gateway", "fake-key", "https://eu.gateway.example.com"),
+      modelTexts.originNotAllowedFix("fake-key", "https://eu.gateway.example.com"),
+      { provider: "gateway", key: "fake-key", origin: "https://eu.gateway.example.com" },
+    );
+    const ask = askOf("not-allowed");
+    const resolveModel = askingModelResolver(resolverOf(refusal(), other).resolve, ask.options);
+
+    await resolveModel(call, scopeOf()).catch(() => undefined);
+    await resolveModel(call, scopeOf()).catch(() => undefined);
+
+    expect(ask.asked.map((question) => question.origin)).toEqual([
+      gateway,
+      "https://eu.gateway.example.com",
+    ]);
+  });
+});

@@ -54,11 +54,12 @@ export const keyOriginWaitMs = 10 * 60 * 1000;
 
 /**
  * `resolve`, with Studio's question for a key that may not go to its provider's address
- * (requirement `cli.key-origin-ask`). When `resolve` refuses with `key-origin-not-allowed` and
+ * (requirements `cli.key-origin-ask` and `cli.key-origin-ask-refused-once`). When `resolve` refuses with `key-origin-not-allowed` and
  * `mayAsk` says yes, it asks once. An `allowed` or `not-allowed` answer goes to the run's log as
  * `key-origin.answered`. After `allowed` it calls `resolve` again, once, with every check made
- * again; after `not-allowed`, a stop or no answer in time, it throws the refusal. Any other
- * error is thrown as it is.
+ * again; after `not-allowed`, a stop or no answer in time, it throws the refusal. Once a person
+ * said `not-allowed` in a run, the same key and address in that run fail with the refusal and
+ * nobody is asked again. Any other error is thrown as it is.
  *
  * @throws what `resolve` throws, and the refusal when the person didn't allow the address
  */
@@ -66,32 +67,58 @@ export function askingModelResolver(
   resolve: (request: ChatTurnRequest, scope?: ModelScope) => Promise<ResolvedModel>,
   options: KeyOriginAskOptions,
 ): (request: ChatTurnRequest, scope?: ModelScope) => Promise<ResolvedModel> {
+  const refusals = new RunRefusals();
   return async (request, scope) => {
     try {
       return await resolve(request, scope);
     } catch (error) {
-      if (!(await askedAndAllowed(error, scope, options))) throw error;
+      if (!(await askedAndAllowed(error, scope, options, refusals))) throw error;
       return await resolve(request, scope);
     }
   };
 }
 
 /**
+ * The key and address pairs a person refused, per run, so a run asks about each pair at most
+ * once (UX checklist on HAL-11873: "After a refusal in the same run, not asked again either").
+ * A call outside a run (a chat turn) has no run to remember it in, and is never remembered.
+ */
+class RunRefusals {
+  readonly #refused = new Set<string>();
+
+  has(runId: string | undefined, refused: Omit<KeyOriginQuestion, "runId">): boolean {
+    return runId !== undefined && this.#refused.has(RunRefusals.#id(runId, refused));
+  }
+
+  add(runId: string | undefined, refused: Omit<KeyOriginQuestion, "runId">): void {
+    if (runId !== undefined) this.#refused.add(RunRefusals.#id(runId, refused));
+  }
+
+  // JSON keeps the parts apart, whatever characters a key's name holds.
+  static #id(runId: string, { key, origin }: Omit<KeyOriginQuestion, "runId">): string {
+    return JSON.stringify([runId, key, origin]);
+  }
+}
+
+/**
  * Whether `error` is a refusal the person was asked about and allowed. Writes the answer, if
- * there was one, to the run's log.
+ * there was one, to the run's log, and remembers a `not-allowed` for the run.
  */
 async function askedAndAllowed(
   error: unknown,
   scope: ModelScope | undefined,
   options: KeyOriginAskOptions,
+  refusals: RunRefusals,
 ): Promise<boolean> {
   const refused = refusedAddress(error);
   if (refused === undefined || scope?.stop?.stopped === true) return false;
+  if (refusals.has(scope?.runId, refused)) return false;
   if (!(await options.mayAsk(scope))) return false;
   const question = scope === undefined ? refused : { ...refused, runId: scope.runId };
   const answer = await answerOf(question, scope, options);
   if (answer === undefined) return false;
   await scope?.log?.append({ type: "key-origin.answered", ...refused, answer });
+  if (answer === "not-allowed") refusals.add(scope?.runId, refused);
   return answer === "allowed";
 }
 
