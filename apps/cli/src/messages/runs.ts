@@ -215,19 +215,22 @@ export const runsMessages = defineMessages("runs", {
   /**
    * HAL-15772: `runs show`'s line for a call to a tool labelled `send` that the run refused
    * because its connector may not send (`tool.refused` with `sending-off`), so the person sees
-   * why nothing was sent. Team wording, as HAL-2282 allows.
+   * why nothing was sent. Its cause in the words of the failed call's line (`failed-call-words.ts`,
+   * C645 on HAL-15897), followed on the same line by {@link showSendingOffFix} or
+   * {@link showSendingOffNoFix}. Team wording, as HAL-2282 allows.
    */
   showSendingOff: (tool: string, connector: string) =>
-    phrase`${markPart("needsYou")} The call to ${tool} was refused: sending is off for ${connector}, so nothing was sent.`,
+    phrase`${markPart("needsYou")} The call to ${tool} (${connector}) wasn't made, because sending is turned off.`,
   /**
-   * HAL-15891 (C646): the fix under {@link showSendingOff} for a Google connector, the command
+   * HAL-15891 (C646): the fix after {@link showSendingOff} for a Google connector, the command
    * that switches its sending on, as the model's refusal names it. `connector` is the id from
    * the workspace's own file, as one shell word. Team wording, as HAL-2282 allows.
    */
   showSendingOffFix: (connector: string, dir?: string) =>
-    phrase`To switch it on, run ${suggestedCommand("google allow-sending", dir, `${shellWord(connector)} on`)}`,
-  /** The line under {@link showSendingOff} for any other connector, which has no such command yet. */
-  showSendingOffNoFix: () => phrase`The halonic command can't switch sending on for it yet.`,
+    phrase`To switch it on, run ${suggestedCommand("google allow-sending", dir, `${shellWord(connector)} on`)}.`,
+  /** The sentence after {@link showSendingOff} for any other connector, which has no such command yet. */
+  showSendingOffNoFix: (connector: string) =>
+    phrase`Halonic can't switch it on for ${connector} yet.`,
 });
 
 function notWaitingInWords(why: NotWaiting): string {

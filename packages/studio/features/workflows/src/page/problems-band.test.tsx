@@ -259,7 +259,10 @@ verifies("workflows.start.start-run", () => {
     expect(line?.textContent).toBe(
       "Writer's agent step short uses the model alias tiny, which this workspace doesn't have. Add it in Models. Open Models",
     );
-    expect(line?.querySelector("code")?.textContent).toBe("tiny");
+    expect([...(line?.querySelectorAll("code") ?? [])].map((code) => code.textContent)).toEqual([
+      "short",
+      "tiny",
+    ]);
     expect(buttonNamed(page, "Open Writer")).toBeUndefined();
     await act(async () => buttonNamed(page, "Open Models")?.click());
     expect(openModels).toHaveBeenCalledWith();

@@ -188,7 +188,7 @@ function MissingAliasLine({
 }
 
 /**
- * "*Writer*'s agent step *short* uses the model alias `tiny`, which this workspace doesn't have.
+ * "*Writer*'s agent step `short` uses the model alias `tiny`, which this workspace doesn't have.
  * Add it in Models." · **Open Models** (C605). The agent's page can't change an agent step's model,
  * so the line leads to Models, where the alias can be added.
  */
@@ -204,7 +204,9 @@ function MissingStepAliasLine({
   const words = pageWords.cantRun;
   return (
     <span className="block" data-testid="missing-alias">
-      {words.missingStepAlias.before(agent.name, agentStep)}
+      {words.missingStepAlias.before(agent.name)}
+      <code className="font-mono">{agentStep}</code>
+      {words.missingStepAlias.between}
       <code className="font-mono">{alias}</code>
       {words.missingStepAlias.after}
       <LineAction label={words.openModels} onClick={openModels} />

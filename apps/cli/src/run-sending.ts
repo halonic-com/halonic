@@ -2,7 +2,7 @@
 // saved with `halonic google allow-sending`, which the runs of `run`,
 // `runs send`, `serve` and `routines watch` read at the engine's side-effect
 // boundary. Sending stays off without it. A refusal goes to the model as the
-// call's result, so it says how a person switches sending on, where the CLI
+// call's result, so it says how a person switches sending on, where Halonic
 // can.
 
 import type { SendingSettings } from "@halonicjs/app";
@@ -13,14 +13,15 @@ import { isGoogleConnector } from "./connector-file.ts";
  * The sending settings of the engine's runs on `workspace`: `saved`, the
  * choices in the profile, with the next step added to a refusal's reason.
  * For a Google connector that is the `allow-sending` command; any other
- * connector can't be switched on in the CLI yet. A refusal keeps the
+ * connector can't be switched on by Halonic yet. The next step is its own
+ * sentence, since the model often passes it on to the person as it is (C645). A refusal keeps the
  * store's error, which the engine passes to the host, never to the model.
  *
  * @example
  * const sending = runSendingSettings(openConnectionSettings(setup), workspace);
  * await sending.checkSending({ location: "/workspaces/acme", connector: "mailbox" });
- * // { allowed: false, reason: 'sending is off for the connector "mailbox": to switch it on,
- * //   run halonic google allow-sending mailbox on' }
+ * // { allowed: false, reason: 'sending is off for the connector "mailbox". To switch it on,
+ * //   run halonic google allow-sending mailbox on.' }
  */
 export function runSendingSettings(
   saved: SendingSettings,
@@ -30,7 +31,7 @@ export function runSendingSettings(
     checkSending: async (key) => {
       const check = await saved.checkSending(key);
       if (check.allowed) return check;
-      return { ...check, reason: `${check.reason}: ${nextStep(workspace, key.connector)}` };
+      return { ...check, reason: `${check.reason}. ${nextStep(workspace, key.connector)}` };
     },
   };
 }
@@ -39,7 +40,7 @@ export function runSendingSettings(
 function nextStep(workspace: LoadedWorkspace, connector: string): string {
   // Only a Google connector's id from the workspace's own file goes into the command.
   if (isGoogleConnector(workspace, connector)) {
-    return `to switch it on, run halonic google allow-sending ${connector} on`;
+    return `To switch it on, run halonic google allow-sending ${connector} on.`;
   }
-  return "the CLI can't switch it on yet";
+  return "Halonic can't switch it on yet.";
 }

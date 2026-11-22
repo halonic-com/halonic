@@ -100,7 +100,8 @@ function aliasSentence({
   }
   const { missingAlias, missingStepAlias } = pageWords.cantRun;
   if (agentStep !== undefined) {
-    return `${missingStepAlias.before(agent.name, agentStep)}${modelAlias}${missingStepAlias.after}`;
+    const { before, between, after } = missingStepAlias;
+    return `${before(agent.name)}${agentStep}${between}${modelAlias}${after}`;
   }
   return `${missingAlias.before(agent.name)}${modelAlias}${missingAlias.after(agent.name)}`;
 }
