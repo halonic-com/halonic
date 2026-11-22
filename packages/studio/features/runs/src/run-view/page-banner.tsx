@@ -89,7 +89,7 @@ export function PageBanner({
   readonly failedChild?: FailedChildView | undefined;
   /**
    * A guided run's **Pick another model** (`guided-run.ts`): a failed banner offers it with
-   * **Try again**, first and with a line of its own when the model runs on this computer.
+   * **Run again**, first and with a line of its own when the model runs on this computer.
    */
   readonly pickAnotherModel?: (() => void) | undefined;
 }) {
@@ -299,12 +299,7 @@ function Banner({
     banner.tone === "danger" &&
     banner.noRunAgain !== true &&
     runAgain !== undefined
-      ? [
-          {
-            label: guided === undefined ? runPageWords.runAgain : guidedRunWords.tryAgain,
-            onClick: runAgain.start,
-          },
-        ]
+      ? [{ label: runPageWords.runAgain, onClick: runAgain.start }]
       : [];
   const pick =
     guided === undefined

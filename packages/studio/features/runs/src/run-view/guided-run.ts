@@ -1,6 +1,6 @@
 // The first run's additions to a run that waits on a model or fails (first-run-flow 3.4, approved
 // on HAL-7993): the waiting line escalates on a slow model, sooner for a key than for a model on
-// this computer, and a failed run offers **Pick another model** beside **Try again**. A page shows
+// this computer, and a failed run offers **Pick another model** beside **Run again**. A page shows
 // them only when a guide gives it Pick another model (`WorkflowGuideRun`); every other run is as
 // it always is. The escalations change the one line's sentence and its ways out, never add a
 // second part (first-run-progress 2, HAL-13409).
@@ -11,11 +11,11 @@ import type { ProviderKind } from "../api.ts";
 /** What a guided run says when its model is slow or failed. */
 export const guidedRunWords = {
   slowKey: "This is taking longer than usual. The model is still working.",
-  slowLocal: "Loading the model. The first run is slow.",
-  stillNoAnswer: "Still no answer. You can keep waiting, or use another model. Nothing is lost.",
+  /** A cold model on a laptop can need minutes for its first step, so the line says so (C672 #3). */
+  slowLocal: "Loading the model. The first run can take a few minutes.",
+  /** The same verb as the button it offers, so the line and the button read as one (C672 #3). */
+  stillNoAnswer: "Still no answer. You can keep waiting, or pick another model. Nothing is lost.",
   pickAnotherModel: "Pick another model",
-  /** A failed guided run's Run again: the run is the same, so it is tried again. */
-  tryAgain: "Try again",
   tooSmall: (agent: string) =>
     `This model may be too small for the ${agent}. Try a larger one, or use Sample answers.`,
 };

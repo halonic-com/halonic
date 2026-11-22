@@ -60,6 +60,8 @@ export class FirstRun {
    * run would put the steps back where it ended.
    */
   #before: string | undefined;
+  /** The run going when the runs last changed, so a new one tells even when the steps stay. */
+  #lastRunningId: string | undefined;
 
   constructor(
     runs: FirstRunRuns,
@@ -73,7 +75,10 @@ export class FirstRun {
     this.#now = now;
     this.#seen = device.read();
     this.#state = parseFirstRun(this.#seen);
-    this.#stopWatching = runs.subscribe(() => void this.#follow());
+    this.#stopWatching = runs.subscribe(() => {
+      this.#tellNewRunning();
+      void this.#follow();
+    });
     // Open demo on a folder that is open already marks it without opening it again.
     this.#stopWatchingSample = sample.onMarkedSample?.(() => this.notice()) ?? (() => {});
     // Only reads: starting the first run here on another window's change would race Start over's
@@ -260,6 +265,17 @@ export class FirstRun {
 
   #tell(): void {
     for (const listener of [...this.#listeners]) listener();
+  }
+
+  /**
+   * Tells when another run is going: a run started from the page's Run form or the CLI moves no
+   * step while the first run is at Run, but the bar's **Cancel run** is its way out.
+   */
+  #tellNewRunning(): void {
+    const runningId = this.runningId;
+    if (runningId === this.#lastRunningId) return;
+    this.#lastRunningId = runningId;
+    this.#tell();
   }
 
   /** Moves the steps by the newest run of Support reply since the first run began here. */

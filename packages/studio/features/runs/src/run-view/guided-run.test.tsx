@@ -68,7 +68,7 @@ const buttonsOf = (root: HTMLElement) =>
   [...root.querySelectorAll("button")].map((button) => button.textContent);
 
 const stillNoAnswer =
-  "Still no answer. You can keep waiting, or use another model. Nothing is lost.";
+  "Still no answer. You can keep waiting, or pick another model. Nothing is lost.";
 
 verifies("runs.run-view.guided-run", () => {
   describe("the waiting line on a slow model", () => {
@@ -98,7 +98,9 @@ verifies("runs.run-view.guided-run", () => {
 
     it("says a model on this computer is loading, and waits about 3 minutes to offer another", () => {
       const root = card("ollama", running, { seconds: 120, pickAnotherModel: vi.fn() });
-      expect(root.textContent).toContain("Loading the model. The first run is slow.");
+      expect(root.textContent).toContain(
+        "Loading the model. The first run can take a few minutes.",
+      );
       expect(buttonsOf(root)).not.toContain("Pick another model");
       expect(modelEscalation(true, 180_000)).toEqual({
         reason: stillNoAnswer,
@@ -121,11 +123,13 @@ verifies("runs.run-view.guided-run", () => {
   });
 
   describe("a failed run", () => {
-    it("offers Try again, then Pick another model, for a model with a key", () => {
+    it("offers Run again, then Pick another model, for a model with a key", () => {
       const root = card("anthropic", failedWith("error"), { pickAnotherModel: vi.fn() });
       const buttons = buttonsOf(root);
-      expect(buttons.indexOf("Try again")).toBeLessThan(buttons.indexOf("Pick another model"));
-      expect(buttons).not.toContain("Run again");
+      // One verb for starting it again, as the guide card's after Cancel run (C672 #3).
+      expect(buttons.filter((label) => label === "Run again")).toHaveLength(1);
+      expect(buttons.indexOf("Run again")).toBeLessThan(buttons.indexOf("Pick another model"));
+      expect(buttons).not.toContain("Try again");
       expect(root.textContent).not.toContain("too small");
     });
 
@@ -137,14 +141,14 @@ verifies("runs.run-view.guided-run", () => {
         "This model may be too small for the Sorter. Try a larger one, or use Sample answers.",
       );
       const buttons = buttonsOf(root);
-      expect(buttons.indexOf("Pick another model")).toBeLessThan(buttons.indexOf("Try again"));
+      expect(buttons.indexOf("Pick another model")).toBeLessThan(buttons.indexOf("Run again"));
     });
 
     it("doesn't call a model too small when it never answered", () => {
       const root = card("ollama", failedWith("model-unreachable"), { pickAnotherModel: vi.fn() });
       expect(root.textContent).not.toContain("too small");
       const buttons = buttonsOf(root);
-      expect(buttons.indexOf("Try again")).toBeLessThan(buttons.indexOf("Pick another model"));
+      expect(buttons.indexOf("Run again")).toBeLessThan(buttons.indexOf("Pick another model"));
       expect(
         tooSmallAgent("model-out-of-memory", { agent: "sorter", provider: "ollama", local: true }),
       ).toBeUndefined();

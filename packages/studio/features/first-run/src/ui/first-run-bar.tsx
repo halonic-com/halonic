@@ -18,12 +18,15 @@ export function FirstRunBar({ context }: StripProps) {
   const start = context.services.get(FirstRunStartService);
   useEffect(() => firstRun.notice(), [firstRun]);
   const state = useFirstRunState(firstRun);
+  const cancelled = useLastCancelled(firstRun, start);
   // On a phone the strip can wrap, and a rail would start a line, so it has none there.
   const rails = usePresentation() !== "phone";
   if (state.kind !== "on" || !firstRun.isOnHere) {
     return null;
   }
   const wayOut = barWayOut(state, start.canCancel);
+  // Said at Run until another run starts; the button goes as soon as the engine answers.
+  const saysCancelled = cancelled && state.step === "run" && state.failed !== true;
   const backToSupportReply = () =>
     context.openItem?.({ kind: "workflow", hub: SUPPORT_HUB, id: SUPPORT_WORKFLOW });
   return (
@@ -51,15 +54,22 @@ export function FirstRunBar({ context }: StripProps) {
           </Button>
         </div>
       ) : null}
-      {wayOut === "cancel" ? <CancelRun start={start} onCancelled={backToSupportReply} /> : null}
+      {wayOut === "cancel" && !saysCancelled ? (
+        <CancelRun start={start} onCancelled={backToSupportReply} />
+      ) : null}
+      {/* Always there, so a screen reader hears the line when it fills. */}
+      <p role="status" className={saysCancelled ? "ms-auto shrink-0 text-fg-muted" : "sr-only"}>
+        {saysCancelled ? barWords.cancelled : ""}
+      </p>
     </section>
   );
 }
 
 /**
  * **Cancel run** (first-run-flow 3.4, `first-run.run`): ends the run as cancelled and goes back to
- * Support reply's page, where the guide card reads **Run again**. Busy until the engine answers;
- * when it can't cancel, the bar says so and the button stays.
+ * Support reply's page, where the guide card reads **Run again**, and the bar says "Run
+ * cancelled." in its place. Busy until the engine answers; when it can't cancel, the bar says so
+ * and the button stays.
  */
 function CancelRun({
   start,
@@ -102,6 +112,21 @@ export function useFirstRunState(firstRun: FirstRun) {
   return useSyncExternalStore(
     (listener) => firstRun.subscribe(listener),
     () => firstRun.state,
+  );
+}
+
+/** Whether **Cancel run** ended the last run, read again at every change, a new run's too. */
+function useLastCancelled(firstRun: FirstRun, start: FirstRunStart) {
+  return useSyncExternalStore(
+    (listener) => {
+      const stopRun = firstRun.subscribe(listener);
+      const stopStart = start.subscribe(listener);
+      return () => {
+        stopRun();
+        stopStart();
+      };
+    },
+    () => start.lastCancelled,
   );
 }
 
