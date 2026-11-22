@@ -111,6 +111,14 @@ export function goneLine(runId: string): string {
   return `Run ${shortRunId(runId)}'s changes were deleted outside Halonic, so they can't be shown or accepted.`;
 }
 
+/**
+ * Above the changes once a **Remove from Inbox** found them there again and the page read them
+ * (C711 4): nothing failed for the person, so it isn't a danger line.
+ */
+export function changesBackLine(runId: string): string {
+  return `Run ${shortRunId(runId)}'s changes are there again. Review them below.`;
+}
+
 /** The button that takes a run whose changes are gone out of Needs you; nothing on disk changes. */
 export const removeLabel = "Remove from Inbox";
 

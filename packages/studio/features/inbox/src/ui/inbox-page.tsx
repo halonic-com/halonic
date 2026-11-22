@@ -420,6 +420,10 @@ function OpenCard({
         facts={facts}
         decisions={proposals}
         onDecided={() => void inbox.refresh()}
+        readAgain={async () => {
+          await inbox.refresh();
+          if (inbox.state.error !== undefined) throw inbox.state.error;
+        }}
         onOpenRun={openThisRun}
       />
     );
