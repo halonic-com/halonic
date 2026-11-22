@@ -22,13 +22,27 @@ verifies("remote.phone-pairing-problems", () => {
   });
 
   it("says the code no longer works, with the Allow reason after the 2-minute wait", () => {
-    for (const kind of ["code-ended", "rate-limited", "handshake-failed"] as const) {
-      expect(problemScreen({ kind }, scanned)).toEqual({ screen: "ended", noAllow: false });
-    }
+    expect(problemScreen({ kind: "code-ended" }, scanned)).toEqual({
+      screen: "ended",
+      noAllow: false,
+    });
+    expect(problemScreen({ kind: "handshake-failed" }, onWifi)).toEqual({
+      screen: "ended",
+      noAllow: false,
+    });
     expect(problemScreen({ kind: "timeout" }, onWifi)).toEqual({
       screen: "ended",
       noAllow: true,
     });
+  });
+
+  it("says Too many tries for the computer's rate limit, on both routes (G25)", () => {
+    expect(problemScreen({ kind: "rate-limited" }, scanned)).toEqual({ screen: "rateLimited" });
+    expect(problemScreen({ kind: "rate-limited" }, onWifi)).toEqual({ screen: "rateLimited" });
+  });
+
+  it("says Can't confirm when another computer answers a scanned code (G26)", () => {
+    expect(problemScreen({ kind: "handshake-failed" }, scanned)).toEqual({ screen: "cantConfirm" });
   });
 
   it("tells a code used first apart from Don't allow", () => {

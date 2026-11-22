@@ -34,27 +34,28 @@ export type PairingStop = TunnelPairingProblem | Exclude<PairingOutcome, { kind:
  * - `used`: This code was already used.
  * - `refused`: The computer didn't allow this phone.
  * - `unreachable`: Can't reach the computer; `wifi` when it was found on this Wi-Fi.
+ * - `rateLimited`: Too many tries on the computer this minute; Try again sends the same code (G25).
+ * - `cantConfirm`: on the scanned route, the computer that answered doesn't hold the QR code's
+ *   key (G26). A typed code carries no key, so there a failed handshake reads as `ended`.
  */
 export type PairingProblemScreen =
   | { readonly screen: "typedWrong"; readonly triesLeft: number }
   | { readonly screen: "ended"; readonly noAllow: boolean }
-  | { readonly screen: "used" | "refused" }
+  | { readonly screen: "used" | "refused" | "rateLimited" | "cantConfirm" }
   | { readonly screen: "unreachable"; readonly wifi: boolean };
 
-/**
- * Which problem screen a pairing stop shows, for the route it started on. A failed handshake
- * and too many tries read as "no longer works": the fix is the same, a new code on the
- * computer (decided on HAL-12248, no new words).
- */
+/** Which problem screen a pairing stop shows, for the route it started on. */
 export function problemScreen(stop: PairingStop, from: PairingFrom): PairingProblemScreen {
   switch (stop.kind) {
     case "wrong-code":
       return from.route === "typed"
         ? { screen: "typedWrong", triesLeft: stop.triesLeft }
         : { screen: "ended", noAllow: false };
-    case "code-ended":
-    case "rate-limited":
     case "handshake-failed":
+      return from.route === "qr" ? { screen: "cantConfirm" } : { screen: "ended", noAllow: false };
+    case "rate-limited":
+      return { screen: "rateLimited" };
+    case "code-ended":
     case "unreadable":
       return { screen: "ended", noAllow: false };
     case "timeout":

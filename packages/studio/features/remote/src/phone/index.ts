@@ -3,6 +3,8 @@
  * not in the desktop shell, so nothing under `src/phone/` imports `@halonicjs/studio-shell`
  * (`phone-boundary.test.ts`).
  */
+
+export { pairWords } from "./pair-words.ts";
 export {
   agentsAsOfText,
   asOfText,
