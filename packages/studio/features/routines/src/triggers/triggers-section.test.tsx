@@ -294,7 +294,7 @@ verifies("routines.triggers.add-trigger-from-page", () => {
     />
   );
 
-  it("shows an agent's Prompt at once, focused, when asked to start adding", async () => {
+  it("focuses an agent's Add trigger, described by the note, with no Prompt yet, when asked to start adding", async () => {
     const made: (string | undefined)[] = [];
     const host = hostWith([], async (_owner, prompt) => {
       made.push(prompt);
@@ -302,8 +302,15 @@ verifies("routines.triggers.add-trigger-from-page", () => {
     });
     const page = await show(section(host, agent, SECTION_ADD_STEP));
 
+    const add = button(page, "Add trigger");
+    const note = page.querySelector(`[id="${add?.getAttribute("aria-describedby")}"]`);
+    expect(page.querySelector("textarea")).toBeNull();
+    expect(document.activeElement).toBe(add);
+    expect(note?.textContent).toContain("Halonic can't run an agent on its own yet");
+    expect(made).toEqual([]);
+
+    await press(add);
     const field = page.querySelector("textarea");
-    expect(field).not.toBeNull();
     expect(document.activeElement).toBe(field);
     expect(page.textContent).toContain("Say what Writer should do.");
     expect(made).toEqual([]);

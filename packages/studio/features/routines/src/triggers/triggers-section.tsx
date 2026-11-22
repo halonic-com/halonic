@@ -48,7 +48,8 @@ export interface TriggersViewProps {
   readonly openRoutine?: (hubId: string, id: string, step?: string) => void;
   /**
    * Set when the page asks the section to start adding, such as the agent map's **Add trigger**:
-   * the section then does what its own Add trigger does, once, so an agent's Prompt shows at once.
+   * on a workflow the section then does what its own Add trigger does, once; on an agent it focuses
+   * its Add trigger, so the person reads that Halonic can't run the agent on its own yet first.
    */
   readonly startAdding?: boolean;
 }
@@ -61,8 +62,8 @@ export interface TriggersViewProps {
  * agent's prompt, since that is the agent's real task, and makes the routine only once one is typed.
  * Above it, an agent's section says that a routine can't run an agent yet
  * (`routines.triggers.agent-cant-run-note`), so nobody writes that task before learning it.
- * Opened with `startAdding`, it presses its own Add trigger once it is drawn
- * (`routines.triggers.add-trigger-from-page`).
+ * Opened with `startAdding`, it presses its own Add trigger once it is drawn on a workflow, and
+ * focuses it on an agent (`routines.triggers.add-trigger-from-page`).
  */
 export function TriggersView({ host, owner, openRoutine, startAdding = false }: TriggersViewProps) {
   const { load, retry } = useTriggerRows(host, owner);
@@ -75,7 +76,10 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
   const promptField = useRef<HTMLTextAreaElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const noteId = useId();
-  const isAgent = owner.kind === "agent";
+  // Halonic can't run an agent on its own yet (`routines.triggers.agent-cant-run-note`). The note,
+  // its tie to Add trigger and what the page's add step does all follow this one flag, so the add
+  // step opens an agent's Prompt straight away again once the note goes.
+  const cantRunOnItsOwn = owner.kind === "agent";
 
   useEffect(() => {
     if (asking !== undefined) promptField.current?.focus();
@@ -116,8 +120,13 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
   };
 
   // Once per drawn section, so a second run of the effect can't make a workflow's routine twice.
+  // An agent's Prompt waits for the person's own press: focus lands on Add trigger, which the note
+  // describes, so nobody writes a task for a routine that can't start before reading why (C622).
   const startedAdding = useRef(false);
-  const addOnStart = useEffectEvent(() => void add());
+  const addOnStart = useEffectEvent(() => {
+    if (cantRunOnItsOwn) addButton.current?.focus();
+    else void add();
+  });
   useEffect(() => {
     if (!startAdding || startedAdding.current) return;
     startedAdding.current = true;
@@ -138,7 +147,7 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
   return (
     <div className="flex flex-col gap-2">
       <Rows load={load} owner={owner} retry={retry} openRoutine={openRoutine} />
-      {isAgent && (
+      {cantRunOnItsOwn && (
         <p id={noteId} className="text-small text-fg-muted">
           {triggersWords.agentCantRun}
         </p>
@@ -165,7 +174,7 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
         <Button
           ref={addButton}
           variant={asking === undefined ? "secondary" : "primary"}
-          {...(isAgent && { "aria-describedby": noteId })}
+          {...(cantRunOnItsOwn && { "aria-describedby": noteId })}
           busy={adding}
           onClick={add}
         >
