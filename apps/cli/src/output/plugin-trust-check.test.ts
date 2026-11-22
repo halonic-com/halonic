@@ -237,3 +237,35 @@ verifies("cli.commands.plugin.add", () => {
     expect(fromLines()).toEqual(["Folder", `  ${folder}`, ""]);
   });
 });
+
+// "Changes things" is wider than a row's first column (C626 #1, HAL-15752).
+verifies("cli.commands.plugin.add", () => {
+  it("lines up every tool past the widest group heading shown", () => {
+    const manifest = weatherManifest.replace(
+      "risk: read, untrusted: true }\nlocalTools",
+      "risk: read, untrusted: true }\n    - { name: save-favourite, description: Saves a place., risk: write, untrusted: false }\nlocalTools",
+    );
+    const parsed = parseFile("plugin", manifest);
+    if (!parsed.ok) throw new Error(parsed.error.map((problem) => problem.message).join("; "));
+    const content = pluginTrustContent({
+      plugin: parsed.value.value,
+      files: [{ path: "plugin.yaml", sha256: "a".repeat(64) }],
+    });
+
+    const lines = pluginTrustCheckLines(content, folder).map(plainText);
+
+    expect(lines.filter((line) => /forecast$|save-favourite$/u.test(line))).toEqual([
+      "  Reads            forecast",
+      "  Changes things   save-favourite",
+    ]);
+  });
+
+  it("asks only whether to trust it when a yes won't turn it on", () => {
+    const firstLine = (turnsOn: boolean) =>
+      pluginTrustCheckLines(weatherContent(), folder, undefined, undefined, turnsOn).map(
+        plainText,
+      )[0];
+    expect(firstLine(true)).toBe("Trust Weather and turn it on?");
+    expect(firstLine(false)).toBe("Trust Weather?");
+  });
+});
