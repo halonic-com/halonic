@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16200, Liam's yes on HAL-16186 (22 Nov); Liam signs this note in review on HAL-16200
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:k6GNbDYbt8zZcWf7S2KDXS8VbtfUeXsLM2Ebiww9zVM6RRZKm6b+6PsztmGNog51J1dmhoGGfJ474QuVQIuVDg==
 
 Settings › Agent sandbox showed `setup-conflict`, `distro-missing` and
 `runtime-missing` as Needs repair, with a **Repair the sandbox** button. That
