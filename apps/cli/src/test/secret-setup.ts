@@ -14,8 +14,11 @@ export const fakeHasher: PasswordHasher = {
   needsRehash: () => false,
 };
 
-/** A profile in a temporary folder, with the secret setup over it. */
-export async function secretFixture(stdin?: SecretSetup["stdin"]) {
+/** A profile in a temporary folder, with the secret setup over it; no `HALONIC_SECRET_` variables unless given. */
+export async function secretFixture(
+  stdin?: SecretSetup["stdin"],
+  environment: NonNullable<SecretSetup["environment"]> = {},
+) {
   const folder = await mkdtemp(join(tmpdir(), "halonic-secret-"));
   const profile = {
     platform: process.platform === "win32" ? ("windows" as const) : ("linux" as const),
@@ -25,6 +28,7 @@ export async function secretFixture(stdin?: SecretSetup["stdin"]) {
   const setup: SecretSetup = {
     profile,
     hasher: fakeHasher,
+    environment,
     ...(stdin === undefined ? {} : { stdin }),
   };
   return {

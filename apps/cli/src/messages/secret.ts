@@ -23,7 +23,10 @@ export const secretMessages = defineMessages("secret", {
   signedOut: () => phrase`  Every browser and phone that was signed in has to sign in again.`,
   removed: (name: string) => phrase`${markPart("done")} Removed ${name}.`,
   /** `secret remove` of a name no secret is saved under. */
-  notSaved: (name: string) => phrase`${name} wasn't set. Nothing changed.`,
+  notSaved: (name: string) => phrase`No secret ${name} is saved. Nothing changed.`,
+  /** After `notSaved`: the variable runs read the secret from, which `secret remove` can't clear. */
+  stillInVariable: (variable: string, name: string) =>
+    phrase`  ${variable} is still set, so runs still read ${name} from it. Unset it to remove ${name}.`,
   noSecrets: () => phrase`No secrets are saved.`,
 
   setNeedsName: () => phrase`halonic secret set needs the secret's name.`,

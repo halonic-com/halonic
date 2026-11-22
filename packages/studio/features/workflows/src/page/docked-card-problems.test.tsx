@@ -25,12 +25,12 @@ const report = {
 const typo: WorkflowProblem = {
   severity: "error",
   code: "unknown-agent",
-  message: '"write" uses unknown agent "reportr". Did you mean "reporter"?',
+  message: `"write" uses the agent "reportr", which its hub doesn't have. Did you mean "reporter"?`,
   stepId: "write",
 };
 
 /** The message as Configuration › Problems says it: the step by its title. */
-const typoSentence = '"Write the report" uses unknown agent "reportr". Did you mean "reporter"?';
+const typoSentence = `"Write the report" uses the agent "reportr", which its hub doesn't have. Did you mean "reporter"?`;
 
 /** The page for `report`, with these problems found in it, on a host that can change steps. */
 async function open(problems: readonly WorkflowProblem[]) {

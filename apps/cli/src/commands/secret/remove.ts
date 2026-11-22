@@ -1,8 +1,11 @@
 // `halonic secret remove <name>`: removes a saved secret. A thin command over
 // `SecretService.remove`. Removing a name that isn't saved succeeds, so a
 // second run finishes what a first left undone, but it says that nothing was
-// there, so "Removed" never stands for nothing (C605 #6c).
+// saved, so "Removed" never stands for nothing (C605 #6c). A
+// `HALONIC_SECRET_<NAME>` variable still holding it is named, because runs
+// read it from there and remove can't clear it (C631 P1).
 
+import { EnvSecrets, secretVariableName } from "@halonicjs/adapter-env-secrets";
 import {
   type CommandContext,
   type CommandInput,
@@ -10,6 +13,7 @@ import {
   UsageError,
 } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
+import type { Phrase } from "../../messages/phrase.ts";
 import { secretMessages } from "../../messages/secret.ts";
 import { printable } from "../../output/printable.ts";
 import { openSecretService, type SecretSetup } from "../../secret-host.ts";
@@ -34,7 +38,7 @@ export async function removeSecret(
   if ("notSaved" in change) {
     return {
       exitCode: exitCode.ok,
-      lines: [secretMessages.notSaved(printable(name)).phrase],
+      lines: await notSavedLines(name, setup),
       json: { name, removed: false },
     };
   }
@@ -46,4 +50,14 @@ export async function removeSecret(
     lines: [secretMessages.removed(printable(name)).phrase],
     json: { name, removed: true },
   };
+}
+
+/** "No secret … is saved.", and the variable that still holds it, when one does. */
+async function notSavedLines(name: string, setup: SecretSetup): Promise<Phrase[]> {
+  const lines = [secretMessages.notSaved(printable(name)).phrase];
+  const environment = setup.environment ?? process.env;
+  if ((await new EnvSecrets(environment).get(name)) !== null) {
+    lines.push(secretMessages.stillInVariable(secretVariableName(name), printable(name)).phrase);
+  }
+  return lines;
 }
