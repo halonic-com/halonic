@@ -155,6 +155,21 @@ verifies("workspace.trust-check-unfenced-yes", () => {
     expect(amber?.textContent).toBe("not in the sandbox");
   });
 
+  it("stacks the flag under the name without the dot in a phone-narrow row (C678)", () => {
+    render(review, []);
+
+    const name = [...dialog().querySelectorAll("code")].find(
+      (each) => each.textContent === "home-station",
+    );
+    const flag = name?.parentElement?.lastElementChild;
+    // The row is the container; under 24rem the flag takes its own line and the dot goes.
+    expect(name?.parentElement?.parentElement?.className.split(" ")).toContain("@container");
+    expect(flag?.className.split(" ")).toContain("@max-[24rem]:basis-full");
+    const dot = flag?.firstElementChild;
+    expect(dot?.textContent).toBe("· ");
+    expect(dot?.className.split(" ")).toContain("@max-[24rem]:hidden");
+  });
+
   it("asks nothing, and Trust passes no tick, without unfencedYes", () => {
     const trusted: boolean[] = [];
     const { unfencedYes: _, ...fenced } = review;
