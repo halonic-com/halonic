@@ -5,7 +5,11 @@ import type { JsonFields } from "../command.ts";
 import { plainText } from "../messages/phrase.ts";
 import { deployLiveLines, deployResult } from "./deploy-output.ts";
 
-function versionOf(number: number, commit: string, halonicVersion = "0.3.1"): DeployedVersion {
+function versionOf(
+  number: number,
+  commit: string | undefined,
+  halonicVersion = "0.3.1",
+): DeployedVersion {
   return { number, id: `v${number}`, commit, halonicVersion, liveSince: undefined };
 }
 
@@ -134,6 +138,22 @@ verifies("cli.deploy-output", () => {
     expect(plainText(first.lines[1] ?? [])).toBe("  Deployed commit 3f9c2e1 as version 1 in 38 s.");
   });
 
+  it("leaves out the commit when the host doesn't give it", () => {
+    const result = deployResult({ ...live, version: versionOf(2, undefined) }, facts);
+    const newer = deployResult(
+      { ...live, version: versionOf(3, undefined), previous: versionOf(2, undefined, "0.3.0") },
+      facts,
+    );
+
+    expect(plainText(result.lines[1] ?? [])).toBe(
+      "  Deployed version 2 in 38 s. Version 1 is kept: halonic deploy rollback web",
+    );
+    expect(plainText(newer.lines[1] ?? [])).toBe(
+      "  Deployed with Halonic 0.3.1 (was 0.3.0) as version 3 in 38 s. Version 2 is kept: halonic deploy rollback web",
+    );
+    expect(result.json["commit"]).toBeUndefined();
+  });
+
   it("prints every warning after the switch, the lost lock included, on stderr and in --json", () => {
     const lostLock =
       "The lock was lost after version 2 went live, so another deploy may have started. Check what's live with halonic deploy status web.";
@@ -159,5 +179,29 @@ verifies("cli.deploy-output", () => {
       "✓ web already runs commit 8d1a04b with Halonic 0.3.1. Nothing changed on Cloudflare.",
     ]);
     expect(result.json["unchanged"]).toBe(true);
+  });
+
+  it("says when nothing changed without the commit or Halonic version the host doesn't give", () => {
+    const unchanged = (commit: string | undefined, halonicVersion: string | undefined) =>
+      plainText(
+        deployResult(
+          {
+            outcome: "unchanged",
+            url: live.url,
+            version: { ...versionOf(2, commit), halonicVersion },
+          },
+          facts,
+        ).lines[0] ?? [],
+      );
+
+    expect(unchanged(undefined, undefined)).toBe(
+      "✓ web already runs this version. Nothing changed on Cloudflare.",
+    );
+    expect(unchanged("8d1a04b", undefined)).toBe(
+      "✓ web already runs commit 8d1a04b. Nothing changed on Cloudflare.",
+    );
+    expect(unchanged(undefined, "0.3.1")).toBe(
+      "✓ web already runs Halonic 0.3.1. Nothing changed on Cloudflare.",
+    );
   });
 });
