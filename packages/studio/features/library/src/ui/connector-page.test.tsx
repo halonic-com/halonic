@@ -60,6 +60,25 @@ describe("ConnectorPage", () => {
     expect(headings).toEqual(["How it connects", "Recent refusals"]);
   });
 
+  it("says under how it connects where an HTTP connector's secret is set", async () => {
+    hostList.mockResolvedValueOnce([
+      {
+        id: "notes",
+        name: "Notes",
+        state: "connected",
+        connection: {
+          kind: "http",
+          url: "https://notes.acme.example/mcp",
+          secrets: ["notes-token"],
+        },
+      },
+    ]);
+    const root = render(<ConnectorPage {...props("notes")} />);
+    await settled();
+    expect(root.textContent).toContain("Studio can't set notes-token.");
+    expect(root.textContent).toContain("halonic secret set notes-token");
+  });
+
   it.each([
     [
       "an MCP server over HTTP",
