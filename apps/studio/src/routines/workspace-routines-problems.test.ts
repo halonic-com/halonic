@@ -49,11 +49,13 @@ verifies("studio.workspace-routines", () => {
     ]);
   });
 
-  it("keeps the check's own words on the routine's page", async () => {
+  it("says the row's sentence on the routine's page too (HAL-15300)", async () => {
     const { host } = setup({}, [], { [routinePath]: mailFile("inbox") });
 
     const view = await host.read({ hubId: "acme", id: "weekly-report" });
 
-    expect(view.problems).toContain('Routine "weekly-report": unknown connector "inbox"');
+    expect(view.problems).toEqual([
+      "inbox isn't in this workspace. Pick another mailbox under When.",
+    ]);
   });
 });
