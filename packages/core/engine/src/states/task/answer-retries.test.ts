@@ -72,6 +72,7 @@ verifies("engine.task-answer-retries", () => {
         error: `${notAnOption} Tighten the agent's instructions or use a larger model.`,
         attempt: 1,
         prompt: retryPrompt,
+        rejected: { answer: "This is a refund." },
       },
     ]);
     expect(first.decisions[1]?.effects).toEqual([
@@ -95,7 +96,8 @@ verifies("engine.task-answer-retries", () => {
     const inputs = [start, answer("call-1", "This is a refund."), answer("call-2", "Refund")];
     const { log, run } = play(triage, inputs, agents);
     const today = play(triage, [start, answer("call-1", "Refund")], { triage: triageAgent() });
-    expect(log.at(-1)).toEqual({ ...today.log.at(-1), seq: log.length });
+    const rejected = { answer: "Refund" };
+    expect(log.at(-1)).toEqual({ ...today.log.at(-1), seq: log.length, rejected });
     expect(log.at(-1)).toMatchObject({
       type: "run.failed",
       reason: "answer-not-an-option",
@@ -126,6 +128,28 @@ verifies("engine.task-answer-retries", () => {
     expect(run?.status).toBe("running");
   });
 
+  it("logs a json answer it can't use in full, with what the parser said, and asks with that", () => {
+    const agents = { triage: { ...triageAgent(1), output: { type: "json" as const } } };
+    const cutOff = `{"kind": "refund", "note": "${"x".repeat(200)}`;
+    const { decisions } = play(triage, [start, answer("call-1", cutOff)], agents);
+    const retried = decisions[1]?.events[0];
+    const parseError = (retried as { rejected?: { parseError?: string } }).rejected?.parseError;
+    expect(parseError).toEqual(expect.any(String));
+    expect(retried).toMatchObject({ type: "agent.answer-retried", rejected: { answer: cutOff } });
+    expect(decisions[1]?.effects[0]).toHaveProperty(
+      "prompt",
+      expect.stringContaining(`The JSON parser said: ${parseError} Answer again`),
+    );
+  });
+
+  it("counts no answer to a json output as unusable on the second try too", () => {
+    const agents = { triage: { ...triageAgent(1), output: { type: "json" as const } } };
+    const inputs = [start, answer("call-1", "sure"), answer("call-2", null)];
+    const { log, run } = play(triage, inputs, agents);
+    expect(log.at(-1)).toMatchObject({ type: "run.failed", rejected: { answer: "" } });
+    expect(run?.status).toBe("failed");
+  });
+
   it("ignores a result for the first call that comes after the retry", () => {
     const agents = { triage: triageAgent(1) };
     const inputs = [start, answer("call-1", "This is a refund."), answer("call-1", "refund")];
@@ -141,6 +165,7 @@ verifies("engine.task-answer-retries", () => {
     const agents = { triage: triageAgent(retries) };
     const { log } = play(triage, [start, answer("call-1", "Refund")], agents);
     expect(log.at(-1)).toMatchObject({ type: "run.failed", reason: "answer-not-an-option" });
+    expect(log.at(-1)).not.toHaveProperty("rejected");
     expect(log.some((event) => event.type === "agent.answer-retried")).toBe(false);
   });
 });

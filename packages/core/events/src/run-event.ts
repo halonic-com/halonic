@@ -14,6 +14,7 @@ import type {
   LoggedInstructionPin,
   ModelSkipReason,
   ProviderText,
+  RejectedAnswer,
   RunFailureCause,
   RunFailureReason,
   RunKind,
@@ -432,6 +433,8 @@ export type RunEventBody =
    * (requirement `events.provider-text`); absent in older logs and when it gave none.
    * `cause`: the typed cause, from the error the failing call threw, when that error has a
    * kind (requirement `events.run-failed-cause`); absent in older logs. A screen reads it, never `error`.
+   * `rejected`: the unusable answer in full, when an agent whose `answerRetries` opts in fails the
+   * run with it (requirement `events.run-failed-rejected-answer`).
    */
   | {
       type: "run.failed";
@@ -446,6 +449,7 @@ export type RunEventBody =
       changed?: boolean;
       providerText?: ProviderText;
       cause?: RunFailureCause;
+      rejected?: RejectedAnswer;
     }
   /**
    * A Try it or Test run ended at a step it couldn't try, and nothing in it

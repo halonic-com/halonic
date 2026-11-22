@@ -27,6 +27,7 @@ export type {
   LoggedInstructionPin,
   ModelSkipReason,
   ProviderText,
+  RejectedAnswer,
   RunCatchUp,
   RunFailureCause,
   RunFailureKind,

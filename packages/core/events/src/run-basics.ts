@@ -324,6 +324,18 @@ export interface InstructionsRefusal {
 }
 
 /**
+ * An agent's answer the step couldn't use, in full, for an agent whose
+ * `answerRetries` opts in (requirements `events.agent-answer-retried` and
+ * `events.run-failed-rejected-answer`): `answer`, the text as the agent gave
+ * it, empty when it gave none, and `parseError`, what the JSON parser said
+ * when the output asks for `json`.
+ */
+export interface RejectedAnswer {
+  readonly answer: string;
+  readonly parseError?: string;
+}
+
+/**
  * Why a harness program didn't start, when the engine knows (requirement
  * `events.run-failed-harness-cause`): `not-installed` when the program isn't
  * on this computer, `signed-out` when it is but no one is signed in to it for

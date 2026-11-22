@@ -142,8 +142,9 @@ function finishAgent(
 ): StateStep {
   const { stateId, state, agents, scope } = context;
   const stepOutput = stepOutputOf(agents, pending.agent, state);
-  const retriesLeft = answerRetriesOf(agents, pending.agent) - (pending.answerRetry?.attempt ?? 0);
-  const checked = checkAnswer(agents, pending.agent, answer, stepOutput, retriesLeft > 0);
+  const retries = answerRetriesOf(agents, pending.agent);
+  const retriesLeft = retries - (pending.answerRetry?.attempt ?? 0);
+  const checked = checkAnswer(agents, pending.agent, answer, stepOutput, retries > 0);
   if ("error" in checked) {
     return retriesLeft > 0
       ? askAgain(context, pending, checked)
@@ -177,8 +178,8 @@ function answerRetriesOf(agents: StateContext<"task">["agents"], agent: string):
 /**
  * Asks the agent again, in the same step, after an answer its output can't
  * use: a new model or harness call whose prompt is the step's own prompt with
- * the error after it. `agent.answer-retried` records why, so a host can count
- * the retries.
+ * the error after it. `agent.answer-retried` records why, with the answer in
+ * full, so a host can count the retries and read what was wrong.
  */
 function askAgain(
   { run, stateId, agents }: StateContext<"task">,
@@ -186,9 +187,9 @@ function askAgain(
   unusable: Extract<CheckedAnswer, { error: string }>,
 ): StateStep {
   const ownPrompt = pending.answerRetry?.prompt ?? pending.prompt;
-  const prompt = answerAgainPrompt(ownPrompt, unusable.error);
+  const { error, reason, cause, rejected } = unusable;
+  const prompt = answerAgainPrompt(ownPrompt, error, rejected?.parseError);
   const attempt = (pending.answerRetry?.attempt ?? 0) + 1;
-  const { error, reason, cause } = unusable;
   const call = { callId: nextCallId(run), state: stateId, agent: pending.agent, prompt };
   return {
     events: [
@@ -201,6 +202,7 @@ function askAgain(
         error,
         attempt,
         prompt,
+        ...(rejected === undefined ? {} : { rejected }),
       },
     ],
     effects: [agentCallEffect(run, agents, call)],

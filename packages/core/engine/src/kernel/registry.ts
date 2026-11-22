@@ -1,6 +1,7 @@
 import type {
   CantTryStep,
   InstructionsRefusal,
+  RejectedAnswer,
   RunFailureCause,
   RunFailureReason,
 } from "@halonicjs/events";
@@ -60,6 +61,8 @@ export type StateOutcome =
       /** The agent whose instructions weren't trusted, with what the check saw in `refusal`. */
       readonly agent?: string;
       readonly refusal?: InstructionsRefusal;
+      /** An unusable answer in full, from an agent whose `answerRetries` opts in. */
+      readonly rejected?: RejectedAnswer;
     }
   | { readonly type: "cant-try"; readonly found: readonly CantTryStep[] };
 

@@ -1,6 +1,7 @@
 import type {
   CantTryStep,
   InstructionsRefusal,
+  RejectedAnswer,
   RunFailureCause,
   RunFailureReason,
   RunStatus,
@@ -289,6 +290,7 @@ function fail(
   agent?: string,
   refusal?: InstructionsRefusal,
   cause?: RunFailureCause,
+  rejected?: RejectedAnswer,
 ): void {
   emit(draft, {
     type: "run.failed",
@@ -298,6 +300,7 @@ function fail(
     ...(agent === undefined ? {} : { agent }),
     ...refusal,
     ...(cause === undefined ? {} : { cause }),
+    ...(rejected === undefined ? {} : { rejected }),
   });
 }
 
@@ -329,8 +332,8 @@ function settle(draft: Draft, stateId: string, step: StateStep): void {
   }
   draft.effects.push(...step.effects);
   if (step.outcome?.type === "fail") {
-    const { error, reason, agent, refusal, cause } = step.outcome;
-    fail(draft, stateId, error, reason, agent, refusal, cause);
+    const { error, reason, agent, refusal, cause, rejected } = step.outcome;
+    fail(draft, stateId, error, reason, agent, refusal, cause, rejected);
   }
   if (step.outcome?.type === "cant-try") {
     endCantTry(draft, stateId, step.outcome.found);

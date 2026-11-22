@@ -19,6 +19,15 @@ the same error, reason and cause as today. `parallel` branches and `foreach`
 items keep failing at the first unusable answer, since they track their calls
 apart from the task state's.
 
+After the board's analysis of 62 DeepSeek runs (HAL-16440), the same opt-in
+also has a `task` state look for the JSON in an answer with text around it
+(its one `json` code fence, or else its one top-level `{…}` object;
+`engine.task-answer-json-found`), and log the unusable answer in full, with
+the JSON parser's error, as `rejected` on `agent.answer-retried` and on
+`run.failed` (`events.run-failed-rejected-answer`). So the run-log type test
+also lists `rejected` on `run.failed`. Without `answerRetries`, `run.failed`
+is written as before, without it.
+
 Nothing is removed or weakened: the field is optional and left out by
 default, so every file that parsed before parses the same and every run
 without it runs as before. No existing requirement changes.
