@@ -3,6 +3,7 @@
 - Task: HAL-15572
 - Approval: words check C595 (HAL-15567, rows 1, 25 and 32) and C604 (HAL-15629, rows 6 and 10), team decisions on approved screens under HAL-2282; Noah's answer on the connect port (HAL-15581); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NY1TQe3MNUutolKobi4zVqBSMrNw/GA+svfQG38b4uZiSp3qeufjtCGnYH92iHtOOztpX+s57ecXpmeKCDE6DA==
 
 ## What changes
 
