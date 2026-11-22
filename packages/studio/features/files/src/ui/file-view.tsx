@@ -33,6 +33,7 @@ import { askRename } from "../rename-request.ts";
 import { subscribeTrashed, type Trashed, trashedFile } from "../trash.ts";
 import { CompareView } from "./compare-view.tsx";
 import { FileHeader } from "./file-header.tsx";
+import { followFileText } from "./follow-file-text.ts";
 import { OutsideStrip } from "./outside-strip.tsx";
 import { ProblemsPanel } from "./problems-panel.tsx";
 import { TrashedStrip } from "./trashed-strip.tsx";
@@ -292,17 +293,7 @@ export function FileView({ item, context }: ItemViewProps) {
     let editor: CodeEditor | undefined;
     let stopped = false;
     const follow = (made: CodeEditor) =>
-      host.subscribe(() => {
-        host.read(path).then(
-          (latest) => {
-            if (!stopped && latest !== null && latest !== made.text()) {
-              lastText.current = latest;
-              made.load(latest);
-            }
-          },
-          () => {},
-        );
-      });
+      followFileText({ host, path, editor: made, edits, loaded: (t) => (lastText.current = t) });
     let unsubscribe = () => {};
     let stopLines = () => {};
     void openCodeEditor({

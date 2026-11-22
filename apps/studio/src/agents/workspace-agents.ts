@@ -56,6 +56,8 @@ export class WorkspaceAgents implements AgentsHost {
   #hubs: readonly AgentHub[] = [];
   /** The names of the agents read or made so far, by hub and id, for {@link WorkspaceAgents.nameOf}. */
   readonly #names = new Map<string, string>();
+  /** The last edit asked for, which the next one waits for. */
+  #lastUpdate: Promise<void> = Promise.resolve();
 
   /** Present only when the app can open Create version; see {@link AgentsHost.makeLive}. */
   makeLive?: NonNullable<AgentsHost["makeLive"]>;
@@ -270,9 +272,17 @@ export class WorkspaceAgents implements AgentsHost {
 
   /**
    * Edits the agent's file in place, so comments and the order of its keys stay, as one undoable
-   * change. Typing in one field coalesces into one step.
+   * change. Typing in one field coalesces into one step. Edits run one after another, each on the
+   * file as the one before left it, so two edits made close together both stay.
    */
-  async update(ref: AgentRef, change: AgentChange): Promise<void> {
+  update(ref: AgentRef, change: AgentChange): Promise<void> {
+    const edited = this.#lastUpdate.then(() => this.#update(ref, change));
+    // The next edit waits for this one, whether or not it worked; the caller hears how it went.
+    this.#lastUpdate = edited.catch(() => undefined);
+    return edited;
+  }
+
+  async #update(ref: AgentRef, change: AgentChange): Promise<void> {
     const problem = changeProblem(change);
     if (problem !== undefined) throw new KindedError("invalid_input", problem);
     const { agent, path } = await this.#find(ref);
