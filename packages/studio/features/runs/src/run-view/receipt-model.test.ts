@@ -4,7 +4,6 @@ import { expect, it } from "vitest";
 import type { SourcedRun } from "../api.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import {
-  agentSays,
   approvalLines,
   itemLines,
   messageLines,
@@ -62,13 +61,13 @@ verifies("runs.run-view.receipt-summary", () => {
     );
   });
 
-  it("leaves the sent part out for a run without a tool call, and says how often it asked", () => {
+  it("says sent nothing for a run without a tool call, as the CLI does, and how often it asked", () => {
     const waiting: RunEventBody = {
       type: "run.waiting",
       state: "review",
       events: ["approve"],
     } as RunEventBody;
-    expect(line(done, [waiting])).toBe("Finished in 2 min · asked you once");
+    expect(line(done, [waiting])).toBe("Finished in 2 min · sent nothing · asked you once");
   });
 
   it("says so far once after the last thing a live run sent, and has no cost for a free run", () => {
@@ -86,7 +85,9 @@ verifies("runs.run-view.receipt-summary", () => {
       state: "review",
       events: ["approve"],
     } as RunEventBody;
-    expect(line({ approvals: [approvalAt(1)] }, [waiting])).toBe("Waiting for you · started 10:40");
+    expect(line({ approvals: [approvalAt(1)] }, [waiting])).toBe(
+      "Waiting for you · started 10:40 · sent nothing so far",
+    );
   });
 
   it("opens a failed run with its step and how long it took, and keeps a possible send", () => {
@@ -116,17 +117,17 @@ verifies("runs.run-view.receipt-summary", () => {
         },
         [],
       ),
-    ).toBe("Failed after 1 min");
+    ).toBe("Failed after 1 min · sent nothing");
   });
 
   it("opens a run that couldn't try a step with the step, as its row does, not as running", () => {
     expect(line({ status: "cant-try", endedAt: minutesLater(1), state: "draft" }, [])).toBe(
-      "In Draft",
+      "In Draft · sent nothing",
     );
   });
 
   it("leaves out the cost of a run with no priced call and no unpriced one", () => {
-    expect(line({ ...done, cost: 0 }, [])).toBe("Finished in 2 min");
+    expect(line({ ...done, cost: 0 }, [])).toBe("Finished in 2 min · sent nothing");
   });
 });
 
@@ -426,14 +427,6 @@ const saved = (name: string): RunEventBody => ({
   size: 12,
 });
 
-const answered = (output: unknown, error?: string): RunEventBody => ({
-  type: "agent.finished",
-  state: "write",
-  agent: "reporter",
-  output,
-  ...(error === undefined ? {} : { error }),
-});
-
 const logWith = (...bodies: RunEventBody[]) =>
   logOf(
     id,
@@ -464,35 +457,5 @@ verifies("runs.run-view.receipt-items", () => {
 
   it("has no lines for a run that saved no file", () => {
     expect(itemLines(logWith())).toEqual([]);
-  });
-});
-
-verifies("runs.run-view.agent-says", () => {
-  it("gives the last answer, as written with its line breaks", () => {
-    expect(
-      agentSays(logWith(answered("Sorted"), answered("This week: 12 emails.\nAll answered."))),
-    ).toBe("This week: 12 emails.\nAll answered.");
-  });
-
-  it("gives an answer that isn't text as its JSON", () => {
-    expect(agentSays(logWith(answered({ emails: 12 })))).toBe('{\n  "emails": 12\n}');
-  });
-
-  it("passes over a failed or empty answer for the one before it", () => {
-    expect(agentSays(logWith(answered("Sorted as refund"), answered(null, "Model refused")))).toBe(
-      "Sorted as refund",
-    );
-    expect(agentSays(logWith(answered("Sorted as refund"), answered("  ")))).toBe(
-      "Sorted as refund",
-    );
-  });
-
-  it("escapes hidden characters and keeps Markdown as text", () => {
-    const text = `Pay ${String.fromCodePoint(0x202e)}![x](https://example.com/x.png)`;
-    expect(agentSays(logWith(answered(text)))).toBe("Pay \\u202e![x](https://example.com/x.png)");
-  });
-
-  it("is undefined when no agent answered", () => {
-    expect(agentSays(logWith(saved("a.md")))).toBeUndefined();
   });
 });

@@ -13,6 +13,7 @@ import { dueWords } from "../time-words.ts";
 import { budgetStopOf } from "./budget-stop.ts";
 import { sendsInWords } from "./receipt-model.ts";
 import { runChangeWords } from "./run-change-words.ts";
+import { runEnding } from "./run-ending.ts";
 import type { RunPageContext } from "./run-page-model.ts";
 
 /** The `announceState` key of a run: the run page and the canvas strip share it (mc 19.3). */
@@ -96,7 +97,8 @@ function waitingText(shortId: string, wait: RunWait, context: RunPageContext): s
 
 /**
  * "Run 01jd8q finished. Sent 1 email, estimated cost €0.01.": the receipt summary's sent part and
- * its cost, never its "Finished in 2 min" (mc 19.3, revision 115).
+ * its cost, never its "Finished in 2 min" (mc 19.3, revision 115). The receipt's Ending line comes
+ * first when it has one (HAL-14586).
  */
 function finishedText(
   run: SourcedRun,
@@ -107,10 +109,11 @@ function finishedText(
     return undefined;
   }
   const { summary } = run;
-  return runChangeWords.finished(shortRunId(summary.id), [
-    ...sendsInWords(sendsOf(log)),
-    ...costParts(summary, context.currency),
-  ]);
+  return runChangeWords.finished(
+    shortRunId(summary.id),
+    [...sendsInWords(sendsOf(log)), ...costParts(summary, context.currency)],
+    runEnding(summary, context.workflow),
+  );
 }
 
 /** "… stopped at its budget: estimated €5.08 of €5.00.", without the figures when the cause has none. */

@@ -18,10 +18,13 @@ export const runChangeWords = {
     `Run ${shortId} is waiting for child run ${child}.`,
   waiting: (shortId: string) => `Run ${shortId} is waiting.`,
   /** With what it sent or saved and its cost after it, when it has them: "Sent 1 email, estimated cost €0.01." */
-  finished: (shortId: string, parts: readonly string[]) =>
-    parts.length === 0
-      ? `Run ${shortId} finished.`
-      : `Run ${shortId} finished. ${capitalised(parts.join(", "))}.`,
+  /** The ending, when the receipt names one, before what it sent: "Ending: Finished without the reply." */
+  finished: (shortId: string, parts: readonly string[], ending?: string) =>
+    [
+      `Run ${shortId} finished.`,
+      ...(ending === undefined ? [] : [`Ending: ${ending}.`]),
+      ...(parts.length === 0 ? [] : [`${capitalised(parts.join(", "))}.`]),
+    ].join(" "),
   failedIn: (shortId: string, step: string) =>
     `Run ${shortId} failed in the step ${step}. The banner at the top says what to do.`,
   failed: (shortId: string) => `Run ${shortId} failed. The banner at the top says what to do.`,

@@ -118,11 +118,27 @@ verifies("runs.run-view.status-announcements", () => {
 
     it("says what a finished run sent and cost, with commas, and only once its log has the end", () => {
       const done = { status: "completed", endedAt: mondayMorning.toISOString() } as const;
-      expect(textOf(done, [completed])).toBe("Run 650704 finished.");
+      expect(textOf(done, [completed])).toBe("Run 650704 finished. Sent nothing.");
       expect(textOf({ ...done, cost: 0.01 }, [sentEmail, completed])).toBe(
         "Run 650704 finished. Sent 1 email, estimated cost €0.01.",
       );
       expect(textOf(done, [sentEmail])).toBeUndefined();
+    });
+
+    it("names the ending before what it sent, when the receipt names one (HAL-14586)", () => {
+      const run: SourcedRun = {
+        summary: summaryWith({ id: runId, status: "completed", state: "not-replied" }),
+      };
+      const workflow = {
+        name: "Support reply",
+        stepDescription: (stateId: string) =>
+          stateId === "not-replied" ? "Finished without the reply" : undefined,
+        finalStates: ["replied", "not-replied"],
+      };
+      const log = logOf(runId, [[1, { type: "run.completed", state: "not-replied", context: {} }]]);
+      expect(runChangeText(run, log, { ...context, workflow })).toBe(
+        "Run 650704 finished. Ending: Finished without the reply. Sent nothing.",
+      );
     });
 
     it("says where a run failed, stopped at its budget or was cancelled", () => {
@@ -168,7 +184,10 @@ verifies("runs.run-view.status-announcements", () => {
       await change(finished, [completed]);
 
       expect(announceState).toHaveBeenCalledTimes(1);
-      expect(announceState).toHaveBeenCalledWith(`run:${runId}`, "Run 650704 finished.");
+      expect(announceState).toHaveBeenCalledWith(
+        `run:${runId}`,
+        "Run 650704 finished. Sent nothing.",
+      );
     });
 
     it("reads nothing when only the words for the time change, such as at midnight", async () => {

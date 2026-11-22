@@ -342,6 +342,7 @@ export const everyStepWords = {
     failed: "failed",
     cancelled: "cancelled",
     stopped: "stopped",
+    rejected: "rejected",
     needsYou: "waiting for you",
     waiting: "waiting",
     running: "running",
