@@ -104,6 +104,13 @@ export interface Meter {
   /**
    * Holds back the most a harness step may use, or refuses when that would go
    * past a limit, so a step that can't finish within it never starts.
+   *
+   * Each unit `maximum` gives is one the engine stops the step at. A unit it
+   * leaves out has no maximum of the step's own: the meter holds back its own
+   * default, which the engine then keeps the step to. `0` means none of it.
+   * Cost is known only once a model call has answered, so a step can end past
+   * its cost maximum by its last call; the meter charges at most what it held
+   * back and keeps the rest apart.
    */
   reserve(principal: MeterPrincipal, maximum: MeterMaximum): Promise<ReserveAnswer>;
   /** Records a finished step's times and lets go of what it held back and didn't use. */
