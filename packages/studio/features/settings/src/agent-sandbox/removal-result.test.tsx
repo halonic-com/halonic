@@ -103,15 +103,29 @@ verifies("settings.agent-sandbox-removal-result", () => {
       "Sandbox removed. Its access to your project folders ends the next time you start Halonic.";
     const { view, announce, end } = await readyHost();
     await removeFrom(view);
-    await end({ kind: "remove", how: "removed", keptAccess: true }, { state: "needs-setup" });
+    await end(
+      { kind: "remove", how: "removed", keptAccess: "until_next_start" },
+      { state: "needs-setup" },
+    );
     expect(view.textContent).toContain(kept);
     expect(nameOfFocus()).toBe(kept);
     expect(announce).toHaveBeenCalledTimes(1);
-    expect(calloutOf({ kind: "remove", how: "removed", keptAccess: true })).toEqual({
+    expect(calloutOf({ kind: "remove", how: "removed", keptAccess: "until_next_start" })).toEqual({
       line: kept,
       action: null,
       note: true,
     });
+  });
+
+  it("says how to end the access a removal kept when the next start doesn't end it", async () => {
+    const kept =
+      "Sandbox removed. It may still have access to some of your project folders. To end that, restart Halonic normally, not as administrator, then set up the sandbox again and remove it.";
+    const { view, announce, end } = await readyHost();
+    await removeFrom(view);
+    await end({ kind: "remove", how: "removed", keptAccess: "manual" }, { state: "needs-setup" });
+    expect(view.textContent).toContain(kept);
+    expect(nameOfFocus()).toBe(kept);
+    expect(announce).toHaveBeenCalledTimes(1);
   });
 
   it("says a followed removal that kept some access through the live region", async () => {
@@ -121,7 +135,8 @@ verifies("settings.agent-sandbox-removal-result", () => {
       running: async () => "remove" as const,
       setUp: async () => null,
       remove: async () => null,
-      follow: async () => ({ kind: "remove", how: "removed", keptAccess: true }) as const,
+      follow: async () =>
+        ({ kind: "remove", how: "removed", keptAccess: "until_next_start" }) as const,
     } satisfies AgentSandboxHost;
     const announce = vi.fn();
     render(<AgentSandboxHostView host={host} place="app" announce={announce} />);

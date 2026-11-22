@@ -5,6 +5,7 @@ import type { AgentSandboxHost } from "../api.ts";
 import {
   afterResult,
   checkedAtLabel,
+  type KeptAccess,
   outcomeLine,
   type SandboxCheckFacts,
   type SandboxFacts,
@@ -197,16 +198,17 @@ function removalLine(ended: Ended, focused: boolean): string | null {
   if (ended.outcome !== null) return focused ? null : outcomeLine(ended.outcome);
   const facts = { available: true, place: "app", running: null, outcome: null } as const;
   const lead = sandboxView({ ...facts, check: ended.check }).lead;
-  return focused ? lead : text.announceRemoved(lead, ended.keptAccess === true);
+  return focused ? lead : text.announceRemoved(lead, ended.keptAccess);
 }
 
 /**
  * What the section shows: a removal that worked says so in a note (C575, HAL-15432), and whether
- * it kept some access until Halonic next starts (HAL-15761).
+ * it kept some access (HAL-15761, HAL-15836).
  */
 function resultOf(ended: Ended, verb: SandboxRunning["verb"]): SandboxResult | null {
   if (verb === "remove" && ended.outcome === null) {
-    return { kind: "remove", how: "removed", ...(ended.keptAccess ? { keptAccess: true } : {}) };
+    const kept = ended.keptAccess;
+    return { kind: "remove", how: "removed", ...(kept === undefined ? {} : { keptAccess: kept }) };
   }
   return asVerb(ended.outcome, verb);
 }
@@ -247,7 +249,7 @@ type Ended =
   | {
       readonly outcome: SandboxOutcome | null;
       readonly check: SandboxCheckFacts;
-      readonly keptAccess?: true;
+      readonly keptAccess?: KeptAccess;
     };
 
 /**
@@ -282,7 +284,9 @@ async function runCommand(
   });
   if (ended === undefined) return undefined;
   if (ended !== null && ended.how !== "removed") return { outcome: ended };
-  const kept: { keptAccess?: true } = ended?.keptAccess ? { keptAccess: true } : {};
+  const kept: { keptAccess?: KeptAccess } = ended?.keptAccess
+    ? { keptAccess: ended.keptAccess }
+    : {};
   onChecking();
   const check = await readCheck();
   if (removing || check.state === "ready" || check.state === "restart-needed")

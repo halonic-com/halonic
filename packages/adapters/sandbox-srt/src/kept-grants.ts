@@ -410,23 +410,34 @@ export class KeptGrants {
   /**
    * Whether srt lists kept grants for this user while its sandbox account is
    * gone (`srt-win user status`): what a removal run with administrator
-   * rights, as from another account, leaves behind (HAL-5404 S2). A state
-   * other than `none` counts as grants, as srt's own library reads it. False
-   * when the status can't be read, or names no account at all. Never rejects.
+   * rights, as from another account, leaves behind (HAL-5404 S2). False when
+   * the status can't be read, or names no account at all. Never rejects.
    */
   async orphaned(): Promise<boolean> {
+    return (await this.keptState()) === "orphaned";
+  }
+
+  /**
+   * What srt keeps for this user (`srt-win user status`): `orphaned` (kept
+   * grants while its sandbox account is gone, see {@link orphaned}), `none`,
+   * or `kept` (kept grants with the account there, or a status that can't be
+   * read, so some may be kept). A state other than `none` counts as grants, as
+   * srt's own library reads it. Never rejects.
+   */
+  async keptState(): Promise<"orphaned" | "kept" | "none"> {
     try {
       this.assertSupported();
       const run = await this.#run(["user", "status"]);
-      if (run.status !== 0) return false;
+      if (run.status !== 0) return "kept";
       const parsed = JSON.parse(run.stdout) as {
         user?: { exists?: unknown };
         persistent_grants?: { state?: unknown };
       };
       const state = parsed.persistent_grants?.state;
-      return parsed.user?.exists === false && state !== undefined && state !== "none";
+      if (state === undefined || state === "none") return "none";
+      return parsed.user?.exists === false ? "orphaned" : "kept";
     } catch {
-      return false;
+      return "kept";
     }
   }
 

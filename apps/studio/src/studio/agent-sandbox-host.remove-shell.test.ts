@@ -63,7 +63,20 @@ verifies("studio.sandbox-remove-through-shell", () => {
     expect(await facts(transport, elevate).remove()).toEqual({
       kind: "remove",
       how: "removed",
-      keptAccess: true,
+      keptAccess: "until_next_start",
+    });
+  });
+
+  it("says a removal that kept some access the next start doesn't end", async () => {
+    const { transport } = host({
+      ...beforeOk,
+      "POST /v1/sandbox/remove/elevated": { status: 200, body: { ok: true, keptAccess: "manual" } },
+    });
+    const { elevate } = shell({ outcome: "exited", exitCode: 0 });
+    expect(await facts(transport, elevate).remove()).toEqual({
+      kind: "remove",
+      how: "removed",
+      keptAccess: "manual",
     });
   });
 

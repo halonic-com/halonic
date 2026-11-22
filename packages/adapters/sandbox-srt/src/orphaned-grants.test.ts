@@ -73,8 +73,24 @@ verifies("sandbox-srt.removal-kept-access", () => {
       });
     });
 
-    it("is done without keptAccess when srt still lists its sandbox account", async () => {
-      expect(await removal(userStatus(true, "present"))).toEqual({ ok: true });
+    it("says some access stays until a removal without administrator rights when srt still lists its sandbox account", async () => {
+      expect(await removal(userStatus(true, "present"))).toEqual({
+        ok: true,
+        keptAccess: "manual",
+      });
+    });
+
+    it("says the same when srt's status can't be read", async () => {
+      const { grants } = fakeGrants((args) => (args[0] === "user" ? { status: 1 } : {}));
+      const sandbox = new SrtSandbox(windows(true, "grants_kept"), undefined, null, {
+        grants,
+        warn: () => {},
+      });
+      expect(await sandbox.remove()).toEqual({ ok: true, keptAccess: "manual" });
+    });
+
+    it("is done without keptAccess when srt keeps no grants", async () => {
+      expect(await removal(userStatus(true, "none"))).toEqual({ ok: true });
     });
   });
 });

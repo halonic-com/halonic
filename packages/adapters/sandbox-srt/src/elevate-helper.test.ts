@@ -14,6 +14,7 @@ import {
   type Spawn,
   throughHelper,
 } from "./elevate-helper.ts";
+import type { KeptGrants } from "./kept-grants.ts";
 import type { Machine } from "./machine.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
 
@@ -209,16 +210,21 @@ verifies("sandbox-srt.remove", () => {
       );
     });
 
-    it("comes through SrtSandbox.remove as done, with a log line for the skip", async () => {
+    it("comes through SrtSandbox.remove as done, keeping access it can't rule out, with a log line for the skip", async () => {
       const windows = {
         platform: "win32",
         uninstallWindowsSandbox: async () => "grants_kept" as const,
       } as Partial<Machine> as Machine;
       const warned: string[] = [];
+      // srt still lists its account, so the grants may stay: the runner's real srt-win isn't asked.
+      const grants = {
+        keptState: async () => "kept" as const,
+      } as Partial<KeptGrants> as KeptGrants;
       const sandbox = new SrtSandbox(windows, undefined, undefined, {
+        grants,
         warn: (message) => warned.push(message),
       });
-      expect(await sandbox.remove()).toEqual({ ok: true });
+      expect(await sandbox.remove()).toEqual({ ok: true, keptAccess: "manual" });
       expect(warned).toEqual([
         "Removed the Windows sandbox, but skipped forgetting its kept access grants: this removal ran with administrator rights. Remove it again without them to forget the grants.",
       ]);

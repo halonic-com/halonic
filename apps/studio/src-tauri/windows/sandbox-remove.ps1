@@ -9,6 +9,8 @@
 #   0   removed
 #   2   removed, but the access it kept on the user's folders goes only at
 #       Halonic's next start (a removal with administrator rights, HAL-5404 S2)
+#   3   removed, but some access it kept on the user's folders stays until a
+#       removal without administrator rights (HAL-15836)
 #   10  Windows didn't give administrator rights (refused, closed, or no admin password)
 #   11  the removal stopped (the reason is the removal's own words)
 #   20  nothing was set up, so nothing was asked or removed
@@ -63,6 +65,7 @@ $removal = Read-Json $out
 Remove-Item $out -ErrorAction SilentlyContinue
 if ($removal -and $removal.ok -eq $true) {
   if ($removal.keptAccess -eq 'until_next_start') { exit 2 }
+  if ($removal.keptAccess -eq 'manual') { exit 3 }
   exit 0
 }
 if ($removal -and $removal.outcome -eq 'cancelled') { exit 10 }

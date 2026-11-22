@@ -45,7 +45,7 @@ export type SandboxSetup =
 
 /** What removing the sandbox gave: done (see {@link removedGrantsKept}), or why not, in one line. */
 export type SandboxRemoval =
-  | { ok: true; keptAccess?: "until_next_start" }
+  | { ok: true; keptAccess?: "until_next_start" | "manual" }
   | { ok: false; outcome: "cancelled" | "failed"; reason: string; code?: number };
 
 /** Why a setup or a removal didn't happen when the administrator prompt was turned down. */
