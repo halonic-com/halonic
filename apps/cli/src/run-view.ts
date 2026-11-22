@@ -167,7 +167,7 @@ export function stepColumns(definitions: RunDefinitions): StepColumns {
     .map(([stateId, state]) => {
       // ✓ is the widest mark with and without UTF-8 ("ok"), as wide as ◌ ("..").
       const name = runsMessages.step("done", stepName(stateId, state.description)).phrase;
-      const facts = agentFacts(state.agent, definitions);
+      const facts = agentFacts(state.agent, definitions, state.method);
       return facts.length === 0 ? [name] : [name, runMessages.stepFacts(facts).phrase];
     });
   return { rows };
@@ -186,7 +186,7 @@ export function stepDoing(
 ): Phrase {
   const state = definitions.workflow?.states[stateId];
   const name = stepName(stateId, state?.description);
-  const facts = agentFacts(state?.agent, definitions);
+  const facts = agentFacts(state?.agent, definitions, state?.method);
   if (facts.length === 0) {
     return [name];
   }
@@ -228,7 +228,7 @@ function askedTheUser(event: RunEvent): boolean {
 function stepRow(step: RunStep, definitions: RunDefinitions, clock: RunClock): Phrase[] {
   const state = definitions.workflow?.states[step.stateId];
   const name = runsMessages.step(markOf(step), stepName(step.stateId, state?.description)).phrase;
-  const facts = agentFacts(step.agentId, definitions);
+  const facts = agentFacts(step.agentId, definitions, state?.method);
   const at = (iso: string) => startedInWords(startedAt(new Date(iso), clock));
   const { end } = step;
   switch (end.kind) {
@@ -291,15 +291,18 @@ export function agentName(agentId: string, definitions: RunDefinitions): string 
 
 /**
  * What ran the step: its agent's name and model alias, "Writer · smart".
- * The alias is the agent's own, else the default of its hub or workspace,
- * as the engine picks it. A step's method doesn't change it: the engine
- * doesn't call methods yet, so the agent runs as if it had none. With no
- * alias at all the line names only the agent. An agent that's no longer in
- * the workspace is named by its id; a step without an agent has no facts.
- * All of it comes from workspace files, so it is made printable (cli-output
- * section 5).
+ * The alias is the one the engine calls the model with: the own model of
+ * the agent step (`method`) the step calls, else the agent's, else the
+ * default of its hub or workspace (C605). With no alias at all the line
+ * names only the agent. An agent that's no longer in the workspace is
+ * named by its id; a step without an agent has no facts. All of it comes
+ * from workspace files, so it is made printable (cli-output section 5).
  */
-function agentFacts(agentId: string | undefined, definitions: RunDefinitions): string[] {
+function agentFacts(
+  agentId: string | undefined,
+  definitions: RunDefinitions,
+  method: string | undefined,
+): string[] {
   if (agentId === undefined) {
     return [];
   }
@@ -307,7 +310,15 @@ function agentFacts(agentId: string | undefined, definitions: RunDefinitions): s
   if (agent === undefined) {
     return [printable(agentId)];
   }
-  const model = agent.model ?? definitions.defaultModel;
+  const model = methodModel(agent, method) ?? agent.model ?? definitions.defaultModel;
   const facts = model === undefined ? [agent.name] : [agent.name, model];
   return facts.map(printable);
+}
+
+/** The own model alias of the agent's agent step `method`; `undefined` without one, or when it has none. */
+function methodModel(agent: AgentDefinition, method: string | undefined): string | undefined {
+  if (method === undefined || !Object.hasOwn(agent.methods, method)) {
+    return undefined;
+  }
+  return agent.methods[method]?.model;
 }
