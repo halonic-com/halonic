@@ -22,9 +22,9 @@ export type ShownPart =
  * `notListed` when it can't say why, with `notListedFix`, or
  * `integrationNotListedFix` for an integration's connector), then
  * `programMissing`, `programStopped`, `secretMissing`, `pluginNotTrusted`,
- * `pluginChanged` or `pluginStopped` and their fix, and goes on: the run had
- * none of the connector's tools. `programStopped`'s fix is `tools review`'s
- * own, `cantListProgramStoppedFix` (HAL-15606).
+ * `pluginChanged`, `pluginStopped` or `unfencedNotAllowed` and their fix, and
+ * goes on: the run had none of the connector's tools. `programStopped`'s fix
+ * is `tools review`'s own, `cantListProgramStoppedFix` (HAL-15606).
  * Its line 1 already says the connector didn't start, so its cause line
  * doesn't say it again. The plugin lines use `plugin list`'s words for the
  * plugin's state, and their fix is `pluginMessages`' (HAL-14974).
@@ -112,6 +112,15 @@ export const connectorStartMessages = defineMessages("connectorStart", {
    */
   integrationNotListedFix: (dir: string | undefined) =>
     phrase`Its integration needs the sandbox and a trusted workspace to start. To check both, run ${suggestedCommand("doctor", dir)}`,
+  /**
+   * HAL-15689: the cause line for a local integration whose start without the
+   * sandbox the gate refused (`unfenced-not-allowed`): why the sandbox isn't
+   * available here, as `app.runner-unfenced-words` words it.
+   */
+  unfencedNotAllowed: (sandboxReason: string) => phrase`${sandboxReason}`,
+  /** Its fix: R18's, as the refusal says it (`cli.local-integration-unfenced-yes`). */
+  unfencedNotAllowedFix: () =>
+    phrase`Running it without the sandbox isn't allowed yet. To allow it, trust this workspace in Studio on this computer.`,
   /** HAL-13714: an `http` connector where nothing answers at its address. Mateo, decided by the team. */
   nothingAnswered: (address: string) => phrase`Nothing answered at ${address}.`,
   nothingAnsweredFix: (connector: string, file: string | undefined) =>

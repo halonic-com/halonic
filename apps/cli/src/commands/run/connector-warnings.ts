@@ -4,6 +4,7 @@
 // agent had none of the connector's tools. A plugin connector's warning
 // names the plugin's state on this computer (HAL-14296, C13+ on HAL-14271).
 
+import { runnerUnfencedWords } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import type { CommandContext } from "../../command.ts";
 import type { ConnectorPlugin } from "../../connector-plugin.ts";
@@ -44,8 +45,9 @@ export interface WarnedConnectors {
  * what happened, then the cause and its fix, indented under it: a missing
  * program or secret, a program that stopped right after it started, a
  * plugin that isn't trusted yet or changed since, a plugin's sandbox that
- * can't start, or, read from the profile, a plugin that isn't added or
- * can't be read. Every step
+ * can't start, a local integration the gate didn't let start without the
+ * sandbox, or, read from the profile, a plugin that isn't added or can't be
+ * read. Every step
  * lists the tools again, and every follow reads the log from its first
  * event, so a connector is warned about only the first time. A connector
  * whose parts the log already named as off (`connector.part-off`, written
@@ -162,6 +164,13 @@ function causeLines(
       return [
         connectorStartMessages.pluginStopped(name),
         connectorStartMessages.pluginStoppedNext(name),
+      ];
+    case "unfenced-not-allowed":
+      return [
+        connectorStartMessages.unfencedNotAllowed(
+          runnerUnfencedWords(cause.name, "integration").reason,
+        ),
+        connectorStartMessages.unfencedNotAllowedFix(),
       ];
   }
 }

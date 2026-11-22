@@ -18,13 +18,14 @@ import {
   UnfencedRuns,
 } from "@halonicjs/app";
 import type { Connector } from "@halonicjs/format";
-import type {
-  ConnectorFactoryContext,
-  ConnectorTransport,
-  IntegrationHttpClient,
-  IntegrationTool,
-  Sandbox,
-  SandboxCheck,
+import {
+  type ConnectorFactoryContext,
+  type ConnectorTransport,
+  connectorStartFailureOf,
+  type IntegrationHttpClient,
+  type IntegrationTool,
+  type Sandbox,
+  type SandboxCheck,
 } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -418,6 +419,17 @@ verifies("cli.local-integration-unfenced-yes", () => {
       );
       expect(seen.starts).toBe(0);
       expect(seen.unfenced).toEqual([]);
+    });
+
+    it("refuses with an error the engine reads as the gate's reason, without the message", async () => {
+      const { client } = await setup({ check: onWindows });
+      const refused = await client()
+        .callTool("read-note", {})
+        .catch((error: unknown) => error);
+      expect(connectorStartFailureOf(refused)).toEqual({
+        reason: "unfenced-not-allowed",
+        sandbox: "windows",
+      });
     });
 
     it("refuses when the saved yes can't be read, and names its file", async () => {
