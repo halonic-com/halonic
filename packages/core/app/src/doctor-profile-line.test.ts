@@ -5,8 +5,12 @@ import { doctor } from "./testing/doctor-fixtures.ts";
 
 verifies("app.doctor-profile", () => {
   describe("the Profile line", () => {
-    it("fails when a variable put the profile folder in the workspace, naming the variable", async () => {
-      const profile = { problem: "profile-in-workspace", movedBy: "XDG_DATA_HOME" } as const;
+    it("fails when a variable put the profile folder in the workspace, naming the variable and the profile's path", async () => {
+      const profile = {
+        problem: "profile-in-workspace",
+        movedBy: "XDG_DATA_HOME",
+        profile: "~/acme/.data/halonic",
+      } as const;
       const report = await doctor({ profile }).service.check(null);
 
       expect(report.profile).toEqual({ check: "profile", status: "failed", ...profile });

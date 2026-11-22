@@ -276,15 +276,17 @@ export const doctorMessages = defineMessages("doctor", {
   proxyReason: (reason: string) => phrase`${reason}`,
 
   // The Profile line (HAL-15201): the reason and the fix every other command refuses the workspace with.
-  /** Profile ✕ when a variable put the profile folder in the workspace: "the profile folder HALONIC_HOME is inside this workspace." */
-  profileInWorkspace: (variable: string) =>
-    phrase`the profile folder ${variable} is inside this workspace.`,
-  /** Always names `HALONIC_HOME`, whichever variable moved the profile, as the refusal does (HAL-15232). */
-  profileInWorkspaceFix: () =>
-    phrase`Fix: move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.`,
-  /** Profile ✕ when the workspace is inside the profile folder: "this workspace is inside the profile folder ~/.local/share/halonic." */
+  /** Profile ✕ when a variable put the profile folder in the workspace, with its path: "Your profile folder ~/acme/.profile is inside this workspace." (C637, C646) */
+  profileInWorkspace: (profile: string) =>
+    phrase`Your profile folder ${profile} is inside this workspace.`,
+  /** The refusal's fix, which is Studio's: always names `HALONIC_HOME`, led by the variable that moved the profile when that's another one (HAL-15232, C646). */
+  profileInWorkspaceFix: (variable: string) =>
+    variable === "HALONIC_HOME"
+      ? phrase`Fix: a change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.`
+      : phrase`Fix: ${variable} puts it there. A change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.`,
+  /** Profile ✕ when the workspace is inside the profile folder: "This workspace is inside your profile folder ~/.local/share/halonic." */
   workspaceInProfile: (profile: string) =>
-    phrase`this workspace is inside the profile folder ${profile}.`,
+    phrase`This workspace is inside your profile folder ${profile}.`,
   workspaceInProfileFix: () => phrase`Fix: move the workspace somewhere else.`,
 
   noProblems: () => phrase`No problems.`,

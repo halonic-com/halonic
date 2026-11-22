@@ -79,11 +79,12 @@ verifies("cli.commands.doctor.profile-line", () => {
       const { code, io } = await doctorIn(folder, join(acme, ".profile"), "--dir", "acme");
 
       expect(code).toBe(exitCode.failed);
+      // The home folder is the test's folder, so the profile is shown under `~`.
       expect(io.stdout[2]).toBe(
-        "✕ Profile     the profile folder HALONIC_HOME is inside this workspace.",
+        `✕ Profile     Your profile folder ${join("~", "acme", ".profile")} is inside this workspace.`,
       );
       expect(io.stdout[3]).toBe(
-        "              Fix: move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.",
+        "              Fix: a change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.",
       );
       expect(io.stdout.some((line) => line.includes("Workspace"))).toBe(false);
     });

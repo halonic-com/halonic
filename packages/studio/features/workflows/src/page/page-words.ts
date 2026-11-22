@@ -30,7 +30,7 @@ export const pageWords = {
   outlined: (stepNames: readonly string[], agent: string) =>
     `${stepNames.length} ${stepNames.length === 1 ? "step uses" : "steps use"} ${agent}: ${stepNames.join(", ")}`,
   /** Beside that line: what drops the outline (C618). */
-  outlineClears: "Pick a step or an empty spot to clear.",
+  outlineClears: "Pick a step or an empty spot to clear the outline.",
   /** The canvas's toolbar (flow-workflows 3.2, UX checklist 10.4). */
   toolbar: {
     label: "Flow tools",

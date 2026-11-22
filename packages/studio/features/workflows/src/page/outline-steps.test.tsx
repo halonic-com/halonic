@@ -85,7 +85,7 @@ verifies("workflows.page.outline-steps", () => {
     expect(page.textContent).not.toContain("Support reply › triage");
     expect(said).toEqual(["2 steps use Sorter: Read the email, draft"]);
     expect(outlineLine(page)).toBe(
-      "2 steps use Sorter: Read the email, draftPick a step or an empty spot to clear.",
+      "2 steps use Sorter: Read the email, draftPick a step or an empty spot to clear the outline.",
     );
   });
 
