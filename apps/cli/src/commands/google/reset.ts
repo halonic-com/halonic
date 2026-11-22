@@ -75,13 +75,27 @@ function sealedFolders(setup: GoogleSetup): readonly string[] {
   return [join(folder.root, "google"), tokenFolders(folder).integrationSignIns];
 }
 
-/** Whether any of the folders is there and holds at least one entry. */
+/**
+ * Whether any of the folders is there and holds at least one entry.
+ *
+ * @throws the read error of a folder that is there but can't be read, so it isn't taken for empty
+ */
 async function anyHoldsSomething(folders: readonly string[]): Promise<boolean> {
   for (const folder of folders) {
-    const entries = await readdir(folder).catch(() => []);
+    const entries = await entriesOf(folder);
     if (entries.length > 0) {
       return true;
     }
   }
   return false;
+}
+
+/** The entries in `folder`, or none when it doesn't exist. */
+async function entriesOf(folder: string): Promise<string[]> {
+  try {
+    return await readdir(folder);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
 }

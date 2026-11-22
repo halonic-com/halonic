@@ -1,6 +1,6 @@
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
 import { createTokenStore, tokenKeySecret } from "@halonicjs/adapter-token-store";
 import { type ProfileEnvironment, profileFolder, tokenFolders } from "@halonicjs/profile";
@@ -142,6 +142,19 @@ verifies("cli.commands.google.reset", () => {
     expect(io.stdout).toEqual([
       "Nothing to remove: this computer has no Google accounts or saved sign-ins.",
     ]);
+  });
+
+  it("stops with an error, not 'Nothing to remove', when a folder can't be read", async () => {
+    // A file where the `google` folder belongs can't be listed (ENOTDIR), like
+    // a folder without read access, but the test also works when run as root.
+    await mkdir(dirname(folders().google), { recursive: true });
+    await writeFile(folders().google, "not a folder");
+
+    const { code, io } = await google(["reset", "--yes"]);
+
+    expect(code).not.toBe(exitCode.ok);
+    expect(io.stdout.join("\n")).not.toContain("Nothing to remove");
+    expect(await exists(folders().google)).toBe(true);
   });
 
   it("names every integration's saved sign-ins in its help", async () => {
