@@ -26,7 +26,7 @@ verifies("inbox.approval-card", () => {
             if (held) {
               throw new KindedError(
                 "unavailable",
-                "Acme is already running in another Halonic on this computer (process 4242). Stop that one, then try again.",
+                "Acme is already running in another Halonic on this computer. Stop that one, then try again.",
               );
             }
             return waitingRun("r47");
@@ -41,7 +41,7 @@ verifies("inbox.approval-card", () => {
       // The reason follows the first sentence and comes before Try again, so the alert reads both
       // sentences first (WCAG 1.3.2).
       expect(slot?.textContent).toBe(
-        "Couldn't record your decision. Acme is already running in another Halonic on this computer (process 4242). Stop that one, then try again.Try again",
+        "Couldn't record your decision. Acme is already running in another Halonic on this computer. Stop that one, then try again.Try again",
       );
       expect(root.textContent).not.toContain("This is no longer waiting for you.");
       expect(button(root, "Reject")).toBeDefined();
@@ -62,7 +62,7 @@ verifies("inbox.approval-card", () => {
             approve: async () => {
               throw new KindedError(
                 "unavailable",
-                "Acme is already running in another Halonic on this computer (process 4242). Stop that one, then try again.",
+                "Acme is already running in another Halonic on this computer. Stop that one, then try again.",
               );
             },
             reject: async () => waitingRun("r47"),

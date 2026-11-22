@@ -108,8 +108,7 @@ export const NOT_BOUND_NOTICE =
   "This key was saved before Halonic recorded addresses, so it has none yet. Enter the address and save to bind it. It keeps working as it does now until you do.";
 export const ADDRESSES_UNREADABLE =
   "Can't read the addresses saved for this key. Halonic won't use this key until that is fixed.";
-export const ADDRESSES_RECOVERY =
-  "Check that your Halonic profile folder can be opened, then reload this page.";
+export const ADDRESSES_RECOVERY = "Check that your system keychain is unlocked, then try again.";
 export const ADDRESS_UNENCRYPTED =
   "This address isn't encrypted. Keys sent to it can be read on the way.";
 export const ADDRESSES_FULL =

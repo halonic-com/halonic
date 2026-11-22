@@ -8,6 +8,6 @@ When **Run now** doesn't start a run because the start failed, the toast that st
 
 ## Examples
 
-- Given the workspace is already running in another Halonic on this computer, when **Run now** is pressed on "Daily", then a toast that stays says "Couldn't start Daily." and "Acme is already running in another Halonic on this computer (process 4120). Stop that one, then try again.", with **Try again**, and **Try again** starts Daily again.
+- Given the workspace is already running in another Halonic on this computer, when **Run now** is pressed on "Daily", then a toast that stays says "Couldn't start Daily." and "Acme is already running in another Halonic on this computer. Stop that one, then try again.", with **Try again**, and **Try again** starts Daily again.
 - Given Daily's workflow has an agent Reporter in Claude Code, which Halonic can't start yet, when **Run now** is pressed, then the toast says "Reporter runs in Claude Code, which Halonic can't start yet. To run it in Halonic's own loop instead, run this in a terminal: halonic run support-reply --harness halonic" with **Copy command** and no **Try again**, and **Copy command** puts the command on the clipboard and leaves the toast open.
 - Given the engine can't be reached, then the toast says "The engine isn't answering." with **Try again**.

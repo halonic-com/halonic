@@ -194,7 +194,7 @@ verifies("studio.engine-service", () => {
       expect(refusal).toMatchObject({
         kind: "unavailable",
         message:
-          "Acme is already running in another Halonic on this computer (process 4242). Stop that one, then try again.",
+          "Acme is already running in another Halonic on this computer. Stop that one, then try again.",
         fix: undefined,
       });
     });

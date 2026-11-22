@@ -210,4 +210,5 @@ export const TAKEN_BACK_TEXT =
 /** A Take back the host refused; the toast's text is the shell's reason for the error (C553, HAL-15227). */
 export const TAKE_BACK_FAILED_TITLE = "Couldn't take it back";
 /** The host couldn't say whether a yes is saved: claims no yes, offers Try again (C553, HAL-15227). */
-export const UNFENCED_NOT_READ = "Couldn't check whether plugins may run without the sandbox.";
+export const UNFENCED_NOT_READ =
+  "Couldn't check whether plugins and integrations may run without the sandbox.";

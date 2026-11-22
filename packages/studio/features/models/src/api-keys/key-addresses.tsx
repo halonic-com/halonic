@@ -15,6 +15,7 @@ import {
   moreAddresses,
   NOT_BOUND_YET,
   ONLY_ADDRESS_PART_KEPT,
+  TRY_AGAIN,
 } from "./key-text.ts";
 
 /**
@@ -56,14 +57,17 @@ export function useKeyAddresses(
 
 /**
  * The stored key's addresses under its status: the first, with **+N more** opening the rest in
- * place; the quiet **Not bound yet** for an old key; or why they can't be read.
+ * place; the quiet **Not bound yet** for an old key; or why they can't be read, with **Try again**
+ * reading them again (C566 #54).
  */
 export function AddressLine({
   state,
   secretName,
+  onTryAgain,
 }: {
   readonly state: AddressState;
   readonly secretName: string;
+  readonly onTryAgain: () => void;
 }) {
   const listId = useId();
   const [open, setOpen] = useState(false);
@@ -88,6 +92,11 @@ export function AddressLine({
         <div role="alert">
           <p>{ADDRESSES_UNREADABLE}</p>
           <p className="text-fg-muted">{ADDRESSES_RECOVERY}</p>
+          <p>
+            <Button variant="ghost" onClick={onTryAgain}>
+              {TRY_AGAIN}
+            </Button>
+          </p>
         </div>
       );
     case "listed": {

@@ -160,6 +160,19 @@ verifies("cli.commands.plugin.off-here", () => {
     });
   });
 
+  it("gives the CLI's own fix for a sandbox that isn't set up, never Studio's Settings", async () => {
+    fence = { state: "not-fenced", reason: "setup-needed" };
+    await trust("--plugin", "weather", "--yes", "--fingerprint", await addOff());
+
+    const listed = await plugin("list");
+
+    expect(listed.io.stdout.slice(1)).toEqual([
+      "  The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer.",
+      reasonLines[1],
+    ]);
+    expect(listed.io.stdout.join("\n")).not.toContain("Settings");
+  });
+
   it("says on as before in the sandbox, and doesn't ask for a plugin without a backend", async () => {
     fence = { state: "fenced" };
     await trust("--plugin", "weather", "--yes", "--fingerprint", await addOff());

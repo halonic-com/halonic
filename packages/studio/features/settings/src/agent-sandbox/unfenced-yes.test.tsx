@@ -130,7 +130,7 @@ verifies("settings.unfenced-yes-take-back", () => {
 
     expect(view.querySelector("h4")?.textContent).toBe("Plugins and integrations");
     expect(view.textContent).toContain(
-      "Couldn't check whether plugins may run without the sandbox.",
+      "Couldn't check whether plugins and integrations may run without the sandbox.",
     );
     expect(view.textContent).not.toContain("Allowed without the sandbox");
     expect(view.textContent).not.toContain("needs your yes");

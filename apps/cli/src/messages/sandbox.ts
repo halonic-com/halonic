@@ -157,6 +157,16 @@ export const sandboxMessages = defineMessages("sandbox", {
    * it reads as the tool's words, not Halonic's (Sofia, HAL-6526).
    */
   whatFailed: (sentence: string) => phrase`What failed: ${sentence}`,
+  /**
+   * The reason and its fix as one line, `doctor`'s fix without "Then run
+   * halonic doctor again.": for plugin code that is off on this computer
+   * (`plugin add`, `trust --plugin`, `plugin list`). Like every fix here, it
+   * never points to Studio's settings (C566 #22, HAL-15361).
+   */
+  reasonAndFix: (code: string) => {
+    const words = wordsFor(code);
+    return phrase`${words.reason} ${withDistro(sentence(words.fix), undefined)}`;
+  },
   /** `halonic doctor`'s fix under the reason, with "Then run halonic doctor again." after it. */
   doctorFix: (code: string, details: SandboxDetails = {}) =>
     doctorFix(
@@ -267,6 +277,11 @@ export function distroArgument(distro: string | undefined): string {
 /** Whether the CLI words `code` as `other`: it is `other`, or a code this version doesn't know. */
 export function readsAsOther(code: string): boolean {
   return known(code) === "other";
+}
+
+/** `fix`, which follows "Fix: ", as a sentence of its own: with a capital first letter. */
+function sentence(fix: string): string {
+  return `${fix.charAt(0).toUpperCase()}${fix.slice(1)}`;
 }
 
 /** A code the CLI has words for, or `other` for one it doesn't. */

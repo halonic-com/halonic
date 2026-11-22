@@ -23,9 +23,10 @@ afterEach(() => {
  */
 function keysWith(stored: string[], lists: Record<string, string[]> = {}, unreadable = false) {
   const sent: string[] = [];
+  const reading = { unreadable };
   const addresses: KeyAddresses = {
     allowed: async (name) => {
-      if (unreadable) throw new Error("the list can't be read");
+      if (reading.unreadable) throw new Error("the list can't be read");
       return lists[name];
     },
     allow: async (name, address) => {
@@ -46,7 +47,7 @@ function keysWith(stored: string[], lists: Record<string, string[]> = {}, unread
     remove: async () => undefined,
     addresses,
   };
-  return { keys, sent, lists };
+  return { keys, sent, lists, reading };
 }
 
 async function show(keys: ModelKeys, usualAddress?: string) {
@@ -225,9 +226,27 @@ verifies("models.api-keys.not-bound-yet", () => {
     expect(view.querySelector('[role="alert"]')?.textContent).toContain(
       "Can't read the addresses saved for this key.",
     );
-    expect(view.textContent).toContain("Check that your Halonic profile folder can be opened");
+    expect(view.textContent).toContain(
+      "Check that your system keychain is unlocked, then try again.",
+    );
     expect(view.textContent).not.toContain("Not bound yet");
     expect(addressInput(view)).toBeNull();
+  });
+
+  it("reads the addresses again when Try again is pressed", async () => {
+    const { reading } = await keysAndShow(
+      ["anthropic"],
+      "https://api.anthropic.com",
+      { anthropic: ["https://api.anthropic.com"] },
+      true,
+    );
+    const view = element as HTMLElement;
+    reading.unreadable = false;
+
+    await press(view, "Try again");
+
+    expect(view.querySelector('[role="alert"]')).toBeNull();
+    expect(view.querySelector("code")?.textContent).toBe("https://api.anthropic.com");
   });
 });
 

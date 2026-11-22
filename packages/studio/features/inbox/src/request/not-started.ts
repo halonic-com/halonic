@@ -22,7 +22,7 @@ export interface NotStarted {
  *
  * @example
  * notStartedOf(lockHeldElsewhere, words).line;
- * // "Not started: Acme is already running in another Halonic on this computer (process 4321).
+ * // "Not started: Acme is already running in another Halonic on this computer.
  * //  Stop that one, then try again."
  */
 export function notStartedOf(error: unknown, words: EngineWords): NotStarted {
