@@ -3,6 +3,7 @@
 - Task: HAL-16013
 - Approval: Noah's decision on HAL-16009, written into the component specs (HAL-175) revision 53, sections 11 and 1 "On a phone". It applies the phone's main-action size that sheets and action bars already use, and the board-approved Nothing paired drawing (HAL-12206) already draws it this way, so it's a team decision under HAL-2282 with no board card. Liam signs at review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lOdtNtCjaIB1c/Z/Al9nuP8/q0MfUaNwNzYirv9Cw9QdjYvf99JFqqDZLdepVICfF7/XXRXWoBQUHCu8BT+7DA==
 
 ## What changes
 
