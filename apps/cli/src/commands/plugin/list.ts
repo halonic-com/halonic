@@ -1,5 +1,6 @@
 // `halonic plugin list`: the plugins in the profile, one row each (cli-output
-// 3.6), a folder source as the copy it is, with the day (C45), and under a plugin with programs, whether they run on this computer
+// 3.6), a folder source as the copy it is, with the day (C45), and under a
+// plugin with programs, whether they run on this computer
 // (cli.plugin-programs-run), and for a plugin that is on but whose backend is
 // off here, why (HAL-15080). A thin command over `PluginService.load`: it
 // lists, and writes nothing, so it needs no trust.
