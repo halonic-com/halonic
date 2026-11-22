@@ -15,6 +15,7 @@ import {
   events,
   GATE_LINE,
   here,
+  MOUNTS_LINE,
   POOL_QUEUE,
   REPO,
   read,
@@ -22,13 +23,16 @@ import {
   run,
   shipped,
 } from "./hook-run.mjs";
-// C7's queue checks: imported so CI's fast job, which names only this file, runs them too.
+// C7's queue checks and the fast pool's: imported so CI's fast job, which names only this file,
+// runs them too.
 import "./queue-gate.test.mjs";
+import "./fast-pool.test.mjs";
 
-test("the shipped hook has the three fixed paths these tests replace", () => {
+test("the shipped hook has the four fixed paths these tests replace", () => {
   assert.equal(shipped.split(CONF_LINE).length, 2);
   assert.equal(shipped.split(EVENT_LINE).length, 2);
   assert.equal(shipped.split(GATE_LINE).length, 2);
+  assert.equal(shipped.split(MOUNTS_LINE).length, 2);
   assert.match(shipped, /^set -euo pipefail$/m);
 });
 
@@ -44,7 +48,7 @@ test("merge groups are refused while the pool is push only, accepted once switch
   assert.equal(run({ pool: POOL_QUEUE, event: events.mergeGroup, env }).ok, true);
 });
 
-test("refuses every pull request, even with pull_request in the pool's list", () => {
+test("refuses every pull request outside the fast pool, even with pull_request in the pool's list", () => {
   const pool = 'ALLOWED_EVENTS="push merge_group pull_request"\n';
   const env = { GITHUB_EVENT_NAME: "pull_request" };
   refused(run({ pool, event: events.ownPr, env }), /pull request from halonic-com\/halonic/);
@@ -182,7 +186,8 @@ test("each job container is capped and unprivileged (C5)", () => {
   assert.ok(slot.includes('--cpuset-cpus "$CPUSET"'), "slot script lacks --cpuset-cpus");
   assert.match(slot, /--tmpfs "\/tmp:rw,exec,nosuid,nodev,/);
   // The pool config is mounted read-only, the work dir is the one the hook expects.
-  assert.ok(slot.includes("-v /etc/halonic-ci/pool:/etc/halonic-ci:ro"));
+  assert.ok(slot.includes('-v "$POOL_DIR:/etc/halonic-ci:ro"'));
+  assert.match(slot, /^ {2}\*\) {6}POOL_DIR=\/etc\/halonic-ci\/pool$/m);
   assert.match(slot, /^JOB_WORK=\/home\/runner\/actions-runner\/_work /m);
   assert.ok(slot.includes('-v "$WORK:$JOB_WORK"'));
 });
