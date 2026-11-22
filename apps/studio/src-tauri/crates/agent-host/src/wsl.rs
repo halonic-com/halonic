@@ -218,25 +218,17 @@ fn send_setting(command: Command, copy: SettingCopy<'_>) -> Result<(), WslError>
     run_within(command, input, SETTING_COPY_LIMIT).map(drop)
 }
 
-/// Whether Halonic's distro is among the distros WSL lists. Answers
-/// nothing about WSL being enabled: a `wsl.exe` that ends with an error,
-/// such as one with no distro at all, is `Failed`, so the caller doesn't
-/// guess between "WSL is missing" and "the distro is missing".
+/// Whether Halonic's distro is among the distros WSL lists, within `limit`:
+/// a `wsl.exe` that hasn't listed the distros by then is stopped, so a hung
+/// WSL service never holds up what waits for the answer. Answers nothing
+/// about WSL being enabled: a `wsl.exe` that ends with an error, such as one
+/// with no distro at all, is `Failed`, so the caller doesn't guess between
+/// "WSL is missing" and "the distro is missing".
 ///
 /// # Errors
 ///
-/// When `wsl.exe` can't start, or ends with an error.
-pub fn distro_installed(wsl: &Path) -> Result<bool, WslError> {
-    distro_installed_within(wsl, Duration::MAX)
-}
-
-/// [`distro_installed`] with a time limit: a `wsl.exe` that hasn't listed
-/// the distros after `limit` is stopped, so a hung WSL service never holds
-/// up what waits for the answer.
-///
-/// # Errors
-///
-/// [`WslError::TimedOut`] after `limit`, otherwise as [`distro_installed`].
+/// When `wsl.exe` can't start or ends with an error, and
+/// [`WslError::TimedOut`] after `limit`.
 pub fn distro_installed_within(wsl: &Path, limit: Duration) -> Result<bool, WslError> {
     let mut command = new_command(wsl);
     command.env_remove("WSLENV").args(["--list", "--quiet"]);

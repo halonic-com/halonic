@@ -70,3 +70,44 @@ fn agent_host_commands_sweep_opened_folders_without_the_long_path_prefix() {
         [profile, PathBuf::from(r"D:\acme")] // leak-guard: allow absolute-path made-up Windows path for a test
     );
 }
+
+/// Requirement `start-status`: a `wsl.exe` that doesn't list the distros
+/// within the limit is stopped, and the start fails as `wsl_failed`, so the
+/// host's lock is never held for longer.
+#[cfg(unix)]
+#[test]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+fn start_status_says_wsl_failed_when_wsl_exe_does_not_list_in_time() {
+    use std::time::{Duration, Instant};
+
+    use super::distro_host_command_for;
+
+    let wsl = std::env::temp_dir().join(format!("halonic-hung-wsl-{}", std::process::id()));
+    // A child shell writes the stand-in, so this process never holds it
+    // open for writing ("Text file busy", HAL-14102).
+    let written = std::process::Command::new("/bin/sh")
+        .args([
+            "-c",
+            "printf '#!/bin/sh\\nsleep 30\\n' > \"$1\" && chmod 700 \"$1\"",
+            "sh",
+        ])
+        .arg(&wsl)
+        .status()
+        .expect("start the shell that writes the stand-in");
+    assert!(written.success(), "write the stand-in: {written}");
+    let started = Instant::now();
+    let answer = distro_host_command_for(wsl.clone(), Duration::from_millis(200));
+    let elapsed = started.elapsed();
+    std::fs::remove_file(&wsl).expect("remove the stand-in");
+    let Err(refusal) = answer else {
+        panic!("a hung wsl.exe must refuse the start");
+    };
+    assert_eq!(refusal.failure, StartFailure::of(FailureCause::WslFailed));
+    assert!(
+        elapsed < Duration::from_secs(10),
+        "gave up after {elapsed:?}"
+    );
+}
