@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { type AgentActivity, demandAt, demandProfile, hourOfWeek, quantile } from "./demand.ts";
-import { type AgentUsage, hourMs, stepMs } from "./types.ts";
+import { demandAt, demandProfile, hourOfWeek, quantile } from "./demand.ts";
+import { type AgentActivity, type AgentUsage, bucketMs, hourMs } from "./types.ts";
 
 // Sunday 22 Nov 2026, 12:00 UTC.
 const now = "2026-11-22T12:00:00.000Z";
@@ -9,6 +9,7 @@ const nowMs = Date.parse(now);
 
 const busy: AgentActivity = {
   agentId: "agent-1",
+  at: now,
   model: "opus",
   runningRuns: 1,
   queuedRuns: 0,
@@ -27,8 +28,9 @@ function history(perHour: (hourStartMs: number) => number, agentId = "agent-1"):
         agentId,
         seatId: "seat-a",
         model: "opus",
-        bucketStart: new Date(hourStartMs + bucket * stepMs).toISOString(),
+        bucketStart: new Date(hourStartMs + bucket * bucketMs).toISOString(),
         tokens: { input: 0, cached: 0, output: perHour(hourStartMs) / 6 },
+        runs: 1,
       });
     }
   }
@@ -97,6 +99,7 @@ verifies("paperclip.seats-demand", () => {
         model: "opus",
         bucketStart: new Date(nowMs - hourMs).toISOString(),
         tokens: { input: 0, cached: 336_000_000, output: 0 },
+        runs: 1,
       },
     ];
     const profile = demandProfile(busy, usage, now);

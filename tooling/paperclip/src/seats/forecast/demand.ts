@@ -12,6 +12,7 @@
 
 import { median } from "./robust-fit.ts";
 import {
+  type AgentActivity,
   type AgentUsage,
   addTokens,
   hourMs,
@@ -19,18 +20,6 @@ import {
   type TokenCounts,
   totalTokens,
 } from "./types.ts";
-
-/** What an agent is doing when the forecast runs. */
-export interface AgentActivity {
-  readonly agentId: string;
-  /** The model its runs use now, which may differ from its history (a model change). */
-  readonly model: string;
-  readonly runningRuns: number;
-  readonly queuedRuns: number;
-  readonly openTasks: number;
-  /** How many runs it may have at once. The scenarios use it; demand keeps today's. */
-  readonly cap: number;
-}
 
 /** Everything the forecast needs to know about one agent's demand. */
 export interface DemandProfile {
