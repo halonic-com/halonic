@@ -13,6 +13,10 @@ fake `TunnelProvider` telling the tunnel's name. The tests then attack it the wa
 
 - `openTunnelRig`: the gateway on a recording session source, a started fake tunnel, and the forwarder. `rig.client()` is a raw
   client that reaches the gateway through the forwarder; `rig.greeted()` has done the handshake and hello.
+- `openHostRig`: phase B's path with the host's own parts: Studio's `HostRemoteControl` with the real pairing desk, the phone
+  store in a real file, the host key and the mDNS advert, in front of the real gateway, on a pairing clock the test moves. It
+  keeps the bytes on the wire, the host's log and the multicast datagrams. `host-pairing.ts` connects the desk and the store to
+  the gateway until the host does that itself; `PairingPhone` and `pairing-steps.ts` pair over the wire, or break off a step.
 - `RecordingSource`: the host's side of the gateway, in memory. It records every prompt and approval answer the gateway passes
   on, so a test can say a hostile client changed nothing.
 - `WireClient`, `wireFrame`: a client that sends any bytes, such as an unmasked frame or a lying length, and reads the frames back.

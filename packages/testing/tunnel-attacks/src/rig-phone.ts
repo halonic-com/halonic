@@ -69,12 +69,14 @@ function frame(kind: keyof typeof gatewayFrameKinds, body: Uint8Array): Uint8Arr
 
 /** A paired phone, speaking the end-to-end session with the real Noise library. */
 export class RigPhone {
-  readonly keys = keyPair();
+  readonly keys: KeyPair;
   readonly #hostKey: Uint8Array;
   #noise: NoiseSession | undefined;
 
-  constructor(hostKey: Uint8Array) {
+  /** A phone that pinned `hostKey`, with its own static key: `keys`, or a new one. */
+  constructor(hostKey: Uint8Array, keys: KeyPair = keyPair()) {
     this.#hostKey = hostKey;
+    this.keys = keys;
   }
 
   /** Reconnect message 1, to the host key the phone pinned. */

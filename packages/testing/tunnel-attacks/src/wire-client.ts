@@ -195,6 +195,19 @@ export class WireClient {
     return frames;
   }
 
+  /**
+   * Waits for the host's binary frame at `index`, the first being 0, and
+   * gives it; `undefined` when the connection ended before it came.
+   */
+  async binaryFrame(index: number): Promise<Buffer | undefined> {
+    for (let turn = 0; turn < 300; turn++) {
+      const frames = this.hostFrames(op.binary);
+      if (frames.length > index || this.socket.destroyed) return frames[index];
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    return this.hostFrames(op.binary)[index];
+  }
+
   /** Waits until `count` text frames came, or the connection ended, and gives the frames so far. */
   async frames(count: number): Promise<unknown[]> {
     for (let turn = 0; turn < 300 && this.textFrames().length < count; turn++) {
