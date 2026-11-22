@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -104,9 +105,7 @@ verifies("runs.run-view.run-again-review", () => {
   it("offers Review on the run card too, and gives the banner's Run again focus once trusted", async () => {
     const askTrust = vi.fn(async () => "trusted" as const);
     const startRun = vi.fn(async () => {
-      throw Object.assign(new Error("This workspace isn't trusted yet, so nothing was started."), {
-        kind: "denied",
-      });
+      throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");
     });
     const root = show({ runStart: { startRun, askTrust } });
     await act(async () => button(root, "Run again")?.click());

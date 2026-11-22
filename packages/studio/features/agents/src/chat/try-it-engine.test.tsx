@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -69,8 +70,11 @@ verifies("agents.chat.not-trusted", () => {
     expect(toasts.list()).toHaveLength(0);
   });
 
-  /** A chat whose engine refuses each answer as `denied`, as an untrusted workspace's engine does. */
-  async function refusedByEngine(ask?: () => Promise<"trusted" | "declined">) {
+  /** A chat whose engine refuses its first answer with `refusal`, by default as untrusted. */
+  async function refusedByEngine(
+    ask?: () => Promise<"trusted" | "declined">,
+    refusal: Error = new WorkspaceUntrusted("This workspace isn't trusted."),
+  ) {
     const { host, requests, finish } = scriptedHost();
     const withGate = Object.assign(host, {
       askTrust: ask,
@@ -83,7 +87,7 @@ verifies("agents.chat.not-trusted", () => {
       </ToastStoreProvider>,
     );
     await sendMessage(page, "Sort this mail");
-    await finish(new KindedError("denied", "This workspace isn't trusted."));
+    await finish(refusal);
     const box = () => (page.querySelector("textarea") as HTMLTextAreaElement).value;
     return { page, requests, toasts, box };
   }
@@ -106,6 +110,25 @@ verifies("agents.chat.not-trusted", () => {
     ]);
     expect(said(page)).toEqual(["Sort this mail"]);
     expect(box()).toBe("");
+  });
+
+  it("shows a denied that isn't about trust as a failure with its own words, with no gate", async () => {
+    const ask = vi.fn(async () => "trusted" as const);
+    const { page, requests, toasts, box } = await refusedByEngine(
+      ask,
+      new KindedError("denied", "Acme isn't an opened folder."),
+    );
+    expect(ask).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(1);
+    expect(page.querySelector(".text-danger")?.textContent).toBe(
+      "Sorter's reply failed: Acme isn't an opened folder.",
+    );
+    expect(said(page)).toEqual([
+      "Sort this mail",
+      "Sorter's reply failed: Acme isn't an opened folder.",
+    ]);
+    expect(box()).toBe("");
+    expect(toasts.list()).toHaveLength(0);
   });
 
   it("keeps the message and shows the toast after Not now", async () => {

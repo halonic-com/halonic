@@ -1,6 +1,7 @@
 import type { ChatAnswerEnd } from "@halonicjs/app";
 import { errorKindOf } from "@halonicjs/std";
 import { useToastStore } from "@halonicjs/studio-kit";
+import { isUntrustedRefusal } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentRef, AgentsHost } from "../api.ts";
 import {
@@ -49,8 +50,9 @@ export interface TryItChat {
   askTrust(): Promise<boolean>;
   /**
    * Sends `message` as the person's next message. When the engine refuses it because the
-   * workspace isn't trusted (`denied`, H16), nothing was sent: the turn is taken back and
-   * `refused` gets the message, so it can go back in the box. It isn't shown as a failure.
+   * workspace isn't trusted ({@link isUntrustedRefusal}, H16), nothing was sent: the turn is taken
+   * back and `refused` gets the message, so it can go back in the box. It isn't shown as a
+   * failure. Any other `denied`, such as a folder that isn't open, is a failure with its own words.
    */
   send(message: string, refused?: (message: string) => void): void;
   /** Stops the reply being written; it ends with "Stopped by you.". */
@@ -113,15 +115,14 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
         })
         .then((answer) => finish(replyEndOf(answer.end)))
         .catch((error: unknown) => {
-          const kind = errorKindOf(error);
-          if (kind === "denied") {
+          if (isUntrustedRefusal(error)) {
             running.current = undefined;
             update((transcript) => withoutLastTurn(transcript).transcript);
             setAnswering(false);
             refused?.(message);
             return;
           }
-          if (kind === "unavailable") engineLost();
+          if (errorKindOf(error) === "unavailable") engineLost();
           finish(failureOf(error, toolsRanInLastTurn(current.current)));
         });
     },

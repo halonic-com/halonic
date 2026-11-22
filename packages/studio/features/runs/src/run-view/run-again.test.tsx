@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
-import { EngineNotAnswering, type EngineWords, engineWords } from "@halonicjs/studio-shell";
+import {
+  EngineNotAnswering,
+  type EngineWords,
+  engineWords,
+  WorkspaceUntrusted,
+} from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -332,9 +337,7 @@ verifies("runs.run-view.run-again-try-again", () => {
 
 verifies("runs.run-view.run-again-review", () => {
   const untrusted = () => {
-    throw Object.assign(new Error("This workspace isn't trusted yet, so nothing was started."), {
-      kind: "denied",
-    });
+    throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");
   };
 
   it("offers Review under a refusal for an untrusted workspace, which opens the trust check", async () => {
@@ -415,6 +418,20 @@ verifies("runs.run-view.run-again-review", () => {
     await act(async () => button(other, "Run again")?.click());
     expect(button(other, "Review")).toBeUndefined();
     expect(button(other, "Try again")).toBeDefined();
+
+    unmountAll();
+    const folderNotOpen = await open(failed, {
+      startRun: vi.fn(async () => {
+        throw new KindedError("denied", "Acme isn't an opened folder.");
+      }),
+      askTrust: vi.fn(),
+    });
+    await act(async () => button(folderNotOpen, "Run again")?.click());
+    expect(folderNotOpen.textContent).toContain(
+      "Couldn't start the run: Acme isn't an opened folder.",
+    );
+    expect(button(folderNotOpen, "Review")).toBeUndefined();
+    expect(button(folderNotOpen, "Try again")).toBeDefined();
 
     unmountAll();
     const cantAsk = await open(failed, { startRun: vi.fn(async () => untrusted()) });

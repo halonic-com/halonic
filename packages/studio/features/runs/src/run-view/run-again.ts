@@ -1,6 +1,10 @@
 import type { RunEvent } from "@halonicjs/events";
-import { errorKindOf } from "@halonicjs/std";
-import { type EngineWords, startFailureOf, withFullStop } from "@halonicjs/studio-shell";
+import {
+  type EngineWords,
+  isUntrustedRefusal,
+  startFailureOf,
+  withFullStop,
+} from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import type { RunStartHost, SourcedRun } from "../api.ts";
 import { runPageWords } from "../run-words.ts";
@@ -72,7 +76,7 @@ export function useRunAgain(
   // A ref, so two clicks in the same render still start one run.
   const pending = useRef(false);
   const onTrusted = host?.onTrusted;
-  const untrusted = problem !== undefined && errorKindOf(problem.error) === "denied";
+  const untrusted = problem !== undefined && isUntrustedRefusal(problem.error);
   // Trusted from the status bar, not from the refusal's Review: the refusal is stale (C552 finding 7).
   // Focus stays where the person trusted it.
   useEffect(() => {
@@ -102,7 +106,7 @@ export function useRunAgain(
   };
   const { askTrust } = host;
   const review =
-    askTrust === undefined || problem === undefined || errorKindOf(problem.error) !== "denied"
+    askTrust === undefined || problem === undefined || !isUntrustedRefusal(problem.error)
       ? undefined
       : async () => {
           const answer = await askTrust();
