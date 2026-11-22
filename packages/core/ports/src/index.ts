@@ -423,7 +423,6 @@ export {
   isPluginSecretName,
   isQuotableSecretName,
   isSecretName,
-  type KeyOriginStore,
   type KeyOrigins,
   maxAllowedOrigins,
   maxSecretNameLength,

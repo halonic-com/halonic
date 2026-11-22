@@ -4,7 +4,7 @@
 // names each in its cause (`models.<code>`); these read the facts from the
 // cause's detail. The key is named, never its value.
 
-import type { KeyOriginStore } from "@halonicjs/ports";
+import type { KeyOrigins } from "@halonicjs/ports";
 
 /** A refused key or provider, by the reason its lines name, with the facts they need. */
 export type KeyAddressFailure =
@@ -21,7 +21,7 @@ export type KeyAddressFailure =
        * The list that refused, when the cause says (HAL-15762): the keychain's, which Studio's
        * Models edits, or the profile's secrets file's, which `halonic models allow-address` edits.
        */
-      readonly store?: KeyOriginStore;
+      readonly store?: NonNullable<KeyOrigins["store"]>;
     }
   | {
       /** The key would go to an address other than its type's own, and the workspace isn't trusted here. */

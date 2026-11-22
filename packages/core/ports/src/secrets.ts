@@ -374,11 +374,8 @@ export interface KeyOrigins {
    * (HAL-15762): the OS keychain, whose lists Studio's Models edits, or the profile's secrets
    * file, whose lists `halonic models allow-address` edits. Absent when the host doesn't say.
    */
-  readonly store?: KeyOriginStore;
+  readonly store?: "keychain" | "secrets-file";
 }
-
-/** Where a host keeps its keys' lists of addresses (see {@link KeyOrigins.store}). */
-export type KeyOriginStore = "keychain" | "secrets-file";
 
 /**
  * The key origins of a host that has no list yet, so every key has none
