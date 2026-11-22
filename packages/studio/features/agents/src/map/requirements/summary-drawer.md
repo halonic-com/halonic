@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13180; flow-agents 6 "Summary card click"; UX checklist 9.9 and 1.6 (Esc)
 
-When a side's summary card is pressed, the agents feature shall open a drawer over the map, titled by the side's name, that lists every item of the side as its card and the side's add button last, and move the focus to its title; when Esc is pressed, after a dialog or menu above it and before a stacked card, or the empty map is pressed, it shall close the drawer and give the focus back to the summary card; when a change leaves the side with three items or fewer, it shall close the drawer and move the focus to the side's first card or button.
+When a side's summary card is pressed, the agents feature shall open a drawer over the map (on a phone, a panel sheet: `agents.map.phone-summary-sheet`), titled by the side's name, that lists every item of the side as its card and the side's add button last, and move the focus to its title; when Esc is pressed, after a dialog or menu above it and before a stacked card, or the empty map is pressed, it shall close the drawer and give the focus back to the summary card; when a change leaves the side with three items or fewer, it shall close the drawer and move the focus to the side's first card or button.
 
 ## Examples
 
