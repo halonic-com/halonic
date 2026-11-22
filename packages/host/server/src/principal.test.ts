@@ -42,6 +42,19 @@ describe("principal", () => {
       }
     });
 
+    it("treats the claims as untrusted input", () => {
+      for (const claims of [null, undefined, "claims", 42, [personalClaims(ids.alice)]]) {
+        expect(checkClaims(claims), String(claims)).toBeNull();
+      }
+      for (const field of ["aud", "sub", "scope"]) {
+        const claims: Record<string, unknown> = { ...personalClaims(ids.alice) };
+        delete claims[field];
+        expect(checkClaims(claims), field).toBeNull();
+      }
+      const withExtras = { ...personalClaims(ids.alice), exp: 1, iat: 0, admin: true };
+      expect(checkClaims(withExtras)?.principal.actor).toBe(ids.alice);
+    });
+
     it("refuses an end-user id or scope that breaks the name rule", () => {
       const badIds = ["", "eu_", "eu_short", "eu_a/bAAAAAAAAAAAAAAAA", "eu_..AAAAAAAAAAAAAAAA"];
       for (const sub of [...badIds, `eu_${"A".repeat(41)}`, 42, undefined]) {
@@ -114,18 +127,33 @@ describe("principal", () => {
       expect(checkClaims(personalClaims(ids.alice, { client: { admin: true } }))).toBeNull();
     });
 
+    it("refuses a client claim that isn't 1 to 64 printable ASCII characters", () => {
+      expect(checkClaims(personalClaims(ids.alice, { client: "c".repeat(64) }))?.client).toBe(
+        "c".repeat(64),
+      );
+      for (const client of ["", "c".repeat(65), "desk\ntop", "desk\u0000top", "café", 7]) {
+        expect(checkClaims(personalClaims(ids.alice, { client })), String(client)).toBeNull();
+      }
+    });
+
     it("stores a principal as a record and reads it back with the same checks", () => {
       const principal = checkClaims(orgClaims("admin"))?.principal;
       if (principal === undefined) {
         throw new Error("the claims should pass");
       }
       const record = principalToRecord(principal);
-      expect(record).toEqual({ actor: ids.alice, scope: `o/${ids.acme}`, role: "admin" });
+      expect(record).toEqual({ v: 1, actor: ids.alice, scope: `o/${ids.acme}`, role: "admin" });
+      expect(Object.isFrozen(principal.scope)).toBe(true);
       expect(principalFromRecord(JSON.parse(JSON.stringify(record)))).toEqual(principal);
+      expect(principalFromRecord({ ...record, v: 2 })).toBeNull();
+      expect(
+        principalFromRecord({ actor: ids.alice, scope: `o/${ids.acme}`, role: "admin" }),
+      ).toBeNull();
+      expect(principalFromRecord(null)).toBeNull();
       expect(principalFromRecord({ ...record, role: "seller" })).toBeNull();
       expect(principalFromRecord({ ...record, scope: `u/${ids.bob}`, role: "owner" })).toBeNull();
       expect(
-        principalFromRecord({ actor: ids.alice, scope: `u/${ids.alice}/`, role: "owner" }),
+        principalFromRecord({ v: 1, actor: ids.alice, scope: `u/${ids.alice}/`, role: "owner" }),
       ).toBeNull();
     });
   });

@@ -93,5 +93,17 @@ describe("session credential", () => {
         expect(result, token).toEqual({ ok: false, refusal: "refused" });
       }
     });
+
+    it("lets an error the verifier throws go up instead of reading it as a refusal", async () => {
+      const failing = {
+        verify: async () => {
+          throw new Error("key store unavailable");
+        },
+      };
+      const signedIn = request("/", { authorization: "Bearer good" });
+      await expect(verifySession(signedIn, { verifier: failing, cookieName })).rejects.toThrow(
+        "key store unavailable",
+      );
+    });
   });
 });

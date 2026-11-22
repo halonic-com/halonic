@@ -13,7 +13,10 @@ export interface SessionCredential {
  * result, so no verifier can skip those rules.
  */
 export interface SessionVerifier {
-  /** The token's claims, or `null` when the token is refused. */
+  /**
+   * The token's claims, or `null` when the token is refused. A verifier that can't decide (its
+   * key store is down, say) throws instead, so the failure is never read as "not signed in".
+   */
   verify(credential: SessionCredential): Promise<SessionClaims | null>;
 }
 
@@ -57,7 +60,9 @@ export function readSessionCredential(
 
 /**
  * Who is asking: reads the credential, lets the verifier check it, then runs the shared claim
- * checks on what the verifier returned.
+ * checks on what the verifier returned. Every refusal gets the same answer from the caller, so
+ * the refusal kind is for the server's log only. An error the verifier throws isn't a refusal:
+ * it goes up to the caller as a server error.
  */
 export async function verifySession(
   request: Request,
