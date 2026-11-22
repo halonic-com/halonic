@@ -11,9 +11,17 @@ export interface Link {
   readonly replace?: readonly number[];
 }
 
+/** An index entry; `nameLength` sets the length its flags give instead of the path's own. */
+export interface Entry {
+  readonly path: string;
+  readonly mode: number;
+  readonly extended?: boolean;
+  readonly nameLength?: number;
+}
+
 /** A git index the way git writes one, with entries in the given order. */
 export function index(
-  entries: { path: string; mode: number; extended?: boolean }[],
+  entries: Entry[],
   version: 2 | 3 | 4 = 2,
   hashLength = 20,
   link?: Link,
@@ -29,7 +37,8 @@ export function index(
     parts.push(...new Array(24).fill(0), ...u32(entry.mode), ...new Array(12).fill(0));
     parts.push(...new Array(hashLength).fill(7));
     const name = new TextEncoder().encode(entry.path);
-    const flags = Math.min(name.byteLength, 0xfff) | (entry.extended ? 0x4000 : 0);
+    const nameLength = entry.nameLength ?? Math.min(name.byteLength, 0xfff);
+    const flags = nameLength | (entry.extended ? 0x4000 : 0);
     parts.push(flags >> 8, flags & 0xff);
     if (entry.extended) parts.push(0x20, 0);
     parts.push(...entryName(entry.path, previous, version, parts.length - start));
@@ -54,7 +63,26 @@ function entryName(path: string, previous: string, version: number, written: num
   }
   let shared = 0;
   while (shared < previous.length && previous[shared] === path[shared]) shared++;
-  return [previous.length - shared, ...new TextEncoder().encode(path.slice(shared)), 0];
+  return [...varint(previous.length - shared), ...new TextEncoder().encode(path.slice(shared)), 0];
+}
+
+/** Git's offset varint (encode_varint): each continuation byte stands for one more than it says. */
+function varint(value: number): number[] {
+  const bytes = [value & 0x7f];
+  for (let rest = value >> 7; rest > 0; rest >>= 7) bytes.unshift(0x80 | (--rest & 0x7f));
+  return bytes;
+}
+
+/** `index` with an extension added after the others, before the file's hash. */
+export function withExtension(
+  index: Uint8Array,
+  name: string,
+  data: readonly number[],
+  hashLength = 20,
+): Uint8Array {
+  const body = index.subarray(0, index.byteLength - hashLength);
+  const extension = [...new TextEncoder().encode(name), ...u32(data.length), ...data];
+  return new Uint8Array([...body, ...extension, ...index.subarray(body.byteLength)]);
 }
 
 /** The `link` extension: the shared index's id, an empty delete bitmap and the replace bitmap. */
@@ -78,6 +106,7 @@ function u64(value: bigint): number[] {
   return [...u32(Number(value >> 32n)), ...u32(Number(value & 0xffffffffn))];
 }
 
-function u32(value: number): number[] {
+/** A number as 4 bytes, most significant first, the way the index stores it. */
+export function u32(value: number): number[] {
   return [value >>> 24, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff];
 }
