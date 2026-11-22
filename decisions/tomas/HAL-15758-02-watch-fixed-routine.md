@@ -3,6 +3,7 @@
 - Task: HAL-15758
 - Approval: flow check C630 (HAL-15782) asks for this line on the task HAL-15758. The team decides it under the HAL-2282 rule, since it adds one line in the words of an existing `watch` line, to a flow the board already approved. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DXZEYTE6YPl1DuFR1JdsuyoBHZOlYtyEUMmfWe6CkRolR5H+IEdEWCg9aOgIE6Tf3ARpaKhtMGKSAWm9laGxDg==
 
 ## What changes
 
