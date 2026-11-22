@@ -40,6 +40,7 @@ function serviceOf(settings: string): EngineService {
     reportError: () => {},
     isTrusted: async () => true,
     mayStart: async () => true,
+    isTrustedNow: () => true,
   });
 }
 

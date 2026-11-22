@@ -57,6 +57,12 @@ export interface EngineServiceOptions {
    */
   readonly mayStart: (workspace: LoadedWorkspace) => Promise<boolean>;
   /**
+   * Whether the last check found the workspace trusted, for a start the shell refused because
+   * the folder isn't open, which no new check can read: after Remove trust closed it, a no makes
+   * that refusal the untrusted one, so the page offers **Review** (HAL-15695).
+   */
+  readonly isTrustedNow: () => boolean;
+  /**
    * Calls `listener` whenever the workspace's trust may have changed, such as when a person
    * removes it; returns the way to stop. The open engine then asks {@link mayStart} again and
    * closes on a no (HAL-12799).
