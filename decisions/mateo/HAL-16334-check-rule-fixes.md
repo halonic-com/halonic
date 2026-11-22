@@ -3,6 +3,7 @@
 - Task: HAL-16334
 - Approval: follows the release review's follow-ups that Liam assigned on HAL-16334; Liam signs this note in review, and Julian signs it as the second guardian because it changes trust roots (`tooling/check/src/lib/problems.ts`, `tooling/check/src/guard/`)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oTytY6jtJIDiI1/Gztf1hJDU6jPNKSGJ2em4aBr6FyaMGzjuexRGcvSK9QnF2Bb7vEKfVR18qvlggchBVA+aCg==
 
 ## What changes
 
