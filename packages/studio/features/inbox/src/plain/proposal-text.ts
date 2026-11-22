@@ -98,6 +98,12 @@ export function decisionFailedLine(verb: "accept" | "reject", all: boolean): str
   return `Couldn't ${verb} ${all ? "these changes" : "this change"}.`;
 }
 
+/** In place of the buttons once the proposal's texts are gone (Q11), before **Remove**. */
+export const goneLine = "This proposal can't be opened any more.";
+
+/** A **Remove** that didn't go through, before the reason and **Try again**. */
+export const removeFailedLine = "Couldn't remove this proposal.";
+
 /** The toast after an Accept or a Reject (Q7): "Accepted 3 changes from run 01JD8Q". */
 export function decidedToast(verb: "Accepted" | "Rejected", count: number, runId: string): string {
   return `${verb} ${changesCount(count)} from run ${shortRunId(runId)}`;

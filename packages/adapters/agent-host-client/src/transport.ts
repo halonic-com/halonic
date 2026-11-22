@@ -38,6 +38,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/proposals/reject",
   "POST /v1/proposals/restore",
   "POST /v1/proposals/settle",
+  "POST /v1/proposals/remove",
   "POST /v1/placements/get",
   "POST /v1/placements/save",
   "POST /v1/placements/remove",

@@ -15,6 +15,7 @@ import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { ProposalFile, ProposalItem } from "../proposal-items.ts";
 import { cardBodyClasses, cardClasses } from "./card-parts.tsx";
 import { itemTitle } from "./inbox-row.tsx";
+import { GoneLine } from "./proposal-gone.tsx";
 import type { RunFacts } from "./run-facts.ts";
 import {
   type DecisionTarget,
@@ -44,6 +45,8 @@ export interface ProposalCardProps {
  * what the proposal came to. Where the window can't decide, the changes end with the terminal
  * command that does (HAL-15986).
  *
+ * When the host says the proposal's texts are gone, the page offers only **Remove** (Q11).
+ *
  * Not here yet: a change's settings before and after, the diff, Compare and the phone's bar (Q5,
  * Q9, Q12).
  */
@@ -57,10 +60,7 @@ export function ProposalCard({
 }: ProposalCardProps) {
   const titleId = useId();
   const state = useProposalDecisions(item, decisions, onDecided);
-  const open = state.files.filter(
-    (file) => file.decision === "undecided" && !state.changedSinceRun.has(file.path),
-  );
-  const { accepts, summary } = useFocusAfterDecision(state, open[0]?.path);
+  const open = openFiles(state).length > 0;
   return (
     <section aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
@@ -68,33 +68,73 @@ export function ProposalCard({
           item={item}
           titleId={titleId}
           facts={proposalFacts(item, now, facts)}
-          state={decisions !== undefined && open.length > 0 ? state : null}
+          state={decisions !== undefined && open && !state.gone ? state : null}
         />
-        <FailedLine state={state} target="all" />
-        <BeforeAccept item={item} onOpenRun={onOpenRun} />
-        <ul className="flex flex-col gap-2">
-          {state.files.map((file) => (
-            <ChangeRow
-              key={file.path}
-              file={file}
-              runId={item.runId}
-              state={state}
-              buttons={decisions !== undefined}
-              accepts={accepts}
-            />
-          ))}
-        </ul>
-        {decisions === undefined && open.length > 0 ? <DecideElsewhere runId={item.runId} /> : null}
-        {open.length === 0 && state.decided > 0 ? (
-          <p ref={summary} tabIndex={-1} className="focus-ring text-body text-fg">
-            {decidedSummary(state.files)}
-          </p>
-        ) : null}
+        {decisions !== undefined && state.gone ? (
+          <GoneLine runId={item.runId} decisions={decisions} onRemoved={onDecided} />
+        ) : (
+          <ProposalChanges
+            item={item}
+            state={state}
+            buttons={decisions !== undefined}
+            onOpenRun={onOpenRun}
+          />
+        )}
         <p role="status" className="sr-only">
           {state.announcement}
         </p>
       </div>
     </section>
+  );
+}
+
+/**
+ * What accepting does, the changes, each with **Reject** and **Accept** while `buttons`, and what
+ * the proposal came to once nothing is left to decide. Without `buttons`, the command that decides.
+ */
+function ProposalChanges({
+  item,
+  state,
+  buttons,
+  onOpenRun,
+}: {
+  readonly item: ProposalItem;
+  readonly state: ProposalDecisionState;
+  readonly buttons: boolean;
+  readonly onOpenRun: ((runId: string) => void) | undefined;
+}) {
+  const open = openFiles(state);
+  const { accepts, summary } = useFocusAfterDecision(state, open[0]?.path);
+  return (
+    <>
+      <FailedLine state={state} target="all" />
+      <BeforeAccept item={item} onOpenRun={onOpenRun} />
+      <ul className="flex flex-col gap-2">
+        {state.files.map((file) => (
+          <ChangeRow
+            key={file.path}
+            file={file}
+            runId={item.runId}
+            state={state}
+            buttons={buttons}
+            accepts={accepts}
+          />
+        ))}
+      </ul>
+      {!buttons && open.length > 0 ? <DecideElsewhere runId={item.runId} /> : null}
+      {open.length === 0 && state.decided > 0 ? (
+        <p ref={summary} tabIndex={-1} className="focus-ring text-body text-fg">
+          {decidedSummary(state.files)}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/** The files still to decide here: undecided, less those changed since the run (they wait for Compare). */
+function openFiles(state: ProposalDecisionState): readonly ProposalFile[] {
+  return state.files.filter(
+    (file) => file.decision === "undecided" && !state.changedSinceRun.has(file.path),
   );
 }
 
@@ -168,6 +208,16 @@ function AllButtons({ state }: { readonly state: ProposalDecisionState }) {
   );
 }
 
+/** Where the window can't decide: the line and the command that shows the proposal in a terminal. */
+function DecideElsewhere({ runId }: { readonly runId: string }) {
+  return (
+    <div className="flex flex-col gap-2 text-body text-fg-muted">
+      <p>{decideElsewhereLine}</p>
+      <CommandBox command={decideCommand(runId)} />
+    </div>
+  );
+}
+
 /** The lines before any Accept (Q4), above the changes, with **See run 01JD8Q ›**. */
 function BeforeAccept({
   item,
@@ -190,16 +240,6 @@ function BeforeAccept({
           </button>
         </p>
       )}
-    </div>
-  );
-}
-
-/** Where the window can't decide: the line and the command that shows the proposal in a terminal. */
-function DecideElsewhere({ runId }: { readonly runId: string }) {
-  return (
-    <div className="flex flex-col gap-2 text-body text-fg-muted">
-      <p>{decideElsewhereLine}</p>
-      <CommandBox command={decideCommand(runId)} />
     </div>
   );
 }

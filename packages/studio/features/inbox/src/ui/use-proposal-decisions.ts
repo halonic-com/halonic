@@ -1,7 +1,11 @@
 import { type ToastStore, useToastStore } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { changeLine, decidedToast, undoLeftAloneLine } from "../plain/proposal-text.ts";
-import type { ProposalDecided, ProposalDecisions } from "../proposal-decisions.ts";
+import {
+  type ProposalDecided,
+  type ProposalDecisions,
+  ProposalGoneError,
+} from "../proposal-decisions.ts";
 import type { ProposalFile, ProposalItem } from "../proposal-items.ts";
 
 /** Accept or Reject. */
@@ -26,6 +30,8 @@ export interface ProposalDecisionState {
   /** The busy button's `id`, which the others point at as why they're unavailable meanwhile. */
   readonly busyId: string;
   readonly failure: DecisionFailure | null;
+  /** Whether the host said the proposal's texts are gone, so it can only be removed (Q11). */
+  readonly gone: boolean;
   /** The files an Accept left alone because the person changed them after the run started. */
   readonly changedSinceRun: ReadonlySet<string>;
   /** The last decision said for a screen reader (Q6): "Accepted: notes.md added". */
@@ -52,10 +58,12 @@ export function useProposalDecisions(
   const [pending, setPending] = useState<ProposalDecisionState["pending"]>(null);
   const busyId = useId();
   const [failure, setFailure] = useState<DecisionFailure | null>(null);
+  const [gone, setGone] = useState(false);
   const [changedSinceRun, setChangedSinceRun] = useState<ReadonlySet<string>>(new Set());
   const [announcement, setAnnouncement] = useState("");
   const [decided, setDecided] = useState(0);
   const { runId } = item;
+  useFilesFromRefresh(item.files, pending, setFiles);
 
   function setDecisions(paths: readonly string[], decision: ProposalFile["decision"]) {
     const changing = new Set(paths);
@@ -94,7 +102,10 @@ export function useProposalDecisions(
         applied(verb, target, result);
         onDecided();
       })
-      .catch((error: unknown) => setFailure({ verb, target, reason: reasonOf(error) }))
+      .catch((error: unknown) => {
+        if (error instanceof ProposalGoneError) setGone(true);
+        else setFailure({ verb, target, reason: reasonOf(error) });
+      })
       .finally(() => {
         setPending(null);
         setDecided((count) => count + 1);
@@ -102,7 +113,26 @@ export function useProposalDecisions(
     undoSteps.track(deciding);
   }
 
-  return { files, pending, busyId, failure, changedSinceRun, announcement, decided, decide };
+  return { files, pending, busyId, failure, gone, changedSinceRun, announcement, decided, decide };
+}
+
+/**
+ * Takes the files' decisions from each refresh of the Inbox, such as one made in another window,
+ * except while a decision is on its way: the refresh after it brings that decision too.
+ */
+function useFilesFromRefresh(
+  files: readonly ProposalFile[],
+  pending: ProposalDecisionState["pending"],
+  setFiles: (files: readonly ProposalFile[]) => void,
+) {
+  const deciding = useRef(false);
+  deciding.current = pending !== null;
+  const opened = useRef(files);
+  useEffect(() => {
+    // The first files are already the state's; only a refresh's replace them.
+    if (files === opened.current || deciding.current) return;
+    setFiles(files);
+  }, [files, setFiles]);
 }
 
 /**
