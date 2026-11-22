@@ -4,6 +4,7 @@ import { isFolderNotOpen } from "../engine/folder-not-open.ts";
 import { rawDetailsOf } from "./copy-details-words.ts";
 import { errorReasonFor, unexplainedReason } from "./error-message.ts";
 import { lowerAfterColon } from "./failure-line.ts";
+import { TryAgainLater } from "./try-again-later.ts";
 
 /**
  * What a run that didn't start shows, wherever it was started: the Run panel's **Start run**, the
@@ -33,7 +34,8 @@ export interface StartFailure {
  *   hold a path and go only to **Copy details**.
  * - A refusal with a next step shows the step, and its command when it has one, without **Try
  *   again** (D7). A `conflict` keeps **Try again** next to its step: the other Halonic may have
- *   finished by the time the person reads it (UX check S1, design check C471-6).
+ *   finished by the time the person reads it (UX check S1, design check C471-6). So does a
+ *   {@link TryAgainLater}, whose step waits for something that ends by itself (C701 row 4).
  * - Any other reason gets **Try again**; one that replaces raw text gets **Copy details** too.
  *
  * `notAnswering` is the reason for an engine that can't be reached, in the words for where Studio
@@ -56,9 +58,14 @@ export function startFailureOf(error: unknown, notAnswering: string): StartFailu
     reason: withFullStop(lowerAfterColon(reason)),
     fix,
     command: fix === undefined ? undefined : commandOf(error),
-    tryAgain: fix === undefined || errorKindOf(error) === "conflict",
+    tryAgain: fix === undefined || mayWorkLater(error),
     copyDetails: rawDetailsOf(error) !== undefined,
   };
+}
+
+/** Whether a refusal with a next step may still start later, so the screen keeps **Try again**. */
+function mayWorkLater(error: unknown): boolean {
+  return errorKindOf(error) === "conflict" || error instanceof TryAgainLater;
 }
 
 const noStep = { fix: undefined, command: undefined } as const;

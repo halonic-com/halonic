@@ -120,6 +120,7 @@ export {
   startFailedWords,
 } from "./errors/start-failed-callout.tsx";
 export { type StartFailure, startFailureOf, withFullStop } from "./errors/start-failure.ts";
+export { TryAgainLater } from "./errors/try-again-later.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export {
   narrowQuery,

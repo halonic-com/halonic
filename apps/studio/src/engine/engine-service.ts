@@ -262,7 +262,8 @@ export class EngineService {
    * Sends `event` to a run waiting for a person, such as an Inbox card's Approve or Reject, as
    * `halonic runs send` does, with the executor's `payload` and `options` (the call or wait step it
    * answers): opens the engine, with the checks of a start, and returns once the event is recorded.
-   * Another engine holding the workspace fails as `unavailable`, a failure to try again, and an
+   * Another engine holding the workspace, or Local only changed while a run is going, fails as
+   * `unavailable` with its next step in the sentence, a failure to try again, and an
    * Approve of a connector's tool call the window can't make is refused before anything is
    * recorded (`engine-refusals`).
    * @returns the run as it is after the event
@@ -302,7 +303,7 @@ export class EngineService {
 
   /**
    * The engine `open` gives, for an answer: with the checks of a start, and the lock's `conflict`
-   * as `unavailable`.
+   * and a refusal to try again later as one `unavailable` sentence (`answerRefusalOf`).
    */
   async #forAnswer(open = () => openOnSavedFiles(this.#opener)): Promise<OpenEngine> {
     const opened = await open().catch((error: unknown) => {

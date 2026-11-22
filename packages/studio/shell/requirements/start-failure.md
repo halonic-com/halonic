@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-12412 (UX check S1, S2, S4 and S6 of HAL-12390, rules E5 and N2; HAL-13758 for a lock another Halonic holds; design check C471-6 of HAL-14728), microcopy 22 F1 and F13; the shell's refusal of a folder that isn't open (C613 row 33, HAL-15683)
+- Source: HAL-12412 (UX check S1, S2, S4 and S6 of HAL-12390, rules E5 and N2; HAL-13758 for a lock another Halonic holds; design check C471-6 of HAL-14728), microcopy 22 F1 and F13; the shell's refusal of a folder that isn't open (C613 row 33, HAL-15683); a refusal to try again later (design check C701 row 4, HAL-16380)
 
-The shell shall word a run that didn't start in one function, `startFailureOf`, for every place that starts one: the Run panel, the run page's **Run again** and the Inbox's request form. Each place shall put its own lead before the reason. The reason shall be lower case after the lead's colon unless it starts with a name. A failure Halonic can't explain shall say "Halonic ran into a problem it can't explain yet." with **Copy details** and no **Try again**. So shall the desktop shell's refusal of a folder that isn't open in this window (`folder_not_open`, the cause of the store's `denied`), whose own words hold the folder's path and go only to **Copy details**, because starting again gets the same refusal (UX check S4, as the engine lock does). A refusal with a next step shall show the step, and its command when it has one, without **Try again**, except a `conflict`: "Acme is already running in another Halonic on this computer." comes with "Stop that one, then try again." (HAL-13758) and **Try again**, because the other Halonic may have finished by then. Any other reason shall offer **Try again**, and **Copy details** when the error keeps raw text the reason replaces.
+The shell shall word a run that didn't start in one function, `startFailureOf`, for every place that starts one: the Run panel, the run page's **Run again** and the Inbox's request form. Each place shall put its own lead before the reason. The reason shall be lower case after the lead's colon unless it starts with a name. A failure Halonic can't explain shall say "Halonic ran into a problem it can't explain yet." with **Copy details** and no **Try again**. So shall the desktop shell's refusal of a folder that isn't open in this window (`folder_not_open`, the cause of the store's `denied`), whose own words hold the folder's path and go only to **Copy details**, because starting again gets the same refusal (UX check S4, as the engine lock does). A refusal with a next step shall show the step, and its command when it has one, without **Try again**, except a `conflict`: "Acme is already running in another Halonic on this computer." comes with "Stop that one, then try again." (HAL-13758) and **Try again**, because the other Halonic may have finished by then, and a `TryAgainLater`, whose step waits for something that ends by itself: "Local only was turned on in Acme while a run was going." comes with "Try again once that run ends." and **Try again**. Any other reason shall offer **Try again**, and **Copy details** when the error keeps raw text the reason replaces.
 
 ## Examples
 
@@ -17,6 +17,9 @@ The shell shall word a run that didn't start in one function, `startFailureOf`, 
 - Given a `conflict` "Acme is already running in another Halonic on this computer." whose fix is "Stop that one, then try again.",
   when the start fails,
   then the reason keeps its capital, the fix is the second line, and **Try again** shows.
+- Given a `TryAgainLater` "Local only was turned on in Acme while a run was going." whose fix is "Try again once that run ends.",
+  when the start fails,
+  then the reason reads "local only was turned on in Acme while a run was going.", the fix is the second line, and **Try again** shows.
 - Given an `unavailable` refusal whose fix leads to `halonic run reply`,
   when the start fails,
   then the fix and the command show and there is no **Try again**.

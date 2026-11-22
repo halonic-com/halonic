@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { TryAgainLater } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
@@ -36,7 +37,7 @@ const click = (button: HTMLButtonElement | undefined) =>
   });
 
 /** The page with a `startRun` that refuses, as the engine does when a run can't start. */
-function refusing(refused: StartRefused) {
+function refusing(refused: Error) {
   const { host } = memoryHost([], [], [reply], [], {
     startRun: async () => {
       throw refused;
@@ -139,5 +140,24 @@ verifies("workflows.start.start-run", () => {
     );
     expect(page.querySelector("aside code")).toBeNull();
     expect(page.textContent).not.toContain("Try again");
+  });
+
+  it("keeps Try again next to the step when Local only changed while a run was going", async () => {
+    const page = await refusing(
+      new TryAgainLater(
+        "Local only was turned on in Acme while a run was going.",
+        "Try again once that run ends.",
+      ),
+    );
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.textContent).toContain(
+      "Couldn't start the run: local only was turned on in Acme while a run was going.",
+    );
+    expect(page.textContent).toContain("Try again once that run ends.");
+    expect(page.textContent).not.toContain("didn't start");
+    expect(buttonNamed(page, "Try again")).toBeDefined();
   });
 });

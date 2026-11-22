@@ -60,6 +60,9 @@ describe("lowerAfterColon", () => {
     expect(lowerAfterColon("You're offline")).toBe("you're offline");
     expect(lowerAfterColon("Something went wrong")).toBe("something went wrong");
     expect(lowerAfterColon("It's locked")).toBe("it's locked");
+    expect(lowerAfterColon("Local only was turned on in Acme.")).toBe(
+      "local only was turned on in Acme.",
+    );
   });
 
   it("keeps a name's capital", () => {

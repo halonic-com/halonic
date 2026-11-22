@@ -9,6 +9,7 @@
 import type { TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import type { LocalExecutor } from "@halonicjs/engine";
 import { KindedError } from "@halonicjs/std";
+import { TryAgainLater } from "@halonicjs/studio-shell";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 
 /** The workspace an open engine reads, as saved at its latest start or answer. */
@@ -52,15 +53,17 @@ function isLocalOnly(workspace: LoadedWorkspace): boolean {
  * Refuses, while a run is going in the engine, to close it for a new local only: closing would
  * stop that run. A run waiting for a person or a timer goes on in the next engine.
  *
- * @throws KindedError `unavailable`, so the page offers to try again, when a run is going
+ * @param saved the open engine's workspace, whose local only the save turned the other way
+ * @throws TryAgainLater when a run is going, so the page offers to try again once it ends
  */
 export async function refuseWhileRunsGo(
   executor: LocalExecutor,
   runs: TauriRunStore,
   name: string,
+  saved: SavedWorkspace,
 ): Promise<void> {
   if (!(await hasRunGoing(executor, runs))) return;
-  throw localOnlyChangedRefusal(name, "Try again once the run that's going ends.");
+  throw localOnlyChangedWhileGoing(name, saved);
 }
 
 /**
@@ -80,17 +83,32 @@ export async function hasRunGoing(
 }
 
 /**
- * The refusal of a start the open engine can't make because local only was turned on or off.
+ * The refusal of a start or an answer the open engine can't make because local only was turned on
+ * or off while a run was going. It says which way, so the person knows what the saved files now
+ * ask for (check C700, HAL-16373), and leaves "didn't start" to each screen's lead (C701 row 5).
  *
- * @param fix the next step: trying again for a person's start, the next time for a routine's
+ * @param saved the open engine's workspace; the save turned its local only the other way
  */
-export function localOnlyChangedRefusal(name: string, fix: string): KindedError {
-  return new KindedError(
-    "unavailable",
-    `Local only was turned on or off in ${name}, so this run didn't start.`,
-    { fix },
+export function localOnlyChangedWhileGoing(name: string, saved: SavedWorkspace): TryAgainLater {
+  return new TryAgainLater(
+    `Local only was turned ${turnedOf(saved)} in ${name} while a run was going.`,
+    "Try again once that run ends.",
   );
 }
 
-/** The next step of a routine's start refused for a new local only. */
-export const routineLocalOnlyStep = "It starts at its next time, once no run is going.";
+/**
+ * The refusal of a routine's start because local only was turned on or off, also with no run
+ * going: the engine opens anew only after the tick (`takeForRoutine`), so the next time starts.
+ *
+ * @param saved the open engine's workspace; the save turned its local only the other way
+ */
+export function localOnlyChangedForRoutine(name: string, saved: SavedWorkspace): KindedError {
+  return new KindedError("unavailable", `Local only was turned ${turnedOf(saved)} in ${name}.`, {
+    fix: "It starts at its next time.",
+  });
+}
+
+/** Which way a save turned local only: the other way from the open engine's. */
+function turnedOf(saved: SavedWorkspace): "on" | "off" {
+  return saved.localOnly ? "off" : "on";
+}
