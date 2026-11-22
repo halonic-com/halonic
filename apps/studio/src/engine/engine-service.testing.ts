@@ -2,7 +2,13 @@
 
 import { TauriEngineLock } from "@halonicjs/adapter-fs-tauri";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
-import { type Clock, type IdGenerator, noKeyOrigins, type Secrets } from "@halonicjs/ports";
+import {
+  type Clock,
+  type HttpClient,
+  type IdGenerator,
+  noKeyOrigins,
+  type Secrets,
+} from "@halonicjs/ports";
 import { EngineService, type EngineServiceOptions } from "./engine-service.ts";
 
 export const location = "/acme";
@@ -161,4 +167,55 @@ export function serviceOn(
     reportError: () => {},
     ...more,
   });
+}
+
+/** Acme with a provider in the cloud and one on this computer; the writer starts on the cloud one. */
+export function acmeWithTwoProviders() {
+  return acmeFiles(
+    { writer: "model: cloud\n" },
+    {
+      "providers/far.yaml":
+        "id: far\nname: Far\ntype: openai-compatible\nbaseUrl: https://models.acme.test/v1\n",
+      "providers/near.yaml":
+        "id: near\nname: Near\ntype: openai-compatible\nbaseUrl: http://127.0.0.1:18765/v1\nlocal: true\n",
+      "models.yaml": [
+        "aliases:",
+        "  cloud: { provider: far, model: big }",
+        "  home: { provider: near, model: small }",
+        "",
+      ].join("\n"),
+    },
+  );
+}
+
+/** A model server that answers every call at once, and keeps the address each call went to. */
+export function answeringServer(): HttpClient & { readonly hosts: string[] } {
+  const hosts: string[] = [];
+  return {
+    hosts,
+    fetch: async (url) => {
+      hosts.push(new URL(url).host);
+      const answer = {
+        id: "answer-1",
+        choices: [
+          { index: 0, message: { role: "assistant", content: "Done." }, finish_reason: "stop" },
+        ],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      };
+      return new Response(JSON.stringify(answer), {
+        headers: { "content-type": "application/json" },
+      });
+    },
+  };
+}
+
+/** Ids that don't repeat, as the shell's don't. */
+export function countingIds(): IdGenerator {
+  let next = 0;
+  return {
+    next: (prefix) => {
+      next += 1;
+      return `${prefix}${next}`;
+    },
+  };
 }

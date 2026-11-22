@@ -2,11 +2,19 @@
 // opened (HAL-16324): a later save of an agent or of Local only counts for the next run.
 
 import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
-import type { HttpClient, IdGenerator } from "@halonicjs/ports";
+import type { HttpClient } from "@halonicjs/ports";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { acmeFiles, fakeShell, lockCalls, serviceOn } from "./engine-service.testing.ts";
+import {
+  acmeFiles,
+  acmeWithTwoProviders,
+  answeringServer,
+  countingIds,
+  fakeShell,
+  lockCalls,
+  serviceOn,
+} from "./engine-service.testing.ts";
 
 const reply = { hubId: "support", workflowId: "reply" };
 
@@ -18,46 +26,6 @@ const hourly = [
   "run: { workflow: reply }",
   "",
 ].join("\n");
-
-/** Acme with a provider in the cloud and one on this computer; the writer starts on the cloud one. */
-function acmeWithTwoProviders() {
-  return acmeFiles(
-    { writer: "model: cloud\n" },
-    {
-      "providers/far.yaml":
-        "id: far\nname: Far\ntype: openai-compatible\nbaseUrl: https://models.acme.test/v1\n",
-      "providers/near.yaml":
-        "id: near\nname: Near\ntype: openai-compatible\nbaseUrl: http://127.0.0.1:18765/v1\nlocal: true\n",
-      "models.yaml": [
-        "aliases:",
-        "  cloud: { provider: far, model: big }",
-        "  home: { provider: near, model: small }",
-        "",
-      ].join("\n"),
-    },
-  );
-}
-
-/** A model server that answers every call at once, and keeps the address each call went to. */
-function answeringServer(): HttpClient & { readonly hosts: string[] } {
-  const hosts: string[] = [];
-  return {
-    hosts,
-    fetch: async (url) => {
-      hosts.push(new URL(url).host);
-      const answer = {
-        id: "answer-1",
-        choices: [
-          { index: 0, message: { role: "assistant", content: "Done." }, finish_reason: "stop" },
-        ],
-        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-      };
-      return new Response(JSON.stringify(answer), {
-        headers: { "content-type": "application/json" },
-      });
-    },
-  };
-}
 
 /** A model server that takes each call and answers none until it is called off, so a run stays going. */
 const hungServer: HttpClient = {
@@ -72,17 +40,6 @@ const pageTimers: SetTimer = (callback, delayMs) => {
   const timer = setTimeout(callback, delayMs);
   return () => clearTimeout(timer);
 };
-
-/** Ids that don't repeat, as the shell's don't. */
-function countingIds(): IdGenerator {
-  let next = 0;
-  return {
-    next: (prefix) => {
-      next += 1;
-      return `${prefix}${next}`;
-    },
-  };
-}
 
 verifies("studio.engine-service", () => {
   describe("a start after a save", () => {

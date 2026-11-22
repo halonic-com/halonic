@@ -3,7 +3,8 @@
 // were when the engine opened. Definitions, models, chat turns, the budget and the trust checks
 // read that copy. Local only is built into the engine's executor and harness host, so a save that
 // turns it on or off needs a new engine, as `halonic routines watch` does (HAL-6084): the copy is
-// kept as it was, and the service opens a new engine or refuses.
+// kept as it was, and the service opens a new engine, on that save once no run is going
+// (`reopenOnLocalOnlySave`), or refuses.
 
 import type { TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import type { LocalExecutor } from "@halonicjs/engine";
@@ -25,13 +26,18 @@ export class SavedWorkspace {
   /** The files as last taken, which the engine's runs read. */
   readonly latest = (): LoadedWorkspace => this.#current;
 
+  /** Whether `saved` keeps local only as the engine was built, so the engine may read it. */
+  keepsLocalOnly(saved: LoadedWorkspace): boolean {
+    return isLocalOnly(saved) === this.localOnly;
+  }
+
   /**
    * Takes `saved` as the files the engine reads from now on, unless it turns local only on or off.
    *
    * @returns whether it was taken; when not, the engine must not start anything more
    */
   take(saved: LoadedWorkspace): boolean {
-    if (isLocalOnly(saved) !== this.localOnly) return false;
+    if (!this.keepsLocalOnly(saved)) return false;
     this.#current = saved;
     return true;
   }

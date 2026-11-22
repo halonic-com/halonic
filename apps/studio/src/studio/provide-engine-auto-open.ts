@@ -27,7 +27,11 @@ export function provideEngineAutoOpen(
   const autoOpen = services.provide(
     engineAutoOpenKey,
     new EngineAutoOpen({
-      open: () => engine.open(),
+      open: async () => {
+        // A run waiting for a timer resumes on an engine with the Local only just saved.
+        await engine.reopenOnLocalOnlySave();
+        return engine.open();
+      },
       definitions: new TauriDefinitionStore(files, location),
       records: new TauriRecordStore(ipc, location),
       mayStart: (workspace) => trust.mayStart(workspace),

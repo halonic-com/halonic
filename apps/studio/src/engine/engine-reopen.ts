@@ -1,7 +1,9 @@
 // How the page's engine takes the files as saved (`engine-saved-files.ts`, HAL-16324): a start, an
 // answer and a routine's start each take them, and a save that turned local only on or off closes
 // the engine and opens a new one, or refuses while a run is going, which closing would stop. A
-// cancel takes nothing: it starts nothing, so it goes on the open engine as it is.
+// cancel takes nothing: it starts nothing, so it goes on the open engine as it is. A save itself
+// takes nothing either, but one that turned local only on or off opens a new engine once no run
+// is going, so a run waiting for a timer resumes with the new setting (HAL-16381).
 
 import type { TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import type { AssembledEngine, LocalExecutor } from "@halonicjs/engine";
@@ -81,6 +83,22 @@ export async function takeForRoutine(
     })
     .catch(opener.reportError);
   throw localOnlyChangedRefusal(opener.name, routineLocalOnlyStep);
+}
+
+/**
+ * After a save: when it turned local only on or off, closes the open engine and opens a new one,
+ * as `halonic routines watch` does, so a run waiting for a person or a timer resumes on an engine
+ * built with the new setting. Takes nothing else of the save: a run's definitions and budget stay
+ * as at its start. While a run is going, which closing would stop, the engine stays as it is, and
+ * the next start, answer or save opens anew. Opens nothing when no engine is open.
+ */
+export async function reopenOnLocalOnlySave(opener: EngineOpener): Promise<void> {
+  const opening = opener.current();
+  const open = await opening?.catch(() => undefined);
+  if (opening === undefined || open === undefined) return;
+  if (open.saved.keepsLocalOnly(await opener.load())) return;
+  if (await hasRunGoing(open.engine.executor, open.runs)) return;
+  await reopen(opener, opening);
 }
 
 /** Closes the engine `opening` opened, unless another call did already, and opens a new one. */
