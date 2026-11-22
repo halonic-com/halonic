@@ -56,6 +56,7 @@ verifies("studio.installer-rollback-guard", () => {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
     expect(refuse).toContain('"-SetupVersion ${SRTSETUPVERSION}"');
     expect(refuse).toMatch(/\$\{ElseIf\} \$R1 = 1[\s\S]*SetErrorLevel 2\s+Quit/);
+    expect(refuse).toContain("(Settings › Agent sandbox › Remove sandbox)");
   });
 
   it("keeps the setup version beside the kept installer, and the shell prunes both", () => {
