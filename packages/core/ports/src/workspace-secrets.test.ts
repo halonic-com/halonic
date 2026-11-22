@@ -1,6 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
+  deploymentSecretNames,
+  halonicSecretNames,
   isHalonicSecretName,
   isPluginSecretName,
   pluginSecretNamePrefix,
@@ -35,6 +37,12 @@ verifies("ports.workspace-secrets", () => {
       "SERVE-PASSWORD",
       "remote-host-key",
       "Remote_Host_Key",
+      "cloud-key",
+      "Cloud_Key",
+      "user-secrets-key",
+      "USER_SECRETS_KEY",
+      "admin-key-hash",
+      "Admin_Key_Hash",
       "halonic_token_google_refresh",
       "Halonic-Token-google_refresh",
       "HALONIC_TOKEN_x",
@@ -104,6 +112,13 @@ verifies("ports.workspace-secrets", () => {
       expect(isHalonicSecretName("halonic-token-a")).toBe(true);
       expect(isHalonicSecretName("REMOTE-HOST-KEY")).toBe(true);
       expect(isHalonicSecretName("openai-key")).toBe(false);
+    });
+
+    it("counts a deployment's own secrets without making every deployment need them", () => {
+      for (const name of deploymentSecretNames) {
+        expect(isHalonicSecretName(name), name).toBe(true);
+        expect(halonicSecretNames, name).not.toContain(name);
+      }
     });
 
     it("doesn't count a plugin's secret as Halonic's own", () => {

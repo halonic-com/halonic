@@ -416,6 +416,7 @@ export {
 } from "./scheduler.ts";
 export {
   checkSecretValue,
+  deploymentSecretNames,
   describeSecretName,
   halonicSecretNames,
   hostSecretNames,
