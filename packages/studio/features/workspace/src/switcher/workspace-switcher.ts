@@ -1,11 +1,8 @@
-import type { ToastAction, ToastStore } from "@halonicjs/studio-kit";
+import type { ToastStore } from "@halonicjs/studio-kit";
 import {
   cantOpenProblem,
   cantReopenProblem,
-  copyDetails,
-  copyDetailsWords,
   engineWaitMs,
-  removeFromRecentLabel,
   type SaveReason,
   type StudioWorkspace,
   type WelcomeOpenProblem,
@@ -13,6 +10,7 @@ import {
 import { openOnSupportReply } from "../sample/demo-start.ts";
 import type { TestModelWatch } from "../sample/test-model-watch.ts";
 import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts";
+import { showCantOpenToast } from "./cant-open-toast.ts";
 import { OpenWorkspaces } from "./open-workspaces.ts";
 import type { RecentWorkspaces } from "./recent-workspaces.ts";
 import type { WorkspaceSaving } from "./workspace-saving.ts";
@@ -200,10 +198,7 @@ export class WorkspaceSwitcher {
 
   /**
    * As {@link pickAndOpen} or {@link openLocation} from the workspace menu: a folder that fails
-   * to open says why in a danger toast over the workspace still shown, which stays until closed
-   * (states-flow-map E1 to E4). A Recent row whose folder is gone offers **Remove from Recent**
-   * (E2), one whose folder has to be picked again offers **Open folder** (HAL-7058), and a reason
-   * Halonic can't explain offers **Copy details** (E4). After
+   * to open says why in a danger toast over the workspace still shown (`showCantOpenToast`). After
    * {@link MENU_BUSY_AFTER_MS} the switcher button is {@link busy} until then (D9). Does nothing
    * while another folder is opening.
    */
@@ -225,12 +220,12 @@ export class WorkspaceSwitcher {
     if (problem === undefined) {
       return;
     }
-    const action = this.#cantOpenAction(problem, fromRecent);
-    this.#options.toasts.show({
-      tone: "danger",
-      title: `Can't open ${problem.folder}: ${problem.reason}`,
-      ...(action === undefined ? {} : { action }),
-    });
+    const parts = {
+      toasts: this.#options.toasts,
+      removeFromRecent: (location: string) => this.removeFromRecent(location),
+      pickAgain: () => void this.fromMenu(() => this.pickAndOpen()),
+    };
+    showCantOpenToast(parts, problem, fromRecent);
   }
 
   /**
@@ -445,25 +440,6 @@ export class WorkspaceSwitcher {
     return undefined;
   }
 
-  /** The failed open's toast action: Copy details, Remove from Recent, Open folder, or none. */
-  #cantOpenAction(problem: WelcomeOpenProblem, fromRecent: boolean): ToastAction | undefined {
-    const { details } = problem;
-    if (details !== undefined) {
-      const { toasts } = this.#options;
-      return { label: copyDetailsWords.label, onClick: () => void copyDetails(details, toasts) };
-    }
-    if (fromRecent && problem.kind === "not_found") {
-      return { label: removeFromRecentLabel, onClick: () => this.removeFromRecent(problem.folder) };
-    }
-    if (problem.pickAgain === true) {
-      return {
-        label: openFolderLabel,
-        onClick: () => void this.fromMenu(() => this.pickAndOpen()),
-      };
-    }
-    return undefined;
-  }
-
   #setButtonBusy(busy: boolean): void {
     if (this.#buttonBusy === busy) return;
     this.#buttonBusy = busy;
@@ -481,9 +457,6 @@ export class WorkspaceSwitcher {
     }
   }
 }
-
-/** The toast action that shows the folder picker, as the menu's "Open a folder…" does. */
-export const openFolderLabel = "Open folder";
 
 /** How long an open from the menu runs before the switcher button shows busy (kit busy rule). */
 export const MENU_BUSY_AFTER_MS = 300;

@@ -11,7 +11,7 @@ import {
 } from "react";
 import { copyDetailsWords } from "../errors/copy-details-words.ts";
 import { useCopyDetails } from "../page/copy-details.ts";
-import { engineWaitMs, type WelcomeOpenProblem } from "./cant-open.ts";
+import { engineWaitMs, offersRemoveFromRecent, type WelcomeOpenProblem } from "./cant-open.ts";
 import type { WelcomeStart } from "./start-status.ts";
 import {
   WELCOME_RECENT_ROWS,
@@ -229,7 +229,10 @@ export function Welcome({
   const hasRecent = recent !== undefined && recent.workspaces.length > 0;
   const demoLeads = onTrySample !== undefined && !hasRecent;
   const offersRemove =
-    shownProblem?.fromRecent === true && problem?.kind === "not_found" && recent !== undefined;
+    shownProblem?.fromRecent === true &&
+    problem !== undefined &&
+    offersRemoveFromRecent(problem) &&
+    recent !== undefined;
 
   return (
     <div className="flex h-full justify-center overflow-auto p-6 pt-[18vh]">
@@ -263,7 +266,7 @@ export function Welcome({
           }
         />
         <p id={alertId} role="alert" className="text-body text-danger break-words empty:hidden">
-          {problem === undefined ? null : `Can't open ${problem.folder}: ${problem.reason}`}
+          {problem === undefined ? null : cantOpenSentence(problem)}
           {sampleProblem === undefined ? null : cantCreateSampleLine(sampleProblem)}
         </p>
         {offersRemove ? (
@@ -387,3 +390,9 @@ function WelcomeActions({
 
 /** The link that drops a Recent row whose folder is gone (microcopy 3.2). */
 export const removeFromRecentLabel = "Remove from Recent";
+
+/** "Can't open acme: your profile folder is inside it.", with the fix after it when there is one. */
+function cantOpenSentence(problem: WelcomeOpenProblem): string {
+  const line = `Can't open ${problem.folder}: ${problem.reason}`;
+  return problem.fix === undefined ? line : `${line} ${problem.fix}`;
+}

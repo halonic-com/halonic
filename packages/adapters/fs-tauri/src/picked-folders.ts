@@ -80,16 +80,22 @@ const errorKinds: Readonly<Record<TrustRefusalKind, ErrorKind>> = {
   parent_not_chosen: "denied",
   parent_private: "denied",
   exists: "conflict",
+  // The folder holds a moved profile, or is inside the profile: no pick fixes it (HAL-15201).
+  profile_inside: "denied",
+  workspace_inside_profile: "denied",
 };
 
 /**
  * The error a rejected picked-folder command becomes. A refusal keeps the shell's message, which
- * names no secret; anything else (a missing capability, a broken IPC call) is `unavailable`, and
- * its text is dropped.
+ * names no secret, and the refusal itself as its cause, so a Recent row can tell a folder refused
+ * for the profile's place; anything else (a missing capability, a broken IPC call) is
+ * `unavailable`, and its text is dropped.
  */
 function pickedFolderFailure(reason: unknown): KindedError {
   if (!isTrustRefusal(reason)) {
     return new KindedError("unavailable", "The desktop shell gave no answer about the folder.");
   }
-  return new KindedError(errorKinds[reason.kind], `The shell refused: ${reason.message}`);
+  return new KindedError(errorKinds[reason.kind], `The shell refused: ${reason.message}`, {
+    cause: reason,
+  });
 }

@@ -97,6 +97,8 @@ const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, E
   parent_not_chosen: "denied",
   parent_private: "denied",
   exists: "conflict",
+  profile_inside: "denied",
+  workspace_inside_profile: "denied",
 };
 
 /**

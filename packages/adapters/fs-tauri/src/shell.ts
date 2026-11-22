@@ -96,6 +96,13 @@ export const trustRefusalKinds = [
   "parent_private",
   /** `create_workspace_folder`: a folder of that name is already in the parent; it is never adopted. The probe and open commands send it for a link or a file at the path. */
   "exists",
+  /**
+   * `pick_folder`, `reopen_folder`, `trust_grant` and the commands of {@link workspaceFolderCommands}: a variable moved the
+   * profile folder into the folder (HAL-15201); `reason` names it, `HALONIC_HOME`, `XDG_DATA_HOME` or `LOCALAPPDATA`.
+   */
+  "profile_inside",
+  /** `pick_folder`, `reopen_folder`, `trust_grant`: the folder is the profile folder or inside it (HAL-15201). */
+  "workspace_inside_profile",
 ] as const;
 
 /** One of {@link trustRefusalKinds}. */
@@ -109,7 +116,10 @@ export interface TrustRefusal {
   readonly location?: string;
   /** The record's file, for `unreadable`, so a person can delete it by hand. */
   readonly file?: string;
-  /** Why the shell refused a `name_invalid` name, as a stable word the page can turn into a sentence. */
+  /**
+   * Why the shell refused, as a stable word the page can turn into a sentence: why a `name_invalid` name was refused, or
+   * the variable that put the profile in a `profile_inside` folder.
+   */
   readonly reason?: string;
 }
 

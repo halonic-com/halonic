@@ -163,3 +163,26 @@ verifies("workspace.recent-reopens-picked-folder", () => {
     error.mockRestore();
   });
 });
+
+verifies("workspace.profile-place-refusals", () => {
+  it("says why a Recent row inside the profile folder won't open, and offers Remove from Recent", async () => {
+    const cause = { kind: "workspace_inside_profile", message: "inside it" };
+    const { switcher, steps, toasts } = setup({
+      reopenFolder: async () => {
+        throw new KindedError("denied", "The shell refused: inside it", { cause });
+      },
+    });
+    switcher.recent.remember({ location: "/work/acme", name: "acme" });
+
+    await switcher.fromMenu(() => switcher.openLocation("/work/acme"), true);
+    const toast = toasts.list().at(-1);
+    expect(toast?.title).toBe(
+      "Can't open /work/acme: it's inside your profile folder, where Halonic keeps its own files.",
+    );
+    expect(toast?.text).toBe("Move the workspace out of it, then open it from its new place.");
+    expect(toast?.action?.label).toBe("Remove from Recent");
+    toast?.action?.onClick();
+    expect(switcher.recent.list()).toEqual([]);
+    expect(steps.at(-1)).toBe("forget /work/acme");
+  });
+});

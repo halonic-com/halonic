@@ -107,6 +107,9 @@ const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, E
   parent_not_chosen: "denied",
   parent_private: "denied",
   exists: "conflict",
+  // A grant for a folder that holds a moved profile, or is inside the profile (HAL-15201).
+  profile_inside: "denied",
+  workspace_inside_profile: "denied",
 };
 
 /**
