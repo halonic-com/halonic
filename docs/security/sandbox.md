@@ -75,7 +75,8 @@ the WSL one.
 When the sandbox stops an agent, the CLI ends with exit 9 and names one reason
 code: `windows`, `container`, `not-supported`,
 `blocked-by-policy`, `virtualisation-off`, `wsl-missing`, `restart-needed`,
-`distro-missing`, `setup-conflict`, `setup-needed`, `user-namespaces-restricted`,
+`distro-missing`, `runtime-missing`, `setup-conflict`, `setup-needed`,
+`user-namespaces-restricted`,
 `bubblewrap-missing`, `linux-tools-missing`, `ripgrep-missing`, `sign-in-needed`
 or `other`. When more than one applies, the first in that list wins, because its
 fix comes first: what Halonic can't fix, then what an administrator can, then
