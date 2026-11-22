@@ -4,6 +4,7 @@
 - Approval: follows Liam's decision on HAL-15286 (21 Nov) for `infra/ci-runner/` (HAL-15356, #4620), which scoped that PR to `ci-runner` only. `tooling/check/src/lib/affected-tests.ts` is a guard trust root, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:trC6j08My7M1LiqhT0ltFQDZr15LYY013hZsxDYvyUp+3ngzKiggRxMZcW92mBzH1sLS5JF1f075ZMcxXtLBAA==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:n4KrHMAEnvQkqpQ9N3Jqsm1KHxd2dv8uAmWUAaOi8JCXYm3z04np+75+a4iGB7an1h3tC8O3p/8QALyzO4IpCQ==
 
 ## What changes
 
