@@ -2,7 +2,6 @@
 
 - Approval: Liam approves this change on HAL-15606 (https://paperclip.halonic.com/HAL/issues/HAL-15606), from flow check C600 (#1a and #8) on HAL-15594. The words are `halonic tools review`'s own, approved on HAL-13731 and HAL-13732; a team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OZNLHeDHv9GNoO21znxSKtRm+wi3tVEAsQ25GAghaXwkATpdnx/9CTijuqAgsJQcl5YxG0yg4OfIkSpJ43PeBQ==
 
 ## What changes
 
@@ -59,3 +58,5 @@ error output (C600 #1b) is a separate decision about secrets in that output, ask
 - cli.commands.tools.revoke
 - cli.commands.tools.integration-connector
 - cli.commands.tools.plugin-connector
+- apps/cli/src/commands/tools/golden/usage-fingerprint-all.txt
+- apps/cli/src/commands/tools/golden/usage-fingerprint-many.txt
