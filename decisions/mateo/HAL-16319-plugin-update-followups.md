@@ -3,6 +3,7 @@
 - Task: HAL-16319
 - Approval: HAL-16319 asks for these fixes (C696 findings 2 and 5 on HAL-16316); Liam reviews the pull request and signs this note as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EdhvHFH7DyIbN/2E24+X/ItbtgVV7G8Jvlt9AKeqAQvtXa0HzouI+JOMK9RsLBQmfGHpFkFkS6oejt4c2dvhBg==
 
 ## What changes
 
