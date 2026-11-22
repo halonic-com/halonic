@@ -1,0 +1,64 @@
+import type { mountPhoneApp, PhoneTunnel } from "@halonicjs/studio-feature-remote/phone";
+import { type ConnectPageOptions, startConnectPage } from "./connect-page.ts";
+import type { PairingScanner } from "./pair-scan.ts";
+
+/** The phone app's code, loaded only when the shell has a tunnel. */
+export type PhoneAppModule = { readonly mountPhoneApp: typeof mountPhoneApp };
+
+export interface PageOptions extends ConnectPageOptions {
+  /** The shell's phone tunnel; without one the page is the 0.1 connect page. */
+  readonly tunnel: PhoneTunnel | undefined;
+  readonly scanner: PairingScanner;
+  readonly window: Window;
+  /** Android's settings for Halonic. */
+  readonly openSettings: () => void;
+  readonly openTailscale: () => void;
+  /** Where an answer or a refusal the page doesn't expect goes, for the log. */
+  readonly report: (problem: string) => void;
+  /** Loads the phone app; a test passes its own. */
+  readonly loadPhoneApp?: () => Promise<PhoneAppModule>;
+}
+
+const loadPhoneApp = (): Promise<PhoneAppModule> =>
+  import("@halonicjs/studio-feature-remote/phone");
+
+/**
+ * Starts the Android app's own page (HAL-15985). Without a tunnel it's the 0.1 connect page and
+ * nothing else loads. With one, the phone app's screens take a new `tunnel` screen, and the
+ * connect screen shows only after the typed route's "Enter its address", already filled in.
+ */
+export async function startPage(options: PageOptions): Promise<void> {
+  const { document, tunnel } = options;
+  if (tunnel === undefined) return startConnectPage(options);
+  const section = document.createElement("section");
+  section.dataset["screen"] = "tunnel";
+  const main = document.querySelector("main");
+  if (main === null) throw new Error("connect.html has no <main>.");
+  main.append(section);
+  showOnly(document, "tunnel");
+  const phoneApp = await (options.loadPhoneApp ?? loadPhoneApp)();
+  let connectStarted = false;
+  phoneApp.mountPhoneApp(section, {
+    tunnel,
+    scanner: options.scanner,
+    window: options.window,
+    report: options.report,
+    onOpenSettings: options.openSettings,
+    onOpenTailscale: options.openTailscale,
+    // The camera runs behind the web view: the page lets it show through while scanning.
+    onCamera: (showing) => document.body.classList.toggle("camera", showing),
+    onAddress: (showing) => {
+      if (!showing) return showOnly(document, "tunnel");
+      if (connectStarted) return showOnly(document, "connect");
+      connectStarted = true;
+      void startConnectPage({ ...options, changeAddress: true, pageNotShown: false });
+    },
+  });
+}
+
+/** Shows one of connect.html's screens and hides the others. */
+function showOnly(document: Document, name: string): void {
+  for (const screen of document.querySelectorAll<HTMLElement>("[data-screen]")) {
+    screen.hidden = screen.dataset["screen"] !== name;
+  }
+}
