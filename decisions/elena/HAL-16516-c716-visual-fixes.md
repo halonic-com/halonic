@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16516 (fixes decided on the design check C716, HAL-16499, rows 1 to 3; a team decision on screens the board approved, HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:h8iwoy/qAq/PRkdPHfDrGIzy/WAmuUdW+DOOi37aZBWSEdVxapAFT1klgZIBgCLHn2RceqfRqt0iA9zpUZAmAw==
 
 **Get updates over a file Halonic leaves to git (row 1).** The refusal's toast carried the git
 steps, and in the toast's narrow column `git pull --no-rebase` broke across lines as plain text,
