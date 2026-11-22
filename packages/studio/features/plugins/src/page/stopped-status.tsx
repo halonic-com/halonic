@@ -4,9 +4,9 @@
 // keeps that in memory and never starts the plugin without the sandbox because of it; this only
 // says so where the plugin lives.
 
-import { Button, Callout } from "@halonicjs/studio-kit";
+import { Button, Callout, useToastStore } from "@halonicjs/studio-kit";
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { NOT_WITHOUT_SANDBOX, stoppedWhileRunning } from "./page-text.ts";
+import { NOT_WITHOUT_SANDBOX, stoppedWhileRunning, triesSandboxAgain } from "./page-text.ts";
 import { CHECK_AGAIN } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
 
@@ -39,7 +39,8 @@ export interface StoppedStatusProps {
  * R15 in place of the status box (and of R13), for a trusted plugin with a backend the agent host
  * stopped because the sandbox failed (`plugins.plugin-page-stopped`). For any other plugin the
  * host isn't asked, and while it answers, or when it can't, the page shows `children`. **Check
- * again** asks the host to forget the stop, then shows `children` and moves focus to them.
+ * again** asks the host to forget the stop, then shows `children`, moves focus to them and says in
+ * a polite toast that the next run tries the sandbox again, since nothing was tried yet.
  */
 export function StoppedStatus({
   id,
@@ -53,12 +54,18 @@ export function StoppedStatus({
   const asks = plugin.status === "on" && plugin.manifest?.backend !== undefined;
   const { stopped, checkAgain } = useStopped(asks ? runStates : undefined, plugin.plugin);
   const [checked, setChecked] = useState(false);
+  const toasts = useToastStore();
   useEffect(() => {
     if (checked && !stopped) boxRef.current?.focus();
   }, [checked, stopped, boxRef]);
   if (!stopped) return children;
   const onCheckAgain = () => {
-    checkAgain().then(() => setChecked(true), onCheckAgainFailed);
+    checkAgain().then((state) => {
+      setChecked(true);
+      if (state?.stopped === false) {
+        toasts?.show({ tone: "info", title: triesSandboxAgain(plugin.name) });
+      }
+    }, onCheckAgainFailed);
   };
   return (
     <div id={id} ref={boxRef} tabIndex={-1} className="focus-ring rounded-sm">
@@ -107,9 +114,11 @@ function useStopped(runStates: PluginRunStates | undefined, plugin: string) {
     };
   }, [runStates, plugin]);
   const checkAgain = useCallback(async () => {
-    if (runStates === undefined) return;
+    if (runStates === undefined) return undefined;
     const state = await runStates.checkAgain(plugin);
-    if (live.current) setStopped(state.stopped);
+    if (!live.current) return undefined;
+    setStopped(state.stopped);
+    return state;
   }, [runStates, plugin]);
   return { stopped, checkAgain };
 }

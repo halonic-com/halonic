@@ -192,3 +192,11 @@ export function stoppedWhileRunning(name: string): string {
 
 /** R15's second sentence, under its title. */
 export const NOT_WITHOUT_SANDBOX = "Halonic doesn't start it again without the sandbox.";
+
+/**
+ * The polite toast once R15's **Check again** worked: the host only forgot the stop, so nothing
+ * was tried yet (C584 row 13, HAL-15482).
+ */
+export function triesSandboxAgain(name: string): string {
+  return `Halonic tries ${name} in the sandbox again the next time a run uses it.`;
+}
