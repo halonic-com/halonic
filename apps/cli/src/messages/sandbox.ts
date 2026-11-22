@@ -2,7 +2,7 @@ import type { SandboxUnavailableReason } from "@halonicjs/ports";
 import { withoutUnsafe } from "../output/printable.ts";
 import { defineMessages } from "./define.ts";
 import { sandboxDocs } from "./docs.ts";
-import { type Phrase, phrase } from "./phrase.ts";
+import { markPart, type Phrase, phrase } from "./phrase.ts";
 
 export { wsl2FolderDocs } from "./docs.ts";
 
@@ -28,7 +28,10 @@ export const windowsNodeInWsl = "windows-node-in-wsl";
  * (HAL-3778 section 4) and the team's words where it doesn't (HAL-5900).
  * 0.1 has no Studio and runs on Windows only inside WSL 2, so no fix
  * points to Studio's settings: Windows' setup fixes say to use WSL 2
- * (HAL-7540).
+ * (HAL-7540). The one exception is `runtime-missing`: only Studio's own
+ * WSL setup leaves its Linux system without its runtime, and only Studio's
+ * repair puts it back, so its fix sends the person to Settings › Agent
+ * sandbox (C684 #3, HAL-16186).
  * The CLI's sandbox gives `not-supported` only on WSL 1, so its words are
  * WSL 1's, with the distro's name in the command (Sofia, HAL-6526).
  */
@@ -54,7 +57,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   "distro-missing":
     "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Use Halonic inside WSL 2 on this computer, then run it again.",
   "runtime-missing":
-    "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish. Use Halonic inside WSL 2 on this computer, then run it again.",
+    "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish. In Halonic Studio, open Settings › Agent sandbox and press Repair the sandbox, then run it again.",
   "setup-conflict":
     "Another program set up the sandbox on this computer, in a way Halonic can't use. Use Halonic inside WSL 2 on this computer, then run it again.",
   "setup-needed":
@@ -118,7 +121,8 @@ const fixes: Readonly<Record<WordedReason, string>> = {
     "install it with wsl --install --no-distribution in a terminal run as administrator, then restart Windows.",
   "restart-needed": "restart Windows.",
   "distro-missing": "use Halonic inside WSL 2 on this computer.",
-  "runtime-missing": "use Halonic inside WSL 2 on this computer.",
+  "runtime-missing":
+    "in Halonic Studio, open Settings › Agent sandbox and press Repair the sandbox.",
   "setup-conflict": "use Halonic inside WSL 2 on this computer.",
   "setup-needed": "use Halonic inside WSL 2 on this computer.",
   "user-namespaces-restricted":
@@ -149,7 +153,7 @@ export const sandboxMessages = defineMessages("sandbox", {
    * when it is known and only the Linux tools the check found missing.
    */
   refusedFix: (code: string, details: SandboxDetails = {}) =>
-    phrase`${withDistro(wordsFor(code, details.missing).refusedFix, details.distro)}`,
+    withStudioPath(withDistro(wordsFor(code, details.missing).refusedFix, details.distro)),
   /** Line 2 of a sandbox error with more than one problem, so no single fix. */
   seeDoctor: () => phrase`Run halonic doctor to see what's missing.`,
 
@@ -165,17 +169,18 @@ export const sandboxMessages = defineMessages("sandbox", {
   /**
    * The reason and its fix as one line, `doctor`'s fix without "Then run
    * halonic doctor again.": for plugin code that is off on this computer
-   * (`plugin add`, `trust --plugin`, `plugin list`). Like every fix here, it
-   * never points to Studio's settings (C566 #22, HAL-15361).
+   * (`plugin add`, `trust --plugin`, `plugin list`). Like every fix here but
+   * `runtime-missing`'s, it never points to Studio's settings (C566 #22,
+   * HAL-15361).
    */
   reasonAndFix: (code: string) => {
     const words = wordsFor(code);
-    return phrase`${words.reason} ${withDistro(sentence(words.fix), undefined)}`;
+    return phrase`${words.reason} ${withStudioPath(withDistro(sentence(words.fix), undefined))}`;
   },
   /** `halonic doctor`'s fix under the reason, with "Then run halonic doctor again." after it. */
   doctorFix: (code: string, details: SandboxDetails = {}) =>
     doctorFix(
-      withDistro(wordsFor(code, details.missing).fix, details.distro),
+      withStudioPath(withDistro(wordsFor(code, details.missing).fix, details.distro)),
       afterDoctorAgain[known(code)],
     ),
 });
@@ -284,6 +289,25 @@ export function readsAsOther(code: string): boolean {
   return known(code) === "other";
 }
 
+/** What stands between the steps of a place in Studio a fix names, such as "Settings › Agent sandbox". */
+const studioPathStep = " › ";
+
+/**
+ * `text` as a phrase, with the mark a stream that isn't UTF-8 shows as ">"
+ * between the steps of a place in Studio, as the CLI's other pointers into
+ * the desktop app write them.
+ *
+ * @example
+ * plainText(withStudioPath("Open Settings › Agent sandbox.")); // "Open Settings › Agent sandbox."
+ */
+function withStudioPath(text: string): Phrase {
+  const [first = "", ...steps] = text.split(studioPathStep);
+  return steps.reduce(
+    (built, step) => phrase`${built} ${markPart("studioPath")} ${step}`,
+    phrase`${first}`,
+  );
+}
+
 /** `fix`, which follows "Fix: ", as a sentence of its own: with a capital first letter. */
 function sentence(fix: string): string {
   return `${fix.charAt(0).toUpperCase()}${fix.slice(1)}`;
@@ -303,7 +327,7 @@ const afterDoctorAgain: Readonly<Partial<Record<WordedReason, string>>> = {
 };
 
 /** "Fix: install it, for example on Ubuntu or Debian with sudo apt install bubblewrap. Then run halonic doctor again." */
-function doctorFix(fix: string, note?: string): Phrase {
+function doctorFix(fix: Phrase, note?: string): Phrase {
   return note === undefined
     ? phrase`Fix: ${fix} Then run halonic doctor again.`
     : phrase`Fix: ${fix} Then run halonic doctor again. ${note}`;
