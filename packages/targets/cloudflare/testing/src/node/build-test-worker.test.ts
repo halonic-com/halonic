@@ -92,6 +92,35 @@ describe("the test Worker", () => {
     }
   });
 
+  it("runs a CommonJS module that picks its entry from process.env.NODE_ENV, as React's does", async () => {
+    // React's index.js and react-dom/server.edge.js start like this; workerd has no `process`.
+    await writeFile(
+      path.join(folder, "acme-react.cjs"),
+      [
+        'if (process.env.NODE_ENV === "production") {',
+        '  module.exports = { mode: "production" };',
+        "} else {",
+        '  module.exports = { mode: "development" };',
+        "}",
+      ].join("\n"),
+    );
+    const file = await suiteFile(
+      [
+        'import { describe, expect, it } from "vitest";',
+        'import acmeReact from "./acme-react.cjs";',
+        'describe("acme", () => {',
+        '  it("loads the production entry", () => expect(acmeReact.mode).toBe("production"));',
+        "});",
+      ].join("\n"),
+    );
+    const runner = await WorkerdRunner.start(await buildTestWorker([file]));
+    try {
+      expect(await runner.run("1")).toEqual({ status: "passed", assertions: 1 });
+    } finally {
+      await runner.stop();
+    }
+  });
+
   it("binds a Durable Object class a suite exports, with the suite and the object in one isolate", async () => {
     const file = await suiteFile(
       [
