@@ -1,4 +1,4 @@
-import type { RunnerUnfencedReason } from "@halonicjs/app";
+import { type RunnerUnfencedReason, runnerUnfencedWords } from "@halonicjs/app";
 import type { InstalledPluginFeed } from "@halonicjs/studio-feature-plugins";
 import {
   type PluginUnfencedRuns,
@@ -13,6 +13,7 @@ import {
   type TrustReview,
   type WorkspaceTrustControl,
 } from "@halonicjs/studio-feature-workspace";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { pluginHostsOf } from "../plugins/plugin-hosts.ts";
 import { type IntegrationRuns, trustReviewOf } from "./trust-review.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -166,7 +167,14 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
     const asking = this.#asking();
     return review === undefined || asking === undefined
       ? review
-      : { ...review, unfencedYes: { reason: asking, checkbox: UNFENCED_CHECKBOX } };
+      : {
+          ...review,
+          unfencedYes: {
+            reason: asking,
+            checkbox: UNFENCED_CHECKBOX,
+            reasonLine: runnerUnfencedWords(asking, "integration").reason,
+          },
+        };
   }
 
   /** The reason to ask the yes for: the check lists integrations, and none is saved for it. */
@@ -206,7 +214,8 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
       return { ok: false, reason: "the sandbox status changed", checkAgain: true };
     } catch (error) {
       if (kindOf(error) === "allow_failed") return { ok: false, reason: YES_NOT_SAVED, error };
-      return { ok: false, reason: error instanceof Error ? error.message : String(error), error };
+      // A host refusal's raw message names the agent host, a route and a code (C665-53).
+      return { ok: false, reason: errorReasonFor(error), error };
     }
   }
 

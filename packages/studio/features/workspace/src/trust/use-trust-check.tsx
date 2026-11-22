@@ -42,6 +42,7 @@ export function useTrustCheck(
   const [opened, setOpened] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  const [yesNotSaved, setYesNotSaved] = useState(0);
   // Whoever asked for the open check, answered once when it closes.
   const answer = useRef<((answer: TrustAnswer) => void) | undefined>(undefined);
   useEffect(() => () => answer.current?.("declined"), []);
@@ -64,8 +65,12 @@ export function useTrustCheck(
       return;
     }
     setBusy(false);
-    // The check shows the reason that holds now, with the box to tick again (design section 7).
-    if (result.checkAgain === true) return;
+    // The check shows the reason that holds now, with the box to tick again (design section 7),
+    // also when it's the same reason, as while a Take back is under way (C665-54).
+    if (result.checkAgain === true) {
+      setYesNotSaved((count) => count + 1);
+      return;
+    }
     setError(`Couldn't save trust: ${result.reason}. Nothing was started.`);
   };
   const open = () => {
@@ -90,6 +95,7 @@ export function useTrustCheck(
           shown={opened}
           busy={busy}
           error={error}
+          yesNotSaved={yesNotSaved}
           onNotNow={() => close("declined")}
           onTrust={(allowUnfenced) => void trustIt(review.fingerprint, allowUnfenced)}
           returnFocus={returnFocus}

@@ -15,6 +15,7 @@ import {
   ChatToolLine,
   ChatTranscript,
 } from "@halonicjs/studio-kit";
+import { copyDetailsWords, useCopyDetails } from "@halonicjs/studio-shell";
 import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
@@ -225,7 +226,9 @@ function Step({ step }: { readonly step: ReplyStep }) {
  * since sending again could repeat what a tool did; after a tool, the sentence says to send a new
  * message instead. A failure because of the model's key also leads to Models, as a failed run
  * does (microcopy 15.3), and comes first: until the key is fixed, Try again fails the same way
- * (microcopy 1.6 E2). A reply that was simply answered has no line.
+ * (microcopy 1.6 E2). A failure Halonic can't explain offers Copy details instead of Try again,
+ * since trying again won't explain it (microcopy 22 F13, C665-104). A reply that was simply
+ * answered has no line.
  */
 function EndLine({
   end,
@@ -238,8 +241,14 @@ function EndLine({
   readonly openModels: () => void;
   readonly tryAgain: (() => void) | undefined;
 }) {
-  const again: ChatAction[] =
-    tryAgain === undefined ? [] : [{ label: tryItWords.tryAgain, onClick: tryAgain }];
+  const copy = useCopyDetails();
+  const details = end.kind === "failed" ? end.details : undefined;
+  let again: ChatAction[] = [];
+  if (details !== undefined) {
+    again = [{ label: copyDetailsWords.label, onClick: () => void copy(details) }];
+  } else if (tryAgain !== undefined && !("toolsRan" in end && end.toolsRan)) {
+    again = [{ label: tryItWords.tryAgain, onClick: tryAgain }];
+  }
   const fixKey: ChatAction[] =
     end.kind === "failed" && end.needsKey === true
       ? [{ label: tryItWords.openModels, onClick: openModels, look: "link" }]
@@ -254,7 +263,7 @@ function EndLine({
     case "failed":
     case "engine-stopped":
       return (
-        <ChatEndLine tone="danger" actions={[...fixKey, ...(end.toolsRan ? [] : again)]}>
+        <ChatEndLine tone="danger" actions={[...fixKey, ...again]}>
           {tryItWords.endedBadly(name, end)}
         </ChatEndLine>
       );

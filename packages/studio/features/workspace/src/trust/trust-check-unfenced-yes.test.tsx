@@ -34,6 +34,11 @@ const checkbox = "I understand plugins and integrations run without the sandbox 
 const amber =
   "Not in the sandbox on this computer, so it may be able to use your files, programs and sign-ins, and reach other addresses.";
 
+const containerLine = "Halonic is running inside a container, and the sandbox can't start there.";
+const windowsLine =
+  "On Windows, integration code can't run in the sandbox in this version of Halonic.";
+const windows = { reason: "windows", checkbox, reasonLine: windowsLine };
+
 const review: TrustReview = {
   title: "Trust Acme?",
   source: "Acme · /work/acme",
@@ -61,7 +66,7 @@ const review: TrustReview = {
   fingerprint: "hfp1:abc",
   unpinned: [],
   footnote: "Programs you trust run with your access.",
-  unfencedYes: { reason: "container", checkbox },
+  unfencedYes: { reason: "container", checkbox, reasonLine: containerLine },
 };
 
 function dialog(): HTMLDialogElement {
@@ -78,7 +83,17 @@ function trustButton(): HTMLButtonElement {
   return found;
 }
 
-function render(shown: TrustReview, trusted: boolean[]) {
+function box(): HTMLInputElement | null {
+  return dialog().querySelector<HTMLInputElement>('input[type="checkbox"]');
+}
+
+/** The dialog's polite live region; the kit fills it a frame after `say`. */
+async function politeText(): Promise<string> {
+  await act(async () => new Promise((resolve) => requestAnimationFrame(() => resolve(undefined))));
+  return dialog().querySelector('[aria-live="polite"]')?.textContent ?? "";
+}
+
+function render(shown: TrustReview, trusted: boolean[], yesNotSaved = 0) {
   act(() =>
     root.render(
       <TrustCheckDialog
@@ -86,6 +101,7 @@ function render(shown: TrustReview, trusted: boolean[]) {
         shown={shown.fingerprint}
         busy={false}
         error={undefined}
+        yesNotSaved={yesNotSaved}
         onNotNow={() => {}}
         onTrust={(allowUnfenced) => trusted.push(allowUnfenced)}
         returnFocus={() => null}
@@ -116,10 +132,48 @@ verifies("workspace.trust-check-unfenced-yes", () => {
     render(review, []);
     act(() => dialog().querySelector<HTMLInputElement>('input[type="checkbox"]')?.click());
 
-    render({ ...review, unfencedYes: { reason: "windows", checkbox } }, []);
+    render({ ...review, unfencedYes: windows }, []);
 
     expect(dialog().querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(false);
     expect(trustButton().getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("moves focus to the unticked box and reads the new reason once when it changed", async () => {
+    render(review, []);
+    act(() => box()?.click());
+    // Trust was pressed, the host saved no yes, and the status read again names another reason.
+    render(review, [], 1);
+    const { unfencedYes: _, ...checking } = review;
+    render(checking, [], 1);
+    render({ ...review, unfencedYes: windows }, [], 1);
+
+    expect(document.activeElement).toBe(box());
+    expect(await politeText()).toBe(windowsLine);
+    const region = dialog().querySelector('[aria-live="polite"]');
+    if (region !== null) region.textContent = "";
+    render({ ...review, unfencedYes: windows }, [], 1);
+    expect(await politeText()).toBe("");
+  });
+
+  it("unticks the box when the host saved no yes and the status names the same reason (C665-54)", () => {
+    const trusted: boolean[] = [];
+    render(review, trusted);
+    act(() => box()?.click());
+    act(() => trustButton().click());
+    // A Take back under way: the host saves nothing, and the reason read again is the same.
+    render(review, trusted, 1);
+    const { unfencedYes: _, ...checking } = review;
+    render(checking, trusted, 1);
+    render(review, trusted, 1);
+
+    expect(box()?.checked).toBe(false);
+    expect(trustButton().getAttribute("aria-disabled")).toBe("true");
+    act(() => trustButton().click());
+    expect(trusted).toEqual([true]);
+
+    act(() => box()?.click());
+    act(() => trustButton().click());
+    expect(trusted).toEqual([true, true]);
   });
 
   it("says the warning in words, with the triangle hidden, after the name and in Runs", () => {

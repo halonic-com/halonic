@@ -277,7 +277,7 @@ verifies("plugins.plugin-trust-yes", () => {
 
     expect(trusted).toEqual([]);
     expect(await alertText()).toBe(
-      "Couldn't save trust: Halonic couldn't save your yes to run plugins without the sandbox. Nothing was started.",
+      "Couldn't save trust: Halonic couldn't save your yes to run plugins and integrations without the sandbox. Nothing was started.",
     );
   });
 

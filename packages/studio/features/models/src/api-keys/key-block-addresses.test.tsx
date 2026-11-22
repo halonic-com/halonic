@@ -199,6 +199,43 @@ verifies("models.api-keys.address-field", () => {
     expect(view.textContent).toContain("Not bound yet");
   });
 
+  it("says the address didn't save, not the key, when the second address write fails", async () => {
+    const made = keysWith([]);
+    const stored: string[] = [];
+    const keys: ModelKeys = {
+      ...made.keys,
+      stored: async (name) => stored.includes(name),
+      save: async (name) => {
+        stored.push(name);
+      },
+      remove: async () => {
+        throw new Error("the keychain is locked");
+      },
+      addresses: {
+        ...(made.keys.addresses as KeyAddresses),
+        allow: async (name) => {
+          if (stored.includes(name)) throw new Error("the address list couldn't be written");
+          return { result: "no-key" };
+        },
+      },
+    };
+    await show(keys);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    const view = element as HTMLElement;
+
+    await type(keyInput(view), "sk-acme-test-123");
+    await type(addressInput(view), "https://llm.example.com");
+    await press(view, "Save key");
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(view.textContent).toContain(
+      "Couldn't save the address. The key is still stored, with no address yet.",
+    );
+    expect(view.textContent).not.toContain("Couldn't save the key");
+    expect(view.textContent).not.toContain("Try again.");
+    expect(view.textContent).toContain("Not bound yet");
+  });
+
   it("never shows one key's addresses under another key's name", async () => {
     const { keys } = keysWith(["anthropic", "openai"], { anthropic: ["https://api.example.com"] });
     const seen: string[] = [];
