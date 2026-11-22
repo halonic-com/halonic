@@ -121,7 +121,7 @@ verifies("app.sandbox-start-words", () => {
     const words = sandboxStartWords("not-offered");
     expect(words.key).toBe("sandbox-start.not-offered");
     expect(words.reason).toBe(
-      "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can.",
+      "Studio can't start Claude Code or Codex agents outside the sandbox; halonic run and halonic serve on this computer can.",
     );
     expect(words.calloutFix).toBe("Set this agent back to In a sandbox on its Harness page.");
   });

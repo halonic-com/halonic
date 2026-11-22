@@ -68,7 +68,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   "sign-in-needed":
     "The sandbox needs you to sign in to its service first. Sign in, then run it again.",
   "not-offered":
-    "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can. Set this agent back to In a sandbox on its Harness page, then run it again.",
+    "Studio can't start Claude Code or Codex agents outside the sandbox; halonic run and halonic serve on this computer can. Set this agent back to In a sandbox on its Harness page, then run it again.",
   other:
     "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
 };
@@ -93,7 +93,7 @@ const reasons: Readonly<Record<WordedReason, string>> = {
   "ripgrep-missing": "ripgrep isn't installed, and the sandbox needs it.",
   "sign-in-needed": "The sandbox needs you to sign in to its service first.",
   "not-offered":
-    "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can.",
+    "Studio can't start Claude Code or Codex agents outside the sandbox; halonic run and halonic serve on this computer can.",
   other: "Halonic can't tell what the sandbox is missing.",
 };
 
