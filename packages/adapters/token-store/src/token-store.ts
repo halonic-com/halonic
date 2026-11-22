@@ -17,6 +17,13 @@ import { canonicalTokenName } from "./token-name.ts";
  */
 export const tokenCollection = "_tokens";
 
+/**
+ * How often the store compacts `_tokens` after a change, the first try included. A store may
+ * refuse a compaction because another one finished first (D1 does, see `D1RecordStore.compact`);
+ * the next try reads the log that one left, so a few writes at once each get through.
+ */
+const compactAttempts = 3;
+
 /** What {@link createTokenStore} needs: the record store, the secrets that hold the key, and a clock. */
 export interface TokenStoreOptions {
   /**
@@ -42,8 +49,10 @@ export interface TokenStoreOptions {
  *
  * Every `get` reads the store, so several server instances never see an
  * old token. After a replace or a remove the store compacts `_tokens`, so
- * the old sealed value leaves the record store's storage. A value that won't open throws `UnreadableTokenError` and is
- * never reported as "no token".
+ * the old sealed value leaves the record store's storage. A refused compaction is tried again,
+ * so a write that meets another one at the same time still resolves; it rejects only when every
+ * try failed, and then its change is stored and the next replace or remove compacts again.
+ * A value that won't open throws `UnreadableTokenError` and is never reported as "no token".
  *
  * @example
  * const tokens = createTokenStore({ records, secrets, clock });
@@ -73,6 +82,20 @@ export function createTokenStore(options: TokenStoreOptions): TokenStore {
     values,
   });
 
+  /** Compacts `_tokens`, trying again when a try fails; throws the last failure. */
+  const compactTokens = async (): Promise<void> => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await records.compact(tokenCollection);
+        return;
+      } catch (error) {
+        if (attempt >= compactAttempts) {
+          throw error;
+        }
+      }
+    }
+  };
+
   return {
     async get(name) {
       const id = canonicalTokenName(name);
@@ -93,7 +116,7 @@ export function createTokenStore(options: TokenStoreOptions): TokenStore {
       const exists = (await currentValues(id)) !== undefined;
       await records.append([change(exists ? "update" : "add", id, { sealed })]);
       if (exists) {
-        await records.compact(tokenCollection);
+        await compactTokens();
       }
     },
 
@@ -103,7 +126,7 @@ export function createTokenStore(options: TokenStoreOptions): TokenStore {
         return;
       }
       await records.append([change("remove", id, null)]);
-      await records.compact(tokenCollection);
+      await compactTokens();
     },
   };
 }
