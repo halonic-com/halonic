@@ -10,7 +10,7 @@ Wording on approved screens and in command output, so the team decides it (HAL-2
 
 - cli.runs-show-sending-off: "! The call to send_mail was refused: sending is off for mail, so nothing was sent." with the fix on an indented line becomes one line: "! The call to send_mail (mail) wasn't made, because sending is turned off. To switch it on, run halonic google allow-sending mail on." For a connector that isn't a Google one the second sentence is "Halonic can't switch it on for mail yet." The examples follow.
 - cli.commands.google.allow-sending and cli.local-engine: the refusal the model gets puts the next step in its own sentence: `Refused: sending is off for the connector "mailbox". To switch it on, run halonic google allow-sending mailbox on.`, and for another connector `… "mailbox". Halonic can't switch it on yet.`
-- studio.start-run: the band's line for an agent step's missing alias shows the agent step's name in code style, like the alias: "*Writer*'s agent step `short` uses the model alias `tiny`, …". The Problems row stays plain.
+- workflows.start.start-run: the band's line for an agent step's missing alias shows the agent step's name in code style, like the alias: "*Writer*'s agent step `short` uses the model alias `tiny`, …". The Problems row stays plain.
 - Three unreleased changesets are reworded (`runs-show-sending-off.md`, `step-model-alias-band.md`, `priya-hal-4295-changed-date.md`).
 
 ## Why
@@ -32,7 +32,7 @@ No test was weakened. `show-refused.test.ts`, `run-sending.test.ts` and `local-r
 - cli.runs-show-sending-off
 - cli.commands.google.allow-sending
 - cli.local-engine
-- studio.start-run
+- workflows.start.start-run
 - apps/cli/src/commands/runs/show-refused.test.ts
 - apps/cli/src/run-sending.test.ts
 - packages/studio/features/workflows/src/page/problems-band.test.tsx
