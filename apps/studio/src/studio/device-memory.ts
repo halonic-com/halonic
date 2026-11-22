@@ -9,6 +9,9 @@ export interface DeviceMemory {
   readonly startOwnWorkspace?: () => void;
   /** The computer's operating system; left out, the Studio's words name no program of one. */
   readonly platform?: KeyboardPlatform;
-  /** Copies the demo again and opens it, for the first run's Start over; `undefined` without Open demo. */
-  readonly startOver?: () => void;
+  /**
+   * Copies the demo again and opens it, for the first run's Start over, calling `copied` once it
+   * is written; `undefined` without Open demo.
+   */
+  readonly startOver?: (copied: () => void) => void;
 }

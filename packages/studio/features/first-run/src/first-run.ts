@@ -109,11 +109,14 @@ export class FirstRun {
     });
   }
 
-  /** **Start over**: the first run goes off, and the app copies the demo again, which starts it. */
+  /**
+   * **Start over**: the app copies the demo again, and once the copy is written the first run goes
+   * off, so the copy starts it when it opens. A copy that can't be written leaves it as it was.
+   */
   startOver(): void {
     if (this.#device.startOver === undefined) return;
-    this.send({ kind: "reset" });
-    this.#device.startOver();
+    // Two Start overs before the copy is written both reset; the second is a no-op on `off`.
+    this.#device.startOver(() => this.send({ kind: "reset" }));
   }
 
   /** Applies `event`, then saves and tells the listeners if the state changed. */

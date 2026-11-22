@@ -16,7 +16,10 @@ export const FIRST_RUN_STATE = "halonic.first-run.state";
  */
 export function firstRunDeviceOf(
   location: string,
-  { storage, startOver }: { readonly storage: RecentStorage; readonly startOver?: () => void },
+  {
+    storage,
+    startOver,
+  }: { readonly storage: RecentStorage; readonly startOver?: (copied: () => void) => void },
 ): FirstRunDevice {
   return {
     ...(startOver === undefined ? {} : { startOver }),

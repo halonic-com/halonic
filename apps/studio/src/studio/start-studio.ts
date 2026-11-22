@@ -67,15 +67,14 @@ import { provideRemoteControl } from "../remote/provide-remote.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
+import { newWorkspaceOf } from "./desktop-new-workspace.ts";
 import { watchDesktopResources } from "./desktop-resources.ts";
 import type { DeviceMemory } from "./device-memory.ts";
-import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { observedSandboxStartCheck } from "./observed-sandbox-start-check.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
 import { halonicVersion, openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
-import { sampleHostOf } from "./sample-host.ts";
 import { sampleWorkspaceOf } from "./sample-workspace.ts";
 import { elevateHelperOf } from "./sandbox-elevate-shell.ts";
 import { startServedStudio } from "./served-studio.ts";
@@ -187,7 +186,9 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     ...(newWorkspace.newWorkspace === undefined
       ? {}
       : { startOwnWorkspace: () => newWorkspaceAsks.ask() }),
-    ...(newWorkspace.sample === undefined ? {} : { startOver: () => freshCopyAsks.ask() }),
+    ...(newWorkspace.sample === undefined
+      ? {}
+      : { startOver: (copied) => freshCopyAsks.ask(copied) }),
   };
   const switcher = new WorkspaceSwitcher({
     pickFolder: () => pickFolder(ipc),
@@ -242,30 +243,6 @@ function once(task: () => Promise<void>): () => Promise<void> {
     run ??= task();
     return run;
   };
-}
-
-/**
- * The New workspace dialog's host (`studio.new-workspace`) and the sample's (`studio.try-sample`), over the shell's folder and file
- * commands. Without the channel the file commands need, the window has no New workspace row.
- */
-function newWorkspaceOf(window: object, platform: KeyboardPlatform) {
-  const channelIpc = tauriChannelIpc(window);
-  if (channelIpc === undefined) return {};
-  const parts = {
-    shell: shellFiles(channelIpc),
-    separator: platform === "windows" ? ("\\" as const) : ("/" as const),
-    trust: async (folder: string) => {
-      const trust = workspaceTrustOf(channelIpc, folder);
-      await trust.refresh();
-      const check = trust.check;
-      const fingerprint =
-        check === undefined || check.status === "refused" ? undefined : check.fingerprint;
-      if (fingerprint === undefined) throw new Error("Halonic couldn't read the new workspace");
-      const granted = await trust.grant(fingerprint);
-      if (!granted.ok) throw new Error(granted.reason);
-    },
-  };
-  return { newWorkspace: newWorkspaceHostOf(parts), sample: sampleHostOf(parts) };
 }
 
 /**
