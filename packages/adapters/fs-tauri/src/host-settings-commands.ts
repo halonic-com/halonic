@@ -23,7 +23,7 @@ export const hostSettingsRefusalKinds = [
   "unreadable",
   /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
   "profile_setting",
-  /** Finding the profile or writing the file failed. */
+  /** Writing the file failed, or the profile folder couldn't be found for any other reason. */
   "io",
 ] as const;
 
