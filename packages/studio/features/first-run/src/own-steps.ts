@@ -72,6 +72,10 @@ export class OwnSteps {
   /** Each read counts up, so a slower, older read can't overwrite a newer one. */
   #modelRead = 0;
   #agentsRead = 0;
+  /** A file, the agents or a key couldn't be read: the visit stays on that error. */
+  #failure: { readonly error: unknown } | undefined;
+  /** Home has closed: a read or check still in flight changes nothing and remembers nothing. */
+  #stopped = false;
   #state: OwnStepsState = { kind: "loading" };
 
   constructor(sources: OwnStepsSources) {
@@ -94,6 +98,7 @@ export class OwnSteps {
     void this.#readAgents();
     void this.checkModel();
     return () => {
+      this.#stopped = true;
       for (const stop of stops) stop();
     };
   }
@@ -103,11 +108,14 @@ export class OwnSteps {
    * when `default` now names another provider.
    */
   async checkModel({ again = true }: { readonly again?: boolean } = {}): Promise<void> {
-    const read = ++this.#modelRead;
+    const started = this.#modelRead;
     try {
       const provider = await readDefaultProvider(this.#sources.files);
-      if (read !== this.#modelRead) return;
+      if (started !== this.#modelRead) return;
       if (!again && JSON.stringify(provider) === JSON.stringify(this.#provider)) return;
+      // Only a read that asks again takes a new number: one that finds the same provider must
+      // leave the check in flight to finish, or the row would stay on "Checking…".
+      const read = ++this.#modelRead;
       this.#provider = provider;
       const { keys, check } = this.#sources;
       if (provider.kind === "local" && check !== undefined) {
@@ -143,12 +151,14 @@ export class OwnSteps {
   }
 
   #fail(error: unknown): void {
+    if (this.#stopped) return;
+    this.#failure = { error };
     this.#state = { kind: "failed", error };
     this.#tell();
   }
 
   #update(): void {
-    if (this.#state.kind === "failed") return;
+    if (this.#stopped || this.#failure !== undefined) return;
     const next = this.#workOut();
     if (next === undefined) return;
     this.#state = next;
@@ -160,6 +170,9 @@ export class OwnSteps {
     const model = this.#model;
     const agents = this.#agents;
     const runs = this.#sources.runs.state;
+    // Runs that have never loaded show as the section's error, until a later load of the list
+    // succeeds and brings the steps back.
+    if (!runs.loaded && runs.error !== undefined) return { kind: "failed", error: runs.error };
     if (model === undefined || agents === undefined || !runs.loaded) return undefined;
     const agentDone = agentStepDone(agents);
     const runDone = runStepDone(runs.runs.map((each) => each.summary));

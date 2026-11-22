@@ -18,20 +18,35 @@ interface Acme {
   readonly runs?: readonly { summary: RunSummary }[];
   readonly memory?: OwnCardMemory;
   readonly check?: ProviderCheck;
+  /** Why the runs' first load failed; the list then has never loaded. */
+  readonly runsError?: Error;
 }
 
 /** An invented workspace, Acme, with `default` on Ollama or the test model; `saved` collects what's remembered. */
-function acme({ provider = TEST_MODEL, agents = [], runs = [], memory = "unseen", check }: Acme) {
+function acme({
+  provider = TEST_MODEL,
+  agents = [],
+  runs = [],
+  memory = "unseen",
+  check,
+  runsError,
+}: Acme) {
   const providerId = /^id: (\S+)/.exec(provider)?.[1] ?? "mock";
   const saved: OwnCardMemory[] = [];
   const runListeners = new Set<() => void>();
-  const runsList = { state: { runs, loaded: true, error: undefined, workflows: undefined } };
+  const fileListeners = new Set<() => void>();
+  const runsList = {
+    state: { runs, loaded: runsError === undefined, error: runsError, workflows: undefined },
+  };
   const sources: OwnStepsSources = {
     files: {
       readModels: async () => `aliases:\n  default:\n    provider: ${providerId}\n    model: m1\n`,
       readProviders: async () => [{ path: `providers/${providerId}.yaml`, text: provider }],
       readWorkspace: async () => null,
-      subscribe: () => () => {},
+      subscribe: (listener) => {
+        fileListeners.add(listener);
+        return () => fileListeners.delete(listener);
+      },
     },
     agents: {
       list: async () => {
@@ -54,10 +69,14 @@ function acme({ provider = TEST_MODEL, agents = [], runs = [], memory = "unseen"
     now: () => new Date(0),
   };
   const finishRun = () => {
-    runsList.state = { ...runsList.state, runs: [finished] };
+    runsList.state = { ...runsList.state, runs: [finished], loaded: true, error: undefined };
     for (const listener of runListeners) listener();
   };
-  return { steps: new OwnSteps(sources), saved, finishRun };
+  /** A file changes that leaves `default` where it was. */
+  const touchFiles = () => {
+    for (const listener of fileListeners) listener();
+  };
+  return { steps: new OwnSteps(sources), saved, finishRun, touchFiles };
 }
 
 /** Starts the steps and lets every read settle. */
@@ -128,9 +147,51 @@ verifies("first-run.own-card", () => {
       });
     });
 
+    it("shows the check's answer when a file changes during it and `default` stays put", async () => {
+      const answer = Promise.withResolvers<boolean>();
+      const slow = { addressOf: () => "localhost:11434", isAnswering: () => answer.promise };
+      vi.useFakeTimers();
+      const { steps, touchFiles } = acme({ provider: OLLAMA, check: slow });
+      steps.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(steps.state).toMatchObject({ model: { status: "checking" } });
+      touchFiles();
+      // The files are read again before the answer comes.
+      await vi.advanceTimersByTimeAsync(0);
+      answer.resolve(true);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(steps.state).toMatchObject({ model: { status: "done" } });
+    });
+
     it("shows the section's error when the agents can't be read", async () => {
       const { steps } = acme({ agents: new Error("disk") });
       expect(await started(steps)).toMatchObject({ kind: "failed" });
+    });
+
+    it("shows the section's error while the runs have never loaded, and the steps once they do", async () => {
+      const { steps, finishRun } = acme({ runsError: new Error("disk") });
+      expect(await started(steps)).toMatchObject({ kind: "failed" });
+      finishRun();
+      expect(steps.state).toMatchObject({ kind: "showing", runDone: true });
+    });
+
+    it("remembers nothing once Home has closed", async () => {
+      const answer = Promise.withResolvers<boolean>();
+      const slow = { addressOf: () => "localhost:11434", isAnswering: () => answer.promise };
+      const { steps, saved } = acme({
+        provider: OLLAMA,
+        agents: [writer],
+        runs: [finished],
+        check: slow,
+      });
+      vi.useFakeTimers();
+      const stop = steps.start();
+      await vi.advanceTimersByTimeAsync(0);
+      stop();
+      answer.resolve(true);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(steps.state.kind).toBe("loading");
+      expect(saved).toEqual([]);
     });
   });
 });
