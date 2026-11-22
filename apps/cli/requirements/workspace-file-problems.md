@@ -23,7 +23,7 @@ When the workspace's files have errors, as `halonic validate` finds them, `halon
   then it prints "Acme has 1 problem in" that file; with `hub.yaml`, the error in `support-reply.workflow.yaml` and the pasted key, it prints "Acme has 3 problems in *the first file* and 2 other files.".
 - Given the Acme example with a routine Friday digest whose `workflow:` names a workflow the hub doesn't have,
   when `halonic routines watch` runs,
-  then it doesn't stop for that file: it prints "✕ Friday digest can't start · halonic validate" and starts the other routines;
+  then it doesn't stop for that file: it prints "✕ Friday digest can't start until its file is fixed · halonic validate" and runs the other routines on time;
   and given `version: 2` added to a workflow file `hubs/support/workflows/spare.workflow.yaml` instead, it prints "✕ Couldn't watch the routines in acme: Acme has 1 problem in hubs/support/workflows/spare.workflow.yaml. Nothing ran." and "  See them with: halonic validate", and exits with 2.
 - Given the same workspace with a run of Support reply waiting,
   when `halonic runs send 01jd8q approve` runs,

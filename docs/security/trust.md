@@ -93,8 +93,8 @@ Before trust, the same commands refuse a workspace whose files have errors
 left out of the loaded workspace, and a provider file left out for a pasted
 key could make the workspace look as if it reached only the test model.
 `halonic routines watch` makes one exception: a routine's own file adds
-nothing to the trust content, so it leaves just that routine out, with a ✕
-line, and checks and starts the others.
+nothing to the trust content, so the watch leaves just that routine out, with
+a ✕ line, and checks trust for the others and runs them on time.
 
 The host's server (`packages/host/server`, behind `halonic serve` and the
 cloud Worker) checks trust on every request that starts a run, which are
