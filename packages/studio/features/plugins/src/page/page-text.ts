@@ -183,17 +183,21 @@ export function offUntilAllowed(name: string): string {
 export const ALLOW_IN_DESKTOP_APP = "Allow this in the Halonic desktop app.";
 
 /**
- * The plugin page when the agent host stopped a plugin because the sandbox didn't work as it
- * started, so nothing of it ran (microcopy 24.1 R15, approved on HAL-1949; design HAL-1873 section
- * 10, `rl-page-stopped`; its words follow the host since C600, HAL-15608).
+ * The plugin page when the agent host stopped a plugin because the sandbox didn't work when it
+ * started, so none of it ran (microcopy 24.1 R15, approved on HAL-1949; design HAL-1873 section
+ * 10, `rl-page-stopped`; its words follow the host since C600, Sofia on HAL-15616).
  */
 export function stoppedAtStart(name: string): string {
-  return `${name} stopped: the sandbox didn't work as it started, so nothing ran.`;
+  return `Halonic stopped ${name}: the sandbox didn't work when it started, so none of it ran.`;
 }
 
-/** R15's second sentence, under its title: every start goes through the sandbox, the next one too. */
-export const TRIES_AGAIN_IN_SANDBOX =
-  "Halonic tries it in the sandbox again the next time a run uses it, never without it.";
+/**
+ * R15's second sentence, under its title: every start goes through the sandbox, the next one too.
+ * It starts as the toast of **Check again** does, which carries it on once the Callout goes.
+ */
+export function triesAgainInSandbox(name: string): string {
+  return `Halonic tries ${name} in the sandbox again the next time a run uses it, and never runs it without the sandbox.`;
+}
 
 /**
  * The polite toast once R15's **Check again** worked: the host only forgot the stop, so nothing
