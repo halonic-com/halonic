@@ -197,6 +197,24 @@ verifies("routines.when.when-card", () => {
     expect(page.textContent).not.toContain("Starts on time while Halonic is open.");
   });
 
+  it("promises no times for a routine that starts an agent on its own, and points to Starts", async () => {
+    const { host } = hostWith(times("2026-11-23T08:00:00Z"));
+    const page = await show(
+      <WhenCard
+        host={host}
+        routine={{
+          ...daily,
+          target: { kind: "agent", hubId: "acme", id: "writer", prompt: "Write the digest." },
+        }}
+        announce={() => {}}
+      />,
+    );
+
+    expect(page.textContent).toContain("Can't start until the problem under Starts is fixed.");
+    expect(page.textContent).not.toContain("Next");
+    expect(page.textContent).not.toContain("Starts on time while Halonic is open.");
+  });
+
   it("promises no times for a routine whose file has an error, and announces no next time", async () => {
     const { host } = hostWith(times("2026-11-23T08:00:00Z"));
     const said: string[] = [];

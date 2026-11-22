@@ -111,6 +111,27 @@ verifies("cli.commands.routines.list", () => {
     expect(io.stdout).toEqual(["Morning check   Daily at 08:00   Off   Never ran", hint]);
   });
 
+  it("says Can't start for a routine that starts an agent, not paused, with no trust line", async () => {
+    // Trusting Acme wouldn't start it, so `isPaused` leaves it to Can't start (HAL-15607).
+    await writeFiles(acmeRuns.acme, {
+      ...realModel,
+      "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\nmodel: test\n",
+      [routinePath]: morning().replace(
+        "run: { workflow: support-reply }",
+        "run: { agent: writer, prompt: Check the inbox. }",
+      ),
+    });
+
+    const { code, io } = await routinesIn();
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      "Morning check   Daily at 08:00   ✕ Can't start   Never ran",
+      "! Morning check can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.",
+      hint,
+    ]);
+  });
+
   it("says in --json whether Acme's routines can start here", async () => {
     await writeFiles(acmeRuns.acme, { ...realModel, [routinePath]: morning() });
 
