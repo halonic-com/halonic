@@ -38,6 +38,25 @@ import type {
 } from "@halonicjs/ports";
 import type { OpenIntegration, OpenIntegrationRequest } from "./integration-connector-factory.ts";
 
+/**
+ * The sandbox isn't available here and the person hasn't allowed the
+ * integration to run without it, so nothing started. The engine logs
+ * `sandboxReason`, the gate's code (`container`, `windows`, …), as the
+ * cause's name (`ports.connector-start-failure`), so `halonic run` can say
+ * the reason and the fix; the message, which may name the yes's file, stays
+ * out of the log.
+ */
+export class UnfencedStartNotAllowedError extends Error {
+  override readonly name = "UnfencedStartNotAllowedError";
+  /** Why the sandbox isn't available, as the start gate names it. */
+  readonly sandboxReason: string;
+
+  constructor(sandboxReason: string, message: string) {
+    super(message);
+    this.sandboxReason = sandboxReason;
+  }
+}
+
 /** The files a runner starts from, except the integration's own folder, which is the connector's. */
 export type RunnerRuntime = Omit<RunnerFiles, "integrationFolder">;
 
@@ -187,7 +206,7 @@ class LocalIntegrationOpening {
     if (gated.run === "unfenced") this.#machine.startedUnfenced?.(gated.reason);
     if (gated.run === "fenced" || gated.run === "unfenced") return gated.runner;
     if (gated.run === "stopped") throw new Error(this.#stopped());
-    throw new Error(await this.#needsYes(gated.reason));
+    throw new UnfencedStartNotAllowedError(gated.reason, await this.#needsYes(gated.reason));
   }
 
   /**

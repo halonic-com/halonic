@@ -2,19 +2,22 @@
  * Why a connector couldn't start, when it's one the engine can name
  * (requirement `ports.connector-start-failure`): its program isn't on this
  * computer or stopped by itself right after it started, a secret it needs
- * isn't set, the plugin it comes from isn't trusted yet or changed since the
- * person trusted it, its sandbox didn't work when it started, or the sandbox
- * a plugin's backend runs in isn't ready here. `program` and `secret` are
- * names as the connector's file writes them, never a secret's value;
- * `plugin` is the plugin's id, and
- * `pluginName` its name as a person sees it.
+ * isn't set, the plugin it comes from isn't trusted yet, changed since the
+ * person trusted it or its sandbox didn't work when it started, the sandbox
+ * a plugin's backend runs in isn't ready here, or a local integration's
+ * sandbox isn't available here and the person hasn't allowed it to run
+ * without it. `program` and `secret` are names as the connector's file
+ * writes them, never a secret's value; `plugin` is the plugin's id, and
+ * `pluginName` its name as a person sees it; `sandbox` is why the sandbox
+ * isn't available, as the start gate names it (`container`, `windows`, …).
  */
 export type ConnectorStartFailure =
   | { readonly reason: "program-missing" | "program-stopped"; readonly program: string }
   | { readonly reason: "secret-not-set"; readonly secret: string }
   | { readonly reason: "plugin-not-trusted" | "plugin-changed"; readonly plugin: string }
   | { readonly reason: "plugin-stopped"; readonly pluginName: string }
-  | { readonly reason: "sandbox-not-ready" };
+  | { readonly reason: "sandbox-not-ready" }
+  | { readonly reason: "unfenced-not-allowed"; readonly sandbox: string };
 
 /** How many errors deep, through `cause`, the reader looks for one it knows. */
 const maxCauseDepth = 8;
@@ -38,7 +41,9 @@ const maxCauseDepth = 8;
  *   the sandbox didn't work when the plugin's backend started);
  * - an `Error` named `PluginBackendNotFencedError` (as
  *   `@halonicjs/adapter-integration-runner` throws it), whose `reason` stays
- *   out, as it is for a log only.
+ *   out, as it is for a log only;
+ * - an `Error` named `UnfencedStartNotAllowedError` with the gate's reason in
+ *   `sandboxReason` (as the `halonic` command's local integration throws it).
  *
  * It reads them by name and field, not `instanceof`, so the engine needs no
  * adapter, and an adapter with its own copy of this package works too. It
@@ -61,13 +66,12 @@ export function connectorStartFailureOf(value: unknown): ConnectorStartFailure |
 
 /** The failure `error` itself says, without looking at its `cause`. */
 function knownFailureOf(error: Error): ConnectorStartFailure | undefined {
-  const { program, secretName, plugin, pluginName, reason } = error as {
-    program?: unknown;
-    secretName?: unknown;
-    plugin?: unknown;
-    pluginName?: unknown;
-    reason?: unknown;
-  };
+  return programFailureOf(error) ?? pluginFailureOf(error);
+}
+
+/** A failure of the connector's own program or its secrets, as an MCP adapter names it. */
+function programFailureOf(error: Error): ConnectorStartFailure | undefined {
+  const { program, secretName } = error as { program?: unknown; secretName?: unknown };
   if (error.name === "ProgramNotFoundError" && isName(program)) {
     return { reason: "program-missing", program };
   }
@@ -77,6 +81,17 @@ function knownFailureOf(error: Error): ConnectorStartFailure | undefined {
   if (error.name === "SecretNotSetError" && isName(secretName)) {
     return { reason: "secret-not-set", secret: secretName };
   }
+  return undefined;
+}
+
+/** A failure of the plugin the connector comes from, or of its sandbox. */
+function pluginFailureOf(error: Error): ConnectorStartFailure | undefined {
+  const { plugin, pluginName, reason, sandboxReason } = error as {
+    plugin?: unknown;
+    pluginName?: unknown;
+    reason?: unknown;
+    sandboxReason?: unknown;
+  };
   if (error.name === "PluginConnectorNotTrustedError" && isName(plugin)) {
     if (reason === "not-trusted") return { reason: "plugin-not-trusted", plugin };
     if (reason === "changed") return { reason: "plugin-changed", plugin };
@@ -85,6 +100,9 @@ function knownFailureOf(error: Error): ConnectorStartFailure | undefined {
     return { reason: "plugin-stopped", pluginName };
   }
   if (error.name === "PluginBackendNotFencedError") return { reason: "sandbox-not-ready" };
+  if (error.name === "UnfencedStartNotAllowedError" && isName(sandboxReason)) {
+    return { reason: "unfenced-not-allowed", sandbox: sandboxReason };
+  }
   return undefined;
 }
 

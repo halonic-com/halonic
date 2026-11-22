@@ -142,8 +142,10 @@ function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
     case "plugin-stopped":
       return "pluginStopped";
     case "sandbox-not-ready":
-    // No words of its own in the run view yet: it reads as one that didn't start (HAL-15606).
+    // No words of their own in the run view yet: they read as one that didn't start (HAL-15606,
+    // HAL-15689; Studio's words for a refused unfenced start come with HAL-15144's yes).
     case "program-stopped":
+    case "unfenced-not-allowed":
     case "other":
       return "notStarted";
   }

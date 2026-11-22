@@ -71,7 +71,7 @@ import { liveLines } from "./live-lines.ts";
 import { runResult } from "./result.ts";
 import { type RunPlace, sendEvent } from "./send-event.ts";
 import { checkRunTrust, type RunTrustMachine } from "./trust.ts";
-import { profilePlugins, warnedConnectorsOf } from "./warned-connectors.ts";
+import { profilePlugins, profileStudioYes, warnedConnectorsOf } from "./warned-connectors.ts";
 
 /** What `run` uses on this computer, so tests can fix the clock, the ids and the profile. */
 export interface RunSetup extends WorkspaceEngineSetup {
@@ -179,7 +179,7 @@ export async function followWorkflow(
   let followed: FollowedRun | StoppedResult;
   const printEvent = streaming ? eventLines(context) : live.onEvent;
   const plugins = setup.plugins ?? profilePlugins(setup.profile);
-  const warned = await warnedConnectorsOf(workspace, plugins);
+  const warned = await warnedConnectorsOf(workspace, plugins, profileStudioYes(setup.profile));
   const warnConnectors = connectorWarnings(context, typedDir, warned);
   try {
     const events = eventsOf(input);

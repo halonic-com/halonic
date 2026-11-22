@@ -150,6 +150,20 @@ verifies("engine.tool-result-cause", () => {
       });
     });
 
+    it("names why a local integration's sandbox isn't available when its start without it was refused", async () => {
+      const open = async () => {
+        throw startError("UnfencedStartNotAllowedError", { sandboxReason: "container" });
+      };
+
+      const result = await makeRunConnectorCall(open, {}, sendingOn, sendMail, reviewedTools);
+
+      expect(result.cause).toStrictEqual({
+        code: "connector-not-started",
+        why: "unfenced-not-allowed",
+        name: "container",
+      });
+    });
+
     it("names the secret that isn't set, and nothing of the error's message", async () => {
       const mail = mailConnector();
       mail.listTools = async () => {

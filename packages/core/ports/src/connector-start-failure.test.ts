@@ -21,6 +21,14 @@ verifies("ports.connector-start-failure", () => {
     expect(connectorStartFailureOf(error)).toEqual({ reason: "program-stopped", program: "sh" });
   });
 
+  it("reads a local integration's refused start without the sandbox by the gate's reason", () => {
+    const error = adapterError("UnfencedStartNotAllowedError", { sandboxReason: "container" });
+    expect(connectorStartFailureOf(error)).toEqual({
+      reason: "unfenced-not-allowed",
+      sandbox: "container",
+    });
+  });
+
   it("reads a secret that isn't set by its name, and nothing of the message", () => {
     const error = adapterError(
       "SecretNotSetError",
@@ -87,6 +95,11 @@ verifies("ports.connector-start-failure", () => {
     ).toBeUndefined();
     expect(
       connectorStartFailureOf(adapterError("SecretNotSetError", { secretName: "" })),
+    ).toBeUndefined();
+    expect(
+      connectorStartFailureOf(
+        adapterError("UnfencedStartNotAllowedError", { reason: "container" }),
+      ),
     ).toBeUndefined();
     expect(
       connectorStartFailureOf(adapterError("SecretNotSetError", { secretName: 7 })),

@@ -7,8 +7,10 @@ import type { ToolFailureCause } from "./run-basics.ts";
  * the workspace. `cause`: why, as on `tool.result`: `why` is
  * `program-missing`, `program-stopped` or `secret-not-set` with the program
  * or the secret's `name`, `plugin-not-trusted` or `plugin-changed` with the
- * plugin's id, or `plugin-stopped` with the plugin's name, when the engine
- * knows, else `other` with no name. It never holds the error's own text.
+ * plugin's id, `plugin-stopped` with the plugin's name, or
+ * `unfenced-not-allowed` with why the sandbox isn't available, when the
+ * engine knows, else `other` with no name. It never holds the error's own
+ * text.
  */
 export interface ConnectorListingFailedEvent {
   type: "connector.listing-failed";

@@ -154,7 +154,9 @@ export type ToolNotMadeReason = "not-connected" | "tool-gone" | "sending-off" | 
  * plugin the person hasn't trusted yet, or that changed since they trusted
  * it; `plugin-stopped` for one whose sandbox didn't work when the plugin
  * started, so nothing of it ran; `sandbox-not-ready`, for the sandbox a
- * plugin's backend runs in not being ready on this computer.
+ * plugin's backend runs in not being ready on this computer;
+ * `unfenced-not-allowed` is for a local integration whose sandbox isn't
+ * available here, when the person hasn't allowed it to run without it.
  */
 export type ConnectorStartReason =
   | "program-missing"
@@ -164,6 +166,7 @@ export type ConnectorStartReason =
   | "plugin-changed"
   | "plugin-stopped"
   | "sandbox-not-ready"
+  | "unfenced-not-allowed"
   | "other";
 
 /**
@@ -175,8 +178,9 @@ export type ConnectorStartReason =
  * - `not-made`: the engine didn't make the call, for the reason in `why`.
  * - `connector-not-started`: the run's connectors didn't start. `name` is
  *   the program or the secret's name as the connector's file writes it, the
- *   plugin's id, or for `plugin-stopped` the plugin's name, never a secret's
- *   value or a program's output.
+ *   plugin's id, for `plugin-stopped` the plugin's name, or for
+ *   `unfenced-not-allowed` why the sandbox isn't available (a code such as
+ *   `container`), never a secret's value, a path or a program's output.
  *
  * Read it with `toolFailureCauseOf`: a cause it doesn't know reads as absent.
  */

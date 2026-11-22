@@ -249,6 +249,33 @@ verifies("cli.run-connector-warning", () => {
     ]);
   });
 
+  it("says why an integration's sandbox isn't available and how to allow it without, when the gate refused", () => {
+    const lines: string[] = [];
+    connectorWarnings({ warn: (line) => lines.push(plainText(line)) }, "acme", {
+      fileOf: () => "library/connectors/handbook.connector.yaml",
+      isIntegration: () => true,
+    })(listingFailed(4, { why: "unfenced-not-allowed", name: "container" }));
+
+    expect(lines).toEqual([
+      "! handbook didn't start, so its tools are off in this run.",
+      "  Halonic is running inside a container, and the sandbox can't start there.",
+      "  Running it without the sandbox isn't allowed yet. To allow it, trust this workspace in Studio on this computer.",
+    ]);
+  });
+
+  it("gives the sandbox's own fix in place of Studio's line where a yes given in Studio doesn't reach the command", () => {
+    const lines: string[] = [];
+    connectorWarnings({ warn: (line) => lines.push(plainText(line)) }, "acme", {
+      fileOf: () => "library/connectors/handbook.connector.yaml",
+      isIntegration: () => true,
+      studioYesReaches: false,
+    })(listingFailed(4, { why: "unfenced-not-allowed", name: "windows" }));
+
+    expect(lines.at(-1)).toBe(
+      "  Running it without the sandbox isn't allowed yet. Use Halonic inside WSL 2 on this computer.",
+    );
+  });
+
   it("doesn't warn about the listing of a connector whose parts already said why", () => {
     const lines: string[] = [];
     const warn = connectorWarnings(

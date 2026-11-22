@@ -22,6 +22,7 @@ const startReasons: readonly unknown[] = [
   "plugin-changed",
   "plugin-stopped",
   "sandbox-not-ready",
+  "unfenced-not-allowed",
   "other",
 ] satisfies ConnectorStartReason[];
 
