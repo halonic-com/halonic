@@ -41,6 +41,14 @@ const systemNames: Readonly<Record<KeyboardPlatform, string>> = {
 };
 
 /**
+ * Halonic's version and the system, as a report's first line says them: "Halonic 0.1.0 · macOS".
+ * The window's lite check and the workspace's Check this computer both start with it.
+ */
+export function aboutHalonic(version: string, platform: KeyboardPlatform): string {
+  return `Halonic ${version} · ${systemNames[platform]}`;
+}
+
+/**
  * What Welcome shows when the window can't say how the start goes, such as a shell without
  * `start_status`: ready, so Welcome is never held up by the watch itself.
  */
@@ -145,7 +153,7 @@ export function watchStart(
     get report() {
       return report;
     },
-    about: `Halonic ${version} · ${systemNames[platform]}`,
+    about: aboutHalonic(version, platform),
     subscribe(onChange) {
       listeners.add(onChange);
       return () => listeners.delete(onChange);

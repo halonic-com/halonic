@@ -72,6 +72,18 @@ export class RemoteEngine {
   }
 
   /**
+   * Whether the engine answers now (`GET /api/hello`), for Check this computer's Engine line. It
+   * never rejects: an engine that has gone, or that refuses, doesn't answer.
+   */
+  async answers(): Promise<boolean> {
+    try {
+      return (await this.#fetch(new Request(`${engineBaseUrl}/api/hello`))).ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Starts a run of the workflow with `input` (`POST /api/runs`).
    *
    * @returns the new run's id
