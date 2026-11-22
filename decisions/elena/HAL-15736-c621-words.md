@@ -14,9 +14,10 @@
    "previous run" ties the two, and the key in brackets shows where it's set. The requirement and the quote in
    `decisions/elena/HAL-15397-serve-routine-cant-start.md` (item 4) change with it; that note is edited only there.
    The line hasn't been released, so there is no changeset for it.
-2. The CLI README's `halonic routines` row now says that a webhook routine `halonic serve` says can't start also shows
-   "✕ Can't start", is counted by "! 1 routine can't start on a web request · halonic serve", and makes the command
-   exit 1, as `cli.commands.routines.list` already says.
+2. The CLI README's `halonic routines` row: `main` already says that a webhook routine `halonic serve` says can't
+   start shows "✕ Can't start", is counted on its own line and makes the command exit 1, as C621 row 51 asked, so this
+   pull request keeps `main`'s row and only says "has a name Halonic keeps" for "has a Halonic name". The README's
+   `halonic serve` row quotes the skipped line of item 1 in its new words.
 3. C621 row 33, the changeset `help-first-run.md`, isn't changed here: #4733 already rewrote it on `main`, and its
    words no longer read as one item called "First run: Show the guide".
 
