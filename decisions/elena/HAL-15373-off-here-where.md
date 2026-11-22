@@ -3,7 +3,6 @@
 - Task: HAL-15373, from flow check C565 rows 2, 3 and 5 (HAL-15351)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15373 (builds on R13 and R16, which the board approved on HAL-1949, so the words are a team decision under the HAL-2282 rule; Sofia checks the words on the task; Liam's code review signs this note)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:flxpH9nCpOmmX9mNATKsJcC0pxqbq1uyr55XT5Hsmuj0WzIvvTq/luqIW9GqIfpdCifFM/PdY94NrLMkbqupCw==
 
 ## What changes
 
