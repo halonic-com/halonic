@@ -60,20 +60,21 @@ verifies("workspace.references", () => {
     parityLoadLimitMs,
   );
 
-  it.each(["hub/wrong-type", "hub/missing-required", "hub/unknown-key", "hub/deep-nesting"])(
-    "leaves out the agents of a hub whose hub.yaml failed, in %s",
+  it.each([
+    "hub/wrong-type",
+    "hub/missing-required",
+    "hub/unknown-key",
+    "hub/deep-nesting",
+    "hub/bad-id-in-uses",
+  ])(
+    "leaves out the agents of a hub whose hub.yaml failed, and the routines that name it, in %s",
     async (caseId) => {
-      // The old loader then reports only hub.yaml and the routines that name
-      // the hub, never its agents.
+      // Only hub.yaml's own error: the old loader also called the hub unknown
+      // in the root routines that name it (HAL-15207).
       const workspace = await loadWorkspace(readParityCase(caseId).source);
       const errors = workspace.issues.filter((issue) => issue.source === "check");
-      expect(errors.map((issue) => [issue.file, issue.message])).toEqual([
-        [
-          "workflows/routines/hourly-check.routine.yaml",
-          'Routine "hourly-check": unknown hub "billing"',
-        ],
-        ["workflows/routines/on-paid.routine.yaml", 'Routine "on-paid": unknown hub "billing"'],
-      ]);
+      expect(errors.map((issue) => [issue.file, issue.message])).toEqual([]);
+      expect(workspace.issues.map((issue) => issue.file)).toEqual(["hubs/billing/hub.yaml"]);
     },
     parityLoadLimitMs,
   );

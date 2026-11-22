@@ -62,16 +62,13 @@ verifies("workspace.routines", () => {
   );
 
   it(
-    "calls a hub whose hub.yaml failed unknown, and leaves that hub's own routines alone",
+    "leaves alone the root routines that name a hub whose hub.yaml failed, and that hub's own routines",
     async () => {
       const workspace = await loadWorkspace(readParityCase("hub/wrong-type").source);
       const routineErrors = workspace.issues
         .filter((issue) => issue.source === "check" && issue.file.includes("/routines/"))
         .map((issue) => `${issue.file}: ${issue.message}`);
-      expect(routineErrors).toEqual([
-        'workflows/routines/hourly-check.routine.yaml: Routine "hourly-check": unknown hub "billing"',
-        'workflows/routines/on-paid.routine.yaml: Routine "on-paid": unknown hub "billing"',
-      ]);
+      expect(routineErrors).toEqual([]);
     },
     parityLoadLimitMs,
   );

@@ -222,6 +222,7 @@ verifies("parity.allowed-differences-checked", () => {
       "workspace.misplaced-files",
       "workflow.validate",
       "format.id-from-place",
+      "workspace.routines",
     ]);
   });
 

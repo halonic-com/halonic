@@ -31,7 +31,9 @@ interface RoutineProblem {
  * names its hub in `run.hub`, unless the root has agents or workflows of its
  * own, except a webhook routine, which always needs a hub: its request
  * starts a run in one. A routine in a hub whose `hub.yaml` failed isn't checked: the old
- * loader left that hub out.
+ * loader left that hub out. Nor is what a root routine names in such a hub: "unknown hub"
+ * would send the user to the routine, when the hub's own errors say what to fix (HAL-15207).
+ * For the same reason a root agent or workflow that failed still counts as the root's own work.
  *
  * A key of a workflow routine's input that no step of the workflow reads as
  * `input.<key>` is a warning, with "Did you mean" for a close one (HAL-14316).
@@ -47,25 +49,50 @@ export function checkRoutines(context: CheckContext): WorkspaceIssue[] {
     if (context.hubFailed(routine.hub)) {
       continue;
     }
+    // A root routine whose run.hub names a hub that failed: the hub's own errors say what to fix,
+    // and its workflows, agents and connectors were left out, so nothing it names can be checked.
+    if (routine.hub === null && context.hubFailed(routine.value.run.hub ?? null)) {
+      issues.push(...problemIssues(context, routine, triggerProblems(routine)));
+      continue;
+    }
     const problems = [
       targetProblem(context, routine),
       mailProblem(context, routine),
-      triggerProblem(routine),
-      ...triggerValueProblems(routine.value).map((problem) => ({
-        ...problem,
-        path: [...problem.path],
-        code: "unknown-trigger-value",
-      })),
+      ...triggerProblems(routine),
     ];
-    for (const problem of problems) {
-      if (problem !== null) {
-        const message = `Routine "${routine.value.id}": ${problem.message}`;
-        issues.push(context.error(routine.path, problem.path, problem.code, message));
-      }
-    }
-    issues.push(...unreadInputIssues(context, routine), ...startInputIssues(context, routine));
+    issues.push(
+      ...problemIssues(context, routine, problems),
+      ...unreadInputIssues(context, routine),
+      ...startInputIssues(context, routine),
+    );
   }
   return issues;
+}
+
+/** The first cron, time zone or interval that doesn't parse, and each unknown `{{trigger.…}}`. */
+function triggerProblems(routine: Routine): (RoutineProblem | null)[] {
+  return [
+    triggerProblem(routine),
+    ...triggerValueProblems(routine.value).map((problem) => ({
+      ...problem,
+      path: [...problem.path],
+      code: "unknown-trigger-value",
+    })),
+  ];
+}
+
+/** Each problem as an error on the routine's file, after `Routine "<id>": `. */
+function problemIssues(
+  context: CheckContext,
+  routine: Routine,
+  problems: readonly (RoutineProblem | null)[],
+): WorkspaceIssue[] {
+  return problems
+    .filter((problem) => problem !== null)
+    .map((problem) => {
+      const message = `Routine "${routine.value.id}": ${problem.message}`;
+      return context.error(routine.path, problem.path, problem.code, message);
+    });
 }
 
 /**
@@ -191,9 +218,12 @@ function targetProblem(context: CheckContext, routine: Routine): RoutineProblem 
   return { path: ["run", "agent"], code: "unknown-agent", message };
 }
 
-/** Whether the root has agents or workflows of its own, so a root routine can run there. */
+/**
+ * Whether the root has agents or workflows of its own, so a root routine can run there. One that
+ * failed its own checks counts: its errors say what to fix, and "need run.hub" would not.
+ */
 function rootHasWork(context: CheckContext): boolean {
-  return context.filesOf("agent", null).length > 0 || context.filesOf("workflow", null).length > 0;
+  return context.hasReadKindIn("agent", null) || context.hasReadKindIn("workflow", null);
 }
 
 /** A mail trigger's connector is the hub's own or shared at the root, and is a Google one. */

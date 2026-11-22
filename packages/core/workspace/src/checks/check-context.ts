@@ -102,6 +102,19 @@ export class CheckContext {
   }
 
   /**
+   * Whether the loader read a file of this kind in one hub (`null`: the root), whether it parsed
+   * or not.
+   */
+  hasReadKindIn(kind: KindName, hub: string | null): boolean {
+    for (const file of this.read.values()) {
+      if (file.kind === kind && placeOf(file.path)?.hub === hub) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Whether a hub's `hub.yaml` was read but failed its own checks. The old
    * loader then left the hub out: what its files name isn't checked, and
    * whatever names the hub finds it unknown. A hub without a `hub.yaml`
