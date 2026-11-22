@@ -101,6 +101,9 @@ function OwnStepsCard({ steps, context }: OwnStepsCardProps) {
     <>
       <p className="px-4 pb-2 text-small text-fg-muted">{ownCardWords.caption(done)}</p>
       <SetupSteps label={ownCardWords.heading} steps={rows} onOpen={(id) => openers[id]()} />
+      {done === rows.length ? (
+        <p className="px-4 pt-2 text-small text-fg">{ownCardWords.finished}</p>
+      ) : null}
     </>
   );
 }
