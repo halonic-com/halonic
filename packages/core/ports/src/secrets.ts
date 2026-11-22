@@ -175,18 +175,35 @@ export const halonicSecretNames: readonly string[] = ["token-key", "serve-passwo
 export const hostSecretNames: readonly string[] = ["remote-host-key"];
 
 /**
+ * The secrets only a deployment's own code reads, and only when it has them:
+ * the deployment's key (`cloud-key`), the key that wraps each end user's data
+ * key (`user-secrets-key`) and the hash of the one-job admin key
+ * (`admin-key-hash`). Like {@link halonicSecretNames}, no workspace may pick
+ * them, but a deployment doesn't need them all, so they aren't in that list,
+ * which is what every deployment requires.
+ */
+export const deploymentSecretNames: readonly string[] = [
+  "cloud-key",
+  "user-secrets-key",
+  "admin-key-hash",
+];
+
+/**
  * The prefix of a token's name in a store that also holds secrets, such as
  * the desktop keychain. A secret name with this prefix is a token, so no
  * workspace may pick it.
  */
 export const tokenNamePrefix = "halonic_token_";
 
-const halonicSecretKeys = new Set([...halonicSecretNames, ...hostSecretNames].map(secretKey));
+const halonicSecretKeys = new Set(
+  [...halonicSecretNames, ...hostSecretNames, ...deploymentSecretNames].map(secretKey),
+);
 const tokenKeyPrefix = secretKey(tokenNamePrefix);
 
 /**
- * Whether a secret name belongs to Halonic: one of {@link halonicSecretNames}
- * or {@link hostSecretNames}, or a token name under {@link tokenNamePrefix}. Names are compared in their
+ * Whether a secret name belongs to Halonic: one of {@link halonicSecretNames},
+ * {@link hostSecretNames} or {@link deploymentSecretNames}, or a token name
+ * under {@link tokenNamePrefix}. Names are compared in their
  * `secretKey` form, so `Token_Key` is `token-key`.
  *
  * @throws RangeError when the name breaks the rule of the `Secrets` port
