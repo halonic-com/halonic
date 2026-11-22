@@ -2032,7 +2032,7 @@ Function un.RemoveSandbox
   ${ElseIf} $2 == "3"
     StrCpy $SandboxOutcome "removed_manual"
     DetailPrint "✓ Removed the agent sandbox"
-    DetailPrint "   It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again, start it normally, not as administrator, and remove the sandbox in Settings › Agent sandbox."
+    DetailPrint "   It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again, start it normally, not as administrator, then set up the sandbox in Settings › Agent sandbox and remove it."
   ${ElseIf} $2 == "20"
     StrCpy $SandboxOutcome "none"
   ${ElseIf} $2 == "10"
@@ -2087,7 +2087,7 @@ Function un.PageDone
       ${If} $SandboxOutcome == "removed_kept"
         ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders stays until you install ${PRODUCTNAME} again and start it."
       ${Else}
-        ${NSD_CreateLabel} $4 12u $5 40u "It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again, start it normally, not as administrator, and remove the sandbox in Settings › Agent sandbox."
+        ${NSD_CreateLabel} $4 12u $5 40u "It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again, start it normally, not as administrator, then set up the sandbox in Settings › Agent sandbox and remove it."
       ${EndIf}
       Pop $0
     ${EndIf}

@@ -119,7 +119,7 @@ verifies("settings.agent-sandbox-removal-result", () => {
 
   it("says how to end the access a removal kept when the next start doesn't end it", async () => {
     const kept =
-      "Sandbox removed. It may still have access to some of your project folders. To end that, restart Halonic normally, not as administrator, and remove the sandbox again.";
+      "Sandbox removed. It may still have access to some of your project folders. To end that, restart Halonic normally, not as administrator, then set up the sandbox again and remove it.";
     const { view, announce, end } = await readyHost();
     await removeFrom(view);
     await end({ kind: "remove", how: "removed", keptAccess: "manual" }, { state: "needs-setup" });

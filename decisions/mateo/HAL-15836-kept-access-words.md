@@ -17,6 +17,11 @@ three can say that access stays and how to end it. `until_next_start` is
 unchanged. The test that held the old answer now expects `manual`, with the same
 number of `expect` calls, and two examples are added.
 
+The words were settled by the team under HAL-2282 (Mateo with Noah, HAL-15849
+and HAL-15850). After a removal Settings shows only **Set up the sandbox**, so
+the Settings and uninstaller lines for `manual` say to set the sandbox up again
+and then remove it; the CLI's `halonic sandbox remove` works without a setup.
+
 ## Covers
 
 - sandbox-srt.removal-kept-access
