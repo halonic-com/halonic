@@ -1,10 +1,12 @@
-import { Button, inlineLinkClasses } from "@halonicjs/studio-kit";
+import { Button, CommandBox, inlineLinkClasses } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useId, useRef } from "react";
 import {
   beforeAcceptLines,
   changedSinceRunLine,
   changeLine,
+  decideCommand,
   decidedSummary,
+  decideElsewhereLine,
   decisionFailedLine,
   proposalFacts,
   seeRunText,
@@ -27,7 +29,7 @@ export interface ProposalCardProps {
   readonly now: Date;
   /** The run's workflow and starter, from the Runs list; `undefined` while it doesn't have the run. */
   readonly facts: RunFacts | undefined;
-  /** Accept and Reject; without them the page shows the changes and no buttons. */
+  /** Accept and Reject; without them the page shows the changes and the command that decides them. */
   readonly decisions: ProposalDecisions | undefined;
   /** After each decision or Undo, so the Inbox reads its items again and the count drops. */
   readonly onDecided: () => void;
@@ -39,7 +41,8 @@ export interface ProposalCardProps {
  * workflow, when the run ended and what started it, with **Reject all** and **Accept all**; then
  * what accepting does, before any Accept, and one line per change with **Reject** and **Accept**.
  * A decided line says so in place of its buttons, and focus moves to the next **Accept**, else to
- * what the proposal came to.
+ * what the proposal came to. Where the window can't decide, the changes end with the terminal
+ * command that does (HAL-15986).
  *
  * Not here yet: a change's settings before and after, the diff, Compare and the phone's bar (Q5,
  * Q9, Q12).
@@ -81,6 +84,7 @@ export function ProposalCard({
             />
           ))}
         </ul>
+        {decisions === undefined && open.length > 0 ? <DecideElsewhere runId={item.runId} /> : null}
         {open.length === 0 && state.decided > 0 ? (
           <p ref={summary} tabIndex={-1} className="focus-ring text-body text-fg">
             {decidedSummary(state.files)}
@@ -177,6 +181,16 @@ function BeforeAccept({
           </button>
         </p>
       )}
+    </div>
+  );
+}
+
+/** Where the window can't decide: the line and the command that shows the proposal in a terminal. */
+function DecideElsewhere({ runId }: { readonly runId: string }) {
+  return (
+    <div className="flex flex-col gap-2 text-body text-fg-muted">
+      <p>{decideElsewhereLine}</p>
+      <CommandBox command={decideCommand(runId)} />
     </div>
   );
 }

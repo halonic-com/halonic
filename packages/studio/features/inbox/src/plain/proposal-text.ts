@@ -1,6 +1,6 @@
 // The words of a run proposal's row (flow-inbox 2.2, microcopy 10.1,
-// HAL-11945 Q1 and Q2). A proposal isn't an approval, so none of them says
-// "approve".
+// HAL-11945 Q1 and Q2), and of a window that can't decide proposals
+// (HAL-15986). A proposal isn't an approval, so none of them says "approve".
 
 import { shortRunId } from "@halonicjs/app";
 import { markHiddenName } from "@halonicjs/std";
@@ -131,3 +131,28 @@ export function undoLeftAloneLine(verb: "accepted" | "rejected", paths: readonly
   }
   return `${paths.length} files changed after they were ${verb}, so they stay ${verb}.`;
 }
+
+/**
+ * On a proposal the window can't decide (no Accept or Reject here), the line before the command
+ * that does it in a terminal, {@link decideCommand}.
+ */
+export const decideElsewhereLine =
+  "Studio can't accept or reject these changes here. To see them and decide, run this in a terminal:";
+
+/**
+ * The command that shows a run's proposal with its diffs, and ends with how to accept or discard
+ * it: "halonic proposals show 01JD8Q". The CLI takes the short id in either case.
+ */
+export function decideCommand(runId: string): string {
+  return `halonic proposals show ${shortRunId(runId)}`;
+}
+
+/**
+ * Under Needs you in a window that lists no proposals, a served Studio or a phone (HAL-15986):
+ * the line around the command, which the page shows in code style.
+ */
+export const proposalsElsewhere = {
+  before: "Changes your runs propose show only in the desktop app, or with",
+  command: "halonic proposals",
+  after: "in a terminal.",
+};

@@ -44,7 +44,7 @@ function fakeDecisions(overrides: Partial<ProposalDecisions> = {}) {
   } satisfies ProposalDecisions;
 }
 
-function open(decisions: ProposalDecisions, item = proposal()) {
+function open(decisions: ProposalDecisions | undefined, item = proposal()) {
   const toasts = createToastStore();
   const onDecided = vi.fn();
   const root = render(
@@ -71,6 +71,28 @@ async function press(button: HTMLButtonElement | undefined) {
 }
 
 verifies("inbox.proposal-page", () => {
+  describe("in a window that can't decide", () => {
+    it("has no Accept or Reject, and ends with the command that shows the proposal", () => {
+      const { root } = open(undefined);
+      expect(buttons(root, "Accept all")).toEqual([]);
+      expect(buttons(root, "Accept")).toEqual([]);
+      expect(buttons(root, "Reject")).toEqual([]);
+      expect(root.textContent).toContain(
+        "Studio can't accept or reject these changes here. To see them and decide, run this in a terminal:",
+      );
+      expect(root.querySelector("code")?.textContent).toBe("halonic proposals show 01JD8Q");
+    });
+
+    it("names no command once nothing is left to decide", () => {
+      const decided = proposal({
+        files: [{ path: "notes/a.md", change: "modified", decision: "accepted" }],
+      });
+      const { root } = open(undefined, decided);
+      expect(root.textContent).not.toContain("run this in a terminal");
+      expect(root.querySelector("code")).toBeNull();
+    });
+  });
+
   describe("before any decision", () => {
     it("says the workflow, when the run ended and what started it, with Reject all and Accept all", () => {
       const { root } = open(fakeDecisions());
