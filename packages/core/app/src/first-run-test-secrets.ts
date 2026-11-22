@@ -1,9 +1,9 @@
 // The secrets a first-run test call may read: only the one key it tests, pasted
 // or saved, under the provider's secret name, and never another.
 
-import type { KeyProblem } from "@halonicjs/app";
 import { type Secrets, secretKey, workspaceSecrets } from "@halonicjs/ports";
-import type { SecretText } from "@halonicjs/studio-kit";
+import type { KeyProblem } from "./model-choice.ts";
+import type { ChoiceKey } from "./model-choice-service.ts";
 
 /**
  * The keys saved on this computer as the first run asks for them: whether one is there, and the
@@ -32,7 +32,7 @@ export function workspaceSavedKeys(
 }
 
 /** Secrets holding only the pasted key, under the provider's secret name. */
-export function onlySecret(name: string | undefined, key: SecretText | undefined): Secrets {
+export function onlySecret(name: string | undefined, key: ChoiceKey | undefined): Secrets {
   return {
     get: async (asked) =>
       name !== undefined && key !== undefined && secretKey(asked) === secretKey(name)

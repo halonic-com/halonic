@@ -2,13 +2,13 @@
 // changes and a save, a trust check built from the real trust content and
 // fingerprint, a key store and a model whose answer each test picks.
 
-import type { TrustCheck } from "@halonicjs/app";
 import { type Connector, type Provider, parseFile } from "@halonicjs/format";
 import type { ChatRequest, ChatResponse, Digest, Secrets } from "@halonicjs/ports";
-import type { SecretText } from "@halonicjs/studio-kit";
 import { reachesOnlyTheTestModel, trustContent, trustFingerprint } from "@halonicjs/workspace";
 import { FirstRunModelChoice } from "./first-run-model-choice.ts";
 import { workspaceSavedKeys } from "./first-run-test-secrets.ts";
+import type { ChoiceKey } from "./model-choice-service.ts";
+import type { TrustCheck } from "./trust-service.ts";
 
 export const digest: Digest = {
   async sha256(data) {
@@ -160,7 +160,7 @@ export function acmeFolder(options: { files?: Record<string, string>; saves?: bo
             unsaved.clear();
           },
     keys: {
-      save: async (name: string, key: SecretText) => {
+      save: async (name: string, key: ChoiceKey) => {
         steps.push(`key: ${name}`);
         if (state.failKey !== undefined) throw state.failKey;
         // As the keychain's `secret_set`: a new value keeps the origins stored beside the name.
@@ -178,10 +178,11 @@ export function acmeFolder(options: { files?: Record<string, string>; saves?: bo
     trust,
     digest,
     provider: modelOf(calls, () => state.answer),
-    setTimer: (fire, delayMs) => {
-      const timer = { delayMs, fire };
+    timeLimit: (delayMs) => {
+      const limit = new AbortController();
+      const timer = { delayMs, fire: () => limit.abort() };
       timers.push(timer);
-      return () => timers.splice(timers.indexOf(timer), 1);
+      return { signal: limit.signal, stop: () => timers.splice(timers.indexOf(timer), 1) };
     },
     newTestId: () => `test-${calls.length}`,
     localModels: async () => ({ kind: "one", model: "llama3.2" }),

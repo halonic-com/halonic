@@ -1,12 +1,12 @@
 import { ModelCallError } from "@halonicjs/ports";
-import { SecretText } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
-import { acmeFiles, acmeFolder, neverAnswers } from "./first-run-model-choice.testing.ts";
+import { acmeFiles, acmeFolder, neverAnswers } from "./first-run-model-choice.test-helper.ts";
+import { choiceKey } from "./model-choice-service.ts";
 
 const anthropic = { kind: "key", provider: "anthropic" } as const;
 const pasted = "sk-ant-acme-test-1";
-const key = () => new SecretText(`${pasted}\n`);
+const key = () => choiceKey(`${pasted}\n`);
 
 async function passedTest(folder: ReturnType<typeof acmeFolder>) {
   const tested = await folder.service.test(anthropic, key());
@@ -51,7 +51,7 @@ verifies("studio.first-run-model-test", () => {
   it("calls nothing for what isn't a key, or a provider file it can't use", async () => {
     const folder = acmeFolder();
     expect(
-      await folder.service.test(anthropic, new SecretText("https://console.anthropic.com")),
+      await folder.service.test(anthropic, choiceKey("https://console.anthropic.com")),
     ).toEqual({ kind: "not-a-key", problem: { kind: "url", keyStart: "sk-ant-" } });
 
     const own = acmeFolder({
@@ -158,7 +158,7 @@ verifies("studio.first-run-key-never-shown", () => {
   it("keeps the key out of every answer, passed or failed", async () => {
     const folder = acmeFolder();
     const answers: unknown[] = [];
-    answers.push(await folder.service.test(anthropic, new SecretText(`${pasted} extra`)));
+    answers.push(await folder.service.test(anthropic, choiceKey(`${pasted} extra`)));
     folder.state.answer = async () => {
       throw new ModelCallError("out-of-credit", "No credit.");
     };
