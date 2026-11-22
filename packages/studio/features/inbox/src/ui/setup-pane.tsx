@@ -1,7 +1,7 @@
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import { engineWords, errorMessageFor, loadView, type ViewRef } from "@halonicjs/studio-shell";
 import { type ComponentType, type KeyboardEvent, useEffect, useState } from "react";
-import type { InboxSetupSource, SetupViewProps } from "../inbox.ts";
+import type { InboxSetupSource, SetupViewProps } from "../setup-source.ts";
 import { SetupCard } from "./setup-card.tsx";
 
 /** Props for {@link SetupPane}. */

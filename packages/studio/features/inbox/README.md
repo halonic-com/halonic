@@ -35,6 +35,15 @@ const remove = inbox.addSetupSource({
 });
 ```
 
+Another feature can put its own view in a wait card's place once an answer is recorded, such as first-run's "You did it" after the first run's Approve. It adds an answered view whose `claims(item, event, after)` says which answers it takes; `after` is `continues`, `finished` or `ended`. The view loads only when it claims one and gets the item, `close` and `openItem`. An answer no view claims keeps the card's decided bar, and so does a view that can't load (requirement `inbox.answered-view`).
+
+```ts
+const remove = inbox.addAnsweredView({
+  claims: (item, event, after) => item.runId === firstRunId && event === "approve" && after === "finished",
+  view: { view: "YouDidItView", load: () => import("./ui/you-did-it-view.tsx") },
+});
+```
+
 The item's `body` and a tool call's `args` can hold model output. Show them as plain text, never as Markdown or HTML.
 
 The screens show those values through `src/plain/`: arguments as readable fields, hidden characters as `⟦U+202E⟧` markers, and long text folded with "Show 38 more lines" (requirements `inbox.plain-values`, `inbox.argument-fields`, `inbox.waiting-time` and `inbox.approval-title`).

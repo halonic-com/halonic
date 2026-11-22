@@ -1,8 +1,8 @@
 import { type SandboxStartCheck, type SandboxStartResult, sandboxStartWords } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import { createElement } from "react";
-import type { InboxSetupSource, SetupEntry, SetupViewProps } from "../inbox.ts";
 import type { InboxNotices, SandboxFixedNotice } from "../notices/inbox-notices.ts";
+import type { InboxSetupSource, SetupEntry, SetupViewProps } from "../setup-source.ts";
 import { sandboxInboxWords } from "./sandbox-words.ts";
 
 /** The one account of the sandbox source: the sandbox is per computer, so there is one row. */

@@ -1,7 +1,7 @@
 import { markHiddenName } from "@halonicjs/std";
 import { Button } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef } from "react";
-import type { SetupViewProps } from "../inbox.ts";
+import type { SetupViewProps } from "../setup-source.ts";
 import { CardHeader } from "./card-parts.tsx";
 
 /**
