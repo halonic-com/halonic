@@ -61,10 +61,14 @@ export function createDoctorCommand(
       // Every other command refuses a workspace that overlaps the profile;
       // `doctor` shows it on the Profile line and leaves the workspace unread,
       // since its files are fenced off from the profile (HAL-15201). A folder
-      // without `workspace.yaml` is no workspace, so there's nothing to overlap.
-      const profile = (await holdsWorkspaceFile(dir.root)) ? await profileProblem(dir.root) : null;
+      // without `workspace.yaml` is no workspace, so there's nothing to overlap;
+      // the plain look decides that, since the fenced store refuses to answer
+      // for a folder inside the profile (HAL-15827).
+      const holdsWorkspace = await holdsWorkspaceFile(dir.root);
+      if (!holdsWorkspace && given !== undefined) throw new NoWorkspaceError();
+      const profile = holdsWorkspace ? await profileProblem(dir.root) : null;
       const read =
-        profile === null
+        holdsWorkspace && profile === null
           ? await readWorkspace(dir, given !== undefined, watchedFileLimit, computer, secrets)
           : null;
       const workspace =
