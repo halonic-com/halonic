@@ -3,6 +3,7 @@
 - Task: HAL-16475
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16475 (Chief's fix from visual check C711 rows 4 to 6, a team decision under the HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:p6LEe3XHOEI+7xc7g8Kck0Lik64okhHP1SwEbKRxbIibVTvaAlfwAkGL2ZEwgpU5U7CcKNDdbzrUNo2Y65TSCg==
 
 ## What changes
 
