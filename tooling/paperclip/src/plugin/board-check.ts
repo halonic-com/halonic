@@ -9,6 +9,7 @@ import { type BoardCheckApi, errorCode, type PartPlan, type Trigger } from "./bo
 import { planApprovalsPart } from "./board-check-approvals.ts";
 import { type AskScope, planAsks } from "./board-check-asks.ts";
 import { planMergeSpeed } from "./board-check-merge-speed.ts";
+import { planPilesPart } from "./board-check-piles.ts";
 import { planRuns, recordFailedRun } from "./board-check-runs.ts";
 import { planWaiting } from "./board-check-waiting.ts";
 import { everyIssue } from "./host.ts";
@@ -47,7 +48,7 @@ function gateFor(ctx: BoardCheckApi, companyId: string, settings: BoardCheckSett
   };
 }
 
-/** Parts (b), (c) and (e) run on the first job pass of each hour. */
+/** Parts (b), (c) and (e), and the queued-run piles of part (a), run on the first job pass of each hour. */
 export function hourlyPass(trigger: Trigger, now: Date): boolean {
   return trigger === "job" && now.getUTCMinutes() < 10;
 }
@@ -74,6 +75,10 @@ async function planJobParts(
   if (hourly) {
     const input = { openTasks, agents, chiefTaskId: settings.chiefTaskId };
     parts.push(await planWaiting(ctx, companyId, input, now));
+    const checker = settings.boardCheckerTaskId;
+    parts.push(
+      await planPilesPart(ctx, companyId, { openTasks, boardCheckerTaskId: checker, names }, now),
+    );
   }
   return parts;
 }

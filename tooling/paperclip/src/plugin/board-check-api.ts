@@ -20,7 +20,10 @@ import type { MetricsApi } from "./metrics.ts";
 /** The part of the plugin context the board check uses, so tests can fake it. */
 export interface BoardCheckApi extends MetricsApi {
   readonly issues: BoardWriteApi["issues"] &
-    Pick<PluginIssuesClient, "list" | "get" | "listComments" | "listInteractions"> & {
+    Pick<
+      PluginIssuesClient,
+      "list" | "get" | "listComments" | "listInteractions" | "getSubtree"
+    > & {
       readonly relations: Pick<PluginIssueRelationsClient, "get">;
     };
   readonly agents: Pick<PluginAgentsClient, "list">;
@@ -48,7 +51,7 @@ export type Trigger = "event" | "job";
 /** Where the board check keeps `key` for a company in plugin state. */
 export const stateKey = (
   companyId: string,
-  key: "asks" | "failed-runs" | "waiting" | "approvals" | "merge-speed",
+  key: "asks" | "failed-runs" | "piles" | "waiting" | "approvals" | "merge-speed",
 ) =>
   ({
     scopeKind: "company",
