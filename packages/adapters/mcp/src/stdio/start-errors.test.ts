@@ -178,6 +178,44 @@ verifies("mcp.connector-start-errors", () => {
     await client.close();
   });
 
+  it("leaves no middle line of a secret whose first line the tail dropped", async () => {
+    const key = "acme-key-start\nacme-key-middle-one\nacme-key-middle-two\nacme-key-end";
+    const later = Array.from({ length: 7 }, (_, index) => `retry ${index + 1} failed`);
+    const client = notesConnector(
+      new FakeStarter((_message, program) => {
+        program.writeError(`key ${key} unreadable\n${later.join("\n")}\n`);
+        program.exit(3);
+      }),
+      { secretEnv: { NOTES_KEY: "notes-key" }, secrets: { "notes-key": key } },
+    );
+    const refused = await client.listTools().catch((error: unknown) => error);
+    expect(refused).toMatchObject({
+      errorOutput: [
+        afterLostLineRemoved,
+        "[secret removed]",
+        "[secret removed] unreadable",
+        ...later,
+      ],
+    });
+    await client.close();
+  });
+
+  it("finds a secret with CRLF and a blank line in it, which the tail doesn't keep as written", async () => {
+    const key = "acme-key-start\r\n\r\nacme-key-end";
+    const client = notesConnector(
+      new FakeStarter((_message, program) => {
+        program.writeError(`key ${key} unreadable\n`);
+        program.exit(3);
+      }),
+      { secretEnv: { NOTES_KEY: "notes-key" }, secrets: { "notes-key": key } },
+    );
+    const refused = await client.listTools().catch((error: unknown) => error);
+    expect(refused).toMatchObject({
+      errorOutput: ["key [secret removed]", "[secret removed] unreadable"],
+    });
+    await client.close();
+  });
+
   it("keeps a program that doesn't answer initialize in time a plain stop", async () => {
     vi.useFakeTimers();
     const client = notesConnector(new FakeStarter(() => undefined));

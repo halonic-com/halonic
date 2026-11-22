@@ -18,6 +18,7 @@ import { cleanErrorOutput, type ErrorOutputLine, type PersonalDetails } from "./
 import { inheritedSecrets } from "./inherited-secrets.ts";
 import type { AgentWorkingFolders, ProgramLaunch, ProgramStarter } from "./program.ts";
 import { defaultRestartLimits, RestartLimit, type RestartLimits } from "./restart-limit.ts";
+import { secretAndItsLines } from "./secret-lines.ts";
 import { ProgramStoppedAtStartError, SecretNotSetError } from "./start-errors.ts";
 import { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio-transport.ts";
 import { ConnectorStoppedError } from "./stopped-error.ts";
@@ -110,7 +111,10 @@ class McpStdioConnector implements ConnectorClient {
   readonly #context: ConnectorFactoryContext;
   readonly #options: McpStdioOptions;
   readonly #restarts: RestartLimit;
-  /** Every secret given to the program or inherited by it, to remove from its error output. */
+  /**
+   * Every secret given to the program or inherited by it, and each line of
+   * one with a line break, to remove from its error output.
+   */
   readonly #scrubber = new SecretScrubber();
   #connecting: Promise<Connection> | undefined;
   /** The program that is running, once its session has started. */
@@ -137,7 +141,7 @@ class McpStdioConnector implements ConnectorClient {
       options.restartLimits ?? defaultRestartLimits,
       options.clock ?? systemClock,
     );
-    for (const secret of inheritedSecrets(options.inheritedEnv)) this.#scrubber.remember(secret);
+    for (const secret of inheritedSecrets(options.inheritedEnv)) this.#rememberSecret(secret);
   }
 
   async listTools(): Promise<ConnectorTool[]> {
@@ -338,9 +342,14 @@ class McpStdioConnector implements ConnectorClient {
     for (const [variable, secretName] of Object.entries(this.#config.secretEnv)) {
       const value = await this.#context.secrets.get(secretName);
       if (value === null) throw new SecretNotSetError(this.id, secretName);
-      this.#scrubber.remember(value);
+      this.#rememberSecret(value);
       values[variable] = value;
     }
     return values;
+  }
+
+  /** Remembers a secret, and each line of one with a line break, for the error output. */
+  #rememberSecret(secret: string): void {
+    for (const text of secretAndItsLines(secret)) this.#scrubber.remember(text);
   }
 }
