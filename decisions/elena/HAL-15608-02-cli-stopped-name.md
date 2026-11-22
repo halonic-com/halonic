@@ -2,7 +2,6 @@
 
 - Approval: HAL-15608 (Paperclip task), from flow check C600 #4 on HAL-15594; lines in the shape of the approved plugin lines of `halonic run` and the step panel (HAL-14974, HAL-15278), words decided by the team with Sofia (HAL-15616) under HAL-2282; the reviewer signs this note with the pull request
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iVzbT0Mp8D4+WBLEBUssmmFDti7JoW53SW+/qiaVo81HyclCUToHLuK5Rf41L/9mm1LT5g6YpP9I08NSaSTgCw==
 - Task: HAL-15608
 
 ## What changes
