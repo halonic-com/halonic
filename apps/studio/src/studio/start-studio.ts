@@ -12,6 +12,7 @@ import {
   SampleWorkspaceService,
 } from "@halonicjs/studio-feature-first-run/api";
 import { SandboxPassesService } from "@halonicjs/studio-feature-inbox/api";
+import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
 import { SampleHintService } from "@halonicjs/studio-feature-runs/api";
 import {
   BrowserDisplayPrefs,
@@ -301,8 +302,13 @@ export async function openFolder(
       ? undefined
       : openFolderScope(files, location, trust);
   const services = scope?.services ?? new ServiceRegistry();
+  // The plugins are provided with the folder's services, below.
+  const plugins = () =>
+    services.has(PluginsHostService) ? services.get(PluginsHostService).feed : undefined;
   const trustView =
-    trust === undefined ? undefined : new WorkspaceTrustView(trust, location, runsStatusOf(window));
+    trust === undefined
+      ? undefined
+      : new WorkspaceTrustView(trust, location, runsStatusOf(window), plugins);
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
   const sample = sampleWorkspaceOf(
