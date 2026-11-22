@@ -1,6 +1,7 @@
 import { answerAdmin } from "./admin.ts";
 import { adminRoutes } from "./admin-routes.ts";
 import type { RuntimeEnv } from "./env.ts";
+import { plainHttpAnswer } from "./https-only.ts";
 import { answerRequest, healthPath } from "./routes.ts";
 import { createRuntime } from "./runtime.ts";
 import { runScheduled } from "./scheduled.ts";
@@ -8,12 +9,15 @@ import { answerSelfTest } from "./self-test.ts";
 import { serveRequest } from "./serve.ts";
 
 /**
- * The Worker's entry points. `fetch()` answers the health route, and `/self-test` for a deploy that set its token;
+ * The Worker's entry points. `fetch()` answers plain HTTP with a redirect or a refusal (see
+ * `plainHttpAnswer`), then the health route, and `/self-test` for a deploy that set its token;
  * every other request goes to `host/server` with the Cloudflare adapters. `scheduled()` runs on the cron
  * trigger in `wrangler.toml`, every minute: the routine tick and the watchdog.
  */
 export const worker = {
   async fetch(request: Request, env?: RuntimeEnv): Promise<Response> {
+    const plainHttp = plainHttpAnswer(request);
+    if (plainHttp !== undefined) return plainHttp;
     if (env !== undefined && new URL(request.url).pathname === "/self-test") {
       const answer = await answerSelfTest(request, env);
       if (answer !== undefined) return answer;
