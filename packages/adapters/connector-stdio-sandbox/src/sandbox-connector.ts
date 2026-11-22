@@ -8,6 +8,7 @@ import {
   McpSession,
   McpStoppedError,
   type McpToolResult,
+  ProgramStoppedAtStartError,
   RestartLimit,
   type RestartLimits,
   resultText,
@@ -335,7 +336,10 @@ class SandboxStdioConnector implements ConnectorClient {
     } catch (error) {
       // The next call starts a new program, so this one must not keep running.
       await transport.close();
-      throw this.#sessionEnded() ?? error;
+      const ended = this.#sessionEnded();
+      if (ended !== undefined) throw ended;
+      if (transport.endedByProgram) throw new ProgramStoppedAtStartError(this.#stdio.command);
+      throw error;
     }
     this.#connection = { session, transport };
     return this.#connection;

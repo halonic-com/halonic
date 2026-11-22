@@ -71,7 +71,7 @@ verifies("cli.commands.tools.revoke", () => {
   it("needs a connector, and shows the usage line under it", async () => {
     const run = await kit.tools(["revoke"]);
     expect(run.stderr[0]).toBe("✕ halonic tools revoke needs a connector's id.");
-    expect(run.stderr.join("\n")).toContain("halonic tools revoke <source> <tool>...");
+    expect(run.stderr.join("\n")).toContain("halonic tools revoke <connector> <tool>...");
   });
 
   it("names a connector close to the one typed", async () => {

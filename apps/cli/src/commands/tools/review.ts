@@ -1,4 +1,4 @@
-// `halonic tools review <source>` (cli-output 3.10): shows each waiting
+// `halonic tools review <connector>` (cli-output 3.10): shows each waiting
 // tool and asks about it, approving exactly the fingerprint shown above the
 // question (HAL-2579 F9). Without a terminal it shows the same blocks, asks
 // nothing and says how to approve from a script. Only the tools the

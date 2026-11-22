@@ -148,15 +148,17 @@ export type ToolNotMadeReason = "not-connected" | "tool-gone" | "sending-off" | 
 
 /**
  * Why a run's connectors didn't start, when the engine knows (requirement
- * `events.tool-result-cause`): `plugin-not-trusted` and `plugin-changed` are
- * for a connector from a plugin the person hasn't trusted yet, or that
- * changed since they trusted it; `plugin-stopped` for one whose sandbox
- * didn't work when the plugin started, so nothing of it ran;
- * `sandbox-not-ready`, for the sandbox a plugin's backend runs in not being
- * ready on this computer.
+ * `events.tool-result-cause`): `program-stopped` is for a program that
+ * stopped by itself right after it started, before it answered;
+ * `plugin-not-trusted` and `plugin-changed` are for a connector from a
+ * plugin the person hasn't trusted yet, or that changed since they trusted
+ * it; `plugin-stopped` for one whose sandbox didn't work when the plugin
+ * started, so nothing of it ran; `sandbox-not-ready`, for the sandbox a
+ * plugin's backend runs in not being ready on this computer.
  */
 export type ConnectorStartReason =
   | "program-missing"
+  | "program-stopped"
   | "secret-not-set"
   | "plugin-not-trusted"
   | "plugin-changed"

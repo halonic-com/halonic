@@ -35,6 +35,7 @@ export function connectorStartCause(error: unknown): ConnectorNotStartedCause {
 function nameOf(failure: Exclude<ConnectorStartFailure, { reason: "sandbox-not-ready" }>): string {
   switch (failure.reason) {
     case "program-missing":
+    case "program-stopped":
       return failure.program;
     case "secret-not-set":
       return failure.secret;

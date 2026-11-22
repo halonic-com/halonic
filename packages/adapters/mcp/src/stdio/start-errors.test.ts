@@ -109,6 +109,7 @@ verifies("mcp.connector-start-errors", () => {
     expect(refused).toBeInstanceOf(ProgramStoppedAtStartError);
     expect(refused).toBeInstanceOf(McpStoppedError);
     expect(refused).toMatchObject({
+      name: "ProgramStoppedAtStartError",
       program: "notes-mcp",
       code: "unavailable",
       message:

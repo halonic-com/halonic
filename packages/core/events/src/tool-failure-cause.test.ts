@@ -56,6 +56,7 @@ verifies("events.tool-result-cause", () => {
         { code: "not-made", why: "sending-off" },
         { code: "connector-not-started", why: "other" },
         { code: "connector-not-started", why: "program-missing", name: "notion-mcp" },
+        { code: "connector-not-started", why: "program-stopped", name: "sh" },
         { code: "connector-not-started", why: "plugin-not-trusted", name: "files" },
         { code: "connector-not-started", why: "plugin-changed", name: "files" },
         { code: "connector-not-started", why: "plugin-stopped", name: "Weather" },

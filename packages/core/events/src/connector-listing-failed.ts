@@ -5,11 +5,10 @@ import type { ToolFailureCause } from "./run-basics.ts";
  * turn started, so the turn offered none of them and went on without them
  * (requirement `events.connector-listing-failed`). `connector`: its id in
  * the workspace. `cause`: why, as on `tool.result`: `why` is
- * `program-missing` or `secret-not-set` with the program or the secret's
- * `name`, `plugin-not-trusted` or `plugin-changed` with the plugin's id, or
- * `plugin-stopped` with the plugin's name, when the engine knows, else
- * `other` with no name. It never holds the
- * error's own text.
+ * `program-missing`, `program-stopped` or `secret-not-set` with the program
+ * or the secret's `name`, `plugin-not-trusted` or `plugin-changed` with the
+ * plugin's id, or `plugin-stopped` with the plugin's name, when the engine
+ * knows, else `other` with no name. It never holds the error's own text.
  */
 export interface ConnectorListingFailedEvent {
   type: "connector.listing-failed";

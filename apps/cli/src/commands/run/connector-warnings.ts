@@ -42,9 +42,10 @@ export interface WarnedConnectors {
 /**
  * Warns once for each connector a run's log says couldn't list its tools:
  * what happened, then the cause and its fix, indented under it: a missing
- * program or secret, a plugin that isn't trusted yet or changed since, a
- * plugin's sandbox that can't start, or, read from the profile, a plugin
- * that isn't added or can't be read. Every step
+ * program or secret, a program that stopped right after it started, a
+ * plugin that isn't trusted yet or changed since, a plugin's sandbox that
+ * can't start, or, read from the profile, a plugin that isn't added or
+ * can't be read. Every step
  * lists the tools again, and every follow reads the log from its first
  * event, so a connector is warned about only the first time. A connector
  * whose parts the log already named as off (`connector.part-off`, written
@@ -133,6 +134,14 @@ function causeLines(
         connectorStartMessages.programMissing(name),
         connectorStartMessages.programMissingFix(
           name,
+          connector,
+          connectors.fileOf(event.connector),
+        ),
+      ];
+    case "program-stopped":
+      return [
+        connectorStartMessages.programStopped(name),
+        connectorStartMessages.cantListProgramStoppedFix(
           connector,
           connectors.fileOf(event.connector),
         ),

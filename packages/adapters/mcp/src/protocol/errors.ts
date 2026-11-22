@@ -22,7 +22,8 @@ export type McpErrorCode =
  * anything.
  */
 export class McpError extends Error {
-  override readonly name = "McpError";
+  /** `McpError`, or a subclass's own name, as `ProgramStoppedAtStartError` gives it. */
+  override readonly name: string = "McpError";
   /** What went wrong, for code that reacts to it. */
   readonly code: McpErrorCode;
 

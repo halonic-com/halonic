@@ -142,6 +142,8 @@ function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
     case "plugin-stopped":
       return "pluginStopped";
     case "sandbox-not-ready":
+    // No words of its own in the run view yet: it reads as one that didn't start (HAL-15606).
+    case "program-stopped":
     case "other":
       return "notStarted";
   }

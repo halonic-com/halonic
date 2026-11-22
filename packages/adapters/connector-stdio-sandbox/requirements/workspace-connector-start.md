@@ -2,12 +2,15 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-2310 (D45, board yes on HAL-2257 Q3; decided by Liam on HAL-2303); Mateo's answer on HAL-6884
+- Source: HAL-2310 (D45, board yes on HAL-2257 Q3; decided by Liam on HAL-2303); Mateo's answer on HAL-6884; HAL-15606 (C600 #1: a program that stops right after it starts is named, as outside the sandbox)
 
-The workspace's `stdio` connector that the host set up (`workspaceConnectors`) shall start its program in the context's sandbox session, in the place `workspaceConnectorPlace` builds, and offer every tool its server lists, as the trust grant covers them all. Before it reads a secret or looks up a pin, it shall run `refuseAgentFolderStart`. A script shall start in the workspace, or in the connector file's `cwd` there, and a pinned package in its own working folder. `WorkspaceStdioConnectorFactory` shall give a connector to the sandboxed factory when the context has a session, and to the unfenced factory only when it has none, or the launcher's (`off`), and the connector is not a plugin's local tool. A refusal that a workspace connector can hit shall say "workspace connector", not "local tool".
+The workspace's `stdio` connector that the host set up (`workspaceConnectors`) shall start its program in the context's sandbox session, in the place `workspaceConnectorPlace` builds, and offer every tool its server lists, as the trust grant covers them all. Before it reads a secret or looks up a pin, it shall run `refuseAgentFolderStart`. A script shall start in the workspace, or in the connector file's `cwd` there, and a pinned package in its own working folder. `WorkspaceStdioConnectorFactory` shall give a connector to the sandboxed factory when the context has a session, and to the unfenced factory only when it has none, or the launcher's (`off`), and the connector is not a plugin's local tool. A refusal that a workspace connector can hit shall say "workspace connector", not "local tool". When its program stops by itself while `initialize` waits and the session hasn't ended, the start shall fail with a `ProgramStoppedAtStartError` that names the program as the connector's file wrote it, and never holds what the program wrote (`mcp.connector-start-errors`).
 
 ## Examples
 
+- Given a script connector whose program `node` writes an error and exits while `initialize` waits,
+  when its tools are listed,
+  then it rejects with a `ProgramStoppedAtStartError` whose `program` is `node`, and its message holds none of what the program wrote.
 - Given a script connector in a fenced session,
   when its tools are listed and one is called,
   then the program starts with the workspace as its start folder, and every tool the server lists is offered.

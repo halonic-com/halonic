@@ -13,6 +13,14 @@ verifies("ports.connector-start-failure", () => {
     expect(connectorStartFailureOf(error)).toEqual({ reason: "program-missing", program: "npx" });
   });
 
+  it("reads a program that stopped right after it started by its name", () => {
+    const error = adapterError("ProgramStoppedAtStartError", {
+      program: "sh",
+      code: "unavailable",
+    });
+    expect(connectorStartFailureOf(error)).toEqual({ reason: "program-stopped", program: "sh" });
+  });
+
   it("reads a secret that isn't set by its name, and nothing of the message", () => {
     const error = adapterError(
       "SecretNotSetError",
@@ -74,6 +82,9 @@ verifies("ports.connector-start-failure", () => {
   it("turns away anything else", () => {
     expect(connectorStartFailureOf(new Error("The MCP server stopped."))).toBeUndefined();
     expect(connectorStartFailureOf(adapterError("ProgramNotFoundError", {}))).toBeUndefined();
+    expect(
+      connectorStartFailureOf(adapterError("ProgramStoppedAtStartError", { program: "" })),
+    ).toBeUndefined();
     expect(
       connectorStartFailureOf(adapterError("SecretNotSetError", { secretName: "" })),
     ).toBeUndefined();

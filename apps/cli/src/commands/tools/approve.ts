@@ -1,5 +1,5 @@
-// `halonic tools approve <source> <tool>… [--fingerprint <fingerprint>]`
-// and `halonic tools approve <source> --all` (cli-output 3.10, HAL-3004):
+// `halonic tools approve <connector> <tool>… [--fingerprint <fingerprint>]`
+// and `halonic tools approve <connector> --all` (cli-output 3.10, HAL-3004):
 // approve without a question, by name or every waiting tool, each at the
 // fingerprint read now or the one the person gives.
 

@@ -1,4 +1,4 @@
-// `halonic tools revoke <source> <tool>…` (cli-output 3.10): removes an
+// `halonic tools revoke <connector> <tool>…` (cli-output 3.10): removes an
 // approval, so the tool is off until a person approves it again. It reads
 // only the approvals, so it starts no connector and needs no trust.
 
