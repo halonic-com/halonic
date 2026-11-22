@@ -70,7 +70,9 @@ verifies("cli.commands.runs.show-waiting-child", () => {
     const waiting = io.stdout.findLastIndex((line) => line.startsWith("! Waiting for you"));
     expect(io.stdout.slice(waiting)).toEqual([
       "! Waiting for you: Approve this reply?",
-      expect.stringMatching(/^ {2}Answer with: halonic runs send \S{6}\.\S+ approve \(or reject\)$/),
+      expect.stringMatching(
+        /^ {2}Answer with: halonic runs send \S{6}\.\S+ approve \(or reject\)$/,
+      ),
     ]);
     expect(io.stdout).toContainEqual(expect.stringMatching(/^◌ Reply {3}Waiting for child run /));
   });
