@@ -53,7 +53,11 @@ export async function profileProblem(
   const found = await profileOverlap(root, environment);
   if (found === null) return null;
   return found.refusal.code === "profile-in-workspace"
-    ? { problem: "profile-in-workspace", movedBy: found.refusal.movedBy }
+    ? {
+        problem: "profile-in-workspace",
+        movedBy: found.refusal.movedBy,
+        profile: found.shownProfile,
+      }
     : { problem: "workspace-in-profile", profile: found.shownProfile };
 }
 
@@ -102,8 +106,8 @@ export class ProfilePlaceError extends KindedError {
     const [reason, fix] =
       refusal.code === "profile-in-workspace"
         ? [
-            workspaceMessages.profileInWorkspace(refusal.movedBy),
-            workspaceMessages.profileInWorkspaceFix(),
+            workspaceMessages.profileInWorkspace(shownProfile),
+            workspaceMessages.profileInWorkspaceFix(refusal.movedBy),
           ]
         : [
             workspaceMessages.workspaceInProfile(shownProfile),

@@ -10,12 +10,13 @@ import type { DoctorLine } from "./doctor-checks.ts";
  *
  * - `profile-in-workspace`: a variable put the profile in the workspace;
  *   `movedBy` is that variable, such as `HALONIC_HOME` or `XDG_DATA_HOME`.
- * - `workspace-in-profile`: the workspace is inside the profile; `profile`
- *   is the profile's path as the person reads it, such as
- *   `~/.local/share/halonic`.
+ * - `workspace-in-profile`: the workspace is inside the profile.
+ *
+ * Both carry `profile`, the profile's path as the person reads it, such as
+ * `~/.local/share/halonic`.
  */
 export type ProfileProblem =
-  | { problem: "profile-in-workspace"; movedBy: string }
+  | { problem: "profile-in-workspace"; movedBy: string; profile: string }
   | { problem: "workspace-in-profile"; profile: string };
 
 /** The Profile line: shown only when the host found a {@link ProfileProblem}. */
@@ -30,8 +31,8 @@ export type ProfileLine = DoctorLine & {
  * failed with the overlap the host found, or no line without one.
  *
  * @example
- * profileLine({ problem: "profile-in-workspace", movedBy: "HALONIC_HOME" });
- * // { check: "profile", status: "failed", problem: "profile-in-workspace", movedBy: "HALONIC_HOME" }
+ * profileLine({ problem: "profile-in-workspace", movedBy: "HALONIC_HOME", profile: "~/acme/.profile" });
+ * // { check: "profile", status: "failed", problem: "profile-in-workspace", movedBy: "HALONIC_HOME", profile: "~/acme/.profile" }
  * profileLine(null); // undefined
  */
 export function profileLine(problem: ProfileProblem | null): ProfileLine | undefined {

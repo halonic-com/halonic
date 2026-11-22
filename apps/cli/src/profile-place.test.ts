@@ -39,10 +39,14 @@ verifies("cli.profile-outside-workspace", () => {
       const { code, io } = await validateIn(acme);
 
       expect(code).toBe(exitCode.usage);
+      // The home folder is the test's folder, so the profile is shown under `~`.
       expect(io.stderr[0]).toContain(
-        "your profile folder, set by HALONIC_HOME, is inside this workspace.",
+        `your profile folder ${join("~", "acme", ".profile")} is inside this workspace.`,
       );
-      expect(io.stderr[1]).toContain("set HALONIC_HOME to its new place");
+      expect(io.stderr[1]).toContain(
+        "A change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.",
+      );
+      expect(io.stderr[1]).not.toContain("puts it there");
     });
 
     it("is refused when HALONIC_HOME is the workspace itself", async () => {
@@ -76,8 +80,9 @@ verifies("cli.profile-outside-workspace", () => {
         const { io } = await validateIn(acme);
 
         expect(io.stderr[0]).toContain(
-          "your profile folder, set by XDG_DATA_HOME, is inside this workspace.",
+          `your profile folder ${join("~", "acme", ".data", "halonic")} is inside this workspace.`,
         );
+        expect(io.stderr[1]).toContain("XDG_DATA_HOME puts it there.");
         expect(io.stderr[1]).toContain("set HALONIC_HOME to its new place");
         expect(io.stderr[1]).not.toContain("set XDG_DATA_HOME");
       },
@@ -109,7 +114,7 @@ verifies("cli.profile-outside-workspace", () => {
       const code = await runCli(["init", "new"], io, [initCommand]);
 
       expect(code).toBe(exitCode.usage);
-      expect(io.stderr[0]).toContain("set by HALONIC_HOME, is inside this workspace.");
+      expect(io.stderr[0]).toContain(`${join("~", "new", ".profile")} is inside this workspace.`);
     });
 
     it("isn't made a workspace by extract, which writes nothing there", async () => {
@@ -121,7 +126,7 @@ verifies("cli.profile-outside-workspace", () => {
       ]);
 
       expect(code).toBe(exitCode.usage);
-      expect(io.stderr[0]).toContain("set by HALONIC_HOME, is inside this workspace.");
+      expect(io.stderr[0]).toContain(`${join("~", "new", ".profile")} is inside this workspace.`);
       expect(existsSync(join(folder, "new"))).toBe(false);
     });
   });

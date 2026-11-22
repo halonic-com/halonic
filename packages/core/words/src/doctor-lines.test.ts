@@ -181,14 +181,18 @@ verifies("words.doctor-lines", () => {
       status: "failed",
       problem: "profile-in-workspace",
       movedBy: "XDG_DATA_HOME",
+      profile: "~/acme/.data/\u001b[31mhalonic",
     };
     expect(worded(moved)).toEqual({
       label: "Profile",
       items: [
-        "Your profile folder, set by XDG_DATA_HOME, is inside this workspace.",
-        "fix: Fix: move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.",
+        "Your profile folder ~/acme/.data/\\u001b[31mhalonic is inside this workspace.",
+        "fix: Fix: XDG_DATA_HOME puts it there. A change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.",
       ],
     });
+    expect(worded({ ...moved, movedBy: "HALONIC_HOME" }).items[1]).toBe(
+      "fix: Fix: a change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.",
+    );
     const inside: ProfileLine = {
       check: "profile",
       status: "failed",

@@ -58,20 +58,25 @@ export const workspaceMessages = defineMessages("workspace", {
     phrase`halonic ${command} is running for this workspace (process ${String(pid)}).`,
   engineOpenFix: () => phrase`Wait until it has finished or stop it, then run again.`,
   /**
-   * The reason when a variable put the profile folder in the workspace
-   * (HAL-15201, C637): "Couldn't open ./acme: your profile folder, set by
-   * HALONIC_HOME, is inside this workspace." `variable` is `HALONIC_HOME`, `XDG_DATA_HOME` or
-   * `LOCALAPPDATA`, whichever put it there.
+   * The reason when a variable put the profile folder in the workspace, with
+   * the profile's path, `~` for the home folder (HAL-15201, C637, C646):
+   * "Couldn't open ./acme: your profile folder ~/acme/.profile is inside this
+   * workspace."
    */
-  profileInWorkspace: (variable: string) =>
-    phrase`your profile folder, set by ${variable}, is inside this workspace.`,
+  profileInWorkspace: (profile: string) =>
+    phrase`your profile folder ${profile} is inside this workspace.`,
   /**
-   * Always names `HALONIC_HOME`, whichever variable moved the profile:
-   * `XDG_DATA_HOME` and `LOCALAPPDATA` point at the parent folder, and
-   * `LOCALAPPDATA` moves every other app's data too (Sofia's words, HAL-15232).
+   * Studio's fix (`shell.profile-place-words`), without its restart: always
+   * names `HALONIC_HOME`, led by the variable that moved the profile when
+   * that's another one, because `XDG_DATA_HOME` and `LOCALAPPDATA` point at
+   * the parent folder, and `LOCALAPPDATA` moves every other app's data too
+   * (Sofia's words, HAL-15232). `variable` is `HALONIC_HOME`,
+   * `XDG_DATA_HOME` or `LOCALAPPDATA`.
    */
-  profileInWorkspaceFix: () =>
-    phrase`Move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.`,
+  profileInWorkspaceFix: (variable: string) =>
+    variable === "HALONIC_HOME"
+      ? phrase`A change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.`
+      : phrase`${variable} puts it there. A change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.`,
   /** The reason when the workspace is inside the profile folder: "this workspace is inside your profile folder ~/.local/share/halonic." */
   workspaceInProfile: (profile: string) =>
     phrase`this workspace is inside your profile folder ${profile}.`,
