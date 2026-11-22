@@ -51,9 +51,9 @@ verifies("cli.workspace-provider-key-trust", () => {
     // Through pipes the check goes to stderr and only the fingerprint to stdout.
     expect(code).toBe(exitCode.notTrusted);
     expect(asked).toEqual(["gw-key"]);
-    expect(io.stderr).toContain("                Sends its key to https://other.example.com.");
+    expect(io.stderr).not.toContain("Sends its key to");
     expect(io.stderr).toContain(
-      '                ! Key "gw-key" isn\'t allowed to go to https://other.example.com, so a run with it fails. To allow it, run: halonic models allow-address gw-key https://other.example.com',
+      '                ! https://other.example.com isn\'t allowed for key "gw-key", so a run that uses this provider fails. To allow it, open Models in Halonic Studio, or run: halonic models allow-address gw-key https://other.example.com',
     );
   });
 });

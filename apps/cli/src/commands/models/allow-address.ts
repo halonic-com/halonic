@@ -104,15 +104,11 @@ function resultOf(outcome: AddOriginResult, shown: Shown): CommandResult {
  * typed more than the address, and before the note that the key now goes
  * only there when it was the key's first address.
  */
-function allowed(
-  origin: string,
-  shown: { key: string; typed: string },
-  first: boolean,
-): CommandResult {
+function allowed(origin: string, shown: Shown, first: boolean): CommandResult {
   const lines = [
     ...(typedMoreThan(origin, shown.typed) ? [modelsMessages.onlyAddressKept(origin).phrase] : []),
     modelsMessages.allowed(origin, shown.key).phrase,
-    ...(first ? [modelsMessages.onlyAddressNow(origin, shown.key).phrase] : []),
+    ...(first ? [modelsMessages.onlyAddressNow(origin, shown.key, shown.keyWord).phrase] : []),
   ];
   return { exitCode: exitCode.ok, lines, json: { key: shown.key, address: origin, changed: true } };
 }

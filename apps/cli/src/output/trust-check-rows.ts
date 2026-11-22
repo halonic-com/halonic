@@ -192,8 +192,9 @@ export type KeyAddressLists = ReadonlyMap<string, readonly string[]>;
  * where the provider sends its requests, or its type when the file names no
  * address and the adapter's own is used. A key that goes to another address than its
  * type's own gets a second line, "Sends its key to https://llm.example.com.".
- * A key whose list leaves out where it goes then gets a ! line with the
- * command that allows it, since a run with it would fail (HAL-15346).
+ * A key whose list leaves out where it goes gets a ! line with the command
+ * that allows it in its place, since a run with it would fail (HAL-15346,
+ * HAL-15523).
  *
  * @param keyAddresses - the lists of the stored keys; left out, no list is checked
  */
@@ -204,22 +205,27 @@ export function providerRow(
   const address = provider.baseUrl ?? provider.type;
   const destination = keyDestination(provider);
   const key = providerKeyName(provider);
+  const notAllowed =
+    destination === undefined || key === undefined
+      ? []
+      : notAllowedThere(key, destination.origin, keyAddresses.get(key));
+  // The ! line names the address itself; "Sends its key to" would say the opposite (HAL-15523).
+  const sends =
+    destination === undefined || destination.isDefault || notAllowed.length > 0
+      ? []
+      : [phrase`${underRow}${trustMessages.keyDestination(printable(destination.origin)).phrase}`];
   return [
     row(
       printable(provider.id),
       withSecrets(phrase`${printable(address)}`, providerSecretNames(provider)),
     ),
-    ...(destination === undefined || destination.isDefault
-      ? []
-      : [phrase`${underRow}${trustMessages.keyDestination(printable(destination.origin)).phrase}`]),
-    ...(destination === undefined || key === undefined
-      ? []
-      : notAllowedThere(key, destination.origin, keyAddresses.get(key))),
+    ...sends,
+    ...notAllowed,
   ];
 }
 
 /**
- * "! Key "gw-key" isn't allowed to go to https://other.example.com, …", with
+ * "! https://other.example.com isn't allowed for key "gw-key", …", with
  * the command to paste, when the key has a list and the origin isn't on it.
  * An address that can't be read gets no line, as no command could allow it;
  * its run fails all the same.

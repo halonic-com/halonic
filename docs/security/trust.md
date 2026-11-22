@@ -59,8 +59,10 @@ lists, in this order (requirement `cli.trust-check`):
   https://llm.example.com." (see
   [a key goes only to its own address](#a-key-goes-only-to-its-own-address)).
   When the key has a list of addresses without the one the provider sends it
-  to, a `!` line says a run with it fails and gives the
-  `halonic models allow-address` command that allows it.
+  to, a `!` line takes the place of that second line: it says the address
+  isn't allowed for the key, so a run that uses this provider fails, and
+  points to Models in Halonic Studio or the `halonic models allow-address`
+  command that allows it.
 - **Fingerprint:** the full fingerprint, never shortened.
 
 When the workspace changed since you trusted it, the check shows only what is
