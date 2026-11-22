@@ -32,13 +32,26 @@ New-Item -ItemType Directory -Force $shared | Out-Null
 $setupCopy = Join-Path $shared (Split-Path $Setup -Leaf)
 Copy-Item $Setup $setupCopy
 
+# Start-Process -Credential hands the runner's own environment to the user's
+# process, so its folder variables name the runner's folders. The user's script
+# first sets them from the user's own token, for itself and what it starts.
+$userEnvironment = @'
+$ErrorActionPreference = 'Stop'
+$env:USERPROFILE = [Environment]::GetFolderPath('UserProfile')
+$env:LOCALAPPDATA = [Environment]::GetFolderPath('LocalApplicationData')
+$env:APPDATA = [Environment]::GetFolderPath('ApplicationData')
+$env:TEMP = Join-Path $env:LOCALAPPDATA 'Temp'
+$env:TMP = $env:TEMP
+$env:USERNAME = [Environment]::UserName
+'@
+
 # Runs a PowerShell script as the user, without administrator rights, and
 # returns what it printed. Throws when it exits with anything but 0.
 function Invoke-AsUser([string]$script) {
   $id = [guid]::NewGuid().ToString('N')
   $out = Join-Path $shared "$id.out"
   $err = Join-Path $shared "$id.err"
-  $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("`$ErrorActionPreference = 'Stop'`n$script"))
+  $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("$userEnvironment`n$script"))
   $p = Start-Process powershell.exe -ArgumentList '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded `
     -Credential $credential -LoadUserProfile -WorkingDirectory $shared `
     -RedirectStandardOutput $out -RedirectStandardError $err -Wait -PassThru
