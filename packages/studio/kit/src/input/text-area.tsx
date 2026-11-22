@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+import { describedBy } from "../field/control.ts";
 import { useFieldControl } from "../field/field.tsx";
 import { isComposing } from "../keyboard/is-composing.ts";
 import { fieldBoxClasses, fieldBoxState, fieldTextClasses, focusTextOnPress } from "./field-box.ts";
@@ -34,6 +35,8 @@ export interface TextAreaProps
    * message), so no key can confirm an Approve, Reject, Apply or Delete.
    */
   readonly submitOnCtrlEnter?: boolean;
+  /** The `id` of a line outside the Field that also describes the control, read after the Field's own. */
+  readonly describedBy?: string;
   readonly ref?: Ref<HTMLTextAreaElement>;
 }
 
@@ -58,6 +61,7 @@ export function TextArea({
   maxRows = DEFAULT_MAX_ROWS,
   minRows = 1,
   submitOnCtrlEnter = false,
+  describedBy: extraDescription,
   ref,
   onKeyDown,
   onInput,
@@ -127,7 +131,7 @@ export function TextArea({
         // The limit in lines of the text's own height, so it follows the text size
         // (theme-utilities.css).
         style={{ "--max-rows": maxRows } as CSSProperties}
-        aria-describedby={field?.describedBy}
+        aria-describedby={describedBy(field?.describedBy, extraDescription)}
         aria-invalid={invalid || undefined}
         aria-required={field?.required || undefined}
         onKeyDown={handleKeyDown}

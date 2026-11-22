@@ -48,7 +48,7 @@ export const sheetWords = {
       `Looking for ${computer}. Trying again in ${seconds}.`,
     bodyTrying: (computer: string) => `Looking for ${computer}. Trying now…`,
     stale: (asOf: string) =>
-      `What you see is as of ${asOf} and may be out of date until it reconnects.`,
+      `What you see is as of ${asOf} and may be out of date until your phone reconnects.`,
     tryNow: "Try now",
   },
   connected: {

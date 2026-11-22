@@ -43,6 +43,21 @@ verifies("remote.phone-stale-banner", () => {
     expect(section.querySelector('[role="status"], [aria-live]')).toBeNull();
   });
 
+  it("starts the title with the ⚠, and gives only Try again the ↻", () => {
+    const { section, buttons } = show();
+    const warning = section.querySelector("span[aria-hidden]") as HTMLElement;
+    expect(warning.nextElementSibling?.firstElementChild?.textContent).toBe(
+      "Tim's laptop isn't answering",
+    );
+    expect(warning.className.split(" ")).toEqual(
+      expect.arrayContaining(["size-icon-sm", "text-attention"]),
+    );
+    expect(warning.querySelector("svg")).not.toBeNull();
+    const [details, tryAgain] = buttons;
+    expect(details?.querySelector("svg")).toBeNull();
+    expect(tryAgain?.querySelector("svg")).not.toBeNull();
+  });
+
   it("names the phone's own cause, and leaves out the last update before anything arrived", () => {
     const tailscale = show({ kind: "tailscaleOff", asOf: undefined });
     expect(textOf(tailscale.section)).toEqual([

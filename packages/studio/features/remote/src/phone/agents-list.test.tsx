@@ -63,6 +63,10 @@ verifies("remote.phone-agents", () => {
       "Writer, Finished 13:40, Done",
     ]);
     expect(rows[0]?.textContent).toContain("Running");
+    // The 40px tile with the 12px radius, as drawn and as Paired computers has.
+    const tile = rows[0]?.querySelector('[aria-hidden="true"]');
+    expect(tile?.textContent).toBe("R");
+    expect(tile?.className.split(" ")).toEqual(expect.arrayContaining(["size-10", "rounded-md"]));
   });
 
   it("reads the line from the end, the oldest open approval, then the agent's newest message", () => {

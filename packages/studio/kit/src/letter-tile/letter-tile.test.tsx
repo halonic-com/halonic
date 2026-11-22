@@ -30,6 +30,15 @@ verifies("kit.letter-tile", () => {
     expect(tileOf("🦊 Fox").textContent).toBe("🦊");
   });
 
+  it("is 40px with the 12px radius at size md, the letter still centred", () => {
+    const tile = tileOf("Sorter", "md");
+    expect(classesOf(tile)).toEqual(
+      expect.arrayContaining(["size-10", "rounded-md", "items-center", "justify-center"]),
+    );
+    expect(classesOf(tile)).toContain("text-accent-text");
+    expect(classesOf(tile)).not.toContain("size-7");
+  });
+
   it("is 48px with the heading size and the medium radius at size lg, in the same colours", () => {
     const tile = tileOf("acme", "lg");
     expect(tile.textContent).toBe("A");

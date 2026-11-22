@@ -40,11 +40,17 @@ function show(view: RemoteView, outcome: RemoteSendOutcome = { kind: "done" }) {
 }
 
 verifies("remote.phone-prompt-box", () => {
-  it("is off with the reason in it while the phone can't answer, agent in view or not", () => {
+  it("is off with the reason readable under it while the phone can't answer, agent in view or not", () => {
     const { box, send } = show(staleView(remoteView(), "unreachable"));
-    expect(box()?.disabled).toBe(true);
+    // Off but focusable, so the keyboard reaches it and hears the reason.
+    expect(box()?.disabled).toBe(false);
+    expect(box()?.readOnly).toBe(true);
+    expect(box()?.getAttribute("aria-disabled")).toBe("true");
     expect(box()?.getAttribute("aria-label")).toBe("Prompt");
-    expect(box()?.placeholder).toBe("You can send a prompt once your phone reconnects.");
+    expect(box()?.placeholder).toBe("");
+    const reason = document.getElementById(box()?.getAttribute("aria-describedby") ?? "");
+    expect(reason?.textContent).toBe("You can send a prompt once your phone reconnects.");
+    expect(reason?.className).toContain("text-fg-muted");
     expect(send()).toBeNull();
 
     unmountAll();
@@ -55,7 +61,8 @@ verifies("remote.phone-prompt-box", () => {
         onSend={vi.fn()}
       />,
     );
-    expect(screen.querySelector("textarea")?.disabled).toBe(true);
+    expect(screen.querySelector("textarea")?.getAttribute("aria-disabled")).toBe("true");
+    expect(screen.textContent).toBe("You can send a prompt once your phone reconnects.");
   });
 
   it("shows nothing while live with no agent in view", () => {
