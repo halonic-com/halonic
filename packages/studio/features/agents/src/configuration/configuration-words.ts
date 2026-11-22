@@ -1,3 +1,14 @@
+/** "9 Nov at 14:02" in the person's time zone, with the year when it isn't this one. */
+function dayAndTime(at: Date, now: Date): string {
+  const day = at.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    ...(at.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  });
+  const time = at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return `${day} at ${time}`;
+}
+
 /** Configuration's words (flow-agents 5.1 and 5.2; microcopy 8.5). */
 export const configurationWords = {
   tab: "Configuration",
@@ -141,9 +152,11 @@ export const configurationWords = {
     reviewAndConfirm: "Review and confirm",
     /**
      * Microcopy 23.4, the warning's first line while the choice is on hold, and its link to
-     * Changes (checklist 3.8). The date the file changed joins it in a later pull request.
+     * Changes (checklist 3.8): with the day and time it changed, when the host can tell.
      */
     fileChanged: (agent: string) => `${agent}'s file changed.`,
+    fileChangedOn: (agent: string, at: string, now = new Date()) =>
+      `${agent}'s file changed on ${dayAndTime(new Date(at), now)}.`,
     seeWhatChanged: "See what changed ›",
     /**
      * The chip in the agent page's header while On this computer is chosen (checklist 3.8); a

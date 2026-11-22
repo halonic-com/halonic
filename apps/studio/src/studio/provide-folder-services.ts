@@ -39,14 +39,9 @@ import {
   InstructionTrustHostService,
   RunStartHostService,
   RunsSourceService,
-  VersionHistoryHostService,
 } from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
-import {
-  ChangesSourceService,
-  ShareChoiceService,
-  VersionDialogService,
-} from "@halonicjs/studio-feature-source-control/api";
+import { VersionDialogService } from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import {
   ShellHttpClient,
@@ -61,12 +56,7 @@ import { loadWorkspace } from "@halonicjs/workspace";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { agentHostPlacement } from "../agents/agent-host-placement.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
-import { folderLiveness } from "../changes/folder-liveness.ts";
-import { shareChoiceMemory } from "../changes/share-choice.ts";
-import { versionHistoryOf } from "../changes/version-history.ts";
-import { WatchedChanges } from "../changes/watched-changes.ts";
-import type { GitAnswer } from "../changes/workspace-changes.ts";
-import { choicesMemory } from "../changes/workspace-merge.ts";
+import { provideChangesServices } from "../changes/provide-changes-services.ts";
 import { answerChatOn } from "../engine/answer-chat-on.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { windowKeyOriginPrompt } from "../engine/key-origin-prompt.ts";
@@ -171,24 +161,12 @@ export function provideFolderServices(
     InstructionTrustHostService,
     new WorkspaceInstructionTrust(instructionTrust, location),
   );
-  const changes = new WatchedChanges({
-    git: async (args) =>
-      (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
-    files: new TauriDefinitionStore(files, location),
-    // `.studio/discarded`, which the folder's own store refuses as private.
-    copies: new TauriDefinitionStore(files, location, { folder: "discarded" }),
-    choices: choicesMemory(storageOf(window), location),
-    digest: webCryptoDigest,
-    onFocus: (listener) => focusOf(window, listener),
-    onFilesChanged: (listener) => scope.events.on("files.changed", listener),
-  });
-  services.provide(ChangesSourceService, changes);
-  services.provide(VersionHistoryHostService, versionHistoryOf(changes));
-  services.provide(ShareChoiceService, shareChoiceMemory(storageOf(window), location));
-  const { liveness, onChange: onLivenessChange } = folderLiveness({
-    changes,
-    saved: new TauriDefinitionStore(files, location),
-    events: scope.events,
+  const { changes, liveness, onLivenessChange } = provideChangesServices(services, {
+    ipc,
+    files,
+    window,
+    location,
+    scope,
   });
   const transport = tauriAgentHostTransport(window);
   const refusals = new RefusalsFeed();
@@ -250,7 +228,7 @@ export function provideFolderServices(
   provideEngineAutoOpen(services, { ipc, files, trust, location, scope, remoteEngine });
   // Settings › New agents run and the Harness page share the agent host's choices.
   const placed =
-    transport === undefined ? undefined : agentHostPlacement(transport, files, location);
+    transport === undefined ? undefined : agentHostPlacement(transport, files, location, changes);
   services.provide(
     AgentsHostService,
     new WorkspaceAgents({

@@ -114,7 +114,7 @@ verifies("app.agent-placement", () => {
     ]);
   });
 
-  it("counts a choice made for an earlier version of the file as no choice", async () => {
+  it("counts a choice made for an earlier version of the file as no choice, and says when it was made", async () => {
     const { placement } = setup();
     await chooseThisComputer(placement, coderFile);
     const pulled = `${coderFile}allowedSites: [example.com]\n`;
@@ -123,6 +123,7 @@ verifies("app.agent-placement", () => {
       runsOn: "sandbox",
       agentFingerprint: await agentFingerprint(encodeUtf8(pulled), digest),
       reason: "file-changed",
+      chosenAt: "2026-11-10T10:00:00.000Z",
     });
   });
 

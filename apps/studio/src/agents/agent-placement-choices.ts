@@ -21,6 +21,11 @@ export interface AgentPlacementParts {
    * (`studioStartsUnfenced`); it can't when left out.
    */
   readonly studioStartsUnfenced?: boolean;
+  /**
+   * When the agent's saved file changed into what it is now, after `since` (ISO text), as ISO
+   * text; `undefined` when that can't be told. Left out, a choice on hold has no time.
+   */
+  changedAt?(ref: AgentRef, since: string): Promise<string | undefined>;
 }
 
 /**
@@ -53,9 +58,11 @@ export class AgentPlacementChoices {
       return { runsOn: "this-computer", fingerprint, chosenAt: answer.chosenAt };
     }
     // A choice that can't be read leaves the agent in its sandbox, so the page says so.
-    return answer.reason === "file-changed"
+    if (answer.reason !== "file-changed") return { runsOn: "sandbox", fingerprint };
+    const changedAt = await this.#changedAt(ref, answer.chosenAt);
+    return changedAt === undefined
       ? { runsOn: "on-hold", fingerprint }
-      : { runsOn: "sandbox", fingerprint };
+      : { runsOn: "on-hold", fingerprint, changedAt };
   }
 
   /** Saves On this computer for the file the person was warned about; nothing when it changed since. */
@@ -76,6 +83,16 @@ export class AgentPlacementChoices {
       hub: ref.hubId,
       agent: ref.id,
     });
+  }
+
+  /** When the file changed after the choice; the warning just leaves the time out when it can't tell. */
+  async #changedAt(ref: AgentRef, since: string | undefined): Promise<string | undefined> {
+    if (since === undefined || this.#parts.changedAt === undefined) return undefined;
+    try {
+      return await this.#parts.changedAt(ref, since);
+    } catch {
+      return undefined;
+    }
   }
 
   /** The agent as `AgentPlacement` asks about it: keyed by its hub and id, as the engine asks. */
