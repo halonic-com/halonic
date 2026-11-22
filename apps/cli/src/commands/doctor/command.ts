@@ -1,6 +1,6 @@
 import { readFile, realpath } from "node:fs/promises";
 import { join } from "node:path";
-import type { DoctorReport, DoctorWorkspace } from "@halonicjs/app";
+import type { DoctorReport, DoctorWorkspace, ProfileProblem } from "@halonicjs/app";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
 import { filesOf, type LoadedWorkspace, loadWorkspace, settingsPath } from "@halonicjs/workspace";
 import { cliProviderKeys } from "../../cli-provider-keys.ts";
@@ -58,23 +58,11 @@ export function createDoctorCommand(
       const computer = machine();
       const secrets = workspaceSecrets(context.secrets);
       const dir = workspaceDir(input, context.cwd);
-      // Every other command refuses a workspace that overlaps the profile;
-      // `doctor` shows it on the Profile line and leaves the workspace unread,
-      // since its files are fenced off from the profile (HAL-15201). A folder
-      // without `workspace.yaml` is no workspace, so there's nothing to overlap;
-      // the plain look decides that, since the fenced store refuses to answer
-      // for a folder inside the profile (HAL-15827).
-      const holdsWorkspace = await holdsWorkspaceFile(dir.root);
-      if (!holdsWorkspace && given !== undefined) throw new NoWorkspaceError();
-      const profile = holdsWorkspace ? await profileProblem(dir.root) : null;
-      const read =
-        holdsWorkspace && profile === null
-          ? await readWorkspace(dir, given !== undefined, watchedFileLimit, computer, secrets)
-          : null;
-      const workspace =
-        read === null
-          ? null
-          : await withHarnessSettingsFolders(withWindowsDrive(read, computer), computer.profile);
+      const { profile, workspace } = await workspaceToCheck(dir, given !== undefined, {
+        watchedFileLimit,
+        computer,
+        secrets,
+      });
       // The store as a run reads it, so `doctor` can't call set a name a run refuses.
       const doctor = await doctorService(computer, secrets, workspace, profile);
       const report = await doctor.check(workspace?.workspace ?? null);
@@ -106,6 +94,44 @@ export const doctorCommand: CliCommand = createDoctorCommand(nodeDoctorMachine);
 function givenDir(input: CommandInput): string | undefined {
   const dir = input.options["dir"];
   return typeof dir === "string" ? dir : undefined;
+}
+
+/**
+ * The Profile line's problem with `dir` and the workspace `doctor` checks
+ * there, `null` when there's none or it overlaps the profile.
+ *
+ * @throws NoWorkspaceError when `--dir` was given and has no `workspace.yaml`
+ */
+async function workspaceToCheck(
+  dir: WorkspaceDir,
+  dirGiven: boolean,
+  { watchedFileLimit, computer, secrets }: WorkspaceReadOptions,
+): Promise<{ profile: ProfileProblem | null; workspace: MachineWorkspace | null }> {
+  // Every other command refuses a workspace that overlaps the profile;
+  // `doctor` shows it on the Profile line and leaves the workspace unread,
+  // since its files are fenced off from the profile (HAL-15201). A folder
+  // without `workspace.yaml` is no workspace, so there's nothing to overlap;
+  // the plain look decides that, since the fenced store refuses to answer
+  // for a folder inside the profile (HAL-15827).
+  if (!(await holdsWorkspaceFile(dir.root))) {
+    if (dirGiven) throw new NoWorkspaceError();
+    return { profile: null, workspace: null };
+  }
+  const profile = await profileProblem(dir.root);
+  if (profile !== null) return { profile, workspace: null };
+  const read = await readWorkspace(dir, dirGiven, watchedFileLimit, computer, secrets);
+  const workspace =
+    read === null
+      ? null
+      : await withHarnessSettingsFolders(withWindowsDrive(read, computer), computer.profile);
+  return { profile: null, workspace };
+}
+
+/** What {@link workspaceToCheck} reads the workspace with. */
+interface WorkspaceReadOptions {
+  readonly watchedFileLimit: number;
+  readonly computer: DoctorMachine;
+  readonly secrets: Secrets;
 }
 
 /**
