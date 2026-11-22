@@ -114,35 +114,64 @@ export function useRunModelPath(
   return read !== undefined && read.runId === runId ? read.path : undefined;
 }
 
+/** A run that may carry the chip, with its standing, which tells when to read its log again. */
+export interface SampleCandidate {
+  readonly id: string;
+  /** Such as `needs-you` or `done`: a run that went on after an answer may have called a model. */
+  readonly standing: string;
+}
+
+/** How many logs the Runs page reads at once, so a long list doesn't read hundreds together. */
+export const sampleReadsAtOnce = 4;
+
 /**
- * Of the runs with these ids, the ones on Sample answers, read again when the ids change; empty
- * until they are read. A log that can't be read leaves its run out, logged to the console.
+ * Of these runs, the ones on Sample answers, read again when a run comes, goes or changes its
+ * standing; empty until they are read. The logs are read {@link sampleReadsAtOnce} at a time. A
+ * log that can't be read leaves its run out, logged to the console.
  */
 export function useSampleRuns(
   source: RunsSource | undefined,
-  runIds: readonly string[],
+  runs: readonly SampleCandidate[],
 ): ReadonlySet<string> {
   const [samples, setSamples] = useState<ReadonlySet<string>>(() => new Set());
-  const key = runIds.join(" ");
+  const key = runs.map((run) => `${run.id}:${run.standing}`).join(" ");
   useEffect(() => {
     if (source === undefined || key === "") return;
     let current = true;
-    const ids = key.split(" ");
-    const reads = ids.map((runId) =>
-      runModelPath(source, runId).then(
-        (path) => (path === "sample" ? [runId] : []),
-        (error: unknown) => {
-          console.error("Couldn't read the run's models.", error);
-          return [];
-        },
-      ),
-    );
-    void Promise.all(reads).then((found) => {
-      if (current) setSamples(new Set(found.flat()));
+    const ids = key.split(" ").map((each) => each.slice(0, each.lastIndexOf(":")));
+    void sampleIds(source, ids, () => current).then((found) => {
+      if (current) setSamples(new Set(found));
     });
     return () => {
       current = false;
     };
   }, [source, key]);
   return key === "" ? new Set() : samples;
+}
+
+/**
+ * The ids on Sample answers, reading the logs a few at a time; it stops starting reads once
+ * `wanted` says the answer is no longer wanted.
+ */
+async function sampleIds(
+  source: RunsSource,
+  ids: readonly string[],
+  wanted: () => boolean,
+): Promise<string[]> {
+  const found = new Set<string>();
+  let next = 0;
+  const reader = async () => {
+    while (next < ids.length && wanted()) {
+      const runId = ids[next] ?? "";
+      next += 1;
+      try {
+        if ((await runModelPath(source, runId)) === "sample") found.add(runId);
+      } catch (error) {
+        console.error("Couldn't read the run's models.", error);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(sampleReadsAtOnce, ids.length) }, reader));
+  // Back in the list's order, whichever read finished first.
+  return ids.filter((id) => found.has(id));
 }

@@ -83,6 +83,6 @@ verifies("runs.sample-chip", () => {
       runRow({ summary }, context),
     );
 
-    expect(sampleCandidates(rows)).toEqual([onSample.id]);
+    expect(sampleCandidates(rows).map((candidate) => candidate.id)).toEqual([onSample.id]);
   });
 });
