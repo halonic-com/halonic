@@ -93,6 +93,8 @@ export interface UsageRecord {
   readonly runId: string;
   readonly kind: "model_call" | "step" | "run" | "correction";
   readonly units: UsageAmounts;
+  /** The period the use is billed in; a correction's is its step's, which may be the one before. */
+  readonly periodStart: number;
   readonly at: number;
 }
 

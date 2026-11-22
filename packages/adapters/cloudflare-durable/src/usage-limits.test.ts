@@ -1,8 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { acmeLimits, openAccount, period, step } from "./test/usage-case.ts";
+import { reservationMarginMs } from "./usage-account.ts";
+import { chargedPruneBatch } from "./usage-charged.ts";
 
 const nextPeriod = { start: period.end, end: Date.UTC(2027, 0, 1) };
+const laterPeriod = { start: nextPeriod.end, end: Date.UTC(2027, 1, 1) };
+const owner = { runId: "run_1", actor: "u_acme" };
 
 verifies("cloudflare-durable.usage-limits", () => {
   it("refuses everything while it knows no limits", () => {
@@ -29,6 +33,9 @@ verifies("cloudflare-durable.usage-limits", () => {
       acmeLimits({ version: 2.5 }),
       acmeLimits({ version: 2, members: { u_ada: { status: "active", maxRunning: Number.NaN } } }),
       acmeLimits({ version: 2, members: JSON.parse('{"__proto__": {"status": "active"}}') }),
+      acmeLimits({ version: 2, maxRunning: -1 }),
+      acmeLimits({ version: 2, members: { u_ada: { status: "active", maxRunning: -1 } } }),
+      { ...acmeLimits({ version: 2 }), defaultReserve: undefined } as never,
     ];
     for (const limits of wrong) expect(() => account.applyLimits(limits)).toThrow(RangeError);
     expect(account.applyLimits(acmeLimits({ version: 2 }))).toBe("applied");
@@ -57,6 +64,41 @@ verifies("cloudflare-durable.usage-limits", () => {
       expect(account.reserve(step("res_2", { cost: 400 })).allowed).toBe(false);
       expect(account.settle("res_1", { cost: 50 })).toBe("settled");
       expect(account.reserve(step("res_2", { cost: 900 })).allowed).toBe(true);
+    });
+
+    it("corrects a step that ran out just before a new period in the period it was charged", () => {
+      const { account, clock, outbox } = openAccount();
+      account.reserve(step("res_1", { cost: 600 }));
+      clock.nowMs += 60_000 + reservationMarginMs;
+      account.settleExpired();
+      account.applyLimits(acmeLimits({ version: 2, period: nextPeriod }));
+      account.record("call_1", owner, "model_call", { cost: 900 });
+
+      expect(account.settle("res_1", { cost: 100 })).toBe("corrected");
+      expect(account.settle("res_1", { cost: 100 })).toBe("already-settled");
+      const late = outbox().find((row) => row.kind === "usage" && row.record.id === "res_1:late");
+      expect(late).toMatchObject({ record: { units: { cost: -500 }, periodStart: period.start } });
+      // The new period's use stays 900: the old period's correction frees none of it.
+      expect(account.reserve(step("res_2", { cost: 200 })).allowed).toBe(false);
+    });
+
+    it("counts a record that comes again after a new period starts once", () => {
+      const { account } = openAccount();
+      account.record("call_1", owner, "model_call", { cost: 600 });
+      account.applyLimits(acmeLimits({ version: 2, period: nextPeriod }));
+      account.record("call_1", owner, "model_call", { cost: 600 });
+      expect(account.reserve(step("res_1", { cost: 1_000 })).allowed).toBe(true);
+      expect(() => account.reserve(step("call_1"))).toThrow(RangeError);
+    });
+
+    it("forgets ids two periods old, a batch at a time", () => {
+      const { account, storage } = openAccount();
+      for (let n = 0; n <= chargedPruneBatch; n++) account.record(`call_${n}`, owner, "run", {});
+      account.applyLimits(acmeLimits({ version: 2, period: nextPeriod }));
+      account.applyLimits(acmeLimits({ version: 3, period: laterPeriod }));
+      expect([...storage.list("charged:")]).toHaveLength(1);
+      account.settleExpired();
+      expect([...storage.list("charged:")]).toHaveLength(0);
     });
   });
 

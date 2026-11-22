@@ -1,6 +1,7 @@
 import type { Clock } from "@halonicjs/ports";
 import { checkAmount } from "./input-rules.ts";
 import { runKeyPrefix, slotRefusal } from "./run-slots.ts";
+import { type Charged, ChargedIds, type FoundCharge, type Owner } from "./usage-charged.ts";
 import {
   addAmounts,
   checkAmounts,
@@ -24,16 +25,12 @@ import type {
 /** Use in the current period, for the pool and for each actor. */
 interface Spent {
   periodStart: number;
+  /** The period before this one, whose charged ids are still known. */
+  previousStart: number;
   pool: UsageAmounts;
   actors: Record<string, UsageAmounts>;
   /** The thresholds already reported this period, as `<unit>:<percent>`. */
   reported: string[];
-}
-
-/** Who a charge belongs to. */
-interface Owner {
-  runId: string;
-  actor: string;
 }
 
 /** Amounts held for a step until it settles or runs out. */
@@ -42,17 +39,10 @@ interface Reservation extends Owner {
   expiresAt: number;
 }
 
-/** What a reservation or record id was charged, so a repeat changes nothing. */
-interface Charged extends Owner {
-  amounts: UsageAmounts;
-  by: "settle" | "expiry" | "record";
-}
-
 const keys = {
   limits: usageLimitsKey,
   spent: "spent",
   reservation: "reservation:",
-  charged: "charged:",
 } as const;
 
 /** How long past its step's time limit a reservation is held before it is charged in full. */
@@ -86,12 +76,14 @@ export class UsageAccount {
   readonly #scope: string;
   readonly #clock: Clock;
   readonly #outbox: UsageOutbox;
+  readonly #charged: ChargedIds;
 
   constructor(storage: UsageStorage, options: UsageAccountOptions) {
     this.#storage = storage;
     this.#scope = checkId("scope", options.scope);
     this.#clock = options.clock;
     this.#outbox = new UsageOutbox(storage, options.outboxCap ?? defaultOutboxCap);
+    this.#charged = new ChargedIds(storage);
   }
 
   /**
@@ -125,7 +117,7 @@ export class UsageAccount {
     checkAmount("timeLimitMs", request.timeLimitMs);
     return this.#storage.transactionSync(() => {
       if (this.#storage.get(keys.reservation + request.id) !== undefined) return answer(null);
-      if (this.#storage.get(keys.charged + request.id) !== undefined) {
+      if (this.#charged.find(request.id, this.#spent()) !== undefined) {
         throw new RangeError("This id was charged already.");
       }
       const amounts = withDefaults(max, this.#storage.get<UsageLimits>(keys.limits));
@@ -158,11 +150,10 @@ export class UsageAccount {
         this.#charge(id, { runId, actor, amounts, by: "settle" }, "step");
         return "settled";
       }
-      const charged = this.#storage.get<Charged>(keys.charged + id);
-      if (charged === undefined) return "unknown";
-      if (charged.by !== "expiry") return "already-settled";
-      const correction = addAmounts(amounts, charged.amounts, -1);
-      this.#charge(id, { ...charged, amounts, by: "settle" }, "correction", correction);
+      const found = this.#charged.find(id, this.#spent());
+      if (found === undefined) return "unknown";
+      if (found.charged.by !== "expiry") return "already-settled";
+      this.#correct(id, found, amounts);
       return "corrected";
     });
   }
@@ -179,7 +170,7 @@ export class UsageAccount {
       if (this.#storage.get(keys.reservation + id) !== undefined) {
         throw new RangeError("This id belongs to a held reservation.");
       }
-      if (this.#storage.get(keys.charged + id) !== undefined) return;
+      if (this.#charged.find(id, this.#spent()) !== undefined) return;
       this.#charge(id, { runId: owner.runId, actor: owner.actor, amounts, by: "record" }, kind);
     });
   }
@@ -190,6 +181,7 @@ export class UsageAccount {
    */
   settleExpired(): number | null {
     return this.#storage.transactionSync(() => {
+      this.#charged.prune(this.#spent().previousStart);
       const now = this.#now();
       let next: number | null = null;
       for (const [key, reservation] of [...this.#storage.list<Reservation>(keys.reservation)]) {
@@ -261,20 +253,45 @@ export class UsageAccount {
     return taken;
   }
 
-  /** Counts `charge` (or `change`, a correction's difference), with its record in the outbox. */
-  #charge(id: string, charge: Charged, kind: UsageRecord["kind"], change = charge.amounts): void {
+  /** Counts `charge` in the current period, with its record in the outbox. */
+  #charge(id: string, charge: Charged, kind: UsageRecord["kind"]): void {
     const spent = this.#spent();
-    spent.pool = addAmounts(spent.pool, change);
-    spent.actors[charge.actor] = addAmounts(spent.actors[charge.actor] ?? {}, change);
-    this.#storage.put<Charged>(keys.charged + id, charge);
-    const { runId, actor } = charge;
-    // Cloud drops a record whose id it has, so a correction needs an id of its own.
-    const recordId = kind === "correction" ? id + correctionSuffix : id;
-    const at = this.#now();
-    const record = { id: recordId, scope: this.#scope, actor, runId, kind, units: change, at };
-    this.#outbox.add({ kind: "usage", record });
+    spent.pool = addAmounts(spent.pool, charge.amounts);
+    spent.actors[charge.actor] = addAmounts(spent.actors[charge.actor] ?? {}, charge.amounts);
+    this.#charged.put(spent.periodStart, id, charge);
+    this.#addRecord(id, charge, kind, charge.amounts, spent.periodStart);
     this.#reportThresholds(spent);
     this.#storage.put(keys.spent, spent);
+  }
+
+  /**
+   * Takes a charge in full back to what the step used. A charge from the period before is corrected
+   * for that period: Cloud bills it there, and the current period's use stays as it is.
+   */
+  #correct(id: string, found: FoundCharge, used: UsageAmounts): void {
+    const change = addAmounts(used, found.charged.amounts, -1);
+    const charge: Charged = { ...found.charged, amounts: used, by: "settle" };
+    this.#storage.put<Charged>(found.key, charge);
+    // Cloud drops a record whose id it has, so a correction needs an id of its own.
+    this.#addRecord(id + correctionSuffix, charge, "correction", change, found.periodStart);
+    const spent = this.#spent();
+    if (found.periodStart !== spent.periodStart) return;
+    spent.pool = addAmounts(spent.pool, change);
+    spent.actors[charge.actor] = addAmounts(spent.actors[charge.actor] ?? {}, change);
+    this.#storage.put(keys.spent, spent);
+  }
+
+  #addRecord(
+    id: string,
+    owner: Owner,
+    kind: UsageRecord["kind"],
+    units: UsageAmounts,
+    periodStart: number,
+  ): void {
+    const { runId, actor } = owner;
+    const at = this.#now();
+    const record = { id, scope: this.#scope, actor, runId, kind, units, periodStart, at };
+    this.#outbox.add({ kind: "usage", record });
   }
 
   /** Adds a row the first time this period the pool reaches 80% and 100% of a limit. */
@@ -294,14 +311,22 @@ export class UsageAccount {
 
   #spent(): Spent {
     return (
-      this.#storage.get<Spent>(keys.spent) ?? { periodStart: 0, pool: {}, actors: {}, reported: [] }
+      this.#storage.get<Spent>(keys.spent) ?? {
+        periodStart: 0,
+        previousStart: 0,
+        pool: {},
+        actors: {},
+        reported: [],
+      }
     );
   }
 
-  /** Use counts from zero again; the ids charged last period are forgotten. */
+  /** Use counts from zero again; the ids charged before the period that just ended are forgotten. */
   #startPeriod(periodStart: number): void {
-    this.#storage.put<Spent>(keys.spent, { periodStart, pool: {}, actors: {}, reported: [] });
-    for (const [key] of [...this.#storage.list(keys.charged)]) this.#storage.delete(key);
+    const previousStart = this.#spent().periodStart;
+    const spent = { periodStart, previousStart, pool: {}, actors: {}, reported: [] };
+    this.#storage.put<Spent>(keys.spent, spent);
+    this.#charged.prune(previousStart);
   }
 
   #now(): number {

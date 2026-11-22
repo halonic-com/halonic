@@ -24,12 +24,19 @@ export function checkId(name: string, id: string): string {
   return id;
 }
 
+/** A step's or a record's id leaves room for {@link correctionSuffix} within the 128 characters. */
+const maxChargeIdLength = 128 - correctionSuffix.length;
+
 /**
- * @throws RangeError when one of a step's ids isn't a machine id, or its id ends like a correction's
+ * @throws RangeError when one of a step's ids isn't a machine id, or its id ends like a
+ * correction's or leaves no room for one
  */
 export function checkIds(ids: { id: string; runId: string; actor: string }): void {
-  if (checkId("id", ids.id).endsWith(correctionSuffix)) {
-    throw new RangeError(`id can't end with "${correctionSuffix}".`);
+  const id = checkId("id", ids.id);
+  if (id.endsWith(correctionSuffix) || id.length > maxChargeIdLength) {
+    throw new RangeError(
+      `id is at most ${maxChargeIdLength} characters and can't end with "${correctionSuffix}".`,
+    );
   }
   checkId("runId", ids.runId);
   checkId("actor", ids.actor);
@@ -57,7 +64,10 @@ export function checkAmounts(amounts: UsageAmounts): UsageAmounts {
  */
 export function checkLimits(limits: UsageLimits): UsageLimits {
   const { version, maxRunning, period } = limits;
-  if (![version, maxRunning, period.start, period.end].every(Number.isSafeInteger)) {
+  if (!isObject(period) || !isObject(limits.limits) || !isObject(limits.defaultReserve)) {
+    throw new RangeError("A limits document has a period, limits and a default reserve.");
+  }
+  if (![version, period.start, period.end].every(Number.isSafeInteger) || !isCap(maxRunning)) {
     throw new RangeError("A limits document's version, cap and period are safe whole numbers.");
   }
   if (period.end <= period.start) throw new RangeError("A period ends after it starts.");
@@ -66,11 +76,19 @@ export function checkLimits(limits: UsageLimits): UsageLimits {
   for (const [actor, member] of Object.entries(limits.members ?? {})) {
     checkId("actor", actor);
     checkAmounts(member.shares ?? {});
-    if (member.maxRunning !== undefined && !Number.isSafeInteger(member.maxRunning)) {
-      throw new RangeError("A member's cap is a safe whole number.");
+    if (member.maxRunning !== undefined && !isCap(member.maxRunning)) {
+      throw new RangeError("A member's cap is a safe whole number of 0 or more.");
     }
   }
   return limits;
+}
+
+function isCap(cap: number): boolean {
+  return Number.isSafeInteger(cap) && cap >= 0;
+}
+
+function isObject(value: unknown): value is object {
+  return typeof value === "object" && value !== null;
 }
 
 /**

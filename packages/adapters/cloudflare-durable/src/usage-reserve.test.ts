@@ -5,11 +5,9 @@ import { reservationMarginMs } from "./usage-account.ts";
 
 verifies("cloudflare-durable.usage-reserve", () => {
   describe("reserve", () => {
-    it("lets parallel reserves at a limit take no more than the limit", async () => {
+    it("lets many reserves at a limit take no more than the limit", () => {
       const { account } = openAccount();
-      const answers = await Promise.all(
-        Array.from({ length: 50 }, async (_, n) => account.reserve(step(`res_${n}`))),
-      );
+      const answers = Array.from({ length: 50 }, (_, n) => account.reserve(step(`res_${n}`)));
       expect(answers.filter((answer) => answer.allowed)).toHaveLength(3);
       expect(answers[3]).toEqual({
         allowed: false,
@@ -23,6 +21,12 @@ verifies("cloudflare-durable.usage-reserve", () => {
           resetsAt: period.end,
         },
       });
+    });
+
+    it("refuses an id with no room left for a correction's suffix", () => {
+      const { account } = openAccount();
+      expect(() => account.reserve(step("r".repeat(124)))).toThrow(RangeError);
+      expect(account.reserve(step("r".repeat(123))).allowed).toBe(true);
     });
 
     it("holds the default for a step that gives no maximum", () => {
