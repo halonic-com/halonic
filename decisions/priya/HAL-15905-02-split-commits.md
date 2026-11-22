@@ -2,6 +2,7 @@
 
 - Approval: Liam signs this on HAL-15905 (board decision, 22 Nov: make `@halonicjs/adapter-git`'s tests take under 30 s)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JTN+oMfbV3gp29nHdvnwf1BrB9FBGki+f6bqnvtG8W1SuCCViK1BBHSvy2Ry1QwoDKs6j5L3eH3csZVlgKqYBg==
 
 After the first split (`decisions/priya/HAL-15905-adapter-git-test-speed.md`), the merge-group run
 on our CI server took 41.8 s for the package, and `contract-commits.test.ts` alone took 23.6 s on
