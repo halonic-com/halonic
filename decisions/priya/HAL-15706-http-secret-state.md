@@ -2,6 +2,7 @@
 
 - Approval: flow check C618, row 2, on HAL-15706, and C617, rows 52 and 53, on HAL-15715 (a team wording call on the approved connector page, HAL-2282), with Liam's review of the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Bou9pjrxF8nbbWENlieLlhsQqTTdLj9qH2M2wLet9RgiFd4b+5BxU/v6i5zgIWdRZjppasRDI5SKm4NNP7LtDw==
 - Task: HAL-15706, HAL-15715
 
 ## What changes
