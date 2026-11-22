@@ -224,7 +224,8 @@ function Step({ step }: { readonly step: ReplyStep }) {
  * The line a reply ends with (mc 8.3; states H13, H23, H24). Try again only when no tool ran,
  * since sending again could repeat what a tool did; after a tool, the sentence says to send a new
  * message instead. A failure because of the model's key also leads to Models, as a failed run
- * does (microcopy 15.3). A reply that was simply answered has no line.
+ * does (microcopy 15.3), and comes first: until the key is fixed, Try again fails the same way
+ * (microcopy 1.6 E2). A reply that was simply answered has no line.
  */
 function EndLine({
   end,
@@ -253,7 +254,7 @@ function EndLine({
     case "failed":
     case "engine-stopped":
       return (
-        <ChatEndLine tone="danger" actions={[...(end.toolsRan ? [] : again), ...fixKey]}>
+        <ChatEndLine tone="danger" actions={[...fixKey, ...(end.toolsRan ? [] : again)]}>
           {tryItWords.endedBadly(name, end)}
         </ChatEndLine>
       );
