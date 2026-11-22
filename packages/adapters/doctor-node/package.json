@@ -4,7 +4,8 @@
   "type": "module",
   "description": "The Node half of halonic doctor: the doctor service on a computer's parts, a workspace read as the doctor checks it, and the model servers on this computer it asks. The CLI and the agent host build it from their own parts.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./workspace": "./src/doctor-workspace.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

@@ -51,6 +51,7 @@ import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { agentHostPlacement } from "../agents/agent-host-placement.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { provideChangesServices } from "../changes/provide-changes-services.ts";
+import { provideCheckComputer } from "../check-computer/provide-check-computer.ts";
 import { answerChatOn, chatExecutorOf } from "../engine/answer-chat-on.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
@@ -359,4 +360,6 @@ export function provideFolderServices(
     location,
     onFocus: (listener) => focusOf(window, listener),
   });
+  // Last: Check this computer reads the runs, the keys and the Google setups provided above.
+  provideCheckComputer(services, { files, location, name, platform, transport, remoteEngine });
 }
