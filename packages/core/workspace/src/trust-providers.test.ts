@@ -102,7 +102,7 @@ verifies("workspace.trust-providers", () => {
         ],
       });
       expect(content.refused).toEqual([
-        { kind: "provider", id: "a", reason: "the URL has user info" },
+        { kind: "provider", id: "a", reason: "the address has a user name or password in it" },
         { kind: "provider", id: "b", reason: "the URL has a backslash before its query" },
       ]);
       expect(content.providers).toBeUndefined();
@@ -122,8 +122,8 @@ verifies("workspace.trust-providers", () => {
         tools: { approve: [] },
       };
       const expected = [
-        { kind: "connector", id: "mail", reason: "the URL has user info" },
-        { kind: "provider", id: "mail", reason: "the URL has user info" },
+        { kind: "connector", id: "mail", reason: "the address has a user name or password in it" },
+        { kind: "provider", id: "mail", reason: "the address has a user name or password in it" },
       ];
       expect(
         trustContent({ connectors: [refusedConnector], providers: [refusedProvider] }).refused,

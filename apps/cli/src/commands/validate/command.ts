@@ -14,6 +14,7 @@ import {
 import { pluginConnectorProblems } from "../../plugin-connector-problems.ts";
 import { openPluginService } from "../../plugin-host.ts";
 import { pluginHostsOf, workspaceSheetHosts } from "../../sheet-hosts.ts";
+import { trustRefusalProblems } from "../../trust-refusal-problems.ts";
 import { dirOption, givenDir, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 
 /**
@@ -57,6 +58,8 @@ export const validateCommand: CliCommand = {
         // parse is left out of the hosts above, so say why here (HAL-15751).
         ...(await integrationSheetProblems(workspace.store)),
         ...(added === undefined ? [] : pluginConnectorProblems(loaded, added)),
+        // `halonic trust` refuses these files; say so before it does (HAL-16276).
+        ...trustRefusalProblems(loaded),
       ],
     });
     const dir = givenDir(input, workspace);

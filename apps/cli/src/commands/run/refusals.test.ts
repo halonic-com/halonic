@@ -166,7 +166,7 @@ describe("halonic run's refusals", () => {
 
     expect([code, jsonCode]).toEqual([exitCode.usage, exitCode.usage]);
     expect(io.stderr).toContain(
-      "✕ Couldn't run support-reply: library/connectors/web.connector.yaml can't be trusted, because the URL has user info.",
+      "✕ Couldn't run support-reply: library/connectors/web.connector.yaml can't be trusted, because the address has a user name or password in it.",
     );
     expect(JSON.parse(json.stdout.join("\n"))).toMatchObject({
       ok: false,
