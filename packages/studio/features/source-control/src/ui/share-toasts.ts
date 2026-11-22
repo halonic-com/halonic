@@ -6,6 +6,8 @@ import { shareWords } from "../changes-words.ts";
 export interface ShareToastWords {
   /** "Shared 3 versions", or "Created and shared version "First reply flow"". */
   readonly shared: (sent: number) => string;
+  /** The line under `shared`, when it has one: the version, under "Weekly report is live.". */
+  readonly sharedText?: (sent: number) => string;
   /** "Nothing was sent.", or "Your version is saved here." after Create version. */
   readonly afterReason: string;
 }
@@ -29,7 +31,12 @@ export async function shareAndSay(
   const outcome = await list.share();
   if (outcome === undefined) return;
   if ("sent" in outcome) {
-    toasts?.show({ tone: "success", title: words.shared(outcome.sent) });
+    const text = words.sharedText?.(outcome.sent);
+    toasts?.show({
+      tone: "success",
+      title: words.shared(outcome.sent),
+      ...(text === undefined ? {} : { text }),
+    });
     return;
   }
   toasts?.show({

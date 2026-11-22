@@ -9,7 +9,7 @@ import { useLoad } from "./use-load.ts";
 export interface NotLiveLineProps {
   readonly host: AgentsHost;
   readonly agent: AgentRef;
-  /** The agent's name, for the toast when it can't be made live. */
+  /** The agent's name, for Create version and the toast that says it is live, or can't be made live. */
   readonly name: string;
   /**
    * Called once the line goes after **Review and make live** made a version, so the page can give
@@ -25,7 +25,8 @@ export interface NotLiveLineProps {
  * the host can't tell, or the read fails, there is no line: the page doesn't guess.
  * Where the host can make the agent live, the line ends in **Review and make live**
  * (`agents.page.review-and-make-live`, flow-agents 3.3), which opens Create version with only this
- * agent and reads the line again once a version is made, since a version changes no file. When
+ * agent, saying it makes the agent live, and reads the line again once a version is made, since a
+ * version changes no file. Create version's toast then says the agent is live (HAL-15368). When
  * the line then goes, `onMadeLive` moves the focus the link had. On a phone the link sits at the
  * right of the line, and under the words when both don't fit (HAL-552 5.9).
  */
@@ -55,7 +56,7 @@ export function NotLiveLine({ host, agent, name, onMadeLive }: NotLiveLineProps)
 
   async function reviewAndMakeLive() {
     try {
-      if ((await host.makeLive?.({ hubId, id })) !== "made") return;
+      if ((await host.makeLive?.({ hubId, id }, { name })) !== "made") return;
       madeLive.current = true;
       readAgain();
     } catch (error) {

@@ -250,6 +250,15 @@ export type VersionDialogOutcome =
   /** The person closed the dialog, or "Who should versions be from?" before it, without a version. */
   | "cancelled";
 
+/** What another feature tells Create version besides its items; see {@link VersionDialog.open}. */
+export interface VersionDialogOptions {
+  /**
+   * The name of the routine or agent the version makes live, as "Review and make live" opens it.
+   * Create version then says so under its title, and its success toast says "<name> is live.".
+   */
+  readonly makesLive?: string | undefined;
+}
+
 /**
  * Create version, for other features: the agent page's "Review and make live" and a run dialog's
  * "Make live first" open it with only their own items in it (requirement
@@ -262,7 +271,10 @@ export interface VersionDialog {
    * comes once a version is made or the dialog is closed. It is `"cancelled"` at once when the
    * folder has no history, and when another Create version replaces this one.
    */
-  readonly open: (paths: readonly string[]) => Promise<VersionDialogOutcome>;
+  readonly open: (
+    paths: readonly string[],
+    options?: VersionDialogOptions,
+  ) => Promise<VersionDialogOutcome>;
 }
 
 /** Create version for other features. The source control feature provides it for each open workspace. */

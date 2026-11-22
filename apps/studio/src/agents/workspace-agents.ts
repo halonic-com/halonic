@@ -1,5 +1,4 @@
 import { type ChatAnswer, type ChatAnswerRequest, maxTurnLimit } from "@halonicjs/app";
-import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
   AgentChange,
@@ -25,9 +24,8 @@ import type {
   TrashedAgent,
 } from "@halonicjs/studio-feature-agents/api";
 import { loopRefusal } from "@halonicjs/studio-feature-agents/api";
-import { filesOf, loadWorkspace, modelAliases, settingsPath } from "@halonicjs/workspace";
+import { filesOf, loadWorkspace, modelAliases } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
-import { routineFolder } from "../routines/routine-files.ts";
 import { hubFilesFor } from "../studio/first-hub.ts";
 import {
   agentGone,
@@ -41,6 +39,7 @@ import {
 import { paramsEdits, paramsOf } from "./agent-params.ts";
 import { type AgentPlacementChoices, choicesHere } from "./agent-placement-choices.ts";
 import { agentRoutinesOf, agentUsersOf, defaultModelOf, toolOptionsOf } from "./agent-reads.ts";
+import { agentFolder, unsavedWorkspaceSource } from "./agent-source.ts";
 import { type NewAgentsParts, placeNewAgent } from "./new-agent-placing.ts";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
@@ -91,25 +90,19 @@ export interface WorkspaceAgentsParts {
   readonly answerChat?: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
   /**
    * Opens Create version with only `paths` in it (source control's `VersionDialogService`), and
-   * answers once a version is made or the dialog is closed. Absent where the app can't offer that,
-   * so there is no `makeLive`.
+   * answers once a version is made or the dialog is closed. With `name`, the dialog says it makes
+   * that item live. Absent where the app can't offer that, so there is no `makeLive`.
    */
-  readonly versionDialog?: (paths: readonly string[]) => Promise<"made" | "cancelled">;
+  readonly versionDialog?: (
+    paths: readonly string[],
+    options?: { readonly name?: string },
+  ) => Promise<"made" | "cancelled">;
   /**
    * Where each agent runs on this computer, kept by the agent host. Absent where there is no agent
    * host (the browser): the Harness page then offers no choice.
    */
   readonly placement?: AgentPlacementChoices;
 }
-
-/** Where the agent files of a hub are kept. */
-const agentFolder = (hubId: string): string => `hubs/${hubId}/agents`;
-
-/** Where the workspace keeps the skills, knowledge and connectors its hubs share. */
-const sharedLibraryFolder = "library";
-
-/** The workspace's model aliases, which every hub can use. */
-const modelsFile = "models.yaml";
 
 /**
  * The Agents feature's host (`agents.host`), over the workspace's files: the list reads the files
@@ -133,7 +126,8 @@ export class WorkspaceAgents implements AgentsHost {
     const { versionDialog } = parts;
     if (versionDialog !== undefined) {
       // Only the agent's own file, so the version holds nothing else the person changed.
-      this.makeLive = async (ref) => versionDialog([(await this.#find(ref)).path]);
+      this.makeLive = async (ref, options) =>
+        versionDialog([(await this.#find(ref)).path], options);
     }
   }
 
@@ -457,32 +451,11 @@ export class WorkspaceAgents implements AgentsHost {
 
   /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceAgents.hubs}. */
   async #load() {
-    const workspace = await loadWorkspace(this.#source());
+    const workspace = await loadWorkspace(unsavedWorkspaceSource(this.#parts.files));
     this.#hubs = filesOf(workspace, "hub").map((file) => ({
       id: file.value.id,
       name: file.value.name,
     }));
     return workspace;
-  }
-
-  /**
-   * The workspace's hubs, its shared library, its root routines (for the agent map), its
-   * `models.yaml` and its settings as files, with unsaved changes applied.
-   */
-  #source(): DefinitionSource {
-    const { files } = this.#parts;
-    const existing = async (path: string) => ((await files.read(path)) === null ? [] : [path]);
-    return {
-      location: "workspace:unsaved",
-      list: async () => [
-        ...(await files.list("hubs")),
-        ...(await files.list(sharedLibraryFolder)),
-        ...(await files.list(routineFolder(null))),
-        ...(await existing(modelsFile)),
-        ...(await existing(settingsPath)),
-      ],
-      read: (path) => files.read(path),
-      version: async () => "unsaved",
-    };
   }
 }

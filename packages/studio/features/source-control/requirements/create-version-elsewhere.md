@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-13215 (follow-up of HAL-13205); flow-agents 3.1 and 3.3 (HAL-13178): the agent page's "Changes not live yet · Review and make live", and the run dialogs' "Make live first" and "Make live and run"
+- Source: HAL-13215 (follow-up of HAL-13205); flow-agents 3.1 and 3.3 (HAL-13178): the agent page's "Changes not live yet · Review and make live", and the run dialogs' "Make live first" and "Make live and run"; HAL-15368 (Sofia, from the flow check C548 4): the routine or agent the version makes live
 
-When another feature opens Create version for some items through `VersionDialogService`, the source control feature shall open Create version over whatever page is open, with only those items in it, and with "Who should versions be from?" first when the workspace has no name or email for versions (`source-control.identity`). It shall answer `made` once the version is created, and `cancelled` when the person closes either dialog without a version. It shall answer `cancelled` at once when the folder has no history, when the folder stops having history while the dialog is open (which closes it), when another Create version replaces this one, and when the workspace closes. The dialog shall be drawn once, also while the Changes page is open.
+When another feature opens Create version for some items through `VersionDialogService`, the source control feature shall open Create version over whatever page is open, with only those items in it, and with "Who should versions be from?" first when the workspace has no name or email for versions (`source-control.identity`). It shall answer `made` once the version is created, and `cancelled` when the person closes either dialog without a version. It shall answer `cancelled` at once when the folder has no history, when the folder stops having history while the dialog is open (which closes it), when another Create version replaces this one, and when the workspace closes. The dialog shall be drawn once, also while the Changes page is open. When the feature names the routine or agent the version makes live, Create version shall say "Creating this version makes {name} live." under its title, as the dialog's description, and once the version is made its one success toast shall say "{name} is live." with `Version "{version}"` on its second line, instead of `Created version "{version}"` (with the share result on that line when the version is shared right away). Without a name, Create version shall be as it is on the Changes page.
 
 ## Examples
 
@@ -22,3 +22,6 @@ When another feature opens Create version for some items through `VersionDialogS
 - Given the Changes page is open,
   when a feature opens Create version,
   then one dialog opens, not two.
+- Given the routine page opens Create version for Weekly report and names it,
+  then the dialog says "Creating this version makes Weekly report live." under its title,
+  and once the version "Weekly report schedule" is made, one toast says "Weekly report is live." with `Version "Weekly report schedule"` under it.

@@ -133,10 +133,15 @@ export interface ChangesListState {
   readonly identity: Identity | undefined;
   /**
    * Set while Create version is open: the paths it opened with, or `undefined` inside for every
-   * changed file, and who opened it. `undefined` when it is closed.
+   * changed file, who opened it, and the routine or agent it makes live when "Review and make
+   * live" opened it. `undefined` when it is closed.
    */
   readonly version:
-    | { readonly paths: readonly string[] | undefined; readonly opener: VersionOpener }
+    | {
+        readonly paths: readonly string[] | undefined;
+        readonly opener: VersionOpener;
+        readonly makesLive?: string;
+      }
     | undefined;
   /** The workspace's versions; only read while the folder is a git repository. */
   readonly history: HistoryState;

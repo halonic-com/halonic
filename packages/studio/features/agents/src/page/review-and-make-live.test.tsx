@@ -17,11 +17,12 @@ const link = "Review and make live";
 
 /**
  * Sorter, `not-live` until a version is made, with `makeLive` answering `answer` (or rejecting
- * with it when it is an error); `asked` counts the times it was asked.
+ * with it when it is an error); `asked` counts the times it was asked, and keeps the names it was
+ * given for Create version.
  */
 function hostMaking(answer: "made" | "cancelled" | Error) {
   let state: AgentLiveState = "not-live";
-  const asked = { makeLive: 0 };
+  const asked = { makeLive: 0, names: [] as (string | undefined)[] };
   const base = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
     agents: [{ hubId: "acme", id: "sorter", name: "Sorter" }],
@@ -29,8 +30,9 @@ function hostMaking(answer: "made" | "cancelled" | Error) {
   const host: AgentsHost = {
     ...base,
     liveState: async () => state,
-    makeLive: async () => {
+    makeLive: async (_ref, options) => {
       asked.makeLive += 1;
+      asked.names.push(options?.name);
       if (answer instanceof Error) throw answer;
       if (answer === "made") state = "live";
       return answer;
@@ -57,6 +59,8 @@ verifies("agents.page.review-and-make-live", () => {
 
     await act(async () => buttonNamed(page, link)?.click());
     expect(asked.makeLive).toBe(1);
+    // Named, so Create version says it makes Sorter live and its toast says Sorter is live.
+    expect(asked.names).toEqual(["Sorter"]);
     expect(page.textContent).not.toContain(line);
   });
 

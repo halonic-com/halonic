@@ -3,7 +3,13 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesSource, Identity, KeptFile, VersionDialogOutcome } from "./api.ts";
+import type {
+  ChangesSource,
+  Identity,
+  KeptFile,
+  VersionDialogOptions,
+  VersionDialogOutcome,
+} from "./api.ts";
 import { type ChangeItem, groupIntoItems } from "./change-items.ts";
 import {
   type ChangedFile,
@@ -304,8 +310,11 @@ export class ChangesList {
    * Opens Create version for `paths` from another feature, over whatever page is open
    * (`VersionDialogService`); answers once a version is made or the dialog closes.
    */
-  openVersion(paths: readonly string[]): Promise<VersionDialogOutcome> {
-    return this.#version.open(paths);
+  openVersion(
+    paths: readonly string[],
+    options: VersionDialogOptions = {},
+  ): Promise<VersionDialogOutcome> {
+    return this.#version.open(paths, options);
   }
 
   /** Who versions are from; once both parts are set they are kept, so a refresh doesn't ask git. */

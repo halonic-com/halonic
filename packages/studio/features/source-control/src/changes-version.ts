@@ -1,4 +1,4 @@
-import type { VersionDialogOutcome } from "./api.ts";
+import type { VersionDialogOptions, VersionDialogOutcome } from "./api.ts";
 import type { ChangedFile, ChangesListState, ListHost } from "./changes-list-state.ts";
 import { versionWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
@@ -27,9 +27,13 @@ export class VersionSteps {
   /**
    * Opens Create version for `paths` from another feature, over whatever page is open. Answers
    * once a version is made or the dialog closes; at once with `"cancelled"` when the folder has
-   * no history. A Create version opened before it is answered `"cancelled"`.
+   * no history. A Create version opened before it is answered `"cancelled"`. With `makesLive`, it
+   * says which routine or agent the version makes live.
    */
-  open(paths: readonly string[]): Promise<VersionDialogOutcome> {
+  open(
+    paths: readonly string[],
+    { makesLive }: VersionDialogOptions,
+  ): Promise<VersionDialogOutcome> {
     const { read } = this.#host.state();
     if (this.#host.disposed() || (read !== undefined && read.kind !== "ready")) {
       return Promise.resolve("cancelled");
@@ -38,7 +42,12 @@ export class VersionSteps {
     const answer = new Promise<VersionDialogOutcome>((resolve) => {
       this.#answer = resolve;
     });
-    this.#host.set({ ...this.#host.state(), version: { paths, opener: "elsewhere" } });
+    const version = {
+      paths,
+      opener: "elsewhere" as const,
+      ...(makesLive === undefined ? {} : { makesLive }),
+    };
+    this.#host.set({ ...this.#host.state(), version });
     return answer;
   }
 

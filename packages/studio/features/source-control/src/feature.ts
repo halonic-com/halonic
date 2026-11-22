@@ -27,7 +27,7 @@ export const sourceControlFeature = defineFeature({
     );
     studio.services.provide(VersionDialogService, (services) => {
       const list = services.get(ChangesListService);
-      return { open: (paths) => list.openVersion(paths) };
+      return { open: (paths, options) => list.openVersion(paths, options) };
     });
     studio.dialogs.add({
       id: "source-control.create-version",
