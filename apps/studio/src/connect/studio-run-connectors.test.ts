@@ -8,7 +8,9 @@ import {
 import { ProgramCopyUnavailableError } from "@halonicjs/app";
 import type { ConnectorsRun } from "@halonicjs/engine";
 import { verifies } from "@halonicjs/testing-spec";
+import { loadWorkspace } from "@halonicjs/workspace";
 import { expect, it } from "vitest";
+import type { RunVersionLoads } from "../engine/page-run-versions.ts";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { noHttpInStudio } from "./agent-host-tool-lister.ts";
 import { studioRunConnectors } from "./studio-run-connectors.ts";
@@ -33,8 +35,17 @@ function trustedAs(trusted: boolean): Pick<WorkspaceTrust, "checkLoaded"> {
   };
 }
 
+/** Acme's `notes` connector, whose program is `command`. */
+function acmeWithNotes(command: string): MemoryDefinitionStore {
+  return new MemoryDefinitionStore({
+    "workspace.yaml": "id: acme\nname: Acme\n",
+    "hubs/support/hub.yaml": "id: support\nname: Support\n",
+    "hubs/support/library/connectors/notes.connector.yaml": `name: Notes\ntransport:\n  stdio:\n    command: ${command}\n`,
+  });
+}
+
 /** An agent host that opens a connector, and records each route with its body. */
-function fixture(trusted: boolean) {
+function fixture(trusted: boolean, versions?: RunVersionLoads) {
   const sent: { route: string; body: unknown }[] = [];
   const answers: Record<string, AgentHostAnswer> = {
     "POST /v1/connectors/open": { status: 200, body: { connector: "c1" } },
@@ -51,12 +62,8 @@ function fixture(trusted: boolean) {
   const reported: unknown[] = [];
   const connectors = studioRunConnectors({
     transport,
-    definitions: new MemoryDefinitionStore({
-      "workspace.yaml": "id: acme\nname: Acme\n",
-      "hubs/support/hub.yaml": "id: support\nname: Support\n",
-      "hubs/support/library/connectors/notes.connector.yaml":
-        "name: Notes\ntransport:\n  stdio:\n    command: acme-notes-server\n",
-    }),
+    definitions: acmeWithNotes("acme-notes-server"),
+    ...(versions === undefined ? {} : { versions }),
     folder: new MemoryFolderReader(),
     trust: trustedAs(trusted),
     secrets: new MemorySecrets(),
@@ -108,5 +115,27 @@ verifies("engine.run-connectors", () => {
 
     await expect(connectors.open(live)).rejects.toThrow(ProgramCopyUnavailableError);
     expect(sent).toEqual([]);
+  });
+
+  it("starts a live-version run's connectors from its version's files, in the folder, and forgets it at the end", async () => {
+    const atCommit = acmeWithNotes("acme-notes-at-commit");
+    const forgotten: string[] = [];
+    const versions: RunVersionLoads = {
+      loadedOf: async () => ({ workspace: await loadWorkspace(atCommit), fileTexts: new Map() }),
+      forget: (runId) => forgotten.push(runId),
+    };
+    const { connectors, sent } = fixture(true, versions);
+    const live: ConnectorsRun = {
+      ...run,
+      version: { reads: "live-version", commit: "4f2a9c0de1b2", versionDate: "2026-11-11" },
+    };
+
+    const [notes] = await connectors.open(live);
+    await notes?.callTool("read_note", {});
+    await connectors.end(live.runId);
+
+    expect(sent[0]?.body).toMatchObject({ trust: grant, workspaceRoot: "memory:folder" });
+    expect(JSON.stringify(sent[0]?.body)).toContain("acme-notes-at-commit");
+    expect(forgotten).toEqual(["run_1"]);
   });
 });

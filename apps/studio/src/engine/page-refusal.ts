@@ -17,6 +17,7 @@ import { agentCantRunWords } from "@halonicjs/studio-feature-routines/api";
 import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
 import { definitionsOf, filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { harnessName } from "../studio/harness-name.ts";
+import { GitMissingError } from "./page-versions.ts";
 
 /** What the page can start, besides the engine's own steps. */
 export interface PageRuns {
@@ -182,4 +183,33 @@ function runCommandOf(workspace: LoadedWorkspace, { hubId, workflowId }: Workflo
     (file) => file.value.id === workflowId && file.hub !== null && file.hub !== hubId,
   );
   return inSeveralHubs ? `halonic run ${hubId}/${workflowId}` : `halonic run ${workflowId}`;
+}
+
+/**
+ * A start from the window while the workspace has history but nothing is live yet: `conflict`,
+ * in the CLI's words (`runMessages.nothingLive` and its fix, HAL-4850, HAL-6041), as `halonic
+ * run` refuses it.
+ */
+export function nothingLiveRefusal(): KindedError {
+  return new KindedError(
+    "conflict",
+    "Nothing is live yet, so there is nothing to run. Nothing ran.",
+    {
+      fix: "Make a first commit in git, then run again.",
+    },
+  );
+}
+
+/**
+ * A live version git can't read because git isn't on this computer, as `unavailable` in the CLI's
+ * words (`runMessages.gitWontStart` and its fix); any other failure passes on as it is. The saved
+ * files are never read in its place.
+ */
+export function historyRefusalOf(error: unknown): unknown {
+  if (!(error instanceof GitMissingError)) return error;
+  return new KindedError(
+    "unavailable",
+    "git can't start on this computer, so the live version can't be read. Nothing ran.",
+    { fix: "Install git and make sure it's on your PATH, then try again.", cause: error },
+  );
 }

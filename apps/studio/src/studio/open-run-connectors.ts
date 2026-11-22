@@ -20,6 +20,7 @@ import {
   studioRunConnectors,
 } from "../connect/studio-run-connectors.ts";
 import type { StudioRunConnectors } from "../engine/engine-service.ts";
+import type { RunVersionLoads } from "../engine/page-run-versions.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
 
 /** What the folder's run connectors are built from. */
@@ -32,6 +33,8 @@ export interface RunConnectorParts {
   readonly tokens: TokenStore;
   /** Hears the listed tools of a connector that wait for approval: the Library's refusals list. */
   readonly onWaiting: (connector: string, waiting: readonly ChatTurnWaiting[]) => void;
+  /** The version each run read, which its connectors' files come from. */
+  readonly versions: RunVersionLoads;
 }
 
 /** The runs' connectors and the Library's approvals of their tools, for one engine. */
@@ -43,10 +46,12 @@ export async function openStudioRunConnectors({
   trust,
   tokens,
   onWaiting,
+  versions,
 }: RunConnectorParts): Promise<StudioRunConnectors> {
   return {
     connectors: studioRunConnectors({
       transport,
+      versions,
       definitions: new TauriDefinitionStore(files, location),
       folder: new TauriFolderReader(ipc, location),
       trust,

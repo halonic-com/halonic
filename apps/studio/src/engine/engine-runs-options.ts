@@ -1,12 +1,15 @@
-// The runs options of the page's engine (`engine-service.ts`): the shell's stores, and the
-// definitions, budget and trust of the workspace as last saved (`engine-saved-files.ts`).
+// The runs options of the page's engine (`engine-service.ts`): the shell's stores, each run's
+// definitions from the version it records (`page-run-versions.ts`, HAL-14229), and the budget and
+// trust of the version a start last read (`engine-saved-files.ts`).
 
 import { TauriBlobStore, type TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import { workspaceBudget } from "@halonicjs/adapter-workspace-models";
 import type { assembleEngine } from "@halonicjs/engine";
-import { type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
+import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import type { EngineServiceOptions, StudioRunConnectors } from "./engine-service-options.ts";
+import { refuseUntrusted } from "./engine-trust.ts";
+import type { PageRunVersions } from "./page-run-versions.ts";
 import type { StudioHarnessHost } from "./studio-harness-host.ts";
 
 /** The executor's runs options, as the shared assembly takes them. */
@@ -15,8 +18,10 @@ type EngineRunsOptions = NonNullable<Parameters<typeof assembleEngine>[0]["execu
 /** What the engine opened for its runs, besides the service's options. */
 export interface EngineRunsParts {
   readonly runStore: TauriRunStore;
-  /** The workspace as last saved, which a start reads. */
+  /** The version a start last read, which the budget and the harness trust read. */
   readonly latest: () => LoadedWorkspace;
+  /** The versions runs start from, which each run's definitions come from. */
+  readonly runVersions: Pick<PageRunVersions, "definitionsOf">;
   readonly connectors: StudioRunConnectors["connectors"] | undefined;
   readonly harnessHost: StudioHarnessHost | undefined;
 }
@@ -24,14 +29,18 @@ export interface EngineRunsParts {
 /** The executor's runs options for the page's engine. */
 export function engineRunsOptions(
   options: EngineServiceOptions,
-  { runStore, latest, connectors, harnessHost }: EngineRunsParts,
+  { runStore, latest, runVersions, connectors, harnessHost }: EngineRunsParts,
 ): EngineRunsOptions {
   const { ipc, location, reportError } = options;
   return {
     store: runStore,
     blobs: new TauriBlobStore(ipc, location),
     ids: options.ids,
-    definitionsOf: async (hubId, workflowId) => runDefinitionsOf(latest(), hubId, workflowId),
+    // From the version the run records, checked for trust on that load.
+    definitionsOf: (hubId, workflowId, version, runId) =>
+      runVersions.definitionsOf({ hubId, workflowId, runId }, version, (loaded) =>
+        refuseUntrusted(options.mayStart, loaded),
+      ),
     budget: workspaceBudget(latest),
     // Each harness step asks again, so trust removed where this window doesn't hear it
     // (`halonic trust --remove`) still starts no harness program (HAL-12811). The trust

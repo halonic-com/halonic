@@ -10,7 +10,7 @@
 // scheduled. On and Off come from the saved files, read again on every tick,
 // so turning a routine off counts by the next one. With history off,
 // everything comes from the saved files. Each start goes through the page's
-// own checks first, as Run does.
+// own checks first, as Run does, on the version its run records.
 
 import { LiveRoutines, workspaceRoutineScheduler } from "@halonicjs/app";
 import { type RoutineTickResult, type SkipRecord, SkipRecords } from "@halonicjs/app/routines";
@@ -73,6 +73,8 @@ export function pageRoutines(
         runs: engine.runs,
         routines: () => live.list(),
         targetUnavailable: (run) => live.targetUnavailable(run),
+        // The version each routine run records, whose definitions the engine starts it from.
+        runVersion: () => live.runVersion(),
         policy: { ...DEFAULT_TICK_POLICY, timeZone: options.timeZone },
       });
       tick = async () => {

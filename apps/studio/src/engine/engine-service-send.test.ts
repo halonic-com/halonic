@@ -17,8 +17,8 @@ function waitingOn(connector?: string): RunSummary {
   } as unknown as RunSummary;
 }
 
-/** The `run.started` of `run1`, reading `version`. */
-function startedReading(version: RunVersion): RunEvent {
+/** The `run.started` of `run1`, reading `version`; none for a run kept before versions were. */
+function startedReading(version: RunVersion | undefined): RunEvent {
   return {
     runId: "run1",
     seq: 1,
@@ -29,7 +29,7 @@ function startedReading(version: RunVersion): RunEvent {
     input: {},
     kind: "run",
     definitionsVersion: "sha-1",
-    version,
+    ...(version === undefined ? {} : { version }),
   };
 }
 
@@ -141,7 +141,7 @@ verifies("studio.engine-service", () => {
       await service.close();
     });
 
-    it("where the agent host starts connectors, sends that Approve for a run on the saved files only", async () => {
+    it("where the agent host starts connectors, sends that Approve for a run of the saved files or a commit", async () => {
       const service = serviceWithAgentHost();
       const { executor } = await service.open();
       vi.spyOn(TauriRunStore.prototype, "get").mockResolvedValue(waitingOn("notes"));
@@ -151,14 +151,18 @@ verifies("studio.engine-service", () => {
 
       events.mockResolvedValue([startedReading({ reads: "saved-files" })]);
       await service.send("run1", "approve", undefined, { callId: "c1" });
+      // The page starts a live-version run's connectors from its version's files (HAL-14229).
       events.mockResolvedValue([
         startedReading({ reads: "live-version", commit: "abc1234", versionDate: "2026-11-20" }),
       ]);
+      await service.send("run1", "approve", undefined, { callId: "c1" });
+      // A run that records no version it read, as one kept before versions were, is still refused.
+      events.mockResolvedValue([startedReading(undefined)]);
       await expect(
         service.send("run1", "approve", undefined, { callId: "c1" }),
       ).rejects.toMatchObject({ kind: "unavailable", fix: "halonic runs send run1 approve" });
 
-      expect(send).toHaveBeenCalledTimes(1);
+      expect(send).toHaveBeenCalledTimes(2);
       vi.restoreAllMocks();
       await service.close();
     });
