@@ -79,8 +79,10 @@ held by another process, an approval, a timer.
   installer keeps a copy of itself in the profile's `updates\installers`
   folder until the next version has started once, and `updates\updates.log`
   says how to go back. It doesn't go back across a raise of srt's Windows
-  setup version (`setup-guard.ps1`, HAL-5404): the new version stays, and
-  the log says why.
+  setup version (`setup-guard.ps1`, HAL-5404), nor when Windows raised the
+  update to administrator rights from an account whose other programs run
+  without them, as those programs can change the kept installer (HAL-16523):
+  the new version stays, and the log says why.
 
 ## 3. Resource use is visible
 

@@ -1197,6 +1197,19 @@ Function WaitForStartOrGoBack
     Sleep 1000
     IntOp $3 $3 + 1
   ${LoopUntil} $3 >= 180
+  ; Halonic change (HAL-16523): the kept installer is in the profile folder,
+  ; which the user's programs without administrator rights can write. An
+  ; installer Windows raised to those rights doesn't start it: the new version
+  ; stays, and updates.log says why.
+  Call RaisedFromLimitedRights
+  Pop $4
+  ${If} $4 = 1
+    !ifdef SANDBOX_STEP
+      StrCpy $R3 "${VERSION} didn't prove it starts, but it stays: going back to $OldVersion is skipped because this update runs with administrator rights, and the installer kept for $OldVersion is in a folder programs without those rights can change. To go back, install $OldVersion again without administrator rights."
+      Call LogUpdateLine
+    !endif
+    Return
+  ${EndIf}
   ; Halonic change (HAL-5404 S3): not across a raise of srt's setup version,
   ; and not when the guard can't tell. The new version stays, and
   ; updates.log says why.
@@ -1212,6 +1225,48 @@ Function WaitForStartOrGoBack
     ${EndIf}
   !endif
   Exec '"$2" /P /UPDATE /ROLLBACK /RELAUNCH'
+FunctionEnd
+
+; Halonic change (HAL-16523): pushes 1 when Windows raised this installer to
+; administrator rights from an account whose other programs run without them
+; (the token's elevation type is "full"), else 0. Only then could a program
+; with fewer rights have changed what the profile folder holds. With UAC off,
+; or for the built-in Administrator, every program of the account has the
+; rights already (type "default"). When the token can't be read, it counts
+; any administrator as raised.
+Function RaisedFromLimitedRights
+  Push $0
+  Push $1
+  Push $2
+  Push $3
+  StrCpy $2 ""
+  ; TOKEN_QUERY (8), then TokenElevationType (18): 1 default, 2 full, 3 limited.
+  System::Call 'advapi32::OpenProcessToken(p -1, i 8, *p .r0) i .r1'
+  ${If} $1 <> 0
+    System::Call 'advapi32::GetTokenInformation(p r0, i 18, *i .r2, i 4, *i .r3) i .r1'
+    ${If} $1 = 0
+      StrCpy $2 ""
+    ${EndIf}
+    System::Call 'kernel32::CloseHandle(p r0)'
+  ${EndIf}
+  ${If} $2 == ""
+    System::Call 'shell32::IsUserAnAdmin() i .r2'
+    ${If} $2 <> 0
+      StrCpy $2 2
+    ${EndIf}
+  ${EndIf}
+  ${If} $2 = 2
+    StrCpy $2 1
+  ${Else}
+    StrCpy $2 0
+  ${EndIf}
+  ; The stack holds $3, $2, $1, $0 from the top: restore them, leave the answer.
+  Pop $3
+  Exch $2
+  Exch
+  Pop $1
+  Exch
+  Pop $0
 FunctionEnd
 
 !ifdef SANDBOX_STEP
