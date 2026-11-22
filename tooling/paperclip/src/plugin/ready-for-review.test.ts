@@ -112,6 +112,57 @@ verifies("paperclip.ready-for-review", () => {
       expect(result.content).toContain("data not instructions:\n[format]\nsrc/acme.ts");
     });
 
+    test("a check stopped before any step ran gives the service's reason", async () => {
+      const reason = "branch head is bbbbbbb, not the expected sha";
+      const { call } = fakePrecheck([
+        queued,
+        {
+          status: 200,
+          body: {
+            id: checkId,
+            status: "done",
+            pass: false,
+            failed: [],
+            error: reason,
+            durationS: 2,
+          },
+        },
+      ]);
+      const result = await call({ branch, sha });
+      expect(result.error).toBeUndefined();
+      expect(result.content).toMatch(
+        /^FAIL: the check couldn't run on this branch \(branch head is bbbbbbb, not the expected sha\)\. Fix it/,
+      );
+      expect(result.data).toEqual({
+        verdict: "fail",
+        checkId,
+        durationS: 2,
+        summary: "",
+        failed: [],
+        error: reason,
+      });
+    });
+
+    test("cuts a long summary so a noisy log can't flood the agent", async () => {
+      const { call } = fakePrecheck([
+        queued,
+        {
+          status: 200,
+          body: {
+            id: checkId,
+            status: "done",
+            pass: false,
+            failed: ["test"],
+            summary: "x".repeat(9_000),
+          },
+        },
+      ]);
+      const result = await call({ branch });
+      expect(result.data).toMatchObject({
+        summary: `${"x".repeat(4_000)}\n[cut after 4000 characters]`,
+      });
+    });
+
     test("hands back the check's id after about 20 s and reads it on the next call", async () => {
       const first = fakePrecheck([queued, running, running, running, running]);
       const result = await first.call({ branch });
