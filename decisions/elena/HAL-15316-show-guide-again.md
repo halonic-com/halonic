@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14977 (the board's decision C520-9, which quotes Noah's drawn sheet: the item is **Show the guide again**); built on https://paperclip.halonic.com/HAL/issues/HAL-15164 and https://paperclip.halonic.com/HAL/issues/HAL-15316
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:R+qhZg1uK3aMJMBKV+h8Ox+VTomj6M4FZ1X+7uGAZ37wdQg3+JUCDhEfLxbMgRf6LytwAlYE8M+IaqE4jGDhCg==
 
 Help › First run's **Show the guide** is renamed **Show the guide again**, the name on Noah's sheet that the
 board approved. Only the label changes; what the item does and the line under it stay the same.
