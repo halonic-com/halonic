@@ -66,6 +66,19 @@ verifies("paperclip.board-check-waiting", () => {
     expect(documentWrites(sent)).toHaveLength(1);
   });
 
+  test("writes the document on the first hour after the board turns writes on, with the same tasks", async () => {
+    let writes: Record<string, unknown> = { boardCheckerTask: checkerTask.id };
+    const fake = fakeBoardContext({ tasks, comments: {}, config: () => writes });
+    const board = boardCheck(fake.ctx);
+    await board.run(at("14:00"));
+    expect(documentWrites(fake.sent)).toEqual([]);
+    writes = settings;
+    await board.run(at("15:00"));
+    expect(documentWrites(fake.sent)).toHaveLength(1);
+    await board.run(at("16:00"));
+    expect(documentWrites(fake.sent)).toHaveLength(1);
+  });
+
   test("doesn't look between the hours", async () => {
     const { board, sent, state } = setUp();
     await board.run(at("14:20"));

@@ -17,8 +17,13 @@ pending cards (`issues.listInteractions`).
   the moment the code reaches for it.
 - The `paperclip.pr-tools` test compares the whole list of declared tools;
   it now lists `board_waiting` too. Nothing else it checks changes.
+- The write gate's tests (`paperclip.board-check-writes`) now also expect
+  the set of writes that actually went out, which the gate reports so a
+  part remembers only what was sent (Liam's review of #5224). Each
+  assertion stays; the expected outcome gains that one field.
 
 ## Covers
 
+- tooling/paperclip/src/board-check/writes.test.ts
 - tooling/paperclip/src/plugin/board-check.test.ts
 - tooling/paperclip/src/plugin/tools.test.ts

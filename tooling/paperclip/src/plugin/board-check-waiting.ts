@@ -4,19 +4,22 @@ import {
   type OpenTask,
   rankWaiting,
   readWaitingRecord,
+  type WaitingRecord,
   type WaitingTask,
   waitingDocument,
   waitingSince,
   waitReason,
 } from "../board-check/waiting.ts";
+import type { BoardWrite } from "../board-check/writes.ts";
 import type { BoardCheckApi, PartPlan } from "./board-check-api.ts";
 import { stateKey } from "./board-check-api.ts";
 
 /**
  * The board check's part (b), once an hour: finds the open tasks waiting on
  * the board, counts what each holds up through Paperclip's blocker links,
- * and plans the `board-waiting` document when the list changed. It saves
- * the list in plugin state for `board_waiting`.
+ * and plans the `board-waiting` document when it would read differently
+ * from the last one sent. It saves the list in plugin state for
+ * `board_waiting`.
  */
 
 const closed = new Set(["done", "cancelled"]);
@@ -62,15 +65,23 @@ export async function planWaiting(
   }
   const ranked = rankWaiting(waiting);
   const key = stateKey(companyId, "waiting");
-  const before = readWaitingRecord(await ctx.state.get(key));
+  const sentBefore = readWaitingRecord(await ctx.state.get(key))?.sentBody;
   const body = waitingDocument(ranked, names);
-  // The first pass writes the document only when something waits; later passes when the list changed.
-  const changed =
-    before === undefined ? ranked.length > 0 : waitingDocument(before.tasks, names) !== body;
+  // Compared with what last went out, not with the last list: while writes
+  // are off the list moves on, but the document doesn't.
+  const changed = sentBefore === undefined ? ranked.length > 0 : sentBefore !== body;
+  const write: BoardWrite = { kind: "document", key: "board-waiting", body };
   return {
-    // The document is updated in place, and only when the list changed.
-    writes: changed ? [{ kind: "document", key: "board-waiting", body }] : [],
-    save: () => ctx.state.set(key, { at: now.toISOString(), tasks: ranked }),
+    // The document is updated in place, and only when it would read differently.
+    writes: changed ? [write] : [],
+    save: (sent) => {
+      const sentBody = sent.has(write) ? body : sentBefore;
+      const record: WaitingRecord =
+        sentBody === undefined
+          ? { at: now.toISOString(), tasks: ranked }
+          : { at: now.toISOString(), tasks: ranked, sentBody };
+      return ctx.state.set(key, record);
+    },
     waiting: ranked.length,
   };
 }

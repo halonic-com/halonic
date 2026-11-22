@@ -176,7 +176,9 @@ ranked by the open tasks it holds up, directly and through the chain of
 blocker links (at most 300 link reads a pass; past that a count reads
 "4+"), longest waiting first on a tie. The list names identifiers, holders,
 counts and times, never titles, and updates the `board-waiting` document
-only when it changed since the last hour.
+only when it would read differently from the last one actually sent. Unlike
+asks, it catches up: the first hour after the board turns writes on writes
+the current list.
 
 **Failed runs (part a).** Each `agent.run.failed` event is kept for 48
 hours as ids, a time and a cause code: `no_identity`, `spend_limit`,

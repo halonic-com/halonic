@@ -32,7 +32,12 @@ export interface BoardCheckApi extends MetricsApi {
 /** What one part of a pass wants written, and what it saves once the gate let the pass through. */
 export interface PartPlan {
   readonly writes: readonly BoardWrite[];
-  readonly save: () => Promise<void>;
+  /**
+   * Saves the part's state. `sent` holds the writes that actually went out:
+   * with the switch off they are only logged, and a part that reports a
+   * state rather than an event must not count a logged write as reported.
+   */
+  readonly save: (sent: ReadonlySet<BoardWrite>) => Promise<void>;
 }
 
 /** What started a pass: a Paperclip event or the 10-minute job. */

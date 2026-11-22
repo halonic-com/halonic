@@ -63,6 +63,8 @@ export interface GateOutcome {
   readonly written: number;
   /** Writes it only logged because the switch was off. */
   readonly logged: number;
+  /** The planned writes that actually went out, so a part remembers only what was sent. */
+  readonly sent: ReadonlySet<BoardWrite>;
   readonly refused: GateRefusal | undefined;
 }
 
@@ -148,7 +150,7 @@ export async function commitWrites(
   if (refused !== undefined) {
     gate.log(`Board check: refused ${refused}; wrote nothing this pass.`);
     await gate.alert("not_allowed");
-    return { written: 0, logged: 0, refused: "not_allowed" };
+    return { written: 0, logged: 0, sent: new Set(), refused: "not_allowed" };
   }
   if (overCeiling(plan)) {
     const counts = Object.keys(ceilings)
@@ -156,18 +158,20 @@ export async function commitWrites(
       .join(", ");
     gate.log(`Board check: planned ${counts}, above the ceilings; wrote nothing this pass.`);
     await gate.alert("over_ceiling");
-    return { written: 0, logged: 0, refused: "over_ceiling" };
+    return { written: 0, logged: 0, sent: new Set(), refused: "over_ceiling" };
   }
+  const sent = new Set<BoardWrite>();
   let written = 0;
   let logged = 0;
   for (const write of plan) {
     if (await gate.writesOn()) {
       await send(api, gate, write);
+      sent.add(write);
       written += 1;
     } else {
       gate.log(`Board check: would ${describe(write)} (writes off).`);
       logged += 1;
     }
   }
-  return { written, logged, refused: undefined };
+  return { written, logged, sent, refused: undefined };
 }

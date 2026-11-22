@@ -28,6 +28,12 @@ export interface WaitingTask {
 export interface WaitingRecord {
   readonly at: string;
   readonly tasks: readonly WaitingTask[];
+  /**
+   * The last `board-waiting` body that actually went out. It differs from
+   * `tasks` while writes are off, so the first pass after the board turns
+   * them on still writes the document.
+   */
+  readonly sentBody?: string;
 }
 
 /** The task fields the waiting check reads. */
@@ -148,7 +154,10 @@ export function waitingDocument(
 /** Reads a saved record back; anything odd counts as no pass yet. */
 export function readWaitingRecord(value: unknown): WaitingRecord | undefined {
   const record = value as Partial<WaitingRecord> | null;
-  return typeof record?.at === "string" && Array.isArray(record.tasks)
-    ? { at: record.at, tasks: record.tasks }
-    : undefined;
+  if (typeof record?.at !== "string" || !Array.isArray(record.tasks)) {
+    return undefined;
+  }
+  return typeof record.sentBody === "string"
+    ? { at: record.at, tasks: record.tasks, sentBody: record.sentBody }
+    : { at: record.at, tasks: record.tasks };
 }

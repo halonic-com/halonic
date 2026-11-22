@@ -96,7 +96,7 @@ async function pass(
   );
   if (outcome.refused === undefined) {
     for (const part of parts) {
-      await part.save();
+      await part.save(outcome.sent);
     }
   }
   await writeMetrics(
