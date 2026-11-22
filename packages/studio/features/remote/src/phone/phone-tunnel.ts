@@ -30,14 +30,15 @@ export type TunnelPairingStart =
 
 /**
  * Why a pairing stopped. `code-ended` also follows the fifth wrong try; `handshake-failed`
- * includes a QR key that isn't this computer's; `unreadable` is a guard the screens don't
- * meet, because the scanner filters other codes.
+ * is a computer that isn't the one in the scanned QR code; `unreadable` is an answer from
+ * the computer the phone can't read; `bad-start` is a code or key from the page that isn't
+ * one, a bug the screens don't meet, because the scanner filters other codes.
  */
 export type TunnelPairingProblem =
   | { readonly kind: "wrong-code"; readonly triesLeft: number }
   | { readonly kind: "code-ended" | "code-used" | "rate-limited" | "handshake-failed" }
   | { readonly kind: "cant-reach"; readonly reason: ReachFailure }
-  | { readonly kind: "unreadable" };
+  | { readonly kind: "unreadable" | "bad-start" };
 
 /** A computer on the paired list. A removed one keeps its entry until {@link PhoneTunnel.forget}. */
 export interface PairedComputer {

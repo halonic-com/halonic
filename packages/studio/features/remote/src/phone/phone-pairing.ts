@@ -25,7 +25,7 @@ export type PairingFrom =
 export type PairingStop = TunnelPairingProblem | Exclude<PairingOutcome, { kind: "paired" }>;
 
 /**
- * The screen a pairing problem leads to (`p-m6` to `p-m10`):
+ * The screen a pairing problem leads to (`p-m6` to `p-m10`, G25, G26, microcopy 28):
  *
  * - `typedWrong`: the typed route's screen again, with the tries left in the
  *   field's error. A wrong code on the scanned route can only be a code that
@@ -33,38 +33,54 @@ export type PairingStop = TunnelPairingProblem | Exclude<PairingOutcome, { kind:
  * - `ended`: This code no longer works; `noAllow` when Allow wasn't pressed in time.
  * - `used`: This code was already used.
  * - `refused`: The computer didn't allow this phone.
- * - `unreachable`: Can't reach the computer; `wifi` when it was found on this Wi-Fi.
- * - `rateLimited`: Too many tries on the computer this minute; Try again sends the same code (G25).
- * - `cantConfirm`: on the scanned route, the computer that answered doesn't hold the QR code's
- *   key (G26). A typed code carries no key, so there a failed handshake reads as `ended`.
+ * - `rateLimited`: Too many tries on the computer (G25); Try again sends the same code.
+ * - `cantConfirm`: Can't confirm it's the computer (G26), with Scan again.
+ * - `unreadable`: Couldn't read the computer's answer.
+ * - `unreachable`: Can't reach the computer; `wifi` when it was found on this Wi-Fi,
+ *   `phoneOffline` when the phone's own network is down, so the check is about the phone.
+ * - `generic`: the page sent a code or key that isn't one. That's a bug, not the person's
+ *   doing: the screen logs it and shows the generic problem screen.
  */
 export type PairingProblemScreen =
   | { readonly screen: "typedWrong"; readonly triesLeft: number }
   | { readonly screen: "ended"; readonly noAllow: boolean }
-  | { readonly screen: "used" | "refused" | "rateLimited" | "cantConfirm" }
-  | { readonly screen: "unreachable"; readonly wifi: boolean };
+  | { readonly screen: "used" | "refused" | "rateLimited" | "cantConfirm" | "unreadable" }
+  | { readonly screen: "unreachable"; readonly wifi: boolean; readonly phoneOffline: boolean }
+  | { readonly screen: "generic" };
 
-/** Which problem screen a pairing stop shows, for the route it started on. */
+/**
+ * Which problem screen a pairing stop shows, for the route it started on. A failed handshake
+ * and too many tries don't read as "no longer works" (C599 on HAL-15599): the code may still
+ * work after a minute, and a new code doesn't help a phone on another network.
+ */
 export function problemScreen(stop: PairingStop, from: PairingFrom): PairingProblemScreen {
   switch (stop.kind) {
     case "wrong-code":
       return from.route === "typed"
         ? { screen: "typedWrong", triesLeft: stop.triesLeft }
         : { screen: "ended", noAllow: false };
-    case "handshake-failed":
-      return from.route === "qr" ? { screen: "cantConfirm" } : { screen: "ended", noAllow: false };
-    case "rate-limited":
-      return { screen: "rateLimited" };
     case "code-ended":
-    case "unreadable":
       return { screen: "ended", noAllow: false };
     case "timeout":
       return { screen: "ended", noAllow: true };
+    case "rate-limited":
+      return { screen: "rateLimited" };
+    // Only the scanned route carries the computer's key to check (HAL-15157).
+    case "handshake-failed":
+      return { screen: "cantConfirm" };
+    case "unreadable":
+      return { screen: "unreadable" };
+    case "bad-start":
+      return { screen: "generic" };
     case "code-used":
       return { screen: "used" };
     case "refused":
       return { screen: "refused" };
     case "cant-reach":
-      return { screen: "unreachable", wifi: from.route === "typed" && from.wifi };
+      return {
+        screen: "unreachable",
+        wifi: from.route === "typed" && from.wifi,
+        phoneOffline: stop.reason === "network-down",
+      };
   }
 }
