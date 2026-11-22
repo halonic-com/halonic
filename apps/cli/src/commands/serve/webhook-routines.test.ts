@@ -53,7 +53,7 @@ verifies("cli.commands.serve.serve", () => {
 
     it("adds a ✕ line when the secret has no value, or an empty one", async () => {
       const notSet =
-        "✕ Friday digest won't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook";
+        "✕ Friday digest can't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook";
       for (const secrets of [secretsOf({}), secretsOf({ "friday-hook": "" })]) {
         expect((await lines([placed("friday-digest", webhook)], secrets))[1]).toBe(notSet);
       }
@@ -66,7 +66,7 @@ verifies("cli.commands.serve.serve", () => {
         await lines([placed("friday-digest", ownName)], secretsOf({ "serve-password": "s" })),
       ).toEqual([
         "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest",
-        "✕ Friday digest won't start: its secret name serve-password belongs to Halonic or a plugin. Use a name of your own in its routine file.",
+        "✕ Friday digest can't start: its secret name serve-password belongs to Halonic or a plugin. Use a name of your own in its routine file.",
       ]);
     });
 
@@ -75,7 +75,7 @@ verifies("cli.commands.serve.serve", () => {
 
       expect(await lines([routine], secretsOf({ "friday-hook": "s" }))).toEqual([
         "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest",
-        "✕ Friday digest won't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that.",
+        "✕ Friday digest can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that.",
       ]);
     });
 
@@ -100,7 +100,7 @@ verifies("cli.commands.serve.webhook-refusals", () => {
 
     expect(await lines([routine], secretsOf({ "friday-hook": "s" }))).toEqual([
       "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest",
-      "✕ Friday digest won't start: {{trigger.date}} isn't a trigger value. Use {{trigger.at}}, {{trigger.lastRun}}, {{trigger.body}} or {{trigger.headers.<name>}}.",
+      "✕ Friday digest can't start: {{trigger.date}} isn't a trigger value. Use {{trigger.at}}, {{trigger.lastRun}}, {{trigger.body}} or {{trigger.headers.<name>}}.",
     ]);
   });
 });

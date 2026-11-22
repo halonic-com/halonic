@@ -12,6 +12,9 @@
 // Runs that wait for a time move on while it watches: the engine's
 // scheduler delivers their timers, and those missed while nothing ran as
 // soon as it opens (docs/specs/workflow-semantics.md, "Timers").
+//
+// A routine whose own file has errors is left out with a ✕ line, and the
+// others start, as `halonic routines` lists them (HAL-15372).
 
 import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 import { workspaceRoutineScheduler } from "@halonicjs/app";
@@ -40,8 +43,9 @@ import {
 } from "../../workspace-engine.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunSetup } from "../run/run.ts";
-import { checkRunTrust } from "../run/trust.ts";
+import { checkRoutinesTrust } from "../run/trust.ts";
 import { computerTimeZone } from "./list.ts";
+import { RoutinesThatCantStart, withoutProblems } from "./watch-cant-start.ts";
 import { watchReport } from "./watch-report.ts";
 import { reportGaveUp, reportStuck } from "./watch-stuck.ts";
 import { type VersionChecks, WatchedVersions } from "./watch-versions.ts";
@@ -55,6 +59,8 @@ import { type VersionChecks, WatchedVersions } from "./watch-versions.ts";
  *   can't start; nothing ran (exit 9)
  * @throws OwnLineError `conflict` when the workspace has history but nothing
  *   is live yet; nothing ran
+ * @throws WorkspaceFileProblemsError when a file other than a routine's has
+ *   an error; nothing ran (exit 2)
  * @throws NotTrustedError when the workspace isn't trusted here and its
  *   runs could reach more than the test model; nothing ran (exit 3)
  * @throws SandboxRefusedError when a routine's agent needs the sandbox and it
@@ -87,11 +93,16 @@ async function watchVersions(
 ): Promise<StoppedResult> {
   const workspace = versions.latest();
   const typedDir = givenDir(input, dir);
-  // The routines as the last tick listed them, for the names the lines give.
-  let routines: readonly PlacedRoutine[] = await versions.routines.listLoaded();
+  // The routines as the last tick listed them, for the names the lines give,
+  // without those whose files have errors: they never start (HAL-15372).
+  let routines: readonly PlacedRoutine[] = withoutProblems(
+    workspace,
+    await versions.routines.listLoaded(),
+  );
   // Before trust, as `run` does: a routine this engine can't start has nothing to trust (HAL-6580).
   await refuseHarnessRoutines(setup, dir, workspace, routines);
-  const trust = await checkRunTrust(dir, workspace, setup.trust(), typedDir);
+  const trust = await checkRoutinesTrust(dir, workspace, setup.trust(), typedDir);
+  const cantStart = new RoutinesThatCantStart(context, typedDir);
   const listed = () => routines;
   const report = watchReport(context, () => setup.clock(), listed);
   const warnings = unsandboxedWarnings(context);
@@ -110,8 +121,9 @@ async function watchVersions(
     ...stuckReports(context, listed, () => runStore),
     routines: (parts) => {
       runStore = parts.runs;
-      scheduler = routineScheduler(parts, workspace, versions, dir.name, setup, (latest) => {
-        routines = latest;
+      scheduler = routineScheduler(parts, workspace, versions, dir.name, setup, async (read) => {
+        routines = cantStart.leaveOut(await versions.live(), read);
+        return routines;
       });
       const built = scheduler;
       return {
@@ -180,7 +192,7 @@ function laterVersionChecks(
 ): VersionChecks {
   const ending = runMessages.nothingRan();
   return {
-    trust: async (workspace) => await checkRunTrust(dir, workspace, setup.trust(), typedDir),
+    trust: async (workspace) => await checkRoutinesTrust(dir, workspace, setup.trust(), typedDir),
     harnessAgent: (agent) => refuseHarnessAgent(agent),
     sandbox: async (workspace, run) => {
       // The sandbox first, as `run` checks it, then the harness it can't start (HAL-5219).
@@ -208,14 +220,18 @@ function unsandboxedWarnings(context: CommandContext): UnsandboxedWarnings {
   };
 }
 
-/** The routine scheduler on the engine's parts, as `workspaceRoutineScheduler` builds it. */
+/**
+ * The routine scheduler on the engine's parts, as `workspaceRoutineScheduler`
+ * builds it. `scheduled` gets the routines each tick reads and returns those
+ * to schedule.
+ */
 function routineScheduler(
   engine: RoutineEngine,
   workspace: LoadedWorkspace,
   versions: WatchedVersions,
   folderName: string,
   setup: RunSetup,
-  onListed: (routines: readonly PlacedRoutine[]) => void,
+  scheduled: (routines: readonly PlacedRoutine[]) => Promise<readonly PlacedRoutine[]>,
 ): RoutineScheduler {
   const timeZone = setup.clock().timeZone ?? computerTimeZone();
   const live = versions.routines;
@@ -226,11 +242,7 @@ function routineScheduler(
     executor: engine.executor,
     runs: engine.runs,
     // Read again on every tick, as the Studio's scheduler reads them (`app.scheduler-live-routines`).
-    routines: async () => {
-      const routines = await live.list();
-      onListed(routines);
-      return routines;
-    },
+    routines: async () => await scheduled(await live.list()),
     targetUnavailable: (run) => live.targetUnavailable(run),
     // The live version when the routine is due (`app.runs-read-latest-version`); the engine
     // then starts the run with that version's definitions (`engine.run-records-its-version`).

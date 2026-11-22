@@ -22,7 +22,7 @@ import { printable } from "../../output/printable.ts";
  * @example
  * await webhookRoutineLines(routines, secrets, "http://localhost:4747");
  * // "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest"
- * // "✕ Friday digest won't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook"
+ * // "✕ Friday digest can't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook"
  */
 export async function webhookRoutineLines(
   routines: readonly PlacedRoutine[],

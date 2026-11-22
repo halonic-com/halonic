@@ -41,7 +41,7 @@ export const serveMessages = defineMessages("serve", {
     phrase`${name} starts on a web request at ${address}`,
   /** The line under {@link webhookRoutine} when its secret isn't set, so every request is refused. */
   webhookSecretNotSet: (name: string, secret: string) =>
-    phrase`${markPart("failed")} ${name} won't start: its secret ${secret} isn't set. Set it with: halonic secret set ${secret}`,
+    phrase`${markPart("failed")} ${name} can't start: its secret ${secret} isn't set. Set it with: halonic secret set ${secret}`,
   /**
    * The line under {@link webhookRoutine} when its secret's name belongs to
    * Halonic or a plugin, such as `serve-password`, which the server never
@@ -49,7 +49,7 @@ export const serveMessages = defineMessages("serve", {
    * Halonic's own secret and still not help.
    */
   webhookSecretNotOwn: (name: string, secret: string) =>
-    phrase`${markPart("failed")} ${name} won't start: its secret name ${secret} belongs to Halonic or a plugin. Use a name of your own in its routine file.`,
+    phrase`${markPart("failed")} ${name} can't start: its secret name ${secret} belongs to Halonic or a plugin. Use a name of your own in its routine file.`,
   /**
    * The line under {@link webhookRoutine} when the routine has an error that
    * `halonic validate` reports too, such as a `{{trigger.date}}` a web request
@@ -57,7 +57,7 @@ export const serveMessages = defineMessages("serve", {
    * (HAL-15084). `reason` is validate's own sentence.
    */
   webhookRoutineInvalid: (name: string, reason: string) =>
-    phrase`${markPart("failed")} ${name} won't start: ${reason}`,
+    phrase`${markPart("failed")} ${name} can't start: ${reason}`,
   /**
    * A signed web request the server refused with a 400 while it serves, with
    * the server's reason, so the person at the terminal sees why the webhook
@@ -71,7 +71,7 @@ export const serveMessages = defineMessages("serve", {
    * in the words Studio's Starts card uses (microcopy 1.5 L2).
    */
   webhookRoutineAgent: (name: string) =>
-    phrase`${markPart("failed")} ${name} won't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that.`,
+    phrase`${markPart("failed")} ${name} can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that.`,
   /**
    * Line 1 of a web request for a routine that failed with a 500: a bug, so
    * the error shape's F16 line 1 (microcopy 25.1 L4, HAL-15277).
