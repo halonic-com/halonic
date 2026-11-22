@@ -84,7 +84,7 @@ fn is_private_segment(segment: &str) -> bool {
 }
 
 /// A `~` followed by an ASCII digit, as `/~\d/u` matches in TypeScript.
-fn has_short_name_mark(segment: &str) -> bool {
+pub(crate) fn has_short_name_mark(segment: &str) -> bool {
     segment
         .as_bytes()
         .windows(2)

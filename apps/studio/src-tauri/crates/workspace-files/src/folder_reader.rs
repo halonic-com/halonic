@@ -11,13 +11,14 @@
 //! profile, is left out, as for every call on a workspace.
 
 use std::fs::{self, File, Metadata, OpenOptions};
-use std::io::{self, Read};
+use std::io;
 use std::path::Path;
 
 use crate::error::FileError;
 use crate::fence::Fence;
+use crate::limits::{check_depth, read_at_most};
 use crate::links::{entry_at, is_missing, native_path};
-use crate::workspace_path::check_workspace_path;
+use crate::workspace_path::{check_workspace_path, has_short_name_mark};
 
 /// What an entry is, as `lstat` sees it. A link is a symbolic link or a
 /// Windows junction, and is never a folder here.
@@ -133,10 +134,7 @@ impl FolderReader {
         if !opened.is_file() || !same_file(&seen, &opened) {
             return Err(changed(path));
         }
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes)
-            .map_err(|error| FileError::io(path, &error))?;
-        Ok(Some(bytes))
+        read_at_most(&mut file, path).map(Some)
     }
 
     /// The real location of the entry at `path`, with every link resolved:
@@ -169,11 +167,21 @@ impl FolderReader {
         }
     }
 
-    /// Refuses an unsafe path, and one in the fence. A private name isn't
-    /// refused: the reader hides nothing.
+    /// Refuses an unsafe path, one this computer wouldn't open as written,
+    /// and one in the fence. A private name isn't refused: the reader hides
+    /// nothing. The path is then joined to the folder and checked to stay
+    /// in it, segment for segment.
     fn check(&self, path: &str) -> Result<(), FileError> {
         check_workspace_path(path)?;
-        self.fence.check(path)
+        check_native_segments(path, cfg!(windows), matches!(self.fence, Fence::At(_)))?;
+        self.fence.check(path)?;
+        if !stays_in(&self.root, &native_path(&self.root, path), path) {
+            return Err(FileError::UnsafePath {
+                path: path.to_owned(),
+                reason: "it must stay in the folder",
+            });
+        }
+        Ok(())
     }
 }
 
@@ -197,6 +205,7 @@ impl Walk<'_> {
         prefix: &str,
         found: &mut Vec<FolderEntry>,
     ) -> Result<(), FileError> {
+        check_depth(prefix)?;
         let entries = match fs::read_dir(folder) {
             Ok(entries) => entries,
             Err(error) if is_missing(&error) => return Ok(()),
@@ -243,6 +252,38 @@ impl Walk<'_> {
         }
         Ok(())
     }
+}
+
+/// Refuses a segment that Windows (`windows`) wouldn't open as a name in
+/// the folder: one with a `:`, a drive or a stream, which NTFS names can't
+/// hold. While the fence is inside the folder (`fenced`), it also refuses a
+/// segment with a `~` and a digit, which may be the fenced folder's short
+/// name. Elsewhere both are plain names, and the reader reads them.
+fn check_native_segments(path: &str, windows: bool, fenced: bool) -> Result<(), FileError> {
+    if !windows {
+        return Ok(());
+    }
+    if path.contains(':') {
+        return Err(FileError::UnsafePath {
+            path: path.to_owned(),
+            reason: "no drive or stream on Windows",
+        });
+    }
+    if fenced && path.split('/').any(has_short_name_mark) {
+        return Err(FileError::PrivatePath {
+            path: path.to_owned(),
+        });
+    }
+    Ok(())
+}
+
+/// Whether `joined`, the workspace path `path` joined to `root`, is under
+/// `root` with one more part for each segment, so no segment replaced the
+/// folder or climbed out of it.
+fn stays_in(root: &Path, joined: &Path, path: &str) -> bool {
+    joined
+        .strip_prefix(root)
+        .is_ok_and(|below| below.components().count() == path.split('/').count())
 }
 
 fn changed(path: &str) -> FileError {
@@ -321,6 +362,50 @@ fn same_file(first: &Metadata, second: &Metadata) -> bool {
 #[cfg(not(unix))]
 fn same_file(_: &Metadata, _: &Metadata) -> bool {
     true
+}
+
+#[cfg(test)]
+mod segment_tests {
+    use super::*;
+
+    #[test]
+    fn check_native_segments_refuses_a_drive_or_stream_on_windows_only() {
+        for path in ["C:", "C:/Windows/win.ini", "a/D:", "notes.txt:hidden"] {
+            let refused = check_native_segments(path, true, false);
+            assert!(
+                matches!(refused, Err(FileError::UnsafePath { .. })),
+                "{path}: {refused:?}"
+            );
+            assert_eq!(check_native_segments(path, false, true), Ok(()), "{path}");
+        }
+    }
+
+    #[test]
+    fn check_native_segments_refuses_a_short_name_on_windows_while_fenced() {
+        let path = "AppData/Roaming/HALONI~1/studio.json";
+        let refused = check_native_segments(path, true, true);
+        assert!(
+            matches!(refused, Err(FileError::PrivatePath { .. })),
+            "{refused:?}"
+        );
+        assert_eq!(check_native_segments(path, true, false), Ok(()));
+        assert_eq!(check_native_segments(path, false, true), Ok(()));
+    }
+
+    #[test]
+    fn stays_in_takes_only_one_part_per_segment_under_the_folder() {
+        let root = Path::new("workspace");
+        assert!(stays_in(root, &native_path(root, "a/b.txt"), "a/b.txt"));
+        assert!(!stays_in(root, Path::new("elsewhere/b.txt"), "a/b.txt"));
+        assert!(!stays_in(root, &root.join("b.txt"), "a/b.txt"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn stays_in_refuses_a_drive_that_replaced_the_folder() {
+        let root = std::env::temp_dir();
+        assert!(!stays_in(&root, &native_path(&root, "D:/keys"), "D:/keys"));
+    }
 }
 
 #[cfg(all(test, unix))]

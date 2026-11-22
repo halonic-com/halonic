@@ -15,6 +15,7 @@ mod fence;
 mod folder;
 mod folder_reader;
 mod leave_out;
+mod limits;
 mod links;
 mod temporary_write;
 mod watch;
@@ -26,6 +27,7 @@ pub use fence::{Fence, real_path_as_far_as_it_exists};
 pub use folder::{EXPECTED_NOT_TEXT, RemoveOutcome, WorkspaceFolder, WriteOutcome, content_digest};
 pub use folder_reader::{EntryKind, FolderEntry, FolderReader};
 pub use leave_out::LeaveOut;
+pub use limits::{MAX_FOLDER_DEPTH, MAX_READ_BYTES};
 pub use watch::{FolderSnapshot, MAX_WATCHED_FILES, WatchMessage, Watches};
 pub use workspace_path::{
     check_public_workspace_path, check_workspace_path, is_private_workspace_path, segment_as_opened,
