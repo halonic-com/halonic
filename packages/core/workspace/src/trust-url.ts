@@ -17,7 +17,10 @@ export type TrustUrl = { url: string } | { refused: string };
  * password, is refused rather than normalised, so it can never be trusted
  * (HAL-1954): a backslash before the query (`https://evil.test\@mcp.acme.test/`
  * connects to `evil.test`), user info (`https://ops:pw@mcp.acme.test/`), or
- * an `http:` or `https:` URL without `//`.
+ * an `http:` or `https:` URL without `//`. So is a URL with a control
+ * character, such as a tab or a line break, or a space at its start or end:
+ * a URL parser drops those, so the text read here wouldn't be the URL a
+ * connection reaches (`\u0001https://ops@mcp.acme.test/` has user info).
  *
  * The core has no `URL` class (plan 4.1), so the parts are read by hand.
  * Any other text that isn't an absolute URL is returned as written.
@@ -27,6 +30,9 @@ export type TrustUrl = { url: string } | { refused: string };
  * trustUrl("https://ops:pw@mcp.acme.test/"); // { refused: "the URL has user info" }
  */
 export function trustUrl(url: string): TrustUrl {
+  if (hasDroppedCharacters(url)) {
+    return { refused: "the URL has a control character, or a space at its start or end" };
+  }
   if (/^[^?#]*\\/s.test(url)) {
     return { refused: "the URL has a backslash before its query" };
   }
@@ -44,6 +50,16 @@ export function trustUrl(url: string): TrustUrl {
   const shownPort = port === "" || port === defaultPorts[scheme] ? "" : `:${port}`;
   const path = rest === "" || rest.startsWith("?") || rest.startsWith("#") ? `/${rest}` : rest;
   return { url: `${scheme}://${host}${shownPort}${path}` };
+}
+
+/**
+ * Whether a URL parser would drop some of the text, or a reader wouldn't
+ * see it: a control character anywhere (`\p{Cc}`: C0, DEL and C1; a parser
+ * drops tabs and line breaks anywhere, and the other C0 controls at the
+ * ends), or whitespace at the start or end.
+ */
+function hasDroppedCharacters(url: string): boolean {
+  return /\p{Cc}/u.test(url) || url.trim() !== url;
 }
 
 /** Splits `host:port`, keeping an IPv6 address in its brackets. */

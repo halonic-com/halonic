@@ -93,6 +93,20 @@ function pathOf(args: unknown): string | null {
   return null;
 }
 
+/**
+ * Whether a `Glob` call's `pattern` can match files outside the folder its
+ * `path` names: an absolute pattern, one from a home folder (`~`), one with
+ * a `..`, or a brace alternative that starts one of those (`{/etc,src}/*`).
+ * The policy judges only the path, so such a call must ask.
+ */
+function globLeavesPath(args: unknown): boolean {
+  if (typeof args !== "object" || args === null) return false;
+  const pattern = (args as Record<string, unknown>)["pattern"];
+  if (typeof pattern !== "string") return false;
+  const startsOutside = /(^|[{,])\s*([\\/~]|[A-Za-z]:)/;
+  return pattern.includes("..") || startsOutside.test(pattern);
+}
+
 /** Reads Claude Code's own tool call as the policy's kinds. Anything it can't read is `other`, which asks. */
 export function toAskToolCall(tool: string, args: unknown): AskToolCall {
   if (tool === "Bash") {
@@ -102,6 +116,7 @@ export function toAskToolCall(tool: string, args: unknown): AskToolCall {
         : null;
     return typeof command === "string" ? { kind: "shell", command } : { kind: "other", name: tool };
   }
+  if (tool === "Glob" && globLeavesPath(args)) return { kind: "other", name: tool };
   const path = pathOf(args);
   if (path !== null && readTools.has(tool)) return { kind: "read", path };
   if (path !== null && editTools.has(tool)) return { kind: "edit", path };

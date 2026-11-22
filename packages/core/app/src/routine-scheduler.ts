@@ -21,6 +21,12 @@ import {
 } from "./routine-queue.ts";
 import { type SkipRecord, SkipRecords, type TargetUnavailableWhy } from "./routine-skips.ts";
 import { TargetChecks, type UnavailableTime } from "./routine-targets.ts";
+import {
+  nothing,
+  type RoutineFailure,
+  type RoutineTickResult,
+  type RoutineTime,
+} from "./routine-tick-result.ts";
 import { type DroppedRange, TickSkips } from "./routine-tick-skips.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
@@ -51,44 +57,6 @@ export type DueFunction<Routine, Policy, Run extends ScheduledRun> = (
 export type RoutineStart =
   | { workflow: Omit<StartRunRequest, "runId" | "trigger" | "kind"> }
   | { agent: Omit<StartAgentRequest, "runId" | "trigger"> };
-
-/** A due run and what went wrong with it: its start, or storing its due time as the last run. */
-export interface RoutineFailure {
-  key: string;
-  /** ISO time the run was due. */
-  at: string;
-  error: Error;
-}
-
-/** A due time of a routine that a tick didn't start. */
-export interface RoutineTime {
-  key: string;
-  /** ISO time the run was due. */
-  at: string;
-}
-
-/** What one tick did. */
-export interface RoutineTickResult {
-  started: RunSummary[];
-  /** Due runs that did not start. */
-  failed: RoutineFailure[];
-  /**
-   * Runs that started (they are in `started` too) whose due time was not
-   * stored as the routine's last run, so its next run may get an older
-   * `{{trigger.lastRun}}`.
-   */
-  lastRunNotSaved: RoutineFailure[];
-  /** Every due time waiting in the queue after the tick (`overlap: queue`), oldest first per routine. */
-  queued: RoutineTime[];
-  /** Due times dropped because a run of the routine was going (`overlap: skip`) or its queue was full. */
-  skipped: RoutineTime[];
-  /** Due times whose target can't be started (`targetUnavailable`), recorded as `target-unavailable` skips. */
-  unavailable: UnavailableTime[];
-  /** Routines whose skip records this tick added to, so a host can tell a page that shows them. */
-  skipsSaved: string[];
-  /** Routines whose skipped times this tick could not add to their skip records. */
-  skipsNotSaved: { key: string; error: Error }[];
-}
 
 /**
  * What a {@link RoutineScheduler} works with. The types default to those of
@@ -147,17 +115,12 @@ export interface RoutineSchedulerOptions<
   events?: EventBus<AppEvents>;
 }
 
-/** A new empty result each time, so no caller can change another's. */
-const nothing = (): RoutineTickResult => ({
-  started: [],
-  failed: [],
-  lastRunNotSaved: [],
-  queued: [],
-  skipped: [],
-  unavailable: [],
-  skipsSaved: [],
-  skipsNotSaved: [],
-});
+/**
+ * How far ahead of the clock the stored last tick may be before the
+ * scheduler counts the clock as set back. Hosts that tick one workspace
+ * differ by seconds; a tick that far ahead was stored under a wrong clock.
+ */
+export const clockSetBackMs = 10 * 60 * 1000;
 
 /**
  * Starts the routine runs that are due, on each tick of the `Scheduler`
@@ -166,7 +129,8 @@ const nothing = (): RoutineTickResult => ({
  *
  * Ticks can be late, repeated, missed or overlap, and two hosts may tick the
  * same workspace. Each due run still starts once:
- * - the last tick time is kept in `Coordination`, per workspace; a tick at or before it does nothing
+ * - the last tick time is kept in `Coordination`, per workspace; a tick at or before it does nothing,
+ *   and one more than {@link clockSetBackMs} before it stores its own time, as the clock was set back
  * - the tick function catches up on missed ticks under its policy
  * - every run gets {@link routineRunId}, so a start that is repeated (a crash
  *   before the last tick was stored, a second host) returns the existing run
@@ -280,6 +244,7 @@ export class RoutineScheduler<
     const stored = await coordination.read(this.lastTickKey);
     const lastTick = stored === null ? null : new Date(stored);
     if (lastTick !== null && now.getTime() <= lastTick.getTime()) {
+      await this.forgetTickAhead(stored, lastTick, now);
       return nothing();
     }
     const routineList = await routines();
@@ -328,6 +293,19 @@ export class RoutineScheduler<
     }
     events?.emit("routines.ticked", { at: now.toISOString(), ...result });
     return result;
+  }
+
+  /**
+   * Stores `now` as the last tick when the stored one is more than
+   * {@link clockSetBackMs} ahead of it: the clock was set back, and
+   * routines would otherwise wait, without a word, until it caught up. The
+   * times up to the old last tick may come due again; the run ids keep a
+   * time that already started from starting twice.
+   */
+  private async forgetTickAhead(stored: string | null, lastTick: Date, now: Date): Promise<void> {
+    if (lastTick.getTime() - now.getTime() <= clockSetBackMs) return;
+    // A lost race means another instance stored its tick; its value stays.
+    await this.options.coordination.compareAndSet(this.lastTickKey, stored, now.toISOString());
   }
 
   /**

@@ -5,8 +5,9 @@
 // other due times marked busy, or queued, behind a run that never starts.
 
 import { applyOverlap, type OverlapDecision, type RoutineOverlap } from "./routine-overlap.ts";
-import type { RoutineFailure, RoutineTime, ScheduledRun } from "./routine-scheduler.ts";
+import type { ScheduledRun } from "./routine-scheduler.ts";
 import type { TargetUnavailableWhy } from "./routine-skips.ts";
+import type { RoutineFailure, RoutineTime } from "./routine-tick-result.ts";
 
 /** A due time a tick didn't start because the routine's target can't be started. */
 export interface UnavailableTime extends RoutineTime {
