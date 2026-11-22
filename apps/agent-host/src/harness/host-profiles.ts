@@ -35,6 +35,13 @@ export interface ProfileAgent {
   readonly filesFolder: string | null;
 }
 
+/** A profile this host built, with the workspace (its real path) and the agent it is for. */
+export interface BuiltProfile {
+  readonly workspace: string;
+  readonly agent: ProfileAgent;
+  readonly profile: SandboxProfile;
+}
+
 /** What {@link HostHarnessProfiles} needs to know about this computer. */
 export interface HostHarnessProfilesOptions {
   /** Halonic's data folder: denied to every program but for the run's own folders. */
@@ -79,7 +86,7 @@ export class HostHarnessProfiles {
   /** The hosts made so far; a session's temp folder is removed by the one that made it. */
   readonly #hosts: WorkspaceHarnessHost[] = [];
   /** The profiles built whose session hasn't opened yet, by temp folder, with the timer that removes it. */
-  readonly #unopened = new Map<string, NodeJS.Timeout>();
+  readonly #unopened = new Map<string, { built: BuiltProfile; timer: NodeJS.Timeout }>();
 
   constructor(options: HostHarnessProfilesOptions) {
     this.#options = options;
@@ -99,8 +106,17 @@ export class HostHarnessProfiles {
     if (real === undefined) return undefined;
     const { profiles } = await this.#profilesOf(real);
     const built = await profiles.profileOf(harnessAgentOf(agent), bridge, instructionsFolder);
-    this.#removeIfUnopened(built.profile);
+    this.#removeIfUnopened({ workspace: real, agent, profile: built.profile });
     return built;
+  }
+
+  /**
+   * The profile this host built with `tempFolder`, while no session has
+   * opened with it yet: a session opened without the sandbox may only use a
+   * profile the host built itself, and only once (`agent-host.unfenced-gate`).
+   */
+  unopened(tempFolder: string): BuiltProfile | undefined {
+    return this.#unopened.get(tempFolder)?.built;
   }
 
   /**
@@ -142,7 +158,8 @@ export class HostHarnessProfiles {
   }
 
   /** A profile whose session never opens (its run was cancelled in between, say) gets its temp folder removed after a while. */
-  #removeIfUnopened(profile: SandboxProfile): void {
+  #removeIfUnopened(built: BuiltProfile): void {
+    const { profile } = built;
     const timer = setTimeout(
       () => {
         this.#unopened.delete(profile.tempFolder);
@@ -151,12 +168,12 @@ export class HostHarnessProfiles {
       this.#options.unopenedAfterMs ?? 10 * 60_000,
     );
     timer.unref();
-    this.#unopened.set(profile.tempFolder, timer);
+    this.#unopened.set(profile.tempFolder, { built, timer });
   }
 
   /** The session is opening, so it removes its own temp folder when it closes. */
   #opening(profile: SandboxProfile): void {
-    clearTimeout(this.#unopened.get(profile.tempFolder));
+    clearTimeout(this.#unopened.get(profile.tempFolder)?.timer);
     this.#unopened.delete(profile.tempFolder);
   }
 

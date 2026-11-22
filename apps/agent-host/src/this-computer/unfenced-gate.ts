@@ -1,0 +1,186 @@
+// The checks before the host opens a session without the sandbox for an
+// agent a person set to "On this computer" (HAL-13195). Studio's page asks
+// for the session; everything it says is a claim, so the host reads the
+// agent's file, the person's trust record and the person's choice from disk
+// itself, and opens only with a profile it built for that agent.
+
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { AgentPlacement } from "@halonicjs/app";
+import type { Agent } from "@halonicjs/format";
+import type {
+  AgentPlacementStore,
+  Clock,
+  Digest,
+  SandboxProfile,
+  TrustStore,
+} from "@halonicjs/ports";
+import { canonicalJson } from "@halonicjs/std";
+import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import type { BuiltProfile, HostHarnessProfiles } from "../harness/host-profiles.ts";
+import { namedWorkspace } from "../server/named-workspace.ts";
+import { isAgentTrusted } from "./agent-trust.ts";
+
+/** What Studio asks to open: the agent, by its workspace, hub and id, and the profile to open with. */
+export interface UnfencedOpenRequest {
+  readonly workspace: string;
+  readonly hubId: string;
+  readonly agentId: string;
+  readonly profile: SandboxProfile;
+}
+
+/** Why the host won't open the session, as the route answers it. */
+export interface UnfencedRefusal {
+  readonly status: 403 | 404;
+  readonly kind:
+    | "unknown_workspace"
+    | "unknown_agent"
+    | "workspace_not_trusted"
+    | "not_on_this_computer"
+    | "profile_not_built";
+  readonly message: string;
+}
+
+/** What the gate reads: the host's own records, never the page's. */
+export interface UnfencedGateOptions {
+  /** The folders the launcher named as workspaces. */
+  readonly workspaceRoots: readonly string[];
+  /** The trust records of the user's profile. */
+  readonly trustStore: TrustStore;
+  /** The "this computer" choices in the user's profile. */
+  readonly placements: AgentPlacementStore;
+  /** The profiles this host built and no session has opened with yet. */
+  readonly profiles: Pick<HostHarnessProfiles, "unopened">;
+  readonly digest: Digest;
+  readonly clock: Clock;
+}
+
+/**
+ * Decides whether the host may open a session without the sandbox. It passes
+ * only when all of these hold, read by the host itself, in this order:
+ *
+ * 1. the workspace is one the launcher named (by real path), and has the agent;
+ * 2. the person's trust record for the workspace lists the agent as its file
+ *    is now (see {@link isAgentTrusted});
+ * 3. the person chose "On this computer" for the agent's file as it is now
+ *    (`AgentPlacement`, the same reader as the CLI's);
+ * 4. the profile is one this host built for that agent and no session has
+ *    opened with yet, field for field; only its environment may differ, by
+ *    the variables the harness adds, which the run's start checks.
+ */
+export class UnfencedGate {
+  readonly #options: UnfencedGateOptions;
+  readonly #placement: AgentPlacement;
+
+  constructor(options: UnfencedGateOptions) {
+    this.#options = options;
+    this.#placement = new AgentPlacement({
+      store: options.placements,
+      digest: options.digest,
+      clock: options.clock,
+    });
+  }
+
+  /** @returns the profile the host built, or why the session doesn't open */
+  async check(request: UnfencedOpenRequest): Promise<BuiltProfile | UnfencedRefusal> {
+    const root = await namedWorkspace(this.#options.workspaceRoots, request.workspace);
+    if (root === undefined) {
+      return refusal(
+        404,
+        "unknown_workspace",
+        "The agent host was not told to serve this workspace.",
+      );
+    }
+    const found = await agentFileOf(root, request.hubId, request.agentId);
+    if (found === undefined) {
+      return refusal(404, "unknown_agent", "This workspace has no such agent.");
+    }
+    if (!(await isAgentTrusted(this.#options.trustStore, root, found.agent))) {
+      return refusal(
+        403,
+        "workspace_not_trusted",
+        "This computer's trust record doesn't cover this agent as its file is now. Trust the workspace first.",
+      );
+    }
+    const where = await this.#placement.where({
+      location: root,
+      hub: request.hubId,
+      agent: request.agentId,
+      file: found.bytes,
+    });
+    if (where.runsOn !== "this-computer") {
+      return refusal(
+        403,
+        "not_on_this_computer",
+        "Nobody chose On this computer for this agent's file as it is now, so it runs in the sandbox.",
+      );
+    }
+    const built = this.#options.profiles.unopened(request.profile.tempFolder);
+    if (built === undefined || !isBuiltFor(built, root, request, found.agent)) {
+      return refusal(
+        403,
+        "profile_not_built",
+        "The agent host didn't build this profile for this agent, or a session already opened with it.",
+      );
+    }
+    return built;
+  }
+
+  /**
+   * Whether `built` still waits for its session. Call it right before the
+   * open, in the same turn: the launcher's open takes the profile at once,
+   * so of two requests with one profile only the first opens a session.
+   */
+  isStillUnopened(built: BuiltProfile): boolean {
+    return this.#options.profiles.unopened(built.profile.tempFolder) === built;
+  }
+}
+
+/** Whether `value` is a refusal rather than the built profile. */
+export function isRefusal(value: BuiltProfile | UnfencedRefusal): value is UnfencedRefusal {
+  return "kind" in value;
+}
+
+function refusal(
+  status: UnfencedRefusal["status"],
+  kind: UnfencedRefusal["kind"],
+  message: string,
+): UnfencedRefusal {
+  return { status, kind, message };
+}
+
+/** The agent's file in the workspace as it is on disk now: its parsed form and its raw bytes. */
+async function agentFileOf(
+  root: string,
+  hubId: string,
+  agentId: string,
+): Promise<{ agent: Agent; bytes: Uint8Array } | undefined> {
+  const workspace = await loadWorkspace(new FolderDefinitionStore(root, root));
+  const file = filesOf(workspace, "agent").find(
+    (each) => each.hub === hubId && each.value.id === agentId,
+  );
+  if (file === undefined) return undefined;
+  return { agent: file.value, bytes: new Uint8Array(await readFile(join(root, file.path))) };
+}
+
+/** Whether the host built `built` for this agent in this workspace, and the request's profile is it, environment aside. */
+function isBuiltFor(
+  built: BuiltProfile,
+  root: string,
+  request: UnfencedOpenRequest,
+  agent: Agent,
+): boolean {
+  return (
+    built.workspace === root &&
+    built.agent.hubId === request.hubId &&
+    built.agent.agentId === request.agentId &&
+    built.agent.harness === agent.harness &&
+    canonicalJson(withoutEnv(built.profile)) === canonicalJson(withoutEnv(request.profile))
+  );
+}
+
+function withoutEnv(profile: SandboxProfile): Omit<SandboxProfile, "env"> {
+  const { env: _env, ...rest } = profile;
+  return rest;
+}
