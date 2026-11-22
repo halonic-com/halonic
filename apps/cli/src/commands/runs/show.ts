@@ -26,12 +26,7 @@ import { runsMessages, type ShownEnd } from "../../messages/runs.ts";
 import { startedInWords } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
 import { type RunClock, startedAt } from "../../run-times.ts";
-import {
-  providerNoteLines,
-  runViewDefinitions,
-  stepLines,
-  stepLinesWithOutput,
-} from "../../run-view.ts";
+import { providerNoteLines, runViewDefinitions, stepLinesWithDetails } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
@@ -83,12 +78,9 @@ export async function showRun(
       const title = workflowTitle(definitions.workflow, run.summary);
       const clock = setup.clock();
       const withOutput = input.options["output"] === true;
-      const steps = (withOutput ? stepLinesWithOutput : stepLines)(
-        run.events,
-        run.summary,
-        definitions,
-        clock,
-      );
+      const steps = stepLinesWithDetails(run.events, run.summary, definitions, clock, {
+        output: withOutput,
+      });
       const debugText = failedRunDebugText(run);
       return {
         exitCode: exitCode.ok,

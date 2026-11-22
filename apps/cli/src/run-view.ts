@@ -6,6 +6,7 @@
 // holds no text.
 
 import {
+  eventsBySteps,
   hubWorkflows,
   type RunStep,
   runSteps,
@@ -16,6 +17,7 @@ import {
 import { providerNotes, type RunEvent, type RunSummary, sendsOf } from "@halonicjs/events";
 import type { KindValues } from "@halonicjs/format";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { failedCallLines } from "./failed-call-lines.ts";
 import { columns, columnsAs, columnWidths, paddingAfter } from "./messages/columns.ts";
 import { duration } from "./messages/duration.ts";
 import { dimmed, type Phrase, phrase } from "./messages/phrase.ts";
@@ -99,24 +101,35 @@ export function stepLines(
 }
 
 /**
- * The step lines of {@link stepLines}, each agent step that finished with
- * its output under it, indented two spaces (HAL-12073). A string is printed
- * line by line, any other value as pretty-printed JSON; a step that wrote
- * nothing says so. The output comes from the step's `agent.finished`, which
- * is what the run went on with, not from one of the model's answers on the
- * way. All of it is outside text, made printable (cli-output section 5).
+ * The step lines of {@link stepLines}, each with the lines under it,
+ * indented two spaces: a dim line for each of its tool calls that failed
+ * (`failedCallLines`, HAL-15149), then, with `output`, the output of an
+ * agent step that finished (HAL-12073). A string is printed line by line,
+ * any other value as pretty-printed JSON; a step that wrote nothing says
+ * so. The output comes from the step's `agent.finished`, which is what the
+ * run went on with, not from one of the model's answers on the way. All of
+ * it is outside text, made printable (cli-output section 5).
  */
-export function stepLinesWithOutput(
+export function stepLinesWithDetails(
   events: readonly RunEvent[],
   summary: RunSummary,
   definitions: RunDefinitions,
   clock: RunClock,
+  { output }: { readonly output: boolean },
 ): Phrase[] {
   const steps = runSteps(events, summary);
-  // One line for each step, in the same order.
+  const stepLogs = eventsBySteps(events);
+  // One line for each step, in the same order; the end state's events come last and get none.
   return stepLines(events, summary, definitions, clock).flatMap((line, index) => {
     const step = steps[index];
-    return step === undefined ? [line] : [line, ...outputLines(step)];
+    if (step === undefined) {
+      return [line];
+    }
+    return [
+      line,
+      ...failedCallLines(events, stepLogs[index] ?? []),
+      ...(output ? outputLines(step) : []),
+    ];
   });
 }
 
