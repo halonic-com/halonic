@@ -26,7 +26,8 @@
 //! `sandbox_elevate` (capabilities/desktop-sandbox-elevate.json), and on Android the
 //! pairing scanner's `pair_scan` and `pair_scan_cancel`
 //! (capabilities/phone-pair-scan.json) and the phone tunnel's `phone_*`
-//! commands with `phone_tunnel_watch` (capabilities/phone-tunnel.json); the Studio it then opens is
+//! commands with `phone_tunnel_watch`, `tunnel_send` and `tunnel_end_session`
+//! (capabilities/phone-tunnel.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
@@ -299,6 +300,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             phone_tunnel::phone_connect,
             phone_tunnel::phone_disconnect,
             phone_tunnel::phone_tunnel_watch,
+            phone_tunnel::tunnel_send,
+            phone_tunnel::tunnel_end_session,
             #[cfg(desktop)]
             updates::update_status,
             #[cfg(desktop)]

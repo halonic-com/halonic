@@ -1,14 +1,17 @@
-//! The phone tunnel's commands (tunnel D6, HAL-15157): the phone's own
-//! page pairs with a computer, lists, forgets, connects to and disconnects
-//! from paired computers through these, and the `halonic-phone-tunnel`
-//! crate does the work. Android only (`capabilities/phone-tunnel.json`, a
+//! The phone tunnel's commands (tunnel D6, HAL-15157; D7a, HAL-15177): the
+//! phone's own page pairs with a computer, lists, forgets, connects to and
+//! disconnects from paired computers, and sends its gateway messages into a
+//! computer's session, through these, and the `halonic-phone-tunnel` crate
+//! does the work. Android only (`capabilities/phone-tunnel.json`, a
 //! local capability), so the Studio a computer serves gets none of them.
 //!
 //! The keys stay in Rust: every answer is one of the crate's typed answers,
 //! with the check code, computer names, ids, endpoints, times and states,
 //! never a private key, a session key, the pairing code or its psk. The
-//! statuses go to the page on the channel `phone_tunnel_watch` takes, only
-//! while the window is on the app's own page (`phone_tunnel_events`).
+//! page hands over gateway message text and gets it back; the shell seals
+//! and opens it. The statuses, sessions and host messages go to the page on
+//! the channel `phone_tunnel_watch` takes, only while the window is on the
+//! app's own page (`phone_tunnel_events`).
 //!
 //! The commands that wait run on async threads, never Android's main
 //! thread, since the key store waits for the Android Keystore. Other
@@ -17,7 +20,7 @@
 
 use halonic_phone_tunnel::{
     ComputersAnswer, ConnectOutcome, ForgetOutcome, PairingOutcome, PairingStart, PairingStep,
-    Problem,
+    Problem, SendAnswer, SendRefusal,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
@@ -117,9 +120,56 @@ pub fn phone_disconnect<R: Runtime>(app: AppHandle<R>, computer: String) {
     let _ = (app, computer);
 }
 
-/// Sends each computer's current status, then every change, on
-/// `on_event`, until the page leaves the app's own page, reloads or
-/// closes. Answers false, and sends nothing, unless the window is on the
+/// Seals one gateway message into the computer's session of `generation`
+/// and sends it, or says why not: `not-open` (no such session is open, or
+/// the window isn't on the app's own page), `too-large` or `not-allowed`.
+/// Nothing is queued or tried again, and a refusal keeps the session open.
+#[tauri::command]
+pub async fn tunnel_send<R: Runtime>(
+    webview: Webview<R>,
+    computer: String,
+    generation: u64,
+    text: String,
+) -> SendAnswer {
+    // Only the app's own page may call this (the capability), and it can't
+    // send while the window is anywhere else either (H1 on HAL-15181).
+    if !phone_tunnel_events::on_app_page(&webview) {
+        return SendAnswer::from(Err(SendRefusal::NotOpen));
+    }
+    #[cfg(target_os = "android")]
+    {
+        if let Some(tunnel) = android::tunnel(webview.app_handle()) {
+            return tunnel.send(&computer, generation, &text).await.into();
+        }
+    }
+    #[cfg(not(target_os = "android"))]
+    let _ = (computer, generation, text);
+    SendAnswer::from(Err(SendRefusal::NotOpen))
+}
+
+/// Ends the computer's session of `generation`, which the page refused a
+/// host message on. The computer stays connected, and the phone reconnects
+/// after its backoff. Does nothing for any other generation, or while the
+/// window isn't on the app's own page.
+#[tauri::command]
+pub fn tunnel_end_session<R: Runtime>(webview: Webview<R>, computer: String, generation: u64) {
+    // The same page check as `tunnel_send` (H1 on HAL-15181).
+    if !phone_tunnel_events::on_app_page(&webview) {
+        return;
+    }
+    #[cfg(target_os = "android")]
+    {
+        if let Some(tunnel) = android::tunnel(webview.app_handle()) {
+            tunnel.end_session(&computer, generation);
+        }
+    }
+    #[cfg(not(target_os = "android"))]
+    let _ = (computer, generation);
+}
+
+/// Sends each computer's current status and open session, then every
+/// change and every host message, on `on_event`, until the page leaves the
+/// app's own page, reloads or closes. Answers false, and sends nothing, unless the window is on the
 /// app's own page.
 #[tauri::command]
 pub fn phone_tunnel_watch<R: Runtime>(webview: Webview<R>, on_event: Channel<TunnelEvent>) -> bool {
@@ -146,19 +196,26 @@ fn end_pairing<R: Runtime>(app: &AppHandle<R>) {
     let _ = app;
 }
 
-/// Each computer's latest status, as events.
+/// Each computer's latest status, then each open session, as events.
 fn current_statuses<R: Runtime>(app: &AppHandle<R>) -> Vec<TunnelEvent> {
     #[cfg(target_os = "android")]
     {
         if let Some(tunnel) = android::tunnel(app) {
-            return tunnel
-                .statuses()
-                .into_iter()
-                .map(|(computer, status)| TunnelEvent::Status {
+            let statuses =
+                tunnel
+                    .statuses()
+                    .into_iter()
+                    .map(|(computer, status)| TunnelEvent::Status {
+                        computer: computer.as_str().to_owned(),
+                        status,
+                    });
+            let sessions = tunnel.sessions().into_iter().map(|(computer, generation)| {
+                TunnelEvent::SessionOpened {
                     computer: computer.as_str().to_owned(),
-                    status,
-                })
-                .collect();
+                    generation,
+                }
+            });
+            return statuses.chain(sessions).collect();
         }
     }
     #[cfg(not(target_os = "android"))]
@@ -267,12 +324,22 @@ mod android {
             tell(&self.app, &event);
         }
 
-        // Carried to the page with `tunnel_send` in the next part of D7a
-        // (HAL-15177); until then the page can't answer a session, so the
-        // shell passes nothing of it on.
-        fn session_opened(&self, _computer: &ComputerId, _generation: u64) {}
+        fn session_opened(&self, computer: &ComputerId, generation: u64) {
+            let event = TunnelEvent::SessionOpened {
+                computer: computer.as_str().to_owned(),
+                generation,
+            };
+            tell(&self.app, &event);
+        }
 
-        fn message(&self, _computer: &ComputerId, _generation: u64, _text: &str) {}
+        fn message(&self, computer: &ComputerId, generation: u64, text: &str) {
+            let event = TunnelEvent::Message {
+                computer: computer.as_str().to_owned(),
+                generation,
+                text: text.to_owned(),
+            };
+            tell(&self.app, &event);
+        }
 
         fn log(&self, line: &str) {
             halonic_shell_log::record("phone-tunnel", line);

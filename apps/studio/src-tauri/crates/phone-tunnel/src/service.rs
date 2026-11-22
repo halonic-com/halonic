@@ -116,6 +116,12 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
         self.connections.statuses()
     }
 
+    /// Each computer's open session, by generation, for a page that has
+    /// just started listening: it sends `hello` on each.
+    pub fn sessions(&self) -> Vec<(ComputerId, u64)> {
+        self.connections.sessions()
+    }
+
     /// Asks Android's local network question when any of `endpoints` is on
     /// the Wi-Fi.
     pub(crate) async fn allow_local_network(&self, endpoints: &[Endpoint]) -> Result<(), Problem> {

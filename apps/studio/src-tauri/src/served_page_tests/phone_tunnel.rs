@@ -1,7 +1,9 @@
-//! The served page and the phone tunnel (HAL-15157; H1 on HAL-15181):
-//! only the phone's own page may call the `phone_*` commands, on Android
-//! only, and the tunnel's events reach only the app's own page, never the
-//! Studio a computer serves into the same window.
+//! The served page and the phone tunnel (HAL-15157 and HAL-15177; H1 and
+//! L3 on HAL-15181, B7 items 8 and 9 of the D7 design on HAL-15159): only
+//! the phone's own page may call the `phone_*` and `tunnel_*` commands, on
+//! Android only, and the tunnel's events, statuses, sessions and host
+//! messages alike, reach only the app's own page, never the Studio a
+//! computer serves into the same window.
 
 use std::sync::{Arc, Mutex};
 
@@ -16,7 +18,7 @@ use super::{CONNECT_PAGE, SERVED_PAGE, app_window, invoke};
 use crate::navigation::{ConfirmedAddress, on_navigation};
 use crate::phone_tunnel_events::{TunnelEvent, end_page_watch, tell, watch, watching};
 
-const COMMANDS: [&str; 8] = [
+const COMMANDS: [&str; 10] = [
     "phone_pair_start",
     "phone_pair_wait",
     "phone_pair_cancel",
@@ -25,6 +27,8 @@ const COMMANDS: [&str; 8] = [
     "phone_connect",
     "phone_disconnect",
     "phone_tunnel_watch",
+    "tunnel_send",
+    "tunnel_end_session",
 ];
 
 /// The app's own page on this platform, which the window opens.
@@ -119,6 +123,21 @@ fn status(status: PageStatus) -> TunnelEvent {
     }
 }
 
+fn session_opened() -> TunnelEvent {
+    TunnelEvent::SessionOpened {
+        computer: "desk".to_owned(),
+        generation: 7,
+    }
+}
+
+fn message() -> TunnelEvent {
+    TunnelEvent::Message {
+        computer: "desk".to_owned(),
+        generation: 7,
+        text: r#"{"type":"welcome","replyTo":"h1","version":2}"#.to_owned(),
+    }
+}
+
 fn reconnecting() -> TunnelEvent {
     status(PageStatus::Reconnecting {
         last_try: Some(Reason::Timeout),
@@ -169,24 +188,46 @@ fn phone_tunnel_commands_send_the_app_s_own_page_the_current_status_first() {
 }
 
 #[test]
-fn phone_tunnel_commands_send_no_event_once_the_window_is_on_the_served_page() {
+fn phone_tunnel_commands_send_sessions_and_messages_with_exactly_their_fields() {
     let (app, webview) = on_app_page();
     let (channel, sent) = recording();
-    assert!(watch(&webview, channel, Vec::new()));
+    assert!(watch(&webview, channel, vec![session_opened()]));
+    tell(&app, &message());
+    assert_eq!(
+        *sent.lock().unwrap(),
+        vec![
+            json!({ "kind": "session-opened", "computer": "desk", "generation": 7 }),
+            json!({
+                "kind": "message",
+                "computer": "desk",
+                "generation": 7,
+                "text": r#"{"type":"welcome","replyTo":"h1","version":2}"#,
+            }),
+        ]
+    );
+}
 
-    // The window moves on without asking the guard, as Android's WebView
-    // does for a form sent with POST: the next event finds it on the
-    // served page, isn't sent, and drops the channel.
-    go(&webview, SERVED_PAGE);
-    tell(&app, &status(PageStatus::Connected));
-    assert!(sent.lock().unwrap().is_empty());
-    assert_eq!(watching(&app), 0);
+#[test]
+fn phone_tunnel_commands_send_no_event_once_the_window_is_on_the_served_page() {
+    for event in [status(PageStatus::Connected), session_opened(), message()] {
+        let (app, webview) = on_app_page();
+        let (channel, sent) = recording();
+        assert!(watch(&webview, channel, Vec::new()));
 
-    // Back on the app's own page, the dropped channel stays dropped: the
-    // page watches again.
-    go(&webview, APP_PAGE);
-    tell(&app, &status(PageStatus::Connected));
-    assert!(sent.lock().unwrap().is_empty());
+        // The window moves on without asking the guard, as Android's
+        // WebView does for a form sent with POST: the next event finds it
+        // on the served page, isn't sent, and drops the channel.
+        go(&webview, SERVED_PAGE);
+        tell(&app, &event);
+        assert!(sent.lock().unwrap().is_empty(), "{event:?}");
+        assert_eq!(watching(&app), 0);
+
+        // Back on the app's own page, the dropped channel stays dropped:
+        // the page watches again.
+        go(&webview, APP_PAGE);
+        tell(&app, &event);
+        assert!(sent.lock().unwrap().is_empty(), "{event:?}");
+    }
 }
 
 #[test]
@@ -203,7 +244,9 @@ fn phone_tunnel_commands_send_no_event_while_the_window_leaves() {
     let served: Url = SERVED_PAGE.parse().expect("a test URL");
     assert!(on_navigation(&webview, &served));
     assert_eq!(watching(&app), 0);
-    tell(&app, &status(PageStatus::Connected));
+    for event in [status(PageStatus::Connected), session_opened(), message()] {
+        tell(&app, &event);
+    }
     assert!(sent.lock().unwrap().is_empty());
 }
 
@@ -231,7 +274,7 @@ fn phone_tunnel_commands_refuse_a_watch_from_the_served_page() {
     assert!(!watch(
         &webview,
         channel,
-        vec![status(PageStatus::Connected)]
+        vec![status(PageStatus::Connected), session_opened()]
     ));
     assert!(sent.lock().unwrap().is_empty());
     assert_eq!(watching(&app), 0);

@@ -101,7 +101,7 @@ impl<'de> Visitor<'de> for MessageTypeVisitor {
 
     fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<MessageType, A::Error> {
         let mut kind = None;
-        // Keys are read unescaped, so `"type"` counts as `type`, as it
+        // Keys are read unescaped, so `"\u0074ype"` counts as `type`, as it
         // does for the host's parser.
         while let Some(key) = map.next_key::<String>()? {
             if key != "type" {

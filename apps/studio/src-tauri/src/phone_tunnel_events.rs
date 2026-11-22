@@ -14,8 +14,9 @@
 //!   drops a channel whose window is anywhere else.
 //!
 //! Back on the app's own page, the page watches again and gets each
-//! computer's current status first. D7 (HAL-15177) adds the session's
-//! events to the same channel.
+//! computer's current status first, then each open session. A session's
+//! opening and its host messages (D7a, HAL-15177) take the same way, so
+//! the served page never gets a message's text either.
 
 use std::sync::{Mutex, PoisonError};
 
@@ -42,6 +43,18 @@ pub enum TunnelEvent {
         computer: String,
         status: PageStatus,
     },
+    /// A session to the computer opened: the page sends `hello` on it.
+    /// `generation` names it, and is never given to another session.
+    #[cfg_attr(not(any(target_os = "android", test)), expect(dead_code))]
+    SessionOpened { computer: String, generation: u64 },
+    /// One host message of the session `generation`, as text the page
+    /// reads with its own strict parser.
+    #[cfg_attr(not(any(target_os = "android", test)), expect(dead_code))]
+    Message {
+        computer: String,
+        generation: u64,
+        text: String,
+    },
 }
 
 /// The channels pages watch through, by the label of their webview.
@@ -49,8 +62,8 @@ pub enum TunnelEvent {
 pub struct TunnelWatchers(Mutex<Vec<(String, Channel<TunnelEvent>)>>);
 
 /// Starts sending events to `channel`, after `current`: each computer's
-/// latest status. Answers false, and keeps nothing, unless the webview is
-/// on the app's own page.
+/// latest status and open session. Answers false, and keeps nothing, unless
+/// the webview is on the app's own page.
 pub fn watch<R: Runtime>(
     webview: &Webview<R>,
     channel: Channel<TunnelEvent>,
@@ -113,6 +126,6 @@ pub fn watching<R: Runtime>(app: &AppHandle<R>) -> usize {
 
 /// Whether the webview shows the app's own page, the only page the
 /// navigation guard keeps besides the confirmed address.
-fn on_app_page<R: Runtime>(webview: &Webview<R>) -> bool {
+pub fn on_app_page<R: Runtime>(webview: &Webview<R>) -> bool {
     webview.url().is_ok_and(|url| is_app_page(&target(&url)))
 }
