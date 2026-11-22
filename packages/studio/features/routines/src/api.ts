@@ -441,6 +441,7 @@ export class RoutineInputRefused extends KindedError {
 }
 
 export { agentCantRunWords } from "./agent-cant-run-words.ts";
+export { cantStartWords } from "./cant-start-words.ts";
 
 /** What {@link RoutinesHost.create} rejects with when the hub has no workflow and no agent to run. */
 export class NothingToRun extends KindedError {
