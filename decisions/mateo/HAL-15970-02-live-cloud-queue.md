@@ -3,6 +3,7 @@
 - Task: HAL-15970
 - Approval: Liam approves this note in review on HAL-15970; Julian reviews the `live-cloud.yml` part (the token now reaches merge groups)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:P49/8TL2WYf2DvrpAJkAMQoyTYvFGrqCY9P0KUj88G/Vvcbb5LOj8bUKFZJc+j92xqXoq04MCRyL0M4EgXuyDw==
 
 ## What changes
 
