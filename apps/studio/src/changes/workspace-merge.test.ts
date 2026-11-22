@@ -258,14 +258,31 @@ verifies("source-control.get-updates-per-item", () => {
       }
     });
 
-    it("leaves Halonic's own folders and private files out of the merge", async () => {
+    it("leaves Halonic's own folders and this side's private files out of the merge", async () => {
       const s = shared();
       try {
-        s.publish({ ".halonic/review/1.json": "{}", ".env": "SAM=1\n", "a.md": "sam\n" });
+        s.publish({ ".halonic/review/1.json": "{}", "a.md": "sam\n" });
         s.commit({ ".halonic/review/1.json": "{ }", ".env": "ME=1\n", "a.md": "mine\n" });
         const started = await s.open().startMerge();
         if (started.kind !== "started") throw new Error("not started");
         expect(started.merge.items.map((item) => item.path)).toEqual(["a.md"]);
+        expect(s.read(".env")).toBe("ME=1\n");
+      } finally {
+        rmSync(s.root, { recursive: true, force: true });
+      }
+    });
+
+    it("refuses, changing nothing, when the shared copy changed files Halonic leaves to git", async () => {
+      const s = shared();
+      try {
+        s.publish({ ".env.example": "SAM=1\n", "logs/NOTES~1.md": "x\n", "b.md": "two\n" });
+        s.commit({ ".env.example": "ME=1\n", "a.md": "mine\n" });
+        await expect(s.open().startMerge()).rejects.toThrow(
+          "updates change files Halonic leaves to git: .env.example, logs/NOTES~1.md.",
+        );
+        expect(s.read(".env.example")).toBe("ME=1\n");
+        expect(existsSync(join(s.mine, "b.md"))).toBe(false);
+        expect(() => s.run(s.mine, "rev-parse", "--verify", "--quiet", "MERGE_HEAD")).toThrow();
       } finally {
         rmSync(s.root, { recursive: true, force: true });
       }
