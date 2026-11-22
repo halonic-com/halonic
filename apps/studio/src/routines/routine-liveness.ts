@@ -1,7 +1,9 @@
 import { type RoutineVersions, runningRoutine } from "@halonicjs/app/routines";
 import type { Routine } from "@halonicjs/format";
 import { describeTrigger } from "@halonicjs/routines";
+import { KindedError } from "@halonicjs/std";
 import type { RoutineLiveValues, RoutineView } from "@halonicjs/studio-feature-routines/api";
+import { isUnexplained } from "@halonicjs/studio-shell";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { RoutineVersionsAt } from "../changes/workspace-liveness.ts";
 import { type PlacedFile, runTargetName } from "./routine-reads.ts";
@@ -71,5 +73,29 @@ export async function listedVersionsAt(
   } catch (error) {
     fallBack(error);
     return asSaved;
+  }
+}
+
+/** The page's reason when the history can't be read and the failure says nothing of its own. */
+export const historyUnreadable =
+  "This workspace's history can't be read, so Halonic can't tell which version of this routine runs.";
+
+/**
+ * A routine's versions for its page and Next, from a fresh read of the live version; none where the
+ * app can't tell. A failure with a reason of its own keeps it; one without, such as git stopping
+ * without saying why, rejects with {@link historyUnreadable} and keeps the failure as its cause, so
+ * the page names the history instead of the engine (C600 #3, HAL-15607).
+ */
+export async function pageVersionsOf(
+  liveness: (() => Promise<RoutineVersionsAt>) | undefined,
+  path: string,
+): Promise<RoutineVersions | undefined> {
+  if (liveness === undefined) return undefined;
+  try {
+    const versionsAt = await liveness();
+    return await versionsAt(path);
+  } catch (error) {
+    if (!isUnexplained(error)) throw error;
+    throw new KindedError("unavailable", historyUnreadable, { cause: error });
   }
 }

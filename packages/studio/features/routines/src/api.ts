@@ -418,14 +418,11 @@ export interface RoutinesHost {
 }
 
 /**
- * What {@link RoutinesHost.runNow} rejects with when the engine can't be reached. The page says
- * the words for where Studio runs and ignores this error's message.
+ * What {@link RoutinesHost.runNow} rejects with when the engine can't be reached: the shell's own,
+ * so the page says the words for where Studio runs only for it and blames the engine for nothing
+ * else (`engineReasonFor`, HAL-15607).
  */
-export class EngineNotAnswering extends KindedError {
-  constructor() {
-    super("unavailable", "The engine isn't answering.");
-  }
-}
+export { EngineNotAnswering } from "@halonicjs/studio-shell";
 
 /**
  * What {@link RoutinesHost.runNow} rejects with when the engine refuses the routine's input because

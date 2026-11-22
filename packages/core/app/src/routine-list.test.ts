@@ -202,6 +202,23 @@ verifies("app.routine-list", () => {
     ]);
   });
 
+  it("says which routines start an agent on their own", async () => {
+    const routines = await listed({
+      [routinePath("digest")]: routineFile("digest", "{ every: 1d }").replace(
+        "run: { workflow: report }",
+        "run: { agent: reporter, prompt: Write the digest. }",
+      ),
+      [routinePath("weekly")]: routineFile("weekly", "{ every: 1d }"),
+      [routinePath("broken")]: "id: broken\ntrigger: { every: 0m }",
+    });
+
+    expect(routines.map((each) => [each.routineId, each.startsAgent])).toEqual([
+      ["broken", false],
+      ["digest", true],
+      ["weekly", false],
+    ]);
+  });
+
   it("keys a routine file at the workspace root that doesn't load by @workspace", async () => {
     const [routine] = await listed({
       "workflows/routines/backup.routine.yaml": "id: backup\ntrigger: { manual: true }",

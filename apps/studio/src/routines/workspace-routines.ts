@@ -36,7 +36,7 @@ import {
   targetOfFile,
   triggerOfFile,
 } from "./routine-files.ts";
-import { listedVersionsAt, livenessOf, runningOf } from "./routine-liveness.ts";
+import { listedVersionsAt, livenessOf, pageVersionsOf, runningOf } from "./routine-liveness.ts";
 import {
   errorsOf,
   findRoutine,
@@ -355,10 +355,9 @@ export class WorkspaceRoutines implements RoutinesHost {
     return startRoutineNow({ hub: ref.hubId, routine: value }, engine, this.#parts.now());
   }
 
-  /** The versions of one routine, for its page and Next: a history that can't be read rejects, so the page says why. */
+  /** The versions of one routine, for its page and Next: a history that can't be read rejects, so the page says why ({@link pageVersionsOf}). */
   async #versionsOf(file: PlacedFile): Promise<RoutineVersions | undefined> {
-    const versionsAt = await this.#parts.liveness?.();
-    return versionsAt?.(file.path);
+    return pageVersionsOf(this.#parts.liveness, file.path);
   }
 
   /** The versions of every routine a list shows, from one read; see {@link listedVersionsAt}. */

@@ -167,13 +167,10 @@ verifies("cli.commands.routines.list", () => {
 
     it("says Can't start for a routine whose file has errors, counts them above the list, and exits 1", async () => {
       await addRoutines({
-        digest: [
-          "id: digest",
-          "name: Friday digest",
-          'trigger: { schedule: "0 16 * * 5" }',
-          "run: { workflow: weekly-digest }",
-          "",
-        ].join("\n"),
+        digest: routine("digest", "Friday digest", '{ schedule: "0 16 * * 5" }').replace(
+          "support-reply",
+          "weekly-digest",
+        ),
         morning: routine("morning", "Morning check", '{ schedule: "0 8 * * *" }'),
       });
 
@@ -207,13 +204,10 @@ verifies("cli.commands.routines.list", () => {
         "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\nmodel: test\n",
       });
       await addRoutines({
-        monday: [
-          "id: monday",
-          "name: Monday note",
-          'trigger: { schedule: "0 8 * * 1" }',
-          "run: { workflow: announce }",
-          "",
-        ].join("\n"),
+        monday: routine("monday", "Monday note", '{ schedule: "0 8 * * 1" }').replace(
+          "support-reply",
+          "announce",
+        ),
       });
 
       const { code, io } = await routinesIn("--dir", ".");
@@ -234,13 +228,11 @@ verifies("cli.commands.routines.list", () => {
       await addRoutines({
         hook: routine("hook", "Order hook", "{ webhook: { secret: order-hook } }"),
         "no-secret": routine("no-secret", "New mail", "{ webhook: { secret: mail-hook } }"),
-        "to-agent": [
-          "id: to-agent",
-          "name: Agent on request",
-          "trigger: { webhook: { secret: order-hook } }",
-          "run: { agent: writer, prompt: Hi }",
-          "",
-        ].join("\n"),
+        "to-agent": routine(
+          "to-agent",
+          "Agent on request",
+          "{ webhook: { secret: order-hook } }",
+        ).replace("workflow: support-reply", "agent: writer, prompt: Hi"),
       });
 
       const { code, io } = await routinesWith(
@@ -249,13 +241,41 @@ verifies("cli.commands.routines.list", () => {
         ".",
       );
 
-      // C570 #3: mail-hook has no value, and the server answers an agent's routine with 501.
+      // C570 #3: mail-hook has no value; the agent's routine has its own line (HAL-15607).
       expect(code).toBe(exitCode.failed);
       expect(io.stdout).toEqual([
-        "! 2 routines can't start on a web request · halonic serve --dir .",
+        "! 1 routine can't start on a web request · halonic serve --dir .",
         "Order hook         On a signed web request   No set time     Never ran",
         "New mail           On a signed web request   ✕ Can't start   Never ran",
         "Agent on request   On a signed web request   ✕ Can't start   Never ran",
+        "! Agent on request can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.",
+        hint,
+      ]);
+    });
+
+    it("says Can't start and why under the list for a routine that starts an agent", async () => {
+      await writeFiles(acmeRuns.acme, {
+        "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\nmodel: test\n",
+      });
+      await addRoutines({
+        digest: routine("digest", "Daily digest", '{ schedule: "0 8 * * 1-5" }').replace(
+          "run: { workflow: support-reply }",
+          "run: { agent: writer, prompt: Write the digest. }",
+        ),
+      });
+
+      const { code, io } = await routinesIn("--json");
+      const listed = await routinesIn();
+
+      // C600 #2 (HAL-15607): it said "Next tomorrow 08:00" for a run that never comes.
+      expect(code).toBe(exitCode.ok);
+      expect(JSON.parse(io.stdout.join("\n")).routines[0]).toMatchObject({
+        nextRun: null,
+        startsAgent: true,
+      });
+      expect(listed.io.stdout).toEqual([
+        "Daily digest   Weekdays at 08:00   ✕ Can't start   Never ran",
+        "! Daily digest can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.",
         hint,
       ]);
     });
@@ -411,6 +431,7 @@ verifies("cli.commands.routines.list", () => {
           problems: 0,
           savedProblems: 0,
           liveState: "live",
+          startsAgent: false,
           lastRun: { runId: done.id, status: "completed", startedAt: done.start },
         },
       ],

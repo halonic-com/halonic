@@ -11,7 +11,10 @@
 // (HAL-15479), with that version's errors. A routine no commit has isn't run
 // by the watch, so it gets no next run and a line of its own (HAL-15664). In
 // a workspace that isn't trusted here, a routine that is on says "Paused until
-// trusted", as the Studio does, since `watch` would refuse it (HAL-15525).
+// trusted", as the Studio does, since `watch` would refuse it (HAL-15525). A
+// routine that starts an agent on its own shows "Can't start" too, with why
+// under the list, since Halonic runs an agent only as a step in a workflow
+// (HAL-15607).
 
 import { placedRoutines } from "@halonicjs/app";
 import { type ListedRoutine, RoutineList } from "@halonicjs/app/routines";
@@ -83,8 +86,9 @@ export async function listRoutines(
   // A fix that is saved but not committed: validate reads the saved file and finds nothing (C642 #2).
   const fixNotLive = withProblems.filter(isFixNotLive).length;
   const toValidate = withProblems.length - fixNotLive;
-  // A routine with file errors is counted once, under validate, which shows them.
-  const webOnly = routines.filter((each) => each.problems === 0 && blocked.has(each.key)).length;
+  // A routine with file errors is counted once, under validate, which shows them,
+  // and one that starts an agent once, on its own line under the list.
+  const webOnly = routines.filter((each) => !cantStart(each) && blocked.has(each.key)).length;
   const pausedLine = routines.some((each) => isPaused(each, row))
     ? [pausedMessage(trust)(printable(workspaceNameOf(loaded, workspace)), dir).phrase]
     : [];
@@ -96,6 +100,7 @@ export async function listRoutines(
       ...(webOnly === 0 ? [] : [routinesMessages.webhookRoutinesCantStart(webOnly, dir).phrase]),
       ...pausedLine,
       ...columns(routines.map((each) => routineRow(each, clock, row, blocked.has(each.key)))),
+      ...agentLines(routines),
       ...notLiveLines(routines, notLive, dir),
       routinesMessages.watchHint().phrase,
     ],
@@ -128,17 +133,33 @@ function startsHere(trust: WorkspaceTrustState): boolean {
 /**
  * Whether the routine's Next column says "Paused until trusted": it would
  * start, but trust holds it back. One never live doesn't run even once
- * trusted, so it reads "Not live yet" instead (HAL-15664).
+ * trusted, so it reads "Not live yet" instead (HAL-15664), and one that
+ * can't start reads "Can't start" (HAL-15607).
  */
 function isPaused(routine: ListedRoutine, row: RowOptions): boolean {
   return (
-    row.paused && routine.problems === 0 && routine.enabled && routine.liveState !== "never-live"
+    row.paused && !cantStart(routine) && routine.enabled && routine.liveState !== "never-live"
   );
 }
 
 /** The line above the list for a workspace that isn't trusted: changed since, or not trusted yet. */
 function pausedMessage(trust: WorkspaceTrustState): typeof routinesMessages.notTrustedPaused {
   return trust === "changed" ? routinesMessages.changedPaused : routinesMessages.notTrustedPaused;
+}
+
+/** One line for each routine that starts an agent on its own, in the list's order: why it can't start and the fix. */
+function agentLines(routines: readonly ListedRoutine[]): Phrase[] {
+  return routines
+    .filter((each) => each.startsAgent)
+    .map((each) => routinesMessages.agentCantStart(printable(each.name)).phrase);
+}
+
+/**
+ * Whether the routine can't start whatever its trigger: its file has errors,
+ * or it starts an agent on its own, which Halonic can't run yet.
+ */
+function cantStart(routine: ListedRoutine): boolean {
+  return routine.problems > 0 || routine.startsAgent;
 }
 
 /**
@@ -175,7 +196,7 @@ function notLiveLine(routine: ListedRoutine, dir: string | undefined): Phrase | 
       ? routinesMessages.changesNotLiveWithErrors(name, dir).phrase
       : routinesMessages.changesNotLive(name).phrase;
   }
-  if (routine.liveState === "never-live" && routine.enabled && routine.problems === 0) {
+  if (routine.liveState === "never-live" && routine.enabled && !cantStart(routine)) {
     return routinesMessages.neverLive(name).phrase;
   }
   return null;
@@ -242,14 +263,15 @@ function spansHubs(routines: readonly ListedRoutine[]): boolean {
 }
 
 /**
- * The Next column. A routine with errors can't start, even when it is on
- * or has a next time, and one that is on but never live doesn't run. One
- * that is on in an untrusted workspace is paused, as the Studio's chip says,
- * before its time. A schedule in a zone other than this computer's is
- * written in its own zone, and says which, so its time matches its file.
+ * The Next column. A routine with errors, or one that starts an agent on its
+ * own, can't start, even when it is on or has a next time, and one that is on
+ * but never live doesn't run. One that is on in an untrusted workspace is
+ * paused, as the Studio's chip says, before its time. A schedule in a zone
+ * other than this computer's is written in its own zone, and says which, so
+ * its time matches its file.
  */
 function nextCell(routine: ListedRoutine, clock: RunClock, row: RowOptions): Phrase {
-  if (routine.problems > 0) {
+  if (cantStart(routine)) {
     return routinesMessages.cantStart().phrase;
   }
   if (!routine.enabled) {
@@ -284,13 +306,13 @@ function lastCell(routine: ListedRoutine, clock: RunClock): Phrase {
 /**
  * A routine as `--json` gives it: the service's fields, with the last run
  * cut to its id, status and start, which `halonic runs show` takes further.
- * A routine with errors can't start, so it has no next run (HAL-15082).
+ * A routine that can't start has no next run (HAL-15082, HAL-15607).
  */
 function routineJson(routine: ListedRoutine): Record<string, unknown> {
   const { lastRun, ...rest } = routine;
   return {
     ...rest,
-    nextRun: routine.problems > 0 ? null : routine.nextRun,
+    nextRun: cantStart(routine) ? null : routine.nextRun,
     lastRun:
       lastRun === null
         ? null

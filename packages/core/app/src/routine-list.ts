@@ -4,10 +4,11 @@
 // says what the routine scheduler does. A routine file that doesn't load is
 // listed too, with its error, so a typing mistake doesn't hide it (HAL-12607),
 // and each routine counts the errors on its file, so the list can say which
-// routines won't start (HAL-14299). Given the live version, a routine whose
-// saved file isn't live yet is listed as the scheduler runs it (HAL-15479),
-// with the errors of the version it runs, and one never live has no next run,
-// since the scheduler leaves it out (HAL-15664).
+// routines won't start (HAL-14299), and whether it starts an agent on its
+// own, which Halonic can't run yet (HAL-15607). Given the live version, a
+// routine whose saved file isn't live yet is listed as the scheduler runs it
+// (HAL-15479), with the errors of the version it runs, and one never live has
+// no next run, since the scheduler leaves it out (HAL-15664).
 
 import type { RunSummary } from "@halonicjs/events";
 import type { Routine } from "@halonicjs/format";
@@ -91,6 +92,13 @@ export interface ListedRoutine {
    * the scheduler doesn't run it at all.
    */
   liveState: "live" | "not-live" | "never-live";
+  /**
+   * Whether it starts an agent on its own rather than a workflow. Such a
+   * routine doesn't start yet: Halonic runs an agent only as a step in a
+   * workflow, so the list says it can't start (HAL-15607). False for a file
+   * that doesn't load.
+   */
+  startsAgent: boolean;
   /** The newest real run it started, or `null` if it never started one. */
   lastRun: RunSummary | null;
 }
@@ -243,6 +251,7 @@ function loadedRoutine(
     nextRun:
       routine.enabled && state !== "never-live" ? nextRunOf(routine.trigger, now, timeZone) : null,
     timeZone: "schedule" in routine.trigger ? (routine.trigger.timezone ?? null) : null,
+    startsAgent: "agent" in routine.run,
   };
 }
 
@@ -307,6 +316,7 @@ function unloadedRoutine(file: UnloadedRoutineFile): ListedOwnFields {
     trigger: `Invalid file, line ${file.error.line}: ${file.error.message}`,
     nextRun: null,
     timeZone: null,
+    startsAgent: false,
   };
 }
 

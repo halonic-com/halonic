@@ -52,7 +52,8 @@ export const routinesMessages = defineMessages("routines", {
   nextIn: (due: DueAt, timeZone: string) => phrase`Next ${dueInWords(due)} ${dim(`(${timeZone})`)}`,
   /**
    * The Next column of a routine whose file has errors: it can't start until
-   * they are fixed (HAL-14299), in the Studio's word for it (HAL-15082).
+   * they are fixed (HAL-14299), in the Studio's word for it (HAL-15082). Also
+   * for a routine that starts an agent on its own (HAL-15607).
    */
   cantStart: () => phrase`${markPart("failed")} Can't start`,
   /**
@@ -92,6 +93,14 @@ export const routinesMessages = defineMessages("routines", {
   /** The same, when the workspace changed since it was trusted, in `run`'s words. */
   changedPaused: (workspace: string, dir?: string) =>
     phrase`${markPart("needsYou")} ${workspace} changed since you trusted it, so its routines don't start ${markPart("separator")} ${suggestedCommand("trust", dir)}`,
+  /**
+   * The line under the list for a routine that starts an agent on its own,
+   * which Halonic can't run yet (HAL-15607): why, in the words the Studio's
+   * Starts card and `serve`'s webhook line use, and the fix in the file's
+   * terms, since the routine's `run` names what it starts.
+   */
+  agentCantStart: (name: string) =>
+    phrase`${markPart("needsYou")} ${name} can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.`,
   /** The Next column of a routine that is off. */
   off: () => phrase`Off`,
   /** The Next column of a routine no clock starts: manual, a signal, mail, or a schedule that doesn't parse. */

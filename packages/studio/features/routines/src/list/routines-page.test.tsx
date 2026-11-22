@@ -4,7 +4,7 @@ import { engineWords, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { type RoutineListing, RoutinesHostService } from "../api.ts";
+import { agentCantRunWords, type RoutineListing, RoutinesHostService } from "../api.ts";
 import { routinesFeature } from "../feature.ts";
 import { buttonNamed, listing, memoryHost, show, typeInto, unmount } from "../test-support.tsx";
 import { RoutinesPage, RoutinesView } from "./routines-page.tsx";
@@ -181,6 +181,26 @@ verifies("routines.list.rows-and-states", () => {
     // RT2 of HAL-15304: the list showed "next Mon 07:30" for a start the engine refuses.
     expect(rowOf(page, "Morning replies").textContent).toContain("Can't start");
     expect(rowOf(page, "Morning replies").textContent).not.toContain("next ");
+  });
+
+  it("shows Can't start, why and what to do, and no time for a routine that starts an agent", async () => {
+    const rows = [
+      listing("acme", "digest", "Daily digest", {
+        summary: "Weekdays at 08:00 → Reporter",
+        targetName: "Reporter",
+        targetKind: "agent",
+        nextRun: tomorrow,
+      }),
+    ];
+    const page = await show(<RoutinesView host={memoryHost(hubs, rows).host} />);
+    const row = rowOf(page, "Daily digest");
+
+    // C600 #2 (HAL-15607): the row promised "next tomorrow 08:00" for a run that never comes.
+    expect(row.textContent).toContain("Can't start");
+    expect(row.textContent).toContain("Halonic can't run an agent on its own yet");
+    // The Starts card's own sentence, which says what to do instead.
+    expect(row.textContent).toContain(agentCantRunWords.line);
+    expect(row.textContent).not.toContain("next ");
   });
 
   it("shows only the empty state when there are no routines", async () => {
