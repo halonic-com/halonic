@@ -56,7 +56,7 @@ async function showFile(path: string): Promise<void> {
   await settle();
 }
 
-verifies("files.open-at-line", () => {
+verifies("files.ui.open-at-line", () => {
   it("opens the file with the cursor on the line asked for, and only once", async () => {
     requestOpenAtLine(writer, 2);
     await showFile(writer);

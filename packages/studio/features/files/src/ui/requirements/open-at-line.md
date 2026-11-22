@@ -1,4 +1,4 @@
-# files.open-at-line
+# files.ui.open-at-line
 
 - Status: active
 - Since: unreleased

@@ -1,7 +1,7 @@
 /**
  * A request to open a file with the cursor on one line, made by another feature: a broken file's
- * row opens its file at the first problem (requirement `files.open-at-line`, C348). The file's tab
- * takes it once its editor is ready, or at once when it already is; for one file, the latest
+ * row opens its file at the first problem (requirement `files.ui.open-at-line`, C348). The file's
+ * tab takes it once its editor is ready, or at once when it already is; for one file, the latest
  * request wins.
  */
 const pending = new Map<string, number>();
