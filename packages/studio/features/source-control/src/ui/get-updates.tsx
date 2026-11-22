@@ -15,10 +15,16 @@ import { mergeWords, updatesWords } from "../changes-words.ts";
 export function GetUpdates({
   list,
   phone = false,
+  onLeftToGit,
 }: {
   readonly list: ChangesList;
   /** On a phone the button is a 48px touch button. */
   readonly phone?: boolean;
+  /**
+   * Told `true` when Get updates is refused over a file Halonic leaves to git, so the page shows
+   * the git steps, and `false` when it's pressed again.
+   */
+  readonly onLeftToGit?: (refused: boolean) => void;
 }) {
   const toasts = useToastStore();
   const openExternal = useOpenExternal();
@@ -38,7 +44,9 @@ export function GetUpdates({
     };
   };
   const getUpdates = async (): Promise<void> => {
+    onLeftToGit?.(false);
     const outcome = await list.getUpdates();
+    if (outcome.kind === "refused") onLeftToGit?.(true);
     if (outcome.kind === "got") {
       toasts?.show({ tone: "success", title: updatesWords.got(outcome.count, outcome.people) });
     } else if (outcome.kind === "choosing") {

@@ -277,6 +277,14 @@ export const updatesWords = {
   leftToGitHowTo:
     "https://github.com/halonic-com/halonic/blob/main/docs/how-to/get-updates-for-files-halonic-leaves-to-git.md",
   alreadyWorking: "Halonic is already getting updates.",
+  /**
+   * Under Get updates after it was refused over a file Halonic leaves to git: the lead sentence,
+   * then the command in a box to copy, then what comes after (C716 row 1).
+   */
+  leftToGitLead:
+    "Get these updates with git instead: open a terminal in this workspace's folder and run",
+  leftToGitCommand: "git pull --no-rebase",
+  leftToGitAfter: "If git reports conflicts, settle them and commit, then come back here.",
 };
 
 /** Choosing per item when both sides changed (checklist part 2, 2.8; microcopy revision 94, 16). */

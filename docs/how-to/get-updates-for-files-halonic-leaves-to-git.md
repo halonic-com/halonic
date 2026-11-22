@@ -5,7 +5,8 @@ Halonic never writes some files in a workspace: private files such as
 copy changed one of them, **Get updates** on the Changes page refuses and
 names the files, so that it doesn't keep your copy and take your teammate's
 change back for everyone. Nothing in your workspace changes. **Show how** on
-that message opens this page.
+that message opens this page, and under Get updates the Changes page shows the
+steps below, with the command to copy.
 
 Get these updates with git instead:
 
