@@ -142,8 +142,12 @@ async function watchVersions(
     // Before the watching line, so that line means the scheduler has caught up; its runs print after.
     if (scheduler !== undefined) report.tick(await scheduler.tick());
     const onAClock = routines.filter(({ routine }) => routine.enabled && isOnAClock(routine));
+    const name = printable(workspaceNameOf(workspace, dir));
+    // With every routine left out, the ✕ lines above say what to fix, and this one what happens then (C666 #2).
     context.printAhead(
-      routinesMessages.watching(onAClock.length, printable(workspaceNameOf(workspace, dir))).phrase,
+      onAClock.length === 0 && cantStart.leftOut > 0
+        ? routinesMessages.watchingUntilOneCanStart(name).phrase
+        : routinesMessages.watching(onAClock.length, name).phrase,
     );
     // A webhook routine never starts here, so the watch says what does start it (HAL-14299).
     for (const { routine } of routines.filter(startsOnWebRequest)) {

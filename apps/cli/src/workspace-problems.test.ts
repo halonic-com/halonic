@@ -21,12 +21,12 @@ const dir = { root: "acme", shown: "./acme", name: "acme" } as unknown as OpenWo
 
 verifies("cli.workspace-file-problems", () => {
   // Liam's review of #4496: an empty path read "has 1 problem in . Nothing ran."
-  it("says 'in its files' when the error that stops the run is in no file", () => {
+  it("says 'in its files' when the error that stops the run is in no file", async () => {
     const workspace = { files: [], issues: [errorInNoFile] } as unknown as LoadedWorkspace;
 
     const refuse = () => refuseFileProblems(dir, workspace, runMessages.nothingRan(), undefined);
 
-    expect(refuse).toThrow(WorkspaceFileProblemsError);
-    expect(refuse).toThrow("acme has 1 problem in its files. Nothing ran.");
+    await expect(refuse()).rejects.toThrow(WorkspaceFileProblemsError);
+    await expect(refuse()).rejects.toThrow("acme has 1 problem in its files. Nothing ran.");
   });
 });

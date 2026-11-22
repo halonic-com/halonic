@@ -48,7 +48,12 @@ export function testCommandWith(setup: TestSetup): CliCommand {
       const loaded = await loadWorkspace(workspace.store);
       // A file with an error is left out, so its workflow's tests would all
       // fail as if it were missing (HAL-12978): point at validate instead.
-      refuseFileProblems(workspace, loaded, runMessages.nothingRan(), givenDir(input, workspace));
+      await refuseFileProblems(
+        workspace,
+        loaded,
+        runMessages.nothingRan(),
+        givenDir(input, workspace),
+      );
       const filter = input.options["filter"];
       const tests: TestInput = {
         workspace: loaded,

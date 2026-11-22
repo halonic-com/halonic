@@ -47,7 +47,7 @@ verifies("studio.workspace-routines", () => {
     const [listed] = await host.list();
 
     expect(listed?.problems).toEqual([
-      "mail isn't a Google connector, so it has no inbox to watch. Pick another mailbox under When.",
+      "mail isn't a Google connector, so it has no mailbox to watch. Pick another mailbox under When.",
     ]);
   });
 

@@ -13,6 +13,7 @@ import type { TrustGrant } from "@halonicjs/ports";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
+import { savedWorkspaceOf } from "../../run-workspace.ts";
 import type { SandboxGateRun } from "../../sandbox-gate.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import { refuseFileProblems, refuseFileProblemsOutsideRoutines } from "../../workspace-problems.ts";
@@ -51,7 +52,10 @@ export async function checkRunTrust(
   nothingDone: Message = runMessages.nothingRan(),
   run?: SandboxGateRun,
 ): Promise<TrustGrant | null> {
-  refuseFileProblems(dir, workspace, nothingDone, typedDir, run);
+  await refuseFileProblems(dir, workspace, nothingDone, typedDir, {
+    run,
+    saved: savedWorkspaceOf(dir),
+  });
   return await trustGrantOf(dir, workspace, machine, typedDir, nothingDone, run?.harness);
 }
 
@@ -73,7 +77,13 @@ export async function checkRoutinesTrust(
   typedDir: string | undefined,
 ): Promise<TrustGrant | null> {
   const nothingRan = runMessages.nothingRan();
-  refuseFileProblemsOutsideRoutines(dir, workspace, nothingRan, typedDir);
+  await refuseFileProblemsOutsideRoutines(
+    dir,
+    workspace,
+    nothingRan,
+    typedDir,
+    savedWorkspaceOf(dir),
+  );
   return await trustGrantOf(dir, workspace, machine, typedDir, nothingRan);
 }
 
