@@ -51,8 +51,11 @@ function Invoke-AsUser([string]$script) {
   $id = [guid]::NewGuid().ToString('N')
   $out = Join-Path $shared "$id.out"
   $err = Join-Path $shared "$id.err"
-  $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("$userEnvironment`n$script"))
-  $p = Start-Process powershell.exe -ArgumentList '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded `
+  # Start-Process -Credential allows a command line of at most 1024 characters,
+  # so the script goes in a file in the shared folder rather than on the line.
+  $file = Join-Path $shared "$id.ps1"
+  Set-Content -Path $file -Value "$userEnvironment`n$script" -Encoding utf8BOM
+  $p = Start-Process powershell.exe -ArgumentList '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', "`"$file`"" `
     -Credential $credential -LoadUserProfile -WorkingDirectory $shared `
     -RedirectStandardOutput $out -RedirectStandardError $err -Wait -PassThru
   $printed = Get-Content $out -Raw -ErrorAction SilentlyContinue
