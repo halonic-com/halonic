@@ -3,6 +3,7 @@
 - Task: HAL-13197
 - Approval: Liam approves this note in his security review of the srt patch change on HAL-13197 (https://paperclip.halonic.com/HAL/issues/HAL-13197). The board found the bug in the first preview build (HAL-11719).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FwEhKwKhnNQJNk4DvGd2nQ4IvrlMY99ax5htSTatHTXGldGEtaaYOPb4+Xn6hUU87zVQMLDRNME8rrd0uZAgDQ==
 
 ## What changes
 
