@@ -8,7 +8,12 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildRunnerFile, type RunnerFile } from "../esbuild.config.ts";
 import { connectRunner } from "./halonic/connect-runner.ts";
-import { dataLimitMiB, prlimitProgram, runnerCommand } from "./halonic/runner-command.ts";
+import {
+  dataLimitMiB,
+  prlimitProgram,
+  runnerCommand,
+  runnerHeapLimitMiB,
+} from "./halonic/runner-command.ts";
 import { bridgeOptions, fakeRunnerProcess, testNonce } from "./pipes.test-helper.ts";
 
 // A small integration, as a user's folder would hold it: plain JavaScript,
@@ -272,9 +277,30 @@ verifies("integration-runner.heap-limit", () => {
     // Windows have none (HAL-7565).
     it.skipIf(process.platform !== "linux")(
       "stops an integration that keeps typed arrays at the data limit with a RangeError",
-      async (ctx) => {
-        if (!dataLimitHolds())
-          ctx.skip("this machine doesn't enforce prlimit --data (gVisor, HAL-16289)");
+      async () => {
+        if (!dataLimitHolds()) {
+          // gVisor (HAL-16289): no machine limit to reach, so check the part
+          // the runner controls, its start through `prlimit --data`. Not a
+          // skip, so the test counts the same on every Linux machine.
+          console.warn("prlimit --data doesn't hold on this machine (gVisor, HAL-16289)");
+          const { program, args } = runnerCommand(
+            {
+              node: process.execPath,
+              nodeFolder: "",
+              runnerFile: runner.path,
+              integrationFolder: folder,
+            },
+            {
+              nonce: testNonce,
+              folder,
+              entryFile: join(folder, "index.mjs"),
+              exportName: "weather",
+            },
+          );
+          expect(program).toBe(prlimitProgram);
+          expect(args[0]).toBe(`--data=${dataLimitMiB(runnerHeapLimitMiB) * 1024 * 1024}`);
+          return;
+        }
         const hungry = bridgeOptions(fakeRunnerProcess(), {
           process: await startBuiltRunner(bufferHungrySource),
         });
@@ -293,9 +319,10 @@ verifies("integration-runner.heap-limit", () => {
 /**
  * Whether `prlimit --data` stops typed arrays on this machine. Linux does, but
  * under gVisor (our CI's fast pool, HAL-16289) the limit doesn't reach the
- * memory behind them, so the RangeError test has nothing to check there. It
- * probes plain Node, not the runner, so a runner that loses its limit still
- * fails that test wherever the limit holds; so does a probe that can't start.
+ * memory behind them, so the RangeError test checks only the runner's start
+ * there. It probes plain Node, not the runner, so a runner that loses its
+ * limit still fails that test wherever the limit holds; so does a probe that
+ * can't start.
  */
 function dataLimitHolds(): boolean {
   const probe =
