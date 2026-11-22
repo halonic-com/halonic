@@ -1,5 +1,6 @@
 //! What the service needs from the app around it: Android's local network
-//! question, a way to tell the page a status, and the shell's log.
+//! question, a way to tell the page a status and a session's messages, and
+//! the shell's log.
 
 use std::future::Future;
 use std::net::IpAddr;
@@ -44,9 +45,19 @@ pub trait TunnelHost: Send + Sync + 'static {
     /// app's own page only (H1 on HAL-15181).
     fn status_changed(&self, computer: &ComputerId, status: &PageStatus);
 
+    /// A session to a paired computer has opened, under a `generation` no
+    /// other session in this process has had: the page sends `hello` on
+    /// it. Passed on to the app's own page only, like a status.
+    fn session_opened(&self, computer: &ComputerId, generation: u64);
+
+    /// One host message of the session `generation`, in the order the host
+    /// sent them, as text the page hasn't read yet. Passed on to the app's
+    /// own page only, and never logged.
+    fn message(&self, computer: &ComputerId, generation: u64, text: &str);
+
     /// Something failed that no page waits for, such as noting a
-    /// connection in the paired-computer list. The line never holds a key
-    /// or a code.
+    /// connection in the paired-computer list. The line never holds a key,
+    /// a code or a message's text.
     fn log(&self, line: &str);
 }
 

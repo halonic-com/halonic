@@ -267,6 +267,13 @@ mod android {
             tell(&self.app, &event);
         }
 
+        // Carried to the page with `tunnel_send` in the next part of D7a
+        // (HAL-15177); until then the page can't answer a session, so the
+        // shell passes nothing of it on.
+        fn session_opened(&self, _computer: &ComputerId, _generation: u64) {}
+
+        fn message(&self, _computer: &ComputerId, _generation: u64, _text: &str) {}
+
         fn log(&self, line: &str) {
             halonic_shell_log::record("phone-tunnel", line);
         }

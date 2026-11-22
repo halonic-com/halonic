@@ -5,15 +5,18 @@
 //! to them.
 //!
 //! This crate holds no Tauri types. The keys stay inside it: the page gets
-//! only the typed answers in [`answers`] and the [`PageStatus`] the
-//! [`TunnelHost`] passes on, never a private key, a session key, the
+//! only the typed answers in [`answers`], the [`PageStatus`] the
+//! [`TunnelHost`] passes on, and the text of the gateway messages it sends
+//! and receives (D7a, HAL-15177), never a private key, a session key, the
 //! pairing code or its psk.
 
 pub mod answers;
 mod connect;
 mod connections;
 mod host;
+mod messages;
 mod pairing;
+mod send;
 mod service;
 mod start;
 mod status;
@@ -26,6 +29,8 @@ mod connect_tests;
 #[cfg(test)]
 mod host_tests;
 #[cfg(test)]
+mod messages_tests;
+#[cfg(test)]
 mod start_tests;
 
 pub use answers::{
@@ -35,6 +40,7 @@ pub use answers::{
 pub use host::{
     LocalNetwork, LocalNetworkAnswer, PhoneAnswer, TunnelHost, needs_local_network, phone_name,
 };
+pub use messages::{GATEWAY_MAX_MESSAGE_BYTES, PHONE_MESSAGE_TYPES, SendAnswer, SendRefusal};
 pub use service::{Options, PhoneTunnel};
 pub use start::{CheckedStart, PairingStart};
 pub use status::{PageStatus, Reason};

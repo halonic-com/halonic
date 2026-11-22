@@ -42,6 +42,10 @@ pub struct PhoneTunnel<S: DeviceKeyStore + 'static> {
     pub(crate) options: Options,
     pub(crate) pairing: Mutex<Option<RunningPairing>>,
     pub(crate) connections: Arc<Connections>,
+    /// Sessions opened so far, on every computer: the last one's
+    /// generation. Shared with the connections, which number each new
+    /// session from it.
+    pub(crate) generations: Arc<AtomicU64>,
     serials: AtomicU64,
 }
 
@@ -61,6 +65,7 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
             options,
             pairing: Mutex::new(None),
             connections: Arc::new(Connections::default()),
+            generations: Arc::new(AtomicU64::new(0)),
             serials: AtomicU64::new(0),
         }
     }
