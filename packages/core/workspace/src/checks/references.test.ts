@@ -20,7 +20,6 @@ const referenceCases = [
   "agent/unknown-subagent",
   "agent/own-subagent",
   "hub/uses-leaves-out",
-  "models/unknown-provider",
   "models/unknown-fallback",
   "workflowTest/unknown-workflow",
 ];
@@ -42,6 +41,21 @@ verifies("workspace.references", () => {
           ...expectedError("workspace/unknown-model"),
           message:
             'The assistant model (assistant.model) uses "turbo", which isn\'t an alias in models.yaml.',
+        },
+      ]);
+    },
+    parityLoadLimitMs,
+  );
+
+  it(
+    "ends an unknown provider in models.yaml with its fix, as the run view's banner does",
+    async () => {
+      // C618 #5 (HAL-15709): validate stops this before any run, so it says the fix itself.
+      expect(await errorsOf("models/unknown-provider")).toEqual([
+        {
+          ...expectedError("models/unknown-provider"),
+          message:
+            "Alias smart uses unknown provider cloud. Add providers/cloud.yaml, or point the alias smart at a provider the workspace has.",
         },
       ]);
     },
