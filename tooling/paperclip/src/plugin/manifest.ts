@@ -34,18 +34,14 @@ export const manifest: PaperclipPluginManifestV1 = {
   instanceConfigSchema: {
     type: "object",
     properties: {
+      // The host stores a `{ type: "secret_ref", secretId }` binding here, but checks the
+      // field against this schema with the binding swapped for its secret id, so it is a string.
       githubToken: {
-        type: "object",
+        type: "string",
         title: "GitHub token",
         description:
           "The secret with a read-only GitHub token (PR_WATCHER_GITHUB_TOKEN). The watcher only sends GET requests to api.github.com with it.",
         format: "secret-ref",
-        properties: {
-          type: { const: "secret_ref" },
-          secretId: { type: "string" },
-          version: {},
-        },
-        required: ["type", "secretId"],
       },
       repos: {
         type: "array",

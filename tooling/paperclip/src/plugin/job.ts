@@ -1,9 +1,10 @@
-import type {
-  PluginCompaniesClient,
-  PluginConfigClient,
-  PluginHttpClient,
-  PluginLogger,
-  PluginSecretsClient,
+import {
+  PLUGIN_RPC_ERROR_CODES,
+  type PluginCompaniesClient,
+  type PluginConfigClient,
+  type PluginHttpClient,
+  type PluginLogger,
+  type PluginSecretsClient,
 } from "@paperclipai/plugin-sdk";
 import { discoverPulls } from "../pr-watcher/discover.ts";
 import { gitHubReader } from "../pr-watcher/github.ts";
@@ -56,9 +57,33 @@ export function readSettings(config: Readonly<Record<string, unknown>>): Watcher
   };
 }
 
+/**
+ * Reads a company's settings, or undefined when the board saved none for it.
+ * A scheduled job runs outside any company, and the host then lets the
+ * plugin read only the companies it has saved settings for; any other
+ * company is refused with `INVOCATION_SCOPE_DENIED`.
+ */
+async function companySettings(
+  ctx: JobApi,
+  companyId: string,
+): Promise<WatcherSettings | undefined> {
+  try {
+    return readSettings(await ctx.config.get(companyId));
+  } catch (error) {
+    if ((error as { code?: unknown }).code === PLUGIN_RPC_ERROR_CODES.INVOCATION_SCOPE_DENIED) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 /** One watcher pass for one company. Returns how many tasks it couldn't check. */
 async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<number> {
-  const settings = readSettings(await ctx.config.get(companyId));
+  const settings = await companySettings(ctx, companyId);
+  if (settings === undefined) {
+    ctx.logger.info("PR watcher: no settings saved for this company, skipped.", { companyId });
+    return 0;
+  }
   if (settings.token === undefined) {
     ctx.logger.info("PR watcher: no GitHub token set for this company, skipped.", { companyId });
     return 0;

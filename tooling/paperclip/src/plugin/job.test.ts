@@ -27,11 +27,16 @@ const lists = {
   ],
 };
 
-function setUp(config: Record<string, unknown>, secret?: () => Promise<string>) {
+function setUp(
+  config: Record<string, unknown>,
+  secret?: () => Promise<string>,
+  unconfigured: readonly string[] = [],
+) {
   const { host, writes } = fakeHost([priyasTask]);
   const job = fakeJobContext({
     host,
     configs: { acme: config },
+    unconfigured,
     answers: { ...lists, ...recording("merged-green") },
     ...(secret === undefined ? {} : { secret }),
   });
@@ -61,6 +66,20 @@ verifies("paperclip.pr-watcher-plugin", () => {
     expect(resolved).toEqual([]);
     expect(sent).toEqual([]);
     expect(logs[0]?.message).toContain("no GitHub token");
+  });
+
+  test("skips a company the host refuses because it has no saved settings", async () => {
+    // The scheduled run of 22 Nov 10:00 UTC failed on this refusal.
+    const { ctx, writes, logs } = setUp({ githubToken: token, dryRun: false }, undefined, [
+      "globex",
+    ]);
+    await runWatcher(ctx, now);
+    expect(logs[0]).toEqual({
+      level: "info",
+      message: "PR watcher: no settings saved for this company, skipped.",
+      meta: { companyId: "globex" },
+    });
+    expect(writes[0]).toEqual({ kind: "update", issueId: "task-4485", patch: { status: "done" } });
   });
 });
 
