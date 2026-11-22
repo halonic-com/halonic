@@ -302,7 +302,14 @@ export function WorkflowCanvas({
                 }
                 connectTarget={connecting.targetOf(step.id)}
               />
-              {port !== undefined && <ConnectPort stepId={step.id} box={box} handlers={port} />}
+              {port !== undefined && (
+                <ConnectPort
+                  stepId={step.id}
+                  box={box}
+                  handlers={port}
+                  dragging={connecting.connecting?.from === step.id}
+                />
+              )}
             </Fragment>
           );
         })}

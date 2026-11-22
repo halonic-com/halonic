@@ -19,12 +19,13 @@ export const connectorSecretWords = {
   /**
    * Under the name: where it's kept and where it goes, in the approved key hint's words (microcopy
    * rev 96, as on the Models page). It names the keychain, not "your secrets", because the CLI
-   * reads the profile's secrets file, not this store (C553 row 26). The last sentence says so,
-   * because `halonic doctor` tells people to run `halonic secret set`, which never reaches it
-   * (C552 finding 1). It doesn't say "only": another connector or a model may name the same secret.
+   * reads the profile's secrets file, not this store (C553 row 26). The last sentence says which
+   * one Studio uses, because `halonic doctor` tells people to run `halonic secret set`, which
+   * keeps a separate one (C552 finding 1, C595 row 25). It doesn't say "only": another connector
+   * or a model may name the same secret.
    */
   storedLine: (source: string) =>
-    `Kept in your system keychain, never in files. ${source} gives it to the program it starts. It's Studio's own: halonic secret set doesn't reach it.`,
+    `Kept in your system keychain, never in files. ${source} gives it to the program it starts. Studio uses this one; halonic secret set keeps a separate one for the command line.`,
   /** In the empty entry once a value is stored: typing one replaces it. */
   replacePlaceholder: "Type a new value to replace it",
   remove: "Remove",

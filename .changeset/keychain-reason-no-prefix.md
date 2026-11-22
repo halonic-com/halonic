@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-A locked keychain's reason on a connector's page and in Settings' plugin secret fields no longer starts with the keychain's own prefix.
+A locked keychain on a connector's page and in Settings' plugin secret fields now reads "Couldn't save the secret: the keychain is locked."
