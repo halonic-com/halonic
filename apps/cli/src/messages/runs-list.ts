@@ -126,6 +126,8 @@ export const runsListMessages = defineMessages("runsList", {
    * list names the step, never a guess at what the tool does.
    */
   waitingForApproval: (step: string) => phrase`Waiting for your approval in the step ${step}`,
+  /** What: a model call that waits for the answer to Studio's "Allow this address?" (HAL-15831). */
+  waitingForAnswer: (step: string) => phrase`Waiting for your answer in the step ${step}`,
   /** What: a run waiting for a time: "Waiting until 14:00", "until tomorrow 08:00", "until 3 Dec 08:00". */
   waitingUntil: (due: DueAt) => phrase`Waiting until ${dueInWords(due)}`,
   /** What: a run waiting for a child run, by the child's short id. */

@@ -44,6 +44,17 @@ verifies("runs.row", () => {
       );
     });
 
+    it('says a run asking "Allow this address?" needs you, in the step that asks', () => {
+      const row = rowOf({
+        status: "running",
+        state: "draft",
+        keyOriginAsked: [{ provider: "gateway", key: "gateway-key", origin: "https://gw.example" }],
+      });
+
+      expect(row.chip).toEqual({ word: "Needs you", tone: "warning", dot: true });
+      expect(row.line).toBe("Waiting for your answer in the step Draft");
+    });
+
     it("reads a wait step by the first line of its description, else by the step", () => {
       const described = rowOf({
         status: "waiting",

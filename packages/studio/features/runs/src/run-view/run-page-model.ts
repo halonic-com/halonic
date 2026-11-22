@@ -198,6 +198,9 @@ export function runBanner(run: SourcedRun, context: RunPageContext): RunBanner |
           ? runPageWords.waitStepNoDescription(step)
           : runPageWords.waitStep(escapeHidden(wait.title)),
       );
+    // The dialog that asks is open, and the step says it waits for the answer.
+    case "address":
+      return undefined;
     case "child-run":
       return childRunBanner(wait.runId, context);
     case "timer":

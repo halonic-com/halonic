@@ -26,6 +26,8 @@ export const rowLineWords = {
   /** A tool approval: names the step whose agent asked, until the tool action catalogue exists. */
   waitingForApproval: (step: string) => `Waiting for your approval in the step ${step}`,
   waitingForApprovals: (count: number) => `Waiting for ${count} approvals`,
+  /** An open question "Allow this address?" (HAL-15831), in the approval's form. */
+  waitingForAnswer: (step: string) => `Waiting for your answer in the step ${step}`,
   waitingUntil: (time: string) => `Waiting until ${time}`,
   waitingForChildRun: (shortId: string) => `Waiting for child run ${shortId}`,
   waitingIn: (step: string) => `Waiting in ${step}`,
@@ -383,30 +385,6 @@ export const stepGroupWords = {
   inStep: (name: string) => `in the step ${name}`,
   /** A part the step ended without, because the step failed or was stopped first. */
   unfinished: "Didn't finish",
-};
-
-/** Show the run log (checklist part 1, 1.10; mc 1.2 and 3.D W-D3). */
-/**
- * A person's answer to "Allow this address?" as the run log says it (HAL-11873 UX checklist,
- * C-20): what was allowed or refused, never who answered. The address is as it is saved.
- */
-export function keyOriginAnswerWords(answer: {
-  readonly provider: string;
-  readonly key: string;
-  readonly origin: string;
-  readonly answer: "allowed" | "not-allowed";
-}): string {
-  return answer.answer === "allowed"
-    ? `Allowed ${answer.origin} for key "${answer.key}".`
-    : `Not allowed: provider "${answer.provider}" can't send key "${answer.key}" to ${answer.origin}.`;
-}
-
-export const runLogWords = {
-  show: "Show the run log",
-  /** Team decision (HAL-2282): the same button, back to the timeline. */
-  hide: "Show every step",
-  /** The numbered list's name for screen readers. */
-  label: "Run log",
 };
 
 /**

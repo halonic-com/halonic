@@ -11,7 +11,8 @@ import {
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DamagedRunLog, type RunsSource } from "../api.ts";
-import { everyStepWords, runLogWords } from "../run-words.ts";
+import { runLogWords } from "../run-log-words.ts";
+import { everyStepWords } from "../run-words.ts";
 import { fillText } from "./blocked-sites-text.tsx";
 import type { StepEntry, StepMark } from "./every-step-model.ts";
 import { RunLog } from "./run-log.tsx";

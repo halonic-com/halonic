@@ -33,6 +33,16 @@ export interface PendingApproval {
   item: number | null;
 }
 
+/**
+ * A question "Allow this address?" that still waits for a person's answer, from its
+ * `key-origin.asked` event: who would send which stored key where, never the key's value.
+ */
+export interface OpenKeyOriginQuestion {
+  provider: string;
+  key: string;
+  origin: string;
+}
+
 /** A signal a run sent. `id` is "<runId>:<seq>" of its `signal.sent` event. */
 export interface SentSignal {
   id: string;
@@ -106,6 +116,12 @@ export interface RunSummary {
    * each wait for one, so there can be more than one.
    */
   approvals: PendingApproval[];
+  /**
+   * The questions "Allow this address?" still open, oldest first (requirement
+   * `events.summary-key-origin-asked`). Absent when none is open, and in
+   * summaries from before the field.
+   */
+  keyOriginAsked?: OpenKeyOriginQuestion[];
   /** Signals the run sent, in order (for signal triggers). */
   signals: SentSignal[];
   /**
