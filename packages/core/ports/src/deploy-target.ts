@@ -281,6 +281,10 @@ export type DeployFailureCode =
   | "rollback-not-possible"
   | "transfer-failed"
   | "destroy-changed"
+  /** Two versions share traffic on the host, so a deploy has no room for a third. */
+  | "traffic-split"
+  /** A fault in the target itself, not in the workspace or the host. Kind `internal`. */
+  | "unexpected"
   | "stopped";
 
 /**
