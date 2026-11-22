@@ -8,7 +8,8 @@
 // (C570). A routine whose saved changes aren't live yet gets a line under the
 // list, since it runs as last committed until then (HAL-15204), and the rows
 // show its trigger and next run as the watch runs it, from the live version
-// (HAL-15479).
+// (HAL-15479), with that version's errors. A routine no commit has isn't run
+// by the watch, so it gets no next run and a line of its own (HAL-15664).
 
 import { placedRoutines } from "@halonicjs/app";
 import { type ListedRoutine, RoutineList } from "@halonicjs/app/routines";
@@ -53,7 +54,6 @@ export async function listRoutines(
   const timeZone = clock.timeZone ?? computerTimeZone();
   const { routines, notLive } = await listAsLive(
     workspace,
-    loaded,
     (live) => list.listRoutines(loaded, clock.now, timeZone, live),
     setup.history,
   );
@@ -78,7 +78,7 @@ export async function listRoutines(
       ...(withProblems === 0 ? [] : [routinesMessages.routinesCantStart(withProblems, dir).phrase]),
       ...(webOnly === 0 ? [] : [routinesMessages.webhookRoutinesCantStart(webOnly, dir).phrase]),
       ...columns(routines.map((each) => routineRow(each, clock, withHub, blocked.has(each.key)))),
-      ...notLiveLines(routines, notLive),
+      ...notLiveLines(routines, notLive, dir),
       routinesMessages.watchHint().phrase,
     ],
     json,
@@ -94,19 +94,40 @@ export interface RoutineListSetup extends RunListSetup {
 }
 
 /**
- * One line for each routine whose saved changes aren't live yet, in the
- * list's order, or why that couldn't be checked and its fix, dimmed.
+ * One line for each routine whose saved changes aren't live yet, or that is
+ * on and starts but was never live, in the list's order; or why that
+ * couldn't be checked and its fix, dimmed. `dir` is the user's own `--dir`.
  */
-function notLiveLines(routines: readonly ListedRoutine[], notLive: NotLiveRoutines): Phrase[] {
+function notLiveLines(
+  routines: readonly ListedRoutine[],
+  notLive: NotLiveRoutines,
+  dir: string | undefined,
+): Phrase[] {
   if (!notLive.checked) {
     return [
       routinesMessages.liveCheckFailed(notLive.reason.phrase).phrase,
       dimmed(notLive.fix.phrase),
     ];
   }
-  return routines
-    .filter((each) => notLive.keys.has(each.key))
-    .map((each) => routinesMessages.changesNotLive(printable(each.name)).phrase);
+  return routines.flatMap((each) => {
+    const line = notLiveLine(each, dir);
+    return line === null ? [] : [line];
+  });
+}
+
+/** The line under the list for one routine, or `null` for one that runs as saved, or can't or won't start anyway. */
+function notLiveLine(routine: ListedRoutine, dir: string | undefined): Phrase | null {
+  // The name comes from the routine's file, so it is made printable (cli-output section 5).
+  const name = printable(routine.name);
+  if (routine.liveState === "not-live") {
+    return routine.savedProblems > 0
+      ? routinesMessages.changesNotLiveWithErrors(name, dir).phrase
+      : routinesMessages.changesNotLive(name).phrase;
+  }
+  if (routine.liveState === "never-live" && routine.enabled && routine.problems === 0) {
+    return routinesMessages.neverLive(name).phrase;
+  }
+  return null;
 }
 
 /**
@@ -163,7 +184,7 @@ function spansHubs(routines: readonly ListedRoutine[]): boolean {
 
 /**
  * The Next column. A routine with errors can't start, even when it is on
- * or has a next time. A schedule in a zone other than this computer's is
+ * or has a next time, and one that is on but never live doesn't run. A schedule in a zone other than this computer's is
  * written in its own zone, and says which, so its time matches its file.
  */
 function nextCell(routine: ListedRoutine, clock: RunClock): Phrase {
@@ -172,6 +193,9 @@ function nextCell(routine: ListedRoutine, clock: RunClock): Phrase {
   }
   if (!routine.enabled) {
     return routinesMessages.off().phrase;
+  }
+  if (routine.liveState === "never-live") {
+    return routinesMessages.notLiveYet().phrase;
   }
   if (routine.nextRun === null) {
     return routinesMessages.noSetTime().phrase;

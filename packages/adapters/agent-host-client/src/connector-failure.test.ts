@@ -43,6 +43,7 @@ const failed = {
 verifies("agent-host-client.connector-failure", () => {
   it.each([
     [{ reason: "program-missing", program: "npx" }, "unavailable"],
+    [{ reason: "program-stopped", program: "sh" }, "unavailable"],
     [{ reason: "secret-missing", secret: "notes-key" }, "invalid_input"],
     [{ reason: "secret-refused" }, "unauthenticated"],
     [{ reason: "stopped" }, "unavailable"],

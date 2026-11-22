@@ -1,8 +1,8 @@
-import { stateAgentsOf, workspaceProblemsOf } from "@halonicjs/adapter-workspace-models";
-import type { RunSummary } from "@halonicjs/events";
+import { stateAgentsOf } from "@halonicjs/adapter-workspace-models";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
   type NewWorkflow,
+  type RemovedStep,
   type StartRefusal,
   startRefusalOf,
   type TrashedWorkflow,
@@ -11,6 +11,7 @@ import {
   type WorkflowHub,
   type WorkflowListing,
   type WorkflowRef,
+  type WorkflowRemoval,
   type WorkflowStepChange,
   type WorkflowsHost,
   type WorkflowTests,
@@ -23,6 +24,7 @@ import { workflowRefusalOf } from "../engine/page-refusal.ts";
 import { checkedSource } from "../library/workspace-library-items.ts";
 import { hubFilesFor } from "../studio/first-hub.ts";
 import { programOf } from "./step-program.ts";
+import { undoWhileNewest } from "./undo-while-newest.ts";
 import {
   arrowChangeLabel,
   arrowEdits,
@@ -30,17 +32,18 @@ import {
   checkArrowChange,
   writtenArrows,
 } from "./workflow-arrow-edits.ts";
-import { cantChange, stepGone, workflowGone } from "./workflow-errors.ts";
+import { cantChange, cantPutBack, firstStep, stepGone, workflowGone } from "./workflow-errors.ts";
 import {
   endedIn,
   newWorkflowText,
-  problemsOf,
   testFile,
   withTestCase,
   workflowFolder,
   workflowSuffix,
 } from "./workflow-files.ts";
+import { workflowListingsOf } from "./workflow-listing.ts";
 import { workflowProblemsOf } from "./workflow-problems.ts";
+import { arrowRemovalEdits, stepRemovalEdits } from "./workflow-removal-edits.ts";
 import { stepEdits } from "./workflow-step-edits.ts";
 import { trashWorkflowFiles, workflowFilesOf, workflowUsersOf } from "./workflow-trash.ts";
 import { arrowsOf, stepsOf } from "./workflow-view.ts";
@@ -69,15 +72,20 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   startRun?: NonNullable<WorkflowsHost["startRun"]>;
   /** Present only when the app can show the trust check; see {@link WorkflowsHost.askTrust}. */
   askTrust?: NonNullable<WorkflowsHost["askTrust"]>;
+  /** Present only when the app can tell; see {@link WorkflowsHost.onTrusted}. */
+  onTrusted?: NonNullable<WorkflowsHost["onTrusted"]>;
   /** Present with `startRun`; see {@link WorkflowsHost.startRefusal}. */
   startRefusal?: (ref: WorkflowRef) => Promise<StartRefusal | undefined>;
 
   constructor(parts: WorkspaceWorkflowsParts) {
     this.#parts = parts;
     this.folder = parts.folder;
-    const { engine, askTrust } = parts;
+    const { engine, askTrust, onTrusted } = parts;
     if (askTrust !== undefined) {
       this.askTrust = askTrust;
+    }
+    if (onTrusted !== undefined) {
+      this.onTrusted = onTrusted;
     }
     if (engine !== undefined) {
       this.startRun = async ({ hubId, id }, input) => {
@@ -122,42 +130,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 
   async list(): Promise<readonly WorkflowListing[]> {
     const [workspace, runs] = await Promise.all([this.#load(), this.#parts.runs.list()]);
-    const workspaceIssues = workspaceProblemsOf(workspace);
-    const listings = filesOf(workspace, "workflow").flatMap((file) => {
-      if (file.hub === null) return [];
-      const issues = problemsOf(workspace, workspaceIssues, file);
-      const own = runs.filter(
-        ({ summary }) =>
-          summary.kind === "run" &&
-          summary.hubId === file.hub &&
-          summary.workflowId === file.value.id,
-      );
-      const newest = own.reduce<RunSummary | undefined>(
-        (best, { summary }) =>
-          best === undefined || summary.startedAt > best.startedAt ? summary : best,
-        undefined,
-      );
-      return [
-        {
-          hubId: file.hub,
-          id: file.value.id,
-          name: file.value.name,
-          description: file.value.description,
-          problems: {
-            errors: issues.filter((issue) => issue.severity === "error").length,
-            warnings: issues.filter((issue) => issue.severity === "warning").length,
-          },
-          runs: {
-            waiting: own.filter(({ summary }) => summary.status === "waiting").length,
-            running: own.filter(({ summary }) => summary.status === "running").length,
-          },
-          lastRun:
-            newest === undefined
-              ? undefined
-              : { startedAt: newest.startedAt, outcome: newest.status },
-        },
-      ];
-    });
+    const listings = workflowListingsOf(workspace, runs);
     this.#learnNames(listings);
     return listings;
   }
@@ -371,6 +344,39 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   /** What runs the workflow, as {@link workflowUsersOf} counts it. */
   async referencesTo(ref: WorkflowRef): Promise<WorkflowUsers> {
     return workflowUsersOf(await this.#load(), ref);
+  }
+
+  /**
+   * Takes the step out of the workflow's file, with its place and every arrow into it, as one
+   * undoable change (see {@link stepRemovalEdits}). The first step stays until another is picked.
+   */
+  async removeStep(ref: WorkflowRef, stepId: string): Promise<RemovedStep> {
+    const { file, text } = await this.#fileOf(ref);
+    if (!Object.hasOwn(file.value.states, stepId)) throw stepGone(stepId);
+    if (file.value.initial === stepId) throw firstStep();
+    const read = readYaml(text);
+    if (!read.ok) throw cantChange();
+    const stepIds = Object.keys(file.value.states);
+    const { edits, arrows } = stepRemovalEdits(read.value.data, stepId, stepIds);
+    this.#edit(file.path, text, `Removed step ${stepId} from workflow ${file.value.name}`, edits);
+    return { arrows, undo: undoWhileNewest(this.#parts.files, cantPutBack(`Step ${stepId}`)) };
+  }
+
+  /** Takes one arrow out of the step's `on` list in place, as one undoable change. */
+  async removeArrow(
+    ref: WorkflowRef,
+    stepId: string,
+    index: number,
+    to: string,
+  ): Promise<WorkflowRemoval> {
+    const { file, text } = await this.#fileOf(ref);
+    if (!Object.hasOwn(file.value.states, stepId)) throw stepGone(stepId);
+    const read = readYaml(text);
+    if (!read.ok) throw cantChange();
+    const edits = arrowRemovalEdits(stepId, writtenArrows(read.value.data, stepId), index, to);
+    const label = `Removed an arrow of step ${stepId} in workflow ${file.value.name}`;
+    this.#edit(file.path, text, label, edits);
+    return { undo: undoWhileNewest(this.#parts.files, cantPutBack("The arrow")) };
   }
 
   subscribe(listener: () => void): () => void {

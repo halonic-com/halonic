@@ -34,6 +34,22 @@ function keptFor(host: AgentsHost, agent: string): HarnessChecks {
   return lastFound.get(host)?.get(agent)?.found ?? {};
 }
 
+/**
+ * What hears an agent's new answers, by host and agent: the Try it chat and the Harness page each
+ * check, and a **Check again** on one shows on the other too.
+ */
+const hearers = new WeakMap<AgentsHost, Map<string, Set<() => void>>>();
+
+/** Calls `hear` whenever the agent (`hubId/id`) gets new answers; returns how to stop. */
+function hearAnswers(host: AgentsHost, agent: string, hear: () => void): () => void {
+  const byAgent = hearers.get(host) ?? new Map<string, Set<() => void>>();
+  hearers.set(host, byAgent);
+  const forAgent = byAgent.get(agent) ?? new Set<() => void>();
+  byAgent.set(agent, forAgent);
+  forAgent.add(hear);
+  return () => forAgent.delete(hear);
+}
+
 /** Keeps `found` for the agent, unless a check that started later already kept its answers. */
 function keep(host: AgentsHost, agent: string, kept: KeptChecks): void {
   const byAgent = lastFound.get(host) ?? new Map<string, KeptChecks>();
@@ -41,6 +57,7 @@ function keep(host: AgentsHost, agent: string, kept: KeptChecks): void {
   if (before !== undefined && before.started > kept.started) return;
   byAgent.set(agent, kept);
   lastFound.set(host, byAgent);
+  for (const hear of hearers.get(host)?.get(agent) ?? []) hear();
 }
 
 /** The programs the host checks; Halonic is built in and needs no check. */
@@ -82,10 +99,13 @@ export function useHarnessCheck(host: AgentsHost, hubId: string, id: string): Ha
     );
     keep(host, agent, { started, found: next });
     if (mine === newestCheck.current) {
-      setFound(next);
+      // The newest answers kept, which are another check's when it started after this one.
+      setFound(keptFor(host, agent));
       setChecking(false);
     }
   }, [host, hubId, id, agent]);
+  // Answers another check got for the agent show here too.
+  useEffect(() => hearAnswers(host, agent, () => setFound(keptFor(host, agent))), [host, agent]);
   useEffect(() => {
     setFound(keptFor(host, agent));
     void check();

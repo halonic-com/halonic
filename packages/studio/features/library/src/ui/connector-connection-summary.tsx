@@ -42,9 +42,10 @@ function secretsOf(connection: ConnectorConnection): readonly string[] | null {
 /**
  * How one connector connects, for the connector page to put above its status: the transport, where
  * it goes, and the names of its secrets (never their values; no row for an integration or a plugin),
- * as plain rows under a heading. With `secretsOnPage`, the page's Secrets section lists them with
- * their state, so there is no row here: a second list with no state read as a stale one, the
- * connector's own state right under it as theirs (C552 finding 6). It is a plain `div`, with no
+ * as plain rows under a heading. With `secretsOnPage`, the page names them elsewhere (its Secrets
+ * section with their state, or an HTTP connector's lines on where to set them), so there is no row
+ * here: a second list with no state read as a stale one, the connector's own state right under it
+ * as theirs (C552 finding 6), and a name twice as noise (C618 #2). It is a plain `div`, with no
  * landmark of its own: the shell owns the landmarks.
  */
 export function ConnectorConnectionSummary({

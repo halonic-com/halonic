@@ -100,15 +100,53 @@ verifies("cli.commands.routines.list-live-version", () => {
     gitTimeout,
   );
 
+  // C610 #1 (HAL-15664): the watch doesn't run a routine no commit has.
   it(
-    "lists a routine that has never been live from its saved file",
+    "lists a routine that has never been live with no next run, and says it doesn't run",
     async () => {
       await makeLive();
       await writeFiles(acmeRuns.acme, { [weeklyPath]: weeklyReport("0 9 * * 0") });
 
-      const { io } = await routinesIn(history);
+      const { code, io } = await routinesIn(history);
+      const json = await routinesIn(history, "--json");
 
-      expect(io.stdout[0]).toBe("Weekly report   Sundays at 09:00   Next 15 Nov 09:00   Never ran");
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout.slice(0, 2)).toEqual([
+        "Weekly report   Sundays at 09:00   Not live yet   Never ran",
+        "! Weekly report isn't live yet, so it doesn't run. Commit it to start it.",
+      ]);
+      expect(JSON.parse(json.io.stdout.join("\n")).routines[0]).toMatchObject({
+        nextRun: null,
+        liveState: "never-live",
+      });
+    },
+    gitTimeout,
+  );
+
+  // C610 #2 (HAL-15664): the watch runs the last commit's routine, which can start.
+  it(
+    "lists a routine whose saved changes have errors as the watch runs it, and names the errors under the list",
+    async () => {
+      await writeFiles(acmeRuns.acme, { [weeklyPath]: weeklyReport("0 9 * * 1") });
+      await makeLive();
+      await writeFiles(acmeRuns.acme, {
+        [weeklyPath]: weeklyReport("0 9 * * 1").replace("support-reply", "support-reply-typo"),
+      });
+
+      const { code, io } = await routinesIn(history);
+      const json = await routinesIn(history, "--json");
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout.slice(0, 2)).toEqual([
+        "Weekly report   Mondays at 09:00   Next 16 Nov 09:00   Never ran",
+        "! Weekly report has changes that aren't live yet, and they have errors (halonic validate). It runs as last committed.",
+      ]);
+      expect(JSON.parse(json.io.stdout.join("\n")).routines[0]).toMatchObject({
+        nextRun: "2026-11-16T09:00:00.000Z",
+        problems: 0,
+        savedProblems: 1,
+        liveState: "not-live",
+      });
     },
     gitTimeout,
   );

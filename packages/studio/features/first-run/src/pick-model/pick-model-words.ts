@@ -17,7 +17,7 @@ export const pickModelWords = {
   keyField: "Key",
   keyKept: "Kept encrypted on this computer. Studio never shows it again.",
   noKey: "Don't have a key?",
-  needsAccount: "(needs an account with them)",
+  needsAccount: "You need an account there.",
   replace: "Replace",
   cost: "A run costs your own account a small amount. Studio shows the cost after the run.",
   keysOff: "Keys need the desktop app.",
@@ -27,6 +27,8 @@ export const pickModelWords = {
   model: "Model",
   pullHint: "Download a small model first, in a terminal. Then check again.",
   startHint: "Start Ollama, then check again.",
+  noOllama: "Don't have Ollama?",
+  getOllama: "Get it from ollama.com",
   copyCommand: "Copy command",
   pullCommand: "ollama pull llama3.2",
   sample: "Just show me, with Sample answers",
@@ -44,6 +46,9 @@ export const keyPages: Readonly<Record<FirstRunKeyProvider, string>> = {
   openai: "https://platform.openai.com/api-keys",
   gemini: "https://aistudio.google.com/apikey",
 };
+
+/** Ollama's download page, for "Get it from ollama.com ↗" when no Ollama was found. */
+export const ollamaPage = "https://ollama.com/download";
 
 /** "Get one from Anthropic", to which the external link adds its ↗. */
 export function getKeyLink(provider: FirstRunKeyProvider): string {
@@ -111,6 +116,13 @@ export function isAmber(message: PickMessage): boolean {
     message.kind === "line-changed" ||
     (message.kind === "tested" &&
       (message.outcome === "no-credit" || message.outcome === "local-not-usable"))
+  );
+}
+
+/** Whether a message is about the pasted key itself, so the key field is described by it. */
+export function isKeyProblem(message: PickMessage): boolean {
+  return (
+    message.kind === "not-a-key" || (message.kind === "tested" && message.outcome === "key-refused")
   );
 }
 

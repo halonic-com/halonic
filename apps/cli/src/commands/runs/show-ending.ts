@@ -97,8 +97,8 @@ interface FailedEndingOptions {
  * fix indented under it, then the receipt, the same two lines `halonic run`
  * prints when the run fails. A run cancelled somewhere else has one line,
  * where the cancel landed, and no fix (revision 28); so has a run whose
- * cause is known but has no words of its own yet (HAL-6451). A child run its
- * parent's end cancelled has the way to that parent under its line. A run
+ * cause is known but has no words of its own yet (HAL-6451). A cancelled
+ * child run has the way to its parent under its line. A run
  * whose step failed because its child run failed says the child's cause
  * instead, with the way to that child.
  */
@@ -259,10 +259,12 @@ function runFailedEvent(run: RunDetail): RunFailedEvent {
 }
 
 /**
- * A cancelled run's one line, or, for a child run cancelled because the run
- * that started it ended (its typed cause, HAL-15555), that line and the way to
- * the parent, as Studio's run page says it with Open run (HAL-12411). A log
- * written before the cause keeps the plain line.
+ * A cancelled run's one line, which says so when the run that started it
+ * ended (its typed cause, HAL-15555); a log written before the cause keeps
+ * the plain line. Any child run, whatever ended it, has the way to its parent
+ * under that line, as Studio's run page has Open run (HAL-12411), so a
+ * for-each item whose parent the person cancelled still leads there
+ * (HAL-15755).
  */
 function cancelledLines(
   summary: RunSummary,
@@ -270,14 +272,14 @@ function cancelledLines(
   at: CancelledAt,
   dir: string | undefined,
 ): Phrase[] {
+  const line = endedWithParent(summary.cause)
+    ? runsMessages.showCancelledWithParent(title, at).phrase
+    : runsMessages.showCancelled(title, at).phrase;
   const parentId = summary.parentRunId;
-  if (parentId === null || !endedWithParent(summary.cause)) {
-    return [runsMessages.showCancelled(title, at).phrase];
+  if (parentId === null) {
+    return [line];
   }
-  return [
-    runsMessages.showCancelledWithParent(title, at).phrase,
-    phrase`  ${runsMessages.showParentRun(shortRunId(parentId), dir).phrase}`,
-  ];
+  return [line, phrase`  ${runsMessages.showParentRun(shortRunId(parentId), dir).phrase}`];
 }
 
 /**

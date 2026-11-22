@@ -39,7 +39,7 @@ import { openLocalIntegration } from "./open-local-integration.ts";
 import { printable } from "./output/printable.ts";
 import { PluginConnectorFactory, pluginConnectorSources } from "./plugin-connector-factory.ts";
 import { pluginPartReporter, type RunConnectorLines } from "./plugin-part-warnings.ts";
-import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
+import { checkRunSandbox, type PlacedAgent, type SandboxGateRun } from "./sandbox-gate.ts";
 import {
   nodeSandboxGateHost,
   type SandboxGateHost,
@@ -117,7 +117,7 @@ export interface WorkspaceEngineTarget {
    * sandbox itself before its trust check, as `run` does for a harness
    * agent (HAL-6580): the engine then doesn't ask the sandbox again.
    */
-  readonly sandboxChecked?: readonly UnsandboxedAgent[];
+  readonly sandboxChecked?: readonly PlacedAgent[];
   /** Halonic's other ports on this computer, which a harness run's bridge never calls: `serve`'s. */
   readonly ownPorts?: () => Iterable<number>;
   /** The routine scheduler on the engine's tick, for `routines watch`; none for a single run. */
@@ -152,8 +152,11 @@ export interface WorkspaceEngine extends LocalEngine {
    * step that keeps failing goes there instead and doesn't abort it.
    */
   readonly stuck: AbortSignal;
-  /** The runs' agents set to "On this computer", each once, for the ! lines before they start. */
-  readonly unsandboxed: readonly UnsandboxedAgent[];
+  /**
+   * The runs' agents set to "On this computer", or on hold since their file
+   * changed, each once, for the ! lines before they start.
+   */
+  readonly placed: readonly PlacedAgent[];
 }
 
 /**
@@ -181,7 +184,7 @@ export async function openWorkspaceEngine(
   setup: WorkspaceEngineSetup,
   target: WorkspaceEngineTarget,
 ): Promise<WorkspaceEngine> {
-  const unsandboxed = target.sandboxChecked ?? (await checkEngineRuns(setup, target));
+  const placed = target.sandboxChecked ?? (await checkEngineRuns(setup, target));
   let opened: LocalEngine | undefined;
   const { onStuck, onGaveUp = () => {} } = target;
   const stuck = stuckTimerWatch(
@@ -255,7 +258,7 @@ export async function openWorkspaceEngine(
     abandon: () => engine.abandon(),
     signal: AbortSignal.any([context.signal, stuck.signal]),
     stuck: stuck.signal,
-    unsandboxed,
+    placed,
   };
 }
 
@@ -265,7 +268,7 @@ export async function openWorkspaceEngine(
  * for a run it refuses anyway, so the refusal comes after the same checks
  * without opening the engine.
  *
- * @returns the runs' agents set to "On this computer", each once
+ * @returns the runs' agents set to "On this computer", or on hold, each once
  * @throws KindedError `invalid_input` when a run's harness would move an
  *   agent whose allowed sites or working folder no check read into a program (exit 2)
  * @throws SandboxRefusedError when an agent of a run needs the sandbox and
@@ -274,17 +277,17 @@ export async function openWorkspaceEngine(
 export async function checkEngineRuns(
   setup: WorkspaceEngineSetup,
   target: EngineRunsTarget,
-): Promise<UnsandboxedAgent[]> {
+): Promise<PlacedAgent[]> {
   const host = setup.sandboxGate?.() ?? nodeSandboxGateHost(setup.profile);
   const machine = await sandboxGateMachine(host, target.dir.root);
-  const unsandboxed = new Map<string, UnsandboxedAgent>();
+  const placed = new Map<string, PlacedAgent>();
   for (const run of target.runs) {
     checkHarnessOverride(target.workspace, run, target.ending);
     for (const agent of await checkRunSandbox(target.workspace, run, machine, target.ending)) {
-      unsandboxed.set(agent.name, agent);
+      placed.set(agent.name, agent);
     }
   }
-  return [...unsandboxed.values()];
+  return [...placed.values()];
 }
 
 /**

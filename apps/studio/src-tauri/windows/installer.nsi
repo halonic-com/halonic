@@ -2026,7 +2026,7 @@ Function un.RemoveSandbox
     ; it starts as the user (HAL-5404 S2).
     StrCpy $SandboxOutcome "removed_kept"
     DetailPrint "✓ Removed the agent sandbox"
-    DetailPrint "   Its access to your project folders is removed the next time you start ${PRODUCTNAME}."
+    DetailPrint "   Its access to your project folders ends the next time you start ${PRODUCTNAME}."
   ${ElseIf} $2 == "20"
     StrCpy $SandboxOutcome "none"
   ${ElseIf} $2 == "10"
@@ -2075,7 +2075,7 @@ Function un.PageDone
       System::Free $3
       IntOp $5 $5 - $4
       ; Two lines high, so a wrap at a larger scaling isn't cut off.
-      ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders is removed the next time you start ${PRODUCTNAME}."
+      ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders ends the next time you start ${PRODUCTNAME}."
       Pop $0
     ${EndIf}
   ${ElseIf} $SandboxOutcome == "refused"

@@ -7,10 +7,11 @@ export type ConnectorNotStartedCause = Extract<ToolFailureCause, { code: "connec
 /**
  * The cause for a connector that didn't start because of `error`
  * (requirements `engine.tool-result-cause` and
- * `engine.connector-listing-failed`): the program's or the secret's name, or
- * the plugin's id, when the error is one `connectorStartFailureOf` reads,
- * cut to `maxCauseNameLength`, else `other` with no name. Never any part of
- * the error's message, which can hold paths or a program's output.
+ * `engine.connector-listing-failed`): the program's or the secret's name, the
+ * plugin's id, or for a stopped plugin its name, when the error is one
+ * `connectorStartFailureOf` reads, cut to `maxCauseNameLength`, else `other`
+ * with no name. Never any part of the error's message, which can hold paths
+ * or a program's output.
  *
  * @example
  * connectorStartCause(new ProgramNotFoundError("npx")); // { code: "connector-not-started", why: "program-missing", name: "npx" }
@@ -26,7 +27,7 @@ export function connectorStartCause(error: unknown): ConnectorNotStartedCause {
   };
 }
 
-/** The name a failure gives: the program's, the secret's or the plugin's. */
+/** The name a failure gives: the program's, the secret's, the plugin's id or its name. */
 function nameOf(failure: ConnectorStartFailure): string {
   switch (failure.reason) {
     case "program-missing":
@@ -36,5 +37,7 @@ function nameOf(failure: ConnectorStartFailure): string {
     case "plugin-not-trusted":
     case "plugin-changed":
       return failure.plugin;
+    case "plugin-stopped":
+      return failure.pluginName;
   }
 }

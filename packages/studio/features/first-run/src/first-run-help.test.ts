@@ -38,12 +38,12 @@ const pick = (firstRun: FirstRun, label: string, openItem?: (item: ItemRef) => v
     ?.run();
 
 verifies("first-run.help", () => {
-  it("offers Show the guide in the demo and Start over where the app can copy it", () => {
+  it("offers Show the guide again in the demo and Start over where the app can copy it", () => {
     expect(labels(firstRunOf(undefined, { startOver: () => {} }))).toEqual([
-      "Show the guide",
+      "Show the guide again",
       "Start over",
     ]);
-    expect(labels(firstRunOf(undefined))).toEqual(["Show the guide"]);
+    expect(labels(firstRunOf(undefined))).toEqual(["Show the guide again"]);
     expect(labels(firstRunOf(undefined, { sample: false }))).toEqual([]);
   });
 
@@ -62,7 +62,7 @@ verifies("first-run.help", () => {
   it("begins the first run again at Demo after the win, and opens Support reply", () => {
     const firstRun = firstRunOf({ kind: "done", folder });
     const opened: ItemRef[] = [];
-    pick(firstRun, "Show the guide", (item) => opened.push(item));
+    pick(firstRun, "Show the guide again", (item) => opened.push(item));
     expect(firstRun.state).toEqual({
       kind: "on",
       folder,
@@ -74,18 +74,18 @@ verifies("first-run.help", () => {
 
   it("takes a first run paused here up again at its step, and leaves one that is on as it is", () => {
     const paused = firstRunOf({ kind: "paused", folder, since: "", step: "model" });
-    pick(paused, "Show the guide");
+    pick(paused, "Show the guide again");
     expect(paused.state).toEqual({ kind: "on", folder, since: "", step: "model" });
     const running: FirstRunState = { kind: "on", folder, since: "", step: "run", failed: true };
     const on = firstRunOf(running);
-    pick(on, "Show the guide");
+    pick(on, "Show the guide again");
     expect(on.state).toEqual(running);
   });
 
   it("takes a first run paused at Model, its setup item dismissed, up again at Model", () => {
     const paused = firstRunOf({ kind: "paused", folder, since: "", step: "model" });
     paused.send({ kind: "dismissed" });
-    pick(paused, "Show the guide");
+    pick(paused, "Show the guide again");
     expect(paused.state).toEqual({ kind: "on", folder, since: "", step: "model" });
   });
 

@@ -80,8 +80,11 @@ export function TryItChatView(props: TryItChatViewProps) {
       setDraft((current) => (current === message ? "" : current));
     });
   };
-  const send = async () => {
-    if (findSecretShape(draft) !== undefined) {
+  // Send anyway skips only the key check: a quiet engine or a workspace that isn't trusted holds
+  // it as it holds Send.
+  const send = async ({ keyChecked = false } = {}) => {
+    if (chat.engineQuiet) return;
+    if (!keyChecked && findSecretShape(draft) !== undefined) {
       setHeldForKey(true);
       return;
     }
@@ -96,6 +99,11 @@ export function TryItChatView(props: TryItChatViewProps) {
   const tryAgain = () => {
     chat.tryAgain(refused);
     box.current?.focus();
+  };
+  // Send anyway takes its line away, so focus goes to the box rather than the page (C505-3).
+  const sendAnyway = () => {
+    box.current?.focus();
+    void send({ keyChecked: true });
   };
 
   const line = () => {
@@ -114,11 +122,7 @@ export function TryItChatView(props: TryItChatViewProps) {
     }
     return (
       <div id={lineId}>
-        <TryItBoxLine
-          problem={problem}
-          name={name}
-          actions={{ ...props.ways, sendAnyway: () => sendNow() }}
-        />
+        <TryItBoxLine problem={problem} name={name} actions={{ ...props.ways, sendAnyway }} />
       </div>
     );
   };
@@ -225,16 +229,11 @@ function EndLine({
     case "turn-limit":
       return <ChatEndLine tone="plain">{tryItWords.turnLimit(name, end.turns)}</ChatEndLine>;
     case "failed":
-    case "engine-stopped": {
-      const cause =
-        end.kind === "failed" ? tryItWords.replyFailed(name, end.reason) : tryItWords.engineStopped;
-      return end.toolsRan ? (
-        <ChatEndLine tone="danger">{`${cause} ${tryItWords.toolsRan}`}</ChatEndLine>
-      ) : (
-        <ChatEndLine tone="danger" actions={again}>
-          {cause}
+    case "engine-stopped":
+      return (
+        <ChatEndLine tone="danger" actions={end.toolsRan ? [] : again}>
+          {tryItWords.endedBadly(name, end)}
         </ChatEndLine>
       );
-    }
   }
 }

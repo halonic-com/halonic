@@ -11,7 +11,7 @@ The host shall run the sign-ins of every integration the app names from one sour
 - Given a client secret that the sheet names `example-client`, when a sign-in starts and finishes, then the token request carries what the integration's secrets give for `example-client`.
 - Given a setting that changed after the host was built, then the next status and the next start read the new one.
 - Given two integrations with a sign-in pending each, when a callback arrives at the second one's path, then only the second flow answers it.
-- Given a cancelled sign-in, when its callback arrives, then its flow's page says it was cancelled in Halonic, nothing is exchanged and its status carries the outcome `cancelled`.
+- Given a cancelled sign-in, when its callback arrives, then its flow's page says it was cancelled in Halonic, so nothing was saved, nothing is exchanged and its status carries the outcome `cancelled`.
 - Given a callback at a path no flow is waiting on, then the answer is a plain 400 and nothing is exchanged.
 - Given an integration the app doesn't name, then the host has no parts for it.
 - Given a sheet with a sign-in and no grant, then its state is `signedOut`; after it finishes, `signedIn`; after a setting it reads changes, `approvalChanged`; and with that setting missing, `cannotSignIn`.

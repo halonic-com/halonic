@@ -288,7 +288,9 @@ export function ItemPage<Id extends string>({
               : undefined
           }
         >
-          <TabPanel ids={tabIds} tabs={views} selected={view}>
+          {/* Full height, so a view that fills the panel, such as the agent map, gets its room;
+              a taller view still scrolls in the panel. */}
+          <TabPanel ids={tabIds} tabs={views} selected={view} className="h-full">
             {children(view)}
           </TabPanel>
         </div>

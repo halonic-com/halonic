@@ -9,7 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { takeConnectorTitleFocus } from "../connector-focus-request.ts";
 import { type ConnectorSecrets, ConnectorSecretsService } from "../connector-secrets-host.ts";
-import { ConnectorStatusHostService } from "../connector-status-host.ts";
+import { type ConnectorConnection, ConnectorStatusHostService } from "../connector-status-host.ts";
 import { ConnectorStatusModel, type ConnectorStatusState } from "../connector-status-model.ts";
 import { itemFileRef } from "../item-file.ts";
 import { LibraryItemsHostService } from "../library-items-host.ts";
@@ -19,7 +19,7 @@ import { asksFirstWords, connectorPageWords, connectorToolsWords } from "../new-
 import { ConnectorConnectionSummary } from "./connector-connection-summary.tsx";
 import { ConnectorSecretsSection } from "./connector-secrets-section.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
-import { HttpConnectorSecret } from "./http-connector-secret.tsx";
+import { HttpConnectorSecret, hasHttpSecretLines } from "./http-connector-secret.tsx";
 import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { ListedToolsElsewhere } from "./listed-tools-elsewhere.tsx";
@@ -74,6 +74,31 @@ function SecretsPart({
 }) {
   return section === undefined ? null : (
     <ConnectorSecretsSection {...section} sourceName={sourceName} />
+  );
+}
+
+/**
+ * The page's "How it connects" section, with where an HTTP connector's secret is set. The summary
+ * leaves out its Secrets row when the page names the secrets elsewhere: in the Secrets section, or
+ * in the HTTP connector's lines.
+ */
+function ConnectionPart({
+  connection,
+  host,
+  secretsSectionShown,
+}: {
+  readonly connection: ConnectorConnection;
+  readonly host: ItemViewProps["context"]["host"];
+  readonly secretsSectionShown: boolean;
+}) {
+  return (
+    <>
+      <ConnectorConnectionSummary
+        connection={connection}
+        secretsOnPage={secretsSectionShown || hasHttpSecretLines(connection)}
+      />
+      <HttpConnectorSecret connection={connection} host={host} />
+    </>
   );
 }
 
@@ -193,13 +218,11 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       )}
       <SecretsPart section={secretsSection} sourceName={name} />
       {connector?.connection === undefined ? null : (
-        <>
-          <ConnectorConnectionSummary
-            connection={connector.connection}
-            secretsOnPage={secretsSection !== undefined}
-          />
-          <HttpConnectorSecret connection={connector.connection} host={context.host} />
-        </>
+        <ConnectionPart
+          connection={connector.connection}
+          host={context.host}
+          secretsSectionShown={secretsSection !== undefined}
+        />
       )}
       <ConnectorStatusSection
         model={model}

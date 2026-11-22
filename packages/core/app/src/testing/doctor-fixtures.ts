@@ -3,6 +3,7 @@ import type { HarnessDetection, SandboxCheck, Secrets } from "@halonicjs/ports";
 import { ok } from "@halonicjs/std";
 import type { NetworkProblem, NodeProblem } from "../doctor-lines.ts";
 import type { DoctorProvider } from "../doctor-models-line.ts";
+import type { ProfileProblem } from "../doctor-profile-line.ts";
 import { DoctorService, type DoctorWorkspace } from "../doctor-service.ts";
 import type { DoctorHarness } from "../doctor-sign-ins.ts";
 import type { TimedOutLine } from "../doctor-time-limit.ts";
@@ -93,6 +94,8 @@ interface Machine {
   node?: NodeProblem | null;
   /** What the host found wrong with the network settings; the host checks nothing when left out. */
   network?: NetworkProblem | null;
+  /** How the workspace and the profile folder overlap; nothing when left out. */
+  profile?: ProfileProblem | null;
   /** The sandbox check as a whole, in place of one that answers `sandbox`. */
   sandboxCheck?: () => Promise<SandboxCheck>;
   /** The resource report's read, in place of one that answers at once. */
@@ -142,6 +145,7 @@ export function doctor(machine: Machine = {}) {
       : { sandboxChoice: { current: () => machine.choice ?? null } }),
     ...(machine.node === undefined ? {} : { node: async () => machine.node ?? null }),
     ...(machine.network === undefined ? {} : { network: () => machine.network ?? null }),
+    ...(machine.profile === undefined ? {} : { profile: machine.profile }),
     timers,
   });
   return { service, asked, timers };

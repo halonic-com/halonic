@@ -212,6 +212,7 @@ verifies("parity.allowed-differences-checked", () => {
       "engine.task-json-answer",
       "engine.budget-composite-stops",
       "workspace.references",
+      "workspace.references",
       "events.run-started-version",
       "engine.llm-request-alias",
       "workspace.references",
@@ -223,6 +224,7 @@ verifies("parity.allowed-differences-checked", () => {
       "workflow.validate",
       "format.id-from-place",
       "workspace.routines",
+      "workflow.unknown-name-hints",
     ]);
   });
 

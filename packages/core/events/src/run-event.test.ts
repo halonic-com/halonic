@@ -69,6 +69,8 @@ verifies("events.run-log-contract", () => {
       | "connector.part-off"
       // Added after the reference by events.key-origin-answered (HAL-11873).
       | "key-origin.answered"
+      // Added after the reference by events.key-origin-asked (HAL-15213).
+      | "key-origin.asked"
       // Added after the reference by events.effect-requested (HAL-1532).
       | "effect.requested"
       | "knowledge.searched"

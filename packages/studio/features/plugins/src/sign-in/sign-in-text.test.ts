@@ -132,5 +132,8 @@ verifies("plugins.plugin-sign-in-text", () => {
     expect(signedOutNotConfirmed("Acme")).toBe(
       "You're signed out here. Acme didn't confirm, so the token may still work there until it expires.",
     );
+    expect(signedOutNotConfirmed("Acme", 2)).toBe(
+      "You're signed out here. Acme didn't confirm, so the tokens may still work there until they expire.",
+    );
   });
 });

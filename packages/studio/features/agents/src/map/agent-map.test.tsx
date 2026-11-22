@@ -9,7 +9,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AgentsHost } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { AgentScreen, type AgentScreenProps } from "../page/agent-page.tsx";
-import { buttonNamed, openDialogsInJsdom, show, unmount } from "../test-support.tsx";
+import { buttonNamed, openDialogsInJsdom, show, unmount, viewPanel } from "../test-support.tsx";
 
 beforeEach(openDialogsInJsdom);
 afterEach(unmount);
@@ -120,7 +120,8 @@ verifies("agents.map.layout-by-side", () => {
     const page = await openFlow({ agents });
     await act(async () => agents.update({ hubId: "acme", id: "triage" }, { subagents: [] }));
     expect(side(page, "Who it hands work to")).toEqual(["+ Add subagent"]);
-    expect(page.querySelector("[role=status]")).toBeNull();
+    // The panel's own skeleton, not the Try it chat's lines.
+    expect(viewPanel(page).querySelector("[role=status]")).toBeNull();
   });
 
   it("says why it can't draw the map, with Open as file", async () => {
@@ -271,12 +272,14 @@ verifies("agents.map.clicks", () => {
 
 verifies("agents.map.workflow-card-steps", () => {
   /** Mail triage's map, run by Support reply in the given steps. */
-  const runIn = (stepIds: readonly string[]) =>
+  const runIn = (stepIds: readonly string[], stepNames?: readonly string[]) =>
     memoryAgentsHost({
       hubs: [{ id: "acme", name: "Acme Mail" }],
       agents: [mailTriage],
       users: {
-        "acme/triage": [{ hubId: "acme", id: "support-reply", name: "Support reply", stepIds }],
+        "acme/triage": [
+          { hubId: "acme", id: "support-reply", name: "Support reply", stepIds, stepNames },
+        ],
       },
     });
 
@@ -297,6 +300,21 @@ verifies("agents.map.workflow-card-steps", () => {
     expect(
       page.querySelector(
         "[aria-label='Workflow Support reply, uses Mail triage in sort, check and reply']",
+      ),
+    ).not.toBeNull();
+  });
+
+  it("names the steps as their cards do: the title, else the id", async () => {
+    const page = await openFlow({
+      agents: runIn(["sort", "reply"], ["Sort the mail", "reply"]),
+      openWorkflow: () => undefined,
+    });
+    expect(side(page, "What brings it work")).toEqual([
+      "Workflow Support replySort the mail, reply",
+    ]);
+    expect(
+      page.querySelector(
+        "[aria-label='Workflow Support reply, uses Mail triage in Sort the mail and reply']",
       ),
     ).not.toBeNull();
   });
@@ -323,25 +341,25 @@ verifies("agents.map.asks-first", () => {
     });
     expect(side(page, "What it can use")).toEqual([
       "Skill tone",
-      "Connector acme-mail✋ Asks first, except 1 read-only tool",
-      "Connector big-mail✋ Asks first, except 2 read-only tools",
+      "Connector acme-mailAsks first, except 1 read-only tool",
+      "Connector big-mailAsks first, except 2 read-only tools",
       "+ Add a tool",
     ]);
     expect(
       page.querySelector("[aria-label='Connector acme-mail, Asks first, except 1 read-only tool']"),
     ).not.toBeNull();
-    // The hand is a picture; its words say it.
-    const hand = [...page.querySelectorAll("[aria-hidden=true]")].find((each) =>
-      each.textContent?.includes("✋"),
+    // The hand is the kit's drawn mark, not an emoji (C606); its words say it.
+    const hand = page.querySelector(
+      "[aria-label='Connector acme-mail, Asks first, except 1 read-only tool'] svg",
     );
-    expect(hand).toBeDefined();
+    expect(hand?.closest("[aria-hidden=true]")).not.toBeNull();
   });
 
   it("says every tool asks first when none runs without asking", async () => {
     const page = await openFlow({ agents: asking({ id: "notes-mcp", toolsWithoutAsking: 0 }) });
     expect(side(page, "What it can use")).toEqual([
       "Skill tone",
-      "Connector notes-mcp✋ Every tool asks first",
+      "Connector notes-mcpEvery tool asks first",
       "+ Add a tool",
     ]);
   });

@@ -31,7 +31,7 @@ verifies("integration-sign-in.sign-in-flow", () => {
 
     expect(response.status).toBe(400);
     expect(await response.text()).toContain(
-      "This sign-in was cancelled in Halonic. Start it again there to sign in.",
+      "This sign-in was cancelled in Halonic, so nothing was saved. You can close this tab. To sign in, go back to Halonic and choose Sign in.",
     );
     expect(test.seen).toEqual([]);
     expect(test.outcomes).toEqual([{ kind: "cancelled", signIn: signInName }]);

@@ -9,11 +9,13 @@ import {
 import { useEffect, useId, useRef, useState } from "react";
 import type { WorkflowArrow, WorkflowArrowChange, WorkflowArrowFieldChange } from "../api.ts";
 import { problemGlyph } from "../configuration/problem-lines.ts";
+import { arrowAddedLine, withNeverTaken } from "./arrow-announcements.ts";
 import { ArrowFields } from "./arrow-fields.tsx";
 import { conditionWords } from "./condition-words.ts";
 import { neverTaken } from "./never-taken.ts";
 import { pageWords } from "./page-words.ts";
 import { type NamedStep, nameOf, stepNames } from "./step-names.ts";
+import { TrashIcon } from "./trash-icon.tsx";
 
 const words = pageWords.arrows;
 
@@ -42,6 +44,8 @@ export interface StepArrowsProps {
   readonly isWait: boolean;
   /** Makes one change of the step's arrows; resolves to whether it was written. */
   readonly change: (change: WorkflowArrowChange) => Promise<boolean>;
+  /** Removes the arrow at `index`, which is `arrow`; resolves to whether it went. Absent: no trash buttons. */
+  readonly remove?: ((index: number, arrow: WorkflowArrow) => Promise<boolean>) | undefined;
   readonly announce?: ((line: string) => void) | undefined;
   /** Hears how many fields of the expanded arrow aren't saved. */
   readonly reportNotSaved?: ((count: number) => void) | undefined;
@@ -62,23 +66,6 @@ function swapped(arrows: readonly WorkflowArrow[], index: number, by: -1 | 1): W
   const [arrow] = next.splice(index, 1);
   if (arrow !== undefined) next.splice(index + by, 0, arrow);
   return next;
-}
-
-/**
- * `line` as announced after a change of the arrows, followed by "Arrow 2 is never taken: arrow 1
- * always matches first." when the change left one of the arrows at `places` (from 0) never taken.
- */
-function withNeverTaken(
-  line: string,
-  arrows: readonly WorkflowArrow[],
-  places: readonly number[],
-): string {
-  const beatenBy = neverTaken(arrows);
-  for (const place of places) {
-    const earlier = beatenBy[place];
-    if (earlier !== undefined) return `${line} ${words.neverTaken(place + 1, earlier)}`;
-  }
-  return line;
 }
 
 /**
@@ -112,6 +99,9 @@ function NeverTakenLine({
  * Steps are named as their cards on the canvas name them (C548 4). An arrow that an earlier one
  * always beats says so on its row, and a move or an add that makes one says so as it is announced
  * (C548 1): the canvas draws such an arrow like any other.
+ *
+ * A row's trash button removes its arrow at once; focus goes to the next row, else to **Add**
+ * (flow-workflows 4.6).
  */
 export function StepArrows({
   stepId,
@@ -119,6 +109,7 @@ export function StepArrows({
   steps,
   isWait,
   change,
+  remove,
   announce,
   reportNotSaved,
 }: StepArrowsProps) {
@@ -128,6 +119,7 @@ export function StepArrows({
   const neverTakenId = useId();
   const list = useRef<HTMLOListElement>(null);
   const goToPicker = useRef<HTMLElement>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
   const [target, setTarget] = useState("");
   // The row whose ⋮ takes focus once the moved arrow is drawn in its new place.
   const [focusRow, setFocusRow] = useState<number | undefined>();
@@ -162,6 +154,16 @@ export function StepArrows({
     const line = words.moved(index + 1, index + by + 1);
     announce?.(withNeverTaken(line, swapped(arrows, index, by), [index, index + by]));
   };
+  const removeAt = async (index: number, arrow: WorkflowArrow) => {
+    if (remove === undefined || !(await remove(index, arrow))) return;
+    // The next arrow moves up into this row, which keeps its place in the list; the last has none.
+    const next = index < arrows.length - 1;
+    const row = list.current?.querySelectorAll("li")[index];
+    if (next) row?.querySelector<HTMLButtonElement>("button[aria-expanded]")?.focus();
+    else addButton.current?.focus();
+    if (expanded === index) setExpanded(undefined);
+    else if (expanded !== undefined && expanded > index) setExpanded(expanded - 1);
+  };
   const add = async () => {
     // Add with no step picked goes to the picker, which says what it needs.
     if (target === "") {
@@ -174,11 +176,7 @@ export function StepArrows({
     // fields open, so its condition is one step away.
     const added = [...arrows, { from: stepId, to: target }];
     if (neverTaken(added)[arrows.length] !== undefined) setExpanded(arrows.length);
-    announce?.(
-      withNeverTaken(words.added(nameOf(names, stepId), nameOf(names, target)), added, [
-        arrows.length,
-      ]),
-    );
+    announce?.(arrowAddedLine(steps, arrows, stepId, target));
   };
   // An arrow back to the step itself, on done, would run it again for ever, so Go to… leaves the
   // step out; an arrow's own To still offers it, for a wait or a retry that needs one.
@@ -245,6 +243,15 @@ export function StepArrows({
                     },
                   ]}
                 />
+                {remove !== undefined && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={<TrashIcon />}
+                    label={words.remove(index + 1)}
+                    onClick={() => void removeAt(index, arrow)}
+                  />
+                )}
               </div>
               {expanded === index && (
                 <ArrowFields
@@ -274,7 +281,7 @@ export function StepArrows({
             size="sm"
           />
         </div>
-        <Button variant="secondary" size="sm" onClick={() => void add()}>
+        <Button ref={addButton} variant="secondary" size="sm" onClick={() => void add()}>
           {words.add}
         </Button>
       </div>

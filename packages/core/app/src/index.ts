@@ -130,6 +130,7 @@ export {
   type PluginsLine,
   pluginsLine,
 } from "./doctor-plugins-line.ts";
+export { type ProfileLine, type ProfileProblem, profileLine } from "./doctor-profile-line.ts";
 export {
   type SecretsFound,
   type SecretsLine,

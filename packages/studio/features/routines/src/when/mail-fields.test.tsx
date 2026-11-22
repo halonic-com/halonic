@@ -2,7 +2,7 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it } from "vitest";
 import type {
   RoutineChanges,
   RoutineMailbox,
@@ -72,64 +72,44 @@ const mail: RoutineTrigger = {
 };
 
 verifies("routines.when.mail-fields", () => {
-  it("writes the first Google connector with the default search and interval when New mail is picked", async () => {
-    const { page, saved } = await card({ kind: "manual" });
-    await choose(page.querySelector("select") as HTMLSelectElement, "mail");
-    expect(saved[0]?.trigger).toEqual(mail);
+  it("doesn't offer New mail to a routine that isn't on it", async () => {
+    const { page } = await card({ kind: "manual" });
+    const select = page.querySelector("select") as HTMLSelectElement;
+    expect([...select.options].map((option) => option.value)).toEqual([
+      "manual",
+      "schedule",
+      "every",
+      "signal",
+    ]);
+    expect(page.textContent).not.toContain("New mail");
   });
 
-  it("writes nothing and says to add a Google connector when there is none", async () => {
-    const { page, saved } = await card({ kind: "manual" }, []);
-    await choose(page.querySelector("select") as HTMLSelectElement, "mail");
-    expect(saved).toEqual([]);
+  it("shows New mail, its fields and the not-checked line on a routine already on it", async () => {
+    const { page } = await card(mail);
+    const [picker, mailbox] = [...page.querySelectorAll("select")] as HTMLSelectElement[];
+    expect(picker?.value).toBe("mail");
+    expect(picker?.selectedOptions[0]?.text).toBe("New mail");
+    expect(mailbox?.value).toBe("acme-gmail");
     expect(page.textContent).toContain(
-      "Add a Google connector first: a mail trigger watches its Gmail inbox.",
+      "Halonic doesn't check mail yet, so this routine starts only with Run now.",
     );
   });
 
-  it("offers Add a Google connector under the error, and only where New connector can open", async () => {
-    const addConnector = vi.fn();
-    const host = {
-      mailboxes: async () => [],
-      nextTimes: async () => ({ times: [], atNextCheck: false }),
-      save: async () => {},
-    } as unknown as RoutinesHost;
-    const manual = routineWith({ kind: "manual" });
-    const withLink = await show(
-      <WhenCard host={host} routine={manual} announce={() => {}} addConnector={addConnector} />,
-    );
-    expect(withLink.textContent).not.toContain("Add a Google connector");
-    await choose(withLink.querySelector("select") as HTMLSelectElement, "mail");
-    const link = [...withLink.querySelectorAll("button")].find(
-      (button) => button.textContent === "Add a Google connector",
-    );
-    await act(async () => link?.click());
-    expect(addConnector).toHaveBeenCalledOnce();
-    const without = await card({ kind: "manual" }, []);
-    await choose(without.page.querySelector("select") as HTMLSelectElement, "mail");
-    expect(without.page.querySelectorAll("button")).toHaveLength(0);
-  });
-
-  it("says it is still reading while the connectors are read, and drops that once they arrive", async () => {
-    let arrive: (found: readonly RoutineMailbox[]) => void = () => {};
-    const saved: RoutineChanges[] = [];
-    const host = {
-      mailboxes: () => new Promise<readonly RoutineMailbox[]>((resolve) => (arrive = resolve)),
-      nextTimes: async () => ({ times: [], atNextCheck: false }),
-      save: async (_ref: unknown, changes: RoutineChanges) => {
-        saved.push(changes);
-      },
-    } as unknown as RoutinesHost;
-    const page = await show(
-      <WhenCard host={host} routine={routineWith({ kind: "manual" })} announce={() => {}} />,
-    );
-    await choose(page.querySelector("select") as HTMLSelectElement, "mail");
+  it("writes another kind's default when one is picked on a mail routine", async () => {
+    const { page, saved } = await card(mail);
+    const picker = page.querySelector("select") as HTMLSelectElement;
+    await choose(picker, "mail");
     expect(saved).toEqual([]);
-    expect(page.textContent).toContain("Still reading the Google connectors.");
-    expect(page.textContent).not.toContain("Add a Google connector first");
-    await act(async () => arrive([acme]));
-    expect(page.textContent).not.toContain("Still reading");
-    expect(page.textContent).not.toContain("Add a Google connector first");
+    await choose(picker, "every");
+    expect(saved[0]?.trigger).toEqual({ kind: "every", interval: "1h" });
+  });
+
+  it("has no Add a Google connector, even with no Google connector to watch", async () => {
+    const { page } = await card({ ...mail, connector: "gone" }, []);
+    const mailbox = page.querySelectorAll("select")[1] as HTMLSelectElement;
+    expect(mailbox.value).toBe("gone");
+    expect(page.textContent).not.toContain("Add a Google connector");
+    expect(page.querySelectorAll("button")).toHaveLength(0);
   });
 
   it("lists the mailboxes with their accounts, and keeps a connector the workspace doesn't offer", async () => {

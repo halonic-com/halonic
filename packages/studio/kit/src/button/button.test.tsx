@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { fakePopover, restorePopover } from "../test/popover.ts";
 import { click, render, unmountAll } from "../test/render.tsx";
 import { Button, type ButtonProps } from "./button.tsx";
 
+// An unavailable button's reason shows as a tooltip once focused a moment, so a slow run reaches it.
+beforeEach(() => {
+  fakePopover();
+});
+
 afterEach(() => {
   unmountAll();
+  restorePopover();
 });
 
 function renderButton(props: ButtonProps) {

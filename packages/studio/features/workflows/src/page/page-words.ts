@@ -23,9 +23,14 @@ export const pageWords = {
   startChip: "Start",
   /** The tooltip on a step's output port (flow-workflows 4.3). */
   connectHint: "Drag to another step to connect",
-  /** Read once when the page opens with an agent's steps outlined: "2 steps use Sorter: triage, draft" (flow-workflows 9). */
-  outlined: (stepIds: readonly string[], agent: string) =>
-    `${stepIds.length} ${stepIds.length === 1 ? "step uses" : "steps use"} ${agent}: ${stepIds.join(", ")}`,
+  /**
+   * Shown over the canvas, and read once, while an agent's steps are outlined, the steps named as
+   * their cards name them: "2 steps use Sorter: Read the email, draft" (flow-workflows 9, C618).
+   */
+  outlined: (stepNames: readonly string[], agent: string) =>
+    `${stepNames.length} ${stepNames.length === 1 ? "step uses" : "steps use"} ${agent}: ${stepNames.join(", ")}`,
+  /** Beside that line: what drops the outline (C618). */
+  outlineClears: "Pick a step or an empty spot to clear.",
   /** The canvas's toolbar (flow-workflows 3.2, UX checklist 10.4). */
   toolbar: {
     label: "Flow tools",
@@ -68,6 +73,22 @@ export const pageWords = {
     /** Save model 8.4: a key pasted into a field is not saved. */
     looksLikeKey: "This looks like a key. Keep it as a secret instead?",
     couldntSave: (stepId: string) => `Couldn't change step ${stepId}`,
+    /** Removing a step (flow-workflows 4.6, UX checklist 10.10). */
+    remove: "Remove step",
+    firstStep:
+      "This is the first step. Pick another first step in Configuration › General before removing it.",
+  },
+  /** The toasts of a removed step or arrow (flow-workflows 4.6; microcopy 9.3). */
+  removed: {
+    step: (stepId: string, arrows: number) =>
+      arrows === 0
+        ? `Removed step ${stepId}`
+        : `Removed step ${stepId} and ${arrows} ${arrows === 1 ? "arrow" : "arrows"}`,
+    arrow: (from: string, to: string) => `Removed the arrow from ${from} to ${to}`,
+    undo: "Undo",
+    couldntPutBackStep: (stepId: string) => `Couldn't put back step ${stepId}`,
+    couldntPutBackArrow: (from: string, to: string) =>
+      `Couldn't put back the arrow from ${from} to ${to}`,
   },
   /** The step card's arrows (flow-workflows 5.3, UX checklist 10.8 and 10.9; microcopy 9.4, 19.7). */
   arrows: {
@@ -77,6 +98,7 @@ export const pageWords = {
     after: (time: string) => `after ${time}`,
     when: (condition: string) => `if ${condition}`,
     more: (number: number) => `More actions for arrow ${number}`,
+    remove: (number: number) => `Remove arrow ${number}`,
     moveUp: "Move up",
     moveDown: "Move down",
     goTo: "Go to…",

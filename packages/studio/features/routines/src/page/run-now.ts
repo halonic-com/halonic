@@ -15,7 +15,10 @@ import { cantStartWords } from "../cant-start.ts";
 import { failureReason, runNowWords } from "./page-words.ts";
 
 /** The routine facts a Run now toast names. */
-export type RunNowRoutine = Pick<RoutineView, "hubId" | "id" | "name" | "target" | "targetName">;
+export type RunNowRoutine = Pick<
+  RoutineView,
+  "hubId" | "id" | "name" | "target" | "targetName" | "enabled"
+>;
 
 /** The one sentence a refusal is shown as. */
 function refusalSentence(refusal: RunNowRefusal, routine: RunNowRoutine): string {
@@ -56,6 +59,8 @@ export async function runRoutineNow(
       toasts?.show({
         tone: "success",
         title: runNowWords.started(routine.name, result.shortId),
+        // Run now starts a routine that is off without turning it on (C587 #4).
+        ...(routine.enabled ? {} : { text: runNowWords.staysOff }),
         ...(openRun && {
           action: { label: runNowWords.openRun, onClick: () => openRun(result.runId) },
         }),

@@ -337,6 +337,18 @@ export const failureWords = {
   localOnly: (workspace: string, provider: string, agent: string, alias: string) =>
     `${workspace} is local only, so Halonic sent nothing to ${provider}. ${agent}'s model alias ${alias} points to a cloud model.`,
   chooseLocalModel: (agent: string) => `Choose a local model for ${agent}`,
+  /**
+   * What leads a child run's failure on the banner of the run that started it, in place of the
+   * child's own workflow: "Topics failed in the step Each: the run it started for item 2", with the
+   * item counted from 1, as `halonic runs show` says it (HAL-15729).
+   */
+  startedRun: (workflow: string, step: string, item: number | undefined) =>
+    item === undefined
+      ? `${workflow} failed in the step ${step}: the run it started`
+      : `${workflow} failed in the step ${step}: the run it started for item ${item + 1}`,
+  /** The line before a child's banner line that doesn't name its workflow: "… for item 2 failed in the step Draft." */
+  startedRunFailedIn: (startedRun: string, step: string) =>
+    `${startedRun} failed in the step ${step}.`,
   /** The harness ids the engine logs, as the person knows the programs. */
   harnessNames: { "claude-code": "Claude Code", codex: "Codex" } as Readonly<
     Record<string, string>

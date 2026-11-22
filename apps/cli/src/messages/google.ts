@@ -51,8 +51,8 @@ export const googleMessages = defineMessages("google", {
 
   resetSummary: () =>
     phrase`Remove this computer's Google accounts and every integration's saved sign-ins`,
-  /** What `reset` was doing, for "✕ Couldn't remove them: …". */
-  resetAction: () => phrase`remove them`,
+  /** What `reset` was doing, for "✕ Couldn't reset Google: …". */
+  resetAction: () => phrase`reset Google`,
   resetTakesNothing: () => phrase`halonic google reset takes no account or other argument.`,
   resetUsage: () => phrase`halonic google reset [--yes]`,
   resetYesOption: () => phrase`Remove them without asking.`,
@@ -65,6 +65,15 @@ export const googleMessages = defineMessages("google", {
   resetNoTerminal: () =>
     phrase`Resetting removes this computer's Google accounts and every integration's saved sign-ins, and there's no terminal to ask you to confirm.`,
   resetNoTerminalFix: () => phrase`To remove them anyway, pass --yes.`,
+  /**
+   * A folder it removes is there but can't be listed, such as for its
+   * permissions, so it can't tell whether anything is in it: exit 7, before
+   * it asks (HAL-15735).
+   */
+  resetFolderUnreadable: (folder: string) =>
+    phrase`Halonic can't read the folder ${folder}, so it can't tell what's in it. Nothing was removed.`,
+  resetFolderUnreadableFix: () =>
+    phrase`Check that the folder belongs to you and that you can read it, then run halonic google reset again.`,
   /** Nothing there to remove: exit 0 without asking. */
   resetNothingThere: () =>
     phrase`Nothing to remove: this computer has no Google accounts or saved sign-ins.`,

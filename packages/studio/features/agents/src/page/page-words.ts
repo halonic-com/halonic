@@ -1,12 +1,12 @@
 /** The agent page's words (microcopy 8.4, flow-agents 3.1 and 8; states R9). */
 export const pageWords = {
   kind: "AGENT",
+  /** The kind as the shell's item page header has it, in small caps: "Agent", "Agent name". */
+  kindWord: "Agent",
   loading: (name: string) => `Loading ${name}`,
   stillLoading: "Still loading",
   loadFailedTitle: "Couldn't load this agent",
   tryAgain: "Try again",
-  nameField: "Name",
-  nameMissing: "Give it a name.",
   nameTaken: (name: string) => `An agent called ${name} already exists.`,
   views: "Agent views",
   /** Microcopy 2 and flow-agents 3.1: under the header while saved changes aren't in a version. */

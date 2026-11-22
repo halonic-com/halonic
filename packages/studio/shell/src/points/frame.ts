@@ -49,7 +49,7 @@ export interface HelpItem {
 }
 
 /**
- * A group of items in the Help menu, such as First run's **Show the guide** and **Start over**.
+ * A group of items in the Help menu, such as First run's **Show the guide again** and **Start over**.
  * The menu lists the groups by `order`, each under its `title` and a divider between them.
  */
 export interface HelpContribution extends Ordered {

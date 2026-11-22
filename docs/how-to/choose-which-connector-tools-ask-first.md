@@ -21,6 +21,11 @@ Two more things always win:
 
 - A tool its server lists as `send` always asks, even when `tools.read`
   names it.
+- Except in `halonic run`: there a tool its server lists as `send` doesn't
+  ask. It is refused without asking until sending is allowed for the
+  connector (the Library's Allow sending switch in Studio; for a Google
+  connector, `halonic google allow-sending`). The CLI can't switch sending on yet, so
+  `halonic run` refuses every `send` call today.
 - A tool its server lists as `read` still asks, until `tools.read` names it.
   A server, a plugin's manifest or an integration's permission sheet can make
   a tool ask, never stop it from asking.
@@ -67,7 +72,10 @@ for your approval, and says under it whether calls to it ask:
 - "Doesn't ask before each use: *workspace* marks it as read-only."
 
 A run and `halonic tools review` use the same rule (`asksBeforeEachUse` in
-`@halonicjs/format`), so what the review says is what a run does.
+`@halonicjs/format`), so what the review says is what a run does, with one
+exception: for a tool its server lists as `send`, the review says "Asks you
+before each use.", but `halonic run` refuses every call to it without
+asking, because the CLI can't switch sending on yet.
 
 Approving a tool in `halonic tools review` is a separate step. It lets agents
 see a tool whose name, description and arguments you have read, and it asks

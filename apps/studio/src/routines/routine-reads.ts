@@ -20,10 +20,10 @@ import { targetOfFile } from "./routine-files.ts";
 /** A due time the scheduler dropped, as the host's `skips` part hands it over. */
 export interface StoredSkip {
   readonly reason:
-    | Exclude<RoutineSkipReason, "target-never-live" | "target-in-trash">
+    | Exclude<RoutineSkipReason, "target-never-live" | "target-in-trash" | "target-not-found">
     | "target-unavailable";
   /** For `target-unavailable`: why the target can't start. */
-  readonly why?: "never-live" | "in-trash";
+  readonly why?: "never-live" | "in-trash" | "not-found";
   /** For `start-refused`: the refusal's sentence, absent when Halonic can't explain it. */
   readonly sentence?: string;
   /** For `start-refused`: the refusal's next step, absent when it has none. */
@@ -67,15 +67,17 @@ export function startedByOf(summary: RunSummary): RoutineRun["startedBy"] {
   return type === undefined || type === "manual" || type === "inbox" ? "run-now" : type;
 }
 
+/** The row's reason for each `why` a target can't start; a row without one reads as never live. */
+const unavailableReasons = {
+  "never-live": "target-never-live",
+  "in-trash": "target-in-trash",
+  "not-found": "target-not-found",
+} as const satisfies Record<NonNullable<StoredSkip["why"]>, RoutineSkipReason>;
+
 export function skipOf(stored: StoredSkip): RoutineSkip {
   const { from, to, count } = stored;
   if (stored.reason === "target-unavailable") {
-    return {
-      reason: stored.why === "in-trash" ? "target-in-trash" : "target-never-live",
-      from,
-      to,
-      count,
-    };
+    return { reason: unavailableReasons[stored.why ?? "never-live"], from, to, count };
   }
   if (stored.reason === "start-refused" && stored.sentence !== undefined) {
     const { reason, sentence, fix, toCommand } = stored;

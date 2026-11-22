@@ -1,12 +1,16 @@
+import type { PluginSignedOut } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { acme } from "./acme-plugins.testing.ts";
 import { desktopPluginActions } from "./plugin-actions.ts";
 import { PluginFeed } from "./plugin-feed.ts";
 
-/** The actions over the acme plugins, with a keychain that records deletes and can refuse one. */
-async function setup() {
-  const { service, reader } = acme();
+/**
+ * The actions over the acme plugins, with a keychain that records deletes and can refuse one.
+ * `signedOut` is what signing a plugin out gives back.
+ */
+async function setup(signedOut: readonly PluginSignedOut[] = []) {
+  const { service, reader } = acme(signedOut);
   const feed = new PluginFeed(service);
   await feed.reload();
   const deleted: string[] = [];
@@ -41,11 +45,30 @@ verifies("studio.desktop-plugins-host", () => {
     expect(statusOf("weather")).toBe("not-trusted");
     await actions.trust("weather");
     expect(statusOf("weather")).toBe("on");
-    await actions.revoke("weather");
+    await expect(actions.revoke("weather")).resolves.toEqual({ signInsNotConfirmed: [] });
     expect(statusOf("weather")).toBe("not-trusted");
     await actions.trust("weather");
-    await expect(actions.remove("weather")).resolves.toEqual({ kind: "removed" });
+    await expect(actions.remove("weather")).resolves.toEqual({
+      kind: "removed",
+      signInsNotConfirmed: [],
+    });
     expect(deleted).toEqual(["plugin__weather__example-key"]);
+  });
+
+  it("names the sign-ins whose sign-out the provider didn't confirm, for the page to say so", async () => {
+    const { actions } = await setup([
+      { signIn: "weather-account", result: { kind: "signedOut", revoke: "notConfirmed" } },
+      { signIn: "weather-admin", result: { kind: "signedOut", revoke: "noRevokeUrl" } },
+      { signIn: "weather-read", result: { kind: "signedOut", revoke: "revoked" } },
+      { signIn: "weather-old", result: { kind: "notSignedIn" } },
+    ]);
+    const notConfirmed = ["weather-account", "weather-admin"];
+    await actions.trust("weather");
+    await expect(actions.revoke("weather")).resolves.toEqual({ signInsNotConfirmed: notConfirmed });
+    await expect(actions.remove("weather")).resolves.toEqual({
+      kind: "removed",
+      signInsNotConfirmed: notConfirmed,
+    });
   });
 
   it("offers no updates while core can't read a plugin's source again, so the page has no button", async () => {
@@ -87,7 +110,7 @@ verifies("studio.desktop-plugins-host", () => {
     vi.spyOn(service, "load").mockImplementation(async () => {
       throw failure;
     });
-    await expect(actions.revoke("weather")).resolves.toBeUndefined();
+    await expect(actions.revoke("weather")).resolves.toEqual({ signInsNotConfirmed: [] });
     expect(onReloadFailed).toHaveBeenCalledWith(failure);
     expect((await load()).length).toBe(3);
   });

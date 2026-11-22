@@ -48,9 +48,9 @@ integration. Its only way out is the `IntegrationHost`:
   token value ever enters the worker. Removing the plugin's trust, or the
   plugin, signs out its sign-ins on this computer first: each token is revoked
   at the address the person approved, where there is one, and forgotten here
-  even when the revoke fails. When the provider doesn't confirm, the CLI says
-  the token may still work there until it expires, as Studio's **Sign out**
-  does; Studio's **Remove trust** doesn't say it yet.
+  even when the revoke fails. When the provider doesn't confirm, the CLI and
+  Studio say the token may still work there until it expires, as Studio's
+  **Sign out** does.
 - Every tool has a `risk`, which the trust check shows. Agents reach the tools
   through a connector, and every call asks a person first, whatever the risk,
   unless the connector file's `read` list names the tool; a plugin can't add a
@@ -69,8 +69,7 @@ a copy of the files it just checked, never from the plugin's own folder. A pinne
 folder, path and registry variables Halonic sets itself, and may reach its
 registry's host (for PyPI on `pypi.org`, also `files.pythonhosted.org`). A tool the
 server offers that the manifest doesn't declare is refused. No proven fence
-means no start, and a yes to run without the sandbox (not offered yet) doesn't cover plugin
-programs. Where no sandbox works (Android, the browser) local tools don't run.
+means no start, and a yes to run without the sandbox never covers local tools. Where no sandbox works (Android, the browser) local tools don't run.
 
 ### Why `ui` carries no code
 
@@ -105,11 +104,11 @@ cloned workspace can't trust itself.
 - **The sandbox has limits.** It sets no CPU or memory limits, so a local
   tool's program has none. A backend worker brings its own memory limit: on
   its JavaScript heap, and on Linux, where `prlimit` is installed, on the
-  whole process. Windows is a preview: there a backend worker may run only
-  when MXC fences it, on Windows 11, with only its heap limited, and no app
-  uses MXC yet. Without MXC it doesn't start, because a yes to run it without
-  the sandbox isn't offered yet. So for now a backend worker doesn't start on
-  Windows. And
+  whole process. Windows is a preview: there MXC could fence a backend
+  worker, on Windows 11, with only its heap limited, but no app uses MXC yet.
+  Without MXC it starts only with your yes to run it without
+  the sandbox, given in Studio's trust check, and then in the launcher's
+  sandbox, which doesn't fence it. Without that yes it doesn't start. And
   a program that is allowed a host can send anything there.
 - **Tool results are untrusted content.** A plugin's answer can try to steer a
   model, as any outside text can. See
@@ -161,11 +160,13 @@ Linux, Seatbelt on macOS).
   goes through one gate that reads the plugin's folder and checks trust again,
   also on the restart after an idle stop. A sandbox check that fails means the
   backend stays stopped; it never falls back to running without the sandbox.
-  The yes to run without the sandbox isn't offered, and the store that would
-  keep it holds nothing (`app.no-unfenced-run-consent`). For when it is
-  offered, taking the yes back already stops runs in every process within a
-  second, waits for starts in progress, and keeps checking past a stop that
-  never returns (`app.unfenced-runs`, `app.runner-start-gate`).
+  The `halonic` command never offers the yes to run without the sandbox: its
+  store holds nothing (`app.no-unfenced-run-consent`). The desktop app asks
+  for it in a plugin's Review, and its agent host keeps it
+  (`agent-host.unfenced-runs-routes`). Taking the yes back stops runs in every
+  process within a second, waits for starts in progress, and keeps checking
+  past a stop that never returns (`app.unfenced-runs`,
+  `app.runner-start-gate`).
 - **Tests:** `packages/adapters/integration-runner/fence/runner-attacks.test.ts`
   and `packages/adapters/integration-runner/src/halonic/kit-attacks.test.ts`
   (the worker and the kit), `packages/core/app/src/unfenced-run-attacks.test.ts`

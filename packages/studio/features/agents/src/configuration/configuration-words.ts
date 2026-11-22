@@ -121,6 +121,11 @@ export const configurationWords = {
      */
     studioCantStart:
       "Studio can't start it this way yet; halonic run and halonic serve on this computer can.",
+    /**
+     * Under On this computer while the choice is on hold, in place of `studioCantStart`: the agent
+     * runs in the sandbox until then, wherever it starts. Team decision on HAL-15640 (C605).
+     */
+    onHoldNote: "On hold until you confirm again.",
     /** Microcopy 23.4, the warning: title, two sentences, and its danger button. */
     warningTitle: (agent: string) => `Run ${agent} on this computer, without the sandbox?`,
     warningAccess: (agent: string) =>
@@ -141,13 +146,15 @@ export const configurationWords = {
     fileChanged: (agent: string) => `${agent}'s file changed.`,
     seeWhatChanged: "See what changed ›",
     /**
-     * The chip in the agent page's header while On this computer is chosen, on hold or not
-     * (checklist 3.8); a screen reader hears the spoken line instead, as with the run page's chip
-     * (microcopy 23.1).
+     * The chip in the agent page's header while On this computer is chosen (checklist 3.8); a
+     * screen reader hears the spoken line instead, as with the run page's chip (microcopy 23.1).
+     * On hold, it says so, since the agent runs in the sandbox until then (team decision on
+     * HAL-15640, C605).
      */
     fullAccess: "Full access",
     fullAccessSpoken: "Runs without the sandbox",
-    fullAccessOnHoldSpoken: "Runs without the sandbox once you confirm again",
+    fullAccessOnHold: "Full access on hold",
+    fullAccessOnHoldSpoken: "Runs in the sandbox until you confirm again",
     /** The file changed while the warning was open, so nothing was saved; the warning stays for the new file. */
     changedWhileOpen: (agent: string) =>
       `${agent}'s file changed while this was open, so nothing was saved. Read this again, then confirm.`,

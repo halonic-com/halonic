@@ -30,7 +30,8 @@ export function withoutProblems(
  * prints "✕ Friday digest can't start until its file is fixed · halonic
  * validate" the first time
  * each one is left out. A routine whose file is fixed starts again from
- * that tick on, and gets its line again if it breaks again.
+ * that tick on, says "✓ Friday digest can start now" (HAL-15664), and gets
+ * its line again if it breaks again.
  */
 export class RoutinesThatCantStart {
   readonly #context: CommandContext;
@@ -53,7 +54,15 @@ export class RoutinesThatCantStart {
     const cantStart = routinesWithProblemsOf(workspace);
     const keys = new Set(cantStart.map((each) => each.key));
     for (const key of this.#said) {
-      if (!keys.has(key)) this.#said.delete(key);
+      if (keys.has(key)) continue;
+      this.#said.delete(key);
+      // A routine whose file is gone, rather than fixed, has nothing to say.
+      const fixed = routines.find((each) => routineKey(each) === key);
+      if (fixed !== undefined) {
+        this.#context.printAhead(
+          routinesMessages.canStartNow(printable(fixed.routine.name)).phrase,
+        );
+      }
     }
     for (const { key, name } of cantStart) {
       if (this.#said.has(key)) continue;

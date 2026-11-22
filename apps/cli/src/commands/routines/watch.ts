@@ -30,10 +30,10 @@ import { routinesMessages } from "../../messages/routines.ts";
 import { runMessages } from "../../messages/run.ts";
 import { printable } from "../../output/printable.ts";
 import {
+  type PlacedAgent,
+  placedWarning,
   programAgentsOf,
   type SandboxGateRun,
-  type UnsandboxedAgent,
-  unsandboxedWarning,
 } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import {
@@ -105,7 +105,7 @@ async function watchVersions(
   const cantStart = new RoutinesThatCantStart(context, typedDir);
   const listed = () => routines;
   const report = watchReport(context, () => setup.clock(), listed);
-  const warnings = unsandboxedWarnings(context);
+  const warnings = placedWarnings(context);
   // Set before the engine opens, so no tick starts a run from a version that wasn't checked.
   versions.checkWith(laterVersionChecks(setup, dir, typedDir, warnings));
   let scheduler: RoutineScheduler | undefined;
@@ -133,7 +133,7 @@ async function watchVersions(
     },
   });
   try {
-    warnings.print(engine.unsandboxed);
+    warnings.print(engine.placed);
     // Straight away, so the times missed since the last watch start now, not a minute from now.
     // Before the watching line, so that line means the scheduler has caught up; its runs print after.
     if (scheduler !== undefined) report.tick(await scheduler.tick());
@@ -188,7 +188,7 @@ function laterVersionChecks(
   setup: RunSetup,
   dir: OpenWorkspaceDir,
   typedDir: string | undefined,
-  warnings: UnsandboxedWarnings,
+  warnings: PlacedWarnings,
 ): VersionChecks {
   const ending = runMessages.nothingRan();
   return {
@@ -202,19 +202,21 @@ function laterVersionChecks(
   };
 }
 
-/** Prints the ! line of each agent set to "On this computer", once a watch. */
-interface UnsandboxedWarnings {
-  print(agents: readonly UnsandboxedAgent[]): void;
+/** Prints the ! line of each agent set to "On this computer", or on hold, once a watch. */
+interface PlacedWarnings {
+  print(agents: readonly PlacedAgent[]): void;
 }
 
-function unsandboxedWarnings(context: CommandContext): UnsandboxedWarnings {
+function placedWarnings(context: CommandContext): PlacedWarnings {
   const warned = new Set<string>();
   return {
     print(agents) {
       for (const agent of agents) {
-        if (warned.has(agent.name)) continue;
-        warned.add(agent.name);
-        context.printAhead(unsandboxedWarning(agent));
+        // By its place too: an agent confirmed again after its ! line on hold gets its new line.
+        const key = `${agent.kind} ${agent.name}`;
+        if (warned.has(key)) continue;
+        warned.add(key);
+        context.printAhead(placedWarning(agent));
       }
     },
   };

@@ -17,6 +17,7 @@ import { failureWords } from "../failure-words.ts";
 import { runPageWords } from "../run-words.ts";
 import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
 import { seeTheStepText } from "./blocked-sites.tsx";
+import { childFailureBanner, type FailedChildView } from "./child-failure-banner.ts";
 import type { StepEntry } from "./every-step-model.ts";
 import { agentNameOf, causeBanner } from "./failure-banner.ts";
 import { refusedInstructions } from "./instructions-refusal.ts";
@@ -51,6 +52,7 @@ export function PageBanner({
   openBudget,
   phone = false,
   onSeeStep,
+  failedChild,
 }: {
   readonly run: SourcedRun;
   readonly context: RunPageContext;
@@ -80,8 +82,14 @@ export function PageBanner({
   /** Whether the page is a phone's: a fix it can't do is said as a line (microcopy 15.3). */
   readonly phone?: boolean;
   readonly onSeeStep: (entryId: string) => void;
+  /** The child run the run's step failed with, whose cause the banner says; absent for any other run. */
+  readonly failedChild?: FailedChildView | undefined;
 }) {
-  const chosen = chooseBanner(run, context, log, entries, instructionTrust !== undefined, phone);
+  const chosen = chooseBanner(run, context, log, entries, {
+    asksTrust: instructionTrust !== undefined,
+    phone,
+    failedChild,
+  });
   if (chosen.kind === "refused") {
     // A new key for each refusal, so an answer to an earlier one isn't shown for a later run.
     return (
@@ -132,13 +140,19 @@ type ChosenBanner =
   | { readonly kind: "blocked"; readonly failure: NonNullable<ReturnType<typeof blockedFailure>> }
   | { readonly kind: "banner"; readonly banner: RunBanner | undefined; readonly cause: boolean };
 
+/** What decides between the page's banners besides the run, its log and its steps. */
+interface BannerChoice {
+  readonly asksTrust: boolean;
+  readonly phone: boolean;
+  readonly failedChild: FailedChildView | undefined;
+}
+
 function chooseBanner(
   run: SourcedRun,
   context: RunPageContext,
   log: readonly RunEvent[] | undefined,
   entries: readonly StepEntry[],
-  asksTrust: boolean,
-  phone: boolean,
+  { asksTrust, phone, failedChild }: BannerChoice,
 ): ChosenBanner {
   const refused =
     log === undefined || !asksTrust ? undefined : refusedInstructions(run.summary, log);
@@ -149,6 +163,11 @@ function chooseBanner(
   if (cause !== undefined) return { kind: "banner", banner: cause, cause: true };
   const failure = log === undefined ? undefined : blockedFailure(run.summary, log, entries);
   if (failure !== undefined) return { kind: "blocked", failure };
+  const child =
+    failedChild === undefined
+      ? undefined
+      : childFailureBanner(run.summary, context, failedChild, phone);
+  if (child !== undefined) return { kind: "banner", banner: child, cause: true };
   return { kind: "banner", banner: runBanner(run, context), cause: false };
 }
 
@@ -162,18 +181,15 @@ export function bannerOffersRunAgain(
   log: readonly RunEvent[] | undefined,
   entries: readonly StepEntry[],
   {
-    asksTrust,
-    phone,
     reviewInInbox,
     openRun,
-  }: {
-    readonly asksTrust: boolean;
-    readonly phone: boolean;
+    ...choice
+  }: BannerChoice & {
     readonly reviewInInbox: (() => void) | undefined;
     readonly openRun: ((runId: string) => void) | undefined;
   },
 ): boolean {
-  const chosen = chooseBanner(run, context, log, entries, asksTrust, phone);
+  const chosen = chooseBanner(run, context, log, entries, choice);
   return (
     chosen.kind === "banner" &&
     chosen.banner?.kind === "callout" &&
@@ -293,7 +309,13 @@ function bannerAction(
   }
   if (action?.kind === "open-run" && openRun !== undefined) {
     const { runId } = action;
-    return { label: action.label, onClick: () => openRun(runId) };
+    // Braces, so whatever `openRun` returns isn't taken for a promise the button waits on.
+    return {
+      label: action.label,
+      onClick: () => {
+        openRun(runId);
+      },
+    };
   }
   return undefined;
 }

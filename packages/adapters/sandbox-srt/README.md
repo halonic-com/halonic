@@ -8,7 +8,7 @@ The `Sandbox` port on [sandbox-runtime](https://github.com/anthropics/sandbox-ru
 - **Public API:** `@halonicjs/adapter-sandbox-srt`
 
 `SrtSandbox` is the whole adapter. `check()` says whether the sandbox can start on this machine and
-gives the first reason when it can't: Windows without srt's install (`setup-needed`; `srt windows-install`, once, as an administrator), inside a container, Docker or Podman (`container`), WSL 1
+gives the first reason when it can't: Windows without srt's install (`setup-needed`; `srt windows-install`, once, as an administrator, with `setupAgain` when the install is for an older srt), inside a container, Docker or Podman (`container`), WSL 1
 (`not-supported`), bubblewrap missing (`bubblewrap-missing`), user namespaces refused by AppArmor
 (`user-namespaces-restricted`, asked only once bubblewrap is
 there and fails, and only while AppArmor's `apparmor_restrict_unprivileged_userns` is `1`), or `socat`

@@ -130,8 +130,8 @@ export function noActions(): { actions: PluginActions } {
   return {
     actions: {
       trust: async () => {},
-      revoke: async () => {},
-      remove: async () => ({ kind: "removed" }),
+      revoke: async () => ({ signInsNotConfirmed: [] }),
+      remove: async () => ({ kind: "removed", signInsNotConfirmed: [] }),
       checkForUpdate: async () => ({ kind: "up-to-date" }),
       applyUpdate: async () => {},
       reload: async () => {},

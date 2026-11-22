@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { WorkflowProblem } from "../api.ts";
 import {
+  arrowProblems,
   cardProblems,
   cardSummary,
   countProblems,
@@ -76,6 +77,21 @@ verifies("workflows.configuration.problem-lines", () => {
     ]);
   });
 
+  // C591 row 13: the row used the core's "transition" and gave no next step.
+  it("reads a never-taken arrow's row in Studio's words, with what to change", () => {
+    const shadowed: WorkflowProblem = {
+      severity: "warning",
+      code: "unguarded-shadow",
+      message: `In "review", the transition to "send" can never fire: an earlier one on "done" has no condition`,
+      stepId: "review",
+    };
+    const [row] = problemRows([shadowed]);
+    expect(row?.text).toBe(
+      "Has an arrow that's never taken: an earlier arrow on the same event always matches first. Change the order or the conditions in Arrows on its card.",
+    );
+    expect(row?.stepId).toBe("review");
+  });
+
   it("says answers for a wait step's missing events on its card and its row alike", () => {
     const missing = problem("wait-without-events", "warning", "wait-1");
     expect(cardSummary([missing])).toBe("△ Has no answers to pick");
@@ -103,14 +119,16 @@ verifies("workflows.configuration.problem-lines", () => {
     const unknownAgent: WorkflowProblem = {
       severity: "error",
       code: "unknown-agent",
-      message: '"first" uses unknown agent "nobody-here"',
+      message: `"first" uses the agent "nobody-here", which its hub doesn't have`,
       stepId: "first",
     };
     const titles: Record<string, string> = { first: "Ask a missing agent" };
     const nameOf = (stepId: string) => titles[stepId] ?? stepId;
 
     const [row] = problemRows([unknownAgent], nameOf);
-    expect(row?.text).toBe('"Ask a missing agent" uses unknown agent "nobody-here"');
+    expect(row?.text).toBe(
+      `"Ask a missing agent" uses the agent "nobody-here", which its hub doesn't have`,
+    );
     expect([row?.stepId, row?.stepName]).toEqual(["first", "Ask a missing agent"]);
   });
 
@@ -165,5 +183,30 @@ verifies("workflows.page.step-problems", () => {
     ];
     expect(cardProblems(arrows, "first")).toBeUndefined();
     expect(cardProblems([], "first")).toBeUndefined();
+  });
+  it("marks an arrow's plate with that arrow's problems only, the worst first", () => {
+    const onArrow = (code: string, severity: WorkflowProblem["severity"], arrowIndex: number) => ({
+      ...problem(code, severity, "review"),
+      message: `"review" ${code}`,
+      arrowIndex,
+    });
+    const problems = [
+      onArrow("unguarded-shadow", "warning", 1),
+      onArrow("unknown-target", "error", 1),
+      onArrow("unknown-target", "error", 2),
+      { ...problem("dead-end", "error", "review"), arrowIndex: 1 },
+    ];
+
+    expect(arrowProblems(problems, "review", 1, () => "Check")).toEqual({
+      severity: "error",
+      glyph: "✕",
+      line: "Goes to a missing step",
+      detail: '"Check" unknown-target\n"Check" unguarded-shadow',
+    });
+    expect(arrowProblems(problems, "review", 2)).toMatchObject({
+      line: "Goes to a missing step",
+    });
+    expect(arrowProblems(problems, "review", 0)).toBeUndefined();
+    expect(arrowProblems(problems, "other", 1)).toBeUndefined();
   });
 });

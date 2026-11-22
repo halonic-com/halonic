@@ -162,6 +162,13 @@ export interface RoutineView extends RoutineRef {
    * start it (`missing-routine-input`, as `halonic validate` says). Absent where the host can't say.
    */
   readonly inputMissing?: boolean | undefined;
+  /**
+   * The errors among them that stop it from starting, as {@link RoutineListing.problems} has them,
+   * so the Runs view says what the list says (HAL-15524). Absent where the host can't say.
+   */
+  readonly startErrors?: readonly string[] | undefined;
+  /** The workspace isn't trusted, so it waits, as the list's "Paused until trusted" says. Absent where the host can't say. */
+  readonly pausedUntilTrusted?: boolean | undefined;
 }
 
 /** The changes a person makes on the page; each field present is written, the others stay as they are. */
@@ -192,6 +199,7 @@ export type RoutineSkipReason =
   | "changed"
   | "target-never-live"
   | "target-in-trash"
+  | "target-not-found"
   | "start-refused";
 
 /** A range of due times that didn't start, as one quiet row of the Runs view. */

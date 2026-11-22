@@ -252,7 +252,7 @@ verifies("plugins.plugin-list", () => {
       ...noActions().actions,
       remove: async (plugin) => {
         asked.push(plugin);
-        return { kind: "removed" };
+        return { kind: "removed", signInsNotConfirmed: [] };
       },
     };
     show([weather()], { actions });

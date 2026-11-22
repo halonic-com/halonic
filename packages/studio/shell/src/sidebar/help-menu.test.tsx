@@ -76,7 +76,7 @@ const firstRun = (picked: string[]) => ({
   order: 20,
   title: "First run",
   items: () => [
-    { id: "guide", label: "Show the guide", run: () => picked.push("guide") },
+    { id: "guide", label: "Show the guide again", run: () => picked.push("guide") },
     { id: "start-over", label: "Start over", run: () => picked.push("start-over") },
   ],
 });
@@ -96,7 +96,7 @@ verifies("shell.help-menu", () => {
       "Check this computer",
       "-",
       "# First run",
-      "Show the guide",
+      "Show the guide again",
       "Start over",
     ]);
   });
@@ -109,7 +109,7 @@ verifies("shell.help-menu", () => {
         order: 20,
         title: "First run",
         items: () => [
-          { id: "guide", label: "Show the guide", run: () => {} },
+          { id: "guide", label: "Show the guide again", run: () => {} },
           {
             id: "start-over",
             label: "Start over",
@@ -156,11 +156,11 @@ verifies("shell.help-menu", () => {
       expect.any(Error),
     );
     reported.mockRestore();
-    expect(shown(entries)).toEqual(["# First run", "Show the guide", "Start over"]);
+    expect(shown(entries)).toEqual(["# First run", "Show the guide again", "Start over"]);
   });
 
   it("reads a group's items again when it says they changed", () => {
-    let items = [{ id: "guide", label: "Show the guide", run: () => {} }];
+    let items = [{ id: "guide", label: "Show the guide again", run: () => {} }];
     const listeners = new Set<() => void>();
     const group: HelpContribution = {
       id: "first-run.help",
@@ -176,12 +176,12 @@ verifies("shell.help-menu", () => {
       return <p>{shown(useHelpMenu(help, contextFor)).join(", ")}</p>;
     }
     const container = render(<Sidebar />);
-    expect(container.textContent).toBe("Show the guide");
+    expect(container.textContent).toBe("Show the guide again");
     items = [...items, { id: "start-over", label: "Start over", run: () => {} }];
     act(() => {
       for (const listener of listeners) listener();
     });
-    expect(container.textContent).toBe("Show the guide, Start over");
+    expect(container.textContent).toBe("Show the guide again, Start over");
     unmountAll();
     expect(listeners.size).toBe(0);
   });

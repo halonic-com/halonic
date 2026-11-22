@@ -108,6 +108,8 @@ verifies("routines.runs.view", () => {
   });
 
   it("names a run row as the Runs list does, not as its loose words", async () => {
+    // At midday, an hour ago is still today, so the row says a time rather than "yesterday".
+    vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
     const runs = [run("81d0ae", { startedBy: "run-now" }), run("891b5a", { outcome: "waiting" })];
     const page = await openRuns(
       hostWith(async () => ({ runs, skips: [] })),
@@ -276,6 +278,28 @@ verifies("routines.runs.view", () => {
     const manual = { ...daily, trigger: { kind: "manual" } as const };
     const page = await openRuns(hostWith(async () => ({ runs: [], skips: [] }), manual));
     expect(page.textContent).toContain("Press Run now to start one.");
+  });
+
+  it("says what the list says, and no next time, for a routine that won't start on its own", async () => {
+    const gone = {
+      ...daily,
+      targetName: "gone-report",
+      target: { ...daily.target, id: "gone-report" },
+      targetState: "not-found",
+    } as const;
+    const cases: [RoutineView, string][] = [
+      [gone, "gone-report isn't in this workspace. Pick another workflow."],
+      [{ ...daily, startErrors: ["Unknown time zone Mars/Base."] }, "Unknown time zone Mars/Base."],
+      [{ ...daily, enabled: false }, "It's off, so it runs only when you press Run now."],
+      [{ ...daily, pausedUntilTrusted: true }, "It's paused until this workspace is trusted."],
+    ];
+    for (const [routine, line] of cases) {
+      const page = await openRuns(hostWith(async () => ({ runs: [], skips: [] }), routine));
+      expect(page.textContent).toContain("No runs yet");
+      expect(page.textContent).toContain(line);
+      expect(page.textContent).not.toContain("It runs next on");
+      unmount();
+    }
   });
 
   it("says the runs can't be read and tries again", async () => {

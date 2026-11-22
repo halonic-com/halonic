@@ -69,6 +69,15 @@ export function sampleWorkspaceOf(
   };
   return {
     isSample: () => recent.isSample(location),
+    onMarkedSample: (listener) => {
+      let wasSample = recent.isSample(location);
+      return recent.subscribe(() => {
+        const isSample = recent.isSample(location);
+        // Only the change to the demo: other changes of Recent, or a demo already, say nothing.
+        if (isSample && !wasSample) listener();
+        wasSample = isSample;
+      });
+    },
     doneSteps: read,
     finishedShown: () => {
       try {

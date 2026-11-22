@@ -1,4 +1,4 @@
-import { Button, inlineLinkClasses } from "@halonicjs/studio-kit";
+import { Button, standaloneLinkClasses } from "@halonicjs/studio-kit";
 import {
   type ReactNode,
   type Ref,
@@ -269,7 +269,7 @@ export function Welcome({
         {offersRemove ? (
           <button
             type="button"
-            className={`text-body ${inlineLinkClasses}`}
+            className={`text-body ${standaloneLinkClasses}`}
             onClick={() => remove(problem.folder)}
           >
             {removeFromRecentLabel}
@@ -278,7 +278,7 @@ export function Welcome({
         {problem?.details === undefined ? null : (
           <button
             type="button"
-            className={`text-body ${inlineLinkClasses}`}
+            className={`text-body ${standaloneLinkClasses}`}
             onClick={() => copyDetails(problem.details ?? "")}
           >
             {copyDetailsWords.label}

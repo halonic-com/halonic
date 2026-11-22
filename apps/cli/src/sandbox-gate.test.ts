@@ -17,15 +17,16 @@ import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCodeOfError } from "./exit-code-for.ts";
 import { phrase, plainText } from "./messages/phrase.ts";
+import { runMessages } from "./messages/run.ts";
 import { sandboxMessages } from "./messages/sandbox.ts";
 import { printError } from "./print-error.ts";
 import {
   checkRunSandbox,
+  placedWarning,
   programAgentsOf,
   type SandboxGateMachine,
   SandboxRefusedError,
   sandboxRunOf,
-  unsandboxedLine,
 } from "./sandbox-gate.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 
@@ -332,11 +333,11 @@ verifies("cli.sandbox-gate", () => {
       const { machine, placement } = machineWith(bubblewrapMissing);
       await chooseThisComputer(placement);
 
-      const unsandboxed = await checkRunSandbox(workspace, supportReply, machine);
+      const placed = await checkRunSandbox(workspace, supportReply, machine);
 
       expect(machine.checks).toBe(0);
-      expect(unsandboxed.map((agent) => plainText(unsandboxedLine(agent).phrase))).toEqual([
-        "Writer runs on this computer without the sandbox, as chosen on 9 Nov.",
+      expect(placed.map((agent) => plainText(placedWarning(agent)))).toEqual([
+        "! Writer runs on this computer without the sandbox, as chosen on 9 Nov.",
       ]);
     });
 
@@ -373,6 +374,61 @@ verifies("cli.sandbox-gate", () => {
 
       await refusal(checkRunSandbox(workspace, supportReply, here.machine));
     });
+  });
+});
+
+verifies("cli.sandbox-gate-on-hold", () => {
+  const sandboxStarts: SandboxCheck = { ok: true, reason: null, missing: [] };
+  const writerChanged = { [writer]: `${writerFile}workingFolder: files/out\n` };
+
+  it("says where to confirm again when the agent's file changed and the sandbox starts", async () => {
+    const { machine, placement } = machineWith(sandboxStarts);
+    await workspaceOf();
+    await chooseThisComputer(placement);
+    const pulled = await workspaceOf(writerChanged);
+
+    const placed = await checkRunSandbox(pulled, supportReply, machine);
+
+    expect(machine.checks).toBe(1);
+    expect(placed.map((agent) => plainText(placedWarning(agent)))).toEqual([
+      "! Writer's file changed since you chose On this computer, so it runs in the sandbox until you confirm again in Studio › Writer › Harness › Where it runs.",
+    ]);
+  });
+
+  it("says why it needed the sandbox in the refusal, without the way out (HAL-12597)", async () => {
+    const { machine, placement } = machineWith(bubblewrapMissing);
+    await workspaceOf();
+    await chooseThisComputer(placement);
+    const pulled = await workspaceOf(writerChanged);
+
+    const error = await refusal(checkRunSandbox(pulled, supportReply, machine));
+
+    expect(exitCodeOfError(error)).toBe(9);
+    expect(printed(error)[1]).toBe(
+      "  bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again. Writer needs the sandbox because its file changed since you chose On this computer.",
+    );
+    expect(printed(error).join("\n")).not.toContain("Where it runs");
+  });
+
+  it("keeps that sentence before the command's own way out", async () => {
+    const { machine, placement } = machineWith(bubblewrapMissing);
+    await workspaceOf();
+    await chooseThisComputer(placement);
+    const pulled = await workspaceOf(writerChanged);
+
+    const error = await refusal(checkRunSandbox(pulled, supportReply, machine));
+
+    expect(error.withHint(runMessages.sandboxRefusedHarnessHint()).fix).toMatch(
+      /changed since you chose On this computer\. Or run it with --harness halonic,/,
+    );
+  });
+
+  it("gives no line for an agent nobody chose for", async () => {
+    const workspace = await workspaceOf();
+    const { machine } = machineWith(sandboxStarts);
+
+    expect(await checkRunSandbox(workspace, supportReply, machine)).toEqual([]);
+    expect(machine.checks).toBe(1);
   });
 });
 

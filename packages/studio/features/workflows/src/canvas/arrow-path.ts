@@ -73,6 +73,28 @@ export function arrowShape(from: Box, to: Box): ArrowShape {
   };
 }
 
+/** How far a stray arrow reaches out of its card, how far each next one lands below, and the head's gap to its chip. */
+const STRAY_OUT = 32;
+const STRAY_STEP = 22;
+const STRAY_CHIP_GAP = 4;
+
+/**
+ * A short arrow out of the right side of `from` for an arrow whose step isn't there, which has no
+ * card to point at: it ends at its label's chip, which says why. `order` counts the step's earlier
+ * stray arrows, so each next one lands one chip lower and no two chips cover each other.
+ */
+export function strayShape(from: Box, order: number): ArrowShape {
+  const start = { x: from.x + from.width, y: from.y + from.height / 2 };
+  const end = { x: start.x + STRAY_OUT, y: start.y + order * STRAY_STEP };
+  return {
+    path: `M ${at(start)} L ${at(end)}`,
+    head: end,
+    headAngle: (Math.atan2(end.y - start.y, end.x - start.x) * 180) / Math.PI,
+    label: { x: end.x + STRAY_CHIP_GAP, y: end.y },
+    labelAnchor: "start",
+  };
+}
+
 /** A chip to one side of `onLine`, `gap` away: to its right (anchored at its left edge) or to its left. */
 function labelBeside(onLine: Point, right: boolean, gap: number) {
   return right

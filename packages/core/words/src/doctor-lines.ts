@@ -18,6 +18,7 @@ import {
   type NetworkLine,
   type NodeLine,
   type PluginsLine,
+  type ProfileLine,
   type ProviderReport,
   type SecretsLine,
   type TimedOutLine,
@@ -60,6 +61,7 @@ export interface DoctorFace {
 
 /** The lines this file words: every line of the report but the Sandbox. */
 export type WordedLine =
+  | ProfileLine
   | WorkspaceLine
   | ModelsLine
   | SecretsLine
@@ -93,6 +95,8 @@ const labels: Readonly<Record<LimitedCheck, () => Message>> = {
 export function doctorLineWords(line: WordedLine, face: DoctorFace): DoctorLineWords {
   if ("timedOut" in line) return timedOutWords(line.check);
   switch (line.check) {
+    case "profile":
+      return { label: doctorMessages.profileLabel(), items: profileItems(line) };
     case "workspace":
       return { label: doctorMessages.workspaceLabel(), items: workspaceItems(line, face) };
     case "models":
@@ -374,6 +378,20 @@ function nodeItems(line: NodeLine): DoctorLineItem[] {
     : [
         { sentence: doctorMessages.windowsPnpm(printable(line.pnpm)).phrase },
         { fix: doctorMessages.installPnpmInWsl().phrase },
+      ];
+}
+
+/** Why the workspace and the profile overlap, and the fix under it. */
+function profileItems(line: ProfileLine): DoctorLineItem[] {
+  // The variable is one of the names the profile is read from; the path comes from the environment.
+  return line.problem === "profile-in-workspace"
+    ? [
+        { sentence: doctorMessages.profileInWorkspace(line.movedBy).phrase },
+        { fix: doctorMessages.profileInWorkspaceFix().phrase },
+      ]
+    : [
+        { sentence: doctorMessages.workspaceInProfile(printable(line.profile)).phrase },
+        { fix: doctorMessages.workspaceInProfileFix().phrase },
       ];
 }
 

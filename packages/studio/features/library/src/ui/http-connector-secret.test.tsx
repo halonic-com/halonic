@@ -13,25 +13,44 @@ const tracker: ConnectorConnection = {
   secrets: ["tracker-token"],
 };
 
+/** The page's lines, without the command box's own (empty until a copy). */
+function linesOf(root: HTMLElement): string[] {
+  return [...root.querySelectorAll("p")]
+    .map((line) => line.textContent ?? "")
+    .filter((text) => text !== "");
+}
+
 verifies("library.http-connector-secret", () => {
-  it("says in the desktop app that only a run from a terminal uses the secret, and how to set it", () => {
+  it("says in the desktop app which runs use the secret, that Studio can't tell, and both ways to set it", () => {
     const root = render(<HttpConnectorSecret connection={tracker} host="desktop-app" />);
-    expect(root.querySelector("p")?.textContent).toBe(
-      "Studio can't connect to a server over HTTP yet, so it doesn't use tracker-token. Runs from a terminal do. To set it for them, run this in a terminal:",
-    );
+    expect(linesOf(root)).toEqual([
+      "Studio can't connect to a server over HTTP yet, so only runs started with halonic run or halonic routines watch use tracker-token. Studio can't tell whether it's set for them. To save it, run this in a terminal:",
+      "Or set HALONIC_SECRET_TRACKER_TOKEN in the terminal you start them from.",
+    ]);
     expect(root.textContent).toContain("halonic secret set tracker-token");
   });
 
   it.each(["served", "phone", undefined] as const)(
-    "says elsewhere (%s) that the computer Halonic runs on reads it",
+    "says elsewhere (%s) that the computer running halonic serve reads it",
     (host) => {
       const root = render(<HttpConnectorSecret connection={tracker} host={host} />);
-      expect(root.querySelector("p")?.textContent).toBe(
-        "Studio can't set tracker-token. Halonic reads it from the secrets of the computer it runs on. To set it, run this in a terminal on that computer:",
-      );
+      expect(linesOf(root)).toEqual([
+        "Studio can't set tracker-token here, or tell whether it's set. Halonic reads it on the computer running halonic serve. To save it, run this in a terminal on that computer:",
+        "Or set HALONIC_SECRET_TRACKER_TOKEN for Halonic on that computer.",
+      ]);
       expect(root.textContent).toContain("halonic secret set tracker-token");
     },
   );
+
+  it("leaves out the variable for a name no store takes", () => {
+    const root = render(
+      <HttpConnectorSecret
+        connection={{ ...tracker, secrets: ["tracker token"] }}
+        host="desktop-app"
+      />,
+    );
+    expect(linesOf(root)).toHaveLength(1);
+  });
 
   it("shows no entry for the secret's value", () => {
     const root = render(<HttpConnectorSecret connection={tracker} host="desktop-app" />);

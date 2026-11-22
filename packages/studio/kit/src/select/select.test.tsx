@@ -369,3 +369,28 @@ verifies("kit.select", () => {
     expect(ids?.[1]).toBe("extra");
   });
 });
+
+verifies("kit.select-option-description", () => {
+  const triggers: readonly SelectOption[] = [
+    { value: "manual", label: "Manual only", description: "Manual only" },
+    { value: "every", label: "Every …", description: "Every hour (UTC)" },
+  ];
+
+  it("shows each option's description under it in the phone's sheet", async () => {
+    const { container } = onPhone(
+      <Select aria-label="Trigger" options={triggers} value="manual" onChange={ignore} />,
+    );
+    await click(container.querySelector("button") as HTMLButtonElement);
+    const every = radioNamed(dialogOf(container), "Every …");
+    const line = document.getElementById(every.getAttribute("aria-describedby") ?? "");
+    expect(line?.textContent).toBe("Every hour (UTC)");
+  });
+
+  it("shows only the labels in the desktop's native list", () => {
+    const { container } = render(
+      <Select aria-label="Trigger" options={triggers} value="manual" onChange={ignore} />,
+    );
+    const select = container.querySelector("select") as HTMLSelectElement;
+    expect([...select.options].map((option) => option.text)).toEqual(["Manual only", "Every …"]);
+  });
+});

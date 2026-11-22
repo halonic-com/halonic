@@ -35,12 +35,24 @@ export type ExternalLinkProps = ExternalLinkToAddress | ExternalLinkToRequestedA
  * words around it, which colour alone doesn't do (WCAG 1.4.1, HAL-12946). In high contrast it's the
  * system's link colour: a `<button>` with this style would otherwise get the button text colour
  * there (HAL-12933).
+ *
+ * On a phone and on a touch screen the link stays inline and gets its 48px tap area from a
+ * pseudo-element (`hit-touch`), so the line it sits on keeps the paragraph's line height. A taller
+ * box would stretch that line and open a gap in the sentence (C606-3). A link on a line of its
+ * own, such as a row in a list, uses `standaloneLinkClasses` instead.
  */
 export const inlineLinkClasses = [
   "rounded-xs text-accent-text underline decoration-accent-text/50 underline-offset-2",
   "hover:decoration-current focus-ring forced-colors:text-[LinkText]",
-  "touch:hit-touch phone:inline-flex phone:min-h-touch phone:items-center",
+  "touch:hit-touch phone:hit-touch",
 ].join(" ");
+
+/**
+ * The inline link style for a link that stands on a line of its own, not inside a sentence: a row
+ * in a list, an action under a message. On a phone its box is 48px high, so a list of them keeps
+ * the phone's row height and two rows' tap areas don't overlap.
+ */
+export const standaloneLinkClasses = `${inlineLinkClasses} phone:inline-flex phone:min-h-touch phone:items-center`;
 
 /**
  * A link to a page outside Studio, such as a Google Cloud Console page. Its text says where it

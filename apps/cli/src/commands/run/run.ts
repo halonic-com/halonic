@@ -42,11 +42,11 @@ import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
 import { loadRunWorkspace, type OpenWorkspaceHistory } from "../../run-workspace.ts";
 import {
+  type PlacedAgent,
+  placedWarning,
   programAgentsOf,
   type SandboxGateRun,
   SandboxRefusedError,
-  type UnsandboxedAgent,
-  unsandboxedWarning,
 } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import {
@@ -164,7 +164,7 @@ export async function followWorkflow(
   // Before the run's heading, and again first in the result, as print-ahead lines are.
   const warnings: Phrase[] = [
     ...(changesNotLive ? [runMessages.changesNotLive().phrase] : []),
-    ...engine.unsandboxed.map(unsandboxedWarning),
+    ...engine.placed.map(placedWarning),
   ];
   for (const line of warnings) context.printAhead(line);
   // One clock for the lines printed while the run goes and the result that repeats them.
@@ -352,7 +352,7 @@ async function checkHarnessAgents(
   setup: RunSetup,
   target: EngineRunsTarget,
   workflow: SandboxGateRun,
-): Promise<UnsandboxedAgent[] | undefined> {
+): Promise<PlacedAgent[] | undefined> {
   if (programAgentsOf(target.workspace, workflow).length === 0) return undefined;
   try {
     return await checkEngineRuns(setup, target);

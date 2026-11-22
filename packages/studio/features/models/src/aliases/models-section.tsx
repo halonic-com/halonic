@@ -1,4 +1,9 @@
-import { Button, EmptyState, inlineLinkClasses } from "@halonicjs/studio-kit";
+import {
+  Button,
+  EmptyState,
+  inlineLinkClasses,
+  standaloneLinkClasses,
+} from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
 import { useId, useRef, useState } from "react";
 import { ModelsFilesService } from "../api.ts";
@@ -138,7 +143,7 @@ function AliasList({
         <li key={row.name} className="flex flex-wrap items-center gap-x-2">
           <button
             type="button"
-            className={`text-left ${inlineLinkClasses}`}
+            className={`text-left ${standaloneLinkClasses}`}
             onClick={() => open(row.name)}
           >
             {row.label}

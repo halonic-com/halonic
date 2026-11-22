@@ -5,11 +5,13 @@
 // listed too, with its error, so a typing mistake doesn't hide it (HAL-12607),
 // and each routine counts the errors on its file, so the list can say which
 // routines won't start (HAL-14299). Given the live version, a routine whose
-// saved file isn't live yet is listed as the scheduler runs it (HAL-15479).
+// saved file isn't live yet is listed as the scheduler runs it (HAL-15479),
+// with the errors of the version it runs, and one never live has no next run,
+// since the scheduler leaves it out (HAL-15664).
 
 import type { RunSummary } from "@halonicjs/events";
 import type { Routine } from "@halonicjs/format";
-import type { RunStore } from "@halonicjs/ports";
+import type { RunStore, Vcs } from "@halonicjs/ports";
 import {
   CronError,
   describeTrigger,
@@ -19,13 +21,22 @@ import {
 } from "@halonicjs/routines";
 import {
   filesOf,
-  type LoadedFileOf,
   type LoadedWorkspace,
+  loadWorkspace,
   placeOf,
+  VersionSource,
   type WorkspaceIssue,
 } from "@halonicjs/workspace";
-import type { LiveStateInput } from "./live-state.ts";
-import { routineVersions, runningRoutine } from "./routine-versions.ts";
+import { type LiveStateInput, liveState } from "./live-state.ts";
+
+/**
+ * What the list reads the live version with: as `liveState` reads it, with a
+ * history that lists a version's files too, so the live version's errors
+ * can be found as the scheduler finds them.
+ */
+export interface LiveListInput extends LiveStateInput {
+  readonly vcs: Pick<Vcs, "readAt" | "listAt">;
+}
 
 /** One routine of the list. */
 export interface ListedRoutine {
@@ -48,8 +59,9 @@ export interface ListedRoutine {
   trigger: string;
   /**
    * The ISO time it next runs on its own. `null` when it is off, when its
-   * trigger isn't a clock (manual, signal, mail), or when its schedule
-   * doesn't parse, which `trigger` then says.
+   * trigger isn't a clock (manual, signal, mail), when its schedule
+   * doesn't parse, which `trigger` then says, or when it has never been
+   * live, so the scheduler leaves it out.
    */
   nextRun: string | null;
   /**
@@ -58,12 +70,27 @@ export interface ListedRoutine {
    */
   timeZone: string | null;
   /**
-   * How many errors its file has, as `halonic validate` finds them. A
-   * routine with any won't start: a file that doesn't load never reaches the
-   * routine scheduler, and the start of one that names a missing hub,
-   * workflow or agent, or a time zone that doesn't exist, fails.
+   * How many errors its file has in the version the scheduler runs, as
+   * `halonic validate` finds them: the live version's file while its saved
+   * changes aren't live yet, else the saved file. A routine with any won't
+   * start: a file that doesn't load never reaches the routine scheduler, and
+   * the start of one that names a missing hub, workflow or agent, or a time
+   * zone that doesn't exist, fails.
    */
   problems: number;
+  /**
+   * How many errors its saved file has. The same as `problems` unless its
+   * saved changes aren't live yet; then they show once those are made live.
+   */
+  savedProblems: number;
+  /**
+   * Whether the scheduler runs it as saved (requirement `app.live-state`):
+   * `live` when it does, and for every routine listed without a live
+   * version; `not-live` when it runs the live version's routine, since the
+   * saved changes aren't live yet; `never-live` when no version has it, so
+   * the scheduler doesn't run it at all.
+   */
+  liveState: "live" | "not-live" | "never-live";
   /** The newest real run it started, or `null` if it never started one. */
   lastRun: RunSummary | null;
 }
@@ -84,8 +111,9 @@ export class RoutineList {
    * @param now - the next run is the first one after it
    * @param timeZone - the zone of a schedule that names none: the computer's
    *   own, as the routine scheduler's tick policy has it
-   * @param live - the live version, so each routine is listed as it runs
-   *   (see {@link runningOf}); left out, as its saved file has it
+   * @param live - the live version, so each routine is listed as the
+   *   scheduler runs it (see {@link scheduledVersions}); left out, as its
+   *   saved file has it
    *
    * @example
    * await new RoutineList(runStore).listRoutines(workspace, new Date(), "Europe/Amsterdam");
@@ -95,23 +123,46 @@ export class RoutineList {
     workspace: LoadedWorkspace,
     now: Date,
     timeZone: string,
-    live?: LiveStateInput,
+    live?: LiveListInput,
   ): Promise<ListedRoutine[]> {
     const lastRuns = newestPerRoutine(await this.#runs.list({ kind: "run" }));
-    const problems = errorsPerFile(workspace);
+    const versions = await scheduledVersions(workspace, live);
     const loaded = await Promise.all(
-      filesOf(workspace, "routine").map(async (file) => ({
-        path: file.path,
-        listed: {
-          ...loadedRoutine({ hub: file.hub, routine: await runningOf(file, live) }, now, timeZone),
-          problems: problems.get(file.path) ?? 0,
-        },
-      })),
+      filesOf(workspace, "routine").map(async (file) => {
+        const state = await versions.stateOf(file.path);
+        const liveRoutine = versions.liveRoutineOf(file.path, state);
+        // The live routine with the saved name, and On or Off as saved,
+        // since Off acts at once (`LiveRoutines`).
+        const routine =
+          liveRoutine === undefined
+            ? file.value
+            : { ...liveRoutine, name: file.value.name, enabled: file.value.enabled };
+        return {
+          path: file.path,
+          listed: {
+            ...loadedRoutine({ hub: file.hub, routine }, now, timeZone, state),
+            ...versions.problemsOf(file.path, state),
+            liveState: state,
+          },
+        };
+      }),
     );
-    const unloaded = unloadedRoutineFiles(workspace).map((file) => ({
-      path: file.path,
-      listed: { ...unloadedRoutine(file), problems: problems.get(file.path) ?? 0 },
-    }));
+    const unloaded = await Promise.all(
+      unloadedRoutineFiles(workspace).map(async (file) => {
+        const state = await versions.stateOf(file.path);
+        const liveRoutine = versions.liveRoutineOf(file.path, state);
+        // A saved file that doesn't parse leaves the scheduler on the live
+        // routine, On or Off as it last read it (`LiveRoutines`).
+        const own =
+          liveRoutine === undefined
+            ? unloadedRoutine(file)
+            : loadedRoutine({ hub: file.hub, routine: liveRoutine }, now, timeZone, state);
+        return {
+          path: file.path,
+          listed: { ...own, ...versions.problemsOf(file.path, state), liveState: state },
+        };
+      }),
+    );
     // Paths compare by code unit, as the workspace sorts its files; no two are the same.
     return [...loaded, ...unloaded]
       .sort((a, b) => (a.path < b.path ? -1 : 1))
@@ -119,24 +170,68 @@ export class RoutineList {
   }
 }
 
+/** Which version of each routine file the routine scheduler runs, and the errors that count for it. */
+interface ScheduledVersions {
+  /** The routine's live state; `live` without a live version. */
+  stateOf(path: string): Promise<ListedRoutine["liveState"]>;
+  /** The live version's routine at `path` while its saved changes aren't live, if it loads there. */
+  liveRoutineOf(path: string, state: ListedRoutine["liveState"]): Routine | undefined;
+  /** The errors on the file the scheduler runs, and on the saved file. */
+  problemsOf(
+    path: string,
+    state: ListedRoutine["liveState"],
+  ): Pick<ListedRoutine, "problems" | "savedProblems">;
+}
+
 /**
- * The routine at `file` as the routine scheduler runs it (requirement
- * `app.routine-list-live-schedule`); as saved without `live`.
+ * The versions the routine scheduler runs (requirement
+ * `app.routine-list-live-schedule`): while a routine's saved file isn't
+ * live, the live version's routine, with that version's errors, as the
+ * watch checks them; a routine no version has isn't run. Without `live`,
+ * or with history off, every routine runs as saved.
  */
-async function runningOf(
-  file: LoadedFileOf<"routine">,
-  live: LiveStateInput | undefined,
-): Promise<Routine> {
-  return runningRoutine(
-    file.value,
-    live === undefined ? undefined : await routineVersions(live, file.path),
+async function scheduledVersions(
+  workspace: LoadedWorkspace,
+  live: LiveListInput | undefined,
+): Promise<ScheduledVersions> {
+  const savedErrors = errorsPerFile(workspace);
+  const liveWorkspace =
+    live?.live.kind === "commit"
+      ? await loadWorkspace(new VersionSource(live.vcs, live.live.commit.hash, live.saved.location))
+      : null;
+  const liveErrors = liveWorkspace === null ? savedErrors : errorsPerFile(liveWorkspace);
+  const liveRoutines = new Map(
+    liveWorkspace === null
+      ? []
+      : filesOf(liveWorkspace, "routine").map((file) => [file.path, file.value]),
   );
+  return {
+    async stateOf(path) {
+      if (live === undefined) {
+        return "live";
+      }
+      const { state } = await liveState(live, path);
+      return state === "never-versioned" ? "never-live" : state;
+    },
+    liveRoutineOf: (path, state) => (state === "not-live" ? liveRoutines.get(path) : undefined),
+    problemsOf(path, state) {
+      const savedProblems = savedErrors.get(path) ?? 0;
+      const problems = state === "not-live" ? (liveErrors.get(path) ?? 0) : savedProblems;
+      return { problems, savedProblems };
+    },
+  };
 }
 
 /** A routine as the list gives it, before its problems and last run are looked up. */
-type ListedOwnFields = Omit<ListedRoutine, "problems" | "lastRun">;
+type ListedOwnFields = Omit<ListedRoutine, "problems" | "savedProblems" | "liveState" | "lastRun">;
 
-function loadedRoutine(placed: PlacedRoutine, now: Date, timeZone: string): ListedOwnFields {
+/** A routine that loaded; one never live has no next run, as the scheduler leaves it out. */
+function loadedRoutine(
+  placed: PlacedRoutine,
+  now: Date,
+  timeZone: string,
+  state: ListedRoutine["liveState"],
+): ListedOwnFields {
   const { routine } = placed;
   return {
     key: routineKey(placed),
@@ -145,7 +240,8 @@ function loadedRoutine(placed: PlacedRoutine, now: Date, timeZone: string): List
     name: routine.name,
     enabled: routine.enabled,
     trigger: describeTrigger(routine.trigger),
-    nextRun: routine.enabled ? nextRunOf(routine.trigger, now, timeZone) : null,
+    nextRun:
+      routine.enabled && state !== "never-live" ? nextRunOf(routine.trigger, now, timeZone) : null,
     timeZone: "schedule" in routine.trigger ? (routine.trigger.timezone ?? null) : null,
   };
 }

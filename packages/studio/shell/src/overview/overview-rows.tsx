@@ -1,5 +1,6 @@
 import type { ListRow, MenuEntry } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
+import { DetailThenLastLine } from "./detail-then-last-line.tsx";
 import type { OverviewItem, OverviewSection } from "./overview-model.ts";
 import type { OverviewWords } from "./overview-page.tsx";
 
@@ -77,6 +78,9 @@ function DetailThenUsedBy({
  * "2 needs you" left its name 0px (HAL-13976). The chips wrap when they don't fit on one line.
  */
 function metaOf(item: OverviewItem, partsPlace: PartsPlace): ReactNode {
+  if (partsPlace === "under" && item.chipsBeforeUsedBy === true) {
+    return <DetailThenLastLine item={item} />;
+  }
   const text = textUnderOf(item, partsPlace);
   if (partsPlace === "right" || item.chips === undefined) {
     return text;

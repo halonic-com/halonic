@@ -47,6 +47,9 @@ const rowSentences: Readonly<Record<string, string>> = {
   unreachable: "Can't be reached: no arrow leads to it.",
   "wait-without-events":
     "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
+  // The core says "transition"; Studio says arrow (microcopy 1.2), as the card's row does (C591 row 13).
+  "unguarded-shadow":
+    "Has an arrow that's never taken: an earlier arrow on the same event always matches first. Change the order or the conditions in Arrows on its card.",
 };
 
 /** The sentence of a check that is about the whole workflow, not one step. */
@@ -86,7 +89,7 @@ export interface ProblemRow {
 
 /**
  * The core's full message, with its step named as the card names it: the core quotes the step's id
- * (`"first" uses unknown agent "nobody-here"`), Studio its title (`"Ask a missing agent" uses …`).
+ * (`"first" uses the agent "nobody-here", which its hub doesn't have`), Studio its title (`"Ask a missing agent" uses …`).
  * Only the first quoted id is the step's own: a later one can be an agent or a step it goes to.
  */
 export function namedMessage(problem: WorkflowProblem, nameOf: StepNames = byId): string {
@@ -143,9 +146,9 @@ export function stepProblemRows(
   );
 }
 
-/** What a step's card shows of its problems (flow-workflows 4.4). */
-export interface CardProblems {
-  /** An error rings the card in danger; warnings alone, in attention. */
+/** What a step's card, or an arrow's label plate, shows of its problems (flow-workflows 4.4). */
+export interface ProblemMark {
+  /** An error colours the mark in danger; warnings alone, in attention. */
   readonly severity: WorkflowProblem["severity"];
   /** The glyph before the line: ✕ when any is an error, else △. */
   readonly glyph: string;
@@ -166,17 +169,44 @@ export function cardProblems(
   problems: readonly WorkflowProblem[],
   stepId: string,
   nameOf: StepNames = byId,
-): CardProblems | undefined {
-  const own = errorsFirst(
+): ProblemMark | undefined {
+  return markOf(
     problems.filter((problem) => problem.stepId === stepId && !arrowChecks.has(problem.code)),
+    nameOf,
   );
-  const [first] = own;
+}
+
+/**
+ * What the label plate of the step's arrow at `arrowIndex` (among the step's arrows, in the file's
+ * order) shows of the workflow's problems: those about that arrow. `undefined` when it has none.
+ */
+export function arrowProblems(
+  problems: readonly WorkflowProblem[],
+  stepId: string,
+  arrowIndex: number,
+  nameOf: StepNames = byId,
+): ProblemMark | undefined {
+  return markOf(
+    problems.filter(
+      (problem) =>
+        problem.stepId === stepId &&
+        problem.arrowIndex === arrowIndex &&
+        arrowChecks.has(problem.code),
+    ),
+    nameOf,
+  );
+}
+
+/** The mark of these problems, in the colour of the worst; `undefined` when there are none. */
+function markOf(problems: readonly WorkflowProblem[], nameOf: StepNames): ProblemMark | undefined {
+  const sorted = errorsFirst(problems);
+  const [first] = sorted;
   if (first === undefined) return undefined;
   return {
     severity: first.severity,
     glyph: problemGlyph[first.severity],
     line: problemLine(first),
-    detail: own.map((problem) => namedMessage(problem, nameOf)).join("\n"),
+    detail: sorted.map((problem) => namedMessage(problem, nameOf)).join("\n"),
   };
 }
 

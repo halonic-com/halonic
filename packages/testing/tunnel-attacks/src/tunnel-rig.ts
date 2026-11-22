@@ -61,7 +61,7 @@ async function startGatewayAndTunnel(
   options: TunnelRigOptions,
 ): Promise<{ gateway: GatewayListener; endpoint: TunnelEndpoint }> {
   return await withFreePort(async (port) => {
-    const gateway = await startRigGateway(port, source, phones, options);
+    const gateway = await startRigGateway(port, source, { phones, pairing: phones }, options);
     const endpoint = await tunnel.start({ gateway: { host: "127.0.0.1", port: gateway.port } });
     return { gateway, endpoint };
   });
@@ -89,13 +89,13 @@ export function fakeTunnelName(port: number): string {
 export function startRigGateway(
   port: number,
   source: RecordingSource,
-  access: GatewayPhones & GatewayPairing,
+  access: { readonly phones: GatewayPhones; readonly pairing: GatewayPairing },
   options: TunnelRigOptions & { onError?: (error: unknown) => void },
 ): Promise<GatewayListener> {
   return startGatewayListener({
     source,
-    phones: access,
-    pairing: access,
+    phones: access.phones,
+    pairing: access.pairing,
     policy: { allowRiskyRemotely: () => options.allowRisky === true },
     port,
     // The rig's fakes never fail, so a failure is a bug: let it fail the run.

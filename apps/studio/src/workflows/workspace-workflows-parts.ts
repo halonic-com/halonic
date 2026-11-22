@@ -36,6 +36,11 @@ export interface WorkspaceWorkflowsParts {
    */
   readonly askTrust?: () => Promise<"trusted" | "declined">;
   /**
+   * Calls `listener` whenever the workspace may run now, wherever the person trusted it; returns
+   * the way to stop. Absent: a refusal goes only after the Run panel's own **Review**.
+   */
+  readonly onTrusted?: (listener: () => void) => () => void;
+  /**
    * The page's engine, which starts a run. Absent where the page has no engine, so the host has no
    * `startRun` and the page shows no **Run**.
    */

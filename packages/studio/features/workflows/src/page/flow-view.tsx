@@ -5,7 +5,7 @@ import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { pageWords } from "./page-words.ts";
 import type { useWorkflow } from "./use-workflow.ts";
-import { type CanvasEdit, WorkflowCanvas } from "./workflow-canvas.tsx";
+import { type CanvasEdit, type CanvasFocus, WorkflowCanvas } from "./workflow-canvas.tsx";
 
 /** Props for {@link FlowView}. */
 export interface FlowViewProps {
@@ -27,10 +27,14 @@ export interface FlowViewProps {
   readonly pickedStep: string | undefined;
   /** The steps the page was opened to outline (flow-workflows 9); absent is none. */
   readonly outlined?: readonly string[] | undefined;
+  /** Why they are outlined, shown over the canvas while they are (C618); absent shows nothing. */
+  readonly outlineLine?: string | undefined;
   /** A card is docked at the right, over the canvas's old right edge. */
   readonly docked: boolean;
   /** A click on the canvas's background: the picked step's card closes. */
   readonly onClearStep: () => void;
+  /** Where focus goes on the canvas, once the picked step was removed. */
+  readonly focus: CanvasFocus | undefined;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
   readonly onView: (next: View) => void;
 }
@@ -50,8 +54,10 @@ export function FlowView({
   edit,
   pickedStep,
   outlined,
+  outlineLine,
   docked,
   onClearStep,
+  focus,
   kept,
   onView,
 }: FlowViewProps) {
@@ -68,6 +74,12 @@ export function FlowView({
             label={startWords.clearStrip}
             onClick={onClearStrip}
           />
+        </p>
+      )}
+      {outlineLine !== undefined && (
+        <p className="flex flex-wrap items-baseline gap-x-3 border-b border-border px-6 py-2 text-small">
+          {outlineLine}
+          <span className="text-fg-muted">{pageWords.outlineClears}</span>
         </p>
       )}
       {load.kind === "ready" && load.value.id === id && load.value.hubId === hubId && (
@@ -88,6 +100,7 @@ export function FlowView({
           outlined={outlined}
           docked={docked}
           onBackgroundClick={onClearStep}
+          focus={focus}
         />
       )}
       {load.kind === "failed" && (

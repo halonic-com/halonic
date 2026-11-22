@@ -14,8 +14,8 @@ export type FirstRunStep = (typeof firstRunSteps)[number];
  *   Inbox's setup item can continue it;
  * - `done`: the first win happened in `folder`;
  * - `dismissed`: the user dismissed the Inbox's setup item of a first run paused in `folder` at
- *   `step`, so **Show the guide** can take it up again there. A state saved before the step was
- *   kept has neither `since` nor `step`.
+ *   `step`, so **Show the guide again** can take it up again there. A state saved before the step
+ *   was kept has neither `since` nor `step`.
  */
 export type FirstRunState =
   | { readonly kind: "off" }
@@ -49,8 +49,8 @@ export type FirstRunEvent =
   /** **Open demo** opened a copy of Acme, at the ISO time `at`. */
   | { readonly kind: "demo-opened"; readonly folder: string; readonly at: string }
   /**
-   * **Show the guide** in Help: a first run paused or dismissed in `folder` is on again at its
-   * step; any other begins again at Demo there.
+   * **Show the guide again** in Help: a first run paused or dismissed in `folder` is on again at
+   * its step; any other begins again at Demo there.
    */
   | { readonly kind: "guide-reopened"; readonly folder: string; readonly at: string }
   /** **Start over** in Help: it is off, so the fresh copy of the demo starts it when it opens. */

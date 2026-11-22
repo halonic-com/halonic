@@ -8,8 +8,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { studioStartsUnfenced } from "../engine/studio-harness-host.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import { agentSandboxOffered } from "./provide-agent-sandbox.ts";
 import type { ShellElevation } from "./sandbox-elevate-shell.ts";
-import { agentSandboxOffered } from "./start-studio.ts";
 
 /** A host that answers each route with what the test gives it, and keeps the routes it was asked. */
 function host(answers: Partial<Record<AgentHostRequestRoute, AgentHostAnswer>>) {
@@ -82,6 +82,27 @@ verifies("studio.agent-sandbox-host", () => {
       "GET /v1/sandbox/check": failing(reason),
     });
     expect((await new AgentHostSandboxFacts(transport).check()).state).toBe(state);
+  });
+
+  it("passes on a setup for an older release, and only then", async () => {
+    const { transport } = host({
+      "GET /v1/sandbox/capabilities": capabilities,
+      "GET /v1/sandbox/check": {
+        status: 200,
+        body: { ok: false, reason: "setup-needed", missing: [], setupAgain: true },
+      },
+    });
+    expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
+      state: "needs-setup",
+      setupAgain: true,
+    });
+    const never = host({
+      "GET /v1/sandbox/capabilities": capabilities,
+      "GET /v1/sandbox/check": failing("setup-needed"),
+    });
+    expect(await new AgentHostSandboxFacts(never.transport).check()).toEqual({
+      state: "needs-setup",
+    });
   });
 
   it("hands the section the reason's code, for the catalogue's words", async () => {

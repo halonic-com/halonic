@@ -1,5 +1,6 @@
 import { encodePairingQr, type PairingQrPayload } from "@halonicjs/ports";
 import {
+  isPhoneKeyProblem,
   type PairingFrom,
   type PairingProblemScreen,
   type PairingStop,
@@ -9,6 +10,7 @@ import type {
   ComputerId,
   PairedComputer,
   PairingId,
+  PhoneKeyProblem,
   PhoneTunnel,
   TunnelPairingStart,
 } from "./phone-tunnel.ts";
@@ -38,7 +40,8 @@ export interface PickedComputer {
  * `start` (`p-m1`; `scanner` false when this build has none), `scanning` (`p-m2`; `notHalonic`
  * while a code that isn't ours is in view, G7), `noCamera` (G8), `typed` (`p-m5`, or `p-m9` with
  * `triesLeft`), `connecting` (G9), `check` (`p-m3`), `paired` (`p-m4`) and `problem` (`p-m6` to
- * `p-m10`, G25, G26).
+ * `p-m10`, G25, G26). `phoneProblem` is the phone's own problem (microcopy 28): Nearby devices
+ * turned down, a saved key it can't read, or key storage that doesn't work.
  */
 export type PairingView =
   | { readonly step: "start"; readonly scanner: boolean }
@@ -53,6 +56,11 @@ export type PairingView =
       readonly problem: PairingProblemScreen;
       readonly route: "qr" | "typed";
       readonly computerName: string;
+    }
+  | {
+      readonly step: "phoneProblem";
+      readonly problem: PhoneKeyProblem;
+      readonly route: "qr" | "typed";
     };
 
 /** How long "This isn't a Halonic pairing code." stays after the last such read (G7). */
@@ -221,6 +229,10 @@ export class PhonePairingFlow {
       if (screen.screen === "typedWrong") this.next({ step: "typed", triesLeft: screen.triesLeft });
       else this.next({ step: "problem", problem: screen, route: start.route, computerName: name });
     };
+    const phoneProblem = (problem: PhoneKeyProblem) => {
+      this.pairing = undefined;
+      this.next({ step: "phoneProblem", problem, route: start.route });
+    };
     const unreachable = { kind: "cant-reach", reason: "unreachable" } as const;
     const step = await this.tunnel.startPairing(start).catch(() => unreachable);
     if (attempt !== this.attempt) {
@@ -228,6 +240,7 @@ export class PhonePairingFlow {
       if (step.kind === "check") this.tunnel.cancelPairing(step.pairing).catch(tidyUpFailed);
       return;
     }
+    if (isPhoneKeyProblem(step)) return phoneProblem(step);
     if (step.kind !== "check") return stop(step);
     this.pairing = step.pairing;
     this.next({ step: "check", checkCode: step.checkCode, computerName: step.computerName });
@@ -237,7 +250,7 @@ export class PhonePairingFlow {
     if (outcome.kind !== "paired") {
       // A wait that failed may leave the pairing open on the shell's side; Try again starts anew.
       this.tunnel.cancelPairing(step.pairing).catch(tidyUpFailed);
-      return stop(outcome);
+      return isPhoneKeyProblem(outcome) ? phoneProblem(outcome) : stop(outcome);
     }
     this.pairing = undefined;
     this.next({ step: "paired", computer: outcome.computer });

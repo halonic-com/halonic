@@ -7,6 +7,7 @@ import type {
   AgentUser,
 } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, type LoadedWorkspace, resolveModel } from "@halonicjs/workspace";
+import { stepTitle } from "../workflows/workflow-view.ts";
 import { agentGone } from "./agent-file.ts";
 
 /**
@@ -32,14 +33,17 @@ export function agentUsersOf(
   }
   return filesOf(workspace, "workflow")
     .filter((file) => file.hub === hubId)
-    .map((file) => ({
-      hubId,
-      id: file.value.id,
-      name: file.value.name,
-      stepIds: Object.entries(file.value.states)
-        .filter(([, state]) => state.agent === id)
-        .map(([stepId]) => stepId),
-    }))
+    .map((file) => {
+      const steps = Object.entries(file.value.states).filter(([, state]) => state.agent === id);
+      return {
+        hubId,
+        id: file.value.id,
+        name: file.value.name,
+        stepIds: steps.map(([stepId]) => stepId),
+        // As the workflow's canvas names them (C618).
+        stepNames: steps.map(([stepId, state]) => stepTitle(state.description) ?? stepId),
+      };
+    })
     .filter((user) => user.stepIds.length > 0);
 }
 

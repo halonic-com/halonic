@@ -6,6 +6,7 @@
 // the workspace's files fence it off (HAL-7039).
 
 import { resolveRealPath } from "@halonicjs/adapter-fs-node";
+import type { ProfileProblem } from "@halonicjs/app";
 import {
   builtInProfileFolder,
   type ProfileEnvironment,
@@ -33,11 +34,39 @@ export async function checkProfilePlace(
   root: string,
   environment: ProfileEnvironment = nodeProfileEnvironment(),
 ): Promise<void> {
+  const found = await profileOverlap(root, environment);
+  if (found !== null) throw new ProfilePlaceError(found.refusal, found.shownProfile);
+}
+
+/**
+ * How the workspace in `root` and the profile overlap, for `doctor`'s
+ * Profile line, which says what every other command refuses with; `null`
+ * when they don't, or when no profile can be found.
+ *
+ * @param root - the workspace folder
+ * @param environment - where the profile is; this process's by default
+ */
+export async function profileProblem(
+  root: string,
+  environment: ProfileEnvironment = nodeProfileEnvironment(),
+): Promise<ProfileProblem | null> {
+  const found = await profileOverlap(root, environment);
+  if (found === null) return null;
+  return found.refusal.code === "profile-in-workspace"
+    ? { problem: "profile-in-workspace", movedBy: found.refusal.movedBy }
+    : { problem: "workspace-in-profile", profile: found.shownProfile };
+}
+
+/** The overlap, with the profile as the person would read it, or `null`. */
+async function profileOverlap(
+  root: string,
+  environment: ProfileEnvironment,
+): Promise<{ refusal: ProfileRefusal; shownProfile: string } | null> {
   let profile: string;
   try {
     profile = profileFolder(environment).root;
   } catch (error) {
-    if (error instanceof RangeError) return;
+    if (error instanceof RangeError) return null;
     throw error;
   }
   const workspace = await realAsFarAsItExists(root);
@@ -50,12 +79,11 @@ export async function checkProfilePlace(
     builtIn,
     movedBy: profileMover(environment),
   });
-  if (refusal !== null) {
-    throw new ProfilePlaceError(
-      refusal,
-      withHomeAsTilde(environment.platform, environment.homeFolder, profile),
-    );
-  }
+  if (refusal === null) return null;
+  return {
+    refusal,
+    shownProfile: withHomeAsTilde(environment.platform, environment.homeFolder, profile),
+  };
 }
 
 /**

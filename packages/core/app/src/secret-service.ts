@@ -41,6 +41,12 @@ export type SecretChange =
       readonly reason: string;
     };
 
+/**
+ * The outcome of a remove: a {@link SecretChange}, or nothing to remove, as no secret is saved
+ * under the name. Then nothing changed, and the command says so rather than "Removed".
+ */
+export type SecretRemoval = SecretChange | { readonly changed: false; readonly notSaved: true };
+
 /** What a person typed to set a secret. */
 export interface SecretInput {
   readonly name: string;
@@ -102,11 +108,17 @@ export class SecretService {
     return { changed: true };
   }
 
-  /** Removes a secret. Removing one that isn't stored succeeds. */
-  async remove(name: string): Promise<SecretChange> {
+  /** Removes a secret. Removing one that isn't stored changes nothing and says so (C605 #6c). */
+  async remove(name: string): Promise<SecretRemoval> {
     const refusal = this.refuseName(name, "remove");
     if (refusal !== null) {
       return refusal;
+    }
+    // Asked by name, never by value; `secretKey` matches `Open-AI` to `open_ai` as the store does.
+    const key = secretKey(name);
+    const stored = await this.store.names();
+    if (!stored.some((storedName) => secretKey(storedName) === key)) {
+      return { changed: false, notSaved: true };
     }
     await this.store.remove(name);
     return { changed: true };

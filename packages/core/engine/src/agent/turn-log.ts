@@ -20,6 +20,7 @@ export type TurnEvent = Extract<
       | "tool.unasked"
       | "connector.listing-failed"
       | "connector.part-off"
+      | "key-origin.asked"
       | "key-origin.answered";
   }
 >;

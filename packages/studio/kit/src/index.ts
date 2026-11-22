@@ -119,6 +119,7 @@ export {
   type ExternalLinkProps,
   inlineLinkClasses,
   isWebAddress,
+  standaloneLinkClasses,
 } from "./external-link/external-link.tsx";
 export {
   type ExternalAddress,
@@ -184,6 +185,7 @@ export { CloseIcon } from "./icons/close-icon.tsx";
 export { DashedRingIcon } from "./icons/dashed-ring-icon.tsx";
 export { FileIcon } from "./icons/file-icon.tsx";
 export { ForwardIcon } from "./icons/forward-icon.tsx";
+export { HandIcon } from "./icons/hand-icon.tsx";
 export { HelpIcon } from "./icons/help-icon.tsx";
 export { InfoIcon } from "./icons/info-icon.tsx";
 export { LockIcon } from "./icons/lock-icon.tsx";

@@ -15,7 +15,7 @@ export interface MenuItem {
   /**
    * `middle` cuts the detail in the middle so its end stays, as a folder's line is cut elsewhere
    * (`…\Documents\Acme sample`). `wrap` cuts nothing: the detail wraps onto more lines, at most
-   * 300px wide, as Help › First run's sentences under Show the guide and Start over. By default
+   * 300px wide, as Help › First run's sentences under Show the guide again and Start over. By default
    * it ends in "…".
    */
   readonly detailCut?: "end" | "middle" | "wrap" | undefined;

@@ -59,7 +59,8 @@ export interface PluginTrustWords {
  * Shows the plugin's trust check, asks "Trust <name> and turn it on?" and
  * trusts exactly the fingerprint that was checked. While its backend would be
  * off on this computer, it says so, with why and where to allow it, before
- * the question. A `--fingerprint` that
+ * the question, or before the refusal without a terminal, and asks only
+ * "Trust <name>?". A `--fingerprint` that
  * isn't the current one asks nothing and saves nothing.
  *
  * @throws NotTrustedError when nobody can answer and `--yes --fingerprint`
@@ -84,32 +85,35 @@ export async function askToTrustPlugin(
   // The manifest's name is outside text (cli-output 5).
   const name = printable(plugin.name);
   const install = await service.install(id);
+  const turnsOn = answer.offHere === undefined;
   const check = pluginTrustCheckLines(
     entry.content,
     entry.location,
     answer.programsRun,
     install?.source,
+    turnsOn,
   );
   const fix = pluginMessages.noTerminalFix(id, fingerprint);
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
     throw fingerprintNotCurrent(entry, { check, fingerprint });
   }
 
-  // Said before the question, so nobody says yes expecting it to turn on (C565 row 5).
+  // Said before the question, and before the command a script would run without a terminal,
+  // so nobody says yes expecting it to turn on (C565 row 5, C626 #1).
   const wontTurnOn =
     answer.offHere === undefined
       ? []
-      : [...offHereLines(pluginMessages.trustWontTurnOn(name), answer.offHere, name), phrase``];
+      : [phrase``, ...offHereLines(pluginMessages.trustWontTurnOn(name), answer.offHere, name)];
   const trusted = await answer.context.ask({
-    question: pluginMessages.trustQuestion(name),
-    shownFirst: [...check, ...pluginFingerprintLines(fingerprint), phrase``, ...wontTurnOn],
+    question: pluginMessages.trustQuestion(name, turnsOn),
+    shownFirst: [...check, ...pluginFingerprintLines(fingerprint), ...wontTurnOn, phrase``],
     yes: answer.yes,
     refusal: () =>
       new NotTrustedError({
         problem: words.noTerminal,
         fix,
         fingerprint,
-        check,
+        check: [...check, ...wontTurnOn],
         action: null,
         mark: "needsYou",
       }),
@@ -153,6 +157,11 @@ type CheckedPlugin = Exclude<PluginEntry, { status: "broken" }>;
  * the plugin has now, as a check run now would, so a script can pass it to
  * `--yes --fingerprint` after a review.
  *
+ * When the check above shows the plugin as it is now, the fix is the command
+ * that trusts it, with that fingerprint filled in (HAL-15319). When the files
+ * changed during the question, nobody has seen them as they are now, so the
+ * fix asks for a review first.
+ *
  * @param now - what changed during the question: no check to show again and
  *   the fingerprint the files have now; by default, the entry's own
  */
@@ -163,10 +172,14 @@ export function fingerprintNotCurrent(
     fingerprint: entry.fingerprint,
   },
 ): NotTrustedError {
+  const fix =
+    now.check.length === 0
+      ? pluginMessages.addNoTerminalFix(entry.folder)
+      : pluginMessages.noTerminalFix(entry.folder, now.fingerprint);
   return new NotTrustedError({
     // The manifest's name is outside text (cli-output 5).
     problem: trustMessages.fingerprintNotCurrent(printable(entry.plugin.name)),
-    fix: pluginMessages.addNoTerminalFix(entry.folder),
+    fix,
     fingerprint: now.fingerprint,
     check: now.check,
     action: null,

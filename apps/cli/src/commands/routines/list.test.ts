@@ -409,6 +409,8 @@ verifies("cli.commands.routines.list", () => {
           nextRun: "2026-11-11T08:00:00.000Z",
           timeZone: null,
           problems: 0,
+          savedProblems: 0,
+          liveState: "live",
           lastRun: { runId: done.id, status: "completed", startedAt: done.start },
         },
       ],

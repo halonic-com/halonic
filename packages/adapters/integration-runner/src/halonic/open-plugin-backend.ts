@@ -72,18 +72,22 @@ export class PluginBackendNotFencedError extends Error {
 /**
  * The runner's fence failed though the computer passed the sandbox check
  * (A23), so the runner was stopped and nothing ran. The next start tries the
- * sandbox again; it never runs without it.
+ * sandbox again; it never runs without it. The message names the plugin as
+ * `plugin list` does, by its name (C600, HAL-15608).
  */
 export class PluginBackendStoppedError extends Error {
   override readonly name = "PluginBackendStoppedError";
-  /** The plugin's id, so a caller can name it and open its page. */
+  /** The plugin's id, so a caller can open its page. */
   readonly plugin: string;
+  /** The plugin's name from its manifest, as a person sees it. */
+  readonly pluginName: string;
 
-  constructor(plugin: string) {
+  constructor(plugin: string, pluginName: string) {
     super(
-      `Halonic stopped the plugin ${plugin}: the sandbox didn't work as the plugin started, so nothing ran. Halonic tries ${plugin} in the sandbox again the next time a run uses it.`,
+      `Halonic stopped the plugin ${pluginName}: the sandbox didn't work when the plugin started, so none of it ran. Halonic tries ${pluginName} in the sandbox again the next time a run uses it.`,
     );
     this.plugin = plugin;
+    this.pluginName = pluginName;
   }
 }
 
@@ -209,7 +213,7 @@ class PluginBackendOpening {
     this.#tellStart(gated.run);
     if (gated.run === "fenced" || gated.run === "unfenced") return gated.runner;
     if (gated.run === "needs-yes") throw new PluginBackendNotFencedError(gated.reason);
-    throw new PluginBackendStoppedError(this.#request.plugin);
+    throw new PluginBackendStoppedError(this.#request.plugin, readPlugin.name);
   }
 
   /** Tells the machine's `onStart`; a hook that throws leaves the start as it came out. */

@@ -99,7 +99,7 @@ export class WorkspaceFileProblemsError extends KindedError {
     super(
       "invalid_input",
       plainText(workspaceMessages.fileProblems(workspace, count, files, nothingDone.phrase).phrase),
-      { fix: plainText(workspaceMessages.fileProblemsFix(typedDir).phrase) },
+      { fix: plainText(workspaceMessages.fileProblemsFix(count, typedDir).phrase) },
     );
   }
 }
@@ -107,7 +107,8 @@ export class WorkspaceFileProblemsError extends KindedError {
 /**
  * Refuses to go on when the workspace's files have errors that stop the run,
  * before anything starts: "✕ Couldn't run support-reply: Acme has 2 problems
- * in providers/mock.yaml. Nothing ran." and "See them with: halonic validate".
+ * in providers/mock.yaml. Nothing ran." and "See them with: halonic validate"
+ * ("See it with" for one problem).
  *
  * @param nothingDone - the end of line 1: "Nothing ran." or "Nothing was sent."
  * @param typedDir - the user's own `--dir`, for the suggested command

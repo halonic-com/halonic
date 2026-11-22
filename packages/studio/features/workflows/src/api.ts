@@ -5,12 +5,24 @@
  */
 import { errorKindOf, KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+import type { NewWorkflow, TrashedWorkflow, WorkflowHub, WorkflowUsers } from "./lifecycle-api.ts";
+import type { WorkflowTests } from "./tests-api.ts";
 
 /**
  * What {@link WorkflowsHost.startRun} rejects with when the engine can't be reached: the shell's
  * error, which every page words for where Studio runs.
  */
 export { EngineNotAnswering } from "@halonicjs/studio-shell";
+
+import type {
+  RemovedStep,
+  WorkflowArrowChange,
+  WorkflowArrowFieldChange,
+  WorkflowRemoval,
+} from "./workflow-edits.ts";
+
+/** The changes the step card asks of the host for arrows, and what a removal hands back. */
+export type { RemovedStep, WorkflowArrowChange, WorkflowArrowFieldChange, WorkflowRemoval };
 
 /**
  * Why Studio can't start a run, and the next step (rules N1 to N3 of the UX check, HAL-12363): a
@@ -148,36 +160,6 @@ export interface WorkflowArrow {
   readonly condition?: unknown;
 }
 
-/**
- * One change of the arrows out of a step, from its docked card:
- * - `add`: a new arrow to the step `to`, on done, after the step's other arrows;
- * - `move`: the step's arrow at `index` (in file order, from 0) one place up (`-1`) or down (`1`),
- *   which changes which arrow wins when several fit. `to` is where that arrow goes as the card
- *   showed it, so a card that is out of date can't move another arrow;
- * - `set`: one field of the step's arrow at `index`, from its expanded row (see
- *   {@link WorkflowArrowFieldChange}). `to` is where that arrow goes as the card showed it, as for
- *   a move, so a card that is out of date can't change another arrow.
- */
-export type WorkflowArrowChange =
-  | { readonly kind: "add"; readonly to: string }
-  | { readonly kind: "move"; readonly index: number; readonly by: -1 | 1; readonly to: string }
-  | ({
-      readonly kind: "set";
-      readonly index: number;
-      readonly to: string;
-    } & WorkflowArrowFieldChange);
-
-/**
- * One field of an arrow, as its expanded row edits it. `undefined` takes the field out of the file:
- * the arrow then fires on done, has no timer, no condition or no label. A timer (`after`) replaces
- * the arrow's event, as a wait step's arrow fires either on an event or after a time.
- */
-export type WorkflowArrowFieldChange =
-  | { readonly field: "to"; readonly value: string }
-  | { readonly field: "event" | "after" | "label"; readonly value: string | undefined }
-  /** The condition as data (the file's `when`), parsed from the row's JSON. */
-  | { readonly field: "condition"; readonly value: unknown };
-
 /** One workflow as its page draws it. */
 export interface WorkflowView extends WorkflowRef {
   readonly name: string;
@@ -221,6 +203,11 @@ export interface WorkflowProblem {
    * file: another file whose error stops the workflow's run, such as an agent's it uses.
    */
   readonly file?: string | undefined;
+  /**
+   * The step's arrow it is in, by its place among the step's arrows (the file's order, from 0, as
+   * `arrows` lists them); absent when it isn't in one of the step's arrows.
+   */
+  readonly arrowIndex?: number | undefined;
 }
 
 /**
@@ -255,65 +242,8 @@ export interface WorkflowConfiguration extends WorkflowRef {
   readonly problems: readonly WorkflowProblem[];
 }
 
-/** How one test case ended the last time it ran. */
-export interface WorkflowTestResult {
-  readonly passed: boolean;
-  /** The test run's id, for **Open run**; absent when the run left no log. */
-  readonly runId?: string | undefined;
-  /** Why it failed, as the core says it: `Expected to end in "archive", ended in "reply".` */
-  readonly failure?: string | undefined;
-  /** The steps the case expects the run to take, when it names them. */
-  readonly expectedPath?: readonly string[] | undefined;
-  /** The steps the run took. */
-  readonly actualPath?: readonly string[] | undefined;
-}
-
-/** One test case of a workflow, as the Tests page lists it. */
-export interface WorkflowTestCase {
-  readonly name: string;
-  /** The run input the case starts with, as JSON text. */
-  readonly input: string;
-  /** The step the case expects the run to end in; absent when it doesn't say. */
-  readonly endsIn?: string | undefined;
-  /** The last result; absent until the case has run. */
-  readonly result?: WorkflowTestResult | undefined;
-}
-
-/** A workflow's test cases and when they last ran. */
-export interface WorkflowTests {
-  readonly cases: readonly WorkflowTestCase[];
-  /** ISO time of the last run of all of them; absent when they never ran together. */
-  readonly ranAt?: string | undefined;
-}
-
-/** A workflow that was moved to the trash, and the way to bring it back. */
-export interface TrashedWorkflow {
-  /**
-   * Puts the workflow and its tests back, after later changes too. It rejects with `conflict`, and
-   * undoes nothing, when a file has taken their place since.
-   */
-  undo(): Promise<void>;
-}
-
-/** What runs a workflow, counted for the warning of its delete. */
-export interface WorkflowUsers {
-  /** The routines that start it. */
-  readonly routines: number;
-  /** The steps of the hub's other workflows that run it. */
-  readonly steps: number;
-}
-
-/** A hub a new workflow can go in. */
-export interface WorkflowHub {
-  readonly id: string;
-  readonly name: string;
-}
-
-/** What the New workflow dialog hands over. */
-export interface NewWorkflow {
-  readonly name: string;
-  readonly hubId: string;
-}
+export type { NewWorkflow, TrashedWorkflow, WorkflowHub, WorkflowUsers } from "./lifecycle-api.ts";
+export type { WorkflowTestCase, WorkflowTestResult, WorkflowTests } from "./tests-api.ts";
 
 /**
  * The workspace's workflows, as the app reads and changes them. The app saves to the workspace's
@@ -363,6 +293,12 @@ export interface WorkflowsHost {
    * now. Absent where there is no folder to trust, so the Run panel offers **Try again**.
    */
   askTrust?(): Promise<"trusted" | "declined">;
+  /**
+   * Calls `listener` whenever the workspace may run now, wherever the person trusted it (the
+   * status bar's **Review**, too, not only the Run panel's), and returns how to stop. Absent where
+   * there is no folder to trust.
+   */
+  onTrusted?(listener: () => void): () => void;
   /**
    * Why {@link WorkflowsHost.startRun} would refuse the workflow, as far as its files say before
    * **Run** is pressed, with the unsaved changes applied: what {@link StartRefused} carries, or
@@ -442,6 +378,26 @@ export interface WorkflowsHost {
    * changed.
    */
   changeArrows?(ref: WorkflowRef, stepId: string, change: WorkflowArrowChange): Promise<void>;
+  /**
+   * Takes the step `stepId` out of the workflow, with its place on the canvas, its own arrows and
+   * every arrow into it, as one undoable change that saves itself; the file keeps its comments.
+   * Present whenever {@link WorkflowsHost.changeStep} is. Rejects the first step (`conflict`, until
+   * another is picked), a step that isn't there, or with the reason the file couldn't be changed.
+   */
+  removeStep?(ref: WorkflowRef, stepId: string): Promise<RemovedStep>;
+  /**
+   * Takes the arrow at `index` (in file order, from 0) out of the step `stepId`, as one undoable
+   * change that saves itself; the file keeps its comments. `to` is where that arrow goes as the
+   * card showed it, so a card that is out of date can't remove another arrow. Present whenever
+   * {@link WorkflowsHost.changeStep} is. Rejects a step or an arrow that isn't there, one that no
+   * longer goes to `to`, or with the reason the file couldn't be changed.
+   */
+  removeArrow?(
+    ref: WorkflowRef,
+    stepId: string,
+    index: number,
+    to: string,
+  ): Promise<WorkflowRemoval>;
   /**
    * Makes the workflow `start → done` in the hub, with the id taken from its name (`-2` when the
    * id is taken), and returns where it is. Rejects with the reason it couldn't be written.

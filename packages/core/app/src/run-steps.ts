@@ -123,6 +123,24 @@ export function runSteps(events: readonly RunEvent[], summary: RunSummary): RunS
   return steps;
 }
 
+/**
+ * The events of every step, in one pass over the log, where {@link runSteps}
+ * starts them: at each `state.entered` of the workflow itself, so a parallel
+ * branch's or a for-each item's events belong to their step. The one at
+ * index 0 is the first step's. Events before the first step are left out;
+ * the end state the run finished in keeps its events, last.
+ */
+export function eventsBySteps(events: readonly RunEvent[]): RunEvent[][] {
+  const steps: RunEvent[][] = [];
+  for (const event of events) {
+    if (startsAStep(event)) {
+      steps.push([]);
+    }
+    steps[steps.length - 1]?.push(event);
+  }
+  return steps;
+}
+
 /** A `state.entered` of the workflow itself, not of a parallel branch or a for-each item. */
 function startsAStep(event: RunEvent): event is Extract<RunEvent, { type: "state.entered" }> {
   return event.type === "state.entered" && event.branch === undefined && event.item === undefined;

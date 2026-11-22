@@ -13,7 +13,7 @@ The agent host shall give Studio the start, status, cancel and sign-out of an in
 - Given the user refused at the provider, then the page says it didn't finish and the status carries the outcome `cancelled`.
 - Given a callback at a path that isn't pending, then the answer is a 400 page and nothing is exchanged; given one with a wrong `state`, then nothing is exchanged either.
 - Given a callback with an `Origin` header or another host name, then it is refused as for every route.
-- Given a started sign-in that Studio cancels, then its callback gets a 400 page that says it was cancelled in Halonic, and the status carries the outcome `cancelled`.
+- Given a started sign-in that Studio cancels, then its callback gets a 400 page that says it was cancelled in Halonic, so nothing was saved, and the status carries the outcome `cancelled`.
 - Given a sign-in that is signed in, when Studio signs it out, then the provider is asked to revoke, the status says `signedOut`, and the answer carries what the provider did.
 - Given a plugin with a saved grant whose trust was removed, when Studio signs out all of its sign-ins, then the answer names that sign-in as signed out, no grant of the plugin is left, and its status says `signedOut` once it is trusted again.
 - Given a name the host runs no sign-ins for, when Studio signs out all of its sign-ins, then the answer is an empty list.

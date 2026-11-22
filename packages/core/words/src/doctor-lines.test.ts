@@ -3,6 +3,7 @@ import type {
   HarnessesLine,
   ModelsLine,
   NetworkLine,
+  ProfileLine,
   SecretsLine,
   WorkspaceLine,
 } from "@halonicjs/app";
@@ -171,6 +172,32 @@ verifies("words.doctor-lines", () => {
     expect(worded(unusable).items).toEqual([
       "HTTP_PROXY is set, and Halonic can't use it.",
       "It has no host.",
+    ]);
+  });
+
+  it("words the Profile line with the reason and the fix every other command refuses with", () => {
+    const moved: ProfileLine = {
+      check: "profile",
+      status: "failed",
+      problem: "profile-in-workspace",
+      movedBy: "XDG_DATA_HOME",
+    };
+    expect(worded(moved)).toEqual({
+      label: "Profile",
+      items: [
+        "the profile folder XDG_DATA_HOME is inside this workspace.",
+        "fix: Fix: move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.",
+      ],
+    });
+    const inside: ProfileLine = {
+      check: "profile",
+      status: "failed",
+      problem: "workspace-in-profile",
+      profile: "~/.local/share/\u001b[31mhalonic",
+    };
+    expect(worded(inside).items).toEqual([
+      "this workspace is inside the profile folder ~/.local/share/\\u001b[31mhalonic.",
+      "fix: Fix: move the workspace somewhere else.",
     ]);
   });
 

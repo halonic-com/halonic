@@ -5,7 +5,7 @@ import { createToastStore, PresentationProvider, ToastStoreProvider } from "@hal
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { WorkflowsHost } from "../api.ts";
+import type { WorkflowsHost, WorkflowView } from "../api.ts";
 import { memoryHost, memoryRuns, show, unmount } from "../test-support.tsx";
 import { reply } from "./page-fixtures.ts";
 import { WorkflowScreen } from "./workflow-page.tsx";
@@ -14,9 +14,12 @@ afterEach(unmount);
 
 type Edits = Pick<WorkflowsHost, "addStep" | "resetLayout" | "changeArrows">;
 
-/** Support reply (`start` → `write` → `done`) on a host with `edits`, on a desktop or a phone. */
-async function showPage(edits: Partial<Edits>, phone = false) {
-  const { host } = memoryHost([], [], [reply], [], edits);
+/**
+ * Support reply (`start` → `write` → `done`), or `workflow`, on a host with `edits`, on a desktop
+ * or a phone.
+ */
+async function showPage(edits: Partial<Edits>, phone = false, workflow: WorkflowView = reply) {
+  const { host } = memoryHost([], [], [workflow], [], edits);
   const toasts = createToastStore();
   const announce = vi.fn();
   const screen = (
@@ -43,10 +46,8 @@ const editsThatWork = () => ({
 });
 
 function card(page: HTMLElement, stepId: string): HTMLElement {
-  const found = [...page.querySelectorAll<HTMLElement>("button[aria-pressed]")].find(
-    (one) => one.querySelector("[title]")?.textContent === stepId,
-  );
-  if (found === undefined) throw new Error(`No card for ${stepId}`);
+  const found = page.querySelector<HTMLElement>(`button[data-step='${stepId}']`);
+  if (found === null) throw new Error(`No card for ${stepId}`);
   return found;
 }
 
@@ -87,12 +88,43 @@ const targets = (page: HTMLElement) =>
     ["start", "write", "done"].map((id) => [id, card(page, id).dataset["connectTarget"]]),
   );
 
+/** Support reply's steps with titles, so their cards show those instead of the ids. */
+const titledSteps: WorkflowView["steps"] = [
+  { id: "start", type: "task", title: "Start" },
+  { id: "write", type: "task", title: "Write", agent: "writer" },
+  { id: "done", type: "final", title: "Done" },
+];
+const refund = { equals: ["{{context.kind}}", "refund"] };
+
 verifies("workflows.canvas.drag-to-connect", () => {
   it("draws a port with its tooltip on every step but the end", async () => {
     const { page } = await showPage(editsThatWork());
     expect(portOf(page, "start")?.getAttribute("title")).toBe("Drag to another step to connect");
     expect(portOf(page, "write")?.getAttribute("aria-hidden")).toBe("true");
     expect(portOf(page, "done")).toBeNull();
+  });
+
+  it("draws a port muted until it's under the pointer or dragged from", async () => {
+    const { page } = await showPage(editsThatWork());
+    const ring = (stepId: string) => portOf(page, stepId)?.classList;
+    const dot = (stepId: string) => portOf(page, stepId)?.firstElementChild?.classList;
+    for (const stepId of ["start", "write"]) {
+      expect(ring(stepId)).toContain("border-fg-muted");
+      expect(ring(stepId)).toContain("hover:border-accent");
+      expect(ring(stepId)).not.toContain("border-accent");
+      expect(dot(stepId)).toContain("bg-fg-muted");
+      expect(dot(stepId)).toContain("group-hover:bg-accent");
+    }
+
+    const port = await dragTo(page, "start", middleOf(page, "done"));
+    expect(ring("start")).toContain("border-accent");
+    expect(dot("start")).toContain("bg-accent");
+    expect(ring("write")).toContain("border-fg-muted");
+    expect(ring("write")).not.toContain("border-accent");
+
+    await drop(port, { clientX: -500, clientY: -500 });
+    expect(ring("start")).toContain("border-fg-muted");
+    expect(ring("start")).not.toContain("border-accent");
   });
 
   it("adds an arrow on a drop on another step and says so", async () => {
@@ -105,7 +137,41 @@ verifies("workflows.canvas.drag-to-connect", () => {
       kind: "add",
       to: "done",
     });
-    expect(announce).toHaveBeenCalledWith("Arrow added: start to done.");
+    // `start` already goes to `write` on done without a condition, so the new arrow never runs.
+    expect(announce).toHaveBeenCalledWith(
+      "Arrow added: start to done. Arrow 2 is never taken: arrow 1 always matches first.",
+    );
+  });
+
+  it("names the steps as their cards do, as the step card's Add says it", async () => {
+    const titled: WorkflowView = {
+      ...reply,
+      steps: titledSteps,
+      arrows: [
+        { from: "start", to: "write", condition: refund },
+        { from: "write", to: "done" },
+      ],
+    };
+    const { page, announce } = await showPage(editsThatWork(), false, titled);
+    await drop(await dragTo(page, "start", middleOf(page, "done")), middleOf(page, "done"));
+    expect(announce).toHaveBeenCalledWith("Arrow added: Start to Done.");
+  });
+
+  it("says when an earlier arrow always beats the new one", async () => {
+    const titled: WorkflowView = {
+      ...reply,
+      steps: titledSteps,
+      arrows: [
+        { from: "start", to: "write", condition: refund },
+        { from: "start", to: "write" },
+        { from: "write", to: "done" },
+      ],
+    };
+    const { page, announce } = await showPage(editsThatWork(), false, titled);
+    await drop(await dragTo(page, "start", middleOf(page, "done")), middleOf(page, "done"));
+    expect(announce).toHaveBeenCalledWith(
+      "Arrow added: Start to Done. Arrow 3 is never taken: arrow 2 always matches first.",
+    );
   });
 
   it("outlines the steps a drop can land on and draws the line while dragging", async () => {

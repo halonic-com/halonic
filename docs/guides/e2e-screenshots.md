@@ -39,8 +39,10 @@ sheet isn't taken yet.
 ## Agent map
 
 `agent-map-<light|dark>.png` is an agent's page on Flow, with a card on each side of the map, from
-made-up agents (HAL-13180). The unit tests fake the map panel's size, so `e2e/agent-map.spec.ts`
-also fails when the panel has no room or a card sits outside it. The page loads through
+made-up agents (HAL-13180). `agent-map-phone-<light|dark>.png` is the same page on a 360 px phone,
+where the map is three narrow columns. The unit tests fake the map panel's size, so
+`e2e/agent-map.spec.ts` also fails when the panel has no room, a card sits outside it, or a phone
+card is under 48 px high. The page loads through
 `loadAgentScreen` in the agents feature's `api.ts`.
 
 ## Welcome

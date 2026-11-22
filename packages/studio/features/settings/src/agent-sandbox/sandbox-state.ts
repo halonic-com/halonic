@@ -28,7 +28,11 @@ export type SandboxCheckFacts =
       /** The check saw Docker Desktop next to the sandbox (W6, HAL-12445): a warning, not a failure. */
       readonly dockerDesktopVisible?: boolean;
     }
-  | { readonly state: "needs-setup" }
+  | {
+      readonly state: "needs-setup";
+      /** The setup is on this computer, but for an older release of the sandbox (HAL-5404). */
+      readonly setupAgain?: true;
+    }
   | { readonly state: "needs-repair"; readonly reason: string }
   /**
    * The check ran and says the sandbox can't run now, for a reason a person or an administrator
@@ -75,10 +79,21 @@ export type SandboxOutcome =
   | { readonly kind: "remove"; readonly how: "in-use"; readonly runs: number };
 
 /**
- * What the section shows after a press: how it failed, or a removal that worked, which the host
- * reports as no outcome and the section says in a note (C575, HAL-15432).
+ * A removal that worked. `keptAccess`: some access Halonic gave its sandbox stays until Halonic
+ * next starts (`sandbox-srt.removal-kept-access`, HAL-15761).
  */
-export type SandboxResult = SandboxOutcome | { readonly kind: "remove"; readonly how: "removed" };
+export interface SandboxRemoved {
+  readonly kind: "remove";
+  readonly how: "removed";
+  readonly keptAccess?: true;
+}
+
+/**
+ * What the section shows after a press: how it failed, or a removal that worked, which the host
+ * reports as no outcome, or as {@link SandboxRemoved} when it kept access, and the section says in
+ * a note (C575, HAL-15432).
+ */
+export type SandboxResult = SandboxOutcome | SandboxRemoved;
 
 /**
  * What runs now: the elevated step, then the check that follows it. `running` is a command the
@@ -186,6 +201,11 @@ export function sandboxView(facts: SandboxFacts, now: Date = new Date()): Sandbo
   };
 }
 
+/** The line under **Set up the sandbox**: a setup from an older release says it is needed again. */
+function setupLine(setupAgain: true | undefined): string {
+  return setupAgain === true ? text.SETUP_AGAIN : text.ADMIN_ONCE;
+}
+
 function checkedView(
   check: SandboxCheckFacts,
   viewOnly: boolean,
@@ -233,7 +253,7 @@ function checkedView(
         chip: { label: "Needs setting up", tone: "warning" },
         lead: text.NEEDS_SETUP,
         callout,
-        hint: hint(text.ADMIN_ONCE),
+        hint: hint(setupLine(check.setupAgain)),
         primary: viewOnly ? null : { action: "set-up", label: text.SET_UP, busy: false },
         secondary: ["check-again"],
       };
@@ -309,7 +329,7 @@ function calloutFor(outcome: SandboxResult): NonNullable<SandboxView["callout"]>
   if (outcome.kind === "remove") {
     switch (outcome.how) {
       case "removed":
-        return { line: text.REMOVED, action: null, note: true };
+        return { line: text.removedLine(outcome.keptAccess === true), action: null, note: true };
       case "cancelled":
         return { line: text.REMOVE_DENIED, action: null };
       case "timed-out":

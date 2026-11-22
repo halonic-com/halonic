@@ -851,6 +851,33 @@
     ]
   },
   {
+    "id": "unknown-provider-says-the-fix",
+    "requirement": "workspace.references",
+    "area": "workspace loader: an alias in models.yaml on an unknown provider",
+    "old": "An alias in models.yaml on a provider no file names gave Alias \"smart\" uses unknown provider \"cloud\", with quotes and no fix.",
+    "new": "The message is Alias smart uses unknown provider cloud. Add providers/cloud.yaml, or point the alias smart at a provider the workspace has. When a provider's id is near, the second sentence is Did you mean <provider>? instead. The code stays unknown-provider.",
+    "why": "validate stops this before any run starts, so it is the only place a person sees it. The run view's banner for the same cause already ends with the fix (C618 #5, HAL-15709).",
+    "status": "signed-off",
+    "checks": [
+      {
+        "case": "models/unknown-provider",
+        "file": "models.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Alias \"smart\" uses unknown provider \"cloud\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "Alias smart uses unknown provider cloud. Add providers/cloud.yaml, or point the alias smart at a provider the workspace has."
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "run-started-names-the-version",
     "requirement": "events.run-started-version",
     "area": "CLI calls: run.started",
@@ -2641,6 +2668,73 @@
           }
         ],
         "new": []
+      }
+    ]
+  },
+  {
+    "id": "missing-agent-and-step-words",
+    "requirement": "workflow.unknown-name-hints",
+    "area": "workflow checks: a step's agent its hub doesn't have, and a transition to a state the workflow doesn't have",
+    "old": "\"<state>\" uses unknown agent \"<agent>\" (Branch \"<branch>\" of \"<state>\" uses unknown agent \"<agent>\" for a branch), and \"<state>\" goes to unknown state \"<target>\".",
+    "new": "\"<state>\" uses the agent \"<agent>\", which its hub doesn't have (the same after Branch \"<branch>\" of \"<state>\"), and \"<state>\" goes to the step \"<target>\", which this workflow doesn't have.",
+    "why": "Studio's step card calls these \"Uses a missing agent\" and \"Goes to a missing step\", and its tooltip shows the core's message, so \"unknown agent\" put two names for one problem side by side. A plain \"missing\" would be wrong for an agent that is in another hub, so the words say what holds in both cases, and halonic validate and Studio say the same (Priya's check C576, rows 16 and 17, HAL-15431).",
+    "status": "signed-off",
+    "checks": [
+      {
+        "case": "workflow/unknown-agent",
+        "file": "hubs/billing/workflows/extra.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"start\" uses unknown agent \"auditor\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "\"start\" uses the agent \"auditor\", which its hub doesn't have"
+          }
+        ]
+      },
+      {
+        "case": "workflow/unknown-branch-agent",
+        "file": "hubs/billing/workflows/extra.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Branch \"audit\" of \"start\" uses unknown agent \"auditor\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "Branch \"audit\" of \"start\" uses the agent \"auditor\", which its hub doesn't have"
+          }
+        ]
+      },
+      {
+        "case": "workflow/unknown-target",
+        "file": "hubs/billing/workflows/extra.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"start\" goes to unknown state \"finish\""
+          },
+          {
+            "severity": "warning",
+            "message": "\"done\" can never be reached"
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "\"start\" goes to the step \"finish\", which this workflow doesn't have"
+          },
+          {
+            "severity": "warning",
+            "message": "\"done\" can never be reached"
+          }
+        ]
       }
     ]
   }

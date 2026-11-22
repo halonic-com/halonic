@@ -206,10 +206,25 @@ verifies("cli.commands.plugin.off-here", () => {
     expect(added.code).toBe(exitCode.ok);
     const warning =
       "! Trusting Weather won't turn it on: it stays off on this computer until you allow plugins and integrations to run without the sandbox.";
-    // Right above the question, after the check and its fingerprint.
-    expect(written()).toContain(
-      [warning, ...reasonLines, "", "Trust Weather and turn it on? [y/N] "].join("\n"),
-    );
+    // Right above the question, after the check and its fingerprint, and the
+    // question doesn't promise to turn it on (C626 #1, HAL-15752).
+    expect(written()).toContain([warning, ...reasonLines, "", "Trust Weather? [y/N] "].join("\n"));
+    expect(written()).toMatch(/^Trust Weather\?\n/u);
+    expect(written()).not.toContain("and turn it on");
+  });
+
+  it("says it stays off here before the command to trust it when there's no terminal", async () => {
+    const added = await plugin("add", await source("weather", true));
+
+    expect(added.code).toBe(exitCode.notTrusted);
+    expect(added.io.stderr[0]).toBe("Trust Weather?");
+    expect(added.io.stderr.slice(-6)).toEqual([
+      "",
+      "! Trusting Weather won't turn it on: it stays off on this computer until you allow plugins and integrations to run without the sandbox.",
+      ...reasonLines,
+      "! Weather is added but off, because there's no terminal to ask you to trust it.",
+      `  Read the list above, then run: halonic trust --plugin weather --yes --fingerprint ${added.io.stdout.at(-1)}`,
+    ]);
   });
 
   it("asks without the warning in the sandbox", async () => {

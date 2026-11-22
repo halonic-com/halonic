@@ -1,7 +1,7 @@
 import { shortRunId } from "@halonicjs/app";
 import type { RoutineVersions } from "@halonicjs/app/routines";
 import type { DefinitionSource } from "@halonicjs/ports";
-import { describeTrigger, routineKey, routineStart } from "@halonicjs/routines";
+import { describeTrigger, routineKey } from "@halonicjs/routines";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
   type NewRoutine,
@@ -61,8 +61,8 @@ import {
   targetWithPrompt,
   workflowsWithAgent,
 } from "./routine-reads.ts";
+import { startRoutineNow } from "./routine-run-now.ts";
 import { nextRunOf, nextTimesOf } from "./routine-times.ts";
-import { runNowFailureOf } from "./run-now-failure.ts";
 import type { WorkspaceRoutinesParts } from "./workspace-routines-parts.ts";
 
 /** How many of a routine's newest runs the Runs view lists. */
@@ -167,7 +167,10 @@ export class WorkspaceRoutines implements RoutinesHost {
     const { value } = file;
     this.#names.set(nameKey(ref), value.name);
     const target = targetOfFile(value.run, file.hub);
-    const versions = await this.#versionsOf(file);
+    const [versions, trusted] = await Promise.all([
+      this.#versionsOf(file),
+      this.#parts.trusted?.() ?? true,
+    ]);
     return {
       ...ref,
       name: value.name,
@@ -188,6 +191,8 @@ export class WorkspaceRoutines implements RoutinesHost {
       inputMissing: workspace.issues.some(
         (issue) => issue.file === file.path && issue.code === "missing-routine-input",
       ),
+      startErrors: errorsOf(workspace, file),
+      pausedUntilTrusted: !trusted,
     };
   }
 
@@ -349,23 +354,7 @@ export class WorkspaceRoutines implements RoutinesHost {
     if (view.targetState === "not-found") {
       return { started: false, refusal: { reason: "target-not-found" } };
     }
-    try {
-      const placed = { hub: ref.hubId, routine: value };
-      const key = routineKey(placed);
-      const at = this.#parts.now();
-      // A manual start has no earlier run to name, so `{{trigger.lastRun}}` is null.
-      const what = routineStart(placed, { at, lastRun: null });
-      if (what.hub === null)
-        throw new Error(`Routine ${key} runs outside a hub, so it must name one.`);
-      const start: RoutineRunStart =
-        "workflow" in what
-          ? { workflow: { hubId: what.hub, workflowId: what.workflow, input: what.input } }
-          : { agent: { hubId: what.hub, agentId: what.agent, prompt: what.prompt } };
-      const { id } = await engine.start(start, { routineKey: key, at: at.toISOString() });
-      return { started: true, runId: id, shortId: shortRunId(id) };
-    } catch (error) {
-      throw runNowFailureOf(error);
-    }
+    return startRoutineNow({ hub: ref.hubId, routine: value }, engine, this.#parts.now());
   }
 
   /** The versions of one routine, for its page and Next: a history that can't be read rejects, so the page says why. */

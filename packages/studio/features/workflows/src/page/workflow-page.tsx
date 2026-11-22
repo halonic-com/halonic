@@ -31,14 +31,14 @@ import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { blockingFileOf, openFileAtLine, useFilesWithErrors } from "./blocking-file.ts";
-import { StepEditDock, stepCardDocks } from "./docked-step-card.tsx";
+import { StepEditDock } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { insteadOfPage } from "./gone-state.tsx";
 import { GuideSlot } from "./guide-card.tsx";
-import { firstTestsPick, firstView, panelClass, stepNamesOf } from "./page-view.ts";
+import { firstTestsPick, firstView, hasDockedCard, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
-import { type DockOpener, dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
+import { type DockOpener, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { unavailableFor, useRunGate } from "./run-gate.ts";
 import {
   missingAliasOf,
@@ -55,6 +55,7 @@ import { useOutline } from "./use-outline.ts";
 import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { useWorkflowTrash } from "./use-workflow-trash.tsx";
+import type { CanvasFocus } from "./workflow-canvas.tsx";
 import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
@@ -178,6 +179,8 @@ export function WorkflowScreen({
     flushSync(() => setPickedStep(undefined));
     if (closed !== undefined) stepCardIn(body.current, closed)?.focus();
   };
+  // Where focus goes on the canvas once the picked step is removed; a new object asks again.
+  const [canvasFocus, setCanvasFocus] = useState<CanvasFocus>();
   // The test just made from a run: Configuration opens on Tests with it picked. A page opened on
   // its Tests (`startOnTests`) starts the same way, with no test picked.
   // `n` counts the tests made, so each one remounts Configuration and the Tests page reads again.
@@ -194,16 +197,14 @@ export function WorkflowScreen({
     setMadeTest({ name: undefined, n: testsMade.current });
   });
   // Steps another feature asked to see, such as those that run an agent: outlined on Flow, no card.
-  const { outlined, clear: clearOutline } = useOutline(
-    outline,
-    outlineAsked,
-    load,
-    announce,
-    () => {
-      showView("flow");
-      setPickedStep(undefined);
-    },
-  );
+  const {
+    outlined,
+    line: outlineLine,
+    clear: clearOutline,
+  } = useOutline(outline, outlineAsked, load, announce, () => {
+    showView("flow");
+    setPickedStep(undefined);
+  });
   const problemsAsk = useOpenProblems(view, madeTest, { setDock, setMadeTest, showView });
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
@@ -246,7 +247,7 @@ export function WorkflowScreen({
     setDock(undefined);
     showView("configuration");
   });
-  const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone, announce);
+  const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone, load, announce);
   const rename = useRename(host, { hubId, id }, name, everyWorkflow.load, announce);
   // Run and a guide's button open the start form the same way, and neither while Run can't start.
   const openStart = (opener: DockOpener) => {
@@ -416,11 +417,13 @@ export function WorkflowScreen({
               edit={canvasEdit}
               pickedStep={pickedStep}
               outlined={outlined}
+              outlineLine={outlineLine}
               docked={docked}
               onClearStep={() => {
                 clearOutline();
                 setPickedStep(undefined);
               }}
+              focus={canvasFocus}
               kept={kept}
               onView={keep}
             />
@@ -462,6 +465,10 @@ export function WorkflowScreen({
           problems={fileProblems}
           stepName={stepName}
           onOpenStep={setPickedStep}
+          onRemoved={(next) => {
+            setPickedStep(undefined);
+            setCanvasFocus({ step: next });
+          }}
           announce={announce}
           onClose={closeStepCard}
         />
@@ -469,12 +476,4 @@ export function WorkflowScreen({
       </div>
     </div>
   );
-}
-
-/** Whether a card is docked at the right: the start form or a run's, or a picked step's own. */
-function hasDockedCard(
-  run: Parameters<typeof dockHasCard>[0],
-  step: Parameters<typeof stepCardDocks>[0],
-): boolean {
-  return dockHasCard(run) || stepCardDocks(step);
 }

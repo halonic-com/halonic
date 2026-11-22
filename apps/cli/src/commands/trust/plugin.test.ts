@@ -153,7 +153,7 @@ verifies("cli.commands.trust.plugin", () => {
   });
 
   it("leaves it off and exits 3 when the --fingerprint isn't the current one", async () => {
-    await addWeatherOff();
+    const current = await addWeatherOff();
 
     const { code, io } = await trust([
       "--plugin",
@@ -166,6 +166,11 @@ verifies("cli.commands.trust.plugin", () => {
     expect(code).toBe(exitCode.notTrusted);
     expect(io.stderr.join("\n")).toContain(
       "✕ That fingerprint doesn't match Weather as it is now.",
+    );
+    // The check above is of the plugin as it is now, so the command to copy
+    // carries its real fingerprint, not a placeholder (HAL-15319).
+    expect(io.stderr.join("\n")).toContain(
+      `Read the list above, then run: halonic trust --plugin weather --yes --fingerprint ${current}`,
     );
     expect(await plugins()).toEqual(["new"]);
   });
@@ -300,6 +305,8 @@ verifies("cli.commands.trust.plugin", () => {
     expect(current).toMatch(fullFingerprint);
     expect(current).not.toBe(shown);
     expect(io.stdout.at(-1)).toBe(current);
+    // Nobody saw the files as they are now, so there's no command to copy.
+    expect(io.stderr.join("\n")).toContain("Review it with halonic trust --plugin weather");
   });
 
   it("trusts nothing when the files break during the question, and says it can't be read", async () => {

@@ -175,7 +175,9 @@ verifies("integration-sign-in.sign-in-host", () => {
       const page = await test.host.handleCallback(callback(started.callbackPath, state));
 
       expect(page.status).toBe(400);
-      expect(await page.text()).toContain("This sign-in was cancelled in Halonic.");
+      expect(await page.text()).toContain(
+        "This sign-in was cancelled in Halonic, so nothing was saved.",
+      );
       expect(test.bodies).toEqual([]);
       expect(await parts?.status()).toMatchObject([
         { state: "signedOut", lastOutcome: { kind: "cancelled", signIn: signInName } },

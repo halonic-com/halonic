@@ -41,11 +41,20 @@ export function arrowsOf(workflow: Workflow): WorkflowArrow[] {
 }
 
 /**
+ * Which of its step's arrows a problem's key path is in (`states.<id>.on.<index>…`), by the place
+ * {@link arrowsOf} gives it among the step's arrows; `undefined` for a path outside the arrows.
+ */
+export function arrowIndexOf(path: readonly (string | number)[]): number | undefined {
+  const [states, , on, index] = path;
+  return states === "states" && on === "on" && typeof index === "number" ? index : undefined;
+}
+
+/**
  * A step's own words for it: the first line of its description, as the run page and the CLI name
  * it. `undefined` when there is none, or when the line still holds a `{{ }}` placeholder that only
  * a run can fill in.
  */
-function stepTitle(description: string | undefined): string | undefined {
+export function stepTitle(description: string | undefined): string | undefined {
   const line = description?.split("\n")[0]?.trim();
   return line === undefined || line === "" || line.includes("{{") ? undefined : line;
 }

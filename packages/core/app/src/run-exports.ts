@@ -21,7 +21,13 @@ export {
   runVersionOf,
 } from "./run-source.ts";
 export { type RunStanding, type RunWait, runStanding, runWait } from "./run-standing.ts";
-export { answerLabel, type RunStep, runSteps, type StepEnd } from "./run-steps.ts";
+export {
+  answerLabel,
+  eventsBySteps,
+  type RunStep,
+  runSteps,
+  type StepEnd,
+} from "./run-steps.ts";
 export {
   type FollowOptions,
   RunFollowStopped,

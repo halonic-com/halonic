@@ -64,7 +64,11 @@ export function arrowEdits(
  * card showed it going to: the arrows changed since the card read them (in the file, or in another
  * window), so the change would land on another arrow.
  */
-function checkStillGoesTo(arrow: unknown, to: string, verb: "move" | "change"): void {
+export function checkStillGoesTo(
+  arrow: unknown,
+  to: string,
+  verb: "move" | "change" | "remove",
+): void {
   if (recordOf(arrow)?.["to"] === to) return;
   throw new KindedError(
     "invalid_input",

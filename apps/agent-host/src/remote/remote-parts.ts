@@ -1,6 +1,8 @@
 // The remote host's parts as the tunnel attack tests (`@halonicjs/testing-tunnel-attacks`) put them
-// together: the pairing desk, the paired phones, the settings, the host key, the mDNS advert and the
-// RemoteControl Studio drives. Nothing outside the tests imports this.
+// together: the pairing desk, the paired phones, the settings, the host key, the mDNS advert, the
+// RemoteControl Studio drives and the gateway's access to the desk and the phones. Nothing outside the
+// tests imports this.
+export { deskAccess } from "../gateway/desk-access.ts";
 export { type HostKey, sharedHostKey } from "./host-key.ts";
 export { HostRemoteControl } from "./host-remote-control.ts";
 export { type MulticastSocket, PairAdvert } from "./pair-advert.ts";

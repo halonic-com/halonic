@@ -2,12 +2,13 @@ import type { TrustRowView } from "@halonicjs/studio-feature-workspace";
 import type { ConnectorTrustContent } from "@halonicjs/workspace";
 import { listed } from "./listed.ts";
 
-/** A plugin's backend hosts as the trust check shows them, by the plugin's id. */
+/** The hosts a plugin may reach as the trust check shows them, by the plugin's id. */
 export type PluginHosts = ReadonlyMap<string, readonly string[]>;
 
 /**
  * A plugin connector's row names its plugin, "plugin acme-orders", with the hosts its installed
- * backend lists under it, as `halonic trust` shows them (HAL-15123). The plugin's own trust check
+ * backend and local tools may reach under it, as `halonic trust` shows them (HAL-15123,
+ * HAL-15705). The plugin's own trust check
  * covered those hosts, so they aren't in the workspace's fingerprint.
  */
 export function pluginConnectorRow(

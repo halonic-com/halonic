@@ -15,18 +15,24 @@ explore**. It also gives Support reply's page the guide card through the Workflo
 `WorkflowGuideService` (`first-run.guide-card`). The app gives it the open folder's sample facts with
 `SampleWorkspaceService` and a place for the state with `FirstRunDeviceService`.
 
+Every open folder shares that one state (`first-run.one-state`): a folder reads it again when the window shows
+it, before every change and when `FirstRunDevice.onChanged` says another window saved it, so a folder that
+stays open sees what another one changed, and an action or run of a folder the first run has left changes
+nothing. When **Open demo** marks a folder that is open already as the demo, `SampleWorkspace.onMarkedSample`
+tells the first run, which then starts there.
+
 A paused first run has a setup item in the Inbox (`first-run.setup-item`): "Finish your first run" at its step,
 with **Continue**, which takes it up again and opens Support reply, and **Dismiss**, whose toast says Help brings the guide back.
 
-**Help › First run** (`first-run.help`) shows only in the demo. **Show the guide** takes a paused or dismissed
-first run up again at its step, and **Start over** turns the first run off and asks the app for a fresh copy of
-the demo through the device's `startOver`. The copy starts the first run when it opens.
+**Help › First run** (`first-run.help`) shows only in the demo. **Show the guide again** takes a paused or
+dismissed first run up again at its step, and **Start over** turns the first run off and asks the app for a
+fresh copy of the demo through the device's `startOver`. The copy starts the first run when it opens.
 
 In a workspace that isn't the sample, Home's Get set up section shows three steps (`first-run.own-card`):
 **Connect your own model**, **Make your first agent** and **Run it once**, done by the rules of
 `first-run.own-progress`. Step 1 asks a local provider with the Models feature's `ProviderCheckService`, gives up
 after 5 seconds, and offers **Check again** and **Open Models** when it doesn't answer. The card stays for the
-visit in which the last step gets done; `SampleWorkspace`'s `ownCardMemory` and `recordOwnCard` remember it per
+visit in which the last step gets done, ending with "You're set up. Get set up won't show here again."; `SampleWorkspace`'s `ownCardMemory` and `recordOwnCard` remember it per
 folder, so it is gone the next time Home opens.
 
 `ModelChoiceHostService` is the engine side of the Pick a model screen's **Test and continue**: the app

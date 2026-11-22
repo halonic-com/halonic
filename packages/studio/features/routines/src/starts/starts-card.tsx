@@ -1,4 +1,12 @@
-import { Callout, Card, Disclosure, Field, Select, TextArea } from "@halonicjs/studio-kit";
+import {
+  Callout,
+  Card,
+  Disclosure,
+  Field,
+  Select,
+  TextArea,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { useEffect, useState } from "react";
 import {
   agentCantRunWords,
@@ -18,6 +26,8 @@ import { useTargets } from "./use-targets.ts";
 export interface StartsCardProps {
   readonly host: RoutinesHost;
   readonly routine: RoutineView;
+  /** Opens the workflow or agent in its tab, for the phone's "Open <name>" row; without it there is no row. */
+  readonly openTarget?: (target: RoutineTarget) => void;
 }
 
 /**
@@ -27,7 +37,7 @@ export interface StartsCardProps {
  * placeholders the text may use, and one line when the target can't be started. Each change is
  * written as soon as it can be; a change that can't be saved is shown in the card.
  */
-export function StartsCard({ host, routine }: StartsCardProps) {
+export function StartsCard({ host, routine, openTarget }: StartsCardProps) {
   const targets = useTargets(host, routine);
   const [failure, setFailure] = useState<string | undefined>();
   const [picked, setPicked] = useState<RoutineTargetChoice | undefined>();
@@ -85,6 +95,9 @@ export function StartsCard({ host, routine }: StartsCardProps) {
             onChange={pick}
           />
         </Field>
+        {current !== undefined && openTarget !== undefined && (
+          <OpenTargetRow name={name} onOpen={() => openTarget(target)} />
+        )}
         {waiting === undefined && (
           <>
             <TargetState routine={routine} name={name} />
@@ -117,6 +130,23 @@ export function StartsCard({ host, routine }: StartsCardProps) {
         {failure !== undefined && <Callout tone="danger">{failure}</Callout>}
       </div>
     </Card>
+  );
+}
+
+/**
+ * On a phone, a 48px row under the picker that opens what the routine starts: "Open Support
+ * reply" in `accent-text` (flow-routines 5.3). Desktop has the workflow or agent in the sidebar.
+ */
+function OpenTargetRow({ name, onOpen }: { readonly name: string; readonly onOpen: () => void }) {
+  if (usePresentation() !== "phone") return null;
+  return (
+    <button
+      type="button"
+      className="flex min-h-touch w-full items-center text-left text-body text-accent-text focus-ring"
+      onClick={onOpen}
+    >
+      {words.open(name)}
+    </button>
   );
 }
 

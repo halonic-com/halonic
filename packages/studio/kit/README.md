@@ -2387,7 +2387,7 @@ The promise `openExternal` returns rejects only when a pending address fails; th
 | Hover | The underline in full `accent-text` |
 | Focus | The standard focus ring |
 | High contrast | The system's link colour (`LinkText`), still underlined |
-| Phone | At least 48px high (`min-h-touch`), so the whole line is the target |
+| Phone, touch screen | Still inline, with a 48px tap area drawn round it (`hit-touch`), so the line it sits on keeps its height |
 
 ## WindowBar and Window
 
@@ -2515,14 +2515,15 @@ group, so a long action ("Sign in with Google") goes under the text and lines up
 
 ## Other exports
 
-The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `HelpIcon` (a circled ?, the sidebar's Help row,
+The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `HandIcon` (an open raised palm, the agent map's
+"asks first" hand, drawn like the place icons), `HelpIcon` (a circled ?, the sidebar's Help row,
 drawn like the place icons), `InfoIcon`, `MaximiseIcon` (⤢), `RefreshIcon`
 (a circle arrow, the ↻ of a plugin card), `RestoreIcon` (the restore mark), `SettingsIcon` (a gear, the sidebar's Settings row, drawn like
 the place icons), `ShieldIcon` (the sandbox's shield) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
 they sit in gives them their size.
 `useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
 names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined: a
-softer line at rest so a link in a sentence isn't told by colour alone, a full one on hover, and the link colour in high contrast, also on a button), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
+softer line at rest so a link in a sentence isn't told by colour alone, a full one on hover, and the link colour in high contrast, also on a button), for a button that must look like a link, such as Welcome's **Copy details**. `standaloneLinkClasses` is the same style for a link on a line of its own, such as a row in a list: on a phone its box is 48px high, so a list of them keeps the phone's row height. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
 components share are exported, so a test reads them instead of copying the number:
 
 | Export | Value | What it is |

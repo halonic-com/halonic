@@ -9,6 +9,7 @@ export {
   HostSettingsService,
   type SandboxCheckFacts,
   type SandboxOutcome,
+  type SandboxRemoved,
   type SecurityUpdatesFacts,
   type WslRemoveRequest,
   type WslRemoveResult,

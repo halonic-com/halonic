@@ -7,6 +7,7 @@ import {
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import { instructionTrustCommands } from "./instruction-trust-commands.ts";
 import { isTrustRefusal, type TauriShell, type TrustRefusal } from "./shell.ts";
+import { dataFolderRefusal, noAnswer } from "./trust-errors.ts";
 
 /**
  * The instructions a person trusted, for the Studio desktop app: every call
@@ -71,7 +72,7 @@ export class TauriInstructionTrustStore implements InstructionTrustStore {
     try {
       return await this.#shell.invoke(command, args);
     } catch (reason) {
-      throw instructionTrustFailure(reason, key);
+      throw instructionTrustFailure(reason, command, key);
     }
   }
 }
@@ -99,20 +100,34 @@ const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, E
   exists: "conflict",
 };
 
+/** The commands that change the profile's records; `get` only reads them. */
+const writingCommands: readonly string[] = [
+  instructionTrustCommands.save,
+  instructionTrustCommands.remove,
+];
+
 /**
  * The error a rejected `instruction_trust_*` command becomes. An unreadable
  * record is a plain `Error` naming the agent and its workspace, as
  * `FileInstructionTrustStore` throws it, so the service treats both the same
  * and asks the person. Anything that isn't the shell's refusal shape (a
- * missing capability, a broken IPC call) is `unavailable`, and its text is
- * dropped: the adapter can't vouch for it.
+ * missing capability, a broken IPC call) is a bug the person can't fix, so it
+ * is `internal`, in microcopy 22 F13's words, with its text only in the
+ * details: the adapter can't vouch for it (C613 12). An `io` refusal's message is
+ * the shell's log text, such as an OS error with a path, so it too is in
+ * Halonic's words, with the message in the details (HAL-15411, as C548 5 for
+ * the folder trust store). Any other refusal keeps the shell's message.
  */
-function instructionTrustFailure(reason: unknown, key: InstructionTrustKey): Error {
+function instructionTrustFailure(
+  reason: unknown,
+  command: string,
+  key: InstructionTrustKey,
+): Error {
   if (!isTrustRefusal(reason)) {
-    return new KindedError(
-      "unavailable",
-      "The desktop shell gave no answer to the instruction trust call.",
-    );
+    return noAnswer("instruction trust call", reason);
+  }
+  if (reason.kind === "io") {
+    return dataFolderRefusal(writingCommands.includes(command), reason.message);
   }
   if (reason.kind === "unreadable") {
     return unreadable(key, reason);

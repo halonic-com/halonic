@@ -50,7 +50,9 @@ is the reference.
 6. Add it to your own profile: `halonic plugin add ./my-plugin`. It asks
    "Trust *name* and turn it on?". Answer yes to turn it on. No, or no
    terminal, leaves it added but off; a script passes
-   `--yes --fingerprint <fingerprint>` (see Trust below).
+   `--yes --fingerprint <fingerprint>` (see Trust below). When its backend
+   can't run in the sandbox on this computer, it asks only "Trust *name*?"
+   and says first that trusting it won't turn it on, and why.
 7. Give an agent its tools: add the plugin's connector to a workspace. A
    workspace names the plugin; it can't trust it. Write a connector file,
    such as `library/connectors/my-plugin.connector.yaml`, that names the
@@ -98,7 +100,7 @@ is the reference.
 | "off on this computer" | the plugin has a backend, and plugin code can't run in the sandbox here (the line under it says why); the CLI never runs it without | fix what the line names, or allow it in the Halonic desktop app to use it there: **Settings › Plugins**, open the plugin, then **Review** |
 | a local tool "needs the desktop app" | no sandbox on Android or in the browser | use the desktop app, the CLI or `serve` |
 | a tool refused | the server offers a tool the manifest doesn't declare | declare it, or remove it from the server |
-| "Halonic stopped the plugin <id>: its sandbox didn't hold, so it didn't run. The next run that uses it tries the sandbox again." | the computer passed the sandbox check, but the plugin's sandbox didn't hold when it started, so Halonic stopped it | nothing to do; the next run that uses it tries the sandbox again |
+| "Halonic stopped the plugin <name>: the sandbox didn't work when the plugin started, so none of it ran. Halonic tries <name> in the sandbox again the next time a run uses it." | the computer passed the sandbox check, but the sandbox didn't work when the plugin started, so Halonic stopped it | nothing to do; the next run that uses it tries the sandbox again |
 
 The backend in the sample is plain JavaScript with no imports and no build
 step. If you write TypeScript, build it to one JavaScript file first and point
@@ -419,8 +421,8 @@ needs `--yes`), then removes the plugin with its trust, settings and the API
 key you entered. Both, and **Remove trust** in Studio, also sign you out of
 the plugin's sign-ins on this computer: each token is revoked at the provider
 where the sign-in has a revoke address, and forgotten here either way. When the
-provider doesn't confirm, the command says so, because the token may still
-work there until it expires.
+provider doesn't confirm, the command (or Studio) says so, because the token
+may still work there until it expires.
 
 In a script, `plugin add` and `trust --plugin` take
 `--yes --fingerprint <fingerprint>`; the fingerprint must match what the check

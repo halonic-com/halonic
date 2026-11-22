@@ -30,6 +30,9 @@ it("says why a time didn't start", () => {
   expect(skipSentence({ ...skip, reason: "target-in-trash" }, "Briefing", now)).toBe(
     "08:00 Tue: Briefing was deleted",
   );
+  expect(skipSentence({ ...skip, reason: "target-not-found" }, "gone-report", now)).toBe(
+    "08:00 Tue: gone-report isn't in this workspace",
+  );
 });
 
 it("says a refused start with its sentence and next step, or that Halonic can't explain it, and names it for a screen reader", () => {

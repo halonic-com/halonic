@@ -8,7 +8,7 @@ import { type AgentHostAnswer, answerError, readAnswer } from "./transport.ts";
  * word it, never the error's own text (UX check C2, HAL-12410).
  */
 export type ConnectorFailure =
-  | { readonly reason: "program-missing"; readonly program: string }
+  | { readonly reason: "program-missing" | "program-stopped"; readonly program: string }
   | { readonly reason: "secret-missing"; readonly secret: string }
   | { readonly reason: "secret-refused" }
   | { readonly reason: "stopped" };
@@ -18,6 +18,11 @@ const failureSchema = s.object({
     s.object({
       kind: s.literal("connector_failed"),
       reason: s.literal("program-missing"),
+      program: s.string().min(1),
+    }),
+    s.object({
+      kind: s.literal("connector_failed"),
+      reason: s.literal("program-stopped"),
       program: s.string().min(1),
     }),
     s.object({
@@ -32,11 +37,12 @@ const failureSchema = s.object({
 
 /**
  * How a surface should respond to each cause: a missing program or a
- * stopped one can work on the next try, a missing secret is set first, and
+ * stopped one (at its start or later) can work on the next try, a missing secret is set first, and
  * a refused secret is a sign-in that no longer holds.
  */
 const kindOf: Record<ConnectorFailure["reason"], ErrorKind> = {
   "program-missing": "unavailable",
+  "program-stopped": "unavailable",
   "secret-missing": "invalid_input",
   "secret-refused": "unauthenticated",
   stopped: "unavailable",
@@ -91,6 +97,7 @@ export function readConnectorAnswer<T>(
 function failureOf(error: ConnectorFailure & { readonly kind: string }): ConnectorFailure {
   switch (error.reason) {
     case "program-missing":
+    case "program-stopped":
       return { reason: error.reason, program: error.program };
     case "secret-missing":
       return { reason: error.reason, secret: error.secret };
@@ -103,6 +110,8 @@ function fallbackMessage(failure: ConnectorFailure): string {
   switch (failure.reason) {
     case "program-missing":
       return `The program ${failure.program} isn't on this computer.`;
+    case "program-stopped":
+      return `The program ${failure.program} stopped right after it started.`;
     case "secret-missing":
       return `The secret ${failure.secret} isn't set on this computer.`;
     case "secret-refused":

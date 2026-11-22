@@ -254,6 +254,19 @@ export const runMessages = defineMessages("run", {
   /** With a !, before the run starts, for an agent set to "On this computer". Never a question. */
   onThisComputer: (agent: string, chosenOn: string) =>
     phrase`${agent} runs on this computer without the sandbox, as chosen on ${chosenOn}.`,
+  /**
+   * With a !, before the run starts, for an agent set to "On this computer" whose file changed
+   * since: Studio's Callout (microcopy 23.4) and where to confirm again, since the CLI only reads
+   * the choice (HAL-15640).
+   */
+  onHold: (agent: string) =>
+    phrase`${agent}'s file changed since you chose On this computer, so it runs in the sandbox until you confirm again in Studio ${markPart("studioPath")} ${agent} ${markPart("studioPath")} Harness ${markPart("studioPath")} Where it runs.`,
+  /**
+   * After the fix when the sandbox can't start, for such an agent: why it needed the sandbox. It
+   * never points to confirming again, as a refusal never offers "On this computer" (HAL-12597).
+   */
+  onHoldNeedsSandbox: (agent: string) =>
+    phrase`${agent} needs the sandbox because its file changed since you chose On this computer.`,
 
   /**
    * A `--debug` line for an engineer (requirement `cli.debug-lines`): the
