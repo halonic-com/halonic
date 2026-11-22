@@ -390,3 +390,50 @@ verifies("deploy.lock", () => {
     await expect(client.takeDeployLock("a1", "w-data", lease)).rejects.toThrow(/read back/);
   });
 });
+
+verifies("deploy.lock-read", () => {
+  const read = (route: Route | undefined, bodies: { sql?: string }[] = []) =>
+    createCloudflareClient({
+      token,
+      baseUrl: "https://cf.test",
+      fetch: cloudflare(
+        route ? { ...lookup, "POST /accounts/a1/d1/database/d1/query": route } : lookup,
+        [],
+        bodies,
+      ),
+    }).readDeployLock("a1", "w-data");
+
+  it("reads the lease in force by the database's clock and writes nothing", async () => {
+    const bodies: { sql?: string }[] = [];
+    const row = { id: "theirs", label: "kim", started_at: 1000, expires_at: 2000 };
+    expect(await read({ result: [{ results: [row] }] }, bodies)).toEqual({
+      id: "theirs",
+      label: "kim",
+      startedAt: 1000,
+      expiresAt: 2000,
+    });
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]?.sql).toMatch(/^SELECT .* expires_at > \(CAST\(strftime\('%s','now'\)/);
+  });
+
+  it("finds no holder when the lease ran out, the table or the database is missing", async () => {
+    expect(await read({ result: [{ results: [] }] })).toBeUndefined();
+    const noTable = {
+      status: 400,
+      success: false,
+      errors: [{ code: 7500, message: "no such table: _halonic_deploy_lock" }],
+    };
+    expect(await read(noTable)).toBeUndefined();
+    const client = createCloudflareClient({
+      token,
+      baseUrl: "https://cf.test",
+      fetch: cloudflare({ "GET /accounts/a1/d1/database?name=x-data": { result: [] } }, []),
+    });
+    expect(await client.readDeployLock("a1", "x-data")).toBeUndefined();
+  });
+
+  it("rethrows any other failure", async () => {
+    const failing = { status: 500, success: false, errors: [{ code: 1, message: "boom" }] };
+    await expect(read(failing)).rejects.toThrow(/boom/);
+  });
+});

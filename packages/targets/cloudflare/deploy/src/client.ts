@@ -1,8 +1,6 @@
 import type {
   CloudflareAccount,
   CloudflareApi,
-  DeployLease,
-  DeployLeaseRequest,
   DurableObjectMigration,
   FoundResource,
   Migration,
@@ -10,6 +8,7 @@ import type {
   TokenStatus,
   WorkerUpload,
 } from "./api.ts";
+import { lockCalls } from "./client-lock-calls.ts";
 import { manageCalls } from "./client-manage-calls.ts";
 import { objectCalls } from "./client-object-calls.ts";
 import { DeployError, redact } from "./errors.ts";
@@ -40,10 +39,6 @@ interface Envelope {
 export const markerTag = "halonic";
 /** The table the Worker's own migration runner uses, so the two never disagree about what ran. */
 const migrationsTable = "schema_migrations";
-const lockTable = "_halonic_deploy_lock";
-/** The database's clock in milliseconds. Second precision, which suits a ten-minute lease and works on every SQLite. */
-const nowMs = "(CAST(strftime('%s','now') AS INTEGER) * 1000)";
-const createLockTable = `CREATE TABLE IF NOT EXISTS ${lockTable} (slot INTEGER PRIMARY KEY CHECK (slot = 1), id TEXT NOT NULL, label TEXT NOT NULL, started_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)`;
 const defaultBaseUrl = "https://api.cloudflare.com/client/v4";
 const requestTimeoutMs = 30_000;
 const accountsPerPage = 50;
@@ -79,16 +74,6 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     const path = `/accounts/${encodeURIComponent(accountId)}/d1/database/${encodeURIComponent(id)}/query`;
     const body = (await request("POST", path, { batch: statements })) as Envelope;
     return Array.isArray(body.result) ? (body.result as { results?: unknown }[]) : [];
-  }
-
-  /** The lease row after a batch whose last statement selected it. */
-  function leaseFrom(results: readonly { results?: unknown }[]): DeployLease | undefined {
-    const rows = results[results.length - 1]?.results;
-    const row = Array.isArray(rows) ? (rows[0] as Record<string, unknown> | undefined) : undefined;
-    if (!row) return undefined;
-    const { id, label, started_at: startedAt, expires_at: expiresAt } = row;
-    if (typeof id !== "string" || typeof label !== "string") return undefined;
-    return { id, label, startedAt: Number(startedAt), expiresAt: Number(expiresAt) };
   }
 
   async function requireDatabase(accountId: string, name: string): Promise<string> {
@@ -252,6 +237,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
   return {
     ...manage,
     ...objectCalls({ send, failed }),
+    ...lockCalls({ query, batch, failed, databaseId }),
     async listAccounts() {
       const accounts: CloudflareAccount[] = [];
       for (let page = 1; page <= maxAccountPages; page += 1) {
@@ -314,39 +300,6 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         if (error instanceof DeployError && /no such table/i.test(error.message)) return [];
         throw error;
       }
-    },
-    async takeDeployLock(accountId, databaseName, request: DeployLeaseRequest) {
-      const id = await requireDatabase(accountId, databaseName);
-      const results = await batch(accountId, id, [
-        { sql: createLockTable },
-        {
-          // Wins only when no lease exists or the old one ran out, by the database's clock
-          // (`excluded.started_at` is its "now"). The row's slot is always 1, so two deploys
-          // racing for it can't both insert.
-          sql: `INSERT INTO ${lockTable} (slot, id, label, started_at, expires_at) VALUES (1, ?, ?, ${nowMs}, ${nowMs} + CAST(? AS INTEGER)) ON CONFLICT(slot) DO UPDATE SET id = excluded.id, label = excluded.label, started_at = excluded.started_at, expires_at = excluded.expires_at WHERE ${lockTable}.expires_at <= excluded.started_at`,
-          params: [request.id, request.label, String(request.leaseMs)],
-        },
-        { sql: `SELECT id, label, started_at, expires_at FROM ${lockTable} WHERE slot = 1` },
-      ]);
-      const held = leaseFrom(results);
-      if (!held) throw failed("the deploy lock could not be read back");
-      return held;
-    },
-    async renewDeployLock(accountId, databaseName, leaseId, leaseMs) {
-      const id = await requireDatabase(accountId, databaseName);
-      const results = await batch(accountId, id, [
-        {
-          sql: `UPDATE ${lockTable} SET expires_at = ${nowMs} + CAST(? AS INTEGER) WHERE slot = 1 AND id = ?`,
-          params: [String(leaseMs), leaseId],
-        },
-        { sql: `SELECT id, label, started_at, expires_at FROM ${lockTable} WHERE slot = 1` },
-      ]);
-      const held = leaseFrom(results);
-      return held?.id === leaseId ? held : undefined;
-    },
-    async releaseDeployLock(accountId, databaseName, leaseId) {
-      const id = await requireDatabase(accountId, databaseName);
-      await query(accountId, id, `DELETE FROM ${lockTable} WHERE slot = 1 AND id = ?`, [leaseId]);
     },
     async uploadVersion(accountId, worker, upload) {
       return withHidden(upload, async () => {

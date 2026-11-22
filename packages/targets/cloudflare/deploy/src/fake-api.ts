@@ -262,6 +262,11 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
       lockWrite(`releaseDeployLock ${leaseId}`);
       if (lock?.id === leaseId) lock = undefined;
     },
+    async readDeployLock() {
+      calls.push("readDeployLock");
+      if (state.noDatabase) return undefined;
+      return lock && lock.expiresAt > (state.now ?? Date.now)() ? lock : undefined;
+    },
     async applyMigration(_accountId, _databaseName, migration: Migration) {
       if (state.failOnWrite) throw new Error(`unexpected write: applyMigration ${migration.id}`);
       calls.push(`applyMigration ${migration.id}`);

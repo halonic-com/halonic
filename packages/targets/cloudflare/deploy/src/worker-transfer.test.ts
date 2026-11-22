@@ -125,7 +125,7 @@ verifies("deploy.worker-transfer", () => {
         : json({ imported: { runs: 1, records: 0, blobs: 0 } }),
     );
     const counts = await importToWorker({ baseUrl, key, folder, fetch: w.fetch });
-    expect(counts).toEqual({ runs: 1, records: 0, blobs: 0 });
+    expect(counts).toEqual({ runs: 1, records: 0, blobs: 0, bytes: runBytes.byteLength });
     expect(w.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
       "PUT /admin/import/files/runs/r1.jsonl",
       "POST /admin/import",

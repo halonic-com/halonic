@@ -1,9 +1,7 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-import { RUNTIME_EXPORT_MANIFEST } from "@halonicjs/format/runtime-export";
 import type {
   DeployAccount,
   DeployedVersion,
+  DeployLockHolder,
   DeploymentRef,
   DeployResource,
   DeployTarget,
@@ -11,6 +9,7 @@ import type {
   DeployTargetEntry,
   DeployTransferCounts,
   DestroyItem,
+  HttpClient,
 } from "@halonicjs/ports";
 import { deployTargetVersion } from "@halonicjs/ports";
 import { withAdminKey } from "./admin-key.ts";
@@ -50,14 +49,14 @@ export function createCloudflareDeployTarget(
   context: DeployTargetContext,
   options: CloudflareDeployTargetOptions = {},
 ): DeployTarget {
-  const fetchOver: typeof fetch = (input, init) =>
-    context.http.fetch(input instanceof Request ? input.url : String(input), init);
+  const fetchOver = fetchThrough(context.http);
   const apiFor =
     options.api ?? ((token: string) => createCloudflareClient({ token, fetch: fetchOver }));
   const label = context.who;
 
   const api = async (): Promise<CloudflareApi> => {
-    const token = context.environmentToken ?? (await context.tokens.get(tokenName));
+    // An empty CLOUDFLARE_API_TOKEN is no token, so it doesn't hide the saved one.
+    const token = context.environmentToken || (await context.tokens.get(tokenName));
     if (token === null || token === "") {
       throw portFailure(
         "token-missing",
@@ -99,10 +98,11 @@ export function createCloudflareDeployTarget(
       guard(async () => {
         const cloudflare = await api();
         const { accountId, service: worker } = deployment;
-        const [account, found, numbers] = await Promise.all([
+        const [account, found, numbers, lockedBy] = await Promise.all([
           accountOf(cloudflare, accountId),
           status(cloudflare, { accountId, worker, fetch: fetchOver }),
           versionNumbers(cloudflare, accountId, worker),
+          lockedByOf(cloudflare, deployment),
         ]);
         const main = found.versions.reduce<(typeof found.versions)[number] | undefined>(
           (a, b) => (a === undefined || b.percentage > a.percentage ? b : a),
@@ -123,8 +123,7 @@ export function createCloudflareDeployTarget(
               ? { answering: true, lastRoutineTick: undefined }
               : { answering: false },
           runs: undefined,
-          // Reading the lock without taking it comes with `plan`, which needs the same read.
-          lockedBy: undefined,
+          lockedBy,
           unfinished: undefined,
         };
       }),
@@ -159,11 +158,15 @@ export function createCloudflareDeployTarget(
 
     import: (deployment, folder, request = {}) =>
       guard(async () => {
-        await withTransfer(await api(), deployment, request.signal, (job) =>
+        const counts = await withTransfer(await api(), deployment, request.signal, (job) =>
           importToWorker({ ...job, folder }),
         );
-        const manifest = JSON.parse(await readFile(join(folder, RUNTIME_EXPORT_MANIFEST), "utf8"));
-        return transferCounts(manifest.files);
+        return {
+          runs: counts.runs,
+          records: counts.records,
+          files: counts.blobs,
+          bytes: counts.bytes,
+        };
       }),
 
     unlock: (deployment) =>
@@ -234,6 +237,29 @@ export const deployTarget: DeployTargetEntry = {
   create: (context) => createCloudflareDeployTarget(context),
 };
 
+/**
+ * `fetch` over the context's HTTP client, which takes a URL and an init. A
+ * `Request` goes through whole: its method, headers, body and signal, not
+ * only its URL.
+ */
+export function fetchThrough(http: HttpClient): typeof fetch {
+  return (input, init) => {
+    if (!(input instanceof Request)) return http.fetch(String(input), init);
+    const request = init === undefined ? input : new Request(input, init);
+    const { method, headers, body, signal, redirect } = request;
+    // Node needs `duplex` to send a stream body; other runtimes ignore it.
+    const forwarded = {
+      method,
+      headers,
+      body,
+      signal,
+      redirect,
+      ...(body ? { duplex: "half" } : {}),
+    };
+    return http.fetch(request.url, forwarded as RequestInit);
+  };
+}
+
 async function guard<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run();
@@ -274,6 +300,15 @@ async function versionNumbers(
     for (const v of deployment) if (v.percentage > 0 && !ids.includes(v.id)) ids.push(v.id);
   }
   return { ids };
+}
+
+/** Who holds the deployment's lock, read without taking it (requirement `deploy.lock-read`). */
+async function lockedByOf(
+  api: CloudflareApi,
+  deployment: DeploymentRef,
+): Promise<DeployLockHolder | undefined> {
+  const held = await api.readDeployLock(deployment.accountId, databaseNameFor(deployment.service));
+  return held === undefined ? undefined : lockHolderOf(held);
 }
 
 function version(ids: readonly string[], id: string, commit: string | undefined): DeployedVersion {

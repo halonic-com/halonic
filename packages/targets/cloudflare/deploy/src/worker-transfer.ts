@@ -21,11 +21,12 @@ export interface WorkerTransferOptions {
   readonly fetch?: typeof fetch;
 }
 
-/** What an import came to, as the Worker counted it. */
+/** What an import came to: the items as the Worker counted them, the bytes as the folder's checked manifest lists them. */
 export interface ImportedCounts {
   readonly runs: number;
   readonly records: number;
   readonly blobs: number;
+  readonly bytes: number;
 }
 
 /** How often an import stages again what the Worker said was missing or different, the first try excluded. */
@@ -118,7 +119,10 @@ async function stageAndPost(
       body: new TextEncoder().encode(JSON.stringify(manifest)),
       contentType: "application/json",
     });
-    if (posted.status === 200) return countsOf(posted.body);
+    if (posted.status === 200) {
+      const bytes = manifest.files.reduce((sum, f) => sum + f.bytes, 0);
+      return { ...countsOf(posted.body), bytes };
+    }
     const refusal = refusalOf(posted);
     const restage =
       refusal.code === "files_missing" || refusal.code === "files_differ"
@@ -244,10 +248,10 @@ function failed(message: string): DeployError {
   return new DeployError("transfer-failed", message);
 }
 
-function countsOf(body: Uint8Array): ImportedCounts {
+function countsOf(body: Uint8Array): Omit<ImportedCounts, "bytes"> {
   try {
     const json = JSON.parse(new TextDecoder().decode(body)) as {
-      imported?: Partial<Record<keyof ImportedCounts, unknown>>;
+      imported?: Partial<Record<"runs" | "records" | "blobs", unknown>>;
     };
     const n = (value: unknown) => (typeof value === "number" && value >= 0 ? value : undefined);
     const runs = n(json.imported?.runs);
