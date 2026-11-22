@@ -29,8 +29,21 @@ verifies("app.trust-service-read-only", () => {
     expect(check.status).toBe("trusted");
     if (check.status !== "trusted") return;
     expect(check.shrunk.connectors).toEqual(["mail"]);
-    expect(check.grant).toEqual({ location, fingerprint: check.fingerprint });
     expect(await store.get(location)).toEqual(before);
+  });
+
+  it("gives the grant of the stored record, so a check against the store still passes", async () => {
+    const { service, store } = setUpTrustService(digest);
+    await trustAsPerson(service, subject(program("files"), program("mail")));
+    const before = (await store.get(location)) as TrustRecord;
+
+    const check = await service.check(subject(program("files")), { readOnly: true });
+
+    expect(check.status).toBe("trusted");
+    if (check.status !== "trusted") return;
+    expect(check.grant).toEqual({ location, fingerprint: before.fingerprint });
+    expect(check.fingerprint).not.toBe(before.fingerprint);
+    expect(check.trustedAt).toBe(before.grantedAt);
   });
 
   it("still shrinks the record on a check that isn't read-only", async () => {

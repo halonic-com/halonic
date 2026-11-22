@@ -46,13 +46,14 @@ const setTimer: SetTimer = (callback, delayMs) => {
  * `mayStart` the engine asks counted, so a test can wait for its trust-change checks to end.
  */
 function folderTrust(definitions: MemoryDefinitionStore) {
+  const store = new MemoryTrustStore();
   const trust = new WorkspaceTrust({
     definitions,
     folder: new MemoryFolderReader(location),
     findCommand: async () => "/usr/bin/npx",
     digest: webCryptoDigest,
     trust: new TrustService({
-      store: new MemoryTrustStore(),
+      store,
       digest: webCryptoDigest,
       clock: fixedClock(),
       appVersion: "0.1.0",
@@ -78,7 +79,7 @@ function folderTrust(definitions: MemoryDefinitionStore) {
   /** Waits until every check the engine started has ended. */
   const settled = () =>
     waitUntil("the engine's trust checks", () => checks.asked > 0 && checks.ended === checks.asked);
-  return { trust, options: { ...options, mayStart }, trustAsPerson, settled };
+  return { trust, store, options: { ...options, mayStart }, trustAsPerson, settled };
 }
 
 verifies("studio.engine-trust-read-only", () => {
@@ -144,5 +145,22 @@ verifies("studio.engine-trust-read-only", () => {
     await definitions.remove("library/connectors/files.connector.yaml");
     await trust.refresh();
     expect(trust.check?.status).toBe("trusted");
+  });
+
+  it("gives connectors the stored record's grant for a copy that lost a connector", async () => {
+    const definitions = acme();
+    await addConnector(definitions);
+    const { trust, store, trustAsPerson } = folderTrust(definitions);
+    await trustAsPerson();
+    await definitions.remove("library/connectors/files.connector.yaml");
+    const stored = await store.get(location);
+
+    // What the run connectors and the Library's tool listing pass on to the agent host.
+    const checked = await trust.checkLoaded(await loadWorkspace(definitions));
+
+    expect(checked.status).toBe("trusted");
+    if (checked.status !== "trusted") return;
+    expect(checked.grant).toEqual({ location, fingerprint: stored?.fingerprint });
+    expect(await store.get(location)).toEqual(stored);
   });
 });
