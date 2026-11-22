@@ -8,6 +8,7 @@ import type {
   UpdateItem,
   UpdateMerge,
 } from "@halonicjs/studio-feature-source-control/api";
+import { refuseLossyText } from "./whole-text.ts";
 
 /** What git said, as the shell's `git` command gives it back. */
 interface Answer {
@@ -127,7 +128,7 @@ export class UpdatesMerge {
     await this.#ok(["merge", "--no-ff", "--no-commit", "-s", "ours", theirs], "get");
     try {
       for (const path of [...sams].filter((path) => !mine.has(path)).sort()) {
-        await this.#take(base, theirs, path);
+        await this.#take(theirs, path);
       }
     } catch (error) {
       await this.#o.run(["merge", "--abort"]);
@@ -253,12 +254,18 @@ export class UpdatesMerge {
     return { merge: await this.#build(theirs), theirs };
   }
 
-  /** Brings in one file only the shared copy changed, and adds it to the merge. */
-  async #take(base: string, theirs: string, path: string): Promise<void> {
+  /**
+   * Brings in one file only the shared copy changed and adds it to the merge. Git writes it, so
+   * its bytes come in as they are, whatever the file holds; only while nobody has changed the
+   * file since Get updates looked.
+   */
+  async #take(theirs: string, path: string): Promise<void> {
     if (this.#o.isPrivate(path)) return;
-    const [was, there] = [await this.#show(base, path), await this.#show(theirs, path)];
-    await this.#write(path, there, was);
-    await this.#stage(path);
+    const status = ["status", "--porcelain", "-z", "--untracked-files=all", "--", path];
+    if ((await this.#ok(status, "get")) !== "") throw changedMeanwhile();
+    const there = await this.#ok(["ls-tree", "-z", theirs, "--", path], "get");
+    if (there !== "") await this.#ok(["checkout", theirs, "--", path], "get");
+    else await this.#ok(["rm", "-q", "--", path], "get");
   }
 
   /** Writes `text`, or deletes the file for `null`, while the file still holds `expected`. */
@@ -271,6 +278,7 @@ export class UpdatesMerge {
 
   /** Saves `text` beside `path` as `name (label).ext`, or `name (label 2).ext` when that is taken. */
   async #saveCopy(path: string, label: string, text: string): Promise<string> {
+    refuseLossyText(path, text);
     const dot = path.lastIndexOf(".");
     const slash = path.lastIndexOf("/");
     const [stem, extension] = dot > slash + 1 ? [path.slice(0, dot), path.slice(dot)] : [path, ""];

@@ -83,7 +83,7 @@ function shared() {
     run(mine, "commit", "-m", "mine", "--quiet");
   };
   const read = (file: string) => readFileSync(join(mine, file), "utf8");
-  return { root, mine, run, publish, commit, open, read };
+  return { root, mine, sam, run, publish, commit, open, read };
 }
 
 /** Both sides changed `a.md`; Sam alone changed `b.md` (new) and deleted `gone.md`. */
@@ -285,6 +285,52 @@ verifies("source-control.get-updates-per-item", () => {
         expect(await paths()).toEqual(["local.md"]);
         writeFileSync(join(s.mine, "b.md"), "two, edited\n");
         expect(await paths()).toEqual(["b.md", "b.md", "local.md"]);
+      } finally {
+        rmSync(s.root, { recursive: true, force: true });
+      }
+    });
+
+    it("brings in, byte for byte, a file only the shared copy changed that isn't UTF-8 text", async () => {
+      const s = shared();
+      try {
+        const latin1 = Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]);
+        const image = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0xfe, 0x0a]);
+        writeFileSync(join(s.sam, "menu.txt"), latin1);
+        writeFileSync(join(s.sam, "logo.png"), image);
+        s.publish({ "gone.md": null });
+        s.commit({ "a.md": "mine\n" });
+        const started = await s.open().startMerge();
+        expect(started.kind).toBe("started");
+        expect(readFileSync(join(s.mine, "menu.txt"))).toEqual(latin1);
+        expect(readFileSync(join(s.mine, "logo.png"))).toEqual(image);
+        expect(existsSync(join(s.mine, "gone.md"))).toBe(false);
+        expect(s.run(s.mine, "diff", "--name-only")).toBe("");
+        expect(s.run(s.mine, "diff", "--cached", "--name-only").split("\n").sort()).toEqual([
+          "",
+          "gone.md",
+          "logo.png",
+          "menu.txt",
+        ]);
+      } finally {
+        rmSync(s.root, { recursive: true, force: true });
+      }
+    });
+
+    it("refuses Use theirs and Keep both, changing nothing, for an item that isn't UTF-8 text", async () => {
+      const s = shared();
+      try {
+        writeFileSync(join(s.sam, "notes.md"), Buffer.from([0x6e, 0xe9, 0x0a]));
+        s.publish({});
+        s.commit({ "notes.md": "my notes\n" });
+        const changes = s.open();
+        await changes.startMerge();
+        for (const choice of ["theirs", "both"] as const) {
+          await expect(changes.chooseUpdate("notes.md", choice, "Sam's")).rejects.toThrow(
+            "notes.md isn't plain UTF-8 text",
+          );
+        }
+        expect(s.read("notes.md")).toBe("my notes\n");
+        expect(existsSync(join(s.mine, "notes (Sam's).md"))).toBe(false);
       } finally {
         rmSync(s.root, { recursive: true, force: true });
       }
