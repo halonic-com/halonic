@@ -5,6 +5,7 @@ import { checkAdvisories } from "./advisories.ts";
 import { checkAgentsMd } from "./agents-md.ts";
 import { checkApiSpecs } from "./api-specs.ts";
 import { checkChangesets } from "./changesets.ts";
+import { checkConflictMarkers } from "./conflict-markers.ts";
 import { checkDco } from "./dco.ts";
 import { checkDeny } from "./deny.ts";
 import { checkDependencies } from "./dependencies.ts";
@@ -43,6 +44,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "process-starts": checkProcessStarts,
   "webview-apis": checkWebviewApis,
   "invisible-characters": checkInvisibleCharacters,
+  "conflict-markers": checkConflictMarkers,
   "markdown-tables": checkMarkdownTables,
   "tracker-links": checkTrackerLinks,
   // On a pull request, GitHub sets GITHUB_HEAD_REF to its branch; the note
