@@ -5,6 +5,9 @@ import {
   type HarnessEvent,
   type HarnessRun,
   type HarnessTask,
+  type SandboxCommand,
+  type SandboxExit,
+  type SandboxProcess,
   type SandboxProfile,
 } from "@halonicjs/ports";
 import { type FakeProgram, FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
@@ -86,6 +89,37 @@ async function readAll(run: HarnessRun): Promise<{ events: HarnessEvent[]; error
     return { events, error };
   }
   return { events };
+}
+
+/**
+ * Reads the run while a fake clock moves on in steps, since a wait for the
+ * program's exit starts only once its output has been read. Ends with the
+ * real clock back.
+ */
+async function readWhileTheClockMoves(
+  run: HarnessRun,
+): Promise<{ events: HarnessEvent[]; error?: unknown }> {
+  let settled = false;
+  const read = readAll(run).finally(() => {
+    settled = true;
+  });
+  for (let step = 0; step < 30 && !settled; step++) await vi.advanceTimersByTimeAsync(1_000);
+  vi.useRealTimers();
+  return read;
+}
+
+/** A session whose programs' exits never arrive, even once their output has ended. */
+class ExitNeverComesSession extends FakeSandboxSession {
+  override async start(command: SandboxCommand): Promise<SandboxProcess> {
+    const process = await super.start(command);
+    return {
+      stdin: process.stdin,
+      stdout: process.stdout,
+      stderr: process.stderr,
+      exited: new Promise<SandboxExit>(() => {}),
+      kill: () => process.kill(),
+    };
+  }
 }
 
 verifies("harness-claude-code.command", () => {
@@ -231,7 +265,7 @@ verifies("harness-claude-code.start", () => {
       expect(session.running).toBe(0);
     });
 
-    it("stops Claude Code that doesn't exit after its result, and ends with an error", async () => {
+    it("stops Claude Code that doesn't exit after its result, keeps the result and reports harness.stopped", async () => {
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
       const neverExits: FakeProgram = async (io) => {
         await io.readLine();
@@ -240,15 +274,29 @@ verifies("harness-claude-code.start", () => {
         return new Promise<number>(() => {});
       };
       const session = openSession(neverExits);
-      let settled = false;
-      const read = readAll(newHarness().start(task, session, bridge)).finally(() => {
-        settled = true;
-      });
+      const { events, error } = await readWhileTheClockMoves(
+        newHarness().start(task, session, bridge),
+      );
 
-      // The wait starts once the result is read, so the clock moves on in steps until it ends.
-      for (let step = 0; step < 30 && !settled; step++) await vi.advanceTimersByTimeAsync(1_000);
-      const { error } = await read;
-      vi.useRealTimers();
+      expect(error).toBeUndefined();
+      expect(events.slice(-2)).toEqual([
+        {
+          type: "harness.stopped",
+          agent: "writer",
+          harness: "claude-code",
+          reason: "no-exit-after-result",
+          afterMs: 10_000,
+        },
+        expect.objectContaining({ type: "agent.finished", output: "Teal." }),
+      ]);
+      expect(session.running).toBe(0);
+    });
+
+    it("stops Claude Code whose output ended without a result and doesn't exit, and ends with an error", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const session = new ExitNeverComesSession({ profile: engineProfile, program: async () => 0 });
+      const { error } = await readWhileTheClockMoves(newHarness().start(task, session, bridge));
+
       expect((error as Error).message).toBe(
         "Claude Code didn't exit within 10 seconds, so Halonic stopped it.",
       );

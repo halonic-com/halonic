@@ -87,6 +87,9 @@ optional and come with a requirement.
   (`AGENTS.md` and the skills), each with its path in the run's folder and its
   SHA-256, plus the hash of the set. Written before `harness.started`; never the
   file contents (requirement `harness-instructions`).
+- `harness.stopped`: a step's harness program gave its result but didn't exit
+  within `afterMs`, so Halonic stopped it and kept the result; the step goes on
+  (requirement `harness-stopped`).
 - `sandbox.blocked` and `sandboxBlockedView(block, home)`: an access a step's
   sandbox refused, with `count`, the running total for that target in the step
   so far (a later event replaces an earlier count). A step's log

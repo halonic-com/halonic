@@ -1,9 +1,11 @@
 import { join } from "node:path";
 import {
+  exitGraceMs,
   exitWithin,
   type OwnSandboxCheck,
   outputTail,
   type SettingsFolderWriter,
+  stopUnlessExited,
 } from "@halonicjs/adapter-harness-kit";
 import type {
   HarnessBridge,
@@ -53,7 +55,9 @@ interface Started {
  * events with the {@link StreamJsonReader}.
  *
  * - The stream ends with the task agent's `agent.finished` once Claude Code
- *   has printed its result and exited.
+ *   has printed its result and exited. One that doesn't exit in time is
+ *   stopped, and `harness.stopped` comes before the `agent.finished`, which
+ *   keeps the result.
  * - A run that fails, can't start or is cancelled ends the stream with an
  *   error. No error holds the bridge token.
  * - `send` passes a person's answer on as the next user message. Claude
@@ -148,10 +152,11 @@ export class ClaudeCodeRun implements HarnessRun {
       for await (const line of streamJsonLines(started.process.stdout)) {
         const events = reader.read(line);
         if (reader.finished) {
-          await this.#finish(started);
+          const exited = await this.#finish(started);
           finished = true;
           // A cancel that came while Claude Code was exiting still ends the run with an error.
           if (this.#cancelled) throw cancelledError();
+          if (!exited) yield this.#stoppedEvent();
         }
         yield* events;
         if (finished) return;
@@ -165,11 +170,24 @@ export class ClaudeCodeRun implements HarnessRun {
 
   /**
    * After the result: ends Claude Code's input, so it exits by itself, and
-   * waits until it has, for {@link exitWithin}'s time at most.
+   * waits until it has, for {@link exitGraceMs} at most. Gives `false` when
+   * Claude Code didn't exit in time and was stopped; the result stands,
+   * since it was printed in full (HAL-15968).
    */
-  async #finish({ process, input }: Started): Promise<void> {
+  async #finish({ process, input }: Started): Promise<boolean> {
     await input.close().catch(() => undefined);
-    await exitWithin(process, "Claude Code");
+    return (await stopUnlessExited(process)) !== "stopped";
+  }
+
+  /** The record that Claude Code was stopped after its result, since it didn't exit. */
+  #stoppedEvent(): HarnessEvent {
+    return {
+      type: "harness.stopped",
+      agent: this.#task.agentId,
+      harness: "claude-code",
+      reason: "no-exit-after-result",
+      afterMs: exitGraceMs,
+    };
   }
 
   /** The error for a run whose output ended without a result. */

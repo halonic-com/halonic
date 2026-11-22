@@ -449,6 +449,7 @@ function withState(event: HarnessEvent, state: string): RunEventBody {
     case "agent.started":
     case "agent.finished":
     case "approval.requested":
+    case "harness.stopped":
       return { ...event, state } as RunEventBody;
     default:
       return event;

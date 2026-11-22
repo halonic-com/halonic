@@ -158,6 +158,9 @@ type RunEventOf<Type extends RunEventType> = Extract<RunEventBody, { type: Type 
  * - `llm.request`, `llm.response` and `llm.fallback` report model calls, with
  *   their token use and cost.
  * - `knowledge.searched`, `tool.called` and `tool.result` report tool use.
+ * - `harness.stopped` reports that the harness stopped its program, which
+ *   had given its result but didn't exit in time; the stream goes on to the
+ *   task's `agent.finished`.
  * - `approval.requested` asks a person for an OK; the harness waits until
  *   `send` brings the answer. The built-in loop sets `resume`, so the run can
  *   continue after a restart; a program can't be resumed, so a program
@@ -179,6 +182,7 @@ export type HarnessEvent =
   | RunEventOf<"knowledge.searched">
   | RunEventOf<"tool.called">
   | RunEventOf<"tool.result">
+  | Omit<RunEventOf<"harness.stopped">, "state">
   | (Omit<RunEventOf<"approval.requested">, "state" | "resume"> & { resume?: AgentResume })
   | Omit<RunEventOf<"agent.finished">, "state">;
 
