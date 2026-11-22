@@ -98,7 +98,7 @@ verifies("runs.run-view.step-connector-not-started", () => {
     expect(root.querySelector("aside section > p code")?.textContent).toBe("mailbox-token");
   });
 
-  it("names the plugin that isn't trusted yet or changed since, in italics", () => {
+  it("names the plugin that isn't trusted yet, changed since or whose sandbox didn't work, in italics", () => {
     const { root, lines } = panel([
       [
         0,
@@ -116,11 +116,20 @@ verifies("runs.run-view.step-connector-not-started", () => {
           name: "pages",
         }),
       ],
+      [
+        0,
+        listingFailed("weather", {
+          code: "connector-not-started",
+          why: "plugin-stopped",
+          name: "Weather",
+        }),
+      ],
     ]);
 
     expect(lines).toEqual([
       "✕ Couldn't list the tools from handbook: its plugin files isn't trusted yet.",
       "✕ Couldn't list the tools from wiki: its plugin pages changed since you trusted it.",
+      "✕ Couldn't list the tools from weather: the sandbox didn't work as its plugin Weather started.",
     ]);
     expect(root.querySelector("aside section > p em + em")?.textContent).toBe("files");
   });

@@ -21,8 +21,9 @@ export type ShownPart =
  * fix (decided on HAL-13829). `halonic run` warns with `notStarted` (or
  * `notListed` when it can't say why, with `notListedFix`, or
  * `integrationNotListedFix` for an integration's connector), then
- * `programMissing`, `secretMissing`, `pluginNotTrusted` or `pluginChanged`
- * and their fix, and goes on: the run had none of the connector's tools.
+ * `programMissing`, `secretMissing`, `pluginNotTrusted`, `pluginChanged` or
+ * `pluginStopped` and their fix, and goes on: the run had none of the
+ * connector's tools.
  * Its line 1 already says the connector didn't start, so its cause line
  * doesn't say it again. The plugin lines use `plugin list`'s words for the
  * plugin's state, and their fix is `pluginMessages`' (HAL-14974).
@@ -39,6 +40,14 @@ export const connectorStartMessages = defineMessages("connectorStart", {
   pluginNotTrusted: (plugin: string) => phrase`The plugin ${plugin} isn't trusted yet.`,
   /** `plugin` is the plugin's id; its fix is `pluginMessages.startChangedFix`. */
   pluginChanged: (plugin: string) => phrase`The plugin ${plugin} changed since you trusted it.`,
+  /**
+   * `plugin` is the plugin's name, as `plugin list` shows it: its fix only says what happens
+   * next, so it needs no id (C600 #4, HAL-15608, words with Sofia on HAL-15616).
+   */
+  pluginStopped: (plugin: string) =>
+    phrase`The sandbox didn't work as the plugin ${plugin} started, so nothing ran.`,
+  pluginStoppedNext: (plugin: string) =>
+    phrase`Halonic tries ${plugin} in the sandbox again the next time a run uses it.`,
   /** HAL-13829: line 1 of `tools review | approve` for a connector whose program isn't on this computer. */
   cantListProgramMissing: (connector: string, program: string) =>
     phrase`Couldn't list the tools from ${connector}: its program ${program} isn't on this computer.`,

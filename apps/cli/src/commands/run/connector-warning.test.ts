@@ -177,6 +177,23 @@ verifies("cli.run-connector-warning", () => {
     ]);
   });
 
+  it("says a plugin's sandbox didn't work as it started, by the plugin's name, and that the next run tries again", () => {
+    const lines: string[] = [];
+    const warn = connectorWarnings(
+      { warn: (line) => lines.push(plainText(line)) },
+      undefined,
+      () => undefined,
+    );
+
+    warn(listingFailed(4, { why: "plugin-stopped", name: "Weather" }));
+
+    expect(lines).toEqual([
+      "! handbook didn't start, so its tools are off in this run.",
+      "  The sandbox didn't work as the plugin Weather started, so nothing ran.",
+      "  Halonic tries Weather in the sandbox again the next time a run uses it.",
+    ]);
+  });
+
   it("doesn't warn about the listing of a connector whose parts already said why", () => {
     const lines: string[] = [];
     const warn = connectorWarnings(

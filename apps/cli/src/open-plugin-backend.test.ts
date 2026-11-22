@@ -362,7 +362,7 @@ verifies("cli.plugin-backend-start-told", () => {
     it("tells the machine `stopped` when the fence fails though the computer passed, and nothing runs (A23)", async () => {
       const { seen, client } = await setup({ proof: { state: "stopped" } });
       await expect(client().callTool("get-forecast", {})).rejects.toThrow(
-        /Halonic stopped the plugin weather/,
+        /Halonic stopped the plugin Weather/,
       );
       expect(seen.told).toEqual(["weather: stopped"]);
       expect(seen.stops).toBe(1);
@@ -378,7 +378,7 @@ verifies("cli.plugin-backend-start-told", () => {
 
 verifies("cli.plugin-backend-stopped", () => {
   describe("a start whose fence failed though the computer passed", () => {
-    it("fails with the plugin's id and says Halonic stopped it, not that the check failed", async () => {
+    it("fails with the plugin's id, says Halonic stopped it by its name, not that the check failed", async () => {
       const { client } = await setup({ proof: { state: "stopped" } });
       const failure = await client()
         .callTool("get-forecast", {})
@@ -388,8 +388,9 @@ verifies("cli.plugin-backend-stopped", () => {
         );
       const stopped = findCause(failure, PluginBackendStoppedError);
       expect(stopped?.plugin).toBe("weather");
+      expect(stopped?.pluginName).toBe("Weather");
       expect(stopped?.message).toBe(
-        "Halonic stopped the plugin weather: the sandbox didn't work as the plugin started, so nothing ran. Halonic tries weather in the sandbox again the next time a run uses it.",
+        "Halonic stopped the plugin Weather: the sandbox didn't work as the plugin started, so nothing ran. Halonic tries Weather in the sandbox again the next time a run uses it.",
       );
       expect(String(failure)).not.toMatch(/failed its check/);
     });

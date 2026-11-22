@@ -119,13 +119,14 @@ type StartLineKey =
   | "programMissing"
   | "secretNotSet"
   | "pluginNotTrusted"
-  | "pluginChanged";
+  | "pluginChanged"
+  | "pluginStopped";
 
 /**
  * The line for a connector that didn't start: the program or the secret it missed, or the plugin
- * that isn't trusted yet or changed since, when the cause names it, else only that it didn't
- * start. The plugin line has no button: the plugin's own page has the trust step, and the plugin's
- * name is the way there (HAL-15278, HAL-15453).
+ * that isn't trusted yet, changed since or whose sandbox didn't work as it started, when the cause
+ * names it, else only that it didn't start. The plugin line has no button: the plugin's own page
+ * has the trust step, and the plugin's name is the way there (HAL-15278, HAL-15453).
  */
 function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
   if (cause.name === undefined) return "notStarted";
@@ -138,6 +139,8 @@ function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
       return "pluginNotTrusted";
     case "plugin-changed":
       return "pluginChanged";
+    case "plugin-stopped":
+      return "pluginStopped";
     case "other":
       return "notStarted";
   }
@@ -150,15 +153,18 @@ const listingKeys: Readonly<Record<StartLineKey, FailedCallKey>> = {
   secretNotSet: "listingSecretNotSet",
   pluginNotTrusted: "listingPluginNotTrusted",
   pluginChanged: "listingPluginChanged",
+  pluginStopped: "listingPluginStopped",
 };
 
 /**
  * The name a connector-start cause holds: a plugin looks like a name, as the connector does,
  * since both are names from the workspace; a program or a secret looks like code. Empty for a
- * cause without one, whose line doesn't name it.
+ * cause without one, whose line doesn't name it. A stopped plugin's cause holds its name, not
+ * its id, so it isn't marked as a plugin: there's no page to open by it.
  */
 function namedInCause(cause: ConnectorStartCause): FailedCallName {
   const name = cause.name ?? "";
+  if (cause.why === "plugin-stopped") return { name, look: "name" };
   return cause.why === "plugin-not-trusted" || cause.why === "plugin-changed"
     ? { name, look: "name", plugin: true }
     : { name, look: "code" };

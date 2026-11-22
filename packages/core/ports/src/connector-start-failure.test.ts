@@ -41,6 +41,17 @@ verifies("ports.connector-start-failure", () => {
     expect(connectorStartFailureOf(changed)).toEqual({ reason: "plugin-changed", plugin: "files" });
   });
 
+  it("reads a plugin whose sandbox didn't work as it started by its name", () => {
+    const stopped = adapterError("PluginBackendStoppedError", {
+      plugin: "weather",
+      pluginName: "Weather",
+    });
+    expect(connectorStartFailureOf(stopped)).toEqual({
+      reason: "plugin-stopped",
+      pluginName: "Weather",
+    });
+  });
+
   it("reads a known error in the cause of the one the connector threw", () => {
     const known = adapterError("PluginConnectorNotTrustedError", {
       plugin: "files",
@@ -71,6 +82,9 @@ verifies("ports.connector-start-failure", () => {
       connectorStartFailureOf(
         adapterError("PluginConnectorNotTrustedError", { plugin: "files", reason: "unreadable" }),
       ),
+    ).toBeUndefined();
+    expect(
+      connectorStartFailureOf(adapterError("PluginBackendStoppedError", { plugin: "weather" })),
     ).toBeUndefined();
     expect(
       connectorStartFailureOf(new Error("failed", { cause: { name: "SecretNotSetError" } })),

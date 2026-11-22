@@ -179,6 +179,12 @@ verifies("runs.run-view.step-failed-call", () => {
     );
   });
 
+  it("names the plugin, by its name, whose sandbox didn't work as it started", () => {
+    expect(lineFor({ code: "connector-not-started", why: "plugin-stopped", name: "Weather" })).toBe(
+      "✕ Didn't work: the connector notes-mcp didn't start: the sandbox didn't work as its plugin Weather started.",
+    );
+  });
+
   it("shows the plugin in italics, as the connector, and offers no button where tabs can't open", () => {
     lines([
       [0, connectorStarted],
@@ -249,7 +255,7 @@ verifies("runs.run-view.step-failed-call", () => {
 
   it("says only that the connector didn't start for a plugin cause without a name", () => {
     const plain = "✕ Didn't work: the connector notes-mcp didn't start.";
-    for (const why of ["plugin-not-trusted", "plugin-changed"] as const) {
+    for (const why of ["plugin-not-trusted", "plugin-changed", "plugin-stopped"] as const) {
       expect(lineFor({ code: "connector-not-started", why })).toBe(plain);
     }
   });
