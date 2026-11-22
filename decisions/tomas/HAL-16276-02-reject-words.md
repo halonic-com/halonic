@@ -2,7 +2,7 @@
 
 - Approval: the task HAL-16276 asks for this change, from Iris's flow check C692 on HAL-16271 (item 4); the words are the run page's (`runs.run-view.receipt-ending`, a team decision on HAL-14592) and `runs show`'s, decided by the team under the HAL-2282 rule; Liam signs this note in review.
 - Kind: user-visible
-- Signature:
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BTkDCwOhxNpBFhdeiYaBeYJaeAcOOab7PYihPEdd2Cg7mDq3fovbqKAvZ8w25pEiDdSm6UWlVy6YuoHk18iVBA==
 
 ## What changes
 
