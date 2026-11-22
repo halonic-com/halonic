@@ -26,7 +26,8 @@ export interface HarnessRouteDeps {
  *   this host, and answers with an NDJSON stream: `{ type: "started", run }`,
  *   then `{ type: "event", event }` for each `HarnessEvent`, then
  *   `{ type: "finished" }` or `{ type: "failed", message }`. When Studio goes
- *   away, the run is cancelled.
+ *   away, the run is cancelled. A bridge serves runs in one session only: it
+ *   answers 409 `bridge_in_use` for a bridge a run started in another session.
  * - `POST /v1/harnesses/runs/send` with `{ run, input }` passes a person's answer;
  * - `POST /v1/harnesses/runs/cancel` with `{ run }` stops the run.
  *
@@ -101,6 +102,9 @@ function answerRunRoutes(runs: RunTable): HostRoute[] {
   ];
 }
 
+const bridgeInUseMessage =
+  "This bridge already serves a run in another sandbox session. Open a new bridge for this one.";
+
 /** Starts a run and keeps its stream open, carrying the run's events, until the run ends. */
 function startRunHandler(
   { sessions, bridges, runs }: HarnessRouteDeps,
@@ -115,10 +119,18 @@ function startRunHandler(
     }
     const harness = harnessById(body.harness);
     const session = sessions.get(body.session);
-    const bridge = bridges.get(body.bridge)?.bridge;
+    const open = bridges.get(body.bridge);
     if (harness === undefined) return sendUnknown(response, "harness");
     if (session === undefined) return sendUnknown(response, "session");
-    if (bridge === undefined) return sendUnknown(response, "bridge");
+    if (open === undefined) return sendUnknown(response, "bridge");
+    const { bridge } = open;
+    // The host's own session, so the bridge's approvals read the fence it really has.
+    // It binds before the harness starts, so a start that throws still uses the bridge
+    // up: binding after the start would let the program call the bridge unbound.
+    if (!open.bindSession(body.session, session)) {
+      sendError(response, 409, "bridge_in_use", bridgeInUseMessage);
+      return;
+    }
 
     const stream = startNdjsonStream(response);
     let run: HarnessRun;

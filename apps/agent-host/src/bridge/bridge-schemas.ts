@@ -1,3 +1,4 @@
+import type { ProgramHarness } from "@halonicjs/engine";
 import type { BridgeProvider, BridgeProviderAccess, ModelPrice } from "@halonicjs/ports";
 import { type Schema, s } from "@halonicjs/schema-kit";
 import type { ChannelAnswer } from "../server/call-channel.ts";
@@ -48,6 +49,13 @@ export interface OpenBridgeBody {
    * over the channel.
    */
   prices: PriceTable;
+  /**
+   * The agent file's `asks` and the agent's harness, which the host answers
+   * the program's own calls by (requirement `agent-host.sandboxed-asks`);
+   * Studio sends them only when the file names `asks`.
+   */
+  asks?: "always" | "in-sandbox";
+  harness?: ProgramHarness;
 }
 
 export const openBridgeBody = portSchema<OpenBridgeBody>(
@@ -62,6 +70,8 @@ export const openBridgeBody = portSchema<OpenBridgeBody>(
           openai: s.record(s.string(), price).optional(),
         })
         .strict(),
+      asks: s.enum(["always", "in-sandbox"]).optional(),
+      harness: s.enum(["claude-code", "codex"]).optional(),
     })
     .strict(),
 );

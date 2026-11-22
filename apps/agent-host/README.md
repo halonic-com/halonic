@@ -114,7 +114,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/integrations/sign-in/status` with `{"integration"}` | `{"signIns":[{"signIn","state","lastOutcome"?}]}`; `state` is `signedIn`, `signedOut`, `approvalChanged` or `cannotSignIn` |
 | `POST /v1/integrations/sign-in/cancel` with `{"integration","signIn"}` | `204` |
 | `POST /v1/integrations/sign-in/sign-out` with `{"integration","signIn"}` | `{"result"}`: `{"kind":"notSignedIn"}` or `{"kind":"signedOut","revoke"}` |
-| `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below) |
+| `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below), or `409 bridge_in_use` when a run already started the bridge in another session |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |
 | `GET /v1/remote/state` | an NDJSON stream of the `RemoteState`, the current one first, then each change. Until the gateway takes pairings (B3, B8) every launch answers `"available":false` and never changes it |
@@ -176,6 +176,8 @@ The first line is `opened`, or `{"type":"failed","message"}` when the bridge cou
 Studio must answer `recorder.record`, `tools.list`, `tools.check` and `secrets.get` within 30 seconds, or the host sends a `cancel` and the bridge's request fails, so a Studio that hangs can't hold it forever. `tools.call` and `approvals.request` have no limit, because a tool's run and a person's approval rightly take long. A call fails too when Studio answers it with an error, or when the stream ends (Studio crashed or reloaded) before it answers.
 
 When the bridge fails a request for a reason it doesn't name to the program, which is told "The run log has the details.", the host sends Studio a `recorder.record` call with `{"type":"bridge.failed","agent","kind","message"}`, so the run log has them; the message never holds the run token, and Studio takes it out again if it does. Nor does it hold a key Studio gave the bridge through `secrets.get`: the host removes every such value from the message first, and Studio removes it again before the run log records it (`agent-host.bridge-key-scrub`). When Studio doesn't take that call, the host writes the failure to its standard error.
+
+When the agent's file says `asks: in-sandbox`, Studio adds `"asks":"in-sandbox","harness":"claude-code"` to the open body, and the host answers the program's own calls itself while the run's session is fenced (`agent-host.sandboxed-asks`): an edit or read in the working folder, a `Bash` command and `TodoWrite` are approved without an `approvals.request`, and each goes to Studio first as a `recorder.record` call with `{"type":"harness.allowed","agent","tool","detail","rule":"asks-in-sandbox"}`. The fence is the one the host's own session proved, the session `POST /v1/harnesses/runs/start` starts the run in, never one Studio names, and before a run starts on the bridge every call goes to Studio. The `detail`, the path or command, loses the keys Studio gave the bridge, as a `bridge.failed`'s message does, and Studio takes the run token and those keys out again (`agent-host-client.bridge-allowed`). Every other call goes to Studio's `approvals.request` as before.
 
 The bridge closes on `POST /v1/bridge/close`, which waits until its last events are recorded and then ends the stream; when Studio goes away, which ends the stream; and when the host stops.
 

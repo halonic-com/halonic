@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { LocalBridgeHost } from "./bridge-host.ts";
 import { harnessAgentOf, noTools, RecordingBridgeServer } from "./fakes.test-helper.ts";
-import type { SandboxedAsksPaths } from "./sandboxed-asks.ts";
+import { type SandboxedAsksPaths, sandboxedAsks } from "./sandboxed-asks.ts";
 
 const worktree = "/data/proposals/01JD8Q";
 const paths: SandboxedAsksPaths = {
@@ -234,5 +234,27 @@ verifies("harness-host.sandboxed-asks", () => {
       expect(answer).toEqual({ approved: false, comment: "Nobody can answer." });
       expect(recorded).toEqual([]);
     });
+  });
+});
+
+verifies("harness-host.allowed-scrub", () => {
+  it("writes a let-through command without the keys the host's scrub knows", async () => {
+    const recorded: BridgeEvent[] = [];
+    const asks = sandboxedAsks(inSandbox, {
+      inner: nobodyAnswers,
+      recorder: { record: async (event) => void recorded.push(event) },
+      paths,
+      failed: () => {},
+      scrub: (text) => text.replaceAll("acme-key-1234", "[key]"),
+    });
+    asks.sessionOpened(fenced);
+
+    const answer = await asks.approvals.request(
+      { callId: "c1", tool: "Bash", args: { command: "echo acme-key-1234 && ls" } },
+      { signal: new AbortController().signal },
+    );
+
+    expect(answer).toEqual({ approved: true });
+    expect(recorded).toMatchObject([{ tool: "Bash", detail: "echo [key] && ls" }]);
   });
 });
