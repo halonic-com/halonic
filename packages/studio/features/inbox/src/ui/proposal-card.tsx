@@ -104,7 +104,7 @@ function ProposalChanges({
   readonly onOpenRun: ((runId: string) => void) | undefined;
 }) {
   const open = openFiles(state);
-  const { accepts, summary } = useFocusAfterDecision(state, open[0]?.path);
+  const { nextButtons, summary } = useFocusAfterDecision(state, open[0]?.path);
   return (
     <>
       <FailedLine state={state} target="all" />
@@ -117,7 +117,7 @@ function ProposalChanges({
             runId={item.runId}
             state={state}
             buttons={buttons}
-            accepts={accepts}
+            nextButtons={nextButtons}
           />
         ))}
       </ul>
@@ -131,27 +131,35 @@ function ProposalChanges({
   );
 }
 
-/** The files still to decide here: undecided, less those changed since the run (they wait for Compare). */
+/**
+ * The files still to decide here: the undecided ones. A file changed since the run is one of them:
+ * until Compare ships only a Reject decides it, and the proposal stays in Needs you until it does
+ * (C665 26).
+ */
 function openFiles(state: ProposalDecisionState): readonly ProposalFile[] {
-  return state.files.filter(
-    (file) => file.decision === "undecided" && !state.changedSinceRun.has(file.path),
-  );
+  return state.files.filter((file) => file.decision === "undecided");
+}
+
+/** Whether **Accept** can still decide one of the open files: not every one changed since the run. */
+function canAccept(state: ProposalDecisionState): boolean {
+  return openFiles(state).some((file) => !state.changedSinceRun.has(file.path));
 }
 
 /**
- * Q6: once a decision is back, focus goes to the next undecided **Accept**, else to what the
- * proposal came to. A failed one leaves it on its button, by its **Try again**.
+ * Q6: once a decision is back, focus goes to the next undecided file's **Accept**, or its
+ * **Reject** when it changed since the run, else to what the proposal came to. A failed one leaves
+ * it on its button, by its **Try again**.
  */
 function useFocusAfterDecision(state: ProposalDecisionState, nextPath: string | undefined) {
-  const accepts = useRef(new Map<string, HTMLButtonElement>());
+  const nextButtons = useRef(new Map<string, HTMLButtonElement>());
   const summary = useRef<HTMLParagraphElement>(null);
   const { decided, failure } = state;
   useEffect(() => {
     if (decided === 0 || failure !== null) return;
-    const next = nextPath === undefined ? summary.current : accepts.current.get(nextPath);
+    const next = nextPath === undefined ? summary.current : nextButtons.current.get(nextPath);
     next?.focus();
   }, [decided, failure, nextPath]);
-  return { accepts, summary };
+  return { nextButtons, summary };
 }
 
 /**
@@ -191,7 +199,8 @@ function ProposalHeader({
 
 /**
  * **Reject all** and **Accept all** (Q3): one undo step each, for what is still undecided. Accept
- * all is the page's one primary button; a change's own buttons are plain words (C667 #1).
+ * all is the page's one primary button; a change's own buttons are plain words (C667 #1). Once
+ * every open file changed since the run, only **Reject all** is left.
  */
 function AllButtons({ state }: { readonly state: ProposalDecisionState }) {
   return (
@@ -203,12 +212,20 @@ function AllButtons({ state }: { readonly state: ProposalDecisionState }) {
         label="Reject all"
         variant="secondary"
       />
-      <DecideButton state={state} verb="accept" target="all" label="Accept all" variant="primary" />
+      {canAccept(state) ? (
+        <DecideButton
+          state={state}
+          verb="accept"
+          target="all"
+          label="Accept all"
+          variant="primary"
+        />
+      ) : null}
     </div>
   );
 }
 
-/** Where the window can't decide: the line and the command that shows the proposal in a terminal. */
+/** Where the window can't decide: the line and the command that shows the proposal on your computer. */
 function DecideElsewhere({ runId }: { readonly runId: string }) {
   return (
     <div className="flex flex-col gap-2 text-body text-fg-muted">
@@ -253,27 +270,29 @@ const decidedWords: Partial<Record<ProposalFile["decision"], string>> = {
 /**
  * One change (Q5, Q6): its line, then **Reject** and **Accept** as plain words, or what was
  * decided, muted. The line keeps at least 16 rem, so in a narrow pane the buttons wrap under it
- * instead of squeezing a path until it breaks mid-word (C667 #2).
+ * instead of squeezing a path until it breaks mid-word (C667 #2). A file changed since the run
+ * keeps only **Reject** (C665 26).
  */
 function ChangeRow({
   file,
   runId,
   state,
   buttons,
-  accepts,
+  nextButtons,
 }: {
   readonly file: ProposalFile;
   readonly runId: string;
   readonly state: ProposalDecisionState;
   readonly buttons: boolean;
-  readonly accepts: RefObject<Map<string, HTMLButtonElement>>;
+  /** Each open file's button that takes focus when it is next: its Accept, else its Reject. */
+  readonly nextButtons: RefObject<Map<string, HTMLButtonElement>>;
 }) {
   const decided = decidedWords[file.decision];
   const changedSinceRun = state.changedSinceRun.has(file.path);
   const target = { file: file.path };
-  const acceptRef = (button: HTMLButtonElement | null) => {
-    if (button === null) accepts.current.delete(file.path);
-    else accepts.current.set(file.path, button);
+  const nextRef = (button: HTMLButtonElement | null) => {
+    if (button === null) nextButtons.current.delete(file.path);
+    else nextButtons.current.set(file.path, button);
   };
   return (
     <li className="flex flex-col gap-1">
@@ -281,7 +300,7 @@ function ChangeRow({
         <span className="min-w-0 flex-1 basis-64 text-body wrap-break-word">
           {changeLine(file)}
         </span>
-        {decided === undefined && buttons && !changedSinceRun ? (
+        {decided === undefined && buttons ? (
           <span className="flex gap-2">
             <DecideButton
               state={state}
@@ -289,15 +308,18 @@ function ChangeRow({
               target={target}
               label="Reject"
               variant="ghost"
+              {...(changedSinceRun ? { buttonRef: nextRef } : {})}
             />
-            <DecideButton
-              state={state}
-              verb="accept"
-              target={target}
-              label="Accept"
-              variant="ghost"
-              buttonRef={acceptRef}
-            />
+            {changedSinceRun ? null : (
+              <DecideButton
+                state={state}
+                verb="accept"
+                target={target}
+                label="Accept"
+                variant="ghost"
+                buttonRef={nextRef}
+              />
+            )}
           </span>
         ) : null}
         {decided === undefined ? null : <span className="text-small text-fg-muted">{decided}</span>}

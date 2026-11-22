@@ -88,9 +88,13 @@ export function changeLine(file: ProposalFile): string {
   return `${markHiddenName(file.path)} ${changeWords[file.change]}`;
 }
 
-/** Under a change an Accept left alone, because the person changed the file after the run started. */
+/**
+ * Under a change an Accept left alone, because the file changed after the run started (C665 26).
+ * The host knows only that it changed, not who changed it, as the CLI's "changed since the run".
+ * Until Compare ships, only a Reject can decide it, so the line says so.
+ */
 export function changedSinceRunLine(runId: string): string {
-  return `You changed this file after run ${shortRunId(runId)} started, so it wasn't accepted.`;
+  return `This file changed after run ${shortRunId(runId)} started, so it wasn't accepted. To keep it as it is now, reject it.`;
 }
 
 /** The line when an Accept or a Reject didn't go through (Q11): "Couldn't accept this change." */
@@ -140,13 +144,14 @@ export function undoLeftAloneLine(verb: "accepted" | "rejected", paths: readonly
 
 /**
  * On a proposal the window can't decide (no Accept or Reject here), the line before the command
- * that does it in a terminal, {@link decideCommand}.
+ * that shows it, {@link decideCommand}. Only a served Studio or a phone gets it, so it says where
+ * to go, "on your computer", not "in a terminal" on the device in hand (C671 22).
  */
 export const decideElsewhereLine =
-  "Studio can't accept or reject these changes here. To see them and decide, run this in a terminal:";
+  "Studio can't accept or reject these changes here. To see them and decide, use the desktop app, or run this on your computer:";
 
 /**
- * The command that shows a run's proposal with its diffs, and ends with how to accept or reject
+ * The command that shows a run's proposal with its diffs, and ends with how to accept or discard
  * it: "halonic proposals show 01JD8Q". The CLI takes the short id in either case.
  */
 export function decideCommand(runId: string): string {
