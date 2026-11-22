@@ -271,7 +271,14 @@ export function InboxView({
                 announce={announce}
                 words={words}
               />
-              <DoneSection done={state.done} current={open?.key} onOpen={openItem} />
+              <DoneSection
+                done={state.done}
+                current={open?.key}
+                onOpen={openItem}
+                error={state.doneError}
+                words={words}
+                onRetry={retry}
+              />
             </>
           )}
         </div>
@@ -425,6 +432,9 @@ function OpenCard({
           if (inbox.state.error !== undefined) throw inbox.state.error;
         }}
         onOpenRun={openThisRun}
+        answering={answering}
+        signedOut={signedOut}
+        words={words}
       />
     );
   }
