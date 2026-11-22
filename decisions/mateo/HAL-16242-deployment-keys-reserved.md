@@ -3,6 +3,7 @@
 - Task: HAL-16242
 - Approval: Liam reviews this security PR and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8klZNjw4nBV2PGVOfUoUsS90KNnWGW3kV93Ox+OgEX4IpmpG+u/3RWXksCyK1UB4xcnTJJXd5UwCtd3N5+zAAQ==
 
 ## What changes
 
