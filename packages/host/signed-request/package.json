@@ -1,0 +1,32 @@
+{
+  "name": "@halonicjs/host-signed-request",
+  "private": true,
+  "type": "module",
+  "description": "The signed-request format a deployment and Halonic Cloud use to talk to each other: Ed25519 signatures over the request, its product and customer, the time, a nonce, the body's hash and the direction, on Web-standard APIs only.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "host",
+    "owner": "tomas",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
