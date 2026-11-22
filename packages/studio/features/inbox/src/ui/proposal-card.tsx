@@ -6,6 +6,7 @@ import {
   CommandBox,
   inlineLinkClasses,
 } from "@halonicjs/studio-kit";
+import { engineWords } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useId, useRef } from "react";
 import {
   beforeAcceptLines,
@@ -26,6 +27,7 @@ import {
   cardClasses,
   type EngineState,
   NotAnsweringLine,
+  signedOutText,
   unavailableWhile,
 } from "./card-parts.tsx";
 import { itemTitle } from "./inbox-row.tsx";
@@ -67,7 +69,8 @@ export interface ProposalCardProps extends EngineState {
  * When the host says the proposal's texts are gone, the page offers only **Remove from Inbox** (Q11).
  * When it then finds them there again, the changes come back under a line that says so (C711 4).
  * While the engine isn't answering, the host's line sits above the header, and every button that
- * would reach the host stays but doesn't act, pointing at that line (Q11), as on a request's card.
+ * would reach the host stays but doesn't act, pointing at that line (Q11), as on a request's card;
+ * a decision toast's **Undo** sends nothing then either, and says that line.
  *
  * Not here yet: a change's settings before and after, the diff, Compare and the phone's bar (Q5,
  * Q9, Q12).
@@ -86,8 +89,12 @@ export function ProposalCard({
 }: ProposalCardProps) {
   const titleId = useId();
   const reasonId = useId();
+  // The line above the header while the engine isn't answering, which an Undo meanwhile says too.
+  const notAnswering = signedOut
+    ? signedOutText
+    : (words ?? engineWords["desktop-app"]).showingLast;
   const state: CardState = {
-    ...useProposalDecisions(item, decisions, onDecided),
+    ...useProposalDecisions(item, decisions, onDecided, answering ? undefined : notAnswering),
     offline: unavailableWhile(answering, reasonId),
   };
   const open = openFiles(state).length > 0;

@@ -38,7 +38,7 @@ import {
   loadWorkspace,
   providerIsLocal,
 } from "@halonicjs/workspace";
-import { withRunRecords } from "./proposal-entries.ts";
+import { ProposalEntries } from "./proposal-entries.ts";
 import { providerHost } from "./provider-host.ts";
 
 /** How often the runs are read again to see whether one changed: every 10 s (states K5). */
@@ -160,8 +160,10 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
   #pollAgain = false;
   #disposed = false;
 
+  readonly #proposals: ProposalEntries;
   constructor(options: WorkspaceRunsOptions) {
     this.#options = options;
+    this.#proposals = new ProposalEntries(options, () => this.list());
   }
 
   get folder(): string | undefined {
@@ -264,13 +266,13 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
   }
 
   /** The open run proposals, each with its run's record (`studio.workspace-run-proposals`). */
-  async proposals(): Promise<readonly RunProposalEntry[]> {
-    return withRunRecords((await this.#options.proposals?.()) ?? [], () => this.list());
+  proposals(): Promise<readonly RunProposalEntry[]> {
+    return this.#proposals.open();
   }
 
   /** The proposals settled in the last 30 days, each with its run's record (`studio.workspace-done-proposals`). */
-  async doneProposals(): Promise<readonly RunProposalEntry[]> {
-    return withRunRecords((await this.#options.doneProposals?.()) ?? [], () => this.list());
+  doneProposals(): Promise<readonly RunProposalEntry[]> {
+    return this.#proposals.done();
   }
 
   subscribe(listener: () => void): () => void {

@@ -37,6 +37,7 @@ import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
 import { useRunReview } from "./use-run-review.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
+import { useSettleLeftOver } from "./use-settle-left-over.ts";
 import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
 
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
@@ -169,6 +170,7 @@ export function InboxView({
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
   const listed = needsYouListed(state.items, state.decided, open, openAt.current);
   const retry = () => void inbox.refresh();
+  useSettleLeftOver(state.leftOver, proposals, retry);
   // A list that opens over a failed load checks again at once, so it doesn't say the last poll's
   // failure until the next one (HAL-13801 SO4).
   useEffect(() => {

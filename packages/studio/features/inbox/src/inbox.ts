@@ -76,6 +76,11 @@ export interface InboxState {
   readonly done: readonly ProposalItem[];
   /** The proposals with nothing left to decide, not settled yet: not counted, see `decidedItems`. */
   readonly decided: readonly ProposalItem[];
+  /**
+   * Those of {@link decided} that were already decided when this window first listed proposals: a
+   * window that closed before their last toast went never settled them, so the page does (Q10).
+   */
+  readonly leftOver: readonly ProposalItem[];
   /** Whether a list has loaded once, so "nothing waiting" can be told from "not loaded yet". */
   readonly loaded: boolean;
   /**
@@ -115,6 +120,7 @@ export class Inbox {
     items: [],
     done: [],
     decided: [],
+    leftOver: [],
     loaded: false,
     error: undefined,
     doneError: undefined,
@@ -129,6 +135,8 @@ export class Inbox {
   readonly #answeredViews = new Set<InboxAnsweredView>();
   /** The open and the decided proposals from the last load that succeeded, kept while it fails. */
   #proposals: ProposalLists = { open: [], decided: [] };
+  /** The run ids of {@link InboxState.leftOver}, from the first load that listed proposals. */
+  #leftOver: ReadonlySet<string> | undefined;
   /** The done proposals from the last load that succeeded, kept while it fails. */
   #doneItems: readonly ProposalItem[] = [];
   /**
@@ -246,6 +254,7 @@ export class Inbox {
     const nameOfItem = (id: string) => this.#runs.itemName?.(id) ?? id;
     if (proposals.status === "fulfilled") {
       this.#proposals = proposalListsOf(proposals.value, nameOfItem);
+      this.#leftOver ??= new Set(this.#proposals.decided.map((item) => item.runId));
     } else {
       error ??= proposals.reason;
     }
@@ -261,6 +270,7 @@ export class Inbox {
       ),
       done: this.#doneItems,
       decided: this.#proposals.decided,
+      leftOver: this.#proposals.decided.filter((item) => this.#leftOver?.has(item.runId)),
       loaded: true,
       error,
       doneError: done.status === "rejected" ? done.reason : undefined,
