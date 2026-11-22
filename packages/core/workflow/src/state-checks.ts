@@ -115,9 +115,16 @@ const timerWithEvent: StateCheck = ({ id, state }) =>
       : [],
   );
 
+/**
+ * A timer is not an answer, so it is left out: a wait with a timer and a
+ * transition without event still offers a person only "done" (HAL-15648). A
+ * wait with only timers is a pause, which asks nobody anything.
+ */
 const waitWithoutEvents: StateCheck = ({ id, state }) => {
-  const onlyDone = state.on.every((transition) => transition.event === "done" && !transition.after);
-  if (state.type !== "wait" || !onlyDone) {
+  const answers = state.on.filter((transition) => !transition.after);
+  const onlyDone = answers.every((transition) => transition.event === "done");
+  const onlyTimers = state.on.length > 0 && answers.length === 0;
+  if (state.type !== "wait" || !onlyDone || onlyTimers) {
     return [];
   }
   const message = `Wait state "${id}" only listens to "done"; give it named events like "approve"`;
@@ -128,7 +135,8 @@ const waitWithoutEvents: StateCheck = ({ id, state }) => {
  * A transition without `event` takes the default event `done`, which a wait
  * never ends with: it is taken only when someone answers "done". Next to named
  * events that is a slip, a missing `event: reject` say (HAL-15590). A wait with
- * no named events gets `wait-without-events` instead, once for the step.
+ * no named events, timers aside, gets `wait-without-events` instead, once for
+ * the step.
  */
 const waitArrowWithoutEvent: StateCheck = ({ id, state }) => {
   const named = state.on.some((transition) => transition.event !== "done" && !transition.after);

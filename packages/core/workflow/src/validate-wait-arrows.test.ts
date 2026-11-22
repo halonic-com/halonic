@@ -60,6 +60,16 @@ verifies("workflow.validate-wait-arrow-event", () => {
     expect(waitCodes(workflow)).toEqual(["wait-without-events"]);
   });
 
+  it("gives a wait with a timer and a transition without event the step's own warning", () => {
+    const workflow = checkStep("wait", [{ to: "stop", after: "1h" }, { to: "send" }]);
+    expect(waitCodes(workflow)).toEqual(["wait-without-events"]);
+  });
+
+  it("leaves a wait with only timers alone", () => {
+    const workflow = checkStep("wait", [{ to: "stop", after: "1h" }]);
+    expect(waitCodes(workflow)).toEqual([]);
+  });
+
   it("leaves a task's transition without event alone", () => {
     const workflow = checkStep("task", [{ to: "send", event: "finished" }, { to: "draft" }]);
     expect(waitCodes(workflow)).toEqual([]);

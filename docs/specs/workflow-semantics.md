@@ -238,7 +238,7 @@ workflows, for example) belong to the workspace loader.
 | `items-not-a-list` | error | a for-each step's `items` is a text, or a name that gives nothing |
 | `no-done-transition` | error | a step that ends with `done` only has transitions on other events |
 | `final-has-transitions` | warning | a final state has transitions, which never fire |
-| `wait-without-events` | warning | a wait state only listens to `done` |
+| `wait-without-events` | warning | a wait state only listens to `done`, timers aside (a wait with only timers is a pause and gets no warning) |
 | `wait-arrow-without-event` | warning | a wait state has named events and also a transition without `event` or timer, which only an answer `done` takes (one warning per such transition) |
 | `not-a-choice` | warning | a condition compares a choice agent's answer with a text that isn't one of its options |
 | `unguarded-shadow` | warning | a transition comes after an unguarded one on the same event, so never fires |
