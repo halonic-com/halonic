@@ -101,6 +101,8 @@ verifies("first-run.you-did-it", () => {
     const root = await render(<YouDidItView item={item} runs={runs} close={() => {}} />);
     expect(text(root)).toContain("Reading the run…");
     expect(text(root)).not.toContain("steps");
+    // "What next?" comes with its list, not on its own while the run is read.
+    expect(text(root)).not.toContain("What next?");
     await act(async () => runs.show(finished()));
     expect(text(root)).toContain("3 steps · 14 s");
   });
@@ -119,10 +121,12 @@ verifies("first-run.you-did-it", () => {
     expect(text(root)).toContain("Sample answers. Add a key or a local model to use a real model.");
     expect(button(root, "Run it again with your own message")).toBeUndefined();
     button(root, "Pick a model")?.click();
-    expect(openItem).toHaveBeenCalledWith({ kind: "model-alias", hub: "local", id: "default" });
+    expect(openItem.mock.calls).toEqual([
+      [{ kind: "model-alias", hub: "local", id: "default" }, undefined],
+    ]);
   });
 
-  it("with a key shows the run's cost, and its next steps open Support reply", async () => {
+  it("with a key shows the run's cost, and Run it again opens Support reply's Run form", async () => {
     const openItem = vi.fn();
     const close = vi.fn();
     const root = await render(
@@ -138,7 +142,11 @@ verifies("first-run.you-did-it", () => {
     button(root, "Run it again with your own message")?.click();
     button(root, "Change what the agents do")?.click();
     const supportReply = { kind: "workflow", hub: "support", id: "support-reply" };
-    expect(openItem.mock.calls).toEqual([[supportReply], [supportReply]]);
+    expect(text(root)).toContain("What next?");
+    expect(openItem.mock.calls).toEqual([
+      [supportReply, { step: "run" }],
+      [supportReply, undefined],
+    ]);
     button(root, "Close")?.click();
     expect(close).toHaveBeenCalledOnce();
   });

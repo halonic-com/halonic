@@ -7,7 +7,7 @@ import {
   RunsSourceService,
 } from "@halonicjs/studio-feature-runs/api";
 import { engineWordsOf, FilesWithErrorsService, type ItemViewProps } from "@halonicjs/studio-shell";
-import { WorkflowGuideService, WorkflowsHostService } from "../api.ts";
+import { RUN_FORM_STEP, WorkflowGuideService, WorkflowsHostService } from "../api.ts";
 import { openFileAtLine } from "./blocking-file.ts";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
@@ -27,6 +27,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       hubId={item.hub}
       id={item.id}
       {...(step === "tests" && { startOnTests: true, testsAsked: asked ?? 0 })}
+      {...(step === RUN_FORM_STEP && { runFormAsked: asked ?? 0 })}
       {...(outline && { outline, outlineAsked: asked ?? 0 })}
       notAnswering={engineWordsOf(context).notAnswering}
       announceState={(key, text) => context.announcer.announceState(key, text)}

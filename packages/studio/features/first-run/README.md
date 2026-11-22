@@ -27,6 +27,8 @@ with **Continue**, which takes it up again and opens Support reply, and **Dismis
 When the first run's Approve finishes its run, "You did it" takes the wait card's place in the Inbox
 (`first-run.you-did-it`, through `Inbox.addAnsweredView`): the run's real steps, time and cost, worded by its
 model path from the Runs feature's `runModelPath`, two next steps, the quiet Google line and **Close**.
+**Run it again with your own message** opens Support reply's page at its Run form (the Workflows
+feature's `RUN_FORM_STEP`, `workflows.page.open-run-form`).
 
 **Help › First run** (`first-run.help`) shows only in the demo. **Show the guide again** takes a paused or
 dismissed first run up again at its step, and **Start over** turns the first run off and asks the app for a

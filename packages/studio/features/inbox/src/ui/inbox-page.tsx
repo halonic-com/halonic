@@ -10,6 +10,7 @@ import {
   engineWords,
   engineWordsOf,
   type ItemRef,
+  type OpenItemOptions,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -119,7 +120,7 @@ export interface InboxViewProps {
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
   /** Opens an item's page, for a setup item's own buttons, such as the first run's **Continue**. */
-  readonly openPage?: ((item: ItemRef) => void) | undefined;
+  readonly openPage?: ((item: ItemRef, options?: OpenItemOptions) => void) | undefined;
   /**
    * The workspace's trust, for a card whose answer was refused because the workspace isn't
    * trusted: **Review**, and the line goes once it is. Without it that line has no button.
@@ -349,7 +350,7 @@ function OpenCard({
   readonly proposals: ProposalDecisions | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
   readonly trust: TrustReview | undefined;
-  readonly openPage: ((item: ItemRef) => void) | undefined;
+  readonly openPage: ((item: ItemRef, options?: OpenItemOptions) => void) | undefined;
   readonly runFacts: RunFactsOf | undefined;
   /** The runs' source, to tell a run on Sample answers; without it no card carries that chip. */
   readonly runsSource: RunsSource | undefined;
