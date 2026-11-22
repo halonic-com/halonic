@@ -13,6 +13,11 @@ afterEach(unmountAll);
 
 /** The section with no sandbox host, so it reads Not available, over a check that gives `answers` in turn. */
 async function open(...answers: (SandboxStartResult | Error)[]) {
+  return openIn("app", ...answers);
+}
+
+/** {@link open}, in the desktop app or in served Studio. */
+async function openIn(place: "app" | "served", ...answers: (SandboxStartResult | Error)[]) {
   const check = vi.fn(async (): Promise<SandboxStartResult> => {
     const answer = answers.length > 1 ? answers.shift() : answers[0];
     if (answer instanceof Error) throw answer;
@@ -22,13 +27,29 @@ async function open(...answers: (SandboxStartResult | Error)[]) {
   const root = render(
     <AgentSandboxHostView
       host={undefined}
-      place="app"
+      place={place}
       announce={announce}
       {...(answers.length > 0 ? { startCheck: { check } } : {})}
     />,
   );
   await act(async () => {});
   return { root, check, announce };
+}
+
+/** The section over a sandbox host whose check finds `code`, in the desktop app or in served Studio. */
+async function openHostCheck(code: string, place: "app" | "served" = "app") {
+  const host = {
+    available: true,
+    check: vi.fn(async () => ({ state: "unavailable", code }) as const),
+    running: vi.fn(async () => null),
+    setUp: vi.fn(async () => null),
+    remove: vi.fn(async () => null),
+    follow: vi.fn(async () => null),
+  } satisfies AgentSandboxHost;
+  const announce = vi.fn();
+  const root = render(<AgentSandboxHostView host={host} place={place} announce={announce} />);
+  await act(async () => {});
+  return { root, host, announce };
 }
 
 const refused = (reason: string): SandboxStartResult =>
@@ -78,21 +99,34 @@ verifies("settings.agent-sandbox-not-available", () => {
   it("looks the same whichever check found the reason (C701-1)", async () => {
     for (const code of ["distro-missing", "setup-needed", "bubblewrap-missing"]) {
       const fromStartCheck = await open(refused(code));
-      const host = {
-        available: true,
-        check: vi.fn(async () => ({ state: "unavailable", code }) as const),
-        running: vi.fn(async () => null),
-        setUp: vi.fn(async () => null),
-        remove: vi.fn(async () => null),
-        follow: vi.fn(async () => null),
-      } satisfies AgentSandboxHost;
-      const fromHostCheck = render(
-        <AgentSandboxHostView host={host} place="app" announce={vi.fn()} />,
-      );
-      await act(async () => {});
-      expect(fromHostCheck.innerHTML, code).toBe(fromStartCheck.root.innerHTML);
+      const fromHostCheck = await openHostCheck(code);
+      expect(fromHostCheck.root.innerHTML, code).toBe(fromStartCheck.root.innerHTML);
       unmountAll();
     }
+  });
+
+  it("says the same after Check again whichever check found the reason (C711-1)", async () => {
+    const heard = `Sandbox checked: not ready. ${sandboxStartWords("distro-missing").reason}`;
+    const fromStartCheck = await open(refused("distro-missing"));
+    await act(async () => checkAgainOf(fromStartCheck.root).click());
+    expect(fromStartCheck.announce).toHaveBeenLastCalledWith(heard);
+    const fromHostCheck = await openHostCheck("distro-missing");
+    await act(async () => checkAgainOf(fromHostCheck.root).click());
+    expect(fromHostCheck.host.check).toHaveBeenCalledTimes(2);
+    expect(fromHostCheck.announce).toHaveBeenLastCalledWith(heard);
+  });
+
+  it("says to do it on the computer in served Studio, whichever check found the reason (C711-2)", async () => {
+    const words = sandboxStartWords("distro-missing");
+    const fromStartCheck = await openIn("served", refused("distro-missing"));
+    const lines = [...fromStartCheck.root.querySelectorAll("p")].map((line) => line.textContent);
+    expect(lines).toContain(words.phoneFix);
+    expect(lines).toContain(text.RUN_THERE_AFTER_WARNING);
+    expect(fromStartCheck.root.textContent).not.toContain("this computer");
+    const fromHostCheck = await openHostCheck("distro-missing", "served");
+    expect(fromHostCheck.root.textContent).toContain(words.phoneFix);
+    expect(fromHostCheck.root.textContent).toContain(text.RUN_THERE_AFTER_WARNING);
+    expect(fromHostCheck.root.textContent).not.toContain(text.RUN_HERE_AFTER_WARNING);
   });
 
   it("leaves the fix out where it is to set the sandbox up in Settings", async () => {

@@ -1,4 +1,5 @@
 import { sandboxStartWords } from "@halonicjs/app";
+import { cantRunWords } from "@halonicjs/studio-feature-runs/api";
 import { detailsOf, engineReasonFor, engineWordsOf, isUnexplained } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentSandboxHost } from "../api.ts";
@@ -165,18 +166,39 @@ export function useAgentSandbox(
         setRechecking(false);
         setCheck(facts);
         if (host !== undefined && facts.state !== "unknown") lastChecks.set(host, facts);
-        announceRef.current(text.announceChecked(checkedLine(facts)));
+        announceRef.current(checkedLine(facts));
       });
     },
   };
 }
 
-/** What a check says, for the live region: "ready. Checked today at 09:12." or its reason. */
+/**
+ * What a **Check again** says in the live region: "Sandbox checked: ready. Checked today at 09:12.",
+ * or the state it found.
+ */
 function checkedLine(facts: SandboxCheckFacts): string {
   if (facts.state === "ready")
-    return `ready. Checked ${checkedAtLabel(facts.checkedAt, new Date())}.`;
-  return sandboxView({ available: true, place: "app", check: facts, running: null, outcome: null })
-    .lead;
+    return text.announceChecked(`ready. Checked ${checkedAtLabel(facts.checkedAt, new Date())}.`);
+  if (facts.state === "unavailable") return notAvailableLine(facts.code);
+  return text.announceChecked(leadOf(facts));
+}
+
+/**
+ * A check that found the sandbox Not available, said as the start check's **Check again** says it,
+ * since both draw the same lines (C701-1, C711-1). Those lines take the place of the lead, which
+ * is empty.
+ */
+function notAvailableLine(code: string): string {
+  return cantRunWords.checkedRefused(sandboxStartWords(code).reason);
+}
+
+/**
+ * The first line of a state. A check that couldn't run may put its line in a Callout, which leaves
+ * the lead empty; the live region says it all the same.
+ */
+function leadOf(check: SandboxCheckFacts): string {
+  if (check.state === "unknown") return text.cannotCheck(check.reason);
+  return sandboxView({ available: true, place: "app", check, running: null, outcome: null }).lead;
 }
 
 /** What the live region says when a press ends: a removal's result, or a setup that left it Ready. */
@@ -196,8 +218,8 @@ function endedLine(verb: SandboxRunning["verb"], ended: Ended, joining: boolean)
 function removalLine(ended: Ended, focused: boolean): string | null {
   if (ended.check === undefined) return focused ? null : outcomeLine(ended.outcome);
   if (ended.outcome !== null) return focused ? null : outcomeLine(ended.outcome);
-  const facts = { available: true, place: "app", running: null, outcome: null } as const;
-  const lead = sandboxView({ ...facts, check: ended.check }).lead;
+  const { check } = ended;
+  const lead = check.state === "unavailable" ? notAvailableLine(check.code) : leadOf(check);
   return focused ? lead : text.announceRemoved(lead, ended.keptAccess);
 }
 

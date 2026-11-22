@@ -32,6 +32,9 @@ export const needsRepair = (reason: string) =>
   `The sandbox is set up, but part of it is missing or out of date: ${reason} Until it's repaired, agents set to run in a sandbox don't start.`;
 /** After a reason the check found: the way round it (23.3, 13.1's second sentence). */
 export const RUN_HERE_AFTER_WARNING = "You can run an agent on this computer after a warning.";
+/** The same in served Studio, where "this computer" would point at the phone (C711-2, C701-3). */
+export const RUN_THERE_AFTER_WARNING =
+  "On the computer Halonic runs on, you can run an agent after a warning.";
 /** Where the docs keys of the sandbox-start catalogue point, as the Inbox and the run page link. */
 export const DOCS_ADDRESS = "https://docs.halonic.dev";
 export const RESTART_NEEDED =

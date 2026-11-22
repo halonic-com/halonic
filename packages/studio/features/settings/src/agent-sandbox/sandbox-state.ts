@@ -173,6 +173,8 @@ export interface NotAvailableWords {
   /** None where the section's own set-up button is the fix (23.3a). */
   readonly fix: string | null;
   readonly docs: { readonly name: string; readonly href: string };
+  /** The muted last line: running an agent after a warning, said for where the person is. */
+  readonly wayRound: string;
 }
 
 const none = {
@@ -288,7 +290,7 @@ function unavailableView(code: string, viewOnly: boolean): SandboxView {
 /**
  * The words for a reason code, from the sandbox-start catalogue. Where the section's own button is
  * the fix, there is none (23.3a); served Studio is used from another device, so `viewOnly` gets the
- * fix that says to do it on the computer.
+ * fix and the way round that say to do it on the computer (C711-2).
  *
  * @example
  * notAvailableWords("setup-needed", false).fix; // null
@@ -299,6 +301,7 @@ export function notAvailableWords(code: string, viewOnly: boolean): NotAvailable
     reason: words.reason,
     fix: viewOnly ? words.phoneFix : words.settingsFix,
     docs: { name: words.docsName, href: `${text.DOCS_ADDRESS}/${words.docsKey}` },
+    wayRound: viewOnly ? text.RUN_THERE_AFTER_WARNING : text.RUN_HERE_AFTER_WARNING,
   };
 }
 

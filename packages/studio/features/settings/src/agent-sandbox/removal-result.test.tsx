@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { sandboxStartWords } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -95,6 +96,17 @@ verifies("settings.agent-sandbox-removal-result", () => {
     expect(announce).toHaveBeenCalledTimes(1);
     expect(announce).toHaveBeenCalledWith(
       "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.",
+    );
+  });
+
+  it("says the reason when a removal leaves the sandbox Not available, as Check again does (C711-1)", async () => {
+    const { view, announce, end } = await readyHost();
+    await removeFrom(view);
+    await end(null, { state: "unavailable", code: "distro-missing" });
+    expect(nameOfFocus()).toBe("Sandbox removed.");
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith(
+      `Sandbox checked: not ready. ${sandboxStartWords("distro-missing").reason}`,
     );
   });
 

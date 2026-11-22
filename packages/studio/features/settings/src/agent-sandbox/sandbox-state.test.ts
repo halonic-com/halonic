@@ -96,6 +96,7 @@ verifies("settings.agent-sandbox-state", () => {
         name: "How to install bubblewrap",
         href: "https://docs.halonic.dev/security/sandbox/#bubblewrap",
       },
+      wayRound: "You can run an agent on this computer after a warning.",
     });
     // The words bring their own Check again, guide and way round (C701-1).
     expect(v.lead).toBe("");
