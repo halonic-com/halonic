@@ -58,8 +58,9 @@ errors (halonic validate). It runs as last committed."). The active requirement
 `cli.commands.routines.list-live-version` and its tests say so.
 
 **C641: a workflow routine's input.** `halonic validate` now says "A workflow routine's input needs
-named fields, such as input: { mail: "{{trigger.body}}" }." (was "…is a list of fields, …"). The
-active requirement `format.routine-file` and its test say so.
+named fields, such as input: { mail: "{{trigger.body}}" }." (was "…is a list of fields, …", then
+"…takes named fields, …" from HAL-15751). The active requirement `format.routine-file`, its test,
+the format README and the webhook how-to say so.
 
 No test was removed, weakened or skipped.
 
