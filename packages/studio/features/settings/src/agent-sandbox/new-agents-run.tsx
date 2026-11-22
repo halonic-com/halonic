@@ -80,7 +80,9 @@ export function NewAgentsRunControl({
         >
           <p>{text.RUN_HERE_BODY}</p>
           {/* The hint's fact again, since this is where the choice is made (C596 on HAL-15584). */}
-          {studioStartsUnfenced ? null : <p>{text.NEW_AGENTS_STUDIO_CANT_START}</p>}
+          {studioStartsUnfenced ? null : (
+            <p className="mt-2">{text.NEW_AGENTS_STUDIO_CANT_START}</p>
+          )}
         </Dialog>
       ) : null}
     </>
