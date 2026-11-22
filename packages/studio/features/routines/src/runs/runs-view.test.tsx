@@ -10,7 +10,11 @@ import { RoutineScreen } from "../page/routine-page.tsx";
 import { buttonNamed, memoryHost, show, unmount } from "../test-support.tsx";
 import { RunsView } from "./runs-view.tsx";
 
-beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+// A run started an hour ago reads "yesterday" just after midnight, so the clock starts at midday.
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date(2026, 10, 21, 12, 0));
+});
 afterEach(() => {
   unmount();
   vi.useRealTimers();
