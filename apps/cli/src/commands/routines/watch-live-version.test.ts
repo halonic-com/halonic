@@ -247,8 +247,12 @@ verifies("cli.commands.routines.watch", () => {
     const time = fakeTime(engineStart);
     const watch = startWatch(time);
     const { io, signals, watching } = watch;
-    await firstLine(watch);
-    expect(io.stdout).toEqual(["Watching 1 routine in Acme. Stop with Ctrl C."]);
+    await watchUntil(watch, () => io.stdout.length === 2);
+    // C672 #1 (HAL-16096): the routine never made live was left out without a word.
+    expect(io.stdout).toEqual([
+      "! 1 routine isn't live yet, so this watch doesn't run it. To start it, commit it or make it live in Halonic Studio.",
+      "Watching 1 routine in Acme. Stop with Ctrl C.",
+    ]);
 
     const line = await nextLineAt(time, watch, "2026-11-10T15:00:10.000Z");
 

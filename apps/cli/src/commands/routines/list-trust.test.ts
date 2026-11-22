@@ -167,6 +167,7 @@ verifies("cli.commands.routines.list", () => {
     // Trusting Acme wouldn't start it, so halonic trust isn't the fix (HAL-15607).
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
+      "! 1 routine can't start. The line under the list says why.",
       "Morning check   Daily at 08:00   ✕ Can't start   Never ran",
       "! Morning check can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.",
       hint,
