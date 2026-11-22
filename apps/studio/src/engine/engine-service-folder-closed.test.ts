@@ -79,6 +79,7 @@ verifies("studio.untrusted-starts-nothing", () => {
 
       await expect(service.startRun(reply, {})).rejects.toMatchObject(untrusted);
       await expect(service.send("run1", "approve")).rejects.toMatchObject(untrusted);
+      await expect(service.cancel("run1")).rejects.toMatchObject(untrusted);
       await service.close();
     });
 

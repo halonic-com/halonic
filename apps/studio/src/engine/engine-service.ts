@@ -156,16 +156,19 @@ export class EngineService {
    *   what {@link EngineService.open} throws
    */
   openForStart(): Promise<AssembledEngine> {
-    return this.#asStart(async () => {
+    return this.#untrustedWhenFolderClosed(async () => {
       const { engine, workspace } = await this.#open();
       await refuseUntrusted(this.#options.mayStart, workspace);
       return engine;
     });
   }
 
-  /** Runs a start, with the shell's refusal of a folder Remove trust closed said as untrusted. */
-  #asStart<T>(start: () => Promise<T>): Promise<T> {
-    return untrustedWhenFolderClosed(start, this.#options.isTrustedNow);
+  /**
+   * Runs a start, an answer or a cancel, with the shell's refusal of a folder Remove trust closed
+   * said as untrusted.
+   */
+  #untrustedWhenFolderClosed<T>(act: () => Promise<T>): Promise<T> {
+    return untrustedWhenFolderClosed(act, this.#options.isTrustedNow);
   }
 
   /**
@@ -220,7 +223,7 @@ export class EngineService {
     input: Record<string, unknown>,
     from: "manual" | "inbox" = "manual",
   ): Promise<{ readonly id: string }> {
-    return this.#asStart(async () => {
+    return this.#untrustedWhenFolderClosed(async () => {
       await this.check(run);
       const engine = await this.openForStart();
       // A run started from the window is the person's own, so it names a trigger: with none, the
@@ -236,7 +239,7 @@ export class EngineService {
     start: RoutineRunStart,
     trigger: { readonly routineKey: string; readonly at: string },
   ): Promise<{ readonly id: string }> {
-    return this.#asStart(() => startRoutineOn(this, start, trigger));
+    return this.#untrustedWhenFolderClosed(() => startRoutineOn(this, start, trigger));
   }
 
   /**
@@ -256,7 +259,7 @@ export class EngineService {
     payload?: unknown,
     options?: SendOptions,
   ): Promise<RunSummary> {
-    return this.#asStart(async () => {
+    return this.#untrustedWhenFolderClosed(async () => {
       const { engine, workspace, runs } = await this.#forAnswer();
       const { startsConnectors } = this.pageRuns;
       await refuseConnectorApprove({ runs, workspace, startsConnectors }, runId, event, options);
@@ -273,8 +276,10 @@ export class EngineService {
    *   run it doesn't know
    */
   async cancel(runId: string): Promise<RunSummary> {
-    const { engine } = await this.#forAnswer();
-    return engine.executor.cancel(runId);
+    return this.#untrustedWhenFolderClosed(async () => {
+      const { engine } = await this.#forAnswer();
+      return engine.executor.cancel(runId);
+    });
   }
 
   /** The open engine, for an answer: as for a start, with the lock's `conflict` as `unavailable`. */
