@@ -28,15 +28,10 @@ import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { workspaceNameOf } from "./workspace-trust.ts";
 
 /**
- * How many errors `halonic validate` finds in the workspace's files: the
- * problems that leave a file out or stop a run. Warnings do neither, so they
- * don't count.
+ * The errors `halonic validate` finds in the workspace's files, in the order
+ * it lists them: the problems that leave a file out or stop a run. `doctor`
+ * counts the same ones (`fileProblemsOf` in `@halonicjs/adapter-doctor-node`).
  */
-export function fileProblemsOf(workspace: LoadedWorkspace): number {
-  return fileErrorsOf(workspace).length;
-}
-
-/** The errors {@link fileProblemsOf} counts, in the order `halonic validate` lists them. */
 function fileErrorsOf(workspace: LoadedWorkspace): WorkspaceIssue[] {
   return workspaceProblemsOf(workspace).filter((issue) => issue.severity === "error");
 }

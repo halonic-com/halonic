@@ -9,7 +9,7 @@ import { studioWatchedFileLimit } from "./studio-watch-limit.ts";
  * this test.
  */
 const shellWatch = new URL(
-  "../../studio/src-tauri/crates/workspace-files/src/watch.rs",
+  "../../../../apps/studio/src-tauri/crates/workspace-files/src/watch.rs",
   import.meta.url,
 );
 

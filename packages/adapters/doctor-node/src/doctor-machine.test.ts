@@ -1,0 +1,201 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { FileTrustStore } from "@halonicjs/adapter-fs-node";
+import { type DoctorWorkspace, TrustService } from "@halonicjs/app";
+import type { Provider } from "@halonicjs/format";
+import type { Secrets } from "@halonicjs/ports";
+import { workspaceFolders } from "@halonicjs/profile";
+import { systemClock } from "@halonicjs/std";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  type DoctorMachine,
+  doctorService as doctorServiceWith,
+  type MachineWorkspace,
+  withHarnessSettingsFolders,
+} from "./doctor-machine.ts";
+import { webCryptoDigest } from "./web-crypto-digest.ts";
+
+/** No secret saved. */
+const noSecrets: Secrets = { get: async () => null };
+
+/** The version the tests' Halonic says it is. */
+const appVersion = "0.1.0";
+
+/** The doctor service as a caller builds it, with {@link appVersion}. */
+function doctorService(
+  machine: DoctorMachine,
+  secrets: Secrets,
+  workspace: MachineWorkspace | null,
+) {
+  return doctorServiceWith(machine, secrets, workspace, { appVersion });
+}
+
+let profile: string;
+
+beforeEach(() => {
+  profile = mkdtempSync(join(tmpdir(), "halonic-doctor-machine-"));
+});
+
+afterEach(() => {
+  rmSync(profile, { recursive: true, force: true });
+});
+
+/** A computer whose probe gives every folder 100 bytes, and whose model server is LM Studio with qwen3 loaded. */
+function machine(asked: string[] = []): DoctorMachine {
+  return {
+    profile: { platform: "linux", root: profile },
+    trustStore: {
+      get: async () => null,
+      grant: async () => {},
+      revoke: async () => {},
+      list: async () => [],
+    },
+    sandbox: {
+      check: async () => ({ ok: true, reason: null, missing: [] }),
+      capabilities: () => ({ files: "shared", strength: "os" }),
+    },
+    sandboxKind: "bubblewrap",
+    probe: {
+      engineMemory: async () => 0,
+      childProcesses: async () => [],
+      folderSize: async (path) => {
+        asked.push(path);
+        return { bytes: 100, complete: true };
+      },
+      freeDisk: async () => 1024 ** 4,
+    },
+    harnesses: [],
+    http: {
+      fetch: async (url) => {
+        asked.push(url);
+        return new Response(JSON.stringify({ data: [{ id: "qwen3", state: "loaded" }] }));
+      },
+    },
+    system: "Linux x64",
+    signInShell: "sh",
+  };
+}
+
+describe("doctorService", () => {
+  it("counts the runs, deployment runs and blobs of every workspace in the profile as run logs", async () => {
+    mkdirSync(join(profile, "workspaces", "a1"), { recursive: true });
+    mkdirSync(join(profile, "workspaces", "b2"), { recursive: true });
+    writeFileSync(join(profile, "workspaces", "not-a-folder"), "");
+    const asked: string[] = [];
+
+    const report = await (await doctorService(machine(asked), noSecrets, null)).check(null);
+
+    expect(asked.sort()).toEqual(
+      ["a1", "b2"].flatMap((key) =>
+        ["blobs", "deployments", "runs"].map((name) => join(profile, "workspaces", key, name)),
+      ),
+    );
+    expect(report.disk).toMatchObject({ data: { bytes: 600, runLogBytes: 600, complete: true } });
+  });
+
+  it("counts nothing before the profile has any workspace", async () => {
+    const report = await (await doctorService(machine(), noSecrets, null)).check(null);
+
+    expect(report.disk).toMatchObject({ data: { bytes: 0, runLogBytes: 0, complete: true } });
+  });
+
+  it("asks each model server on this computer the workspace uses, at its default address", async () => {
+    const studio = studioWorkspace();
+    const asked: string[] = [];
+
+    const doctor = await doctorService(machine(asked), noSecrets, studio);
+    const report = await doctor.check(studio.workspace);
+
+    expect(asked).toContain("http://localhost:1234/api/v0/models");
+    expect(report.models).toMatchObject({
+      ready: [
+        {
+          provider: "studio",
+          name: "LM Studio",
+          answering: true,
+          address: "localhost:1234",
+          models: [{ name: "qwen3" }],
+        },
+      ],
+    });
+  });
+
+  it("sends nothing to a server at another address until the workspace is trusted here", async () => {
+    const studio = studioWorkspace("http://10.0.0.5:1234/v1");
+    const asked: string[] = [];
+
+    const doctor = await doctorService(machine(asked), noSecrets, studio);
+    const report = await doctor.check(studio.workspace);
+
+    expect(asked.filter((url) => url.includes("10.0.0.5"))).toEqual([]);
+    expect(report.models).toMatchObject({
+      problems: [
+        { problem: "unreachable", provider: "studio", name: "LM Studio", address: "10.0.0.5:1234" },
+      ],
+    });
+  });
+
+  it("asks a server at another address once the workspace is trusted here", async () => {
+    const studio = studioWorkspace("http://10.0.0.5:1234/v1");
+    const asked: string[] = [];
+    const trusting = machine(asked);
+    const trustStore = new FileTrustStore(join(profile, "trust"));
+    const service = new TrustService({
+      store: trustStore,
+      digest: webCryptoDigest,
+      clock: systemClock,
+      appVersion,
+    });
+    const check = await service.check(studio.workspace.trust);
+    if (check.status === "refused") {
+      throw new Error("LM Studio's address has nothing to refuse.");
+    }
+    expect((await service.grant(studio.workspace.trust, check.fingerprint, "cli")).ok).toBe(true);
+
+    const doctor = await doctorService({ ...trusting, trustStore }, noSecrets, studio);
+    await doctor.check(studio.workspace);
+
+    expect(asked).toContain("http://10.0.0.5:1234/api/v0/models");
+  });
+});
+
+/** A workspace whose alias `fast` uses LM Studio on this computer, at `baseUrl` or its default address. */
+function studioWorkspace(baseUrl?: string): MachineWorkspace {
+  const lmStudio = {
+    id: "studio",
+    name: "LM Studio",
+    type: "lmstudio",
+    local: true,
+    options: {},
+    ...(baseUrl === undefined ? {} : { baseUrl }),
+  } as Provider;
+  const address = baseUrl === undefined ? "localhost:1234" : new URL(baseUrl).host;
+  const workspace: DoctorWorkspace = {
+    name: "Acme",
+    trust: {
+      location: "/work/acme",
+      connectors: [],
+      commandPaths: new Map(),
+      agents: [],
+      integrations: [],
+      providers: [lmStudio],
+    },
+    aliases: [{ alias: "fast", provider: "studio" }],
+    providers: [{ provider: "studio", name: "LM Studio", runs: "on-this-computer", address }],
+  };
+  return { workspace, providerFiles: new Map([["studio", lmStudio]]) };
+}
+
+describe("withHarnessSettingsFolders", () => {
+  it("gives each agent the settings folder its runs get, and none for an id a folder can't take", async () => {
+    const linux = { platform: "linux" as const, root: profile };
+    const { workspace } = await withHarnessSettingsFolders(studioWorkspace(), linux);
+    const folders = await workspaceFolders(linux, "/work/acme", webCryptoDigest);
+
+    expect(workspace.harnessSettingsFolder?.("writer", "claude-code")).toBe(
+      folders.harnessSettingsFolder("writer", "claude-code"),
+    );
+    expect(workspace.harnessSettingsFolder?.("w".repeat(65), "claude-code")).toBeUndefined();
+  });
+});

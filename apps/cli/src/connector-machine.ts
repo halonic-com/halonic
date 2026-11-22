@@ -8,6 +8,7 @@ import {
   SandboxStdioConnectorFactory,
   SessionWorkspaceFactory,
 } from "@halonicjs/adapter-connector-stdio-sandbox";
+import { nodeCommandSearch } from "@halonicjs/adapter-doctor-node";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
@@ -24,7 +25,6 @@ import { ConnectorFactories } from "@halonicjs/app";
 import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { nodeCommandSearch } from "./command-paths.ts";
 import {
   IntegrationConnectorFactory,
   type OpenIntegration,

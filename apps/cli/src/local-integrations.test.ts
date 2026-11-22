@@ -2,6 +2,7 @@ import { cp, mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import { FileSystemFolderReader, FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { MemoryFolderReader, MemoryUnfencedRunConsentStore } from "@halonicjs/adapter-memory";
 import {
@@ -27,12 +28,7 @@ import { removeTestFolder } from "./test/remove-folder.ts";
 import { testRunSetup } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
-import {
-  assertTrustable,
-  cliTrustService,
-  readWorkspaceTrust,
-  workspaceIntegrations,
-} from "./workspace-trust.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
 
 /** These tests never take a yes back in another process and no start hangs, so no timer goes off. */
 const idleTimers = { set: () => undefined, clear: () => undefined };

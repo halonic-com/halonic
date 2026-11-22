@@ -4,12 +4,12 @@
 // from the run log alone, through the same helpers `halonic runs show` uses,
 // so both say the same about a run. The words are the catalogue's.
 
+import { providerAddress } from "@halonicjs/adapter-doctor-node";
 import { type RunDetail, shortRunId } from "@halonicjs/app";
 import { isSetupCause, workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandResult } from "../../command.ts";
-import { providerAddress } from "../../doctor-workspace.ts";
 import { type ExitCode, exitCode } from "../../exit-code.ts";
 import { exitCodeFor } from "../../exit-code-for.ts";
 import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";

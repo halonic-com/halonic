@@ -1,5 +1,6 @@
 import { realpath, stat } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
+import { type CommandSearch, nodeCommandSearch } from "@halonicjs/adapter-doctor-node";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { resolveRealPath } from "@halonicjs/adapter-harness-kit";
 import type { Clock, KeyOrigins, TrustStore } from "@halonicjs/ports";
@@ -13,7 +14,6 @@ import {
   type CommandResult,
   UsageError,
 } from "../../command.ts";
-import { type CommandSearch, nodeCommandSearch } from "../../command-paths.ts";
 import { exitCode } from "../../exit-code.ts";
 import { keyAddressLists } from "../../key-address-lists.ts";
 import type { Message } from "../../messages/define.ts";

@@ -1,113 +1,54 @@
-// The parts of this computer `halonic doctor` asks: the trust records, the
-// sandbox, the disk, the harness programs and the model servers. The
-// command builds its `DoctorService` from them; tests hand it fakes.
+// The computer `halonic doctor` asks: this one, with its trust records,
+// sandbox, disk, harness programs and model servers. The doctor service on
+// such a machine lives in `@halonicjs/adapter-doctor-node`, which the agent
+// host uses too (HAL-13407); the command builds it here, with the CLI's own
+// version, and tests hand it fakes.
 
-import { readdir } from "node:fs/promises";
 import { arch, platform } from "node:os";
-import { join } from "node:path";
+import {
+  findCommand,
+  type MachineWorkspace,
+  doctorService as machineDoctorService,
+  trustedOnMachine as machineTrustedOnMachine,
+  type DoctorMachine as NodeDoctorMachine,
+  networkProblemOf,
+  nodeCommandSearch,
+} from "@halonicjs/adapter-doctor-node";
 import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { NodeResourceProbe } from "@halonicjs/adapter-system-node";
 import {
   AgentPlacement,
-  type DataFolder,
-  DoctorService,
-  type DoctorServiceOptions,
+  type DoctorService,
   type DoctorWorkspace,
-  type LoadedModelSource,
-  type NetworkProblem,
-  type NodeProblem,
-  type PlacementReader,
   type ProfileProblem,
-  ResourceReport,
-  type SaveTimers,
-  type TrustService,
 } from "@halonicjs/app";
-import type { Provider } from "@halonicjs/format";
-import type {
-  HttpClient,
-  KeyOrigins,
-  ResourceProbe,
-  RunStore,
-  Sandbox,
-  Secrets,
-  SignInShell,
-  TrustStore,
-} from "@halonicjs/ports";
-import {
-  type ProfileFolder,
-  placementFolder,
-  profileFolder,
-  trustFolder,
-  workspaceFolders,
-} from "@halonicjs/profile";
+import type { Secrets } from "@halonicjs/ports";
+import { placementFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { findCommand, nodeCommandSearch } from "./command-paths.ts";
 import { type AddedPlugins, addedPluginsOf } from "./connector-plugin.ts";
-import { networkProblemOf } from "./doctor-network.ts";
 import { engineHttp } from "./engine-http.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
-import {
-  isOnThisComputer,
-  type LocalModelServer,
-  localLoadedModels,
-} from "./local-model-servers.ts";
 import { openPluginService } from "./plugin-host.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { profileKeyOrigins } from "./secret-host.ts";
+import { halonicVersion } from "./version.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
-import { cliTrustService } from "./workspace-trust.ts";
 import { nodeIsWsl, nodeProblemOf, windowsDriveOf } from "./wsl.ts";
 
-/** What `doctor` asks on this computer. */
-export interface DoctorMachine {
-  /** The profile folder: the trust records and the runs are in it. */
-  readonly profile: ProfileFolder;
-  readonly trustStore: TrustStore;
-  readonly sandbox: Pick<Sandbox, "check" | "capabilities">;
-  /** The kind of sandbox on the ✓ line, such as "bubblewrap". */
-  readonly sandboxKind: string;
-  readonly probe: ResourceProbe;
-  readonly harnesses: DoctorServiceOptions["harnesses"];
-  /** Reaches the model servers on this computer. */
-  readonly http: HttpClient;
-  /** The operating system and processor, such as "Linux x64". */
-  readonly system: string;
-  /**
-   * The Windows drive a folder is on, such as "/mnt/c", or `null` when it
-   * isn't on one. Only under WSL; left out elsewhere.
-   */
-  readonly windowsDrive?: (folder: string) => string | null;
-  /** What is wrong with the Node.js that runs Halonic, for the Node.js line; left out, no line. */
-  readonly node?: () => Promise<NodeProblem | null>;
-  /** What is wrong with the proxy setting, for the Network line; left out, no line. */
-  readonly network?: () => NetworkProblem | null;
-  /** The WSL distro `doctor` runs in, from `WSL_DISTRO_NAME`, for the WSL 1 fix's command. */
-  readonly wslDistro?: string | undefined;
-  /** The terminal a person types a harness's sign-in into: PowerShell on Windows, `sh` elsewhere. */
-  readonly signInShell: SignInShell;
-  /**
-   * Where each agent runs, as the person chose on this computer, the choices
-   * `run` reads, so the Harnesses line leaves out an agent whose runs get a
-   * provider key (HAL-14661). Left out, it asks about every agent's sign-in.
-   */
-  readonly placement?: PlacementReader;
-  /**
-   * The addresses each saved key may be sent to, as `run` reads them, so the
-   * Harnesses line decides an agent's key with `run`'s own check (HAL-14661).
-   * Left out, it asks about every agent's sign-in.
-   */
-  readonly keyOrigins?: KeyOrigins;
+export {
+  type MachineWorkspace,
+  withHarnessSettingsFolders,
+} from "@halonicjs/adapter-doctor-node";
+
+/**
+ * What `halonic doctor` asks on this computer: what the package's doctor
+ * asks, and the plugins the CLI's Plugins line reads.
+ */
+export interface DoctorMachine extends NodeDoctorMachine {
   /** The plugins added in the profile, for the Plugins line (HAL-14296); left out, no line. */
   readonly plugins?: AddedPlugins;
-}
-
-/** The workspace for {@link doctorService}, with the provider files its servers are read from. */
-export interface MachineWorkspace {
-  readonly workspace: DoctorWorkspace;
-  /** The workspace's provider files, by id. */
-  readonly providerFiles: ReadonlyMap<string, Provider>;
 }
 
 /** The names Node gives the systems, as a person reads them. */
@@ -122,18 +63,6 @@ const sandboxKinds: Readonly<Record<string, string>> = {
   linux: "bubblewrap",
   darwin: "Seatbelt",
 };
-
-/**
- * Node's timers for each check's limit. Not `unref`'d: a check that hangs on
- * nothing Node waits for must still end as a line, not end the process.
- */
-const checkTimers: SaveTimers = {
-  set: (callback, delayMs) => setTimeout(callback, delayMs),
-  clear: (handle) => clearTimeout(handle as NodeJS.Timeout),
-};
-
-/** The folders in a workspace's profile folder that hold what its runs left. */
-const runFolderNames = ["runs", "deployments", "blobs"];
 
 /**
  * This computer: the profile from `HALONIC_HOME` or the system's data
@@ -178,12 +107,9 @@ export function nodeDoctorMachine(): DoctorMachine {
 }
 
 /**
- * The `DoctorService` over `machine`, with a source of loaded models for
- * each server on this computer the workspace uses, and the run data of
- * every workspace in the profile as the Disk line's use. `profile` is how
+ * The `DoctorService` over `machine`, as the package builds it, with the
+ * CLI's version on any trust record the check updates. `profile` is how
  * the workspace and the profile folder overlap, for the Profile line.
- *
- * It reads no run logs: `doctor` shows no waits in 0.1 (P6 on HAL-2264).
  */
 export async function doctorService(
   machine: DoctorMachine,
@@ -191,59 +117,10 @@ export async function doctorService(
   workspace: MachineWorkspace | null,
   profile: ProfileProblem | null = null,
 ): Promise<DoctorService> {
-  const trust = cliTrustService(machine.trustStore, systemClock);
-  const trusted = await isTrusted(trust, workspace);
-  const resources = new ResourceReport({
-    probe: machine.probe,
-    runs: noRuns,
-    clock: systemClock,
-    dataRoot: machine.profile.root,
-    dataFolders: await runDataFolders(machine.profile),
-    modelSources: modelServers(workspace).map((server) =>
-      modelSourceOf(server, machine.http, trusted),
-    ),
-  });
-  return new DoctorService({
-    trust,
-    sandbox: machine.sandbox,
-    resources,
-    harnesses: machine.harnesses,
-    secrets,
-    ...(machine.node === undefined ? {} : { node: machine.node }),
-    ...(machine.network === undefined ? {} : { network: machine.network }),
+  return await machineDoctorService(machine, secrets, workspace, {
+    appVersion: halonicVersion,
     profile,
-    timers: checkTimers,
   });
-}
-
-/**
- * `workspace`, with the folder each agent's harness keeps its own settings
- * in, as its runs get it, so the Harnesses line asks about the sign-in those
- * runs use (HAL-5649).
- */
-export async function withHarnessSettingsFolders(
-  workspace: MachineWorkspace,
-  profile: ProfileFolder,
-): Promise<MachineWorkspace> {
-  const { location } = workspace.workspace.trust;
-  const folders = await workspaceFolders(profile, location, webCryptoDigest);
-  const harnessSettingsFolder = (agentId: string, harnessId: string): string | undefined => {
-    try {
-      return folders.harnessSettingsFolder(agentId, harnessId);
-    } catch (error) {
-      // An id the agent format allows but a folder can't take, such as one
-      // over 64 characters: the agent has no settings folder to sign in to.
-      if (error instanceof RangeError) return undefined;
-      throw error;
-    }
-  };
-  return { ...workspace, workspace: { ...workspace.workspace, harnessSettingsFolder } };
-}
-
-/** Whether the workspace is trusted on this computer as it is now; `false` outside one. */
-async function isTrusted(trust: TrustService, workspace: MachineWorkspace | null) {
-  if (workspace === null) return false;
-  return (await trust.check(workspace.workspace.trust)).status === "trusted";
 }
 
 /**
@@ -254,72 +131,5 @@ export async function trustedOnMachine(
   machine: Pick<DoctorMachine, "trustStore">,
   workspace: DoctorWorkspace,
 ): Promise<boolean> {
-  const trust = cliTrustService(machine.trustStore, systemClock);
-  return (await trust.check(workspace.trust)).status === "trusted";
+  return await machineTrustedOnMachine(machine, workspace, { appVersion: halonicVersion });
 }
-
-/**
- * Where `doctor` reads a server's loaded models. A workspace names its
- * servers' addresses itself, so before it is trusted here `doctor` only
- * asks a server on this computer, and sends nothing to any other address:
- * that server shows as not answering.
- */
-function modelSourceOf(
-  server: LocalModelServer,
-  http: HttpClient,
-  trusted: boolean,
-): LoadedModelSource {
-  if (trusted || isOnThisComputer(server.baseUrl)) return localLoadedModels(server, http);
-  return {
-    id: server.id,
-    loadedModels: () =>
-      Promise.reject(
-        new Error(`${server.id} isn't on this computer, and the workspace isn't trusted here.`),
-      ),
-  };
-}
-
-/** Each server on this computer the workspace's aliases use, at its `baseUrl` or its default address. */
-function modelServers(workspace: MachineWorkspace | null) {
-  if (workspace === null) return [];
-  return workspace.workspace.providers.flatMap((provider) => {
-    const file = workspace.providerFiles.get(provider.provider);
-    if (provider.runs !== "on-this-computer" || file === undefined) return [];
-    const baseUrl = file.baseUrl ?? `http://${provider.address}/v1`;
-    return [{ id: provider.provider, type: file.type, baseUrl }];
-  });
-}
-
-/**
- * The runs, deployment runs and blobs of every workspace in the profile, as
- * run logs. The records and the trust records aren't counted yet: the
- * resource report has no kind for them, and they stay small in 0.1.
- */
-async function runDataFolders(profile: ProfileFolder): Promise<DataFolder[]> {
-  const workspaces = join(profile.root, "workspaces");
-  const keys = await folderNames(workspaces);
-  return keys.flatMap((key) =>
-    runFolderNames.map((name) => ({
-      kind: "run-logs" as const,
-      workspace: key,
-      path: join(workspaces, key, name),
-    })),
-  );
-}
-
-/** The folders in `folder`, or none when it doesn't exist yet. */
-async function folderNames(folder: string): Promise<string[]> {
-  try {
-    const entries = await readdir(folder, { withFileTypes: true });
-    return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
-  }
-}
-
-/** A run store with no runs, for a report that shows no waits. */
-const noRuns: Pick<RunStore, "list" | "events"> = {
-  list: async () => [],
-  events: async () => [],
-};

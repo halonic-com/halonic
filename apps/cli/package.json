@@ -19,6 +19,7 @@
     "@halonicjs/adapter-connector-stdio-sandbox": "workspace:*",
     "@halonicjs/adapter-coordination-node": "workspace:*",
     "@halonicjs/adapter-env-secrets": "workspace:*",
+    "@halonicjs/adapter-doctor-node": "workspace:*",
     "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/adapter-git": "workspace:*",
     "@halonicjs/adapter-harness-bridge": "workspace:*",

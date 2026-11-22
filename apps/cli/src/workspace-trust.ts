@@ -3,10 +3,13 @@
 // they all compute one fingerprint for the same files on the same computer.
 
 import { realpath } from "node:fs/promises";
-import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
+import {
+  type CommandSearch,
+  commandPaths,
+  workspaceIntegrations,
+} from "@halonicjs/adapter-doctor-node";
 import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 import {
-  readLocalIntegrations,
   type TrustCheck,
   TrustService,
   type TrustSubject,
@@ -18,12 +21,10 @@ import { KindedError } from "@halonicjs/std";
 import {
   filesOf,
   type LoadedWorkspace,
-  type LocalIntegrationInput,
   loadWorkspace,
   type RefusedKind,
   reachesOnlyTheTestModel,
 } from "@halonicjs/workspace";
-import { type CommandSearch, commandPaths } from "./command-paths.ts";
 import { keyAddressLists } from "./key-address-lists.ts";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
@@ -37,21 +38,6 @@ import type { PluginHosts } from "./sheet-hosts.ts";
 import { halonicVersion } from "./version.ts";
 import type { OpenWorkspaceDir, WorkspaceDir } from "./workspace-dir.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
-
-/**
- * The local integrations in the workspace folder `root`, read without
- * following links and hashed as a runner start hashes them. Every command
- * that checks trust reads them this way, so they all see the same code.
- *
- * @param root - the workspace folder
- * @param shown - the folder as the user typed it, such as `./acme`
- */
-export async function workspaceIntegrations(
-  root: string,
-  shown: string,
-): Promise<LocalIntegrationInput[]> {
-  return await readLocalIntegrations(new FileSystemFolderReader(root, shown), webCryptoDigest);
-}
 
 /**
  * Whether starting things in the workspace needs no trust, because it can

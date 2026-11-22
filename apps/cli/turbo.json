@@ -7,8 +7,7 @@
     "test": {
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/examples/**",
-        "../studio/src-tauri/crates/workspace-files/src/watch.rs"
+        "$TURBO_ROOT$/examples/**"
       ]
     }
   }

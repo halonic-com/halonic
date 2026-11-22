@@ -7,6 +7,7 @@
 // how the run ended (`show-ending.ts`). It never prints where the run log
 // is (Liam, HAL-1984). The words are the catalogue's (`runsMessages`).
 
+import { providerAddress } from "@halonicjs/adapter-doctor-node";
 import { type RunDetail, RunHistory, shortRunId } from "@halonicjs/app";
 import { workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { RunSummary } from "@halonicjs/events";
@@ -23,7 +24,6 @@ import {
   isGoogleConnector,
   isIntegrationConnector,
 } from "../../connector-file.ts";
-import { providerAddress } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import { type Phrase, phrase } from "../../messages/phrase.ts";
 import { runsMessages, type ShownEnd } from "../../messages/runs.ts";

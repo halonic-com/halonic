@@ -1,8 +1,8 @@
+import { nodeCommandSearch } from "@halonicjs/adapter-doctor-node";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { CliCommand } from "../../command.ts";
-import { nodeCommandSearch } from "../../command-paths.ts";
 import { engineHttp } from "../../engine-http.ts";
 import { nodeHarnessPrograms } from "../../harness-programs.ts";
 import { inputValueName, runMessages } from "../../messages/run.ts";

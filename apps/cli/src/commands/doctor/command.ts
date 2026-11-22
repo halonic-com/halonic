@@ -1,11 +1,16 @@
-import { readFile, realpath } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import {
+  nodeCommandSearch,
+  readDoctorWorkspace,
+  studioWatchedFileLimit,
+  usedConnectors,
+} from "@halonicjs/adapter-doctor-node";
 import type { DoctorReport, DoctorWorkspace, ProfileProblem } from "@halonicjs/app";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
-import { filesOf, type LoadedWorkspace, loadWorkspace, settingsPath } from "@halonicjs/workspace";
+import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { cliProviderKeys } from "../../cli-provider-keys.ts";
 import type { CliCommand, CommandInput } from "../../command.ts";
-import { commandPaths, nodeCommandSearch } from "../../command-paths.ts";
 import {
   type DoctorMachine,
   doctorService,
@@ -16,12 +21,10 @@ import {
 } from "../../doctor-machine.ts";
 import { withPluginProblems } from "../../doctor-plugins.ts";
 import { agentsWithProviderKey, withHarnessProviderKeys } from "../../doctor-provider-keys.ts";
-import { doctorWorkspace, usedConnectors } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import { doctorMessages } from "../../messages/doctor.ts";
 import { doctorReportLines } from "../../output/doctor-report.ts";
 import { profileProblem } from "../../profile-place.ts";
-import { studioWatchedFileLimit } from "../../studio-watch-limit.ts";
 import { halonicVersion } from "../../version.ts";
 import {
   dirOption,
@@ -30,8 +33,6 @@ import {
   type WorkspaceDir,
   workspaceDir,
 } from "../../workspace-dir.ts";
-import { workspaceStore } from "../../workspace-store.ts";
-import { workspaceIntegrations } from "../../workspace-trust.ts";
 
 /** What tests change about `halonic doctor`, besides the computer. */
 export interface DoctorCommandOptions {
@@ -153,32 +154,22 @@ async function readWorkspace(
   computer: DoctorMachine,
   secrets: Secrets,
 ): Promise<MachineWorkspace | null> {
-  const store = workspaceStore(dir.root, dir.shown, computer.profile);
-  if ((await store.read(settingsPath)) === null) {
+  const read = await readDoctorWorkspace(dir, {
+    watchedFileLimit,
+    commandSearch: nodeCommandSearch(),
+    fence: computer.profile.root,
+  });
+  if (read === null) {
     if (dirGiven) throw new NoWorkspaceError();
     return null;
   }
-  const loaded = await loadWorkspace(store);
-  const connectors = filesOf(loaded, "connector").map((file) => file.value);
-  const location = await realpath(dir.root);
-  const found = doctorWorkspace({
-    workspace: loaded,
-    integrations: await workspaceIntegrations(dir.root, dir.shown),
-    location,
-    fallbackName: dir.name,
-    commandPaths: await commandPaths(connectors, nodeCommandSearch()),
-  });
-  const workspace = await withPluginProblems(
-    await withProviderKeyAgents(computer, secrets, loaded, found, location),
-    usedConnectors(loaded),
-    computer.plugins,
-  );
-  const tooManyToWatch = await store.hasMoreFilesThan(watchedFileLimit);
-  const providerFiles = new Map(
-    filesOf(loaded, "provider").map((file) => [file.value.id, file.value]),
-  );
+  const { workspace, providerFiles, loaded, location } = read;
   return {
-    workspace: tooManyToWatch ? { ...workspace, tooManyFilesToWatch: watchedFileLimit } : workspace,
+    workspace: await withPluginProblems(
+      await withProviderKeyAgents(computer, secrets, loaded, workspace, location),
+      usedConnectors(loaded),
+      computer.plugins,
+    ),
     providerFiles,
   };
 }

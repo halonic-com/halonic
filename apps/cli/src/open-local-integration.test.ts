@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 import type { StartedRunner } from "@halonicjs/adapter-integration-runner";
@@ -34,7 +35,7 @@ import { integrationTransport } from "./local-integration-machine.ts";
 import { type LocalIntegrationMachine, openLocalIntegration } from "./open-local-integration.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
-import { cliTrustService, workspaceIntegrations } from "./workspace-trust.ts";
+import { cliTrustService } from "./workspace-trust.ts";
 
 /** The addresses each `https` connection was handed, in order. */
 const connected = vi.hoisted(() => [] as string[][]);

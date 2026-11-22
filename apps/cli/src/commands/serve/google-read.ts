@@ -1,7 +1,7 @@
+import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import { googleSetupSubject, type SetupRecords } from "@halonicjs/google-setup";
 import type { GoogleSetupReadPorts } from "@halonicjs/host-server";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
-import { workspaceIntegrations } from "../../workspace-trust.ts";
 
 /** What the served workspace's Google setups are read from. */
 export interface WorkspaceGoogleReadOptions {

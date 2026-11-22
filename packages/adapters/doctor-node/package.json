@@ -1,0 +1,41 @@
+{
+  "name": "@halonicjs/adapter-doctor-node",
+  "private": true,
+  "type": "module",
+  "description": "The Node half of halonic doctor: the doctor service on a computer's parts, a workspace read as the doctor checks it, and the model servers on this computer it asks. The CLI and the agent host build it from their own parts.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/adapter-http-kit": "workspace:*",
+    "@halonicjs/adapter-http-node": "workspace:*",
+    "@halonicjs/adapter-workspace-models": "workspace:*",
+    "@halonicjs/app": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/profile": "workspace:*",
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "owen",
+    "runtime": "node",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}

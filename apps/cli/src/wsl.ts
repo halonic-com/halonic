@@ -25,17 +25,8 @@ export function nodeIsWsl(): boolean {
   }
 }
 
-/**
- * The Windows drive `path` is on under WSL, such as "/mnt/c", or `null`
- * when it is in Linux's own files. WSL mounts each drive at `/mnt/<letter>`.
- *
- * @example
- * windowsDriveOf("/mnt/c"); // "/mnt/c", and the same for every folder on it
- * windowsDriveOf("/srv/acme"); // null
- */
-export function windowsDriveOf(path: string): string | null {
-  return /^\/mnt\/[a-z](?=\/|$)/i.exec(path)?.[0] ?? null;
-}
+// The agent host's doctor warns about a drive too, so the rule lives with the doctor.
+export { windowsDriveOf } from "@halonicjs/adapter-doctor-node";
 
 /**
  * Whether `folder` is a WSL folder as Windows reaches it, on the WSL share
