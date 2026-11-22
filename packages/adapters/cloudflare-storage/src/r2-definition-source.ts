@@ -13,7 +13,7 @@ import {
   sha256Hex,
   snapshotKeys,
 } from "./definition-snapshot.ts";
-import { routineIndexPath } from "./webhook-routines.ts";
+import { snapshotIndexPaths } from "./definition-snapshot-writer.ts";
 
 /** The one R2 call the source makes. A Worker's `R2Bucket` binding fits it, and so does a wrapper around one, which a test uses to count the reads. */
 export interface SnapshotBucket {
@@ -71,7 +71,7 @@ export class R2DefinitionSource implements DefinitionSource {
     const { files } = await this.#loadManifest();
     return files
       .map((entry) => entry.path)
-      .filter((path) => !isPrivateWorkspacePath(path) && path !== routineIndexPath)
+      .filter((path) => !isPrivateWorkspacePath(path) && !snapshotIndexPaths.includes(path))
       .filter((path) => dir === undefined || path.startsWith(`${dir}/`));
   }
 

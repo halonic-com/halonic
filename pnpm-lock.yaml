@@ -868,6 +868,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../core/std
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../core/workspace
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'

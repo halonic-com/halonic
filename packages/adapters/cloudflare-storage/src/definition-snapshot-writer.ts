@@ -3,7 +3,27 @@ import {
   defaultSnapshotPrefix,
   snapshotKeys,
 } from "./definition-snapshot.ts";
+import {
+  formatRunDefinitionsIndex,
+  type IndexedHubs,
+  runDefinitionsIndexPath,
+} from "./run-definitions-index.ts";
 import { formatRoutineIndex, type IndexedRoutine, routineIndexPath } from "./webhook-routines.ts";
+
+/** The indexes a snapshot holds next to the workspace files, built from the same files. */
+export interface SnapshotIndexes {
+  /** The placed routines, which the Worker finds webhooks in. */
+  readonly routines: readonly IndexedRoutine[];
+  /**
+   * Each hub's definitions, which the Worker starts runs from. Left out, the
+   * snapshot has no run-definitions index, and a run the Worker starts from
+   * it is refused with a message to deploy again.
+   */
+  readonly runDefinitions?: IndexedHubs;
+}
+
+/** The paths the snapshot keeps its indexes at, which no workspace file may have. */
+export const snapshotIndexPaths: readonly string[] = [routineIndexPath, runDefinitionsIndexPath];
 
 /** The one R2 call the writer makes. */
 export interface SnapshotWriteBucket {
@@ -11,31 +31,37 @@ export interface SnapshotWriteBucket {
 }
 
 /**
- * Uploads a workspace as a snapshot: the files and the routine index the
- * Worker reads webhooks from, then the manifest, then `current`, so a
- * half-finished upload is never the one served. Private files are left out.
- * This is the low-level call: it trusts that `routines` are those of `files`.
+ * Uploads a workspace as a snapshot: the files, the routine index the
+ * Worker reads webhooks from and the run-definitions index it starts runs
+ * from, then the manifest, then `current`, so a half-finished upload is never
+ * the one served. Private files are left out. This is the low-level call: it
+ * trusts that `indexes` are those of `files`.
  * A deploy calls `writeWorkspaceSnapshot` of
  * `@halonicjs/target-cloudflare-deploy`, which builds them from the files, so
- * the two never differ. The index holds only what the routine files hold, and
- * it is listed in the manifest with its hash like any file. This is the write
+ * they never differ. An index holds only what the workspace files hold, and
+ * it is listed in the manifest with its hash like any file, so a Worker
+ * version pinned to a snapshot reads that snapshot's indexes. This is the write
  * side `halonic deploy` uses; the Worker only reads.
  *
  * @returns the version that `current` now names
- * @throws RangeError for a path the port forbids, or a file at the index's own path
+ * @throws RangeError for a path the port forbids, or a file at an index's own path
  */
 export async function writeDefinitionSnapshot(
   bucket: SnapshotWriteBucket,
   files: Readonly<Record<string, string>>,
-  routines: readonly IndexedRoutine[],
+  indexes: SnapshotIndexes,
   keyPrefix: string = defaultSnapshotPrefix,
 ): Promise<string> {
-  if (routineIndexPath in files) {
-    throw new RangeError(`${routineIndexPath} is where the snapshot keeps its routine index.`);
+  const taken = snapshotIndexPaths.find((path) => path in files);
+  if (taken !== undefined) {
+    throw new RangeError(`${taken} is where the snapshot keeps one of its indexes.`);
   }
   const uploaded: Record<string, string> = {
     ...files,
-    [routineIndexPath]: formatRoutineIndex(routines),
+    [routineIndexPath]: formatRoutineIndex(indexes.routines),
+    ...(indexes.runDefinitions === undefined
+      ? {}
+      : { [runDefinitionsIndexPath]: formatRunDefinitionsIndex(indexes.runDefinitions) }),
   };
   const manifest = await buildSnapshotManifest(uploaded);
   const keys = snapshotKeys(keyPrefix);
