@@ -43,13 +43,17 @@ export const SETTINGS_NEEDED =
   "This sign-in needs a setting that's missing or not valid. Check Settings.";
 
 /**
- * After **Sign out**, when the provider didn't confirm the revoke, or there
- * was no address to revoke at.
+ * After **Sign out**, **Remove trust** or **Remove plugin**, when the provider
+ * didn't confirm the revoke, or there was no address to revoke at. Several
+ * tokens read as the CLI says them (HAL-15083).
  *
  * @param service - the plugin's name
+ * @param tokens - how many sign-ins weren't confirmed
  */
-export function signedOutNotConfirmed(service: string): string {
-  return `You're signed out here. ${service} didn't confirm, so the token may still work there until it expires.`;
+export function signedOutNotConfirmed(service: string, tokens = 1): string {
+  return tokens === 1
+    ? `You're signed out here. ${service} didn't confirm, so the token may still work there until it expires.`
+    : `You're signed out here. ${service} didn't confirm, so the tokens may still work there until they expire.`;
 }
 
 /** The client secret a sign-in needs isn't set, in the shape of the approved refused line (team wording). */

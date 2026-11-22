@@ -112,7 +112,7 @@ export function PluginPage({
   const [reviewing, setReviewing] = useState(false);
   // Each closed trust check reads the host's status again, so R13 goes once the yes is saved.
   const [reviews, setReviews] = useState(0);
-  const { run, fail, toastOn, toastRemoved } = usePageActions();
+  const { run, fail, toastOn, toastRemoved, toastSignedOut } = usePageActions();
   const manifest = plugin.manifest;
   const off = plugin.status === "on" ? undefined : { reason: statusId };
   const fromFolder = plugin.origin?.kind === "folder";
@@ -129,7 +129,8 @@ export function PluginPage({
       ...(canUpdate && update.kind === "idle"
         ? { checkForUpdate: () => void checkForUpdate(), fromFolder }
         : {}),
-      revoke: () => run("revoke", () => actions.revoke(plugin.plugin)),
+      revoke: () =>
+        run("revoke", async () => toastSignedOut(plugin.name, await actions.revoke(plugin.plugin))),
       remove: () => setRemoving(true),
     },
     viewOnly,
@@ -222,10 +223,10 @@ export function PluginPage({
           plugin={plugin}
           remove={actions.remove}
           usedBy={actions.usedBy}
-          onRemoved={() => {
+          onRemoved={(signOut) => {
             // Closed here, so it doesn't sit on "Removing…" until the list drops the plugin.
             setRemoving(false);
-            toastRemoved(plugin.name);
+            toastRemoved(plugin.name, signOut);
           }}
           onCancel={() => setRemoving(false)}
         />

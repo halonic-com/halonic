@@ -41,6 +41,8 @@ function recordingActions(
     readonly fail?: keyof PluginActions;
     readonly update?: PluginUpdateCheck;
     readonly removed?: PluginRemoveOutcome;
+    /** The sign-ins Remove trust signed out without the provider confirming. */
+    readonly notConfirmed?: readonly string[];
     readonly uses?: readonly PluginUse[];
   } = {},
 ) {
@@ -51,10 +53,13 @@ function recordingActions(
   };
   const actions: PluginActions = {
     trust: async (plugin) => step("trust", `trust ${plugin}`),
-    revoke: async (plugin) => step("revoke", `revoke ${plugin}`),
+    revoke: async (plugin) => {
+      step("revoke", `revoke ${plugin}`);
+      return { signInsNotConfirmed: options.notConfirmed ?? [] };
+    },
     remove: async (plugin) => {
       step("remove", `remove ${plugin}`);
-      return options.removed ?? { kind: "removed" };
+      return options.removed ?? { kind: "removed", signInsNotConfirmed: [] };
     },
     usedBy: async () => {
       if (options.fail === "usedBy") throw new KindedError("unavailable", "The store is locked.");
@@ -80,7 +85,11 @@ async function showPage(plugin: InstalledPlugin, actions: PluginActions) {
     </ToastStoreProvider>,
   );
   await act(async () => {});
-  return { view, toastTitles: () => toasts.list().map((toast) => toast.title) };
+  return {
+    view,
+    toastTitles: () => toasts.list().map((toast) => toast.title),
+    shownToasts: () => toasts.list().map(({ tone, title, text }) => ({ tone, title, text })),
+  };
 }
 
 function menuItems(view: HTMLElement): string[] {
@@ -171,6 +180,32 @@ verifies("plugins.plugin-actions", () => {
     expect(toastTitles()).toEqual(["Couldn't remove trust: the store is locked."]);
   });
 
+  it("removes trust without a toast when every sign-out was confirmed", async () => {
+    const { actions, asked } = recordingActions();
+    const { view, toastTitles } = await showPage(weather(), actions);
+
+    await pick(view, "Remove trust");
+
+    expect(asked).toEqual(["revoke weather"]);
+    expect(toastTitles()).toEqual([]);
+  });
+
+  it("warns after Remove trust when the provider didn't confirm a sign-out", async () => {
+    const { actions } = recordingActions({ notConfirmed: ["weather-account"] });
+    const { view, shownToasts } = await showPage(weather(), actions);
+
+    await pick(view, "Remove trust");
+
+    expect(shownToasts()).toEqual([
+      {
+        tone: "warning",
+        title:
+          "You're signed out here. Weather didn't confirm, so the token may still work there until it expires.",
+        text: undefined,
+      },
+    ]);
+  });
+
   it("asks before removing, then removes and says so", async () => {
     const { actions, asked } = recordingActions();
     const { view, toastTitles } = await showPage(withSettings(), actions);
@@ -191,6 +226,24 @@ verifies("plugins.plugin-actions", () => {
 
     expect(asked).toEqual(["remove weather"]);
     expect(toastTitles()).toEqual(["Weather removed"]);
+  });
+
+  it("says under Weather removed when the provider didn't confirm its sign-outs", async () => {
+    const { actions } = recordingActions({
+      removed: { kind: "removed", signInsNotConfirmed: ["weather-account", "weather-admin"] },
+    });
+    const { view, shownToasts } = await showPage(weather(), actions);
+
+    await pick(view, "Remove plugin…");
+    await act(async () => button("Remove plugin").click());
+
+    expect(shownToasts()).toEqual([
+      {
+        tone: "warning",
+        title: "Weather removed",
+        text: "You're signed out here. Weather didn't confirm, so the tokens may still work there until they expire.",
+      },
+    ]);
   });
 
   it("says which connector stops working when one uses the plugin", async () => {

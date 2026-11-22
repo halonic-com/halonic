@@ -48,9 +48,9 @@ integration. Its only way out is the `IntegrationHost`:
   token value ever enters the worker. Removing the plugin's trust, or the
   plugin, signs out its sign-ins on this computer first: each token is revoked
   at the address the person approved, where there is one, and forgotten here
-  even when the revoke fails. When the provider doesn't confirm, the CLI says
-  the token may still work there until it expires, as Studio's **Sign out**
-  does; Studio's **Remove trust** doesn't say it yet.
+  even when the revoke fails. When the provider doesn't confirm, the CLI and
+  Studio say the token may still work there until it expires, as Studio's
+  **Sign out** does.
 - Every tool has a `risk`, which the trust check shows. Agents reach the tools
   through a connector, and every call asks a person first, whatever the risk,
   unless the connector file's `read` list names the tool; a plugin can't add a

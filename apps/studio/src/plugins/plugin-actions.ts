@@ -1,4 +1,10 @@
-import type { PluginService, PluginTrustRefusal } from "@halonicjs/app";
+import {
+  type PluginService,
+  type PluginSignedOut,
+  type PluginTrustRefusal,
+  signInsNotConfirmed,
+} from "@halonicjs/app";
+import type { PluginSignOut } from "@halonicjs/studio-feature-plugins";
 import type { PluginsHost } from "@halonicjs/studio-feature-plugins/api";
 
 /** The page's actions, as the host gives them. */
@@ -56,11 +62,13 @@ export function desktopPluginActions({
         const trusted = await service.trust(plugin, shown, "prompt");
         if (!trusted.ok) throw new Error(trustRefusalLine(trusted.error));
       }),
-    revoke: (plugin) => changing(async () => void (await service.revoke(plugin))),
+    revoke: (plugin) => changing(async () => signOutOf(await service.revoke(plugin))),
     remove: (plugin) =>
       changing(async () => {
         const removed = await service.remove(plugin, (name) => secrets.remove(name));
-        return removed.ok ? ({ kind: "removed" } as const) : removed.error;
+        return removed.ok
+          ? { kind: "removed" as const, ...signOutOf(removed.value) }
+          : removed.error;
       }),
     usedBy: async () => {
       // Connectors live in each workspace's files; the app doesn't scan them all yet, and the
@@ -74,6 +82,11 @@ export function desktopPluginActions({
       if ((await reveal(plugin)) !== true) throw new Error("the plugin's folder isn't there");
     },
   };
+}
+
+/** What the page says after core signed the plugin out: only the sign-ins it couldn't confirm. */
+function signOutOf(signedOut: readonly PluginSignedOut[]): PluginSignOut {
+  return { signInsNotConfirmed: signInsNotConfirmed(signedOut) };
 }
 
 /** Why a refused trust says so: the files changed since the page drew the check, or can't be read. */

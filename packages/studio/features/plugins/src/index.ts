@@ -32,7 +32,12 @@ export {
   type PluginsListProps,
   type PluginsLoad,
 } from "./list/plugins-list.tsx";
-export type { PluginActions, PluginRemoveOutcome, PluginUse } from "./page/plugin-actions.ts";
+export type {
+  PluginActions,
+  PluginRemoveOutcome,
+  PluginSignOut,
+  PluginUse,
+} from "./page/plugin-actions.ts";
 export { PluginPage, type PluginPageProps } from "./page/plugin-page.tsx";
 export {
   type InstalledPlugin,
