@@ -62,4 +62,3 @@ export function nextRunOf(routine: Routine, now: Date, timeZone: string): string
     throw error;
   }
 }
-
