@@ -2,7 +2,6 @@
 
 - Approval: Paperclip task HAL-15664 (from Sofia's C610 #1–3 on HAL-15653), decided by the team under HAL-2282; Liam approves this note in his review of this pull request on HAL-15664
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Y0OQPCdZlQSJloSQrqZ7EMksCXogZxyWiyx4gmFIzTePDMBkRwscLmtMmjBfvtdVFmgW2wU71CiL3TBC9mn4Cg==
 - Task: HAL-15664
 
 ## What changes
