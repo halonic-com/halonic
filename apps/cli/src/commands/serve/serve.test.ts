@@ -131,7 +131,7 @@ verifies("cli.commands.serve.serve", () => {
     const address = addressOf(io.stdout[0]);
 
     expect(io.stdout.slice(-2)).toEqual([
-      `Friday digest starts on a web request at ${address}/api/webhooks/support/friday-digest`,
+      `Friday digest has the web address ${address}/api/webhooks/support/friday-digest`,
       "✕ Friday digest can't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook",
     ]);
   });

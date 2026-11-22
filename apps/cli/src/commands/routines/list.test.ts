@@ -64,8 +64,18 @@ async function addRoutines(routines: Readonly<Record<string, string>>): Promise<
 }
 
 async function routinesIn(...args: string[]): Promise<{ code: number; io: CapturedIo }> {
+  return await routinesWith({}, ...args);
+}
+
+/** `halonic routines` with a secrets store that knows only `secrets`. */
+async function routinesWith(
+  secrets: Readonly<Record<string, string>>,
+  ...args: string[]
+): Promise<{ code: number; io: CapturedIo }> {
   const io = captureIo(acmeRuns.acme);
-  const code = await runCli(["routines", ...args], io, [routinesCommand()]);
+  const code = await runCli(["routines", ...args], io, [routinesCommand()], {
+    secrets: { get: async (name) => secrets[name] ?? null },
+  });
   return { code, io };
 }
 
@@ -213,6 +223,39 @@ verifies("cli.commands.routines.list", () => {
       expect(io.stdout).toEqual([
         "! 1 routine can't start · halonic validate --dir .",
         "Monday note   Mondays at 08:00   ✕ Can't start   Never ran",
+        hint,
+      ]);
+    });
+
+    it("says Can't start for the webhook routines halonic serve says won't start, and exits 1", async () => {
+      await writeFiles(acmeRuns.acme, {
+        "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\nmodel: test\n",
+      });
+      await addRoutines({
+        hook: routine("hook", "Order hook", "{ webhook: { secret: order-hook } }"),
+        "no-secret": routine("no-secret", "New mail", "{ webhook: { secret: mail-hook } }"),
+        "to-agent": [
+          "id: to-agent",
+          "name: Agent on request",
+          "trigger: { webhook: { secret: order-hook } }",
+          "run: { agent: writer, prompt: Hi }",
+          "",
+        ].join("\n"),
+      });
+
+      const { code, io } = await routinesWith(
+        { "order-hook": "order-hook-value-1234" },
+        "--dir",
+        ".",
+      );
+
+      // C570 #3: mail-hook has no value, and the server answers an agent's routine with 501.
+      expect(code).toBe(exitCode.failed);
+      expect(io.stdout).toEqual([
+        "! 2 routines can't start on a web request · halonic serve --dir .",
+        "Order hook         On a signed web request   No set time     Never ran",
+        "New mail           On a signed web request   ✕ Can't start   Never ran",
+        "Agent on request   On a signed web request   ✕ Can't start   Never ran",
         hint,
       ]);
     });

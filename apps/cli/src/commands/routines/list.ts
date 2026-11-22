@@ -3,13 +3,18 @@
 // runs, asks the service, and turns its answer into rows. Listing starts
 // nothing and writes nothing, so it needs no trust, as `halonic runs`. A
 // routine whose file has errors shows "Can't start", and the list exits 1,
-// so "will it run?" is answered where people look for it (HAL-14299). A
-// routine whose saved changes aren't live yet gets a line under the list,
-// since it runs as last committed until then (HAL-15204), and the rows show
-// its trigger and next run as the watch runs it, from the live version (HAL-15479).
+// so "will it run?" is answered where people look for it (HAL-14299). So does
+// a webhook routine that `halonic serve` marks with ✕, by serve's own check
+// (C570). A routine whose saved changes aren't live yet gets a line under the
+// list, since it runs as last committed until then (HAL-15204), and the rows
+// show its trigger and next run as the watch runs it, from the live version
+// (HAL-15479).
 
+import { placedRoutines } from "@halonicjs/app";
 import { type ListedRoutine, RoutineList } from "@halonicjs/app/routines";
-import { loadWorkspace } from "@halonicjs/workspace";
+import type { Secrets } from "@halonicjs/ports";
+import { routineKey } from "@halonicjs/routines";
+import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, CommandResult } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
@@ -23,14 +28,16 @@ import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunListSetup } from "../runs/list.ts";
 import { listedStatus } from "../runs/listed-run.ts";
+import { webhookStartBlocks } from "../serve/webhook-routines.ts";
 import { listAsLive, type NotLiveRoutines } from "./not-live.ts";
 
 /**
  * Lists the workspace's routines, one lined-up row each: the name, what
  * starts it, its next run and its last run. No routines says so, and exits 0.
- * Routines whose files have errors are counted above the list, which then
- * exits 1. Routines with saved changes that aren't live yet are listed as
- * the watch runs them, from the live version, and get a line each under it.
+ * Routines whose files have errors, and webhook routines `halonic serve`
+ * says can't start, are counted above the list, which then exits 1.
+ * Routines with saved changes that aren't live yet are listed as the watch
+ * runs them, from the live version, and get a line each under it.
  *
  * @throws NoWorkspaceError when the folder holds no workspace
  */
@@ -60,16 +67,17 @@ export async function listRoutines(
     };
   }
   const withHub = spansHubs(routines);
+  const blocked = await webhookRoutinesThatWontStart(loaded, context.secrets);
   const withProblems = routines.filter((each) => each.problems > 0).length;
-  const problemsLine =
-    withProblems === 0
-      ? []
-      : [routinesMessages.routinesCantStart(withProblems, givenDir(input, workspace)).phrase];
+  // A routine with file errors is counted once, under validate, which shows them.
+  const webOnly = routines.filter((each) => each.problems === 0 && blocked.has(each.key)).length;
+  const dir = givenDir(input, workspace);
   return {
-    exitCode: withProblems === 0 ? exitCode.ok : exitCode.failed,
+    exitCode: withProblems + webOnly === 0 ? exitCode.ok : exitCode.failed,
     lines: [
-      ...problemsLine,
-      ...columns(routines.map((each) => routineRow(each, clock, withHub))),
+      ...(withProblems === 0 ? [] : [routinesMessages.routinesCantStart(withProblems, dir).phrase]),
+      ...(webOnly === 0 ? [] : [routinesMessages.webhookRoutinesCantStart(webOnly, dir).phrase]),
+      ...columns(routines.map((each) => routineRow(each, clock, withHub, blocked.has(each.key)))),
       ...notLiveLines(routines, notLive),
       routinesMessages.watchHint().phrase,
     ],
@@ -102,18 +110,40 @@ function notLiveLines(routines: readonly ListedRoutine[], notLive: NotLiveRoutin
 }
 
 /**
+ * The keys of the webhook routines that are on and that `halonic serve`
+ * says won't start: by the same check, so the two never disagree (C570).
+ */
+async function webhookRoutinesThatWontStart(
+  workspace: LoadedWorkspace,
+  secrets: Secrets,
+): Promise<Set<string>> {
+  const keys = new Set<string>();
+  for (const placed of placedRoutines(workspace)) {
+    if (!placed.routine.enabled) continue;
+    if ((await webhookStartBlocks(placed, secrets)).length > 0) keys.add(routineKey(placed));
+  }
+  return keys;
+}
+
+/**
  * One row of four cells: the name, the trigger in words, the next run and
  * the last run, dimmed. The name and the trigger's words come from the
  * routine's file, so they are made printable (cli-output section 5). With
  * `withHub`, the name is followed by a · and its hub's id, dimmed, so two
  * routines of the same name in different hubs can be told apart (HAL-4888)
- * and the hub doesn't read as part of the name (HAL-12323).
+ * and the hub doesn't read as part of the name (HAL-12323). `wontStart` is a
+ * webhook routine `halonic serve` says won't start.
  */
-export function routineRow(routine: ListedRoutine, clock: RunClock, withHub = false): Phrase[] {
+export function routineRow(
+  routine: ListedRoutine,
+  clock: RunClock,
+  withHub = false,
+  wontStart = false,
+): Phrase[] {
   return [
     nameCell(routine, withHub),
     phrase`${printable(routine.trigger)}`,
-    nextCell(routine, clock),
+    wontStart ? routinesMessages.cantStart().phrase : nextCell(routine, clock),
     dimmed(lastCell(routine, clock)),
   ];
 }

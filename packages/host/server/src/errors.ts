@@ -184,7 +184,7 @@ export const serverErrors = {
   notImplemented: {
     status: 501,
     code: "not_implemented",
-    message: "Agent runs are not available yet in this version of Halonic.",
+    message: "Halonic can't run an agent on its own yet, only as a step in a workflow.",
   },
   signInNeedsThisComputer: {
     status: 409,
