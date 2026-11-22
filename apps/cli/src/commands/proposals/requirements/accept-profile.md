@@ -10,4 +10,4 @@ When a proposal adds or changes a file inside the profile folder, and the worksp
 
 - Given the home folder is the workspace, and run `01JD8Q` proposes `<profile>/unfenced-runs/x` and `notes/new.md`,
   when the person runs `halonic proposals accept 01jd8q`,
-  then the command says it wrote 1 file, `notes/new.md`, names `<profile>/unfenced-runs/x` as a file that can't be written, and nothing is made in the profile.
+  then the command says it wrote 1 file, `notes/new.md`, names `<profile>/unfenced-runs/x` as a file that can't be written, because "Halonic never writes inside .git, .halonic or its own data folder", and nothing is made in the profile.
