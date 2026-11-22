@@ -325,6 +325,7 @@ export function WorkflowScreen({
         onOpen={problemsAsk.open}
         openAgent={openAgent}
         openFileAt={openFileAt}
+        openModels={openModels && (() => openModels())}
       />
       <SandboxCantRunCallout
         name={name}
