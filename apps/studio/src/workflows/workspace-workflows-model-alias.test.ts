@@ -72,6 +72,7 @@ verifies("studio.workflow-problem-agent", () => {
       expect(aliasProblems).toContainEqual(
         expect.objectContaining({ agent: writer, modelAlias: "tiny", agentStep: "short" }),
       );
+      for (const problem of aliasProblems) expect(problem.agent).toEqual(writer);
     });
 
     it("gives no agent for a problem in the workflow's own file", async () => {
