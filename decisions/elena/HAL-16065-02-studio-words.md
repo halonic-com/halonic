@@ -3,6 +3,7 @@
 - Task: HAL-16065, from Sofia's words check C665 rows 23, 52, 53, 54 and 104 (HAL-16044)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16065 (wording fixes on approved screens, so a team decision under the HAL-2282 rule, with the designer's words; Liam's code review signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yxPirAEDQc3kWiC0XtONtWmb8Azwor79/Pu/GL44rXsnRSjJz9eq6ZrkOXojyPDs1Fqol/DlTulfzuJpjbn6BQ==
 
 ## What changes
 
