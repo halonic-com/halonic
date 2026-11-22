@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16233 (follow-up Liam asked for on HAL-16200) and HAL-16277 (C692's findings 1 and 2); small wording on an approved screen, decided by the team (HAL-2282); Liam signs this note in review on HAL-16233
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4hxDARFSj5cbIR43T4XSToWkq6ieip/Haos7BvQ9LmF5zanPINbKTzIRNAcMnPVxuX5zmNSmf0BLLjfyoIsGDg==
 
 Since HAL-16200, Settings › Agent sandbox shows `setup-conflict`,
 `distro-missing` and `runtime-missing` as Not available, because its
