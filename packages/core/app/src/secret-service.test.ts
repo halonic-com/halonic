@@ -164,8 +164,10 @@ verifies("app.secret-service", () => {
 });
 
 verifies("app.secret-host-names", () => {
+  const hostKeyPurpose = "is the key paired phones use to confirm this computer";
+
   it.each(["remote-host-key", "Remote_Host_Key", "REMOTE-HOST-KEY"])(
-    "refuses to set or remove the agent host's name %s, and says whose it is",
+    "refuses to set or remove the host key's name %s, and says what it is for",
     async (name) => {
       const { store, secrets } = setup();
       await store.set("remote-host-key", "the host's key");
@@ -173,31 +175,41 @@ verifies("app.secret-host-names", () => {
       const set = await secrets.set({ name, value: "x" });
       const remove = await secrets.remove(name);
 
-      expect(set).toEqual({ changed: false, reason: expect.stringContaining("agent host") });
-      expect(remove).toEqual({ changed: false, reason: expect.stringContaining("agent host") });
+      expect(set).toEqual({ changed: false, reason: expect.stringContaining(hostKeyPurpose) });
+      expect(remove).toEqual({ changed: false, reason: expect.stringContaining(hostKeyPurpose) });
       expect(await store.get("remote-host-key")).toBe("the host's key");
     },
   );
 
-  it("says the host keeps the name itself and what to do instead", async () => {
+  it("tells someone setting the name to use another one", async () => {
+    const { secrets } = setup();
+
+    expect(await secrets.set({ name: "remote-host-key", value: "x" })).toEqual({
+      changed: false,
+      reason:
+        'Secret name "remote-host-key" is the key paired phones use to confirm this computer. Halonic keeps it itself, so use another name for a secret of your own.',
+    });
+  });
+
+  it("tells someone removing the name that it can't be removed", async () => {
     const { secrets } = setup();
 
     expect(await secrets.remove("remote-host-key")).toEqual({
       changed: false,
       reason:
-        'Secret name "remote-host-key" belongs to Halonic\'s agent host, which makes and keeps it itself. Use another name for a secret of your own.',
+        'Secret name "remote-host-key" is the key paired phones use to confirm this computer. Halonic keeps it itself, so it can\'t be removed.',
     });
   });
 
-  it("refuses the agent host's name before a value is typed", () => {
+  it("refuses the host key's name before a value is typed, as for setting", () => {
     const { secrets } = setup();
 
     expect(secrets.planSet("remote-host-key")).toEqual({
-      reason: expect.stringContaining("agent host"),
+      reason: expect.stringContaining("so use another name"),
     });
   });
 
-  it("leaves the agent host's key out of the listing", async () => {
+  it("leaves the host key out of the listing", async () => {
     const { store, secrets } = setup();
     await store.set("openai-key", "sk-live-1234");
     await store.set("remote-host-key", "the host's key");
