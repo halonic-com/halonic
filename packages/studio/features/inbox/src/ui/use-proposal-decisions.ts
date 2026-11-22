@@ -32,7 +32,7 @@ export interface ProposalDecisionState {
   readonly failure: DecisionFailure | null;
   /** Whether the host said the proposal's texts are gone, so it can only be removed (Q11). */
   readonly gone: boolean;
-  /** The files an Accept left alone because the person changed them after the run started. */
+  /** The files an Accept left alone because they changed after the run started; a Reject decides them. */
   readonly changedSinceRun: ReadonlySet<string>;
   /** The last decision said for a screen reader (Q6): "Accepted: notes.md added". */
   readonly announcement: string;

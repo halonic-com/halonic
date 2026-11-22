@@ -8,7 +8,7 @@ import type { ProposalTarget } from "@halonicjs/app";
 export interface ProposalDecided {
   /** The id of its undo step, for the toast's **Undo**; `null` when nothing changed. */
   readonly undo: string | null;
-  /** Files that weren't accepted because the person changed them after the run started. */
+  /** Files that weren't accepted because they changed after the run started. */
   readonly changedSinceRun: readonly string[];
   /** Files that can't be written: they stay in the proposal, undecided for good. */
   readonly cantBeWritten: readonly string[];

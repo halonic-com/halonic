@@ -77,15 +77,16 @@ async function press(button: HTMLButtonElement | undefined) {
 
 verifies("inbox.proposal-page", () => {
   describe("in a window that can't decide", () => {
-    it("has no Accept or Reject, and ends with the command that shows the proposal", () => {
+    it("has no Accept or Reject, and ends with the command that accepts the proposal", () => {
       const { root } = open(undefined);
       expect(buttons(root, "Accept all")).toEqual([]);
       expect(buttons(root, "Accept")).toEqual([]);
       expect(buttons(root, "Reject")).toEqual([]);
       expect(root.textContent).toContain(
-        "Studio can't accept or reject these changes here. To see them and decide, run this in a terminal:",
+        "These changes can't be accepted here yet. To accept them, run this in a terminal:",
       );
-      expect(root.querySelector("code")?.textContent).toBe("halonic proposals show 01JD8Q");
+      expect(root.querySelector("code")?.textContent).toBe("halonic proposals accept 01JD8Q");
+      expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
     });
 
     it("names no command once nothing is left to decide", () => {
@@ -257,7 +258,7 @@ verifies("inbox.proposal-page", () => {
       expect(buttons(root, "Accept")).toHaveLength(2);
     });
 
-    it("leaves a file the person changed after the run started undecided, and says so", async () => {
+    it("leaves a file changed after the run started undecided, says so, and keeps its Reject", async () => {
       const decisions = fakeDecisions({
         accept: vi.fn(async () => ({
           undo: null,
@@ -269,10 +270,39 @@ verifies("inbox.proposal-page", () => {
 
       await press(buttons(root, "Accept")[0]);
 
-      expect(root.textContent).toContain(
-        "You changed this file after run 01JD8Q started, so it wasn't accepted.",
+      const [changed] = root.querySelectorAll("li");
+      expect(changed?.textContent).toContain(
+        "This file changed after run 01JD8Q started, so it wasn't accepted. To keep it as it is now, reject it.",
       );
       expect(toasts.list()).toEqual([]);
+      // Only a Reject can decide it now, so its Reject takes focus in place of an Accept.
+      expect(changed?.querySelectorAll("button")).toHaveLength(1);
+      expect(document.activeElement).toBe(buttons(root, "Reject")[0]);
+      expect(buttons(root, "Accept all")).toHaveLength(1);
+
+      await press(buttons(root, "Reject")[0]);
+
+      expect(decisions.reject).toHaveBeenCalledWith("run_mfx3k2a1_0001JD8Q", {
+        file: "notes/a.md",
+      });
+      expect(changed?.textContent).toContain("Rejected");
+    });
+
+    it("offers only Reject all once every open file changed after the run started", async () => {
+      const decisions = fakeDecisions({
+        accept: vi.fn(async () => ({
+          undo: null,
+          changedSinceRun: ["notes/a.md", "notes/b.md"],
+          cantBeWritten: [],
+        })),
+      });
+      const { root } = open(decisions);
+
+      await press(buttons(root, "Accept all")[0]);
+
+      expect(buttons(root, "Accept all")).toEqual([]);
+      expect(buttons(root, "Reject all")).toHaveLength(1);
+      expect(buttons(root, "Reject")).toHaveLength(2);
     });
   });
 
