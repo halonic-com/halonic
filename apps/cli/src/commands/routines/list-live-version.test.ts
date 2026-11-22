@@ -139,7 +139,7 @@ verifies("cli.commands.routines.list-live-version", () => {
       expect(code).toBe(exitCode.ok);
       expect(io.stdout.slice(0, 2)).toEqual([
         "Weekly report   Mondays at 09:00   Next 16 Nov 09:00   Never ran",
-        "! Weekly report has changes that aren't live yet, and they have errors (halonic validate). It starts as it was last committed.",
+        "! Weekly report has changes that aren't live yet, and they have errors (halonic validate). It runs as last committed.",
       ]);
       expect(JSON.parse(json.io.stdout.join("\n")).routines[0]).toMatchObject({
         nextRun: "2026-11-16T09:00:00.000Z",

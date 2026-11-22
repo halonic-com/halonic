@@ -131,8 +131,7 @@ export const routinesMessages = defineMessages("routines", {
   /**
    * The line under the list for a routine whose saved file isn't live yet:
    * `watch` and the Studio start the last commit's (HAL-15204), as the
-   * Studio's "Changes not live yet" says. A routine starts something, and
-   * the next step comes first (HAL-15504). In the words of `run`'s
+   * Studio's "Changes not live yet" says. In the words of `run`'s
    * {@link runMessages.changesNotLive}, since a commit makes it live.
    */
   changesNotLive: (name: string) =>
@@ -150,7 +149,7 @@ export const routinesMessages = defineMessages("routines", {
    * live version, so the errors are named here. `dir` is the user's own `--dir`.
    */
   changesNotLiveWithErrors: (name: string, dir?: string) =>
-    phrase`${markPart("needsYou")} ${name} has changes that aren't live yet, and they have errors (${suggestedCommand("validate", dir)}). It starts as it was last committed.`,
+    phrase`${markPart("needsYou")} ${name} has changes that aren't live yet, and they have errors (${suggestedCommand("validate", dir)}). It runs as last committed.`,
   /**
    * The line under the list for a routine that is on but no commit has
    * (HAL-15664), in the words of the Studio's routine page: the watch and

@@ -6,9 +6,9 @@
 // so "will it run?" is answered where people look for it (HAL-14299). So does
 // a webhook routine that `halonic serve` marks with ✕, by serve's own check
 // (C570). A routine whose saved changes aren't live yet gets a line under the
-// list, since until then it starts as it was last committed (HAL-15204), and
-// the rows show its trigger and next run as the watch runs it, from the live
-// version (HAL-15479), with that version's errors. A routine no commit has isn't run
+// list, since it runs as last committed until then (HAL-15204), and the rows
+// show its trigger and next run as the watch runs it, from the live version
+// (HAL-15479), with that version's errors. A routine no commit has isn't run
 // by the watch, so it gets no next run and a line of its own (HAL-15664). In
 // a workspace that isn't trusted here, a routine that is on says "Paused until
 // trusted", as the Studio does, since `watch` would refuse it (HAL-15525). A
