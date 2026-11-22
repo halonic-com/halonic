@@ -60,6 +60,26 @@ export const sheetWords = {
 } as const;
 
 /**
+ * The banner over the agents while the phone can't reach its computer (`s-m3`, `s-m8`, G17, G24):
+ * the strings table's `phone.stale.*` keys.
+ */
+export const staleWords = {
+  title: {
+    unreachable: (computer: string) => `${computer} isn't answering`,
+    phoneOffline: () => "Your phone is offline",
+    tailscaleOff: () => "Tailscale is off on this phone",
+    nearbyOff: () => "Nearby devices isn't allowed for Halonic",
+  },
+  /** Without a last update the first sentence is left out (decided by the team). */
+  keepRunning: "If your computer is on, your agents there keep running.",
+  lastUpdate: (asOf: string) => `Last update ${asOf}.`,
+  details: "Details",
+  /** The Details button's name: "Details" alone doesn't say of what. */
+  detailsName: "Connection details",
+  tryAgain: "Try again",
+} as const;
+
+/**
  * `{route}` in the Connected sheet. Mid-sentence, so "this Wi-Fi" is lower case where the typed
  * route's list label says "This Wi-Fi" (decided by the team).
  */

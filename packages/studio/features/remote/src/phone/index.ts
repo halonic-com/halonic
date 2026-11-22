@@ -94,7 +94,13 @@ export {
   type RemoteSession,
   type RemoteView,
 } from "./remote-view.ts";
+export { StaleBanner, type StaleBannerOf, type StaleBannerProps } from "./stale-banner.tsx";
 export { type Standing, StandingScreen } from "./standing-screen.tsx";
+export {
+  PhoneStatusHeader,
+  type PhoneStatusHeaderProps,
+  STATUS_TICK_MS,
+} from "./status-header.tsx";
 export {
   StatusSheet,
   type StatusSheetActions,
@@ -102,5 +108,5 @@ export {
   type StatusSheetProps,
   statusSheetTitle,
 } from "./status-sheet.tsx";
-export { sheetRouteWords, sheetWords, standingWords } from "./status-words.ts";
+export { sheetRouteWords, sheetWords, staleWords, standingWords } from "./status-words.ts";
 export { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";
