@@ -49,16 +49,21 @@ export {
 export {
   type ComputerId,
   type ConnectOutcome,
+  type ForgetOutcome,
+  type KeysUnavailable,
+  type ListedComputer,
   type PairedComputer,
   type PairingId,
   type PairingOutcome,
   type PairingStep,
+  type PhoneKeyProblem,
   type PhoneStatus,
   type PhoneTunnel,
   phoneStatusLabelState,
   type ReachFailure,
   type TunnelPairingProblem,
   type TunnelPairingStart,
+  type UnreadableComputer,
 } from "./phone-tunnel.ts";
 export {
   type ProblemAction,

@@ -17,7 +17,8 @@ export type ReachFailure = "network-down" | "timeout" | "refused" | "unreachable
 
 /**
  * Where a pairing starts: the scanned QR text (the shell decodes it again), or a typed code
- * with the picked computer's `host[:port]`. `again` replaces that computer's entry.
+ * with the picked computer's `host[:port]`. `again` replaces that computer's entry; an `again`
+ * that names no listed computer (forgotten on another screen) answers `bad-start`.
  */
 export type TunnelPairingStart =
   | { readonly route: "qr"; readonly scanned: string; readonly again?: ComputerId }
@@ -40,6 +41,27 @@ export type TunnelPairingProblem =
   | { readonly kind: "cant-reach"; readonly reason: ReachFailure }
   | { readonly kind: "unreadable" | "bad-start" };
 
+/**
+ * The phone itself stops the call (microcopy 28), so the screens show it whatever the call was:
+ *
+ * - `no-local-network`: Android's Nearby devices was turned down for a computer on this Wi-Fi.
+ *   `askAgain` is true while Android would still ask (Try again), false when only the phone's
+ *   Settings can allow it (Open settings), as in G23 and G24.
+ * - `key-unreadable`: the phone can't read the key it saved for that computer. Nothing is
+ *   cleared; the person pairs again or forgets the computer.
+ * - `keys-unavailable`: the phone's key storage doesn't work at all, so nothing that needs a
+ *   key can be done (Try again).
+ */
+export type PhoneKeyProblem =
+  | { readonly kind: "no-local-network"; readonly askAgain: boolean }
+  | { readonly kind: "key-unreadable" }
+  | KeysUnavailable;
+
+/** The phone's key storage (Keystore) doesn't work; any call that needs it answers this. */
+export interface KeysUnavailable {
+  readonly kind: "keys-unavailable";
+}
+
 /** A computer on the paired list. A removed one keeps its entry until {@link PhoneTunnel.forget}. */
 export interface PairedComputer {
   readonly id: ComputerId;
@@ -51,6 +73,18 @@ export interface PairedComputer {
   readonly standing: "paired" | "removed" | "cant-confirm";
 }
 
+/**
+ * A listed computer whose saved details the phone can't read: it has no name, no times and no
+ * endpoints, and is listed only so it can be forgotten.
+ */
+export interface UnreadableComputer {
+  readonly id: ComputerId;
+  readonly standing: "unreadable";
+}
+
+/** An entry on the paired list, readable or not. */
+export type ListedComputer = PairedComputer | UnreadableComputer;
+
 export type PairingStep =
   | {
       readonly kind: "check";
@@ -58,17 +92,26 @@ export type PairingStep =
       readonly checkCode: string;
       readonly computerName: string;
     }
-  | TunnelPairingProblem;
+  | TunnelPairingProblem
+  | PhoneKeyProblem;
 
-/** A wrong code is known only after the check code shows, so problems can come here too. */
+/**
+ * A wrong code is known only after the check code shows, so problems can come here too. Saving
+ * the new key after Allow can still meet broken key storage.
+ */
 export type PairingOutcome =
   | { readonly kind: "paired"; readonly computer: PairedComputer }
   | { readonly kind: "refused" | "timeout" }
-  | TunnelPairingProblem;
+  | TunnelPairingProblem
+  | KeysUnavailable;
 
 export type ConnectOutcome =
   | { readonly kind: "connecting" | "not-paired" }
-  | { readonly kind: "cant-reach"; readonly reason: ReachFailure };
+  | { readonly kind: "cant-reach"; readonly reason: ReachFailure }
+  | PhoneKeyProblem;
+
+/** What {@link PhoneTunnel.forget} did. */
+export type ForgetOutcome = { readonly kind: "forgotten" } | KeysUnavailable;
 
 /** The connection's state, pushed by the shell. `nextTryAt` is ISO. */
 export type PhoneStatus =
@@ -88,9 +131,9 @@ export interface PhoneTunnel {
   waitForAllow(pairing: PairingId): Promise<PairingOutcome>;
   /** The person left the check-code screen; a waiting call ends. */
   cancelPairing(pairing: PairingId): Promise<void>;
-  pairedComputers(): Promise<readonly PairedComputer[]>;
+  pairedComputers(): Promise<readonly ListedComputer[] | KeysUnavailable>;
   /** Deletes the entry with its key and everything kept for it. */
-  forget(computer: ComputerId): Promise<void>;
+  forget(computer: ComputerId): Promise<ForgetOutcome>;
   /** Connects; on a computer already reconnecting, tries at once ("Try now"). */
   connect(computer: ComputerId): Promise<ConnectOutcome>;
   disconnect(computer: ComputerId): Promise<void>;

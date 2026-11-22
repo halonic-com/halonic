@@ -1,4 +1,4 @@
-import type { PairingOutcome, TunnelPairingProblem } from "./phone-tunnel.ts";
+import type { PairingOutcome, PhoneKeyProblem, TunnelPairingProblem } from "./phone-tunnel.ts";
 
 /**
  * How a computer is reached, as its second line says it. On Android the
@@ -21,8 +21,22 @@ export type PairingFrom =
   | { readonly route: "qr" }
   | { readonly route: "typed"; readonly wifi: boolean };
 
-/** Everything that can stop a pairing: a problem, Don't allow (`refused`) or no Allow in time. */
-export type PairingStop = TunnelPairingProblem | Exclude<PairingOutcome, { kind: "paired" }>;
+/**
+ * Everything that can stop a pairing on the computer's side: a problem, Don't allow (`refused`)
+ * or no Allow in time. A {@link PhoneKeyProblem} is the phone's own and isn't one of these.
+ */
+export type PairingStop =
+  | TunnelPairingProblem
+  | Exclude<PairingOutcome, { kind: "paired" } | PhoneKeyProblem>;
+
+/** Whether a pairing answer is the phone's own problem rather than the computer's. */
+export function isPhoneKeyProblem(answer: { readonly kind: string }): answer is PhoneKeyProblem {
+  return (
+    answer.kind === "no-local-network" ||
+    answer.kind === "key-unreadable" ||
+    answer.kind === "keys-unavailable"
+  );
+}
 
 /**
  * The screen a pairing problem leads to (`p-m6` to `p-m10`, G25, G26, microcopy 28):

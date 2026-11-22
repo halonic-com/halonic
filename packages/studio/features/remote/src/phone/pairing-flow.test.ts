@@ -266,4 +266,34 @@ verifies("remote.phone-pairing-problems", () => {
       computerName: "Tim's laptop",
     });
   });
+
+  it("shows the phone's own problem, not the computer's, when Nearby devices is turned down", async () => {
+    const tunnel = new FakePhoneTunnel();
+    tunnel.nextStep = { kind: "no-local-network", askAgain: false };
+    const flow = new PhonePairingFlow(tunnel, new ScriptedScanner([]));
+    flow.pairTyped("7KQ2M4XD9TH6", laptop);
+    await settle();
+    expect(flow.view).toEqual({
+      step: "phoneProblem",
+      problem: { kind: "no-local-network", askAgain: false },
+      route: "typed",
+    });
+  });
+
+  it("ends the shell's pairing and says so when the phone can't save the new key", async () => {
+    const tunnel = new FakePhoneTunnel();
+    tunnel.nextOutcome = { kind: "keys-unavailable" };
+    const flow = new PhonePairingFlow(
+      tunnel,
+      new ScriptedScanner([{ kind: "pairingCode", payload }]),
+    );
+    flow.scan();
+    await settle();
+    expect(tunnel.calls).toEqual(["cancel pairing-1"]);
+    expect(flow.view).toEqual({
+      step: "phoneProblem",
+      problem: { kind: "keys-unavailable" },
+      route: "qr",
+    });
+  });
 });
