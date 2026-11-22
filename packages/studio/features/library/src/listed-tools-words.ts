@@ -125,6 +125,17 @@ export const listedToolsWords = {
       { text: ", which isn't on this computer. Install it, then try again." },
     ],
     /**
+     * The CLI's cause and fix for the same program (HAL-15606, C600 #1c): what the program wrote
+     * isn't shown, so the person runs it to see why.
+     */
+    programStopped: (source: string, program: string): readonly RefusalLinePart[] => [
+      { text: "Couldn't list the tools: the program " },
+      { text: program, code: true },
+      {
+        text: ` of ${source} stopped right after it started. To see why, run the command and args from its connector file yourself.`,
+      },
+    ],
+    /**
      * Studio reads a connector's secrets from the keychain, and `halonic secret set` writes the
      * profile's secrets file, so the line gives no command: none would help (HAL-14995).
      * `secretsOnPage` says the page has a Secrets section to set it in.

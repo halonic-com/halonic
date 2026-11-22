@@ -5,6 +5,7 @@ import {
   McpError,
   McpStoppedError,
   ProgramNotFoundError,
+  ProgramStoppedAtStartError,
   SecretNotSetError,
 } from "@halonicjs/adapter-mcp";
 import { verifies } from "@halonicjs/testing-spec";
@@ -36,6 +37,7 @@ const fixedMessage =
 verifies("agent-host.connector-failure-reasons", () => {
   it.each([
     [new ProgramNotFoundError("npx"), { reason: "program-missing", program: "npx" }],
+    [new ProgramStoppedAtStartError("sh"), { reason: "program-stopped", program: "sh" }],
     [
       new SecretNotSetError("notes", "NOTES_TOKEN"),
       { reason: "secret-missing", secret: "NOTES_TOKEN" },

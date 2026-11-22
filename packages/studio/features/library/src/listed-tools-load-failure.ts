@@ -59,6 +59,12 @@ function causeLine(
         button: "try-again",
         copyDetails: false,
       };
+    case "program-stopped":
+      return {
+        parts: words.programStopped(source, failure.program),
+        button: "try-again",
+        copyDetails: false,
+      };
     case "secret-missing":
       return plainLine(words.secretMissing(source, failure.secret, secretsOnPage), false);
     case "secret-refused":
