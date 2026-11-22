@@ -30,6 +30,28 @@ verifies("workflows.configuration.problem-lines", () => {
     expect(problemLine(problem("missing-initial"))).toBe("This workflow has no first step.");
   });
 
+  it("says an agent's or agent step's missing alias as the problems band does, not the core's Method (C605)", () => {
+    const writer = { id: "writer", name: "Writer" };
+    const [step, own, bare] = problemRows([
+      {
+        ...problem("unknown-model-alias"),
+        message: 'Method "writer.short" uses unknown model alias "tiny"',
+        agent: writer,
+        modelAlias: "tiny",
+        agentStep: "short",
+      },
+      { ...problem("unknown-model-alias"), agent: writer, modelAlias: "smrt" },
+      problem("unknown-model-alias"),
+    ]);
+    expect(step?.text).toBe(
+      "Writer's agent step short uses the model alias tiny, which this workspace doesn't have. Add it in Models.",
+    );
+    expect(own?.text).toBe(
+      "Writer uses the model alias smrt, which this workspace doesn't have. Pick a model on Writer's page.",
+    );
+    expect(bare?.text).toBe("core says unknown-model-alias");
+  });
+
   it("shows the core's message when no line is written", () => {
     expect(problemLine(problem("subflow-loop"))).toBe("core says subflow-loop");
   });
