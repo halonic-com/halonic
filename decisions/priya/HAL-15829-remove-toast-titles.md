@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-15829 (flow check C638 of /HAL/issues/HAL-15825, row 3), wording on approved toasts, decided by the team (HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oAa+cXG6ObM88HxK1XHCTvDsBUM9AYmeauaidj29R3BGOqCP1nqnImMHIltLwneoelwu4H8Iwe9RMQomwqXrCA==
 
 Flow check C638 found that the remove toasts named steps by their ids, while the arrow rows, **Go to…** and the announcements of the same docked card name a step as its card on the canvas does: by its title, else its id, with the id in brackets after a title another step shares (`workflows.page.step-arrows`). HAL-15840 (#4912) since made the remove toasts and the failed Undo lines use those names.
 
