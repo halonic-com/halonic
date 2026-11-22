@@ -11,7 +11,8 @@
     "src/serve.test.ts",
     "src/admin.test.ts",
     "src/export-data.test.ts",
-    "src/import-data.test.ts"
+    "src/import-data.test.ts",
+    "src/worker-executor.test.ts"
   ],
   "exclude": []
 }
