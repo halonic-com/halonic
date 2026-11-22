@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { RoutineChanges, RoutineNextTimes, RoutinesHost, RoutineView } from "../api.ts";
 import { show, unmount } from "../test-support.tsx";
 import { WhenCard } from "./when-card.tsx";
-import { nextTime } from "./when-words.ts";
+import { deviceTimeZone, nextTime } from "./when-words.ts";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -168,7 +168,8 @@ verifies("routines.when.when-card", () => {
   });
 
   it("announces the next time when it is turned on", async () => {
-    const { host, saved } = hostWith(times("2026-11-06T06:30:00Z"));
+    const next = "2026-11-06T06:30:00Z";
+    const { host, saved } = hostWith(times(next));
     const said: string[] = [];
     const page = await show(
       <WhenCard
@@ -181,7 +182,8 @@ verifies("routines.when.when-card", () => {
     await act(async () => toggle(page).click());
 
     expect(saved).toEqual([{ enabled: true }]);
-    expect(said[0]).toMatch(/^Daily is on\. Next: \w{3} 6 Nov \d\d:\d\d\.$/);
+    // The device's own day and time, so the test passes in any time zone (HAL-15931).
+    expect(said[0]).toBe(`Daily is on. Next: ${nextTime(next, undefined, deviceTimeZone())}.`);
   });
 
   it("promises no times for a routine whose workflow isn't there, and points to Starts", async () => {
