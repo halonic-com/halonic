@@ -6,7 +6,7 @@
 ## What changes
 
 - `workspace.references`: an alias in `models.yaml` on a provider no file names now gets `Alias smart uses unknown provider cloud. Add providers/cloud.yaml, or point the alias smart at a provider the workspace has.` instead of the old loader's `Alias "smart" uses unknown provider "cloud"`. When a provider's id is near, the second sentence is `Did you mean <provider>?`, as the hub alias check already says. The code stays `unknown-provider`. The requirement names this message as a second exception to "the old loader's message", the example for a provider file with a wrong `type:` quotes the new start, and one example is added for the parity case and the near provider.
-- `packages/testing/parity/allowed-differences.json`: a new entry, `unknown-provider-says-the-fix` (`proposed` until Liam signs it off in review), lists the old and new message for the one parity case that reaches this check, `models/unknown-provider`. The recorded fixtures are the old loader's output and stay as they are.
+- `packages/testing/parity/allowed-differences.json`: a new entry, `unknown-provider-says-the-fix` (`signed-off` by Liam in review), lists the old and new message for the one parity case that reaches this check, `models/unknown-provider`. The recorded fixtures are the old loader's output and stay as they are.
 
 ## Why
 
