@@ -2837,6 +2837,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-feature-routines':
+        specifier: workspace:*
+        version: link:../routines
       '@halonicjs/studio-feature-runs':
         specifier: workspace:*
         version: link:../runs

@@ -1,4 +1,10 @@
-import { HandIcon, LetterTile, ListHeading, type PlaceIconName } from "@halonicjs/studio-kit";
+import {
+  HandIcon,
+  LetterTile,
+  ListHeading,
+  type PlaceIconName,
+  StatusChip,
+} from "@halonicjs/studio-kit";
 import type { CloseStack } from "@halonicjs/studio-shell";
 import { type ReactNode, useContext, useId, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -174,6 +180,8 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
             icon="routines"
             kind={words.routine}
             name={routine.name}
+            detail={<StatusChip tone="danger">{words.cantStart}</StatusChip>}
+            label={words.routineCard(routine.name)}
             // A routine at the workspace's root has no page of its own yet, so its card is text.
             onOpen={openRoutine && routine.hubId !== null ? () => openRoutine(routine) : undefined}
           />

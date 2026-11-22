@@ -1,3 +1,5 @@
+import { cantStartWords } from "@halonicjs/studio-feature-routines/api";
+
 /** Joins a workflow card's steps: "triage, draft and check". */
 const stepList = new Intl.ListFormat("en-GB", { type: "conjunction" });
 
@@ -19,6 +21,13 @@ export const mapWords = {
   /** A workflow card's name: "Workflow Support reply, uses Sorter in Read the email and draft" (mc 19.7). */
   workflowCard: (workflow: string, agent: string, stepNames: readonly string[]) =>
     `Workflow ${workflow}, uses ${agent} in ${stepList.format(stepNames)}`,
+  /**
+   * A routine card's chip: every routine on the map starts the agent on its own, which Halonic
+   * can't run yet, so it says what the Routines list says of it (HAL-15646).
+   */
+  cantStart: cantStartWords.chip,
+  /** A routine card's name: "Routine Morning replies, Can't start". */
+  routineCard: (routine: string) => `Routine ${routine}, ${cantStartWords.chip}`,
   /**
    * A connector card's words by its hand, from how many of its tools can run without asking:
    * "Every tool asks first", "Asks first, except 1 read-only tool" (mc 19.7, HAL-15628).

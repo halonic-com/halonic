@@ -86,7 +86,7 @@ verifies("agents.map.layout-by-side", () => {
   it("puts work in on the left, the agent in the centre, tools below and subagents on the right", async () => {
     const page = await openFlow();
     expect(side(page, "What brings it work")).toEqual([
-      "Routine Morning sort",
+      "Routine Morning sortCan't start",
       "Workflow Support replysort, reply",
       "Agent Sorter",
     ]);
@@ -265,7 +265,7 @@ verifies("agents.map.clicks", () => {
       routines: { "acme/triage": [{ hubId: null, id: "weekly-digest", name: "Weekly digest" }] },
     });
     const page = await openFlow({ agents, openRoutine });
-    expect(side(page, "What brings it work")).toEqual(["Routine Weekly digest"]);
+    expect(side(page, "What brings it work")).toEqual(["Routine Weekly digestCan't start"]);
     expect(buttonNamed(page, "Routine Weekly digest")).toBeUndefined();
   });
 });
@@ -362,5 +362,19 @@ verifies("agents.map.asks-first", () => {
       "Connector notes-mcpEvery tool asks first",
       "+ Add a tool",
     ]);
+  });
+});
+
+verifies("agents.map.routine-cant-start", () => {
+  it("says Can't start on a routine's card and in its name, as the Routines list does", async () => {
+    const page = await openFlow({ openRoutine: () => undefined });
+    expect(side(page, "What brings it work")[0]).toBe("Routine Morning sortCan't start");
+    const card = page.querySelector('[aria-label="Routine Morning sort, Can\'t start"]');
+    expect(card?.tagName).toBe("BUTTON");
+  });
+
+  it("says it on a card that opens nothing too", async () => {
+    const page = await openFlow();
+    expect(side(page, "What brings it work")[0]).toBe("Routine Morning sortCan't start");
   });
 });
