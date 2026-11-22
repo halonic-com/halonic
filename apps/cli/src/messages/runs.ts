@@ -282,6 +282,15 @@ export const runsMessages = defineMessages("runs", {
   /** The sentence after {@link showSendingOff} for any other connector, which has no such command yet. */
   showSendingOffNoFix: (connector: string) =>
     phrase`Halonic can't switch it on for ${connector} yet.`,
+  /**
+   * The dim line after the steps of a run whose every model call went to the
+   * test model (requirement `cli.sample-answers`), named as Studio's chip is.
+   */
+  sampleAnswers: () =>
+    phrase`On Sample answers: the built-in test model wrote this run's answers, not a real model.`,
+  /** The `runs` list's workflow cell for such a run, as Studio's row carries the chip after the title. */
+  sampleAnswersTag: (workflow: string) =>
+    phrase`${workflow} ${markPart("separator")} Sample answers`,
 });
 
 function notWaitingInWords(why: NotWaiting): string {

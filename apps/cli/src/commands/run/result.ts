@@ -22,6 +22,7 @@ import {
   stepColumns,
   stepLineGroups,
 } from "../../run-view.ts";
+import { onSampleAnswers, sampleAnswersLines } from "../../sample-answers.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
 import {
   type ChildEndings,
@@ -84,10 +85,11 @@ export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResul
     lines: [
       ...(steps.length === 0 ? [] : [[], ...steps]),
       ...providerNoteLines(events),
+      ...sampleAnswersLines(events, facts.workspace),
       ...ending(run, title, definitions, facts),
       ...unusedEventsLines(facts.unusedEvents ?? []),
     ],
-    json: { run: summary, events },
+    json: { run: { ...summary, sampleAnswers: onSampleAnswers(events, facts.workspace) }, events },
   };
 }
 

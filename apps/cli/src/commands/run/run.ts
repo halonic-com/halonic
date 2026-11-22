@@ -222,7 +222,7 @@ export async function followWorkflow(
   });
   const proposal = await waitingProposal(dir, run, setup, typedDir);
   const json = {
-    ...(streaming ? { run: run.summary } : result.json),
+    ...(streaming ? { run: result.json["run"] } : result.json),
     ...(proposal === undefined ? {} : { proposal: proposal.json }),
   };
   const lines = [...warnings, ...result.lines, ...(proposal?.lines ?? [])];
