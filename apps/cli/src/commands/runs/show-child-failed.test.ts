@@ -222,11 +222,11 @@ verifies("cli.commands.runs.show", () => {
 
       expect(io.stdout.slice(-3)).toEqual([
         "✕ Draft one failed in the step Draft. The agent Writer answered \"maybe\", which isn't one of its options (yes, no). Tighten the agent's instructions or use a larger model.",
-        "  See the run that started it: halonic runs show 7a7a01",
+        "  See the run that started it with halonic runs show 7a7a01.",
         "  Sent nothing",
       ]);
       expect((await show("--dir", ".", "c1c1c1")).io.stdout.at(-2)).toBe(
-        "  See the run that started it: halonic runs show --dir . 7a7a01",
+        "  See the run that started it with halonic runs show --dir . 7a7a01.",
       );
     });
 
@@ -236,7 +236,7 @@ verifies("cli.commands.runs.show", () => {
       const { io } = await show("7a7a01");
 
       expect(io.stdout.at(-3)).toBe(
-        "✕ Topics failed in the step Each: the run it started for item 2 failed in the step Draft. The agent Writer answered \"maybe\", which isn't one of its options (yes, no). Tighten the agent's instructions or use a larger model.",
+        "✕ Topics failed in the step Each because the run it started for item 2 failed in the step Draft. The agent Writer answered \"maybe\", which isn't one of its options (yes, no). Tighten the agent's instructions or use a larger model.",
       );
     });
 
