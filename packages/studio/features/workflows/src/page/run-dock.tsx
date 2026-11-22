@@ -55,6 +55,26 @@ export type Dock = "start" | { readonly runId: string } | undefined;
 export type DockOpener = "run" | "guide";
 
 /**
+ * The quiet lines a guide adds to the run card: its notes, then on a phone its caption, which the
+ * drawing shows elsewhere but the docked card covers there (C673).
+ */
+function guideNotes(
+  guideRun: WorkflowGuideRun | undefined,
+  phone: boolean | undefined,
+): readonly string[] | undefined {
+  if (guideRun?.caption === undefined || phone !== true) return guideRun?.notes;
+  return [...guideRun.notes, guideRun.caption];
+}
+
+/** The guide's caption under the drawing: none on a phone, where the run card shows it instead. */
+export function drawingCaption(
+  guideRun: WorkflowGuideRun | undefined,
+  phone: boolean,
+): string | undefined {
+  return phone ? undefined : guideRun?.caption;
+}
+
+/**
  * The page's cards: the one docked at the right (the start form, then the run it started; C18,
  * C25), and the run whose card the Runs view docks. The page keeps both, so only one card shows at
  * a time: two side by side leave the list no room. A docked card that closes gives focus back to
@@ -119,7 +139,10 @@ interface RunDockProps {
   /** The step picked on the canvas; while a run is shown its card replaces the run's. */
   readonly pickedStep: string | undefined;
   readonly onClosePickedStep: () => void;
-  /** What a guide adds while the shown run's card is docked: its notes and Pick another model. */
+  /**
+   * What a guide adds while the shown run's card is docked: its notes and Pick another model, and on
+   * a phone its caption, since the card covers the drawing there.
+   */
   readonly guideRun?: WorkflowGuideRun | undefined;
   /** Whether the page is drawn for a phone, which the run card's waiting line words for. */
   readonly phone?: boolean | undefined;
@@ -265,7 +288,7 @@ export function RunDock({
         })}
         openModels={openModels}
         openBudget={openBudget}
-        notes={guideRun?.notes}
+        notes={guideNotes(guideRun, phone)}
         pickAnotherModel={guideRun?.pickAnotherModel}
         phone={phone}
       />
