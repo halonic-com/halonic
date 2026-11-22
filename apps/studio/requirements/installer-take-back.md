@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-16084; HAL-16082 (findings: a reinstall's sandbox step makes the later take-back impossible)
+- Source: HAL-16084; HAL-16082 (findings: a reinstall's sandbox step makes the later take-back impossible); HAL-16342 (with administrator rights see `studio.installer-elevated`)
 
-When the Windows installer installs Halonic, it shall run the installed agent host's `--sandbox-take-back` (`agent-host.sandbox-take-back`) as the person installing, before its sandbox step and whether or not the sandbox box is ticked, so the access a removal with administrator rights kept on that person's folders is taken back before the sandbox step recreates srt's sandbox account. No outcome of it shall stop the install.
+When the Windows installer installs Halonic without administrator rights, it shall run the installed agent host's `--sandbox-take-back` (`agent-host.sandbox-take-back`) as the person installing, before its sandbox step and whether or not the sandbox box is ticked, so the access a removal with administrator rights kept on that person's folders is taken back before the sandbox step recreates srt's sandbox account. No outcome of it shall stop the install.
 
 ## Examples
 

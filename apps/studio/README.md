@@ -144,9 +144,18 @@ What it shows (design: the install flow, sections 2.2 to 2.7):
 Silent (`/S`) and passive installs show none of this and skip the sandbox step;
 `/S /SANDBOX=1` from an elevated prompt runs it. Without administrator rights
 a silent install can't let anyone answer Windows' prompt, so it skips the step
-even with `/SANDBOX=1`. From an elevated prompt the installer runs
-`halonic-agent-host.exe --sandbox-setup` elevated from the install folder it
-has just written: whoever started it as an administrator chose that.
+even with `/SANDBOX=1`.
+
+**With administrator rights** (an elevated prompt, or "Run as administrator")
+the installer and uninstaller start nothing from the install folder, which the
+user can write, except the signed helper, held open while Windows starts it.
+The installer skips the take-back and the check after the helper, so its pages
+say the sandbox is set up, not checked; Settings › Agent sandbox checks it. The
+run-again page offers the sandbox step without checking the installed one. The
+uninstaller skips the clean-up of the sessions' access entries and starts the
+helper with `remove` itself, after `net.exe` from System32 says whether the
+account or group is there; its last page says the sandbox may still have
+access to some of the user's folders, and how to end that.
 `/RELAUNCH` reopens Halonic after a silent install.
 
 The `installer-windows` CI job builds it, walks the pages and the messages

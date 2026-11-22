@@ -126,6 +126,10 @@ Var RunAgain
 Var SkipCopy
 Var SandboxReady
 Var RepairCheckbox
+; 1 when the installer or uninstaller runs with administrator rights. Then it
+; starts nothing from $INSTDIR, which the user can write, except the helper,
+; held open while Windows starts it (ElevateSandboxHelper).
+Var Elevated
 
 Name "${PRODUCTNAME}"
 BrandingText "${COPYRIGHT}"
@@ -535,6 +539,9 @@ LangString choowHowToInstall 0 ""
 {{/each}}
 
 Function .onInit
+  System::Call 'shell32::IsUserAnAdmin() i .s'
+  Pop $Elevated
+
   ${GetOptions} $CMDLINE "/P" $PassiveMode
   ${IfNot} ${Errors}
     StrCpy $PassiveMode 1
@@ -730,10 +737,14 @@ FunctionEnd
 ; rights itself, with its own window as the prompt's owner, so the prompt comes
 ; to the front. Asked for by a hidden PowerShell three programs down, it didn't
 ; show on a tester's PC, and the step waited for ever. Starts the signed helper
-; (its manifest asks for the rights) and waits at most SANDBOX_HELPER_MS for
-; it. Pushes "refused", "nostart", "timeout" or the helper's exit code.
+; (its manifest asks for the rights) with the verb on the stack, `setup` or
+; `remove`, and waits at most SANDBOX_HELPER_MS for it. Pushes "refused",
+; "nostart", "timeout" or the helper's exit code. The uninstaller's copy runs
+; the removal when it has administrator rights itself (un.RemoveSandbox).
 !define SANDBOX_HELPER_MS 300000
-Function ElevateSandboxHelper
+!macro ElevateSandboxHelper un
+Function ${un}ElevateSandboxHelper
+  Exch $5
   Push $0
   Push $1
   Push $2
@@ -747,8 +758,8 @@ Function ElevateSandboxHelper
     StrCpy $3 "nostart"
   ${Else}
     ; SHELLEXECUTEINFOW, laid out for the 32-bit installer: SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC, the
-    ; installer's window, "runas", the helper, "setup", no window of its own.
-    System::Call '*(&l4, i 0x140, p $HWNDPARENT, w "runas", w "$INSTDIR\halonic-sandbox-elevate.exe", w "setup", w "$INSTDIR", i 0, p 0, p 0, p 0, p 0, i 0, p 0, p 0) p .r0'
+    ; installer's window, "runas", the helper, the verb, no window of its own.
+    System::Call '*(&l4, i 0x140, p $HWNDPARENT, w "runas", w "$INSTDIR\halonic-sandbox-elevate.exe", w "$5", w "$INSTDIR", i 0, p 0, p 0, p 0, p 0, i 0, p 0, p 0) p .r0'
     System::Call 'shell32::ShellExecuteExW(p r0) i .r1 ?e'
     Pop $2
     System::Call 'kernel32::CloseHandle(p r4)'
@@ -786,7 +797,12 @@ Function ElevateSandboxHelper
   Pop $1
   Exch
   Pop $0
+  Exch
+  Pop $5
 FunctionEnd
+!macroend
+!insertmacro ElevateSandboxHelper ""
+!insertmacro ElevateSandboxHelper "un."
 !endif
 
 Section WebView2
@@ -1035,12 +1051,16 @@ Section SandboxStep
     ; is there again, srt no longer reports that access as left behind. With
     ; administrator rights it takes nothing back. No outcome stops the install
     ; or shows on the page: the host logs what it did. The executable needs the
-    ; profile folder to unpack into, as for every host command.
+    ; profile folder to unpack into, as for every host command. An installer
+    ; with the rights doesn't start it at all: it would take nothing back, and
+    ; the user can swap what's in $INSTDIR.
+    ${IfThen} $Elevated <> 0 ${|} Goto take_back_done ${|}
     Call ProfileFolder
     Pop $1
     nsExec::ExecToStack /TIMEOUT=60000 '"$INSTDIR\halonic-agent-host.exe" --profile-folder "$1" --sandbox-take-back'
     Pop $2
     Pop $2
+    take_back_done:
     ${If} $SandboxState == ${BST_CHECKED}
       !insertmacro SetStep $LineSetup "◌ Setting up the agent sandbox…"
       ${IfNot} ${Silent}
@@ -1052,9 +1072,16 @@ Section SandboxStep
       ; from an elevated prompt (/SANDBOX=1, checked in .onInit), where Windows
       ; doesn't ask.
       StrCpy $SandboxReason ""
+      Push "setup"
       Call ElevateSandboxHelper
       Pop $2
       ${If} $2 == "0"
+      ${AndIf} $Elevated <> 0
+        ; With the rights, the check can't run as the person installing, and
+        ; the agent host is in $INSTDIR. It is set up; Settings › Agent sandbox
+        ; checks it.
+        StrCpy $2 "unchecked"
+      ${ElseIf} $2 == "0"
         Call ProfileFolder
         Pop $1
         nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-step.ps1" -CheckOnly -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
@@ -1077,6 +1104,10 @@ Section SandboxStep
         StrCpy $SandboxOutcome "ready"
         !insertmacro SetStep $LineSetup "✓ Set up the agent sandbox"
         !insertmacro SetStep $LineCheck "✓ Checked the agent sandbox"
+      ${ElseIf} $2 == "unchecked"
+        StrCpy $SandboxOutcome "unchecked"
+        !insertmacro SetStep $LineSetup "✓ Set up the agent sandbox"
+        !insertmacro SetStep $LineCheck "○ Checking the agent sandbox, skipped"
       ${ElseIf} $2 == "10"
         StrCpy $SandboxOutcome "refused"
         !insertmacro SetStep $LineSetup "! The agent sandbox isn't set up: Windows didn't give administrator rights."
@@ -1311,6 +1342,9 @@ FunctionEnd
 !endif
 
 Function un.onInit
+  System::Call 'shell32::IsUserAnAdmin() i .s'
+  Pop $Elevated
+
   !insertmacro SetContext
 
   !if "${INSTALLMODE}" == "both"
@@ -1342,13 +1376,17 @@ Section Uninstall
   ; attributes of the folders above them in the user profile. Remove those
   ; entries while the agent host is still here. Not on an update, and its
   ; outcome never stops the uninstall. It needs srt's sandbox account, so it
-  ; must run before anything that runs --sandbox-remove.
+  ; must run before anything that runs --sandbox-remove. An uninstaller with
+  ; administrator rights doesn't start the agent host from $INSTDIR: the
+  ; entries name srt's sandbox account, which the removal deletes, so they
+  ; give nobody access.
   ; Halonic change (HAL-1202, flow 2.7): then remove the agent sandbox while
   ; the agent host is still here, and Halonic is closed (srt removes nothing
   ; while a sandboxed program runs). An update keeps it.
   !ifdef SANDBOX_STEP
     ${If} $UpdateMode <> 1
       ${If} ${FileExists} "$INSTDIR\halonic-agent-host.exe"
+      ${AndIf} $Elevated = 0
         StrCpy $1 "$LOCALAPPDATA\halonic"
         ReadEnvStr $2 "HALONIC_HOME"
         ${If} $2 != ""
@@ -1736,11 +1774,14 @@ Function WaitUntilHelpersAreClosed
 FunctionEnd
 
 ; Sets $SandboxReady to 1 when the installed Halonic's sandbox passes the
-; check Settings uses, else 0. Asked when the run-again page opens.
+; check Settings uses, else 0. Asked when the run-again page opens. An
+; installer with administrator rights doesn't start the agent host from
+; $INSTDIR, so it offers the sandbox step, which asks no prompt then.
 Function CheckInstalledSandbox
   StrCpy $SandboxReady 0
   !ifdef SANDBOX_STEP
     ${If} ${FileExists} "$INSTDIR\halonic-agent-host.exe"
+    ${AndIf} $Elevated = 0
       Call ProfileFolder
       Pop $1
       nsExec::ExecToStack /TIMEOUT=60000 '"$INSTDIR\halonic-agent-host.exe" --profile-folder "$1" --sandbox-check'
@@ -1927,6 +1968,10 @@ Function PageFinish
   ${If} $SandboxOutcome == "ready"
     ${NSD_CreateLabel} 0 0 100% 10u "✓ The agent sandbox is set up and passed its check."
     Pop $0
+  ${ElseIf} $SandboxOutcome == "unchecked"
+    ; Set up by an installer with administrator rights, which runs no check.
+    ${NSD_CreateLabel} 0 0 100% 10u "✓ The agent sandbox is set up."
+    Pop $0
   ${ElseIf} $SandboxOutcome != ""
     ; The D44 fallback: the cause, then the same three sentences for every cause.
     ${NSD_CreateLabel} 0 0 100% 10u "! The agent sandbox isn't set up."
@@ -2033,22 +2078,26 @@ Function un.RemoveSandbox
   ; A silent uninstall can't show Windows' prompt, so it removes the sandbox
   ; only from an elevated prompt, where Windows doesn't ask.
   ${If} ${Silent}
-    System::Call 'shell32::IsUserAnAdmin() i .r1'
-    ${If} $1 = 0
-      StrCpy $SandboxOutcome "skipped"
-      Return
-    ${EndIf}
+  ${AndIf} $Elevated = 0
+    StrCpy $SandboxOutcome "skipped"
+    Return
   ${EndIf}
   DetailPrint "Removing the agent sandbox…"
   DetailPrint "   If it was set up, Windows asks for administrator rights."
-  Call un.ProfileFolder
-  Pop $1
-  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-remove.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
-  Pop $2
-  Pop $SandboxReason
-  Push $SandboxReason
-  Call un.TrimEol
-  Pop $SandboxReason
+  StrCpy $SandboxReason ""
+  ${If} $Elevated <> 0
+    Call un.RemoveThroughHelper
+    Pop $2
+  ${Else}
+    Call un.ProfileFolder
+    Pop $1
+    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-remove.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
+    Pop $2
+    Pop $SandboxReason
+    Push $SandboxReason
+    Call un.TrimEol
+    Pop $SandboxReason
+  ${EndIf}
   ${If} $2 == "0"
     StrCpy $SandboxOutcome "removed"
     DetailPrint "✓ Removed the agent sandbox"
@@ -2076,6 +2125,42 @@ Function un.RemoveSandbox
     ${EndIf}
     DetailPrint "! The agent sandbox is still set up: $SandboxReason"
   ${EndIf}
+FunctionEnd
+
+; The removal for an uninstaller with administrator rights: the user can swap
+; sandbox-remove.ps1 and the agent host in $INSTDIR, so it starts only the
+; helper, held open while Windows starts it. Pushes sandbox-remove.ps1's
+; codes: 20 when srt's sandbox account and group aren't there (net.exe, from
+; System32), 3 when removed, since a removal with the rights may keep access
+; on the user's folders, 10 or 11 with $SandboxReason.
+Function un.RemoveThroughHelper
+  nsExec::Exec '"$SYSDIR\net.exe" user srt-sandbox'
+  Pop $0
+  nsExec::Exec '"$SYSDIR\net.exe" localgroup sandbox-runtime-users'
+  Pop $1
+  ${If} $0 != "0"
+  ${AndIf} $1 != "0"
+    Push "20"
+    Return
+  ${EndIf}
+  Push "remove"
+  Call un.ElevateSandboxHelper
+  Pop $2
+  ${If} $2 == "0"
+    StrCpy $2 "3"
+  ${ElseIf} $2 == "refused"
+    StrCpy $2 "10"
+  ${ElseIf} $2 == "nostart"
+    StrCpy $SandboxReason "Windows couldn't start the sandbox helper"
+    StrCpy $2 "11"
+  ${ElseIf} $2 == "timeout"
+    StrCpy $SandboxReason "it didn't finish within 300 seconds"
+    StrCpy $2 "11"
+  ${Else}
+    StrCpy $SandboxReason "the sandbox helper stopped with code $2"
+    StrCpy $2 "11"
+  ${EndIf}
+  Push $2
 FunctionEnd
 
 ; "Halonic is uninstalled", and what the sandbox left when it couldn't be

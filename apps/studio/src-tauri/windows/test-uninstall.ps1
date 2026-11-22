@@ -5,8 +5,10 @@
 #   - with the box ticked, Uninstall removes Halonic, the agent sandbox, the
 #     trust records and the harness settings, and keeps the runs;
 #   - it ends on "Halonic is uninstalled", which says the sandbox is removed
-#     and, as this removal has administrator rights, when the access it kept
-#     on the user's folders goes.
+#     and, as this removal has administrator rights, that it may still have
+#     access to the user's folders and how to end that;
+#   - with those rights it starts nothing from -InstallFolder but the helper:
+#     a sandbox-remove.ps1 swapped in there doesn't run.
 # The runner is an administrator, so the removal needs no prompt here; the
 # refused prompt needs a desktop Windows machine.
 param(
@@ -149,6 +151,11 @@ if (-not (Test-Path (Join-Path $InstallFolder 'Halonic.exe'))) { throw 'Enter on
 if (-not (Sandbox-IsSetUp)) { throw 'Enter on the uninstall page removed the sandbox' }
 
 # 2. Ticked, then Uninstall: the last page, and what is gone and what stays.
+# The user can write the install folder, so the uninstaller, which has
+# administrator rights here, must not run the script found there.
+$swapped = Join-Path $env:RUNNER_TEMP 'uninstall-swapped-script-ran'
+Remove-Item $swapped -ErrorAction SilentlyContinue
+Set-Content (Join-Path $InstallFolder 'sandbox-remove.ps1') "Set-Content '$swapped' 'x'; exit 0"
 $h = Open-Uninstaller '11-uninstall-again'
 Click (Must-Find $h "Also remove Halonic's settings on this computer")
 Save-Picture $h '11-uninstall-settings-ticked'
@@ -157,9 +164,10 @@ Wait-Button $h '&Close' 300
 Save-Picture $h '12-uninstalled'
 $done = Must-Find $h '✓ The agent sandbox is removed.' 'Static'
 # The runner's uninstaller runs with administrator rights, so the removal left
-# the grant kept above (HAL-5404 S2): the page gives the step that ends it
+# the grant kept above (HAL-5404 S2). It reads no grants with those rights, so
+# the page says it may still have access, and gives the step that ends it
 # (HAL-16082), lined up under the first line's text, past its ✓.
-$kept = Must-Find $h 'It still has access to your project folders. To end that, install Halonic again with "Set up the agent sandbox" on, then uninstall it normally, not as administrator.' 'Static'
+$kept = Must-Find $h 'It may still have access to some of your project folders. To end that, install Halonic again with "Set up the agent sandbox" on, then uninstall it normally, not as administrator.' 'Static'
 $first = New-Object U+RECT
 $second = New-Object U+RECT
 [U]::GetWindowRect($done, [ref]$first) | Out-Null
@@ -170,6 +178,7 @@ Click ([U]::GetDlgItem($h, 1))
 Wait-Closed $h 15 'Close'
 
 if (Sandbox-IsSetUp) { throw 'The sandbox account is still there after uninstalling' }
+if (Test-Path $swapped) { throw 'The uninstaller ran the sandbox-remove.ps1 in the install folder with administrator rights' }
 if (Test-Path (Join-Path $InstallFolder 'Halonic.exe')) { throw 'Halonic.exe is still there after uninstalling' }
 if (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic') { throw 'The uninstall entry is still there' }
 if (Test-Path (Join-Path $profileFolder 'trust')) { throw 'The trust records are still there' }
