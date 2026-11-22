@@ -226,6 +226,7 @@ verifies("workflows.start.start-run", () => {
 
     const holder = buttonNamed(page, "Open Writer")?.parentElement;
     expect(holder?.getAttribute("data-testid")).toBe("missing-alias");
+    expect(holder?.textContent?.endsWith("Pick a model on Writer's page. Open Writer")).toBe(true);
   });
 
   it("names the agent with no link when the page can't open agents, and nothing without the alias facts", async () => {
