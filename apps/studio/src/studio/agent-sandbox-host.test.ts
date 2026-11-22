@@ -8,8 +8,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { studioStartsUnfenced } from "../engine/studio-harness-host.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import { agentSandboxOffered } from "./provide-agent-sandbox.ts";
 import type { ShellElevation } from "./sandbox-elevate-shell.ts";
-import { agentSandboxOffered } from "./start-studio.ts";
 
 /** A host that answers each route with what the test gives it, and keeps the routes it was asked. */
 function host(answers: Partial<Record<AgentHostRequestRoute, AgentHostAnswer>>) {
