@@ -30,3 +30,22 @@ for (const place of ["home", "inbox", "runs", "more"]) {
     expect(widths.column).toBe(widths.window);
   });
 }
+
+/**
+ * A window both narrow and short, 640 × 800 at 200 % (C606): the column grows down and scrolls as a
+ * whole there, but it must never grow sideways. A page column that took its widest line's width
+ * pushed `main` to 949px and the page's buttons off the window.
+ */
+test("main is as wide as a short phone window, 320 × 400", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 400 });
+  await page.goto("/bottom-navigation.html");
+  await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
+
+  const widths = await page.evaluate(() => ({
+    window: window.innerWidth,
+    page: document.documentElement.scrollWidth,
+    main: document.querySelector("main")?.getBoundingClientRect().width,
+  }));
+  expect(widths.main).toBe(widths.window);
+  expect(widths.page).toBe(widths.window);
+});
