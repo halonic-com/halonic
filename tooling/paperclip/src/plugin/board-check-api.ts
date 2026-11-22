@@ -2,6 +2,7 @@ import type {
   PluginAgentsClient,
   PluginCompaniesClient,
   PluginConfigClient,
+  PluginContext,
   PluginIssueRelationsClient,
   PluginIssuesClient,
   PluginLogger,
@@ -23,6 +24,7 @@ export interface BoardCheckApi extends MetricsApi {
       readonly relations: Pick<PluginIssueRelationsClient, "get">;
     };
   readonly agents: Pick<PluginAgentsClient, "list">;
+  readonly approvals: Pick<PluginContext["approvals"], "list">;
   readonly state: Pick<PluginStateClient, "get" | "set">;
   readonly config: PluginConfigClient;
   readonly companies: Pick<PluginCompaniesClient, "list">;
@@ -44,7 +46,10 @@ export interface PartPlan {
 export type Trigger = "event" | "job";
 
 /** Where the board check keeps `key` for a company in plugin state. */
-export const stateKey = (companyId: string, key: "asks" | "failed-runs" | "waiting") =>
+export const stateKey = (
+  companyId: string,
+  key: "asks" | "failed-runs" | "waiting" | "approvals",
+) =>
   ({
     scopeKind: "company",
     scopeId: companyId,

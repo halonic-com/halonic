@@ -120,6 +120,7 @@ export function fakeBoardContext(options: {
   comments: Record<string, readonly FakeTaskComment[]>;
   config: () => Record<string, unknown> | undefined;
   commentsError?: Error;
+  approvals?: () => readonly unknown[];
 }) {
   const sent: { call: string; args: unknown[] }[] = [];
   const logs: { level: string; message: string; meta: unknown }[] = [];
@@ -138,6 +139,7 @@ export function fakeBoardContext(options: {
       "documents",
     ]),
     agents: only({ list: async () => agents }, "agents", ["list"]),
+    approvals: only({ list: async () => options.approvals?.() ?? [] }, "approvals", ["list"]),
     state: only(
       {
         get: async (key: { stateKey: string }) => state.get(key.stateKey) ?? null,
@@ -174,6 +176,7 @@ export function fakeBoardContext(options: {
   const guarded = only(ctx, "ctx", [
     "issues",
     "agents",
+    "approvals",
     "state",
     "config",
     "companies",

@@ -96,6 +96,12 @@ export const manifest: PaperclipPluginManifestV1 = {
         description:
           "The id of the Board Checker's task. The board check keeps its two documents there and wakes the Board Checker there for a new board ask. Empty: the board check doesn't run.",
       },
+      chiefTask: {
+        type: "string",
+        title: "Chief's task",
+        description:
+          "The id of the task where Chief reads the team load. The board check comments there once when the list of agents with nothing to start, or with more than 10 tasks in progress, changes. Empty: it doesn't.",
+      },
       seatSupervisorTask: {
         type: "string",
         title: "Seat Supervisor's setup task",
@@ -137,7 +143,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       jobKey: "board-check",
       displayName: "Board check",
       description:
-        "Every 10 minutes: finds agents' comments that ask the board and wakes the Board Checker once for them. Writes only comments, its two documents and wake-ups, and nothing while its switch is off.",
+        "Every 10 minutes: finds agents' comments that ask the board and wakes the Board Checker once for them, and lists new pending approvals. Hourly: lists what waits on the board and the team load. Writes only comments, its two documents and wake-ups, and nothing while its switch is off.",
       schedule: "*/10 * * * *",
     },
   ],

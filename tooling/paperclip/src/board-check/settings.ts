@@ -7,6 +7,8 @@
 export interface BoardCheckSettings {
   /** The Board Checker's task: its two documents live there, and an ask wakes it there. */
   readonly boardCheckerTaskId: string | undefined;
+  /** Chief's task, where a change in the team load gets one comment. */
+  readonly chiefTaskId: string | undefined;
   /** The Seat Supervisor's setup task, where spend-limit failures get one line. */
   readonly seatSupervisorTaskId: string | undefined;
   /**
@@ -27,6 +29,7 @@ export function readBoardCheckSettings(
 ): BoardCheckSettings {
   return {
     boardCheckerTaskId: text(config["boardCheckerTask"]),
+    chiefTaskId: text(config["chiefTask"]),
     seatSupervisorTaskId: text(config["seatSupervisorTask"]),
     writesForVersion: text(config["boardCheckWritesForVersion"]),
   };
