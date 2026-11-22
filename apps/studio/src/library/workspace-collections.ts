@@ -131,8 +131,12 @@ export class WorkspaceCollections implements CollectionHost {
     for (const listener of [...this.#listeners]) listener();
   }
 
+  /** Today on this computer's calendar, not in UTC, so a view of today's records turns at local midnight. */
   #today(): string {
-    return this.#parts.clock.now().toISOString().slice(0, 10);
+    const now = this.#parts.clock.now();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${now.getFullYear()}-${month}-${day}`;
   }
 
   #recordsOf(collection: Collection): CollectionRecords {

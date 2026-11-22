@@ -187,14 +187,15 @@ export const failureWords = {
     `Halonic couldn't reach ${provider} on your computer${host === undefined ? "" : ` (${host})`} for ${modelOrAlias(model, alias)}. Start ${provider} there, then run again.`,
   /** F6 (microcopy 15.3, `model-missing`): the server answers, but the model isn't in its list. */
   modelMissingOllama: (model: string) =>
-    `Ollama is answering, but it doesn't have ${model} yet. Run ollama pull ${model} in a terminal, or pick another model in Models.`,
+    `Ollama is answering, but it doesn't have ${model} yet. Run ollama pull ${shellWord(model)} in a terminal, or pick another model in Models.`,
   modelMissingOther: (provider: string, model: string) =>
     `${provider} is answering, but it doesn't have ${model} yet. Download it in ${provider}, or pick another model in Models.`,
   modelMissingOllamaOnPhone: (model: string) =>
-    `Ollama on your computer doesn't have ${model} yet. Run ollama pull ${model} in a terminal there, or pick another model in Models.`,
+    `Ollama on your computer doesn't have ${model} yet. Run ollama pull ${shellWord(model)} in a terminal there, or pick another model in Models.`,
   modelMissingOtherOnPhone: (provider: string, model: string) =>
     `${provider} on your computer doesn't have ${model} yet. Download it there, or pick another model in Models.`,
-  ollamaPullCommand: (model: string) => `ollama pull ${model}`,
+  /** The model's name is written for a shell (`std.shell-word`), as the workspace's file spells it. */
+  ollamaPullCommand: (model: string) => `ollama pull ${shellWord(model)}`,
   /** `model-timeout`: a local provider names its address, a cloud one the step it stopped. */
   localModelTimeout: (provider: string, host: string | undefined) =>
     `${provider} didn't start answering${host === undefined ? "" : ` at ${host}`} within 5 minutes. It may still be loading the model.`,
