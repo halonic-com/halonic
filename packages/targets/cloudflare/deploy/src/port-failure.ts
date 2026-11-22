@@ -67,13 +67,23 @@ export function lockHolderOf(held: DeployLease | DeployLockedError): DeployLockH
   };
 }
 
+/** A failure the target finds itself, with no error of its own behind it. `fix` says what to do next. */
+export function portFailure(
+  code: DeployFailureCode,
+  kind: RunFailureKind,
+  message: string,
+  fix?: string,
+): DeployFailure {
+  return Object.assign(failure(code, kind, message, undefined), { fix });
+}
+
 function failure(
   code: DeployFailureCode,
   kind: RunFailureKind,
   message: string,
   cause: unknown,
 ): DeployFailure {
-  return Object.assign(new Error(message, { cause }), {
+  return Object.assign(new Error(message, cause === undefined ? undefined : { cause }), {
     name: "DeployFailure",
     kind,
     code,
