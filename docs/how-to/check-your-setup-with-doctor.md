@@ -159,11 +159,13 @@ Sandbox, only when there's something to report.
 | --- | --- | --- |
 | ✕ "which isn't added" | A connector names a plugin that isn't added on this computer, such as `✕ Plugins     orders uses the plugin acme-order, which isn't added.` No run here gets that connector's tools. When an added plugin's id is close, the line under it asks `Did you mean acme-orders?`. `doctor` exits 1. | Fix the plugin id in the connector's file, or add the plugin with `halonic plugin add <folder or git address>`. Then run `doctor` again. |
 | ! "is off" | The plugin is added but not trusted yet, or changed since you trusted it, such as `! Plugins     acme-orders is off: changed since you trusted it · halonic trust --plugin acme-orders`. Runs go on without its tools. | Run the command at the end of the line. |
-| ! "can't be read or checked" | Halonic couldn't read the plugin's folder, or the plugins folder itself. The plugin stays off. The other lines still show. | Run `halonic plugin list`: it says what's wrong. |
+| ! "can't be read or checked" | Halonic couldn't read or check the plugin's folder. The plugin stays off. The other lines still show. | Run the command in the line under it: remove the plugin with `halonic plugin remove <id>`, then add a version that works. |
+| ! "The plugins folder … can't be read" | You may not read the folder that holds every plugin, such as one left with mode `000`, so every plugin your agents use is off. The other lines still show. | Run the command in the line under it, such as `chmod 700 <folder>`, then run `doctor` again. Every `halonic plugin` command, such as `plugin list` and `plugin remove`, refuses with the same fix until then. |
 
 With `--json`, the check is `plugins`, with `problems`: one for each connector
 whose plugin isn't added, and one for each plugin that is off or can't be read,
-such as
+or one `folder-unreadable` with the `folder`, its `plugins` and `access`, such
+as
 `{"check": "plugins", "status": "failed", "problems": [{"problem": "not-added", "connector": "orders", "plugin": "acme-order", "near": "acme-orders"}]}`.
 
 ### Sandbox

@@ -20,7 +20,7 @@ import {
   type RunnerFence,
   type RunnerUnfencedReason,
 } from "@halonicjs/app";
-import type { Clock, HttpClient } from "@halonicjs/ports";
+import type { Clock, FolderReader, HttpClient } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
   pluginRecordsFolder,
@@ -31,6 +31,7 @@ import {
 import { systemClock } from "@halonicjs/std";
 import type { GitExporter } from "./commands/plugin/git-source.ts";
 import { cliPluginSignOut } from "./plugin-sign-out.ts";
+import { PluginsFolderReader } from "./plugins-folder-reader.ts";
 import { nodeLocalToolState, nodePluginCodeFence } from "./sandbox-works.ts";
 import { chainedSecrets } from "./secret-host.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
@@ -50,6 +51,8 @@ export interface PluginSetup {
   readonly pluginCodeFence?: () => Promise<RunnerFence>;
   /** Where removing a plugin or its trust revokes its sign-ins; the Node client for public hosts by default. */
   readonly http?: HttpClient;
+  /** How the plugins folder is read; the file system by default, so a test can make it fail. */
+  readonly readFolder?: (folder: string) => FolderReader;
 }
 
 /**
@@ -93,6 +96,8 @@ export async function offHereFor(
  * until a plugin is added. It refuses to add a plugin from Halonic's own
  * data: the profile folder and, when `cwd` is given and holds one, its
  * workspace's `.studio` data, each as written and with links resolved.
+ * A plugins folder the person may not list is refused with
+ * `UnreadablePluginsFolderError`, which names the folder and the fix.
  *
  * @param cwd - the folder the command runs in, for `plugin add`
  * @throws when `HALONIC_HOME` or the home folder isn't an absolute folder
@@ -105,8 +110,9 @@ export function openPluginService(setup: PluginSetup, cwd?: string): PluginServi
   const profile = profileFolder(environment);
   const clock = setup.clock ?? systemClock;
   const folder = setupPluginsFolder(setup);
+  const read = setup.readFolder ?? ((at: string) => new FileSystemFolderReader(at));
   return new PluginService({
-    plugins: new FileSystemFolderReader(folder),
+    plugins: new PluginsFolderReader(read(folder), folder),
     writer: new FileSystemPluginFolder(folder, { clock }),
     digest: webCryptoDigest,
     trust: cliTrustService(new FileTrustStore(trustFolder(profile)), clock),

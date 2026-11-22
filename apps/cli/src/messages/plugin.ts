@@ -1,5 +1,6 @@
 import {
   type LocalToolState,
+  type PluginsFolderAccess,
   pluginTrustLocationHeadings,
   pluginTrustMoreFilesText,
   pluginTrustRunsLabel,
@@ -203,6 +204,18 @@ export const pluginMessages = defineMessages("plugin", {
   /** A folder in the plugins folder that can't be read or checked, with a ✕. */
   broken: () => phrase`can't be read or checked`,
   noPlugins: () => phrase`No plugins yet. Add one with halonic plugin add <folder or git address>.`,
+  /** The refusal when the plugins folder itself can't be listed by the person (HAL-15785). */
+  folderUnreadable: (folder: string) => phrase`The plugins folder ${folder} can't be read by you.`,
+  /** Under {@link folderUnreadable}, as the secrets file's (HAL-15511). `folderWord` is the folder as one shell word. */
+  folderUnreadableFix: (access: PluginsFolderAccess, folderWord: string) => {
+    if (access === "windows") {
+      return phrase`Give your user account access to it in the folder's Properties, under Security, then run again.`;
+    }
+    if (access === "another-user") {
+      return phrase`It belongs to another user: run sudo chown "$(id -un)" ${folderWord}, then chmod 700 ${folderWord}, then run again.`;
+    }
+    return phrase`Run chmod 700 ${folderWord}, then run again.`;
+  },
 
   // HAL-14296 (C41 on HAL-14271): a plugin connector's plugin that is added
   // but off, as `tools review` and `tools approve` warn about it.

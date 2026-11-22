@@ -6,6 +6,8 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import type { AddedPlugin } from "../../connector-plugin.ts";
 import type { DoctorMachine } from "../../doctor-machine.ts";
 import { exitCode } from "../../exit-code.ts";
+import { shellWord } from "../../output/shell-word.ts";
+import { UnreadablePluginsFolderError } from "../../plugins-folder-reader.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
@@ -161,6 +163,36 @@ verifies("cli.doctor-plugins", () => {
       status: "failed",
       problems: [
         { problem: "not-added", connector: "orders", plugin: "acme-order", near: "acme-orders" },
+      ],
+    });
+  });
+});
+
+verifies("cli.plugins-folder-unreadable", () => {
+  it("names the plugins folder the person may not list, with its fix, and still exits with 0", async () => {
+    writeAcme("weather");
+    const plugins = join(folder, "profile", "plugins");
+    const denied = Object.assign(new Error("EACCES"), { code: "EACCES" });
+    const computer: DoctorMachine = {
+      ...machine([]),
+      plugins: async () => {
+        throw new UnreadablePluginsFolderError(plugins, "yours", denied);
+      },
+    };
+
+    const { code, lines } = await doctor(computer);
+    const json = await doctor(computer, true);
+
+    expect(code).toBe(exitCode.ok);
+    expect(check(lines, "Plugins")).toEqual([
+      `! Plugins     The plugins folder ${plugins} can't be read, so weather is off.`,
+      `              Fix: run chmod 700 ${shellWord(plugins)}, then run halonic doctor again.`,
+    ]);
+    expect(JSON.parse(json.lines.join("\n")).checks).toContainEqual({
+      check: "plugins",
+      status: "warning",
+      problems: [
+        { problem: "folder-unreadable", folder: plugins, access: "yours", plugins: ["weather"] },
       ],
     });
   });
