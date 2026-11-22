@@ -100,6 +100,24 @@ verifies("cloudflare-storage.run-definitions-index", () => {
       expect(hubs["acme"]?.agents["clerk"]?.instructions).toBe("File orders.");
     });
 
+    it("leaves out a private file, as the snapshot leaves it out", async () => {
+      const files = acmeFiles("Intake");
+      // `.studio` is a private folder, so the snapshot doesn't hold this agent,
+      // and the index mustn't hold a `.studio` hub with it either.
+      const privateAgentPath = "hubs/.studio/agents/spy.agent.yaml";
+      const objects: Record<string, string | Uint8Array> = {};
+      await writeWorkspaceSnapshot(
+        { put: async (key, value) => (objects[key] = value) },
+        { ...files, [privateAgentPath]: "id: spy\nname: Spy\ninstructions: Peek.\n" },
+      );
+
+      const source = new R2DefinitionSource(textBucket(objects));
+      expect(await source.list()).not.toContain(privateAgentPath);
+      const hubs = await readRunDefinitionsIndex(source);
+      const workspace = await loadWorkspace(new FilesSource(files));
+      expect(hubs).toEqual({ acme: definitionsOf(workspace, "acme") });
+    });
+
     it("is written by deploy with the snapshot, and a rollback reads the matching one", async () => {
       const api = fakeCloudflareApi({ accounts: [], deployment: [{ id: "old", percentage: 100 }] });
       await deploy(api, deployOptions("a".repeat(40), acmeFiles("Intake A")));

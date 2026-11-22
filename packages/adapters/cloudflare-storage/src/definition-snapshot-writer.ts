@@ -8,6 +8,7 @@ import {
   type IndexedHubs,
   runDefinitionsIndexPath,
 } from "./run-definitions-index.ts";
+import { snapshotIndexPaths } from "./snapshot-index-paths.ts";
 import { formatRoutineIndex, type IndexedRoutine, routineIndexPath } from "./webhook-routines.ts";
 
 /** The indexes a snapshot holds next to the workspace files, built from the same files. */
@@ -21,9 +22,6 @@ export interface SnapshotIndexes {
    */
   readonly runDefinitions?: IndexedHubs;
 }
-
-/** The paths the snapshot keeps its indexes at, which no workspace file may have. */
-export const snapshotIndexPaths: readonly string[] = [routineIndexPath, runDefinitionsIndexPath];
 
 /** The one R2 call the writer makes. */
 export interface SnapshotWriteBucket {
