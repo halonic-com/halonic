@@ -37,7 +37,7 @@ export function PromptBox({
 
   if (!view.canAnswer) {
     // Drawn as off, but reachable: focus lands on it and it points at the reason written under
-    // it, in text that stays readable (decision 6), like the reason under Approve and Deny.
+    // it, in text that stays readable (decision 6), like the reason under Approve and Reject.
     return (
       <div className="flex flex-col gap-1 border-t border-border px-3 py-2">
         <TextArea
