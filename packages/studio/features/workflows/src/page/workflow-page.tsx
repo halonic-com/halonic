@@ -31,7 +31,7 @@ import { pageOrGuideScreen, useGuideRun, useGuideScreen } from "./guide-screen.t
 import { firstTestsPick, firstView, hasDockedCard, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
-import { type DockOpener, RunDock, useDock, useShownRun } from "./run-dock.tsx";
+import { type DockOpener, drawingCaption, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { unavailableFor, useRunGate } from "./run-gate.ts";
 import {
   missingAliasOf,
@@ -382,7 +382,7 @@ export function WorkflowScreen({
               focus={canvasFocus}
               kept={kept}
               onView={keep}
-              caption={guideRun?.caption}
+              caption={drawingCaption(guideRun, phone)}
             />
           )}
         </TabPanel>

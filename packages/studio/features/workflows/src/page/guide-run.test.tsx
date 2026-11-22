@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -35,12 +36,22 @@ function guideAdding(additions: WorkflowGuideRun): WorkflowGuide {
 
 const startRun = async () => ({ runId: "run_mfx3k2a1_01jd8q" });
 
-/** Support reply's page, with run 01jd8q started from its Run form and listed as `status`. */
-async function pageWithRun(guide: WorkflowGuide | undefined, status: "running" | "failed") {
+/**
+ * Support reply's page, with run 01jd8q started from its Run form and listed as `status`, drawn
+ * for a phone when `phone` is set.
+ */
+async function pageWithRun(
+  guide: WorkflowGuide | undefined,
+  status: "running" | "failed",
+  phone = false,
+) {
   const runs = memoryRuns();
   const { host } = memoryHost([], [], [reply], [settings], { startRun });
+  const screen = (
+    <WorkflowScreen host={host} runs={runs.source} hubId="acme" id="reply" guide={guide} />
+  );
   const page = await show(
-    <WorkflowScreen host={host} runs={runs.source} hubId="acme" id="reply" guide={guide} />,
+    phone ? <PresentationProvider presentation="phone">{screen}</PresentationProvider> : screen,
   );
   await act(async () => exactButton(page, "Run")?.click());
   await act(async () => buttonNamed(page, "Start run")?.click());
@@ -69,6 +80,14 @@ verifies("workflows.page.guide-run", () => {
     expect(cardOf(page)?.textContent).toContain(changedLine);
     expect(page.textContent).toContain(caption);
     expect(cardOf(page)?.textContent).not.toContain(caption);
+  });
+
+  it("shows the caption in the run card after the notes on a phone, where the card covers the drawing", async () => {
+    const page = await pageWithRun(guideAdding({ notes: [changedLine], caption }), "running", true);
+    const lines = [...(cardOf(page)?.querySelectorAll("p") ?? [])].map((line) => line.textContent);
+    expect(lines.indexOf(caption)).toBeGreaterThan(lines.indexOf(changedLine));
+    expect(lines.indexOf(changedLine)).toBeGreaterThanOrEqual(0);
+    expect(page.textContent?.split(caption)).toHaveLength(2);
   });
 
   // The run's log is empty here, so there is no input to try again with: the runs feature's
