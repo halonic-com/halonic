@@ -125,6 +125,32 @@ const waitWithoutEvents: StateCheck = ({ id, state }) => {
 };
 
 /**
+ * A transition without `event` takes the default event `done`, which a wait
+ * never ends with: it is taken only when someone answers "done". Next to named
+ * events that is a slip, a missing `event: reject` say (HAL-15590). A wait with
+ * no named events gets `wait-without-events` instead, once for the step.
+ */
+const waitArrowWithoutEvent: StateCheck = ({ id, state }) => {
+  const named = state.on.some((transition) => transition.event !== "done" && !transition.after);
+  if (state.type !== "wait" || !named) {
+    return [];
+  }
+  return state.on.flatMap((transition, index) =>
+    transition.event === "done" && !transition.after
+      ? [
+          issue(
+            "warning",
+            "wait-arrow-without-event",
+            `In "${id}", the transition to "${transition.to}" has no event, so a person must answer "done" to take it. Name the answer it is for, like "reject", or give it a timer`,
+            stateKey(id, "on", index),
+            id,
+          ),
+        ]
+      : [],
+  );
+};
+
+/**
  * A wait step has no moment to send a signal at (on entry? on each event?),
  * so `signal` there would be silently dropped (HAL-14305).
  */
@@ -337,6 +363,7 @@ export const STATE_CHECKS: readonly StateCheck[] = [
   timersOutsideWait,
   timerWithEvent,
   waitWithoutEvents,
+  waitArrowWithoutEvent,
   waitWithSignal,
   foreachShape,
   subflowTarget,

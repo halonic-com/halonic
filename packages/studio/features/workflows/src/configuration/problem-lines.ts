@@ -27,6 +27,7 @@ const stepLines: Readonly<Record<string, string>> = {
   "final-has-transitions": "Is an end, but has arrows",
   "task-without-agent": "Has no agent",
   "wait-without-events": "Has no answers to pick",
+  "wait-arrow-without-event": "Never taken: no answer",
   "unguarded-shadow": "Never taken",
   "not-a-choice": "Compares with a non-option",
   "ignored-key": "Has a key it ignores",
@@ -64,6 +65,9 @@ const rowSentences: Readonly<Record<string, string>> = {
   "wait-without-events":
     "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
   "unguarded-shadow": neverTakenSentence("Has an arrow that's", "the same event", "its card"),
+  // The core says "transition" and "event"; Studio says arrow and answer (microcopy 1.2).
+  "wait-arrow-without-event":
+    "Has an arrow with no answer, so it's never taken: a person picks from its named answers. Give the arrow an answer, or a timer, in the workflow's file.",
 };
 
 /**
@@ -111,7 +115,11 @@ const stripLines: Readonly<Record<string, string>> = {
  * The checks whose problem is about one of a step's arrows. Flow-workflows 4.4 marks them on the
  * arrow's label plate, not on the step's card.
  */
-const arrowChecks: ReadonlySet<string> = new Set(["unknown-target", "unguarded-shadow"]);
+const arrowChecks: ReadonlySet<string> = new Set([
+  "unknown-target",
+  "unguarded-shadow",
+  "wait-arrow-without-event",
+]);
 
 /**
  * How Studio names a step: as its card on the canvas does, by its title, or by its id when it has

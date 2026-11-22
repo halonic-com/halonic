@@ -145,6 +145,15 @@ verifies("workflows.configuration.problem-lines", () => {
     expect(lines[0]).toBe("Only a wait step has timers");
   });
 
+  it("says arrow and answer for a wait's arrow without an event, and keeps it off the card", () => {
+    const bare = problem("wait-arrow-without-event", "warning", "review");
+    expect(problemLine(bare)).toBe("Never taken: no answer");
+    expect(problemRows([bare])[0]?.text).toBe(
+      "Has an arrow with no answer, so it's never taken: a person picks from its named answers. Give the arrow an answer, or a timer, in the workflow's file.",
+    );
+    expect(cardProblems([bare], "review")).toBeUndefined();
+  });
+
   it("counts errors and warnings", () => {
     expect(
       countProblems([problem("dead-end"), problem("unreachable", "warning"), problem("no-final")]),
