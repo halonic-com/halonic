@@ -35,7 +35,7 @@ verifies("runs.run-view.secrets-unreadable-banner", () => {
       const command = `sudo chown "$(id -un)" "${mac}" && chmod 600 "${mac}"`;
       const banner = causeBanner(unreadable("chown", mac), undefined, context, false);
       expect(lines(banner)?.[0]).toContain(
-        `It belongs to another user. Run ${command} in a terminal, then run again.`,
+        `It belongs to another user: run sudo chown "$(id -un)" "${mac}", then chmod 600 "${mac}" in a terminal, then run again.`,
       );
       expect(fixes(banner)).toEqual([{ kind: "copy-command", command }]);
     });
@@ -54,6 +54,11 @@ verifies("runs.run-view.secrets-unreadable-banner", () => {
         `${cause} Run chmod 600 ${file} on your computer, then run again.`,
       ]);
       expect(fixes(chmod) ?? []).toEqual([]);
+      const chown = causeBanner(unreadable("chown"), undefined, context, true);
+      expect(lines(chown)?.[0]).toContain(
+        `then chmod 600 ${file} on your computer, then run again.`,
+      );
+      expect(fixes(chown) ?? []).toEqual([]);
       const properties = causeBanner(unreadable("properties"), undefined, context, true);
       expect(lines(properties)?.[0]).toContain("On your computer, give your user account access");
     });

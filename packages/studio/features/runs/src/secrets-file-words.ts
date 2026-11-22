@@ -8,7 +8,7 @@ import { shellWord } from "@halonicjs/std";
 /**
  * The command that fixes the file, to type or paste into a terminal, or `undefined` on Windows,
  * which fixes it in the file's Properties. A file another user owns is given back to the person
- * first. The path is written for a shell (`std.shell-word`). The sentence shows this same command.
+ * first. The path is written for a shell (`std.shell-word`), as in the sentence.
  */
 function unreadableSecretsFileCommand(failure: SecretsFileUnreadableFailure): string | undefined {
   const word = shellWord(failure.file);
@@ -22,15 +22,23 @@ function unreadableSecretsFileCommand(failure: SecretsFileUnreadableFailure): st
   }
 }
 
-/** The fix's sentence: run the command in a terminal, or on the computer from a phone. */
+/**
+ * The fix's sentence: run the command in a terminal, or on the computer from a phone. A file
+ * another user owns says its two commands one after the other, as the CLI does (C687).
+ */
 function fixSentence(failure: SecretsFileUnreadableFailure, phone: boolean): string {
-  const command = unreadableSecretsFileCommand(failure);
-  if (command === undefined) {
-    const where = phone ? "On your computer, give" : "Give";
-    return `${where} your user account access to it in the file's Properties, under Security, then run again.`;
+  const word = shellWord(failure.file);
+  const where = phone ? "on your computer" : "in a terminal";
+  switch (failure.fix) {
+    case "chmod":
+      return `Run chmod 600 ${word} ${where}, then run again.`;
+    case "chown":
+      return `It belongs to another user: run sudo chown "$(id -un)" ${word}, then chmod 600 ${word} ${where}, then run again.`;
+    case "properties": {
+      const give = phone ? "On your computer, give" : "Give";
+      return `${give} your user account access to it in the file's Properties, under Security, then run again.`;
+    }
   }
-  const owner = failure.fix === "chown" ? "It belongs to another user. " : "";
-  return `${owner}Run ${command} ${phone ? "on your computer" : "in a terminal"}, then run again.`;
 }
 
 /** The words of the banner for a secrets file the person's user account can't read. */

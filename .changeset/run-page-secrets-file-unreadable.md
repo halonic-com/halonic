@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-A run page stopped by a secrets file your user account can't read now names the file and the command that fixes it, with Copy command, instead of saying Halonic can't tell the cause.
+Studio's run page now says which secrets file your user account can't read and how to fix it, with Copy command for the command that fixes it, instead of saying Halonic can't tell the cause.
