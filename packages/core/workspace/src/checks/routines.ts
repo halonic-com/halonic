@@ -117,23 +117,32 @@ function unreadInputIssues(context: CheckContext, routine: Routine): WorkspaceIs
   return Object.keys(run.input)
     .filter((key) => !read.includes(key))
     .map((key) => {
-      const message = `Routine "${routine.value.id}": workflow "${run.workflow}" doesn't read input.${key}. ${unreadHint(key, read)}`;
+      const message = `Routine "${routine.value.id}": workflow "${run.workflow}" doesn't read input.${key}. ${unreadHint(key, read, Object.keys(run.input))}`;
       const path = ["run", "input", key];
       return context.issue("warning", routine.path, path, "unread-routine-input", message);
     });
 }
 
-/** "Did you mean input.day?" for a close field, or else the fields the steps read. */
-function unreadHint(key: string, read: readonly string[]): string {
-  const near = nearMatch(key, read);
-  if (near !== undefined) {
-    return `Did you mean input.${near}?`;
-  }
+/**
+ * "Did you mean input.day?" for a close field, or else the fields the steps
+ * read. Fields the routine already gives are left out of both: renaming the
+ * key to one of them would give that field twice.
+ */
+function unreadHint(key: string, read: readonly string[], given: readonly string[]): string {
   if (read.length === 0) {
     return `No step reads an input field: remove the key, or add input.${key} to the gets of the step that needs it.`;
   }
-  const to = read.length === 1 ? "that" : "one of those";
-  return `Its steps read ${listed(read.map((field) => `input.${field}`))}: rename the key to ${to}, or remove it.`;
+  const open = read.filter((field) => !given.includes(field));
+  const near = nearMatch(key, open);
+  if (near !== undefined) {
+    return `Did you mean input.${near}?`;
+  }
+  if (open.length === 0) {
+    return "The routine already gives every field its steps read: remove the key.";
+  }
+  const to = open.length === 1 ? "that" : "one of those";
+  const also = open.length < read.length ? " also" : "";
+  return `Its steps${also} read ${listed(open.map((field) => `input.${field}`))}: rename the key to ${to}, or remove it.`;
 }
 
 /** `a`, `a and b`, `a, b and c`. */

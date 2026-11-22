@@ -178,6 +178,21 @@ verifies("workspace.routine-input", () => {
     ]);
   });
 
+  it("leaves out the fields the routine already gives", async () => {
+    const reads = "gets: [input.day, input.mail, input.team]";
+    const messages = async (input: string) =>
+      (await unread(reads, input)).map((issue) => issue.message.split(". ")[1]);
+    expect(await messages("day: monday\n    dya: tuesday")).toEqual([
+      "Its steps also read input.mail and input.team: rename the key to one of those, or remove it.",
+    ]);
+    expect(await messages("day: monday\n    mail: hi\n    region: north")).toEqual([
+      "Its steps also read input.team: rename the key to that, or remove it.",
+    ]);
+    expect(await messages("day: x\n    mail: y\n    team: z\n    region: north")).toEqual([
+      "The routine already gives every field its steps read: remove the key.",
+    ]);
+  });
+
   it("counts a field read in a prompt as read", async () => {
     const reads = "input: 'Report for {{input.day}}.'";
     expect(await unread(reads, "day: monday")).toEqual([]);
