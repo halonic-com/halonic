@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-4295 (checklist 3.8: the warning's first line names the day the file changed)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:E8gxxLqTyCY6pXL7Ndp/MCnHI8GvDYQfjFUUP51UWpda40TnRPLEOM46crkS8vuotMcushAzQ3HH25EuEVjbAg==
 
 The confirm-again warning starts with "*Writer*'s file changed on 9 Nov at 14:02". Nothing kept that time, so two active requirements gain one sentence and one example each.
 
