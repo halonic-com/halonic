@@ -1,0 +1,34 @@
+{
+  "name": "@halonicjs/studio-feature-check-computer",
+  "private": true,
+  "type": "module",
+  "description": "The Check this computer feature of the Studio: halonic doctor's checks for the open workspace, and the report a person can copy.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/app": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*",
+    "@halonicjs/words": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "studio",
+    "owner": "noah",
+    "coverage": {
+      "lines": 85
+    }
+  }
+}
