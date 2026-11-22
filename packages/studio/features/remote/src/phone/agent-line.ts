@@ -26,7 +26,7 @@ export function agentLine(
   approval: RemoteApproval | undefined,
   now: Date,
 ): string | undefined {
-  if (session.state === "done" || session.state === "failed") {
+  if (hasEnded(session)) {
     const ended = new Date(session.updatedAt);
     if (Number.isNaN(ended.getTime())) return agentStateWords[session.state];
     const verb = session.state === "done" ? "Finished" : "Failed";
@@ -42,7 +42,9 @@ export function agentLine(
 
 /**
  * The line the row shows: {@link agentLine}, and while `view` is stale, " · as of 14:02" after it
- * ("as of 14:02" alone when there's no line). A live view, or one with nothing yet, adds nothing.
+ * ("as of 14:02" alone when there's no line). A live view, or one with nothing yet, adds nothing,
+ * and neither does an agent that ended: "Failed yesterday 09:12" can't go out of date, and a
+ * second time next to it read as two dates (C672).
  */
 export function agentRowLine(
   view: RemoteView,
@@ -51,9 +53,13 @@ export function agentRowLine(
   now: Date,
 ): string | undefined {
   const line = agentLine(session, approval, now);
-  if (view.canAnswer || view.asOf === undefined) return line;
+  if (view.canAnswer || view.asOf === undefined || hasEnded(session)) return line;
   const asOf = `as of ${asOfText(view.asOf, now)}`;
   return line === undefined ? asOf : `${line} · ${asOf}`;
+}
+
+function hasEnded(session: RemoteSession): boolean {
+  return session.state === "done" || session.state === "failed";
 }
 
 /** The oldest open approval of `session`; `openApprovals` is oldest first. */

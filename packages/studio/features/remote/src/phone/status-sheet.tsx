@@ -6,7 +6,7 @@ import { sheetRouteWords, sheetWords } from "./status-words.ts";
  * Which detail sheet the header label opens (`s-m4`, `s-m5`, `s-m6`, `s-m8`). Removed and Can't
  * confirm have no sheet: their label moves to the screen's heading. The page picks the trouble
  * sheet: `tailscaleOff` (G17) and `nearbyOff` (G24) are the phone's own causes, which the header
- * still shows as "Your phone is offline" and "Can't reach your computer".
+ * still shows as "Your phone is offline" and "{computer} isn't answering".
  */
 export type StatusSheetOf =
   | { readonly kind: "connected"; readonly route: keyof typeof sheetRouteWords }
@@ -53,7 +53,7 @@ const trouble: Record<
   TroubleKind,
   {
     readonly words: {
-      readonly title: string;
+      readonly title: string | ((computer: string) => string);
       readonly phone: (computer: string) => string;
       readonly check: string | ((computer: string) => string);
     };
@@ -68,11 +68,12 @@ const trouble: Record<
 };
 
 /** The sheet's title, which also names its dialog. */
-export function statusSheetTitle(sheet: StatusSheetOf): string {
+export function statusSheetTitle(sheet: StatusSheetOf, computer: string): string {
   if (sheet.kind === "connected" || sheet.kind === "reconnecting") {
     return sheetWords[sheet.kind].title;
   }
-  return trouble[sheet.kind].words.title;
+  const { title } = trouble[sheet.kind].words;
+  return typeof title === "string" ? title : title(computer);
 }
 
 const card = "flex flex-col gap-1 rounded-md border border-border px-4 py-3";
@@ -89,7 +90,12 @@ export function StatusSheet(props: StatusSheetProps) {
   const { sheet, asOf, now } = props;
   const asOfWords = asOf === undefined ? undefined : asOfText(asOf, now);
   return (
-    <Dialog title={statusSheetTitle(sheet)} size="sm" focusTitle onCancel={props.onClose}>
+    <Dialog
+      title={statusSheetTitle(sheet, props.computer)}
+      size="sm"
+      focusTitle
+      onCancel={props.onClose}
+    >
       <div className="flex flex-col gap-4">{sheetBody(props, asOfWords)}</div>
     </Dialog>
   );

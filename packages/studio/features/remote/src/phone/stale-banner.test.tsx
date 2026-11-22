@@ -36,7 +36,7 @@ verifies("remote.phone-stale-banner", () => {
     const { section } = show();
     expect(textOf(section)).toEqual([
       "Tim's laptop isn't answering",
-      "Last update 14:02. If your computer is on, your agents there keep running.",
+      "What you see is as of 14:02. If your computer is on, your agents there keep running.",
     ]);
     const title = section.querySelector("p") as HTMLElement;
     expect(section.getAttribute("aria-labelledby")).toBe(title.id);

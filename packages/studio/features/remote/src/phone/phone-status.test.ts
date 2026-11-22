@@ -18,9 +18,9 @@ verifies("remote.phone-status", () => {
       ["reconnecting", "Reconnecting…", "waiting", "Reconnecting. Details"],
       [
         "unreachable",
-        "Can't reach your computer",
+        "Tim's laptop isn't answering",
         "attention",
-        "Can't reach your computer. Details",
+        "Tim's laptop isn't answering. Details",
       ],
       ["phoneOffline", "Your phone is offline", "attention", "Your phone is offline. Details"],
       ["removed", "Removed from your computer", "danger", "Removed from your computer. Details"],
@@ -76,7 +76,7 @@ verifies("remote.phone-status", () => {
 
     it("says each trouble state at once with the label's words", () => {
       const tracker = trackerAt("connected");
-      expect(tracker.change("unreachable", 1).announce).toBe("Can't reach your computer");
+      expect(tracker.change("unreachable", 1).announce).toBe("Tim's laptop isn't answering");
       expect(tracker.change("phoneOffline", 2).announce).toBe("Your phone is offline");
       expect(tracker.change("removed", 3).announce).toBe("Removed from your computer");
       expect(trackerAt("connected").change("cantConfirm", 1).announce).toBe(

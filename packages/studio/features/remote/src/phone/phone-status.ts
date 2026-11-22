@@ -45,7 +45,7 @@ export function phoneStatusLabel(state: PhoneState, computer: string): PhoneStat
     case "reconnecting":
       return label("Reconnecting…", "waiting", "Reconnecting");
     case "unreachable":
-      return label("Can't reach your computer", "attention");
+      return label(`${computer} isn't answering`, "attention");
     case "phoneOffline":
       return label("Your phone is offline", "attention");
     case "removed":

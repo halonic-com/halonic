@@ -73,7 +73,7 @@ describe("staleView", () => {
 
     const stale = staleView(live, "unreachable");
 
-    expect(stale.label.text).toBe("Can't reach your computer");
+    expect(stale.label.text).toBe("Work laptop isn't answering");
     expect(stale.asOf).toBe(live.asOf);
     expect(stale.sessions).toBe(live.sessions);
     expect(stale.canAnswer).toBe(false);

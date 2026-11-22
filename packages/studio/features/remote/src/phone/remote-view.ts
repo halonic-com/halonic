@@ -19,9 +19,11 @@ import type { PhoneStatusLabel } from "./phone-status.ts";
 
 /**
  * Why Approve, Deny and the prompt box are off while the view is stale
- * (design decision 6 on HAL-12206).
+ * (design decision 6 on HAL-12206). It says when they come back, not an
+ * order: the phone reconnects by itself, and Try again is only in the
+ * banner (C672).
  */
-export const RECONNECT_TO_ANSWER = "Reconnect to answer.";
+export const RECONNECT_TO_ANSWER = "You can answer once your phone reconnects.";
 
 /** One event of a watched session, as the host sent it. */
 export interface RemoteEvent {

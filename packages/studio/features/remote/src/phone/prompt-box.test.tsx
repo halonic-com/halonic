@@ -44,7 +44,7 @@ verifies("remote.phone-prompt-box", () => {
     const { box, send } = show(staleView(remoteView(), "unreachable"));
     expect(box()?.disabled).toBe(true);
     expect(box()?.getAttribute("aria-label")).toBe("Prompt");
-    expect(box()?.placeholder).toBe("Reconnect to send a prompt.");
+    expect(box()?.placeholder).toBe("You can send a prompt once your phone reconnects.");
     expect(send()).toBeNull();
 
     unmountAll();
@@ -129,7 +129,9 @@ verifies("remote.phone-prompt-box", () => {
     expect(sendOutcomeLine("answer", { kind: "cut-off" })).toBe(
       "The connection dropped before your computer confirmed your answer. Once your phone reconnects, you'll see whether it arrived.",
     );
-    expect(sendOutcomeLine("prompt", { kind: "cut-off" })).toContain("Check the agent");
+    expect(sendOutcomeLine("prompt", { kind: "cut-off" })).toContain(
+      "Once your phone reconnects, you'll see in the agent's messages whether it arrived.",
+    );
   });
 
   it("writes under Approve and Deny what became of an answer", async () => {

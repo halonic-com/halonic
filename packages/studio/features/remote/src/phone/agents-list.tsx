@@ -35,7 +35,7 @@ const decisionWords: Record<(typeof decisions)[number], string> = {
  * `s-m2`, `s-m3`: the agents of one computer, each with its name, a line and its state, in the
  * order the host listed them. An agent that needs you shows Approve and Deny for its oldest open
  * approval. While the view is stale, each line ends with "as of 14:02" and both buttons are off
- * with "Reconnect to answer." under them; a risky approval says to answer it on the computer. The
+ * with "You can answer once your phone reconnects." under them; a risky approval says to answer it on the computer. The
  * page round it draws the header, the stale banner and the prompt box.
  */
 export function AgentsList({

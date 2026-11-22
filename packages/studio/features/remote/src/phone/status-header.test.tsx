@@ -89,11 +89,11 @@ verifies("remote.phone-status", () => {
   it("keeps Can't reach through a background retry, and says trouble at once", () => {
     const view = mount("connected");
     view.change("unreachable");
-    expect(view.said()).toBe("Can't reach your computer");
+    expect(view.said()).toBe("Tim's laptop isn't answering");
     view.change("reconnecting");
     advance(5000);
-    expect(view.button().textContent).toBe("Can't reach your computer");
-    expect(view.said()).toBe("Can't reach your computer");
+    expect(view.button().textContent).toBe("Tim's laptop isn't answering");
+    expect(view.said()).toBe("Tim's laptop isn't answering");
     view.change("removed");
     expect(view.said()).toBe("Removed from your computer");
     expect(view.button().getAttribute("aria-label")).toBe("Removed from your computer. Details");
@@ -110,9 +110,9 @@ verifies("remote.phone-status", () => {
   it("starts again for another computer, so its first state says nothing", () => {
     const view = mount("connected");
     view.change("unreachable");
-    expect(view.said()).toBe("Can't reach your computer");
+    expect(view.said()).toBe("Tim's laptop isn't answering");
     view.change("unreachable", "Studio PC");
-    expect(view.button().textContent).toBe("Can't reach your computer");
+    expect(view.button().textContent).toBe("Studio PC isn't answering");
     expect(view.said()).toBe("");
   });
 });

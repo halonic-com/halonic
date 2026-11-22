@@ -53,7 +53,7 @@ export function remoteView(overrides: Partial<RemoteView> = {}): RemoteView {
 
 /**
  * `view` as it goes stale: the label of `state`, the same sessions and
- * approvals, and everything off with "Reconnect to answer.".
+ * approvals, and everything off with "You can answer once your phone reconnects.".
  */
 export function staleView(view: RemoteView, state: "reconnecting" | "unreachable"): RemoteView {
   return {
