@@ -117,3 +117,13 @@ verifies("agent-host.instruction-routes", () => {
     expect((await ask("instructions", { workspace, files: [] })).status).toBe(400);
   });
 });
+
+verifies("agent-host.unfenced-gate", () => {
+  it("knows each instructions folder it made, with its pin, until it removes it", async () => {
+    const { folder, pin } = await opened();
+    expect(instructions.pinOf(folder)).toEqual(pin);
+    expect(instructions.pinOf(join(root, "keep"))).toBeUndefined();
+    await instructions.release(folder);
+    expect(instructions.pinOf(folder)).toBeUndefined();
+  });
+});

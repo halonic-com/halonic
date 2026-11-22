@@ -280,3 +280,22 @@ function opening(): Sandbox {
     open: async (profile) => ({ profile, close: async () => {} }) as unknown as SandboxSession,
   };
 }
+
+verifies("agent-host.unfenced-gate", () => {
+  it("keeps each profile it built, with its agent, only until a session opens with it", async () => {
+    const bridge = { url: "http://127.0.0.1:4100", token: bridgeToken, close: async () => {} };
+    const built = await profiles.profileOf(workspace, parsedWriter(), bridge, null);
+    const profile = built?.profile as SandboxProfile;
+    expect(profiles.unopened(profile.tempFolder)).toEqual({
+      workspace: expect.any(String),
+      agent: parsedWriter(),
+      instructionsFolder: null,
+      profile,
+    });
+    expect(profiles.unopened(join(root, "stranger"))).toBeUndefined();
+
+    const session = await profiles.removingTempFolders(opening()).open(profile);
+    expect(profiles.unopened(profile.tempFolder)).toBeUndefined();
+    await session.close();
+  });
+});
