@@ -43,6 +43,12 @@ export type {
   DeploymentLimits,
   Deployments,
 } from "./kinds/deployments/schema.ts";
+export type {
+  CloudMeterSettings,
+  ConfigMeterSettings,
+  DeploymentUsers,
+  UsageLimit,
+} from "./kinds/deployments/users.ts";
 export type { Hub, HubUses } from "./kinds/hub/schema.ts";
 export {
   approvedSignIns,

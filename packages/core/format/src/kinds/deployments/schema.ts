@@ -1,5 +1,6 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { deploymentId, version } from "../../shared/fields.ts";
+import { DeploymentUsers } from "./users.ts";
 
 /**
  * The most characters a Worker name may have: it becomes the first label of
@@ -75,6 +76,8 @@ export const Deployment = s
     cloudflare: CloudflareSettings.optional(),
     /** Ceilings on what the deployment answers, such as requests per day. */
     limits: DeploymentLimits.optional(),
+    /** Who may use the deployment and how their usage is counted. */
+    users: DeploymentUsers.optional(),
   })
   .strict();
 
