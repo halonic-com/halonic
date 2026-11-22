@@ -127,7 +127,7 @@ verifies("fs-tauri.trust-commands", () => {
       }
     });
 
-    it("rejects as unavailable, without the shell's text, when the page has no trust capability", async () => {
+    it("rejects as internal, without the shell's text, when the page has no trust capability (C613 12)", async () => {
       const store = new TauriTrustStore(new FakeTrustShell({ granted: false }));
       for (const call of [
         store.get("/a"),
@@ -136,7 +136,7 @@ verifies("fs-tauri.trust-commands", () => {
         store.revoke("/a"),
       ]) {
         const error = await rejection(call);
-        expect(errorKindOf(error)).toBe("unavailable");
+        expect(errorKindOf(error)).toBe("internal");
         expect(String(error)).not.toContain("ACL");
       }
     });
@@ -161,7 +161,9 @@ verifies("fs-tauri.trust-commands", () => {
     it("keeps the text of a call the shell didn't answer only in the details (C548 5)", async () => {
       const store = new TauriTrustStore(new FakeTrustShell({ granted: false }));
       const error = await rejection(store.revoke("/a"));
-      expect(error).toMatchObject({ message: "Halonic's desktop app didn't answer." });
+      expect(error).toMatchObject({
+        message: "Halonic ran into a problem it can't explain yet.",
+      });
       expect((error as { details: string }).details).toMatch(
         /^The desktop shell gave no answer to the trust call\.\n.*ACL/su,
       );
@@ -180,19 +182,21 @@ verifies("fs-tauri.trust-commands", () => {
       for (const [reason, text] of rejections) {
         const store = new TauriTrustStore({ invoke: async () => Promise.reject(reason) });
         const error = await rejection(store.revoke("/a"));
-        expect(error).toMatchObject({ message: "Halonic's desktop app didn't answer." });
+        expect(error).toMatchObject({
+          message: "Halonic ran into a problem it can't explain yet.",
+        });
         expect((error as { details: string }).details).toBe(
           `The desktop shell gave no answer to the trust call.\n${text}`,
         );
       }
     });
 
-    it("rejects an answer that isn't a record as unavailable", async () => {
+    it("rejects an answer that isn't a record as internal", async () => {
       const answers: unknown[] = [{ location: 7 }, "record", { list: [] }];
       for (const answer of answers) {
         const store = new TauriTrustStore({ invoke: async () => answer });
-        expect(errorKindOf(await rejection(store.get("/a")))).toBe("unavailable");
-        expect(errorKindOf(await rejection(store.list()))).toBe("unavailable");
+        expect(errorKindOf(await rejection(store.get("/a")))).toBe("internal");
+        expect(errorKindOf(await rejection(store.list()))).toBe("internal");
       }
     });
   });
@@ -230,10 +234,10 @@ verifies("fs-tauri.trust-commands", () => {
       expect(await store.foldersFound([])).toEqual(new Map());
     });
 
-    it("gives an unavailable error for a folders-found answer it can't use", async () => {
+    it("gives an internal error for a folders-found answer it can't use", async () => {
       for (const answer of [["/a"], null, { "/a": "yes" }]) {
         const store = new TauriTrustStore({ invoke: async () => answer });
-        expect(errorKindOf(await rejection(store.foldersFound(["/a"])))).toBe("unavailable");
+        expect(errorKindOf(await rejection(store.foldersFound(["/a"])))).toBe("internal");
       }
     });
   });

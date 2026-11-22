@@ -282,8 +282,8 @@ verifies("workspace.trust-section", () => {
         "Permission denied (os error 13)",
       ),
       new ErrorWithDetails(
-        "unavailable",
-        "Halonic's desktop app didn't answer.",
+        "internal",
+        "Halonic ran into a problem it can't explain yet.",
         "The desktop shell gave no answer to the trust call.",
       ),
     ];
@@ -315,9 +315,11 @@ verifies("workspace.trust-section", () => {
 
     const noAnswer = await confirm();
     expect(noAnswer?.textContent).toContain(
-      "Couldn't remove trust from Acme: Halonic's desktop app didn't answer.",
+      "Couldn't remove trust from Acme: Halonic ran into a problem it can't explain yet.",
     );
     expect(noAnswer?.textContent).not.toContain("trust call");
     expect(dialogButton("Copy details")).toBeDefined();
+    // A bug the person can't fix: Try again would give the same answer (C613 12).
+    expect(dialogButton("Try again")).toBeUndefined();
   });
 });
