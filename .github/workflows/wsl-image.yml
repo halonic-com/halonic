@@ -22,6 +22,21 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # What only a new image brings needs a new image version (HAL-15161).
+      # The updater isn't in the list: it travels with the runtime.
+      - name: The image version goes up with the image
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE"
+          image_files=(infra/wsl-image/build.sh infra/wsl-image/customize.sh
+                       infra/wsl-image/snapshot.conf infra/wsl-image/files/wsl.conf)
+          changed="$(git diff --name-only "$BASE" HEAD -- "${image_files[@]}")"
+          if [ -n "$changed" ] && git diff --quiet "$BASE" HEAD -- infra/wsl-image/image-version; then
+            echo "::error::These change what the image holds, so raise infra/wsl-image/image-version: $changed"
+            exit 1
+          fi
       - name: Shellcheck
         timeout-minutes: 5
         run: |

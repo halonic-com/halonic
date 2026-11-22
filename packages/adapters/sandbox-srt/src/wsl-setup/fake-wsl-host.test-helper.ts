@@ -26,14 +26,16 @@ export interface FakeWsl {
     runtime: string | null;
     /** What the runtime updater's `install` ends with; 0 makes the version current. */
     runtimeInstallCode: number;
+    /** The image version `status` reports; `""` is an image from before HAL-15161. */
+    image: string;
   };
 }
 
 const ok = (output = ""): ProgramResult => ({ code: 0, output });
 
 /** What the runtime updater's `status` prints in the fake distro. */
-const runtimeStatus = (current: string | null): ProgramResult =>
-  ok(`{"current":"${current ?? ""}","previous":"","securityUpdated":""}\n`);
+const runtimeStatus = (current: string | null, image: string): ProgramResult =>
+  ok(`{"current":"${current ?? ""}","previous":"","securityUpdated":"","image":"${image}"}\n`);
 
 export function fakeWsl(): FakeWsl {
   const fake: FakeWsl = {
@@ -55,6 +57,7 @@ export function fakeWsl(): FakeWsl {
       distroStarts: true,
       runtime: null,
       runtimeInstallCode: 0,
+      image: "1",
     },
     host: undefined as never,
   };
@@ -106,7 +109,7 @@ export function fakeWsl(): FakeWsl {
       if (program[0] === "uname") return ok(`${machine.kernel}\n`);
       if (program[0] === "test") return { code: machine.dockerSocket ? 0 : 1, output: "" };
       if (program[0] === "ls") return ok(machine.wslFolder);
-      if (program[0] === RUNTIME_UPDATER) return runtimeStatus(machine.runtime);
+      if (program[0] === RUNTIME_UPDATER) return runtimeStatus(machine.runtime, machine.image);
       return { code: 127, output: "" };
     },
     installRuntime: async (_name, runtime) => {

@@ -58,6 +58,9 @@ sources="$root/etc/apt/sources.list.d/debian.sources"
 [ -d "$root/opt/halonic" ] || fail "/opt/halonic is missing"
 [ -f "$root/usr/share/doc/halonic-image/NOTICE" ] || fail "licence notice is missing"
 [ -f "$root/usr/share/doc/halonic-image/SNAPSHOT.txt" ] || fail "source pointer is missing"
+# The image's version (HAL-15161), from image-version next to this script.
+image="$(cat "$(dirname "$0")/image-version")"
+[ "$(cat "$root/usr/share/doc/halonic-image/IMAGE")" = "$image" ] || fail "IMAGE isn't image-version ($image)"
 grep -q '^halonic:' "$root/etc/passwd" || fail "user halonic is missing"
 grep -q '^root:[!*]' "$root/etc/shadow" || fail "root password is not locked"
 [ -e "$root/usr/share/doc/bubblewrap/copyright" ] || fail "no copyright file for bubblewrap"
@@ -144,7 +147,17 @@ for outside in /srv/x ../../x ../bin/../../x; do
   [ -z "$(find "$root/opt/halonic" -maxdepth 1 -name '*1.3.0')" ] || fail "a refused archive left files"
 done
 [ "$(chroot "$root" su halonic -s /bin/sh -c "$updater status")" = \
-  '{"current":"1.2.0","previous":"1.0.0","securityUpdated":""}' ] || fail "status is wrong"
+  "{\"current\":\"1.2.0\",\"previous\":\"1.0.0\",\"securityUpdated\":\"\",\"image\":\"$image\"}" ] ||
+  fail "status is wrong"
+# An image without a readable version reports none, never what the file holds.
+cp "$root/usr/share/doc/halonic-image/IMAGE" "$canary/IMAGE"
+for odd in '' 'x"1' '1 2'; do
+  printf '%s\n' "$odd" > "$root/usr/share/doc/halonic-image/IMAGE"
+  chroot "$root" "$updater" status | grep -q '"image":""}$' || fail "status reads image '$odd'"
+done
+rm "$root/usr/share/doc/halonic-image/IMAGE"
+chroot "$root" "$updater" status | grep -q '"image":""}$' || fail "status without IMAGE"
+cp "$canary/IMAGE" "$root/usr/share/doc/halonic-image/IMAGE"
 code=0; chroot "$root" su halonic -s /bin/sh -c "$updater rollback" 2>/dev/null || code=$?
 [ "$code" -eq 2 ] || fail "halonic could roll back (exit $code)"
 # The archive runtime-archive.sh packs (HAL-14644): the same bytes from the same

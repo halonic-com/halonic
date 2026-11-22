@@ -44,7 +44,7 @@ and its `halonic-runtime.json`, from `runtime-archive.sh`), with a 5-minute limi
 | `import-mount` | reads one Windows drive folder (one line) on standard input, never from the command line (W7), and checks it as the engine does: an absolute drive path with at least one folder, no empty, `.` or `..` segment and no control character. Mounts it with `ro,noexec,nosuid,nodev,uid=<halonic>,gid=<halonic>,umask=077` at a fresh `/mnt/halonic/import-<32 hex digits>` and prints that path. The files belong to `halonic`, so the engine runs `git` and the copy as `halonic`, never as root (W2b, HAL-12443). `/mnt/halonic` must be a real folder of root's that nobody else can write (`wsl.conf` makes it at every start), and every session denies it as a whole (W1). A failed mount removes its mount point |
 | `import-unmount <name>` | unmounts the import mount `<name>` (`import-` and 32 lowercase hex digits, a name, never a path) and removes its mount point with `rmdir` |
 | `cleanup-import-mounts` | no arguments, no input. Unmounts and removes the import mounts a crash or kill left under `/mnt/halonic` (HAL-5402). It only touches a real folder (never a link) directly under it, named `import-` and 32 lowercase hex digits, and only with `umount` and `rmdir`, so it never deletes a file. A mount point it can't clean is reported on standard error and the others go on; running it again changes nothing more. Studio runs it before it starts the host, with a 20-second limit, and starts the host whatever it says |
-| `status` | prints `{"current":"<version>","previous":"<version>","securityUpdated":"<UTC time>"}`; any user may run it, but only root sees when security updates last ran. Any process named `bwrap` holds them off, so Studio can warn when that is long ago |
+| `status` | prints `{"current":"<version>","previous":"<version>","securityUpdated":"<UTC time>","image":"<image version>"}`; any user may run it, but only root sees when security updates last ran. Any process named `bwrap` holds them off, so Studio can warn when that is long ago. `image` is empty for an image that records no version (below) |
 
 Exit codes: 0 done, 1 anything else (such as `/opt/halonic` missing or not root's),
 2 wrong use (also: not root, or the version is already current), 3 a sandbox session
@@ -120,6 +120,19 @@ packs a stand-in host twice, compares the bytes and installs it with the updater
 
 Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap libcap2-bin` then
 `sudo infra/wsl-image/build.sh out && sudo infra/wsl-image/check.sh out/halonic-wsl.tar.gz`.
+
+## The image version
+
+`image-version` holds one whole number, the image's own version (HAL-15161).
+`customize.sh` writes it to `/usr/share/doc/halonic-image/IMAGE` and `status`
+reports it as `image`. Raise it by one whenever something only a new image brings
+changes: `build.sh` (the package list), `customize.sh`, `snapshot.conf` or
+`files/wsl.conf`; the WSL image workflow fails a pull request that changes one of
+them without it. A change to the updater alone needs no raise, as it travels with
+the runtime. Studio names the lowest image it works with (`WSL_IMAGE_MIN` in
+`packages/adapters/sandbox-srt/src/wsl-setup/runtime.ts`); the setup reports an
+older distro as `image-outdated` and never re-imports it on its own, since that
+deletes what is kept in it.
 
 CI: `.github/workflows/wsl-image.yml` builds in the container from `Dockerfile`,
 runs on changes here and by hand, prints the sizes in the job summary, and keeps the image as a 7-day build artifact.
