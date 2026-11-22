@@ -3,6 +3,7 @@
 - Task: HAL-15755
 - Approval: HAL-15755; Liam reviews this pull request and signs this note as the CTO (a team decision under HAL-2282: Nina's C626 #4 on HAL-15750 asks for the way to the parent that HAL-12411 and HAL-15555 already gave, with no new words)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i8PBGj74zLkb2L9rMOqolV4IdIIeTpl2I6qalewVVdVUv/G6SBzmkOfTFa4f38YSDBe0BVr68+f5AUv86TklAQ==
 
 ## What changes
 
