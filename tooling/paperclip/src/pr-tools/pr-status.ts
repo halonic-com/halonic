@@ -10,6 +10,7 @@ import {
 } from "../pr-watcher/github.ts";
 import { reviewerFor } from "../reviewer-paths.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
+import { type ChangedFile, readManifests } from "./manifests.ts";
 
 /**
  * The `pr_status` tool: everything an agent asks GitHub when it checks a
@@ -91,7 +92,7 @@ export function branchPath(branch: string): string {
   return branch.split("/").map(encodeURIComponent).join("/");
 }
 
-/** Reads one pull request's whole status: about 10 GitHub requests. */
+/** Reads one pull request's whole status: about 10 GitHub requests, plus 2 per changed package manifest. */
 export async function prStatus(get: GitHubGet, repo: string, number: number): Promise<PrStatus> {
   const pull = (await get(`/repos/${repo}/pulls/${number}`)) as PullDetails;
   const head = pull.head.sha;
@@ -100,15 +101,21 @@ export async function prStatus(get: GitHubGet, repo: string, number: number): Pr
   const [ciOkOnHead, comments, files, review, inQueue, compare] = await Promise.all([
     ciOkOf(get, repo, pull),
     everyPage(get, `/repos/${repo}/issues/${number}/comments`) as Promise<PullComment[]>,
-    everyPage(get, `/repos/${repo}/pulls/${number}/files`) as Promise<{ filename: string }[]>,
+    everyPage(get, `/repos/${repo}/pulls/${number}/files`) as Promise<ChangedFile[]>,
     latestReview(get, repo, number, head),
     open ? inMergeQueue(get, repo, number) : Promise.resolve(false),
     open
       ? (get(`/repos/${repo}/compare/${branchPath(pull.base.ref)}...${head}`) as Promise<{
           behind_by?: number;
+          merge_base_commit?: { sha?: string };
         }>)
       : Promise.resolve(undefined),
   ]);
+  // Only an open pull request is compared, so a closed one's manifests count as Liam's.
+  const manifests = await readManifests(get, repo, files, {
+    base: compare?.merge_base_commit?.sha,
+    head,
+  });
   const changedLines = (pull.additions ?? 0) + (pull.deletions ?? 0);
   // A fork's branch can be named like ours, so it names no author or task.
   const ours = pull.head.repo?.full_name.toLowerCase() === repo.toLowerCase();
@@ -118,6 +125,7 @@ export async function prStatus(get: GitHubGet, repo: string, number: number): Pr
     files: files.map((file) => file.filename),
     changedLines,
     sensitive: false,
+    manifests,
   });
   const found = approvals(comments, { head, author, reviewer });
   return {

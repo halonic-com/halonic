@@ -577,8 +577,10 @@ it, until HAL-16015 is done.
 ## Reviewer path list
 
 `reviewerFor({ files, changedLines, sensitive })` answers `julian` or `liam`
-by the rules of HAL-14809. Scripts that route pull requests import it from
-here, so there is only one list.
+by the rules of HAL-14809 (widened on 22 Nov). Pass each changed
+`package.json`'s text at the merge base and the head in `manifests`, or that
+manifest counts as Liam's; `pr_status` reads them from the contents API. Scripts
+that route pull requests import it from here, so there is only one list.
 
 ## Merge queue fill order (`queue.prio`)
 
