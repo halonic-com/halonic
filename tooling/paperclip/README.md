@@ -228,8 +228,8 @@ turned dry run off.
 usage limits, keeps the history the seat forecast needs and proposes moves.
 It is its own plugin, `halonic.seats`, so the board installs, stops and
 trusts it apart from Agent tools. So far it has its settings, its tables,
-two board-only routes and the `seats.read` and `seats.history` jobs; the
-page comes next.
+two board-only routes, the `seats.read` and `seats.history` jobs and the
+`seat_usage` tool; the page comes next.
 
 - **Settings** (board-only, empty by default): the seats in reading order,
   each with an id, a role (`pool`, `reserve` or `paid-api`), its Claude
@@ -267,6 +267,15 @@ page comes next.
   ends late still counts. For each agent on a seat it notes its running and
   queued runs, open tasks, run cap and model. The queries pick single
   fields out of the agents' settings, never the whole settings.
+- **`seat_usage`**, an agent tool, read-only: each seat's id, role and
+  reset group, how its newest read went (`ok`, `rate-limited`,
+  `signed-out`, `no-reading` and so on), its newest stored windows with
+  how many minutes old they are, and the alerts `seats.read` holds. It
+  answers from the `reading` table and the reader's memory and never reads
+  a seat itself, so a seat has one reader only. It answers only the agents
+  listed in the board-only setting **Agents that may call seat_usage**
+  (the Seat Supervisor and Chief, HAL-16192), which is empty by default.
+  The database's error goes to the plugin's log, not to the agent.
 
 Build it with `pnpm --filter @halonicjs/tooling-paperclip run
 build:seats-plugin`. That writes `dist/seats/`: the bundles, the migrations

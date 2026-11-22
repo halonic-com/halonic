@@ -6,8 +6,8 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  * from Agent tools, so the board installs, stops and trusts it on its own.
  *
  * So far: settings, its own database schema, the board-only routes, the
- * `seats.read` job and the `seats.history` job. The page comes in a later
- * pull request.
+ * `seats.read` and `seats.history` jobs and the read-only `seat_usage` tool.
+ * The page comes in a later pull request.
  */
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.seats",
@@ -25,6 +25,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "jobs.schedule",
     // Board-only routes: every route below says `auth: "board"`, and src/seats/plugin/routes.ts checks it again.
     "api.routes.register",
+    // seat_usage: read-only, answers only the agents the board lists in seatUsageAgents.
+    "agent.tools.register",
   ],
   entrypoints: { worker: "worker.js" },
   database: {
@@ -91,6 +93,14 @@ export const manifest: PaperclipPluginManifestV1 = {
           "Off: the plugin only proposes moves on a task and the board applies them. On: it may move agents itself, within the plan's limits (HAL-16010).",
         default: false,
       },
+      seatUsageAgents: {
+        type: "array",
+        title: "Agents that may call seat_usage",
+        description:
+          "The Paperclip ids of the agents that may read the stored seat readings with the seat_usage tool. Empty: no agent may.",
+        default: [],
+        items: { type: "string" },
+      },
     },
   },
   jobs: [
@@ -125,6 +135,15 @@ export const manifest: PaperclipPluginManifestV1 = {
       auth: "board",
       capability: "api.routes.register",
       companyResolution: { from: "query", key: "companyId" },
+    },
+  ],
+  tools: [
+    {
+      name: "seat_usage",
+      displayName: "Seat usage",
+      description:
+        "Each AI seat's label, how its newest read went (ok, rate-limited, signed-out and so on), its newest stored usage windows with how old they are, and its alerts. Read-only: it answers from what seats.read stored and never reads a seat itself. Only the agents the board lists may call it.",
+      parametersSchema: { type: "object", properties: {} },
     },
   ],
 };
