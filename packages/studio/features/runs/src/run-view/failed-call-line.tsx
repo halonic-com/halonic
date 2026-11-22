@@ -43,14 +43,16 @@ export function FailedCallLine({
  */
 export function ConnectorNotStartedLine({
   notStarted,
+  openPlugin,
 }: {
   readonly notStarted: ConnectorNotStarted;
+  /** Opens a plugin's page, for the plugin the connector didn't start for; without it its name isn't a link. */
+  readonly openPlugin?: OpenPlugin;
 }) {
   const { connector, cause } = notStarted;
   return (
     <QuietFailureLine className="py-1.5">
-      {/* Not a link yet: this line has its own requirement, which doesn't say so. */}
-      {filled(connectorNotStartedLine(connector, cause), undefined)}
+      {filled(connectorNotStartedLine(connector, cause), openPlugin)}
     </QuietFailureLine>
   );
 }

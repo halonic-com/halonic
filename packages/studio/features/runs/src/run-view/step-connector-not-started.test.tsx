@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import type { RunEventBody, ToolFailureCause } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { StepEntry } from "./every-step-model.ts";
@@ -41,8 +42,14 @@ const modelCall: readonly (readonly [number, RunEventBody])[] = [
   ],
 ];
 
-/** Draft's panel for `events`, and the quiet lines above its tool calls. */
-function panel(events: readonly (readonly [number, RunEventBody])[]) {
+/**
+ * Draft's panel for `events`, and the quiet lines above its tool calls. With `openPlugin`, the
+ * panel is in a window that can open pages.
+ */
+function panel(
+  events: readonly (readonly [number, RunEventBody])[],
+  openPlugin?: (pluginId: string) => void,
+) {
   const log = logOf("run_a_7k2m9p", [[0, entered("draft")], ...events]);
   const root = render(
     <StepPanel
@@ -51,6 +58,7 @@ function panel(events: readonly (readonly [number, RunEventBody])[]) {
       workflowName={(id) => id}
       openRun={undefined}
       onClose={() => {}}
+      {...(openPlugin === undefined ? {} : { openPlugin })}
     />,
   );
   const lines = [...root.querySelectorAll("aside section > p")].map((line) => line.textContent);
@@ -98,7 +106,7 @@ verifies("runs.run-view.step-connector-not-started", () => {
     expect(root.querySelector("aside section > p code")?.textContent).toBe("mailbox-token");
   });
 
-  it("names the plugin that isn't trusted yet, changed since or whose sandbox didn't work, in italics", () => {
+  it("names the plugin that isn't trusted yet, changed since or whose sandbox didn't work, in italics, without a link where pages can't open", () => {
     const { root, lines } = panel([
       [
         0,
@@ -132,6 +140,78 @@ verifies("runs.run-view.step-connector-not-started", () => {
       "✕ Couldn't list the tools from weather: the sandbox didn't work when its plugin Weather started.",
     ]);
     expect(root.querySelector("aside section > p em + em")?.textContent).toBe("files");
+    expect(root.querySelector("aside section > p button")).toBeNull();
+  });
+
+  it("makes the plugin's name a link to its page, with the same words", () => {
+    const opened: string[] = [];
+    const { root, lines } = panel(
+      [
+        [
+          0,
+          listingFailed("handbook", {
+            code: "connector-not-started",
+            why: "plugin-not-trusted",
+            name: "files",
+          }),
+        ],
+        [
+          0,
+          listingFailed("wiki", {
+            code: "connector-not-started",
+            why: "plugin-changed",
+            name: "pages",
+          }),
+        ],
+      ],
+      (pluginId) => opened.push(pluginId),
+    );
+
+    expect(lines).toEqual([
+      "✕ Couldn't list the tools from handbook: its plugin files isn't trusted yet.",
+      "✕ Couldn't list the tools from wiki: its plugin pages changed since you trusted it.",
+    ]);
+    const links = [...root.querySelectorAll("aside section > p button")];
+    expect(links.map((link) => link.textContent)).toEqual(["files", "pages"]);
+    expect(links[0]?.querySelector("em")?.textContent).toBe("files");
+    act(() => {
+      for (const link of links) (link as HTMLElement).click();
+    });
+    expect(opened).toEqual(["files", "pages"]);
+  });
+
+  it("links neither a program nor a secret, which have no page, nor a stopped plugin", () => {
+    const { root } = panel(
+      [
+        [
+          0,
+          listingFailed("notes", {
+            code: "connector-not-started",
+            why: "program-missing",
+            name: "acme-notes-mcp",
+          }),
+        ],
+        [
+          0,
+          listingFailed("mailbox", {
+            code: "connector-not-started",
+            why: "secret-not-set",
+            name: "mailbox-token",
+          }),
+        ],
+        [
+          0,
+          listingFailed("weather", {
+            code: "connector-not-started",
+            why: "plugin-stopped",
+            name: "Weather",
+          }),
+        ],
+      ],
+      () => {},
+    );
+
+    expect(root.querySelector("aside section > p button")).toBeNull();
   });
 
   it("says only that it couldn't list the tools when the cause names nothing or can't be read", () => {
