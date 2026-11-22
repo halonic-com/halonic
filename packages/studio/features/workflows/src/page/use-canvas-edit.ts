@@ -3,6 +3,7 @@ import { errorReasonFor } from "@halonicjs/studio-shell";
 import type { WorkflowRef, WorkflowsHost } from "../api.ts";
 import { arrowAddedLine } from "./arrow-announcements.ts";
 import { pageWords } from "./page-words.ts";
+import { nameOf, stepNames } from "./step-names.ts";
 import type { WorkflowLoad } from "./use-workflow.ts";
 import type { CanvasEdit } from "./workflow-canvas.tsx";
 
@@ -45,11 +46,11 @@ export function useCanvasEdit(
       ),
     connect:
       changeArrows &&
-      ((from, to) =>
-        changeArrows.call(host, ref, from, { kind: "add", to }).then(
+      ((from, to) => {
+        const drawn = workflow.kind === "ready" ? workflow.value : undefined;
+        const steps = drawn?.steps ?? [];
+        return changeArrows.call(host, ref, from, { kind: "add", to }).then(
           () => {
-            const drawn = workflow.kind === "ready" ? workflow.value : undefined;
-            const steps = drawn?.steps ?? [];
             const arrows = drawn?.arrows.filter((arrow) => arrow.from === from) ?? [];
             announce?.(arrowAddedLine(steps, arrows, from, to));
             return true;
@@ -57,11 +58,12 @@ export function useCanvasEdit(
           (error: unknown) => {
             toasts?.show({
               tone: "danger",
-              title: pageWords.stepCard.couldntSave(from),
+              title: pageWords.stepCard.couldntSave(nameOf(stepNames(steps), from)),
               text: errorReasonFor(error),
             });
             return false;
           },
-        )),
+        );
+      }),
   };
 }

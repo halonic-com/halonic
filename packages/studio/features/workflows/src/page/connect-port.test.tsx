@@ -222,19 +222,24 @@ verifies("workflows.canvas.drag-to-connect", () => {
     expect(surface?.style.transform).toBe(before);
   });
 
-  it("says why on a toast when the host can't change the arrows", async () => {
-    const { page, toasts, announce } = await showPage({
+  it("says why on a toast when the host can't change the arrows, naming the step by title", async () => {
+    const titled: WorkflowView = {
+      ...reply,
+      steps: reply.steps.map((step) => (step.id === "start" ? { ...step, title: "Begin" } : step)),
+    };
+    const failing = {
       ...editsThatWork(),
       changeArrows: async () => {
         throw new KindedError("invalid_input", "The file can't be changed.");
       },
-    });
+    };
+    const { page, toasts, announce } = await showPage(failing, false, titled);
     const port = await dragTo(page, "start", middleOf(page, "done"));
     await drop(port, middleOf(page, "done"));
 
     expect(toasts.list()[0]).toMatchObject({
       tone: "danger",
-      title: "Couldn't change step start",
+      title: "Couldn't change step Begin",
       text: "The file can't be changed.",
     });
     expect(announce).not.toHaveBeenCalled();

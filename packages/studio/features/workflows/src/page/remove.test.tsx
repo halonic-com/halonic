@@ -4,6 +4,7 @@ import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import type { WorkflowView } from "../api.ts";
 import { buttonNamed, unmount } from "../test-support.tsx";
 import { arrowsSection, pick, reply, showPage } from "./step-arrows.test-helper.tsx";
 
@@ -20,6 +21,23 @@ async function press(page: HTMLElement, name: string) {
     buttonNamed(page, name);
   await act(async () => button?.click());
 }
+
+/** Picks the step card on the canvas by its step's id, whatever the card's title. */
+async function pickById(page: HTMLElement, stepId: string) {
+  const card = page.querySelector<HTMLButtonElement>(`button[data-step='${stepId}']`);
+  await act(async () => card?.click());
+}
+
+/** Support reply with titles, two of them shared, so the toasts name steps as their cards do. */
+const titled: WorkflowView = {
+  ...reply,
+  steps: [
+    { id: "sort", type: "task", title: "Sort it" },
+    { id: "approve", type: "wait", title: "Reply" },
+    { id: "write", type: "task", title: "Reply" },
+    { id: "done", type: "final" },
+  ],
+};
 
 /** The step card on the canvas that has focus, by its step's id. */
 const focusedStep = () => (document.activeElement as HTMLElement | null)?.dataset["step"];
@@ -148,5 +166,35 @@ verifies("workflows.page.remove", () => {
         text: "The file can't be changed.",
       }),
     ]);
+  });
+
+  it("names steps by title in its toasts, with the id after a shared title (C638 3)", async () => {
+    const undo = vi.fn(async () => {
+      throw new KindedError("conflict", "Step write can't be put back.");
+    });
+    const { page, toasts } = await showPage(vi.fn, { workflow: titled, undo });
+    await pickById(page, "write");
+    await press(page, "Remove step");
+    await act(async () => toasts.list()[0]?.action?.onClick());
+
+    expect(toasts.list().map((toast) => toast.title)).toEqual([
+      "Removed step Reply (write) and 3 arrows",
+      "Couldn't put back step Reply (write)",
+    ]);
+  });
+
+  it("names both ends of a removed arrow by title, and the step when the host can't", async () => {
+    const removed = await showPage(vi.fn, { workflow: titled });
+    await pickById(removed.page, "sort");
+    await press(removed.page, "Remove arrow 1");
+    unmount();
+    const refused = await showPage(vi.fn, { workflow: titled, fail: true });
+    await pickById(refused.page, "sort");
+    await press(refused.page, "Remove arrow 1");
+
+    expect(removed.toasts.list()[0]?.title).toBe(
+      "Removed the arrow from Sort it to Reply (approve)",
+    );
+    expect(refused.toasts.list()[0]?.title).toBe("Couldn't change step Sort it");
   });
 });

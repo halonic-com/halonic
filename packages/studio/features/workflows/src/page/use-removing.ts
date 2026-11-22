@@ -32,7 +32,7 @@ export function useRemoving(
   const refused = (stepId: string, error: unknown) =>
     toasts?.show({
       tone: "danger",
-      title: pageWords.stepCard.couldntSave(stepId),
+      title: pageWords.stepCard.couldntSave(name(stepId)),
       text: errorReasonFor(error),
     });
   return {
