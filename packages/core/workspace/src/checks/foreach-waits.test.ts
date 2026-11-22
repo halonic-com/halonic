@@ -117,3 +117,63 @@ verifies("workspace.foreach-child-waits", () => {
     expect(codes).toEqual(["unknown-workflow"]);
   });
 });
+
+/** Review one, whose step `check` runs Sign-off. */
+const reviewOneRunsSignOff = [
+  "name: Review one",
+  "initial: check",
+  "states:",
+  "  check: { type: workflow, workflow: sign-off, on: [{ to: done }] }",
+  "  done: { type: final }",
+  "",
+].join("\n");
+
+/** Sign-off: the step `approve` waits for approve. */
+const signOffWaiting = [
+  "name: Sign-off",
+  "initial: approve",
+  "states:",
+  "  approve: { type: wait, on: [{ event: approve, to: done }] }",
+  "  done: { type: final }",
+  "",
+].join("\n");
+
+/** Sign-off, which runs Review one back and never waits. */
+const signOffRunsReviewOne = [
+  "name: Sign-off",
+  "initial: again",
+  "states:",
+  "  again: { type: workflow, workflow: review-one, on: [{ to: done }] }",
+  "  done: { type: final }",
+  "",
+].join("\n");
+
+verifies("workspace.foreach-nested-waits", () => {
+  it("refuses a for-each step whose workflow runs a workflow with a wait step", async () => {
+    expect(
+      await issuesOf({
+        "hubs/support/workflows/topics.workflow.yaml": topics,
+        "hubs/support/workflows/review-one.workflow.yaml": reviewOneRunsSignOff,
+        "hubs/support/workflows/sign-off.workflow.yaml": signOffWaiting,
+      }),
+    ).toEqual([
+      [
+        "error",
+        "foreach-child-waits",
+        "hubs/support/workflows/topics.workflow.yaml",
+        "states.each.workflow",
+        `For-each step "each" runs "review-one" for each item, but "review-one" runs "sign-off", which has the wait step "approve", and an item's run can't wait, so the run fails there. Move the wait step after "each", or take it out of "sign-off".`,
+      ],
+    ]);
+  });
+
+  it("follows workflows that run each other once, and adds nothing to the loop's own error", async () => {
+    const issues = await issuesOf({
+      "hubs/support/workflows/topics.workflow.yaml": topics,
+      "hubs/support/workflows/review-one.workflow.yaml": reviewOneRunsSignOff,
+      "hubs/support/workflows/sign-off.workflow.yaml": signOffRunsReviewOne,
+    });
+
+    expect(issues.map(([, code]) => code)).toEqual(["subflow-loop"]);
+  });
+});
