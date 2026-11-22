@@ -40,6 +40,8 @@ export {
   gitHubReader,
   inMergeQueue,
   latestReview,
+  newestCheck,
+  newestFinding,
 } from "./pr-watcher/github.ts";
 export type { AgentRow, CommentRow, Paperclip, TaskRow } from "./pr-watcher/paperclip.ts";
 export {
@@ -71,3 +73,19 @@ export {
   type RankedPull,
   type TaskPriority,
 } from "./rules/queue-prio.ts";
+export {
+  type GitHubQuery,
+  gitHubGraphql,
+  gitHubQueryReader,
+  isReadOnly,
+} from "./snapshot/graphql.ts";
+export { type CheckFallback, mergeCommitChecks, takeSnapshot } from "./snapshot/read.ts";
+export type {
+  OpenFacts,
+  QueueEntry,
+  Snapshot,
+  SnapshotLabel,
+  SnapshotPull,
+  SnapshotRepo,
+} from "./snapshot/shape.ts";
+export { snapshotVersion } from "./snapshot/shape.ts";

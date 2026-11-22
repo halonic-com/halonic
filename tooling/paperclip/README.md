@@ -7,8 +7,8 @@ the merge queue's fill order (`queue.prio`).
 
 - **Layer:** tooling
 - **Owner:** mateo
-- **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.reviewer-paths`, `paperclip.queue-prio`
+- **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.github-snapshot`, `paperclip.reviewer-paths`, `paperclip.queue-prio`
 
 ## PR watcher
 
@@ -146,6 +146,41 @@ front of each name. A metric that doesn't save is logged and changes nothing.
   fired isn't open any more, so `fired` is a lower bound.
 - **Each tool call** (tags `companyId`, `tool`, `outcome`): `tools.calls` and
   `tools.github_requests`.
+
+## GitHub snapshot
+
+`src/snapshot/` reads GitHub once per pass with GraphQL, in place of the
+REST reads per pull request (the supervision plugins plan on HAL-15997,
+change 5). The watcher switches to it in the next pull request; until then
+nothing calls it.
+
+- **What it reads, per repository:** the default branch's merge queue, every
+  open pull request (25 per call, with its labels and who added them, `ci-ok`
+  and the draft `ci-ok` on its head, mergeable, in the queue, reviews and the
+  100 newest conversation comments), then closed ones (100 per call) until
+  they are older than 3 days. `ci-ok` on a merge commit is read only for the
+  merged pull requests a decision needs, 20 commits per call. On `halonic`
+  on 22 Nov: 18 calls and about 45 points of the 5,000-an-hour limit, against
+  some 450 REST requests per pass. Its facts matched the REST reader's on all
+  40 open pull requests.
+- **Read-only:** `gitHubQueryReader` posts only to
+  `https://api.github.com/graphql`, and refuses any document that isn't a
+  single `query` before sending it.
+- **What it keeps:** ids, states, names and times. Comment and review text is
+  read to find findings and signed approvals, then dropped.
+
+**The stored shape is a contract** (`src/snapshot/shape.ts`): `queue_state`
+and `merge_speed` (HAL-16194) read it from plugin state. Adding a field is
+fine; renaming or removing one bumps `snapshotVersion`, and readers refuse a
+version they don't know. Each pass replaces the whole snapshot.
+
+| Field | What it holds |
+| --- | --- |
+| `version`, `takenAt`, `closedWindowDays` | shape version, when the pass read it, how far back closed pull requests go |
+| `repos[].repo`, `.defaultBranch` | `owner/name`, its default branch |
+| `repos[].queue[]` | `number`, `position`, `state`, `enqueuedAt`, `enqueuedBy`, `groupHead`, `estimatedSeconds`, `solo` |
+| `repos[].pulls[]` | `number`, `url`, `state` (`open`, `merged`, `closed`), `branch`, `headRepo` (a fork when it isn't `repo`), `base`, `head`, `updatedAt`, `mergedAt`, `mergeCommit` |
+| `repos[].pulls[].open` | null when closed; else `draft`, `mergeable` (`yes`, `no`, `unknown`), `ciOk`, `draftCiOk`, `inQueue`, `labels[]` (`name`, `addedBy`, `addedAt`), `finding` (`id`, `at`), `approvals[]` (`by`, `head`) |
 
 ## Leaving a task the watcher watches
 

@@ -1,0 +1,95 @@
+import type { CheckState } from "../pr-watcher/decide.ts";
+
+/**
+ * The GitHub snapshot one `pr.watch` pass takes, as other jobs and tools
+ * read it from plugin state (`queue_state`, `merge_speed`). This shape is a
+ * contract: add fields freely, but a rename or removal bumps `version`, and
+ * readers refuse a version they don't know. Plain JSON only: `null`, never
+ * `undefined`. It carries ids, states, names and times, never comment or
+ * review text.
+ */
+
+/** The shape's version. Readers check it before they read anything else. */
+export const snapshotVersion = 1;
+
+/** One pass's view of GitHub. */
+export interface Snapshot {
+  readonly version: typeof snapshotVersion;
+  /** When the pass started reading, ISO. Every pass replaces the whole snapshot. */
+  readonly takenAt: string;
+  /** Closed pull requests updated within this many days before `takenAt` are in `pulls`. */
+  readonly closedWindowDays: number;
+  readonly repos: readonly SnapshotRepo[];
+}
+
+/** One watched repository. */
+export interface SnapshotRepo {
+  /** `owner/name`. */
+  readonly repo: string;
+  readonly defaultBranch: string;
+  /** The default branch's merge queue, by position (1 first). */
+  readonly queue: readonly QueueEntry[];
+  /** Every open pull request, then the closed ones in the window, newest update first in each. */
+  readonly pulls: readonly SnapshotPull[];
+}
+
+/** A pull request in the merge queue. */
+export interface QueueEntry {
+  readonly number: number;
+  readonly position: number;
+  /** GitHub's entry state: `QUEUED`, `AWAITING_CHECKS`, `MERGEABLE`, `UNMERGEABLE` or `LOCKED`. */
+  readonly state: string;
+  readonly enqueuedAt: string;
+  /** The GitHub login that queued it, or null when GitHub doesn't say. */
+  readonly enqueuedBy: string | null;
+  /** The merge group's commit, or null before its group forms. */
+  readonly groupHead: string | null;
+  /** GitHub's estimate in seconds, or null. */
+  readonly estimatedSeconds: number | null;
+  readonly solo: boolean;
+}
+
+/** A pull request, open or closed. */
+export interface SnapshotPull {
+  readonly number: number;
+  readonly url: string;
+  readonly state: "open" | "merged" | "closed";
+  readonly branch: string;
+  /** `owner/name` of the repository its branch lives in: another one is a fork. Null when the fork is gone. */
+  readonly headRepo: string | null;
+  readonly base: string;
+  /** The head commit. */
+  readonly head: string;
+  readonly updatedAt: string;
+  /** Merged only. */
+  readonly mergedAt: string | null;
+  /** Merged only. `ci-ok` on it isn't read here, only when a decision needs it. */
+  readonly mergeCommit: string | null;
+  /** Open only, null when closed. */
+  readonly open: OpenFacts | null;
+}
+
+/** What an open pull request's reviewers, checks and labels say. */
+export interface OpenFacts {
+  readonly draft: boolean;
+  /** `unknown` while GitHub is still working it out: not a conflict yet. */
+  readonly mergeable: "yes" | "no" | "unknown";
+  /** `ci-ok` on the head commit. */
+  readonly ciOk: CheckState;
+  /** A draft's light `ci-ok` on the head commit. */
+  readonly draftCiOk: CheckState;
+  readonly inQueue: boolean;
+  /** Its labels now, each with who added it last and when (null when older than the 20 newest label events). */
+  readonly labels: readonly SnapshotLabel[];
+  /** The newest review finding on this head, by the PR watcher's rule (`newestFinding`), or null. */
+  readonly finding: { readonly id: string; readonly at: string } | null;
+  /** Signed approvals by our reviewers on any head, oldest first. Whether one counts depends on the head and the paths. */
+  readonly approvals: readonly { readonly by: string; readonly head: string }[];
+}
+
+/** A label on an open pull request. */
+export interface SnapshotLabel {
+  readonly name: string;
+  readonly addedBy: string | null;
+  readonly addedAt: string | null;
+}

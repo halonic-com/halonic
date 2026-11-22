@@ -1,0 +1,606 @@
+{
+  "open": {
+    "data": {
+      "repository": {
+        "defaultBranchRef": {
+          "name": "main"
+        },
+        "mergeQueue": {
+          "entries": {
+            "nodes": [
+              {
+                "position": 1,
+                "state": "MERGEABLE",
+                "enqueuedAt": "2026-11-22T14:03:08Z",
+                "estimatedTimeToMerge": 0,
+                "solo": false,
+                "enqueuer": {
+                  "login": "timothy-halonic"
+                },
+                "headCommit": {
+                  "oid": "43d9fdc2d02b2a6b172260afe61197f287f661ec"
+                },
+                "pullRequest": {
+                  "number": 4794
+                }
+              },
+              {
+                "position": 2,
+                "state": "AWAITING_CHECKS",
+                "enqueuedAt": "2026-11-22T14:03:10Z",
+                "estimatedTimeToMerge": 0,
+                "solo": false,
+                "enqueuer": {
+                  "login": "timothy-halonic"
+                },
+                "headCommit": {
+                  "oid": "32a8f66715bf06d0498b24ccba5a221dedb4380b"
+                },
+                "pullRequest": {
+                  "number": 4825
+                }
+              },
+              {
+                "position": 3,
+                "state": "AWAITING_CHECKS",
+                "enqueuedAt": "2026-11-22T14:03:12Z",
+                "estimatedTimeToMerge": 0,
+                "solo": false,
+                "enqueuer": {
+                  "login": "timothy-halonic"
+                },
+                "headCommit": {
+                  "oid": "ba5a7e079e79cf11cff8d255e1c232e3e457f0e8"
+                },
+                "pullRequest": {
+                  "number": 5028
+                }
+              },
+              {
+                "position": 4,
+                "state": "AWAITING_CHECKS",
+                "enqueuedAt": "2026-11-22T14:03:15Z",
+                "estimatedTimeToMerge": 0,
+                "solo": false,
+                "enqueuer": {
+                  "login": "timothy-halonic"
+                },
+                "headCommit": {
+                  "oid": "f54ca514872054ad934c0409bfa57a156cf5903e"
+                },
+                "pullRequest": {
+                  "number": 5111
+                }
+              }
+            ]
+          }
+        },
+        "pullRequests": {
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": "cursor-open-1"
+          },
+          "nodes": [
+            {
+              "number": 5114,
+              "url": "https://github.com/halonic-com/halonic/pull/5114",
+              "isDraft": false,
+              "mergeable": "MERGEABLE",
+              "updatedAt": "2026-11-22T14:06:19Z",
+              "isInMergeQueue": false,
+              "headRefName": "mateo/HAL-16196-gitleaks-deletion-only",
+              "headRefOid": "0d237fd191619d3769c2c9b9acf2e27b55c7437c",
+              "baseRefName": "main",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "built-on:paperclip"
+                  }
+                ]
+              },
+              "timelineItems": {
+                "nodes": [
+                  {
+                    "createdAt": "2026-11-22T13:43:44Z",
+                    "label": {
+                      "name": "built-on:paperclip"
+                    },
+                    "actor": {
+                      "login": "halonic-dev"
+                    }
+                  }
+                ]
+              },
+              "commits": {
+                "nodes": [
+                  {
+                    "commit": {
+                      "statusCheckRollup": {
+                        "contexts": {
+                          "pageInfo": {
+                            "hasNextPage": false
+                          },
+                          "nodes": [
+                            {
+                              "name": "lint",
+                              "status": "COMPLETED",
+                              "conclusion": "FAILURE",
+                              "startedAt": "2026-11-22T09:00:00Z"
+                            },
+                            {}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "reviews": {
+                "nodes": []
+              },
+              "comments": {
+                "nodes": [
+                  {
+                    "databaseId": 7080294781,
+                    "body": "Liam: approved on head `0d237fd`",
+                    "createdAt": "2026-11-22T14:06:19Z",
+                    "authorAssociation": "MEMBER"
+                  }
+                ]
+              }
+            },
+            {
+              "number": 5116,
+              "url": "https://github.com/halonic-com/halonic/pull/5116",
+              "isDraft": true,
+              "mergeable": "MERGEABLE",
+              "updatedAt": "2026-11-22T14:05:55Z",
+              "isInMergeQueue": false,
+              "headRefName": "elena/HAL-15963-03-profile-check-line",
+              "headRefOid": "03242749433d0fd9eb342030aaa96be72e48067d",
+              "baseRefName": "main",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "built-on:paperclip"
+                  }
+                ]
+              },
+              "timelineItems": {
+                "nodes": [
+                  {
+                    "createdAt": "2026-11-22T13:44:46Z",
+                    "label": {
+                      "name": "built-on:paperclip"
+                    },
+                    "actor": {
+                      "login": "halonic-dev"
+                    }
+                  }
+                ]
+              },
+              "commits": {
+                "nodes": [
+                  {
+                    "commit": {
+                      "statusCheckRollup": {
+                        "contexts": {
+                          "pageInfo": {
+                            "hasNextPage": false
+                          },
+                          "nodes": [
+                            {
+                              "name": "lint",
+                              "status": "COMPLETED",
+                              "conclusion": "FAILURE",
+                              "startedAt": "2026-11-22T09:00:00Z"
+                            },
+                            {}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "reviews": {
+                "nodes": []
+              },
+              "comments": {
+                "nodes": []
+              }
+            },
+            {
+              "number": 4965,
+              "url": "https://github.com/halonic-com/halonic/pull/4965",
+              "isDraft": false,
+              "mergeable": "MERGEABLE",
+              "updatedAt": "2026-11-22T14:03:20Z",
+              "isInMergeQueue": false,
+              "headRefName": "tomas/HAL-15955-c655-words",
+              "headRefOid": "c013e57e05162f6f6aa60a8a63e11e9f17c29c55",
+              "baseRefName": "main",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "built-on:paperclip"
+                  }
+                ]
+              },
+              "timelineItems": {
+                "nodes": [
+                  {
+                    "createdAt": "2026-11-22T07:29:38Z",
+                    "label": {
+                      "name": "built-on:paperclip"
+                    },
+                    "actor": {
+                      "login": "halonic-dev"
+                    }
+                  }
+                ]
+              },
+              "commits": {
+                "nodes": [
+                  {
+                    "commit": {
+                      "statusCheckRollup": {
+                        "contexts": {
+                          "pageInfo": {
+                            "hasNextPage": false
+                          },
+                          "nodes": [
+                            {
+                              "name": "ci-ok",
+                              "status": "COMPLETED",
+                              "conclusion": "SUCCESS",
+                              "startedAt": "2026-11-22T13:55:01Z"
+                            },
+                            {
+                              "name": "lint",
+                              "status": "COMPLETED",
+                              "conclusion": "FAILURE",
+                              "startedAt": "2026-11-22T09:00:00Z"
+                            },
+                            {}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "reviews": {
+                "nodes": []
+              },
+              "comments": {
+                "nodes": [
+                  {
+                    "databaseId": 7076399885,
+                    "body": "Liam: approved on head `2fb148897`",
+                    "createdAt": "2026-11-22T08:14:45Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7076631152,
+                    "body": "(recorded comment)",
+                    "createdAt": "2026-11-22T08:37:18Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7076849608,
+                    "body": "(recorded comment)",
+                    "createdAt": "2026-11-22T08:58:24Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7077306376,
+                    "body": "(recorded comment)",
+                    "createdAt": "2026-11-22T09:41:20Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7077729222,
+                    "body": "(recorded comment)",
+                    "createdAt": "2026-11-22T10:20:30Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7077736706,
+                    "body": "Julian: changes requested on head `dbac44a0b`",
+                    "createdAt": "2026-11-22T10:21:12Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7078208854,
+                    "body": "Liam: approved on head `8e574ea05`",
+                    "createdAt": "2026-11-22T11:05:09Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7078961427,
+                    "body": "(recorded comment)",
+                    "createdAt": "2026-11-22T12:13:34Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7079011621,
+                    "body": "Liam: approved on head `40156c667`",
+                    "createdAt": "2026-11-22T12:17:54Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7079019244,
+                    "body": "Julian: approved on head `40156c667`",
+                    "createdAt": "2026-11-22T12:18:32Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7080253545,
+                    "body": "(recorded comment)",
+                    "createdAt": "2026-11-22T14:03:04Z",
+                    "authorAssociation": "MEMBER"
+                  },
+                  {
+                    "databaseId": 7080256945,
+                    "body": "(recorded comment)",
+                    "createdAt": "2026-11-22T14:03:20Z",
+                    "authorAssociation": "MEMBER"
+                  }
+                ]
+              }
+            },
+            {
+              "number": 4952,
+              "url": "https://github.com/halonic-com/halonic/pull/4952",
+              "isDraft": false,
+              "mergeable": "CONFLICTING",
+              "updatedAt": "2026-11-22T13:41:47Z",
+              "isInMergeQueue": false,
+              "headRefName": "ravi/HAL-15916-doctor-plugin-records",
+              "headRefOid": "4b696d5eb94ebeb51d395d490d9373c1627639e9",
+              "baseRefName": "ravi/HAL-15893-plugin-record-unreadable",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "built-on:paperclip"
+                  }
+                ]
+              },
+              "timelineItems": {
+                "nodes": [
+                  {
+                    "createdAt": "2026-11-22T07:02:31Z",
+                    "label": {
+                      "name": "built-on:paperclip"
+                    },
+                    "actor": {
+                      "login": "halonic-dev"
+                    }
+                  }
+                ]
+              },
+              "commits": {
+                "nodes": [
+                  {
+                    "commit": {
+                      "statusCheckRollup": {
+                        "contexts": {
+                          "pageInfo": {
+                            "hasNextPage": false
+                          },
+                          "nodes": [
+                            {
+                              "name": "ci-ok",
+                              "status": "COMPLETED",
+                              "conclusion": "FAILURE",
+                              "startedAt": "2026-11-22T13:48:32Z"
+                            },
+                            {
+                              "name": "lint",
+                              "status": "COMPLETED",
+                              "conclusion": "FAILURE",
+                              "startedAt": "2026-11-22T09:00:00Z"
+                            },
+                            {}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "reviews": {
+                "nodes": []
+              },
+              "comments": {
+                "nodes": [
+                  {
+                    "databaseId": 7075915894,
+                    "body": "- [minor] `pluginRecordProblem` rethrows any other error, so an odd file system error in the record folder (EIO, say) no",
+                    "createdAt": "2026-11-22T07:26:30Z",
+                    "authorAssociation": "MEMBER"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "closed": {
+    "data": {
+      "repository": {
+        "pullRequests": {
+          "pageInfo": {
+            "hasNextPage": true,
+            "endCursor": "cursor-closed-1"
+          },
+          "nodes": [
+            {
+              "number": 4794,
+              "url": "https://github.com/halonic-com/halonic/pull/4794",
+              "state": "MERGED",
+              "updatedAt": "2026-11-22T14:07:42Z",
+              "mergedAt": "2026-11-22T14:07:40Z",
+              "headRefName": "tomas/HAL-15620-program-said",
+              "headRefOid": "1d91e322e10e077b0d4feacd9174aab5b7120b6a",
+              "baseRefName": "main",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "mergeCommit": {
+                "oid": "43d9fdc2d02b2a6b172260afe61197f287f661ec"
+              }
+            },
+            {
+              "number": 5096,
+              "url": "https://github.com/halonic-com/halonic/pull/5096",
+              "state": "MERGED",
+              "updatedAt": "2026-11-22T14:00:43Z",
+              "mergedAt": "2026-11-22T14:00:41Z",
+              "headRefName": "elena/HAL-15985-phone-page-wiring",
+              "headRefOid": "fe754680c2350c1417ebee05757b79509afe6a2e",
+              "baseRefName": "main",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "mergeCommit": {
+                "oid": "73a81f8ce01f693e1b87b93b923b202f30d6c093"
+              }
+            },
+            {
+              "number": 5106,
+              "url": "https://github.com/halonic-com/halonic/pull/5106",
+              "state": "MERGED",
+              "updatedAt": "2026-11-22T13:59:29Z",
+              "mergedAt": "2026-11-22T13:59:26Z",
+              "headRefName": "ravi/HAL-15693-run-secrets-unreadable",
+              "headRefOid": "6d3cc413954989ccfa6bf0ed310c4f7ca39e58fb",
+              "baseRefName": "main",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "mergeCommit": {
+                "oid": "271792ec0ea6ecc4e24f054645c517c1635f5f5f"
+              }
+            },
+            {
+              "number": 5105,
+              "url": "https://github.com/halonic-com/halonic/pull/5105",
+              "state": "MERGED",
+              "updatedAt": "2026-11-22T13:51:36Z",
+              "mergedAt": "2026-11-22T13:51:34Z",
+              "headRefName": "mateo/HAL-16185-kept-access-manual-step",
+              "headRefOid": "b95649c39f44bb9a59c2fb986bda5a221c2164be",
+              "baseRefName": "main",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "mergeCommit": {
+                "oid": "55a1bbb65d938f79706c02462665450775d4e679"
+              }
+            },
+            {
+              "number": 5103,
+              "url": "https://github.com/halonic-com/halonic/pull/5103",
+              "state": "MERGED",
+              "updatedAt": "2026-11-22T13:49:53Z",
+              "mergedAt": "2026-11-22T13:49:51Z",
+              "headRefName": "nina/HAL-16179-readme-routines-note",
+              "headRefOid": "72a6c3ddf060cae1a2368123fcccbb9d459a0364",
+              "baseRefName": "main",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "mergeCommit": {
+                "oid": "628f1acbf07e982f966d5eac96328de27bcd9087"
+              }
+            },
+            {
+              "number": 5098,
+              "url": "https://github.com/halonic-com/halonic/pull/5098",
+              "state": "MERGED",
+              "updatedAt": "2026-11-22T13:43:49Z",
+              "mergedAt": "2026-11-22T13:43:47Z",
+              "headRefName": "elena/HAL-15963-02-profile-setting-words",
+              "headRefOid": "a8e2399d690ddf1d45ac175f7e9f6a39af56244c",
+              "baseRefName": "main",
+              "headRepository": {
+                "nameWithOwner": "halonic-com/halonic"
+              },
+              "mergeCommit": {
+                "oid": "b66328decebbfe4db9c6f27cfc180a044ea6e445"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "commitChecks": {
+    "shas": [
+      "43d9fdc2d02b2a6b172260afe61197f287f661ec",
+      "73a81f8ce01f693e1b87b93b923b202f30d6c093"
+    ],
+    "body": {
+      "data": {
+        "repository": {
+          "c0": {
+            "statusCheckRollup": {
+              "contexts": {
+                "pageInfo": {
+                  "hasNextPage": false
+                },
+                "nodes": [
+                  {
+                    "name": "ci-ok",
+                    "status": "COMPLETED",
+                    "conclusion": "SUCCESS",
+                    "startedAt": "2026-11-22T14:07:25Z"
+                  }
+                ]
+              }
+            }
+          },
+          "c1": {
+            "statusCheckRollup": {
+              "contexts": {
+                "pageInfo": {
+                  "hasNextPage": false
+                },
+                "nodes": [
+                  {
+                    "name": "ci-ok",
+                    "status": "COMPLETED",
+                    "conclusion": "SUCCESS",
+                    "startedAt": "2026-11-22T14:00:11Z"
+                  },
+                  {
+                    "name": "ci-ok",
+                    "status": "COMPLETED",
+                    "conclusion": "SUCCESS",
+                    "startedAt": "2026-11-22T14:05:30Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

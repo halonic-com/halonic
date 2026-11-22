@@ -1,0 +1,216 @@
+import { readFileSync } from "node:fs";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, test } from "vitest";
+import { type GitHubQuery, gitHubGraphql, gitHubQueryReader, isReadOnly } from "./graphql.ts";
+import { closedPullsQuery } from "./queries.ts";
+import { type CheckFallback, mergeCommitChecks, takeSnapshot } from "./read.ts";
+import { snapshotVersion } from "./shape.ts";
+
+/** Trimmed real answers from 22 Nov: comment text cut to the line that matters, checks to `ci-ok`. */
+interface Recording {
+  readonly open: { readonly data: unknown };
+  readonly closed: { readonly data: unknown };
+  readonly commitChecks: {
+    readonly shas: readonly string[];
+    readonly body: { readonly data: unknown };
+  };
+}
+
+function recording(): Recording {
+  const file = new URL("./recordings/halonic-22-nov.json", import.meta.url);
+  return JSON.parse(readFileSync(file, "utf8")) as Recording;
+}
+
+const emptyPage = {
+  repository: { pullRequests: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } },
+};
+
+/** A GitHub that answers each operation from the recording and remembers every call. */
+function fakeQuery(answers: Recording = recording()) {
+  const calls: { operation: string; variables: Readonly<Record<string, unknown>> }[] = [];
+  const query: GitHubQuery = async (document, variables) => {
+    const operation = /query (\w+)/.exec(document)?.[1] ?? "";
+    calls.push({ operation, variables });
+    if (operation === "OpenPulls") {
+      return answers.open.data;
+    }
+    if (operation === "ClosedPulls") {
+      return variables["after"] === null ? answers.closed.data : emptyPage;
+    }
+    return answers.commitChecks.body.data;
+  };
+  return { query, calls };
+}
+
+const noFallback: CheckFallback = async () => {
+  throw new Error("no fallback expected");
+};
+
+const repos = ["halonic-com/halonic"];
+
+verifies("paperclip.github-snapshot", () => {
+  test("refuses a mutation and sends nothing", async () => {
+    const sent: string[] = [];
+    const query = gitHubQueryReader({
+      token: "test-token",
+      fetch: async (url) => {
+        sent.push(url);
+        return new Response("{}", { status: 200 });
+      },
+    });
+    const mutation =
+      'mutation { addComment(input: { subjectId: "x", body: "y" }) { clientMutationId } }';
+    await expect(query(mutation, {})).rejects.toThrow("isn't a query");
+    await expect(query(`query A { viewer { login } }\n${mutation}`, {})).rejects.toThrow();
+    expect(sent).toEqual([]);
+    expect(isReadOnly(closedPullsQuery)).toBe(true);
+    expect(isReadOnly("# query\nsubscription { x }")).toBe(false);
+  });
+
+  test("posts a query only to the GraphQL endpoint, with the token, and names GitHub's error", async () => {
+    const sent: { url: string; init: { method: string; headers: Record<string, string> } }[] = [];
+    const answer = { data: null, errors: [{ message: "Something went wrong" }] };
+    const query = gitHubQueryReader({
+      token: "test-token",
+      fetch: async (url, init) => {
+        sent.push({ url, init });
+        return new Response(JSON.stringify(answer), { status: 200 });
+      },
+    });
+    await expect(query("query { viewer { login } }", {})).rejects.toThrow(
+      "GitHub: the GraphQL query answered 200: Something went wrong.",
+    );
+    expect(sent.map(({ url, init }) => [url, init.method, init.headers["authorization"]])).toEqual([
+      [gitHubGraphql, "POST", "Bearer test-token"],
+    ]);
+    expect(gitHubGraphql).toBe("https://api.github.com/graphql");
+  });
+
+  test("keeps checks, finding, approvals, labels and the queue, and no comment text", async () => {
+    const { query } = fakeQuery();
+    const snapshot = await takeSnapshot({
+      query,
+      repos,
+      now: new Date("2026-11-22T14:10:00Z"),
+      fallback: noFallback,
+    });
+    expect(snapshot.version).toBe(snapshotVersion);
+    const [repo] = snapshot.repos;
+    expect(repo?.defaultBranch).toBe("main");
+    expect(repo?.queue.map((entry) => [entry.number, entry.position])).toEqual([
+      [4794, 1],
+      [4825, 2],
+      [5028, 3],
+      [5111, 4],
+    ]);
+    expect(repo?.queue[0]?.enqueuedBy).toBe("timothy-halonic");
+    const pull = repo?.pulls.find((each) => each.number === 4965);
+    expect(pull?.state).toBe("open");
+    expect(pull?.open?.ciOk).toBe("success");
+    expect(pull?.open?.draftCiOk).toBe("missing");
+    // Julian's "changes requested" names an older head, but a conversation comment has no commit.
+    expect(pull?.open?.finding).toEqual({ id: "i7077736706", at: "2026-11-22T10:21:12Z" });
+    expect(pull?.open?.approvals).toEqual([
+      { by: "Liam", head: "2fb148897" },
+      { by: "Liam", head: "8e574ea05" },
+      { by: "Liam", head: "40156c667" },
+      { by: "Julian", head: "40156c667" },
+    ]);
+    expect(pull?.open?.labels).toEqual([
+      { name: "built-on:paperclip", addedBy: "halonic-dev", addedAt: "2026-11-22T07:29:38Z" },
+    ]);
+    const conflicting = repo?.pulls.find((each) => each.number === 4952);
+    expect(conflicting?.open?.mergeable).toBe("no");
+    expect(repo?.pulls.find((each) => each.number === 5116)?.open?.draft).toBe(true);
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /approved on head|changes requested|recorded comment/,
+    );
+  });
+
+  test("reads closed pull requests until one is older than the window", async () => {
+    const recent = fakeQuery();
+    const all = await takeSnapshot({
+      query: recent.query,
+      repos,
+      now: new Date("2026-11-22T14:10:00Z"),
+      fallback: noFallback,
+    });
+    const closed = all.repos[0]?.pulls.filter((pull) => pull.open === null) ?? [];
+    expect(closed.map((pull) => pull.number)).toEqual([4794, 5096, 5106, 5105, 5103, 5098]);
+    expect(closed[0]).toMatchObject({ state: "merged", headRepo: "halonic-com/halonic" });
+    expect(recent.calls.filter((call) => call.operation === "ClosedPulls")).toHaveLength(2);
+
+    // Three days later only the four updated after 13:50 on 22 Nov are left, and page 2 isn't read.
+    const later = fakeQuery();
+    const window = await takeSnapshot({
+      query: later.query,
+      repos,
+      now: new Date("2026-11-25T13:50:00Z"),
+      fallback: noFallback,
+    });
+    const kept = window.repos[0]?.pulls.filter((pull) => pull.open === null) ?? [];
+    expect(kept.map((pull) => pull.number)).toEqual([4794, 5096, 5106, 5105]);
+    expect(later.calls.filter((call) => call.operation === "ClosedPulls")).toHaveLength(1);
+  });
+
+  test("reads ci-ok another way when a head has more than 100 checks without it", async () => {
+    const answers = recording();
+    const page = answers.open.data as {
+      repository: {
+        pullRequests: {
+          nodes: {
+            number: number;
+            commits: { nodes: { commit: { statusCheckRollup: { contexts: unknown } } }[] };
+          }[];
+        };
+      };
+    };
+    for (const node of page.repository.pullRequests.nodes) {
+      const rollup = node.commits.nodes[0]?.commit.statusCheckRollup;
+      if (rollup !== undefined && node.number === 5114) {
+        rollup.contexts = { pageInfo: { hasNextPage: true }, nodes: [{ name: "lint" }] };
+      }
+    }
+    const asked: string[] = [];
+    const snapshot = await takeSnapshot({
+      query: fakeQuery(answers).query,
+      repos,
+      now: new Date("2026-11-22T14:10:00Z"),
+      fallback: async (_repo, sha, name) => {
+        asked.push(`${sha.slice(0, 7)} ${name}`);
+        return "pending";
+      },
+    });
+    expect(asked).toEqual(["0d237fd ci-ok", "0d237fd ci-ok (draft, light run)"]);
+    expect(snapshot.repos[0]?.pulls.find((pull) => pull.number === 5114)?.open?.ciOk).toBe(
+      "pending",
+    );
+  });
+
+  test("reads ci-ok on merge commits in one query, each commit as a variable", async () => {
+    const answers = recording();
+    const { query, calls } = fakeQuery(answers);
+    const [first = "", second = ""] = answers.commitChecks.shas;
+    const documents: string[] = [];
+    const checks = await mergeCommitChecks(
+      async (document, variables) => {
+        documents.push(document);
+        return query(document, variables);
+      },
+      "halonic-com/halonic",
+      [first, second, first],
+      noFallback,
+    );
+    expect(calls).toEqual([
+      {
+        operation: "CommitChecks",
+        variables: { owner: "halonic-com", name: "halonic", c0: first, c1: second },
+      },
+    ]);
+    expect(documents[0]).not.toContain(first);
+    expect([...checks]).toEqual([
+      [first, "success"],
+      [second, "success"],
+    ]);
+  });
+});
