@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-The toasts after removing a step or an arrow, and the ones that say a step couldn't be changed or put back, name steps by their titles, as the step cards do.
+The toast that says a step couldn't be changed names the step by its title, as the step card does.
