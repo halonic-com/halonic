@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 
 // Vitest runs each package's tests from the package folder (see colours.test.ts).
 const connectPage = readFileSync(join(process.cwd(), "connect.html"), "utf8");
-const titleBarBrand = readFileSync(
-  join(process.cwd(), "../../packages/studio/shell/src/title-bar/title-bar-brand.tsx"),
+// The title bar draws the kit's mark (HAL-16050), so the kit's copy is the one to compare.
+const kitMark = readFileSync(
+  join(process.cwd(), "../../packages/studio/kit/src/halonic-mark/halonic-mark.tsx"),
   "utf8",
 );
 
@@ -34,7 +35,7 @@ describe("the ring on the connect page and in the Studio's title bar", () => {
   });
 
   it("has a band of 16% of the diameter and one gradient from blue to cyan, bottom left to top right", () => {
-    for (const markup of [connectPage, titleBarBrand]) {
+    for (const markup of [connectPage, kitMark]) {
       expect(ring(markup)).toEqual({
         circle: ["50", "50", "42", "16"],
         direction: ["0", "1", "1", "0"],
@@ -44,7 +45,7 @@ describe("the ring on the connect page and in the Studio's title bar", () => {
   });
 
   it("uses no pixel stroke and no non-scaling stroke", () => {
-    for (const markup of [connectPage, titleBarBrand]) {
+    for (const markup of [connectPage, kitMark]) {
       expect(markup).not.toMatch(/non-scaling-stroke|vectorEffect|stroke-width="\d+px"/);
     }
   });
