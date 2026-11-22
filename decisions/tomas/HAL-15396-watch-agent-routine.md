@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-15396 asks for this change, from flow check C570 #2 (HAL-15386). It allows refusing only that routine or marking it in the list. The team decides under the HAL-2282 rule: the wording builds on "Can't start", approved for the list and the Studio, and Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Tr3OD0FWSJ4997x+Bdfi1HgDmHKsenDuiOYNeMLYJAhmtKgcn1WK8VU/tYJ5T4tJrPvHNPQwAXmIB4KvjoPyDQ==
 
 ## What changes
 
