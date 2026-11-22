@@ -192,7 +192,7 @@ verifies("cli.commands.plugin.off-here", () => {
     const listed = await plugin("list");
 
     expect(listed.io.stdout.slice(1)).toEqual([
-      "  The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer.",
+      "  The sandbox's one-time setup isn't done for this version of Halonic. Set it up with halonic sandbox setup. Windows asks for administrator rights once.",
       "  More: https://docs.halonic.dev/security/sandbox/ (setup-needed)",
       reasonLines[2],
     ]);

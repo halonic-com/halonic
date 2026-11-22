@@ -41,7 +41,7 @@ describe("the sandbox sentences", () => {
       "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Use Halonic inside WSL 2 on this computer, then run it again.",
       "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish. Use Halonic inside WSL 2 on this computer, then run it again.",
       "Another program set up the sandbox on this computer, in a way Halonic can't use. Use Halonic inside WSL 2 on this computer, then run it again.",
-      "The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, then run it again.",
+      "The sandbox's one-time setup isn't done for this version of Halonic. Set it up with halonic sandbox setup, then run it again.",
       "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
       "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
@@ -110,7 +110,7 @@ describe("the sandbox sentences", () => {
       ],
       [
         "The sandbox's one-time setup isn't done for this version of Halonic.",
-        "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
+        "Fix: set it up with halonic sandbox setup. Windows asks for administrator rights once. Then run halonic doctor again.",
       ],
       [
         "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
