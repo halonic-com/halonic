@@ -1,4 +1,5 @@
 import type { Mark } from "../output/paint.ts";
+import { printable } from "../output/printable.ts";
 import { shellWord } from "../output/shell-word.ts";
 import { countInWords, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
@@ -194,6 +195,16 @@ export const runsMessages = defineMessages("runs", {
    */
   showChildRun: (childId: string, dir?: string) =>
     phrase`See that run with ${suggestedCommand("runs show", dir, childId)}.`,
+  /**
+   * With a !, at the end of a running run whose model call waits for the answer to Studio's
+   * "Allow this address?" (HAL-16221): who would send which key where, as the run log asks it.
+   * All three come from the log, so they are made printable (cli-output section 5).
+   */
+  showAddressQuestion: (provider: string, key: string, origin: string) =>
+    phrase`Waiting for your answer in Studio: may provider "${printable(provider)}" send key "${printable(key)}" to ${printable(origin)}?`,
+  /** Indented under it: only Studio asks, so the way to answer is there, and when it closes. */
+  showAnswerInStudio: () =>
+    phrase`Answer "Allow this address?" in Studio. Without an answer within 10 minutes, the model call fails.`,
   /**
    * `runs show` without a run id, or with more than one (usage, exit 2); the
    * usage line is line 2. The shape of `init`'s "takes one folder name"
