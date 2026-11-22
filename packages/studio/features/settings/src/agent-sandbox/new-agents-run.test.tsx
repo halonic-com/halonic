@@ -48,7 +48,7 @@ function readyHost(studioStartsUnfenced: boolean): AgentSandboxHost {
 }
 
 const studioCantStart =
-  "Studio can't start agents outside the sandbox; halonic serve on this computer can.";
+  "Studio can't start agents outside the sandbox yet; halonic run and halonic serve on this computer can.";
 
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((each) => each.textContent?.startsWith(label));

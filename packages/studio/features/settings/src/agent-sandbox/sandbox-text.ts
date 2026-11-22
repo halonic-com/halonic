@@ -130,7 +130,7 @@ export const NEW_AGENTS_HINT =
  * shows the sandbox by default (Sofia, C595 on HAL-15572).
  */
 export const NEW_AGENTS_STUDIO_CANT_START =
-  "Studio can't start agents outside the sandbox; halonic serve on this computer can.";
+  "Studio can't start agents outside the sandbox yet; halonic run and halonic serve on this computer can.";
 export const NEW_AGENTS_VIEW_ONLY =
   "View only here. Change where agents run on the computer running Halonic.";
 export const newAgentsNotSaved = "Couldn't save where new agents run on this computer.";
