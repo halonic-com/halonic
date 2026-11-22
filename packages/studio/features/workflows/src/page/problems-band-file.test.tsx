@@ -131,7 +131,9 @@ verifies("workflows.start.start-run", () => {
     const { source } = memoryList([entry(writerPath, "Writer")]);
     const { page, openFileAt } = await open([inWriter, deadEnd], source);
 
-    expect(fileLine(page)).toBe("Writer has 1 problem that stops this workflow. Open writer.agent.yaml");
+    expect(fileLine(page)).toBe(
+      "Writer has 1 problem that stops this workflow. Open writer.agent.yaml",
+    );
     await act(async () => buttonNamed(page, "Open writer.agent.yaml")?.click());
     expect(openFileAt).toHaveBeenCalledWith(writerPath, 4);
   });
