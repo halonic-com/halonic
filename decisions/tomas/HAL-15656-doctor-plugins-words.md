@@ -17,7 +17,7 @@
   `tools review` and `tools approve` say the same in one line. Before, both pointed at
   `halonic plugin list`, which shows only "✕ can't be read or checked" for that plugin.
 
-The requirements `words.doctor-plugins` and `cli.commands.tools.plugin-connector` say this now, and
+The requirements `words.doctor-plugins`, `cli.doctor-plugins` and `cli.commands.tools.plugin-connector` say this now, and
 their tests expect the new words. No test was weakened or skipped.
 
 ## Why
@@ -28,6 +28,8 @@ left the person without a next step, and that "See halonic plugin list." led now
 ## Covers
 
 - words.doctor-plugins
+- cli.doctor-plugins
 - cli.commands.tools.plugin-connector
 - packages/core/words/src/doctor-lines.plugins.test.ts
 - apps/cli/src/commands/tools/plugin-connector.test.ts
+- apps/cli/src/commands/doctor/command.plugins.test.ts

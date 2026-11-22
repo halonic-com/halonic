@@ -10,7 +10,7 @@ The `halonic doctor` command shall check each plugin that a connector an agent o
 
 - Given the agent Helper uses the connector `orders`, which names the plugin `acme-order`, and only `acme-orders` is added,
   when `halonic doctor` runs,
-  then it prints "✕ Plugins     orders uses the plugin acme-order, which isn't added." with "Did you mean acme-orders?" under it, and exits with 1.
+  then it prints "✕ Plugins     orders uses the plugin acme-order, which isn't added, so orders has no tools yet." with "Did you mean acme-orders?" and a fix under it, and exits with 1.
 - Given `acme-orders` added and changed since it was trusted,
   then it prints "! Plugins     acme-orders is off: changed since you trusted it · halonic trust --plugin acme-orders", and exits with 0.
 - Given no agent uses a plugin's connector,
