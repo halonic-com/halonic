@@ -178,7 +178,7 @@ verifies("cli.commands.plugin.add-update-source", () => {
     expect(first).toMatch(
       /^! Updating from a different source: ~.+sources.+weather → ~.+elsewhere.+weather\./u,
     );
-    expect(first).toContain("Its settings, secrets and sign-ins carry over to the new copy.");
+    expect(first).toContain("Its settings, secrets and sign-ins carry over to this copy.");
     expect(rest).toEqual(["✓ Updated Weather 1.2.0. It's on."]);
     expect(await weather()).toEqual({ status: "trusted", settings: { units: "metric" } });
   });

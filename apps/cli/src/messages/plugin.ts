@@ -325,7 +325,7 @@ export const pluginMessages = defineMessages("plugin", {
    * address: what it keeps moves to the new copy (HAL-16292).
    */
   updateMoved: (before: string, after: string) =>
-    phrase`Updating from a different source: ${before} → ${after}. Its settings, secrets and sign-ins carry over to the new copy.`,
+    phrase`Updating from a different source: ${before} → ${after}. Its settings, secrets and sign-ins carry over to this copy.`,
   updatedButOffHere: (name: string, version: string) =>
     phrase`Updated ${name} ${version}. It's trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.`,
   /**
