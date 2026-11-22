@@ -87,8 +87,9 @@ is the reference.
   puts the new copy in place and keeps the plugin's settings and the API key
   you entered. A changed file changes the fingerprint, so it shows the check
   and asks you to trust it again; No leaves it off, and `halonic plugin list`
-  shows it as "changed since you trusted it" until you run
-  `halonic trust --plugin <id>`.
+  shows it as "! not trusted yet · halonic trust --plugin <id>" until you run
+  that command. ("changed since you trusted it" is what it shows when the files
+  change after you added the plugin, without `--update`.)
 - **Adding it twice without `--update` is refused** ("is already added").
   Don't remove and add it instead: removing it deletes its settings and the
   API key you entered.
