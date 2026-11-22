@@ -148,11 +148,18 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
           <span className="text-caption text-fg-muted">{row.tag}</span>
         )}
         <code>{row.id}</code>
-        <span className="break-all font-mono text-small">{row.detail}</span>
+        {/* An empty detail would keep its gap and push the flag 16 px from the name (C667). */}
+        {row.detail === "" ? null : (
+          <span className="break-all font-mono text-small">{row.detail}</span>
+        )}
         {row.flag === undefined ? null : (
-          <span className="flex items-baseline gap-1 text-small text-attention">
-            <Triangle />
-            <span>· {row.flag}</span>
+          // The dot, then the amber words starting with the triangle, as R12's Runs line does.
+          <span className="text-small">
+            {"· "}
+            <span className="inline-flex items-baseline gap-1 text-attention">
+              <Triangle />
+              <span>{row.flag}</span>
+            </span>
           </span>
         )}
       </p>

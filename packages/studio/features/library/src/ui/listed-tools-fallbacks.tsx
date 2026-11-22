@@ -190,7 +190,8 @@ export function ListedToolsFallbackBody({
     case "nothing-waiting":
       return (
         <>
-          <p className="text-body text-fg">{listedToolsWords.nothingWaiting}</p>
+          {/* The kit's 8 px between paragraphs: the dialog stacks its body with no gap (C667). */}
+          <p className="mt-2 text-body text-fg">{listedToolsWords.nothingWaiting}</p>
           {error === undefined ? null : <Callout tone="danger">{error}</Callout>}
         </>
       );

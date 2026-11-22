@@ -81,7 +81,12 @@ export function ListedToolsReviewDialog({
           }}
         />
         {fallback.kind === "nothing-waiting" ? (
-          <ListedToolsReviewBody model={model} onRemoved={rememberRemoved} onOutcome={close} />
+          <ListedToolsReviewBody
+            model={model}
+            onRemoved={rememberRemoved}
+            onOutcome={close}
+            approvedOpen
+          />
         ) : null}
       </Dialog>
     );
