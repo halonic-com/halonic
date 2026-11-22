@@ -107,6 +107,7 @@ fn relay_stopped_counts_as_an_exited_host() {
         child,
         stdin: None,
         relay: Some(relay),
+        secrets: None,
         handshake,
     };
 
