@@ -2,6 +2,7 @@
 
 - Approval: HAL-15539, comments 347696b5-3b53-46a1-8fde-623fda666cc2 (Liam leaves the tone to the author) and 5c2cd8ca-d542-4aa5-a4c3-af53cf951fc3 (amber); task HAL-15659; Liam approves this note by signing it in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gxyutaKC8eHIwXO79I7bwott2Bxt4L5jOhMApwW7xNef939Wa1fMKP3/3ly9B37qM8xf4DMiMS7MjTjttfdIBQ==
 
 ## What changes
 
