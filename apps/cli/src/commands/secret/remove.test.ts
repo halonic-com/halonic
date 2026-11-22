@@ -11,6 +11,9 @@ beforeEach(async () => {
 
 afterEach(() => fixture.cleanup());
 
+const notSet =
+  "openai-key isn't set, so nothing changed. To see the secrets that are set, run halonic secret list.";
+
 verifies("cli.commands.secret.remove", () => {
   it("removes a saved secret and leaves the others", async () => {
     await fixture.store().set("openai-key", "sk-live-1234");
@@ -23,13 +26,13 @@ verifies("cli.commands.secret.remove", () => {
     expect(await fixture.store().names()).toEqual(["anthropic-key"]);
   });
 
-  it("says none is saved and changes nothing when no such secret is saved", async () => {
+  it("says it isn't set, how to see the names that are, and changes nothing", async () => {
     await fixture.store().set("anthropic-key", "sk-ant-5678");
 
     const { code, io } = await secret(fixture.folder, fixture.setup, ["remove", "openai-key"]);
 
     expect(code).toBe(exitCode.ok);
-    expect(io.stdout).toEqual(["No secret openai-key is saved. Nothing changed."]);
+    expect(io.stdout).toEqual([notSet]);
     expect(await fixture.store().names()).toEqual(["anthropic-key"]);
   });
 
@@ -63,7 +66,7 @@ verifies("cli.commands.secret.remove", () => {
     try {
       const { io } = await secret(empty.folder, empty.setup, ["remove", "openai-key"]);
 
-      expect(io.stdout).toEqual(["No secret openai-key is saved. Nothing changed."]);
+      expect(io.stdout).toEqual([notSet]);
     } finally {
       await empty.cleanup();
     }

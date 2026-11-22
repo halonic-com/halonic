@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-`halonic secret remove` now says "No secret <name> is saved. Nothing changed." when no secret was saved under that name, instead of saying it removed it, and names the `HALONIC_SECRET_` variable that still holds it.
+`halonic secret remove` now says when no secret is set under that name, and how to see the names that are, instead of saying it removed it. When a `HALONIC_SECRET_` variable still holds it, it says so and names the variable.
