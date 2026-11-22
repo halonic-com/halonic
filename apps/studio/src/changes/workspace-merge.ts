@@ -319,7 +319,7 @@ export class UpdatesMerge {
     if (left.length === 0) return;
     throw new KindedError(
       "unavailable",
-      `updates change ${new Intl.ListFormat("en", { type: "conjunction" }).format(left)}, which Halonic leaves to git. Get these updates with git instead.`,
+      `updates change ${new Intl.ListFormat("en", { type: "conjunction" }).format(left)}, which Halonic leaves to git. Get these updates with git instead: open a terminal in this workspace's folder and run git pull --no-rebase. If git reports conflicts, settle them and commit, then come back here.`,
     );
   }
 
