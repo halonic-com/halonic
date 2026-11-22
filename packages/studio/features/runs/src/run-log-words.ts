@@ -12,20 +12,23 @@ export const runLogWords = {
 
 /**
  * The question "Allow this address?" as the run log says it (requirement
- * `runs.run-view.key-origin-asked`), in the words of its answer's line: who would send which key
- * where. The address is as it is saved.
+ * `runs.run-view.key-origin-asked`): the dialog's name first, so the line matches what the person
+ * saw, then who would send which key where, in the words of its answer's line. The address is as
+ * it is saved.
  */
 export function keyOriginAskedWords(asked: {
   readonly provider: string;
   readonly key: string;
   readonly origin: string;
 }): string {
-  return `Asked whether provider "${asked.provider}" may send key "${asked.key}" to ${asked.origin}.`;
+  return `Allow this address? Asked whether provider "${asked.provider}" may send key "${asked.key}" to ${asked.origin}.`;
 }
 
 /**
  * A person's answer to "Allow this address?" as the run log says it (HAL-11873 UX checklist,
- * C-20): what was allowed or refused, never who answered. The address is as it is saved.
+ * C-20; HAL-15914): what was allowed or refused, never who answered, and for both answers the
+ * provider too, so two providers with a key of the same name read apart. The address is as it is
+ * saved.
  */
 export function keyOriginAnswerWords(answer: {
   readonly provider: string;
@@ -34,6 +37,6 @@ export function keyOriginAnswerWords(answer: {
   readonly answer: "allowed" | "not-allowed";
 }): string {
   return answer.answer === "allowed"
-    ? `Allowed ${answer.origin} for key "${answer.key}".`
+    ? `Allowed: provider "${answer.provider}" may send key "${answer.key}" to ${answer.origin}.`
     : `Not allowed: provider "${answer.provider}" can't send key "${answer.key}" to ${answer.origin}.`;
 }

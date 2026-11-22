@@ -142,7 +142,7 @@ verifies("runs.run-view.key-origin-answered", () => {
       kind: "words",
       seq: 2,
       time: "10:41:00",
-      text: 'Allowed https://gateway.example.com for key "gateway-key".',
+      text: 'Allowed: provider "Gateway" may send key "gateway-key" to https://gateway.example.com.',
     });
   });
 
@@ -175,7 +175,7 @@ verifies("runs.run-view.key-origin-asked", () => {
       kind: "words",
       seq: 2,
       time: "10:41:00",
-      text: 'Asked whether provider "Gateway" may send key "gateway-key" to https://gateway.example.com.',
+      text: 'Allow this address? Asked whether provider "Gateway" may send key "gateway-key" to https://gateway.example.com.',
     });
   });
 
