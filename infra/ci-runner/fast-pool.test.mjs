@@ -21,6 +21,7 @@ import {
   refused,
   run,
   SHA,
+  shipped,
 } from "./hook-run.mjs";
 
 const PR_ENV = {
@@ -166,6 +167,36 @@ test("fast pool: refuses a job that sees a shared cache read-write (C2/C8)", () 
   assert.equal(fast({ mountinfo: mounts("9p") }).ok, true);
 });
 
+// Runs the hook's cache_safe as shipped for one cache, with `pool` as POOL and `mountinfo` as the
+// mount table. Only the fast pool reaches it today (a pull request elsewhere is refused before), so
+// these call it directly: 9p must not count as safe on any other pool if that ever changes.
+const cacheSafe = (pool, mountinfo) => {
+  const fn = shipped.match(/^cache_safe\(\) \{\n[\s\S]*?\n\}$/m);
+  assert.ok(fn, "cache_safe() in vm/job-started.sh");
+  const table = join(mkdtempSync(join(dir, "cache-safe-")), "mountinfo");
+  writeFileSync(table, mountinfo);
+  const res = spawnSync("/bin/bash", [
+    "-c",
+    `${fn[0]}\nPOOL=$1 MOUNTS=$2 cache_safe /cache/turbo`,
+    "x",
+    pool,
+    table,
+  ]);
+  return res.status === 0;
+};
+
+test("fast pool: a cache that shows as 9p counts as safe on the fast pool only (Julian, HAL-15972)", () => {
+  assert.equal(cacheSafe("fast", mounts("9p")), true);
+  for (const pool of ["", "large", "fast2"])
+    assert.equal(cacheSafe(pool, mounts("9p")), false, pool);
+  // Overlays and read-only mounts count everywhere; the shared folder itself nowhere.
+  for (const pool of ["", "fast"]) {
+    assert.equal(cacheSafe(pool, mounts("overlay")), true, pool);
+    assert.equal(cacheSafe(pool, mounts("ro")), true, pool);
+    assert.equal(cacheSafe(pool, mounts("rw")), false, pool);
+  }
+});
+
 test("fast pool: fast slots run under gVisor, on their own network, with their own gate socket", () => {
   const slot = read("vm/halonic-runner-slot.sh");
   assert.ok(
@@ -202,8 +233,9 @@ test("fast pool: fast slots get their own pool config and the shared caches only
   assert.match(slot, /^ {2}fast-\*\) POOL_DIR=\/etc\/halonic-ci\/pool-fast$/m);
   assert.ok(slot.includes(`grep -qx 'POOL="fast"' "$POOL_DIR/pool.conf" || fail`));
   assert.ok(slot.includes("grep -Eq '^(POOL=.*fast|ALLOWED_EVENTS=.*pull_request)'"));
-  // The shared folder is the overlay's lower layer, read-only; the container mounts the overlay.
-  assert.ok(slot.includes('"lowerdir=$TRUSTED/$c,upperdir=$OVL/$c/upper,workdir=$OVL/$c/work"'));
+  // A snapshot of the shared folder is the overlay's lower layer, read-only (HAL-16032, in
+  // fast-lower.test.mjs); the container mounts the overlay.
+  assert.ok(slot.includes('"lowerdir=$LOWER_GEN/$c,upperdir=$OVL/$c/upper,workdir=$OVL/$c/work"'));
   assert.ok(slot.includes("  CACHE_SRC=$OVL_MNT\nfi"));
   assert.match(slot, /if \[ "\$LABEL" = halonic-ci-fast \]; then\n {2}for c in \$CACHES/);
   assert.doesNotMatch(slot, /-v "\$TRUSTED\//);

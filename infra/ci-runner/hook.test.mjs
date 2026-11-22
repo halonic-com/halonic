@@ -27,6 +27,7 @@ import {
 // runs them too.
 import "./queue-gate.test.mjs";
 import "./fast-pool.test.mjs";
+import "./fast-lower.test.mjs";
 
 test("the shipped hook has the four fixed paths these tests replace", () => {
   assert.equal(shipped.split(CONF_LINE).length, 2);

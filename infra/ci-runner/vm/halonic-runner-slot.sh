@@ -73,9 +73,12 @@ case "$SLOT" in
           fi ;;
 esac
 # A fast slot's jobs are unreviewed code, so they never get the shared caches read-write (C2/C8).
-# Each cache is an overlay: the shared folder is its read-only lower layer, and every write goes
-# to an upper layer of this job's own, under the job's quota and deleted after it.
+# Each cache is an overlay: a snapshot of the shared folder is its read-only lower layer, and every
+# write goes to an upper layer of this job's own, under the job's quota and deleted after it. Not the
+# shared folder itself: merge-group jobs write to it, and a lower layer must not change while it's
+# mounted (HAL-16032). vm/halonic-ci-fast-lower.sh makes the snapshots.
 OVL=/cache/overlay/$SLOT; OVL_MNT=/run/halonic-ci-ovl/$SLOT; CACHES="pnpm-store turbo ms-playwright"
+FAST_LOWER=/usr/local/sbin/halonic-ci-fast-lower.sh; FAST_LOWER_LOCK=/cache/fast-lower/.lock
 unmount_caches() {
   for c in $CACHES; do umount "$OVL_MNT/$c" 2>/dev/null || true; done
   rm -rf "$OVL" "$OVL_MNT"
@@ -127,11 +130,17 @@ if [ "$LABEL" = halonic-ci-fast ]; then
     install -d -m 0755 -o "$RUID" -g "$RUID" "$OVL/$c/upper"; install -d -m 0700 "$OVL/$c/work" "$OVL_MNT/$c"
   done
   xfs_quota -x -c "project -s -p $OVL $PROJ" /cache >/dev/null
-  for c in $CACHES; do
-    mount -t overlay overlay -o "lowerdir=$TRUSTED/$c,upperdir=$OVL/$c/upper,workdir=$OVL/$c/work" "$OVL_MNT/$c"
-    # Under gVisor the job sees every mount as its file proxy's, so only here can it be checked.
-    [ "$(findmnt -n -o FSTYPE --mountpoint "$OVL_MNT/$c")" = overlay ] || fail "$OVL_MNT/$c is not an overlay"
-  done
+  "$FAST_LOWER" current >/dev/null   # makes the first snapshot, if there is none yet
+  # Held shared until mounted, so the hourly refresh can't delete the snapshot in between.
+  (
+    flock -s 9
+    LOWER_GEN=$("$FAST_LOWER" current)
+    for c in $CACHES; do
+      mount -t overlay overlay -o "lowerdir=$LOWER_GEN/$c,upperdir=$OVL/$c/upper,workdir=$OVL/$c/work" "$OVL_MNT/$c"
+      # Under gVisor the job sees every mount as its file proxy's, so only here can it be checked.
+      [ "$(findmnt -n -o FSTYPE --mountpoint "$OVL_MNT/$c")" = overlay ] || fail "$OVL_MNT/$c is not an overlay"
+    done
+  ) 9>"$FAST_LOWER_LOCK"
   CACHE_SRC=$OVL_MNT
 fi
 # What only a fast slot's container gets: gVisor, its own network and its own gate socket, which

@@ -80,16 +80,28 @@ code (pushes to `main`, later merge groups). pnpm checks each package against th
 integrity hash; the Turbo cache (the build job's `TURBO_CACHE_DIR`, HAL-15467; only the remote cache's entries are signed) and the Playwright browsers aren't checked.
 
 **The fast pool never gets these folders read-write (C2, C8).** For each cache, a fast slot mounts
-an overlay on the VM: the shared folder is its read-only lower layer, and every write goes to an
-upper layer under `/cache/overlay/<slot>`, counted in the slot's quota and deleted with the job. A
-fast-track job reads what reviewed runs cached; nothing it writes reaches another job. It gets no
+an overlay on the VM: a snapshot of the shared folder is its read-only lower layer, and every write
+goes to an upper layer under `/cache/overlay/<slot>`, counted in the slot's quota and deleted with
+the job. A fast-track job reads what reviewed runs cached; nothing it writes reaches another job. It gets no
 Turbo token either (`ci.yml` asks for one only off pull requests, and the cache hands a write token
 only to a push to `main`). The job runs under gVisor, which gives it a kernel of its own in user
 space, so a kernel bug it finds doesn't reach the VM, the App key or the merge-group jobs (C8).
 Inside gVisor every mount shows as its file proxy's (`9p`), so the slot script checks on the VM that
-each cache is an overlay before the container starts. The shared folders keep changing under a running overlay (other slots
-write to them, the weekly cleanup deletes old Turbo entries); a file that changes mid-job reads as
-a cache miss at worst.
+each cache is an overlay before the container starts.
+
+**The snapshot (HAL-16032).** The overlay can't use `/cache/trusted` itself: merge-group jobs keep
+writing there, and a lower layer that changes while it's mounted is undefined behaviour, so a fast
+job could read a half-written entry. `vm/halonic-ci-fast-lower.sh refresh` copies the three folders
+into a new generation `/cache/fast-lower/<n>` with `cp --reflink=always` (XFS shares the blocks
+instead of copying them, so a generation costs disk only for what the shared folders delete later),
+leaves out every file whose inode changed from 2 minutes before the copy on (it may have been
+copied half-written; a missing entry is only a cache miss), and points `/cache/fast-lower/current` at it. A slot mounts the current generation; nothing changes a
+generation once it's published, and refresh deletes the old ones no overlay mounts any more. The
+copy and the clean-up run as the runner's uid (`setpriv`), never as root, so a link a job swaps in
+mid-copy reaches only what jobs could read anyway. The hourly cache check refreshes it once fast
+slots are listed in `/etc/halonic-ci/slots`, so fast jobs read caches at most an hour old; a slot
+that finds no generation makes the first one. A failed copy keeps the last generation and is
+logged (`journalctl -t halonic-ci-maint`).
 
 ## One job, one container
 
@@ -167,11 +179,16 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   3. **Gate:** deploy the new `vm/halonic-ci-gate.sh` and the two `vm/halonic-ci-gate-fast*`
      units like the merge queue's, then `systemctl enable --now halonic-ci-gate-fast.socket`.
      `PollLimitBurst` needs systemd 255 or later (older ones ignore it).
-  4. Put `vm/pool-fast.conf` at `/etc/halonic-ci/pool-fast/pool.conf` (root, `0444`). A fast slot
+  4. **Snapshot:** install `vm/halonic-ci-fast-lower.sh` to `/usr/local/sbin/` (root, `0755`)
+     with the new `vm/halonic-ci-maint.sh`. `/cache` must be XFS with reflinks
+     (`xfs_info /cache | grep -o 'reflink=1'`); without them the copy fails and so does the slot.
+     Run `/usr/local/sbin/halonic-ci-fast-lower.sh refresh` once and check that it prints a
+     generation.
+  5. Put `vm/pool-fast.conf` at `/etc/halonic-ci/pool-fast/pool.conf` (root, `0444`). A fast slot
      takes a large slot's CPUs, so stop and disable `large-11` before you enable `fast-1`
      (`large-10` for `fast-2`, `large-9` for `fast-3`; each refuses to start while its twin
      runs), and update `/etc/halonic-ci/slots`.
-  5. **Smoke test** with one fast slot before setting the variable for everyone: a labelled test
+  6. **Smoke test** with one fast slot before setting the variable for everyone: a labelled test
      pull request should pass the hook, and the status feed should show its memory and CPU. Not
      tried yet under gVisor: Docker's `userns-remap`, the slot's cgroup path (memory sampling and
      `docker update`) and Chromium (may need `--no-sandbox`). If one doesn't work, stop and say so
@@ -188,7 +205,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   shared caches and starts the slots again.
 - **Hourly** (`vm/halonic-ci-cache-check.timer`): the same pause-and-empty as soon as the shared
   caches pass 80 % of their 20 GB quota (or `/cache` passes 75 %), so a full quota never fails
-  every install. It shares a lock with the weekly cleanup and skips its hour while that runs.
+  every install. It shares a lock with the weekly cleanup and skips its hour while that runs. Both
+  then refresh the fast slots' snapshot (HAL-16032), once fast slots are deployed.
 - **Firewall first:** `host/halonic-ci-nft.service` is required by `libvirtd.service`. If the rules
   don't load (a missing `/etc/halonic-ci/site.nft`, say), libvirtd and the CI VM don't start.
   The unit has no stop command: stopping it leaves the rules in place, because the VM keeps
