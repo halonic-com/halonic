@@ -172,7 +172,7 @@ verifies("workspace.trust-check-unlabelled-lines", () => {
 });
 
 verifies("workspace.trust-check-escaped", () => {
-  it("shows control and bidi characters in a row as their visible codes", () => {
+  it("shows hidden characters in a row as amber markers", () => {
     const outside: TrustReview = {
       ...review,
       title: "Trust Ac\u202eme?",
@@ -184,35 +184,97 @@ verifies("workspace.trust-check-escaped", () => {
             {
               id: "fi\u0007les",
               detail: "node \u202esj.elif",
-              lines: [["Environment", "NOTE=a\u001bb"]],
+              lines: [
+                ["Environment", "NOTE=a\u001bb"],
+                ["", "GREETING=hi\u200bthere"],
+                ["", "LINES=a\nb"],
+              ],
               warning: "Can download new code from npm\u2066 when it starts: version not pinned.",
             },
           ],
         },
       ],
     };
-    act(() =>
-      root.render(
-        <TrustCheckDialog
-          review={outside}
-          shown={outside.fingerprint}
-          busy={false}
-          error={undefined}
-          onNotNow={() => {}}
-          onTrust={() => {}}
-          returnFocus={() => null}
-        />,
-      ),
-    );
+    openWith(outside);
 
-    expect(shown("fi\\u0007les")).toBeDefined();
-    expect(shown("node \\u202esj.elif")).toBeDefined();
-    expect(shown("NOTE=a\\u001bb")).toBeDefined();
+    expect(shown("fi⟦U+0007⟧les")).toBeDefined();
+    expect(shown("node ⟦U+202E⟧sj.elif")).toBeDefined();
+    expect(shown("NOTE=a⟦U+001B⟧b")).toBeDefined();
+    expect(shown("GREETING=hi⟦U+200B⟧there")).toBeDefined();
+    expect(shown("LINES=a⟦U+000A⟧b")).toBeDefined();
+    expect(shown("⟦U+202E⟧")?.classList.contains("text-attention")).toBe(true);
     const text = document.querySelector("dialog[open]")?.textContent ?? "";
-    expect(text).toContain("Trust Ac\\u202eme?");
-    expect(text).toContain("npm\\u2066 when");
-    for (const unsafe of ["\u0007", "\u001b", "\u202e", "\u2066"]) {
+    expect(text).toContain("Trust Ac⟦U+202E⟧me?");
+    expect(text).toContain("npm⟦U+2066⟧ when");
+    for (const unsafe of ["\u0007", "\u001b", "\u202e", "\u2066", "\u200b", "\n"]) {
       expect(text).not.toContain(unsafe);
     }
   });
 });
+
+const program: TrustReview = {
+  ...review,
+  sections: [
+    {
+      heading: "Programs (1)",
+      open: true,
+      rows: [
+        {
+          id: "files",
+          detail: "node files.js",
+          lines: [
+            ["Takes from your environment", "PATH", "code"],
+            ["Runs", "/usr/local/bin/node", "code"],
+            ["Gets secrets", secretName],
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+verifies("workspace.trust-check-narrow-lines", () => {
+  it("puts each label over its value below 24rem, and beside it above", () => {
+    openWith(program);
+
+    // jsdom has no layout: below the row's 24rem the grid has one column, and each value moves
+    // from the second column to the first, under its label.
+    const grid = shown("/usr/local/bin/node")?.closest(".grid-cols-\\[auto_1fr\\]");
+    expect(grid?.closest(".\\@container")).not.toBeNull();
+    expect(grid?.className.split(" ")).toContain("@max-[24rem]:grid-cols-1");
+    const value = shown("/usr/local/bin/node");
+    expect(value?.className.split(" ")).toEqual(
+      expect.arrayContaining(["col-start-2", "@max-[24rem]:col-start-1"]),
+    );
+    expect(value?.parentElement?.className.split(" ")).toEqual(
+      expect.arrayContaining(["col-span-2", "@max-[24rem]:col-span-1"]),
+    );
+  });
+});
+
+verifies("workspace.trust-check-code-lines", () => {
+  it("shows a code value in mono and its label in the text font", () => {
+    openWith(program);
+
+    expect(shown("/usr/local/bin/node")?.classList.contains("font-mono")).toBe(true);
+    expect(shown("PATH")?.classList.contains("font-mono")).toBe(true);
+    expect(shown("Runs:")?.closest(".font-mono")).toBeNull();
+    expect(shown(secretName)?.classList.contains("font-mono")).toBe(false);
+  });
+});
+
+function openWith(shownReview: TrustReview) {
+  act(() =>
+    root.render(
+      <TrustCheckDialog
+        review={shownReview}
+        shown={shownReview.fingerprint}
+        busy={false}
+        error={undefined}
+        onNotNow={() => {}}
+        onTrust={() => {}}
+        returnFocus={() => null}
+      />,
+    ),
+  );
+}

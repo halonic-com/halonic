@@ -15,7 +15,7 @@ export function agentRow(agent: AgentTrustContent): TrustRowView {
       ...siteLines(agent.allowedSites),
       ...(agent.workingFolder === undefined
         ? []
-        : [["Working folder", agent.workingFolder] as const]),
+        : [["Working folder", agent.workingFolder, "code"] as const]),
       ...(agent.asks === "in-sandbox" ? [[withoutAsking, inSandboxCalls] as const] : []),
     ],
   };
@@ -57,9 +57,11 @@ export function agentChangeRows(agent: ChangedAgent): TrustRowView[] {
   return [{ id: agent.id, detail: harnessName(after.harness), lines }];
 }
 
-/** "Allowed sites" and the first site, then every other site under it. */
-export function siteLines(sites: readonly string[]): (readonly [string, string])[] {
-  return sites.map((site, index) => [index === 0 ? "Allowed sites" : "", shownSite(site)] as const);
+/** "Allowed sites" and the first site, then every other site under it, in mono (C706). */
+export function siteLines(sites: readonly string[]): (readonly [string, string, "code"])[] {
+  return sites.map(
+    (site, index) => [index === 0 ? "Allowed sites" : "", shownSite(site), "code"] as const,
+  );
 }
 
 /** A site in its stored form, with its note: a wildcard names its domain, Punycode is flagged. */

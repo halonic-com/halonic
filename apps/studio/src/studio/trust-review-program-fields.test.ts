@@ -28,10 +28,10 @@ const firstCheck = (runs: IntegrationRuns) =>
   );
 
 const programLines = [
-  ["Resolved path", "/usr/local/bin/node"],
-  ["Working folder", "tools"],
-  ["Environment", "LOG_LEVEL=debug"],
-  ["", "NODE_OPTIONS=--require ./setup.js"],
+  ["Runs", "/usr/local/bin/node", "code"],
+  ["Working folder", "tools", "code"],
+  ["Environment", "LOG_LEVEL=debug", "code"],
+  ["", "NODE_OPTIONS=--require ./setup.js", "code"],
 ];
 
 verifies("studio.trust-review-program-fields", () => {
@@ -43,7 +43,7 @@ verifies("studio.trust-review-program-fields", () => {
       {
         id: "files",
         detail: "node files.js",
-        lines: [...programLines, ["Allowed sites", "pypi.org"]],
+        lines: [...programLines, ["Allowed sites", "pypi.org", "code"]],
         warning: undefined,
       },
     ]);
@@ -81,7 +81,7 @@ verifies("studio.trust-review-program-fields", () => {
 
     expect(review?.sections[0]?.rows[0]).toMatchObject({
       tag: "Changed",
-      lines: expect.arrayContaining([["Environment", "NODE_OPTIONS=--require ./other.js"]]),
+      lines: expect.arrayContaining([["Environment", "NODE_OPTIONS=--require ./other.js", "code"]]),
     });
   });
 });
