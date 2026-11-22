@@ -5,7 +5,7 @@ import type { StoredSkip } from "./routine-reads.ts";
 import { setup, weekly, weeklyRun } from "./workspace-routines.test-helper.ts";
 
 const sentence = 'Writer uses the connector "notes", which Studio can\'t start yet.';
-const fix = "To keep it starting on time, run this in a terminal: halonic routines watch";
+const fix = "To keep it starting on time, run halonic routines watch in a terminal.";
 
 const refused = (at: string): StoredSkip => ({
   reason: "start-refused",

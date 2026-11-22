@@ -163,9 +163,13 @@ export function routineRefusalOf(error: unknown): unknown {
   return new KindedError("unavailable", error.message, { fix: routineWatchStep });
 }
 
-/** The step a routine's start refused for a connector gives, with the command in it. */
+/**
+ * The step a routine's start refused for a connector gives, with the command in it. It is plain
+ * text in the Runs view's quiet row, not a command box, so the command sits inside the sentence
+ * rather than after "run this in a terminal:" (C617-1, HAL-15716).
+ */
 export const routineWatchStep =
-  "To keep it starting on time, run this in a terminal: halonic routines watch";
+  "To keep it starting on time, run halonic routines watch in a terminal.";
 
 /** The step in Studio that lets the page start an agent in a harness program. */
 function harnessPageStep(agent: Agent): string {

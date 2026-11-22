@@ -67,7 +67,7 @@ verifies("routines.list.rows-and-states", () => {
     const page = await show(<RoutinesView host={memoryHost(hubs, rows).host} />);
 
     expect(rowOf(page, "Tick").textContent).toMatch(
-      new RegExp(`couldn't start (at|yesterday) ${clock}`),
+      new RegExp(`couldn't start (today|yesterday) ${clock}`),
     );
     expect(rowOf(page, "Tick").textContent).not.toContain("next ");
     expect(rowOf(page, "Quiet").textContent).not.toContain("couldn't start");

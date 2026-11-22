@@ -22,7 +22,7 @@ While the workspace's engine is open in the page, the Studio shall start the wor
   then nothing starts.
 - Given the routine's workflow has an agent that lists a connector,
   when its time comes,
-  then no run starts, the refusal is reported as `unavailable` with "To keep it starting on time, run this in a terminal: halonic routines watch", and the page is told.
+  then no run starts, the refusal is reported as `unavailable` with "To keep it starting on time, run halonic routines watch in a terminal.", and the page is told.
 - Given the same workspace in the folders `/acme` and `/elsewhere/acme-copy`,
   when the same time comes in each,
   then the runs have the same id.

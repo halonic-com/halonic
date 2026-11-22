@@ -256,13 +256,33 @@ function QuietRow({
     <li className="min-h-control-md px-2 py-1 text-small text-fg-muted wrap-anywhere">
       {hidden !== undefined && <span className="sr-only">{hidden}</span>}
       {name === undefined ? (
-        text
+        withCommand(text)
       ) : (
         <>
-          <span aria-hidden="true">{text}</span>
+          <span aria-hidden="true">{withCommand(text)}</span>
           <span className="sr-only">{name}</span>
         </>
       )}
     </li>
+  );
+}
+
+/** The command in a step's "run *command* in a terminal", which the row has no command box for. */
+const commandInATerminal = /(?<=\brun )halonic(?: [^\s.]+)*?(?= in a terminal\b)/u;
+
+/**
+ * The row's text with the command its step names in code style, so it reads as a command and a
+ * copy of it doesn't end in the sentence's full stop (C617-1, HAL-15716).
+ */
+function withCommand(text: string): ReactNode {
+  const match = commandInATerminal.exec(text);
+  if (match === null) return text;
+  const end = match.index + match[0].length;
+  return (
+    <>
+      {text.slice(0, match.index)}
+      <code className="font-mono">{match[0]}</code>
+      {text.slice(end)}
+    </>
   );
 }

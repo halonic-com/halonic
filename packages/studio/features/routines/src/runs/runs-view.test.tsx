@@ -214,7 +214,7 @@ verifies("routines.runs.view", () => {
     vi.setSystemTime(new Date(2026, 10, 21, 19, 42));
     const at = new Date(2026, 10, 21, 19, 41).toISOString();
     const sentence = 'Writer uses the connector "notes", which Studio can\'t start yet.';
-    const fix = "To keep it starting on time, run this in a terminal: halonic routines watch";
+    const fix = "To keep it starting on time, run halonic routines watch in a terminal.";
     let skips: RoutineSkip[] = [];
     const { host, change } = memoryHost([], []);
     const page = await openRuns({
@@ -230,10 +230,12 @@ verifies("routines.runs.view", () => {
 
     const row = sectionOf(page, "Earlier")?.querySelector("li");
     expect(row?.querySelector("[aria-hidden=true]")?.textContent).toBe(
-      `19:41 Sat: couldn't start. ${sentence} ${fix}.`,
+      `19:41 Sat: couldn't start. ${sentence} ${fix}`,
     );
+    // The command is in code style, and the sentence's full stop isn't part of it.
+    expect(row?.querySelector("code")?.textContent).toBe("halonic routines watch");
     expect(row?.querySelector(".sr-only")?.textContent).toBe(
-      `Couldn't start at 19:41 Sat. ${sentence} ${fix}.`,
+      `Couldn't start at 19:41 Sat. ${sentence} ${fix}`,
     );
     expect(page.textContent).not.toContain("No runs yet");
   });

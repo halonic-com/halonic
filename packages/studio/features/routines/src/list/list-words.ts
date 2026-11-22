@@ -83,20 +83,27 @@ const startOfDay = (date: Date): Date =>
 const daysBetween = (from: Date, to: Date): number =>
   Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
 
+/** A day from a week away on: "Fri 20 Nov", with the year when it isn't this year's. */
+const dateOf = (moment: Date, now: Date): string => {
+  const date = `${shortDays[moment.getDay()]} ${moment.getDate()} ${shortMonths[moment.getMonth()]}`;
+  return moment.getFullYear() === now.getFullYear() ? date : `${date} ${moment.getFullYear()}`;
+};
+
 /**
  * When a routine's newest due time was refused, for its row in place of the next time: "couldn't
- * start at 19:41" today, then "couldn't start yesterday 19:41", "couldn't start Mon 19:41" within
- * the week and the date after that (C552-5, HAL-15269).
+ * start today 19:41", then "couldn't start yesterday 19:41", "couldn't start Mon 19:41" within the
+ * week and the date after that, with the year when it isn't this year's, as the next time reads
+ * (C552-5, HAL-15269; C617-2, HAL-15716).
  */
 export function refusedWhen(iso: string, now: Date): string {
   const moment = new Date(iso);
   const clock = `${String(moment.getHours()).padStart(2, "0")}:${String(moment.getMinutes()).padStart(2, "0")}`;
   const ago = daysBetween(moment, now);
-  if (ago <= 0) return `couldn't start at ${clock}`;
+  if (ago <= 0) return `couldn't start today ${clock}`;
   if (ago === 1) return `couldn't start yesterday ${clock}`;
   const day = shortDays[moment.getDay()];
   if (ago < 7) return `couldn't start ${day} ${clock}`;
-  return `couldn't start ${day} ${moment.getDate()} ${shortMonths[moment.getMonth()]} ${clock}`;
+  return `couldn't start ${dateOf(moment, now)} ${clock}`;
 }
 
 /**
@@ -112,8 +119,5 @@ export function nextWhen(iso: string, now: Date): string {
   if (ahead === 1) return `next tomorrow ${clock}`;
   const day = shortDays[moment.getDay()];
   if (ahead < 7) return `next ${day} ${clock}`;
-  const date = `${day} ${moment.getDate()} ${shortMonths[moment.getMonth()]}`;
-  const shown =
-    moment.getFullYear() === now.getFullYear() ? date : `${date} ${moment.getFullYear()}`;
-  return `next ${shown} ${clock}`;
+  return `next ${dateOf(moment, now)} ${clock}`;
 }
