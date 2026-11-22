@@ -41,7 +41,7 @@ export class UnreadablePluginsFolderError extends KindedError {
  * not open it: `EACCES`, or `EPERM`, which Windows and some file systems
  * give for the same thing.
  */
-function isPermissionDenied(error: unknown): boolean {
+export function isPermissionDenied(error: unknown): boolean {
   const code = (error as { code?: unknown } | null)?.code;
   return code === "EACCES" || code === "EPERM";
 }
@@ -89,11 +89,11 @@ export class PluginsFolderReader implements FolderReader {
 }
 
 /**
- * Who can fix `folder`, from its owner and the user Halonic runs as. A
- * folder whose owner can't be read is taken as the person's own, since
+ * Who can fix `folder`, or a file, from its owner and the user Halonic runs
+ * as. One whose owner can't be read is taken as the person's own, since
  * `chmod` is then the first thing to try.
  */
-async function accessTo(folder: string): Promise<PluginsFolderAccess> {
+export async function accessTo(folder: string): Promise<PluginsFolderAccess> {
   const userId = process.getuid?.();
   if (process.platform === "win32" || userId === undefined) return "windows";
   const ownerId = await stat(folder).then(
