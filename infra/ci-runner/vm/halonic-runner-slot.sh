@@ -234,6 +234,11 @@ while kill -0 "$DPID" 2>/dev/null; do
       fi
     fi
     procs=$(for p in $(cat "$cg/cgroup.procs" 2>/dev/null); do cat "/proc/$p/comm" 2>/dev/null; done || true)
+    # Under gVisor the VM sees only the sandbox's own processes (gvisor_sentry, exe), so a fast
+    # slot asks inside the container, as the runner user, until its job has started.
+    if [ "$JOB_START" = 0 ] && [ "$LABEL" = halonic-ci-fast ]; then
+      procs=$(timeout 5 docker exec "hci-$SLOT" timeout 3 sh -c 'cat /proc/[0-9]*/comm' 2>/dev/null || true)
+    fi
     if [ "$JOB_START" = 0 ] && [[ "$procs" == *Runner.Worker* ]]; then
       JOB_START=$(date +%s)
     fi
