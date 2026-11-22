@@ -4,7 +4,7 @@ import type { PluginRunStates } from "./plugin-run-states.ts";
 import { pluginRunStateBody } from "./plugin-schemas.ts";
 
 /**
- * Whether a plugin's runner stopped because the sandbox failed while it ran,
+ * Whether a plugin's runner stopped because the sandbox didn't work as it started,
  * for the plugin page's R15 (HAL-15113, the "Runs" line design on HAL-1873,
  * `rl-page-stopped`):
  *

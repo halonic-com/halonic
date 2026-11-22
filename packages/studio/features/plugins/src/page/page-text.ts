@@ -183,15 +183,17 @@ export function offUntilAllowed(name: string): string {
 export const ALLOW_IN_DESKTOP_APP = "Allow this in the Halonic desktop app.";
 
 /**
- * The plugin page when the agent host stopped a plugin because the sandbox failed while it ran
- * (microcopy 24.1 R15, approved on HAL-1949; design HAL-1873 section 10, `rl-page-stopped`).
+ * The plugin page when the agent host stopped a plugin because the sandbox didn't work as it
+ * started, so nothing of it ran (microcopy 24.1 R15, approved on HAL-1949; design HAL-1873 section
+ * 10, `rl-page-stopped`; its words follow the host since C600, HAL-15608).
  */
-export function stoppedWhileRunning(name: string): string {
-  return `${name} stopped: the sandbox stopped working while it ran.`;
+export function stoppedAtStart(name: string): string {
+  return `${name} stopped: the sandbox didn't work as it started, so nothing ran.`;
 }
 
-/** R15's second sentence, under its title. */
-export const NOT_WITHOUT_SANDBOX = "Halonic doesn't start it again without the sandbox.";
+/** R15's second sentence, under its title: every start goes through the sandbox, the next one too. */
+export const TRIES_AGAIN_IN_SANDBOX =
+  "Halonic tries it in the sandbox again the next time a run uses it, never without it.";
 
 /**
  * The polite toast once R15's **Check again** worked: the host only forgot the stop, so nothing

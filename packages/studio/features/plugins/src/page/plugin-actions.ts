@@ -89,8 +89,8 @@ export interface PluginActions {
    */
   readonly unfencedRuns?: PluginUnfencedRuns;
   /**
-   * Whether the agent host stopped a plugin because the sandbox failed while it ran, and R15's
-   * **Check again**. Without it the page never shows R15.
+   * Whether the agent host stopped a plugin because the sandbox didn't work as it started, and
+   * R15's **Check again**. Without it the page never shows R15.
    */
   readonly runStates?: PluginRunStates;
 }

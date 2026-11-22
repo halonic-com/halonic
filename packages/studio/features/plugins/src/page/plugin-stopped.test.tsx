@@ -24,7 +24,7 @@ afterEach(() => {
   removePopover();
 });
 
-const stoppedLine = "Weather stopped: the sandbox stopped working while it ran.";
+const stoppedLine = "Weather stopped: the sandbox didn't work as it started, so nothing ran.";
 const offLine =
   "Weather is off on this computer until you allow plugins and integrations to run without the sandbox.";
 
@@ -81,7 +81,9 @@ verifies("plugins.plugin-page-stopped", () => {
 
     expect(runStates.runState).toHaveBeenCalledWith("weather");
     expect(view.textContent).toContain(stoppedLine);
-    expect(view.textContent).toContain("Halonic doesn't start it again without the sandbox.");
+    expect(view.textContent).toContain(
+      "Halonic tries it in the sandbox again the next time a run uses it, never without it.",
+    );
     expect(view.textContent).not.toContain("Trusted on");
     expect(view.querySelector(".bg-danger-soft")).not.toBeNull();
     expect(button(view, "Check again")).toBeDefined();
