@@ -14,6 +14,7 @@ The host shall start an integration's sign-in from the sign-in the sheet and the
 - Given the same callback twice, a wrong `state`, or a path that isn't pending, then nothing is exchanged and the answer is a plain 400.
 - Given a started sign-in, then the flow says its path is waiting for a callback (`handlesPath`) until the callback is answered or it expires, also after it is cancelled, and no other path is.
 - Given a pending sign-in that is cancelled, then the outcome is `cancelled`, and its callback exchanges nothing and gets a page that says the sign-in was cancelled in Halonic.
+- Given a callback that says the person refused at the provider (`error=access_denied`), then the outcome is `cancelled`, nothing is exchanged and the page says they cancelled the sign-in and can close the tab.
 - Given a cancelled sign-in whose 10 minutes are over or that started again, then its old callback gets a plain 400.
 - Given no pending sign-in, then cancelling it gives no outcome.
 - Given a sign-in started twice, then the first one's callback gets a 400.
