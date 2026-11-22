@@ -172,8 +172,7 @@ export function WorkflowScreen({
   // The step picked on the canvas, which says what happened to it while a run is shown (4.5).
   const [pickedStep, setPickedStep] = useState<string | undefined>();
   const body = useRef<HTMLDivElement>(null);
-  // Closing a step's card hands focus back to its step. The canvas shows again first: under 800 px
-  // it was hidden behind the card, and a hidden step can't take focus.
+  // Closing a step's card focuses its step after the canvas shows: under 800 px the card hid it.
   const closeStepCard = () => {
     const closed = pickedStep;
     flushSync(() => setPickedStep(undefined));
@@ -325,6 +324,7 @@ export function WorkflowScreen({
         onOpen={problemsAsk.open}
         openAgent={openAgent}
         openFileAt={openFileAt}
+        openModels={openModels && (() => openModels())}
       />
       <SandboxCantRunCallout
         name={name}

@@ -246,6 +246,12 @@ export const configurationWords = {
   agentStepModelAgent: (model: string | undefined) =>
     model === undefined ? "The agent's model" : `${model}, the agent's model`,
   agentStepLimitAgent: (limit: number) => `${limit}, the agent's limit`,
+  /**
+   * Under an agent step's own model the hub has no alias for (C605, decided by the team with
+   * Sofia): microcopy 1.6's sentence without "Choose one", since the card doesn't edit the model.
+   */
+  agentStepUnknownAlias: (name: string) =>
+    `${name} isn't a model alias in this workspace. Add it in Models.`,
   /** Its tools when the file leaves them out, and when it gives none (C462-6). */
   agentStepToolsAgent: (agent: string) => `All of ${agent}'s tools`,
   agentStepToolsNone: "None",

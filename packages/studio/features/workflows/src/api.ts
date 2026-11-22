@@ -196,7 +196,7 @@ export interface WorkflowProblem {
   readonly stepId?: string | undefined;
   /** The agent whose file it is in, for an error of an agent a step names; absent for the workflow's own file. */
   readonly agent?: WorkflowAgentChoice | undefined;
-  /** For `unknown-model-alias` on the agent's own `model`: that alias, which the workspace doesn't have. */
+  /** For `unknown-model-alias`: the alias the agent or its agent step names, which the workspace doesn't have. */
   readonly modelAlias?: string | undefined;
   /**
    * The path of the file it is in, from the workspace folder, when that isn't the workflow's own
@@ -208,6 +208,8 @@ export interface WorkflowProblem {
    * `arrows` lists them); absent when it isn't in one of the step's arrows.
    */
   readonly arrowIndex?: number | undefined;
+  /** For `unknown-model-alias` on an agent step's model (`methods.<id>.model`): that agent step's name. */
+  readonly agentStep?: string | undefined;
 }
 
 /**

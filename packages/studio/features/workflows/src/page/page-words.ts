@@ -182,7 +182,18 @@ export const pageWords = {
       after: (agent: string) =>
         `, which this workspace doesn't have. Pick a model on ${agent}'s page.`,
     },
+    /**
+     * The same line for an agent step's model alias (C605, decided by the team with Sofia): the
+     * agent's page can't change an agent step's model, so it leads to Models. "*Writer*'s agent
+     * step *short* uses the model alias `tiny`, which this workspace doesn't have. Add it in Models."
+     */
+    missingStepAlias: {
+      before: (agent: string, agentStep: string) =>
+        `${agent}'s agent step ${agentStep} uses the model alias `,
+      after: ", which this workspace doesn't have. Add it in Models.",
+    },
     openAgent: (agent: string) => `Open ${agent}`,
+    openModels: "Open Models",
     /**
      * The problems band's line for another file whose errors stop the workflow (C544-3,
      * HAL-15343, decided by the team): "*Writer* has 1 problem that stops it.", named as the
