@@ -254,6 +254,32 @@ describe("the connector page's listed tools", () => {
       expect(buttons).toEqual(expect.arrayContaining(["Try again", "Copy details"]));
     });
 
+    it("names a stopped program's file, with the line to run in a box to copy", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => {
+              throw new ConnectorCouldntList({
+                reason: "program-stopped",
+                program: "sh",
+                file: "library/connectors/notes.connector.yaml",
+                command: 'cd /acme && sh -c "exit 1"',
+              });
+            }),
+          )}
+        />,
+      );
+      await settled();
+      expect(root.textContent).toContain(
+        "Couldn't list the tools: the program sh of Notes stopped right after it started. To see why, run the command and args from library/connectors/notes.connector.yaml yourself:",
+      );
+      expect(root.textContent).toContain('cd /acme && sh -c "exit 1"');
+      expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
+      const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(buttons).toContain("Try again");
+      expect(buttons).not.toContain("Copy details");
+    });
+
     it("says the engine isn't answering when the agent host isn't running", async () => {
       const root = render(
         <ConnectorPage

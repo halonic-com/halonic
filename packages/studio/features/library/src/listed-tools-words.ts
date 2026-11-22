@@ -126,14 +126,25 @@ export const listedToolsWords = {
     ],
     /**
      * The CLI's cause and fix for the same program (HAL-15606, C600 #1c): what the program wrote
-     * isn't shown, so the person runs it to see why.
+     * isn't shown, so the person runs it to see why. The file is named as the CLI names it, and
+     * `withCommand` ends the line with a colon, for the box with the line to run that follows it
+     * (C634 #5).
      */
-    programStopped: (source: string, program: string): readonly RefusalLinePart[] => [
+    programStopped: (
+      source: string,
+      program: string,
+      file: string | undefined,
+      withCommand: boolean,
+    ): readonly RefusalLinePart[] => [
       { text: "Couldn't list the tools: the program " },
       { text: program, code: true },
       {
-        text: ` of ${source} stopped right after it started. To see why, run the command and args from its connector file yourself.`,
+        text: ` of ${source} stopped right after it started. To see why, run the command and args from `,
       },
+      ...(file === undefined
+        ? [{ text: "its connector file" }]
+        : [{ text: file, code: true as const }]),
+      { text: withCommand ? " yourself:" : " yourself." },
     ],
     /**
      * Studio reads a connector's secrets from the keychain, and `halonic secret set` writes the
