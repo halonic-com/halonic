@@ -193,6 +193,14 @@ verifies("remote.phone-paired-computers", () => {
     );
   });
 
+  it("doesn't say a computer that removed this phone still lists it", async () => {
+    show([{ ...laptop, standing: "removed" }]);
+    await press("Forget Tim's laptop");
+    const sheet = document.querySelector("dialog");
+    expect(sheet?.textContent).toContain("Forget Tim's laptop?");
+    expect(sheet?.textContent).not.toContain("still lists");
+  });
+
   it("changes nothing on Cancel, and keeps the sheet open with the reason when Forget fails", async () => {
     const onForget = vi.fn(async () => {
       throw new Error("keystore");
