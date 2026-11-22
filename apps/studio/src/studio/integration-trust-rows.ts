@@ -67,8 +67,11 @@ export function integrationRow(
   };
 }
 
-/** The Runs row and the lines under it; none while the host can't say. */
-function runsLines(runs: IntegrationRuns): (readonly [string, string])[] {
+/**
+ * The Runs row and the lines under it; none while the host can't say. Where it doesn't start,
+ * Runs is in design section 4's amber form; the reason and fix under it stay plain (C592).
+ */
+function runsLines(runs: IntegrationRuns): TrustRowView["lines"] {
   switch (runs?.state) {
     case "checking":
       return [["Runs", integrationRunsChecking]];
@@ -77,7 +80,7 @@ function runsLines(runs: IntegrationRuns): (readonly [string, string])[] {
     case "not-fenced": {
       const words = runnerUnfencedWords(runs.reason, "integration");
       return [
-        ["Runs", integrationRunsOff],
+        ["Runs", integrationRunsOff, "attention"],
         ["", words.reason],
         ["", words.fix],
       ];

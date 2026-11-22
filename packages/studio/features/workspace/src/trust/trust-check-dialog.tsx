@@ -1,6 +1,11 @@
 import { Callout, Checkbox, Dialog, Disclosure } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
-import type { TrustReview, TrustRowView, TrustSectionView } from "./workspace-trust-control.ts";
+import type {
+  TrustLine,
+  TrustReview,
+  TrustRowView,
+  TrustSectionView,
+} from "./workspace-trust-control.ts";
 
 /** The props of {@link TrustCheckDialog}. */
 export interface TrustCheckDialogProps {
@@ -121,11 +126,31 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
       {row.warning === undefined ? null : (
         <p className="m-0 text-small text-attention">{row.warning}</p>
       )}
-      {row.lines.map(([label, value]) => (
-        <p key={`${label}:${value}`} className="m-0 text-small">
-          <span className="text-fg-muted">{label}:</span> {value}
-        </p>
-      ))}
+      {row.lines.length === 0 ? null : (
+        // Label and value columns: a line without a label continues the one above, its value
+        // under the first value, with no stray colon (C592).
+        <div className="grid grid-cols-[auto_1fr] gap-x-1 gap-y-1">
+          {row.lines.map((line) => (
+            <TrustLineView key={`${line[0]}:${line[1]}`} line={line} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function TrustLineView({ line }: { readonly line: TrustLine }) {
+  const [label, value, tone] = line;
+  return (
+    <p className="col-span-2 m-0 grid grid-cols-subgrid text-small">
+      {label === "" ? null : (
+        <>
+          <span className="text-fg-muted">{label}:</span>{" "}
+        </>
+      )}
+      <span className={tone === "attention" ? "col-start-2 text-attention" : "col-start-2"}>
+        {value}
+      </span>
+    </p>
   );
 }

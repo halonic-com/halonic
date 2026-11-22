@@ -1,13 +1,20 @@
 import type { TrustAsks } from "./trust-asks.ts";
 
+/** A line under a trust check row: its label, its value and, for amber, its tone. */
+export type TrustLine = readonly [label: string, value: string, tone?: "attention"];
+
 /** One row of the trust check: a program, an agent, an address, or a change to one. */
 export interface TrustRowView {
   /** The item's id, such as `mail-mcp`. */
   readonly id: string;
   /** What it is, in one line: the command, the program an agent runs in, the address. */
   readonly detail: string;
-  /** Label and value lines under the row, such as **Gets secrets** and its names. */
-  readonly lines: readonly (readonly [label: string, value: string])[];
+  /**
+   * Label and value lines under the row, such as **Gets secrets** and its names. An empty label
+   * continues the line above it; `attention` shows the value in amber, as **Runs** is where an
+   * integration doesn't start.
+   */
+  readonly lines: readonly TrustLine[];
   /** The amber line for a program whose version isn't pinned. */
   readonly warning?: string | undefined;
   /** Set in "What changed". */
