@@ -1,6 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
-import { cloudAffectedFiles, inputsHash, liveInputPaths } from "./cloud-paths.ts";
+import {
+  cloudAffectedFiles,
+  inputsHash,
+  isPullRequestLivePath,
+  liveInputPaths,
+} from "./cloud-paths.ts";
 import type { WorkspacePackage } from "./workspace.ts";
 
 function workspacePackage(
@@ -96,6 +101,41 @@ verifies("check.cloud-affected", () => {
 
     test("changes when a file changes", () => {
       expect(inputsHash([a, b])).not.toBe(inputsHash([a, b.replace("2222", "3333")]));
+    });
+  });
+});
+
+verifies("check.live-cloud-queue", () => {
+  describe("isPullRequestLivePath", () => {
+    test.each([
+      "packages/adapters/cloudflare-r2/src/store.ts",
+      "packages/adapters/store-s3/package.json",
+      "packages/targets/cloudflare/deploy/src/deploy.ts",
+      "packages/testing/cloudflare-live/live/adapters.live.test.ts",
+      "apps/cli/src/commands/deploy/plan.ts",
+      ".github/workflows/live-cloud.yml",
+      "tooling/check/src/lib/cloud-paths.ts",
+    ])("runs the live suites on the pull request for %s", (file) => {
+      expect(isPullRequestLivePath(file)).toBe(true);
+    });
+
+    test.each([
+      "packages/host/server/src/handler.ts",
+      "packages/core/ports/src/blob-store.ts",
+      "packages/testing/contracts/target/live/r2.test.ts",
+    ])("leaves %s to the merge queue", (file) => {
+      expect(cloudAffectedFiles([file])).toEqual([file]);
+      expect(isPullRequestLivePath(file)).toBe(false);
+    });
+
+    test("is only ever a cloud path", () => {
+      for (const file of [
+        "packages/core/format/src/deployments.ts",
+        "tooling/check/src/lib/live-turn.ts",
+        ".github/workflows/ci.yml",
+      ]) {
+        expect(isPullRequestLivePath(file), file).toBe(false);
+      }
     });
   });
 });

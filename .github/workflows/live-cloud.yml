@@ -1,11 +1,16 @@
 # The live suites against the real Cloudflare test account (ADR 5.9,
-# HAL-198). An emulator misses differences in the real service, so a pull
-# request that changes a cloud path (tooling/check's cloud-affected) must pass
-# them before it merges: ci.yml's `live-cloud` gate fails `ci-ok` in the merge
-# queue until the `live-cloud` job here passed on the pull request's head.
+# HAL-198). An emulator misses differences in the real service, so a change
+# to a cloud path (tooling/check's cloud-affected) must pass them before it
+# merges: ci.yml's `live-cloud` gate fails `ci-ok` in the merge queue until
+# the `live-cloud` job here passed on the merge group's commit.
 #
-# To stay inside the CI budget (D36) they start only once a pull request is
-# ready for review, and a pass is reused when none of its inputs changed.
+# They run in the merge queue, on each group that adds a cloud change, so a
+# pull request's checks don't wait for them (board decision, HAL-15970). A
+# pull request that changes what the suites exercise directly (the
+# provider adapters and targets, the suites, the deploy command, this
+# workflow: cloud-affected's `on-pull-request`) still runs them once it is
+# ready for review, and its group reuses that pass. A pass is reused when
+# none of its inputs changed, to stay inside the CI budget (D36).
 # Every night they run on main again, without reuse, to catch changes on the
 # provider's side. The sweeper deletes what a dead run left behind. Opening
 # one issue per target for a failed night comes with the first live suite.
@@ -23,6 +28,7 @@ name: Live cloud
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
   # The plan job reads these from this file: the second one is sweep-only.
   schedule:
     - cron: "23 2 * * *" # nightly on main: sweep, then every live suite
@@ -32,7 +38,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: live-cloud-${{ github.event.pull_request.number || github.ref }}
+  group: live-cloud-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -67,7 +73,7 @@ jobs:
           DRAFT: ${{ github.event.pull_request.draft }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           REPO: ${{ github.repository }}
-          BASE: ${{ github.event.pull_request.base.sha }}
+          GROUP_BASE: ${{ github.event.merge_group.base_sha }}
         run: |
           skip() {
             echo "::notice title=Live cloud suites skipped::$1"
@@ -93,6 +99,15 @@ jobs:
           fi
           if [ "$EVENT" = "schedule" ] && [ "$SCHEDULE" = "$sweep_cron" ]; then
             printf 'live=false\nsweep=true\nnightly=false\n' >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = "merge_group" ]; then
+            # The group against the commit it is built on (main, or the entry
+            # ahead of it): exactly what this entry adds.
+            node tooling/check/src/cli/cloud-affected.ts --base "$GROUP_BASE" | tee "$RUNNER_TEMP/affected.txt"
+            if grep -qx 'affected=true' "$RUNNER_TEMP/affected.txt"; then
+              printf 'live=true\nsweep=false\nnightly=false\n' >> "$GITHUB_OUTPUT"
+            else
+              skip "This group changes no cloud path, so the live suites aren't needed."
+            fi
           elif [ "$EVENT" != "pull_request" ]; then
             printf 'live=true\nsweep=true\nnightly=true\n' >> "$GITHUB_OUTPUT"
           elif [ "$HEAD_REPO" != "$REPO" ]; then
@@ -100,9 +115,13 @@ jobs:
           elif [ "$DRAFT" = "true" ]; then
             skip "Draft pull request: the live suites start when it is marked ready for review."
           else
-            node tooling/check/src/cli/cloud-affected.ts --base "$BASE" | tee "$RUNNER_TEMP/affected.txt"
-            if grep -qx 'affected=true' "$RUNNER_TEMP/affected.txt"; then
+            # The checkout is the pull request merged into the newest main,
+            # its first parent: the diff is the pull request's own change.
+            node tooling/check/src/cli/cloud-affected.ts --base "$(git rev-parse --verify HEAD^1)" | tee "$RUNNER_TEMP/affected.txt"
+            if grep -qx 'on-pull-request=true' "$RUNNER_TEMP/affected.txt"; then
               printf 'live=true\nsweep=false\nnightly=false\n' >> "$GITHUB_OUTPUT"
+            elif grep -qx 'affected=true' "$RUNNER_TEMP/affected.txt"; then
+              skip "This changes only shared cloud paths, so the live suites run in the merge queue, on the group's commit (HAL-15970)."
             else
               skip "No cloud path changed, so the live suites aren't needed. The nightly run on main covers the rest."
             fi
@@ -137,8 +156,8 @@ jobs:
           fi
 
   live-cloud:
-    # ci.yml's merge-queue gate looks for this job by name on the pull
-    # request's head. Keep the name.
+    # ci.yml's gate looks for this job by name on the pull request's head and
+    # the merge group's commit. Keep the name.
     name: live-cloud
     needs: [plan, sweep]
     if: ${{ !cancelled() && needs.plan.outputs.live == 'true' }}
@@ -159,13 +178,15 @@ jobs:
       - id: inputs
         name: Hash the inputs
         run: node tooling/check/src/cli/cloud-affected.ts --inputs-hash
-      # Pull requests only: the nightly run never reuses, because it is there
-      # to catch changes on the provider's side. Only passes uploaded by a run
-      # of this workflow from this repository count, never one from a fork or
-      # from another workflow.
+      # Pull requests and merge groups only: the nightly run never reuses,
+      # because it is there to catch changes on the provider's side. Only
+      # passes uploaded by a run of this workflow from this repository count,
+      # never one from a fork or from another workflow. A group whose pull
+      # request ran the suites reuses that pass while nothing ahead of it in
+      # the queue changed their inputs.
       - id: reuse
         name: Look for an earlier pass with the same inputs
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -227,11 +248,11 @@ jobs:
           CLOUDFLARE_LIVE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_LIVE_ACCOUNT_ID }}
         run: node tooling/check/src/cli/live-sweep.ts
       - name: Record the pass
-        if: github.event_name == 'pull_request' && steps.reuse.outputs.reused != 'true'
+        if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && steps.reuse.outputs.reused != 'true'
         env:
           INPUTS: ${{ steps.inputs.outputs.inputs }}
         run: echo "$INPUTS" > "$RUNNER_TEMP/live-cloud-pass.txt"
-      - if: github.event_name == 'pull_request' && steps.reuse.outputs.reused != 'true'
+      - if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && steps.reuse.outputs.reused != 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: live-cloud-pass-${{ steps.inputs.outputs.inputs }}

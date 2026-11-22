@@ -3035,14 +3035,17 @@ jobs:
 
   live-cloud:
     # ADR 5.9: a change to a cloud path merges only after the live suites
-    # passed on it. They run in live-cloud.yml once the pull request is ready
-    # for review. A draft only gets a notice. A ready pull request fails here
-    # at once, without waiting on a runner, until that workflow's `live-cloud`
-    # job passed on its head, so `ci-ok` shows it before the queue does
-    # (HAL-14858: 45% of failed merge groups were this job). live-cloud-gate.yml
-    # re-runs this job when the live suites pass. The merge queue waits for the
-    # same job on the pull request's head. Only a run of live-cloud.yml from
-    # this repository counts, never a fork's. Off, with a notice, until
+    # passed on it. They run in live-cloud.yml in the merge queue, on the
+    # group's commit, so a pull request's ci-ok doesn't wait for them (board
+    # decision, HAL-15970); in a merge group this job waits for that run. A
+    # pull request that changes what the suites exercise directly
+    # (cloud-affected's `on-pull-request`) still runs them once ready for
+    # review: there this job fails at once, without waiting on a runner,
+    # until they passed on its head, so a likely failure shows before the
+    # queue (HAL-14858), and live-cloud-gate.yml re-runs it when they pass. A
+    # draft only gets a notice, and a fork's pull request that changes any
+    # cloud path fails: a fork never gets the token. Only a run of
+    # live-cloud.yml from this repository counts. Off, with a notice, until
     # LIVE_CLOUD_ENABLED is "true".
     name: Live cloud suites passed
     if: github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
@@ -3065,24 +3068,33 @@ jobs:
       - id: affected
         name: Changes a cloud path?
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          EVENT: ${{ github.event_name }}
+          GROUP_BASE: ${{ github.event.merge_group.base_sha }}
         run: |
+          # A pull request's checkout is its merge into the newest main, so
+          # the first parent is that main and the diff is its own change.
+          if [ "$EVENT" = "pull_request" ]; then
+            base=$(git rev-parse --verify HEAD^1)
+          else
+            base=$GROUP_BASE
+          fi
           # The base commit's copy decides, like the leak guard, so a change
           # can't take itself off the cloud paths. A base from before the
           # script existed has no copy, so the change's own one runs.
-          git worktree add --detach "$RUNNER_TEMP/base" "$BASE"
+          git worktree add --detach "$RUNNER_TEMP/base" "$base"
           script=tooling/check/src/cli/cloud-affected.ts
           if [ -f "$RUNNER_TEMP/base/$script" ]; then
-            node "$RUNNER_TEMP/base/$script" --base "$BASE"
+            node "$RUNNER_TEMP/base/$script" --base "$base"
           else
-            node "$script" --base "$BASE"
+            node "$script" --base "$base"
           fi
       - name: Wait for the live suites
         if: steps.affected.outputs.affected == 'true'
         env:
           ENABLED: ${{ vars.LIVE_CLOUD_ENABLED }}
           EVENT: ${{ github.event_name }}
-          MERGE_REF: ${{ github.event.merge_group.head_ref }}
+          ON_PULL_REQUEST: ${{ steps.affected.outputs.on-pull-request }}
+          GROUP_SHA: ${{ github.event.merge_group.head_sha }}
           PR: ${{ github.event.pull_request.number }}
           PR_SHA: ${{ github.event.pull_request.head.sha }}
           DRAFT: ${{ github.event.pull_request.draft }}
@@ -3096,21 +3108,26 @@ jobs:
           fi
           if [ "$EVENT" = "pull_request" ]; then
             if [ "$DRAFT" = "true" ]; then
-              echo "::notice title=Live cloud suites::This changes a cloud path. The live suites run once the pull request is ready for review, and this job fails until they passed."
+              echo "::notice title=Live cloud suites::This changes a cloud path. Once the pull request is ready for review, this job checks whether the live suites run on it or in the merge queue."
               exit 0
             fi
             if [ "$HEAD_REPO" != "$REPO" ]; then
               echo "::error::Pull request #$PR changes a cloud path, and a fork never gets the test account's token. A maintainer pushes the branch into this repository to run the live suites (CONTRIBUTING.md)."
               exit 1
             fi
-            pr=$PR
+            # The base's copy of cloud-affected from before HAL-15970 has no
+            # on-pull-request answer; the merge queue still runs the suites.
+            if [ "$ON_PULL_REQUEST" != "true" ]; then
+              echo "::notice title=Live cloud suites::This changes a shared cloud path, so the live suites run in the merge queue, on the group's commit (HAL-15970)."
+              exit 0
+            fi
+            event=pull_request
             sha=$PR_SHA
             # Once: a pull request doesn't hold a runner while the suites run.
             tries=1
           else
-            pr=$(sed -nE 's#^refs/heads/gh-readonly-queue/[^/]+/pr-([0-9]+)-[0-9a-f]+$#\1#p' <<< "$MERGE_REF")
-            [ -n "$pr" ] || { echo "::error::Can't read the pull request number from $MERGE_REF."; exit 1; }
-            sha=$(gh api "repos/$REPO/pulls/$pr" --jq .head.sha)
+            event=merge_group
+            sha=$GROUP_SHA
             # A live job still running is waited for, up to 45 minutes: the
             # merge queue drops an entry after 60.
             tries=45
@@ -3118,7 +3135,7 @@ jobs:
           # A run that hasn't finished counts as running even before its
           # live-cloud job is listed.
           for try in $(seq "$tries"); do
-            runs=$(gh api "repos/$REPO/actions/workflows/live-cloud.yml/runs?head_sha=$sha&event=pull_request&per_page=20" \
+            runs=$(gh api "repos/$REPO/actions/workflows/live-cloud.yml/runs?head_sha=$sha&event=$event&per_page=20" \
               --jq ".workflow_runs[] | select(.head_repository.full_name == \"$REPO\") | \"\(.id) \(.status)\"")
             results=""
             while read -r run status; do
@@ -3131,6 +3148,10 @@ jobs:
               echo "The live suites passed on $sha."
               exit 0
             fi
+            # The group's run starts with this one and may not be listed yet.
+            if [ -z "$runs" ] && [ "$event" = merge_group ] && [ "$try" -le 5 ]; then
+              results=running
+            fi
             grep -qx running <<< "$results" || break
             [ "$try" = "$tries" ] || sleep 60
           done
@@ -3138,11 +3159,11 @@ jobs:
             if grep -qx running <<< "$results"; then
               echo "::error::The live suites are still running on $sha. When they pass, this job re-runs by itself (live-cloud-gate.yml) and ci-ok turns green."
             else
-              echo "::error::Pull request #$pr changes a cloud path, but the live-cloud job has not passed on its head $sha. Fix it and push, or re-run the Live cloud workflow; when it passes, this job re-runs by itself."
+              echo "::error::Pull request #$PR changes what the live suites exercise, but the live-cloud job has not passed on its head $sha. Fix it and push, or re-run the Live cloud workflow; when it passes, this job re-runs by itself."
             fi
             exit 1
           fi
-          echo "::error::Pull request #$pr changes a cloud path, but the live-cloud job has not passed on its head $sha. Mark it ready for review, or re-run the Live cloud workflow, then queue it again."
+          echo "::error::This merge group changes a cloud path, but the live suites didn't pass on its commit $sha: see the Live cloud run for that commit. Fix the pull request and push; the queue session queues it again once ci-ok is green."
           exit 1
 
   # Merge queue only: a queue entry that has already failed keeps its place,
@@ -3152,6 +3173,8 @@ jobs:
   # group is gone (HAL-14067): when a pull request jumps the queue or a group
   # fails, GitHub rebuilds every group behind it under new refs and deletes
   # the old ones, but the old groups' runs keep going and hold runners.
+  # It also cancels the group's live suites (live-cloud.yml, a run of its own),
+  # so a dropped group doesn't hold the one test account (HAL-15970).
   # Pull requests don't use it: the author should see every failure at once.
   # It runs no repository code (no checkout), so the write permission below
   # is only used by the `gh` calls here.
@@ -3168,6 +3191,7 @@ jobs:
       REPO: ${{ github.repository }}
       RUN_ID: ${{ github.run_id }}
       HEAD_REF: ${{ github.event.merge_group.head_ref }} # refs/heads/gh-readonly-queue/main/pr-N-<sha>
+      HEAD_SHA: ${{ github.event.merge_group.head_sha }}
     steps:
       - name: Watch the other jobs
         shell: bash
@@ -3176,13 +3200,22 @@ jobs:
           # counts against the token's hourly limit: 30 s, and a growing wait
           # (up to 5 min) after an error such as a rate limit (HAL-5146).
           pause=30
+          cancel() {
+            # The group's live run first: once this run is cancelled, this step stops.
+            live=$(gh api "repos/$REPO/actions/workflows/live-cloud.yml/runs?head_sha=$HEAD_SHA&event=merge_group&per_page=20" \
+              --jq '.workflow_runs[] | select(.status != "completed") | .id') || live=""
+            for run in $live; do
+              gh run cancel "$run" --repo "$REPO" || true
+            done
+            gh run cancel "$RUN_ID" --repo "$REPO"
+          }
           while true; do
             jobs=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '.jobs[]' | jq -s .) || { sleep "$pause"; pause=$((pause * 2 > 300 ? 300 : pause * 2)); continue; }
             # Our own job and ci-ok don't count; a job that hasn't finished yet has no conclusion.
             failed=$(echo "$jobs" | jq -r '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", ")')
             if [ -n "$failed" ]; then
               echo "::error::Failed: $failed. Cancelling the run so the queue moves on."
-              gh run cancel "$RUN_ID" --repo "$REPO"
+              cancel
               exit 0
             fi
             open=$(echo "$jobs" | jq '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.status != "completed")] | length')
@@ -3193,7 +3226,7 @@ jobs:
             if ! err=$(gh api --silent "repos/$REPO/git/ref/${HEAD_REF#refs/}" 2>&1); then
               if grep -q 'HTTP 404' <<< "$err"; then
                 echo "::warning::The merge group's ref $HEAD_REF is gone (rebuilt or removed from the queue). Cancelling the run to free its runners."
-                gh run cancel "$RUN_ID" --repo "$REPO"
+                cancel
                 exit 0
               fi
               sleep "$pause"; pause=$((pause * 2 > 300 ? 300 : pause * 2)); continue

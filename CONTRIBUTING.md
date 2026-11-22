@@ -203,8 +203,9 @@ Halonic has one firm rule: **nothing that works may break.**
   `core/ports`; the full list is in
   [`tooling/check/src/lib/cloud-paths.ts`](tooling/check/src/lib/cloud-paths.ts))
   must pass the live suites before it merges, once they are switched on.
-  Until CI has a Cloudflare test token (HAL-198), they don't run and nothing
-  is required. A fork never gets the test account's token, so the reviewer
+  They run in the merge queue; a change to a Cloudflare adapter, a target or
+  the suites themselves also runs them on the pull request. Until CI has a
+  Cloudflare test token (HAL-198), they don't run and nothing is required. A fork never gets the test account's token, so the reviewer
   reads the change and pushes your branch into this repository to run them.
 - **Rebase on `main`** rather than merging `main` into your branch.
 - **Two pull requests adding features at once?** After rebasing, run
