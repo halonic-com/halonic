@@ -190,24 +190,41 @@ verifies("studio.connect.phone-tunnel", () => {
       expect(shell.commands()).toEqual(["phone_tunnel_watch"]);
     });
 
-    it("closes the channel when the last listener goes, and watches again for the next", async () => {
+    it("keeps the one channel when the last listener goes, so the next doesn't watch again", async () => {
       const { shell, tunnel } = tunnelWith({ phone_tunnel_watch: true });
       const stop = tunnel.onStatus(() => undefined);
-      const stopToo = tunnel.onStatus(() => undefined);
+      stop();
       stop();
       expect(shell.openChannels()).toBe(1);
-      stopToo();
-      expect(shell.openChannels()).toBe(0);
-      tunnel.onStatus(() => undefined);
-      expect(shell.commands()).toEqual(["phone_tunnel_watch", "phone_tunnel_watch"]);
+      const next: [string, PhoneStatus][] = [];
+      tunnel.onStatus((computer, status) => next.push([computer, status]));
+      shell.sendStatus(0, "c1", { state: "connected" });
+      expect(next).toEqual([["c1", { state: "connected" }]]);
+      expect(shell.openChannels()).toBe(1);
+      expect(shell.commands()).toEqual(["phone_tunnel_watch"]);
     });
 
-    it("reports a watch the shell refuses, as it does off the app's own page", async () => {
-      const { reported, tunnel } = tunnelWith({ phone_tunnel_watch: false });
+    it("keeps the statuses sent while nobody listens for the next listener", async () => {
+      const { shell, tunnel } = tunnelWith({ phone_tunnel_watch: true });
+      const gone: [string, PhoneStatus][] = [];
+      const stop = tunnel.onStatus((computer, status) => gone.push([computer, status]));
+      stop();
+      shell.sendStatus(0, "c1", { state: "connecting" });
+      shell.sendStatus(1, "c1", { state: "connected" });
+      const next: [string, PhoneStatus][] = [];
+      tunnel.onStatus((computer, status) => next.push([computer, status]));
+      expect(gone).toEqual([]);
+      expect(next).toEqual([["c1", { state: "connected" }]]);
+    });
+
+    it("reports a watch the shell refuses, as it does off the app's own page, and doesn't ask again", async () => {
+      const { shell, reported, tunnel } = tunnelWith({ phone_tunnel_watch: false });
+      tunnel.onStatus(() => undefined)();
+      await Promise.resolve();
+      await Promise.resolve();
       tunnel.onStatus(() => undefined);
-      await Promise.resolve();
-      await Promise.resolve();
       expect(reported).toEqual(["phone_tunnel_watch refused the watch"]);
+      expect(shell.commands()).toEqual(["phone_tunnel_watch"]);
     });
   });
 });
