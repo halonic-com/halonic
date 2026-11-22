@@ -85,6 +85,15 @@ and [the rest](../adr/2026-11-11-pluggable-sandbox-layer.md)). The CLI also has
 a code of its own, `windows-node-in-wsl`, for Windows' Node.js started from a
 WSL folder.
 
+The CLI and Studio give different fixes for two of these codes, on purpose.
+The command in a Windows terminal can't run integration code in the sandbox at
+all, so for `distro-missing`, `runtime-missing` and `setup-conflict` it always
+says to use Halonic inside WSL 2. Studio starts the sandbox itself, so it says
+the same for `distro-missing`, but for `runtime-missing` it says to choose
+Check again and, if the setup still doesn't finish, to reinstall Halonic
+Studio, and for
+`setup-conflict` it says to remove the other program's sandbox setup first.
+
 ## The limits
 
 - **It's a fence, not a virtual machine.** The operating system's kernel is
