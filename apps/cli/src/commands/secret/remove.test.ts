@@ -23,11 +23,24 @@ verifies("cli.commands.secret.remove", () => {
     expect(await fixture.store().names()).toEqual(["anthropic-key"]);
   });
 
-  it("succeeds when no such secret is saved", async () => {
+  it("says it wasn't set and changes nothing when no such secret is saved", async () => {
+    await fixture.store().set("anthropic-key", "sk-ant-5678");
+
     const { code, io } = await secret(fixture.folder, fixture.setup, ["remove", "openai-key"]);
 
     expect(code).toBe(exitCode.ok);
-    expect(io.stdout).toEqual(["✓ Removed openai-key."]);
+    expect(io.stdout).toEqual(["openai-key wasn't set. Nothing changed."]);
+    expect(await fixture.store().names()).toEqual(["anthropic-key"]);
+  });
+
+  it("removes a secret saved under another spelling of its name", async () => {
+    await fixture.store().set("Notes_Token", "acme-notes-1");
+
+    const { code, io } = await secret(fixture.folder, fixture.setup, ["remove", "notes-token"]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual(["✓ Removed notes-token."]);
+    expect(await fixture.store().names()).toEqual([]);
   });
 
   it("refuses a sign-in token's name and changes nothing", async () => {

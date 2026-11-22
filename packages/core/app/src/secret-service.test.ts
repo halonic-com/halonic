@@ -26,13 +26,15 @@ verifies("app.secret-service", () => {
     expect(await store.get("openai-key")).toBe("sk-live-1234");
   });
 
-  it("removes a secret, and removing one that isn't there succeeds", async () => {
+  it("removes a secret, and says so when one isn't there, changing nothing", async () => {
     const { store, secrets } = setup();
     await store.set("openai-key", "sk-live-1234");
+    await store.set("anthropic-key", "sk-ant-5678");
 
     expect(await secrets.remove("openai-key")).toEqual({ changed: true });
     expect(await store.get("openai-key")).toBeNull();
-    expect(await secrets.remove("openai-key")).toEqual({ changed: true });
+    expect(await secrets.remove("openai-key")).toEqual({ changed: false, notSaved: true });
+    expect(await store.names()).toEqual(["anthropic-key"]);
   });
 
   it.each(["token-key", "Token_Key", "TOKEN_KEY", "halonic_token_abc", "Halonic-Token-abc"])(

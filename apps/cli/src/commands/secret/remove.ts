@@ -1,6 +1,7 @@
 // `halonic secret remove <name>`: removes a saved secret. A thin command over
 // `SecretService.remove`. Removing a name that isn't saved succeeds, so a
-// second run finishes what a first left undone.
+// second run finishes what a first left undone, but it says that nothing was
+// there, so "Removed" never stands for nothing (C605 #6c).
 
 import {
   type CommandContext,
@@ -30,6 +31,13 @@ export async function removeSecret(
     throw new UsageError(secretMessages.removeNeedsName(), secretMessages.removeUsage());
   }
   const change = await openSecretService(setup).remove(name);
+  if ("notSaved" in change) {
+    return {
+      exitCode: exitCode.ok,
+      lines: [secretMessages.notSaved(printable(name)).phrase],
+      json: { name, removed: false },
+    };
+  }
   if (!change.changed) {
     throw refused(change.reason);
   }
