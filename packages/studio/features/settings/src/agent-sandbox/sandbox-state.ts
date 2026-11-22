@@ -75,10 +75,21 @@ export type SandboxOutcome =
   | { readonly kind: "remove"; readonly how: "in-use"; readonly runs: number };
 
 /**
- * What the section shows after a press: how it failed, or a removal that worked, which the host
- * reports as no outcome and the section says in a note (C575, HAL-15432).
+ * A removal that worked. `keptAccess`: some access Halonic gave its sandbox stays until Halonic
+ * next starts (`sandbox-srt.removal-kept-access`, HAL-15761).
  */
-export type SandboxResult = SandboxOutcome | { readonly kind: "remove"; readonly how: "removed" };
+export interface SandboxRemoved {
+  readonly kind: "remove";
+  readonly how: "removed";
+  readonly keptAccess?: true;
+}
+
+/**
+ * What the section shows after a press: how it failed, or a removal that worked, which the host
+ * reports as no outcome, or as {@link SandboxRemoved} when it kept access, and the section says in
+ * a note (C575, HAL-15432).
+ */
+export type SandboxResult = SandboxOutcome | SandboxRemoved;
 
 /**
  * What runs now: the elevated step, then the check that follows it. `running` is a command the
@@ -309,7 +320,7 @@ function calloutFor(outcome: SandboxResult): NonNullable<SandboxView["callout"]>
   if (outcome.kind === "remove") {
     switch (outcome.how) {
       case "removed":
-        return { line: text.REMOVED, action: null, note: true };
+        return { line: text.removedLine(outcome.keptAccess === true), action: null, note: true };
       case "cancelled":
         return { line: text.REMOVE_DENIED, action: null };
       case "timed-out":

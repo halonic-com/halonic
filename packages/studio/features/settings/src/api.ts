@@ -4,7 +4,11 @@
  */
 import type { HostSettings } from "@halonicjs/app";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import type { SandboxCheckFacts, SandboxOutcome } from "./agent-sandbox/sandbox-state.ts";
+import type {
+  SandboxCheckFacts,
+  SandboxOutcome,
+  SandboxRemoved,
+} from "./agent-sandbox/sandbox-state.ts";
 import type { AssistantProvider } from "./assistant/assistant-providers.ts";
 import type { DisplaySettings } from "./display-settings.ts";
 import type { RestartRunsHost } from "./updater/restart-runs.ts";
@@ -29,7 +33,11 @@ export { DisplaySettings, type SaveOutcome } from "./display-settings.ts";
 export const DisplaySettingsService: ServiceKey<DisplaySettings> =
   serviceKey<DisplaySettings>("settings.display");
 
-export type { SandboxCheckFacts, SandboxOutcome } from "./agent-sandbox/sandbox-state.ts";
+export type {
+  SandboxCheckFacts,
+  SandboxOutcome,
+  SandboxRemoved,
+} from "./agent-sandbox/sandbox-state.ts";
 
 /**
  * What the shell read when it started the sandbox: whether its own security updates are late (W2
@@ -87,8 +95,13 @@ export interface AgentSandboxHost {
    * command itself isn't stopped when `signal` aborts: the host stops following it.
    */
   setUp(options?: { readonly signal?: AbortSignal }): Promise<SandboxOutcome | null>;
-  /** Runs the removal until it ends, with the same answer as `setUp`. */
-  remove(options?: { readonly signal?: AbortSignal }): Promise<SandboxOutcome | null>;
+  /**
+   * Runs the removal until it ends, with the same answer as `setUp`, or {@link SandboxRemoved}
+   * when it worked but kept some access until Halonic next starts.
+   */
+  remove(options?: {
+    readonly signal?: AbortSignal;
+  }): Promise<SandboxOutcome | SandboxRemoved | null>;
   /**
    * Follows a command that already runs, as `running()` said, until it ends, with the same
    * answer as `setUp`, or `undefined` when `signal` aborts first. Reads only: it never starts
@@ -97,7 +110,7 @@ export interface AgentSandboxHost {
   follow(
     verb: "setup" | "remove",
     options?: { readonly signal?: AbortSignal },
-  ): Promise<SandboxOutcome | null | undefined>;
+  ): Promise<SandboxOutcome | SandboxRemoved | null | undefined>;
   /**
    * Removes the WSL setup after the person's choice about its files. Present only on a host that
    * can do it while the WSL sandbox is not the one in use; the section then offers **Remove

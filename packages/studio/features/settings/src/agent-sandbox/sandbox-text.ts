@@ -85,6 +85,11 @@ export const removeFailed = (reason: string) => `The sandbox wasn't removed: ${r
 export const REMOVE_TOOK_TOO_LONG = `The sandbox wasn't removed within ${SETUP_LIMIT_MINUTES} minutes. Wait a minute, then try again.`;
 /** A removal that worked, in the WSL removal's words; the state's line says what follows (C575). */
 export const REMOVED = "Sandbox removed.";
+/** A removal with administrator rights that kept some access, in the uninstaller's words (HAL-15761). */
+export const REMOVED_KEPT_ACCESS =
+  "Its access to your project folders is removed the next time you start Halonic.";
+export const removedLine = (keptAccess: boolean) =>
+  keptAccess ? `${REMOVED} ${REMOVED_KEPT_ACCESS}` : REMOVED;
 /** A note, not a failure, as for the setup and the repair (HAL-15091). */
 export const REMOVE_STILL_RUNNING =
   "The earlier removal is still running. Wait a minute, then try again.";
@@ -96,7 +101,8 @@ export const announceReady = (checkedAt: string) => `Sandbox set up. Checked ${c
 export const announceChecked = (line: string) => `Sandbox checked: ${line}`;
 export const announceStep = (step: string) => step;
 /** A removal that worked, as the WSL removal says it, then the first line of the state it left. */
-export const announceRemoved = (line: string) => `${REMOVED} ${line}`;
+export const announceRemoved = (line: string, keptAccess = false) =>
+  `${removedLine(keptAccess)} ${line}`;
 
 /** The toasts for a result that ends while Settings is closed. */
 export const TOAST_SET_UP = "The agent sandbox is set up";

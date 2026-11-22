@@ -10,6 +10,7 @@ import { AgentSandboxHostView } from "./agent-sandbox-section.tsx";
 import {
   type SandboxCheckFacts,
   type SandboxOutcome,
+  type SandboxRemoved,
   type SandboxResult,
   sandboxView,
 } from "./sandbox-state.ts";
@@ -25,19 +26,23 @@ const ready = { state: "ready", checkedAt: "2026-11-09T09:12:00" } as const;
 /** A Ready host whose removal ends when the test says, and whose check then says `after`. */
 async function readyHost() {
   let check: SandboxCheckFacts = ready;
-  let ends: (outcome: SandboxOutcome | null) => void = () => {};
+  let ends: (outcome: SandboxOutcome | SandboxRemoved | null) => void = () => {};
   const host = {
     available: true,
     check: async () => check,
     running: async () => null,
     setUp: async () => null,
-    remove: () => new Promise<SandboxOutcome | null>((resolve) => (ends = resolve)),
+    remove: () =>
+      new Promise<SandboxOutcome | SandboxRemoved | null>((resolve) => (ends = resolve)),
     follow: async () => null,
   } satisfies AgentSandboxHost;
   const announce = vi.fn();
   const view = render(<AgentSandboxHostView host={host} place="app" announce={announce} />);
   await act(async () => {});
-  const end = async (outcome: SandboxOutcome | null, after: SandboxCheckFacts = ready) => {
+  const end = async (
+    outcome: SandboxOutcome | SandboxRemoved | null,
+    after: SandboxCheckFacts = ready,
+  ) => {
     check = after;
     await act(async () => ends(outcome));
   };
@@ -90,6 +95,41 @@ verifies("settings.agent-sandbox-removal-result", () => {
     expect(announce).toHaveBeenCalledTimes(1);
     expect(announce).toHaveBeenCalledWith(
       "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.",
+    );
+  });
+
+  it("says a removal that kept some access until Halonic next starts, on screen and out loud", async () => {
+    const kept =
+      "Sandbox removed. Its access to your project folders is removed the next time you start Halonic.";
+    const { view, announce, end } = await readyHost();
+    await removeFrom(view);
+    await end({ kind: "remove", how: "removed", keptAccess: true }, { state: "needs-setup" });
+    expect(view.textContent).toContain(kept);
+    expect(nameOfFocus()).toBe(kept);
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(calloutOf({ kind: "remove", how: "removed", keptAccess: true })).toEqual({
+      line: kept,
+      action: null,
+      note: true,
+    });
+  });
+
+  it("says a followed removal that kept some access through the live region", async () => {
+    const host = {
+      available: true,
+      check: async () => ({ state: "needs-setup" }) as const,
+      running: async () => "remove" as const,
+      setUp: async () => null,
+      remove: async () => null,
+      follow: async () => ({ kind: "remove", how: "removed", keptAccess: true }) as const,
+    } satisfies AgentSandboxHost;
+    const announce = vi.fn();
+    render(<AgentSandboxHostView host={host} place="app" announce={announce} />);
+    await act(async () => {});
+    expect(announce).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^Sandbox removed\. Its access to your project folders is removed the next time you start Halonic\. The sandbox needs/,
+      ),
     );
   });
 

@@ -197,12 +197,17 @@ function removalLine(ended: Ended, focused: boolean): string | null {
   if (ended.outcome !== null) return focused ? null : outcomeLine(ended.outcome);
   const facts = { available: true, place: "app", running: null, outcome: null } as const;
   const lead = sandboxView({ ...facts, check: ended.check }).lead;
-  return focused ? lead : text.announceRemoved(lead);
+  return focused ? lead : text.announceRemoved(lead, ended.keptAccess === true);
 }
 
-/** What the section shows: a removal that worked says so in a note (C575, HAL-15432). */
+/**
+ * What the section shows: a removal that worked says so in a note (C575, HAL-15432), and whether
+ * it kept some access until Halonic next starts (HAL-15761).
+ */
 function resultOf(ended: Ended, verb: SandboxRunning["verb"]): SandboxResult | null {
-  if (verb === "remove" && ended.outcome === null) return { kind: "remove", how: "removed" };
+  if (verb === "remove" && ended.outcome === null) {
+    return { kind: "remove", how: "removed", ...(ended.keptAccess ? { keptAccess: true } : {}) };
+  }
   return asVerb(ended.outcome, verb);
 }
 
@@ -229,10 +234,21 @@ function detailsFor(line: string, error: unknown): { details?: string } {
   return isUnexplained(error) ? { details: detailsOf(line, error) } : {};
 }
 
-/** What a setup, repair or removal left: the failure if there was one, else the check that followed. */
+/**
+ * What a setup, repair or removal left: the failure if there was one, else the check that
+ * followed, and for a removal that worked whether it kept some access (`keptAccess`).
+ */
 type Ended =
-  | { readonly outcome: SandboxOutcome; readonly check?: undefined }
-  | { readonly outcome: SandboxOutcome | null; readonly check: SandboxCheckFacts };
+  | {
+      readonly outcome: SandboxOutcome;
+      readonly check?: undefined;
+      readonly keptAccess?: undefined;
+    }
+  | {
+      readonly outcome: SandboxOutcome | null;
+      readonly check: SandboxCheckFacts;
+      readonly keptAccess?: true;
+    };
 
 /**
  * Runs the host's command until it ends, or, when `joining`, follows the one that already runs
@@ -254,7 +270,7 @@ async function runCommand(
   const command = joining
     ? host.follow(removing ? "remove" : "setup", { signal })
     : start.call(host, { signal });
-  const failure = await command.catch((error: unknown): SandboxOutcome => {
+  const ended = await command.catch((error: unknown): SandboxOutcome => {
     const reason = `${reasonOf(error)}.`;
     const line = removing ? text.removeFailed(reason) : text.failedSetUp(reason);
     return {
@@ -264,12 +280,13 @@ async function runCommand(
       ...detailsFor(line, error),
     };
   });
-  if (failure === undefined) return undefined;
-  if (failure !== null) return { outcome: failure };
+  if (ended === undefined) return undefined;
+  if (ended !== null && ended.how !== "removed") return { outcome: ended };
+  const kept: { keptAccess?: true } = ended?.keptAccess ? { keptAccess: true } : {};
   onChecking();
   const check = await readCheck();
   if (removing || check.state === "ready" || check.state === "restart-needed")
-    return { outcome: null, check };
+    return { outcome: null, check, ...kept };
   const outcome: SandboxOutcome = {
     kind: "setup",
     how: "check_failed",
