@@ -877,7 +877,10 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # A change to ci.yml tests every package, uncached, which took 13–19 min
+    # on 21 Nov and passed 20 on a slow runner (HAL-15369). A walk-back
+    # below runs every package a second time.
+    timeout-minutes: 45
     # The walk-back runs older commits whose tests were not written for a
     # loaded runner, and a git-heavy contract test passed the default 5 s
     # limit once (HAL-3869, HAL-3852). Give each test and hook 30 s. Commits
@@ -1097,11 +1100,19 @@ jobs:
           RESULTS_ID: ${{ needs.base-tests.outputs.results-id }}
           RESULTS_SHA256: ${{ needs.base-tests.outputs.results-sha256 }}
           BUILD_RESULT: ${{ needs.build.result }}
+          BASE_TESTS_RESULT: ${{ needs.base-tests.result }}
         run: |
           # A failed test still leaves its shard's results to compare; a
           # skipped or cancelled shard may have left none.
           if [ "$BUILD_RESULT" != success ] && [ "$BUILD_RESULT" != failure ]; then
             echo "::error::The build job's shards ended as $BUILD_RESULT, so their test results may be missing."
+            exit 1
+          fi
+          # Its test step may fail without failing the job, so anything but
+          # success means it stopped early, most often at its time limit,
+          # and its results would be missing for the wrong reason (HAL-15369).
+          if [ "$BASE_TESTS_RESULT" != success ]; then
+            echo "::error::The merge base's tests job ended as $BASE_TESTS_RESULT (a time-out, or a failed walk-back), so its results are incomplete. Rerun the failed jobs."
             exit 1
           fi
           if [ -z "$BASE_SHA" ] || [ -z "$BUILT_ON_SHA" ]; then
