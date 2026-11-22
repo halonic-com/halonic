@@ -222,7 +222,10 @@ export function createSignInFlow(given: SignInFlowSettings): SignInFlow {
   async function handleCallback(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "GET" && cancelledHere(url.pathname)) {
-      return page(400, "This sign-in was cancelled in Halonic. Start it again there to sign in.");
+      return page(
+        400,
+        "This sign-in was cancelled in Halonic, so nothing was saved. You can close this tab. To sign in, go back to Halonic and choose Sign in.",
+      );
     }
     const entry = paths.get(url.pathname);
     if (request.method !== "GET" || entry === undefined) {

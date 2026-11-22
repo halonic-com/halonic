@@ -127,7 +127,9 @@ verifies("agent-host.integration-sign-in-routes", () => {
       expect(cancelled.status).toBe(204);
       const page = await fetch(callback);
       expect(page.status).toBe(400);
-      expect(await page.text()).toContain("This sign-in was cancelled in Halonic.");
+      expect(await page.text()).toContain(
+        "This sign-in was cancelled in Halonic, so nothing was saved.",
+      );
       expect(await states(url)).toMatchObject({
         signIns: [
           {
