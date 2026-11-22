@@ -11,11 +11,13 @@ import type {
   RunnerUnfencedReason,
 } from "@halonicjs/app";
 import type { ProfileEnvironment } from "@halonicjs/profile";
+import { KindedError } from "@halonicjs/std";
+import { isUnreadable } from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, CommandResult } from "../../command.ts";
 import { pluginStateOf } from "../../connector-plugin.ts";
 import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
-import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
+import { dimmed, markPart, type Phrase, phrase, plainText } from "../../messages/phrase.ts";
 import { type PluginState, pluginMessages } from "../../messages/plugin.ts";
 import { offHereReasonLines } from "../../output/plugin-off-here.ts";
 import { shownPluginSource } from "../../output/plugin-source.ts";
@@ -26,6 +28,7 @@ import {
   openPluginService,
   type PluginSetup,
   programsRunFor,
+  setupPluginsFolder,
 } from "../../plugin-host.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 
@@ -46,7 +49,7 @@ export async function listPlugins(
   setup: PluginSetup,
 ): Promise<CommandResult> {
   const service = openPluginService(setup);
-  const entries = await service.load();
+  const entries = await loadEntries(service, setup);
   const profile = setup.profile ?? nodeProfileEnvironment();
   const checked = entries.filter((entry) => entry.status !== "broken");
   const programsRun = await programsRunFor(
@@ -67,6 +70,31 @@ export async function listPlugins(
   const lined = columns(rows.map((row) => row.cells));
   const lines = rows.flatMap((row, index) => [lined[index] ?? phrase``, ...row.under]);
   return { exitCode: exitCode.ok, lines, json };
+}
+
+/**
+ * The plugins `service` finds. A plugins folder that is there but can't be
+ * read, such as for its permissions, is the user's to fix, and `doctor`
+ * sends them here for it (C627 B1, HAL-15791), so it becomes a `denied`
+ * error (exit 7) that names the folder, not a problem Halonic can't explain.
+ *
+ * @throws KindedError (`denied`) when the plugins folder can't be read
+ */
+async function loadEntries(service: PluginService, setup: PluginSetup): Promise<PluginEntry[]> {
+  try {
+    return await service.load();
+  } catch (error) {
+    if (!isUnreadable(error)) throw error;
+    const folder = printable(setupPluginsFolder(setup));
+    throw new KindedError(
+      "denied",
+      plainText(pluginMessages.pluginsFolderUnreadable(folder).phrase),
+      {
+        fix: plainText(pluginMessages.pluginsFolderUnreadableFix().phrase),
+        cause: error,
+      },
+    );
+  }
 }
 
 interface PluginRow {

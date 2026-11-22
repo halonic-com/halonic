@@ -52,6 +52,16 @@ export const pluginMessages = defineMessages("plugin", {
   listSummary: () => phrase`List the plugins and whether each is on`,
   /** What `plugin list` was doing, for "✕ Couldn't list the plugins: …". */
   listAction: () => phrase`list the plugins`,
+  /**
+   * Why `plugin list` can't list, when the plugins folder itself can't be
+   * read, such as for its permissions (C627 B1, HAL-15791): "✕ Couldn't list
+   * the plugins: Halonic can't read the folder …/plugins, so it can't tell
+   * which plugins are in it."
+   */
+  pluginsFolderUnreadable: (folder: string) =>
+    phrase`Halonic can't read the folder ${folder}, so it can't tell which plugins are in it.`,
+  pluginsFolderUnreadableFix: () =>
+    phrase`Check that the folder belongs to you and that you can read it, then run halonic plugin list again.`,
   /** What `plugin add` was doing, for "✕ Couldn't add the plugin: …". */
   addAction: () => phrase`add the plugin`,
   /** What `plugin remove` was doing, for "✕ Couldn't remove the plugin: …". */

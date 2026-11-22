@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
@@ -92,6 +92,28 @@ verifies("cli.commands.plugin.list", () => {
     expect(io.stdout).toHaveLength(2);
     expect(io.stdout[0]).toMatch(/^empty .*✕ can't be read or checked$/);
   });
+
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] needs POSIX modes: names a plugins folder it can't read, with the fix, and exits 7",
+    async () => {
+      await addPlugin("tides", "Tides", false);
+      const plugins = join(folder, "profile", "plugins");
+      await chmod(plugins, 0o000);
+
+      try {
+        const { code, io } = await list("list");
+
+        expect(code).toBe(exitCode.denied);
+        expect(io.stdout).toEqual([]);
+        expect(io.stderr).toEqual([
+          `✕ Couldn't list the plugins: Halonic can't read the folder ${plugins}, so it can't tell which plugins are in it.`,
+          "  Check that the folder belongs to you and that you can read it, then run halonic plugin list again.",
+        ]);
+      } finally {
+        await chmod(plugins, 0o700);
+      }
+    },
+  );
 
   it("gives each plugin's id, name, version, status and source with --json", async () => {
     const source = await addPlugin("tides", "Tides", false);
