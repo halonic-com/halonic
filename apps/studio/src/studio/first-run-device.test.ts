@@ -44,6 +44,24 @@ verifies("first-run.state", () => {
     expect(firstRunDeviceOf("/docs/Acme sample", { storage: storage() }).startOver).toBeUndefined();
   });
 
+  it("tells when another window saves the state, until it stops", () => {
+    const pages = storage();
+    const events = new EventTarget();
+    const saved = (key: string | null, storageArea: unknown = pages) =>
+      events.dispatchEvent(Object.assign(new Event("storage"), { key, storageArea }));
+    const changes = vi.fn();
+    const stop = firstRunDeviceOf("/work/Shop", { storage: pages, events }).onChanged?.(changes);
+
+    saved(FIRST_RUN_STATE);
+    saved(null);
+    saved("halonic.recent");
+    saved(FIRST_RUN_STATE, storage());
+    stop?.();
+    saved(FIRST_RUN_STATE);
+
+    expect(changes).toHaveBeenCalledTimes(2);
+  });
+
   it("reads nothing from blocked storage, and a failed write doesn't throw but is reported", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     try {

@@ -25,8 +25,8 @@ export type FirstRunRuns = Pick<RunsList, "state" | "subscribe"> & {
  * saved through the app after every change, and moves its steps by the runs of Support reply
  * in the folder the first run is in: started, waiting for you, failed, ended without a win, and
  * the first win, a run that finished after **Approve**. Other open folders share that state, so
- * it reads it again before every change and whenever the window shows the folder
- * (`first-run.one-state`). Whether the folder is the demo is known only once the window has
+ * it reads it again before every change, whenever the window shows the folder and when another
+ * window saved it (`first-run.one-state`). Whether the folder is the demo is known only once the window has
  * marked it, after it opened, so the window calls {@link notice} when it shows.
  *
  * @example
@@ -42,6 +42,7 @@ export class FirstRun {
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
   readonly #stopWatchingSample: () => void;
+  readonly #stopWatchingDevice: () => void;
   /** The finished runs whose log was read, and whether it held an Approve. */
   readonly #answers = new Map<string, Promise<boolean>>();
   #state: FirstRunState;
@@ -64,6 +65,9 @@ export class FirstRun {
     this.#stopWatching = runs.subscribe(() => void this.#follow());
     // Open demo on a folder that is open already marks it without opening it again.
     this.#stopWatchingSample = sample.onMarkedSample?.(() => this.notice()) ?? (() => {});
+    // Only reads: starting the first run here on another window's change would race Start over's
+    // new copy, which turns it off there and then starts it in the copy.
+    this.#stopWatchingDevice = device.onChanged?.(() => this.#refresh()) ?? (() => {});
     void this.#follow();
   }
 
@@ -88,7 +92,7 @@ export class FirstRun {
    */
   notice(): void {
     if (this.#disposed) return;
-    if (this.#reload()) this.#changed();
+    this.#refresh();
     if (this.#state.kind === "off" && this.#sample.isSample()) {
       this.send({
         kind: "demo-opened",
@@ -162,7 +166,14 @@ export class FirstRun {
     this.#disposed = true;
     this.#stopWatching();
     this.#stopWatchingSample();
+    this.#stopWatchingDevice();
     this.#listeners.clear();
+  }
+
+  /** Takes what another folder saved, if anything, and tells the listeners. */
+  #refresh(): void {
+    if (this.#disposed) return;
+    if (this.#reload()) this.#changed();
   }
 
   /** Takes the device's state when another folder saved one since; tells whether it did. */
@@ -186,14 +197,19 @@ export class FirstRun {
 
   /** Tells the listeners the state changed, and follows the runs again when it is on. */
   #changed(): void {
-    for (const listener of [...this.#listeners]) listener();
+    this.#tell();
     // Back on (Continue, Start over, another folder): the runs may have moved on meanwhile.
     if (this.#state.kind === "on") void this.#follow();
   }
 
+  #tell(): void {
+    for (const listener of [...this.#listeners]) listener();
+  }
+
   /** Moves the steps by the newest run of Support reply since the first run began here. */
   async #follow(): Promise<void> {
-    if (this.#reload()) this.#changed();
+    // Only tells: this is following the runs already.
+    if (this.#reload()) this.#tell();
     const newest = this.#newestRun();
     if (newest === undefined) return;
     let event: FirstRunEvent;

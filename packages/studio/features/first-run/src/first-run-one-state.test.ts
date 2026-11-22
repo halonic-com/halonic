@@ -8,17 +8,29 @@ const demo = "/docs/Acme sample";
 const other = "/docs/Acme notes";
 const opened = new Date("2026-11-21T09:00:00.000Z");
 
-/** The page's storage on this device, shared by every open folder; `full` makes writes fail. */
+/**
+ * The page's storage on this device, shared by every open folder; `full` makes writes fail.
+ * `fromAnotherWindow` saves as a folder in another window does, which the page hears as an event.
+ */
 function deviceStorage() {
   const storage = { saved: undefined as string | undefined, full: false };
+  const listeners = new Set<() => void>();
   const deviceFor = (folder: string): FirstRunDevice => ({
     folder,
     read: () => storage.saved,
     write: (text) => {
       if (!storage.full) storage.saved = text;
     },
+    onChanged: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
   });
-  return { storage, deviceFor };
+  const fromAnotherWindow = (act: () => void) => {
+    act();
+    for (const listener of [...listeners]) listener();
+  };
+  return { storage, deviceFor, fromAnotherWindow };
 }
 
 /** A runs list with no runs until `show` lists some. */
@@ -65,8 +77,10 @@ function openFolder(device: FirstRunDevice, sample = sampleFolder(false), runs =
   return firstRun;
 }
 
-/** Lets the runs' promises settle. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+/** Lets the runs' promises settle: a waiting run's step takes a few promise turns, far fewer than 10. */
+async function settle() {
+  for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
+}
 
 verifies("first-run.one-state", () => {
   it("reads what another open folder changed when it is shown again", () => {
@@ -81,6 +95,37 @@ verifies("first-run.one-state", () => {
 
     expect(beside.state).toMatchObject({ kind: "paused", folder: demo });
     expect(changes).toHaveBeenCalledOnce();
+  });
+
+  it("reads what a folder in another window saved without being shown again", () => {
+    const { deviceFor, fromAnotherWindow } = deviceStorage();
+    const inDemo = openFolder(deviceFor(demo), sampleFolder(true));
+    const beside = openFolder(deviceFor(other));
+    const changes = vi.fn();
+    beside.subscribe(changes);
+
+    fromAnotherWindow(() => inDemo.send({ kind: "left" }));
+
+    expect(beside.state).toMatchObject({ kind: "paused", folder: demo });
+    expect(changes).toHaveBeenCalledOnce();
+  });
+
+  it("doesn't start the first run in the demo on another window's change, nor after closing", () => {
+    const { storage, deviceFor, fromAnotherWindow } = deviceStorage();
+    const inDemo = openFolder(deviceFor(demo), sampleFolder(true));
+    const closed = openFolder(deviceFor(other));
+    closed.dispose();
+    const changes = vi.fn();
+    closed.subscribe(changes);
+
+    // Start over in another window turns it off before its new copy of the demo starts it.
+    fromAnotherWindow(() => {
+      storage.saved = '{"kind":"off"}';
+    });
+
+    expect(inDemo.state.kind).toBe("off");
+    expect(storage.saved).toBe('{"kind":"off"}');
+    expect(changes).not.toHaveBeenCalled();
   });
 
   it("applies an action to the state the device holds now, not to the folder's old copy", () => {

@@ -30,7 +30,8 @@ export interface SampleWorkspace {
   /**
    * Calls `listener` when the device starts remembering the folder as the demo while it is open,
    * as **Open demo** does for a folder that is open already. Returns a function that stops the
-   * calls. Absent where the app can't tell.
+   * calls. Absent where the app can't tell. Only a mark in this window counts: Recent doesn't hear
+   * another window's.
    */
   onMarkedSample?(listener: () => void): () => void;
   /** The steps done in this folder, as saved on this device: a step stays done. */
@@ -68,6 +69,11 @@ export interface FirstRunDevice {
   read(): string | undefined;
   /** Saves the state. A save that fails keeps the old one; the window goes on with the new one. */
   write(text: string): void;
+  /**
+   * Calls `listener` when another window saved the state: a folder open there stays shown, so it
+   * isn't shown again. Returns a function that stops the calls. Absent where the app can't tell.
+   */
+  onChanged?(listener: () => void): () => void;
   /**
    * Copies the demo again into the next free folder and opens it, as the demo chip's **Fresh copy
    * of the demo** does, for **Help › First run › Start over**. Calls `copied` once the copy is

@@ -16,9 +16,10 @@ explore**. It also gives Support reply's page the guide card through the Workflo
 `SampleWorkspaceService` and a place for the state with `FirstRunDeviceService`.
 
 Every open folder shares that one state (`first-run.one-state`): a folder reads it again when the window shows
-it and before every change, so a folder that stays open sees what another one changed, and an action or run
-of a folder the first run has left changes nothing. When **Open demo** marks a folder that is open already as
-the demo, `SampleWorkspace.onMarkedSample` tells the first run, which then starts there.
+it, before every change and when `FirstRunDevice.onChanged` says another window saved it, so a folder that
+stays open sees what another one changed, and an action or run of a folder the first run has left changes
+nothing. When **Open demo** marks a folder that is open already as the demo, `SampleWorkspace.onMarkedSample`
+tells the first run, which then starts there.
 
 A paused first run has a setup item in the Inbox (`first-run.setup-item`): "Finish your first run" at its step,
 with **Continue**, which takes it up again and opens Support reply, and **Dismiss**.
