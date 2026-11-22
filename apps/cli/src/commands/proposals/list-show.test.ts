@@ -129,10 +129,10 @@ verifies("cli.commands.proposals.show", () => {
 
       const { code, io } = await proposalsIn(acmeRuns.acme, "show", "01jd8q");
 
-      expect(code).toBe(exitCode.unavailable);
+      expect(code).toBe(exitCode.conflict);
       expect(io.stderr).toEqual([
         "✕ Run 01jd8q's changes were deleted outside Halonic, so they can't be shown or accepted.",
-        "  Remove them from the list with halonic proposals reject 01jd8q.",
+        "  Remove run 01jd8q from the list with halonic proposals reject 01jd8q.",
       ]);
     });
 

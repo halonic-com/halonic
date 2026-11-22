@@ -28,7 +28,7 @@ import { type CancelledAt, runsMessages } from "../../messages/runs.ts";
 import { stepName } from "../../messages/step-name.ts";
 import { runFailureDetails } from "../../run-failure-details.ts";
 import { agentName, hasAgentOutput, type RunDefinitions, receiptOf } from "../../run-view.ts";
-import { waitDescription } from "./listed-run.ts";
+import { runEnding, waitDescription } from "./listed-run.ts";
 
 /**
  * What follows the step lines: a finished run's "✓ Support reply finished
@@ -442,25 +442,11 @@ function finishedEnding(run: RunDetail, title: string, definitions: RunDefinitio
   const { summary } = run;
   const took = Date.parse(summary.endedAt ?? summary.updatedAt) - Date.parse(summary.startedAt);
   const receipt = runMessages.receipt(receiptOf(run.events, summary)).phrase;
-  const ending = endingOf(summary, definitions);
+  const ending = runEnding(summary, definitions.workflow);
   return [
     [],
     phrase`${markPart("done")} ${runMessages.finished(title, duration(took)).phrase}`,
     ...(receipt.length === 0 ? [] : [phrase`  ${receipt}`]),
     ...(ending === undefined ? [] : [phrase`  ${runMessages.ending(ending).phrase}`]),
   ];
-}
-
-/**
- * The final state a finished run ended in, named as a step is, when its
- * workflow has more than one, as the run page says it: "Finished" alone
- * can't tell a sent reply from a rejected one (HAL-16276).
- */
-function endingOf(summary: RunSummary, definitions: RunDefinitions): string | undefined {
-  const states = definitions.workflow?.states ?? {};
-  const finals = Object.values(states).filter((state) => state.type === "final");
-  if (summary.state === null || finals.length < 2) {
-    return undefined;
-  }
-  return stepName(summary.state, states[summary.state]?.description);
 }

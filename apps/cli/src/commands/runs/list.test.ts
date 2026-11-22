@@ -63,7 +63,7 @@ verifies("cli.commands.runs.list", () => {
       expect(io.stdout).toEqual([
         "◌ Running     09d9c0   Support reply   In Draft a reply                       10:53",
         "! Needs you   09d9a0   Support reply   Waiting for you: Approve this reply?   10:40",
-        "✓ Done        a1b2c3   Support reply   Sent nothing                           10:31 · took 18 s",
+        "✓ Done        a1b2c3   Support reply   Ending: Draft a reply · sent nothing   10:31 · took 18 s",
         nothingSpent,
       ]);
       expect(io.stderr).toEqual([]);
@@ -75,7 +75,7 @@ verifies("cli.commands.runs.list", () => {
       const { io } = await runsIn(acme);
 
       expect(io.stdout).toEqual([
-        "✓ Done   a1b2c3   Support reply   Sent nothing   10:31 · took 18 s",
+        "✓ Done   a1b2c3   Support reply   Ending: Draft a reply · sent nothing   10:31 · took 18 s",
         nothingSpent,
       ]);
     });
@@ -103,7 +103,7 @@ verifies("cli.commands.runs.list", () => {
       const { io } = await runsIn(acme);
 
       expect(io.stdout).toEqual([
-        "✓ Done   a1b2c3   \\u001b[2J\\u001b[31mSupport\\u202e reply   Sent nothing   10:31 · took 18 s",
+        "✓ Done   a1b2c3   \\u001b[2J\\u001b[31mSupport\\u202e reply   Ending: Draft a reply · sent nothing   10:31 · took 18 s",
         nothingSpent,
       ]);
     });

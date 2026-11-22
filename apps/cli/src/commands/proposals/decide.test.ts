@@ -2,7 +2,13 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
-import { acmeProposalsSetup, editSaved, proposeIn, savedFile } from "../../test/acme-proposals.ts";
+import {
+  acmeProposalsSetup,
+  deleteProposalTexts,
+  editSaved,
+  proposeIn,
+  savedFile,
+} from "../../test/acme-proposals.ts";
 import { type AcmeRuns, makeAcmeRuns, removeAcmeRuns, writeFiles } from "../../test/acme-runs.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { proposalsCommandWith } from "./command.ts";
@@ -124,6 +130,19 @@ verifies("cli.commands.proposals.decide", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout[0]).toBe("Rejected the changes to 1 file. Your files stay as they are.");
+      expect(await savedFile(acmeRuns, "notes/today.md")).toBe("Two tickets.\n");
+    });
+
+    it("removes a run whose changes were deleted outside Halonic from the list, as Studio's Remove from Inbox does", async () => {
+      await deleteProposalTexts(acmeRuns);
+
+      const { code, io } = await proposalsIn("reject", "01jd8q");
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout).toEqual([
+        "Removed run 01jd8q from the list: its changes were deleted outside Halonic.",
+        "Run 01jd8q's proposal is done.",
+      ]);
       expect(await savedFile(acmeRuns, "notes/today.md")).toBe("Two tickets.\n");
     });
   });

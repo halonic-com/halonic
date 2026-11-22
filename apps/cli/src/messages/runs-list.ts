@@ -146,6 +146,18 @@ export const runsListMessages = defineMessages("runsList", {
    */
   whatItSent: (sends: readonly string[], money?: string) =>
     lineOfFacts(money === undefined ? sends : [...sends, `estimated cost ${money}`]),
+  /**
+   * What: a completed run whose workflow has more than one ending, that
+   * ending first, in the words `run` and `runs show` use, then what it sent
+   * and its cost: "Ending: Finished without the reply · sent nothing"
+   * (C705 1, HAL-16449).
+   */
+  ending: (ending: string, sends: readonly string[], money?: string) =>
+    lineOfFacts([
+      `Ending: ${ending}`,
+      ...sends,
+      ...(money === undefined ? [] : [`estimated cost ${money}`]),
+    ]),
   /** What: a completed run with tool calls and a priced call. */
   estimatedCost: (money: string) => phrase`Estimated cost ${money}`,
   /** What: a completed run with tool calls but no priced call. A final state is not a step, so no step name. */

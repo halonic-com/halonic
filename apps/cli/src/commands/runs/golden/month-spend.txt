@@ -1,7 +1,7 @@
 ## colour: halonic runs --limit 1
 exit 0
 stdout:
-  \e[32m✓\e[39m Done   f4e5d6   Support reply   Sent nothing \e[2m·\e[22m estimated cost €0.12   \e[2m09:15 \e[22m\e[2m·\e[22m\e[2m took 1 s\e[22m
+  \e[32m✓\e[39m Done   f4e5d6   Support reply   Ending: Draft a reply \e[2m·\e[22m sent nothing \e[2m·\e[22m estimated cost €0.12   \e[2m09:15 \e[22m\e[2m·\e[22m\e[2m took 1 s\e[22m
   \e[2mShowing the newest of 3 runs. See them all with halonic runs --limit 3.\e[22m
   Estimated spend this month: €0.42 of your €20.00 budget.
 stderr:
@@ -9,7 +9,7 @@ stderr:
 ## NO_COLOR: halonic runs --limit 1
 exit 0
 stdout:
-  ✓ Done   f4e5d6   Support reply   Sent nothing · estimated cost €0.12   09:15 · took 1 s
+  ✓ Done   f4e5d6   Support reply   Ending: Draft a reply · sent nothing · estimated cost €0.12   09:15 · took 1 s
   Showing the newest of 3 runs. See them all with halonic runs --limit 3.
   Estimated spend this month: €0.42 of your €20.00 budget.
 stderr:
