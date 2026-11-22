@@ -58,6 +58,7 @@ export {
   type HostInstructions,
   type InstructionsAgent,
 } from "./run-instructions.ts";
+export { AgentHostRunProposals } from "./run-proposals.ts";
 export { AgentHostSandbox, AgentHostSession } from "./sandbox.ts";
 export { AgentHostSandboxChoice, type SandboxChoiceSave } from "./sandbox-choice.ts";
 export {

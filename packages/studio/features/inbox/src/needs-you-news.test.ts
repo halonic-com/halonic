@@ -1,3 +1,4 @@
+import type { ProposedRecord } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { ShownPage } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -17,9 +18,33 @@ const workflowPage = { kind: "workflow", hub: "acme", id: "support-reply" };
 
 const title = (item: InboxItem) => (item.kind === "wait" ? item.title : item.key);
 
+/** A proposal of run `runId` with one undecided file. */
+function proposalOf(runId: string): ProposedRecord {
+  const path = "notes/a.md";
+  return {
+    state: "proposed",
+    proposal: {
+      runId,
+      history: "off",
+      base: null,
+      ref: null,
+      files: [{ path, change: "added", base: "absent" }],
+      items: [],
+    },
+    finishedAt: "2026-11-10T09:00:00.000Z",
+    decisions: { [path]: "undecided" },
+  };
+}
+
 /** An Inbox with these runs waiting, loaded, and a watcher on it that notes what it says. */
-async function watched(initial: readonly RunSummary[], page: ShownPage = { place: "agents" }) {
+async function watched(
+  initial: readonly RunSummary[],
+  page: ShownPage = { place: "agents" },
+  proposals: { runIds: readonly string[] } = { runIds: [] },
+) {
   const runs = fakeRuns(initial);
+  runs.runs.proposals = async () =>
+    proposals.runIds.map((runId) => ({ record: proposalOf(runId), run: undefined }));
   const inbox = new Inbox(runs.runs);
   await inbox.refresh();
   const said: string[] = [];
@@ -38,7 +63,7 @@ async function watched(initial: readonly RunSummary[], page: ShownPage = { place
     runs.change(next);
     await inbox.refresh();
   };
-  return { inbox, said, clock, shown, change };
+  return { inbox, said, clock, shown, change, proposals };
 }
 
 verifies("inbox.needs-you-news", () => {
@@ -83,6 +108,17 @@ verifies("inbox.needs-you-news", () => {
     await change([r1, r2, r3]);
 
     expect(said).toEqual(["Waiting for you: Approve this reply?. 3 waiting."]);
+  });
+
+  it("says a proposal even while its run's own page shows: a page says only when a run waits", async () => {
+    const { said, change, proposals } = await watched([r1], {
+      item: { kind: "run", hub: "acme", id: "r2" },
+    });
+
+    proposals.runIds = ["r2"];
+    await change([r1]);
+
+    expect(said).toEqual(["Waiting for you: proposal:r2. 2 waiting."]);
   });
 
   it("leaves out a run a page noted, only while that page shows", async () => {
