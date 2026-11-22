@@ -19,8 +19,8 @@ import { OwnSteps, type OwnStepsState } from "../own-steps.ts";
 
 /**
  * Home's Get set up in a workspace that isn't the sample (`first-run.own-card`): the three steps
- * with "N of 3 done" above them. Nothing shows in the sample, while the first run is on here, or
- * where the app gives no agents or files to read.
+ * with "N of 3 done" above them, or "You're set up." once all three are. Nothing shows in the
+ * sample, while the first run is on here, or where the app gives no agents or files to read.
  */
 export function OwnCard({ context }: HomeCardProps) {
   const firstRun = context.services.get(FirstRunService);

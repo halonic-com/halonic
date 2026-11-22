@@ -16,7 +16,7 @@ verifies("cli.run-failed-item-waits", () => {
       "Review all failed in the step Each: the run it started for item 2 waited, and a run for one item can't wait.",
     );
     expect(fix === undefined ? undefined : plainText(fix.phrase)).toBe(
-      "Move the wait step in review-one into this workflow after Each, or take it out of review-one. halonic validate --dir ./acme names it.",
+      "Move the wait step in review-one into this workflow after Each, or take it out of review-one. To see which step it is, run halonic validate --dir ./acme.",
     );
   });
 });
