@@ -2,6 +2,7 @@
 
 - Approval: HAL-15540, from my visual check C592 (HAL-15532, findings 1 to 3) on the board-approved docked step card (flow-workflows 5.3); a small change on an approved screen, decided by the team and written on the task (HAL-2282); the reviewer approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cbGukvaBTbUAKx3GA0X2zCsbxyn2PUQnmObzzyYEui+kqLp0wbpPZnbI6XIEvN1dnVRrx5XaeoSqQ9DnGSjGDA==
 
 The requirement workflows.page.step-arrows gains two things; nothing is removed or weakened:
 
