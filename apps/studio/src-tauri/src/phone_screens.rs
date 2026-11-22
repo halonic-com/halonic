@@ -38,6 +38,8 @@ pub async fn open<R: Runtime>(webview: &Webview<R>, screen: &'static str) -> boo
     }
     #[cfg(target_os = "android")]
     {
+        use tauri::Manager;
+
         if let Some(screens) = android::screens(webview.app_handle()) {
             return screens.open(screen).await;
         }
