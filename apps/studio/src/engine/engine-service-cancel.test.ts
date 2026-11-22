@@ -7,7 +7,7 @@ verifies("studio.engine-cancel", () => {
     const shell = fakeShell();
     const service = serviceOn(shell);
     const { executor } = await service.open();
-    const ended = { id: "run1", status: "failed" };
+    const ended = { id: "run1", status: "failed", reason: "cancelled" };
     const cancel = vi.spyOn(executor, "cancel").mockResolvedValue(ended as never);
 
     await expect(service.cancel("run1")).resolves.toBe(ended);

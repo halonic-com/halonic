@@ -118,7 +118,7 @@ export class RemoteEngine {
     return asStudioError(this.#executor.send(runId, event, payload, options));
   }
 
-  /** Cancels a run (`RunExecutor.cancel`). No screen offers it yet: the contract suite reads it. */
+  /** Cancels a run (`RunExecutor.cancel`), for the first run's **Cancel run** and the contract suite. */
   cancel(runId: string): Promise<RunSummary> {
     const { cancel } = this.#executor;
     // The port leaves `cancel` out for an executor that can't cancel; the remote one always can.
