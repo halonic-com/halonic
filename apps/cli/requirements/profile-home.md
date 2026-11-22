@@ -20,6 +20,6 @@ When `HALONIC_HOME` is set and isn't a full path, every CLI command that opens t
 - Given Windows and `HALONIC_HOME` set to `~/.halonic` or `profile`,
   when the CLI opens the profile folder,
   then the fix is "Set HALONIC_HOME to a full path, such as <home folder>\.halonic.", with the person's own home folder in place of `<home folder>`
-- Given `HALONIC_HOME` set to an absolute folder, or not set,
+- Given `HALONIC_HOME` set to a full path, or not set,
   when the CLI opens the profile folder,
   then nothing here refuses it.
