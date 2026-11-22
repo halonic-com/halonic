@@ -3,6 +3,7 @@
 - Task: HAL-15972 (the board's decision on the task: "Yes go ahead", Timothy, 22 Nov; the team rule is on HAL-15971)
 - Approval: the board approved fast-track pull request checks on our CI server (HAL-15972, Timothy, 22 Nov); Liam signs this note in review, Julian checks C1–C8 on the task
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wMNiQs2UxrWTZ/GJsxXZ2ijJQr6TFevHnTqUGvGctdlKHwjYl6yuosjbWEo5V2+R1cFrdsZcIPHBlqf/YpsjAg==
 
 ## What changes
 
