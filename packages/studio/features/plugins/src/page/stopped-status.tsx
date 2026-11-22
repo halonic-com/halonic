@@ -1,16 +1,16 @@
-// The plugin page when the agent host stopped a plugin because the sandbox failed while it ran:
-// the computer passed the sandbox check, but the fence failed at the runner's start (A23; the
-// "Runs" line design on HAL-1873 section 10, `rl-page-stopped`; microcopy 24.1 R15). The host
-// keeps that in memory and never starts the plugin without the sandbox because of it; this only
-// says so where the plugin lives.
+// The plugin page when the agent host stopped a plugin because the sandbox didn't work when it
+// started: the computer passed the sandbox check, but the fence failed at the runner's start, so
+// nothing of the plugin ran (A23; the "Runs" line design on HAL-1873 section 10, `rl-page-stopped`;
+// microcopy 24.1 R15). The host keeps that in memory only to say it here: the next start goes
+// through the sandbox as every start does, and never runs it without the sandbox.
 
 import { Button, Callout, useToastStore } from "@halonicjs/studio-kit";
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { NOT_WITHOUT_SANDBOX, stoppedWhileRunning, triesSandboxAgain } from "./page-text.ts";
+import { stoppedAtStart, triesAgainInSandbox, triesSandboxAgain } from "./page-text.ts";
 import { CHECK_AGAIN } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
 
-/** Whether the agent host stopped a plugin because the sandbox failed while it ran. */
+/** Whether the agent host stopped a plugin because the sandbox didn't work when it started. */
 export type PluginRunState = { readonly stopped: boolean };
 
 /** The agent host's run state of a plugin, by its id (`AgentHostPluginRunStates` on the desktop). */
@@ -37,7 +37,7 @@ export interface StoppedStatusProps {
 
 /**
  * R15 in place of the status box (and of R13), for a trusted plugin with a backend the agent host
- * stopped because the sandbox failed (`plugins.plugin-page-stopped`). For any other plugin the
+ * stopped because the sandbox didn't work when it started (`plugins.plugin-page-stopped`). For any other plugin the
  * host isn't asked, and while it answers, or when it can't, the page shows `children`. **Check
  * again** asks the host to forget the stop, then shows `children`, moves focus to them and says in
  * a polite toast that the next run tries the sandbox again, since nothing was tried yet.
@@ -69,8 +69,8 @@ export function StoppedStatus({
   };
   return (
     <div id={id} ref={boxRef} tabIndex={-1} className="focus-ring rounded-sm">
-      <Callout tone="danger" title={stoppedWhileRunning(plugin.name)}>
-        <p>{NOT_WITHOUT_SANDBOX}</p>
+      <Callout tone="danger" title={stoppedAtStart(plugin.name)}>
+        <p>{triesAgainInSandbox(plugin.name)}</p>
         {viewOnly ? null : (
           <div className="mt-3">
             <Button variant="secondary" size="sm" onClick={onCheckAgain}>
