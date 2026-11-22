@@ -261,6 +261,17 @@ export const failureWords = {
   /** F21: the harness program (Claude Code, Codex) didn't start, or sent no first event in time. */
   harnessStartFailed: (agent: string, harness: string, seconds: number, step: string) =>
     `${capitalised(agent)} didn't start: ${harness} didn't start on this computer, or didn't answer within ${seconds} ${seconds === 1 ? "second" : "seconds"}. Nothing ran in the step ${step}.`,
+  /**
+   * `engine.turn-limit` (microcopy 15.3): the agent used its model call limit in the step, in the
+   * words of `halonic run`'s line, from the same facts (`app.run-failure`, HAL-15504). "used all 1 model
+   * calls" reads like a bug, so a limit of 1 says "its only model call", as the CLI does.
+   */
+  turnLimit: (agent: string, turns: number, step: string) =>
+    turns === 1
+      ? `${capitalised(agent)} used its only model call in the step ${step} without finishing.`
+      : `${capitalised(agent)} used all ${turns} model calls in the step ${step} without finishing.`,
+  /** The turn limit's second sentence, only when the facts name the tool its last calls got nothing from. */
+  turnLimitEmptyCalls: (tool: string) => `Its last calls to ${tool} returned nothing.`,
   /** R1 (microcopy 15.3): the provider's secret holds no key, so no key was sent. */
   noKey: (provider: string, model: string, alias: string | undefined) =>
     `${provider} has no API key on this computer, and ${modelOrAlias(model, alias)} needs one.`,

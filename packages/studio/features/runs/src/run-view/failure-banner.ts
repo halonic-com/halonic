@@ -5,7 +5,8 @@
 // `harness.started`. A setup cause the engine names, such as a provider type Halonic can't call, is
 // read from the summary's cause with the CLI's own facts (`setup-cause-banner.ts`), and a sandboxed
 // harness agent's key Studio refused from its own cause (`harness-key-banners.ts`), as is a launcher
-// on this computer that didn't start, from the step's own start (`this-computer-start-banner.ts`).
+// on this computer that didn't start, from the step's own start (`this-computer-start-banner.ts`),
+// and an agent that used its model call limit, from the summary's cause (`turn-limit-banner.ts`).
 // Run again is the banner's button (`run-again.ts`); a banner adds the fixes that come before it
 // (Copy command, Open Models where the cause is fixed in Models, or See the step) and the links
 // after it (Open Models, Copy details, or See the step where the sentence ends "then run again").
@@ -28,6 +29,7 @@ import { harnessKeyBanner } from "./harness-key-banners.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 import { setupBanner } from "./setup-cause-banner.ts";
 import { thisComputerStartBanner } from "./this-computer-start-banner.ts";
+import { turnLimitBanner } from "./turn-limit-banner.ts";
 
 /** The cause code the Studio gives a run it stopped because the workspace's trust was removed (`trustRemovedCause`). */
 const trustRemovedCode = "workspace.trust-removed";
@@ -86,6 +88,10 @@ export function causeBanner(
     return danger([
       failureWords.socketPathTooLong(workflow, step, socketLimitOf(summary.cause), phone),
     ]);
+  }
+  const turnLimit = turnLimitBanner(summary, context, step);
+  if (turnLimit !== undefined) {
+    return turnLimit;
   }
   const facts = factsFrom(log ?? [], context);
   switch (summary.reason) {
