@@ -132,8 +132,10 @@ on 19 large slots would allow 190 GB on the 128 GB VM). A container starts at it
 2 GB of the limit, the script raises the limit and swap by 4 GB with `docker update`, up to the
 most (`MEM`), as long as the VM keeps 4 GB available; otherwise it logs that it didn't. The
 cgroup's `memory.high` sits 512 MB under the limit, so the kernel reclaims cache and slows the job
-before the hard limit kills it, which gives the loop time to grow it. Every slot at its most
-(110 GB large, 9 GB small) still fits the VM's 128 GB, so growth can't overcommit it.
+before the hard limit kills it, which gives the loop time to grow it. All slots start at
+19×6 + 3×2 = 120 GB and could grow to 19×16 + 3×3 = 313 GB, far more than the VM's 128 GB. The
+VM-wide reserve check (`MemAvailable` above the 4 GB step plus 4 GB) is the only thing that stops
+growth from overcommitting it.
 
 Every container: all capabilities dropped, `no-new-privileges`, Docker's default seccomp and
 AppArmor profiles, `--pids-limit 8192`, no host devices, no Docker socket. The image

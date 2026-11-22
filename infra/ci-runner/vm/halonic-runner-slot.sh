@@ -196,11 +196,8 @@ ANON_PEAK=0
 # Dynamic memory (22 Nov 2026): a job starts at MEM_START and gets STEP more whenever its anon + shmem
 # comes within HEAD of the limit, up to MEM, as long as the VM keeps RESERVE free. memory.high sits
 # 512 MB under the limit, so the kernel reclaims cache and slows the job before the hard limit kills
-# it, which gives this 2-second loop time to grow it. Every slot at MEM still fits the VM, so growth
-# can't overcommit it; the reserve check matters once the VM is made smaller than that.
-# Large slots start at MEM again (HAL-15994): a job that starts hundreds of processes at once
-# (changeset version's git calls) outgrew a 3-second step and was killed at 6 GB. Eleven large
-# slots at 10 GB and three small at 3 GB are 119 GB of the VM's 126; only small slots still grow.
+# it, which gives this 2-second loop time to grow it. All slots at MEM would overcommit the VM, so
+# the reserve check is the only thing that stops growth from doing that.
 LIMIT_B=$(numfmt --from=iec "${MEM_START^^}"); MAX_B=$(numfmt --from=iec "${MEM^^}")
 STEP_B=4294967296; HEAD_B=2147483648; RESERVE_B=4294967296; GROWS=0; HIGH_SET=""
 write_state() {
