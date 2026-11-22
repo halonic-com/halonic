@@ -98,6 +98,7 @@ is the reference.
 | "off on this computer" | the plugin has a backend, and plugin code can't run in the sandbox here (the line under it says why); the CLI never runs it without | fix what the line names, or allow it in the Halonic desktop app to use it there |
 | a local tool "needs the desktop app" | no sandbox on Android or in the browser | use the desktop app, the CLI or `serve` |
 | a tool refused | the server offers a tool the manifest doesn't declare | declare it, or remove it from the server |
+| "Halonic stopped the plugin <id>: its sandbox didn't hold, so it didn't run. The next run that uses it tries the sandbox again." | the computer passed the sandbox check, but the plugin's sandbox didn't hold when it started, so Halonic stopped it | nothing to do; the next run that uses it tries the sandbox again |
 
 The backend in the sample is plain JavaScript with no imports and no build
 step. If you write TypeScript, build it to one JavaScript file first and point
@@ -217,10 +218,12 @@ in again, the request fails with `sign-in-needed`. The full field list is in
 [the permission sheet](integrations.md#the-permission-sheet).
 
 The trust check lists each sign-in under **Sign-ins**, with its purpose and one
-line, such as "Signs in to your Acme account at acme.example. Halonic gets the
-tokens from acme.example. It can: read your orders. The sign-in is used only
-with api.acme.example." When the sign-in page and the token address are on
-different services, a `!` line says so. The summary counts the sign-ins.
+line that names the plugin, such as "Signs in to your Acme orders account at
+acme.example. Halonic gets the tokens from acme.example. It can: read your
+orders. The sign-in is used only with api.acme.example." for a plugin named
+"Acme orders". When the sign-in page and the token address are on different
+services, a `!` line says so. Studio's summary counts the sign-ins;
+`halonic plugin add` and `halonic trust --plugin` print no summary line.
 
 In Studio, the plugin's page has a **Sign-ins** section with a block for each
 one: **Sign in** opens the sign-in page in the browser, and the block shows
