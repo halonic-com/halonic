@@ -128,16 +128,17 @@ function connectorMessage(connector: Connector, context: CheckContext): string {
 
 /**
  * Why a runner connector's hosts are unknown, and the way out. A plugin that
- * isn't added or can't be read gets "add the plugin first", never the
- * `privacy.localOnly: false` way out: turning privacy off for a plugin nobody
- * has looked at yet is the wrong first fix, and once it is added the message
+ * isn't added or can't be read gets "add it, or fix what halonic plugin list
+ * says about it", never the `privacy.localOnly: false` way out: turning
+ * privacy off for a plugin nobody has looked at yet is the wrong first fix,
+ * and once it is added the message
  * names its hosts, where that choice is a fair one (HAL-15806). An
  * integration's sheet is in the workspace, so its way out stays.
  */
 function unknownHostsMessage({ transport }: Connector): string {
   const unknown = "so nothing says which hosts it reaches";
   if ("plugin" in transport) {
-    return `The plugin ${transport.plugin.id} isn't added here or can't be read, ${unknown}: add the plugin first, then Halonic can tell whether it's local`;
+    return `The plugin ${transport.plugin.id} isn't added here or can't be read, ${unknown}: add it, or fix what halonic plugin list says about it, then Halonic can tell whether it's local`;
   }
   const noSheet =
     "integration" in transport
