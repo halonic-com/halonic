@@ -106,9 +106,10 @@ export interface SignInHost {
    */
   forget(name: string): void;
   /**
-   * Answers a callback with the flow that owns its path. A path that no flow
-   * is waiting on gets the flow's own plain 400, so the answer doesn't tell
-   * which paths exist.
+   * Answers a callback with the flow that owns its path, a cancelled
+   * sign-in's included, so its page can say it was cancelled. A path that no
+   * flow is waiting on gets the flow's own plain 400, so the answer doesn't
+   * tell which paths exist.
    */
   handleCallback(request: Request): Promise<Response>;
 }

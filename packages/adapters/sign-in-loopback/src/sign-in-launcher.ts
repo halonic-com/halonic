@@ -49,7 +49,7 @@ export interface SignInLauncher<Refusal extends { readonly kind: string }> {
    * after `lifetimeMs`.
    */
   begin(signIn: string): Promise<BeginResult<Refusal>>;
-  /** Drops a pending sign-in; its callback then gets the flow's plain 400. */
+  /** Drops a pending sign-in, as the flow's `cancel` does. */
   cancel(signIn: string): Promise<void>;
   /** Cancels every pending sign-in and stops the server. */
   close(): Promise<void>;

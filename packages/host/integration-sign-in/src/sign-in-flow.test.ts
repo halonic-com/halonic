@@ -17,7 +17,7 @@ async function signInWith(test: ReturnType<typeof exampleFlow>, code: string): P
 }
 
 verifies("integration-sign-in.sign-in-flow", () => {
-  it("says which paths are waiting for a callback: a started one, until it is answered, cancelled or expired", async () => {
+  it("says which paths are waiting for a callback: a started one, until it is answered or expired, also when it was cancelled", async () => {
     const test = exampleFlow();
     const first = await test.started();
     expect(test.flow.handlesPath(first.callbackPath)).toBe(true);
@@ -28,6 +28,8 @@ verifies("integration-sign-in.sign-in-flow", () => {
 
     const second = await test.started();
     test.flow.cancel(signInName);
+    expect(test.flow.handlesPath(second.callbackPath)).toBe(true);
+    test.wait(11 * 60 * 1000);
     expect(test.flow.handlesPath(second.callbackPath)).toBe(false);
 
     const third = await test.started();
@@ -394,7 +396,7 @@ verifies("integration-sign-in.sign-in-flow", () => {
     expect((await missingSetting.flow.start("other", flowPort)).kind).toBe("unknown");
   });
 
-  it("answers nothing for a sign-in that was cancelled", async () => {
+  it("exchanges nothing for a sign-in that was cancelled, and its page says it was cancelled in Halonic", async () => {
     const test = exampleFlow();
     const started = await test.started();
 
@@ -404,7 +406,43 @@ verifies("integration-sign-in.sign-in-flow", () => {
     );
 
     expect(response.status).toBe(400);
+    expect(await response.text()).toContain(
+      "This sign-in was cancelled in Halonic. Start it again there to sign in.",
+    );
     expect(test.seen).toEqual([]);
+    expect(test.outcomes).toEqual([{ kind: "cancelled", signIn: signInName }]);
+  });
+
+  it("answers a cancelled sign-in's path with the plain 400 once its wait is over or it starts again", async () => {
+    const test = exampleFlow();
+    const expired = await test.started();
+    test.flow.cancel(signInName);
+    test.wait(11 * 60 * 1000);
+    const replaced = await test.started();
+    test.flow.cancel(signInName);
+    await test.started();
+
+    for (const started of [expired, replaced]) {
+      const response = await test.flow.handleCallback(
+        started.callback({ state: started.state, code: "c" }),
+      );
+      expect(response.status).toBe(400);
+      expect(await response.text()).toContain("This sign-in link is no longer valid.");
+    }
+    expect(test.seen).toEqual([]);
+  });
+
+  it("says nothing when Cancel finds no pending sign-in", async () => {
+    const test = exampleFlow();
+    await signInWith(test, "fake-code");
+    const expired = await test.started();
+    test.wait(11 * 60 * 1000);
+
+    test.flow.cancel(signInName);
+    test.flow.cancel("other");
+
+    expect(test.outcomes.map((outcome) => outcome.kind)).toEqual(["signedIn"]);
+    expect(test.flow.handlesPath(expired.callbackPath)).toBe(false);
   });
 
   it("keeps the authorize URL's extra query parameters but never lets the sheet set the flow's own", async () => {
