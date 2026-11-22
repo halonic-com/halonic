@@ -1,16 +1,6 @@
-import { plantedHooks, vcsContract } from "@halonicjs/testing-contracts";
-import { afterAll } from "vitest";
-import { Scratch } from "./fixtures.test-helper.ts";
-import type { GitRunner } from "./git-runner.ts";
-import { gitVcsHarness, remoteRunner } from "./harness.test-helper.ts";
+import { vcsContractParts } from "@halonicjs/testing-contracts";
+import { gitContractHarness } from "./contract-harness.spec.ts";
 
-const scratch = new Scratch();
-afterAll(() => scratch.remove());
-
-let runner: Promise<GitRunner> | undefined;
-const sharedRunner = (): Promise<GitRunner> => {
-  runner ??= remoteRunner(scratch);
-  return runner;
-};
-
-vcsContract("git", gitVcsHarness(scratch, sharedRunner, plantedHooks));
+// The Vcs contract's basics here; its other parts are in `contract-*.test.ts`, so
+// the test runner can spread them over its workers (HAL-15905).
+vcsContractParts.basics("git", gitContractHarness());

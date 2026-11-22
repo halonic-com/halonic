@@ -94,7 +94,9 @@ export class GitVcs implements Vcs {
   }
 
   async diff(path: string, staged: boolean): Promise<string> {
-    const repository = await this.#checkedRepository([path]);
+    await checkVcsPaths(await realpath(this.#folder), [path]);
+    // A read: checked once, where a `Repository` checks on opening and again before the call.
+    const repository = await this.#reader();
     const which = staged ? ["--cached"] : [];
     // `Repository.run` adds `--no-ext-diff --no-textconv`.
     const args = ["diff", "--no-color", ...which, "--", path];
@@ -227,7 +229,8 @@ export class GitVcs implements Vcs {
   }
 
   async applyPatch(patch: string, options?: VcsApplyOptions): Promise<void> {
-    await applyToWorkingTree(await this.#repository(), patch, options?.reverse === true);
+    const folder = await realpath(this.#folder);
+    await applyToWorkingTree(folder, () => this.#repository(), patch, options?.reverse === true);
   }
 
   async commitVersion(options: VcsCommitVersionOptions): Promise<string> {

@@ -6,6 +6,7 @@ import { vcsCommitsHardenedCases } from "./vcs-commits-hardened.ts";
 import { vcsVersionHardenedCases } from "./vcs-hardened.ts";
 import type { MakeVcs } from "./vcs-harness.ts";
 import { changesOf, commitFile, commitHash, stagedDiffs, stateOf } from "./vcs-helpers.ts";
+import { vcsPatchSafetyCases } from "./vcs-patch-safety.ts";
 import { vcsProposalRefCases } from "./vcs-proposal-refs.ts";
 import { unknownCommit } from "./vcs-version-inputs.ts";
 import { vcsVersionSafetyCases } from "./vcs-versions-safety.ts";
@@ -13,8 +14,9 @@ import { vcsWorktreeCases } from "./vcs-worktrees.ts";
 
 /**
  * The {@link Vcs} contract for port version 2, under its own requirements so
- * the version 1 ones stay as they were: the behaviour, its safety, and the
- * hardened cases for an adapter that drives git.
+ * the version 1 ones stay as they were: the behaviour and the hardened cases
+ * for an adapter that drives git. Its safety, Create version and proposals
+ * are the parts below, which `vcsContractParts` runs one by one.
  */
 export function vcsVersionContracts(name: string, make: MakeVcs): void {
   verifies("contracts.vcs-versions", () => {
@@ -24,18 +26,33 @@ export function vcsVersionContracts(name: string, make: MakeVcs): void {
     });
   });
 
-  verifies("contracts.vcs-versions-safety", () => {
-    describe(`Vcs versions safety contract: ${name}`, () => {
-      vcsVersionSafetyCases(make);
-    });
-  });
-
   verifies("contracts.vcs-versions-hardened", () => {
     describe(`Vcs versions hardened contract: ${name}`, () => {
       vcsVersionHardenedCases(make);
     });
   });
+}
 
+/** The safety of versions and worktrees, for port version 2, but for patches. */
+export function vcsVersionSafetyContract(name: string, make: MakeVcs): void {
+  verifies("contracts.vcs-versions-safety", () => {
+    describe(`Vcs versions safety contract: ${name}`, () => {
+      vcsVersionSafetyCases(make);
+    });
+  });
+}
+
+/** The safety of applying a patch, under the same requirement as {@link vcsVersionSafetyContract}. */
+export function vcsPatchSafetyContract(name: string, make: MakeVcs): void {
+  verifies("contracts.vcs-versions-safety", () => {
+    describe(`Vcs versions safety contract: ${name}`, () => {
+      vcsPatchSafetyCases(make);
+    });
+  });
+}
+
+/** Create version and proposal refs, with their hardened cases, for port version 2. */
+export function vcsCommitContracts(name: string, make: MakeVcs): void {
   verifies("contracts.vcs-commit-version", () => {
     describe(`Vcs Create version contract: ${name}`, () => {
       vcsCommitVersionCases(make);

@@ -9,7 +9,12 @@ import { linePatch } from "./vcs-patch-inputs.ts";
 import { vcsRemoteCases } from "./vcs-remote.ts";
 import { vcsSafetyCases } from "./vcs-safety.ts";
 import { unknownCommit } from "./vcs-version-inputs.ts";
-import { vcsVersionContracts } from "./vcs-versions.ts";
+import {
+  vcsCommitContracts,
+  vcsPatchSafetyContract,
+  vcsVersionContracts,
+  vcsVersionSafetyContract,
+} from "./vcs-versions.ts";
 
 /**
  * The contract every {@link Vcs} adapter passes. The harness builds each
@@ -17,6 +22,29 @@ import { vcsVersionContracts } from "./vcs-versions.ts";
  * `files`, the way the Studio's editors do.
  */
 export function vcsContract(name: string, make: MakeVcs): void {
+  for (const runPart of Object.values(vcsContractParts)) runPart(name, make);
+}
+
+/**
+ * {@link vcsContract} in parts that together are all of it. An adapter whose
+ * contract run is slow, such as git's, which starts real git programs, runs
+ * the parts from several test files, so the test runner spreads them over
+ * its workers. Each part keeps its cases under the requirements they verify.
+ */
+export const vcsContractParts = {
+  /** Status, diff, stage, discard, history and remotes, their safety and the hardened cases. */
+  basics: vcsBasicContracts,
+  /** Snapshots, reading at a version, rename and worktrees, and their hardened cases. */
+  versions: vcsVersionContracts,
+  /** The safety of versions and worktrees, but for patches. */
+  versionSafety: vcsVersionSafetyContract,
+  /** The safety of applying a patch, under the versions safety requirement too. */
+  patchSafety: vcsPatchSafetyContract,
+  /** Create version and proposal refs. */
+  commits: vcsCommitContracts,
+} as const satisfies Readonly<Record<string, (name: string, make: MakeVcs) => void>>;
+
+function vcsBasicContracts(name: string, make: MakeVcs): void {
   verifies("contracts.vcs", () => {
     describe(`Vcs contract: ${name}`, () => {
       repositoryCases(make);
@@ -40,8 +68,6 @@ export function vcsContract(name: string, make: MakeVcs): void {
       vcsHardenedCases(make);
     });
   });
-
-  vcsVersionContracts(name, make);
 }
 
 function repositoryCases(make: MakeVcs): void {

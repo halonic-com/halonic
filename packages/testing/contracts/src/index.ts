@@ -281,7 +281,7 @@ export {
   unfencedRunConsent,
   unfencedRunConsentStoreContract,
 } from "./unfenced-run-consent-store.ts";
-export { vcsContract } from "./vcs.ts";
+export { vcsContract, vcsContractParts } from "./vcs.ts";
 export { vcsCommitsHardenedCases } from "./vcs-commits-hardened.ts";
 export {
   type HardenedTest,
