@@ -22,6 +22,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { desktopFeatures } from "./desktop-features.ts";
 import { newWorkspaceOf } from "./desktop-new-workspace.ts";
+import { desktopOpenExternal } from "./desktop-open-external.ts";
 import { watchDesktopResources } from "./desktop-resources.ts";
 import type { DeviceMemory } from "./device-memory.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
@@ -154,7 +155,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     newWorkspaceAsks,
     freshCopyAsks,
   };
-  const window = mountWorkspaceWindow(page.element, parts);
+  const window = mountWorkspaceWindow(page.element, parts, desktopOpenExternal(page.window));
   // Formats follows the system's region once the shell has read it; until then, the browser's.
   const stopRegion = followSystemRegion(ipc, (r) => window.update({ ...parts, regionFormat: r }));
   const stopListening = onWindowCloseRequested(
