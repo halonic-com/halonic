@@ -2,6 +2,7 @@
 
 - Approval: HAL-15528, item 6 of the flow check C587 on HAL-15498; wording on an approved screen, decided by the team under HAL-2282
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QNFDoB+Jy+Xn3Ym3+QsSRVGqsOM9NaXJyTgeB/SIEbMgOYhgE9bnhNY0A0GPGP+YtKkIDa94uX3yJnA5vo8kBg==
 - Task: HAL-15528
 
 ## What changes
