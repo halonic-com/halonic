@@ -49,7 +49,7 @@ import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunSetup } from "../run/run.ts";
 import { checkRoutinesTrust } from "../run/trust.ts";
 import { computerTimeZone } from "./list.ts";
-import { RoutinesThatCantStart, withoutCantStart } from "./watch-cant-start.ts";
+import { RoutinesThatCantStart, routinesNotLiveYet, withoutCantStart } from "./watch-cant-start.ts";
 import { watchReport } from "./watch-report.ts";
 import { reportGaveUp, reportStuck } from "./watch-stuck.ts";
 import { type VersionChecks, WatchedVersions } from "./watch-versions.ts";
@@ -142,6 +142,10 @@ async function watchVersions(
     // Before the watching line, so that line means the scheduler has caught up; its runs print after.
     if (scheduler !== undefined) report.tick(await scheduler.tick());
     const onAClock = routines.filter(({ routine }) => routine.enabled && isOnAClock(routine));
+    const notLiveYet = routinesNotLiveYet(await loadWorkspace(dir.store), await versions.live());
+    if (notLiveYet > 0) {
+      context.printAhead(routinesMessages.routinesNeverLive(notLiveYet).phrase);
+    }
     context.printAhead(
       routinesMessages.watching(onAClock.length, printable(workspaceNameOf(workspace, dir))).phrase,
     );

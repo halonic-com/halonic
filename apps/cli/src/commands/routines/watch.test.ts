@@ -154,18 +154,16 @@ verifies("cli.commands.routines.watch", () => {
   it("prints a ✕ line for a routine whose run didn't start, and keeps watching", {
     timeout: watchTestTimeout,
   }, async () => {
-    // The local engine can't start an agent's run yet, though the routine's files are fine.
-    await writeFiles(acmeRuns.acme, {
-      "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\ninstructions: Reply.\n",
-      "hubs/support/workflows/routines/hourly-follow-up.routine.yaml": hourly.replace(
-        "run: { workflow: follow-up }",
-        "run: { agent: writer, prompt: Follow up on the open emails. }",
-      ),
-    });
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time, "--debug");
     await waitUntil("the first watch line", () => io.stdout.length === 1, slowWatch);
     expect(io.stdout).toHaveLength(1);
+    // The routine's files stay fine, but the version due at 15:00 reaches a
+    // model nobody trusted here, so its run doesn't start. (An agent on its
+    // own did this before C672 #1; the watch now leaves that out up front.)
+    await writeFiles(acmeRuns.acme, {
+      "providers/ollama.yaml": "id: ollama\ntype: ollama\nlocal: true\n",
+    });
 
     time.set("2026-11-10T15:00:10.000Z");
     await waitUntil(
@@ -214,6 +212,37 @@ verifies("cli.commands.routines.watch", () => {
     expect(await watching).toBe(143);
   });
 
+  // C672 #1 (HAL-16096): it counted such a routine as watched, and its run failed when due.
+  it("leaves out a routine that starts an agent on its own, says why, and starts the others", {
+    timeout: watchTestTimeout,
+  }, async () => {
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\ninstructions: Reply.\n",
+      "hubs/support/workflows/routines/daily-notes.routine.yaml": [
+        "id: daily-notes",
+        "name: Daily notes",
+        "trigger: { every: 1m }",
+        "run: { agent: writer, prompt: Write the notes. }",
+        "",
+      ].join("\n"),
+    });
+    const time = fakeTime(engineStart);
+    const { io, signals, watching } = startWatch(time);
+    await waitUntil("the first watch lines", () => io.stdout.length === 2, slowWatch);
+    expect(io.stdout).toEqual([
+      "✕ Daily notes can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.",
+      "Watching 1 routine in Acme. Stop with Ctrl C.",
+    ]);
+
+    time.set("2026-11-10T15:00:10.000Z");
+    await waitUntil("the started line", () => wokenUp(time) && io.stdout.length > 2, slowWatch);
+    expect(io.stdout.slice(2)).toEqual([
+      expect.stringMatching(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u),
+    ]);
+    signals.send("SIGINT");
+    expect(await watching).toBe(130);
+  });
+
   // C570 #2 (HAL-15396): one routine whose agent is in Claude Code used to stop the watch for all of them.
   it("leaves out a routine whose one agent is in a harness, says why, and starts the others", {
     timeout: watchTestTimeout,
@@ -234,9 +263,11 @@ verifies("cli.commands.routines.watch", () => {
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time);
     await waitUntil("the first watch lines", () => io.stdout.length === 2, slowWatch);
-    // `run` starts such agents now, so the line names routines rather than Halonic (HAL-13857).
+    // An agent on its own can't start in any harness, so that reason comes
+    // first, as `halonic routines` gives it (C672 #1); the harness line is for
+    // a workflow's agent, below.
     expect(io.stdout).toEqual([
-      "✕ Daily notes can't start: routines can't run agents in Claude Code yet, and Writer is in Claude Code. Set the agent to Halonic's own loop, or turn the routine off.",
+      "✕ Daily notes can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.",
       "Watching 1 routine in Acme. Stop with Ctrl C.",
     ]);
 
