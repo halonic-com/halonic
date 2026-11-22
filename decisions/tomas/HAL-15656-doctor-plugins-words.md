@@ -3,6 +3,7 @@
 - Task: HAL-15656
 - Approval: the team decides this on HAL-15656 (https://paperclip.halonic.com/HAL/issues/HAL-15656), from rows 2, 4 and 7 of Nina's C609 words check on HAL-15652. It refines CLI words that already exist: a team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Sn7AyIMuV8BB9BvfEtPIX5zqsjCOLktZp/ZRJInBxDti8LctIgY6SPq5545FBRLzmrkpKWmnRqglSUw2yaB3Cg==
 
 ## What changes
 
