@@ -8,7 +8,7 @@ fn git_export_takes_only_https_and_ssh_addresses_without_secrets() {
     for address in [
         "https://github.com/acme/weather",
         "HTTPS://github.com/acme/weather.git",
-        "https://token@github.com/acme/weather",
+        "https://@github.com/acme/weather",
         "https://github.com:8443/acme/weather",
         "ssh://git@github.com/acme/weather",
         "ssh://git@[::1]:2222/acme/weather",
@@ -58,13 +58,40 @@ fn git_export_never_repeats_a_password_in_its_refusal() {
     // Built in pieces so no password-shaped address sits in the source.
     let address = ["https://user", ":", "hunter2", "@github.com/acme/weather"].concat();
     let error = check_address(&address).expect_err("a password is refused");
-    assert!(!error.to_string().contains("hunter2"), "{error}");
+    assert_eq!(
+        error.to_string(),
+        "can't use that git address: it has a password in it. Leave it out, or use an ssh:// address with a key"
+    );
+}
+
+#[test]
+fn git_export_refuses_a_user_name_in_an_https_address_without_repeating_it() {
+    for address in [
+        "https://s3cr3ttoken@github.com/acme/weather",
+        "HTTPS://s3cr3ttoken@github.com/acme/weather",
+        "https://s3cr3ttoken@github.com:8443/acme/weather",
+    ] {
+        let error = check_address(address).expect_err("a user name is refused");
+        assert_eq!(
+            error.to_string(),
+            "can't use that git address: it has a user name in it, which halonic plugin list would show. Leave it out"
+        );
+        assert!(!error.to_string().contains("s3cr3ttoken"), "{error}");
+    }
+}
+
+#[test]
+fn git_export_keeps_the_user_of_an_ssh_address() {
+    assert_eq!(
+        check_address("ssh://deploy@github.com/acme/weather"),
+        Ok(())
+    );
 }
 
 #[test]
 fn git_export_never_repeats_the_address_or_its_token_in_what_git_said() {
-    let address = "https://s3cr3ttoken@github.com/acme/weather";
-    let said = "fatal: unable to access 'https://s3cr3ttoken@github.com/acme/weather/': 403\n";
+    let address = "ssh://s3cr3ttoken@github.com/acme/weather";
+    let said = "fatal: unable to access 'ssh://s3cr3ttoken@github.com/acme/weather/': 403\n";
     let message = redact(said, address);
     assert!(!message.contains("s3cr3ttoken"), "{message}");
     assert!(!message.contains("github.com"), "{message}");
@@ -73,9 +100,9 @@ fn git_export_never_repeats_the_address_or_its_token_in_what_git_said() {
 
 #[test]
 fn git_export_redacts_an_address_git_printed_without_its_trailing_slash() {
-    let address = "https://s3cr3ttoken@github.com/acme/weather/";
+    let address = "ssh://s3cr3ttoken@github.com/acme/weather/";
     let message = redact(
-        "fatal: https://s3cr3ttoken@github.com/acme/weather: 403",
+        "fatal: ssh://s3cr3ttoken@github.com/acme/weather: 403",
         address,
     );
     assert!(!message.contains("s3cr3ttoken"), "{message}");

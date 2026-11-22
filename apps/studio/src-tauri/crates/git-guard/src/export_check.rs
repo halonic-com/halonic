@@ -43,8 +43,16 @@ fn refused_address(reason: &'static str) -> GitError {
 
 /// Refuses an address that is not an `https://` or `ssh://` one, that
 /// starts with `-` (git would read it as an option), that names a
-/// transport such as `ext::` or a local path, or that carries a password.
-/// The reason never repeats the address, which may hold a secret.
+/// transport such as `ext::` or a local path, that carries a password, or
+/// that is an `https://` one with a user name. The reason never repeats the
+/// address, which may hold a secret.
+///
+/// The plugin keeps the address as typed and `halonic plugin list` shows
+/// it, and a forge takes a token as the user name of an `https://` address,
+/// so none may carry one: the export asks no one for a password and uses no
+/// credential helper, so it couldn't sign in with it anyway. An `ssh://`
+/// address keeps its user, such as `git`, which names the account on the
+/// server, and signs in with the person's key.
 pub(crate) fn check_address(address: &str) -> Result<(), GitError> {
     if address.starts_with('-') {
         return Err(refused_address(
@@ -81,7 +89,12 @@ pub(crate) fn check_address(address: &str) -> Result<(), GitError> {
     if let Some(user) = user {
         if user.contains(':') {
             return Err(refused_address(
-                "it has a password in it; use a key or a token instead",
+                "it has a password in it. Leave it out, or use an ssh:// address with a key",
+            ));
+        }
+        if scheme.eq_ignore_ascii_case("https") && !user.is_empty() {
+            return Err(refused_address(
+                "it has a user name in it, which halonic plugin list would show. Leave it out",
             ));
         }
         if user.starts_with('-') {
