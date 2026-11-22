@@ -140,6 +140,17 @@ export {
   stepTimesOf,
 } from "./meter/metered-usage.ts";
 export { NoMeter } from "./meter/no-meter.ts";
+export {
+  concurrencyStop,
+  isPlanStop,
+  memberLimitStop,
+  memberRemovedStop,
+  noPlanStop,
+  planLimitStop,
+  type ReachedLimit,
+  type StopPlan,
+  suspendedStop,
+} from "./meter/plan-stops.ts";
 export type { AbortOnStop } from "./run/abort-on-stop.ts";
 export {
   type EndedLostRuns,
