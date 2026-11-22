@@ -81,7 +81,14 @@ verifies("studio.trust-review-program-fields", () => {
 
     expect(review?.sections[0]?.rows[0]).toMatchObject({
       tag: "Changed",
-      lines: expect.arrayContaining([["Environment", "NODE_OPTIONS=--require ./other.js", "code"]]),
+      lines: expect.arrayContaining([
+        [
+          "Environment",
+          "NODE_OPTIONS=--require ./other.js",
+          "code",
+          { was: "NODE_OPTIONS=--require ./setup.js" },
+        ],
+      ]),
     });
   });
 });

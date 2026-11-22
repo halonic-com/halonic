@@ -10,6 +10,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Marked, markedText } from "./marked-text.tsx";
 import type {
   TrustLine,
+  TrustLineChange,
   TrustReview,
   TrustRowView,
   TrustSectionView,
@@ -238,7 +239,11 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
         {/* An empty detail would keep its gap and push the flag 16 px from the name (C667). */}
         {row.detail === "" ? null : (
           <span className="break-all font-mono text-small">
-            <Marked text={row.detail} />
+            {row.detailWas === undefined ? (
+              <Marked text={row.detail} />
+            ) : (
+              <WasNow was={row.detailWas} now={row.detail} />
+            )}
           </span>
         )}
         {row.flag === undefined ? null : (
@@ -277,7 +282,7 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
 }
 
 function TrustLineView({ line }: { readonly line: TrustLine }) {
-  const [label, value, tone] = line;
+  const [label, value, tone, change] = line;
   // Below 24rem the grid has one column: the value goes under its label (C706).
   const column = "col-start-2 @max-[24rem]:col-start-1";
   return (
@@ -298,10 +303,55 @@ function TrustLineView({ line }: { readonly line: TrustLine }) {
         </span>
       ) : (
         <span className={`${column}${toneClass(tone)}`}>
-          <Marked text={value} />
+          <ChangedValue value={value} change={change} />
         </span>
       )}
     </p>
+  );
+}
+
+/**
+ * A line's value, with what changed in it: old → new, or a value that wasn't there in `fg` at
+ * weight 500, like a new value.
+ */
+function ChangedValue(props: {
+  readonly value: string;
+  readonly change: TrustLineChange | undefined;
+}) {
+  const { value, change } = props;
+  if (change === undefined) return <Marked text={value} />;
+  if (change === "added") {
+    return (
+      <span className="font-medium text-fg">
+        <span className="sr-only">new: </span>
+        <Marked text={value} />
+      </span>
+    );
+  }
+  return <WasNow was={change.was} now={value} />;
+}
+
+/**
+ * Old → new (mockup-trust section 2): the old value in `fg-muted`, the arrow in `fg-subtle`, the
+ * new one in weight 500, with no strikethrough so the two are easy to compare. The new one is in
+ * `fg`, as the drawing's values are: the section's own values are `fg-muted`, so weight alone
+ * would barely set it apart. A screen reader hears "was …, now …" instead of the arrow (flow 3.3).
+ */
+function WasNow(props: { readonly was: string; readonly now: string }) {
+  return (
+    <>
+      <span className="text-fg-muted">
+        <span className="sr-only">was </span>
+        <Marked text={props.was} />
+      </span>
+      <span className="sr-only">, now </span>
+      <span aria-hidden="true" className="text-fg-subtle">
+        {" → "}
+      </span>
+      <span className="font-medium text-fg">
+        <Marked text={props.now} />
+      </span>
+    </>
   );
 }
 

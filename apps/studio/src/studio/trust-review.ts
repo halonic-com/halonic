@@ -20,6 +20,7 @@ import {
 } from "./integration-trust-rows.ts";
 import { listed } from "./listed.ts";
 import { type PluginHosts, pluginConnectorRow } from "./plugin-connector-row.ts";
+import { changedProgramRow } from "./program-change-lines.ts";
 
 /** What the check doesn't hold, because only the host knows it. */
 export interface TrustReviewFacts {
@@ -170,7 +171,14 @@ function changesView(
           "New",
         ),
         ...tagged(
-          pick(changedConnectors, isProgram).map((row) => programRow(row, unpinned, runs)),
+          changes.changed
+            .filter((row) => isProgram(row.after))
+            .map(({ before, after }) =>
+              changedProgramRow(
+                programRow(after, unpinned, runs),
+                programRow(before, unpinned, runs),
+              ),
+            ),
           "Changed",
         ),
       ],
