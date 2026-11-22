@@ -23,7 +23,7 @@ with the request's body.
        event: "{{trigger.headers.x-shop-event}}"
    ```
 
-   The workflow's `input` takes named fields, one per value the workflow
+   The workflow's `input` needs named fields, one per value the workflow
    reads, as above. `input: "{{trigger.body}}"` on its own is refused:
    `halonic validate` says "A workflow routine's input needs named fields,
    such as input: { mail: "{{trigger.body}}" }."

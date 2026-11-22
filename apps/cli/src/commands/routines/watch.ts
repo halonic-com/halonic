@@ -291,12 +291,10 @@ function workflowsOf(routines: readonly PlacedRoutine[]): SandboxGateRun[] {
  */
 function refuseHarnessAgent(agent: LoadedFileOf<"agent"> | undefined): void {
   if (agent === undefined) return;
-  const reason = routinesMessages.harnessNotAvailable(
-    printable(agent.value.name),
-    printable(agent.value.harness ?? ""),
-  );
+  const name = printable(agent.value.name);
+  const reason = routinesMessages.harnessNotAvailable(name, printable(agent.value.harness ?? ""));
   throw new KindedError("unavailable", plainText(reason.phrase), {
-    fix: plainText(routinesMessages.harnessNotAvailableFix().phrase),
+    fix: plainText(routinesMessages.harnessNotAvailableFix(name).phrase),
   });
 }
 

@@ -9,7 +9,8 @@ import { aliasFiles, modelSettings } from "./model-settings.ts";
  * have a file in `providers/`, as one in `models.yaml` must
  * ({@link checkModelsFile}): otherwise the run stops on it (HAL-14301, Nina's
  * C340 check). A hub's alias gets the same message as one in `models.yaml`
- * ({@link unknownProviderMessage}, HAL-15830). A provider whose file failed its own checks isn't unknown:
+ * ({@link unknownProviderMessage}, HAL-15830), and a `provider/model` setting
+ * one in its shape (C665 row 71). A provider whose file failed its own checks isn't unknown:
  * that file's error says what to fix. An agent whose harness starts a program
  * passes its model to that program as written, so its provider isn't checked.
  */
@@ -37,9 +38,9 @@ export function checkModelProviders(context: CheckContext): WorkspaceIssue[] {
     const near = nearMatch(provider, providers);
     const fix =
       near === undefined
-        ? `add providers/${provider}.yaml, or use a provider the workspace has`
+        ? `Add providers/${provider}.yaml, or use a provider the workspace has.`
         : `Did you mean ${near}${setting.model.slice(slash)}?`;
-    const message = `${setting.owner} uses model "${setting.model}", whose provider "${provider}" the workspace doesn't have: ${fix}`;
+    const message = `The model ${setting.model}, ${setting.role}, names the provider ${provider}, which the workspace doesn't have. ${fix}`;
     return [context.error(setting.file, setting.path, "unknown-provider", message)];
   });
   return [...hubAliases, ...shorthands];

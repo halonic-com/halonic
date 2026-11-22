@@ -311,7 +311,7 @@ verifies("cli.commands.routines.watch", () => {
     const { io, signals, watching } = startWatch(time);
     await waitUntil("the first watch lines", () => io.stdout.length === 2, slowWatch);
     expect(io.stdout).toEqual([
-      "✕ Hourly follow-up can't start: routines can't run agents in Claude Code yet, and Writer is in Claude Code. Set the agent to Halonic's own loop, or turn the routine off.",
+      "✕ Hourly follow-up can't start: Writer runs in Claude Code, which routines can't start yet. Set Writer to Halonic on its Harness page, or turn the routine off.",
       "Watching 0 routines in Acme for now. Once a routine above can start, the watch starts it on time, so leave this running. Stop with Ctrl C.",
     ]);
 

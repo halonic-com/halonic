@@ -11,6 +11,11 @@ export interface ModelSetting {
   readonly path: (string | number)[];
   /** Such as `Agent "clerk"`. */
   readonly owner: string;
+  /**
+   * How the setting uses its model, read after the model's name: such as
+   * `used by the agent clerk` (C665 row 71).
+   */
+  readonly role: string;
   readonly model: string;
   /**
    * Whether an agent's harness starts a program (any but `halonic`): that
@@ -49,29 +54,38 @@ export function modelSettings(context: CheckContext): ModelSetting[] {
   const add = (
     file: string,
     path: (string | number)[],
-    owner: string,
+    { owner, role }: Pick<ModelSetting, "owner" | "role">,
     model: string | undefined,
     startsAProgram = false,
   ) => {
     if (model !== undefined) {
-      settings.push({ file, path, owner, model, startsAProgram });
+      settings.push({ file, path, owner, role, model, startsAProgram });
     }
   };
   for (const workspace of context.filesOf("workspace")) {
-    add(workspace.path, ["defaults", "model"], "The default model", workspace.value.defaults.model);
-    add(workspace.path, ["assistant", "model"], "The session AI", workspace.value.assistant?.model);
+    const defaults = { owner: "The default model", role: "the workspace's default" };
+    add(workspace.path, ["defaults", "model"], defaults, workspace.value.defaults.model);
+    const assistant = { owner: "The session AI", role: "used by the session AI" };
+    add(workspace.path, ["assistant", "model"], assistant, workspace.value.assistant?.model);
   }
   for (const hub of context.filesOf("hub")) {
-    add(hub.path, ["defaults", "model"], "The hub's default model", hub.value.defaults.model);
+    const defaults = { owner: "The hub's default model", role: "the hub's default" };
+    add(hub.path, ["defaults", "model"], defaults, hub.value.defaults.model);
   }
   for (const agent of context.filesOf("agent")) {
     const name = agent.value.id;
     const harness = agent.value.harness;
     const program = harness !== undefined && harness !== "halonic";
-    add(agent.path, ["model"], `Agent "${name}"`, agent.value.model, program);
+    const agentOwner = { owner: `Agent "${name}"`, role: `used by the agent ${name}` };
+    add(agent.path, ["model"], agentOwner, agent.value.model, program);
     for (const [methodId, method] of Object.entries(agent.value.methods)) {
       const path = ["methods", methodId, "model"];
-      add(agent.path, path, `Method "${name}.${methodId}"`, method.model, program);
+      const methodName = `${name}.${methodId}`;
+      const methodOwner = {
+        owner: `Method "${methodName}"`,
+        role: `used by the method ${methodName}`,
+      };
+      add(agent.path, path, methodOwner, method.model, program);
     }
   }
   return settings;

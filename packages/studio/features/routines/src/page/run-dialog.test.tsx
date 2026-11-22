@@ -259,7 +259,7 @@ verifies("routines.page.run-now-steps", () => {
     await act(async () => runNowButton(page)?.click());
 
     expect(toasts.list()[0]).toMatchObject({
-      title: "Not started: Daily isn't trusted yet.",
+      title: "Not started: Daily isn't trusted yet",
       sticky: true,
     });
   });
@@ -274,6 +274,6 @@ verifies("routines.page.run-now-steps", () => {
 
     expect(askTrust).toHaveBeenCalledTimes(1);
     expect(runNow).toHaveBeenCalledTimes(2);
-    expect(toasts.list()[0]?.title).toBe("Not started: Daily isn't trusted yet.");
+    expect(toasts.list()[0]?.title).toBe("Not started: Daily isn't trusted yet");
   });
 });
