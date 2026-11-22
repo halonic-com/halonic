@@ -3,6 +3,7 @@
 - Task: HAL-16161
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16161 (a team decision with no board card, HAL-2282 rule: wording on the approved Inbox and proposal page; rows 31 and 32 of the designer's words check C681 on HAL-16153, which fit PR (B) of the plan Liam approved on HAL-16083)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aWNlSfbINPlQngId+yCrCLtFqMnpby3GEwCALOGNbbLOeajd4RizRj9zfVWit57jtkgDL0xVRHZH9sOVa/4jAQ==
 
 ## What changes
 
