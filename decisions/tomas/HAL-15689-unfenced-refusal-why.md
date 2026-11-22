@@ -16,7 +16,8 @@ longer true, and `doctor` doesn't know the yes, so the gate's reason and fix nev
 - `connectorStartFailureOf` reads it as `unfenced-not-allowed` with the reason; the events package
   adds `unfenced-not-allowed` to the connector-start reasons, with the reason's code (`container`,
   `windows`, …) as the cause's `name`; the engine logs it. Never the message, which can name the
-  yes's file.
+  yes's file. It sits next to `sandbox-not-ready` (HAL-14296), which stays as it is: that one is
+  for a plugin's backend the same gate refused, has no name, and its fix is `halonic doctor`.
 - `halonic run` and `halonic runs show` say "! notes didn't start, so its tools are off in this run.",
   then why the sandbox isn't available in `app.runner-unfenced-words`' words, then "Running it without
   the sandbox isn't allowed yet. To allow it, trust this workspace in Studio on this computer."
