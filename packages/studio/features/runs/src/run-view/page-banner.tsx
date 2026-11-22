@@ -29,6 +29,7 @@ import {
   type RunBanner,
   type RunPageContext,
   runBanner,
+  withParentRun,
 } from "./run-page-model.ts";
 import {
   SandboxNotReadyBanner,
@@ -147,7 +148,7 @@ interface BannerChoice {
   readonly failedChild: FailedChildView | undefined;
 }
 
-function chooseBanner(
+function chooseOwnBanner(
   run: SourcedRun,
   context: RunPageContext,
   log: readonly RunEvent[] | undefined,
@@ -169,6 +170,20 @@ function chooseBanner(
       : childFailureBanner(run.summary, context, failedChild, phone);
   if (child !== undefined) return { kind: "banner", banner: child, cause: true };
   return { kind: "banner", banner: runBanner(run, context), cause: false };
+}
+
+/** The page's banners, each led back to the run that started this one when it failed (HAL-15864). */
+function chooseBanner(
+  run: SourcedRun,
+  context: RunPageContext,
+  log: readonly RunEvent[] | undefined,
+  entries: readonly StepEntry[],
+  choice: BannerChoice,
+): ChosenBanner {
+  const chosen = chooseOwnBanner(run, context, log, entries, choice);
+  return chosen.kind === "banner"
+    ? { ...chosen, banner: withParentRun(run.summary, chosen.banner) }
+    : chosen;
 }
 
 /**
@@ -233,7 +248,13 @@ function Banner({
   const own = bannerAction(banner.action, reviewInInbox, openRun);
   const buttonsOf = (list: readonly BannerFix[] | undefined) =>
     (list ?? []).flatMap((fix) =>
-      fixAction(fix, writeClipboard, toasts, { openModels, openBudget, seeStep }, openExternal),
+      fixAction(
+        fix,
+        writeClipboard,
+        toasts,
+        { openModels, openBudget, seeStep, openRun },
+        openExternal,
+      ),
     );
   const fixes = buttonsOf(banner.fixes);
   const links = buttonsOf(banner.links);
@@ -320,7 +341,7 @@ function bannerAction(
   return undefined;
 }
 
-/** A fix's button, or nothing when the page can't do it: Models and Budget can't be opened on every page, and a step only once it is marked failed. A page outside Studio opens through the host. */
+/** A fix's button, or nothing when the page can't do it: Models, Budget and another run can't be opened on every page, and a step only once it is marked failed. A page outside Studio opens through the host. */
 function fixAction(
   fix: BannerFix,
   writeClipboard: (text: string) => Promise<boolean>,
@@ -329,9 +350,14 @@ function fixAction(
     readonly openModels: ((alias?: string) => void) | undefined;
     readonly openBudget: (() => void) | undefined;
     readonly seeStep: (() => void) | undefined;
+    readonly openRun: ((runId: string) => void) | undefined;
   },
   openExternal: (address: string) => Promise<void>,
 ): CalloutAction[] {
+  if (fix.kind === "open-run") {
+    const own = bannerAction(fix, undefined, open.openRun);
+    return own === undefined ? [] : [own];
+  }
   if (fix.kind === "open-external") {
     const { address } = fix;
     return [

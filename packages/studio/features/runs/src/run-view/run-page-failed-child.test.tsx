@@ -103,6 +103,42 @@ verifies("runs.run-view.failed-child-run", () => {
     expect(opened).toEqual([childId]);
   });
 
+  it("leads from the item's own page back to the run that started it (HAL-15864)", async () => {
+    const child = summaryWith({
+      id: childId,
+      parentRunId: parentId,
+      status: "failed",
+      reason: "error",
+      state: "draft",
+      statesVisited: ["draft"],
+      error: "boom",
+      endedAt: mondayMorning.toISOString(),
+    });
+    const logs = { [childId]: logOf(childId, [[0, entered("draft")]]) };
+    const opened: string[] = [];
+    const root = render(
+      <RunView
+        list={new RunsList(fakeSource([child], logs).source)}
+        runId={childId}
+        now={() => mondayMorning}
+        openRun={(runId) => opened.push(runId)}
+      />,
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const labels = [...root.querySelectorAll("button")].map((button) => button.textContent);
+    // Run again stays the banner's own button; Open run comes after it.
+    expect(labels.indexOf("Open run 7k2m9p")).toBeGreaterThan(labels.indexOf("Run again"));
+    const open = [...root.querySelectorAll("button")].find(
+      (button) => button.textContent === "Open run 7k2m9p",
+    );
+    await act(async () => {
+      open?.click();
+    });
+    expect(opened).toEqual([parentId]);
+  });
+
   it("keeps the run's own banner when the item's run log is gone", async () => {
     const root = await openParent("gone");
     expect(root.textContent).toContain(

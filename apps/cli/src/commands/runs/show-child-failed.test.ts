@@ -1,4 +1,4 @@
-import type { RunEventBody } from "@halonicjs/events";
+import { answerNotAnOptionCause, type RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -129,10 +129,10 @@ function draftFailed(
   };
 }
 
-async function show(typed: string): Promise<{ code: number; io: CapturedIo }> {
+async function show(...args: string[]): Promise<{ code: number; io: CapturedIo }> {
   const io = captureIo(acmeRuns.acme);
   const command = runsCommandWith(acmeRunsSetup(acmeRuns));
-  const code = await runCli(["runs", "show", typed], io, [command]);
+  const code = await runCli(["runs", "show", ...args], io, [command]);
   return { code, io };
 }
 
@@ -198,6 +198,55 @@ verifies("cli.commands.runs.show-child-failure", () => {
 
       expect(io.stdout.at(-3)).toMatch(
         /^✕ Topics failed in the step Each\. Halonic can't tell the cause yet: Workflow/,
+      );
+    });
+  });
+});
+
+verifies("cli.commands.runs.show", () => {
+  describe("a child run that failed (HAL-15864)", () => {
+    /** Writer answered "maybe" where the step takes yes or no, as the engine words it. */
+    const offOptions = (cause: "with-cause" | "older-log") => ({
+      error:
+        "The agent writer answered \"maybe\", which isn't one of its options (yes, no). Tighten the agent's instructions or use a larger model.",
+      reason: "answer-not-an-option" as const,
+      ...(cause === "with-cause" && {
+        cause: answerNotAnOptionCause({ agent: "writer", options: ["yes", "no"] }),
+      }),
+    });
+
+    it("ends with the way to the run that started it, keeping --dir", async () => {
+      await storeRuns(acmeRuns, topicsFailed(1), draftFailed(offOptions("with-cause")));
+
+      const { io } = await show("c1c1c1");
+
+      expect(io.stdout.slice(-3)).toEqual([
+        "✕ Draft one failed in the step Draft. The agent Writer answered \"maybe\", which isn't one of its options (yes, no). Tighten the agent's instructions or use a larger model.",
+        "  See the run that started it: halonic runs show 7a7a01",
+        "  Sent nothing",
+      ]);
+      expect((await show("--dir", ".", "c1c1c1")).io.stdout.at(-2)).toBe(
+        "  See the run that started it: halonic runs show --dir . 7a7a01",
+      );
+    });
+
+    it("names the agent as its file does on the run that started it too", async () => {
+      await storeRuns(acmeRuns, topicsFailed(1), draftFailed(offOptions("with-cause")));
+
+      const { io } = await show("7a7a01");
+
+      expect(io.stdout.at(-3)).toBe(
+        "✕ Topics failed in the step Each: the run it started for item 2 failed in the step Draft. The agent Writer answered \"maybe\", which isn't one of its options (yes, no). Tighten the agent's instructions or use a larger model.",
+      );
+    });
+
+    it("keeps the agent's id in a log without the cause", async () => {
+      await storeRuns(acmeRuns, topicsFailed(1), draftFailed(offOptions("older-log")));
+
+      const { io } = await show("c1c1c1");
+
+      expect(io.stdout.at(-3)).toMatch(
+        /^✕ Draft one failed in the step Draft\. The agent writer answered /,
       );
     });
   });
