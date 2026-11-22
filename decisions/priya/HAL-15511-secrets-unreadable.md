@@ -2,6 +2,7 @@
 
 - Approval: Liam's review of PR #4727 on HAL-15511 (Paperclip task)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7R4nf/Xxx8yiMWp5ozTb3FsCMcinNjq+8/aOHm/S1TTEY1S0xkRs4II5Oogi28n7R7k+Rluhw3Xbzeh1M7wfDA==
 
 ## What changes
 
