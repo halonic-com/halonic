@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13195 (Studio's agent host gets an unfenced session; Liam planned it after HAL-13090)
 
-Before the agent host opens a session without the sandbox for an agent, it shall check, on its own records and never on the page's word, that a person let that agent out, and refuse otherwise, in this order:
+When the agent host is asked to open a session without the sandbox for an agent, it shall first check, on its own records and never on the page's word, that a person let that agent out, and refuse otherwise, in this order:
 
 1. a folder the launcher didn't name, compared by real path (`404 unknown_workspace`), or an agent that workspace hasn't (`404 unknown_agent`). The host loads the workspace and reads the agent's file from disk itself;
 2. an agent that the person's trust record for the workspace doesn't list exactly as its file is now, by its harness, sites, working folder and `asks` (`403 workspace_not_trusted`). It shall fail closed: a trust record it can't read, a host with no profile folder (so no trust record at all), and an agent in Halonic's own loop, which starts no program, each get this refusal, even when a record names that agent;
