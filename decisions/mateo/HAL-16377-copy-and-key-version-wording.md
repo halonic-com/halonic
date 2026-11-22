@@ -3,6 +3,7 @@
 - Task: HAL-16377
 - Approval: HAL-16377 asks for this wording (C699 rows 12 and 18 on HAL-16368); small wording on an approved screen, so the team decides (HAL-2282); Liam reviews the pull request and signs this note as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:g32onEQzIkPFtAvcNvvI5dDWcHLRNVtwVGmoZ69XTRM5/RZz+tp44ssgMSSZeGULB0cbtZaIA1zqwC+9ZphOBw==
 
 ## What changes
 
