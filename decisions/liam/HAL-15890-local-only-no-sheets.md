@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-15890 asks for this change, from the changeset check C644 (HAL-15885) of #4893. The team decides it under the HAL-2282 rule, since it rewords a message that is already there. Liam wrote it, so Julian signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:L9sBcWyUkoQXI0HNJqYNqeIDqKp+cbgLtlmTZsvkFguI+TJyTODB4JSH6F1YfUpoC7fpKUvsD+LUsAnRWs+dBw==
 
 ## What changes
 
