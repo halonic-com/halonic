@@ -51,7 +51,7 @@ export function showEnding(
 ): Phrase[] {
   switch (run.summary.status) {
     case "completed":
-      return finishedEnding(run, title);
+      return finishedEnding(run, title, definitions);
     case "failed":
       return failedEnding(
         { run, title, definitions, models },
@@ -434,14 +434,33 @@ function waitingLines(summary: RunSummary, definitions: RunDefinitions): Phrase[
   ];
 }
 
-/** "✓ Support reply finished in 18 s." and the receipt under it. */
-function finishedEnding(run: RunDetail, title: string): Phrase[] {
+/**
+ * "✓ Support reply finished in 18 s.", the receipt under it, and the ending
+ * the run reached when its workflow has more than one.
+ */
+function finishedEnding(run: RunDetail, title: string, definitions: RunDefinitions): Phrase[] {
   const { summary } = run;
   const took = Date.parse(summary.endedAt ?? summary.updatedAt) - Date.parse(summary.startedAt);
   const receipt = runMessages.receipt(receiptOf(run.events, summary)).phrase;
+  const ending = endingOf(summary, definitions);
   return [
     [],
     phrase`${markPart("done")} ${runMessages.finished(title, duration(took)).phrase}`,
     ...(receipt.length === 0 ? [] : [phrase`  ${receipt}`]),
+    ...(ending === undefined ? [] : [phrase`  ${runMessages.ending(ending).phrase}`]),
   ];
+}
+
+/**
+ * The final state a finished run ended in, named as a step is, when its
+ * workflow has more than one, as the run page says it: "Finished" alone
+ * can't tell a sent reply from a rejected one (HAL-16276).
+ */
+function endingOf(summary: RunSummary, definitions: RunDefinitions): string | undefined {
+  const states = definitions.workflow?.states ?? {};
+  const finals = Object.values(states).filter((state) => state.type === "final");
+  if (summary.state === null || finals.length < 2) {
+    return undefined;
+  }
+  return stepName(summary.state, states[summary.state]?.description);
 }

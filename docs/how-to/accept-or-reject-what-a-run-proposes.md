@@ -63,8 +63,8 @@ as they are."
 Accept writes a file only while it is still as the run found it. A file that
 changed since is left alone, and the command says "notes/today.md changed
 since the run, so it wasn't written. To keep it as it is now, reject it with
-halonic proposals reject <run> notes/today.md." and exits 5. Copy what you want from `halonic proposals show` by hand, then reject
-that file.
+halonic proposals reject 01jd8q notes/today.md." and exits 5. Copy what you
+want from `halonic proposals show` by hand, then reject that file.
 
 After you decide part of a proposal, the command says how many files are
 still to decide. Once none is left, it says "Run 01jd8q's proposal is done."

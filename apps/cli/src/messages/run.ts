@@ -365,6 +365,12 @@ export const runMessages = defineMessages("run", {
    * Empty when every part is left out; the run's output then has no middle line.
    */
   receipt: (receipt: RunReceipt) => receiptLine(receipt),
+  /**
+   * Under the receipt of a finished run whose workflow has more than one
+   * ending, the run page's words (`runs.run-view.receipt-ending`, HAL-16276):
+   * "Ending: Finished without the reply".
+   */
+  ending: (ending: string) => phrase`Ending: ${ending}`,
   runLog: (runId: string, dir?: string) =>
     phrase`Run log: ${suggestedCommand("runs show", dir, runId)}`,
   /** Under the run log line when a step wrote something: the way to read it (HAL-12073). */
