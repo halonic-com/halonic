@@ -199,6 +199,20 @@ export const failureWords = {
   unknownModelAlias: (workflow: string, step: string, hub: string, alias: string) =>
     `${workflow} failed in the step ${step}: hub ${hub} has no model alias ${alias}.`,
   unknownModelAliasFix: "Add it in Models, or set a model on the agent.",
+  /**
+   * `models.key-origin-not-allowed` (HAL-15523): the CLI's first line (`cli.run-failure`), then the
+   * fix in Studio, where a key's addresses are on the Models page rather than a command.
+   */
+  keyOriginNotAllowed: (
+    workflow: string,
+    step: string,
+    provider: string,
+    key: string,
+    origin: string,
+  ) =>
+    `${workflow} failed in the step ${step}: provider ${provider} can't send key "${key}" to ${origin}. That address isn't allowed for this key.`,
+  keyOriginNotAllowedFix: (key: string, origin: string) =>
+    `To allow it, add ${origin} to the addresses of key "${key}" in Models, then run again. Only allow an address you recognise.`,
   copyCommand: "Copy command",
   openModels: "Open Models",
   modelOutOfMemory: (provider: string, model: string) =>
