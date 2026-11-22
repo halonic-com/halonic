@@ -18,6 +18,9 @@ export const guidedRunWords = {
   tryAgain: "Try again",
   tooSmall: (agent: string) =>
     `This model may be too small for the ${agent}. Try a larger one, or use Sample answers.`,
+  /** A guided run that waits for the person, in place of the usual banner (first-run-flow 3.5). */
+  waitingInInbox: "Waiting for you. It's in your Inbox.",
+  openInbox: "Open Inbox",
 };
 
 /** When a model call counts as slow and the line says so. */

@@ -411,6 +411,7 @@ export function WorkflowScreen({
           pickedStep={dockStep}
           onClosePickedStep={() => setPickedStep(undefined)}
           guideRun={guideRun}
+          reviewInInbox={reviewInInbox}
           phone={phone}
         />
         <StepEditDock

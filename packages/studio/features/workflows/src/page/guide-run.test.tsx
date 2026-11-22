@@ -36,34 +36,48 @@ function guideAdding(additions: WorkflowGuideRun): WorkflowGuide {
 
 const startRun = async () => ({ runId: "run_mfx3k2a1_01jd8q" });
 
+/** How run 01jd8q is listed once it started. */
+const listedAs: Record<"running" | "failed" | "waiting", Parameters<typeof runSummary>[0]> = {
+  running: { status: "running", state: "start" },
+  failed: {
+    status: "failed",
+    state: "start",
+    reason: "error",
+    endedAt: "2026-11-21T09:01:00.000Z",
+  },
+  waiting: { status: "waiting", state: "start", accepts: ["approve", "reject"] },
+};
+
 /**
  * Support reply's page, with run 01jd8q started from its Run form and listed as `status`, drawn
- * for a phone when `phone` is set.
+ * for a phone when `phone` is set, and with `reviewInInbox` as the page's way to the Inbox.
  */
 async function pageWithRun(
   guide: WorkflowGuide | undefined,
-  status: "running" | "failed",
-  phone = false,
+  status: keyof typeof listedAs,
+  {
+    phone = false,
+    reviewInInbox,
+  }: { phone?: boolean; reviewInInbox?: (runId: string) => void } = {},
 ) {
   const runs = memoryRuns();
   const { host } = memoryHost([], [], [reply], [settings], { startRun });
   const screen = (
-    <WorkflowScreen host={host} runs={runs.source} hubId="acme" id="reply" guide={guide} />
+    <WorkflowScreen
+      host={host}
+      runs={runs.source}
+      hubId="acme"
+      id="reply"
+      guide={guide}
+      {...(reviewInInbox === undefined ? {} : { reviewInInbox })}
+    />
   );
   const page = await show(
     phone ? <PresentationProvider presentation="phone">{screen}</PresentationProvider> : screen,
   );
   await act(async () => exactButton(page, "Run")?.click());
   await act(async () => buttonNamed(page, "Start run")?.click());
-  await act(async () =>
-    runs.change([
-      runSummary(
-        status === "failed"
-          ? { status, state: "start", reason: "error", endedAt: "2026-11-21T09:01:00.000Z" }
-          : { status, state: "start" },
-      ),
-    ]),
-  );
+  await act(async () => runs.change([runSummary(listedAs[status])]));
   return page;
 }
 
@@ -83,7 +97,9 @@ verifies("workflows.page.guide-run", () => {
   });
 
   it("shows the caption in the run card after the notes on a phone, where the card covers the drawing", async () => {
-    const page = await pageWithRun(guideAdding({ notes: [changedLine], caption }), "running", true);
+    const page = await pageWithRun(guideAdding({ notes: [changedLine], caption }), "running", {
+      phone: true,
+    });
     const lines = [...(cardOf(page)?.querySelectorAll("p") ?? [])].map((line) => line.textContent);
     expect(lines.indexOf(caption)).toBeGreaterThan(lines.indexOf(changedLine));
     expect(lines.indexOf(changedLine)).toBeGreaterThanOrEqual(0);
@@ -132,5 +148,22 @@ verifies("workflows.page.guide-run", () => {
     expect(page.textContent).not.toContain(caption);
     const card = cardOf(page);
     expect(card === null ? undefined : buttonNamed(card, "Pick another model")).toBeUndefined();
+  });
+});
+
+verifies("runs.run-view.guided-wait", () => {
+  it("says on a guided run's card that the run waits in the Inbox, and Open Inbox opens it there", async () => {
+    const reviewInInbox = vi.fn();
+    const guide = guideAdding({ notes: [], pickAnotherModel: vi.fn() });
+    const page = await pageWithRun(guide, "waiting", { reviewInInbox });
+    const card = cardOf(page);
+    expect(card?.textContent).toContain("Waiting for you. It's in your Inbox.");
+    await act(async () => (card === null ? undefined : buttonNamed(card, "Open Inbox"))?.click());
+    expect(reviewInInbox).toHaveBeenCalledWith("run_mfx3k2a1_01jd8q");
+  });
+
+  it("leaves a waiting run's card as it is without a guide", async () => {
+    const page = await pageWithRun(undefined, "waiting", { reviewInInbox: vi.fn() });
+    expect(cardOf(page)?.textContent).not.toContain("It's in your Inbox.");
   });
 });
