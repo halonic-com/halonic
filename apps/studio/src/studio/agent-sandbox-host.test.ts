@@ -3,7 +3,6 @@ import type {
   AgentHostRequestRoute,
   AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
-import { sandboxStartWords } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { studioStartsUnfenced } from "../engine/studio-harness-host.ts";
@@ -72,9 +71,6 @@ verifies("studio.agent-sandbox-host", () => {
 
   it.each([
     ["setup-needed", "needs-setup"],
-    ["setup-conflict", "needs-repair"],
-    ["distro-missing", "needs-repair"],
-    ["runtime-missing", "needs-repair"],
     ["restart-needed", "restart-needed"],
     ["virtualisation-off", "unavailable"],
   ])("reads the reason %s as %s", async (reason, state) => {
@@ -128,16 +124,19 @@ verifies("studio.agent-sandbox-host", () => {
     });
   });
 
-  it("words a repair's reason with the catalogue's sentence, as the Inbox and the CLI do", async () => {
-    const { transport } = host({
-      "GET /v1/sandbox/capabilities": capabilities,
-      "GET /v1/sandbox/check": failing("distro-missing"),
-    });
-    expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
-      state: "needs-repair",
-      reason: sandboxStartWords("distro-missing").reason,
-    });
-  });
+  it.each(["setup-conflict", "distro-missing", "runtime-missing"])(
+    "hands the section %s as its code, since Repair can't fix it (HAL-16200)",
+    async (reason) => {
+      const { transport } = host({
+        "GET /v1/sandbox/capabilities": capabilities,
+        "GET /v1/sandbox/check": failing(reason),
+      });
+      expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
+        state: "unavailable",
+        code: reason,
+      });
+    },
+  );
 
   it("answers nothing for a setup that worked, and the sentence why for one that didn't", async () => {
     const worked = host({

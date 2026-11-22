@@ -4,8 +4,6 @@ import {
   type AgentHostTransport,
   type SandboxSetupResult,
 } from "@halonicjs/adapter-agent-host-client";
-import { sandboxStartWords } from "@halonicjs/app";
-import type { SandboxUnavailableReason } from "@halonicjs/ports";
 import type {
   AgentSandboxHost,
   SandboxCheckFacts,
@@ -19,10 +17,12 @@ import { studioStartsUnfenced } from "../engine/studio-harness-host.ts";
 import type { ElevateHelper, ShellElevation } from "./sandbox-elevate-shell.ts";
 
 /**
- * Setting up fixes `setup-needed`; a repair fixes the two that say part of the setup is there but
- * wrong. Everything else is something the person or an administrator does outside Halonic, so the
- * section gets the reason's code and words it from the catalogue (`sandboxStartWords`, the one the
- * Inbox, the run page and the CLI use), and offers only Check again (`studio.agent-sandbox-host`).
+ * Setting up fixes `setup-needed`. Everything else is something the person or an administrator does
+ * outside Halonic, so the section gets the reason's code and words it from the catalogue
+ * (`sandboxStartWords`, the one the Inbox, the run page and the CLI use), and offers only Check
+ * again (`studio.agent-sandbox-host`). That includes `setup-conflict`, `distro-missing` and
+ * `runtime-missing`: the repair runs only srt's own setup, which won't replace another program's
+ * filters and never touches the WSL distro, so a Repair button would fail (HAL-16200).
  * The check's own sentence (`missing`) is for logs and support: no screen shows it (23.3).
  */
 
@@ -35,20 +35,13 @@ export interface WslBackupShell {
   reveal(): Promise<void>;
 }
 
-const needsRepair: readonly SandboxUnavailableReason[] = [
-  "distro-missing",
-  "runtime-missing",
-  "setup-conflict",
-];
-
 /** The reason when the shell couldn't start the helper or wait for it (C525-7, HAL-15013). */
 const HELPER_DIDNT_START = "Windows couldn't start Halonic's sandbox helper.";
 
 /**
  * The agent host's sandbox as Settings › Agent sandbox reads it: the host's check becomes Ready,
- * Needs setting up (`setup-needed`), Needs repair (part of the setup is there but wrong), Restart
- * needed (Windows must restart to finish the setup) or a check that says why the sandbox can't run
- * now (Unavailable). The setup and the removal start only when the section calls them, from a
+ * Needs setting up (`setup-needed`), Restart needed (Windows must restart to finish the setup) or
+ * a check that says why the sandbox can't run now (Unavailable). The setup and the removal start only when the section calls them, from a
  * press, and run until the host says how they ended, however long the administrator prompt takes
  * (HAL-1451).
  */
@@ -106,9 +99,6 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
         : { state: "needs-setup" };
     }
     if (check.reason === "restart-needed") return { state: "restart-needed" };
-    if (needsRepair.includes(check.reason)) {
-      return { state: "needs-repair", reason: sandboxStartWords(check.reason).reason };
-    }
     return { state: "unavailable", code: check.reason };
   }
 
