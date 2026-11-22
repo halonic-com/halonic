@@ -34,13 +34,18 @@ Copy-Item $Setup $setupCopy
 
 # Start-Process -Credential hands the runner's own environment to the user's
 # process, so its folder variables name the runner's folders. The user's script
-# first sets them from the user's own token, for itself and what it starts.
+# first sets them from the user's own profile, for itself and what it starts.
+# The profile path comes from the profile list rather than GetFolderPath, which
+# returns an empty string while a new profile's AppData folders don't exist yet.
 $userEnvironment = @'
 $ErrorActionPreference = 'Stop'
-$env:USERPROFILE = [Environment]::GetFolderPath('UserProfile')
-$env:LOCALAPPDATA = [Environment]::GetFolderPath('LocalApplicationData')
-$env:APPDATA = [Environment]::GetFolderPath('ApplicationData')
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+$env:USERPROFILE = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$sid").ProfileImagePath
+if (-not $env:USERPROFILE) { throw "The profile list has no profile folder for $sid" }
+$env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
+$env:APPDATA = Join-Path $env:USERPROFILE 'AppData\Roaming'
 $env:TEMP = Join-Path $env:LOCALAPPDATA 'Temp'
+New-Item -ItemType Directory -Force $env:LOCALAPPDATA, $env:APPDATA, $env:TEMP | Out-Null
 $env:TMP = $env:TEMP
 $env:USERNAME = [Environment]::UserName
 '@
