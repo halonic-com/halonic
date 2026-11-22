@@ -44,8 +44,8 @@ function refusalResponse(refusal: LaunchRefusal): Response {
  * `127.0.0.1:<port>` or `localhost:<port>` (421), any `Origin` is refused
  * (403), and the `Authorization` header must carry the launch token (401).
  * There is no sign-in, no password and no token-free route. It serves only
- * the run routes and the two routine routes ({@link engineRoutes}); `serve`'s
- * `createServer` is a different server.
+ * the run routes, the two routine routes and the chat-turn route
+ * ({@link engineRoutes}); `serve`'s `createServer` is a different server.
  *
  * @throws RangeError when the token is shorter than a launch token, or
  *   `maxBodyBytes` isn't a whole number above zero

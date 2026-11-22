@@ -55,6 +55,16 @@ export class RemoteEngine {
    */
   readonly pageRuns: PageRuns = { runsHarnesses: true, startsConnectors: true };
 
+  /**
+   * Where a chat, such as an agent's Try it, sends its turns: each one is `POST /api/chat-turn`.
+   * The engine checks trust and the turn's model settings before any model call. A failed model
+   * call comes back as the `ModelCallError` the remote executor rebuilds, so a missing key reads as
+   * it does on the page's own engine.
+   */
+  readonly chats: Pick<RunExecutor, "chatTurn"> = {
+    chatTurn: (request) => asStudioError(this.#executor.chatTurn(request)),
+  };
+
   constructor({ fetch, reportError }: RemoteEngineOptions) {
     this.#fetch = fetch;
     // No password: the shell holds the engine's token, so there is no sign-in.

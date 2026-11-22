@@ -2,7 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
-import { workspaceModelResolver } from "@halonicjs/adapter-workspace-models";
+import {
+  workspaceModelResolver,
+  workspaceModelSettings,
+} from "@halonicjs/adapter-workspace-models";
 import { createServer } from "@halonicjs/host-server";
 import {
   type ChatAgentSettings,
@@ -14,7 +17,6 @@ import { verifies } from "@halonicjs/testing-spec";
 import { definitionsOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { committedVersions } from "../../test/committed-versions.ts";
-import { workspaceModelSettings } from "./model-settings-gate.ts";
 
 let root: string;
 
@@ -55,33 +57,6 @@ const settings = (rest: Partial<ChatAgentSettings>): ChatAgentSettings => ({
 
 describe("the model settings of a served chat turn", () => {
   verifies("server.chat-turn-model-address", () => {
-    it("allows a secret only with the address its provider names", async () => {
-      const gate = workspaceModelSettings(await workspaceOf().then((w) => async () => w));
-      const allows = (hub: string, rest: Partial<ChatAgentSettings>) =>
-        gate.allows(hub, settings(rest));
-
-      expect(await allows("support", { secret: "openai-key" })).toBe(true);
-      expect(
-        await allows("support", { secret: "openai-key", baseUrl: "https://api.openai.com/v1/" }),
-      ).toBe(true);
-      expect(
-        await allows("support", {
-          type: "openai-compatible",
-          secret: "proxy-key",
-          baseUrl: "https://llm.acme.example/v1",
-        }),
-      ).toBe(true);
-      expect(await allows("support", { model: "x" })).toBe(true);
-
-      expect(
-        await allows("support", { secret: "openai-key", baseUrl: "https://evil.example/v1" }),
-      ).toBe(false);
-      expect(await allows("support", { secret: "proxy-key" })).toBe(false);
-      expect(await allows("support", { secret: "proxy-key", type: "anthropic" })).toBe(false);
-      expect(await allows("support", { secret: "unknown-key" })).toBe(false);
-      expect(await allows("gone", { secret: "openai-key" })).toBe(false);
-    });
-
     it(
       "follows a provider's secret once the change is committed, before a run starts",
       slowTest,

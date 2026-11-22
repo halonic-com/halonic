@@ -155,6 +155,16 @@ const ROUTES: &[EngineRoute] = &[
         &[],
         Answer::Json,
     ),
+    // One Try it model turn outside any run. The engine checks the turn's
+    // model settings against the trusted workspace's providers before it
+    // sends a stored key anywhere (HAL-15894).
+    route(
+        "POST /api/chat-turn",
+        Method::Post,
+        "/api/chat-turn",
+        &[],
+        Answer::Json,
+    ),
 ];
 
 /// The route a page names, when it is one of the table's and answers as

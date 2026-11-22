@@ -1,7 +1,6 @@
 import { launchTokenRefusalContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { chatTurnPath } from "./chat-turn-routes.ts";
 import { connectorCallPath } from "./connector-routes.ts";
 import { type EngineRoutePorts, engineRoutes } from "./engine-routes.ts";
 import {
@@ -32,6 +31,7 @@ const expectedRoutes = [
   "GET /api/run-updates",
   "GET /api/routines",
   "POST /api/routines/<scope>/<routine>/run",
+  "POST /api/chat-turn",
 ];
 
 /** A route's path with each `<name>` filled in, as a caller would send it. */
@@ -55,7 +55,7 @@ launchTokenRefusalContract("the engine role's server", {
 
 verifies("server.engine-server", () => {
   describe("createEngineServer", () => {
-    it("serves its hello, the run routes, run-updates and the two routine routes, and no other", () => {
+    it("serves its hello, the run routes, run-updates, the two routine routes and the chat turn, and no other", () => {
       const routes = engineRoutes({} as EngineRoutePorts);
       expect(routes.map((route) => `${route.method} ${route.path}`)).toEqual(expectedRoutes);
     });
@@ -71,7 +71,14 @@ verifies("server.engine-server", () => {
         expect(answer.headers.get("www-authenticate"), route).toBe("Bearer");
         expect(await answer.json(), route).toMatchObject({ code: "launch_token_required" });
       }
-      expect(calls).toEqual({ started: [], following: new Set(), listed: [], logged: [] });
+      expect(calls).toEqual({
+        started: [],
+        following: new Set(),
+        listed: [],
+        logged: [],
+        chatTurns: [],
+        settingsAsked: [],
+      });
     });
 
     it("answers 404 with the token to every route `serve` has and the engine doesn't", async () => {
@@ -84,7 +91,6 @@ verifies("server.engine-server", () => {
         "POST /api/logout",
         "GET /api/workspace",
         `POST ${webhookPathPrefix}acme/digest`,
-        `POST ${chatTurnPath}`,
         `POST ${connectorCallPath}`,
         `GET ${providerKeyPathPrefix}ACME_API_KEY`,
         `GET ${googlePathPrefix}setups`,

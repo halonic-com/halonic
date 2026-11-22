@@ -2,7 +2,7 @@ import type { ChatAnswerRequest } from "@halonicjs/app";
 import { RefusalsFeed } from "@halonicjs/studio-feature-library/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
-import { answerChatOn } from "../engine/answer-chat-on.ts";
+import { answerChatOn, chatExecutorOf } from "../engine/answer-chat-on.ts";
 import { fakeShell, serviceOn } from "../engine/engine-service.testing.ts";
 import { setup, writerFile } from "./workspace-agents.test-helper.ts";
 
@@ -51,7 +51,7 @@ verifies("studio.workspace-agents-chat", () => {
       const engine = serviceOn(fakeShell(), undefined, { mayStart: async () => trusted });
       const { executor } = await engine.open();
       const chatTurn = vi.spyOn(executor, "chatTurn").mockRejectedValue(new Error("no model here"));
-      const { host } = setup({ answerChat: answerChatOn(engine) });
+      const { host } = setup({ answerChat: answerChatOn(chatExecutorOf(engine)) });
       await host.answer(ref, { messages });
       expect(chatTurn).toHaveBeenCalledTimes(1);
 
@@ -79,7 +79,7 @@ verifies("studio.workspace-agents-chat", () => {
       });
       const feed = new RefusalsFeed();
       const { host } = setup({
-        answerChat: answerChatOn(engine, feed),
+        answerChat: answerChatOn(chatExecutorOf(engine), feed),
       });
       const chatHeard: string[] = [];
       await host.answer(ref, {
