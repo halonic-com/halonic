@@ -10,7 +10,6 @@
 
 import {
   hubWorkflows,
-  type RunDetail,
   type RunEventRefusal,
   RunEventRefused,
   RunEvents,
@@ -35,7 +34,7 @@ import {
 import { followUntilStopped } from "../../follow-run.ts";
 import type { Message } from "../../messages/define.ts";
 import { errorMessages } from "../../messages/general.ts";
-import { markPart, phrase, plainText } from "../../messages/phrase.ts";
+import { markPart, type Phrase, phrase, plainText } from "../../messages/phrase.ts";
 import { type NotWaiting, runsMessages } from "../../messages/runs.ts";
 import { endedInWords } from "../../messages/runs-list.ts";
 import { sandboxMessages } from "../../messages/sandbox.ts";
@@ -44,7 +43,7 @@ import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { endedAt, type RunClock } from "../../run-times.ts";
 import { loadSendWorkspace } from "../../run-workspace.ts";
-import { type SandboxGateRun, sandboxRunOf } from "../../sandbox-gate.ts";
+import { placedWarning, type SandboxGateRun, sandboxRunOf } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngine } from "../../workspace-engine.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
@@ -131,6 +130,7 @@ export async function sendToRun(
       throw refusedError(error.refusal, refused);
     }
     const sent = phrase`${markPart("done")} ${runsMessages.sent(event, shortRunId(run.id), workflow?.name ?? run.workflowId).phrase}`;
+    const ahead = [...engine.placedLines(), sent];
     context.printAhead(sent);
     const opened = engine.opened();
     const followed = await followUntilStopped(opened, loaded, (signal) =>
@@ -145,7 +145,7 @@ export async function sendToRun(
     }
     const failedChild = await failedChildEnding(new RunHistory(runs), followed, loaded);
     const progress = runProgress(followed, { ...facts, failedChild });
-    return { ...progress, lines: [sent, ...progress.lines] };
+    return { ...progress, lines: [...ahead, ...progress.lines] };
   } finally {
     live.end();
     await engine.close();
@@ -166,13 +166,15 @@ interface SendTarget {
  * The engine a send lets the run go on in, opened only once `RunEvents`
  * knows the run waits for the event, so a refused send checks neither trust
  * nor the sandbox. Both are checked as `halonic run` checks them before it
- * starts a run, with "Nothing was sent." as line 1's end.
+ * starts a run, with "Nothing was sent." as line 1's end, and the run's
+ * agents set to "On this computer", or on hold, get their ! lines as there.
  */
 class EngineOnSend implements Pick<RunExecutor, "send"> {
   private readonly context: CommandContext;
   private readonly setup: RunSetup;
   private readonly target: SendTarget;
   private engine: WorkspaceEngine | undefined;
+  private placed: readonly Phrase[] = [];
 
   constructor(context: CommandContext, setup: RunSetup, target: SendTarget) {
     this.context = context;
@@ -199,7 +201,15 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
       runs: [run],
       ending: nothingSent,
     });
+    // Before the event goes, so before the run's agents start again, as `halonic run` prints them.
+    this.placed = this.engine.placed.map(placedWarning);
+    for (const line of this.placed) this.context.printAhead(line);
     return this.engine.executor.send(runId, event);
+  }
+
+  /** The ! lines printed once the engine opened, which the result repeats first. */
+  placedLines(): readonly Phrase[] {
+    return this.placed;
   }
 
   /** The engine the event went to, to follow the run in; opened once the run took the event. */
