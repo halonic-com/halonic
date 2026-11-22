@@ -2,6 +2,7 @@
 
 - Approval: HAL-15238, the follow-up of HAL-15083; Liam approves this note in his review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BU7TFzW9hurfaOeNXdbFYZBuZ+u9rHw6BGiMxDtBdDGxgHfAxSN3Mk7AA/enJUWOSfVu8buS2ysNz4uqJrOaAw==
 
 ## What changes
 
