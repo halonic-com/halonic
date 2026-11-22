@@ -41,3 +41,27 @@ export const restoreBody = s
 
 /** What Studio gives to settle a proposal once its last Undo is gone. */
 export const settleBody = folderOfBody;
+
+/** What Studio gives to read a file's texts for Compare: the file by its path from the workspace root. */
+export const compareBody = s.object({ workspace: absolutePath, runId: id, path: id }).strict();
+
+/**
+ * What Studio gives for a choice made in Compare, other than Keep mine (a
+ * reject): the file, the choice, and the digest of the saved text Compare
+ * showed (`absent` for no file), so a later edit is never written over.
+ */
+export const chooseBody = s
+  .object({
+    workspace: absolutePath,
+    runId: id,
+    path: id,
+    choice: s.enum(["use-run", "combine-both"]),
+    seen: s.union([s.literal("absent"), s.string().regex(/^sha256:[0-9a-f]{64}$/)]),
+  })
+  .strict();
+
+/** What Studio gives to remove a proposal whose texts are gone. */
+export const removeBody = folderOfBody;
+
+/** What Studio gives to list a workspace's proposals settled in the last 30 days. */
+export const doneBody = listBody;

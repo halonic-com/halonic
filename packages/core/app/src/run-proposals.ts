@@ -3,16 +3,15 @@
 // changed becomes a proposal the person accepts or rejects from the Inbox.
 // Nothing here commits to a branch, pushes or makes anything live (7.6).
 
-import type { Clock, DefinitionStore, Digest } from "@halonicjs/ports";
+import type { Clock, ExpectedContent } from "@halonicjs/ports";
 import { placeOf } from "@halonicjs/workspace";
-import type { Trash } from "./review-types.ts";
-import { CopyProposalTexts, type RunCopies } from "./run-proposal-copy-texts.ts";
+import { CopyProposalTexts } from "./run-proposal-copy-texts.ts";
 import { ProposalDecisions } from "./run-proposal-decisions.ts";
-import { GitProposalTexts, type ProposalVcs } from "./run-proposal-git-texts.ts";
+import { GitProposalTexts } from "./run-proposal-git-texts.ts";
 import { ProposalParts } from "./run-proposal-parts.ts";
 import type { ProposedRecord, RunningRecord } from "./run-proposal-record.ts";
 import { ProposalSettling, type SettleResult } from "./run-proposal-settle.ts";
-import { type ProposalRecordLock, ProposalRecordStore } from "./run-proposal-store.ts";
+import { ProposalRecordStore } from "./run-proposal-store.ts";
 import type { ProposalTexts } from "./run-proposal-texts.ts";
 import { ProposalTextsByHistory } from "./run-proposal-texts-by-history.ts";
 import type {
@@ -20,6 +19,7 @@ import type {
   CompareTexts,
   InFileProposalTarget,
   InFileResult,
+  ProposalCompareChoice,
   ProposalFileParts,
   ProposalTarget,
   ProposedFile,
@@ -28,56 +28,12 @@ import type {
   RunProposal,
   UndoStep,
 } from "./run-proposal-types.ts";
+import type { RunProposalsOptions, RunWorktree } from "./run-proposals-options.ts";
 
 export type { RunCopies } from "./run-proposal-copy-texts.ts";
 export type { ProposalVcs } from "./run-proposal-git-texts.ts";
 export type { ProposalRecordLock } from "./run-proposal-store.ts";
-
-/** What the run proposal service needs from the host. */
-export interface RunProposalsOptions {
-  /**
-   * The workspace's version control, or `null` when it has none (history
-   * off). Its worktrees go in Halonic's data folder, never in the workspace.
-   */
-  readonly vcs: ProposalVcs | null;
-  /**
-   * Where runs with history off get their copy of the workspace
-   * (`app.run-proposal-history-off`). Without it, such a run can't start.
-   */
-  readonly copies?: RunCopies;
-  /**
-   * The records' own store, in the workspace's folder in the profile, as
-   * for review records. Never the workspace's store: git could bring a
-   * record in from there (HAL-3417).
-   */
-  readonly records: DefinitionStore;
-  /**
-   * Keeps other processes off a run's record while one decides it. Pass one
-   * when another process can open the same records; without it, only this
-   * process's turns keep the work on a record apart.
-   */
-  readonly recordLock?: ProposalRecordLock;
-  /** Hashes each file's base for the write-if-unchanged check. */
-  readonly digest: Digest;
-  /** Dates a proposal, so its ref can go after 30 days. */
-  readonly clock: Clock;
-  /**
-   * Receives the error of an `end` that couldn't finish. `end` never
-   * throws: the engine calls it after the run has ended, in the middle of
-   * a cancel or a parent's step. What it left is cleared at the next start.
-   */
-  readonly onEndFailed: (runId: string, error: unknown) => void;
-  /** The workspace's files, which Accept writes. */
-  readonly store: DefinitionStore;
-  /** Where Accept of a file the run deleted moves it, so Undo can bring it back. */
-  readonly trash: Trash;
-}
-
-/** What `open` gives the harness. */
-export interface RunWorktree {
-  /** The only folder the run may write workspace files in: absolute, outside the workspace. */
-  readonly folder: string;
-}
+export type { RunProposalsOptions, RunWorktree } from "./run-proposals-options.ts";
 
 /**
  * The proposals of one workspace's runs. One worktree per top-level run:
@@ -238,6 +194,15 @@ export class RunProposals {
   }
 
   /**
+   * The proposals settled in the last 30 days, the one settled last first
+   * (`app.run-proposal-done-list`), for the Inbox's Done heading: what was
+   * decided stays readable, without the run's texts.
+   */
+  done(): Promise<ProposedRecord[]> {
+    return this.settling.done();
+  }
+
+  /**
    * Accepts what the target covers (`app.run-proposal-accept`,
    * `app.run-proposal-trust`). Each undecided file is written with its own
    * `expected`, only while the saved file is still the run's base; one the
@@ -318,6 +283,31 @@ export class RunProposals {
    */
   compare(runId: string, path: string): Promise<CompareTexts> {
     return this.decisions.compare(runId, path);
+  }
+
+  /**
+   * Accepts a file the person changed since the run's base with the choice
+   * they made in Compare (`app.run-proposal-compare-choice`): `use-run`
+   * writes the run's text, or moves the file to the trash for a delete;
+   * `combine-both` writes the saved text and the run's put together. Either
+   * is written only while the saved file still holds `seen`, what Compare
+   * showed, so an edit made after it is never lost. Keep mine is
+   * {@link reject}.
+   *
+   * @param seen - the digest of the saved text Compare showed, or `absent` for no file
+   * @returns as for {@link accept}: the file under `changedOnDisk` when it
+   *   no longer holds `seen`, or under `refused` when Accept may never write it
+   * @throws when the run has no proposal, it doesn't propose the file, or the
+   *   file is decided; `CannotCombineError` when the two texts change the
+   *   same lines; `ProposalUnavailableError` when its ref is gone
+   */
+  choose(
+    runId: string,
+    path: string,
+    choice: ProposalCompareChoice,
+    seen: ExpectedContent,
+  ): Promise<AcceptResult> {
+    return this.decisions.choose(runId, path, choice, seen);
   }
 
   /**
