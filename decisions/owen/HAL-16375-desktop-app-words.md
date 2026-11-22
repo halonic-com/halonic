@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16375 (C699 rows 2, 7 and 8 from the words check of #5138, HAL-16233); small wording on an approved screen, decided by the team (HAL-2282); Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zPMa004eBnv2lt+hh5uTfrZrmneK6B0UCrKh4+ynh7EufktupfkOUmh9NrCB8S9dcs6ULO6BiNzANuvnwJvHAg==
 
 `runtime-missing`'s fixes in Studio said to "reinstall Halonic Studio" if
 the setup still doesn't finish. The installed app is named "Halonic"
