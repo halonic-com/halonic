@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-On Windows, when the agent sandbox was set up by a newer version of Halonic, the installer now says it was a newer version of Halonic and names the Remove sandbox button to press in it.
+On Windows, an older installer that finds the agent sandbox set up by a newer version of Halonic now says so, and says where to remove it: Settings › Agent sandbox › Remove sandbox.

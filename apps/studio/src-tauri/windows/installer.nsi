@@ -1232,7 +1232,7 @@ Function RefuseOlderSetupVersion
   ${ElseIf} $R1 = 1
     ${IfNot} ${Silent}
     ${AndIf} $PassiveMode <> 1
-      MessageBox MB_OK|MB_ICONEXCLAMATION "The agent sandbox on this computer was set up by a newer version of ${PRODUCTNAME}. To install ${PRODUCTNAME} ${VERSION}, first remove the sandbox in the newer version (Settings › Agent sandbox › Remove sandbox), then run this installer again."
+      MessageBox MB_OK|MB_ICONEXCLAMATION "The agent sandbox on this computer was set up by a newer version of ${PRODUCTNAME}. To install ${PRODUCTNAME} ${VERSION}, first remove the sandbox in the newer version (Settings › Agent sandbox › Remove sandbox). If it's no longer installed, install it again to remove the sandbox. Then run this installer again."
     ${EndIf}
     SetErrorLevel 2
     Quit
