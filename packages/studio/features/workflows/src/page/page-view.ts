@@ -1,7 +1,9 @@
 import type { WorkflowStep } from "../api.ts";
 import type { StepNames } from "../configuration/problem-lines.ts";
 import { besideDockedCard } from "../runs/docked-card.ts";
+import { stepCardDocks } from "./docked-step-card.tsx";
 import { pageWords } from "./page-words.ts";
+import { dockHasCard } from "./run-dock.tsx";
 
 /**
  * The page's tabs, the same union as `WorkflowView` in `workflow-page.tsx`. Kept here rather than
@@ -57,4 +59,12 @@ function viewLayout(view: WorkflowView): string {
     case "configuration":
       return "min-w-0 flex-1 overflow-auto";
   }
+}
+
+/** Whether a card is docked at the right: the start form or a run's, or a picked step's own. */
+export function hasDockedCard(
+  run: Parameters<typeof dockHasCard>[0],
+  step: Parameters<typeof stepCardDocks>[0],
+): boolean {
+  return dockHasCard(run) || stepCardDocks(step);
 }
