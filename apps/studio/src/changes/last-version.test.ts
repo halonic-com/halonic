@@ -72,6 +72,11 @@ verifies("source-control.change-list", () => {
       expect(lastVersionFromDiff(text, "one\ntwo")).toBe("one\ntwo\n");
     });
 
+    it("keeps blank lines that git prints without their space under diff.suppressBlankEmpty", () => {
+      const text = diff(...header, "@@ -1,4 +1,4 @@", " one", "", "-two", "+three", "");
+      expect(lastVersionFromDiff(text, "one\n\nthree\n\n")).toBe("one\n\ntwo\n\n");
+    });
+
     it("refuses a binary file", () => {
       const text = diff("diff --git a/i.png b/i.png", "Binary files a/i.png and b/i.png differ");
       expect(() => lastVersionFromDiff(text, null)).toThrow("isn't text");

@@ -43,13 +43,18 @@ export function lastVersionFromDiff(diff: string, current: string | null): strin
     .join("");
 }
 
-/** The old file's lines from the diff's one hunk: context and removed lines. */
+/**
+ * The old file's lines from the diff's one hunk: context and removed lines. With git's
+ * `diff.suppressBlankEmpty` set, a blank context line comes without its space, as an empty line;
+ * only the empty string after the diff's last line break is no line at all.
+ */
 function oldLines(hunk: readonly string[]): OldLine[] {
   const old: OldLine[] = [];
   // Whether the line a "\ No newline at end of file" marker follows was in the old file.
   let previousWasOld = false;
-  for (const line of hunk) {
-    const marker = line[0];
+  const lines = hunk.at(-1) === "" ? hunk.slice(0, -1) : hunk;
+  for (const line of lines) {
+    const marker = line === "" ? " " : line[0];
     if (marker === " " || marker === "-") {
       old.push({ text: line.slice(1), endsWithBreak: true });
       previousWasOld = true;

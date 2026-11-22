@@ -36,6 +36,7 @@ import { SharedCopy } from "./shared-copy.ts";
 import { statusArgs } from "./status-args.ts";
 import { ignoreStudioFolder } from "./studio-ignore.ts";
 import { filesChangedSince, readFileAtVersion } from "./version-file.ts";
+import { refuseLossyText } from "./whole-text.ts";
 import { type ChoicesMemory, UpdatesMerge } from "./workspace-merge.ts";
 
 /** What git said, as the shell's `git` command gives it back. */
@@ -156,6 +157,8 @@ export class WorkspaceChanges implements ChangesSource {
   }
 
   async replaceFile(path: string, text: string, expected: string | null): Promise<ReplaceResult> {
+    // Every text Source control writes comes from git or from the file itself (HAL-16343).
+    refuseLossyText(path, text);
     const result = await this.#options.files.write(path, text, {
       expected: expected === null ? "absent" : await contentDigest(expected, this.#options.digest),
     });
