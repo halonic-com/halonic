@@ -6,7 +6,8 @@
 // can.
 
 import type { SendingSettings } from "@halonicjs/app";
-import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import type { LoadedWorkspace } from "@halonicjs/workspace";
+import { isGoogleConnector } from "./connector-file.ts";
 
 /**
  * The sending settings of the engine's runs on `workspace`: `saved`, the
@@ -36,12 +37,9 @@ export function runSendingSettings(
 
 /** How a person switches sending on for `connector`, as the model may tell them. */
 function nextStep(workspace: LoadedWorkspace, connector: string): string {
-  const file = filesOf(workspace, "connector").find(
-    (candidate) => candidate.value.id === connector,
-  );
   // Only a Google connector's id from the workspace's own file goes into the command.
-  if (file !== undefined && "google" in file.value.transport) {
-    return `to switch it on, run halonic google allow-sending ${file.value.id} on`;
+  if (isGoogleConnector(workspace, connector)) {
+    return `to switch it on, run halonic google allow-sending ${connector} on`;
   }
   return "the CLI can't switch it on yet";
 }

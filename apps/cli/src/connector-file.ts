@@ -32,6 +32,19 @@ export function isIntegrationConnector(workspace: LoadedWorkspace, id: string): 
   return file !== undefined && "integration" in file.value.transport;
 }
 
+/**
+ * Whether connector `id` is a Google connector (`transport: { google }`) of
+ * the workspace's own files, the kind whose sending a person switches on with
+ * `halonic google allow-sending` (HAL-15772).
+ *
+ * @example
+ * isGoogleConnector(workspace, "mailbox"); // true for `transport: { google: { account: … } }`
+ */
+export function isGoogleConnector(workspace: LoadedWorkspace, id: string): boolean {
+  const file = connectorFile(workspace, id);
+  return file !== undefined && "google" in file.value.transport;
+}
+
 function connectorFile(workspace: LoadedWorkspace, id: string) {
   return filesOf(workspace, "connector").find((candidate) => candidate.value.id === id);
 }
