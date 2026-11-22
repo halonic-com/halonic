@@ -25,7 +25,7 @@ verifies("workspace.references", () => {
           "name: Billing\nmodels:\n  careful: { provider: mok, model: echo }\n",
       });
       expect(errors).toEqual([
-        "hubs/billing/hub.yaml models.careful.provider: Alias careful uses unknown provider mok. Did you mean mock?",
+        "hubs/billing/hub.yaml models.careful.provider: The model alias careful names the provider mok, which the workspace doesn't have. Did you mean mock?",
       ]);
     });
 
@@ -34,7 +34,7 @@ verifies("workspace.references", () => {
         "models.yaml": "aliases:\n  careful:\n    provider: mok\n    model: echo\n",
       });
       expect(errors).toEqual([
-        "models.yaml aliases.careful.provider: Alias careful uses unknown provider mok. Did you mean mock?",
+        "models.yaml aliases.careful.provider: The model alias careful names the provider mok, which the workspace doesn't have. Did you mean mock?",
       ]);
     });
 
@@ -44,7 +44,7 @@ verifies("workspace.references", () => {
           "name: Billing\nmodels:\n  smart: { provider: anthropic, model: claude }\n",
       });
       expect(errors).toEqual([
-        "hubs/billing/hub.yaml models.smart.provider: Alias smart uses unknown provider anthropic. Add providers/anthropic.yaml, or point the alias smart at a provider the workspace has.",
+        "hubs/billing/hub.yaml models.smart.provider: The model alias smart names the provider anthropic, which the workspace doesn't have. Add providers/anthropic.yaml, or point the model alias smart at a provider the workspace has.",
       ]);
     });
 
@@ -86,7 +86,6 @@ verifies("workspace.references", () => {
           "name: Billing\nmodels:\n  careful: { provider: mock, model: echo }\n  near: { provider: local, model: llama }\n",
         "agents/writer.agent.yaml": "name: Writer\nmodel: local/llama\n",
       });
-      expect(errors.filter((error) => error.includes("unknown provider"))).toEqual([]);
       expect(errors.filter((error) => error.includes("the workspace doesn't have"))).toEqual([]);
     });
   });
