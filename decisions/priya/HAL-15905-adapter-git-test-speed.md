@@ -2,6 +2,7 @@
 
 - Approval: Liam signs this on HAL-15905 (board decision, 22 Nov: make `@halonicjs/adapter-git`'s tests take under 30 s)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Sft93emEKf0BO08Ryf0LZ96zarQ8QjV8nAC6LCVbJ7+SA4obuDwqebWoCTyIOGPDOUQCx3UfE2fPedLldGThBg==
 
 `packages/adapters/git/src/contract.test.ts` ran the whole Vcs contract, 271 tests and about 45 s
 of git processes, in one file. Vitest runs a file on one worker, so that file alone set the
