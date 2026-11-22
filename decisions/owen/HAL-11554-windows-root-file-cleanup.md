@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-11554, Liam's yes to option 1 (22 Nov); Chief: a team decision, no board card (HAL-16247); Liam signs this note in review on HAL-11554
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TEJWwkfZtg/ADTMLNF/Te0w5/K+jkmobID6iOzMgQAuFq1PPeJnrSJdj9DlwL0JL3VpV+EqCZRdaEStUy9f/DQ==
 
 On Windows, `srt-win acl stamp` makes an empty file for each missing root
 deny path in the working folder (`.npmrc`, `.mcp.json`,
