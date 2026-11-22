@@ -208,7 +208,7 @@ function LoadingNote({ slow }: { readonly slow: boolean }) {
 /**
  * The ticked key option's body: the provider switch, the key field or the saved key, and the
  * links. `problemId` is the message that says what's wrong with the pasted key, which the key
- * field is then described by, so going back to it repeats the message (C575).
+ * field is then described by and marked invalid, so going back to it repeats the message (C575).
  */
 export function KeyBody(props: {
   readonly pick: PickModel;
@@ -247,6 +247,7 @@ export function KeyBody(props: {
             placeholder={words.keyPlaceholder}
             disabled={state.busy?.kind === "testing-key"}
             {...(props.problemId === undefined ? {} : { describedBy: props.problemId })}
+            invalid={props.problemId !== undefined}
             mono
           />
         </Field>
