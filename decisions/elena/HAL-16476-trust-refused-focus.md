@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16476 (from visual check C711 on HAL-16447, rows 7 and 8; Liam reviews the trust changes)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G+2M0I9+Trt5EuOjGP7pgDxxJJ+5S+4JHdd1n5IV22CVNw+o3AifCudD+DN0us3bxUW4SrQ6y2ph1WE0VWsQAw==
 
 **The trust dialog.** Since #5223, **Trust** pressed after the workspace changed under the open
 dialog saves nothing and says "Couldn't save trust: this workspace changed. Nothing was started."
