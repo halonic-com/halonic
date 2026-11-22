@@ -2,6 +2,7 @@
 
 - Approval: HAL-15539, comment 347696b5-3b53-46a1-8fde-623fda666cc2 (Liam leaves the tone to the author); C630 finding (HAL-15782, comment a5e52d13-1826-4829-a8a6-465351009cf4); task HAL-15789; Liam approves this note by signing it in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:j5UvVCr4XmviJSKEOeza4oDN6t8J8Tj3OvbzU6WMxNO/Y+8TYHgcMyykoGfwuOhvhgBJv+rdcCPY1F7IR9C+Dw==
 
 ## What changes
 
