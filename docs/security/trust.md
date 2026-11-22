@@ -167,6 +167,15 @@ boundary. The boundary is the sandbox, which denies a run the profile folder
 where the list is kept, so a tool can't edit the list even by removing the
 marker.
 
+### A run waiting for "Allow this address?"
+
+A run whose model call waits for your answer to "Allow this address?" shows as
+"! Needs you" in `halonic runs`. `halonic runs show` ends with "! Waiting for
+your answer in Studio: may provider "gateway" send key "gateway-key" to
+https://gw.example?" and, under it, "Answer "Allow this address?" in Studio.
+Without an answer within 10 minutes, the model call fails." Only Studio can
+answer it; `halonic runs send` can't.
+
 ### A harness agent's key
 
 A Claude Code or Codex agent set to "On this computer" signs in with its own
