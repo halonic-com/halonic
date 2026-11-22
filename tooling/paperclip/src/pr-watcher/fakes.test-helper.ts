@@ -96,6 +96,8 @@ export function task(
     assigneeAgentId: assignee,
     running: false,
     openChildren: false,
+    monitorNextCheckAt: null,
+    monitorLastTriggeredAt: null,
     pulls: [
       { repo: "halonic-com/halonic", number, branch: branch ?? `${owner}/HAL-${number}-work` },
     ],

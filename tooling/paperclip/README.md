@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.reviewer-paths`, `paperclip.queue-prio`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.reviewer-paths`, `paperclip.queue-prio`
 
 ## PR watcher
 
@@ -69,8 +69,8 @@ merged one, and one or two list pages per repository each pass.
 `tools.ts` (the agent tools) and `host.ts`, the adapter to Paperclip's
 plugin API. It asks for the fewest capabilities the watcher and the tools
 need: jobs, reading companies, agents, tasks and comments, creating
-comments, wake-ups, `issues.update`, outbound HTTP, reading a secret and
-registering agent tools. No webhooks, UI, files or processes.
+comments, wake-ups, `issues.update`, outbound HTTP, reading a secret,
+registering agent tools and writing metrics. No webhooks, UI, files or processes.
 
 - **Status changes:** the manifest can't narrow `issues.update`, so
   `host.ts` is the only file that changes a task's status, and its
@@ -123,6 +123,43 @@ token as the watcher, and give up after 25 s.
   reviewer signed an approval on its head. The ones that conflict or have a
   red `ci-ok` come first, marked `NEEDS YOU`: the "check your open PRs
   first" rule (HAL-14785) in one call. About 3 requests per pull request.
+
+## Metrics
+
+The numbers for the before/after comparison in the tools plan (HAL-15920).
+Only counts, no task or pull request text; the host puts the plugin's id in
+front of each name. A metric that doesn't save is logged and changes nothing.
+
+- **Each pass, per company** (tags `companyId`, `dryRun`):
+  `pr_watcher.tasks_with_pr`, `.done`, `.woken`, `.failed`,
+  `.github_requests`, `.duration_ms`. In a dry run `done` and `woken` count
+  what it would have done.
+- **Monitors, each pass:** `monitors.set` (a Paperclip monitor due later on an
+  open task), `monitors.fired` (one that fired in the last 10 minutes), and
+  both again for tasks with a pull request (`*_on_pr_tasks`). Each fired
+  monitor is one model run that only checks. A task closed since its monitor
+  fired isn't open any more, so `fired` is a lower bound.
+- **Each tool call** (tags `companyId`, `tool`, `outcome`): `tools.calls` and
+  `tools.github_requests`.
+
+## Leaving a task the watcher watches
+
+Paperclip wakes an agent again ("disposition repair") when a run ends with
+its task open and no wait path it knows: a blocker, a monitor due later, a
+pending interaction, a human assignee. The watcher isn't one of them. So an
+author who waits on CI, the merge queue or a merge on their own task leaves
+it `in_progress` with **one** slow monitor, about 4 hours out, at most 3
+checks. The watcher's wake or done replaces the 20-minute CI checks and the
+60-minute merge checks; the monitor fires only if the watcher missed
+something. Waiting for review doesn't change: the task goes to the reviewer
+with status `todo`.
+
+`blocked` doesn't work for this: a blocker must be a task, and a pull
+request isn't one; Paperclip refuses the plugin's wake while a blocker is
+open, so it would need `issue.relations.write` to clear it first; and
+`blocked` without a blocker wakes its unblock owner at once. The team's
+monitor rule changes only once the board has installed the plugin and
+turned dry run off.
 
 ## Reviewer path list
 

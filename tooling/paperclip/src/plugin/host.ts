@@ -30,6 +30,11 @@ export function doneOnly(patch: Readonly<Record<string, unknown>>): { status: "d
   return { status: "done" };
 }
 
+/** A host time (a `Date`, or a string over the wire) as ISO, or null when there is none. */
+function isoOrNull(value: Date | string | null | undefined): string | null {
+  return value == null ? null : new Date(value).toISOString();
+}
+
 type ListedIssue = Awaited<ReturnType<HostApi["issues"]["list"]>>[number];
 
 async function everyIssue(host: HostApi, companyId: string): Promise<ListedIssue[]> {
@@ -61,6 +66,8 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
             assigneeAgentId: issue.assigneeAgentId,
             running: issue.activeRun != null,
             openChildren: parents.has(issue.id),
+            monitorNextCheckAt: isoOrNull(issue.monitorNextCheckAt),
+            monitorLastTriggeredAt: isoOrNull(issue.monitorLastTriggeredAt),
           }),
         );
     },

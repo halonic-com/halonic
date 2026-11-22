@@ -12,6 +12,10 @@ export interface TaskRow {
   readonly running: boolean;
   /** It has a child task that isn't done or cancelled. */
   readonly openChildren: boolean;
+  /** When its Paperclip monitor checks next, as an ISO time, or null without one. */
+  readonly monitorNextCheckAt: string | null;
+  /** When its monitor last fired, as an ISO time, or null. */
+  readonly monitorLastTriggeredAt: string | null;
 }
 
 /** A task comment: who wrote it, when, and what it says. */

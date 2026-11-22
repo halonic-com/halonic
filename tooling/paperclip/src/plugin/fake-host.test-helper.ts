@@ -10,6 +10,8 @@ export interface FakeIssue {
   readonly assigneeAgentId: string | null;
   readonly parentId?: string | null;
   readonly activeRun?: { readonly id: string } | null;
+  readonly monitorNextCheckAt?: Date | null;
+  readonly monitorLastTriggeredAt?: Date | null;
 }
 
 /** A comment as the fake host stores it. */
@@ -35,7 +37,13 @@ export function fakeHost(issues: FakeIssue[], comments: Record<string, FakeComme
         issues
           .filter((issue) => issue.status === input.status)
           .slice(input.offset, input.offset + input.limit)
-          .map((issue) => ({ parentId: null, activeRun: null, ...issue })),
+          .map((issue) => ({
+            parentId: null,
+            activeRun: null,
+            monitorNextCheckAt: null,
+            monitorLastTriggeredAt: null,
+            ...issue,
+          })),
       listComments: async (issueId: string) => comments[issueId] ?? [],
       createComment: async (issueId: string, body: string) => {
         writes.push({ kind: "comment", issueId, body });
@@ -61,6 +69,20 @@ export function fakeHost(issues: FakeIssue[], comments: Record<string, FakeComme
   return { host: fake as unknown as HostApi, writes };
 }
 
+/** A metrics client that records every value, or refuses every write when `fail` is set. */
+export function fakeMetrics(fail = false) {
+  const written: { name: string; value: number; tags: unknown }[] = [];
+  const metrics = {
+    write: async (name: string, value: number, tags?: unknown) => {
+      if (fail) {
+        throw new Error("metrics store is down");
+      }
+      written.push({ name, value, tags });
+    },
+  };
+  return { metrics, written };
+}
+
 /** One GitHub request the job sent. */
 export interface SentRequest {
   readonly url: string;
@@ -80,11 +102,13 @@ export function fakeJobContext(options: {
   unconfigured?: readonly string[];
   answers: Record<string, unknown>;
   secret?: () => Promise<string>;
+  metricsFail?: boolean;
 }) {
   const sent: SentRequest[] = [];
   const logs: { level: string; message: string; meta: unknown }[] = [];
   const resolved: unknown[] = [];
   const signals: unknown[] = [];
+  const { metrics, written } = fakeMetrics(options.metricsFail === true);
   const ctx = {
     ...options.host,
     companies: {
@@ -131,6 +155,7 @@ export function fakeJobContext(options: {
       info: (message: string, meta?: unknown) => logs.push({ level: "info", message, meta }),
       error: (message: string, meta?: unknown) => logs.push({ level: "error", message, meta }),
     },
+    metrics,
   };
-  return { ctx: ctx as unknown as JobApi, sent, logs, resolved, signals };
+  return { ctx: ctx as unknown as JobApi, sent, logs, resolved, signals, metrics: written };
 }
