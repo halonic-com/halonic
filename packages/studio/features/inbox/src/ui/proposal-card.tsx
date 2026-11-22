@@ -1,4 +1,4 @@
-import { Button, CommandBox, inlineLinkClasses } from "@halonicjs/studio-kit";
+import { Button, type ButtonVariant, CommandBox, inlineLinkClasses } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useId, useRef } from "react";
 import {
   beforeAcceptLines,
@@ -149,12 +149,21 @@ function ProposalHeader({
   );
 }
 
-/** **Reject all** and **Accept all** (Q3): one undo step each, for what is still undecided. */
+/**
+ * **Reject all** and **Accept all** (Q3): one undo step each, for what is still undecided. Accept
+ * all is the page's one primary button; a change's own buttons are plain words (C667 #1).
+ */
 function AllButtons({ state }: { readonly state: ProposalDecisionState }) {
   return (
     <div className="ml-auto flex flex-wrap gap-2">
-      <DecideButton state={state} verb="reject" target="all" label="Reject all" />
-      <DecideButton state={state} verb="accept" target="all" label="Accept all" />
+      <DecideButton
+        state={state}
+        verb="reject"
+        target="all"
+        label="Reject all"
+        variant="secondary"
+      />
+      <DecideButton state={state} verb="accept" target="all" label="Accept all" variant="primary" />
     </div>
   );
 }
@@ -169,7 +178,7 @@ function BeforeAccept({
 }) {
   const lines = beforeAcceptLines(item);
   return (
-    <div className="flex flex-col gap-1 text-body text-fg-muted">
+    <div className="flex flex-col gap-1 text-small text-fg-muted">
       {lines.map((line) => (
         <p key={line}>{line}</p>
       ))}
@@ -201,7 +210,11 @@ const decidedWords: Partial<Record<ProposalFile["decision"], string>> = {
   "not-applicable": "Can't be written",
 };
 
-/** One change (Q5, Q6): its line, then **Reject** and **Accept**, or what was decided, muted. */
+/**
+ * One change (Q5, Q6): its line, then **Reject** and **Accept** as plain words, or what was
+ * decided, muted. The line keeps at least 16 rem, so in a narrow pane the buttons wrap under it
+ * instead of squeezing a path until it breaks mid-word (C667 #2).
+ */
 function ChangeRow({
   file,
   runId,
@@ -225,15 +238,24 @@ function ChangeRow({
   return (
     <li className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="min-w-0 flex-1 text-body wrap-break-word">{changeLine(file)}</span>
+        <span className="min-w-0 flex-1 basis-64 text-body wrap-break-word">
+          {changeLine(file)}
+        </span>
         {decided === undefined && buttons && !changedSinceRun ? (
           <span className="flex gap-2">
-            <DecideButton state={state} verb="reject" target={target} label="Reject" />
+            <DecideButton
+              state={state}
+              verb="reject"
+              target={target}
+              label="Reject"
+              variant="ghost"
+            />
             <DecideButton
               state={state}
               verb="accept"
               target={target}
               label="Accept"
+              variant="ghost"
               buttonRef={acceptRef}
             />
           </span>
@@ -249,30 +271,36 @@ function ChangeRow({
 }
 
 /**
- * A decision's button (Q6): busy while it is sent, keeping focus; while another is sent it
- * ignores presses but stays where it is.
+ * A decision's button (Q6): busy while it is sent, keeping focus; while another is sent it is
+ * unavailable (`aria-disabled`, so it stays focusable) and points at the busy one, as a Dialog's
+ * Cancel points at its busy confirming button (C667 #4).
  */
 function DecideButton({
   state,
   verb,
   target,
   label,
+  variant,
   buttonRef,
 }: {
   readonly state: ProposalDecisionState;
   readonly verb: ProposalVerb;
   readonly target: DecisionTarget;
   readonly label: string;
+  readonly variant: ButtonVariant;
   readonly buttonRef?: (button: HTMLButtonElement | null) => void;
 }) {
-  const { pending } = state;
+  const { pending, busyId } = state;
   const busy = pending !== null && pending.verb === verb && sameTarget(pending.target, target);
+  const waiting = pending !== null && !busy;
   return (
     <Button
       {...(buttonRef === undefined ? {} : { ref: buttonRef })}
+      {...(busy ? { id: busyId } : {})}
       size="sm"
-      variant={verb === "accept" ? "primary" : "secondary"}
+      variant={variant}
       busy={busy}
+      unavailable={waiting ? { reason: busyId } : undefined}
       onClick={() => state.decide(verb, target)}
     >
       {label}

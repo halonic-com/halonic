@@ -121,6 +121,36 @@ verifies("inbox.proposal-page", () => {
       expect(text.indexOf("notes/a.md changed")).toBeGreaterThan(outside);
       expect(text).toContain("See run 01JD8Q");
     });
+
+    // C667 #1: the kit allows one primary per view, and flow-inbox 5.6 draws a change's buttons as words.
+    it("has Accept all as its one primary button, and each change's Reject and Accept as plain words", () => {
+      const { root } = open(fakeDecisions());
+      const primary = [...root.querySelectorAll("button")].filter((b) =>
+        b.classList.contains("bg-primary"),
+      );
+      expect(primary.map((b) => b.textContent?.trim())).toEqual(["Accept all"]);
+      for (const button of [...buttons(root, "Accept"), ...buttons(root, "Reject")]) {
+        expect(button.className).toContain("text-fg-muted");
+        expect(button.className).not.toContain("border-border-strong");
+      }
+    });
+
+    // C667 #2: at 720 and 360 the line shrank beside its buttons and broke paths mid-word.
+    it("keeps each change's line at least 16 rem wide, so its buttons wrap under it", () => {
+      const { root } = open(fakeDecisions());
+      const line = root.querySelector("li span");
+      expect(line?.textContent).toBe("notes/a.md changed");
+      expect(line?.classList.contains("basis-64")).toBe(true);
+    });
+
+    // C667 #3: flow-inbox 5.6 point 2, "a plain line in text-small fg-muted".
+    it("says what accepting does in small muted text, the See run link with it", () => {
+      const { root } = open(fakeDecisions());
+      const seeRun = buttons(root, "See run 01JD8Q ›")[0];
+      const block = seeRun?.closest(".flex-col");
+      expect(block?.classList.contains("text-small")).toBe(true);
+      expect(block?.classList.contains("text-fg-muted")).toBe(true);
+    });
   });
 
   describe("deciding", () => {
@@ -176,6 +206,35 @@ verifies("inbox.proposal-page", () => {
       expect(root.querySelector('[aria-busy="true"]')).not.toBeNull();
       expect(decisions.reject).not.toHaveBeenCalled();
       await act(async () => answer(wrote("u1")));
+    });
+
+    // C667 #4: Q6, "the others ignore presses but stay focusable (aria-disabled)".
+    it("marks the other buttons aria-disabled while a decision is sent, not disabled, and pointing at the busy one", async () => {
+      let answer: (decided: ProposalDecided) => void = () => {};
+      const decisions = fakeDecisions({
+        accept: vi.fn(() => new Promise<ProposalDecided>((resolve) => (answer = resolve))),
+      });
+      const { root } = open(decisions);
+
+      await press(buttons(root, "Accept")[0]);
+
+      const busy = root.querySelector<HTMLButtonElement>('[aria-busy="true"]');
+      const others = [...root.querySelectorAll("button")].filter(
+        (b) =>
+          b !== busy &&
+          ["Reject all", "Accept all", "Reject", "Accept"].includes(b.textContent?.trim() ?? ""),
+      );
+      expect(busy?.getAttribute("aria-disabled")).toBeNull();
+      expect(others).toHaveLength(5);
+      for (const button of others) {
+        expect(button.getAttribute("aria-disabled")).toBe("true");
+        expect(button.disabled).toBe(false);
+        expect(button.getAttribute("aria-describedby")).toContain(busy?.id ?? "no busy id");
+      }
+
+      await act(async () => answer(wrote("u1")));
+
+      expect(root.querySelectorAll('[aria-disabled="true"]')).toHaveLength(0);
     });
 
     it("says a failed accept with its reason and Try again, and leaves the change undecided", async () => {
