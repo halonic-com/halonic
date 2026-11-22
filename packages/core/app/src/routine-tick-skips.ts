@@ -2,6 +2,7 @@
 // skip records: the catch-up rule's ranges, single times the overlap rule or a
 // changed routine dropped, and the times whose start was refused.
 
+import { isRunTargetNotFound } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
 import type { LastRuns } from "./routine-last-runs.ts";
 import type { RoutineTickResult } from "./routine-scheduler.ts";
@@ -66,8 +67,15 @@ export class TickSkips {
    * a kind: a `KindedError`'s message and fix are safe to show, and an
    * `internal` one's are not. A step that leads to a command (the error's
    * `command`, which the Run panel shows in a CommandBox) sets `toCommand`.
+   * A start refused because what it starts doesn't exist is
+   * `target-unavailable`, `not-found`, so the row can say so in its own words
+   * rather than as a problem Halonic can't explain (HAL-15524).
    */
   addRefused(time: DueTime, error: unknown): void {
+    if (isRunTargetNotFound(error)) {
+      this.addTimes([time], "target-unavailable", { why: "not-found" });
+      return;
+    }
     if (errorKindOf(error) === "internal" || !(error instanceof Error)) {
       this.addTimes([time], "start-refused");
       return;

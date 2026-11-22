@@ -13,6 +13,7 @@ const daily = {
   name: "Daily",
   target: { kind: "workflow", hubId: "acme", id: "support-reply", input: "{}" },
   targetName: "Support reply",
+  enabled: true,
 } satisfies RunNowRoutine;
 
 /** The engine lock's refusal, as the window's `engine-lock.ts` words it. */

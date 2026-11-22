@@ -222,6 +222,13 @@ verifies("studio.workspace-routines", () => {
             count: 1,
           },
           {
+            reason: "target-unavailable",
+            why: "not-found",
+            from: "2026-11-01T09:00:00Z",
+            to: "2026-11-01T09:00:00Z",
+            count: 1,
+          },
+          {
             reason: "start-refused",
             sentence: "This window can't run Briefing.",
             fix: "Open Acme in Studio, then try again.",
@@ -246,6 +253,7 @@ verifies("studio.workspace-routines", () => {
     expect(skips.map(({ reason, sentence, fix }) => [reason, sentence, fix])).toEqual([
       ["missed", undefined, undefined],
       ["target-in-trash", undefined, undefined],
+      ["target-not-found", undefined, undefined],
       ["start-refused", "This window can't run Briefing.", "Open Acme in Studio, then try again."],
       ["start-refused", undefined, undefined],
     ]);

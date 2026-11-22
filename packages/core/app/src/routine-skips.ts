@@ -27,9 +27,11 @@ export type SkipReason =
  * the live version (`never-live`, "Briefing isn't live"), or it is live
  * but its saved file is gone, as in the trash (`in-trash`, "Briefing is in
  * the trash"). A target that was live once but left the live version, say
- * moved to the trash before a new version, reads as `never-live` too.
+ * moved to the trash before a new version, reads as `never-live` too. A
+ * start the executor refused because the hub, workflow or agent doesn't
+ * exist is `not-found` ("gone-report isn't in this workspace", HAL-15524).
  */
-export type TargetUnavailableWhy = "never-live" | "in-trash";
+export type TargetUnavailableWhy = "never-live" | "in-trash" | "not-found";
 
 /** Due times of one routine a tick dropped for one reason, to add to its records. */
 export interface SkippedTimes {
@@ -263,7 +265,11 @@ const knownReasons: Record<SkipReason, true> = {
 };
 const reasons: ReadonlySet<string> = new Set(Object.keys(knownReasons));
 
-const knownWhys: Record<TargetUnavailableWhy, true> = { "never-live": true, "in-trash": true };
+const knownWhys: Record<TargetUnavailableWhy, true> = {
+  "never-live": true,
+  "in-trash": true,
+  "not-found": true,
+};
 const whys: ReadonlySet<string> = new Set(Object.keys(knownWhys));
 
 /**

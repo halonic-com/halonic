@@ -25,6 +25,8 @@ export function useRunNow(
   routine: RoutineView | undefined,
   gate: RunNowGate,
   openRun: ((runId: string) => void) | undefined,
+  /** Reads the runs again once Run now is done, so the Runs view shows a new run at once (C587 #4). */
+  onDone: () => void,
 ): RunNow {
   const toasts = useToastStore();
   // A second press while the host still starts the first run would start a second run.
@@ -34,7 +36,10 @@ export function useRunNow(
     if (routine === undefined || starting || gate.unavailable !== undefined) return;
     setAsking(false);
     setStarting(true);
-    void runRoutineNow(host, toasts, routine, openRun).finally(() => setStarting(false));
+    void runRoutineNow(host, toasts, routine, openRun).finally(() => {
+      setStarting(false);
+      onDone();
+    });
   };
   const press = () => {
     if (routine === undefined || starting) return;

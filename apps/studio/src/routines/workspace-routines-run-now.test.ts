@@ -41,6 +41,13 @@ verifies("studio.workspace-routines", () => {
       refusal: { reason: "not-trusted" },
     });
     expect((await untrusted.host.list())[0]?.pausedUntilTrusted).toBe(true);
+    // The page reads what the list's row says, so its Runs view agrees with it (C587 #1).
+    expect(await untrusted.host.read(weekly)).toMatchObject({ pausedUntilTrusted: true });
+    expect(await gone.host.read({ hubId: "acme", id: "lost" })).toMatchObject({
+      targetState: "not-found",
+      startErrors: ['unknown agent "nobody"'],
+      pausedUntilTrusted: false,
+    });
   });
 
   it("says the engine isn't answering when it can't be reached, and has no Run now without one", async () => {

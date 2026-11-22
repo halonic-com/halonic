@@ -120,7 +120,7 @@ export function RoutineScreen({
   const routine = load.kind === "ready" ? load.routine : undefined;
   const runs = useRoutineRuns(host, routine);
   const gate = useRunNowGate(host, routine, sandboxStartCheck);
-  const runNow = useRunNow(host, routine, gate, openRun);
+  const runNow = useRunNow(host, routine, gate, openRun, runs.retry);
   const views = routineTabs(runs.load, routine);
   // After Undo brings a deleted routine back, its name takes the focus once the page is drawn again.
   const trash = useRoutineTrash(host, load, focusTitle);
