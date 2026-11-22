@@ -35,8 +35,9 @@ export class NewWorkspaceRefusal extends KindedError {
     message: string,
     field: "name" | "folder" = "folder",
     kind: ErrorKind = field === "name" ? "invalid_input" : "denied",
+    fix?: string,
   ) {
-    super(kind, message);
+    super(kind, message, fix === undefined ? {} : { fix });
     this.field = field;
   }
 }
@@ -173,7 +174,9 @@ export function NewWorkspaceDialog({
       setNameError(nameProblemLine(reason));
       nameField.current?.focus();
     } else {
-      setWriteError(line(reason));
+      // The fix follows the reason in the same paragraph, as on Welcome (HAL-15232).
+      const fix = error instanceof NewWorkspaceRefusal ? error.fix : undefined;
+      setWriteError(fix === undefined ? line(reason) : `${line(reason)} ${fix}`);
     }
   }
 

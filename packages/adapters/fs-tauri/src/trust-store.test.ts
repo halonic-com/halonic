@@ -118,6 +118,8 @@ verifies("fs-tauri.trust-commands", () => {
         parent_not_chosen: "denied",
         parent_private: "denied",
         exists: "conflict",
+        profile_inside: "denied",
+        workspace_inside_profile: "denied",
       };
       for (const [refusal, kind] of Object.entries(expected)) {
         const shell = new FakeTrustShell();

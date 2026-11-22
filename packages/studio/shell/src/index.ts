@@ -334,6 +334,8 @@ export {
   cantOpenWords,
   cantReopenProblem,
   engineWaitMs,
+  offersRemoveFromRecent,
+  profileInsideFix,
   type WelcomeOpenProblem,
 } from "./welcome/cant-open.ts";
 export type {

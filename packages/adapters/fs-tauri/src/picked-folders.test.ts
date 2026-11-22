@@ -62,3 +62,17 @@ verifies("fs-tauri.picked-folders", () => {
     });
   });
 });
+
+verifies("fs-tauri.profile-place-refusals", () => {
+  it.each<TrustRefusalKind>(["profile_inside", "workspace_inside_profile"])(
+    "rejects a %s reopen as denied, keeping the refusal as its cause",
+    async (kind) => {
+      const shell = new FakePickedShell();
+      const refusal = { kind, message: `"/work/acme" was refused`, reason: "HALONIC_HOME" };
+      shell.refusal = refusal;
+      const error = await rejection(new TauriPickedFolders(shell).reopen("/work/acme"));
+      expect(errorKindOf(error)).toBe("denied");
+      expect((error as Error).cause).toEqual(refusal);
+    },
+  );
+});
