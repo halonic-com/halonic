@@ -86,7 +86,7 @@ export interface ProblemRow {
 
 /**
  * The core's full message, with its step named as the card names it: the core quotes the step's id
- * (`"first" uses unknown agent "nobody-here"`), Studio its title (`"Ask a missing agent" uses …`).
+ * (`"first" uses the agent "nobody-here", which its hub doesn't have`), Studio its title (`"Ask a missing agent" uses …`).
  * Only the first quoted id is the step's own: a later one can be an agent or a step it goes to.
  */
 export function namedMessage(problem: WorkflowProblem, nameOf: StepNames = byId): string {

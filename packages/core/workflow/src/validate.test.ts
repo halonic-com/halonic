@@ -164,7 +164,7 @@ verifies("workflow.validate", () => {
         severity: "error",
         code: "unknown-agent",
         state: "s",
-        message: 'Branch "two" of "s" uses unknown agent "ghost"',
+        message: `Branch "two" of "s" uses the agent "ghost", which its hub doesn't have`,
         path: ["states", "s", "branches", "two", "agent"],
       },
     ]);

@@ -31,20 +31,20 @@ verifies("workflow.unknown-name-hints", () => {
 
     it("guesses the agent whose name differs only in case", () => {
       expect(found({ agent: "Sorter" }, { agents })).toEqual([
-        'unknown-agent at states.classify.agent: "classify" uses unknown agent "Sorter". Did you mean "sorter"?',
+        `unknown-agent at states.classify.agent: "classify" uses the agent "Sorter", which its hub doesn't have. Did you mean "sorter"?`,
       ]);
     });
 
     it("guesses a close spelling", () => {
       expect(found({ agent: "sortr" }, { agents })).toEqual([
-        'unknown-agent at states.classify.agent: "classify" uses unknown agent "sortr". Did you mean "sorter"?',
+        `unknown-agent at states.classify.agent: "classify" uses the agent "sortr", which its hub doesn't have. Did you mean "sorter"?`,
       ]);
     });
 
     it("says which hub an agent of another hub is in", () => {
       const options = { agents, agentHubs: { reporter: "reports" } };
       expect(found({ agent: "reporter" }, options)).toEqual([
-        `unknown-agent at states.classify.agent: "classify" uses unknown agent "reporter". reporter is in the hub reports; a workflow can only use its own hub's agents.`,
+        `unknown-agent at states.classify.agent: "classify" uses the agent "reporter", which its hub doesn't have. reporter is in the hub reports; a workflow can only use its own hub's agents.`,
       ]);
     });
 
@@ -55,13 +55,13 @@ verifies("workflow.unknown-name-hints", () => {
         branches: { one: { agent: "SORTER" } },
       };
       expect(found(classify, { agents })).toEqual([
-        'unknown-agent at states.classify.branches.one.agent: Branch "one" of "classify" uses unknown agent "SORTER". Did you mean "sorter"?',
+        `unknown-agent at states.classify.branches.one.agent: Branch "one" of "classify" uses the agent "SORTER", which its hub doesn't have. Did you mean "sorter"?`,
       ]);
     });
 
     it("keeps the old message without a likely agent", () => {
       expect(found({ agent: "ghost" }, { agents })).toEqual([
-        'unknown-agent at states.classify.agent: "classify" uses unknown agent "ghost"',
+        `unknown-agent at states.classify.agent: "classify" uses the agent "ghost", which its hub doesn't have`,
       ]);
     });
   });
@@ -69,7 +69,7 @@ verifies("workflow.unknown-name-hints", () => {
   describe("an unknown state", () => {
     it("guesses a close spelling, and the states after it are reached", () => {
       expect(found({ on: [{ to: "reveiw" }] })).toEqual([
-        'unknown-target at states.classify.on.0.to: "classify" goes to unknown state "reveiw". Did you mean "review"?',
+        `unknown-target at states.classify.on.0.to: "classify" goes to the step "reveiw", which this workflow doesn't have. Did you mean "review"?`,
       ]);
     });
 
@@ -104,7 +104,7 @@ verifies("workflow.unknown-name-hints", () => {
 
     it("leaves the states unreached without a likely state", () => {
       expect(found({ on: [{ to: "nowhere" }] })).toEqual([
-        'unknown-target at states.classify.on.0.to: "classify" goes to unknown state "nowhere"',
+        `unknown-target at states.classify.on.0.to: "classify" goes to the step "nowhere", which this workflow doesn't have`,
         'unreachable at states.review: "review" can never be reached',
         'unreachable at states.done: "done" can never be reached',
       ]);

@@ -10,7 +10,7 @@ When the checks find a problem about one of a step's arrows (`unknown-target`, `
 
 ## Examples
 
-- Given the step `first`, titled "Ask a missing agent", uses the missing agent `nobody-here`, then its card has a danger border and the line "✕ Uses a missing agent", whose tooltip says `"Ask a missing agent" uses unknown agent "nobody-here"`, and a screen reader names the card "Ask a missing agent AGENT STEP Start nobody-here Error: Uses a missing agent".
+- Given the step `first`, titled "Ask a missing agent", uses the missing agent `nobody-here`, then its card has a danger border and the line "✕ Uses a missing agent", whose tooltip says `"Ask a missing agent" uses the agent "nobody-here", which its hub doesn't have`, and a screen reader names the card "Ask a missing agent AGENT STEP Start nobody-here Error: Uses a missing agent".
 - Given a step that can't be reached and has a key it ignores, then its card has an attention border and the line "△ Can't be reached", whose tooltip holds both messages.
 - Given a step with a warning and an error, then its border is danger and its line is the error's.
 - Given a step whose only problem is an arrow to a missing step, then its card has no problem line.

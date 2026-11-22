@@ -32,7 +32,7 @@ const unknownTargets: StateCheck = ({ workflow, id, state }) =>
       return [];
     }
     const guess = didYouMean(transition.to, Object.keys(workflow.states));
-    const message = `"${id}" goes to unknown state "${transition.to}"${guess}`;
+    const message = `"${id}" goes to the step "${transition.to}", which this workflow doesn't have${guess}`;
     return [issue("error", "unknown-target", message, stateKey(id, "on", index, "to"), id)];
   });
 
@@ -193,7 +193,7 @@ const parallelShape: StateCheck = ({ id, state, options }) => {
   }
   for (const [name, branch] of branches) {
     if (options.agents && !options.agents.includes(branch.agent)) {
-      const message = `Branch "${name}" of "${id}" uses unknown agent "${branch.agent}"${agentHint(branch.agent, options)}`;
+      const message = `Branch "${name}" of "${id}" uses ${missingAgent(branch.agent, options)}`;
       const path = stateKey(id, "branches", name, "agent");
       issues.push(issue("error", "unknown-agent", message, path, id));
     }
@@ -205,9 +205,17 @@ const unknownAgent: StateCheck = ({ id, state, options }) => {
   if (!state.agent || !options.agents || options.agents.includes(state.agent)) {
     return [];
   }
-  const message = `"${id}" uses unknown agent "${state.agent}"${agentHint(state.agent, options)}`;
+  const message = `"${id}" uses ${missingAgent(state.agent, options)}`;
   return [issue("error", "unknown-agent", message, stateKey(id, "agent"), id)];
 };
+
+/**
+ * The words for an agent the workflow's hub doesn't have. They hold both when
+ * no hub has it and when another hub does, as the hint that follows says.
+ */
+function missingAgent(agent: string, options: ValidateOptions): string {
+  return `the agent "${agent}", which its hub doesn't have${agentHint(agent, options)}`;
+}
 
 /**
  * What follows an unknown agent's message: the hub it is in, when it is

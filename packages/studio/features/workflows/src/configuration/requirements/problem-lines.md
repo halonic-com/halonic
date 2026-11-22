@@ -13,7 +13,7 @@ When the checks find problems in a workflow, the workflows feature shall write e
 - Given a new agent step `step-1`, then its rows say "Has no agent, so every run fails here. Pick one on its card, or make it a Wait." and "Can't be reached: no arrow leads to it.", not the core's `agent: <id>`.
 - Given a new wait step `wait-1`, then its card reads "△ Has no answers to pick" and its row says "Gives a person no answers to pick, such as approve. Add them in the workflow's file.".
 - Given an `unknown-gets` error, then its row shows the core's full message.
-- Given the step `first`, titled "Ask a missing agent", uses the missing agent `nobody-here`, then its row says `"Ask a missing agent" uses unknown agent "nobody-here"` and its link reads "Ask a missing agent"; a step with no title is named by its id in both.
+- Given the step `first`, titled "Ask a missing agent", uses the missing agent `nobody-here`, then its row says `"Ask a missing agent" uses the agent "nobody-here", which its hub doesn't have` and its link reads "Ask a missing agent"; a step with no title is named by its id in both.
 - Given a warning and then an error, then the error row comes first.
 - Given `no-final`, then the card line reads "This workflow has no end step."; the Problems row shows core's message and has no step link.
 - Given two warnings on one card, then the card says "△ 2 warnings"; given a warning and an error, "✕ 2 problems".
