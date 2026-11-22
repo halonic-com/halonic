@@ -19,6 +19,14 @@ export {
   unfencedRunsFolder,
 } from "./profile-folder.ts";
 export {
+  builtInProfileFolder,
+  type ProfileMover,
+  type ProfilePlaces,
+  type ProfileRefusal,
+  profileMover,
+  profileRefusal,
+} from "./profile-placement.ts";
+export {
   checkDeploymentId,
   isDeploymentId,
   type WorkspaceFolders,

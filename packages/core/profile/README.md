@@ -25,6 +25,18 @@ variables) and returns a `ProfileFolder`, the `root` path and the system it belo
 `isAbsolutePath(platform, path)` is the check it uses, for a path on `"windows"`, `"macos"` or
 `"linux"` (`ProfilePlatform`), whichever system the code runs on.
 
+### A profile inside a workspace
+
+A profile folder inside a workspace that git tracks would come and go with a pull, trust records
+and all (HAL-15201). `builtInProfileFolder(environment)` gives the profile as it would be with no
+variables set, and `profileMover(environment)` the variable that moved it (`HALONIC_HOME`,
+`XDG_DATA_HOME` or `LOCALAPPDATA`), or `null`. `profileRefusal(places)` takes the real paths of
+the workspace, the profile and the built-in profile and says why the workspace can't be opened:
+`profile-in-workspace` when a variable moved the profile into it, `workspace-in-profile` when the
+workspace is inside the profile; `null` otherwise. The built-in profile in a home folder workspace
+is allowed: the workspace's files fence it off (HAL-7039). The desktop shell's Rust port must give
+the same answers for the cases in `src/golden/profile-places.json`.
+
 `trustFolder(profile)` names the `trust` folder in the profile folder, where the CLI and the
 desktop shell both keep their trust records. The desktop shell's Rust port must give the same
 answers for the cases in `src/golden/profile-folders.json`. `sandboxJournalFolder(profile)` names the

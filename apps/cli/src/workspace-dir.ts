@@ -6,6 +6,7 @@ import { isUnreadable, settingsPath } from "@halonicjs/workspace";
 import type { CliOption, CommandContext, CommandInput } from "./command.ts";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
+import { checkProfilePlace } from "./profile-place.ts";
 import { shownPath } from "./shown-path.ts";
 import { workspaceStore } from "./workspace-store.ts";
 
@@ -54,16 +55,20 @@ export function workspaceDir(input: CommandInput, cwd: string): WorkspaceDir {
 
 /**
  * Finds the workspace the command was pointed at (see {@link workspaceDir})
- * and opens its files, with the profile fenced off (HAL-15201).
+ * and opens its files, with the profile fenced off. A workspace that holds a
+ * moved profile folder, or lies inside the profile, is refused before
+ * anything in it is read (HAL-15201).
  *
  * @throws NoWorkspaceError when the folder has no `workspace.yaml`, or doesn't exist.
  * @throws KindedError `invalid_input` when the folder, or its `workspace.yaml`, can't be read.
+ * @throws ProfilePlaceError when the workspace and the profile overlap.
  */
 export async function openWorkspaceDir(
   input: CommandInput,
   context: Pick<CommandContext, "cwd">,
 ): Promise<OpenWorkspaceDir> {
   const dir = workspaceDir(input, context.cwd);
+  await checkProfilePlace(dir.root);
   const store = workspaceStore(dir.root, dir.shown);
   if ((await readSettings(store, dir.root)) === null) {
     throw new NoWorkspaceError();

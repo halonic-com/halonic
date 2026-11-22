@@ -22,6 +22,7 @@ import { nearMatch } from "../../near-match.ts";
 import { type NextStep, nextSteps } from "../../output/next-steps.ts";
 import { printable } from "../../output/printable.ts";
 import { shellWord } from "../../output/shell-word.ts";
+import { checkProfilePlace } from "../../profile-place.ts";
 import { shownPath, typedPath } from "../../shown-path.ts";
 import { writeFailure } from "../../write-failure.ts";
 import { type InitExample, initExamples } from "./examples.ts";
@@ -71,6 +72,7 @@ export const initCommand: CliCommand = {
 
 /** `halonic init [folder]`: a new workspace named after its folder, with the Default hub and the test model. */
 async function createEmpty(folder: InitFolder, cwd: string): Promise<CommandResult> {
+  await checkProfilePlace(folder.root);
   const store = new FolderDefinitionStore(folder.root, folder.shown);
   const result = await initWorkspace(store, { name: folder.name }).catch((error: unknown) => {
     throw writeFailure(error);
@@ -108,6 +110,7 @@ async function copyExample(
 ): Promise<CommandResult> {
   const named = input.positionals.length > 0;
   const folder = named ? initFolder(input, cwd, ".") : await freeExampleFolder(example, cwd);
+  await checkProfilePlace(folder.root);
   const store = new FolderDefinitionStore(folder.root, folder.shown);
   const source = new FolderDefinitionStore(example.folder);
   const result = await copyWorkspace(source, store).catch((error: unknown) => {

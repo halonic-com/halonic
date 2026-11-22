@@ -1,0 +1,258 @@
+{
+  "environments": [
+    {
+      "name": "Linux with HALONIC_HOME",
+      "platform": "linux",
+      "homeFolder": "/srv/ann",
+      "variables": {
+        "HALONIC_HOME": "/srv/ann/acme/.profile"
+      },
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME"
+    },
+    {
+      "name": "Linux with an absolute XDG_DATA_HOME",
+      "platform": "linux",
+      "homeFolder": "/srv/ann",
+      "variables": {
+        "XDG_DATA_HOME": "/srv/ann/acme/.data"
+      },
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "XDG_DATA_HOME"
+    },
+    {
+      "name": "Linux with a relative XDG_DATA_HOME",
+      "platform": "linux",
+      "homeFolder": "/srv/ann",
+      "variables": {
+        "XDG_DATA_HOME": "data"
+      },
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": null
+    },
+    {
+      "name": "Linux with an empty HALONIC_HOME",
+      "platform": "linux",
+      "homeFolder": "/srv/ann",
+      "variables": {
+        "HALONIC_HOME": ""
+      },
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": null
+    },
+    {
+      "name": "Linux without variables",
+      "platform": "linux",
+      "homeFolder": "/srv/ann",
+      "variables": {},
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": null
+    },
+    {
+      "name": "macOS, which ignores XDG_DATA_HOME",
+      "platform": "macos",
+      "homeFolder": "/srv/ann",
+      "variables": {
+        "XDG_DATA_HOME": "/srv/ann/acme/.data"
+      },
+      "builtIn": "/srv/ann/Library/Application Support/halonic",
+      "movedBy": null
+    },
+    {
+      "name": "macOS with HALONIC_HOME",
+      "platform": "macos",
+      "homeFolder": "/srv/ann",
+      "variables": {
+        "HALONIC_HOME": "/srv/ann/acme/.profile"
+      },
+      "builtIn": "/srv/ann/Library/Application Support/halonic",
+      "movedBy": "HALONIC_HOME"
+    },
+    {
+      "name": "Windows with LOCALAPPDATA",
+      "platform": "windows",
+      "homeFolder": "<drive>\\people\\ann",
+      "variables": {
+        "LOCALAPPDATA": "<drive>\\acme\\.local"
+      },
+      "builtIn": "<drive>\\people\\ann\\AppData\\Local\\halonic",
+      "movedBy": "LOCALAPPDATA"
+    },
+    {
+      "name": "Windows with HALONIC_HOME and LOCALAPPDATA",
+      "platform": "windows",
+      "homeFolder": "<drive>\\people\\ann",
+      "variables": {
+        "HALONIC_HOME": "<drive>\\acme\\.profile",
+        "LOCALAPPDATA": "<drive>\\people\\ann\\AppData\\Local"
+      },
+      "builtIn": "<drive>\\people\\ann\\AppData\\Local\\halonic",
+      "movedBy": "HALONIC_HOME"
+    },
+    {
+      "name": "Windows with a relative LOCALAPPDATA",
+      "platform": "windows",
+      "homeFolder": "<drive>\\people\\ann",
+      "variables": {
+        "LOCALAPPDATA": "AppData"
+      },
+      "builtIn": "<drive>\\people\\ann\\AppData\\Local\\halonic",
+      "movedBy": null
+    }
+  ],
+  "places": [
+    {
+      "name": "HALONIC_HOME inside the workspace",
+      "platform": "linux",
+      "workspace": "/srv/ann/acme",
+      "profile": "/srv/ann/acme/.profile",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": "profile-in-workspace"
+    },
+    {
+      "name": "HALONIC_HOME deep inside the workspace",
+      "platform": "linux",
+      "workspace": "/srv/ann/acme",
+      "profile": "/srv/ann/acme/hubs/support/halonic",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": "profile-in-workspace"
+    },
+    {
+      "name": "HALONIC_HOME is the workspace",
+      "platform": "linux",
+      "workspace": "/srv/ann/acme",
+      "profile": "/srv/ann/acme",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": "profile-in-workspace"
+    },
+    {
+      "name": "XDG_DATA_HOME inside the workspace",
+      "platform": "linux",
+      "workspace": "/srv/ann/acme",
+      "profile": "/srv/ann/acme/.data/halonic",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "XDG_DATA_HOME",
+      "refusal": "profile-in-workspace"
+    },
+    {
+      "name": "LOCALAPPDATA inside the workspace",
+      "platform": "windows",
+      "workspace": "<drive>\\acme",
+      "profile": "<drive>\\acme\\.local\\halonic",
+      "builtIn": "<drive>\\people\\ann\\AppData\\Local\\halonic",
+      "movedBy": "LOCALAPPDATA",
+      "refusal": "profile-in-workspace"
+    },
+    {
+      "name": "The built-in profile in the home folder as the workspace",
+      "platform": "linux",
+      "workspace": "/srv/ann",
+      "profile": "/srv/ann/.local/share/halonic",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": null,
+      "refusal": null
+    },
+    {
+      "name": "HALONIC_HOME set to the built-in place, in the home folder as the workspace",
+      "platform": "linux",
+      "workspace": "/srv/ann",
+      "profile": "/srv/ann/.local/share/halonic",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": null
+    },
+    {
+      "name": "HALONIC_HOME set to the built-in place in other letter case, on macOS",
+      "platform": "macos",
+      "workspace": "/srv/ann",
+      "profile": "/srv/ann/library/application support/Halonic",
+      "builtIn": "/srv/ann/Library/Application Support/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": null
+    },
+    {
+      "name": "A sibling folder whose name starts like the workspace's",
+      "platform": "linux",
+      "workspace": "/srv/ann/acme",
+      "profile": "/srv/ann/acme-profile",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": null
+    },
+    {
+      "name": "A profile apart from the workspace",
+      "platform": "linux",
+      "workspace": "/srv/ann/acme",
+      "profile": "/srv/profiles/ann",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": null
+    },
+    {
+      "name": "The workspace inside the built-in profile",
+      "platform": "linux",
+      "workspace": "/srv/ann/.local/share/halonic/work",
+      "profile": "/srv/ann/.local/share/halonic",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": null,
+      "refusal": "workspace-in-profile"
+    },
+    {
+      "name": "The workspace is the built-in profile",
+      "platform": "linux",
+      "workspace": "/srv/ann/.local/share/halonic",
+      "profile": "/srv/ann/.local/share/halonic",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": null,
+      "refusal": "workspace-in-profile"
+    },
+    {
+      "name": "The workspace inside a moved profile",
+      "platform": "linux",
+      "workspace": "/srv/profiles/ann/acme",
+      "profile": "/srv/profiles/ann",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": "workspace-in-profile"
+    },
+    {
+      "name": "Windows compares names in any letter case and with either separator",
+      "platform": "windows",
+      "workspace": "<drive>\\Work\\Acme",
+      "profile": "<drive>/work/acme/.Profile",
+      "builtIn": "<drive>\\people\\ann\\AppData\\Local\\halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": "profile-in-workspace"
+    },
+    {
+      "name": "macOS compares names in any letter case",
+      "platform": "macos",
+      "workspace": "/srv/ann/Acme",
+      "profile": "/srv/ann/acme/.profile",
+      "builtIn": "/srv/ann/Library/Application Support/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": "profile-in-workspace"
+    },
+    {
+      "name": "Linux compares names as a file system that folds case would",
+      "platform": "linux",
+      "workspace": "/srv/ann/Acme",
+      "profile": "/srv/ann/acme/.profile",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": "profile-in-workspace"
+    },
+    {
+      "name": "Trailing separators don't matter",
+      "platform": "linux",
+      "workspace": "/srv/ann/acme/",
+      "profile": "/srv/ann/acme/.profile/",
+      "builtIn": "/srv/ann/.local/share/halonic",
+      "movedBy": "HALONIC_HOME",
+      "refusal": "profile-in-workspace"
+    }
+  ]
+}
