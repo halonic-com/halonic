@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this change on HAL-15813 (https://paperclip.halonic.com/HAL/issues/HAL-15813), from words check C633 on HAL-15802. These are wording fixes on approved screens and in command output, so the team decides them (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sOxL1bH0X5s91d6Q+0UeID7PA1it6yasHwfliX/9xCGk7f3FJncyYaJNvPhnSD5qnw4HeQkdi+mtD1MRLc1qBA==
 
 ## What changes
 
