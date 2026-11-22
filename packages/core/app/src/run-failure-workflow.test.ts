@@ -105,3 +105,21 @@ verifies("app.run-failure", () => {
     });
   });
 });
+
+verifies("app.run-failure-item-waits", () => {
+  it("names the workflow and item of an item's run that waited, as the workspace's setup", () => {
+    const waits = {
+      kind: "invalid_input" as const,
+      code: "workflow.item-run-waits",
+      detail: { workflow: "review-one", item: "1" },
+    };
+    expect(runFailureOf(failedWith("error", { cause: waits }), undefined)).toEqual({
+      reason: "item-run-waits",
+      workflow: "review-one",
+      item: 1,
+    });
+    expect(isSetupCause(waits)).toBe(true);
+    const noItem = { ...waits, detail: { workflow: "review-one" } };
+    expect(runFailureOf(failedWith("error", { cause: noItem }), undefined)).toEqual(general);
+  });
+});
