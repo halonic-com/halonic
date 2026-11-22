@@ -1,5 +1,6 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
+import { parentEndedCause } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -254,6 +255,64 @@ verifies("cli.commands.runs.show", () => {
       ]);
       expect(await endOf("0c0c03")).toEqual([
         "✕ Mail triage was cancelled before it started.",
+        "  Sent nothing",
+      ]);
+    });
+
+    it("says a child run was cancelled because the run that started it ended, and names that run (HAL-15555)", async () => {
+      const parent = { runId: "run_mfx3k2a1_4f2a1b", state: "each", depth: 1 };
+      const endedWithParent = (state: string | null) =>
+        ({
+          type: "run.failed",
+          state,
+          error: "cancelled",
+          reason: "cancelled",
+          cause: parentEndedCause,
+        }) as const;
+      const child = (id: string, after: NonNullable<StoredRun["after"]>): StoredRun => ({
+        ...triage(id, after),
+        parent,
+      });
+      await storeRuns(
+        child("run_mfx3k2a1_0d0d01", [
+          ...enteredRead,
+          [today("10:20:05"), endedWithParent("read")],
+        ]),
+        child("run_mfx3k2a1_0d0d02", [
+          ...enteredRead,
+          [today("10:20:04"), { type: "transition", from: "read", to: "classify", event: "" }],
+          [today("10:20:05"), endedWithParent("classify")],
+        ]),
+        child("run_mfx3k2a1_0d0d03", [[today("10:20:05"), endedWithParent(null)]]),
+        // A log written before the cause keeps the plain line.
+        child("run_mfx3k2a1_0d0d04", [
+          ...enteredRead,
+          [
+            today("10:20:05"),
+            { type: "run.failed", state: "read", error: "cancelled", reason: "cancelled" },
+          ],
+        ]),
+      );
+
+      const endOf = async (id: string, ...args: string[]) =>
+        (await showIn(acme, id, ...args)).io.stdout.slice(-3);
+
+      expect(await endOf("0d0d01")).toEqual([
+        "✕ Mail triage was cancelled because the run that started it ended. Nothing after the step Read the email ran.",
+        "  See the run that started it: halonic runs show 4f2a1b",
+        "  Sent nothing",
+      ]);
+      expect((await endOf("0d0d02"))[0]).toBe(
+        "✕ Mail triage was cancelled because the run that started it ended. The step Classify didn't start.",
+      );
+      expect((await endOf("0d0d03"))[0]).toBe(
+        "✕ Mail triage was cancelled because the run that started it ended.",
+      );
+      expect((await endOf("0d0d01", "--dir", "."))[1]).toBe(
+        "  See the run that started it: halonic runs show --dir . 4f2a1b",
+      );
+      expect((await endOf("0d0d04")).slice(-2)).toEqual([
+        "✕ Mail triage was cancelled in the step Read the email. Nothing after it ran.",
         "  Sent nothing",
       ]);
     });

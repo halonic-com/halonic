@@ -12,7 +12,7 @@ import {
   runFailureOf,
   type WorkspaceModels,
 } from "@halonicjs/app/run-failure";
-import type { RunEvent, RunSummary } from "@halonicjs/events";
+import { endedWithParent, type RunEvent, type RunSummary } from "@halonicjs/events";
 import { duration } from "../../messages/duration.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
@@ -71,7 +71,8 @@ export function outputHintLines(run: RunDetail, dir: string | undefined): Phrase
  * fix indented under it, then the receipt, the same two lines `halonic run`
  * prints when the run fails. A run cancelled somewhere else has one line,
  * where the cancel landed, and no fix (revision 28); so has a run whose
- * cause is known but has no words of its own yet (HAL-6451).
+ * cause is known but has no words of its own yet (HAL-6451). A child run its
+ * parent's end cancelled has the way to that parent under its line.
  */
 function failedEnding(
   run: RunDetail,
@@ -90,7 +91,7 @@ function failedEnding(
   );
   let lines: Phrase[];
   if (failure === undefined) {
-    lines = [runsMessages.showCancelled(title, cancelledAt(run.events, failed, named)).phrase];
+    lines = cancelledLines(run.summary, title, cancelledAt(run.events, failed, named), dir);
   } else {
     const failedRun = {
       title,
@@ -181,6 +182,28 @@ function runFailedEvent(run: RunDetail): RunFailedEvent {
     error: summary.error ?? "",
     ...(summary.reason === null ? {} : { reason: summary.reason }),
   };
+}
+
+/**
+ * A cancelled run's one line, or, for a child run cancelled because the run
+ * that started it ended (its typed cause, HAL-15555), that line and the way to
+ * the parent, as Studio's run page says it with Open run (HAL-12411). A log
+ * written before the cause keeps the plain line.
+ */
+function cancelledLines(
+  summary: RunSummary,
+  title: string,
+  at: CancelledAt,
+  dir: string | undefined,
+): Phrase[] {
+  const parentId = summary.parentRunId;
+  if (parentId === null || !endedWithParent(summary.cause)) {
+    return [runsMessages.showCancelled(title, at).phrase];
+  }
+  return [
+    runsMessages.showCancelledWithParent(title, at).phrase,
+    phrase`  ${runsMessages.showParentRun(shortRunId(parentId), dir).phrase}`,
+  ];
 }
 
 /**
