@@ -1,5 +1,5 @@
 import { JsonRpcCallError, PLUGIN_RPC_ERROR_CODES } from "@paperclipai/plugin-sdk";
-import type { BoardCheckApi } from "./board-check.ts";
+import type { BoardCheckApi } from "./board-check-api.ts";
 
 /** A task as the fake host stores it: only the fields the board check reads. */
 export interface FakeTask {
