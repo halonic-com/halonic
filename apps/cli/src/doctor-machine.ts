@@ -9,8 +9,8 @@ import {
   findCommand,
   type MachineWorkspace,
   doctorService as machineDoctorService,
-  type DoctorMachine as NodeDoctorMachine,
   trustedOnMachine as machineTrustedOnMachine,
+  type DoctorMachine as NodeDoctorMachine,
   networkProblemOf,
   nodeCommandSearch,
 } from "@halonicjs/adapter-doctor-node";
