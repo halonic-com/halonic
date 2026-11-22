@@ -1,0 +1,78 @@
+{
+  "/repos/halonic-com/halonic/pulls?state=open&per_page=100&page=1": [
+    {
+      "number": 4959,
+      "updated_at": "2026-11-22T07:13:58Z",
+      "head": {
+        "ref": "mateo/HAL-15930-ci-dynamic-memory"
+      },
+      "base": {
+        "ref": "main"
+      }
+    },
+    {
+      "number": 4957,
+      "updated_at": "2026-11-22T07:12:22Z",
+      "head": {
+        "ref": "priya/HAL-15905-adapter-git-test-speed"
+      },
+      "base": {
+        "ref": "main"
+      }
+    },
+    {
+      "number": 4944,
+      "updated_at": "2026-11-22T07:11:26Z",
+      "head": {
+        "ref": "priya/HAL-15897-c645-words"
+      },
+      "base": {
+        "ref": "priya/HAL-15891-runs-show-send-fix"
+      }
+    },
+    {
+      "number": 4900,
+      "updated_at": "2026-11-22T06:40:00Z",
+      "head": {
+        "ref": "release-notes-draft"
+      },
+      "base": {
+        "ref": "main"
+      }
+    }
+  ],
+  "/repos/halonic-com/halonic/pulls?state=closed&sort=updated&direction=desc&per_page=100&page=1": [
+    {
+      "number": 4957,
+      "updated_at": "2026-11-22T07:17:00Z",
+      "merged_at": "2026-11-22T07:17:00Z",
+      "head": {
+        "ref": "priya/HAL-15905-adapter-git-test-speed"
+      }
+    },
+    {
+      "number": 4910,
+      "updated_at": "2026-11-22T07:16:20Z",
+      "merged_at": "2026-11-22T07:16:18Z",
+      "head": {
+        "ref": "tomas/HAL-15830-provider-file-example"
+      }
+    },
+    {
+      "number": 4741,
+      "updated_at": "2026-11-22T07:15:08Z",
+      "merged_at": "2026-11-22T07:15:06Z",
+      "head": {
+        "ref": "tomas/HAL-15525-routines-paused-until-trusted"
+      }
+    },
+    {
+      "number": 468,
+      "updated_at": "2026-11-09T14:02:11Z",
+      "merged_at": "2026-11-09T14:02:10Z",
+      "head": {
+        "ref": "priya/HAL-1375-03-connect-page-wiring"
+      }
+    }
+  ]
+}

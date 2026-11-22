@@ -1,5 +1,5 @@
 import {
-  branchOwner,
+  branchesOwner,
   candidates,
   closedOutcome,
   type Decision,
@@ -8,15 +8,16 @@ import {
   type PullFacts,
   type Reason,
 } from "./decide.ts";
+import type { FoundPulls } from "./discover.ts";
 import { type BaseGreenSince, baseGreenSince, pullFacts } from "./facts.ts";
-import { type GitHubGet, parsePullUrl } from "./github.ts";
+import type { GitHubGet } from "./github.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
 
-/** What one tick needs. `selfId` is the watcher's own agent id. */
+/** What one tick needs. `discover` finds each task's pull requests by branch. */
 export interface TickOptions {
   readonly paperclip: Paperclip;
   readonly get: GitHubGet;
-  readonly selfId: string;
+  readonly discover: () => Promise<FoundPulls>;
   /** Print what it would do, write nothing. */
   readonly dryRun: boolean;
   readonly log: (line: string) => void;
@@ -30,6 +31,15 @@ export interface TickSummary {
   readonly failed: readonly string[];
 }
 
+/** What every task in one tick shares: agents by short name, found pull requests, base runs. */
+interface TickRefs {
+  readonly owners: ReadonlyMap<string, string>;
+  readonly found: FoundPulls;
+  readonly greenSince: BaseGreenSince;
+}
+
+const emptyMemory: Memory = { reported: new Set<string>(), seenUntil: undefined, held: false };
+
 const markerPattern = /<!-- pr-watcher: (.+?) -->/g;
 
 /** The line an author puts in a task comment to keep the task open after a merge. */
@@ -40,21 +50,31 @@ export function marker(key: string): string {
   return `<!-- pr-watcher: ${key} -->`;
 }
 
+/**
+ * A comment the watcher wrote. The host stores no plugin id on a plugin's
+ * comment, so it is one with neither an agent nor a user as author that
+ * starts with the watcher's name.
+ */
+export function isSelf(comment: CommentRow): boolean {
+  return (
+    comment.authorAgentId === null &&
+    comment.authorUserId === null &&
+    comment.body.startsWith("PR watcher:")
+  );
+}
+
 /** What the watcher reported before, from its own comments and the author's. */
-export function readMemory(
-  comments: readonly CommentRow[],
-  selfId: string,
-  ownerId: string,
-): Memory {
+export function readMemory(comments: readonly CommentRow[], ownerId: string): Memory {
   const reported = new Set<string>();
   let seenUntil: string | undefined;
   for (const comment of comments) {
-    if (comment.authorAgentId === selfId) {
+    const self = isSelf(comment);
+    if (self) {
       for (const match of comment.body.matchAll(markerPattern)) {
         reported.add(match[1] ?? "");
       }
     }
-    const counts = comment.authorAgentId === selfId || comment.authorAgentId === ownerId;
+    const counts = self || comment.authorAgentId === ownerId;
     if (counts && (seenUntil === undefined || comment.createdAt > seenUntil)) {
       seenUntil = comment.createdAt;
     }
@@ -96,30 +116,42 @@ export function doneMessage(pulls: readonly PullFacts[]): string {
   return `PR watcher: ${links} merged and \`ci-ok\` is green on the base branch, so this task is done.`;
 }
 
+/** The agent every branch names, by its id, when there is one and Paperclip knows it. */
+function ownerOf(branches: readonly string[], owners: ReadonlyMap<string, string>) {
+  const key = branchesOwner(branches);
+  return key === undefined ? undefined : owners.get(key);
+}
+
 async function decideTask(
   options: TickOptions,
   task: TaskRow,
-  owners: ReadonlyMap<string, string>,
-  greenSince: BaseGreenSince,
+  refs: TickRefs,
 ): Promise<Decision | undefined> {
-  const refs = (await options.paperclip.pullLinks(task.id)).flatMap(
-    (url) => parsePullUrl(url) ?? [],
-  );
-  if (refs.length === 0) {
+  const found = refs.found.get(task.identifier) ?? [];
+  if (found.length === 0) {
     return undefined;
   }
-  const pulls = await Promise.all(refs.map((ref) => pullFacts(options.get, ref, greenSince)));
-  const ownerKey = branchOwner(pulls[0]?.branch ?? "");
-  const ownerId = ownerKey === undefined ? undefined : owners.get(ownerKey);
+  // Checked on the branch names first, so a task the reviewer holds costs no GitHub reads.
+  const listedOwner = ownerOf(
+    found.map((ref) => ref.branch),
+    refs.owners,
+  );
+  if (listedOwner === undefined || listedOwner !== task.assigneeAgentId || task.running) {
+    return decide(task, listedOwner, [], emptyMemory);
+  }
+  const pulls = await Promise.all(found.map((ref) => pullFacts(options.get, ref, refs.greenSince)));
+  const ownerId = ownerOf(
+    pulls.map((pull) => pull.branch),
+    refs.owners,
+  );
   // Comments are read only when a decision depends on them: a wake, or a done the author may hold.
   const needsMemory =
     ownerId !== undefined &&
     ownerId === task.assigneeAgentId &&
-    !task.running &&
     (candidates(pulls).length > 0 || closedOutcome(pulls)?.kind === "done");
   const memory = needsMemory
-    ? readMemory(await options.paperclip.comments(task.id), options.selfId, ownerId)
-    : { reported: new Set<string>(), seenUntil: undefined, held: false };
+    ? readMemory(await options.paperclip.comments(task.id), ownerId)
+    : emptyMemory;
   return decide(task, ownerId, pulls, memory);
 }
 
@@ -137,26 +169,28 @@ async function act(options: TickOptions, task: TaskRow, decision: Decision): Pro
   if (decision.kind === "done") {
     await options.paperclip.markDone(task.id, body);
   } else {
-    await options.paperclip.comment(task.id, body);
+    const key = decision.reasons.map((reason) => reason.key).join(" | ");
+    await options.paperclip.wake(task.id, body, key);
   }
 }
 
 /**
- * One pass over every open task with a linked pull request. A task that
- * fails to read is reported and skipped, so one broken link doesn't stop
- * the others.
+ * One pass over every open task whose identifier a pull request's branch
+ * names. A task that fails to read is reported and skipped, so one broken
+ * pull request doesn't stop the others.
  */
 export async function tick(options: TickOptions): Promise<TickSummary> {
-  const owners = new Map(
-    (await options.paperclip.agents()).map((agent) => [agent.urlKey, agent.id]),
-  );
+  const refs: TickRefs = {
+    owners: new Map((await options.paperclip.agents()).map((agent) => [agent.urlKey, agent.id])),
+    found: await options.discover(),
+    // One read of each base branch's newest green run per tick, shared by every task.
+    greenSince: baseGreenSince(options.get),
+  };
   const counts = { checked: 0, done: 0, woken: 0 };
   const failed: string[] = [];
-  // One read of each base branch's tip per tick, shared by every task.
-  const greenSince = baseGreenSince(options.get);
   for (const task of await options.paperclip.openTasks()) {
     try {
-      const decision = await decideTask(options, task, owners, greenSince);
+      const decision = await decideTask(options, task, refs);
       if (decision === undefined) {
         continue;
       }

@@ -40,15 +40,6 @@ export function gitHubReader(options: { fetch: Fetch; token?: string | undefined
   };
 }
 
-/** A pull request link from a work product: `https://github.com/<owner>/<repo>/pull/<n>`. */
-export function parsePullUrl(url: string): { repo: string; number: number } | undefined {
-  const match = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/pull\/(\d+)\/?(?:[?#].*)?$/.exec(url);
-  if (match?.[1] === undefined || match[2] === undefined) {
-    return undefined;
-  }
-  return { repo: match[1], number: Number(match[2]) };
-}
-
 interface CheckRun {
   readonly status?: string;
   readonly conclusion?: string | null;
@@ -90,8 +81,8 @@ interface Review {
   readonly body?: string | null;
 }
 
-/** Every item of a list endpoint that lists oldest first, page by page. */
-async function everyPage(get: GitHubGet, path: string): Promise<unknown[]> {
+/** Every item of a list endpoint, page by page. */
+export async function everyPage(get: GitHubGet, path: string): Promise<unknown[]> {
   const items: unknown[] = [];
   for (let page = 1; ; page += 1) {
     const list = (await get(

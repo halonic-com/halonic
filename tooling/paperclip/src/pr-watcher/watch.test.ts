@@ -1,12 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import {
+  agentComment,
   agents,
   fakeGitHub,
   fakePaperclip,
   recording,
   task,
-  watcherId,
 } from "./fakes.test-helper.ts";
 import { asksForChanges } from "./github.ts";
 import { tick } from "./watch.ts";
@@ -16,7 +16,7 @@ function run(github: ReturnType<typeof fakeGitHub>, paperclip: ReturnType<typeof
   const summary = tick({
     paperclip: paperclip.paperclip,
     get: github.get,
-    selfId: watcherId,
+    discover: paperclip.discover,
     dryRun: false,
     log: (line) => lines.push(line),
   });
@@ -51,35 +51,33 @@ verifies("paperclip.pr-watcher-done", () => {
   });
 
   test("keeps the task open while the author's newest comment says more PRs are coming", async () => {
-    const hold = {
-      authorAgentId: agents.priya,
-      createdAt: "2026-11-21T20:00:00Z",
-      body: "First PR is in.\n\nPR watcher: more PRs to come",
-    };
+    const hold = agentComment(
+      agents.priya,
+      "2026-11-21T20:00:00Z",
+      "First PR is in.\n\nPR watcher: more PRs to come",
+    );
     const paperclip = fakePaperclip([task(4485, agents.priya)], { "task-4485": [hold] });
     const github = fakeGitHub(recording("merged-green"));
     const { summary, lines } = run(github, paperclip);
     expect(await summary).toEqual({ checked: 1, done: 0, woken: 0, failed: [] });
     expect(lines[0]).toContain("more pull requests are coming");
     // A newer comment from the author without the line lifts the hold.
-    paperclip.comments["task-4485"]?.push({
-      authorAgentId: agents.priya,
-      createdAt: "2026-11-21T21:00:00Z",
-      body: "Last PR is linked.",
-    });
+    paperclip.comments["task-4485"]?.push(
+      agentComment(agents.priya, "2026-11-21T21:00:00Z", "Last PR is linked."),
+    );
     expect((await run(github, paperclip).summary).done).toBe(1);
   });
 
-  test("leaves a task alone until every linked pull request is closed", async () => {
+  test("leaves a task alone until every pull request found for it is closed", async () => {
     const both = {
       ...task(4485, agents.priya),
-      links: [
-        "https://github.com/halonic-com/halonic/pull/4485",
-        "https://github.com/halonic-com/halonic/pull/4588",
+      pulls: [
+        { repo: "halonic-com/halonic", number: 4485, branch: "priya/HAL-4485-one" },
+        { repo: "halonic-com/halonic", number: 4588, branch: "priya/HAL-4485-two" },
       ],
     };
     const paperclip = fakePaperclip([both], {
-      "task-4485": [{ authorAgentId: agents.priya, createdAt: "2026-11-21T21:00:00Z", body: "" }],
+      "task-4485": [agentComment(agents.priya, "2026-11-21T21:00:00Z", "")],
     });
     const github = fakeGitHub(recording("merged-green"), recording("review-finding"));
     expect(await run(github, paperclip).summary).toEqual({
@@ -104,22 +102,14 @@ verifies("paperclip.pr-watcher-wake", () => {
   });
 
   test("wakes the author for a tagged finding newer than their last comment", async () => {
-    const author = {
-      authorAgentId: agents.priya,
-      createdAt: "2026-11-21T20:50:00Z",
-      body: "Pushed.",
-    };
+    const author = agentComment(agents.priya, "2026-11-21T20:50:00Z", "Pushed.");
     const paperclip = fakePaperclip([task(4588, agents.priya)], { "task-4588": [author] });
     expect((await run(fakeGitHub(recording("review-finding")), paperclip).summary).woken).toBe(1);
     expect(paperclip.comments["task-4588"]?.at(-1)?.body).toContain("a new review comment");
   });
 
   test("leaves a finding alone that the author commented after", async () => {
-    const author = {
-      authorAgentId: agents.priya,
-      createdAt: "2026-11-21T21:00:00Z",
-      body: "Fixed.",
-    };
+    const author = agentComment(agents.priya, "2026-11-21T21:00:00Z", "Fixed.");
     const paperclip = fakePaperclip([task(4588, agents.priya)], { "task-4588": [author] });
     expect((await run(fakeGitHub(recording("review-finding")), paperclip).summary).woken).toBe(0);
   });
@@ -165,7 +155,7 @@ verifies("paperclip.pr-watcher-wake", () => {
   test("does nothing while the reviewer holds the task or the author is running", async () => {
     const github = fakeGitHub(recording("red-and-conflicting"));
     const paperclip = fakePaperclip([
-      task(4614, agents.liam),
+      task(4614, agents.liam, { branch: "mateo/HAL-4614-work" }),
       { ...task(4614, agents.mateo, { running: true }), id: "task-running" },
     ]);
     expect((await run(github, paperclip).summary).woken).toBe(0);

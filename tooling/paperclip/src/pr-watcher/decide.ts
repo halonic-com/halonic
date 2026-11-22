@@ -34,6 +34,8 @@ export interface WatchedTask {
   readonly assigneeAgentId: string | null;
   /** A run of its assignee is queued or running, so a wake would add nothing. */
   readonly running: boolean;
+  /** It has a child task that isn't done or cancelled, so its work isn't finished. */
+  readonly openChildren: boolean;
 }
 
 /** One state the author should hear about. `key` says when it is the same state again. */
@@ -62,6 +64,13 @@ export type Decision =
 export function branchOwner(branch: string): string | undefined {
   const slash = branch.indexOf("/");
   return slash > 0 ? branch.slice(0, slash).toLowerCase() : undefined;
+}
+
+/** The one agent every branch names, or undefined when they name none or several. */
+export function branchesOwner(branches: readonly string[]): string | undefined {
+  const owners = new Set(branches.map(branchOwner));
+  const [owner] = owners;
+  return owners.size === 1 ? owner : undefined;
 }
 
 function short(sha: string): string {
@@ -124,9 +133,10 @@ export function closedOutcome(pulls: readonly PullFacts[]): Decision | undefined
 }
 
 /**
- * The decision for one task. `ownerId` is the agent the pull requests'
- * branch names; when anyone else holds the task (its reviewer), the watcher
- * does nothing.
+ * The decision for one task. `ownerId` is the agent every one of its pull
+ * requests' branches names; when anyone else holds the task (its reviewer),
+ * or the branches name different agents, the watcher does nothing. Done
+ * also waits for its child tasks and for the author's hold line.
  */
 export function decide(
   task: WatchedTask,
@@ -135,7 +145,7 @@ export function decide(
   memory: Memory,
 ): Decision {
   if (ownerId === undefined || task.assigneeAgentId !== ownerId) {
-    return { kind: "skip", why: "its author doesn't hold it" };
+    return { kind: "skip", why: "its branches don't all name the agent that holds it" };
   }
   if (task.running) {
     return { kind: "skip", why: "its author is already running on it" };
@@ -143,6 +153,9 @@ export function decide(
   const closed = closedOutcome(pulls);
   if (closed?.kind === "done" && memory.held) {
     return { kind: "skip", why: "its author said more pull requests are coming" };
+  }
+  if (closed?.kind === "done" && task.openChildren) {
+    return { kind: "skip", why: "it has a child task that isn't done" };
   }
   if (closed !== undefined) {
     return closed;
