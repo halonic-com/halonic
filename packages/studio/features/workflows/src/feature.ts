@@ -31,7 +31,7 @@ export const workflowsFeature = defineFeature({
       label: "Workflow",
       icon: "workflows",
       place: "workflows",
-      open: { view: "WorkflowPage", load: () => import("./page/workflow-page.tsx") },
+      open: { view: "WorkflowPage", load: () => import("./page/workflow-item.tsx") },
       tab: {
         describe: (item, context) => ({
           label:
