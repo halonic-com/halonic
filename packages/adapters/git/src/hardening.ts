@@ -76,6 +76,10 @@ export const hardeningEnvironment: Readonly<Record<string, string>> = {
   // command, and no local remote: git runs a local remote's own hooks and
   // config, which no setting here reaches.
   GIT_ALLOW_PROTOCOL: "https:ssh",
+  // git never fetches an object it lacks from a remote on its own, so a
+  // call that only reads the repository never connects anywhere. Older git
+  // ignores it; the repository's partial-clone keys are refused for that.
+  GIT_NO_LAZY_FETCH: "1",
   // Every path is a file name, never a pattern or `:(…)` magic.
   GIT_LITERAL_PATHSPECS: "1",
   // Messages in English, so the adapter's errors read the same everywhere.

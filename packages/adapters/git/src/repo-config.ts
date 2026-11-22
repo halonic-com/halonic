@@ -92,6 +92,9 @@ export function checkRefusedKeys(entries: readonly ListedConfig[]): void {
  *   from the adapter, so it can't be overridden.
  * - Every `hook.<name>.*` key: newer git runs `hook.<name>.command` as a
  *   hook, and nothing says `core.hooksPath` covers it.
+ * - `extensions.partialClone` and `remote.<name>.promisor`, with which git
+ *   fetches a missing object from that remote while it only reads, before
+ *   anyone chose to reach it. Git before 2.44 ignores `GIT_NO_LAZY_FETCH`.
  */
 function isRefusedKey(key: string): boolean {
   const lower = key.toLowerCase();
@@ -100,7 +103,9 @@ function isRefusedKey(key: string): boolean {
   if (subsectionKey(key, "branch")?.name.toLowerCase() === "mergeoptions") return true;
   const url = subsectionKey(key, "url")?.name.toLowerCase();
   if (url === "insteadof" || url === "pushinsteadof") return true;
-  if (subsectionKey(key, "remote")?.name.toLowerCase() === "pushurl") return true;
+  if (lower === "extensions.partialclone") return true;
+  const remote = subsectionKey(key, "remote")?.name.toLowerCase();
+  if (remote === "pushurl" || remote === "promisor") return true;
   return weakensCertificateCheck(lower);
 }
 
