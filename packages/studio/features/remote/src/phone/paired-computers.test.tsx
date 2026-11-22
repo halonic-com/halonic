@@ -236,6 +236,9 @@ verifies("remote.phone-paired-computers", () => {
       "Its name and address can't be read. Forget it, then pair that computer again.",
     );
     expect(rows[1]?.textContent).not.toContain("Paired");
+    // Only its tile fades; the words and Forget keep their contrast (C667 #1, HAL-16002).
+    expect(rows[1]?.firstElementChild?.className).toContain("opacity-60");
+    expect(rows[1]?.querySelectorAll(".opacity-60")).toHaveLength(1);
     await press("Forget the computer this phone can't read");
     const sheet = document.querySelector("dialog");
     expect(sheet?.textContent).toContain("Forget this computer?");
