@@ -2,7 +2,6 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16283
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nrr9C3fswdFt7qYjxljtEsdIcnymoia1pW10sSgIy5rYrsmDeNKJgPht8tnnSVIb73LnPM5PlAd7j9jSyeZLDg==
 
 ## What changes
 
@@ -15,6 +14,8 @@ The requirement gains two examples; none is removed. The test for the ready sand
 
 `agent-host-client.doctor` also checks a ready Sandbox line's `sandboxKind` against the kinds the host names, as it checks the ids and actions, so the page never words a kind it doesn't know. The requirement gains that sentence and two examples; none is removed, and its tests only gain a kind and a case.
 
+`tooling/check/policy.json` gains one `extraExports` entry, `./workspace` for `@halonicjs/adapter-doctor-node`, so Studio reads a workspace's providers and aliases with the same code as `halonic doctor` instead of a second copy that could drift (Liam's choice on HAL-13411, 22 Nov). That entry loads only `doctor-workspace.ts` and `workspace-problems.ts`, and nothing it loads imports `node:`, so it is safe in the webview. Nothing else in `policy.json` changes.
+
 ## Why
 
 Team wording on an approved screen (first-run-progress 4.2 on HAL-7986, approved by the board on 19 Nov, HAL-7993), decided by the designer under HAL-2282: one word for where keys are kept, and the doctor's own words on the line the dialog promises are the doctor's.
@@ -23,3 +24,4 @@ Team wording on an approved screen (first-run-progress 4.2 on HAL-7986, approved
 
 - agent-host-client.doctor
 - check-computer.lines
+- tooling/check/policy.json
