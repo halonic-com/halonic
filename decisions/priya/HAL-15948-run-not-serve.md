@@ -3,6 +3,7 @@
 - Task: HAL-15948
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15948 (a team decision with no board card, HAL-2282 rule: wording on the approved sandbox-not-ready banner, from Iris's flow check C656 on HAL-15937, finding 2, using Sofia's line from HAL-13232)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3lCqAoyOMCh7IsNFIDY3iTqLdR+5v0H4CM4rMt1JK/dN9eywqIQwKr22pxhyqMwPONyec0/h/9MIlF4h72FuAw==
 
 ## What changes
 
