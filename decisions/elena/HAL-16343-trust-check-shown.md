@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16343 (triaged on HAL-16327; Liam reviews the trust changes)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SspubkTnYwZEVheE9aZ60aa+n0/RqTTA427e5UEW5GF98UmsSuSIsctt8dUE7Rgo5AJYKV2JaNCoxBFS0GqABw==
 
 **The trust dialog.** When the workspace changed while the trust dialog was open, the dialog showed
 the new check with "This workspace changed while you were reviewing it. Check the new version.", but
