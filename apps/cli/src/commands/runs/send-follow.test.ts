@@ -209,6 +209,23 @@ verifies("cli.commands.runs.send", () => {
       expect((await eventsOfTheRun()).at(-1)?.type).toBe("run.completed");
     });
 
+    it("says you rejected it, as runs show does, and names the ending it reached (C692)", async () => {
+      await startWaitingRun();
+
+      const { code, io } = await halonic(["runs", "send", "01jd8q", "reject"]);
+
+      expect(io.stderr).toEqual([]);
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout[0]).toBe("✓ You rejected run 01jd8q. Support reply goes on.");
+      const finished = io.stdout.findIndex((line) =>
+        line.startsWith("✓ Support reply finished in "),
+      );
+      expect(io.stdout.slice(finished + 1, finished + 3)).toEqual([
+        "  Sent nothing · asked you once",
+        "  Ending: Finished without the reply",
+      ]);
+    });
+
     it("says first that an agent on hold runs in the sandbox, as halonic run does", async () => {
       await startWaitingRun();
       await writerInClaudeCode();

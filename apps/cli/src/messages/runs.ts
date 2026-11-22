@@ -59,8 +59,17 @@ export const runsMessages = defineMessages("runs", {
   /** The same, when there's no such run: "✕ Couldn't send approve: …". */
   sendActionNoRun: (event: string) => phrase`send ${event}`,
 
-  sent: (event: string, runId: string, title: string) =>
-    phrase`Sent ${event} to run ${runId}. ${title} goes on.`,
+  /**
+   * A `reject` reads as `runs show` says it ({@link youAnswered}, C692), so
+   * the line doesn't sound as if the run carries on as asked: "You rejected
+   * run 01jd8q. Support reply goes on." Any other event is sent as written.
+   */
+  sent: (event: string, runId: string, title: string) => {
+    if (event === "reject") {
+      return phrase`You rejected run ${runId}. ${title} goes on.`;
+    }
+    return phrase`Sent ${event} to run ${runId}. ${title} goes on.`;
+  },
   /**
    * A Try it or Test run that ended at steps it couldn't try, because they
    * need changes left out of it (HAL-4285): "! Support reply couldn't try everything."
