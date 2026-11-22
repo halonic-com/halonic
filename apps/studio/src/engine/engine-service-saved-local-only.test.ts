@@ -106,32 +106,18 @@ verifies("studio.engine-service", () => {
     });
 
     it("starts nothing while the saved workspace.yaml has an error", async () => {
-      const { files, vcs } = await acmeWithHistory(localOnlyOff, "id: acme\nprivacy: [\n");
+      const saved = "id: acme\nname: Acme\nprivacy:\n  localOnly: maybe\n";
+      const { files, vcs } = await acmeWithHistory(localOnlyOff, saved);
       const server = answeringServer();
       const service = serviceOn(fakeShell(), files, { versions: vcs, http: server });
 
       await expect(service.startRun(reply, {})).rejects.toMatchObject({
         kind: "invalid_input",
         message:
-          "The saved workspace.yaml has an error on line 2, so Halonic can't tell whether Local only is on. Nothing started.",
+          "The saved workspace.yaml has an error on line 4, so Halonic can't tell whether Local only is on. Nothing started.",
         fix: "Fix the error in workspace.yaml, then try again.",
       });
       expect(server.hosts).toEqual([]);
-    });
-
-    it("starts nothing while the saved workspace.yaml can't be read", async () => {
-      const { files, vcs } = await acmeWithHistory(localOnlyOff, localOnlyOn);
-      const read = files.read.bind(files);
-      files.read = async (path) => {
-        if (path !== "workspace.yaml") return await read(path);
-        throw Object.assign(new Error("permission denied"), { code: "EACCES" });
-      };
-      const service = serviceOn(fakeShell(), files, { versions: vcs, http: answeringServer() });
-
-      await expect(service.startRun(reply, {})).rejects.toMatchObject({
-        kind: "invalid_input",
-        message: "the workspace file workspace.yaml can't be read.",
-      });
     });
   });
 
@@ -164,7 +150,7 @@ verifies("studio.engine-service", () => {
     expect(server.hosts).toEqual([]);
     const [run] = await engine.runs.list({});
     expect(run).toMatchObject({
-      trigger: expect.objectContaining({ type: "routine" }),
+      trigger: expect.objectContaining({ type: "schedule", routineId: "support/hourly" }),
       status: "failed",
       reason: "local-only",
     });

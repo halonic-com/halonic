@@ -20,6 +20,7 @@ import {
 } from "@halonicjs/workspace";
 import { historyRefusalOf, nothingLiveRefusal } from "./page-refusal.ts";
 import type { LiveVersions } from "./page-versions.ts";
+import { withSavedLocalOnly } from "./saved-local-only.ts";
 
 /**
  * A version's workspace, with its agents' and skills' files as the load read them. The saved
@@ -78,14 +79,19 @@ export class PageRunVersions {
 
   /**
    * The version the engine opens on: the live version, or the saved files with history off or
-   * while nothing is live, so answers and cancels still work then.
+   * while nothing is live, so answers and cancels still work then. Its Local only counts as on
+   * when the saved files say on too (`withSavedLocalOnly`); a run's definitions still come from
+   * the version it records.
    *
-   * @throws KindedError `unavailable` when the workspace has history and git can't read it
+   * @throws KindedError `unavailable` when the workspace has history and git can't read it, or
+   *   `invalid_input` when the saved `workspace.yaml` can't be read or has an error
    */
   async opening(): Promise<LoadedVersion> {
+    const { saved } = this.#parts;
     const live = await this.#liveVersion();
-    if (live.kind !== "commit") return await loadVersion(this.#parts.saved);
-    return await this.#loadCommit(live.commit.hash);
+    if (live.kind !== "commit") return await loadVersion(saved);
+    const loaded = await this.#loadCommit(live.commit.hash);
+    return { ...loaded, workspace: await withSavedLocalOnly(loaded.workspace, saved) };
   }
 
   /**
