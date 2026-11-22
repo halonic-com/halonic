@@ -3,6 +3,7 @@
 - Task: HAL-16084 (from the findings on HAL-16082)
 - Approval: the task asks for this test; Liam approves this note in his review of this pull request on HAL-16084
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cUMZSbhIAOYHWQCph1iTs4GXJKIsFvvbR6X+1NgEdVdZRbSfBNp48yP7YlpkyYyKgVdnU76qC4r9fqNVgqb5Bw==
 
 ## What changes
 
