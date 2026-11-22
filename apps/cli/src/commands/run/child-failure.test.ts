@@ -88,11 +88,11 @@ verifies("cli.run-failed-child", () => {
     expect(code).toBe(exitCode.failed);
     const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
     expect(io.stdout.slice(failed, failed + 3)).toEqual([
-      "✕ Many failed in the step Each: the run it started for item 1 failed in the step Each word: its items ({{input.topic}}) are a text, not a list.",
+      "✕ Many failed in the step Each because the run it started for item 1 failed in the step Each word: its items ({{input.topic}}) are a text, not a list.",
       '  Pass a JSON list, such as ["Monday", "Tuesday"].',
       // The child's short id starts with the run's own; item 1 is the
       // step's first item, index 0 in the id.
-      expect.stringMatching(/^ {2}See that run: halonic runs show [0-9a-z]{6}\.\d+\.0$/),
+      expect.stringMatching(/^ {2}See that run with halonic runs show [0-9a-z]{6}\.\d+\.0\.$/),
     ]);
     const heading = io.stdout.find((line) => line.startsWith("Running Many"));
     const runShortId = heading?.match(/· run (\S+)$/u)?.[1];

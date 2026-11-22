@@ -214,6 +214,8 @@ export const versionWords = {
   createdAndShared: (name: string) => `Created and shared version "${name}"`,
   /** After "Couldn't share" and the reason, when the version was created but not shared. */
   savedHere: "Your version is saved here.",
+  /** `savedHere` when the version made a routine or agent live (C621): the share failing doesn't undo that. */
+  savedHereAndLive: (item: string) => `Your version is saved here, and ${item} is live.`,
   /** Under the list of the first version: Halonic made the file, not the person. */
   addedByHistory: "Halonic added this when you turned on history.",
   /** The name offered for the first version of a workspace. */

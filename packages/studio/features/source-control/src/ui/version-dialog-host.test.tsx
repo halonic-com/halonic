@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { createShell, type DialogHostProps, loadView } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -12,6 +13,7 @@ import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { WorkspaceServices } from "../test-support/services.ts";
 import { ChangesView } from "./changes-page.tsx";
+import { CreateVersionDialog } from "./create-version-dialog.tsx";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -25,7 +27,13 @@ const triage = "agents/triage.agent.yaml";
  * A Studio with the source control feature over a workspace where the triage agent and the
  * README changed, with the feature's dialog host drawn as the window draws it.
  */
-async function studioWith({ identity }: { readonly identity?: Identity } = {}) {
+async function studioWith({
+  identity,
+  remote = false,
+}: {
+  readonly identity?: Identity;
+  readonly remote?: boolean;
+} = {}) {
   const fake = fakeSource({
     kind: "ready",
     changes: [
@@ -36,6 +44,7 @@ async function studioWith({ identity }: { readonly identity?: Identity } = {}) {
   fake.setTexts(triage, { before: "model: claude\n", after: "model: gpt\n" });
   fake.setTexts("README.md", { before: "a\n", after: "b\n" });
   if (identity !== undefined) fake.setIdentity(identity);
+  fake.setRemote(remote);
   const shell = createShell({
     features: [sourceControlFeature],
     hostServices: [ChangesSourceService],
@@ -110,6 +119,40 @@ verifies("source-control.create-version-elsewhere", () => {
       // One toast, which says the item is live and names the version.
       expect(toasts.list()).toMatchObject([
         { tone: "success", title: "Triage is live.", text: `Version "${name}"` },
+      ]);
+    });
+
+    it("still says the item is live when sharing it right away fails", async () => {
+      const { fake, toasts, workspace, versionDialog } = await studioWith({ remote: true });
+      const list = workspace.get(ChangesListService);
+      fake.failShare(new KindedError("unavailable", "You can't reach the shared copy right now."));
+      await act(async () => {
+        void versionDialog.open([triage], { makesLive: "Triage" });
+        await settle();
+      });
+      // The host doesn't offer the share box yet, so draw the dialog itself with the box ticked.
+      unmountAll();
+      render(
+        <ToastStoreProvider store={toasts}>
+          <CreateVersionDialog
+            list={list}
+            files={list.versionFiles}
+            makesLive="Triage"
+            returnFocus={() => null}
+            onCreated={() => undefined}
+            canShare
+            shareChoice={{ read: () => true, write: () => undefined }}
+          />
+        </ToastStoreProvider>,
+      );
+      await press("Create version");
+      expect(fake.versions).toHaveLength(1);
+      expect(toasts.list()).toMatchObject([
+        {
+          tone: "danger",
+          title: "Couldn't share",
+          text: "You can't reach the shared copy right now. Your version is saved here, and Triage is live.",
+        },
       ]);
     });
 

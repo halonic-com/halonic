@@ -219,7 +219,8 @@ function createdToast(name: string, makesLive: string | undefined): ToastMessage
 
 /**
  * The toasts of sharing a version as it is made: one success toast names the version, on its
- * second line under "<item> is live." when the version makes a routine or agent live.
+ * second line under "<item> is live." when the version makes a routine or agent live. When the
+ * share fails, its toast still says the item is live, since it is.
  */
 function sharedWordsFor(name: string, makesLive: string | undefined): ShareToastWords {
   const sharedVersion = () => versionWords.createdAndShared(name);
@@ -229,6 +230,6 @@ function sharedWordsFor(name: string, makesLive: string | undefined): ShareToast
   return {
     shared: () => versionWords.isLive(makesLive),
     sharedText: sharedVersion,
-    afterReason: versionWords.savedHere,
+    afterReason: versionWords.savedHereAndLive(makesLive),
   };
 }

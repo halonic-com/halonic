@@ -193,7 +193,7 @@ export const runsMessages = defineMessages("runs", {
    * (HAL-15555), in place of Studio's Open run: the way to that child run.
    */
   showChildRun: (childId: string, dir?: string) =>
-    phrase`See that run: ${suggestedCommand("runs show", dir, childId)}`,
+    phrase`See that run with ${suggestedCommand("runs show", dir, childId)}.`,
   /**
    * `runs show` without a run id, or with more than one (usage, exit 2); the
    * usage line is line 2. The shape of `init`'s "takes one folder name"
