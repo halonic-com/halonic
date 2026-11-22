@@ -49,7 +49,12 @@ import {
 import type { RunSummary } from "@halonicjs/events";
 import type { SendOptions } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import { filesOf, loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
+import {
+  filesOf,
+  type LoadedWorkspace,
+  loadWorkspace,
+  runDefinitionsOf,
+} from "@halonicjs/workspace";
 import { openEngineHarnessHost } from "./engine-harness-host.ts";
 import { holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
@@ -307,6 +312,21 @@ export class EngineService {
     const open = await opening?.catch(() => undefined);
     await open?.engine.close();
     await this.#ending.catch(() => undefined);
+  }
+
+  /**
+   * The runs the open engine hasn't ended, running or waiting, and the workspace it loaded:
+   * `undefined` while no engine is open or it didn't open. Reads only; it never opens the engine.
+   */
+  async openRuns(): Promise<
+    { readonly runs: readonly RunSummary[]; readonly workspace: LoadedWorkspace } | undefined
+  > {
+    const open = await this.#opening?.catch(() => undefined);
+    if (open === undefined) return undefined;
+    return {
+      runs: await open.runs.list({ status: ["running", "waiting"] }),
+      workspace: open.workspace,
+    };
   }
 
   /** Lets the workspace's service registry close the engine with the workspace. */

@@ -120,7 +120,7 @@ export async function openFolder(
   provideRemoteControl(services, tauriAgentHostTransport(window));
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
-    services.provide(RestartRunsService, restartRunsOfWindow);
+    services.provide(RestartRunsService, restartRunsOfWindow(services));
   }
   const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined && trust !== undefined && scope !== undefined) {

@@ -1,3 +1,4 @@
+import { type OpenExternal, OpenExternalProvider, openInNewTab } from "@halonicjs/studio-kit";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { WorkspaceWindow, type WorkspaceWindowProps } from "./workspace-window.tsx";
@@ -13,7 +14,8 @@ export interface MountedWorkspaceWindow {
 /**
  * Draws the desktop app's {@link WorkspaceWindow} into an element of the page, in React's strict
  * mode as every Studio page, so React stays inside the Studio packages and `apps/studio` only
- * starts the window.
+ * starts the window. Every outside link in it opens its page with `openExternal`: the desktop
+ * app's own, or a new browser tab when it gives none.
  *
  * @example
  * const window = mountWorkspaceWindow(root, { shell, switcher, platform, language: "en" });
@@ -23,12 +25,15 @@ export interface MountedWorkspaceWindow {
 export function mountWorkspaceWindow(
   element: Element,
   props: WorkspaceWindowProps,
+  openExternal: OpenExternal = openInNewTab,
 ): MountedWorkspaceWindow {
   const root = createRoot(element);
   const render = (shown: WorkspaceWindowProps) =>
     root.render(
       <StrictMode>
-        <WorkspaceWindow {...shown} />
+        <OpenExternalProvider openExternal={openExternal}>
+          <WorkspaceWindow {...shown} />
+        </OpenExternalProvider>
       </StrictMode>,
     );
   render(props);
