@@ -55,7 +55,27 @@ verifies("cloudflare-durable.usage-outbox", () => {
       ).toThrow(RangeError);
       expect(() => account.settle("res_1", { [marker]: 1 } as never)).toThrow(RangeError);
       expect(() => account.record("call_1", owner, "run", { cost: 0.5 })).toThrow(RangeError);
+      expect(() => account.record("call_1", owner, marker as "run", {})).toThrow(RangeError);
       expect(storage.dump()).toBe(before);
+    });
+
+    it("refuses an object's own property names as ids, so no actor's spend is lost", () => {
+      const { account, storage } = openAccount();
+      const before = storage.dump();
+      for (const actor of ["__proto__", "constructor", "prototype"]) {
+        expect(() => account.record("call_1", { ...owner, actor }, "run", {})).toThrow(RangeError);
+      }
+      expect(storage.dump()).toBe(before);
+    });
+
+    it("gives every record its own id, so Cloud drops none that the account counts", () => {
+      const { account } = openAccount();
+      account.reserve(step("res_1"));
+      expect(() => account.record("res_1", owner, "model_call", { cost: 1 })).toThrow(RangeError);
+      expect(() => account.record("res_2:late", owner, "run", {})).toThrow(RangeError);
+      expect(() => account.reserve(step("res_2:late"))).toThrow(RangeError);
+      account.record("call_1", owner, "model_call", { cost: 1 });
+      expect(() => account.reserve(step("call_1"))).toThrow(RangeError);
     });
   });
 

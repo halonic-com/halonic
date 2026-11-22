@@ -1,7 +1,15 @@
 import type { Clock } from "@halonicjs/ports";
 import { checkAmount } from "./input-rules.ts";
 import { runKeyPrefix, slotRefusal } from "./run-slots.ts";
-import { addAmounts, checkAmounts, checkId, checkIds, checkLimits } from "./usage-input.ts";
+import {
+  addAmounts,
+  checkAmounts,
+  checkId,
+  checkIds,
+  checkLimits,
+  checkRecordKind,
+  correctionSuffix,
+} from "./usage-input.ts";
 import { firstOver, newThresholds, usageLimitsKey, withDefaults } from "./usage-limits.ts";
 import { defaultOutboxCap, UsageOutbox } from "./usage-outbox.ts";
 import type {
@@ -118,7 +126,7 @@ export class UsageAccount {
     return this.#storage.transactionSync(() => {
       if (this.#storage.get(keys.reservation + request.id) !== undefined) return answer(null);
       if (this.#storage.get(keys.charged + request.id) !== undefined) {
-        throw new RangeError("This reservation id was settled already.");
+        throw new RangeError("This id was charged already.");
       }
       const amounts = withDefaults(max, this.#storage.get<UsageLimits>(keys.limits));
       const refusal = this.#refusal(request.actor, amounts);
@@ -159,11 +167,18 @@ export class UsageAccount {
     });
   }
 
-  /** Charges a model call or a run's end once per `id`; a repeat changes nothing. */
+  /**
+   * Charges a model call or a run's end once per `id`; a repeat changes nothing. Records and
+   * reservations share one set of ids, since Cloud keeps one record per id.
+   */
   record(id: string, owner: Owner, kind: "model_call" | "run", used: UsageAmounts): void {
     checkIds({ id, ...owner });
+    checkRecordKind(kind);
     const amounts = checkAmounts(used);
     this.#storage.transactionSync(() => {
+      if (this.#storage.get(keys.reservation + id) !== undefined) {
+        throw new RangeError("This id belongs to a held reservation.");
+      }
       if (this.#storage.get(keys.charged + id) !== undefined) return;
       this.#charge(id, { runId: owner.runId, actor: owner.actor, amounts, by: "record" }, kind);
     });
@@ -254,7 +269,7 @@ export class UsageAccount {
     this.#storage.put<Charged>(keys.charged + id, charge);
     const { runId, actor } = charge;
     // Cloud drops a record whose id it has, so a correction needs an id of its own.
-    const recordId = kind === "correction" ? `${id}:late` : id;
+    const recordId = kind === "correction" ? id + correctionSuffix : id;
     const at = this.#now();
     const record = { id: recordId, scope: this.#scope, actor, runId, kind, units: change, at };
     this.#outbox.add({ kind: "usage", record });

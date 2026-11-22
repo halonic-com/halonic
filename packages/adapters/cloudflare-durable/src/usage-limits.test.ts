@@ -27,6 +27,8 @@ verifies("cloudflare-durable.usage-limits", () => {
       acmeLimits({ version: 2, members: { "Ada Lovelace": { status: "active" } } }),
       acmeLimits({ version: 2, period: { start: period.end, end: period.start } }),
       acmeLimits({ version: 2.5 }),
+      acmeLimits({ version: 2, members: { u_ada: { status: "active", maxRunning: Number.NaN } } }),
+      acmeLimits({ version: 2, members: JSON.parse('{"__proto__": {"status": "active"}}') }),
     ];
     for (const limits of wrong) expect(() => account.applyLimits(limits)).toThrow(RangeError);
     expect(account.applyLimits(acmeLimits({ version: 2 }))).toBe("applied");

@@ -5,21 +5,32 @@ import { type UsageAmounts, type UsageLimits, type UsageUnit, usageUnits } from 
 /** Ids are machine ids: letters, digits and `_ . : -`, at most 128 characters. */
 const idPattern = /^[A-Za-z0-9_.:-]{1,128}$/;
 
+/** Ids are keys of plain objects in storage, so an object's own property names can't be ids. */
+const reservedIds: ReadonlySet<string> = new Set(["__proto__", "constructor", "prototype"]);
+
+/** A correction's record takes its step's id plus this, so no caller id may end with it. */
+export const correctionSuffix = ":late";
+
+/** The kinds of use a caller may record; `step` and `correction` come from reserve and settle. */
+const recordKinds: ReadonlySet<string> = new Set(["model_call", "run"]);
+
 /**
  * @throws RangeError when `id` isn't a machine id
  */
 export function checkId(name: string, id: string): string {
-  if (typeof id !== "string" || !idPattern.test(id)) {
+  if (typeof id !== "string" || !idPattern.test(id) || reservedIds.has(id)) {
     throw new RangeError(`${name} must be 1 to 128 letters, digits or "_.:-".`);
   }
   return id;
 }
 
 /**
- * @throws RangeError when one of a step's ids isn't a machine id
+ * @throws RangeError when one of a step's ids isn't a machine id, or its id ends like a correction's
  */
 export function checkIds(ids: { id: string; runId: string; actor: string }): void {
-  checkId("id", ids.id);
+  if (checkId("id", ids.id).endsWith(correctionSuffix)) {
+    throw new RangeError(`id can't end with "${correctionSuffix}".`);
+  }
   checkId("runId", ids.runId);
   checkId("actor", ids.actor);
 }
@@ -55,8 +66,19 @@ export function checkLimits(limits: UsageLimits): UsageLimits {
   for (const [actor, member] of Object.entries(limits.members ?? {})) {
     checkId("actor", actor);
     checkAmounts(member.shares ?? {});
+    if (member.maxRunning !== undefined && !Number.isSafeInteger(member.maxRunning)) {
+      throw new RangeError("A member's cap is a safe whole number.");
+    }
   }
   return limits;
+}
+
+/**
+ * @throws RangeError when `kind` isn't one a caller may record
+ */
+export function checkRecordKind(kind: string): void {
+  if (!recordKinds.has(kind))
+    throw new RangeError(`"${String(kind).slice(0, 32)}" isn't a record kind.`);
 }
 
 /** Whether `unit` is one of the units an account counts. */
