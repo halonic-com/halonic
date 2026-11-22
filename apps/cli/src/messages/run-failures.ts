@@ -1,7 +1,6 @@
-import { secretVariableName } from "@halonicjs/adapter-env-secrets";
 import { providerTypes } from "@halonicjs/adapter-workspace-models";
 import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
-import { isModelAlias, type RunFailure } from "@halonicjs/app/run-failure";
+import type { RunFailure } from "@halonicjs/app/run-failure";
 import { shellWord } from "../output/shell-word.ts";
 import { counted, listInWords } from "./counts.ts";
 import { dayAndMonth } from "./dates.ts";
@@ -9,7 +8,20 @@ import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
 import { type Phrase, phrase } from "./phrase.ts";
 import { proxyFixInWords, proxyProblemInWords } from "./proxy-failures.ts";
-import { busyInWords, harnessName, minutesInWords, secondsInWords } from "./run-failure-words.ts";
+import {
+  aKind,
+  busyInWords,
+  harnessName,
+  minutesInWords,
+  modelNamed,
+  modelOrAlias,
+  namedSecret,
+  noTransitionReason,
+  placeholderPath,
+  saveKey,
+  secondsInWords,
+  tryLater,
+} from "./run-failure-words.ts";
 import { sandboxMessages } from "./sandbox.ts";
 import { asSentence } from "./sentence.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -159,6 +171,12 @@ const lineOne = {
   // Worded like `validate`'s no-done-transition, which catches most of these first (HAL-14313).
   "no-transition": (run, failure) => failedIn(run, noTransitionReason(failure)),
   "task-without-agent": (run) => failedIn(run, phrase`the step names no agent.`),
+  // C613's words for `validate`'s foreach-child-waits, which refuses most of these first (HAL-15555).
+  "item-run-waits": (run, failure) =>
+    failedIn(
+      run,
+      phrase`the run it started for item ${String(failure.item + 1)} waited, and a run for one item can't wait.`,
+    ),
   // The model check's own sentences, so the run says what a model test says (HAL-15333).
   "key-address-not-allowed": (run, failure) =>
     failedIn(
@@ -338,6 +356,9 @@ const lineTwo = {
   },
   // The same fix as `validate`'s task-without-agent (HAL-14313).
   "task-without-agent": () => phrase`Give it an agent (agent: <id>), or make it a wait step.`,
+  // `validate` names the wait step, which the engine's cause doesn't.
+  "item-run-waits": (run, failure) =>
+    phrase`Move the wait step in ${failure.workflow} into this workflow after ${run.step}, or take it out of ${failure.workflow}. ${suggestedCommand("validate", run.dir)} names it.`,
   // The key's list is in the profile, not the workspace, so the command takes no --dir.
   "key-address-not-allowed": (_run, failure) =>
     phrase`Only allow an address you recognise. To allow it, run halonic models allow-address "${failure.key}" ${shellWord(failure.address)}, then run again.`,
@@ -420,59 +441,7 @@ function failedInStep(run: FailedRun): Phrase {
   return phrase`${parent.title} failed in the step ${parent.step}: ${child} failed in the step ${run.step}`;
 }
 
-/** Why the step can't go on from the event it ended with. */
-function noTransitionReason(failure: Extract<RunFailure, { reason: "no-transition" }>): Phrase {
-  if (failure.guarded) {
-    return phrase`its transitions for ${failure.event} all have a when that didn't pass.`;
-  }
-  return failure.takes.length === 0
-    ? phrase`it ended with the event ${failure.event}, and it has no transition.`
-    : phrase`it ended with the event ${failure.event}, but its transitions only take ${listInWords(failure.takes, "or")}.`;
-}
-
-/** "the model alias smart", or "the model mok/echo" for an agent's shorthand. */
-function modelNamed(failure: Extract<RunFailure, { reason: "unknown-provider" }>): Phrase {
-  return "alias" in failure
-    ? phrase`the model alias ${failure.alias}`
-    : phrase`the model ${failure.model}`;
-}
-
-/** The path of items that are one placeholder and nothing else, such as "input.topics". */
-function placeholderPath(items: string): string | undefined {
-  return /^\{\{\s*([^{}\s]+)\s*\}\}$/.exec(items.trim())?.[1];
-}
-
-/** "a text", "an object", "a number". */
-function aKind(kind: string): string {
-  return kind === "object" ? "an object" : `a ${kind}`;
-}
-
 /** "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet." */
 function cantTellCause(run: FailedRun, end: "." | ":" = "."): Phrase {
   return phrase`${failedInStep(run)}. Halonic can't tell the cause yet${end}`;
-}
-
-/**
- * A key's fix names `halonic secret set` first, as the CLI's own way to save
- * one, and the variable as the other (HAL-12570).
- */
-function saveKey(key: Phrase, secret: string): Phrase {
-  return phrase`Save ${key} with halonic secret set ${secret}, or set ${secretVariableName(secret)}, then run again.`;
-}
-
-/** Every key error names the secret and the variable Halonic reads it from, the same as the reader does. */
-function namedSecret(secret: string): string {
-  return `${secret} (${secretVariableName(secret)})`;
-}
-
-/** "the model alias smart", or "the model gpt-4.1" when no alias points at the model (C457-1). */
-function modelOrAlias(failure: { readonly model: string; readonly alias: string }): Phrase {
-  return isModelAlias(failure.alias)
-    ? phrase`the model alias ${failure.alias}`
-    : phrase`the model ${failure.model}`;
-}
-
-/** `provider-busy`, `model-timeout` and `tool-timeout`: nothing the user set caused it. */
-function tryLater(): Phrase {
-  return phrase`Run it again in a few minutes.`;
 }
