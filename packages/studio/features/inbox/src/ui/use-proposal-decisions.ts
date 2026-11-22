@@ -1,6 +1,6 @@
 import { type ToastStore, useToastStore } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
-import { changeLine, decidedToast } from "../plain/proposal-text.ts";
+import { changeLine, decidedToast, undoLeftAloneLine } from "../plain/proposal-text.ts";
 import type { ProposalDecided, ProposalDecisions } from "../proposal-decisions.ts";
 import type { ProposalFile, ProposalItem } from "../proposal-items.ts";
 
@@ -76,7 +76,7 @@ export function useProposalDecisions(
     if (only === undefined) return;
     const title = decidedToast(pastTense[verb], done.length, runId);
     setAnnouncement(done.length === 1 ? `${pastTense[verb]}: ${changeLine(only)}` : title);
-    if (result.undo !== null) undoSteps.offer(title, result.undo, paths);
+    if (result.undo !== null) undoSteps.offer(title, result.undo, { verb, paths });
   }
 
   function decide(verb: ProposalVerb, target: DecisionTarget) {
@@ -85,7 +85,7 @@ export function useProposalDecisions(
     setFailure(null);
     const sent =
       verb === "accept" ? decisions.accept(runId, target) : decisions.reject(runId, target);
-    sent
+    const deciding = sent
       .then((result) => {
         undoSteps.decided();
         applied(verb, target, result);
@@ -96,6 +96,7 @@ export function useProposalDecisions(
         setPending(null);
         setDecided((count) => count + 1);
       });
+    undoSteps.track(deciding);
   }
 
   return { files, pending, failure, changedSinceRun, announcement, decided, decide };
@@ -116,12 +117,22 @@ function decidedFiles(
   return asked.filter((file) => !leftAlone.has(file.path));
 }
 
+/** The decision an **Undo** takes back. */
+interface UndoStep {
+  readonly verb: ProposalVerb;
+  readonly paths: readonly string[];
+}
+
+const decidedWords = { accept: "accepted", reject: "rejected" } as const;
+
 /**
- * The toasts with **Undo** of one proposal's decisions. Leaving the page settles the proposal once
- * its last toast has gone and any Undo pressed on one is done, so every **Undo** keeps working
- * while it shows; the host leaves a proposal still undecided open.
+ * The toasts with **Undo** of one proposal's decisions. Only the newest decision's toast is
+ * offered: the host takes back a step only while the run's decisions are as that step left them,
+ * so an older **Undo** couldn't work after a newer decision. Leaving the page settles the proposal
+ * once a decision on its way and any Undo pressed are done and the last toast has gone, so every
+ * **Undo** keeps working while it shows; the host leaves a proposal still undecided open.
  *
- * @param undone after an Undo, with the paths it put back to undecided
+ * @param undone after an Undo, with the paths the host put back to undecided
  */
 function useUndoSteps(
   decisions: ProposalDecisions | undefined,
@@ -130,44 +141,68 @@ function useUndoSteps(
 ) {
   const toasts = useToastStore();
   const shown = useRef(new Set<string>());
-  const undoing = useRef(new Set<Promise<void>>());
+  const newest = useRef<string | null>(null);
+  const inFlight = useRef(new Set<Promise<void>>());
   const decidedOnce = useRef(false);
   useEffect(
     () => () => {
-      if (decisions === undefined || !decidedOnce.current) return;
-      settleWhenToastsClose(toasts, shown.current, async () => {
-        await Promise.allSettled(undoing.current);
-        await decisions.settle(runId);
+      if (decisions === undefined) return;
+      const waiting = [...inFlight.current];
+      if (!decidedOnce.current && waiting.length === 0) return;
+      // A decision still on its way shows its toast first, so settling waits for that toast too.
+      void Promise.allSettled(waiting).then(() => {
+        if (!decidedOnce.current) return;
+        settleWhenToastsClose(toasts, shown.current, async () => {
+          await Promise.allSettled([...inFlight.current]);
+          await decisions.settle(runId);
+        });
       });
     },
     [decisions, runId, toasts],
   );
 
-  function undo(id: string, paths: readonly string[]) {
+  function track(work: Promise<void>) {
+    inFlight.current.add(work);
+    void work.finally(() => inFlight.current.delete(work));
+  }
+
+  function undo(id: string, step: UndoStep) {
     if (decisions === undefined) return;
     const restoring = decisions
       .undo(id)
-      .then(() => undone(paths))
+      .then(({ leftAlone }) => {
+        const left = new Set(leftAlone);
+        const kept = step.paths.filter((path) => left.has(path));
+        undone(step.paths.filter((path) => !left.has(path)));
+        if (kept.length === 0) return;
+        const text = undoLeftAloneLine(decidedWords[step.verb], kept);
+        toasts?.show({ tone: "danger", title: "Couldn't undo this.", text });
+      })
       .catch((error: unknown) => {
         toasts?.show({ tone: "danger", title: "Couldn't undo this.", text: reasonOf(error) });
-      })
-      .finally(() => undoing.current.delete(restoring));
-    undoing.current.add(restoring);
+      });
+    track(restoring);
   }
 
   return {
-    /** Notes that a decision went through, so leaving the page settles the proposal. */
+    /** Notes that a decision went through, so leaving the page settles the proposal, and closes the older **Undo**. */
     decided: () => {
       decidedOnce.current = true;
+      if (newest.current !== null) toasts?.close(newest.current);
+      newest.current = null;
     },
+    /** Keeps the page from settling the proposal before `work`, a decision on its way, is done. */
+    track,
     /** Shows the decision's toast, whose **Undo** takes back step `id`. */
-    offer: (title: string, id: string, paths: readonly string[]) => {
+    offer: (title: string, id: string, step: UndoStep) => {
       const toast = toasts?.show({
         tone: "success",
         title,
-        action: { label: "Undo", onClick: () => undo(id, paths) },
+        action: { label: "Undo", onClick: () => undo(id, step) },
       });
-      if (toast !== undefined) shown.current.add(toast);
+      if (toast === undefined) return;
+      shown.current.add(toast);
+      newest.current = toast;
     },
   };
 }

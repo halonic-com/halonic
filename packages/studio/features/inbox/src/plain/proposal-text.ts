@@ -119,3 +119,15 @@ export function decidedSummary(files: readonly ProposalFile[]): string {
   if (cantWrite > 0) parts.push(`${cantWrite} can't be written`);
   return parts.join(" · ");
 }
+
+/**
+ * Under "Couldn't undo this." when the host left files of a decision as they were: "notes/a.md
+ * changed after it was accepted, so it stays accepted." Paths come from the workspace.
+ */
+export function undoLeftAloneLine(verb: "accepted" | "rejected", paths: readonly string[]): string {
+  const [only] = paths;
+  if (paths.length === 1 && only !== undefined) {
+    return `${markHiddenName(only)} changed after it was ${verb}, so it stays ${verb}.`;
+  }
+  return `${paths.length} files changed after they were ${verb}, so they stay ${verb}.`;
+}

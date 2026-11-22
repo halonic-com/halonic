@@ -1,7 +1,11 @@
 import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import { AgentHostError, AgentHostRunProposals } from "@halonicjs/adapter-agent-host-client";
 import type { ProposalTarget, ProposedRecord } from "@halonicjs/app";
-import type { ProposalDecided, ProposalDecisions } from "@halonicjs/studio-feature-inbox/api";
+import type {
+  ProposalDecided,
+  ProposalDecisions,
+  ProposalUndone,
+} from "@halonicjs/studio-feature-inbox/api";
 
 /**
  * The workspace's open run proposals from the agent host, for
@@ -55,7 +59,11 @@ export function hostProposalDecisionsOf(
         const { undo } = await proposals.reject(runId, target);
         return { undo, changedSinceRun: [], cantBeWritten: [] };
       }),
-    undo: (undo: string) => whenTrusted(async () => void (await proposals.restore(undo, "before"))),
+    undo: (undo: string) =>
+      whenTrusted(async (): Promise<ProposalUndone> => {
+        const { changedOnDisk, refused } = await proposals.restore(undo, "before");
+        return { leftAlone: [...changedOnDisk, ...refused.map((r) => r.path)] };
+      }),
     settle: (runId: string) => whenTrusted(async () => void (await proposals.settle(runId))),
   };
 }

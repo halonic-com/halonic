@@ -48,7 +48,7 @@ export { type FailedRunNotice, failedRunNotices } from "./notices/failed-run-not
 export type { InboxNotice, InboxNotices, SandboxFixedNotice } from "./notices/inbox-notices.ts";
 export { newestFirst as newestNoticeFirst } from "./notices/merge-notices.ts";
 export { clockTime } from "./plain/waiting-time.ts";
-export type { ProposalDecided, ProposalDecisions } from "./proposal-decisions.ts";
+export type { ProposalDecided, ProposalDecisions, ProposalUndone } from "./proposal-decisions.ts";
 export type { ProposalEnding, ProposalFile, ProposalItem } from "./proposal-items.ts";
 export {
   BudgetUsedUp,

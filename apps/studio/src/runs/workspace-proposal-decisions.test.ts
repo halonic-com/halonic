@@ -41,9 +41,14 @@ verifies("studio.workspace-proposal-decisions", () => {
     });
   });
 
-  it("undoes by the host's id, to before", async () => {
-    const { transport, request } = hostAnswering({ changedOnDisk: [], refused: [] });
-    await hostProposalDecisionsOf(transport, workspace, () => true).undo("u1");
+  it("undoes by the host's id, to before, with what it left alone", async () => {
+    const { transport, request } = hostAnswering({
+      changedOnDisk: [file],
+      refused: [{ path: ".git/config", why: "under-git" }],
+    });
+    expect(await hostProposalDecisionsOf(transport, workspace, () => true).undo("u1")).toEqual({
+      leftAlone: [file, ".git/config"],
+    });
     expect(request).toHaveBeenCalledWith("POST /v1/proposals/restore", {
       workspace,
       undo: "u1",

@@ -14,21 +14,32 @@ export interface ProposalDecided {
   readonly cantBeWritten: readonly string[];
 }
 
+/** What an Undo left as it was. */
+export interface ProposalUndone {
+  /**
+   * Files the host didn't put back: one changed after the decision, can't be written, or a later
+   * decision on the run changed its record, which leaves every file of the step alone.
+   */
+  readonly leftAlone: readonly string[];
+}
+
 /**
  * Accept, Reject, Undo and settle on the open workspace's run proposals. Every call fails with
  * the reason when the proposal can't be decided now, and the page shows it.
  *
  * @example
  * const { undo } = await decisions.accept("01JD8Q", { file: "hubs/support/agents/triage.yaml" });
- * if (undo !== null) await decisions.undo(undo);
+ * if (undo !== null) {
+ *   const { leftAlone } = await decisions.undo(undo);
+ * }
  */
 export interface ProposalDecisions {
   /** Writes the run's text to one file, or to every undecided one. */
   accept(runId: string, target: ProposalTarget): Promise<ProposalDecided>;
   /** Leaves one file, or every undecided one, as it is. */
   reject(runId: string, target: ProposalTarget): Promise<ProposalDecided>;
-  /** Takes back the decision whose undo id an Accept or a Reject gave. */
-  undo(undo: string): Promise<void>;
+  /** Takes back the decision whose undo id an Accept or a Reject gave, as far as the host can. */
+  undo(undo: string): Promise<ProposalUndone>;
   /**
    * Closes the proposal once nothing in it is left to decide, which drops its undo steps, so it
    * is called only once the last **Undo** has gone. A proposal still open stays as it is.

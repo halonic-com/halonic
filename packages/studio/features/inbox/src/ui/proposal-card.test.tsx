@@ -38,7 +38,7 @@ function fakeDecisions(overrides: Partial<ProposalDecisions> = {}) {
   return {
     accept: vi.fn(async () => wrote("u1")),
     reject: vi.fn(async () => wrote("u2")),
-    undo: vi.fn(async () => {}),
+    undo: vi.fn(async () => ({ leftAlone: [] as readonly string[] })),
     settle: vi.fn(async () => {}),
     ...overrides,
   } satisfies ProposalDecisions;
@@ -188,6 +188,74 @@ verifies("inbox.proposal-page", () => {
       );
       expect(toasts.list()).toEqual([]);
     });
+  });
+
+  describe("undoing", () => {
+    it("offers only the newest decision's Undo, and keeps a file the host didn't put back", async () => {
+      // The host takes nothing back once a later decision changed the run's record.
+      const decisions = fakeDecisions({
+        accept: vi.fn(async (_runId: string, target: { file: string } | "all") =>
+          wrote(target === "all" ? "u-all" : `u-${target.file}`),
+        ),
+        undo: vi.fn(async () => ({
+          leftAlone: ["notes/a.md", ".halonic/proposals/01JD8Q.json"],
+        })),
+      });
+      const { root, toasts } = open(decisions);
+      await press(buttons(root, "Accept")[0]);
+      const [first] = toasts.list();
+
+      await press(buttons(root, "Accept")[0]);
+
+      expect(toasts.list().map((toast) => toast.title)).toEqual([
+        "Accepted 1 change from run 01JD8Q",
+      ]);
+      expect(toasts.list()[0]?.id).not.toBe(first?.id);
+
+      await act(async () => first?.action?.onClick());
+
+      expect(decisions.undo).toHaveBeenCalledWith("u-notes/a.md");
+      expect(buttons(root, "Accept")).toHaveLength(0);
+      const refused = toasts.list().find((toast) => toast.tone === "danger");
+      expect(refused?.title).toBe("Couldn't undo this.");
+      expect(refused?.text).toBe("notes/a.md changed after it was accepted, so it stays accepted.");
+    });
+
+    it("puts back only the files the host restored", async () => {
+      const decisions = fakeDecisions({
+        undo: vi.fn(async () => ({ leftAlone: ["notes/b.md"] })),
+      });
+      const { root, toasts } = open(decisions);
+      await press(buttons(root, "Accept all")[0]);
+
+      await act(async () => toasts.list()[0]?.action?.onClick());
+
+      const lines = [...root.querySelectorAll("li")].map((li) => li.textContent ?? "");
+      expect(lines[0]).toContain("Accept");
+      expect(lines[0]).not.toContain("Accepted");
+      expect(lines[1]).toContain("Accepted");
+      expect(toasts.list().find((toast) => toast.tone === "danger")?.text).toBe(
+        "notes/b.md changed after it was accepted, so it stays accepted.",
+      );
+    });
+  });
+
+  it("settles a decision still on its way when the page is left, once its toast has gone", async () => {
+    let answer: (decided: ProposalDecided) => void = () => {};
+    const decisions = fakeDecisions({
+      accept: vi.fn(() => new Promise<ProposalDecided>((resolve) => (answer = resolve))),
+    });
+    const { root, toasts } = open(decisions);
+    await press(buttons(root, "Accept")[0]);
+
+    unmountAll();
+    await act(async () => answer(wrote("u1")));
+    expect(decisions.settle).not.toHaveBeenCalled();
+
+    const [toast] = toasts.list();
+    expect(toast?.title).toBe("Accepted 1 change from run 01JD8Q");
+    await act(async () => toast && toasts.close(toast.id));
+    expect(decisions.settle).toHaveBeenCalledWith("run_mfx3k2a1_0001JD8Q");
   });
 
   it("settles the proposal only once the page is left and its last toast has gone", async () => {
