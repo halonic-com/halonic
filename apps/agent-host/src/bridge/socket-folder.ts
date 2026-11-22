@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { sweepRunSocketFolders } from "@halonicjs/adapter-harness-bridge";
+import type { Placement } from "@halonicjs/engine";
 
 /**
  * Where the host's bridges serve their Unix sockets, each run in a folder of
@@ -23,6 +24,24 @@ export function bridgeSocketFolder(
   if (profileFolder === undefined) return undefined;
   if (platform !== "linux" && platform !== "darwin") return undefined;
   return join(profileFolder, "bridges");
+}
+
+/**
+ * Where the bridge of one run serves: in the host's socket folder for a run in
+ * the sandbox, and on a loopback port for a run a person set to "On this
+ * computer". That program has no sandbox and no proxy to reach a socket, and
+ * the launcher refuses a socket bridge; the run's own token still guards the
+ * port, and the program already runs with all the person's rights, as in the
+ * CLI (HAL-13090, requirement `agent-host.bridge-place`).
+ *
+ * @param socketFolder - the host's {@link bridgeSocketFolder}
+ * @returns the folder, or `undefined` for a bridge on a loopback port
+ */
+export function socketFolderFor(
+  runsOn: Placement,
+  socketFolder: string | undefined,
+): string | undefined {
+  return runsOn === "sandbox" ? socketFolder : undefined;
 }
 
 /**
