@@ -249,3 +249,35 @@ fn repo_leaks_refuses_a_repository_that_names_a_config_hook() {
     );
     assert!(sandbox.marks().is_empty());
 }
+
+#[test]
+fn repo_config_refuses_a_repository_that_names_an_lfs_program() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.git_ok("status");
+    for (section, key) in [
+        ("lfs \"extension.acme\"", "lfs.extension.acme.clean"),
+        (
+            "lfs \"customtransfer.acme\"",
+            "lfs.customtransfer.acme.path",
+        ),
+        ("lfs", "lfs.standalonetransferagent"),
+    ] {
+        let name = key.rsplit('.').next().unwrap_or_default();
+        let config = sandbox.acme.join(".git").join("config");
+        let clean = std::fs::read_to_string(&config).expect("the config reads");
+        sandbox.append_config(&format!(
+            "[{section}]\n\t{name} = {}\n",
+            config_value(&sandbox.planted("lfs"))
+        ));
+        assert_eq!(
+            sandbox.git("status"),
+            Err(GitError::ConfigNotAllowed {
+                key: key.to_owned()
+            }),
+            "{key}"
+        );
+        std::fs::write(&config, clean).expect("the config writes");
+    }
+    assert!(sandbox.marks().is_empty());
+}

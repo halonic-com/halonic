@@ -6,8 +6,10 @@
 //! user unable to use git in a cloned repository that names one, and would
 //! miss the keys new git releases add. So the runner lists the config with
 //! its scopes and, for every entry from the repository itself, overrides
-//! what it names: filters are blanked, merge drivers report a conflict, and
-//! the ssh and signing programs go back to the user's own or git's default.
+//! what it names: merge drivers report a conflict, and the ssh and signing
+//! programs go back to the user's own or git's default. Every filter driver
+//! is blanked, from whatever file it comes: a filter from the user's own
+//! config, such as git-lfs, reads the repository's config too.
 //! The rest is neutralised on every call (see `runner.rs`): hooks, pagers,
 //! editors, diff drivers, signing and transports.
 //! Only a key no override reaches makes the runner refuse the repository.
@@ -139,9 +141,15 @@ pub(crate) fn check_refused_keys(entries: &[ConfigEntry]) -> Result<(), GitError
 ///   beats the same key from the runner, so it can't be overridden.
 /// - Every `hook.<name>.*` key: newer git runs `hook.<name>.command` as a
 ///   hook, and nothing says `core.hooksPath` covers it.
+/// - git-lfs's `lfs.extension.*`, `lfs.customtransfer.*` and
+///   every `*.standaloneTransferAgent`: git-lfs reads them from
+///   the repository's config and runs the programs they name. Every filter
+///   is blanked, so git-lfs doesn't run from the runner; refusing them as
+///   well keeps that from resting on one guard.
 fn is_refused_key(key: &str) -> bool {
     let lower = key.to_ascii_lowercase();
-    if lower.starts_with("hook.") || weakens_certificate_check(&lower) {
+    if lower.starts_with("hook.") || weakens_certificate_check(&lower) || names_lfs_program(&lower)
+    {
         return true;
     }
     if subsection_key(key, "branch")
@@ -167,9 +175,16 @@ fn weakens_certificate_check(key: &str) -> bool {
     matches!(name, "sslverify" | "sslcainfo" | "sslcapath")
 }
 
-/// Adds the names of the filter drivers a repository's own config defines.
-pub(crate) fn add_repository_filters(entries: &[ConfigEntry], names: &mut Vec<String>) {
-    for entry in entries.iter().filter(|entry| entry.is_from_repository()) {
+/// A git-lfs key that names a program; `key` in lower case.
+fn names_lfs_program(key: &str) -> bool {
+    key.starts_with("lfs.extension.")
+        || key.starts_with("lfs.customtransfer.")
+        || key.ends_with(".standalonetransferagent")
+}
+
+/// Adds the names of the filter drivers the config defines, from any file.
+pub(crate) fn add_filters(entries: &[ConfigEntry], names: &mut Vec<String>) {
+    for entry in entries {
         if let Some((name, _)) = subsection_key(&entry.key, "filter")
             && !names.iter().any(|known| known == name)
         {
