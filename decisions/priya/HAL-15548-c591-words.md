@@ -2,7 +2,6 @@
 
 - Approval: the wording is a team decision on approved screens and command output (HAL-2282), from words check C591 on HAL-15531, routed in HAL-15548
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CaxMTEhVrB6u/EFATBVh+lV+mJ4+e6DXnPvF//1nBcC+dEYbxa+X44hQTq1ChfSLeEIGgC2v/kSSCDTGQHkJDA==
 
 Two active requirements change their words. Nothing else they say changes.
 
