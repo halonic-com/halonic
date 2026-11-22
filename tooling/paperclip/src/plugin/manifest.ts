@@ -24,13 +24,18 @@ export const manifest: PaperclipPluginManifestV1 = {
     "issues.wakeup",
     "issue.comments.read",
     "issue.comments.create",
-    // Only GET requests to api.github.com (the reader's origin guard); the manifest can't list hosts.
+    // Only GET requests to api.github.com and GraphQL queries to its /graphql (both readers'
+    // guards); the manifest can't list hosts.
     "http.outbound",
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
     "agent.tools.register",
     // Counts only (wakes, dones, monitors, GitHub requests, tool calls), no task text.
     "metrics.write",
+    // The pass's GitHub snapshot, one entry per company, for queue_state and merge_speed.
+    // Ids, states, names and times only, no comment text.
+    "plugin.state.read",
+    "plugin.state.write",
   ],
   entrypoints: { worker: "dist/worker.js" },
   instanceConfigSchema: {
@@ -42,7 +47,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         type: "string",
         title: "GitHub token",
         description:
-          "The secret with a read-only GitHub token (PR_WATCHER_GITHUB_TOKEN). The watcher only sends GET requests to api.github.com with it.",
+          "The secret with a read-only GitHub token (PR_WATCHER_GITHUB_TOKEN). The watcher only sends GET requests and GraphQL queries to api.github.com with it.",
         format: "secret-ref",
       },
       repos: {

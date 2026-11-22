@@ -1,8 +1,14 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
-import { recording } from "../pr-watcher/fakes.test-helper.ts";
 import { gitHubReader } from "../pr-watcher/github.ts";
-import { type FakeIssue, fakeHost, fakeJobContext } from "./fake-host.test-helper.ts";
+import type { Snapshot } from "../snapshot/shape.ts";
+import { loadSnapshot, saveSnapshot } from "../snapshot/store.ts";
+import {
+  type FakeIssue,
+  fakeHost,
+  fakeJobContext,
+  mergedGreenOnGitHub,
+} from "./fake-host.test-helper.ts";
 import { readSettings, runWatcher } from "./job.ts";
 
 const now = new Date("2026-11-22T07:20:00Z");
@@ -16,18 +22,6 @@ const priyasTask: FakeIssue = {
   assigneeAgentId: "agent-priya",
 };
 
-/** GitHub's lists: #4485 closed yesterday on Priya's branch for HAL-4485. */
-const lists = {
-  "/repos/halonic-com/halonic/pulls?state=open&per_page=100&page=1": [],
-  "/repos/halonic-com/halonic/pulls?state=closed&sort=updated&direction=desc&per_page=100&page=1": [
-    {
-      number: 4485,
-      updated_at: "2026-11-21T20:00:00Z",
-      head: { ref: "priya/HAL-4485-month-spend", repo: { full_name: "halonic-com/halonic" } },
-    },
-  ],
-};
-
 function setUp(
   config: Record<string, unknown>,
   secret?: () => Promise<string>,
@@ -38,7 +32,7 @@ function setUp(
     host,
     configs: { acme: config },
     unconfigured,
-    answers: { ...lists, ...recording("merged-green") },
+    answers: mergedGreenOnGitHub,
     ...(secret === undefined ? {} : { secret }),
   });
   return { ...job, writes };
@@ -93,18 +87,57 @@ verifies("paperclip.pr-watcher-plugin", () => {
 });
 
 verifies("paperclip.pr-watcher-read-only", () => {
-  test("sends the token only with GET requests to api.github.com, and never logs it", async () => {
+  test("sends the token only with GET requests and GraphQL queries to api.github.com, and never logs it", async () => {
     const { ctx, sent, logs, signals } = setUp({ githubToken: token, dryRun: false });
     await runWatcher(ctx, now);
-    expect(sent.length).toBeGreaterThan(2);
+    expect(sent.map((request) => request.method)).toContain("POST");
     for (const request of sent) {
-      expect(request.method).toBe("GET");
-      expect(new URL(request.url).origin).toBe("https://api.github.com");
+      const url = new URL(request.url);
+      expect(url.origin).toBe("https://api.github.com");
+      expect(request.method === "GET" || url.pathname === "/graphql").toBe(true);
       expect(request.authorization).toBe("Bearer test-token");
     }
     expect(JSON.stringify(logs)).not.toContain("test-token");
     // Every request carries a time limit, so a stuck GitHub can't hold the worker.
     expect(signals.every((signal) => signal instanceof AbortSignal)).toBe(true);
+  });
+});
+
+verifies("paperclip.github-snapshot-store", () => {
+  test("saves each pass's snapshot for the company, and readers load it back", async () => {
+    const { ctx } = setUp({ githubToken: token });
+    await runWatcher(ctx, now);
+    const snapshot = await loadSnapshot(ctx, "acme");
+    expect(snapshot?.takenAt).toBe(now.toISOString());
+    expect(snapshot?.repos[0]?.pulls.map((pull) => [pull.number, pull.state])).toEqual([
+      [4485, "merged"],
+    ]);
+    expect(await loadSnapshot(ctx, "globex")).toBeUndefined();
+  });
+
+  test("refuses a stored snapshot of another version", async () => {
+    const { ctx } = setUp({ githubToken: token });
+    await runWatcher(ctx, now);
+    const stored = (await loadSnapshot(ctx, "acme")) ?? {};
+    await saveSnapshot(ctx, "acme", { ...stored, version: 2 } as unknown as Snapshot);
+    await expect(loadSnapshot(ctx, "acme")).rejects.toThrow(
+      "GitHub snapshot: stored version 2, this code reads 1.",
+    );
+  });
+
+  test("still decides when the snapshot can't be saved, and logs why", async () => {
+    const { ctx, writes, logs } = setUp({ githubToken: token, dryRun: false });
+    const failing = {
+      ...ctx,
+      state: { ...ctx.state, set: () => Promise.reject(new Error("state store is down")) },
+    };
+    await runWatcher(failing, now);
+    expect(writes[0]).toEqual({ kind: "update", issueId: "task-4485", patch: { status: "done" } });
+    expect(logs).toContainEqual({
+      level: "error",
+      message: "PR watcher: couldn't save the GitHub snapshot: state store is down",
+      meta: { companyId: "acme" },
+    });
   });
 });
 

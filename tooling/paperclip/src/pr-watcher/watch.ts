@@ -8,16 +8,18 @@ import {
   type PullFacts,
   type Reason,
 } from "./decide.ts";
-import type { FoundPulls } from "./discover.ts";
-import { type BaseGreenSince, baseGreenSince, pullFacts } from "./facts.ts";
-import type { GitHubGet } from "./github.ts";
+import type { FoundPulls, PullRef } from "./discover.ts";
+import { type PullFactsReader, pullKey } from "./facts.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
 
-/** What one tick needs. `discover` finds each task's pull requests by branch. */
+/**
+ * What one tick needs. `discover` finds each task's pull requests by branch;
+ * `facts` reads them, once for all the tasks whose author holds them.
+ */
 export interface TickOptions {
   readonly paperclip: Paperclip;
-  readonly get: GitHubGet;
   readonly discover: () => Promise<FoundPulls>;
+  readonly facts: PullFactsReader;
   /** Print what it would do, write nothing. */
   readonly dryRun: boolean;
   readonly log: (line: string) => void;
@@ -31,11 +33,12 @@ export interface TickSummary {
   readonly failed: readonly string[];
 }
 
-/** What every task in one tick shares: agents by short name, found pull requests, base runs. */
+/** What every task in one tick shares: agents by short name, found pull requests, their facts. */
 interface TickRefs {
   readonly owners: ReadonlyMap<string, string>;
   readonly found: FoundPulls;
-  readonly greenSince: BaseGreenSince;
+  /** The facts of every pull request whose author holds its task, or why they couldn't be read. */
+  readonly facts: ReadonlyMap<string, PullFacts> | Error;
 }
 
 const emptyMemory: Memory = {
@@ -143,6 +146,32 @@ function ownerOf(branches: readonly string[], owners: ReadonlyMap<string, string
   return key === undefined ? undefined : owners.get(key);
 }
 
+/** The pull requests of a task whose author holds it and isn't running: the ones worth reading. */
+function watchedPulls(
+  task: TaskRow,
+  found: FoundPulls,
+  owners: ReadonlyMap<string, string>,
+): readonly PullRef[] {
+  const pulls = found.get(task.identifier) ?? [];
+  // Checked on the branch names first, so a task the reviewer holds costs no GitHub reads.
+  const owner = ownerOf(
+    pulls.map((ref) => ref.branch),
+    owners,
+  );
+  return owner !== undefined && owner === task.assigneeAgentId && !task.running ? pulls : [];
+}
+
+function factsOf(ref: PullRef, facts: TickRefs["facts"]): PullFacts {
+  if (facts instanceof Error) {
+    throw facts;
+  }
+  const found = facts.get(pullKey(ref));
+  if (found === undefined) {
+    throw new Error(`${pullKey(ref)} wasn't read.`);
+  }
+  return found;
+}
+
 async function decideTask(
   options: TickOptions,
   task: TaskRow,
@@ -152,15 +181,14 @@ async function decideTask(
   if (found.length === 0) {
     return undefined;
   }
-  // Checked on the branch names first, so a task the reviewer holds costs no GitHub reads.
-  const listedOwner = ownerOf(
-    found.map((ref) => ref.branch),
-    refs.owners,
-  );
-  if (listedOwner === undefined || listedOwner !== task.assigneeAgentId || task.running) {
+  if (watchedPulls(task, refs.found, refs.owners).length === 0) {
+    const listedOwner = ownerOf(
+      found.map((ref) => ref.branch),
+      refs.owners,
+    );
     return decide(task, listedOwner, [], emptyMemory);
   }
-  const pulls = await Promise.all(found.map((ref) => pullFacts(options.get, ref, refs.greenSince)));
+  const pulls = found.map((ref) => factsOf(ref, refs.facts));
   const ownerId = ownerOf(
     pulls.map((pull) => pull.branch),
     refs.owners,
@@ -209,15 +237,18 @@ async function act(options: TickOptions, task: TaskRow, decision: Decision): Pro
  * pull request doesn't stop the others.
  */
 export async function tick(options: TickOptions): Promise<TickSummary> {
-  const refs: TickRefs = {
-    owners: new Map((await options.paperclip.agents()).map((agent) => [agent.urlKey, agent.id])),
-    found: await options.discover(),
-    // One read of each base branch's newest green run per tick, shared by every task.
-    greenSince: baseGreenSince(options.get),
-  };
+  const owners = new Map(
+    (await options.paperclip.agents()).map((agent) => [agent.urlKey, agent.id]),
+  );
+  const found = await options.discover();
+  const tasks = await options.paperclip.openTasks();
+  const wanted = tasks.flatMap((task) => watchedPulls(task, found, owners));
+  // One read for every task; if it fails, each of those tasks reports it below.
+  const facts = await options.facts(wanted).catch((error: unknown) => error as Error);
+  const refs: TickRefs = { owners, found, facts };
   const counts = { checked: 0, done: 0, woken: 0 };
   const failed: string[] = [];
-  for (const task of await options.paperclip.openTasks()) {
+  for (const task of tasks) {
     try {
       const decision = await decideTask(options, task, refs);
       if (decision === undefined) {

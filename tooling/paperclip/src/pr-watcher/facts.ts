@@ -1,16 +1,9 @@
-import type { PullFacts } from "./decide.ts";
-import { ciOk, type GitHubGet, inMergeQueue, latestReview } from "./github.ts";
-
-interface Pull {
-  readonly html_url: string;
-  readonly state: "open" | "closed";
-  readonly merged_at: string | null;
-  readonly merge_commit_sha: string | null;
-  readonly mergeable: boolean | null;
-  readonly draft?: boolean;
-  readonly head: { readonly sha: string; readonly ref: string };
-  readonly base: { readonly ref: string };
-}
+import type { GitHubQuery } from "../snapshot/graphql.ts";
+import { type CheckFallback, mergeCommitChecks } from "../snapshot/read.ts";
+import type { OpenFacts, Snapshot, SnapshotPull } from "../snapshot/shape.ts";
+import type { CheckState, PullFacts } from "./decide.ts";
+import type { PullRef } from "./discover.ts";
+import type { GitHubGet } from "./github.ts";
 
 /** Says whether a green CI run on the base branch includes a merge commit. */
 export type BaseGreenSince = (repo: string, base: string, mergeCommit: string) => Promise<boolean>;
@@ -48,43 +41,108 @@ export function baseGreenSince(get: GitHubGet): BaseGreenSince {
   };
 }
 
-/** Reads one pull request's state, `ci-ok`, conflicts and newest review. */
-export async function pullFacts(
-  get: GitHubGet,
-  ref: { repo: string; number: number },
+/** A pull request's key in the facts map: `owner/name#123`. */
+export function pullKey(ref: { readonly repo: string; readonly number: number }): string {
+  return `${ref.repo}#${ref.number}`;
+}
+
+/** The facts of some pull requests, keyed by `pullKey`. */
+export type PullFactsReader = (refs: readonly PullRef[]) => Promise<ReadonlyMap<string, PullFacts>>;
+
+function openPullFacts(ref: PullRef, pull: SnapshotPull, open: OpenFacts): PullFacts {
+  return {
+    ...ref,
+    url: pull.url,
+    branch: pull.branch,
+    head: pull.head,
+    state: "open",
+    ciOkOnHead: open.ciOk,
+    draft: open.draft,
+    conflicting: open.mergeable === "no",
+    inQueue: open.inQueue,
+    latestReview: open.finding ?? undefined,
+    landed: false,
+    mergedAt: undefined,
+  };
+}
+
+/**
+ * Facts from the pass's snapshot. Only a merged pull request costs more:
+ * `ci-ok` on its merge commit, read for all of them in one batch per
+ * repository, and the base branch's newest green run for one that has none.
+ */
+export function snapshotFacts(options: {
+  readonly snapshot: Snapshot;
+  readonly query: GitHubQuery;
+  readonly fallback: CheckFallback;
+  readonly greenSince: BaseGreenSince;
+}): PullFactsReader {
+  const pulls = new Map(
+    options.snapshot.repos.flatMap(({ repo, pulls: list }) =>
+      list.map((pull) => [pullKey({ repo, number: pull.number }), pull] as const),
+    ),
+  );
+  return async (refs) => {
+    const found = refs.map((ref) => {
+      const pull = pulls.get(pullKey(ref));
+      if (pull === undefined) {
+        throw new Error(`${pullKey(ref)} isn't in the snapshot.`);
+      }
+      return { ref, pull };
+    });
+    const mergeCommits = new Map<string, string[]>();
+    for (const { ref, pull } of found) {
+      if (pull.state === "merged" && pull.mergeCommit !== null) {
+        mergeCommits.set(ref.repo, [...(mergeCommits.get(ref.repo) ?? []), pull.mergeCommit]);
+      }
+    }
+    const checks = new Map<string, CheckState>();
+    for (const [repo, commits] of mergeCommits) {
+      for (const [sha, state] of await mergeCommitChecks(
+        options.query,
+        repo,
+        commits,
+        options.fallback,
+      )) {
+        checks.set(sha, state);
+      }
+    }
+    const facts = new Map<string, PullFacts>();
+    for (const { ref, pull } of found) {
+      facts.set(pullKey(ref), await factsOf(ref, pull, checks, options.greenSince));
+    }
+    return facts;
+  };
+}
+
+async function factsOf(
+  ref: PullRef,
+  pull: SnapshotPull,
+  checks: ReadonlyMap<string, CheckState>,
   greenSince: BaseGreenSince,
 ): Promise<PullFacts> {
-  const pull = (await get(`/repos/${ref.repo}/pulls/${ref.number}`)) as Pull;
-  const common = {
+  if (pull.open !== null) {
+    return openPullFacts(ref, pull, pull.open);
+  }
+  const closed = {
     ...ref,
-    url: pull.html_url,
-    branch: pull.head.ref,
-    head: pull.head.sha,
+    url: pull.url,
+    branch: pull.branch,
+    head: pull.head,
     ciOkOnHead: "missing",
-    draft: pull.draft === true,
+    draft: false,
     conflicting: false,
     inQueue: false,
     latestReview: undefined,
     landed: false,
     mergedAt: undefined,
   } as const;
-  if (pull.merged_at !== null) {
-    const mergeCommit = pull.merge_commit_sha ?? "";
-    const landed =
-      mergeCommit !== "" &&
-      ((await ciOk(get, ref.repo, mergeCommit)) === "success" ||
-        (await greenSince(ref.repo, pull.base.ref, mergeCommit)));
-    return { ...common, state: "merged", landed, mergedAt: pull.merged_at };
+  if (pull.state !== "merged") {
+    return { ...closed, state: "closed" };
   }
-  if (pull.state === "closed") {
-    return { ...common, state: "closed" };
-  }
-  // `mergeable` is null while GitHub is still working it out: not a conflict yet.
-  const conflicting = pull.mergeable === false;
-  const [ciOkOnHead, review, inQueue] = await Promise.all([
-    ciOk(get, ref.repo, pull.head.sha),
-    latestReview(get, ref.repo, ref.number, pull.head.sha),
-    conflicting ? inMergeQueue(get, ref.repo, ref.number) : Promise.resolve(false),
-  ]);
-  return { ...common, state: "open", ciOkOnHead, conflicting, inQueue, latestReview: review };
+  const mergeCommit = pull.mergeCommit ?? "";
+  const landed =
+    mergeCommit !== "" &&
+    (checks.get(mergeCommit) === "success" || (await greenSince(ref.repo, pull.base, mergeCommit)));
+  return { ...closed, state: "merged", landed, mergedAt: pull.mergedAt ?? undefined };
 }

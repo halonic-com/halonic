@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.github-snapshot`, `paperclip.reviewer-paths`, `paperclip.queue-prio`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`
 
 ## PR watcher
 
@@ -57,16 +57,16 @@ culprit. Each comment starts with `PR watcher:` and carries a hidden marker
 per pull request, head and reason, so the author hears about each new state
 once, not every 10 minutes. The host stores no plugin id on a comment, so
 the watcher's own comments are the ones with neither an agent nor a user as
-author that start with `PR watcher:`. It keeps no state of its own.
+author that start with `PR watcher:`. What it reported lives in those
+comments; the only state it keeps is the pass's GitHub snapshot (below).
 
 A pass takes about a minute, so right before it comments or marks a task
 done, the watcher reads the task again. If its author closed it in the
 meantime, the watcher leaves it alone and logs that; it doesn't count as
 a failure.
 
-It only sends GET requests to GitHub, and only to `api.github.com`. About
-four requests per open pull request whose author holds the task, two per
-merged one, and one or two list pages per repository each pass.
+It reads GitHub through the snapshot (below): GraphQL queries and a few GET
+requests, only to `api.github.com`, about 20 calls per pass on `halonic`.
 
 ## The Agent tools plugin
 
@@ -75,14 +75,19 @@ merged one, and one or two list pages per repository each pass.
 plugin API. It asks for the fewest capabilities the watcher and the tools
 need: jobs, reading companies, agents, tasks and comments, creating
 comments, wake-ups, `issues.update`, outbound HTTP, reading a secret,
-registering agent tools and writing metrics. No webhooks, UI, files or processes.
+registering agent tools, writing metrics and keeping plugin state (the
+GitHub snapshot). No webhooks, UI, files or processes.
 
 - **Status changes:** the manifest can't narrow `issues.update`, so
   `host.ts` is the only file that changes a task's status, and its
   `doneOnly` refuses anything but `{ status: "done" }`. A test fails if
   another file calls `issues.update(`.
 - **Outbound HTTP:** the manifest can't list allowed hosts, so the GitHub
-  reader's origin guard keeps the token on `api.github.com`.
+  reader's origin guard keeps the token on `api.github.com`, and the
+  GraphQL reader posts only to its `/graphql`, only a document that is a
+  single `query`.
+- **Plugin state:** one entry per company, the pass's GitHub snapshot: ids,
+  states, names and times, no comment text.
 - **Settings per company:** `githubToken` (the secret
   `PR_WATCHER_GITHUB_TOKEN`, a read-only fine-grained token), `repos`
   (default `halonic-com/halonic`) and `dryRun`. **Dry run is on unless it is
@@ -151,8 +156,10 @@ front of each name. A metric that doesn't save is logged and changes nothing.
 
 `src/snapshot/` reads GitHub once per pass with GraphQL, in place of the
 REST reads per pull request (the supervision plugins plan on HAL-15997,
-change 5). The watcher switches to it in the next pull request; until then
-nothing calls it.
+change 5). Each `pr-watch` pass takes it first, saves it in plugin state
+(one entry per company, replaced whole), then finds and decides every task
+from it. A failed save is logged and the pass still decides; a failed read
+fails the company's pass, with no partial view.
 
 - **What it reads, per repository:** the default branch's merge queue, every
   open pull request (25 per call, with its labels and who added them, `ci-ok`

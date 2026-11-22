@@ -1,9 +1,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
-import { recording } from "../pr-watcher/fakes.test-helper.ts";
 import { countMonitors } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
-import { type FakeIssue, fakeHost, fakeJobContext } from "./fake-host.test-helper.ts";
+import {
+  type FakeIssue,
+  fakeHost,
+  fakeJobContext,
+  mergedGreenOnGitHub,
+} from "./fake-host.test-helper.ts";
 import { runWatcher } from "./job.ts";
 import { countingGet } from "./metrics.ts";
 
@@ -30,23 +34,12 @@ const otherTask: FakeIssue = {
   monitorNextCheckAt: new Date("2026-11-22T07:25:00Z"),
 };
 
-const lists = {
-  "/repos/halonic-com/halonic/pulls?state=open&per_page=100&page=1": [],
-  "/repos/halonic-com/halonic/pulls?state=closed&sort=updated&direction=desc&per_page=100&page=1": [
-    {
-      number: 4485,
-      updated_at: "2026-11-21T20:00:00Z",
-      head: { ref: "priya/HAL-4485-month-spend", repo: { full_name: "halonic-com/halonic" } },
-    },
-  ],
-};
-
 function setUp(metricsFail = false) {
   const { host } = fakeHost([priyasTask, otherTask]);
   return fakeJobContext({
     host,
     configs: { acme: { githubToken: token } },
-    answers: { ...lists, ...recording("merged-green") },
+    answers: mergedGreenOnGitHub,
     metricsFail,
   });
 }

@@ -6,6 +6,7 @@ import {
   fakeGitHub,
   fakePaperclip,
   recording,
+  restFacts,
   task,
 } from "./fakes.test-helper.ts";
 import { isSelf, marker, tick } from "./watch.ts";
@@ -19,7 +20,7 @@ function run(github: ReturnType<typeof fakeGitHub>, paperclip: ReturnType<typeof
   const lines: string[] = [];
   const summary = tick({
     paperclip: paperclip.paperclip,
-    get: github.get,
+    facts: restFacts(github.get),
     discover: paperclip.discover,
     dryRun: false,
     log: (line) => lines.push(line),

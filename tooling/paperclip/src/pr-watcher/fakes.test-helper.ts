@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
+import type { PullFacts } from "./decide.ts";
 import type { FoundPulls, PullRef } from "./discover.ts";
-import { gitHubReader } from "./github.ts";
+import { type BaseGreenSince, baseGreenSince, type PullFactsReader, pullKey } from "./facts.ts";
+import { ciOk, type GitHubGet, gitHubReader, inMergeQueue, latestReview } from "./github.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
 
 /** The recordings: trimmed real GitHub answers from 21 Nov, keyed by request path. */
@@ -119,4 +121,71 @@ export function task(
     ],
     ...rest,
   };
+}
+
+interface Pull {
+  readonly html_url: string;
+  readonly state: "open" | "closed";
+  readonly merged_at: string | null;
+  readonly merge_commit_sha: string | null;
+  readonly mergeable: boolean | null;
+  readonly draft?: boolean;
+  readonly head: { readonly sha: string; readonly ref: string };
+  readonly base: { readonly ref: string };
+}
+
+/**
+ * One pull request's facts from REST recordings: the watcher's reader before
+ * the GitHub snapshot (HAL-16003), kept so the recorded cases still feed the
+ * rules. The snapshot's own mapping is tested on GraphQL recordings.
+ */
+async function pullFacts(
+  get: GitHubGet,
+  ref: { repo: string; number: number },
+  greenSince: BaseGreenSince,
+): Promise<PullFacts> {
+  const pull = (await get(`/repos/${ref.repo}/pulls/${ref.number}`)) as Pull;
+  const common = {
+    ...ref,
+    url: pull.html_url,
+    branch: pull.head.ref,
+    head: pull.head.sha,
+    ciOkOnHead: "missing",
+    draft: pull.draft === true,
+    conflicting: false,
+    inQueue: false,
+    latestReview: undefined,
+    landed: false,
+    mergedAt: undefined,
+  } as const;
+  if (pull.merged_at !== null) {
+    const mergeCommit = pull.merge_commit_sha ?? "";
+    const landed =
+      mergeCommit !== "" &&
+      ((await ciOk(get, ref.repo, mergeCommit)) === "success" ||
+        (await greenSince(ref.repo, pull.base.ref, mergeCommit)));
+    return { ...common, state: "merged", landed, mergedAt: pull.merged_at };
+  }
+  if (pull.state === "closed") {
+    return { ...common, state: "closed" };
+  }
+  // `mergeable` is null while GitHub is still working it out: not a conflict yet.
+  const conflicting = pull.mergeable === false;
+  const [ciOkOnHead, review, inQueue] = await Promise.all([
+    ciOk(get, ref.repo, pull.head.sha),
+    latestReview(get, ref.repo, ref.number, pull.head.sha),
+    conflicting ? inMergeQueue(get, ref.repo, ref.number) : Promise.resolve(false),
+  ]);
+  return { ...common, state: "open", ciOkOnHead, conflicting, inQueue, latestReview: review };
+}
+
+/** Facts from REST recordings, as `tick` asks for them. */
+export function restFacts(get: GitHubGet): PullFactsReader {
+  const greenSince = baseGreenSince(get);
+  return async (refs) =>
+    new Map(
+      await Promise.all(
+        refs.map(async (ref) => [pullKey(ref), await pullFacts(get, ref, greenSince)] as const),
+      ),
+    );
 }
