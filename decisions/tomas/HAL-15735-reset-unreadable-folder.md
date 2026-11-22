@@ -2,6 +2,7 @@
 
 - Approval: HAL-15735, from Nina's flow check C619 on HAL-15724; wording and an exit code on an approved command, decided by the team under HAL-2282
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:AH2ggH1JFMf0J67qh5zr5thd7qCM+t+9SIr4DZ9x80jNlEsBudGVv9+bIC7rsXeu7osiaJyfm+HKwk26AKLkCA==
 - Task: HAL-15735
 
 ## What changes
