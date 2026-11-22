@@ -20,6 +20,8 @@ import {
   integrationsIntro,
   secretName,
 } from "./integration-trust-rows.ts";
+import { listed } from "./listed.ts";
+import { type PluginHosts, pluginConnectorRow } from "./plugin-connector-row.ts";
 
 /** What the check doesn't hold, because only the host knows it. */
 export interface TrustReviewFacts {
@@ -29,6 +31,8 @@ export interface TrustReviewFacts {
   readonly folder: string;
   /** Whether its local integrations run in the sandbox on this computer; left out, unsaid. */
   readonly runs?: IntegrationRuns;
+  /** Each installed plugin's backend hosts, for a plugin connector's Reaches line (HAL-15123). */
+  readonly pluginHosts?: PluginHosts;
 }
 
 export type { IntegrationRuns } from "./integration-trust-rows.ts";
@@ -88,7 +92,7 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
       ...common,
       title: `${facts.name} changed since you trusted it on ${since}`,
       changed: true,
-      ...changesView(check.changes, since, unpinned, facts.runs),
+      ...changesView(check.changes, since, unpinned, facts.runs, facts.pluginHosts),
     };
   }
   const { connectors, agents = [], integrations = [], providers = [] } = check.content;
@@ -101,7 +105,10 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
       [...programs(connectors).map((row) => programRow(row, unpinned))],
       integrations.map((row) => integrationRow(row, facts.runs)),
       agents.map(agentRow),
-      [...addresses(connectors).map((row) => addressRow(row)), ...providers.map(providerRow)],
+      [
+        ...addresses(connectors).map((row) => addressRow(row, facts.pluginHosts)),
+        ...providers.map(providerRow),
+      ],
       facts.runs,
     ),
   };
@@ -112,6 +119,7 @@ function changesView(
   since: string,
   unpinned: ReadonlySet<string>,
   runs: IntegrationRuns,
+  pluginHosts: PluginHosts | undefined,
 ): Pick<TrustReview, "summary" | "sections" | "unchanged"> {
   const kind = (isKind: (row: ConnectorTrustContent) => boolean) => ({
     added: changes.added.filter(isKind).length,
@@ -149,6 +157,7 @@ function changesView(
   const pick = (rows: ConnectorTrustContent[], isKind: (row: ConnectorTrustContent) => boolean) =>
     rows.filter(isKind);
   const changedConnectors = changes.changed.map((row) => row.after);
+  const address = (row: ConnectorTrustContent) => addressRow(row, pluginHosts);
   const unchanged =
     changes.unchanged +
     changes.agents.unchanged +
@@ -182,8 +191,8 @@ function changesView(
         ...tagged(changes.agents.changed.flatMap(agentChangeRows), "Changed"),
       ],
       [
-        ...tagged(pick(changes.added, isAddress).map(addressRow), "New"),
-        ...tagged(pick(changedConnectors, isAddress).map(addressRow), "Changed"),
+        ...tagged(pick(changes.added, isAddress).map(address), "New"),
+        ...tagged(pick(changedConnectors, isAddress).map(address), "Changed"),
         ...tagged(changes.providers.added.map(providerRow), "New"),
         ...tagged(
           changes.providers.changed.map((row) => providerRow(row.after)),
@@ -259,13 +268,19 @@ function programRow(connector: ConnectorTrustContent, unpinned: ReadonlySet<stri
   };
 }
 
-function addressRow(connector: ConnectorTrustContent): TrustRowView {
+function addressRow(
+  connector: ConnectorTrustContent,
+  pluginHosts: PluginHosts | undefined,
+): TrustRowView {
   if (connector.transport === "integration") return integrationConnectorRow(connector);
   const secrets = secretNames(connector);
+  const secretLines = secrets.length === 0 ? [] : [["Gets secrets", secrets.join(", ")] as const];
+  if (connector.transport === "plugin")
+    return pluginConnectorRow(connector, pluginHosts, secretLines);
   return {
     id: connector.id,
     detail: connector.transport === "http" ? text(connector.settings["url"]) : connector.transport,
-    lines: secrets.length === 0 ? [] : [["Gets secrets", secrets.join(", ")]],
+    lines: secretLines,
   };
 }
 
@@ -410,12 +425,6 @@ function counted(count: number, noun: string): string {
   if (count === 1) return `1 ${noun}`;
   const plural = noun.endsWith("ss") || noun.endsWith("dress") ? `${noun}es` : `${noun}s`;
   return `${count} ${plural}`;
-}
-
-/** "A", "A and B", "A, B and C". */
-function listed(names: readonly string[]): string {
-  const last = names.at(-1) ?? "";
-  return names.length < 2 ? last : `${names.slice(0, -1).join(", ")} and ${last}`;
 }
 
 function isProgram(connector: ConnectorTrustContent): boolean {

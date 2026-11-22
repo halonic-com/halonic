@@ -1,4 +1,5 @@
 import { isRunnerUnfencedReason } from "@halonicjs/app";
+import type { InstalledPluginFeed } from "@halonicjs/studio-feature-plugins";
 import type { UnfencedRunStatus } from "@halonicjs/studio-feature-plugins/api";
 import {
   TrustAsks,
@@ -6,15 +7,21 @@ import {
   type TrustReview,
   type WorkspaceTrustControl,
 } from "@halonicjs/studio-feature-workspace";
+import { pluginHostsOf } from "../plugins/plugin-hosts.ts";
 import { type IntegrationRuns, trustReviewOf } from "./trust-review.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
+
+/** What the trust view reads of the installed plugins: the plugins feature's feed. */
+type PluginsRead = Pick<InstalledPluginFeed, "current" | "subscribe">;
 
 /**
  * The window's view of one workspace's trust (`studio.workspace-trust-ui`): the badge to show
  * and the check to open, both from the last finished check of {@link WorkspaceTrust}, and the
  * way to save a person's trust in exactly what was shown. The check is built once per finished
  * check, so what the dialog shows is stable until the workspace changes or the host answers
- * whether integration code runs in the sandbox here, which it asks each time the check opens.
+ * whether integration code runs in the sandbox here, which it asks each time the check opens. A
+ * plugin connector's Reaches line comes from the installed plugins (`plugins`), so the check is
+ * built again, and its listeners told, when they are read again.
  *
  * @example
  * const control = new WorkspaceTrustView(trust, "/work/acme");
@@ -23,6 +30,7 @@ import type { WorkspaceTrust } from "./workspace-trust.ts";
 export class WorkspaceTrustView implements WorkspaceTrustControl {
   readonly #trust: WorkspaceTrust;
   readonly #folder: string;
+  readonly #plugins: () => PluginsRead | undefined;
   /** The starts that ask for the check after a refusal: Run now, the Run panel and Run again. */
   readonly asks = new TrustAsks();
   readonly #runsStatus: (() => Promise<UnfencedRunStatus>) | undefined;
@@ -31,20 +39,24 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
   #reads = 0;
   #builtFor: unknown;
   #builtWith: IntegrationRuns;
+  #builtForPlugins: unknown;
   #built: TrustReview | undefined;
 
   /**
    * @param runsStatus - the agent host's word on whether integration code runs in the sandbox,
    *   the same as the plugin check reads; left out, the check doesn't say how integrations run
+   * @param plugins - the installed plugins, once and where the window has them
    */
   constructor(
     trust: WorkspaceTrust,
     folder: string,
     runsStatus?: () => Promise<UnfencedRunStatus>,
+    plugins: () => PluginsRead | undefined = () => undefined,
   ) {
     this.#trust = trust;
     this.#folder = folder;
     this.#runsStatus = runsStatus;
+    this.#plugins = plugins;
   }
 
   /**
@@ -120,9 +132,12 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
 
   review(): TrustReview | undefined {
     const check = this.#trust.check;
-    if (check !== this.#builtFor || this.#runs !== this.#builtWith) {
+    const plugins = this.#plugins()?.current();
+    const pluginsChanged = plugins !== this.#builtForPlugins;
+    if (check !== this.#builtFor || this.#runs !== this.#builtWith || pluginsChanged) {
       this.#builtFor = check;
       this.#builtWith = this.#runs;
+      this.#builtForPlugins = plugins;
       this.#built =
         check === undefined || this.needsNoTrust
           ? undefined
@@ -130,6 +145,7 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
               name: this.#trust.name ?? this.#folder,
               folder: this.#folder,
               runs: this.#runs,
+              ...(plugins === undefined ? {} : { pluginHosts: pluginHostsOf(plugins) }),
             });
     }
     return this.#built;
@@ -147,10 +163,12 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
     // A fresh function per subscription, so one listener given twice is kept twice.
     const own = () => listener();
     this.#listeners.add(own);
-    const stop = this.#trust.subscribe(listener);
+    const stopTrust = this.#trust.subscribe(listener);
+    const stopPlugins = this.#plugins()?.subscribe(listener);
     return () => {
       this.#listeners.delete(own);
-      stop();
+      stopTrust();
+      stopPlugins?.();
     };
   }
 }
