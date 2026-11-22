@@ -1,4 +1,4 @@
-import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace } from "./load-workspace.ts";
 
 /**
  * The file of a skill as a hub's agent sees it: the hub's own, else the

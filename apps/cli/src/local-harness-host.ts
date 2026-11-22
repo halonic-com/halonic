@@ -54,12 +54,11 @@ import {
   placementFolder,
   type WorkspaceFolders,
 } from "@halonicjs/profile";
-import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, skillFileOf } from "@halonicjs/workspace";
 import { cliProviderKeys } from "./cli-provider-keys.ts";
 import { sweepingUnderHostLock, withoutHostLock } from "./fenced-sandbox.ts";
 import { localBridgeServers } from "./local-bridge-servers.ts";
 import { localProposalParts } from "./local-proposals.ts";
-import { skillFileOf } from "./skill-file.ts";
 import { halonicVersion } from "./version.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
 

@@ -86,6 +86,7 @@ export {
   type WorkflowUses,
   workflowUses,
 } from "./run-problems.ts";
+export { skillFileOf } from "./skill-file.ts";
 export { type AgentTrustContent, agentsTrustContent } from "./trust-agents.ts";
 export {
   type ChangedAgent,

@@ -4,6 +4,7 @@
 // agent's file, the person's trust record and the person's choice from disk
 // itself, and opens only with a profile it built for that agent.
 
+import { pinInstructions } from "@halonicjs/adapter-harness-kit";
 import { AgentPlacement } from "@halonicjs/app";
 import type { Agent } from "@halonicjs/format";
 import type {
@@ -17,7 +18,7 @@ import { canonicalJson } from "@halonicjs/std";
 import type { HostRunInstructions } from "../harness/host-instructions.ts";
 import type { BuiltProfile, HostHarnessProfiles } from "../harness/host-profiles.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
-import { agentFileOf } from "./agent-file.ts";
+import { type AgentFile, agentFileOf } from "./agent-file.ts";
 import { isAgentTrusted } from "./agent-trust.ts";
 
 /** What Studio asks to open: the agent, by its workspace, hub and id, and the profile to open with. */
@@ -51,11 +52,13 @@ export interface UnfencedGateOptions {
   /** The profiles this host built and no session has opened with yet. */
   readonly profiles: Pick<HostHarnessProfiles, "unopened">;
   /**
-   * The instruction folders this host made. A profile built with any other
-   * folder doesn't pass: the folder becomes Claude Code's `--plugin-dir`, and
-   * a plugin's hooks run without asking anyone.
+   * The instruction folders this host made, with what it wrote in each. A
+   * profile built with any other folder, or one holding other texts than the
+   * workspace's own files make, doesn't pass: the folder becomes Claude
+   * Code's `--plugin-dir`, and a plugin's hooks, or a skill's `hooks:` and
+   * `` !`command` `` lines, run without asking anyone.
    */
-  readonly instructions: Pick<HostRunInstructions, "isMade">;
+  readonly instructions: Pick<HostRunInstructions, "pinOf">;
   readonly digest: Digest;
   readonly clock: Clock;
 }
@@ -72,7 +75,10 @@ export interface UnfencedGateOptions {
  * 4. the profile is one this host built for that agent and no session has
  *    opened with yet, field for field; only its environment may differ, by
  *    the variables the harness adds, which the run's start checks. It was
- *    built with no instructions folder or with one this host made.
+ *    built with no instructions folder, or with one this host made holding
+ *    exactly the agent's instructions and skills as the workspace's own
+ *    files on disk make them (the page sends the texts, so they count only
+ *    when they are the workspace's).
  *
  * What it passes, the built profile with its agent and instructions folder,
  * is what the session keeps, so a run's start can be held to it
@@ -133,17 +139,26 @@ export class UnfencedGate {
         "The agent host didn't build this profile for this agent, or a session already opened with it.",
       );
     }
-    if (
-      built.instructionsFolder !== null &&
-      !this.#options.instructions.isMade(built.instructionsFolder)
-    ) {
+    if (!(await this.#holdsTheWorkspacesInstructions(built, found))) {
       return refusal(
         403,
         "profile_not_built",
-        "The profile's instructions folder isn't one the agent host made, so the agent doesn't leave the sandbox with it.",
+        "The profile's instructions folder isn't one the agent host made from this workspace's own instructions and skills, so the agent doesn't leave the sandbox with it.",
       );
     }
     return built;
+  }
+
+  /**
+   * Whether `built` has no instructions folder, or one this host made that
+   * holds what the agent's file and the workspace's skill files make, by pin.
+   */
+  async #holdsTheWorkspacesInstructions(built: BuiltProfile, found: AgentFile): Promise<boolean> {
+    if (built.instructionsFolder === null) return true;
+    const made = this.#options.instructions.pinOf(built.instructionsFolder);
+    if (made === undefined || found.instructions === undefined) return false;
+    const own = await pinInstructions(found.instructions);
+    return made.digest === own.digest;
   }
 
   /**

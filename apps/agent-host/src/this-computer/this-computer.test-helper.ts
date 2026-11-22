@@ -2,9 +2,10 @@ import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { pinInstructions } from "@halonicjs/adapter-harness-kit";
 import { MemoryAgentPlacementStore, MemoryTrustStore } from "@halonicjs/adapter-memory";
 import { AgentPlacement } from "@halonicjs/app";
-import type { Clock, SandboxProfile, TrustStore } from "@halonicjs/ports";
+import type { Clock, InstructionPin, SandboxProfile, TrustStore } from "@halonicjs/ports";
 import { agentsTrustContent, filesOf, loadWorkspace } from "@halonicjs/workspace";
 import type { BuiltProfile } from "../harness/host-profiles.ts";
 import { webCryptoDigest } from "../harness/host-profiles.ts";
@@ -12,7 +13,15 @@ import { UnfencedGate, type UnfencedGateOptions } from "./unfenced-gate.ts";
 
 export const coderPath = "hubs/lab/agents/coder.agent.yaml";
 export const coderText =
-  "id: coder\nname: Coder\nharness: claude-code\ninstructions: Write the change.\n";
+  "id: coder\nname: Coder\nharness: claude-code\ninstructions: Write the change.\nskills: [review]\n";
+export const reviewSkillPath = "hubs/lab/library/skills/review/SKILL.md";
+export const reviewSkillText =
+  "---\nname: review\ndescription: Review the change.\n---\n\nRead it twice.\n";
+/** The coder's instructions as the workspace's files make them, and so as the host's folder holds them. */
+export const coderInstructions = [
+  { name: "AGENTS.md", text: "Write the change." },
+  { name: "skills/review/SKILL.md", text: reviewSkillText },
+];
 /** An agent in Halonic's own loop: it names no harness, so it starts no program. */
 export const plannerPath = "hubs/lab/agents/planner.agent.yaml";
 
@@ -27,8 +36,8 @@ export interface ThisComputerSetup {
   readonly unopened: Map<string, BuiltProfile>;
   /** A profile the host built for the coder, kept in `unopened`. */
   readonly built: BuiltProfile;
-  /** The instruction folders the host "made"; the built profile's is one. */
-  readonly madeInstructions: Set<string>;
+  /** The instruction folders the host "made", with their pins; the built profile's holds the coder's instructions. */
+  readonly madeInstructions: Map<string, InstructionPin>;
   readonly gate: UnfencedGate;
   /** A gate over the same workspace and profiles, but with another trust store. */
   gateWith(trustStore: TrustStore | undefined): UnfencedGate;
@@ -48,6 +57,7 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
     "workspace.yaml": "id: acme\nname: Acme\ndescription: An invented shop.\n",
     "hubs/lab/hub.yaml": "id: lab\nname: Lab\ndescription: Where the coder changes a file.\n",
     [coderPath]: coderText,
+    [reviewSkillPath]: reviewSkillText,
     [plannerPath]: "id: planner\nname: Planner\ninstructions: Plan the change.\n",
   };
   for (const [path, text] of Object.entries(files)) {
@@ -58,13 +68,15 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
   const placements = new MemoryAgentPlacementStore();
   const built = builtFor(root);
   const unopened = new Map([[built.profile.tempFolder, built]]);
-  const madeInstructions = new Set([built.instructionsFolder ?? ""]);
+  const madeInstructions = new Map([
+    [built.instructionsFolder ?? "", await pinInstructions(coderInstructions)],
+  ]);
   const options: UnfencedGateOptions = {
     workspaceRoots: [root],
     trustStore: trust,
     placements,
     profiles: { unopened: (tempFolder) => unopened.get(tempFolder) },
-    instructions: { isMade: (folder) => madeInstructions.has(folder) },
+    instructions: { pinOf: (folder) => madeInstructions.get(folder) },
     digest: webCryptoDigest,
     clock,
   };

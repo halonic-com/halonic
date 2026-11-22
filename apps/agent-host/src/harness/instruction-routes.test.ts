@@ -119,11 +119,11 @@ verifies("agent-host.instruction-routes", () => {
 });
 
 verifies("agent-host.unfenced-gate", () => {
-  it("knows each instructions folder it made, until it removes it", async () => {
-    const { folder } = await opened();
-    expect(instructions.isMade(folder)).toBe(true);
-    expect(instructions.isMade(join(root, "keep"))).toBe(false);
+  it("knows each instructions folder it made, with its pin, until it removes it", async () => {
+    const { folder, pin } = await opened();
+    expect(instructions.pinOf(folder)).toEqual(pin);
+    expect(instructions.pinOf(join(root, "keep"))).toBeUndefined();
     await instructions.release(folder);
-    expect(instructions.isMade(folder)).toBe(false);
+    expect(instructions.pinOf(folder)).toBeUndefined();
   });
 });

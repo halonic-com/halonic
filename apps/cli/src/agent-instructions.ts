@@ -2,14 +2,18 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { instructionFilesOf, pinInstructions } from "@halonicjs/adapter-harness-kit";
 import type { InstructionPin } from "@halonicjs/ports";
-import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import {
+  filesOf,
+  type LoadedFileOf,
+  type LoadedWorkspace,
+  skillFileOf,
+} from "@halonicjs/workspace";
 import { OwnLineError } from "./command.ts";
 import { harnessNames } from "./messages/harness-names.ts";
 import { phrase } from "./messages/phrase.ts";
 import { trustInstructionsMessages } from "./messages/trust-instructions.ts";
 import type { InstructionSource, InstructionsAbout } from "./output/instruction-trust-lines.ts";
 import { printable } from "./output/printable.ts";
-import { skillFileOf } from "./skill-file.ts";
 
 /** An agent's file in the workspace, as `halonic trust instructions` names it. */
 export type AgentFile = LoadedFileOf<"agent">;

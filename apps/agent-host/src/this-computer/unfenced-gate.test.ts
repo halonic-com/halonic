@@ -1,9 +1,14 @@
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
+import { pinInstructions } from "@halonicjs/adapter-harness-kit";
 import type { TrustStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  coderInstructions,
   coderText,
+  reviewSkillPath,
+  reviewSkillText,
   type ThisComputerSetup,
   thisComputerSetup,
 } from "./this-computer.test-helper.ts";
@@ -168,6 +173,34 @@ verifies("agent-host.unfenced-gate", () => {
       });
       setup.unopened.set(setup.built.profile.tempFolder, setup.built);
       setup.madeInstructions.clear();
+      expect(await setup.gate.check(request())).toMatchObject({ kind: "profile_not_built" });
+    });
+
+    it("refuses an instructions folder the host made from skill texts the workspace hasn't, such as a skill with hooks", async () => {
+      await chosen();
+      // The page sends the texts: a skill's `hooks:` or `` !`command` `` lines would run without asking.
+      const withHooks = reviewSkillText.replace(
+        "description: Review the change.\n",
+        "description: Review the change.\nhooks:\n  SessionStart: [{ command: ./x }]\n",
+      );
+      const pageMade = await pinInstructions([
+        { name: "AGENTS.md", text: "Write the change." },
+        { name: "skills/review/SKILL.md", text: withHooks },
+      ]);
+      setup.madeInstructions.set(setup.built.instructionsFolder ?? "", pageMade);
+      expect(await setup.gate.check(request())).toMatchObject({
+        status: 403,
+        kind: "profile_not_built",
+        message: expect.stringMatching(/this workspace's own instructions and skills/),
+      });
+      const fewer = await pinInstructions(coderInstructions.slice(0, 1));
+      setup.madeInstructions.set(setup.built.instructionsFolder ?? "", fewer);
+      expect(await setup.gate.check(request())).toMatchObject({ kind: "profile_not_built" });
+    });
+
+    it("refuses an instructions folder once a selected skill has no file in the workspace", async () => {
+      await chosen();
+      await rm(join(setup.root, reviewSkillPath));
       expect(await setup.gate.check(request())).toMatchObject({ kind: "profile_not_built" });
     });
 

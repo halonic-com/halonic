@@ -17,6 +17,7 @@ import {
   type LoadedWorkspace,
   loadWorkspace,
   runDefinitionsOf,
+  skillFileOf,
   VersionSource,
 } from "@halonicjs/workspace";
 import { approvedIntegrations } from "../../approved-integrations.ts";
@@ -31,7 +32,6 @@ import {
   type OpenWorkspaceHistory,
   openGitHistory,
 } from "../../run-workspace.ts";
-import { skillFileOf } from "../../skill-file.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import type { WorkspaceVersions } from "../../workspace-versions.ts";
 

@@ -47,7 +47,8 @@ export class HostRunInstructions {
   readonly #options: HostRunInstructionsOptions;
   /** Each named workspace's root of instruction folders, cleared once before its first folder. */
   readonly #roots = new Map<string, Promise<string>>();
-  readonly #made = new Set<string>();
+  /** Each folder this host made, with the pin of what it wrote there. */
+  readonly #made = new Map<string, InstructionPin>();
 
   constructor(options: HostRunInstructionsOptions) {
     this.#options = options;
@@ -68,13 +69,17 @@ export class HostRunInstructions {
     const real = await namedWorkspace(this.#options.workspaceRoots, workspace);
     if (real === undefined) return undefined;
     const snapshot = await snapshotInstructions(await this.#rootOf(real), files, this.#disk);
-    this.#made.add(snapshot.folder);
+    this.#made.set(snapshot.folder, snapshot.pin);
     return snapshot;
   }
 
-  /** Whether `folder` is one this host made and hasn't removed yet. */
-  isMade(folder: string): boolean {
-    return this.#made.has(folder);
+  /**
+   * The pin of what this host wrote in `folder`, or `undefined` when it
+   * isn't a folder this host made, or it was removed. The folder is
+   * read-only, so the pin is what a harness reads from it.
+   */
+  pinOf(folder: string): InstructionPin | undefined {
+    return this.#made.get(folder);
   }
 
   /** Removes a folder this host made; any other path is left alone. It doesn't throw. */
@@ -85,7 +90,7 @@ export class HostRunInstructions {
 
   /** Removes every folder this host made, when the host stops. */
   async stop(): Promise<void> {
-    await Promise.all([...this.#made].map((folder) => this.release(folder)));
+    await Promise.all([...this.#made.keys()].map((folder) => this.release(folder)));
   }
 
   #rootOf(workspace: string): Promise<string> {
