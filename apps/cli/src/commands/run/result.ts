@@ -24,7 +24,7 @@ import {
 } from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
 import {
-  type FailedChildEnding,
+  type ChildEndings,
   failedRunDebugText,
   outputHintLines,
   showEnding,
@@ -42,8 +42,11 @@ export interface RunResultFacts {
   readonly unusedEvents?: readonly string[];
   /** `--debug` was given: a failed run's general lines don't ask for it again. */
   readonly debugging?: boolean;
-  /** The child run a failed run's step failed with, whose cause its lines say (HAL-15555). */
-  readonly failedChild?: FailedChildEnding | undefined;
+  /**
+   * The child run a failed run's step failed with, whose cause its lines say (HAL-15555), and the
+   * child run a waiting run waits on, whose waiting lines it says (HAL-15951).
+   */
+  readonly children?: ChildEndings;
 }
 
 /**
@@ -163,7 +166,7 @@ function ending(
     models,
     facts.dir,
     facts.debugging,
-    facts.failedChild,
+    facts.children,
   );
   if (run.summary.status !== "completed") {
     return lines;
