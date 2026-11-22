@@ -22,6 +22,7 @@ import {
 import { duration } from "../../messages/duration.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
+import { offOptionsStart } from "../../messages/run-failure-words.ts";
 import { type FailedRun, runFailedLines } from "../../messages/run-failures.ts";
 import { type CancelledAt, runsMessages } from "../../messages/runs.ts";
 import { stepName } from "../../messages/step-name.ts";
@@ -203,11 +204,11 @@ function offOptionsNamed(
   if (failure.reason !== "error" || agent === undefined) {
     return failure;
   }
-  const byId = `The agent ${agent} answered `;
+  const byId = offOptionsStart(agent);
   if (failure.message?.startsWith(byId) !== true) {
     return failure;
   }
-  const byName = `The agent ${agentName(agent, definitions)} answered `;
+  const byName = offOptionsStart(agentName(agent, definitions));
   return { ...failure, message: byName + failure.message.slice(byId.length) };
 }
 
