@@ -3,6 +3,7 @@
 - Task: HAL-16058, from flow check C666 #3 (HAL-16045)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16058 (a fix line for an approved refusal, so a team decision under the HAL-2282 rule; Liam's code review signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ygxTVsT+bySYPR+isx8wxxZciti1O9kBhRVXMKpoyFqR1pul+MuK8ISlOBcKyWHAajpiTOse3NqXNloFZhkpCw==
 
 ## What changes
 
