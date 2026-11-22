@@ -144,6 +144,7 @@ fn start_status_names_the_wsl_causes() {
     for cause in [
         FailureCause::WslMissing,
         FailureCause::DistroMissing,
+        FailureCause::RuntimeMissing,
         FailureCause::WslFailed,
     ] {
         let loaded = Instant::now();
