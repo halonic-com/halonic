@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in his review of this pull request on HAL-15453 (a team decision with no board card, HAL-2282 rule: it is a detail of the run page's step panel the board already approved; the owner decides it with the designer, Sofia)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pF3B7fjxiU9+FyHqiKIvzVMFJ/vLmg9Pya4jL5J/wgpvGMCYT0oi4PniILITqVeYZEbKlMMn6c2isr0y8MGLAw==
 - Task: HAL-15453
 
 ## What changes
