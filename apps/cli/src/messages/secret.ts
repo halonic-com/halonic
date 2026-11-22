@@ -22,8 +22,17 @@ export const secretMessages = defineMessages("secret", {
   /** After a new sign-in password: saving it ended every open sign-in. */
   signedOut: () => phrase`  Every browser and phone that was signed in has to sign in again.`,
   removed: (name: string) => phrase`${markPart("done")} Removed ${name}.`,
-  /** `secret remove` of a name no secret is saved under. */
-  notSaved: (name: string) => phrase`${name} wasn't set. Nothing changed.`,
+  /** `secret remove` of a name no secret is saved under, often a typo or the wrong store (C633 1). */
+  notSaved: (name: string) =>
+    phrase`${name} isn't set, so nothing changed. To see the secrets that are set, run halonic secret list.`,
+  /**
+   * `secret remove` of a name no secret is saved under, while its variable still holds it. Not
+   * "isn't set": runs still read it (C631 P1). `stillInVariable` follows.
+   */
+  notSavedButInVariable: (name: string) => phrase`No secret ${name} is saved. Nothing changed.`,
+  /** After `notSavedButInVariable`: the variable runs read the secret from, which `secret remove` can't clear. */
+  stillInVariable: (variable: string, name: string) =>
+    phrase`  ${variable} is still set, so runs still read ${name} from it. Unset it to remove ${name}.`,
   noSecrets: () => phrase`No secrets are saved.`,
 
   setNeedsName: () => phrase`halonic secret set needs the secret's name.`,

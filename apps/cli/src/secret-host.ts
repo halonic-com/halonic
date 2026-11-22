@@ -4,7 +4,7 @@
 // file.
 
 import { StringDecoder } from "node:string_decoder";
-import { EnvSecrets, firstSecret } from "@halonicjs/adapter-env-secrets";
+import { type Environment, EnvSecrets, firstSecret } from "@halonicjs/adapter-env-secrets";
 import { createScryptHasher } from "@halonicjs/adapter-password-scrypt";
 import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
 import { SecretService } from "@halonicjs/app";
@@ -33,6 +33,8 @@ export interface SecretSetup {
   readonly hasher?: PasswordHasher;
   /** This process's stdin by default. */
   readonly stdin?: SecretStdin;
+  /** Where `HALONIC_SECRET_<NAME>` variables are read; this process's environment by default. */
+  readonly environment?: Environment;
 }
 
 /** The secrets file of the profile. Nothing is created until a secret is saved. */

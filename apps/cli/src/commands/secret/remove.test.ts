@@ -11,6 +11,9 @@ beforeEach(async () => {
 
 afterEach(() => fixture.cleanup());
 
+const notSet =
+  "openai-key isn't set, so nothing changed. To see the secrets that are set, run halonic secret list.";
+
 verifies("cli.commands.secret.remove", () => {
   it("removes a saved secret and leaves the others", async () => {
     await fixture.store().set("openai-key", "sk-live-1234");
@@ -23,14 +26,50 @@ verifies("cli.commands.secret.remove", () => {
     expect(await fixture.store().names()).toEqual(["anthropic-key"]);
   });
 
-  it("says it wasn't set and changes nothing when no such secret is saved", async () => {
+  it("says it isn't set, how to see the names that are, and changes nothing", async () => {
     await fixture.store().set("anthropic-key", "sk-ant-5678");
 
     const { code, io } = await secret(fixture.folder, fixture.setup, ["remove", "openai-key"]);
 
     expect(code).toBe(exitCode.ok);
-    expect(io.stdout).toEqual(["openai-key wasn't set. Nothing changed."]);
+    expect(io.stdout).toEqual([notSet]);
     expect(await fixture.store().names()).toEqual(["anthropic-key"]);
+  });
+
+  it("names the variable that still holds a secret that isn't saved", async () => {
+    const withVariable = await secretFixture(undefined, { HALONIC_SECRET_OPENAI_KEY: "sk-env" });
+    try {
+      const { code, io } = await secret(withVariable.folder, withVariable.setup, [
+        "remove",
+        "openai-key",
+        "--json",
+      ]);
+
+      expect(code).toBe(exitCode.ok);
+      expect(JSON.parse(io.stdout.join("\n"))).toMatchObject({
+        name: "openai-key",
+        removed: false,
+      });
+
+      const text = await secret(withVariable.folder, withVariable.setup, ["remove", "openai-key"]);
+      expect(text.io.stdout).toEqual([
+        "No secret openai-key is saved. Nothing changed.",
+        "  HALONIC_SECRET_OPENAI_KEY is still set, so runs still read openai-key from it. Unset it to remove openai-key.",
+      ]);
+    } finally {
+      await withVariable.cleanup();
+    }
+  });
+
+  it("doesn't name an empty variable, which runs treat as unset", async () => {
+    const empty = await secretFixture(undefined, { HALONIC_SECRET_OPENAI_KEY: "" });
+    try {
+      const { io } = await secret(empty.folder, empty.setup, ["remove", "openai-key"]);
+
+      expect(io.stdout).toEqual([notSet]);
+    } finally {
+      await empty.cleanup();
+    }
   });
 
   it("removes a secret saved under another spelling of its name", async () => {
