@@ -31,6 +31,30 @@ const ordersManifest = [
   "",
 ].join("\n");
 
+/** A local tool's lines under `localTools:`, reaching `network`. */
+function localTool(id: string, network: readonly string[]): string[] {
+  return [
+    `  - id: ${id}`,
+    "    start: { script: { program: node, path: tools/server.js } }",
+    `    network: [${network.join(", ")}]`,
+    "    tools:",
+    `      - { name: list-${id}, description: Lists the files., risk: read, untrusted: true }`,
+  ];
+}
+
+/** The manifest of `acme-orders` with no backend, only these local tools. */
+function localOnlyManifest(...tools: readonly string[][]): string {
+  return [
+    "id: acme-orders",
+    "version: 1.0.0",
+    "sdk: 1",
+    "name: Acme orders",
+    "localTools:",
+    ...tools.flat(),
+    "",
+  ].join("\n");
+}
+
 let folder: string;
 
 beforeEach(async () => {
@@ -44,9 +68,9 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
-/** The installed plugin `acme-orders`, as the plugins feed gives it. */
-function ordersPlugin(): InstalledPlugin {
-  const parsed = parseFile("plugin", ordersManifest);
+/** The installed plugin `acme-orders`, as the plugins feed gives it, read from `manifest`. */
+function ordersPlugin(manifest = ordersManifest): InstalledPlugin {
+  const parsed = parseFile("plugin", manifest);
   if (!parsed.ok)
     throw new Error(
       parsed.error.map((problem) => `${problem.path.join(".")} ${problem.message}`).join("; "),
@@ -116,6 +140,40 @@ verifies("studio.trust-review-plugin-hosts", () => {
       detail: "plugin acme-orders",
       lines: [["Reaches", "api.acme.example and the address in the setting region-url"]],
     });
+  });
+
+  it("lists the sites a plugin's local tools reach, as halonic trust does, when it has no backend", async () => {
+    const feed = new TestPluginFeed();
+    feed.set([
+      ordersPlugin(
+        localOnlyManifest(
+          localTool("files", ["files.acme.example"]),
+          localTool("mirror", ["files.acme.example", "mirror.acme.example"]),
+        ),
+      ),
+    ]);
+
+    const view = await viewWith(feed);
+
+    expect(ordersRow(view)).toMatchObject({
+      detail: "plugin acme-orders",
+      lines: [["Reaches", "files.acme.example and mirror.acme.example"]],
+    });
+  });
+
+  it("lists a local tool's sites after the backend's hosts", async () => {
+    const feed = new TestPluginFeed();
+    const manifest = ordersManifest.replace(
+      "ui:",
+      ["localTools:", ...localTool("files", ["files.acme.example"]), "ui:"].join("\n"),
+    );
+    feed.set([ordersPlugin(manifest)]);
+
+    const view = await viewWith(feed);
+
+    expect(ordersRow(view)?.lines).toEqual([
+      ["Reaches", "api.acme.example, the address in the setting region-url and files.acme.example"],
+    ]);
   });
 
   it("names the plugin with no Reaches line while it isn't installed", async () => {
