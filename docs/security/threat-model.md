@@ -482,17 +482,28 @@ never get it, and no tool the model can call reaches the route. The gate saves
 it only for the reason that holds at that moment, so a caller can't save a yes
 for a status the user didn't see, and checks it again at every start.
 `POST /v1/unfenced-runs/take-back` removes it and stops this host's runners
-without the sandbox before it answers. The `halonic` command still holds no
-yes (`noUnfencedRunConsent`, HAL-12639): it offers none, so a file in the
-profile's `unfenced-runs` folder starts no local integration or plugin backend
-from the command. When a start's fence proof fails though the computer passed
-the sandbox check (A23), nothing runs, and the host keeps that plugin's stop in
-memory for the plugin page's R15 (`agent-host.plugin-run-state`, HAL-15113):
+without the sandbox before it answers. The `halonic` command offers no yes and
+never saves one. For local integrations it reads the host's yes from the same
+folder, at every start (on Windows with the default WSL sandbox the host keeps
+its profile in the distro, so a command in a Windows terminal never sees that
+yes and runs integrations only in the sandbox), and starts the runner in the launcher's sandbox only
+when the yes is for the reason at that start (`cli.local-integration-unfenced-yes`,
+HAL-15144); a yes it can't read starts nothing. It doesn't look for Studio's
+install: on a computer without Studio nobody can give the yes, so integrations
+run only in the sandbox there, and a check for the install would only be
+another file to fake. While such a runner runs, the command reads the yes again
+every second, so a Take back in Studio stops it too. For plugin backends the
+command still holds no yes (`noUnfencedRunConsent`, `cli.no-unfenced-run-yes`),
+so that file starts no plugin backend from the command. When a start's fence proof fails though the computer passed the sandbox check
+(A23), nothing runs, and the host keeps that plugin's stop in memory for the
+plugin page's R15 (`agent-host.plugin-run-state`, HAL-15113):
 `POST /v1/plugins/run-state` reads it and `POST /v1/plugins/run-state/check-again`
 forgets it, behind the launch token, by plugin id, as codes only. Neither
-starts anything or changes what the gate decides. In the host, a file written into that folder by hand counts
-as a yes, as the trust records next to it count as trust: whoever can write the
-profile already decides what runs. A plugin's
+starts anything or changes what the gate decides. In the host, and for
+the command's local integrations, a file written into that folder by hand
+counts as a yes, as the trust records next to it count as trust: whoever can
+write the profile already decides what runs, and an agent that runs on this
+computer with your rights can write both. A plugin's
 backend gets its secrets from Studio, which hands a trusted plugin's declared
 secrets to the host before each use; the host builds their names itself and
 keeps the values in memory only (**On `main`**, `agent-host.plugin-secrets`;

@@ -312,6 +312,7 @@ function computerRunConnectors(
     workspace: target.workspace,
     trust: machine,
     environment,
+    lines,
   });
   const plugins = computerPluginMachine(integrations, { trust: machine, environment });
   const fence = {

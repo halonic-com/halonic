@@ -4,10 +4,11 @@
 // for every start. The trust check is read again from the workspace's files at
 // every start.
 //
-// The gate holds no saved yes to run without the sandbox (HAL-12639): nothing
-// offers that yes yet, so a file placed in the profile's `unfenced-runs`
-// folder by hand must not start anything, as in the agent host.
-// `FileUnfencedRunConsentStore` waits for the flow that offers it.
+// A local integration runs without the sandbox only with the yes Studio's
+// agent host saved in the profile, for the reason at this start (HAL-15144);
+// the command only reads it (`SavedUnfencedYes`). A plugin's backend has a
+// gate of its own that holds no yes (HAL-12639): whether the command honours
+// the yes for plugins is a decision of its own.
 
 import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -29,13 +30,14 @@ import {
   type SaveTimers,
   UnfencedRuns,
 } from "@halonicjs/app";
-import type { Sandbox } from "@halonicjs/ports";
+import type { Sandbox, UnfencedRunConsentStore } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
   pluginsFolder,
   profileFolder,
   runnerTempFolder,
   sharedRunnerTempFolder,
+  unfencedRunsFolder,
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -43,7 +45,9 @@ import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import type { LocalIntegrationMachine } from "./open-local-integration.ts";
 import type { PluginBackendMachine } from "./open-plugin-backend.ts";
 import { openPluginService } from "./plugin-host.ts";
+import { type RunConnectorLines, unfencedIntegrationReporter } from "./plugin-part-warnings.ts";
 import { proxySetting } from "./proxy-setting.ts";
+import { SavedUnfencedYes } from "./saved-unfenced-yes.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import {
@@ -65,6 +69,14 @@ const nodeTimers: SaveTimers = {
 export interface ComputerIntegrationMachine extends LocalIntegrationMachine {
   /** Removes the temp folders of every start. Safe to call twice. */
   dispose(): Promise<void>;
+  /** The sandboxes its gate starts in, which the plugin backends' own gate shares. */
+  readonly sandboxes: GateSandboxes;
+}
+
+/** The fenced sandbox a gate checks at every start, and the launcher's for a start without the fence. */
+interface GateSandboxes {
+  readonly fenced: Sandbox;
+  readonly launcher: Sandbox;
 }
 
 /** What the machine reads that the command already has. */
@@ -83,6 +95,23 @@ export interface ComputerIntegrationInput {
    * A test passes one whose check fails. The command never sets it.
    */
   readonly testFencedSandbox?: Sandbox;
+  /**
+   * For tests only: the launcher's sandbox for a start without the fence, in place of `sandbox-host`.
+   * A test passes one that counts starts. The command never sets it.
+   */
+  readonly testLauncher?: Sandbox;
+  /** Where the run's warning goes when an integration starts without the sandbox; nowhere when left out. */
+  readonly lines?: RunConnectorLines;
+}
+
+/** A start gate on this computer in `sandboxes`, with `store` as the saved yes. */
+function computerGate(sandboxes: GateSandboxes, store: UnfencedRunConsentStore): RunnerStartGate {
+  return new RunnerStartGate({
+    platform: process.platform,
+    ...sandboxes,
+    runs: new UnfencedRuns({ store, clock: systemClock, timers: nodeTimers }),
+    timers: nodeTimers,
+  });
 }
 
 /**
@@ -94,24 +123,23 @@ export function computerIntegrationMachine(
   input: ComputerIntegrationInput,
 ): ComputerIntegrationMachine {
   const profile = profileFolder(input.environment ?? nodeProfileEnvironment());
-  const gate = new RunnerStartGate({
-    platform: process.platform,
+  const sandboxes: GateSandboxes = {
     // Records each session's folders, so a sweep on this profile never takes a live one's grant (HAL-6780).
     fenced: input.testFencedSandbox ?? recordingSrtSandbox(profile),
-    launcher: createHostSandbox(),
-    runs: new UnfencedRuns({
-      store: noUnfencedRunConsent,
-      clock: systemClock,
-      timers: nodeTimers,
-    }),
-    timers: nodeTimers,
-  });
+    launcher: input.testLauncher ?? createHostSandbox(),
+  };
+  const saved = new SavedUnfencedYes(unfencedRunsFolder(profile));
+  const gate = computerGate(sandboxes, saved);
+  const reportUnfenced = unfencedIntegrationReporter(input.lines);
   const trust = cliTrustService(input.trust.trustStore, input.trust.clock);
   const made: string[] = [];
   return {
     workspace: new FileSystemFolderReader(input.dir.root, input.dir.shown),
     digest: webCryptoDigest,
     gate,
+    sandboxes,
+    unreadableYes: () => saved.unreadableFile,
+    startedUnfenced: reportUnfenced,
     runtime: {
       node: process.execPath,
       nodeFolder: runnerNodeFolder(process.execPath),
@@ -165,21 +193,22 @@ export function integrationTransport(resolve?: Resolve): AddressCheckingHttpClie
 }
 
 /**
- * The machine for plugin backends on this computer: the integrations' gate,
- * runner and temp folders, so a plugin's backend starts exactly as a local
- * integration does, plus the profile's plugins folder, the plugin trust and
- * the plugin's saved settings.
+ * The machine for plugin backends on this computer: the integrations'
+ * sandboxes, runner and temp folders, so a plugin's backend starts as a
+ * local integration does, plus the profile's plugins folder, the plugin trust and
+ * the plugin's saved settings. Its gate is its own, with the same sandboxes
+ * and no saved yes (`cli.no-unfenced-run-yes`).
  *
  * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
  */
 export function computerPluginMachine(
-  integrations: LocalIntegrationMachine,
+  integrations: ComputerIntegrationMachine,
   input: Pick<ComputerIntegrationInput, "trust" | "environment">,
 ): PluginBackendMachine {
   const environment = input.environment ?? nodeProfileEnvironment();
   const service = openPluginService({ profile: environment, clock: input.trust.clock });
   return {
-    gate: integrations.gate,
+    gate: computerGate(integrations.sandboxes, noUnfencedRunConsent),
     runtime: integrations.runtime,
     transport: integrations.transport,
     runnerMachine: integrations.runnerMachine,

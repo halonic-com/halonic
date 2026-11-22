@@ -132,6 +132,10 @@ async function setup(
     transport?: AddressCheckingHttpClient;
     /** What the runner's tool does with the kit's client; it answers with the tool's name unless a test says otherwise. */
     tool?: (http: IntegrationHttpClient) => Promise<string>;
+    /** The user's saved yes to run without the sandbox, for this reason. */
+    savedYes?: string;
+    /** The saved yes's file, as the machine reports it when the yes can't be read. */
+    unreadableYes?: string;
   } = {},
 ) {
   const { check = passes, runnerBuilt = true, beforeTrustCheck, trustedSettings } = options;
@@ -173,21 +177,29 @@ async function setup(
     entries: [] as string[],
     checks: 0,
     settings: [] as Readonly<Record<string, unknown>>[],
+    unfenced: [] as string[],
   };
+  const store = new MemoryUnfencedRunConsentStore();
+  if (options.savedYes !== undefined) {
+    await store.save({ reason: options.savedYes, allowedAt: "2026-11-09T10:00:00.000Z" });
+  }
+  const launcher = sandbox(check);
   const machine: LocalIntegrationMachine = {
     workspace: new FileSystemFolderReader(root, root),
     digest: webCryptoDigest,
     gate: new RunnerStartGate({
       platform: "linux",
       fenced: sandbox(check),
-      launcher: sandbox(check),
+      launcher,
       runs: new UnfencedRuns({
-        store: new MemoryUnfencedRunConsentStore(),
+        store,
         clock,
         timers: idleTimers,
       }),
       timers: idleTimers,
     }),
+    unreadableYes: () => options.unreadableYes,
+    startedUnfenced: (reason) => seen.unfenced.push(reason),
     runtime: { node: "/node/bin/node", nodeFolder: "/node", runnerFile: "/runner/runner.mjs" },
     transport: options.transport ?? ({ fetch: async () => new Response("{}") } as never),
     trustCheck: async (): Promise<TrustCheck> => {
@@ -209,7 +221,7 @@ async function setup(
       seen.entries.push(`${start.entry.file}#${start.entry.exportName}`);
       seen.settings.push(start.settings);
       const runner: StartedRunner = {
-        fence: { state: "fenced" },
+        fence: { state: start.sandbox === launcher ? "off" : "fenced" },
         declaration: { name: "notes", version: "1.0.0", tools: [readNote] },
         stopped: new Promise(() => {}),
         callTool: async (name) => (options.tool ? options.tool(start.http) : `answer from ${name}`),
@@ -367,6 +379,35 @@ verifies("format.integration-host-class", () => {
       });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
         /can't check that box\.tail1234\.ts\.net points to a private address/,
+      );
+      expect(seen.starts).toBe(0);
+    });
+  });
+});
+
+verifies("cli.local-integration-unfenced-yes", () => {
+  describe("openLocalIntegration where the sandbox can't start", () => {
+    it("starts with the user's yes for this reason, and says so once per start", async () => {
+      const { seen, client } = await setup({ check: onWindows, savedYes: "windows" });
+      expect(await client().callTool("read-note", {})).toBe("answer from read-note");
+      expect(seen.starts).toBe(1);
+      expect(seen.unfenced).toEqual(["windows"]);
+    });
+
+    it("refuses with no yes, and says where to give it", async () => {
+      const { seen, client } = await setup({ check: onWindows });
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        "Connector \"notes\" didn't start: the sandbox isn't available here (windows) and running without it isn't allowed yet. To allow it, trust this workspace in Studio on this computer.",
+      );
+      expect(seen.starts).toBe(0);
+      expect(seen.unfenced).toEqual([]);
+    });
+
+    it("refuses when the saved yes can't be read, and names its file", async () => {
+      const file = join(root, "profile", "unfenced-runs", "consent.json");
+      const { seen, client } = await setup({ check: onWindows, unreadableYes: file });
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        `the saved yes to run without it can't be read (${JSON.stringify(file)}), so nothing runs. To allow it, trust this workspace in Studio on this computer.`,
       );
       expect(seen.starts).toBe(0);
     });

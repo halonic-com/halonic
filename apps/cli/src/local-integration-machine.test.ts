@@ -135,7 +135,7 @@ verifies("cli.open-local-integration", () => {
 
 verifies("cli.no-unfenced-run-yes", () => {
   describe("a yes to run without the sandbox, placed in the profile by hand", () => {
-    it("starts no integration or plugin backend, and stays where it was", async () => {
+    it("starts no plugin backend, and stays where it was", async () => {
       const computer = await machine(failingFence);
       const plugins = computerPluginMachine(computer, {
         trust: {
@@ -150,7 +150,7 @@ verifies("cli.no-unfenced-run-yes", () => {
         starts += 1;
         throw new Error("nothing may start without the sandbox");
       };
-      const asked = await computer.gate.start(startIn);
+      const asked = await plugins.gate.start(startIn);
       if (asked.run !== "needs-yes") throw new Error(`expected needs-yes, got ${asked.run}`);
       const saved = new FileUnfencedRunConsentStore(
         unfencedRunsFolder(profileFolder(environment())),
@@ -158,10 +158,6 @@ verifies("cli.no-unfenced-run-yes", () => {
       const handPlaced = { reason: asked.reason, allowedAt: "2026-11-09T10:00:00.000Z" };
       await saved.save(handPlaced);
 
-      expect(await computer.gate.start(startIn)).toEqual({
-        run: "needs-yes",
-        reason: asked.reason,
-      });
       expect(await plugins.gate.start(startIn)).toEqual({ run: "needs-yes", reason: asked.reason });
       expect(starts).toBe(0);
       expect(await saved.get()).toEqual(handPlaced);

@@ -2,7 +2,12 @@
 // (HAL-12343): the plugin's other parts keep working, so without it a run
 // would end with no word on why the agent had none of that part's tools.
 
-import type { PluginPartUnavailable, PluginPartUnavailableReason } from "@halonicjs/app";
+import {
+  type PluginPartUnavailable,
+  type PluginPartUnavailableReason,
+  runnerUnfencedWords,
+} from "@halonicjs/app";
+import { docsBase } from "./messages/docs.ts";
 import { errorMessages } from "./messages/general.ts";
 import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
 import { type PluginPartShown, runMessages } from "./messages/run.ts";
@@ -52,6 +57,34 @@ export function pluginPartReporter(
     if (reason.kind === "sandbox-not-fenced") {
       lines.debug(runMessages.pluginPartFence(reason.fence).phrase);
     }
+  };
+}
+
+/**
+ * The local integrations' `startedUnfenced`: R18's warning, once per run,
+ * the first time an integration starts without the sandbox with the user's
+ * yes (HAL-15144). It goes to stderr with or without `--json`, so stdout
+ * stays the result alone.
+ *
+ * @example
+ * const startedUnfenced = unfencedIntegrationReporter(lines);
+ * // ! Integration code runs without the sandbox on this computer, so it may be able to use your files, programs and sign-ins, and reach other addresses.
+ * //   Halonic is running inside a container, where the sandbox can't start. Run Halonic on the computer itself, not in a container.
+ * //   More: https://docs.halonic.dev/security/sandbox/#container (container)
+ */
+export function unfencedIntegrationReporter(
+  lines: RunConnectorLines | undefined,
+): (reason: string) => void {
+  let told = false;
+  return (reason) => {
+    if (lines === undefined || told) return;
+    told = true;
+    const words = runnerUnfencedWords(reason, "integration");
+    lines.warn(phrase`${markPart("needsYou")} ${runMessages.integrationUnfenced().phrase}`);
+    lines.warn(phrase`  ${runMessages.integrationUnfencedWhy(words.reason, words.fix).phrase}`);
+    lines.warn(
+      phrase`  ${errorMessages.more(`${docsBase}/${words.docsKey}`, printable(reason)).phrase}`,
+    );
   };
 }
 
