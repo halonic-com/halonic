@@ -79,9 +79,11 @@ export function ScannerStep({
   readonly notHalonic: boolean;
   readonly onClose: () => void;
 }) {
-  const corner = "absolute size-10 border-white";
+  // The camera picture is the same in every theme, so the marks and the hint use the kit's
+  // always-white scanning colour, not a theme colour that turns dark in a light theme.
+  const corner = "absolute size-10 border-qr-light";
   return (
-    <div className="relative min-h-full bg-transparent text-white">
+    <div className="relative min-h-full bg-transparent text-qr-light">
       <div className="absolute start-3 top-3">
         <Button
           variant="ghost"
