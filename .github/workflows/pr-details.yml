@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: New base
         if: github.event.changes.base
-        run: echo "::notice title=New base::CI ran against the old base. Push a commit to run it against the new one; the merge queue checks against main either way."
+        run: echo "::notice title=New base::CI ran against the old base. Push a commit to run it against the new one; the merge queue checks against main either way. The note check runs again by itself."
       # The base's title check, not the pull request's own: this job holds a token
       # that can re-run workflows.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

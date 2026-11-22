@@ -451,15 +451,22 @@ dependencies). Other changes to those two files, such as another dev dependency,
 reported. A lockfile layout the reader doesn't know counts any difference as a change. A note of
 either kind that lists the file under Covers is enough. The check also
 checks any note's approval again in the merge queue, against the queue
-base's `approvers.json`. The merge queue is different: there GitHub runs
-the file from the merge group's commit, which holds the pull request's own
-changes, so a pull request that edits the workflow runs its own copy in the
-queue. That is why the `pull_request_target` run is the one that must be
-required: it fails any change under `.github/` without a signed note before
-the pull request can reach the queue. The job fails the pull request, but
-GitHub blocks the merge on it only when an admin lists it as a required
-check next to `ci-ok`. It can't be part of `ci-ok`, because it runs in a
-different workflow.
+base's `approvers.json`. The run that blocks the merge is the
+organisation's required copy of the workflow: the ruleset on `main` pins
+it to `refs/heads/main`, so a pull request that edits the workflow can't
+change the copy that gates it. GitHub runs that copy on `opened`,
+`synchronize` and `reopened` and in the merge queue, where it compares the
+queued head with `main`. The repository's own file also runs in the queue
+from the merge group's commit, but that run isn't the required one. It
+can't be part of `ci-ok`, because it runs in a different workflow.
+
+The check compares the pull request's head with its base, so the
+repository's file also runs on `edited`: after a base change it gives an
+early red on the pull request. The gate that blocks the merge is still the
+required run against `main` in the queue. It runs only for pull requests
+into `main` or a `release/` branch, and its first step fails on any other
+base (`check.guard-notes-base`). It runs in full on every `edited` event, a
+title or body change too; that is one short job.
 
 **CI runs the policy rules from the base commit's copy.** The `Policy rules`
 job runs `layers`, `dependencies`, `process-starts`, `lockfile`,
