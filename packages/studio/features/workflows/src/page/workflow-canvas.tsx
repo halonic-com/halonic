@@ -285,8 +285,10 @@ export function WorkflowCanvas({
         {workflow.steps.map((step) => {
           const box = boxes.get(step.id);
           const first = step.id === workflow.initial;
-          // An end step has no way on, so no port to drag one from.
-          const port = step.type === "final" ? undefined : connecting.portOf?.(step.id);
+          // An end step has no way on, so no port to drag one from. A wait's arrows each need the
+          // answer that takes them, which a drop can't say, so its card's Add makes them instead.
+          const noPort = step.type === "final" || step.type === "wait";
+          const port = noPort ? undefined : connecting.portOf?.(step.id);
           const stepProblems = cardProblems(problems, step.id, stepName);
           return box === undefined ? null : (
             <Fragment key={step.id}>

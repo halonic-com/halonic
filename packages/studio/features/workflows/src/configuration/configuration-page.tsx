@@ -194,7 +194,9 @@ function ConfigurationBody({
           )}
           <p className="text-small text-fg-muted">{words.fileLater}</p>
         </Row>
-        <Row label={words.firstStep}>{configuration.initial}</Row>
+        <Row label={words.firstStep}>
+          {stepName?.(configuration.initial) ?? configuration.initial}
+        </Row>
         <Row label={words.file}>
           <span className="text-fg-muted">{configuration.file}</span>
         </Row>

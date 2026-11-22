@@ -50,8 +50,9 @@ const configuration: WorkflowConfiguration = {
 const open = async (
   config: readonly WorkflowConfiguration[],
   presentation: "desktop" | "phone" = "desktop",
+  workflow: WorkflowView = view,
 ) => {
-  const { host } = memoryHost([], [], [view], config);
+  const { host } = memoryHost([], [], [workflow], config);
   const page = await show(
     <PresentationProvider presentation={presentation}>
       <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />
@@ -73,6 +74,20 @@ verifies("workflows.configuration.pages", () => {
     expect(tab(page, "General")?.getAttribute("aria-selected")).toBe("true");
     expect(page.textContent).toContain("Answers a customer");
     expect(page.textContent).toContain("hubs/acme/workflows/reply.workflow.yaml");
+  });
+
+  it("names the first step as its card does: by its title, else by its id", async () => {
+    const firstStep = (page: HTMLElement) =>
+      [...page.querySelectorAll("dt")].find((label) => label.textContent === "First step")
+        ?.nextElementSibling?.textContent;
+    expect(firstStep(await open([configuration]))).toBe("start");
+    unmount();
+
+    const titled: WorkflowView = {
+      ...view,
+      steps: [{ id: "start", type: "task", title: "Read the email" }, ...view.steps.slice(1)],
+    };
+    expect(firstStep(await open([configuration], "desktop", titled))).toBe("Read the email");
   });
 
   it("shows the number of errors on the tab and on Problems", async () => {
