@@ -1,6 +1,6 @@
 # cli.commands.proposals.accept-profile
 
-- Status: draft
+- Status: active
 - Since: unreleased
 - Source: HAL-15764 (show, from Nina's C623 run); HAL-15201 (Liam's approval, question 3: the end-to-end test for gap 1); the shell's `Fence` in the `workspace-files` crate (HAL-7039)
 
