@@ -130,6 +130,9 @@ async function bundleTestWorker(
     // workerd provides `cloudflare:workers` (the bindings in `env`) when the Worker loads, and
     // `node:inspector` for a Worker built for coverage.
     external: ["cloudflare:*", "node:inspector"],
+    // CommonJS packages such as React pick their entry from `process.env.NODE_ENV`, and workerd
+    // has no `process`. Wrangler defines it as "production" for a deploy; the test Worker does the same.
+    define: { "process.env.NODE_ENV": '"production"' },
     // The map is only for coverage: it takes the counts back to the source files.
     ...(coverage
       ? { sourcemap: "external", sourcesContent: false, outfile: "test-worker.js" }

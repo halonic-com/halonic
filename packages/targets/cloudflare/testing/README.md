@@ -47,6 +47,9 @@ How a run goes:
    you name (esbuild, every `import … from "vitest"` pointed at the shim).
    Contract suite files are marked free of side effects, so only the suites
    the Worker runs end up in the bundle and in the matcher check.
+   `process.env.NODE_ENV` is defined as `"production"`, as Wrangler does for
+   a deploy, so a suite can import React and other CommonJS packages that
+   read it.
 2. `WorkerdRunner` starts the Worker in a local workerd through Miniflare,
    with all storage in memory. Each test file gets its own workerd, so it
    starts with empty D1, R2, KV and Durable Object storage. Always stop it.
