@@ -83,4 +83,12 @@ export {
   type RemoteSession,
   type RemoteView,
 } from "./remote-view.ts";
+export {
+  StatusSheet,
+  type StatusSheetActions,
+  type StatusSheetOf,
+  type StatusSheetProps,
+  statusSheetTitle,
+} from "./status-sheet.tsx";
+export { sheetRouteWords, sheetWords } from "./status-words.ts";
 export { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";
