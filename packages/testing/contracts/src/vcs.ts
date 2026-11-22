@@ -10,8 +10,9 @@ import { vcsRemoteCases } from "./vcs-remote.ts";
 import { vcsSafetyCases } from "./vcs-safety.ts";
 import { unknownCommit } from "./vcs-version-inputs.ts";
 import {
-  vcsCommitContracts,
+  vcsCommitVersionContract,
   vcsPatchSafetyContract,
+  vcsProposalContracts,
   vcsVersionContracts,
   vcsVersionSafetyContract,
 } from "./vcs-versions.ts";
@@ -40,8 +41,10 @@ export const vcsContractParts = {
   versionSafety: vcsVersionSafetyContract,
   /** The safety of applying a patch, under the versions safety requirement too. */
   patchSafety: vcsPatchSafetyContract,
-  /** Create version and proposal refs. */
-  commits: vcsCommitContracts,
+  /** Create version and its safety. */
+  commitVersion: vcsCommitVersionContract,
+  /** Proposal refs, and the hardened cases of Create version and proposals. */
+  proposals: vcsProposalContracts,
 } as const satisfies Readonly<Record<string, (name: string, make: MakeVcs) => void>>;
 
 function vcsBasicContracts(name: string, make: MakeVcs): void {
