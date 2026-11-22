@@ -3,7 +3,7 @@
 - Task: HAL-15736
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15736 (words check C621 rows 47, 51 and 33 on HAL-15726; small wording on approved CLI output and docs, decided by the team under HAL-2282, no board card); the reviewer signs this note with the pull request
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:d1PP0Z24XjizslERu0JpGZiNpThrrzDbZVUqLBSH30LlYO7XZ5LfsxaK4tdsVFzUGpO0QkvDFY9fbP/uOs/jBA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FOU1MsauKWDN25DDB/hDD4WOp8dZxPfcEN3BOTdkY1s7N+DuetABNVlFK21dwx39QNG46TYPad7kTQh0P8g3Bg==
 
 ## What changes
 
