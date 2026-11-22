@@ -1,6 +1,9 @@
 import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
 import { runCommand } from "../read/command.ts";
 import { readSeat } from "../read/read-seat.ts";
+import { runSeatsHistory } from "./history-job.ts";
+import { databaseHistoryStore } from "./history-store.ts";
+import { databaseTables } from "./paperclip-tables.ts";
 import { runSeatsRead } from "./read-job.ts";
 import { handleSeatsRequest } from "./routes.ts";
 import { SeatsReader } from "./seats-reader.ts";
@@ -28,8 +31,8 @@ export function commandEnv(env: NodeJS.ProcessEnv): Record<string, string> {
 /**
  * The `seats` plugin's worker. The host starts it as `worker.js` in the
  * folder `pnpm run build:seats-plugin` writes (`dist/seats/`), after it has
- * run the plugin's migrations. It runs `seats.read` every minute and answers
- * the board-only route calls.
+ * run the plugin's migrations. It runs `seats.read` every minute,
+ * `seats.history` every 10 minutes, and answers the board-only route calls.
  */
 export const plugin = definePlugin({
   async setup(ctx) {
@@ -44,6 +47,13 @@ export const plugin = definePlugin({
     context = { ctx, reader };
     ctx.jobs.register("seats.read", async () => {
       await runSeatsRead(ctx, reader);
+    });
+    ctx.jobs.register("seats.history", async () => {
+      await runSeatsHistory(ctx, {
+        tables: databaseTables(ctx.db),
+        store: databaseHistoryStore(ctx.db),
+        now,
+      });
     });
   },
   async onApiRequest(input) {
