@@ -71,8 +71,11 @@ export function TriggerFields({
     : [...PICKABLE_KINDS, trigger.kind];
   const zone = deviceTimeZone();
   const options = kinds.map((kind) => {
+    const label = words.kinds[kind];
     const description = optionSentence(kind, { trigger, sentence }, zone);
-    return { value: kind, label: words.kinds[kind], ...(description && { description }) };
+    // "Manual only" writes the sentence "Manual only": a second line would only repeat the label.
+    const adds = description !== undefined && description !== label;
+    return { value: kind, label, ...(adds && { description }) };
   });
   // Only the pickable kinds reach here: the routine's own kind is no change.
   const pick = (kind: string) => {

@@ -88,12 +88,12 @@ verifies("routines.page.phone-layout", () => {
     expect(row.className).toContain("phone:min-h-touch");
   });
 
-  it("shows the sentence each Trigger option would write in the picker sheet", async () => {
+  it("shows the sentence each Trigger option would write in the picker sheet, unless it's the label", async () => {
     const { page } = await open();
     const picker = buttonNamed(page, "On a schedule") as HTMLButtonElement;
     await act(async () => picker.click());
     expect(optionLine(page, "schedule")).toBe("Weekdays at 07:30");
-    expect(optionLine(page, "manual")).toBe("Manual only");
+    expect(optionLine(page, "manual")).toBeUndefined();
     expect(optionLine(page, "every")).toBe("Every hour (UTC)");
     expect(optionLine(page, "mail")).toBeUndefined();
   });

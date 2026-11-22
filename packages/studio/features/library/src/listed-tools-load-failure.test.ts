@@ -36,10 +36,10 @@ verifies("library.listed-tools-waiting", () => {
       );
 
       expect(line.parts).toEqual([
-        { text: "Couldn't list the tools: the program " },
+        { text: "Couldn't list the tools: notes-mcp's program " },
         { text: "sh", code: true },
         {
-          text: " of notes-mcp stopped right after it started. To see why, run the command and args from ",
+          text: " stopped right after it started. To see why, run the command and args from ",
         },
         { text: "its connector file" },
         { text: " yourself." },
@@ -61,7 +61,7 @@ verifies("library.listed-tools-waiting", () => {
       );
 
       expect(refusalLineText(line.parts)).toBe(
-        "Couldn't list the tools: the program sh of notes-mcp stopped right after it started. To see why, run the command and args from library/connectors/notes-mcp.connector.yaml yourself:",
+        "Couldn't list the tools: notes-mcp's program sh stopped right after it started. To see why, run the command and args from library/connectors/notes-mcp.connector.yaml yourself:",
       );
       expect(line.parts).toContainEqual({
         text: "library/connectors/notes-mcp.connector.yaml",

@@ -271,7 +271,7 @@ describe("the connector page's listed tools", () => {
       );
       await settled();
       expect(root.textContent).toContain(
-        "Couldn't list the tools: the program sh of Notes stopped right after it started. To see why, run the command and args from library/connectors/notes.connector.yaml yourself:",
+        "Couldn't list the tools: Notes's program sh stopped right after it started. To see why, run the command and args from library/connectors/notes.connector.yaml yourself:",
       );
       expect(root.textContent).toContain('cd /acme && sh -c "exit 1"');
       expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
