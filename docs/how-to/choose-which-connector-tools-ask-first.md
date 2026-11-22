@@ -91,3 +91,36 @@ refuses every call to it without asking (see [The rule](#the-rule)).
 Turning a tool on in `halonic tools review` is a separate step. It lets agents
 use a tool whose name, description and arguments you have read, and the tool is
 off again when they change. It doesn't stop a tool from asking before each use.
+
+## Turn a tool on, or off again
+
+A tool its server lists is off until you review it: agents aren't offered it
+until you have read its name, description and arguments and approved it.
+Approving is the review's yes. It doesn't change whether the tool asks before
+each use: that is the rule above.
+
+In Studio, open the connector's page in the Library. A line says
+"2 tools are off until you review them", or "3 tools are on." when none is
+waiting. **Review tools** opens the review in both cases:
+
+- Tick the tools you expect this server to have, then press
+  **Approve selected**, or **Approve all** for every tool shown.
+- Under **Approved**, **Remove approval** turns a tool off again.
+- A tool whose name, description or arguments changed since you approved it
+  is under **Changed**, and stays off until you approve the new version.
+
+On a phone, the page says "View only here. Review the tools on the computer
+running Halonic."
+
+From a terminal:
+
+| Command | What it does |
+| --- | --- |
+| `halonic tools review <connector>` | shows the same review and asks about each waiting tool |
+| `halonic tools approve <connector> <tool>…` | approves the tools named, without a question; `--all` approves every waiting tool, and `--fingerprint` approves one tool only at the version you reviewed |
+| `halonic tools revoke <connector> <tool>…` | removes your approval, as **Remove approval** does, so the tool is off again |
+
+Where nobody can answer, as in CI, `halonic tools review` asks nothing and
+says how many tools stay off; approve them with `halonic tools approve`.
+Studio and the command keep your approvals in the same place in your profile,
+so an approval made in either counts in both.
