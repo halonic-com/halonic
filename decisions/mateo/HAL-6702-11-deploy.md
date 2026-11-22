@@ -2,6 +2,7 @@
 
 - Approval: the build plan was approved by Liam on HAL-13512, the entry's design is on HAL-6702 (deploy-target-entry), and Liam chose on HAL-16060 that the Worker is built at release; the reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5+KKDC/e8d8tT7bESjjuvDuYpplZYXnLUucmyT10YlJGSb2EIxCSmQ9xaZ5f4qkEoaFy+VEMZ3NJlNwTVsYzBg==
 
 ## What changes
 
