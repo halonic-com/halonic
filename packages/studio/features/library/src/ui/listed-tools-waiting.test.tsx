@@ -65,18 +65,18 @@ function tool(name: string): ListedToolRow {
   };
 }
 
-function snapshot(waiting: readonly string[]): ListedToolsSnapshot {
+function snapshot(waiting: readonly string[], on: readonly string[] = []): ListedToolsSnapshot {
   return {
     sourceName: "Notes",
     workspaceName: "Acme",
     toReview: waiting.map(tool),
     keepsChanging: [],
     refused: [],
-    approved: [],
+    approved: on,
     approvedWithoutAsking: [],
     listingRefused: null,
     unreadable: null,
-    hasApprovals: false,
+    hasApprovals: on.length > 0,
   };
 }
 
@@ -162,10 +162,46 @@ describe("the connector page's listed tools", () => {
       expect(reviewButton(root)).toBeUndefined();
     });
 
-    it("shows no line and no button when no tool waits", async () => {
+    it("shows no line and no button when no tool waits and none is on", async () => {
       const root = render(<ConnectorPage {...page(toolsHost(async () => snapshot([])))} />);
       await settled();
       expect(root.textContent).not.toContain("until you review");
+      expect(root.textContent).not.toContain(" on.");
+      expect(reviewButton(root)).toBeUndefined();
+    });
+
+    it("says how many tools are on and opens the review on them when none waits", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(toolsHost(async () => snapshot([], ["read_note", "list_notes", "find_note"])))}
+        />,
+      );
+      await settled();
+      expect(root.textContent).toContain("3 tools are on.");
+      expect(root.textContent).not.toContain("until you review");
+
+      act(() => reviewButton(root)?.click());
+      await settled();
+      const dialog = root.querySelector("dialog[open]");
+      expect(dialog?.textContent).toContain("Approved (3)");
+      const buttons = [...(dialog?.querySelectorAll("button") ?? [])];
+      expect(buttons.map((b) => b.textContent)).toContain("Remove approval for read_note");
+    });
+
+    it("says one tool is on, view only, on a phone", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => snapshot([], ["read_note"])),
+            { host: "phone" },
+          )}
+        />,
+      );
+      await settled();
+      expect(root.textContent).toContain("1 tool is on.");
+      expect(root.textContent).toContain(
+        "View only here. Review the tools on the computer running Halonic.",
+      );
       expect(reviewButton(root)).toBeUndefined();
     });
 
@@ -190,6 +226,26 @@ describe("the connector page's listed tools", () => {
       act(() => retry?.click());
       await settled();
       expect(root.textContent).toContain("1 tool is off until you review it");
+    });
+
+    it("hands focus from Try again to the line of the tools that are on", async () => {
+      let fail = true;
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => {
+              if (fail) throw new Error("server down");
+              return snapshot([], ["read_note"]);
+            }),
+          )}
+        />,
+      );
+      await settled();
+      fail = false;
+      const retry = [...root.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+      act(() => retry?.click());
+      await settled();
+      expect(document.activeElement?.textContent).toBe("1 tool is on.");
     });
 
     it("offers Review, which opens the trust check, when the workspace isn't trusted", async () => {

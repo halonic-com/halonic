@@ -154,7 +154,9 @@ export function libraryWaitingReporter(
     if (told.has(key)) return;
     told.add(key);
     warn(
-      `The tools ${names} of the connector "${connector}" wait for your approval and stay off. To approve them, review the connector's tools in the Library.`,
+      waiting.length === 1
+        ? `The tool ${names} of the connector "${connector}" is off until you review it. To review it, open the connector in the Library.`
+        : `The tools ${names} of the connector "${connector}" are off until you review them. To review them, open the connector in the Library.`,
     );
   };
 }

@@ -301,11 +301,13 @@ export const runMessages = defineMessages("run", {
       : phrase`the engine couldn't write a harness bridge failure to the run log: ${failure} (caused by: ${cause})`,
   /**
    * Listed tools a turn left out because nobody approved them, with the
-   * command that approves them. Nobody can answer in a run, so this is the
+   * command that reviews them, one tool or several. Nobody can answer in a run, so this is the
    * only place the command is named. The names arrive escaped.
    */
-  toolsWaiting: (source: string, names: string, command: string) =>
-    phrase`The tools ${names} of ${source} wait for your approval and stay off. To approve them, run ${command}`,
+  toolsWaiting: (source: string, names: readonly string[], command: string) =>
+    names.length === 1
+      ? phrase`The tool ${names.join(", ")} of ${source} is off until you review it. To review it, run ${command}`
+      : phrase`The tools ${names.join(", ")} of ${source} are off until you review them. To review them, run ${command}`,
   /**
    * A `--debug` line naming the key a sandboxed harness agent spends, by its
    * provider and its secret's name, never its value (HAL-12784).

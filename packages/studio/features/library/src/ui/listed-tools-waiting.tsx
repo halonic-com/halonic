@@ -119,6 +119,32 @@ function LoadFailed({
   );
 }
 
+/** **Review tools**, which opens the review, or on a phone the line that says reviewing is for the computer. */
+function ReviewTools({
+  viewOnly,
+  onOpen,
+}: {
+  readonly viewOnly: boolean;
+  readonly onOpen: () => void;
+}) {
+  return viewOnly ? (
+    <p className="min-w-0 text-small text-fg-muted [overflow-wrap:anywhere]">
+      {listedToolsWords.reviewToolsViewOnly}
+    </p>
+  ) : (
+    <Button variant="secondary" onClick={onOpen}>
+      {listedToolsWords.reviewTools}
+    </Button>
+  );
+}
+
+/** How many listed tools are on, when none waits and nothing failed; otherwise 0. */
+function toolsOn(state: ListedToolsReviewModel["state"]): number {
+  return reviewFallback(state)?.kind === "nothing-waiting"
+    ? (state.snapshot?.approved.length ?? 0)
+    : 0;
+}
+
 /** The failed reading a **Try again** started from, kept on screen until the new one answers. */
 type LoadFailedFallback = Extract<ReviewFallback, { readonly kind: "load-failed" }>;
 
@@ -152,8 +178,9 @@ function useTryAgain(model: ListedToolsReviewModel) {
 /**
  * The connector's "N tools are off until you review them" line with its **Review tools** button,
  * which opens the review dialog; where the page is view only, the button gives way to a line that
- * says so. It shows nothing while the tools are being read and when none
- * waits. When the list couldn't be read, was refused, or an approval is unreadable, it says so in
+ * says so. When none waits and some are on, it says how many are on ("3 tools are on.") with the
+ * same button, which opens the review on its Approved group, so a tool can be switched off again;
+ * it shows nothing while the tools are being read and when none is listed or on. When the list couldn't be read, was refused, or an approval is unreadable, it says so in
  * one line with **Try again** or **Review tools**, since the dialog's screens for those can't
  * be reached otherwise. When the workspace isn't trusted, trying again can't help, so the line
  * offers **Review**, which opens the trust check over the page, instead; once the person trusts
@@ -179,6 +206,8 @@ export function ListedToolsWaiting({
   const { retrying, tryAgain, lineRef } = useTryAgain(model);
   const waiting =
     snapshot === undefined ? 0 : snapshot.toReview.length + snapshot.keepsChanging.length;
+  // With every tool decided and some on, the line still opens the review, to remove an approval.
+  const on = retrying === null ? toolsOn(state) : 0;
   // While its Try again runs, the failure it started from stays, so the button keeps its place.
   const failed = retrying ?? (fallback?.kind === "load-failed" ? fallback : null);
 
@@ -194,19 +223,17 @@ export function ListedToolsWaiting({
     setOpen(false);
     if (toast !== null) toasts?.show({ tone: "success", title: toast });
   };
+  const review = <ReviewTools viewOnly={viewOnly} onOpen={() => setOpen(true)} />;
   return (
     <>
       {waiting > 0 ? (
         <WaitingLine text={listedToolsWords.waitingBadge(waiting)} textRef={lineRef}>
-          {viewOnly ? (
-            <p className="min-w-0 text-small text-fg-muted [overflow-wrap:anywhere]">
-              {listedToolsWords.reviewToolsViewOnly}
-            </p>
-          ) : (
-            <Button variant="secondary" onClick={() => setOpen(true)}>
-              {listedToolsWords.reviewTools}
-            </Button>
-          )}
+          {review}
+        </WaitingLine>
+      ) : null}
+      {on > 0 ? (
+        <WaitingLine text={listedToolsWords.toolsOn(on)} textRef={lineRef}>
+          {review}
         </WaitingLine>
       ) : null}
       {waiting === 0 && failed !== null ? (

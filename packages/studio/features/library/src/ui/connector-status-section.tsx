@@ -18,7 +18,7 @@ export interface ConnectorStatusSectionProps {
 /**
  * One connector's status, for the connector page to put under its `h1`: the state as a word
  * with the sentence that says why, then "Recent refusals" as a plain list of text lines, then,
- * when listed tools wait for a person's approval, "Waiting for approval" as plain lines too. It is
+ * when listed tools wait for a person's approval, "Off until you review them" as plain lines too. It is
  * a plain `div`, with no landmark of its own: the shell owns the landmarks.
  */
 export function ConnectorStatusSection({
