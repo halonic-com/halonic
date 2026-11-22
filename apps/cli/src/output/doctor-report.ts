@@ -77,8 +77,8 @@ interface CheckLines {
 }
 
 /**
- * The lines of `halonic doctor`, in the order of cli-output 3.7: Workspace,
- * Models, Secrets (HAL-14269), Plugins (HAL-14296), Sandbox, Harnesses, Node.js (HAL-6517),
+ * The lines of `halonic doctor`, in the order of cli-output 3.7: Profile
+ * (HAL-15201), Workspace, Models, Secrets (HAL-14269), Plugins (HAL-14296), Sandbox, Harnesses, Node.js (HAL-6517),
  * Network (HAL-14262) and Disk, each only when the report has it, with an empty line after the
  * heading and before the summary.
  *
@@ -101,6 +101,7 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
     ? checkOf(report.sandbox.status, timedOutWords("sandbox"))
     : sandboxCheck(report.sandbox, facts, node);
   const checks = [
+    worded(report.profile),
     worded(report.workspace),
     worded(report.models),
     worded(report.secrets),

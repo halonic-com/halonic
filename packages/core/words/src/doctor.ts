@@ -40,6 +40,7 @@ export const doctorMessages = defineMessages("doctor", {
   harnessesLabel: () => phrase`Harnesses`,
   nodeLabel: () => phrase`Node.js`,
   networkLabel: () => phrase`Network`,
+  profileLabel: () => phrase`Profile`,
   diskLabel: () => phrase`Disk`,
   /**
    * Any line whose check ran over its limit (HAL-13405): "didn't answer in 5 seconds".
@@ -243,6 +244,18 @@ export const doctorMessages = defineMessages("doctor", {
   proxyUnusable: (variable: string) => phrase`${variable} is set, and Halonic can't use it.`,
   /** Under {@link proxyUnusable}: the proxy setting's own reason, as it words it. */
   proxyReason: (reason: string) => phrase`${reason}`,
+
+  // The Profile line (HAL-15201): the reason and the fix every other command refuses the workspace with.
+  /** Profile ✕ when a variable put the profile folder in the workspace: "the profile folder HALONIC_HOME is inside this workspace." */
+  profileInWorkspace: (variable: string) =>
+    phrase`the profile folder ${variable} is inside this workspace.`,
+  /** Always names `HALONIC_HOME`, whichever variable moved the profile, as the refusal does (HAL-15232). */
+  profileInWorkspaceFix: () =>
+    phrase`Fix: move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.`,
+  /** Profile ✕ when the workspace is inside the profile folder: "this workspace is inside the profile folder ~/.local/share/halonic." */
+  workspaceInProfile: (profile: string) =>
+    phrase`this workspace is inside the profile folder ${profile}.`,
+  workspaceInProfileFix: () => phrase`Fix: move the workspace somewhere else.`,
 
   noProblems: () => phrase`No problems.`,
   problems: (count: number) => phrase`${counted(count, "problem", "problems")}.`,
