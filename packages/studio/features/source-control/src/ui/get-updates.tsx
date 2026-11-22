@@ -7,7 +7,8 @@ import { mergeWords, updatesWords } from "../changes-words.ts";
  * Get updates (checklist part 2, 2.8): brings in the shared copy's newer versions when this
  * workspace has none the shared copy lacks. The result is a toast; a failure's has Try again.
  * When both sides have new versions the choices open instead, so "both-moved" only comes back
- * when one side moved during the get, and trying again can help (HAL-12642).
+ * when one side moved during the get, and trying again can help (HAL-12642). A refusal only git
+ * can clear (a file Halonic leaves to git) has no Try again: it would be refused the same way.
  */
 export function GetUpdates({
   list,
@@ -33,7 +34,9 @@ export function GetUpdates({
         tone: "danger",
         title: updatesWords.failed,
         text: `${reason} ${updatesWords.nothingChanged}`,
-        action: { label: updatesWords.tryAgain, onClick: () => void getUpdates() },
+        ...(outcome.kind === "refused"
+          ? {}
+          : { action: { label: updatesWords.tryAgain, onClick: () => void getUpdates() } }),
       });
     }
   };

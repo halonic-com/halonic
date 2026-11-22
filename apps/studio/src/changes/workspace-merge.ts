@@ -312,13 +312,14 @@ export class UpdatesMerge {
   /**
    * Refuses to start when the shared copy changed a file Halonic leaves to git: `merge -s ours`
    * would keep this workspace's file, and Finish would record that, taking the other person's
-   * change back for everyone.
+   * change back for everyone. A `conflict`, not `unavailable`: trying again is refused the same
+   * way until the person gets those updates with git, so the toast offers no Try again.
    */
   async #refuseLeftToGit(base: string, theirs: string): Promise<void> {
     const left = [...(await this.#changedPaths(base, theirs))].filter(this.#o.leftToGit).sort();
     if (left.length === 0) return;
     throw new KindedError(
-      "unavailable",
+      "conflict",
       `updates change ${new Intl.ListFormat("en", { type: "conjunction" }).format(left)}, which Halonic leaves to git. Get these updates with git instead: open a terminal in this workspace's folder and run git pull --no-rebase. If git reports conflicts, settle them and commit, then come back here.`,
     );
   }

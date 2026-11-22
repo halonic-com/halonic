@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -229,6 +230,23 @@ verifies("source-control.get-updates-per-item", () => {
       await press("Continue");
       expect(root.textContent).toContain("Keeping Sam's");
       expect(root.textContent).toContain("Choose for 1 more item.");
+    });
+
+    it("refuses a file Halonic leaves to git with no Try again, while other failures keep it", async () => {
+      const { fake, toasts } = await openPage({ started: merge([item("a.md", "m\n", "s\n")]) });
+      const reason =
+        "updates change .env.example, which Halonic leaves to git. Get these updates with git instead.";
+      fake.failMerge(new KindedError("conflict", reason));
+      await press("Get updates");
+      const [refused] = toasts.list();
+      expect(refused?.title).toBe("Couldn't get versions");
+      expect(refused?.text).toBe(
+        `Updates change .env.example, which Halonic leaves to git. Get these updates with git instead. Nothing changed here.`,
+      );
+      expect(refused?.action).toBeUndefined();
+      fake.failMerge(new KindedError("unavailable", "The shared copy can't be reached."));
+      await press("Get updates");
+      expect(toasts.list().at(-1)?.action?.label).toBe("Try again");
     });
 
     it("makes what waits unavailable, with the reason, while the merge is started", async () => {
