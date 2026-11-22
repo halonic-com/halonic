@@ -110,6 +110,11 @@ not here.
   connector's does) and the `headers` a run may read; `WEBHOOK_REFUSED_HEADERS` lists the headers it
   refuses, such as `authorization` and `cookie` (requirement `routine-webhook`). A mail trigger's
   `every` is a number followed by `m`, `h` or `d`, such as `15m` (requirement `routine-mail-interval`).
+  A routine's `run` is a workflow with its `input`, named fields such as
+  `input: { mail: "{{trigger.body}}" }`, or an agent with its `prompt`. A workflow whose `input` is
+  a text or a list fails at `run` with "A workflow routine's input takes named fields, such as
+  input: { mail: "{{trigger.body}}" }.", and an agent with `input` and no `prompt` with "An agent
+  routine takes prompt, not input." (requirement `routine-file`).
 - Connectors: besides the local and remote transports, `integration: { folder: <id> }` (a folder
   under `integrations/`) and `plugin: { id: <id> }` run in the integration runner. An `integration`
   transport may also hold `settings` (plain values, such as the `url` a `{ fromSetting }` host

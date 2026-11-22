@@ -217,6 +217,7 @@ export {
   liveVersionOf,
 } from "./live-version.ts";
 export {
+  integrationSheetProblems,
   integrationsFolder,
   type LocalIntegrationSheet,
   readIntegrationSheets,
