@@ -2,6 +2,7 @@
 
 - Approval: HAL-15398 (Iris's flow check C570 on HAL-15386, item 5, assigned to Ravi to fix)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MLvBiIQOlQiUtLEPBUtSQmp4I9XNXpay/agAnDF7UuJHmEAxiZ+iCAQwsTa/T1wdRvE/77AwYzXabugPpLGABQ==
 - Task: HAL-15398
 
 `halonic trust --plugin <id> --remove` said "Removed trust" also when the plugin had no trust, and
