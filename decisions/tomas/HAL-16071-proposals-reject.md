@@ -12,7 +12,10 @@ the flow (list, show, accept, and a way to say no; nothing changes until you acc
 so the word is a team call (HAL-2282).
 
 - `cli.commands.proposals.decide`: the command is `reject`; it says "Rejected the changes to 2
-  files." where it said "Discarded"; `discard` still runs it. The example runs `reject`.
+  files." where it said "Discarded"; `discard` still runs it, and the requirement and the CLI's
+  README name it once as the old name, so someone with an older script finds it (Sofia's call on
+  HAL-16075). The example runs `reject`. For gone texts the fix reads "Reject it with halonic
+  proposals reject 01jd8q to remove it.", so the verb you type and the verb in the sentence match.
 - `cli.commands.proposals.show`: the last line says how to accept or reject.
 - `inbox.proposal-page`: the command Studio offers shows how to accept or reject.
 - `cli.subcommand-aliases` is new: a renamed subcommand keeps its old word, which runs it but isn't

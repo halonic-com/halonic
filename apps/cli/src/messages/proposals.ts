@@ -112,7 +112,7 @@ export const proposalsMessages = defineMessages("proposals", {
   unavailable: (runId: string) =>
     phrase`Run ${runId}'s changes were deleted outside Halonic, so they can't be shown or accepted.`,
   unavailableFix: (runId: string, dir?: string) =>
-    phrase`Remove the proposal with ${suggestedCommand("proposals reject", dir, runId)}.`,
+    phrase`Reject it with ${suggestedCommand("proposals reject", dir, runId)} to remove it.`,
   /** Usage: `show`, `accept` and `reject` take one run id, and a file for the last two. */
   takesOneRunId: () => phrase`Give one run id.`,
   takesRunIdAndFile: () => phrase`Give one run id, and a file if you want to decide only that one.`,
