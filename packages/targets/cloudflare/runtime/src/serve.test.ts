@@ -113,16 +113,14 @@ verifies("runtime.serve", () => {
     );
 
     it("reads the scheme from the request, so a plain-http request gets no Secure cookie", async () => {
-      const send = (scheme: string) =>
+      // Plain http reaches the API only on a loopback name, as under `wrangler dev` (`runtime.https-only`).
+      const send = (scheme: string, host: string) =>
         worker.fetch(
-          new Request(`${scheme}://halonic.example.com/api/logout`, {
-            method: "POST",
-            headers: { host: "halonic.example.com" },
-          }),
+          new Request(`${scheme}://${host}/api/logout`, { method: "POST", headers: { host } }),
           envWith({}),
         );
-      const secure = await send("https");
-      const plain = await send("http");
+      const secure = await send("https", "halonic.example.com");
+      const plain = await send("http", "localhost");
       expect(secure.headers.get("set-cookie")).toContain("Secure");
       expect(plain.headers.get("set-cookie")).not.toContain("Secure");
     });

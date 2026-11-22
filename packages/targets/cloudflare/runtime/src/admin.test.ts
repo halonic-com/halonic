@@ -132,7 +132,7 @@ verifies("runtime.admin-key", () => {
         headers: { host, authorization: `Bearer ${key}` },
       });
       expect(await answerAdmin(plain, env, recording)).toBeUndefined();
-      expect((await worker.fetch(plain, env)).status).toBe(404);
+      expect((await worker.fetch(plain, env)).status).toBe(308);
     });
 
     it("falls through when the deployment's host names aren't configured", async () => {
