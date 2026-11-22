@@ -2,26 +2,13 @@ import { parseGatewayClientMessage } from "@halonicjs/adapter-remote-gateway";
 import { gatewayMaxMessageBytes } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { pick, type Rand, seededRandom } from "./seeded-random.ts";
 import { openTunnelRig, type TunnelRig } from "./tunnel-rig.ts";
 import { op, wireFrame } from "./wire-client.ts";
 
 const seed = Number(process.env["HALONIC_FUZZ_SEED"] ?? 20_261_117);
 const parserRuns = Number(process.env["HALONIC_FUZZ_RUNS"] ?? 4_000);
 const connectionRuns = Number(process.env["HALONIC_FUZZ_CONNECTIONS"] ?? 60);
-
-/** A small seeded generator (mulberry32), so a failing run can be repeated. */
-function random(start: number): () => number {
-  let state = start >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let mixed = Math.imul(state ^ (state >>> 15), 1 | state);
-    mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed)) ^ mixed;
-    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4_294_967_296;
-  };
-}
-
-type Rand = () => number;
-const pick = <T>(rand: Rand, list: readonly T[]): T => list[Math.floor(rand() * list.length)] as T;
 
 const validMessages: readonly Record<string, unknown>[] = [
   { type: "hello", id: "h1", version: 2 },
@@ -196,7 +183,7 @@ function hostileBytes(rand: Rand): Buffer {
 verifies("tunnel-attacks.fuzz", () => {
   describe(`the parser, seed ${seed}`, () => {
     it("never throws, and accepts what a second reading of the protocol accepts, unchanged", () => {
-      const rand = random(seed);
+      const rand = seededRandom(seed);
       let accepted = 0;
       for (let run = 0; run < parserRuns; run++) {
         const { binary, bytes } = frameBytes(rand);
@@ -216,7 +203,7 @@ verifies("tunnel-attacks.fuzz", () => {
 
   describe(`hostile connections, seed ${seed}`, () => {
     it("leave the gateway serving, a risky approval unanswered and the source asked for protocol messages only", async () => {
-      const rand = random(seed + 1);
+      const rand = seededRandom(seed + 1);
       const rig = await openTunnelRig({ maxConnections: 64, helloTimeoutMs: 2_000 });
       try {
         const sending: Promise<void>[] = [];
