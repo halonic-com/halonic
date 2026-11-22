@@ -64,8 +64,26 @@ export function showEnding(
         ? waitingEnding(children.waiting.summary, children.waiting.definitions, dir)
         : waitingEnding(run.summary, definitions, dir);
     case "running":
-      return [];
+      return addressEnding(run.summary);
   }
+}
+
+/**
+ * A running run whose model call waits for the answer to Studio's "Allow this address?" ends
+ * with the oldest question and where to answer it: only Studio asks it, so the CLI can't take
+ * the answer (HAL-16221). Any other running run ends with its step lines.
+ */
+function addressEnding(summary: RunSummary): Phrase[] {
+  const wait = runWait(summary);
+  if (wait.kind !== "address") {
+    return [];
+  }
+  const { provider, key, origin } = wait.oldest;
+  return [
+    [],
+    phrase`${markPart("needsYou")} ${runsMessages.showAddressQuestion(provider, key, origin).phrase}`,
+    phrase`  ${runsMessages.showAnswerInStudio().phrase}`,
+  ];
 }
 
 /**
