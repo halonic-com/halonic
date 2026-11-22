@@ -3,6 +3,7 @@
 - Task: HAL-15792 (words check C629, HAL-15781)
 - Approval: team wording on approved screens (HAL-2282); Sofia wrote the words in C629 and C633; Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XWF7TlL6oqhXSlzoCHQJWzrIbAGyChNpecylXLpwumx07nCdLk3w3ps4P/uCAIU39AWPjFsYSINp9iaWYN0FCQ==
 
 ## What changes
 
