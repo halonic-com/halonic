@@ -31,7 +31,10 @@ export type TrustUrl = { url: string } | { refused: string };
  */
 export function trustUrl(url: string): TrustUrl {
   if (hasDroppedCharacters(url)) {
-    return { refused: "the URL has a control character, or a space at its start or end" };
+    return {
+      refused:
+        "the URL has a hidden character, such as a line break, or a space at its start or end",
+    };
   }
   if (/^[^?#]*\\/s.test(url)) {
     return { refused: "the URL has a backslash before its query" };

@@ -216,7 +216,7 @@ verifies("cli.commands.runs.send", () => {
 
       expect(io.stderr).toEqual([]);
       expect(code).toBe(exitCode.ok);
-      expect(io.stdout[0]).toBe("✓ You rejected run 01jd8q. Support reply goes on.");
+      expect(io.stdout[0]).toBe("✓ You rejected in run 01jd8q. Support reply goes on.");
       const finished = io.stdout.findIndex((line) =>
         line.startsWith("✓ Support reply finished in "),
       );
