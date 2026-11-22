@@ -131,10 +131,11 @@ describe("run's sentences", () => {
 
   it("writes each event as one shell word, so the command runs as written whatever the workflow names it", () => {
     const events = ["go on; echo $(date)", "\u001b[8mhide"];
-    // shellWord quotes the Windows way there, without backslashes before `$` or `\`.
+    // shellWord quotes the Windows way there: a backtick before `$`, so PowerShell runs
+    // nothing (#5242), and no backslash before `\`.
     const expected =
       process.platform === "win32"
-        ? 'Answer with: halonic runs send 01jd8q "go on; echo $(date)" (or "\\u001b[8mhide")'
+        ? 'Answer with: halonic runs send 01jd8q "go on; echo `$(date)" (or "\\u001b[8mhide")'
         : 'Answer with: halonic runs send 01jd8q "go on; echo \\$(date)" (or "\\\\u001b[8mhide")';
     expect(words(runMessages.answerHere("01jd8q", events))).toBe(expected);
   });
