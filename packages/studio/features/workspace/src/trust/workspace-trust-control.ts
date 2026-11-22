@@ -1,10 +1,14 @@
 import type { TrustAsks } from "./trust-asks.ts";
 
 /**
- * A line under a trust check row: its label, its value and, for amber, its tone: `attention` is
- * amber, `warning` amber with the triangle.
+ * A line under a trust check row: its label, its value and its tone: `attention` is amber,
+ * `warning` amber with the triangle, `code` mono, for a path, a site or an env entry.
  */
-export type TrustLine = readonly [label: string, value: string, tone?: "attention" | "warning"];
+export type TrustLine = readonly [
+  label: string,
+  value: string,
+  tone?: "attention" | "warning" | "code",
+];
 
 /** One row of the trust check: a program, an agent, an address, or a change to one. */
 export interface TrustRowView {

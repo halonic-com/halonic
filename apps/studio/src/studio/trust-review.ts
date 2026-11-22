@@ -249,9 +249,10 @@ function sectionsOf(
 
 /**
  * A program's row, with the fields the CLI's row shows (HAL-16323): its command, the secrets it
- * gets and the names it takes from the environment, then its resolved path, its working folder,
- * its own environment, one `NAME=value` per line, and, where it runs in the sandbox, its sites.
- * Without the sandbox no site is shown, so the check suggests no fence that isn't there.
+ * gets and the names it takes from the environment, then the path it runs ("Runs", microcopy 4.3),
+ * its working folder, its own environment, one `NAME=value` per line, and, where it runs in the
+ * sandbox, its sites. Without the sandbox no site is shown, so the check suggests no fence that
+ * isn't there. Names, paths, entries and sites are code, so they show in mono (C706).
  */
 function programRow(
   connector: ConnectorTrustContent,
@@ -267,13 +268,13 @@ function programRow(
       ...(secrets.length === 0 ? [] : [["Gets secrets", secrets.join(", ")] as const]),
       ...(fields.inherited.length === 0
         ? []
-        : [["Takes from your environment", fields.inherited.join(", ")] as const]),
-      ...(fields.path === undefined ? [] : [["Resolved path", fields.path] as const]),
+        : [["Takes from your environment", fields.inherited.join(", "), "code"] as const]),
+      ...(fields.path === undefined ? [] : [["Runs", fields.path, "code"] as const]),
       ...(fields.workingFolder === undefined
         ? []
-        : [["Working folder", fields.workingFolder] as const]),
+        : [["Working folder", fields.workingFolder, "code"] as const]),
       ...fields.environment.map(
-        (entry, index) => [index === 0 ? "Environment" : "", entry] as const,
+        (entry, index) => [index === 0 ? "Environment" : "", entry, "code"] as const,
       ),
       ...(runs?.state === "fenced" ? siteLines(fields.sites) : []),
     ],

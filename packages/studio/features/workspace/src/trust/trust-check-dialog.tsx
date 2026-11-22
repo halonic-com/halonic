@@ -6,8 +6,8 @@ import {
   useModalPolite,
   WarningIcon,
 } from "@halonicjs/studio-kit";
-import { printable } from "@halonicjs/words";
 import { useEffect, useId, useRef, useState } from "react";
+import { Marked, markedText } from "./marked-text.tsx";
 import type {
   TrustLine,
   TrustReview,
@@ -99,7 +99,7 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
   }
   return (
     <Dialog
-      title={printable(review.title)}
+      title={markedText(review.title)}
       size="md"
       closeButton={false}
       cancelLabel="Not now"
@@ -119,7 +119,9 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
           break. It breaks anywhere instead, so a phone-narrow window never scrolls the dialog
           sideways (WCAG 1.4.10, HAL-13186). Words that fit don't change. */}
       <div className="flex flex-col gap-4 wrap-anywhere">
-        <p className="m-0 text-small text-fg-muted">{printable(review.source)}</p>
+        <p className="m-0 text-small text-fg-muted">
+          <Marked text={review.source} />
+        </p>
         {review.fingerprint === props.shown ? null : (
           <Callout tone="info">
             This workspace changed while you were reviewing it. Check the new version.
@@ -130,12 +132,14 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
         )}
         {review.refused === undefined ? null : (
           <Callout tone="danger">
-            <span id={refusedId}>{printable(review.refused)}</span>
+            <span id={refusedId}>
+              <Marked text={review.refused} />
+            </span>
           </Callout>
         )}
         {review.summary.map((sentence) => (
           <p key={sentence} className="m-0">
-            {printable(sentence)}
+            <Marked text={sentence} />
           </p>
         ))}
         {review.sections.map((section) => (
@@ -228,10 +232,14 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
         {row.tag === undefined ? null : (
           <span className="text-caption text-fg-muted">{row.tag}</span>
         )}
-        <code>{printable(row.id)}</code>
+        <code>
+          <Marked text={row.id} />
+        </code>
         {/* An empty detail would keep its gap and push the flag 16 px from the name (C667). */}
         {row.detail === "" ? null : (
-          <span className="break-all font-mono text-small">{printable(row.detail)}</span>
+          <span className="break-all font-mono text-small">
+            <Marked text={row.detail} />
+          </span>
         )}
         {row.flag === undefined ? null : (
           // The dot, then the amber words starting with the triangle, as R12's Runs line does.
@@ -241,18 +249,24 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
             <span className="@max-[24rem]:hidden">{"· "}</span>
             <span className="inline-flex items-baseline gap-1 text-attention">
               <Triangle />
-              <span>{printable(row.flag)}</span>
+              <span>
+                <Marked text={row.flag} />
+              </span>
             </span>
           </span>
         )}
       </p>
       {row.warning === undefined ? null : (
-        <p className="m-0 text-small text-attention">{printable(row.warning)}</p>
+        <p className="m-0 text-small text-attention">
+          <Marked text={row.warning} />
+        </p>
       )}
       {row.lines.length === 0 ? null : (
         // Label and value columns: a line without a label continues the one above, its value
-        // under the first value, with no stray colon (C592).
-        <div className="grid grid-cols-[auto_1fr] gap-x-1 gap-y-1">
+        // under the first value, with no stray colon (C592). Where the row is narrower than the
+        // flag's 24rem, each label goes over its value instead, so a value never gets squeezed
+        // beside "Takes from your environment" (C706).
+        <div className="grid grid-cols-[auto_1fr] gap-x-1 gap-y-1 @max-[24rem]:grid-cols-1">
           {row.lines.map((line) => (
             <TrustLineView key={`${line[0]}:${line[1]}`} line={line} />
           ))}
@@ -264,25 +278,38 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
 
 function TrustLineView({ line }: { readonly line: TrustLine }) {
   const [label, value, tone] = line;
+  // Below 24rem the grid has one column: the value goes under its label (C706).
+  const column = "col-start-2 @max-[24rem]:col-start-1";
   return (
-    <p className="col-span-2 m-0 grid grid-cols-subgrid text-small">
+    <p className="col-span-2 m-0 grid grid-cols-subgrid text-small @max-[24rem]:col-span-1">
       {label === "" ? null : (
         <>
-          <span className="text-fg-muted">{printable(label)}:</span>{" "}
+          <span className="text-fg-muted">
+            <Marked text={label} />:
+          </span>{" "}
         </>
       )}
       {tone === "warning" ? (
-        <span className="col-start-2 inline-flex gap-1 text-attention">
+        <span className={`${column} inline-flex gap-1 text-attention`}>
           <Triangle />
-          <span>{printable(value)}</span>
+          <span>
+            <Marked text={value} />
+          </span>
         </span>
       ) : (
-        <span className={tone === "attention" ? "col-start-2 text-attention" : "col-start-2"}>
-          {printable(value)}
+        <span className={`${column}${toneClass(tone)}`}>
+          <Marked text={value} />
         </span>
       )}
     </p>
   );
+}
+
+/** A value's tone: `attention` in amber, `code` (a path, a site, an env entry) in mono. */
+function toneClass(tone: TrustLine[2]): string {
+  if (tone === "attention") return " text-attention";
+  if (tone === "code") return " font-mono";
+  return "";
 }
 
 /**
