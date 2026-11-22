@@ -29,6 +29,15 @@ verifies("workspace.references", () => {
       ]);
     });
 
+    it("is unknown in a models.yaml alias, with the near provider (HAL-15709)", async () => {
+      const errors = await errorsIn({
+        "models.yaml": "aliases:\n  careful:\n    provider: mok\n    model: echo\n",
+      });
+      expect(errors).toEqual([
+        "models.yaml aliases.careful.provider: Alias careful uses unknown provider mok. Did you mean mock?",
+      ]);
+    });
+
     it("says to add its file when no provider is near", async () => {
       const errors = await errorsIn({
         "hubs/billing/hub.yaml":

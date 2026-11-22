@@ -851,6 +851,33 @@
     ]
   },
   {
+    "id": "unknown-provider-says-the-fix",
+    "requirement": "workspace.references",
+    "area": "workspace loader: an alias in models.yaml on an unknown provider",
+    "old": "An alias in models.yaml on a provider no file names gave Alias \"smart\" uses unknown provider \"cloud\", with quotes and no fix.",
+    "new": "The message is Alias smart uses unknown provider cloud. Add providers/cloud.yaml, or point the alias smart at a provider the workspace has. When a provider's id is near, the second sentence is Did you mean <provider>? instead. The code stays unknown-provider.",
+    "why": "validate stops this before any run starts, so it is the only place a person sees it. The run view's banner for the same cause already ends with the fix (C618 #5, HAL-15709).",
+    "status": "signed-off",
+    "checks": [
+      {
+        "case": "models/unknown-provider",
+        "file": "models.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Alias \"smart\" uses unknown provider \"cloud\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "Alias smart uses unknown provider cloud. Add providers/cloud.yaml, or point the alias smart at a provider the workspace has."
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "run-started-names-the-version",
     "requirement": "events.run-started-version",
     "area": "CLI calls: run.started",
