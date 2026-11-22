@@ -71,7 +71,10 @@ group's own `cloud-affected` imports. That breaks HAL-6835's model, "a fork neve
 So `live-cloud.yml`'s plan job, in a merge group, reads the merge queue's entries (GraphQL
 `mergeQueue`), follows the chain from the group's commit back to `main` and lists every pull
 request from another repository. When the group changes a cloud path, the plan fails unless that
-list is `none`; a group the queue doesn't list counts as holding a fork. No job names the
+list is `none`; a group the queue doesn't list counts as holding a fork. The walk ends at a base
+the queue doesn't list, which counts as `main` only if `main` holds it (`git merge-base
+--is-ancestor`): a fork's entry that left the queue without merging is unlisted too, yet its code
+is still in the groups built on it, whose runs keep going (Julian's re-review). No job names the
 `cloudflare-live` environment then, so the token isn't handed out, and CI's gate fails the group.
 The cloud change merges once the fork's pull request has merged or left the queue; forks are rare
 here, so this costs little. The plan also runs `main`'s (the group base's) copy of
@@ -85,7 +88,9 @@ calling GitHub, a direct one needs a pass on its head, a fork fails, and a merge
 pass on its own commit. It also checks `live-cloud.yml`'s `merge_group` trigger and plan, and that
 a dropped group cancels its live run. It runs the plan's fork step against a stand-in queue: a
 fork's own group and a group behind it list the fork, a group ahead of it lists `none`, and a group
-the queue doesn't list answers `unknown`. `cloud-paths.test.ts` covers `isPullRequestLivePath`. New
+the queue doesn't list, or one built on a base that `main` doesn't hold, answers `unknown`. It
+also runs the plan's Decide step for a cloud group: it fails, and hands out no `live=true`, unless
+the fork step answered `none`. `cloud-paths.test.ts` covers `isPullRequestLivePath`. New
 requirement: `check.live-cloud-queue`; `check.cloud-affected` is unchanged.
 
 ## Covers

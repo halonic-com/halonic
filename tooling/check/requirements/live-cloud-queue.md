@@ -26,3 +26,6 @@ When a change touches a cloud path, the live cloud suites shall run in the merge
 - Given a pull request from a fork that changes `tooling/check/src/lib/workspace.ts` and is queued,
   when a merge group that holds it changes a cloud path,
   then the live suites don't run with the token and the group fails.
+- Given a pull request from a fork that left the queue without merging,
+  when a merge group that was built on it changes a cloud path and still runs,
+  then the live suites don't run with the token and the group fails.

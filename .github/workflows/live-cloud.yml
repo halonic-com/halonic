@@ -105,6 +105,21 @@ jobs:
                 | "#\(.pullRequest.number // "?")") | join(" ")
                 | if . == "" then "none" else . end end
           ' "$RUNNER_TEMP/queue.json")
+          # The walk ends at a base the queue doesn't list. That is main only
+          # if main holds it: an entry that left the queue without merging is
+          # unlisted too, and its code is still in the groups built on it.
+          root=$(jq -r --arg sha "$GROUP_SHA" '
+            def root($entries; $sha):
+              ($entries | map(select(.headCommit.oid == $sha)) | .[0]) as $entry
+              | if $entry == null then $sha else root($entries; $entry.baseCommit.oid) end;
+            root([.data.repository.mergeQueue.entries.nodes[]]; $sha) // ""
+          ' "$RUNNER_TEMP/queue.json")
+          if [ "$forks" = none ]; then
+            git fetch --no-tags --quiet origin +refs/heads/main:refs/remotes/origin/main
+            if ! git merge-base --is-ancestor "$root" refs/remotes/origin/main; then
+              forks=unknown
+            fi
+          fi
           echo "forks=$forks" >> "$GITHUB_OUTPUT"
       - id: plan
         name: Decide
@@ -157,7 +172,7 @@ jobs:
             fi
             if grep -qx 'affected=true' "$RUNNER_TEMP/affected.txt"; then
               if [ "$GROUP_FORKS" = unknown ]; then
-                echo "::error::This merge group changes a cloud path, but it isn't in the merge queue's list, so there's no telling whether it holds a fork's code. The live suites don't run, and the group fails."
+                echo "::error::This merge group changes a cloud path, but it isn't in the merge queue's list or isn't built on main, so there's no telling whether it holds a fork's code. The live suites don't run, and the group fails."
                 exit 1
               elif [ "$GROUP_FORKS" != none ]; then
                 echo "::error::This merge group changes a cloud path, but it also holds code from a fork ($GROUP_FORKS), and a fork's code never runs with the test account's token. The cloud change can merge once that pull request has merged or left the queue."

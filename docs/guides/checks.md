@@ -973,7 +973,8 @@ queued; `.github/workflows/live-cloud-gate.yml` re-runs that job when the
 suites pass (HAL-14858), and the group reuses the pass. A run reuses an
 earlier pass when none of its inputs changed. A fork never gets the
 token, not even in the merge queue: a group that changes a cloud path while
-it holds a fork's pull request fails before the suites start (HAL-15992), and
+it holds a fork's pull request, or is built on a commit that isn't on `main`
+(an entry that left the queue), fails before the suites start (HAL-15992), and
 that cloud change merges once the fork's pull request has. Every night it runs every live suite on `main` again, without reuse,
 and every 6 hours it deletes the `hlt-` test resources older than 2 hours. The
 token is in the protected `cloudflare-live` environment. Until the repository

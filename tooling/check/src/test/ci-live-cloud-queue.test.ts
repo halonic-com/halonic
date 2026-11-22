@@ -82,14 +82,26 @@ interface QueueEntry {
   readonly fork?: boolean;
 }
 
+/** Writes an executable stand-in for `name` into `folder`. */
+function stub(folder: string, name: string, lines: readonly string[]): void {
+  writeFileSync(join(folder, name), ["#!/usr/bin/env bash", ...lines, ""].join("\n"));
+  chmodSync(join(folder, name), 0o755);
+}
+
 /**
  * Runs live-cloud.yml's "Fork pull requests in the group" step for the group
- * `sha`, with a stand-in `gh` that answers the merge queue's `entries`, and
- * returns the `forks` it wrote.
+ * `sha`, with a stand-in `gh` that answers the merge queue's `entries` and a
+ * stand-in `git` whose `main` holds the commits `onMain`, and returns the
+ * `forks` it wrote.
  */
-function groupForks(sha: string, entries: readonly QueueEntry[]): string {
+function groupForks(sha: string, entries: readonly QueueEntry[], onMain = ["main0"]): string {
   const folder = mkdtempSync(join(tmpdir(), "live-cloud-group-"));
   folders.push(folder);
+  stub(folder, "git", [
+    'if [ "$1" = merge-base ]; then',
+    `  case " ${onMain.join(" ")} " in *" $3 "*) exit 0 ;; *) exit 1 ;; esac`,
+    "fi",
+  ]);
   const nodes = entries.map((entry) => ({
     headCommit: { oid: entry.head },
     baseCommit: { oid: entry.base },
@@ -99,8 +111,7 @@ function groupForks(sha: string, entries: readonly QueueEntry[]): string {
     join(folder, "entries.json"),
     JSON.stringify({ data: { repository: { mergeQueue: { entries: { nodes } } } } }),
   );
-  writeFileSync(join(folder, "gh"), `#!/usr/bin/env bash\ncat "${join(folder, "entries.json")}"\n`);
-  chmodSync(join(folder, "gh"), 0o755);
+  stub(folder, "gh", [`cat "${join(folder, "entries.json")}"`]);
   const output = join(folder, "output.txt");
   writeFileSync(output, "");
   const result = spawnSync("bash", ["-e", "-c", stepScript(live, "Fork pull requests in the group")], {
@@ -115,6 +126,39 @@ function groupForks(sha: string, entries: readonly QueueEntry[]): string {
   });
   expect(result.status, result.stderr).toBe(0);
   return readFileSync(output, "utf8").trim();
+}
+
+/**
+ * Runs live-cloud.yml's "Decide" step for a merge group that changes a cloud
+ * path, with the fork step's answer `forks`, and returns its exit status,
+ * output and the outputs it wrote.
+ */
+function decideGroup(forks: string): { status: number | null; output: string; written: string } {
+  const folder = mkdtempSync(join(tmpdir(), "live-cloud-decide-"));
+  folders.push(folder);
+  stub(folder, "gh", ["echo true"]);
+  stub(folder, "git", ['if [ "$1" = worktree ]; then mkdir -p "$4"; fi']);
+  stub(folder, "node", ["echo affected=true"]);
+  const output = join(folder, "output.txt");
+  writeFileSync(output, "");
+  const result = spawnSync("bash", ["-e", "-c", stepScript(live, "Decide")], {
+    encoding: "utf8",
+    env: {
+      PATH: `${folder}:${process.env["PATH"] ?? ""}`,
+      ENABLED: "true",
+      EVENT: "merge_group",
+      REPO: "acme/halonic",
+      GROUP_BASE: "g1",
+      GROUP_FORKS: forks,
+      RUNNER_TEMP: folder,
+      GITHUB_OUTPUT: output,
+    },
+  });
+  return {
+    status: result.status,
+    output: `${result.stdout}${result.stderr}`,
+    written: readFileSync(output, "utf8"),
+  };
 }
 
 verifies("check.live-cloud-queue", () => {
@@ -170,9 +214,24 @@ verifies("check.live-cloud-queue", () => {
       expect(groupForks("g1", queue)).toBe("forks=none");
       // A group the queue doesn't list counts as holding a fork.
       expect(groupForks("gone", queue)).toBe("forks=unknown");
+      // A fork ahead that left the queue without merging is unlisted, but
+      // its code is still in the groups built on it, which main doesn't hold.
+      const dropped: QueueEntry[] = [{ head: "g2", base: "g1", pr: 12 }];
+      expect(groupForks("g2", dropped, ["main0"])).toBe("forks=unknown");
+      expect(groupForks("g2", dropped, ["main0", "g1"])).toBe("forks=none");
       const plan = stepScript(live, "Decide");
-      expect(plan).toContain('[ "$GROUP_FORKS" != none ]');
       expect(plan).toContain('node "$RUNNER_TEMP/base/$script" --base "$GROUP_BASE"');
+    });
+
+    test("a cloud merge group with a fork's code fails before any job gets the token", () => {
+      for (const forks of ["#12", "unknown", ""]) {
+        const run = decideGroup(forks);
+        expect(run.status, run.output).toBe(1);
+        expect(run.written).not.toContain("live=true");
+      }
+      const run = decideGroup("none");
+      expect(run.status, run.output).toBe(0);
+      expect(run.written).toContain("live=true");
     });
 
     test("a dropped merge group stops its live run too", () => {
