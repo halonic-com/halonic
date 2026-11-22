@@ -25,8 +25,11 @@ export interface ListedToolsWaitingProps {
   readonly model: ListedToolsReviewModel;
   /** The connector's name, as on its card: the dialog's title while its tools are being read. */
   readonly sourceName: string;
-  /** Opens the workspace's trust check; without it, a workspace that isn't trusted gets no button. */
-  readonly onReviewTrust?: () => void;
+  /**
+   * Opens the workspace's trust check over the page and says how the person answered; without
+   * it, a workspace that isn't trusted gets no button.
+   */
+  readonly askTrust?: (() => Promise<"trusted" | "declined">) | undefined;
   /** On a phone the line shows, but approving is for the desktop: no button, a view-only line. */
   readonly viewOnly?: boolean;
   /** The words for an engine that isn't answering, for where Studio runs; the desktop app's by default. */
@@ -139,7 +142,8 @@ function useTryAgain(model: ListedToolsReviewModel) {
  * waits. When the list couldn't be read, was refused, or an approval is unreadable, it says so in
  * one line with **Try again** or **Review tools**, since the dialog's screens for those can't
  * be reached otherwise. When the workspace isn't trusted, trying again can't help, so the line
- * offers **Review**, which opens the trust check, instead. When the agent host says why the
+ * offers **Review**, which opens the trust check over the page, instead; once the person trusts
+ * the workspace there, the tools are listed again as for **Try again**. When the agent host says why the
  * program couldn't list its tools, the line says it too (`loadFailureLine`). **Try again** stays,
  * busy, while it lists, then hands focus to the line that replaced it (`useTryAgain`). The dialog
  * shares this model, so an approval updates the line behind it.
@@ -147,7 +151,7 @@ function useTryAgain(model: ListedToolsReviewModel) {
 export function ListedToolsWaiting({
   model,
   sourceName,
-  onReviewTrust,
+  askTrust,
   viewOnly = false,
   engine = engineWords["desktop-app"],
   secretsOnPage = false,
@@ -164,6 +168,14 @@ export function ListedToolsWaiting({
   // While its Try again runs, the failure it started from stays, so the button keeps its place.
   const failed = retrying ?? (fallback?.kind === "load-failed" ? fallback : null);
 
+  // Trusting the workspace from **Review** lists the tools again at once, as **Try again** does,
+  // so focus comes back from the trust check to the line that replaces this one (C605 #5).
+  const reviewTrust = async (
+    ask: () => Promise<"trusted" | "declined">,
+    from: LoadFailedFallback,
+  ) => {
+    if ((await ask()) === "trusted") tryAgain(from);
+  };
   const close = (toast: string | null) => {
     setOpen(false);
     if (toast !== null) toasts?.show({ tone: "success", title: toast });
@@ -190,7 +202,9 @@ export function ListedToolsWaiting({
           retrying={retrying !== null}
           error={failed.error}
           onTryAgain={() => tryAgain(failed)}
-          onReviewTrust={onReviewTrust}
+          onReviewTrust={
+            askTrust === undefined ? undefined : () => void reviewTrust(askTrust, failed)
+          }
         />
       ) : null}
       {waiting === 0 && fallback !== null && noticeOf(fallback) !== undefined ? (

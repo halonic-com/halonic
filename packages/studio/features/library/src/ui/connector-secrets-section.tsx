@@ -21,8 +21,8 @@ export interface ConnectorSecretsSectionProps {
 /**
  * A connector's secrets on its page, in the keychain the agent host's connector reads them from
  * (HAL-14995), as the plugin secret fields in Settings work: each shows "Set" or "Not set", an
- * entry that never shows what's stored and saves when you leave it, and **Remove** once one is
- * stored. The page only learns whether a value is stored, never the value.
+ * entry that never shows what's stored and saves on Enter or when you leave it, and **Remove**
+ * once one is stored. The page only learns whether a value is stored, never the value.
  *
  * @example
  * <ConnectorSecretsSection secrets={keychain} names={["NOTES_TOKEN"]} sourceName="Notes" />
@@ -98,18 +98,42 @@ function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const entry = useRef<HTMLInputElement>(null);
+  const removeButton = useRef<HTMLButtonElement>(null);
   // Set by a Remove that worked: **Remove** goes with the value, so focus goes to the entry once
   // it says "Not set", where typing the value again undoes it (C551 S3).
   const focusEntry = useRef(false);
+  // Set by Tab out of an entry that says "Not set": **Remove** only shows once the value is saved,
+  // after focus has left the page, so a save that worked hands focus to it, where Tab would have
+  // gone had it been there (C605 #6a).
+  const tabbedOut = useRef(false);
+  const focusRemove = useRef(false);
+  // A save in flight, so Tab after Enter doesn't save the same value twice.
+  const saving = useRef(false);
 
   useEffect(() => {
-    if (!focusEntry.current) return;
-    focusEntry.current = false;
-    entry.current?.focus();
+    if (focusEntry.current) {
+      focusEntry.current = false;
+      entry.current?.focus();
+    }
+    if (focusRemove.current && state === "set") {
+      focusRemove.current = false;
+      removeButton.current?.focus();
+    }
   }, [state]);
 
   async function save() {
-    if (draft === "") return;
+    const leftWithTab = tabbedOut.current;
+    tabbedOut.current = false;
+    if (draft === "" || saving.current) return;
+    saving.current = true;
+    try {
+      await saveDraft(leftWithTab);
+    } finally {
+      saving.current = false;
+    }
+  }
+
+  async function saveDraft(leftWithTab: boolean) {
     // The store refuses this name too, but with no reason Studio may show; the page says whose it
     // is and what to do instead. No value can be saved under it, so the entry lets go of this one.
     const owner = reservedOwner(name);
@@ -122,6 +146,7 @@ function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps
       await secrets.set(name, draft);
       setDraft("");
       setError(null);
+      focusRemove.current = leftWithTab;
       onState("set");
     } catch (failure) {
       // The value isn't kept on the page, even masked, so the entry lets go of it (C552 finding 6).
@@ -161,12 +186,20 @@ function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps
           placeholder={state === "set" ? words.replacePlaceholder : undefined}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            // Enter saves too, and focus stays in the entry, which then says "Set" (C605 #6a).
+            if (event.key === "Enter") {
+              event.preventDefault();
+              void save();
+            }
+            if (event.key === "Tab") tabbedOut.current = !event.shiftKey && state !== "set";
+          }}
           onBlur={() => void save()}
         />
       </Field>
       {state === "set" ? (
         <div className="self-start">
-          <Button variant="ghost" size="sm" onClick={() => void remove()}>
+          <Button ref={removeButton} variant="ghost" size="sm" onClick={() => void remove()}>
             {words.remove}
           </Button>
         </div>

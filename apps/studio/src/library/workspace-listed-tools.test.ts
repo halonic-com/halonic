@@ -12,7 +12,7 @@ import type { ConnectorFactoryContext, ConnectorTool } from "@halonicjs/ports";
 import { ConnectorCouldntList, RefusalsFeed } from "@halonicjs/studio-feature-library/api";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { WorkspaceListedTools } from "./workspace-listed-tools.ts";
 
@@ -53,6 +53,8 @@ function hostOf(
     listError?: unknown;
     /** The Library's list, which hears what an approval saved. */
     refusals?: RefusalsFeed;
+    /** The window's trust check. */
+    askTrust?: () => Promise<"trusted" | "declined">;
   } = {},
 ) {
   const started: ConnectorFactoryContext[] = [];
@@ -75,6 +77,7 @@ function hostOf(
       return options.tools ?? [readNote];
     },
     ...(options.refusals === undefined ? {} : { onApproved: options.refusals.dropWaiting }),
+    ...(options.askTrust === undefined ? {} : { askTrust: options.askTrust }),
   });
   return { host, started, startedConfigs, approvals };
 }
@@ -379,6 +382,15 @@ verifies("studio.workspace-listed-tools", () => {
     await host.removeApproval("notes", "read_note");
 
     expect((await host.review("notes")).approved).toEqual([]);
+  });
+
+  it("opens the window's trust check for the page's Review, and offers none without it", async () => {
+    const askTrust = vi.fn(async () => "trusted" as const);
+    const { host } = hostOf({ askTrust });
+
+    expect(await host.askTrust?.()).toBe("trusted");
+    expect(askTrust).toHaveBeenCalledOnce();
+    expect(hostOf().host.askTrust).toBeUndefined();
   });
 
   it("stops telling a listener that unsubscribed", async () => {

@@ -25,9 +25,6 @@ import { sharedHubKey } from "./library-place.tsx";
 import { ListedToolsElsewhere } from "./listed-tools-elsewhere.tsx";
 import { ListedToolsWaiting, type ListedToolsWaitingProps } from "./listed-tools-waiting.tsx";
 
-/** The command that opens the workspace page at Trust, where the trust check is (Settings' **Open Trust** runs it too). */
-const openTrustCommand = "workspace.open-trust";
-
 /**
  * The line about the connector's listed tools: how many wait for approval, or for an MCP server
  * over HTTP, which Studio can't list yet, the command that reviews them. It waits for the status,
@@ -98,7 +95,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       listedTools === undefined ? undefined : new ListedToolsReviewModel(listedTools, item.id),
     [listedTools, item.id],
   );
-  const { openItem, runCommand } = context;
+  const { openItem } = context;
   const secretsSection = secretsSectionOf(context, connector);
   // A phone has no tabs to open the file in, so the sentence stays and the link goes.
   const desktop = usePresentation() !== "phone";
@@ -187,9 +184,9 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
           folder={host.folder}
           sourceName={name}
           engine={engineWordsOf(context)}
-          {...(runCommand === undefined
-            ? {}
-            : { onReviewTrust: () => void runCommand(openTrustCommand) })}
+          // The trust check opens over this page, as the Run card's **Review** does, so focus comes
+          // back here and not to the workspace page's Trust (C605 #5).
+          askTrust={listedTools?.askTrust?.bind(listedTools)}
           viewOnly={context.host === "phone"}
           secretsOnPage={secretsSection !== undefined}
         />
