@@ -204,12 +204,12 @@ export const doctorMessages = defineMessages("doctor", {
   signInForAgent: (agent: string, command: string) =>
     phrase`Fix: sign in for ${agent} with ${command}`,
   /**
-   * Harnesses !: "Writer can't run with research. Claude Code can't call
-   * provider openrouter, …" The reason is the refusal `run` would stop on,
+   * Harnesses !: "Writer can't run with the model alias research. Claude Code
+   * can't call provider openrouter, …" The reason is the refusal `run` would stop on,
    * shown instead of a sign-in the run never gets to (HAL-15332).
    */
   agentModelRefused: (agent: string, alias: string, reason: string) =>
-    phrase`${agent} can't run with ${alias}. ${reason}`,
+    phrase`${agent} can't run with the model alias ${alias}. ${reason}`,
   /** Under {@link agentModelRefused}: the refusal's own next step. */
   modelRefusedFix: (fix: string) => phrase`Fix: ${fix}`,
   /**

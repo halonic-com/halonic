@@ -80,7 +80,7 @@ export type HarnessProblem =
   | { problem: "missing"; agent: string; harness: string; name: string }
   /** "*Writer* isn't signed in to *Claude Code*." The fix under it is the agent's own sign-in command. */
   | ({ problem: "signed-out" } & SignedOutAgent)
-  /** "*Writer* can't run with *research*. *reason*" The fix under it is the refusal's own. Shown instead of the sign-in. */
+  /** "*Writer* can't run with the model alias *research*. *reason*" The fix under it is the refusal's own. Shown instead of the sign-in. */
   | ({ problem: "model-refused" } & RefusedHarnessModel)
   /** "*Claude Code 0.9.1* isn't supported. Halonic needs *1.0.0* or newer." */
   | { problem: "unsupported"; harness: string; name: string; version: string; supported: string }

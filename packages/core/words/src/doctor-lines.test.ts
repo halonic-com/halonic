@@ -331,9 +331,9 @@ verifies("app.doctor-agent-sign-in", () => {
       ],
     };
     expect(worded(harnesses).items).toEqual([
-      "Writer can't run with research. Provider zai names no secret.",
+      "Writer can't run with the model alias research. Provider zai names no secret.",
       "fix: Fix: Add a secret to providers/zai.yaml.",
-      "Scout can't run with research. Codex can't call provider claude.",
+      "Scout can't run with the model alias research. Codex can't call provider claude.",
     ]);
   });
 });
