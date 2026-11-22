@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15150 (Liam approved moving the failed-call words and the choice of line into `@halonicjs/app`, so the CLI and Studio share them); Liam approves this note in his review on HAL-15149
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KqPThUtDTRQm4LJl6A817evZdfVvN1PthS+Y9OQvpYEdpcw8xiUEB11q4nkoYWS4/KpdGdVtLD7cFg0vqxmABg==
 - Task: HAL-15149
 
 ## What changes
