@@ -9,7 +9,7 @@ import {
   StartStep,
 } from "./pairing-steps.tsx";
 import type { PairedComputer } from "./phone-tunnel.ts";
-import { ProblemScreen } from "./problem-screen.tsx";
+import { PhoneProblemScreen, type ProblemAction, ProblemScreen } from "./problem-screen.tsx";
 
 /** The typed route's step (`p-m5`, `p-m9`), drawn by its own screen with the computer picker. */
 export type TypedStep = Extract<PairingView, { step: "typed" }>;
@@ -28,7 +28,7 @@ export function PairingScreens({
   readonly flow: PhonePairingFlow;
   /** The typed route, until its screen with the computer picker is in this package. */
   readonly typed: (step: TypedStep) => ReactNode;
-  /** Android's settings for Halonic, to allow the camera (G8). */
+  /** Android's settings for Halonic, to allow the camera (G8) or Nearby devices (microcopy 28). */
   readonly onOpenSettings: () => void;
   readonly onOpenAgents: (computer: PairedComputer) => void;
   /**
@@ -38,6 +38,11 @@ export function PairingScreens({
   readonly onCamera: (showing: boolean) => void;
 }) {
   const view = useSyncExternalStore(flow.subscribe, () => flow.view);
+  const onAction = (action: ProblemAction) => {
+    if (action === "tryAgain") flow.tryAgain();
+    else if (action === "openSettings") onOpenSettings();
+    else flow.again();
+  };
   // A route change or Android back unmounts this screen: the camera never stays on behind it.
   useEffect(() => () => flow.closeScanner(), [flow]);
   const scanning = view.step === "scanning";
@@ -88,10 +93,19 @@ export function PairingScreens({
           computer={view.computerName}
           // Only the route picks the words here; the problem carries its own Wi-Fi.
           from={view.route === "typed" ? { route: "typed", wifi: false } : { route: "qr" }}
-          onAction={(action) => (action === "tryAgain" ? flow.tryAgain() : flow.again())}
+          onAction={onAction}
           onCancel={() => flow.cancel()}
         />
       );
     }
+    case "phoneProblem":
+      return (
+        <PhoneProblemScreen
+          problem={view.problem}
+          computer={view.computerName}
+          onAction={onAction}
+          onCancel={() => flow.cancel()}
+        />
+      );
   }
 }

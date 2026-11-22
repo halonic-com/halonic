@@ -67,10 +67,12 @@ export {
   type UnreadableComputer,
 } from "./phone-tunnel.ts";
 export {
+  PhoneProblemScreen,
   type ProblemAction,
   ProblemScreen,
   type ProblemScreenOf,
   type ProblemWords,
+  phoneProblemWords,
   problemWords,
 } from "./problem-screen.tsx";
 export {

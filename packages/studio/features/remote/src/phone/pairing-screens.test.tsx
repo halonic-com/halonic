@@ -164,4 +164,18 @@ verifies("remote.phone-pairing-problems", () => {
     expect(tunnel.started).toHaveLength(2);
     expect(tunnel.started[1]).toEqual(tunnel.started[0]);
   });
+  it("draws the phone's own problem, and Open settings opens Android's settings", async () => {
+    const { tunnel, scanner, screen, onOpenSettings } = setUp();
+    tunnel.nextStep = { kind: "no-local-network", askAgain: false };
+    await press(screen, "Scan code");
+    await scanner.read({ kind: "pairingCode", payload });
+    expect(screen.querySelector("h2")?.textContent).toBe(
+      "Nearby devices isn't allowed for Halonic",
+    );
+    expect(screen.textContent).toContain("To find Tim's laptop on this Wi-Fi");
+    await press(screen, "Open settings");
+    expect(onOpenSettings).toHaveBeenCalledOnce();
+    await press(screen, "Cancel");
+    expect(button(screen, "Scan code")).toBeDefined();
+  });
 });
