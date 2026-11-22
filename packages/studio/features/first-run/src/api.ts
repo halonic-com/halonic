@@ -64,9 +64,10 @@ export interface FirstRunDevice {
   write(text: string): void;
   /**
    * Copies the demo again into the next free folder and opens it, as the demo chip's **Fresh copy
-   * of the demo** does, for **Help › First run › Start over**. Absent where the app can't.
+   * of the demo** does, for **Help › First run › Start over**. Calls `copied` once the copy is
+   * written, before it opens; never when it can't be written. Absent where the app can't.
    */
-  startOver?(): void;
+  startOver?(copied: () => void): void;
 }
 
 /** The first run's place on this device, provided by the app for each open folder. */

@@ -137,25 +137,35 @@ export function WorkspaceWindow({
           await openSample(made, createdLine);
           return undefined;
         };
-  // A second press while a copy is being written would write a second one.
+  // A second press while a copy is being written would write a second one, so an ask made
+  // meanwhile waits for that copy and is told when it is written.
   const freshCopyRunning = useRef(false);
+  const waitingForCopy = useRef<(() => void)[]>([]);
   const freshCopy =
     sample === undefined
       ? undefined
-      : async function copyFresh(): Promise<void> {
+      : async function copyFresh(onCopied?: () => void): Promise<void> {
+          if (onCopied !== undefined) waitingForCopy.current.push(onCopied);
           if (freshCopyRunning.current) return;
           freshCopyRunning.current = true;
           try {
             const made = await sample.create([]);
+            const waiting = waitingForCopy.current.splice(0);
+            const tellWaiting = () => {
+              for (const tell of waiting) tell();
+            };
             if (made.kind === "cant") {
+              // Try again keeps the asks waiting, so a retry that works still tells them.
               shell.toasts.show({
                 tone: "danger",
                 title: freshCopyFailedLine(made.reason),
                 sticky: true,
-                action: { label: freshCopyTryAgain, onClick: () => void copyFresh() },
+                action: { label: freshCopyTryAgain, onClick: () => void copyFresh(tellWaiting) },
               });
               return;
             }
+            // Before it opens: Start over turns the first run off here, so the copy starts it.
+            tellWaiting();
             await openSample(made, freshCopyLine);
           } finally {
             freshCopyRunning.current = false;
@@ -165,7 +175,7 @@ export function WorkspaceWindow({
   const latestFreshCopy = useRef(freshCopy);
   latestFreshCopy.current = freshCopy;
   useEffect(
-    () => freshCopyAsks?.subscribe(() => void latestFreshCopy.current?.()),
+    () => freshCopyAsks?.subscribe((onCopied) => void latestFreshCopy.current?.(onCopied)),
     [freshCopyAsks],
   );
   const shown = useSyncExternalStore(

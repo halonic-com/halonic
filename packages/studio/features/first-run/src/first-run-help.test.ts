@@ -11,7 +11,7 @@ const opened = new Date("2026-11-21T10:00:00.000Z");
 
 function firstRunOf(
   saved: FirstRunState | undefined,
-  { sample = true, startOver }: { sample?: boolean; startOver?: () => void } = {},
+  { sample = true, startOver }: { sample?: boolean; startOver?: (copied: () => void) => void } = {},
 ) {
   let text = saved === undefined ? undefined : JSON.stringify(saved);
   const runs = {
@@ -89,11 +89,35 @@ verifies("first-run.help", () => {
     expect(paused.state).toEqual({ kind: "on", folder, since: "", step: "model" });
   });
 
-  it("turns the first run off and asks for a fresh copy on Start over", () => {
-    const startOver = vi.fn();
-    const firstRun = firstRunOf({ kind: "on", folder, since: "", step: "run" }, { startOver });
+  it("asks for a fresh copy on Start over and turns the first run off once it is written", () => {
+    let copied: (() => void) | undefined;
+    const startOver = vi.fn((written: () => void) => {
+      copied = written;
+    });
+    const running: FirstRunState = { kind: "on", folder, since: "", step: "run" };
+    const firstRun = firstRunOf(running, { startOver });
     pick(firstRun, "Start over");
-    expect(firstRun.state).toEqual({ kind: "off" });
     expect(startOver).toHaveBeenCalledOnce();
+    expect(firstRun.state).toEqual(running);
+    copied?.();
+    expect(firstRun.state).toEqual({ kind: "off" });
+  });
+
+  it("leaves the first run on at its step when the copy can't be written", () => {
+    const running: FirstRunState = { kind: "on", folder, since: "", step: "run" };
+    const firstRun = firstRunOf(running, { startOver: () => {} });
+    pick(firstRun, "Start over");
+    expect(firstRun.state).toEqual(running);
+  });
+
+  it("starts the first run at Demo in the copy once it is written", () => {
+    const copyFolder = "/docs/Acme sample 2";
+    const firstRun = firstRunOf(
+      { kind: "on", folder, since: "", step: "run" },
+      { startOver: (copied) => copied() },
+    );
+    pick(firstRun, "Start over");
+    firstRun.send({ kind: "demo-opened", folder: copyFolder, at: opened.toISOString() });
+    expect(firstRun.state).toMatchObject({ kind: "on", folder: copyFolder, step: "demo" });
   });
 });

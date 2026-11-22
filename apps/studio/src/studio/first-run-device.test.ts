@@ -31,11 +31,16 @@ verifies("first-run.state", () => {
 
   it("copies the demo again for Start over, where the window can", () => {
     let copies = 0;
-    const startOver = () => {
+    let told = 0;
+    const startOver = (copied: () => void) => {
       copies += 1;
+      copied();
     };
-    firstRunDeviceOf("/docs/Acme sample", { storage: storage(), startOver }).startOver?.();
+    firstRunDeviceOf("/docs/Acme sample", { storage: storage(), startOver }).startOver?.(() => {
+      told += 1;
+    });
     expect(copies).toBe(1);
+    expect(told).toBe(1);
     expect(firstRunDeviceOf("/docs/Acme sample", { storage: storage() }).startOver).toBeUndefined();
   });
 
