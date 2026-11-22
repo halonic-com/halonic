@@ -2,11 +2,13 @@
  * The nightly calibration (`seats.calibrate`): how many points of a seat's
  * limit a million tokens cost, per plan, model and window, split by token
  * type. A point is 1% of one seat's window. Fitted on the last 7 days of
- * 10-minute steps; a step that holds a reset or an agent moving on or off
- * the seat says nothing about the cost and is skipped.
+ * 10-minute steps; a step that holds a reset, an agent moving on or off
+ * the seat, or tokens on no known seat says nothing about the cost and is
+ * skipped.
  */
 
 import { robustFit } from "./robust-fit.ts";
+import { groupBy, Timeline } from "./timeline.ts";
 import {
   type AgentUsage,
   addTokens,
@@ -110,65 +112,93 @@ function resetBetween(earlier: WindowReading, later: WindowReading): boolean {
   return Math.abs(Date.parse(later.resetsAt) - Date.parse(earlier.resetsAt)) >= sameResetMs;
 }
 
-function movedBetween(
-  placements: readonly Placement[],
-  seatId: string,
-  fromMs: number,
-  toMs: number,
-): boolean {
-  const inside = (at: string | undefined) =>
-    at !== undefined && Date.parse(at) > fromMs && Date.parse(at) <= toMs;
-  return placements.some((p) => p.seatId === seatId && (inside(p.from) || inside(p.to)));
+/** The time `/usage` shows a bucket's points: its middle. */
+function usageTime(usage: AgentUsage): number {
+  return Date.parse(usage.bucketStart) + bucketMs / 2;
 }
 
-/** Usage buckets whose middle falls between two readings, which is where their points show. */
-function usageBetween(
-  usage: readonly AgentUsage[],
-  seatId: string,
-  fromMs: number,
-  toMs: number,
-): AgentUsage[] {
-  return usage.filter((u) => {
-    const middle = Date.parse(u.bucketStart) + bucketMs / 2;
-    return u.seatId === seatId && middle > fromMs && middle <= toMs;
-  });
+/** A reading with its time parsed once. */
+interface TimedReading {
+  readonly reading: WindowReading;
+  readonly ms: number;
+}
+
+/** The week's usage and moves, indexed once so that each step is a binary search. */
+interface StepIndex {
+  readonly usageBySeat: ReadonlyMap<string, Timeline<AgentUsage>>;
+  /** The times agents came onto or left each seat. */
+  readonly movesBySeat: ReadonlyMap<string, Timeline<number>>;
+  /**
+   * Tokens the plugin couldn't place on a seat. Their points show on some
+   * seat, so every step they fall in is skipped: counting them nowhere would
+   * make the rate too high.
+   */
+  readonly unattributed: Timeline<AgentUsage>;
+}
+
+function indexSteps(input: CalibrationInput): StepIndex {
+  const usageBySeat = new Map<string, Timeline<AgentUsage>>();
+  const placed = input.usage.filter((u) => u.seatId !== undefined);
+  for (const [seatId, rows] of groupBy(placed, (u) => u.seatId ?? "")) {
+    usageBySeat.set(seatId, new Timeline(rows, usageTime));
+  }
+  const moves = input.placements.flatMap((p) =>
+    [p.from, p.to].flatMap((at) =>
+      at === undefined ? [] : [{ seatId: p.seatId, ms: Date.parse(at) }],
+    ),
+  );
+  const movesBySeat = new Map<string, Timeline<number>>();
+  for (const [seatId, rows] of groupBy(moves, (m) => m.seatId)) {
+    movesBySeat.set(
+      seatId,
+      new Timeline(
+        rows.map((m) => m.ms),
+        (ms) => ms,
+      ),
+    );
+  }
+  const unplaced = input.usage.filter((u) => u.seatId === undefined && totalTokens(u.tokens) > 0);
+  return { usageBySeat, movesBySeat, unattributed: new Timeline(unplaced, usageTime) };
 }
 
 /**
  * The step between two consecutive readings of one window of one seat, or
- * `undefined` when it is unusable: too long, a reset, a move, no tokens, or
- * tokens from two models (whose points can't be split between them).
+ * `undefined` when it is unusable: too long, a reset, a move, tokens on no
+ * seat, no tokens, or tokens from two models (whose points can't be split
+ * between them). Usage counts where its bucket's middle falls.
  */
 function stepBetween(
   input: CalibrationInput,
+  index: StepIndex,
   seat: Seat,
-  earlier: WindowReading,
-  later: WindowReading,
+  earlier: TimedReading,
+  later: TimedReading,
 ): CalibrationStep | undefined {
-  const fromMs = Date.parse(earlier.at);
-  const toMs = Date.parse(later.at);
+  const fromMs = earlier.ms;
+  const toMs = later.ms;
   // Longer than two read intervals means a read failed in between.
-  if (toMs - fromMs > 2 * input.readIntervalMs || resetBetween(earlier, later)) {
+  if (toMs - fromMs > 2 * input.readIntervalMs || resetBetween(earlier.reading, later.reading)) {
     return undefined;
   }
-  if (movedBetween(input.placements, seat.id, fromMs, toMs)) {
+  const moved = index.movesBySeat.get(seat.id)?.anyBetween(fromMs, toMs) ?? false;
+  if (moved || index.unattributed.anyBetween(fromMs, toMs)) {
     return undefined;
   }
-  const used = usageBetween(input.usage, seat.id, fromMs, toMs);
+  const used = index.usageBySeat.get(seat.id)?.between(fromMs, toMs) ?? [];
   const models = new Set(used.map((u) => u.model));
   const [model] = models;
   if (model === undefined || models.size > 1) {
     return undefined;
   }
-  const buckets = used.map((u) => u.bucketStart).sort();
+  // `used` is in time order, so its first and last rows hold the first and last bucket.
   return {
     plan: planOf(seat),
     model,
-    window: earlier.window,
-    from: buckets[0] ?? earlier.at,
-    to: buckets.at(-1) ?? earlier.at,
+    window: earlier.reading.window,
+    from: used[0]?.bucketStart ?? earlier.reading.at,
+    to: used.at(-1)?.bucketStart ?? earlier.reading.at,
     tokens: used.reduce((sum, u) => addTokens(sum, u.tokens), noTokens),
-    points: later.usedPercent - earlier.usedPercent,
+    points: later.reading.usedPercent - earlier.reading.usedPercent,
   };
 }
 
@@ -176,15 +206,18 @@ function stepBetween(
 export function calibrationSteps(input: CalibrationInput): CalibrationStep[] {
   const nowMs = Date.parse(input.now);
   const sinceMs = nowMs - calibrationDays * dayMs;
+  const index = indexSteps(input);
+  const recent = input.readings
+    .map((reading) => ({ reading, ms: Date.parse(reading.at) }))
+    .filter((timed) => timed.ms >= sinceMs && timed.ms <= nowMs);
+  const bySeatWindow = groupBy(recent, (t) => `${t.reading.seatId}|${t.reading.window}`);
   return input.seats.flatMap((seat) =>
     (["session", "week"] as const).flatMap((window) => {
-      const readings = input.readings
-        .filter((r) => r.seatId === seat.id && r.window === window)
-        .filter((r) => Date.parse(r.at) >= sinceMs && Date.parse(r.at) <= nowMs)
-        .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-      return readings.slice(1).flatMap((later, index) => {
-        const earlier = readings[index];
-        const step = earlier === undefined ? undefined : stepBetween(input, seat, earlier, later);
+      const readings = (bySeatWindow.get(`${seat.id}|${window}`) ?? []).sort((a, b) => a.ms - b.ms);
+      return readings.slice(1).flatMap((later, position) => {
+        const earlier = readings[position];
+        const step =
+          earlier === undefined ? undefined : stepBetween(input, index, seat, earlier, later);
         return step === undefined ? [] : [step];
       });
     }),
@@ -278,10 +311,7 @@ export interface CalibrationRun {
 }
 
 export function calibrate(input: CalibrationInput): CalibrationRun {
-  const groups = new Map<string, CalibrationStep[]>();
-  for (const step of calibrationSteps(input)) {
-    groups.set(keyOf(step), [...(groups.get(keyOf(step)) ?? []), step]);
-  }
+  const groups = groupBy(calibrationSteps(input), keyOf);
   const calibrations: Calibration[] = [];
   const tooFewSteps: (CalibrationKey & { steps: number })[] = [];
   for (const steps of groups.values()) {

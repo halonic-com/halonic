@@ -101,6 +101,15 @@ verifies("paperclip.seats-calibrate", () => {
     expect(steps).toHaveLength(2);
   });
 
+  test("tokens on no known seat skip every step they fall in", () => {
+    const base = history(4, () => 1);
+    const lost = { ...base.usage[0], agentId: "agent-9", seatId: undefined } as AgentUsage;
+    const idle = { ...lost, bucketStart: at(2), tokens: { input: 0, cached: 0, output: 0 } };
+    const steps = calibrationSteps({ ...base, usage: [...base.usage, lost, idle] });
+    // Step 0 holds the lost tokens; a bucket with no tokens costs nothing and skips nothing.
+    expect(steps.map((s) => s.from)).toEqual([at(1), at(2), at(3)]);
+  });
+
   test("a gap counts against the read interval, not the bucket", () => {
     const base = history(3, () => 1);
     // Reads every 15 minutes: a 30-minute step is one late read, not a failed one.
@@ -201,5 +210,46 @@ verifies("paperclip.seats-calibrate", () => {
     const old = calibrate({ ...thirty(), history: [fitOn("2026-11-01", 1)] });
     expect(old.calibrations[0]?.weekShift).toBeUndefined();
     expect(old.calibrations[0]?.shifted).toBe(false);
+  });
+
+  test("a week of 8 seats and 20 agents calibrates in well under a second", () => {
+    const seats = Array.from({ length: 8 }, (_, n) => ({
+      ...(history(0, () => 0).seats[0] as CalibrationInput["seats"][number]),
+      id: `seat-${n}`,
+    }));
+    const weekSteps = (7 * 86_400_000) / bucketMs;
+    const weekStart = Date.parse(now) - 7 * 86_400_000;
+    const time = (step: number) => new Date(weekStart + step * bucketMs).toISOString();
+    const readings: WindowReading[] = [];
+    const usage: AgentUsage[] = [];
+    for (let step = 0; step < weekSteps; step += 1) {
+      for (const seat of seats) {
+        for (const window of ["session", "week"] as const) {
+          readings.push({
+            seatId: seat.id,
+            window,
+            at: time(step),
+            usedPercent: step,
+            resetsAt: weekReset,
+          });
+        }
+      }
+      for (let agent = 0; agent < 20; agent += 1) {
+        usage.push({
+          agentId: `agent-${agent}`,
+          seatId: `seat-${agent % 8}`,
+          model: "opus",
+          bucketStart: time(step),
+          tokens: { input: 1_000_000, cached: 10_000_000, output: 250_000 },
+          runs: 1,
+        });
+      }
+    }
+    const started = performance.now();
+    const run = calibrate({ ...history(0, () => 0), seats, readings, usage, placements: [] });
+    // Indexed, this takes tens of milliseconds; scanning every row per step took 33 s.
+    expect(performance.now() - started).toBeLessThan(3_000);
+    expect(run.calibrations).toHaveLength(2);
+    expect(run.calibrations[0]?.quality.steps).toBe(8 * (weekSteps - 1));
   });
 });
