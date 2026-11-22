@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16440 (the model-mix trials hand a waiting run data the eval harness collected, such as a diff, without a model writing it); wording decided by the team (HAL-2282), Liam
 
-With `--payload <file or JSON>`, `halonic runs send <run-id> <event>` shall send the event with that JSON object as its payload, through the same `RunEvents.sendEvent` service (`app.run-send-payload`), so the waiting step writes it to the run's context, and otherwise behave as `cli.commands.runs.send` says. Text that starts with `{` or `[` shall be read as the JSON; anything else names a file, relative to the folder the command runs in, as `halonic run --input` reads it. A file that isn't there, is a folder or can't be read, text that isn't JSON, or JSON that isn't an object shall stop the command with the reason after "Couldn't send <event> to run <short id>:" and its fix, exit 2, before anything is checked or sent.
+Where `halonic runs send <run-id> <event>` is given `--payload <file or JSON>`, the CLI shall send the event with that JSON object as its payload, through the same `RunEvents.sendEvent` service (`app.run-send-payload`), so the waiting step writes it to the run's context, and otherwise behave as `cli.commands.runs.send` says. Text that starts with `{` or `[` shall be read as the JSON; anything else names a file, relative to the folder the command runs in, as `halonic run --input` reads it. A file that isn't there, is a folder or can't be read, text that isn't JSON, or JSON that isn't an object shall stop the command with the reason after "Couldn't send <event> to run <short id>:" and its fix, exit 2, before anything is checked or sent.
 
 ## Examples
 
