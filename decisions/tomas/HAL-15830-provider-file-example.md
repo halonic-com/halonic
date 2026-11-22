@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-15830 asks for this change, from flow check C638 #4 and #6 (HAL-15825). The team decides it under the HAL-2282 rule, since it adds one line to an approved command's output and rewords a message that is already there. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sM1LcbwAzP1yvghv7WInnR7x9b/ZwAFF6UdjhSZfDjTCvmeLkmk/yr4XIMlqoA/0gTQ5gHEYyWTlZnXgCAjvBQ==
 
 ## What changes
 
