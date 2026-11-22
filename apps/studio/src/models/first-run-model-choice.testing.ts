@@ -124,6 +124,8 @@ export function acmeFolder(options: { files?: Record<string, string>; saves?: bo
   const disk = new Map(Object.entries(options.files ?? acmeFiles));
   const unsaved = new Map<string, string>();
   const stored = new Map<string, string>();
+  /** The origins each stored key may go to, kept beside it as the keychain keeps them. */
+  const origins = new Map<string, readonly string[]>();
   const calls: ModelCall[] = [];
   const timers: { delayMs: number; fire: () => void }[] = [];
   const steps: string[] = [];
@@ -161,7 +163,12 @@ export function acmeFolder(options: { files?: Record<string, string>; saves?: bo
       save: async (name: string, key: SecretText) => {
         steps.push(`key: ${name}`);
         if (state.failKey !== undefined) throw state.failKey;
+        // As the keychain's `secret_set`: a new value keeps the origins stored beside the name.
         stored.set(name, key.reveal());
+      },
+      remove: async (name: string) => {
+        stored.delete(name);
+        origins.delete(name);
       },
     },
     saved: workspaceSavedKeys({
@@ -184,6 +191,7 @@ export function acmeFolder(options: { files?: Record<string, string>; saves?: bo
     disk,
     unsaved,
     stored,
+    origins,
     calls,
     timers,
     steps,
