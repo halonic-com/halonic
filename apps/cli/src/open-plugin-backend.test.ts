@@ -389,7 +389,7 @@ verifies("cli.plugin-backend-stopped", () => {
       const stopped = findCause(failure, PluginBackendStoppedError);
       expect(stopped?.plugin).toBe("weather");
       expect(stopped?.message).toBe(
-        "Halonic stopped the plugin weather: its sandbox didn't hold, so it didn't run. The next run that uses it tries the sandbox again.",
+        "Halonic stopped the plugin weather: the sandbox didn't work as the plugin started, so nothing ran. Halonic tries weather in the sandbox again the next time a run uses it.",
       );
       expect(String(failure)).not.toMatch(/failed its check/);
     });
