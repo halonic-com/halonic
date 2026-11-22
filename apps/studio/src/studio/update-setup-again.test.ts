@@ -47,7 +47,7 @@ verifies("studio.update-setup-again", () => {
     expect(again).toContain('"-SetUpAgain -SetupVersion ${SRTSETUPVERSION}"');
     expect(again).toMatch(/Call CheckSetupVersion\s+\$\{If\} \$R1 = 0\s+StrCpy \$SandboxState/);
     expect(again).toMatch(
-      /\$\{If\} \$\{Silent\}\s+\$\{AndIf\} \$R1 = 0\s+(?:;[^\n]*\s+)?StrCpy \$SandboxOutcome "skipped"\s+Return/,
+      /\$\{If\} \$\{Silent\}\s+\$\{AndIf\} \$R1 = 0\s+(?:;[^\n]*\s+)?StrCpy \$SandboxOutcome "skipped"\s+Call LogSkippedSetUpAgain\s+Return/,
     );
   });
 
@@ -56,5 +56,19 @@ verifies("studio.update-setup-again", () => {
     const check = guard.slice(guard.indexOf("function Invoke-SetUpAgainCheck"));
     expect(check).toContain("if ($marker -lt $wanted) { return @(0,");
     expect(guard).toMatch(/if \(\$SetUpAgain\) \{\s+\$code, \$reason = Invoke-SetUpAgainCheck/);
+  });
+});
+
+verifies("studio.update-setup-again-skip-logged", () => {
+  it("writes a skipped silent set-up-again to updates.log, only where it would have asked", () => {
+    const log = nsisFunction("LogSkippedSetUpAgain");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+    expect(log).toContain('"-SetUpAgain -SetupVersion ${SRTSETUPVERSION}"');
+    expect(log).toMatch(
+      /Call CheckSetupVersion\s+\$\{If\} \$R1 = 0\s+StrCpy \$R3 "[^"]+"\s+Call LogUpdateLine/,
+    );
+    expect(log).toContain(
+      "the agent sandbox wasn't set up again, because a silent update without administrator rights can't ask for them.",
+    );
   });
 });

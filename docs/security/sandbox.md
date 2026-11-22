@@ -132,9 +132,9 @@ only after srt's one-time install, run once as an administrator, and it has no
 `env`, `sh` or process group, so the launcher builds one `cmd.exe` command line
 and stops a program with `taskkill`. A program, argument or variable with a
 double quote, a percent sign, an exclamation mark, a line break or a NUL is refused. The CI job `sandbox-windows` proves the fence on a real Windows machine. Without the install the check reports `setup-needed`, and the CLI says to
-use Halonic inside WSL 2 on this computer. On `main`, `halonic sandbox setup`
-runs that install with one administrator prompt (its requirement is still a
-draft).
+run `halonic sandbox setup`, which runs that install with one administrator
+prompt (its requirement is still a draft). Studio's Settings › Agent sandbox
+runs the same install.
 
 Removing the sandbox (Settings › Agent sandbox, or the uninstaller) also takes
 back the write access srt kept on your folders between sessions. A removal that

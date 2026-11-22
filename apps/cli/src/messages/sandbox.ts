@@ -28,7 +28,8 @@ export const windowsNodeInWsl = "windows-node-in-wsl";
  * (HAL-3778 section 4) and the team's words where it doesn't (HAL-5900).
  * 0.1 has no Studio and runs on Windows only inside WSL 2, so no fix
  * points to Studio's settings: Windows' setup fixes say to use WSL 2
- * (HAL-7540).
+ * (HAL-7540), except `setup-needed`, whose fix is `halonic sandbox setup`,
+ * the same setup with one administrator prompt (C634 #4, HAL-15808).
  * The CLI's sandbox gives `not-supported` only on WSL 1, so its words are
  * WSL 1's, with the distro's name in the command (Sofia, HAL-6526).
  */
@@ -58,7 +59,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   "setup-conflict":
     "Another program set up the sandbox on this computer, in a way Halonic can't use. Use Halonic inside WSL 2 on this computer, then run it again.",
   "setup-needed":
-    "The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, then run it again.",
+    "The sandbox's one-time setup isn't done for this version of Halonic. Set it up with halonic sandbox setup, then run it again.",
   "user-namespaces-restricted":
     "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
   "bubblewrap-missing":
@@ -120,7 +121,8 @@ const fixes: Readonly<Record<WordedReason, string>> = {
   "distro-missing": "use Halonic inside WSL 2 on this computer.",
   "runtime-missing": "use Halonic inside WSL 2 on this computer.",
   "setup-conflict": "use Halonic inside WSL 2 on this computer.",
-  "setup-needed": "use Halonic inside WSL 2 on this computer.",
+  "setup-needed":
+    "set it up with halonic sandbox setup. Windows asks for administrator rights once.",
   "user-namespaces-restricted":
     "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",
   "bubblewrap-missing":

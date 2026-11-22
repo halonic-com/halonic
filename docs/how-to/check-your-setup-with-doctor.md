@@ -208,6 +208,7 @@ Common reasons and their fixes:
 | Ubuntu 24.04 blocks user namespaces | Allow them for bubblewrap with an AppArmor rule. The sandbox page has the commands. |
 | The distro runs on WSL 1 | Switch it to WSL 2. The fix line gives the PowerShell command with your distro's name. |
 | Windows, outside WSL | Use Halonic inside WSL 2. |
+| The sandbox's one-time setup isn't done (Windows) | Run `halonic sandbox setup`. Windows asks for administrator rights once. |
 
 For every reason, see
 [the sandbox page](https://docs.halonic.dev/security/sandbox/), which is the

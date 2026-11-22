@@ -1254,12 +1254,25 @@ Function SetUpAgain
   ${AndIf} $R1 = 0
     ; As for /SANDBOX=1: a silent update can't let anyone answer the prompt.
     StrCpy $SandboxOutcome "skipped"
+    Call LogSkippedSetUpAgain
     Return
   ${EndIf}
   StrCpy $R0 "-SetUpAgain -SetupVersion ${SRTSETUPVERSION}"
   Call CheckSetupVersion
   ${If} $R1 = 0
     StrCpy $SandboxState ${BST_CHECKED}
+  ${EndIf}
+FunctionEnd
+
+; Halonic change (C634 #4, HAL-15808): a silent run shows no DetailPrint, so a
+; skipped set-up-again goes to updates.log, but only where the guard says the
+; sandbox is set up for an older setup version, the one case that would ask.
+Function LogSkippedSetUpAgain
+  StrCpy $R0 "-SetUpAgain -SetupVersion ${SRTSETUPVERSION}"
+  Call CheckSetupVersion
+  ${If} $R1 = 0
+    StrCpy $R3 "Installing ${VERSION}: the agent sandbox wasn't set up again, because a silent update without administrator rights can't ask for them. Agents set to run in a sandbox don't start until it's set up again in Settings › Agent sandbox."
+    Call LogUpdateLine
   ${EndIf}
 FunctionEnd
 

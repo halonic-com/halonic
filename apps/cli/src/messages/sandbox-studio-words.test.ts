@@ -8,8 +8,9 @@ import { sandboxMessages } from "./sandbox.ts";
 /**
  * The codes whose fix Studio words differently from the CLI on purpose: the
  * CLI says "use Halonic inside WSL 2" because 0.1 has no Studio on Windows
- * (HAL-7540), and Studio points to Settings. A new difference is a decision:
- * add the code here with its reason.
+ * (HAL-7540), or names `halonic sandbox setup` for `setup-needed` (HAL-15808),
+ * and Studio points to Settings. A new difference is a decision: add the code
+ * here with its reason.
  */
 const fixDiffersOnPurpose: readonly string[] = [
   "windows",

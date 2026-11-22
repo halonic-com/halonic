@@ -318,3 +318,19 @@ verifies("settings.agent-sandbox-setup-again", () => {
     expect(v.hint).toBe("Windows asks for administrator rights once.");
   });
 });
+
+verifies("settings.agent-sandbox-setup-again-lead", () => {
+  it("leads with an older setup, not a one-time one, when it needs setting up again", () => {
+    const lead = view({ check: { state: "needs-setup", setupAgain: true } }).lead;
+    expect(lead).toBe(
+      "The sandbox is set up for an older version of Halonic. Until it's set up again, agents set to run in a sandbox don't start.",
+    );
+    expect(lead).not.toContain("one-time");
+  });
+
+  it("keeps the one-time lead for a computer that was never set up", () => {
+    expect(view({ check: { state: "needs-setup" } }).lead).toBe(
+      "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.",
+    );
+  });
+});
