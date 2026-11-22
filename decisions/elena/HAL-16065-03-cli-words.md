@@ -3,6 +3,7 @@
 - Task: HAL-16065, from Sofia's words check C665 rows 57 and 90 (HAL-16044); HAL-16160, from Sofia's words check C681 rows 5, 7 and 44 to 46 (HAL-16153)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16065 (wording fixes in command output, so a team decision under the HAL-2282 rule, with the designer's words; Liam's code review signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jRlVd/KSwZrKArM5CBMtwgrX5l1hYNE1HH/Jc3MNVuNzUISuTMZtKpVlGqCHyRqKQEoI0+BpLl+dOMf+8d7dCA==
 
 ## What changes
 
