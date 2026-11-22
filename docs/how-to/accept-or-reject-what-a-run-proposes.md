@@ -1,4 +1,4 @@
-# Accept or discard what a run proposes
+# Accept or reject what a run proposes
 
 An agent that runs in Claude Code or Codex, in the sandbox, doesn't write in
 your workspace. It works in a copy, and when its run ends with changes, they
@@ -45,20 +45,24 @@ file as it is now to the run's text. A short id or the full one works.
 - "Your file already has these changes." means there's nothing to write.
 - A file under `.git` or `.halonic`, or in Halonic's own data folder, is
   marked "can't be written". Halonic never writes there.
+- A file you already decided is marked "(accepted)" or "(rejected)".
 
-## Accept or discard
+## Accept or reject
 
 | Command | What it does |
 | --- | --- |
 | `halonic proposals accept <run-id>` | writes the run's changes to your files and names the files it wrote |
 | `halonic proposals accept <run-id> <file>` | writes only that file |
-| `halonic proposals discard <run-id>` | drops the run's changes; your files stay as they are |
-| `halonic proposals discard <run-id> <file>` | drops only that file's changes |
+| `halonic proposals reject <run-id>` | rejects the run's changes; your files stay as they are |
+| `halonic proposals reject <run-id> <file>` | rejects only that file's changes |
+
+Reject says, for example, "Rejected the changes to 2 files. Your files stay
+as they are."
 
 Accept writes a file only while it is still as the run found it. A file you
 changed since is left alone, and the command says "notes/today.md changed
-since the run, so it wasn't written. Edit by hand, or discard." and exits 5.
-Copy what you want from `halonic proposals show` by hand, then discard the
+since the run, so it wasn't written. Edit by hand, or reject." and exits 5.
+Copy what you want from `halonic proposals show` by hand, then reject the
 proposal.
 
 After you decide part of a proposal, the command says how many files are
@@ -67,7 +71,7 @@ and the proposal leaves the list. The command has no Undo, so check the diff
 before you accept.
 
 If a proposal's changes were deleted outside Halonic, `show` and `accept`
-say so, and `halonic proposals discard <run-id>` removes the proposal.
+say so, and `halonic proposals reject <run-id>` removes the proposal.
 
 All four take `--dir <folder>` for a workspace other than the current
 folder. `halonic proposals` and `halonic proposals show` also take `--json`
@@ -84,5 +88,5 @@ to see each file the run added, changed or deleted, with **Accept** and
 Studio doesn't show the diff yet. A file you changed after the run started
 says "You changed this file after run 01JD8Q started, so it wasn't accepted."
 and has no buttons: use `halonic proposals show` to see it, then edit by hand
-or `halonic proposals discard <run-id> <file>`. The served Studio and the
+or `halonic proposals reject <run-id> <file>`. The served Studio and the
 phone list no proposals; see them with `halonic proposals` on the computer.
