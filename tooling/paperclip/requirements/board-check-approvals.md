@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16194; the Board Checker addendum on HAL-15997, section 1 part (d), with Mateo's answer on HAL-16193 (22 Nov)
 
-In each 10-minute board-check pass, the Agent tools plugin shall read the company's pending approvals directly and, through the write gate, comment once on the Board Checker's task with each approval that wasn't pending at the last pass, oldest first, as its id, kind, who asked and when, with no payload; it shall never decide an approval, and its first pass shall only note what is pending.
+When the board check runs its 10-minute pass, the Agent tools plugin shall read the company's pending approvals directly and, through the write gate, comment once on the Board Checker's task with each approval that wasn't pending at the last pass, oldest first, as its id, kind, who asked and when, with no payload; it shall never decide an approval, and its first pass shall only note what is pending.
 
 ## Examples
 
