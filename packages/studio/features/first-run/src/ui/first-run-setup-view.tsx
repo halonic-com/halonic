@@ -1,5 +1,5 @@
 import type { SetupViewProps } from "@halonicjs/studio-feature-inbox/api";
-import { Button } from "@halonicjs/studio-kit";
+import { Button, useToastStore } from "@halonicjs/studio-kit";
 import { useEffect, useRef } from "react";
 import { type FirstRun, SUPPORT_HUB, SUPPORT_WORKFLOW } from "../first-run.ts";
 import { firstRunSteps } from "../first-run-state.ts";
@@ -30,11 +30,13 @@ export interface FirstRunSetupViewProps extends SetupViewProps {
 /**
  * The open setup item of a paused first run (`first-run.setup-item`): its title, which takes focus
  * as it opens, the four-piece progress, the step line, **Continue**, which takes the first run up
- * again and opens Support reply where it was left, and **Dismiss**, which leaves it for good.
+ * again and opens Support reply where it was left, and **Dismiss**, which closes the item and says
+ * Help brings the guide back, since nothing else on the Inbox does (C600).
  */
 export function FirstRunSetupView({ item, firstRun, openItem, close }: FirstRunSetupViewProps) {
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => title.current?.focus(), []);
+  const toasts = useToastStore();
   const state = useFirstRunState(firstRun);
   const step = state.kind === "paused" ? state.step : undefined;
   const reached = step === undefined ? firstRunSteps.length : firstRunSteps.indexOf(step);
@@ -69,6 +71,7 @@ export function FirstRunSetupView({ item, firstRun, openItem, close }: FirstRunS
           onClick={() => {
             close();
             firstRun.send({ kind: "dismissed" });
+            toasts?.show({ tone: "info", title: setupWords.dismissed, text: setupWords.bringBack });
           }}
         >
           {setupWords.dismiss}

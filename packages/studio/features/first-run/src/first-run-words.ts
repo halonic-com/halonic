@@ -39,6 +39,9 @@ export const setupWords = {
     `Step ${firstRunSteps.indexOf(step) + 1} of ${firstRunSteps.length} · ${barWords.steps[step]}`,
   continue: "Continue",
   dismiss: "Dismiss",
+  /** The toast after **Dismiss**: Help is the only way back to the guide (C600, HAL-2282). */
+  dismissed: "First run dismissed",
+  bringBack: "To bring it back, pick Help › First run › Show the guide.",
 } as const;
 
 /**
