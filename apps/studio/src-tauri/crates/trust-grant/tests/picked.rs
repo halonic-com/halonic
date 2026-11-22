@@ -1,11 +1,12 @@
 //! The picked folders the shell remembers across restarts (HAL-6637), on
-//! real folders in a scratch folder. Requirement `trust-grants`.
+//! real folders in a scratch folder. Requirements `trust-grants` and, for
+//! the tests named `profile_place_`, `profile-place`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use halonic_git_guard::{OpenedFolders, plain_path};
-use halonic_trust_grant::{MAX_PICKED_FOLDERS, PickedFolders, TrustState};
+use halonic_trust_grant::{FolderPlace, MAX_PICKED_FOLDERS, PickedFolders, TrustState};
 use halonic_trust_store::FileTrustStore;
 use serde_json::json;
 
@@ -69,16 +70,24 @@ impl Shell {
     /// Picks `folder` in the dialog and remembers it, as `pick_folder` does.
     fn pick(&self, scratch: &Scratch, folder: &str) -> String {
         self.state
-            .pick_remembered(&self.folders, &scratch.list(), || {
-                Some(scratch.path(folder))
-            })
+            .pick_remembered(
+                &self.folders,
+                &scratch.list(),
+                |_| FolderPlace::Apart,
+                || Some(scratch.path(folder)),
+            )
             .expect("picking a folder works")
             .expect("a folder was picked")
     }
 
     fn reopen(&self, scratch: &Scratch, location: &str) -> Result<(), &'static str> {
         self.state
-            .reopen(&self.folders, &scratch.list(), location)
+            .reopen(
+                &self.folders,
+                &scratch.list(),
+                |_| FolderPlace::Apart,
+                location,
+            )
             .map_err(|refusal| refusal.kind())
     }
 
@@ -109,6 +118,7 @@ fn trust_grants_reopen_a_picked_folder_after_a_restart() {
         &store,
         &shell.folders,
         &json!({"location": hubs, "pins": {}}),
+        |_| FolderPlace::Apart,
         |_| panic!("no question inside a picked folder"),
     );
     assert!(granted.is_ok());
@@ -172,6 +182,55 @@ fn trust_grants_tell_a_missing_picked_folder_apart_from_a_refused_one() {
 
     let shell = Shell::start();
     assert_eq!(shell.reopen(&scratch, &acme), Err("folder_missing"));
+    assert_eq!(scratch.list().locations(), [acme]);
+}
+
+#[test]
+fn profile_place_refuses_a_pick() {
+    let scratch = Scratch::new("pick-place");
+    let shell = Shell::start();
+    let acme_path = fs::canonicalize(scratch.path("work/acme")).unwrap();
+    for (place, kind) in [
+        (FolderPlace::HoldsProfile("XDG_DATA_HOME"), "profile_inside"),
+        (FolderPlace::InProfile, "workspace_inside_profile"),
+    ] {
+        let mut given = None;
+        let picked = shell.state.pick_remembered(
+            &shell.folders,
+            &scratch.list(),
+            |real| {
+                given = Some(real.to_owned());
+                place
+            },
+            || Some(scratch.path("work/acme")),
+        );
+        let refusal = picked.expect_err("refused");
+        assert_eq!(refusal.kind(), kind);
+        let reason = matches!(place, FolderPlace::HoldsProfile(_)).then_some("XDG_DATA_HOME");
+        assert_eq!(refusal.reason(), reason, "the variable is named");
+        assert_eq!(given.as_ref(), Some(&acme_path), "the real path is checked");
+    }
+    assert!(!shell.is_open(&scratch.location("work/acme")));
+    assert!(scratch.list().locations().is_empty());
+}
+
+#[test]
+fn profile_place_refuses_a_reopen_and_keeps_the_entry() {
+    let scratch = Scratch::new("reopen-place");
+    let acme = Shell::start().pick(&scratch, "work/acme");
+
+    let shell = Shell::start();
+    for (place, kind) in [
+        (FolderPlace::HoldsProfile("XDG_DATA_HOME"), "profile_inside"),
+        (FolderPlace::InProfile, "workspace_inside_profile"),
+    ] {
+        let reopened = shell
+            .state
+            .reopen(&shell.folders, &scratch.list(), |_| place, &acme);
+        assert_eq!(reopened.map_err(|refusal| refusal.kind()), Err(kind));
+    }
+    assert!(!shell.is_open(&acme));
+    // The entry stays: Studio offers Remove from Recent for it.
     assert_eq!(scratch.list().locations(), [acme]);
 }
 

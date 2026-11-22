@@ -67,6 +67,7 @@ mod plugin_folder_remove;
 mod plugin_git;
 mod plugin_source;
 mod profile;
+mod profile_place;
 mod records;
 mod resource_report;
 mod runs;

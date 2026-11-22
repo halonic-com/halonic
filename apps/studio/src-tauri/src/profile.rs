@@ -21,20 +21,25 @@ use tauri::{AppHandle, Manager, Runtime};
 
 /// The CLI's profile folder, or why it can't be found, for the log.
 pub fn cli_profile<R: Runtime>(app: &AppHandle<R>) -> Result<ProfileFolder, String> {
+    profile_folder(&cli_environment(app)?).map_err(|error| error.to_string())
+}
+
+/// What [`cli_profile`] finds the profile from: the home folder and the
+/// variables, the app's own or the login shell's.
+pub fn cli_environment<R: Runtime>(app: &AppHandle<R>) -> Result<ProfileEnvironment, String> {
     let home = app
         .path()
         .home_dir()
         .ok()
         .and_then(|folder| folder.into_os_string().into_string().ok())
         .ok_or_else(|| "the home folder can't be found".to_owned())?;
-    let environment = ProfileEnvironment {
+    Ok(ProfileEnvironment {
         platform: Platform::current(),
         home_folder: home,
         halonic_home: variable("HALONIC_HOME")?,
         local_app_data: variable("LOCALAPPDATA")?,
         xdg_data_home: variable("XDG_DATA_HOME")?,
-    };
-    profile_folder(&environment).map_err(|error| error.to_string())
+    })
 }
 
 /// Names the shell's log, `studio/shell.log` in the CLI's profile, so what

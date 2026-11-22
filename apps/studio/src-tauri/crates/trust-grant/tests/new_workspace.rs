@@ -1,11 +1,21 @@
 //! Making a new workspace folder (HAL-8745) on real folders in a scratch
-//! folder. Requirement `trust-grants`.
+//! folder. Requirements `trust-grants` and, for the tests named
+//! `profile_place_`, `profile-place`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use halonic_git_guard::{OpenedFolders, plain_path};
-use halonic_trust_grant::{PickedFolders, TrustState};
+use halonic_trust_grant::{FolderPlace, PickedFolders, TrustState};
+
+/// `InProfile` when `inside`, else `Apart`: the place a test's profile gives.
+fn in_profile(inside: bool) -> FolderPlace {
+    if inside {
+        FolderPlace::InProfile
+    } else {
+        FolderPlace::Apart
+    }
+}
 
 /// Folders of its own for one test: `documents`, `projects`, `profile`.
 struct Scratch(PathBuf);
@@ -67,7 +77,7 @@ impl Shell {
         self.create_with(
             scratch,
             Some(&scratch.path("documents")),
-            |_| false,
+            |_| FolderPlace::Apart,
             parent,
             name,
         )
@@ -77,7 +87,7 @@ impl Shell {
         &self,
         scratch: &Scratch,
         documents: Option<&Path>,
-        fenced: impl FnOnce(&Path) -> bool,
+        place: impl FnOnce(&Path) -> FolderPlace,
         parent: &str,
         name: &str,
     ) -> Result<String, &'static str> {
@@ -86,7 +96,7 @@ impl Shell {
                 &self.folders,
                 &scratch.list(),
                 documents,
-                fenced,
+                place,
                 parent,
                 name,
             )
@@ -116,7 +126,12 @@ fn trust_grants_create_a_workspace_in_documents_and_open_it() {
     assert_eq!(
         Shell::start()
             .state
-            .reopen(&OpenedFolders::new(), &scratch.list(), &made)
+            .reopen(
+                &OpenedFolders::new(),
+                &scratch.list(),
+                |_| FolderPlace::Apart,
+                &made,
+            )
             .map_err(|r| r.kind()),
         Ok(())
     );
@@ -173,7 +188,7 @@ fn trust_grants_refuse_a_parent_the_person_didnt_choose() {
     // With no Documents folder, only chosen parents work.
     let documents = scratch.location("documents");
     assert_eq!(
-        shell.create_with(&scratch, None, |_| false, &documents, "Acme"),
+        shell.create_with(&scratch, None, |_| FolderPlace::Apart, &documents, "Acme"),
         Err("parent_not_chosen")
     );
     // A parent chosen in an earlier session is forgotten.
@@ -224,7 +239,7 @@ fn trust_grants_refuse_a_parent_the_profile_holds() {
     let refused = shell.create_with(
         &scratch,
         None,
-        |parent| parent.starts_with(&profile_path),
+        |parent| in_profile(parent.starts_with(&profile_path)),
         &profile,
         "Acme",
     );
@@ -246,7 +261,7 @@ fn trust_grants_refuse_a_name_that_is_the_profiles_own_folder() {
     let refused = shell.create_with(
         &scratch,
         None,
-        |created| created == profile_here,
+        |created| in_profile(created == profile_here),
         &projects,
         "Cfg",
     );
@@ -254,6 +269,34 @@ fn trust_grants_refuse_a_name_that_is_the_profiles_own_folder() {
     assert_eq!(refused, Err("parent_private"));
     assert!(!scratch.path("projects/Cfg").exists());
     assert!(!shell.is_open(&scratch.location("projects")));
+}
+
+#[test]
+fn profile_place_refuses_a_new_folder_a_moved_profile_would_be_inside() {
+    let scratch = Scratch::new("profile-inside");
+    let shell = Shell::start();
+    let documents = scratch.location("documents");
+    let acme = fs::canonicalize(scratch.path("documents"))
+        .unwrap()
+        .join("Acme");
+
+    let refused = shell.create_with(
+        &scratch,
+        Some(&scratch.path("documents")),
+        |created| {
+            if created == acme {
+                FolderPlace::HoldsProfile("XDG_DATA_HOME")
+            } else {
+                FolderPlace::Apart
+            }
+        },
+        &documents,
+        "Acme",
+    );
+
+    assert_eq!(refused, Err("profile_inside"));
+    assert!(!scratch.path("documents/Acme").exists());
+    assert!(scratch.list().locations().is_empty());
 }
 
 #[test]
@@ -342,6 +385,7 @@ fn trust_grants_creating_a_workspace_spares_a_grant_inside_it_the_question() {
         &store,
         &shell.folders,
         &serde_json::json!({"location": sub, "pins": {}}),
+        |_| FolderPlace::Apart,
         |_| panic!("no question inside a picked folder"),
     );
     assert!(granted.is_ok());
