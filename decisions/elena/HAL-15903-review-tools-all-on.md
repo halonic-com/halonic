@@ -2,7 +2,6 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15903 (team wording under HAL-15645's decision on board-approved screens, HAL-2282; microcopy 27 revision 145, from the check on HAL-15901)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wSbkVCfX1Zl3HsawwxcqyWSGMiJRMc5nxelgFPCnvd64Bv3KwWGKr4puLdW5qVvMpW3xEyGBVhZIngUjMDreAA==
 
 When no tool of a connector waits and some are on, its page had no line and no
 **Review tools**, so the review's Approved group and its **Remove approval**
