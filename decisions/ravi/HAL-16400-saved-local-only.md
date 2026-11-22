@@ -24,11 +24,20 @@ The new text:
 > off since the engine opened, a start or send shall close the engine and open a new one built with
 > the new setting, …
 
-Two examples are added: Local only saved on but not live keeps a start and a routine's start off the
-cloud model, and Local only saved off but not live still keeps them off it until it's made live. A run's
-definitions still come from the version it records; only the engine's Local only is stricter. Nothing
-changes with history off or while nothing is live, where the saved files are already what the engine
-reads.
+After the sentence on a cancel, which reads no version and never refuses for Local only on an open
+engine, this is added:
+
+> When the engine is closed, though, a cancel or an answer opens it on that version as a start does, so
+> while that version has Local only off, a saved `workspace.yaml` that can't be read or has an error
+> shall refuse the cancel or the answer the same way, as `invalid_input` with the same words, and
+> nothing is cancelled or sent until it is fixed (HAL-16400).
+
+Three examples are added: Local only saved on but not live keeps a start and a routine's start off the
+cloud model, Local only saved off but not live still keeps them off it until it's made live, and a
+cancel or an answer that has to open a closed engine is refused the same way when the saved
+`workspace.yaml` has an error (Liam's review of #5246). A run's definitions still come from the
+version it records; only the engine's Local only is stricter. Nothing changes with history off or
+while nothing is live, where the saved files are already what the engine reads.
 
 The fakes of `engine-service-saved-files.test.ts` move, unchanged, to `engine-local-only.testing.ts`,
 so the new tests share them. No test there changes or goes.
