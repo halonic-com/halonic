@@ -7,8 +7,8 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  *
  * So far: settings, its own database schema, the board-only routes, the
  * `seats.read`, `seats.history` and `seats.check` jobs and the read-only
- * `seat_usage` tool.
- * The page comes in a later pull request.
+ * `seat_usage` tool. The page's data comes from the board-only `seats.page`
+ * route; the page itself comes in a later pull request.
  */
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.seats",
@@ -143,6 +143,14 @@ export const manifest: PaperclipPluginManifestV1 = {
       routeKey: "seats.list",
       method: "GET",
       path: "/seats",
+      auth: "board",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
+    },
+    {
+      routeKey: "seats.page",
+      method: "GET",
+      path: "/seats/page",
       auth: "board",
       capability: "api.routes.register",
       companyResolution: { from: "query", key: "companyId" },

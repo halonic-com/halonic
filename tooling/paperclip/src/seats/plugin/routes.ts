@@ -1,5 +1,8 @@
 import type { PluginApiRequestInput, PluginApiResponse } from "@paperclipai/plugin-sdk";
+import { defaultPlacementRules, proposePlacements } from "../placement-rules.ts";
 import type { SeatEvent } from "../records.ts";
+import type { SeatsNow } from "./seats-now.ts";
+import { type SeatsPage, seatsPage } from "./seats-page.ts";
 import type { SeatReadStatus } from "./seats-reader.ts";
 import { publicSeat, type SeatSetting, type SeatsSettings } from "./settings.ts";
 import type { SeatsStore } from "./store.ts";
@@ -10,6 +13,8 @@ export interface SeatsRouteDeps {
   readonly now: () => Date;
   /** The reads as `seats.read` has them in memory now. */
   readonly reads: (seats: readonly SeatSetting[]) => SeatsReadView;
+  /** Where the seats and their agents stand, from the stored readings and Paperclip's agents. */
+  readonly seatsNow: (companyId: string, settings: SeatsSettings, now: Date) => Promise<SeatsNow>;
 }
 
 /** What the seat list shows about the reads: since the worker started, each seat's state. */
@@ -44,11 +49,38 @@ export async function handleSeatsRequest(
           reads: deps.reads(settings.seats),
         },
       };
+    case "seats.page":
+      return { status: 200, body: await page(input.companyId, settings, deps) };
     case "seats.manual-reset":
       return await recordManualReset(input.params["seatId"], boardUserId, settings, deps);
     default:
       return refuse(404, "No such AI seats route.");
   }
+}
+
+/** The page's data; the proposal is what `seats.check` would post now, and nothing moves. */
+async function page(
+  companyId: string,
+  settings: SeatsSettings,
+  deps: SeatsRouteDeps,
+): Promise<SeatsPage> {
+  const now = deps.now();
+  const at = now.toISOString();
+  const seatsNowState = await deps.seatsNow(companyId, settings, now);
+  const reads = deps.reads(settings.seats);
+  return seatsPage({
+    now: seatsNowState,
+    proposal: proposePlacements(
+      seatsNowState.seats,
+      seatsNowState.placements,
+      at,
+      defaultPlacementRules,
+    ),
+    statuses: reads.seats,
+    readerStartedAt: reads.readerStartedAt,
+    movesEnabled: settings.movesEnabled,
+    at,
+  });
 }
 
 async function recordManualReset(

@@ -34,6 +34,8 @@ export interface SeatReadStatus {
   readonly readingAgeMs: number | undefined;
   readonly lastError: ReadError | undefined;
   readonly alerts: readonly SeatAlertKind[];
+  /** When the seat's sign-in expires, if Claude Code said at the last read. */
+  readonly signInExpiresAt: string | undefined;
 }
 
 /** Old rows are removed at most once an hour. */
@@ -93,6 +95,7 @@ export class SeatsReader {
           readingAgeMs: readingAgeMs(watch, now),
           lastError: watch.lastError,
           alerts: seatAlerts(watch, now).map((alert) => alert.kind),
+          signInExpiresAt: watch.signIn?.expiresAt,
         },
       ];
     });

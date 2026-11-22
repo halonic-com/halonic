@@ -57,6 +57,7 @@ const statuses: SeatReadStatus[] = [
     readingAgeMs: 19 * 60_000,
     lastError: "rate-limited",
     alerts: ["other-account"],
+    signInExpiresAt: undefined,
   },
 ];
 

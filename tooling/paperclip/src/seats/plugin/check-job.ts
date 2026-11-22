@@ -1,23 +1,12 @@
 import type { PluginIssuesClient, PluginStateClient, ScopeKey } from "@paperclipai/plugin-sdk";
-import { agentSeat } from "../agent-seat.ts";
 import {
   defaultPlacementRules,
   type PlacementProposal,
   proposePlacements,
 } from "../placement-rules.ts";
 import { proposalText } from "../proposal-text.ts";
-import type { AgentId, SeatId } from "../records.ts";
-import { seatStates } from "../seat-state.ts";
-import type { PaperclipTables } from "./paperclip-tables.ts";
 import { type ReadJobApi, seatsOwner } from "./read-job.ts";
-import type { SeatsStore } from "./store.ts";
-import type { RecentReadings } from "./stored-readings.ts";
-
-/**
- * How far back the readings go. It covers a whole 5-hour window, so the
- * rates the rules project come from the window the seat is in.
- */
-export const readingsLookbackMs = 6 * 60 * 60_000;
+import { type SeatsNowDeps, seatsNow } from "./seats-now.ts";
 
 /** The part of the plugin context `seats.check` uses, so tests can fake it. */
 export interface CheckJobApi extends ReadJobApi {
@@ -25,10 +14,7 @@ export interface CheckJobApi extends ReadJobApi {
   readonly state: Pick<PluginStateClient, "get" | "set">;
 }
 
-export interface CheckJobDeps {
-  readonly tables: Pick<PaperclipTables, "agentsNow">;
-  readonly readings: RecentReadings;
-  readonly store: Pick<SeatsStore, "manualResets">;
+export interface CheckJobDeps extends SeatsNowDeps {
   readonly now: () => Date;
 }
 
@@ -53,25 +39,7 @@ export async function runSeatsCheck(ctx: CheckJobApi, deps: CheckJobDeps): Promi
   }
   const now = deps.now();
   const at = now.toISOString();
-  const since = new Date(now.getTime() - readingsLookbackMs).toISOString();
-  const seats = seatStates(
-    settings.seats,
-    await deps.readings.since(since),
-    await deps.store.manualResets(),
-    at,
-  );
-
-  const placements = new Map<AgentId, SeatId>();
-  const agentNames = new Map<AgentId, string>();
-  for (const agent of await deps.tables.agentsNow(companyId)) {
-    const seatId = agentSeat(agent, settings.seats);
-    if (seatId !== undefined) {
-      placements.set(agent.agentId, seatId);
-    }
-    if (agent.name !== undefined) {
-      agentNames.set(agent.agentId, agent.name);
-    }
-  }
+  const { seats, placements, agentNames } = await seatsNow(companyId, settings, deps, now);
 
   const rules = defaultPlacementRules;
   const proposal = proposePlacements(seats, placements, at, rules);
