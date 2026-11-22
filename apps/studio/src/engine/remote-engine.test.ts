@@ -33,7 +33,9 @@ function engineShell(routes: Record<string, (call: EngineCall) => EngineAnswer> 
   const ipc = {
     invoke: async (command: string, args?: Record<string, unknown>) => {
       if (command !== "engine_request") throw `command ${command} not allowed`;
-      const call = args as unknown as EngineCall;
+      // The call's id is the transport's own; `engine-fetch.test.ts` covers it.
+      const { route, params, body } = args as unknown as EngineCall;
+      const call = { route, params, body };
       calls.push(call);
       const answer = routes[call.route];
       if (answer === undefined) throw noEngine;

@@ -30,6 +30,19 @@ async function opened(channels: string[]): Promise<string> {
   return channels[0] as string;
 }
 
+/**
+ * Node's `Request` passes its init signal's abort on only while the `Request` itself is alive: it
+ * links the two weakly. The fake shell's pending answer doesn't keep it alive the way the real shell
+ * does, so garbage collection while a test waits could drop the abort and leave the test hanging.
+ * A test that aborts later makes its request here, which holds it until the file ends.
+ */
+const heldRequests: Request[] = [];
+function heldRequest(url: string, init: RequestInit): Request {
+  const request = new Request(url, init);
+  heldRequests.push(request);
+  return request;
+}
+
 verifies("services.engine-fetch", () => {
   describe("a JSON route", () => {
     it("sends the route's name, params and body, and answers with the engine's status and body", async () => {
@@ -48,6 +61,7 @@ verifies("services.engine-fetch", () => {
       expect(shell.callsOf("engine_request")).toEqual([
         {
           route: "POST /api/runs/{run}/events",
+          call: expect.any(Number),
           params: { run: "run 01" },
           body: { event: "approve" },
         },
@@ -123,29 +137,75 @@ verifies("services.engine-fetch", () => {
       ).rejects.toMatchObject({ kind: "answer_invalid" });
     });
 
-    it("stops waiting when the request is aborted", async () => {
+    it("stops waiting when the request is aborted, and ends the call in the shell", async () => {
       // Waits on the shell call itself rather than polling, so a loaded machine can't time it out.
       let called: () => void = () => {};
       const shellCalled = new Promise<void>((resolve) => (called = resolve));
-      const shell = new FakeShell().answer("engine_request", () => {
-        called();
-        return new Promise(() => {});
-      });
+      const shell = new FakeShell()
+        .answer("engine_request", () => {
+          called();
+          return new Promise(() => {});
+        })
+        .answer("engine_request_end", () => null);
       const controller = new AbortController();
       const reason = new Error("left the page");
 
       const answer = tauriEngineFetch(shell)(
-        new Request("http://engine.invalid/api/hello", { signal: controller.signal }),
+        heldRequest("http://engine.invalid/api/chat-turn", {
+          method: "POST",
+          body: "{}",
+          signal: controller.signal,
+        }),
       );
       await shellCalled;
       controller.abort(reason);
 
       await expect(answer).rejects.toBe(reason);
+      const call = shell.callsOf("engine_request")[0]?.["call"];
+      expect(call).toEqual(expect.any(Number));
+      expect(shell.callsOf("engine_request_end")).toEqual([{ call }]);
+      // A request aborted before it starts never reaches the shell.
       await expect(
         tauriEngineFetch(shell)(
           new Request("http://engine.invalid/api/hello", { signal: controller.signal }),
         ),
       ).rejects.toBe(reason);
+      expect(shell.callsOf("engine_request")).toHaveLength(1);
+    });
+
+    it("gives each call its own id, and leaves a call that answered alone", async () => {
+      const shell = new FakeShell().answer("engine_request", () => ({ status: 200, body: {} }));
+      const controller = new AbortController();
+      const fetch = tauriEngineFetch(shell);
+
+      await fetch(new Request("http://engine.invalid/api/hello", { signal: controller.signal }));
+      await fetch(new Request("http://engine.invalid/api/hello", { signal: controller.signal }));
+      controller.abort();
+
+      const [first, second] = shell.callsOf("engine_request").map((args) => args["call"]);
+      expect(first).not.toBe(second);
+      expect(shell.callsOf("engine_request_end")).toEqual([]);
+    });
+
+    it("logs a failed engine_request_end and still rejects with the abort's reason", async () => {
+      const shell = new FakeShell().answer("engine_request", () => new Promise(() => {}));
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      const controller = new AbortController();
+
+      const answer = tauriEngineFetch(shell)(
+        heldRequest("http://engine.invalid/api/hello", { signal: controller.signal }),
+      );
+      await vi.waitFor(() => expect(shell.callsOf("engine_request")).toHaveLength(1));
+      controller.abort("stopped");
+
+      await expect(answer).rejects.toBe("stopped");
+      await vi.waitFor(() =>
+        expect(logged).toHaveBeenCalledWith(
+          "Couldn't tell the shell an engine call ended.",
+          "command engine_request_end not allowed",
+        ),
+      );
+      logged.mockRestore();
     });
   });
 
@@ -202,7 +262,7 @@ verifies("services.engine-fetch", () => {
       const reason = new Error("closed");
 
       const response = await tauriEngineFetch(shell)(
-        new Request(runEvents, { signal: controller.signal }),
+        heldRequest(runEvents, { signal: controller.signal }),
       );
       const channel = await opened(channels);
       controller.abort(reason);
@@ -222,7 +282,7 @@ verifies("services.engine-fetch", () => {
       const reason = new Error("closed");
 
       const response = tauriEngineFetch(shell)(
-        new Request(runEvents, { signal: controller.signal }),
+        heldRequest(runEvents, { signal: controller.signal }),
       );
       await vi.waitFor(() => expect(shell.callsOf("engine_stream")).toHaveLength(1));
       controller.abort(reason);

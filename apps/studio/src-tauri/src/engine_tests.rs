@@ -16,9 +16,12 @@ use tauri::webview::WebviewWindowBuilder;
 use tauri::{App, Manager, Webview, WebviewUrl};
 
 use super::{
-    EngineAnswer, EngineRefusal, EngineState, EngineStreamStart, end_page_streams, engine_request,
+    EngineAnswer, EngineRefusal, EngineState, EngineStreamStart, end_page, engine_request,
     engine_stream, engine_stream_end,
 };
+
+#[path = "engine_call_end_tests.rs"]
+mod call_end;
 
 /// A made-up token of the right form, 43 base64url characters.
 const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ-_01234";
@@ -37,7 +40,7 @@ enum Seen {
         origin: Option<String>,
         body: String,
     },
-    /// The shell hung up on the stream of this path.
+    /// The shell hung up on the call or stream of this path.
     HungUp(String),
 }
 
@@ -134,6 +137,12 @@ fn answer(connection: TcpStream, seen: &Sender<Seen>, redirect_to: u16) {
             let _ = reader.read_to_end(&mut rest);
             let _ = seen.send(Seen::HungUp(path));
         }
+        // A chat turn whose model call never answers, until the shell hangs up.
+        "/api/chat-turn" => {
+            let mut rest = Vec::new();
+            let _ = reader.read_to_end(&mut rest);
+            let _ = seen.send(Seen::HungUp(path));
+        }
         _ => respond(
             &mut connection,
             404,
@@ -203,6 +212,7 @@ fn request(
     tauri::async_runtime::block_on(engine_request(
         page(app),
         route.to_owned(),
+        0,
         Some(params),
         body,
     ))
@@ -427,7 +437,7 @@ fn engine_commands_hang_up_when_the_page_ends_reloads_or_the_engine_goes() {
     let app = shell(&fake);
     let ends: [&EndStream; 3] = [
         &|app, stream| engine_stream_end(page(app), stream),
-        &|app, _| end_page_streams(app, "main"),
+        &|app, _| end_page(app, "main"),
         &|app, _| app.state::<EngineState>().disconnect("main"),
     ];
     for (stream, end) in (0_u64..).zip(ends) {

@@ -30,6 +30,22 @@ const FRAME_LIMIT: usize = 1024 * 1024;
 /// How long a JSON route may take, its answer included.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 
+/// How long a chat turn may take. A turn is one model call, and the model
+/// adapters give a model API 5 minutes to start its reply, so 120 s would
+/// cut off a slow answer the engine still waits for. The page ends a turn
+/// it no longer wants itself (Stop); this only ends a turn on an engine
+/// that has stopped answering.
+const CHAT_TURN_TIMEOUT: Duration = Duration::from_secs(10 * 60);
+
+/// How long the JSON route `route` may take, its answer included.
+pub(super) fn time_limit(route: EngineRoute) -> Duration {
+    if route.name == "POST /api/chat-turn" {
+        CHAT_TURN_TIMEOUT
+    } else {
+        REQUEST_TIMEOUT
+    }
+}
+
 /// The bytes a route sends: none for a GET, and the body as JSON for a
 /// POST, `{}` when there is none or it is `null`, up to [`BODY_LIMIT`].
 pub(super) fn request_body(
@@ -59,7 +75,7 @@ pub(super) fn request_body(
 }
 
 /// Sends one request to the window's engine, with the launch token and no
-/// `Origin`. A JSON route has [`REQUEST_TIMEOUT`] for its whole answer.
+/// `Origin`. A JSON route has its [`time_limit`] for its whole answer.
 pub(super) async fn send<R: Runtime>(
     webview: &Webview<R>,
     route: EngineRoute,
@@ -78,7 +94,7 @@ pub(super) async fn send<R: Runtime>(
             .body(bytes),
     };
     request = match route.answer {
-        Answer::Json => request.timeout(REQUEST_TIMEOUT),
+        Answer::Json => request.timeout(time_limit(route)),
         Answer::Stream => request.header(reqwest::header::ACCEPT, "text/event-stream"),
     };
     request

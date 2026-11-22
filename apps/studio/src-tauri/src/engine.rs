@@ -23,6 +23,7 @@ use tauri::{Manager, Runtime, Webview};
 use tauri_plugin_http::reqwest;
 
 use crate::engine_routes::{EngineRoute, engine_path, find_engine_route};
+use crate::page_calls::{CallInUse, CallKey, PageCalls};
 use crate::page_streams::{OpenRefusal, PageStreams, StreamKey};
 
 #[path = "engine_calls.rs"]
@@ -37,11 +38,12 @@ const STREAMS_PER_PAGE: usize = 16;
 /// other limit: it may stay quiet for as long as a run waits.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// The engine of each window, the streams pages have open on them, and the
-/// one HTTP client every call uses.
+/// The engine of each window, the calls and streams pages have open on
+/// them, and the one HTTP client every call uses.
 pub struct EngineState {
     /// By the label of the window whose workspace the engine runs.
     connections: Mutex<HashMap<String, Handshake>>,
+    calls: PageCalls,
     streams: PageStreams,
     client: Mutex<Option<reqwest::Client>>,
 }
@@ -50,6 +52,7 @@ impl Default for EngineState {
     fn default() -> Self {
         Self {
             connections: Mutex::new(HashMap::new()),
+            calls: PageCalls::default(),
             streams: PageStreams::new(STREAMS_PER_PAGE),
             client: Mutex::new(None),
         }
@@ -118,8 +121,8 @@ impl EngineState {
 
 /// Why a call didn't reach the engine: `unknown_route`, `bad_param` (with
 /// the `param` that failed), `bad_body`, `engine_unavailable`,
-/// `stream_in_use`, `too_many_streams`, `stream_ended` or `io`, and a
-/// message for the log. The engine's own refusals are answers. No refusal
+/// `call_in_use`, `call_ended`, `stream_in_use`, `too_many_streams`,
+/// `stream_ended` or `io`, and a message for the log. The engine's own refusals are answers. No refusal
 /// contains the token or repeats a value the page sent.
 #[derive(Debug, Serialize)]
 pub struct EngineRefusal {
@@ -174,19 +177,58 @@ pub enum EngineStreamMessage {
 }
 
 /// Calls a JSON route of the window's engine with `params` and `body`
-/// (`{}` for a POST when there is none, or it is `null`; a GET takes none).
+/// (`{}` for a POST when there is none, or it is `null`; a GET takes none),
+/// as the page's call `call`. The call ends with the engine's answer, a
+/// refusal, or the page's `engine_request_end`; a page that reloads or
+/// closes ends its calls too. Ending a call hangs up on the engine, which
+/// then stops what it was doing for it, such as a model call.
 #[tauri::command]
 pub async fn engine_request<R: Runtime>(
     webview: Webview<R>,
     route: String,
+    call: u64,
     params: Option<Value>,
     body: Option<Value>,
 ) -> Result<EngineAnswer, EngineRefusal> {
     let route = named_route(&route, Answer::Json)?;
     let path = checked_path(route, params)?;
     let body = request_body(route, body)?;
-    let response = send(&webview, route, &path, body).await?;
-    read_answer(response).await
+    let key = CallKey {
+        page: webview.label().to_owned(),
+        call,
+    };
+    let state = webview.state::<EngineState>();
+    let caller = webview.clone();
+    let started = state
+        .calls
+        .start(key.clone(), move || {
+            tauri::async_runtime::spawn(async move {
+                let response = send(&caller, route, &path, body).await?;
+                read_answer(response).await
+            })
+        })
+        .map_err(|CallInUse| {
+            EngineRefusal::new("call_in_use", "the page already has a call with this id")
+        })?;
+    let answer = started.task.await;
+    state.calls.forget(&key, started.serial);
+    answer.unwrap_or_else(|_| {
+        Err(EngineRefusal::new(
+            "call_ended",
+            "the page ended the call before the engine answered",
+        ))
+    })
+}
+
+/// Ends a call the page no longer waits for. Hanging up tells the engine
+/// the caller has gone. An id that is done is fine.
+#[tauri::command]
+pub fn engine_request_end<R: Runtime>(webview: Webview<R>, call: u64) {
+    let page = webview.label();
+    webview
+        .state::<EngineState>()
+        .calls
+        .end(|key| key.page == page && key.call == call);
 }
 
 /// Calls a stream route of the window's engine, as the page's stream
@@ -249,10 +291,12 @@ pub fn engine_stream_end<R: Runtime>(webview: Webview<R>, stream: u64) {
         .end(|key| key.page == page && key.stream == stream);
 }
 
-/// Ends every engine stream of the page `page`. The shell calls this when
-/// that page starts loading another document, or its window closes.
-pub fn end_page_streams<R: Runtime>(app: &impl Manager<R>, page: &str) {
+/// Ends every engine call and stream of the page `page`. The shell calls
+/// this when that page starts loading another document, or its window
+/// closes.
+pub fn end_page<R: Runtime>(app: &impl Manager<R>, page: &str) {
     if let Some(state) = app.try_state::<EngineState>() {
+        state.calls.end(|key| key.page == page);
         state.streams.end(|key| key.page == page);
     }
 }

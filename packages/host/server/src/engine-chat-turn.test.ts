@@ -1,6 +1,6 @@
 import { ModelCallError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { chatTurnPath } from "./chat-turn-routes.ts";
 import { passing, sendTo, testEngine } from "./engine-server.test-helper.ts";
 
@@ -90,6 +90,28 @@ verifies("server.engine-server", () => {
       expect(JSON.parse(body)).toMatchObject({ code: "model_call_failed", reason: "no-key" });
       expect(body).not.toContain("llm.acme.example");
       expect(calls.logged).toEqual([cause]);
+    });
+  });
+});
+
+verifies("server.chat-turn", () => {
+  describe("the engine role's chat-turn route, when the shell hangs up", () => {
+    it("aborts the model call when the shell hangs up, and logs nothing (HAL-15998)", async () => {
+      const { server, calls } = testEngine({ chatTurnWaits: true });
+      const connection = new AbortController();
+      const answer = sendTo(server, "POST", chatTurnPath, {
+        body: JSON.stringify(turn),
+        signal: connection.signal,
+      });
+      await vi.waitFor(() => expect(calls.chatTurns).toHaveLength(1));
+      const modelSignal = (calls.chatTurns[0] as { signal?: AbortSignal }).signal;
+      expect(modelSignal?.aborted).toBe(false);
+
+      connection.abort(new Error("Stop"));
+
+      expect((await answer).status).toBe(499);
+      expect(modelSignal?.aborted).toBe(true);
+      expect(calls.logged).toEqual([]);
     });
   });
 });

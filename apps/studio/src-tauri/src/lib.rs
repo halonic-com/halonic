@@ -57,6 +57,7 @@ mod native_dialogs;
 mod navigation;
 #[cfg(target_os = "android")]
 mod owner_check;
+mod page_calls;
 mod page_streams;
 mod pair_scan;
 mod phone_tunnel;
@@ -178,7 +179,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             if payload.event() == PageLoadEvent::Started {
                 agent_host::page_loaded(webview.app_handle());
                 agent_host::end_page_streams(webview.app_handle(), webview.label());
-                engine::end_page_streams(webview.app_handle(), webview.label());
+                engine::end_page(webview.app_handle(), webview.label());
                 http_fetch::end_page_calls(webview.app_handle(), webview.label());
                 files::end_page_watches(webview.app_handle(), webview.label());
                 pair_scan::end_page_scan(webview.app_handle());
@@ -194,7 +195,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                     .state::<engine_lock::EngineLockState>()
                     .release_window(window.label());
                 agent_host::end_page_streams(window.app_handle(), window.label());
-                engine::end_page_streams(window.app_handle(), window.label());
+                engine::end_page(window.app_handle(), window.label());
                 http_fetch::end_page_calls(window.app_handle(), window.label());
                 files::end_page_watches(window.app_handle(), window.label());
                 pair_scan::end_page_scan(window.app_handle());
@@ -250,6 +251,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             agent_host::progress::engine_ready,
             agent_host::progress::start_status,
             engine::engine_request,
+            engine::engine_request_end,
             engine::engine_stream,
             engine::engine_stream_end,
             http_fetch::http_fetch,
