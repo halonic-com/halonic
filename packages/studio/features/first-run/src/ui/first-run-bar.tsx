@@ -1,5 +1,5 @@
-import { Button, CloseIcon, TickIcon } from "@halonicjs/studio-kit";
-import type { StripProps } from "@halonicjs/studio-shell";
+import { Button, CloseIcon, TickIcon, usePresentation } from "@halonicjs/studio-kit";
+import { pageHeading, type StripProps } from "@halonicjs/studio-shell";
 import { useEffect, useSyncExternalStore } from "react";
 import { FirstRunService } from "../api.ts";
 import type { FirstRun } from "../first-run.ts";
@@ -16,20 +16,33 @@ export function FirstRunBar({ context }: StripProps) {
   const firstRun = context.services.get(FirstRunService);
   useEffect(() => firstRun.notice(), [firstRun]);
   const state = useFirstRunState(firstRun);
+  // On a phone the strip can wrap, and a rail would start a line, so it has none there.
+  const rails = usePresentation() !== "phone";
   if (state.kind !== "on" || !firstRun.isOnHere) {
     return null;
   }
   const wayOut = barWayOut(state);
   return (
     <section aria-label={barWords.label} className={barClasses}>
-      <ol className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        {barSteps(state).map((step) => (
-          <StepItem key={step.step} step={step} />
+      <ol className={`flex min-w-0 flex-wrap items-center gap-y-1 ${rails ? "" : "gap-x-3"}`}>
+        {barSteps(state).map((step, index, steps) => (
+          <StepItem
+            key={step.step}
+            step={step}
+            railAfter={rails ? steps[index - 1]?.mark : undefined}
+          />
         ))}
       </ol>
       {wayOut === "skip" ? (
         <div className="ms-auto shrink-0">
-          <Button variant="ghost" size="sm" onClick={() => firstRun.send({ kind: "left" })}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              firstRun.send({ kind: "left" });
+              focusPageStart();
+            }}
+          >
             {barWords.skip}
           </Button>
         </div>
@@ -46,22 +59,57 @@ export function useFirstRunState(firstRun: FirstRun) {
   );
 }
 
+/**
+ * Skip goes with the bar, so the focus it had would fall to the body: it goes on at the shown
+ * page's `h1`, or at the page itself while it has none (C556-1c).
+ */
+function focusPageStart() {
+  const start = pageHeading() ?? document.querySelector<HTMLElement>("main");
+  if (start === null) return;
+  if (!start.hasAttribute("tabindex")) {
+    start.tabIndex = -1;
+  }
+  start.focus({ preventScroll: true });
+}
+
 const barClasses =
   "flex min-h-10 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-surface-subtle px-4 py-1.5 text-small";
 
-function StepItem({ step }: { readonly step: BarStep }) {
+/** A step; `railAfter` is the mark of the step before it, when a rail joins the two. */
+function StepItem({
+  step,
+  railAfter,
+}: {
+  readonly step: BarStep;
+  readonly railAfter?: BarMark | undefined;
+}) {
   const name = barWords.steps[step.step];
   return (
     <li
-      className="flex items-center gap-1.5"
+      className="flex items-center"
       aria-current={step.mark === "current" || step.mark === "failed" ? "step" : undefined}
     >
-      <StepMark mark={step.mark} />
-      <span className={step.mark === "todo" ? "text-fg-muted" : "text-fg"}>
-        {step.number} {name}
+      {railAfter === undefined ? null : <Rail after={railAfter} />}
+      <span className="flex items-center gap-1.5">
+        <StepMark mark={step.mark} />
+        <span className={`font-medium ${step.mark === "todo" ? "text-fg-muted" : "text-fg"}`}>
+          {step.number} {name}
+        </span>
+        {spokenMark(step.mark)}
       </span>
-      {spokenMark(step.mark)}
     </li>
+  );
+}
+
+/** The 16px line between two steps, green after a done one; it keeps a colour in high contrast. */
+function Rail({ after }: { readonly after: BarMark }) {
+  const colour = after === "done" ? "bg-success" : "bg-border-strong";
+  return (
+    <span
+      aria-hidden="true"
+      data-rail=""
+      className={`mx-2 h-px w-4 shrink-0 ${colour} forced-color-adjust-none forced-colors:bg-[CanvasText]`}
+    />
   );
 }
 
@@ -74,25 +122,34 @@ function spokenMark(mark: BarMark) {
 
 const markClasses = "grid size-4 shrink-0 place-items-center rounded-full *:size-3";
 
+// High contrast drops the fill, so a border keeps the tick's and the cross's disc round.
+const discInHighContrast = "forced-colors:border forced-colors:border-[CanvasText]";
+
 /** The 16px mark before a step: a tick, the ring-and-dot, a red cross, or an empty ring. */
 function StepMark({ mark }: { readonly mark: BarMark }) {
   switch (mark) {
     case "done":
       return (
-        <span aria-hidden="true" className={`${markClasses} bg-success text-on-success`}>
+        <span
+          aria-hidden="true"
+          className={`${markClasses} bg-success text-on-success ${discInHighContrast}`}
+        >
           <TickIcon />
         </span>
       );
     case "failed":
       return (
-        <span aria-hidden="true" className={`${markClasses} bg-danger text-on-danger`}>
+        <span
+          aria-hidden="true"
+          className={`${markClasses} bg-danger text-on-danger ${discInHighContrast}`}
+        >
           <CloseIcon />
         </span>
       );
     case "current":
       return (
         <span aria-hidden="true" className={`${markClasses} border-2 border-accent`}>
-          <span className="size-1.5! rounded-full bg-accent" />
+          <span className="size-1.5! rounded-full bg-accent forced-color-adjust-none forced-colors:bg-[CanvasText]" />
         </span>
       );
     case "todo":
