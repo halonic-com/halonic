@@ -1,3 +1,5 @@
+import { RemoteProtocolError } from "./errors.ts";
+
 /** One message of a server-sent event stream. */
 export interface SseMessage {
   /** The `event:` name; `message` when the sender gave none. */
@@ -7,6 +9,13 @@ export interface SseMessage {
   /** The `data:` lines joined with a newline. */
   readonly data: string;
 }
+
+/**
+ * The longest message the reader holds while it waits for the message's
+ * end, in characters: 16 MiB, far more than one run event takes. A longer
+ * one ends the stream instead of growing in memory without end.
+ */
+export const maxSseMessageLength = 16 * 1024 * 1024;
 
 /** The field and value of a line, or `null` for a blank line or a comment. */
 function parseLine(line: string): { field: string; value: string } | null {
@@ -41,9 +50,13 @@ function parseBlock(block: string): SseMessage | null {
  * given a signal. A message counts only once its blank line arrived: when
  * the body ends in the middle of one, that half message is dropped, so a
  * connection that broke never delivers part of an event.
+ *
+ * @param maxMessageLength - the longest message it waits for the end of, in characters
+ * @throws RemoteProtocolError when a message grows past `maxMessageLength` before its end
  */
 export async function* readSseMessages(
   body: ReadableStream<Uint8Array>,
+  maxMessageLength: number = maxSseMessageLength,
 ): AsyncGenerator<SseMessage> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -78,6 +91,12 @@ export async function* readSseMessages(
       // A lone CR also ends a line in the format; one newline form keeps the split simple.
       pending += text.replace(/\r\n?/g, "\n");
       yield* drain();
+      // What is left is the start of the next message only.
+      if (pending.length > maxMessageLength) {
+        throw new RemoteProtocolError(
+          `The host sent a stream message longer than ${maxMessageLength} characters.`,
+        );
+      }
     }
   } finally {
     // Stops the download when the reader of the messages stops early. Cancelling fails only
