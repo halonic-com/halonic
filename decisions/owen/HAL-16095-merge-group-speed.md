@@ -3,7 +3,6 @@
 - Task: HAL-16095
 - Approval: the board asked for faster merge groups (Timothy, 22 Nov, HAL-16095); Liam signs this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:rYnEfv7EYiosvl1vmg6g+rT4OjCx93DH0Anrjtr7dgopE1aZ+MPT4EK+H+QUXk0AAPomBtM2U3lLld5zQSIaBw==
 
 ## What changes
 
@@ -46,5 +45,6 @@ packages, 9 shards, each once).
 
 ## Covers
 
+- check.ci-self-hosted-routing
 - .github/
 - tooling/check/
