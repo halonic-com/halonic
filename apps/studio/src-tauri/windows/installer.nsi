@@ -103,6 +103,14 @@ Var RollbackMode
 ; sets both and refuses to pack without them.
 !define SRTSETUPVERSION "$%HALONIC_SRT_SETUP_VERSION%"
 !define SETUPGUARD "$%HALONIC_SETUP_GUARD%"
+; Halonic change (HAL-16342): a signed release's publisher, built in as for
+; Studio and the helper (halonic-publisher's SIGNER). The installer starts the
+; helper only when Windows trusts its signature and it names this publisher.
+; build-installer.ps1 says whether there is one, as NSIS can't tell an unset
+; variable from a name. Dev and CI builds and an unsigned release have none.
+!if "$%HALONIC_HELPER_SIGNED%" == "yes"
+  !define SANDBOXSIGNER "$%HALONIC_SANDBOX_SIGNER%"
+!endif
 ; .onInit unpacks the guard and nsExec. With /SOLID, anything not reserved
 ; here sits behind the app's files, and NSIS shows its "Unpacking data"
 ; window while it gets there, before any page or message.
@@ -741,6 +749,10 @@ FunctionEnd
 ; `remove`, and waits at most SANDBOX_HELPER_MS for it. Pushes "refused",
 ; "nostart", "timeout" or the helper's exit code. The uninstaller's copy runs
 ; the removal when it has administrator rights itself (un.RemoveSandbox).
+; A signed release starts it only when HelperSigner names SANDBOXSIGNER, else
+; pushes "nostart" with $SandboxReason set (HAL-16342), as Studio's shell
+; checks it: with administrator rights Windows shows no prompt, so nobody
+; would see whose program it is.
 !define SANDBOX_HELPER_MS 300000
 !macro ElevateSandboxHelper un
 Function ${un}ElevateSandboxHelper
@@ -750,13 +762,26 @@ Function ${un}ElevateSandboxHelper
   Push $2
   Push $3
   Push $4
+  StrCpy $3 ""
   ; Held open, shared for reading only, until Windows has started it: until
   ; then nothing can write, rename or delete the helper (HAL-14958). Not
   ; held, it isn't started.
   System::Call 'kernel32::CreateFileW(w "$INSTDIR\halonic-sandbox-elevate.exe", i 0x80000000, i 1, p 0, i 3, i 0, p 0) p .r4'
   ${If} $4 = -1
     StrCpy $3 "nostart"
+  !ifdef SANDBOXSIGNER
   ${Else}
+    Push $4
+    Call ${un}HelperSigner
+    Pop $2
+    ${If} $2 S!= "${SANDBOXSIGNER}"
+      System::Call 'kernel32::CloseHandle(p r4)'
+      StrCpy $SandboxReason "the sandbox helper isn't signed by ${SANDBOXSIGNER}"
+      StrCpy $3 "nostart"
+    ${EndIf}
+  !endif
+  ${EndIf}
+  ${If} $3 == ""
     ; SHELLEXECUTEINFOW, laid out for the 32-bit installer: SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC, the
     ; installer's window, "runas", the helper, the verb, no window of its own.
     System::Call '*(&l4, i 0x140, p $HWNDPARENT, w "runas", w "$INSTDIR\halonic-sandbox-elevate.exe", w "$5", w "$INSTDIR", i 0, p 0, p 0, p 0, p 0, i 0, p 0, p 0) p .r0'
@@ -801,6 +826,77 @@ Function ${un}ElevateSandboxHelper
   Pop $5
 FunctionEnd
 !macroend
+
+!ifdef SANDBOXSIGNER
+; The publisher Windows trusts the signature of the helper held open by the
+; handle on the stack to name, or "" (HAL-16342). Windows reads the file
+; through that handle, as Studio's shell does (halonic-publisher), so it is
+; the file held open that is checked, and the name is read as the UAC prompt
+; shows it. No revocation check: it would go online with administrator
+; rights, and can hang without a network.
+!macro HelperSigner un
+Function ${un}HelperSigner
+  Exch $0
+  Push $1
+  Push $2
+  Push $3
+  Push $4
+  Push $5
+  Push $6
+  StrCpy $6 ""
+  ; WINTRUST_FILE_INFO: its size, the helper's path, the handle, no subject.
+  System::Call '*(i 16, w "$INSTDIR\halonic-sandbox-elevate.exe", p r0, p 0) p .r1'
+  ; WINTRUST_DATA, laid out for the 32-bit installer: no UI, no revocation
+  ; check, a file, verify, cached URLs only.
+  System::Call '*(i 52, p 0, p 0, i 2, i 0, i 1, p r1, i 1, p 0, p 0, i 0x1000, i 0, p 0) p .r2'
+  ; WINTRUST_ACTION_GENERIC_VERIFY_V2
+  System::Call '*(g "{00AAC56B-CD44-11d0-8CC2-00C04FC295EE}") p .r3'
+  System::Call 'wintrust::WinVerifyTrust(p 0, p r3, p r2) i .r4'
+  ${If} $4 = 0
+    System::Call '*$2(i, p, p, i, i, i, p, i, p .r4)'
+    System::Call 'wintrust::WTHelperProvDataFromStateData(p r4) p .r4'
+    ${If} $4 <> 0
+      ; The primary signer, no countersigner.
+      System::Call 'wintrust::WTHelperGetProvSignerFromChain(p r4, i 0, i 0, i 0) p .r4'
+    ${EndIf}
+    ${If} $4 <> 0
+      ; CRYPT_PROVIDER_SGNR: its size, a FILETIME, then the chain's length
+      ; and entries; the first entry's certificate is the signer's.
+      System::Call '*$4(i, i, i, i .r5, p .r4)'
+      ${If} $5 > 0
+      ${AndIf} $4 <> 0
+        System::Call '*$4(i, p .r4)'
+        ${If} $4 <> 0
+          ; CERT_NAME_SIMPLE_DISPLAY_TYPE; the length counts the NUL.
+          System::Call 'crypt32::CertGetNameStringW(p r4, i 4, i 0, p 0, w .r5, i ${NSIS_MAX_STRLEN}) i .r4'
+          ${If} $4 > 1
+            StrCpy $6 $5
+          ${EndIf}
+        ${EndIf}
+      ${EndIf}
+    ${EndIf}
+  ${EndIf}
+  ; Closing frees the state the verify left: dwStateAction is at 28.
+  IntOp $4 $2 + 28
+  System::Call '*$4(i 2)'
+  System::Call 'wintrust::WinVerifyTrust(p 0, p r3, p r2) i .r4'
+  System::Free $3
+  System::Free $2
+  System::Free $1
+  StrCpy $0 $6
+  Pop $6
+  Pop $5
+  Pop $4
+  Pop $3
+  Pop $2
+  Pop $1
+  Exch $0
+FunctionEnd
+!macroend
+!insertmacro HelperSigner ""
+!insertmacro HelperSigner "un."
+!endif
+
 !insertmacro ElevateSandboxHelper ""
 !insertmacro ElevateSandboxHelper "un."
 !endif
@@ -1093,7 +1189,9 @@ Section SandboxStep
       ${ElseIf} $2 == "refused"
         StrCpy $2 "10"
       ${ElseIf} $2 == "nostart"
-        StrCpy $SandboxReason "Windows couldn't start the sandbox helper"
+        ${If} $SandboxReason == ""
+          StrCpy $SandboxReason "Windows couldn't start the sandbox helper"
+        ${EndIf}
         StrCpy $2 "11"
       ${ElseIf} $2 != "timeout"
         ; The helper's own codes, 12 to 40, aren't this step's codes.
@@ -2151,7 +2249,9 @@ Function un.RemoveThroughHelper
   ${ElseIf} $2 == "refused"
     StrCpy $2 "10"
   ${ElseIf} $2 == "nostart"
-    StrCpy $SandboxReason "Windows couldn't start the sandbox helper"
+    ${If} $SandboxReason == ""
+      StrCpy $SandboxReason "Windows couldn't start the sandbox helper"
+    ${EndIf}
     StrCpy $2 "11"
   ${ElseIf} $2 == "timeout"
     StrCpy $SandboxReason "it didn't finish within 300 seconds"

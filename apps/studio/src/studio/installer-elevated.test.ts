@@ -49,11 +49,56 @@ verifies("studio.installer-elevated", () => {
     const started = helper.indexOf("shell32::ShellExecuteExW");
     expect(held).toBeGreaterThan(-1);
     expect(started).toBeGreaterThan(held);
-    expect(helper.indexOf("CloseHandle(p r4)")).toBeGreaterThan(started);
+    expect(helper.indexOf("CloseHandle(p r4)", started)).toBeGreaterThan(started);
     expect(helper).toContain('w "$INSTDIR\\halonic-sandbox-elevate.exe", w "$5"');
     expect(installer).toContain(
       '!insertmacro ElevateSandboxHelper ""\n!insertmacro ElevateSandboxHelper "un."\n',
     );
+  });
+
+  it("starts the helper in a signed release only when the handle it holds is signed by the publisher built in", () => {
+    expect(installer).toContain(
+      '!if "$%HALONIC_HELPER_SIGNED%" == "yes"\n  !define SANDBOXSIGNER "$%HALONIC_SANDBOX_SIGNER%"\n!endif\n',
+    );
+    const helper = between(installer, "Function ${un}ElevateSandboxHelper\n", "FunctionEnd");
+    const check = between(helper, "!ifdef SANDBOXSIGNER\n", "!endif\n");
+    expect(check).toContain("Push $4\n    Call ${un}HelperSigner\n    Pop $2\n");
+    const refused = between(check, '${If} $2 S!= "${SANDBOXSIGNER}"\n', "${EndIf}");
+    expect(refused).toContain("CloseHandle(p r4)");
+    expect(refused).toContain(
+      `StrCpy $SandboxReason "the sandbox helper isn't signed by \${SANDBOXSIGNER}"`,
+    );
+    expect(refused).toContain('StrCpy $3 "nostart"');
+    // Started only when nothing refused it, after the check.
+    const started = helper.indexOf('${If} $3 == ""\n');
+    expect(started).toBeGreaterThan(helper.indexOf("Call ${un}HelperSigner"));
+    expect(helper.indexOf("shell32::ShellExecuteExW")).toBeGreaterThan(started);
+
+    const signer = between(installer, "Function ${un}HelperSigner\n", "FunctionEnd");
+    // WINTRUST_FILE_INFO with the held handle, WINTRUST_DATA with no UI (2),
+    // no revocation check (0), a file (1) and verify (1).
+    expect(signer).toContain('*(i 16, w "$INSTDIR\\halonic-sandbox-elevate.exe", p r0, p 0) p .r1');
+    expect(signer).toContain(
+      "*(i 52, p 0, p 0, i 2, i 0, i 1, p r1, i 1, p 0, p 0, i 0x1000, i 0, p 0)",
+    );
+    expect(signer).toContain('g "{00AAC56B-CD44-11d0-8CC2-00C04FC295EE}"');
+    expect(signer).toContain("crypt32::CertGetNameStringW(p r4, i 4,");
+    // The state the verify left is closed (WTD_STATEACTION_CLOSE) whatever it found.
+    expect(between(signer, "IntOp $4 $2 + 28\n", "System::Free")).toContain(
+      "*$4(i 2)'\n  System::Call 'wintrust::WinVerifyTrust(p 0, p r3, p r2)",
+    );
+    expect(installer).toContain('!insertmacro HelperSigner ""\n!insertmacro HelperSigner "un."\n');
+
+    // Both callers keep the reason the check gave.
+    for (const caller of [
+      nsisBlock("Section", "SandboxStep"),
+      nsisBlock("Function", "un.RemoveThroughHelper"),
+    ]) {
+      const nostart = between(caller, '${ElseIf} $2 == "nostart"\n', "${ElseIf}");
+      expect(nostart).toMatch(
+        /\$\{If\} \$SandboxReason == ""\n\s+StrCpy \$SandboxReason "Windows couldn't start/,
+      );
+    }
   });
 
   it("skips the take-back with administrator rights", () => {

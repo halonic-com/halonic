@@ -156,6 +156,12 @@ uninstaller skips the clean-up of the sessions' access entries and starts the
 helper with `remove` itself, after `net.exe` from System32 says whether the
 account or group is there; its last page says the sandbox may still have
 access to some of the user's folders, and how to end that.
+A signed release starts the helper, with or without those rights, only when
+Windows trusts its signature, read through the file it holds open, and it names
+the publisher built into the installer; otherwise its pages say the helper
+isn't signed by that publisher. Builds without a publisher check none.
+`uninstall.exe` and the earlier version's uninstaller an update runs still run
+from the install folder.
 `/RELAUNCH` reopens Halonic after a silent install.
 
 The `installer-windows` CI job builds it, walks the pages and the messages

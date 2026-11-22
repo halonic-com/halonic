@@ -6,7 +6,9 @@
 `studio.installer-take-back` now applies when the installer runs without
 administrator rights. With those rights the installer starts nothing from the
 install folder, which the user can write, except the signed helper it holds
-open while Windows starts it (`studio.installer-elevated`).
+open while Windows starts it (`studio.installer-elevated`). In a signed
+release that helper must be signed by the publisher built in, checked through
+the handle the installer holds.
 
 ## What changes
 
@@ -19,6 +21,14 @@ open while Windows starts it (`studio.installer-elevated`).
 
 An installer with administrator rights that starts the agent host from a
 folder the user can write runs whatever was put there with those rights.
+
+## Not covered
+
+`uninstall.exe` itself, and the earlier version's uninstaller the installer
+runs before an update, still run from the install folder, as in every per-user
+installer. `studio.installer-elevated` says so. An unsigned build (dev, CI and
+the unsigned 0.1 releases) checks no signature, as Studio's shell and the
+helper check none then.
 
 ## Covers
 

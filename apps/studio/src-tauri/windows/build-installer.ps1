@@ -157,6 +157,10 @@ $setupVersion = [string](Get-Content (Join-Path $repo 'packages/adapters/sandbox
 if ($setupVersion -notmatch '^[1-9][0-9]*$') { throw "srt's Windows setup version '$setupVersion' isn't a whole number above zero" }
 $env:HALONIC_SRT_SETUP_VERSION = $setupVersion
 $env:HALONIC_SETUP_GUARD = Join-Path $PSScriptRoot 'setup-guard.ps1'
+# A signed release's installer starts the helper only when it is signed by
+# HALONIC_SANDBOX_SIGNER (HAL-16342). NSIS can't tell an unset variable from
+# a name, so this says whether there is one.
+$env:HALONIC_HELPER_SIGNED = if ($env:HALONIC_SANDBOX_SIGNER) { 'yes' } else { 'no' }
 
 Push-Location $shell
 try {
