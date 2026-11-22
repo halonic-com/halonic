@@ -75,6 +75,17 @@ verifies("format.routine-file", () => {
     expect(summary(problems)).toEqual(["run invalid_union 4"]);
     expect(problems[0]?.message).toBe("An agent routine takes prompt, not input.");
   });
+
+  it.each([
+    ["a text", "run: { workflow: support-reply, input: '{{trigger.body}}' }"],
+    ["a list", "run: { workflow: support-reply, input: [mail] }"],
+  ])("refuses a workflow whose input is %s at the run, saying it takes fields", (_case, run) => {
+    const problems = problemsOf("routine", routine("trigger: { manual: true }", run));
+    expect(summary(problems)).toEqual(["run invalid_union 4"]);
+    expect(problems[0]?.message).toBe(
+      'A workflow routine\'s input is a list of fields, such as input: { mail: "{{trigger.body}}" }.',
+    );
+  });
 });
 
 verifies("format.routine-mail-interval", () => {
