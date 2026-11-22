@@ -35,23 +35,53 @@ export const deployMessages = defineMessages("deploy", {
 
   live: (workspace: string, deployment: string, url: string) =>
     phrase`${markPart("done")} ${workspace} is live on ${deployment}: ${url}`,
-  deployedAs: (commit: string, version: number, took: string) =>
-    phrase`  Deployed commit ${commit} as version ${version} in ${took}.`,
+  /** Leaves out "commit …" when the host doesn't give the commit. */
+  deployedAs: (commit: string | undefined, version: number, took: string) =>
+    commit === undefined
+      ? phrase`  Deployed version ${version} in ${took}.`
+      : phrase`  Deployed commit ${commit} as version ${version} in ${took}.`,
   /** When the Halonic that deployed is another than the one the version before ran. */
   deployedWithHalonicAs: (
-    commit: string,
+    commit: string | undefined,
     halonic: string,
     was: string,
     version: number,
     took: string,
   ) =>
-    phrase`  Deployed commit ${commit} with Halonic ${halonic} (was ${was}) as version ${version} in ${took}.`,
+    commit === undefined
+      ? phrase`  Deployed with Halonic ${halonic} (was ${was}) as version ${version} in ${took}.`
+      : phrase`  Deployed commit ${commit} with Halonic ${halonic} (was ${was}) as version ${version} in ${took}.`,
   /** Follows "Deployed …" on the same line when there's a version to go back to. */
   kept: (version: number, deployment: string) =>
     phrase` Version ${version} is kept: halonic deploy rollback ${deployment}`,
-  /** Same commit and Halonic as what's live: no new version was made. */
-  unchanged: (deployment: string, commit: string, halonic: string) =>
-    phrase`${markPart("done")} ${deployment} already runs commit ${commit} with Halonic ${halonic}. Nothing changed on Cloudflare.`,
+  /**
+   * Same commit and Halonic as what's live: no new version was made. Leaves out
+   * "commit …" and "Halonic …" when the host doesn't give them.
+   */
+  unchanged: (deployment: string, commit: string | undefined, halonic: string | undefined) => {
+    if (commit === undefined) {
+      return halonic === undefined
+        ? phrase`${markPart("done")} ${deployment} already runs this version. Nothing changed on Cloudflare.`
+        : phrase`${markPart("done")} ${deployment} already runs Halonic ${halonic}. Nothing changed on Cloudflare.`;
+    }
+    return halonic === undefined
+      ? phrase`${markPart("done")} ${deployment} already runs commit ${commit}. Nothing changed on Cloudflare.`
+      : phrase`${markPart("done")} ${deployment} already runs commit ${commit} with Halonic ${halonic}. Nothing changed on Cloudflare.`;
+  },
   /** A line from the target the user must see, such as the lock lost after the switch. The deploy is live. */
   warning: (message: string) => phrase`${markPart("needsYou")} ${message}`,
+
+  /** A host that isn't lowercase letters and digits joined by single hyphens, so no package name is made from it. */
+  notAHost: (host: string) => phrase`"${host}" isn't a deploy host.`,
+  notAHostFix: () => phrase`Set host in deployments.yaml to cloudflare, then run again.`,
+  /** The deploy target for a deployment's `host` isn't installed (wording with Sofia, flow section 9). */
+  targetMissing: (host: string, pkg: string) =>
+    phrase`Deploying to ${host} needs the package ${pkg}, and it isn't installed. Nothing changed on ${host}.`,
+  targetMissingFix: (pkg: string) =>
+    phrase`Install it next to halonic with npm install -g ${pkg}, then run again.`,
+  /** The package is there but doesn't give a target this halonic can use. */
+  targetUnusable: (pkg: string, halonic: string, reason: string) =>
+    phrase`The installed ${pkg} doesn't work with Halonic ${halonic}: ${reason}.`,
+  targetUnusableFix: (pkg: string, halonic: string) =>
+    phrase`Install the ${pkg} that matches Halonic ${halonic}, then run again.`,
 });

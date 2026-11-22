@@ -73,6 +73,9 @@ export const connectorStartMessages = defineMessages("connectorStart", {
   cantListSecretMissingFix: (secret: string) => phrase`Set it with: halonic secret set ${secret}`,
   secretMissingFix: (secret: string) =>
     phrase`Save it with halonic secret set ${secret}, or set ${secretVariableName(secret)}, then try again.`,
+  /** A plugin connector's backend: the sandbox it runs in can't start here (HAL-14296). */
+  sandboxNotReady: () => phrase`The sandbox its plugin runs in can't start on this computer.`,
+  sandboxNotReadyFix: () => phrase`See why with halonic doctor.`,
   notStarted: (connector: string) =>
     phrase`${markPart("needsYou")} ${connector} didn't start, so its tools are off in this run.`,
   notListed: (connector: string) =>

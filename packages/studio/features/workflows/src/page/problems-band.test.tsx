@@ -45,6 +45,14 @@ const writerAlias: WorkflowProblem = {
   agent: { id: "writer", name: "Writer" },
   modelAlias: "smrt",
 };
+/** Writer's agent step `short` names the alias `tiny`, which isn't there either (C605). */
+const shortAlias: WorkflowProblem = {
+  ...inWriter,
+  message: 'Agent step "short" of agent "writer" uses unknown model alias "tiny"',
+  agent: { id: "writer", name: "Writer" },
+  modelAlias: "tiny",
+  agentStep: "short",
+};
 /** An error in the workflow's own file. */
 const deadEnd: WorkflowProblem = {
   severity: "error",
@@ -77,6 +85,7 @@ async function open(
     readonly sandbox?: "refuses";
     readonly phone?: boolean;
     readonly openAgent?: (agentId: string) => void;
+    readonly openModels?: (alias?: string) => void;
   } = {},
 ) {
   const started = vi.fn(async (_input: Record<string, unknown>) => ({ runId: "x" }));
@@ -107,6 +116,7 @@ async function open(
         id="reply"
         sandboxStartCheck={{ check }}
         {...(options.openAgent && { openAgent: options.openAgent })}
+        {...(options.openModels && { openModels: options.openModels })}
       />
     </PresentationProvider>,
   );
@@ -238,5 +248,27 @@ verifies("workflows.start.start-run", () => {
     await edit([inWriter]);
     expect(page.querySelector("[data-testid='missing-alias']")).toBeNull();
     expect(describing(page)).toEqual(["Support reply can't run: it has 1 problem."]);
+  });
+
+  it("names an agent step's missing model alias with Open Models, which opens Models (C605)", async () => {
+    const openModels = vi.fn();
+    const { page } = await open([shortAlias], { openAgent: vi.fn(), openModels });
+
+    expect(describing(page)).toEqual(["Support reply can't run: it has 1 problem."]);
+    const line = page.querySelector("[data-testid='missing-alias']");
+    expect(line?.textContent).toBe(
+      "Writer's agent step short uses the model alias tiny, which this workspace doesn't have. Add it in Models. Open Models",
+    );
+    expect(line?.querySelector("code")?.textContent).toBe("tiny");
+    expect(buttonNamed(page, "Open Writer")).toBeUndefined();
+    await act(async () => buttonNamed(page, "Open Models")?.click());
+    expect(openModels).toHaveBeenCalledWith();
+  });
+
+  it("names the agent step with no button when the page can't open Models", async () => {
+    const { page } = await open([shortAlias]);
+
+    expect(page.textContent).toContain("Add it in Models.");
+    expect(buttonNamed(page, "Open Models")).toBeUndefined();
   });
 });

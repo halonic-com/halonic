@@ -206,6 +206,13 @@ export const runsMessages = defineMessages("runs", {
     given.length < 2
       ? phrase`halonic runs send needs a run id and an event.`
       : phrase`halonic runs send takes a run id and an event, and you gave ${countInWords(given.length)}: ${given.join(", ")}.`,
+  /**
+   * HAL-15772: `runs show`'s line for a call to a tool labelled `send` that the run refused
+   * because its connector may not send (`tool.refused` with `sending-off`), so the person sees
+   * why nothing was sent. Team wording, as HAL-2282 allows.
+   */
+  showSendingOff: (tool: string, connector: string) =>
+    phrase`${markPart("needsYou")} The call to ${tool} was refused: sending is off for ${connector}, so nothing was sent.`,
 });
 
 function notWaitingInWords(why: NotWaiting): string {

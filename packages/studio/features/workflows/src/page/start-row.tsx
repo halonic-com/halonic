@@ -46,17 +46,21 @@ export function useStartRefusal(host: WorkflowsHost, ref: WorkflowRef, errors: n
   };
 }
 
-/** An agent a step names that uses a model alias the workspace doesn't have (UX check S7). */
+/**
+ * An agent a step names that uses a model alias the workspace doesn't have (UX check S7), in its
+ * own model or, with `agentStep`, in one of its agent steps' (C605).
+ */
 export interface MissingAlias {
   readonly agent: WorkflowAgentChoice;
   readonly alias: string;
+  readonly agentStep?: string | undefined;
 }
 
-/** The first of the workflow's errors that is an agent's missing model alias, if any. */
+/** The first of the workflow's errors that is an agent's or an agent step's missing model alias, if any. */
 export function missingAliasOf(problems: readonly WorkflowProblem[]): MissingAlias | undefined {
-  for (const { severity, agent, modelAlias } of problems) {
+  for (const { severity, agent, modelAlias, agentStep } of problems) {
     if (severity === "error" && agent !== undefined && modelAlias !== undefined) {
-      return { agent, alias: modelAlias };
+      return { agent, alias: modelAlias, agentStep };
     }
   }
   return undefined;
@@ -67,10 +71,10 @@ export function missingAliasOf(problems: readonly WorkflowProblem[]): MissingAli
  * they stop every way to run it, a terminal's too: "*Support reply* can't run: it has 2 problems."
  * then, as the start card says it, "Fix them before it can run." (C544-3), with **Open Problems**.
  * When one of them is an agent's missing model alias, the next line names the agent and the alias,
- * with **Open *Writer*** (UX check S7, HAL-12412). When one is in another file, a line names that
- * file, "*Writer* has 1 problem that stops it.", with **Open writer.agent.yaml**, which opens the
- * file at its first error (C544-3, HAL-15343). Only the first line describes **Run**. Nothing while
- * it has none.
+ * with **Open *Writer*** (UX check S7, HAL-12412); for an agent step's, the agent step too, with
+ * **Open Models** (C605). When one is in another file, a line names that file, "*Writer* has 1
+ * problem that stops it.", with **Open writer.agent.yaml**, which opens the file at its first error
+ * (C544-3, HAL-15343). Only the first line describes **Run**. Nothing while it has none.
  */
 export function ProblemsBand({
   name,
@@ -80,6 +84,7 @@ export function ProblemsBand({
   onOpen,
   openAgent,
   openFileAt,
+  openModels,
 }: {
   readonly name: string;
   readonly problems: { readonly id: string; readonly errors: number };
@@ -92,6 +97,8 @@ export function ProblemsBand({
   readonly openAgent?: ((agentId: string) => void) | undefined;
   /** Opens a file at a line (1-based); without it the line names the file with no link. */
   readonly openFileAt?: ((path: string, line: number) => void) | undefined;
+  /** Opens the workspace page at Models; without it an agent step's line has no button. */
+  readonly openModels?: (() => void) | undefined;
 }) {
   if (errors === 0) return null;
   return (
@@ -102,7 +109,7 @@ export function ProblemsBand({
     >
       <span className="block">{startWords.fixProblems(errors)}</span>
       {missingAlias === undefined ? null : (
-        <MissingAliasLine missingAlias={missingAlias} openAgent={openAgent} />
+        <AliasLine missingAlias={missingAlias} openAgent={openAgent} openModels={openModels} />
       )}
       {blockingFile === undefined ? null : (
         <BlockingFileLine file={blockingFile} openFileAt={openFileAt} />
@@ -124,20 +131,35 @@ function BlockingFileLine({
   return (
     <span className="block" data-testid="blocking-file">
       {words.blockingFile(file.name, file.errors)}
-      {openFileAt === undefined ? null : (
-        <>
-          {" "}
-          <button
-            type="button"
-            className={inlineLinkClasses}
-            onClick={() => openFileAt(file.path, file.firstError.line)}
-          >
-            {words.openFile(fileName)}
-          </button>
-        </>
-      )}
+      <LineAction
+        label={words.openFile(fileName)}
+        onClick={openFileAt && (() => openFileAt(file.path, file.firstError.line))}
+      />
     </span>
   );
+}
+
+/** The line for a missing alias: the agent step's when an agent step names it, else the agent's. */
+function AliasLine({
+  missingAlias,
+  openAgent,
+  openModels,
+}: {
+  readonly missingAlias: MissingAlias;
+  readonly openAgent: ((agentId: string) => void) | undefined;
+  readonly openModels: (() => void) | undefined;
+}) {
+  const { agentStep } = missingAlias;
+  if (agentStep !== undefined) {
+    return (
+      <MissingStepAliasLine
+        missingAlias={missingAlias}
+        agentStep={agentStep}
+        openModels={openModels}
+      />
+    );
+  }
+  return <MissingAliasLine missingAlias={missingAlias} openAgent={openAgent} />;
 }
 
 /** "*Writer* uses the model alias `smrt`, which this workspace doesn't have. …" · **Open *Writer***. */
@@ -154,15 +176,55 @@ function MissingAliasLine({
       {words.missingAlias.before(agent.name)}
       <code className="font-mono">{alias}</code>
       {words.missingAlias.after(agent.name)}
-      {openAgent === undefined ? null : (
-        <>
-          {" "}
-          <button type="button" className={inlineLinkClasses} onClick={() => openAgent(agent.id)}>
-            {words.openAgent(agent.name)}
-          </button>
-        </>
-      )}
+      <LineAction
+        label={words.openAgent(agent.name)}
+        onClick={openAgent && (() => openAgent(agent.id))}
+      />
     </span>
+  );
+}
+
+/**
+ * "*Writer*'s agent step *short* uses the model alias `tiny`, which this workspace doesn't have.
+ * Add it in Models." · **Open Models** (C605). The agent's page can't change an agent step's model,
+ * so the line leads to Models, where the alias can be added.
+ */
+function MissingStepAliasLine({
+  missingAlias: { agent, alias },
+  agentStep,
+  openModels,
+}: {
+  readonly missingAlias: MissingAlias;
+  readonly agentStep: string;
+  readonly openModels: (() => void) | undefined;
+}) {
+  const words = pageWords.cantRun;
+  return (
+    <span className="block" data-testid="missing-alias">
+      {words.missingStepAlias.before(agent.name, agentStep)}
+      <code className="font-mono">{alias}</code>
+      {words.missingStepAlias.after}
+      <LineAction label={words.openModels} onClick={openModels} />
+    </span>
+  );
+}
+
+/** A link-styled button at the end of a band's line, after a space; nothing without `onClick`. */
+function LineAction({
+  label,
+  onClick,
+}: {
+  readonly label: string;
+  readonly onClick: (() => void) | undefined;
+}) {
+  if (onClick === undefined) return null;
+  return (
+    <>
+      {" "}
+      <button type="button" className={inlineLinkClasses} onClick={onClick}>
+        {label}
+      </button>
+    </>
   );
 }
 

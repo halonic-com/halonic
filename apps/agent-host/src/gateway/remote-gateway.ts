@@ -4,10 +4,9 @@ import {
   startGatewayListener,
 } from "@halonicjs/adapter-remote-gateway";
 import type { RunTable } from "../harness/run-table.ts";
+import type { GatewaySwitch } from "../remote/host-remote-control.ts";
 import type { GatewayAccess } from "./desk-access.ts";
-import type { GatewaySettings } from "./gateway-settings.ts";
 import { hostGatewaySource } from "./host-gateway-source.ts";
-import { NobodyPaired } from "./nobody-paired.ts";
 import type { RunLedger } from "./run-ledger.ts";
 
 /**
@@ -26,69 +25,88 @@ export function gatewayPolicy(risky: RiskySwitch): GatewayPolicy {
   return { allowRiskyRemotely: () => risky.allowRiskyRemotely() };
 }
 
+/** What a {@link RemoteGateway} serves, and to whom. */
+export interface RemoteGatewayOptions {
+  /** The runs the host recorded for the gateway to show. */
+  readonly ledger: RunLedger;
+  readonly runs: RunTable;
+  /**
+   * The host's pairing desk and paired phones (`agent-host.remote-gateway-access`),
+   * asked for at each start: they need the host key, which the keychain gives
+   * only once the host serves.
+   */
+  readonly access: () => Promise<GatewayAccess>;
+  readonly risky: RiskySwitch;
+  /** The loopback port to listen on; a free one each time when not given. */
+  readonly port?: number;
+  /** The ports the host listens on, which no provider's address may be: the gateway's joins while it listens. */
+  readonly ownPorts: Set<number>;
+  /** Where a listener that can't start, and a connection that fails, is reported; the host serves on. */
+  readonly log: (text: string) => void;
+}
+
 /**
- * The host's remote gateway: starts the listener when the setting turns it on
- * and closes it again (requirement `agent-host.remote-gateway`). Without a
- * ledger, which the host makes only when the gateway is on, it stays off.
- * Without `access`, the host's pairing desk and paired phones
- * (`agent-host.remote-gateway-access`), it refuses every phone.
+ * The host's remote gateway (requirement `agent-host.remote-gateway`): a
+ * listener on loopback that runs only while remote is on, so the host's
+ * `RemoteControl` starts it when remote turns on and stops it when remote
+ * turns off or the host stops. Starts and stops take effect in the order
+ * they were called, so the last one called decides whether it listens.
  */
-export class RemoteGateway {
+export class RemoteGateway implements GatewaySwitch {
+  readonly #options: RemoteGatewayOptions;
   #listener: GatewayListener | undefined;
+  /** The start or stop running now; the next one waits for it. */
+  #turn: Promise<unknown> = Promise.resolve();
 
-  readonly #settings: GatewaySettings;
-  readonly #ledger: RunLedger | undefined;
-  readonly #runs: RunTable;
-  readonly #risky: RiskySwitch;
-  readonly #access: GatewayAccess | undefined;
-
-  constructor(
-    settings: GatewaySettings,
-    ledger: RunLedger | undefined,
-    runs: RunTable,
-    risky: RiskySwitch = riskyOff,
-    access?: GatewayAccess,
-  ) {
-    this.#settings = settings;
-    this.#ledger = ledger;
-    this.#runs = runs;
-    this.#risky = risky;
-    this.#access = access;
+  constructor(options: RemoteGatewayOptions) {
+    this.#options = options;
   }
 
   /**
-   * Starts the listener, or does nothing when the setting is off. A listener
-   * that can't start, and a connection that fails, is told to `log`; the host
-   * serves on.
+   * Starts the listener, or keeps the one already running.
    *
-   * @returns the port it listens on, `undefined` when it isn't listening
+   * @returns the port it listens on, `undefined` when it couldn't start (and said why)
    */
-  async start(log: (text: string) => void): Promise<number | undefined> {
-    if (!this.#settings.enabled || this.#ledger === undefined) return undefined;
+  start(): Promise<number | undefined> {
+    return this.#inTurn(async () => {
+      this.#listener ??= await this.#listen();
+      if (this.#listener !== undefined) this.#options.ownPorts.add(this.#listener.port);
+      return this.#listener?.port;
+    });
+  }
+
+  /** Closes the listener, if one runs. */
+  stop(): Promise<void> {
+    return this.#inTurn(async () => {
+      const listener = this.#listener;
+      if (listener === undefined) return;
+      this.#listener = undefined;
+      await listener.close();
+      this.#options.ownPorts.delete(listener.port);
+    });
+  }
+
+  async #listen(): Promise<GatewayListener | undefined> {
+    const { ledger, runs, risky, port, log } = this.#options;
     try {
-      const { phones, pairing } = this.#access ?? nobodyPaired();
-      this.#listener = await startGatewayListener({
-        source: hostGatewaySource(this.#ledger, this.#runs),
+      const { phones, pairing } = await this.#options.access();
+      return await startGatewayListener({
+        source: hostGatewaySource(ledger, runs),
         phones,
         pairing,
-        policy: gatewayPolicy(this.#risky),
+        policy: gatewayPolicy(risky),
         onError: (error) => log(`A remote gateway connection failed: ${String(error)}\n`),
-        ...(this.#settings.port === undefined ? {} : { port: this.#settings.port }),
+        ...(port === undefined ? {} : { port }),
       });
-      return this.#listener.port;
     } catch (error) {
       log(`The remote gateway didn't start: ${String(error)}\n`);
       return undefined;
     }
   }
 
-  async close(): Promise<void> {
-    await this.#listener?.close();
+  #inTurn<T>(work: () => Promise<T>): Promise<T> {
+    const next = this.#turn.then(work);
+    this.#turn = next.catch(() => undefined);
+    return next;
   }
-}
-
-/** The access of a gateway with no pairing desk: no pairing opens and no phone is paired. */
-function nobodyPaired(): GatewayAccess {
-  const nobody = new NobodyPaired();
-  return { phones: nobody, pairing: nobody };
 }

@@ -6,17 +6,22 @@
 //!
 //! Paths are plain text joined the platform's way, as in the TypeScript
 //! package, so both can be checked against the same golden cases
-//! (`packages/core/profile/src/golden/profile-folders.json` and
-//! `workspace-folders.json`). The shell
+//! (`packages/core/profile/src/golden/profile-folders.json`,
+//! `workspace-folders.json` and `profile-places.json`). The shell
 //! turns the answer into a `PathBuf` only when it uses it.
 
 mod native_path;
+mod profile_place;
 mod tool_approval_folders;
 mod workspace_folders;
 
 use std::fmt;
 
 pub use native_path::{is_absolute_path, join_path, without_trailing_separators};
+pub use profile_place::{
+    ProfileMover, ProfilePlaces, ProfileRefusal, built_in_profile_folder, profile_mover,
+    profile_refusal,
+};
 pub use workspace_folders::{WorkspaceError, WorkspaceFolders};
 
 /// The name of the folder Halonic adds under the system's user data folder.
@@ -98,10 +103,12 @@ pub enum ProfileError {
 impl fmt::Display for ProfileError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            // The CLI's sentence, from the profile package (HAL-15440), so
+            // Studio and the CLI name the same problem the same way.
             ProfileError::HalonicHomeNotAbsolute { value } => {
                 write!(
                     formatter,
-                    "HALONIC_HOME must be an absolute folder, not {value:?}"
+                    "HALONIC_HOME must be a full path, not {value:?}."
                 )
             }
             ProfileError::HomeNotAbsolute { value } => {

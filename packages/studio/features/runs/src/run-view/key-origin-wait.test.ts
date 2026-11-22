@@ -38,6 +38,61 @@ verifies("runs.run-view.key-origin-waiting", () => {
     expect(draft).toMatchObject({ mark: "running", line: "Running" });
   });
 
+  it("keeps showing the wait when another event comes while the question is open", () => {
+    const draft = draftAfter(
+      asked,
+      {
+        type: "llm.request",
+        agent: "researcher",
+        provider: "mock",
+        model: "scripted",
+        messages: 2,
+      },
+      { type: "tool.called", agent: "researcher", tool: "search", args: {} },
+    );
+
+    expect(draft).toMatchObject({ mark: "needs-you", line: "Waiting for your answer" });
+  });
+
+  it("keeps showing the wait until the answer for that key and address", () => {
+    const other = { ...question, key: "backup-key" };
+    const draft = draftAfter(
+      asked,
+      { type: "key-origin.asked", ...other },
+      {
+        type: "key-origin.answered",
+        ...other,
+        answer: "allowed",
+      },
+    );
+
+    expect(draft).toMatchObject({ mark: "needs-you", line: "Waiting for your answer" });
+  });
+
+  it("shows no wait once the step's agent starts again after a wait without an answer", () => {
+    const draft = draftAfter(asked, {
+      type: "agent.started",
+      state: "draft",
+      agent: "writer",
+      prompt: "Draft the reply",
+    });
+
+    expect(draft).toMatchObject({ mark: "running", line: "Running" });
+  });
+
+  it("shows no wait once an agent finished after a wait without an answer", () => {
+    const draft = draftAfter(asked, {
+      type: "agent.finished",
+      state: "draft",
+      agent: "researcher",
+      parent: "writer",
+      output: null,
+      error: "Not allowed",
+    });
+
+    expect(draft).toMatchObject({ mark: "running", line: "Running" });
+  });
+
   it("shows no wait once the run has ended", () => {
     const draft = draftAfter(asked, { type: "run.failed", state: "draft", error: "Not allowed" });
 

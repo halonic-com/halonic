@@ -28,6 +28,7 @@ import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { type LocalEngine, openLocalEngine } from "../local-engine-host.ts";
 import type { LocalHarnessInput, LocalHarnessParts } from "../local-harness-host.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
+import { noSavedSending } from "./no-saved-sending.ts";
 import { noSheetHosts } from "./no-sheet-hosts.ts";
 import { removeTestFolder } from "./remove-folder.ts";
 import { trustInstructions } from "./trust-instructions.ts";
@@ -293,6 +294,7 @@ export async function openEngine(
       },
       trust,
       sheetHostsOf: noSheetHosts,
+      sending: noSavedSending,
     },
     reportError: (error) => reported.push(error),
   });

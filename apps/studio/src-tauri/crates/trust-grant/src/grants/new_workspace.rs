@@ -10,6 +10,7 @@ use serde::Serialize;
 
 use super::{TrustState, canonical_folder, remember_picked, same_folder};
 use crate::picked::{PickedFolders, folder_identity};
+use crate::place::FolderPlace;
 use crate::question::question_text;
 use crate::refusal::TrustRefusal;
 use crate::workspace_name::check_workspace_name;
@@ -71,22 +72,25 @@ impl TrustState {
     ///   that exists;
     /// - `parent_not_chosen`: `parent`'s real path isn't `documents` or a
     ///   folder the person chose in [`Self::pick_parent`];
-    /// - `parent_private`: `fenced` says the shell's own profile holds the
-    ///   new folder (the parent, or a name that is the profile's folder);
+    /// - `parent_private`: `place` says the new folder is inside the
+    ///   shell's own profile (the parent, or a name that is the profile's
+    ///   folder);
+    /// - `profile_inside`: `place` says a moved profile would be inside the
+    ///   new folder;
     /// - `exists`: something is at the path already. Nothing is adopted: a
     ///   folder that was there stays closed until the person picks it.
     ///
-    /// `fenced` gets the new folder's real path, made or not.
+    /// `place` gets the new folder's real path, made or not.
     pub fn create_workspace(
         &self,
         folders: &OpenedFolders,
         list: &PickedFolders,
         documents: Option<&Path>,
-        fenced: impl FnOnce(&Path) -> bool,
+        place: impl FnOnce(&Path) -> FolderPlace,
         parent: &str,
         name: &str,
     ) -> Result<String, TrustRefusal> {
-        let created = self.checked_target(documents, fenced, parent, name)?;
+        let created = self.checked_target(documents, place, parent, name)?;
         // Not `create_dir_all`: it succeeds on a folder that is there, and
         // the person never picked that one.
         if let Err(error) = std::fs::create_dir(&created) {
@@ -104,13 +108,14 @@ impl TrustState {
 
     /// The checks every folder command makes first, in this order: the name
     /// (`name_invalid`), the parent by real path (`folder_missing`,
-    /// `folder_unreadable`, `parent_not_chosen`), then `fenced` on the
-    /// folder's real path, there or not (`parent_private`). Its path is the
-    /// answer. Nothing on disk is read below `parent`.
+    /// `folder_unreadable`, `parent_not_chosen`), then `place` on the
+    /// folder's real path, there or not (`parent_private`,
+    /// `profile_inside`). Its path is the answer. Nothing on disk is read
+    /// below `parent`.
     fn checked_target(
         &self,
         documents: Option<&Path>,
-        fenced: impl FnOnce(&Path) -> bool,
+        place: impl FnOnce(&Path) -> FolderPlace,
         parent: &str,
         name: &str,
     ) -> Result<PathBuf, TrustRefusal> {
@@ -125,15 +130,7 @@ impl TrustState {
         let target = canonical_parent.join(&name);
         // The folder, not only its parent: a name that is the profile's own
         // folder must not make or open it.
-        if fenced(&target) {
-            return Err(TrustRefusal::new(
-                "parent_private",
-                format!(
-                    "{:?} is the shell's own folder or inside it",
-                    target.display()
-                ),
-            ));
-        }
+        place(&target).check_new(&target)?;
         Ok(target)
     }
 
@@ -150,11 +147,11 @@ impl TrustState {
     pub fn probe_workspace(
         &self,
         documents: Option<&Path>,
-        fenced: impl FnOnce(&Path) -> bool,
+        place: impl FnOnce(&Path) -> FolderPlace,
         parent: &str,
         name: &str,
     ) -> Result<FolderProbe, TrustRefusal> {
-        let target = self.checked_target(documents, fenced, parent, name)?;
+        let target = self.checked_target(documents, place, parent, name)?;
         match std::fs::symlink_metadata(&target) {
             Ok(meta) if meta.is_dir() => {}
             Ok(_) => return Err(exists(&target)),
@@ -192,12 +189,12 @@ impl TrustState {
         folders: &OpenedFolders,
         list: &PickedFolders,
         documents: Option<&Path>,
-        fenced: impl Fn(&Path) -> bool,
+        place: impl Fn(&Path) -> FolderPlace,
         parent: &str,
         name: &str,
         ask: impl FnOnce(&str) -> bool,
     ) -> Result<Option<String>, TrustRefusal> {
-        let (asked, location) = self.real_folder(documents, &fenced, parent, name)?;
+        let (asked, location) = self.real_folder(documents, &place, parent, name)?;
         let before = folder_identity(&asked);
         let yes = {
             let _asking = self.start_asking()?;
@@ -208,7 +205,7 @@ impl TrustState {
         }
         // The folder could have been replaced while the question showed.
         let (again, _) = self
-            .real_folder(documents, &fenced, parent, name)
+            .real_folder(documents, &place, parent, name)
             .map_err(|refusal| match refusal.kind() {
                 "folder_missing" | "exists" => TrustRefusal::new(
                     "folder_changed",
@@ -233,11 +230,11 @@ impl TrustState {
     fn real_folder(
         &self,
         documents: Option<&Path>,
-        fenced: &impl Fn(&Path) -> bool,
+        place: &impl Fn(&Path) -> FolderPlace,
         parent: &str,
         name: &str,
     ) -> Result<(PathBuf, String), TrustRefusal> {
-        let target = self.checked_target(documents, fenced, parent, name)?;
+        let target = self.checked_target(documents, place, parent, name)?;
         match std::fs::symlink_metadata(&target) {
             Ok(meta) if meta.is_dir() => canonical_folder(&target),
             Ok(_) => Err(exists(&target)),

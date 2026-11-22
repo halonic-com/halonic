@@ -116,6 +116,28 @@ export const pairWords = {
       `It isn't on Wi-Fi, so it can't reach ${computer}. Connect to the same Wi-Fi as the computer, then try again.`,
   },
   /**
+   * Microcopy 28: the phone itself stops the pairing (C599). Nearby devices names the computer;
+   * key storage is about the phone, so it names none.
+   */
+  phoneKeys: {
+    nearbyOff: {
+      title: "Nearby devices isn't allowed for Halonic",
+      bodyAsk: (computer: string) =>
+        `To find ${computer} on this Wi-Fi, choose Allow when Android asks about Nearby devices.`,
+      bodySettings: (computer: string) =>
+        `To find ${computer} on this Wi-Fi, allow Nearby devices for Halonic in Android settings.`,
+    },
+    keyUnreadable: {
+      title: (computer: string) => `Can't open the key for ${computer}`,
+      body: "This phone can't read the key it saved for this computer. Pair again to make a new one.",
+      pairAgain: "Pair again",
+    },
+    keysUnavailable: {
+      title: "This phone's key storage isn't working",
+      body: "Halonic keeps its keys there, so it can't reach your computers right now. Restart the phone, then try again.",
+    },
+  },
+  /**
    * The generic problem screen, for a code or key the page got wrong (a bug, logged). Decided by
    * the team on HAL-12248 until the strings table has its own entry. The computer may show a live
    * code (**New code**) or an ended one (**Make a new code**), so the body names no button (C630).

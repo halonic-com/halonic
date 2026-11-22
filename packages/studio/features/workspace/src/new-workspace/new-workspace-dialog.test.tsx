@@ -320,3 +320,24 @@ verifies("workspace.new-workspace-dialog", () => {
     expect(files[0]).toMatch(/^This folder isn't empty\..* Create here\.$/);
   });
 });
+
+verifies("workspace.profile-place-refusals", () => {
+  it("puts the fix after the reason when a moved profile would be inside the folder", async () => {
+    const fix = "Move the profile folder out, set HALONIC_HOME to its new place.";
+    await show({
+      create: async () => {
+        throw new NewWorkspaceRefusal(
+          "your profile folder would be inside it",
+          "folder",
+          "denied",
+          fix,
+        );
+      },
+    });
+    await type("Acme");
+    await click("Create");
+    expect(document.body.textContent).toContain(
+      `Can't write to this folder: your profile folder would be inside it. ${fix}`,
+    );
+  });
+});

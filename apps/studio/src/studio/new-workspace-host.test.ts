@@ -253,3 +253,19 @@ verifies("studio.new-workspace", () => {
     );
   });
 });
+
+verifies("workspace.profile-place-refusals", () => {
+  it("words a folder a moved profile would be inside, with the fix naming the variable", async () => {
+    const reject = { kind: "profile_inside", message: "holds it", reason: "XDG_DATA_HOME" };
+    const { host } = hostOf({ create_workspace_folder: { reject } });
+    const refused = await host.create("/work/Acme", "Acme").catch((error) => error);
+    expect(errorKindOf(refused)).toBe("denied");
+    expect(refused).toMatchObject({
+      field: "folder",
+      message: "your profile folder would be inside it",
+    });
+    expect((refused as KindedError).fix).toMatch(
+      /^XDG_DATA_HOME puts it there\. .*set HALONIC_HOME to its new place/,
+    );
+  });
+});

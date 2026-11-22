@@ -73,9 +73,11 @@ verifies("harness-codex.start", () => {
       const session = openSession(fakeCodex((codex) => answer(codex, "Teal."), log));
       await readAll(newHarness().start(task, session, bridge));
 
+      // The task's file has no `asks`, so Codex asks before each command.
       expect(log.paramsOf("thread/start")).toEqual({
         cwd: "/agents/writer/work",
         ephemeral: true,
+        approvalPolicy: "untrusted",
         model: "gpt-5.5",
         developerInstructions: "Answer in one short sentence.",
       });
@@ -93,7 +95,11 @@ verifies("harness-codex.start", () => {
       const bare = { ...withoutModel, instructions: " " };
       await readAll(newHarness().start(bare, session, bridge));
 
-      expect(log.paramsOf("thread/start")).toEqual({ cwd: "/agents/writer/work", ephemeral: true });
+      expect(log.paramsOf("thread/start")).toEqual({
+        cwd: "/agents/writer/work",
+        ephemeral: true,
+        approvalPolicy: "untrusted",
+      });
     });
 
     it("adds the skills of the run's instructions folder as an extra root before the thread starts", async () => {

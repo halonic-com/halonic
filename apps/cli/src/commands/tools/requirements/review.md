@@ -34,4 +34,4 @@ The `halonic tools review <source>` command shall connect the workspace's connec
   then it asks only about lookup, shows neither archive, look.up nor search, and the last line is "✓ Approved 1 tool from notes-mcp. 1 tool is on.".
 - Given the connector's `tools.allow` naming only `send`, which is approved, as on the agent-with-a-tool page,
   when the source is reviewed,
-  then the only line is "✓ Nothing from notes-mcp is waiting for your approval. 1 tool is on." and it exits 0.
+  then the only line is "✓ Nothing from notes-mcp to review. 1 tool is on." and it exits 0.

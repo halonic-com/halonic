@@ -53,7 +53,7 @@ export const listedToolsWords = {
     `Removed your approval for ${tool}. It's off until you approve it again.`,
   changedAgain: (tool: string) =>
     `${tool} changed again while you were reviewing. Here is the current version.`,
-  nothingWaiting: "Nothing is waiting for your approval.",
+  nothingWaiting: "Nothing to review.",
   searchLabel: (source: string) => `Search tools from ${source}`,
   searchCount: (shown: number) => `${toolCount(shown)} shown`,
   noMatch: (text: string) => `No tools match "${text}".`,
@@ -89,8 +89,8 @@ export const listedToolsWords = {
   /** The line on the connector's page, above **Review tools**. */
   waitingBadge: (count: number) =>
     count === 1
-      ? "1 tool is waiting for your approval"
-      : `${count} tools are waiting for your approval`,
+      ? "1 tool is off until you review it"
+      : `${count} tools are off until you review them`,
   /** The line on the connector's page when the review can't open its rows: **Review tools** or **Try again** follows it. */
   waitingNotice: {
     listingRefused: "Couldn't use this server's tool list, so none of its listed tools are on.",
@@ -126,14 +126,25 @@ export const listedToolsWords = {
     ],
     /**
      * The CLI's cause and fix for the same program (HAL-15606, C600 #1c): what the program wrote
-     * isn't shown, so the person runs it to see why.
+     * isn't shown, so the person runs it to see why. The file is named as the CLI names it, and
+     * `withCommand` ends the line with a colon, for the box with the line to run that follows it
+     * (C634 #5).
      */
-    programStopped: (source: string, program: string): readonly RefusalLinePart[] => [
+    programStopped: (
+      source: string,
+      program: string,
+      file: string | undefined,
+      withCommand: boolean,
+    ): readonly RefusalLinePart[] => [
       { text: "Couldn't list the tools: the program " },
       { text: program, code: true },
       {
-        text: ` of ${source} stopped right after it started. To see why, run the command and args from its connector file yourself.`,
+        text: ` of ${source} stopped right after it started. To see why, run the command and args from `,
       },
+      ...(file === undefined
+        ? [{ text: "its connector file" }]
+        : [{ text: file, code: true as const }]),
+      { text: withCommand ? " yourself:" : " yourself." },
     ],
     /**
      * Studio reads a connector's secrets from the keychain, and `halonic secret set` writes the

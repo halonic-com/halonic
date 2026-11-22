@@ -65,8 +65,8 @@ never asks either. `halonic validate` warns about it with
 
 ## Check what a tool does
 
-`halonic tools review <connector>` shows one block for each tool that waits
-for your approval, and says under it whether calls to it ask:
+`halonic tools review <connector>` shows one block for each listed tool that's
+off until you review it, and says under it whether calls to it ask:
 
 - "Asks you before each use."
 - "Doesn't ask before each use: *workspace* marks it as read-only."
@@ -77,6 +77,6 @@ exception: for a tool its server lists as `send`, the review says "Asks you
 before each use.", but `halonic run` refuses every call to it without
 asking, because the CLI can't switch sending on yet.
 
-Approving a tool in `halonic tools review` is a separate step. It lets agents
-see a tool whose name, description and arguments you have read, and it asks
-again when they change. It doesn't stop a tool from asking before each use.
+Turning a tool on in `halonic tools review` is a separate step. It lets agents
+use a tool whose name, description and arguments you have read, and the tool is
+off again when they change. It doesn't stop a tool from asking before each use.

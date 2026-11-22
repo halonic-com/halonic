@@ -151,7 +151,9 @@ export type ToolNotMadeReason = "not-connected" | "tool-gone" | "sending-off" | 
  * `events.tool-result-cause`): `plugin-not-trusted` and `plugin-changed` are
  * for a connector from a plugin the person hasn't trusted yet, or that
  * changed since they trusted it; `plugin-stopped` for one whose sandbox
- * didn't work when the plugin started, so nothing of it ran.
+ * didn't work when the plugin started, so nothing of it ran;
+ * `sandbox-not-ready`, for the sandbox a plugin's backend runs in not being
+ * ready on this computer.
  */
 export type ConnectorStartReason =
   | "program-missing"
@@ -159,6 +161,7 @@ export type ConnectorStartReason =
   | "plugin-not-trusted"
   | "plugin-changed"
   | "plugin-stopped"
+  | "sandbox-not-ready"
   | "other";
 
 /**
@@ -184,12 +187,6 @@ export type ToolFailureCause =
       readonly why: ConnectorStartReason;
       readonly name?: string;
     };
-
-/**
- * Why a model's tool call was refused before it ran (requirement
- * `events.tool-refused`): `not-offered`, the step offered no tool of that name.
- */
-export type ToolRefusalReason = "not-offered";
 
 /**
  * Why a connector's tool call ran without asking a person (requirement

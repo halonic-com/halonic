@@ -245,19 +245,22 @@ count as 0). A limit left out doesn't apply. The agent's own `maxSteps`, 6 by
 default, is sized for Halonic's own loop and doesn't bound a harness step: a
 coding program makes hundreds of model calls in one.
 
-An optional `asks` field says when a Claude Code agent's own tools ask for a
-person's OK (requirement `agent-asks`): `always`, the default, or
-`in-sandbox`, where Halonic answers the calls that stay in the agent's
-working folder while the run is inside Halonic's sandbox, in the CLI and in
-Studio alike, and logs each one as `harness.allowed`.
-Only `harness: claude-code` takes it for now: on `codex`, `halonic` or no
-harness the file fails with `asks-needs-claude-code`, even for `always`,
-because Codex in the sandbox doesn't ask whatever the file says.
+An optional `asks` field says when a Claude Code or Codex agent's own tools
+ask for a person's OK (requirement `agent-asks`): `always`, the default, or
+`in-sandbox`. With `in-sandbox`, and only while the run is inside Halonic's
+sandbox, Halonic answers the Claude Code calls that stay in the agent's
+working folder, in the CLI and in Studio alike, and logs each one as
+`harness.allowed`; Codex runs its commands without asking. Without the
+sandbox both ask again. With `always`, or no `asks`, Codex asks before nearly
+every command, even `ls`, so a `halonic run` that nobody watches waits for an
+answer: give such an agent `asks: in-sandbox`. On `halonic` or no harness the
+file fails with `asks-needs-a-program-harness`, even for `always`, because
+Halonic's own loop has no program tools to ask about.
 
 With `in-sandbox`, the sandbox, not a person, is what limits a command the
 agent runs: it writes only to the working folder and reaches only the bridge
 and the agent's `allowedSites`. So a command can send whatever it can read to
 those sites without anyone seeing it first. Keep `allowedSites` to the sites
-you would let the agent send your files to. Each call Halonic answers is in the
-run log as `harness.allowed`, and the run's changes still come back as a
-proposal you accept or reject.
+you would let the agent send your files to. Each Claude Code call Halonic
+answers is in the run log as `harness.allowed`, and the run's changes still
+come back as a proposal you accept or reject.

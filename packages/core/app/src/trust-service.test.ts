@@ -445,14 +445,15 @@ verifies("app.trust-service", () => {
     expect(methods.filter((name) => /update|refresh|save|accept/i.test(name))).toEqual([]);
   });
 
-  it("revokes and lists through the store", async () => {
+  it("revokes and lists through the store, saying whether there was a record", async () => {
     const { service } = setup();
     await trustAsPerson(service, subject(program("files")));
     expect((await service.list()).map((record) => record.location)).toEqual([location]);
 
-    await service.revoke(location);
+    expect(await service.revoke(location)).toBe(true);
 
     expect(await service.list()).toEqual([]);
     expectStatus(await service.check(subject(program("files"))), "new");
+    expect(await service.revoke(location)).toBe(false);
   });
 });

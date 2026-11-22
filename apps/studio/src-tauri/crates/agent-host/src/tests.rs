@@ -1,6 +1,6 @@
 //! The handshake readers and the relay's part in `has_exited`.
 
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
@@ -14,6 +14,7 @@ fn first_line_of(output: &[u8]) -> FirstLine {
     read_first_line(Cursor::new(output.to_vec()))
         .recv()
         .expect("the reader answers")
+        .0
 }
 
 #[test]
@@ -22,6 +23,17 @@ fn handshake_first_line_is_read_up_to_its_newline() {
         first_line_of(b"{}\nmore\n"),
         FirstLine::Text("{}\n".to_owned())
     );
+}
+
+#[test]
+fn handshake_first_line_leaves_the_rest_of_the_output_for_the_secrets_channel() {
+    let (first, mut rest) = read_first_line(Cursor::new(b"{}\n\0\0\0\0".to_vec()))
+        .recv()
+        .expect("the reader answers");
+    assert_eq!(first, FirstLine::Text("{}\n".to_owned()));
+    let mut after = Vec::new();
+    rest.read_to_end(&mut after).expect("read the rest");
+    assert_eq!(after, b"\0\0\0\0");
 }
 
 #[test]
@@ -95,6 +107,7 @@ fn relay_stopped_counts_as_an_exited_host() {
         child,
         stdin: None,
         relay: Some(relay),
+        secrets: None,
         handshake,
     };
 

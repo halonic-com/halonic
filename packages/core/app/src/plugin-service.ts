@@ -44,6 +44,7 @@ import type {
   PluginRemoveRefusal,
   PluginSignedOut,
   PluginTrustRefusal,
+  PluginTrustRevoked,
   SignOutPlugin,
 } from "./plugin-service-types.ts";
 import {
@@ -266,14 +267,26 @@ export class PluginService {
    * @throws a `RangeError` when `id` isn't a single folder name, and what the sign-out throws
    */
   async revoke(id: string): Promise<readonly PluginSignedOut[]> {
+    return (await this.revokeTrust(id)).signedOut;
+  }
+
+  /**
+   * {@link revoke}, also saying whether there was a trust to forget, so a
+   * host can say so instead of "Removed trust". A record that can't be read
+   * counts as one.
+   */
+  async revokeTrust(id: string): Promise<PluginTrustRevoked> {
     const folder = pluginFolderOf(id);
+    let signedOut: readonly PluginSignedOut[];
+    let hadTrust = false;
     try {
-      return await this.#options.signOut(folder);
+      signedOut = await this.#options.signOut(folder);
     } finally {
       // A sign-in that couldn't be signed out never keeps a plugin trusted.
       const location = await this.#options.plugins.locationOf(folder);
-      if (location !== null) await this.#options.trust.revoke(location);
+      if (location !== null) hadTrust = await this.#options.trust.revoke(location);
     }
+    return { signedOut, hadTrust };
   }
 
   /**

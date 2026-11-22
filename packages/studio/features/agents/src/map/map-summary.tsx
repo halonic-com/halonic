@@ -1,5 +1,11 @@
+import { ChevronRightIcon } from "@halonicjs/studio-kit";
 import type { CloseStack } from "@halonicjs/studio-shell";
-import { type ReactNode, useEffect, useId, useLayoutEffect, useRef } from "react";
+import { type ReactNode, useContext, useEffect, useId, useLayoutEffect, useRef } from "react";
+import { MapStacked } from "./map-frame.tsx";
+import { stackedRowClasses } from "./map-rows.tsx";
+
+const cardClasses =
+  "flex w-full flex-col items-start gap-0.5 rounded-md border border-border bg-surface-raised px-3 py-2 text-start text-small text-fg hover:bg-surface-subtle focus-ring";
 
 /** The most cards a side shows; with more it shows one summary card instead (flow-agents 6). */
 export const MAX_SIDE_CARDS = 3;
@@ -7,7 +13,8 @@ export const MAX_SIDE_CARDS = 3;
 /**
  * A side's summary card (`agents.map.side-summary-card`): its counts ("2 workflows · 1 agent") over
  * the side's name in lower case. It stands where the cards would, so it gets their line, and it
- * opens the side's drawer.
+ * opens the side's drawer. In the stacked map it's the summary row, after the side's rows
+ * (component specs 15.8).
  */
 export function SummaryCard({
   counts,
@@ -21,17 +28,34 @@ export function SummaryCard({
   readonly open: boolean;
   readonly onOpen: (card: HTMLButtonElement) => void;
 }) {
+  const stacked = useContext(MapStacked);
+  const text = (
+    <>
+      <span className={stacked ? "text-body-strong" : undefined}>{counts}</span>
+      <span className={stacked ? "text-small text-fg-muted" : "text-caption text-fg-muted"}>
+        {heading.toLowerCase()}
+      </span>
+    </>
+  );
   return (
     <button
       type="button"
       data-map-card=""
       aria-haspopup="dialog"
       aria-expanded={open}
-      className="flex w-full flex-col items-start gap-0.5 rounded-md border border-border bg-surface-raised px-3 py-2 text-start text-small text-fg hover:bg-surface-subtle focus-ring"
+      className={stacked ? `${stackedRowClasses} hover:bg-surface-subtle focus-ring` : cardClasses}
       onClick={(event) => onOpen(event.currentTarget)}
     >
-      <span>{counts}</span>
-      <span className="text-caption text-fg-muted">{heading.toLowerCase()}</span>
+      {stacked ? (
+        <>
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">{text}</span>
+          <span className="size-icon-md shrink-0 text-fg-subtle *:size-full">
+            <ChevronRightIcon />
+          </span>
+        </>
+      ) : (
+        text
+      )}
     </button>
   );
 }

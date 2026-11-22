@@ -17,6 +17,8 @@ export interface LoadFailureLine {
   readonly button: "try-again" | "review";
   /** **Copy details** follows, when the line can't say all that went wrong. */
   readonly copyDetails: boolean;
+  /** A line to run in a terminal, shown in a box under the line with **Copy** (C634 #5). */
+  readonly command?: string | undefined;
 }
 
 /**
@@ -59,12 +61,15 @@ function causeLine(
         button: "try-again",
         copyDetails: false,
       };
-    case "program-stopped":
+    case "program-stopped": {
+      const { program, file, command } = failure;
       return {
-        parts: words.programStopped(source, failure.program),
+        parts: words.programStopped(source, program, file, command !== undefined),
         button: "try-again",
         copyDetails: false,
+        ...(command === undefined ? {} : { command }),
       };
+    }
     case "secret-missing":
       return plainLine(words.secretMissing(source, failure.secret, secretsOnPage), false);
     case "secret-refused":

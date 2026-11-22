@@ -1,3 +1,14 @@
+/** "9 Nov at 14:02" in the person's time zone, with the year when it isn't this one. */
+function dayAndTime(at: Date, now: Date): string {
+  const day = at.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    ...(at.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  });
+  const time = at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return `${day} at ${time}`;
+}
+
 /** Configuration's words (flow-agents 5.1 and 5.2; microcopy 8.5). */
 export const configurationWords = {
   tab: "Configuration",
@@ -141,20 +152,19 @@ export const configurationWords = {
     reviewAndConfirm: "Review and confirm",
     /**
      * Microcopy 23.4, the warning's first line while the choice is on hold, and its link to
-     * Changes (checklist 3.8). The date the file changed joins it in a later pull request.
+     * Changes (checklist 3.8): with the day and time it changed, when the host can tell.
      */
     fileChanged: (agent: string) => `${agent}'s file changed.`,
+    fileChangedOn: (agent: string, at: string, now = new Date()) =>
+      `${agent}'s file changed on ${dayAndTime(new Date(at), now)}.`,
     seeWhatChanged: "See what changed ›",
     /**
-     * The chip in the agent page's header while On this computer is chosen (checklist 3.8); a
-     * screen reader hears the spoken line instead, as with the run page's chip (microcopy 23.1).
-     * On hold, it says so, since the agent runs in the sandbox until then (team decision on
-     * HAL-15640, C605).
+     * The chip in the agent page's header while the agent runs on this computer, not while that
+     * choice is on hold (checklist 3.8, HAL-15552); a screen reader hears the spoken line instead,
+     * as with the run page's chip (microcopy 23.1).
      */
     fullAccess: "Full access",
     fullAccessSpoken: "Runs without the sandbox",
-    fullAccessOnHold: "Full access on hold",
-    fullAccessOnHoldSpoken: "Runs in the sandbox until you confirm again",
     /** The file changed while the warning was open, so nothing was saved; the warning stays for the new file. */
     changedWhileOpen: (agent: string) =>
       `${agent}'s file changed while this was open, so nothing was saved. Read this again, then confirm.`,
@@ -233,6 +243,12 @@ export const configurationWords = {
   agentStepModelAgent: (model: string | undefined) =>
     model === undefined ? "The agent's model" : `${model}, the agent's model`,
   agentStepLimitAgent: (limit: number) => `${limit}, the agent's limit`,
+  /**
+   * Under an agent step's own model the hub has no alias for (C605, decided by the team with
+   * Sofia): microcopy 1.6's sentence without "Choose one", since the card doesn't edit the model.
+   */
+  agentStepUnknownAlias: (name: string) =>
+    `${name} isn't a model alias in this workspace. Add it in Models.`,
   /** Its tools when the file leaves them out, and when it gives none (C462-6). */
   agentStepToolsAgent: (agent: string) => `All of ${agent}'s tools`,
   agentStepToolsNone: "None",

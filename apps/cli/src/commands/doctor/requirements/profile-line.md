@@ -8,14 +8,14 @@ When the folder `halonic doctor` checks and this computer's profile folder overl
 
 ## Examples
 
-- Given `HALONIC_HOME` is `./acme/.profile`,
-  when `halonic doctor --dir acme` runs,
+- Given `HALONIC_HOME` is `<home>/acme/.profile`,
+  when `halonic doctor --dir acme` runs in `<home>`,
   then it prints "✕ Profile     the profile folder HALONIC_HOME is inside this workspace." first, with "Fix: move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records." under it, has no Workspace line, and exits with 1.
 - Given `HALONIC_HOME` is the profile folder and the workspace is `acme` inside it,
   when `halonic doctor` runs in `acme`,
   then the Profile line says "this workspace is inside the profile folder <profile>.", with "Fix: move the workspace somewhere else." under it, and it exits with 1.
-- Given `HALONIC_HOME` is `./acme-profile`,
-  when `halonic doctor --dir acme` runs,
+- Given `HALONIC_HOME` is `<home>/acme-profile`,
+  when `halonic doctor --dir acme` runs in `<home>`,
   then there is no Profile line.
 - Given `HALONIC_HOME` is `~/.halonic` and the home folder has no `workspace.yaml`,
   when `halonic doctor` runs in the home folder,

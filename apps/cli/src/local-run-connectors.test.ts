@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
-import { ConnectorFactories } from "@halonicjs/app";
+import { ConnectorFactories, type SendingSettings } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import type { ConnectorFactory, Secrets, TrustGrant } from "@halonicjs/ports";
+import type { ConnectionKey, ConnectorFactory, Secrets, TrustGrant } from "@halonicjs/ports";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
@@ -16,6 +16,7 @@ import {
   localRunConnectors,
   type RunConnectorsEngine,
 } from "./local-run-connectors.ts";
+import { noSavedSending } from "./test/no-saved-sending.ts";
 import { noSheetHosts } from "./test/no-sheet-hosts.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 
@@ -45,6 +46,7 @@ function connectorsOn(
     /** Where each connector's secrets go, for a test that reads through them. */
     readonly secretsSeen?: Secrets[];
     readonly secrets?: Secrets;
+    readonly sending?: SendingSettings;
   } = {},
 ): LocalRunConnectors {
   const stdio: ConnectorFactory = {
@@ -69,6 +71,7 @@ function connectorsOn(
       },
       trust: null,
       sheetHostsOf: noSheetHosts,
+      sending: options.sending ?? noSavedSending,
     },
     {
       workspace: { files: [] } as unknown as LoadedWorkspace,
@@ -85,14 +88,23 @@ function connectorsOn(
 }
 
 verifies("cli.local-engine", () => {
-  it("keeps sending off for every connector, saying why", async () => {
-    const { connectorCalls } = connectorsOn().runs;
+  it("asks the saved sending choices for the workspace's real path, off without one", async () => {
+    const asked: ConnectionKey[] = [];
+    const { connectorCalls } = connectorsOn({
+      sending: {
+        checkSending: async (key) => {
+          asked.push(key);
+          return { allowed: false, reason: `sending is off for the connector "${key.connector}"` };
+        },
+      },
+    }).runs;
 
     const check = await connectorCalls.sending.checkSending({
-      location: folder,
+      location: connectorCalls.location,
       connector: "mail",
     });
 
+    expect(asked).toEqual([{ location: folder, connector: "mail" }]);
     expect(check).toEqual({
       allowed: false,
       reason: `sending is off for the connector "mail": the CLI can't switch it on yet`,

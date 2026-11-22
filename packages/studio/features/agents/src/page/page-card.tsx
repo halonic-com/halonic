@@ -27,7 +27,7 @@ export function PageCard({
     const agentSettings = settings.kind === "ready" ? settings.value : undefined;
     const found = agentSettings?.agentSteps.find((each) => each.id === step);
     return found === undefined || agentSettings === undefined ? null : (
-      <AgentStepCard step={found} agent={agentSettings} />
+      <AgentStepCard step={found} agent={agentSettings} host={host} />
     );
   }
   const subagent = subagentOfCard(card.key);

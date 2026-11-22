@@ -1,8 +1,16 @@
 import type { CheckContext } from "../lib/context.ts";
 import { Report } from "../lib/problems.ts";
+import { countLines, filesChangedSince, linesAt, sizeBase } from "../lib/size-base.ts";
 import { isSourceFile, isTestFile } from "../lib/source-files.ts";
 
 const measured = /\.(?:[cm]?[jt]sx?|css|rs|astro)$/;
+
+/**
+ * How far under the limit a pull request must leave a file it grows. A
+ * constant, not a `policy.json` setting: the merge base's copy of the guard
+ * reads the head's `policy.json` and refuses a setting it doesn't know.
+ */
+export const prHeadroomLines = 20;
 
 /** Generated files and test fixtures are exempt. */
 export function isExemptFromSize(file: string): boolean {
@@ -14,10 +22,12 @@ export function isExemptFromSize(file: string): boolean {
 
 /**
  * Keeps files and functions small, so agents can read a whole file and two
- * agents rarely edit the same one.
+ * agents rarely edit the same one. With a base commit (a pull request), a
+ * file the change grows must also stay {@link prHeadroomLines} under the limit.
  */
-export function checkFileSize(context: CheckContext): Report {
+export function checkFileSize(context: CheckContext, base = sizeBase()): Report {
   const report = new Report("file-size");
+  const changed = base === undefined ? undefined : filesChangedSince(context.root, base);
   for (const file of context.files) {
     if (!measured.test(file) || isExemptFromSize(file)) {
       continue;
@@ -25,7 +35,10 @@ export function checkFileSize(context: CheckContext): Report {
     // A barrel that only re-exports grows a line with each feature and
     // holds no code, so it has no line limit (HAL-14368).
     if (!context.sourceFacts(file).reExportsOnly) {
-      checkFileLines(context, file, report);
+      const lines = checkFileLines(context, file, report);
+      if (base !== undefined && changed?.has(file)) {
+        checkHeadroom(context, { file, lines, base }, report);
+      }
     }
     // describe() blocks make test functions long by nature.
     if (isSourceFile(file) && !isTestFile(file)) {
@@ -35,10 +48,10 @@ export function checkFileSize(context: CheckContext): Report {
   return report;
 }
 
-function checkFileLines(context: CheckContext, file: string, report: Report): void {
+/** Reports a file over the limits and returns its line count. */
+function checkFileLines(context: CheckContext, file: string, report: Report): number {
   const { warnLines, maxLines } = context.policy.fileSize;
-  const text = context.read(file);
-  const lines = text.endsWith("\n") ? text.split("\n").length - 1 : text.split("\n").length;
+  const lines = countLines(context.read(file));
   if (lines > maxLines) {
     report.error(
       file,
@@ -48,6 +61,33 @@ function checkFileLines(context: CheckContext, file: string, report: Report): vo
     report.warning(
       file,
       `${lines} lines; consider splitting above ${warnLines} (the hard limit is ${maxLines}).`,
+    );
+  }
+  return lines;
+}
+
+/**
+ * A pull request that grows a file leaves room under the limit, so two
+ * pull requests that each pass can't together push it over in the merge
+ * queue (HAL-15461: two passing pull requests took a file to 513 lines).
+ * A file over the limit already has its error; one the change doesn't grow
+ * passes, so a small fix never forces a split.
+ */
+function checkHeadroom(
+  context: CheckContext,
+  { file, lines, base }: { file: string; lines: number; base: string },
+  report: Report,
+): void {
+  const { maxLines } = context.policy.fileSize;
+  const room = maxLines - prHeadroomLines;
+  if (lines <= room || lines > maxLines) {
+    return;
+  }
+  const before = linesAt(context.root, base, file);
+  if (lines > before) {
+    report.error(
+      file,
+      `${lines} lines; a pull request may grow a file to at most ${room}, ${prHeadroomLines} under the limit of ${maxLines}, so two pull requests together can't push it over in the merge queue. Split it by concept in this pull request.`,
     );
   }
 }

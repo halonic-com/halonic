@@ -61,6 +61,7 @@ verifies("agents.chat.not-trusted", () => {
     expect(toasts.list()).toMatchObject([
       { tone: "warning", title: "Not started: Acme isn't trusted yet" },
     ]);
+    expect(toasts.list()[0]?.action).toBeUndefined();
   });
 
   it("sends the message once the person trusts the workspace in the gate", async () => {
@@ -134,12 +135,17 @@ verifies("agents.chat.not-trusted", () => {
     expect(toasts.list()).toHaveLength(0);
   });
 
-  it("keeps the message and shows the toast after Not now", async () => {
-    const { page, requests, toasts, box } = await untrusted(async () => "declined");
+  it("keeps the message and shows the toast after Not now, with Review to open the gate again", async () => {
+    const ask = vi.fn(async () => "declined" as const);
+    const { page, requests, toasts, box } = await untrusted(ask);
     await sendMessage(page, "Sort this mail");
     expect(requests).toHaveLength(0);
     expect(box()).toBe("Sort this mail");
-    expect(toasts.list()[0]?.title).toBe("Not started: Acme isn't trusted yet");
+    const [toast] = toasts.list();
+    expect(toast?.title).toBe("Not started: Acme isn't trusted yet");
+    expect(toast?.action?.label).toBe("Review");
+    await act(async () => toast?.action?.onClick());
+    expect(ask).toHaveBeenCalledTimes(2);
   });
 
   it("holds Send anyway as it holds Send", async () => {

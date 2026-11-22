@@ -40,7 +40,6 @@ export type {
   ToolNotMadeReason,
   ToolNoun,
   ToolOutcome,
-  ToolRefusalReason,
   ToolRisk,
   ToolUnaskedReason,
   ToolVerb,
@@ -68,4 +67,5 @@ export { readSandboxOpened } from "./sandbox-opened-read.ts";
 export { summarize } from "./summarize.ts";
 export { entryOf } from "./timeline-entry.ts";
 export { maxCauseNameLength, toolFailureCauseOf } from "./tool-failure-cause.ts";
+export type { ToolRefusalReason, ToolRefusedEvent } from "./tool-refused.ts";
 export { parseEventLine, upgradeEvent } from "./upgrade.ts";

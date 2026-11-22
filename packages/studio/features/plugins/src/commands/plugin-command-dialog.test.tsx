@@ -253,7 +253,7 @@ verifies("plugins.plugin-commands", () => {
     expect(buttonWords()).not.toContain("Try again");
   });
 
-  it("names the plugin the host stopped and links its page, with Try again", async () => {
+  it("names the plugin the host stopped in the page's words, points to Try again and links its page", async () => {
     const opened = vi.fn();
     const { caller, calls } = callerAnswering(
       Object.assign(new Error("host's own text"), { kind: "plugin_stopped" }),
@@ -263,9 +263,11 @@ verifies("plugins.plugin-commands", () => {
     type(fieldNamed("Place"), "Ghent");
     await press("Run command");
     expect(dialog().textContent).toContain(
-      "Halonic stopped Weather: its sandbox didn't hold, so it didn't run.",
+      "Halonic stopped Weather: the sandbox didn't work when it started, so none of it ran.",
     );
-    expect(dialog().textContent).toContain("Open Weather to check again.");
+    expect(dialog().textContent).toContain(
+      "Try again starts it in the sandbox again. Open Weather for details.",
+    );
     expect(dialog().textContent).not.toContain("host's own text");
     act(() => button("Weather").click());
     expect(opened).toHaveBeenCalledOnce();
@@ -281,7 +283,9 @@ verifies("plugins.plugin-commands", () => {
         .caller,
     );
     await settle();
-    expect(dialog().textContent).toContain("Open Weather to check again.");
+    expect(dialog().textContent).toContain(
+      "Try again starts it in the sandbox again. Open Weather for details.",
+    );
     expect(buttonWords()).not.toContain("Weather");
   });
 

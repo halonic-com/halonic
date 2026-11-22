@@ -164,12 +164,13 @@ async function findPlugin(service: PluginService, id: string): Promise<PluginEnt
 /**
  * `--remove`: signs out the plugin's sign-ins and forgets the trust, also
  * when the plugin can't be read or checked any more, and says which sign-ins
- * it signed out. When the plugin wasn't trusted, it says there was no trust
- * to remove instead of "Removed trust" (HAL-15398). Its settings and secrets
- * stay; `plugin remove` deletes them.
+ * it signed out. When the plugin had no trust record, it says there was no
+ * trust to remove instead of "Removed trust" (HAL-15398), also when it can't
+ * be read (HAL-15476). Its settings and secrets stay; `plugin remove`
+ * deletes them.
  */
 async function removeTrust(service: PluginService, entry: PluginEntry): Promise<CommandResult> {
-  const signedOut = await service.revoke(entry.folder);
+  const { signedOut, hadTrust } = await service.revokeTrust(entry.folder);
   const name = entry.status === "broken" ? entry.folder : entry.plugin.name;
   const shown = printable(name);
   const json = {
@@ -179,7 +180,7 @@ async function removeTrust(service: PluginService, entry: PluginEntry): Promise<
     signOutNotConfirmed: signInsNotConfirmed(signedOut),
   };
   const signOutLines = pluginSignedOutLines(shown, signedOut);
-  if (!hadTrust(entry)) {
+  if (!hadTrust) {
     return {
       exitCode: exitCode.ok,
       lines: [
@@ -197,16 +198,6 @@ async function removeTrust(service: PluginService, entry: PluginEntry): Promise<
     ],
     json: { ...json, status: "removed" },
   };
-}
-
-/**
- * Whether the plugin had a trust record before `--remove`: every status but
- * `new` comes from one, also a changed or unreadable record. A broken plugin
- * is never checked against its record, so it counts as trusted and keeps
- * saying "Removed trust", as it did before.
- */
-function hadTrust(entry: PluginEntry): boolean {
-  return entry.status !== "new";
 }
 
 function plainOf(message: Message): string {

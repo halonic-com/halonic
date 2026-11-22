@@ -173,6 +173,35 @@ export function assertTrustable(
   });
 }
 
+/**
+ * Where the workspace stands with trust on this computer: `not-needed` when
+ * it reaches only the test model, else the trust record's answer.
+ */
+export type WorkspaceTrustState = "not-needed" | TrustCheck["status"] | "unreadable";
+
+/**
+ * Where trust stands for `loaded` in `dir`, by the rule `run` and `routines
+ * watch` refuse by, without refusing: `serve`'s gate and the `routines` list
+ * ask it (HAL-15525). Anything it can't read counts as `unreadable`, so a
+ * failure never reads as trust.
+ */
+export async function workspaceTrustState(
+  dir: OpenWorkspaceDir,
+  machine: WorkspaceTrustMachine,
+  loaded: LoadedWorkspace,
+): Promise<WorkspaceTrustState> {
+  try {
+    if (await needsNoTrust(dir, loaded)) {
+      return "not-needed";
+    }
+    const workspace = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
+    const check = await cliTrustService(machine.trustStore, machine.clock).check(workspace.subject);
+    return check.status;
+  } catch {
+    return "unreadable";
+  }
+}
+
 /** The trust service over `store`, with the CLI's digest and version. */
 export function cliTrustService(store: TrustStore, clock: Clock): TrustService {
   return new TrustService({ store, digest: webCryptoDigest, clock, appVersion: halonicVersion });

@@ -192,7 +192,8 @@ function sandboxRows(entry: StepEntry, log: readonly RunEvent[], place: "desktop
 
 /**
  * The line under a step that was refused sites: "Blocked 2 sites", a child row with the warning
- * icon (never danger: a blocked site isn't always why a step failed) that opens the step's entry,
+ * icon in the attention tone (amber: have a look, nothing waits on the person; never danger: a
+ * blocked site isn't always why a step failed) that opens the step's entry,
  * where Blocked sites come first (mc 23.2). The kit's rows have no room for a button of their own.
  */
 function blockedRow(entry: StepEntry, log: readonly RunEvent[]) {
@@ -212,7 +213,7 @@ function blockedRow(entry: StepEntry, log: readonly RunEvent[]) {
       id: `${entry.id}:blocked`,
       title,
       icon: (
-        <span className="flex size-4 text-warning">
+        <span className="flex size-4 text-attention">
           <WarningIcon />
         </span>
       ),

@@ -1,7 +1,12 @@
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { cantOpenProblem, cantReopenProblem } from "./cant-open.ts";
+import {
+  cantOpenProblem,
+  cantReopenProblem,
+  offersRemoveFromRecent,
+  profileInsideFix,
+} from "./cant-open.ts";
 
 verifies("shell.welcome-cant-open", () => {
   it("says the folder is gone when it isn't there", () => {
@@ -60,5 +65,48 @@ describe("cantReopenProblem", () => {
     expect(cantReopenProblem("/work/old", new KindedError("not_found", "gone"))).toEqual(
       cantOpenProblem("/work/old", new KindedError("not_found", "gone")),
     );
+  });
+});
+
+verifies("shell.profile-place-words", () => {
+  const moved =
+    "A change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place, then quit Halonic and open it again.";
+
+  it("says a picked folder holds the profile folder, and the fix names HALONIC_HOME", () => {
+    const refusal = { kind: "profile_inside", message: "holds it", reason: "HALONIC_HOME" };
+    expect(cantOpenProblem("the folder", refusal)).toEqual({
+      folder: "the folder",
+      kind: "denied",
+      reason: "your profile folder is inside it.",
+      fix: moved,
+    });
+  });
+
+  it("names another variable that moved the profile in the fix only", () => {
+    const refusal = { kind: "profile_inside", message: "holds it", reason: "XDG_DATA_HOME" };
+    const problem = cantOpenProblem("acme", refusal);
+    expect(problem.reason).toBe("your profile folder is inside it.");
+    expect(problem.fix).toBe(`XDG_DATA_HOME puts it there. ${moved}`);
+    expect(profileInsideFix("LOCALAPPDATA")).toBe(`LOCALAPPDATA puts it there. ${moved}`);
+  });
+
+  it("reads a reopen's refusal from its cause, and offers Remove from Recent", () => {
+    const cause = { kind: "workspace_inside_profile", message: "inside it" };
+    const error = new KindedError("denied", "The shell refused: inside it", { cause });
+    const problem = cantReopenProblem("acme", error);
+    expect(problem).toEqual({
+      folder: "acme",
+      kind: "denied",
+      reason: "it's inside your profile folder, where Halonic keeps its own files.",
+      fix: "Move the workspace out of it, then open it from its new place.",
+      removeFromRecent: true,
+    });
+    expect(offersRemoveFromRecent(problem)).toBe(true);
+  });
+
+  it("offers Remove from Recent for a gone folder but not for a moved profile", () => {
+    expect(offersRemoveFromRecent({ folder: "a", kind: "not_found", reason: "gone." })).toBe(true);
+    const refusal = { kind: "profile_inside", message: "holds it" };
+    expect(offersRemoveFromRecent(cantOpenProblem("a", refusal))).toBe(false);
   });
 });

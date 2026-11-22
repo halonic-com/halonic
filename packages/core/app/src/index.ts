@@ -127,6 +127,7 @@ export {
 export { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 export {
   type DoctorPluginProblem,
+  type PluginsFolderAccess,
   type PluginsLine,
   pluginsLine,
 } from "./doctor-plugins-line.ts";
@@ -344,6 +345,7 @@ export type {
   PluginRemoveRefusal,
   PluginSignedOut,
   PluginTrustRefusal,
+  PluginTrustRevoked,
   ReadPlugin,
   SignOutPlugin,
 } from "./plugin-service-types.ts";

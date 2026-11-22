@@ -193,13 +193,30 @@ export async function savedAgentBytes(
   hubId: string,
   agentId: string,
 ): Promise<Uint8Array> {
+  const { text } = await savedAgentFile(definitions, hubId, agentId);
+  return new TextEncoder().encode(text);
+}
+
+/**
+ * An agent's file as it is saved now: its path from the workspace folder and
+ * its text.
+ *
+ * @throws when the hub has no such agent
+ */
+export async function savedAgentFile(
+  definitions: DefinitionSource,
+  hubId: string,
+  agentId: string,
+): Promise<{ readonly path: string; readonly text: string }> {
   const workspace = await loadWorkspace(definitions);
   const file = filesOf(workspace, "agent").find(
     (each) => each.hub === hubId && each.value.id === agentId,
   );
   const text = file === undefined ? null : await definitions.read(file.path);
-  if (text === null) throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
-  return new TextEncoder().encode(text);
+  if (file === undefined || text === null) {
+    throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
+  }
+  return { path: file.path, text };
 }
 
 /**
@@ -233,7 +250,7 @@ export const studioStartsUnfenced = false;
 
 /** Why an agent set to "On this computer" doesn't start from the Studio. */
 const noUnfencedReason =
-  "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Set this agent back to the sandbox.";
+  "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can. Set this agent back to In a sandbox on its Harness page.";
 
 /**
  * The `this-computer` sandbox of the Studio: none. Its check says why, and

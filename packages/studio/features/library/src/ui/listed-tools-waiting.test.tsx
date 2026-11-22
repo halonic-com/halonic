@@ -135,7 +135,7 @@ describe("the connector page's listed tools", () => {
         <ConnectorPage {...page(toolsHost(async () => snapshot(["read_note", "write_note"])))} />,
       );
       await settled();
-      expect(root.textContent).toContain("2 tools are waiting for your approval");
+      expect(root.textContent).toContain("2 tools are off until you review them");
       expect(root.querySelector("dialog[open]")).toBeNull();
 
       act(() => reviewButton(root)?.click());
@@ -155,7 +155,7 @@ describe("the connector page's listed tools", () => {
         />,
       );
       await settled();
-      expect(root.textContent).toContain("1 tool is waiting for your approval");
+      expect(root.textContent).toContain("1 tool is off until you review it");
       expect(root.textContent).toContain(
         "View only here. Review the tools on the computer running Halonic.",
       );
@@ -165,7 +165,7 @@ describe("the connector page's listed tools", () => {
     it("shows no line and no button when no tool waits", async () => {
       const root = render(<ConnectorPage {...page(toolsHost(async () => snapshot([])))} />);
       await settled();
-      expect(root.textContent).not.toContain("waiting for your approval");
+      expect(root.textContent).not.toContain("until you review");
       expect(reviewButton(root)).toBeUndefined();
     });
 
@@ -189,7 +189,7 @@ describe("the connector page's listed tools", () => {
       const retry = [...root.querySelectorAll("button")].find((b) => b.textContent === "Try again");
       act(() => retry?.click());
       await settled();
-      expect(root.textContent).toContain("1 tool is waiting for your approval");
+      expect(root.textContent).toContain("1 tool is off until you review it");
     });
 
     it("offers Review, which opens the trust check, when the workspace isn't trusted", async () => {
@@ -252,6 +252,32 @@ describe("the connector page's listed tools", () => {
       );
       const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
       expect(buttons).toEqual(expect.arrayContaining(["Try again", "Copy details"]));
+    });
+
+    it("names a stopped program's file, with the line to run in a box to copy", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => {
+              throw new ConnectorCouldntList({
+                reason: "program-stopped",
+                program: "sh",
+                file: "library/connectors/notes.connector.yaml",
+                command: 'cd /acme && sh -c "exit 1"',
+              });
+            }),
+          )}
+        />,
+      );
+      await settled();
+      expect(root.textContent).toContain(
+        "Couldn't list the tools: the program sh of Notes stopped right after it started. To see why, run the command and args from library/connectors/notes.connector.yaml yourself:",
+      );
+      expect(root.textContent).toContain('cd /acme && sh -c "exit 1"');
+      expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
+      const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(buttons).toContain("Try again");
+      expect(buttons).not.toContain("Copy details");
     });
 
     it("says the engine isn't answering when the agent host isn't running", async () => {
@@ -328,7 +354,7 @@ describe("the connector page's listed tools", () => {
     it("shows neither without a listed-tools service", async () => {
       const root = render(<ConnectorPage {...page(undefined)} />);
       await settled();
-      expect(root.textContent).not.toContain("waiting for your approval");
+      expect(root.textContent).not.toContain("until you review");
       expect(reviewButton(root)).toBeUndefined();
     });
   });

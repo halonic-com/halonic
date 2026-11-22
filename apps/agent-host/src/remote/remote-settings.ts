@@ -32,7 +32,7 @@ export interface RemoteSettingsOptions {
  * @example
  * const settings = await RemoteSettings.open({ file, log });
  * await settings.change({ allowRiskyRemotely: true });
- * new RemoteGateway(gatewaySettings, ledger, runs, settings);
+ * new RemoteGateway({ ledger, runs, access, risky: settings, ownPorts, log });
  */
 export class RemoteSettings implements RiskySwitch {
   readonly #file: PrivateFile;

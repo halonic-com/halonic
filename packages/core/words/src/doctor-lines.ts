@@ -255,13 +255,15 @@ function secretsItems(line: SecretsLine, face: DoctorFace): DoctorLineItem[] {
 /**
  * Each plugin problem: one that isn't added with the near id and the fix
  * under it, then one sentence for each plugin that is off, and one with its
- * fix for each that can't be read.
+ * fix for each that can't be read, or the plugins folder that can't be read
+ * with its fix.
  */
 function pluginsItems(line: PluginsLine, face: DoctorFace): DoctorLineItem[] {
   return line.problems.flatMap((problem) => pluginProblem(problem, face));
 }
 
 function pluginProblem(problem: DoctorPluginProblem, face: DoctorFace): DoctorLineItem[] {
+  if (problem.problem === "folder-unreadable") return pluginsFolderItems(problem, face);
   // Connector and plugin ids come from the workspace's files and the plugins folder.
   const plugin = printable(problem.plugin);
   switch (problem.problem) {
@@ -290,6 +292,20 @@ function pluginProblem(problem: DoctorPluginProblem, face: DoctorFace): DoctorLi
         { fix: doctorMessages.removeBrokenPlugin(face.shellWord(problem.plugin)).phrase },
       ];
   }
+}
+
+/** The plugins folder the person may not list, with the plugins that are off for it and its fix. */
+function pluginsFolderItems(
+  problem: Extract<DoctorPluginProblem, { problem: "folder-unreadable" }>,
+  face: DoctorFace,
+): DoctorLineItem[] {
+  // Plugin ids come from the workspace's files.
+  const plugins = problem.plugins.map((plugin) => printable(plugin));
+  const folder = printable(problem.folder);
+  return [
+    { sentence: doctorMessages.pluginsFolderUnreadable(folder, plugins).phrase },
+    { fix: doctorMessages.fixPluginsFolder(problem.access, face.shellWord(problem.folder)).phrase },
+  ];
 }
 
 /** The harnesses that are ready as one sentence, then each problem with its fix. */

@@ -14,6 +14,7 @@ mod grants;
 mod instruction_grant;
 mod instruction_question;
 mod picked;
+mod place;
 mod question;
 mod refusal;
 mod workspace_name;
@@ -24,6 +25,7 @@ pub use instruction_question::{
     instruction_question_text,
 };
 pub use picked::{MAX_PICKED_FOLDERS, PickedFolders};
+pub use place::FolderPlace;
 pub use question::{CANCEL_BUTTON, QUESTION_TITLE, TRUST_BUTTON, question_text, shown_path};
 pub use refusal::TrustRefusal;
 pub use workspace_name::check_workspace_name;

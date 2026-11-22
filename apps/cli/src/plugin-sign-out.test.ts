@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileRecordStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
@@ -133,6 +133,14 @@ async function trust(args: readonly string[], io = captureIo(folder)) {
   return await runCli(["trust", ...args], io, [createTrustCommand(machine, setup)]);
 }
 
+/** Overwrites every trust record in the test's profile with text that isn't a record. */
+async function damageTrustRecords(): Promise<void> {
+  const trustFolder = join(folder, "profile", "trust");
+  for (const name of await readdir(trustFolder)) {
+    await writeFile(join(trustFolder, name), "{");
+  }
+}
+
 const savedNames = async () => (await storedTokenNames(grantRecords().records)).sort();
 
 describe("app.plugin-sign-out in the CLI", () => {
@@ -178,6 +186,48 @@ describe("app.plugin-sign-out in the CLI", () => {
       "✓ Signed you out of weather-account.",
     ]);
     expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
+  });
+
+  it("signs out the plugin's sign-ins when its trust is removed in its folder and its record can't be read", async () => {
+    await addSignedInWeather();
+    await damageTrustRecords();
+    const io = captureIo(join(folder, "profile", "plugins", "weather"));
+
+    const code = await runCli(["trust", "--remove"], io, [createTrustCommand(machine, setup)]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      "✓ Removed trust for Weather. Nothing from this plugin runs until you trust it.",
+      "✓ Signed you out of weather-account.",
+    ]);
+    expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
+    expect(await readdir(join(folder, "profile", "trust"))).toEqual([]);
+  });
+
+  it("says there was no trust to remove for a plugin that can't be read and has no record", async () => {
+    await addWeather();
+    await writeFile(join(folder, "profile", "plugins", "weather", "plugin.yaml"), "id: [\n");
+    const io = captureIo(folder);
+
+    expect(await trust(["--plugin", "weather", "--remove"], io)).toBe(exitCode.ok);
+
+    expect(io.stdout).toEqual([
+      "✓ weather isn't trusted on this computer, so there was no trust to remove.",
+    ]);
+  });
+
+  it("says there was no trust to remove in a folder of the plugins folder that holds no plugin", async () => {
+    await addWeather();
+    const stray = join(folder, "profile", "plugins", "notes");
+    await mkdir(stray);
+    const io = captureIo(stray);
+
+    const code = await runCli(["trust", "--remove"], io, [createTrustCommand(machine, setup)]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      "✓ notes isn't trusted on this computer, so there was no trust to remove.",
+    ]);
   });
 
   it("removes a plugin's record outside the plugins folder by location, leaving the installed plugin alone", async () => {

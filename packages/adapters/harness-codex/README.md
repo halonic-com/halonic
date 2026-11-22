@@ -120,6 +120,22 @@ Codex with `accept` or `decline`; on `decline` the agent goes on without
 the call. With its own sandbox off, Codex 0.166.0 asks only when a rule in
 its settings says a command needs an OK (checked with a recorded run).
 
+When Codex asks follows the agent's `asks` (requirement `harness-codex.start`):
+
+- `asks: in-sandbox`, in a session the fence proof says is `fenced`: the
+  thread sets no `approvalPolicy`, so Codex runs commands without asking. A
+  command can still send what it can read to the agent's `allowedSites`.
+- `asks: always`, or no `asks`: the thread sets `approvalPolicy` to
+  `untrusted`, and Codex asks before nearly every command, even `ls` and
+  `git status`. Codex has nothing in between for an agent with full access.
+  So a `halonic run` that nobody watches waits for an answer. Give an agent
+  that should work on its own `asks: in-sandbox`.
+- Any `asks` in a session that is `off` ("no sandbox"), `not-fenced` or
+  `stopped`: `untrusted` too, because nothing proves Codex is confined.
+
+The engine passes `asks` on as `HarnessTask.asks`, only from the agent's
+file.
+
 ## Sign-in
 
 `codex login status` exits with 1 and prints a line that is exactly "Not logged
@@ -149,7 +165,9 @@ same text for every run, in a sandbox or on this computer (`codexConfigText`):
 - `sandbox_mode = "danger-full-access"`: Codex's own sandbox is off, because
   Halonic's sandbox is already around it and the two don't nest.
 - `approval_policy = "on-request"`: Codex asks for an OK when it wants one,
-  and the harness turns that into `approval.requested`.
+  and the harness turns that into `approval.requested`. A thread that asks
+  first sets `untrusted` itself (see Approvals), so the file stays the same
+  whatever the agent's `asks`.
 - `web_search = "disabled"` (decision 7, HAL-2076): the agent reaches the
   web only through Halonic's tools.
 - the MCP server `halonic`: the bridge, with the same header.

@@ -19,7 +19,7 @@ export const runsWords = {
   /** A routine that is off runs only by hand, as Run now's toast says too (C587 #4). */
   emptyOff: "It's off, so it runs only when you press Run now.",
   /** The list's "Paused until trusted" as a sentence (C587 #1). */
-  emptyPaused: "It's paused until this workspace is trusted.",
+  emptyPaused: "It's paused until you trust this workspace.",
   /** Said by a screen reader before a queued row's text; not drawn. */
   queuedPrefix: "Queued, ",
   tabNeedsYou: (count: number) => `${count} needs you`,

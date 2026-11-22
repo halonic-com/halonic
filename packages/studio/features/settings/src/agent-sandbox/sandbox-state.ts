@@ -201,11 +201,6 @@ export function sandboxView(facts: SandboxFacts, now: Date = new Date()): Sandbo
   };
 }
 
-/** The line under **Set up the sandbox**: a setup from an older release says it is needed again. */
-function setupLine(setupAgain: true | undefined): string {
-  return setupAgain === true ? text.SETUP_AGAIN : text.ADMIN_ONCE;
-}
-
 function checkedView(
   check: SandboxCheckFacts,
   viewOnly: boolean,
@@ -251,9 +246,10 @@ function checkedView(
       return {
         ...none,
         chip: { label: "Needs setting up", tone: "warning" },
-        lead: text.NEEDS_SETUP,
+        // A setup from an older release says it is needed again (C633).
+        lead: check.setupAgain === true ? text.NEEDS_SETUP_AGAIN : text.NEEDS_SETUP,
         callout,
-        hint: hint(setupLine(check.setupAgain)),
+        hint: hint(text.ADMIN_ONCE),
         primary: viewOnly ? null : { action: "set-up", label: text.SET_UP, busy: false },
         secondary: ["check-again"],
       };

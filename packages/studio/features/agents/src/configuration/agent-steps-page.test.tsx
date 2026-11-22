@@ -31,10 +31,11 @@ const draftReply: AgentStep = {
   tools: ["send-mail"],
 };
 
-const host = (agentSteps: readonly AgentStep[] = []) =>
+const host = (agentSteps: readonly AgentStep[] = [], modelAliases = ["fast", "smart"]) =>
   memoryAgentsHost({
     hubs: [{ id: "acme", name: "Acme Mail" }],
     agents: [{ ...writer, name: "Writer", model: "fast", maxSteps: 8, agentSteps }],
+    modelAliases,
   });
 
 async function openAgentSteps(agents: AgentsHost) {
@@ -88,6 +89,23 @@ verifies("agents.configuration.agent-steps", () => {
     expect(topCard(page)?.textContent).toContain("8, the agent's limit");
     expect(topCard(page)?.textContent).toContain("Text");
     expect(topCard(page)?.textContent).toContain("All of Writer's tools");
+  });
+
+  it("marks an agent step's own model alias the workspace doesn't have, and only that (C605)", async () => {
+    const short: AgentStep = { id: "short", instructions: "Be short.", model: "tiny" };
+    const page = await openAgentSteps(host([short, draftReply], ["fast", "smart"]));
+    await act(async () => buttonNamed(page, "short")?.click());
+    const model = [...(topCard(page)?.querySelectorAll("dl > div") ?? [])].find(
+      (row) => row.querySelector("dt")?.textContent === "Model",
+    );
+    expect([...(model?.querySelectorAll("dd") ?? [])].map((each) => each.textContent)).toEqual([
+      "tiny",
+      "tiny isn't a model alias in this workspace. Add it in Models.",
+    ]);
+
+    await act(async () => buttonNamed(topCard(page) as HTMLElement, "Writer")?.click());
+    await act(async () => buttonNamed(page, "draft-reply")?.click());
+    expect(topCard(page)?.textContent).not.toContain("isn't a model alias");
   });
 
   it("says None when an agent step may use no tools", async () => {

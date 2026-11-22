@@ -329,6 +329,16 @@ verifies("runs.run-view.blocked-sites", () => {
     act(() => blocked?.querySelector<HTMLElement>('[role="gridcell"]')?.click());
     expect(root.querySelector("aside")?.textContent).toContain("registry.npmjs.org");
   });
+
+  it("draws the Blocked line's icon amber, a have-a-look, not in the needs-you tone (HAL-15789)", async () => {
+    const root = await openRun();
+    const blocked = [...root.querySelectorAll('[role="grid"] tbody tr')].find((row) =>
+      /^Blocked 2 sites/.test(row.textContent ?? ""),
+    );
+    const icon = blocked?.querySelector("svg")?.parentElement;
+    expect(icon?.className).toContain("text-attention");
+    expect(icon?.className).not.toContain("text-warning");
+  });
 });
 
 verifies("runs.run-view.blocked-sites", () => {

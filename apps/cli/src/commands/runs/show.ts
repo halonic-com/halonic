@@ -26,12 +26,7 @@ import { runsMessages, type ShownEnd } from "../../messages/runs.ts";
 import { startedInWords } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
 import { type RunClock, startedAt } from "../../run-times.ts";
-import {
-  providerNoteLines,
-  runViewDefinitions,
-  stepLines,
-  stepLinesWithOutput,
-} from "../../run-view.ts";
+import { providerNoteLines, runViewDefinitions, stepLinesWithDetails } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
@@ -40,6 +35,7 @@ import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
 import { connectorNotStartedLines } from "./show-connectors.ts";
 import { failedRunDebugText, outputHintLines, showEnding } from "./show-ending.ts";
+import { sendingOffLines } from "./show-refused.ts";
 
 /**
  * Shows one run, real or test: its heading, then its steps. Exits 0 for any
@@ -83,12 +79,9 @@ export async function showRun(
       const title = workflowTitle(definitions.workflow, run.summary);
       const clock = setup.clock();
       const withOutput = input.options["output"] === true;
-      const steps = (withOutput ? stepLinesWithOutput : stepLines)(
-        run.events,
-        run.summary,
-        definitions,
-        clock,
-      );
+      const steps = stepLinesWithDetails(run.events, run.summary, definitions, clock, {
+        output: withOutput,
+      });
       const debugText = failedRunDebugText(run);
       return {
         exitCode: exitCode.ok,
@@ -99,6 +92,7 @@ export async function showRun(
             fileOf: (id) => connectorFileOf(loaded, id),
             isIntegration: (id) => isIntegrationConnector(loaded, id),
           }),
+          ...sendingOffLines(run.events),
           ...providerNoteLines(run.events),
           ...showEnding(
             run,

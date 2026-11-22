@@ -213,6 +213,11 @@ verifies("agents.list.row-menu", () => {
     await act(async () => undo?.onClick());
     await settled();
 
-    expect(toasts.list().some((toast) => toast.title === "Couldn't put Sorter back")).toBe(true);
+    expect(toasts.list().find((toast) => toast.title === "Couldn't put Sorter back")).toMatchObject(
+      {
+        sticky: true,
+        action: { label: "Undo" },
+      },
+    );
   });
 });

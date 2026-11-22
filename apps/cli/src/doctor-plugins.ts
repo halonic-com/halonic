@@ -10,13 +10,16 @@ import {
   type ConnectorPlugin,
   connectorPlugin,
 } from "./connector-plugin.ts";
+import { UnreadablePluginsFolderError } from "./plugins-folder-reader.ts";
 
 /**
  * `workspace`, with what is wrong with the plugins `connectors` use. The
  * profile's plugins are read only when a connector uses one, and not at all
  * on a computer that can't list them (`plugins` left out). When the plugins
  * folder itself can't be listed, each plugin the connectors use can't be
- * read, so the line says so and the other lines still show.
+ * read, so the line says so and the other lines still show. When that is
+ * because the person may not list it, the line names the folder and its fix
+ * instead, since no plugin is at fault (HAL-15785).
  */
 export async function withPluginProblems(
   workspace: DoctorWorkspace,
@@ -25,19 +28,37 @@ export async function withPluginProblems(
 ): Promise<DoctorWorkspace> {
   const usePlugins = connectors.some((connector) => "plugin" in connector.transport);
   if (plugins === undefined || !usePlugins) return workspace;
-  const pluginProblems = doctorPluginProblems(connectors, await addedOrUnreadable(plugins));
+  const added = await addedOrUnreadable(plugins);
+  const pluginProblems =
+    added instanceof UnreadablePluginsFolderError
+      ? [folderProblem(connectors, added)]
+      : doctorPluginProblems(connectors, added);
   return pluginProblems.length === 0 ? workspace : { ...workspace, pluginProblems };
 }
 
-/** The added plugins, or `undefined` when the plugins folder can't be listed. */
+/**
+ * The added plugins; the refusal when the person may not list the plugins
+ * folder; or `undefined` when it can't be listed for another reason.
+ */
 async function addedOrUnreadable(
   plugins: AddedPlugins,
-): Promise<readonly AddedPlugin[] | undefined> {
+): Promise<readonly AddedPlugin[] | UnreadablePluginsFolderError | undefined> {
   try {
     return await plugins();
-  } catch {
-    return undefined;
+  } catch (error) {
+    return error instanceof UnreadablePluginsFolderError ? error : undefined;
   }
+}
+
+/** One problem for the plugins folder, with each plugin the connectors use once. */
+function folderProblem(
+  connectors: readonly Connector[],
+  { folder, access }: UnreadablePluginsFolderError,
+): DoctorPluginProblem {
+  const plugins = connectors.flatMap((connector) =>
+    "plugin" in connector.transport ? [connector.transport.plugin.id] : [],
+  );
+  return { problem: "folder-unreadable", folder, access, plugins: [...new Set(plugins)] };
 }
 
 /**

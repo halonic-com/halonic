@@ -51,6 +51,10 @@ export const tryItWords = {
       ? `${agent} used its only model call without finishing.`
       : `${agent} used all ${turns} model calls without finishing.`,
   tryAgain: "Try again",
+  /** A failure for the model's key: the run page's way to Models (microcopy 15.3), as a chat link. */
+  openModels: "Open Models ›",
+  /** The untrusted toast's way back to the trust check, as the status bar's badge says it. */
+  review: "Review",
   /** H16: the toast after Not now in the trust gate, or where there is no gate to open. */
   notTrusted: (workspace: string | undefined) =>
     `Not started: ${workspace ?? "this workspace"} isn't trusted yet`,

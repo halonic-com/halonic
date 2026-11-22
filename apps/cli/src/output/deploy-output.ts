@@ -115,11 +115,7 @@ export function deployResult(
     unchanged: outcome.outcome === "unchanged",
   };
   if (outcome.outcome === "unchanged") {
-    const line = deployMessages.unchanged(
-      facts.deployment,
-      version.commit ?? "",
-      version.halonicVersion ?? "",
-    );
+    const line = deployMessages.unchanged(facts.deployment, version.commit, version.halonicVersion);
     return { exitCode: exitCode.ok, lines: [line.phrase], json: { ...json, warnings: [] } };
   }
   return {
@@ -136,7 +132,7 @@ export function deployResult(
 
 function deployedLine(outcome: DeployDone, facts: DeployResultFacts): Phrase {
   const { version, previous } = outcome;
-  const commit = version.commit ?? "";
+  const { commit } = version;
   const was = previous?.halonicVersion;
   const deployed =
     was !== undefined && version.halonicVersion !== undefined && was !== version.halonicVersion

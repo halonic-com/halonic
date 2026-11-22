@@ -114,7 +114,7 @@ function connectorMessage(connector: Connector, context: CheckContext): string {
   }
   const hosts = sheetHostsOf(connector, sheetHosts);
   if (hosts === undefined) {
-    return `${noSheet(connector)}, so nothing says which hosts it reaches, and it isn't local: ${keepOff}`;
+    return unknownHostsMessage(connector);
   }
   const outside = outsideHosts(hosts);
   if (outside.length > 0) {
@@ -126,14 +126,24 @@ function connectorMessage(connector: Connector, context: CheckContext): string {
   return `${codeOf(connector)} reaches nothing outside this computer and its network, but connector "${connector.id}" doesn't say local: true: set local: true in its file, ${turnOff}`;
 }
 
-/** Why a runner connector's hosts are unknown: its plugin or its integration's sheet couldn't be read. */
-function noSheet({ transport }: Connector): string {
+/**
+ * Why a runner connector's hosts are unknown, and the way out. A plugin that
+ * isn't added or can't be read gets "add the plugin first", never the
+ * `privacy.localOnly: false` way out: turning privacy off for a plugin nobody
+ * has looked at yet is the wrong first fix, and once it is added the message
+ * names its hosts, where that choice is a fair one (HAL-15806). An
+ * integration's sheet is in the workspace, so its way out stays.
+ */
+function unknownHostsMessage({ transport }: Connector): string {
+  const unknown = "so nothing says which hosts it reaches";
   if ("plugin" in transport) {
-    return `The plugin ${transport.plugin.id} isn't installed here or can't be read`;
+    return `The plugin ${transport.plugin.id} isn't added here or can't be read, ${unknown}: add the plugin first, then Halonic can tell whether it's local`;
   }
-  return "integration" in transport
-    ? `The sheet of the integration in integrations/${transport.integration.folder} can't be read`
-    : "Its code has no sheet";
+  const noSheet =
+    "integration" in transport
+      ? `The sheet of the integration in integrations/${transport.integration.folder} can't be read`
+      : "Its code has no sheet";
+  return `${noSheet}, ${unknown}, and it isn't local: ${keepOff}`;
 }
 
 /** Whose code a runner connector runs: "The plugin acme-orders" or "The integration in integrations/notes". */

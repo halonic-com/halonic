@@ -1,4 +1,4 @@
-import { Button, useToastStore } from "@halonicjs/studio-kit";
+import { Button, CommandBox, useToastStore } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import {
   type ReactNode,
@@ -101,6 +101,7 @@ function LoadFailed({
           </Button>
         ))}
       </WaitingLine>
+      {line.command === undefined ? null : <CommandBox command={line.command} />}
     </div>
   );
 }
@@ -111,7 +112,7 @@ type LoadFailedFallback = Extract<ReviewFallback, { readonly kind: "load-failed"
 /**
  * **Try again** for the "Couldn't list the tools" line, as on the run page (C533-1): while the
  * tools are listed again the line and its busy button stay, and then focus goes to the line that
- * replaced it ("N tools are waiting for your approval", or the new failure), so it's read out and
+ * replaced it ("N tools are off until you review them", or the new failure), so it's read out and
  * Tab goes on to its button (C551 S2). `lineRef` goes on whichever line shows.
  */
 function useTryAgain(model: ListedToolsReviewModel) {
@@ -136,7 +137,7 @@ function useTryAgain(model: ListedToolsReviewModel) {
 }
 
 /**
- * The connector's "N tools are waiting for your approval" line with its **Review tools** button,
+ * The connector's "N tools are off until you review them" line with its **Review tools** button,
  * which opens the review dialog; where the page is view only, the button gives way to a line that
  * says so. It shows nothing while the tools are being read and when none
  * waits. When the list couldn't be read, was refused, or an approval is unreadable, it says so in

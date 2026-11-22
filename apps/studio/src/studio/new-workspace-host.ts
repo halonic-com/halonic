@@ -8,7 +8,7 @@ import {
   type NewWorkspaceHost,
   NewWorkspaceRefusal,
 } from "@halonicjs/studio-feature-workspace";
-import { errorReasonFor } from "@halonicjs/studio-shell";
+import { errorReasonFor, profileInsideFix } from "@halonicjs/studio-shell";
 import { createWorkspace } from "@halonicjs/workspace";
 
 /** The shell's commands for a new workspace's folder (`create_workspace_folder`, its two helpers, and the probe and open of a folder that is there). */
@@ -202,6 +202,7 @@ const refusalKinds: Readonly<Record<string, ErrorKind>> = {
   folder_changed: "conflict",
   busy: "conflict",
   name_invalid: "invalid_input",
+  profile_inside: "denied",
 };
 
 /**
@@ -216,10 +217,17 @@ function refusalOf(reason: unknown): Error {
   const known =
     typeof kind === "string" && Object.hasOwn(refusalKinds, kind) ? refusalKinds[kind] : undefined;
   if (known === undefined) return new Error(reasonOf(reason), { cause: reason });
+  const why = (reason as { reason?: unknown }).reason;
+  // A moved profile would be inside the folder: the fix names the variable (HAL-15232).
+  const fix =
+    kind === "profile_inside"
+      ? profileInsideFix(typeof why === "string" ? why : undefined)
+      : undefined;
   return new NewWorkspaceRefusal(
     reasonOf(reason),
     kind === "name_invalid" ? "name" : "folder",
     known,
+    fix,
   );
 }
 
@@ -239,6 +247,8 @@ export function reasonOf(reason: unknown): string {
       return "that isn't a folder you chose";
     case "parent_private":
       return "Halonic keeps its own files there";
+    case "profile_inside":
+      return "your profile folder would be inside it";
     case "folder_missing":
       return "the folder isn't there any more";
     case "folder_changed":

@@ -6,9 +6,19 @@
 import type { DoctorLine } from "./doctor-checks.ts";
 
 /**
+ * Who can give the person access to the plugins folder again: they own it
+ * (`chmod`), another user owns it (`sudo chown`, then `chmod`), or it is on
+ * Windows, which has neither (the folder's Properties).
+ */
+export type PluginsFolderAccess = "yours" | "another-user" | "windows";
+
+/**
  * What is wrong with a plugin a connector uses: it isn't added, with a near
  * id when one is close; it is `off` until a person trusts it, or trusts it
  * again after a change; or its folder can't be read or checked (`broken`).
+ * When the person may not list the plugins folder itself, every plugin the
+ * connectors use is off for that one reason (`folder-unreadable`), and the
+ * folder is named instead of a plugin (HAL-15785).
  */
 export type DoctorPluginProblem =
   | {
@@ -21,7 +31,15 @@ export type DoctorPluginProblem =
       near: string | undefined;
     }
   | { problem: "off"; plugin: string; why: "not-trusted" | "changed" }
-  | { problem: "broken"; plugin: string };
+  | { problem: "broken"; plugin: string }
+  | {
+      problem: "folder-unreadable";
+      /** The profile's plugins folder. */
+      folder: string;
+      access: PluginsFolderAccess;
+      /** The plugins the connectors use, each once, such as ["weather"]. Never empty. */
+      plugins: string[];
+    };
 
 /** The Plugins line: shown only when a plugin a connector uses has a problem. */
 export interface PluginsLine extends DoctorLine {

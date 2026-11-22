@@ -25,7 +25,7 @@ The Library feature shall show the review of a connector's listed tools without 
   then that tool's approval is removed, and the store's own error is never shown.
 - Given every tool is approved,
   when the review opens,
-  then it says "Nothing is waiting for your approval." with the Approved group below and no buttons.
+  then it says "Nothing to review." with the Approved group below and no buttons.
 - Given a tool its server keeps changing,
   when the person asks for **Turn it on anyway**,
   then only that tool is approved, at the version shown.

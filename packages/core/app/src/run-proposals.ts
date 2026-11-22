@@ -311,6 +311,8 @@ export class RunProposals {
   /**
    * The texts Compare shows for a file of the proposal: the run's base,
    * the saved file and the run's, less what the person rejected of it.
+   * A file Accept would refuse (`app.run-proposal-trust`) says why in
+   * `refused`, and its saved file isn't read.
    *
    * @throws when the run has no proposal, or it doesn't propose the file; `ProposalUnavailableError` when its ref is gone
    */

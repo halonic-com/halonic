@@ -56,6 +56,12 @@ export interface RoutineListing extends RoutineRef {
    */
   readonly changesNotLive?: boolean | undefined;
   /**
+   * True while no version holds the routine, in a folder that keeps history, so the scheduler leaves
+   * it out: the row says "Not live yet" after its summary, and no next time, when it is on. Absent
+   * where the host can't say.
+   */
+  readonly neverLive?: boolean | undefined;
+  /**
    * Whether the workflow or agent it starts is in the workspace. When it isn't, the routine can't
    * start, so the row shows "Can't start", why, and no next time.
    */
@@ -158,10 +164,11 @@ export interface RoutineView extends RoutineRef {
    */
   readonly problems: readonly string[];
   /**
-   * True when its input lacks a field its workflow's first step reads, so the engine refuses to
-   * start it (`missing-routine-input`, as `halonic validate` says). Absent where the host can't say.
+   * Set when its input lacks a field its workflow's first step reads, so the engine refuses to start
+   * it (`missing-routine-input`): that error's sentence as {@link problems} has it, so the Starts
+   * card shows it once (HAL-15721). Absent when the input has the field or the host can't say.
    */
-  readonly inputMissing?: boolean | undefined;
+  readonly inputMissing?: string | undefined;
   /**
    * The errors among them that stop it from starting, as {@link RoutineListing.problems} has them,
    * so the Runs view says what the list says (HAL-15524). Absent where the host can't say.

@@ -19,6 +19,7 @@ export {
   type PhoneScanner,
   type PickedComputer,
 } from "./pairing-flow.ts";
+export { PairingScreens, type TypedStep } from "./pairing-screens.tsx";
 export {
   agentsAsOfText,
   asOfText,
@@ -66,10 +67,12 @@ export {
   type UnreadableComputer,
 } from "./phone-tunnel.ts";
 export {
+  PhoneProblemScreen,
   type ProblemAction,
   ProblemScreen,
   type ProblemScreenOf,
   type ProblemWords,
+  phoneProblemWords,
   problemWords,
 } from "./problem-screen.tsx";
 export {
@@ -83,3 +86,4 @@ export {
   type RemoteSession,
   type RemoteView,
 } from "./remote-view.ts";
+export { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";

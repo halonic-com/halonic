@@ -65,20 +65,32 @@ function closeWhenBack(host: AgentsHost, toasts: ToastStore, ref: AgentRef, toas
 
 /**
  * Brings an agent back, or says why it couldn't. Success says nothing: the restored row or page is
- * the feedback. Resolves to whether it came back.
+ * the feedback, and `onBack` is called. A failure toast stays with Undo, so the person can clear
+ * the way and undo again. Resolves to whether it came back.
  */
 export async function putBackAgent(
   trashed: TrashedAgent,
   name: string,
   toasts: ToastStore | null,
+  onBack?: () => void,
 ): Promise<boolean> {
   try {
     await trashed.undo();
+    onBack?.();
     return true;
   } catch (error) {
     const title = deleteWords.couldntUndo(name);
     const reason = reasonOf(error, title);
-    toasts?.show({ tone: "danger", title, ...(reason === undefined ? {} : { text: reason }) });
+    toasts?.show({
+      tone: "danger",
+      title,
+      ...(reason === undefined ? {} : { text: reason }),
+      sticky: true,
+      action: {
+        label: deleteWords.undo,
+        onClick: () => void putBackAgent(trashed, name, toasts, onBack),
+      },
+    });
     return false;
   }
 }
@@ -111,10 +123,7 @@ export function showDeletedToast(
     ...(options.sticky === true ? { sticky: true } : {}),
     action: {
       label: deleteWords.undo,
-      onClick: () =>
-        void putBackAgent(trashed, name, toasts).then((restored) => {
-          if (restored) options.onRestored?.();
-        }),
+      onClick: () => void putBackAgent(trashed, name, toasts, options.onRestored),
     },
   });
   closeWhenBack(host, toasts, { hubId, id }, toastId);

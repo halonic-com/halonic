@@ -20,6 +20,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { cliConnectorFactories } from "../../connector-machine.ts";
 import { openLocalEngine } from "../../local-engine-host.ts";
 import { loadRunWorkspace, openGitHistory } from "../../run-workspace.ts";
+import { noSavedSending } from "../../test/no-saved-sending.ts";
 import { noSheetHosts } from "../../test/no-sheet-hosts.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
@@ -189,6 +190,7 @@ async function askNotesFromALiveRun(): Promise<{ answer: string; copiesLeft: str
       },
       trust: contractGrant,
       sheetHostsOf: noSheetHosts,
+      sending: noSavedSending,
     },
     reportError: (error) => {
       throw error;

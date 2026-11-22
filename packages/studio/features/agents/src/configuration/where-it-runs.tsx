@@ -176,6 +176,7 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
           {placement.runsOn === "on-hold" && (
             <FileChangedLine
               agent={settings.name}
+              changedAt={placement.changedAt}
               openChanges={
                 openChanges &&
                 (() => {
@@ -199,20 +200,22 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
 }
 
 /**
- * The warning's first line while the choice is on hold: the agent's file changed, then
- * **See what changed ›**, which closes the warning and opens Changes. The link never wraps on
- * its own (checklist 3.8).
+ * The warning's first line while the choice is on hold: the agent's file changed, on the day the
+ * host says when it can tell, then **See what changed ›**, which closes the warning and opens
+ * Changes. The link never wraps on its own (checklist 3.8).
  */
 function FileChangedLine({
   agent,
+  changedAt,
   openChanges,
 }: {
   readonly agent: string;
+  readonly changedAt: string | undefined;
   readonly openChanges: (() => void) | undefined;
 }) {
   return (
     <p>
-      {words.fileChanged(agent)}
+      {changedAt === undefined ? words.fileChanged(agent) : words.fileChangedOn(agent, changedAt)}
       {openChanges && (
         <>
           {" "}

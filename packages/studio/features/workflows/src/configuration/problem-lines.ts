@@ -1,4 +1,5 @@
 import type { WorkflowProblem } from "../api.ts";
+import { pageWords } from "../page/page-words.ts";
 
 /** The glyph before a problem: ✕ for an error, △ for a warning, so colour is never the only sign. */
 export const problemGlyph = { error: "✕", warning: "△" } as const;
@@ -51,6 +52,28 @@ const rowSentences: Readonly<Record<string, string>> = {
   "unguarded-shadow":
     "Has an arrow that's never taken: an earlier arrow on the same event always matches first. Change the order or the conditions in Arrows on its card.",
 };
+
+/**
+ * The sentence of Configuration › Problems for a model alias the workspace doesn't have, when the
+ * host names the agent: the problems band's line, which says where to fix it (UX check S7, C605),
+ * in place of the core's `Method "writer.short" uses …`, whose "Method" is the file's word for an
+ * agent step. `undefined` for any other problem.
+ */
+function aliasSentence({
+  code,
+  agent,
+  modelAlias,
+  agentStep,
+}: WorkflowProblem): string | undefined {
+  if (code !== "unknown-model-alias" || agent === undefined || modelAlias === undefined) {
+    return undefined;
+  }
+  const { missingAlias, missingStepAlias } = pageWords.cantRun;
+  if (agentStep !== undefined) {
+    return `${missingStepAlias.before(agent.name, agentStep)}${modelAlias}${missingStepAlias.after}`;
+  }
+  return `${missingAlias.before(agent.name)}${modelAlias}${missingAlias.after(agent.name)}`;
+}
 
 /** The sentence of a check that is about the whole workflow, not one step. */
 const stripLines: Readonly<Record<string, string>> = {
@@ -124,7 +147,7 @@ export function problemRows(
       severity: problem.severity,
       code: problem.code,
       glyph: problemGlyph[problem.severity],
-      text: rowSentences[problem.code] ?? namedMessage(problem, nameOf),
+      text: rowSentences[problem.code] ?? aliasSentence(problem) ?? namedMessage(problem, nameOf),
       stepId: problem.stepId,
       stepName: problem.stepId === undefined ? undefined : nameOf(problem.stepId),
     };

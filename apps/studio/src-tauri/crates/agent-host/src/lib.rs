@@ -5,15 +5,19 @@
 //! standard input open: the host stops when that closes, so it never outlives
 //! the shell. In Halonic's WSL distro the host listens on no port; a relay
 //! on loopback passes the shell's connections to it over its standard input
-//! and output instead (`relay.rs`). Nothing here knows Tauri, so it builds
-//! and tests anywhere.
+//! and output instead (`relay.rs`). Either way the shell may also answer the
+//! host's requests for its own secrets (`host_secrets.rs`). Nothing here
+//! knows Tauri, so it builds and tests anywhere.
 
 mod bundled_runtime;
 mod console_window;
 mod default_distro;
 mod error;
 mod handshake;
+#[cfg(test)]
+mod held_backend;
 mod host_secrets;
+mod loopback_secrets;
 mod relay;
 mod routes;
 mod runtime_status;
@@ -36,6 +40,7 @@ pub use default_distro::halonic_is_default;
 pub use error::{AgentHostError, StartCause};
 use halonic_secrets::SecretBackend;
 pub use handshake::{Handshake, read_handshake};
+use loopback_secrets::LoopbackSecrets;
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
 pub use runtime_status::{current_runtime, runtime_installed};
@@ -61,6 +66,11 @@ const BEFORE_HANDSHAKE_LIMIT: u64 = 64 * 1024;
 
 /// How often [`AgentHost::stop`] checks whether the host has exited.
 const EXIT_POLL: Duration = Duration::from_millis(25);
+
+/// The argument that tells the host the shell answers for its own secrets
+/// on connection id 0, so it keeps them in the OS keychain (requirement
+/// `agent-host.keychain-secrets`). The shell adds it only when it does.
+const KEYCHAIN_RELAY_ARG: &str = "--keychain-relay";
 
 /// How long dropping an [`AgentHost`] waits for it to exit on its own.
 const DROP_GRACE: Duration = Duration::from_secs(5);
@@ -114,6 +124,9 @@ pub struct AgentHost {
     /// The relay a host serving over its standard input and output has;
     /// the relay holds that input then.
     relay: Option<Relay>,
+    /// The secrets channel of a host serving on loopback, when the shell
+    /// answers for its secrets; the channel holds its input then.
+    secrets: Option<LoopbackSecrets>,
     handshake: Handshake,
 }
 
@@ -129,7 +142,26 @@ impl AgentHost {
     /// When the program can't start, ends early, prints no line within
     /// `wait` or prints a line that isn't a valid handshake. The program is
     /// killed in each case after it started.
-    pub fn start(mut command: Command, wait: Duration) -> Result<Self, AgentHostError> {
+    pub fn start(command: Command, wait: Duration) -> Result<Self, AgentHostError> {
+        Self::start_answering_secrets(command, wait, None)
+    }
+
+    /// As [`AgentHost::start`]; with `secrets`, the host is told so
+    /// (`--keychain-relay`), and its output after the handshake line carries
+    /// its secret requests, answered from `secrets`, the keychain on desktop
+    /// (requirement `host-secrets-channel`).
+    ///
+    /// # Errors
+    ///
+    /// As [`AgentHost::start`].
+    pub fn start_answering_secrets(
+        mut command: Command,
+        wait: Duration,
+        secrets: Option<Arc<dyn SecretBackend>>,
+    ) -> Result<Self, AgentHostError> {
+        if secrets.is_some() {
+            command.arg(KEYCHAIN_RELAY_ARG);
+        }
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -142,30 +174,37 @@ impl AgentHost {
             )
         })?;
         log_stderr(&mut child, "agent host");
-        let stdin = child.stdin.take();
-        let first_line = child.stdout.take().map(read_first_line);
-        let answer = match first_line {
-            Some(receiver) => receiver.recv_timeout(wait),
-            None => Ok(FirstLine::Ended),
+        let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
+            kill(&mut child);
+            return Err(AgentHostError::Exited(None));
         };
-        let handshake = match answer {
-            Ok(FirstLine::Text(line)) => read_handshake(&line),
-            Ok(FirstLine::NotText) => Err(handshake::refused("it isn't UTF-8 text")),
-            Ok(FirstLine::Ended) => Err(AgentHostError::Exited(exit_code(&mut child))),
+        let handshake = match read_first_line(stdout).recv_timeout(wait) {
+            Ok((FirstLine::Text(line), rest)) => read_handshake(&line).map(|shake| (shake, rest)),
+            Ok((FirstLine::NotText, _)) => Err(handshake::refused("it isn't UTF-8 text")),
+            Ok((FirstLine::Ended, _)) => Err(AgentHostError::Exited(exit_code(&mut child))),
             Err(_) => Err(AgentHostError::TimedOut(wait)),
         };
-        match handshake {
-            Ok(handshake) => Ok(Self {
-                child,
-                stdin,
-                relay: None,
-                handshake,
-            }),
+        let (handshake, rest) = match handshake {
+            Ok(read) => read,
             Err(error) => {
                 kill(&mut child);
-                Err(error)
+                return Err(error);
             }
-        }
+        };
+        let (stdin, secrets) = match secrets {
+            Some(backend) => (None, Some(LoopbackSecrets::serve(stdin, rest, backend))),
+            None => {
+                drain(rest);
+                (Some(stdin), None)
+            }
+        };
+        Ok(Self {
+            child,
+            stdin,
+            relay: None,
+            secrets,
+            handshake,
+        })
     }
 
     /// Starts a host that serves over its standard input and output
@@ -187,9 +226,10 @@ impl AgentHost {
         Self::start_relayed_answering_secrets(command, wait, None)
     }
 
-    /// As [`AgentHost::start_relayed`]; with `secrets`, the relay also
-    /// answers the host's requests for its own secrets, from the keychain on
-    /// desktop (requirement `host-secrets-channel`).
+    /// As [`AgentHost::start_relayed`]; with `secrets`, the host is told so
+    /// (`--keychain-relay`), and the relay also answers its requests for its
+    /// own secrets, from the keychain on desktop (requirement
+    /// `host-secrets-channel`).
     ///
     /// # Errors
     ///
@@ -205,10 +245,11 @@ impl AgentHost {
                 format!("The agent host's relay could not listen: {error}."),
             )
         })?;
+        let mut command = command(relay.port());
         if let Some(secrets) = secrets {
             relay.answer_host_secrets(secrets);
+            command.arg(KEYCHAIN_RELAY_ARG);
         }
-        let mut command = command(relay.port());
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -239,6 +280,7 @@ impl AgentHost {
                     child,
                     stdin: None,
                     relay: Some(relay),
+                    secrets: None,
                     handshake,
                 })
             }
@@ -254,11 +296,15 @@ impl AgentHost {
         &self.handshake
     }
 
-    /// True once the host has exited, or its relay stopped (it read nothing
-    /// for too long, or the host broke the framing): nothing reaches the
-    /// host then, so the shell starts a new one.
+    /// True once the host has exited, or its relay or secrets channel
+    /// stopped (it read nothing for too long, or the host broke the
+    /// framing): nothing reaches the host then, so the shell starts a new one.
     pub fn has_exited(&mut self) -> bool {
         self.relay.as_ref().is_some_and(Relay::is_stopped)
+            || self
+                .secrets
+                .as_ref()
+                .is_some_and(LoopbackSecrets::is_stopped)
             || !matches!(self.child.try_wait(), Ok(None))
     }
 
@@ -272,6 +318,9 @@ impl AgentHost {
         drop(self.stdin.take());
         if let Some(relay) = self.relay.take() {
             relay.stop();
+        }
+        if let Some(secrets) = self.secrets.take() {
+            secrets.stop();
         }
         let deadline = Instant::now() + grace;
         while Instant::now() < deadline {
@@ -315,9 +364,11 @@ enum FirstLine {
     Ended,
 }
 
-/// Reads the first line of `output` on a thread of its own, then keeps
-/// reading and dropping the rest until the host closes it.
-fn read_first_line(output: impl Read + Send + 'static) -> mpsc::Receiver<FirstLine> {
+/// Reads the first line of `output` on a thread of its own, and gives it
+/// with the rest of the output, which the caller reads or drains.
+fn read_first_line<R: Read + Send + 'static>(
+    output: R,
+) -> mpsc::Receiver<(FirstLine, BufReader<R>)> {
     let (sender, receiver) = mpsc::channel();
     std::thread::spawn(move || {
         let mut reader = BufReader::new(output);
@@ -331,11 +382,18 @@ fn read_first_line(output: impl Read + Send + 'static) -> mpsc::Receiver<FirstLi
             Err(error) if error.kind() == std::io::ErrorKind::InvalidData => FirstLine::NotText,
             _ => FirstLine::Ended,
         };
-        // The shell may have stopped waiting; then nobody needs the line.
-        let _ = sender.send(first);
-        let _ = std::io::copy(&mut reader, &mut std::io::sink());
+        // The shell may have stopped waiting; then the host is killed.
+        let _ = sender.send((first, reader));
     });
     receiver
+}
+
+/// Reads and drops `output` on a thread of its own until the host closes
+/// it, so a host that prints more never blocks on a full pipe.
+fn drain(mut output: impl Read + Send + 'static) {
+    std::thread::spawn(move || {
+        let _ = std::io::copy(&mut output, &mut std::io::sink());
+    });
 }
 
 /// The handshake of a host serving over its standard input and output, and
