@@ -55,8 +55,31 @@ export {
   launchRequestRefusal,
 } from "./launch-token-check.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
+export {
+  type CheckedSession,
+  checkClaims,
+  type Principal,
+  type PrincipalRecord,
+  parseScope,
+  principalFromRecord,
+  principalToRecord,
+  type Role,
+  type Scope,
+  SESSION_AUDIENCE,
+  type SessionClaims,
+  scopeName,
+  scopePrefix,
+} from "./principal.ts";
 export { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
 export type { RunUpdates } from "./run-updates.ts";
+export {
+  readSessionCredential,
+  type SessionCredential,
+  type SessionRefusal,
+  type SessionResult,
+  type SessionVerifier,
+  verifySession,
+} from "./session-verifier.ts";
 export { passwordSecretName } from "./sign-in.ts";
 export { type SignInPlace, signInPlace } from "./sign-in-place.ts";
 export { WEBHOOK_TOLERANCE_SECONDS, webhookPathPrefix } from "./webhooks.ts";
