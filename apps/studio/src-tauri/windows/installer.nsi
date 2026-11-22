@@ -1329,12 +1329,13 @@ Function WaitForStartOrGoBack
   ; Halonic change (HAL-16523): the kept installer is in the profile folder,
   ; which the user's programs without administrator rights can write. An
   ; installer Windows raised to those rights doesn't start it: the new version
-  ; stays, and updates.log says why.
+  ; stays, and updates.log and a message say why (HAL-16570).
   Call RaisedFromLimitedRights
   Pop $4
   ${If} $4 = 1
+    StrCpy $R3 "${PRODUCTNAME} ${VERSION} didn't start within 3 minutes, but it stays: going back to $OldVersion is skipped because this update runs with administrator rights, and the installer kept for $OldVersion is in a folder programs without those rights can change. To go back, install $OldVersion again without administrator rights."
+    Call SayRollbackSkipped
     !ifdef SANDBOX_STEP
-      StrCpy $R3 "${VERSION} didn't prove it starts, but it stays: going back to $OldVersion is skipped because this update runs with administrator rights, and the installer kept for $OldVersion is in a folder programs without those rights can change. To go back, install $OldVersion again without administrator rights."
       Call LogUpdateLine
     !endif
     Return
@@ -1348,12 +1349,28 @@ Function WaitForStartOrGoBack
     ${If} $R1 <> 0
       ; Not Settings: this version didn't start. An uninstall removes the
       ; sandbox, and the kept installers with it.
-      StrCpy $R3 "${VERSION} didn't prove it starts, but it stays: going back to $OldVersion is refused because $R2. To go back, uninstall ${PRODUCTNAME}, which removes the agent sandbox too, then install $OldVersion again."
+      StrCpy $R3 "${PRODUCTNAME} ${VERSION} didn't start within 3 minutes, but it stays: going back to $OldVersion is refused because $R2. To go back, uninstall ${PRODUCTNAME}, which removes the agent sandbox too, then install $OldVersion again."
+      Call SayRollbackSkipped
       Call LogUpdateLine
       Return
     ${EndIf}
   !endif
   Exec '"$2" /P /UPDATE /ROLLBACK /RELAUNCH'
+FunctionEnd
+
+; Halonic change (HAL-16570): shows $R3, the reason going back was skipped,
+; and where updates.log is. The new version may not open at all, so this
+; installer, hidden for the wait, is the only one left to say it. A silent
+; update shows nothing; its line in updates.log stays.
+Function SayRollbackSkipped
+  ${If} ${Silent}
+    Return
+  ${EndIf}
+  Push $0
+  Call ProfileFolder
+  Pop $0
+  MessageBox MB_OK|MB_ICONEXCLAMATION|MB_TOPMOST "$R3$\r$\n$\r$\nThis is also written to $0\updates\updates.log."
+  Pop $0
 FunctionEnd
 
 ; Halonic change (HAL-16523): pushes 1 when Windows raised this installer to
