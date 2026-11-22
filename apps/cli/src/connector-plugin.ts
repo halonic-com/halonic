@@ -70,7 +70,8 @@ export function pluginStateOf(entry: Exclude<PluginEntry, { status: "broken" }>)
   return entry.status === "changed" ? "changed" : "notTrusted";
 }
 
-function addedPlugin(entry: PluginEntry): AddedPlugin {
+/** A plugin entry as an {@link AddedPlugin}: its id and the state `plugin list` shows. */
+export function addedPlugin(entry: PluginEntry): AddedPlugin {
   if (entry.status === "broken") return { id: entry.folder, state: "broken" };
   return { id: entry.folder, state: pluginStateOf(entry) };
 }

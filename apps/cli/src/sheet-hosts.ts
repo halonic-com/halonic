@@ -5,7 +5,7 @@
 // outside host count as local (requirement `workspace.local-only-sheet-hosts`).
 // The trust check shows a plugin connector's hosts from the same list (HAL-14860).
 
-import { readIntegrationSheets } from "@halonicjs/app";
+import { type PluginEntry, readIntegrationSheets } from "@halonicjs/app";
 import {
   type IntegrationHost,
   type IntegrationSheet,
@@ -38,8 +38,23 @@ export async function computerSheetHosts(
   shown: string,
   profile: ProfileEnvironment = nodeProfileEnvironment(),
 ): Promise<SheetHosts> {
+  return await workspaceSheetHosts(root, shown, await installedPluginHosts(profile));
+}
+
+/**
+ * As {@link computerSheetHosts}, with the plugins' hosts already read, so a
+ * command that needs the plugins folder for more reads it once.
+ *
+ * @example
+ * await workspaceSheetHosts(dir.root, dir.shown, pluginHostsOf(entries));
+ */
+export async function workspaceSheetHosts(
+  root: string,
+  shown: string,
+  plugins: PluginHosts,
+): Promise<SheetHosts> {
   const integrations = await workspaceIntegrations(root, shown);
-  return { plugins: await installedPluginHosts(profile), integrations: byFolder(integrations) };
+  return { plugins, integrations: byFolder(integrations) };
 }
 
 /**
@@ -71,6 +86,11 @@ export async function installedPluginHosts(
   const entries = await openPluginService({ profile })
     .load()
     .catch(() => []);
+  return pluginHostsOf(entries);
+}
+
+/** The hosts of each plugin among `entries` that was read and checked, by its id. */
+export function pluginHostsOf(entries: readonly PluginEntry[]): PluginHosts {
   const hosts = new Map<string, readonly IntegrationHost[]>();
   for (const entry of entries) {
     if (entry.status === "broken") continue;

@@ -1,6 +1,5 @@
-import { AgentHostSandbox, AgentHostSandboxChoice } from "@halonicjs/adapter-agent-host-client";
 import { TauriPickedFolders } from "@halonicjs/adapter-fs-tauri";
-import { ServiceRegistry, sandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
+import { ServiceRegistry } from "@halonicjs/app";
 import {
   type FilesHost,
   FilesHostService,
@@ -11,7 +10,6 @@ import {
   FirstRunDeviceService,
   SampleWorkspaceService,
 } from "@halonicjs/studio-feature-first-run/api";
-import { SandboxPassesService } from "@halonicjs/studio-feature-inbox/api";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
 import { SampleHintService } from "@halonicjs/studio-feature-runs/api";
 import {
@@ -22,11 +20,9 @@ import {
   watchAppearance,
 } from "@halonicjs/studio-feature-settings";
 import {
-  AgentSandboxService,
   DisplaySettingsService,
   HostSettingsService,
   RestartRunsService,
-  SandboxChoiceHostService,
   UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
 import {
@@ -65,19 +61,17 @@ import {
 import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
 import { openShellEngine } from "../engine/remote-engine.ts";
 import { provideRemoteControl } from "../remote/provide-remote.ts";
-import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
 import { newWorkspaceOf } from "./desktop-new-workspace.ts";
 import { watchDesktopResources } from "./desktop-resources.ts";
 import type { DeviceMemory } from "./device-memory.ts";
-import { observedSandboxStartCheck } from "./observed-sandbox-start-check.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
 import { halonicVersion, openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
+import { provideAgentSandbox } from "./provide-agent-sandbox.ts";
 import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
 import { sampleWorkspaceOf } from "./sample-workspace.ts";
-import { elevateHelperOf } from "./sandbox-elevate-shell.ts";
 import { startServedStudio } from "./served-studio.ts";
 import { watchStart } from "./start-watch.ts";
 
@@ -97,7 +91,6 @@ import {
 } from "./window-close.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
-import { wslBackupOf } from "./wsl-backup-shell.ts";
 
 export { desktopFeatures };
 
@@ -379,13 +372,6 @@ function showFilesOutside(
 }
 
 /**
- * Whether this build offers Settings › Agent sandbox's setup, repair and removal. D44 is still with
- * the board and the answer for 0.1 is (c): no, so the section reads Not available (HAL-1444,
- * 1.1). Set it to `true` when the board says (a); nothing else changes.
- */
-export const agentSandboxOffered = false;
-
-/**
  * The page's one updater: the shell keeps each watch channel until the page reloads, so every
  * workspace the window opens shares this one instead of opening its own.
  */
@@ -397,42 +383,6 @@ function updaterOf(ipc: TauriIpc & TauriCallbacks): TauriUpdater {
   const updater = new TauriUpdater(ipc);
   updaters.set(ipc, updater);
   return updater;
-}
-
-/**
- * Gives the section the agent host's sandbox through the shell, when the build offers it and the
- * shell has an agent host. Without it the section reads Not available.
- */
-async function provideAgentSandbox(
-  services: ServiceRegistry,
-  window: object,
-  ipc: TauriIpc | undefined,
-): Promise<void> {
-  const transport = tauriAgentHostTransport(window);
-  if (transport === undefined) return;
-  // The start check only reads: "Check again" on a run page and in the Inbox works whether or not
-  // this build offers the section's setup (D44).
-  const { check, passes } = observedSandboxStartCheck(
-    sandboxStartCheck(async () => (await AgentHostSandbox.connect(transport)).check()),
-  );
-  services.provide(sandboxStartCheckKey, check);
-  services.provide(SandboxPassesService, passes);
-  // The host only reads the choice; the shell checks and saves it (HAL-14510). Nothing shows it
-  // until the real canary lands (HAL-10552, UX W3); until then every trust check fails closed.
-  const saveChoice = transport.saveSandboxChoice.bind(transport);
-  services.provide(SandboxChoiceHostService, new AgentHostSandboxChoice(transport, saveChoice));
-  if (agentSandboxOffered)
-    services.provide(
-      AgentSandboxService,
-      new AgentHostSandboxFacts(
-        transport,
-        undefined,
-        undefined,
-        () => transport.securityUpdates(),
-        ipc === undefined ? undefined : await wslBackupOf(ipc),
-        ipc === undefined ? undefined : await elevateHelperOf(ipc),
-      ),
-    );
 }
 
 /**

@@ -153,6 +153,11 @@ type CheckedPlugin = Exclude<PluginEntry, { status: "broken" }>;
  * the plugin has now, as a check run now would, so a script can pass it to
  * `--yes --fingerprint` after a review.
  *
+ * When the check above shows the plugin as it is now, the fix is the command
+ * that trusts it, with that fingerprint filled in (HAL-15319). When the files
+ * changed during the question, nobody has seen them as they are now, so the
+ * fix asks for a review first.
+ *
  * @param now - what changed during the question: no check to show again and
  *   the fingerprint the files have now; by default, the entry's own
  */
@@ -163,10 +168,14 @@ export function fingerprintNotCurrent(
     fingerprint: entry.fingerprint,
   },
 ): NotTrustedError {
+  const fix =
+    now.check.length === 0
+      ? pluginMessages.addNoTerminalFix(entry.folder)
+      : pluginMessages.noTerminalFix(entry.folder, now.fingerprint);
   return new NotTrustedError({
     // The manifest's name is outside text (cli-output 5).
     problem: trustMessages.fingerprintNotCurrent(printable(entry.plugin.name)),
-    fix: pluginMessages.addNoTerminalFix(entry.folder),
+    fix,
     fingerprint: now.fingerprint,
     check: now.check,
     action: null,

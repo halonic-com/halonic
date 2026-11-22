@@ -1,7 +1,8 @@
 import { workspaceProblemsOf } from "@halonicjs/adapter-workspace-models";
+import type { PluginEntry } from "@halonicjs/app";
 import { loadWorkspace, type WorkspaceIssue } from "@halonicjs/workspace";
 import type { CliCommand, CommandInput } from "../../command.ts";
-import { type AddedPlugin, addedPluginsOf } from "../../connector-plugin.ts";
+import { addedPlugin } from "../../connector-plugin.ts";
 import { exitCode } from "../../exit-code.ts";
 import { validateMessages } from "../../messages/validate.ts";
 import {
@@ -12,7 +13,7 @@ import {
 } from "../../output/validate-report.ts";
 import { pluginConnectorProblems } from "../../plugin-connector-problems.ts";
 import { openPluginService } from "../../plugin-host.ts";
-import { computerSheetHosts } from "../../sheet-hosts.ts";
+import { pluginHostsOf, workspaceSheetHosts } from "../../sheet-hosts.ts";
 import { dirOption, givenDir, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 
 /**
@@ -37,9 +38,16 @@ export const validateCommand: CliCommand = {
   async run(input, context) {
     const workspace = await openWorkspaceDir(input, context);
     const strict = input.options["strict"] === true;
-    const sheetHosts = await computerSheetHosts(workspace.root, workspace.shown);
+    // Read once: the plugins' hosts count for `privacy.localOnly`, and their
+    // ids say which plugin connectors point at nothing.
+    const entries = await addedPluginEntries();
+    const sheetHosts = await workspaceSheetHosts(
+      workspace.root,
+      workspace.shown,
+      pluginHostsOf(entries ?? []),
+    );
     const loaded = await loadWorkspace(workspace.store, { sheetHosts });
-    const added = await addedPlugins();
+    const added = entries?.map(addedPlugin);
     const report = validateReport({
       ...loaded,
       issues: [
@@ -64,10 +72,13 @@ export const validateCommand: CliCommand = {
 /**
  * The plugins added on this computer, or `undefined` when the plugins folder
  * can't be listed: `validate` then can't tell which are missing, so it
- * reports none, and `plugin list` says why the folder can't be read.
+ * reports none, counts no plugin's hosts as local, and `plugin list` says
+ * why the folder can't be read.
  */
-async function addedPlugins(): Promise<readonly AddedPlugin[] | undefined> {
-  return await addedPluginsOf(openPluginService({}))().catch(() => undefined);
+async function addedPluginEntries(): Promise<readonly PluginEntry[] | undefined> {
+  return await openPluginService({})
+    .load()
+    .catch(() => undefined);
 }
 
 /**
