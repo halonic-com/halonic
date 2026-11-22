@@ -20,15 +20,15 @@ import { TrashIcon } from "./trash-icon.tsx";
 const words = pageWords.arrows;
 
 /**
- * A row lines up on its first line when its words wrap (C547 A5): the row aligns to the top and
- * the number sits centred in a box as high as a one-line `sm` button (`lg` on a phone or touch
- * screen, as the button grows there), so it stays beside the first line and one-line rows look
- * as before.
+ * A row lines up on its first line when its words wrap (C547 A5): the row aligns on the words'
+ * first baseline, so the number sits on that line on every screen size, whatever height the
+ * button grows to on a phone or touch screen (HAL-15199). One-line rows look as before.
  */
-const arrowNumber = [
-  "flex h-control-sm w-4 shrink-0 items-center text-fg-muted tabular-nums",
-  "phone:h-control-lg touch:h-control-lg",
-].join(" ");
+const arrowRow = "flex items-baseline gap-2 text-body";
+const arrowNumber = "w-4 shrink-0 text-fg-muted tabular-nums";
+
+/** The ⋮ and the remove button stay at the top of the row: their icons have no text baseline. */
+const arrowMore = "flex shrink-0 gap-2 self-start";
 
 /**
  * A row's button holds one child, so the kit button's flex row doesn't split it into centred
@@ -41,8 +41,12 @@ const arrowLabel = "grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-
 const arrowChevron = "flex h-5 items-center";
 const arrowChevronIcon = "inline-grid size-icon-sm place-items-center *:size-full";
 
-/** A row's words wrap like a sentence, from the left, instead of centred like a button label. */
-const arrowWords = "min-w-0 text-start";
+/**
+ * A row's words wrap like a sentence, from the left, instead of centred like a button label. They
+ * give the label, and so the row, its baseline: the chevron's svg has none, and would line the row
+ * up on the icon's bottom edge instead.
+ */
+const arrowWords = "min-w-0 self-baseline text-start";
 
 /** Props for {@link StepArrows}. */
 export interface StepArrowsProps {
@@ -205,7 +209,7 @@ export function StepArrows({
           {arrows.map((arrow, index) => (
             // An arrow has no name of its own: its place in the list is what the file knows it by.
             <li key={index} className="flex flex-col gap-2">
-              <div className="flex items-start gap-2 text-body">
+              <div className={arrowRow}>
                 <span className={arrowNumber}>{index + 1}</span>
                 <span className="min-w-0 flex-1">
                   <Button
@@ -232,41 +236,43 @@ export function StepArrows({
                   </Button>
                   <NeverTakenLine id={`${neverTakenId}-${index}`} beatenBy={beatenBy[index]} />
                 </span>
-                <Menu
-                  align="end"
-                  trigger={(props) => (
+                <span className={arrowMore}>
+                  <Menu
+                    align="end"
+                    trigger={(props) => (
+                      <Button
+                        {...props}
+                        variant="ghost"
+                        size="sm"
+                        icon={<MoreIcon />}
+                        label={words.more(index + 1)}
+                      />
+                    )}
+                    entries={[
+                      {
+                        id: "up",
+                        label: words.moveUp,
+                        disabled: index === 0,
+                        onSelect: () => void move(index, -1),
+                      },
+                      {
+                        id: "down",
+                        label: words.moveDown,
+                        disabled: index === arrows.length - 1,
+                        onSelect: () => void move(index, 1),
+                      },
+                    ]}
+                  />
+                  {remove !== undefined && (
                     <Button
-                      {...props}
                       variant="ghost"
                       size="sm"
-                      icon={<MoreIcon />}
-                      label={words.more(index + 1)}
+                      icon={<TrashIcon />}
+                      label={words.remove(index + 1)}
+                      onClick={() => void removeAt(index, arrow)}
                     />
                   )}
-                  entries={[
-                    {
-                      id: "up",
-                      label: words.moveUp,
-                      disabled: index === 0,
-                      onSelect: () => void move(index, -1),
-                    },
-                    {
-                      id: "down",
-                      label: words.moveDown,
-                      disabled: index === arrows.length - 1,
-                      onSelect: () => void move(index, 1),
-                    },
-                  ]}
-                />
-                {remove !== undefined && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<TrashIcon />}
-                    label={words.remove(index + 1)}
-                    onClick={() => void removeAt(index, arrow)}
-                  />
-                )}
+                </span>
               </div>
               {expanded === index && (
                 <ArrowFields
