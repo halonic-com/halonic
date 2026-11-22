@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { decodeText, needsWholeFile, numberedLines } from "./decode.ts";
 import type { AddedLine, Change, ChangedFile, ChangeText } from "./scan.ts";
 
 /**
@@ -13,6 +15,12 @@ export function git(root: string, args: readonly string[]): string {
   return execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 1024 * 1024 * 1024 });
 }
 
+/** Reads one blob's bytes, by its (short) object id. */
+function blobReader(root: string): (blob: string) => Buffer {
+  return (blob) =>
+    execFileSync("git", ["cat-file", "blob", blob], { cwd: root, maxBuffer: 1024 * 1024 * 1024 });
+}
+
 /**
  * Diff options that make the output the same on every machine, whatever
  * the person's own git config says (prefixes, colour, external diff tools).
@@ -20,6 +28,7 @@ export function git(root: string, args: readonly string[]): string {
  * part, without context lines, holds the added lines. `--text` makes git
  * show the lines of every file, also one that `.gitattributes` marks `-diff`
  * or `binary`, which a pull request can set to hide a file from the scan.
+ * `T` keeps a file whose type changed, such as a link turned into a file.
  */
 const diffOptions = [
   "--patch-with-raw",
@@ -31,7 +40,7 @@ const diffOptions = [
   "--no-relative",
   "--src-prefix=a/",
   "--dst-prefix=b/",
-  "--diff-filter=ACMR",
+  "--diff-filter=ACMRT",
 ];
 
 /** Undoes git's quoting of unusual file names: `"a\tb"` → a, tab, b. */
@@ -74,17 +83,39 @@ function unquote(path: string): string {
  * A line is in the new file when no column says `-`, and added when one
  * says `+`. So an added line that itself starts with `++ ` is never
  * mistaken for a file header.
+ *
+ * An added line that isn't readable text (a NUL byte, or bytes that aren't
+ * UTF-8, as in a UTF-16 file) can't be scanned line by line, so with
+ * `readBlob` the whole new file is read and decoded instead.
  */
-export function parseDiff(output: string): ChangedFile[] {
-  const state: DiffState = { files: new Map(), current: undefined, columns: 0, nextLine: 0 };
+export function parseDiff(output: string, readBlob?: (blob: string) => Buffer): ChangedFile[] {
+  const state: DiffState = {
+    files: new Map(),
+    blobs: new Map(),
+    current: undefined,
+    columns: 0,
+    nextLine: 0,
+  };
   for (const line of output.split("\n")) {
     readDiffLine(line, state);
   }
-  return [...state.files].map(([path, lines]) => ({ path, lines }));
+  return [...state.files].map(([path, lines]) => {
+    const blob = state.blobs.get(path);
+    if (
+      readBlob === undefined ||
+      blob === undefined ||
+      !lines.some((line) => needsWholeFile(line.text))
+    ) {
+      return { path, lines };
+    }
+    return { path, lines: numberedLines(decodeText(readBlob(blob))) };
+  });
 }
 
 interface DiffState {
   readonly files: Map<string, AddedLine[]>;
+  /** The new blob of each file, from the raw part. */
+  readonly blobs: Map<string, string>;
   current: AddedLine[] | undefined;
   /** Prefix columns in the current hunk; 0 outside a hunk. */
   columns: number;
@@ -102,7 +133,17 @@ function readDiffLine(line: string, state: DiffState): void {
     readHunkLine(line, state);
   } else if (line.startsWith(":")) {
     // `:100644 100644 abc def M\tpath`, `R100\told\tnew` for a rename, `::…` for a merge.
-    state.files.set(unquote(line.split("\t").at(-1) ?? ""), []);
+    // The last object id is the new blob.
+    const fields = line.split("\t");
+    const path = unquote(fields.at(-1) ?? "");
+    state.files.set(path, []);
+    const blob = (fields[0] ?? "")
+      .split(" ")
+      .filter((field) => /^[0-9a-f]+$/.test(field))
+      .at(-1);
+    if (blob !== undefined) {
+      state.blobs.set(path, blob);
+    }
   } else if (line.startsWith("+++ ")) {
     state.current = state.files.get(newPath(line));
   }
@@ -132,11 +173,8 @@ function newPath(header: string): string {
 /** The changes staged for the next commit (the pre-commit hook). */
 export function stagedChanges(root: string): Change[] {
   const output = git(root, ["-c", "core.quotePath=false", "diff", "--cached", ...diffOptions]);
-  return [{ commit: undefined, files: parseDiff(output), texts: [] }];
+  return [{ commit: undefined, files: parseDiff(output, blobReader(root)), texts: [] }];
 }
-
-const commitStart = "\u001ecommit ";
-const messageEnd = "\u001f";
 
 /**
  * Every commit the revisions select, each with its message, author,
@@ -145,7 +183,12 @@ const messageEnd = "\u001f";
  * @param revisions - `git log` revisions, such as `["base..head"]` or `["--all"]`
  */
 export function commitChanges(root: string, revisions: readonly string[]): Change[] {
-  const format = `--format=${commitStart}%h%n%an <%ae>%n%cn <%ce>%n%B${messageEnd}`;
+  // A message or a file can hold any text, also a fixed separator. These
+  // separators are new for every scan, so no commit can hold one.
+  const nonce = randomBytes(16).toString("hex");
+  const commitStart = `\0${nonce} commit\n`;
+  const messageEnd = `\0${nonce} diff`;
+  const format = `--format=%x00${nonce} commit%n%h%n%an <%ae>%n%cn <%ce>%n%B%x00${nonce} diff`;
   const output = git(root, [
     "-c",
     "core.quotePath=false",
@@ -157,6 +200,7 @@ export function commitChanges(root: string, revisions: readonly string[]): Chang
     "--diff-merges=dense-combined",
     ...revisions,
   ]);
+  const readBlob = blobReader(root);
   return output
     .split(commitStart)
     .filter((entry) => entry.trim() !== "")
@@ -165,7 +209,7 @@ export function commitChanges(root: string, revisions: readonly string[]): Chang
       const [commit = "", author = "", committer = "", ...message] = header.split("\n");
       return {
         commit,
-        files: parseDiff(diff),
+        files: parseDiff(diff, readBlob),
         texts: [
           { label: "commit message", text: message.join("\n"), termsOnly: false },
           { label: "commit author", text: author, termsOnly: true },
@@ -219,14 +263,7 @@ export function treeChanges(root: string): Change[] {
     } catch {
       return { path, lines: [] }; // deleted but not yet staged, or a submodule
     }
-    const binary = content.subarray(0, 8000).includes(0);
-    const lines = binary
-      ? []
-      : content
-          .toString("utf8")
-          .split("\n")
-          .map((text, index) => ({ number: index + 1, text }));
-    return { path, lines };
+    return { path, lines: numberedLines(decodeText(content)) };
   });
   return [{ commit: undefined, files: changed, texts: [] }];
 }
