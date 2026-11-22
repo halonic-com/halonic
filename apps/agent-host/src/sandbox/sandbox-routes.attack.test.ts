@@ -1,21 +1,13 @@
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import type {
-  Sandbox,
-  SandboxBlockListener,
-  SandboxBridge,
-  SandboxCapabilities,
-  SandboxCheck,
-  SandboxFence,
-  SandboxProfile,
-  SandboxSession,
-} from "@halonicjs/ports";
+import type { SandboxBridge, SandboxProfile } from "@halonicjs/ports";
 import { waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { type HostRoute, type HostServer, startHostServer } from "../server/host-server.ts";
 import { maxBodyBytes } from "../server/json-body.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
+import { anyProfile, FakeSandbox, later } from "./sandbox-routes.test-helper.ts";
 import { sandboxRoutes } from "./sandbox-routes.ts";
 import { SessionTable } from "./session-table.ts";
 
@@ -45,63 +37,6 @@ function loopbackBridgeOn(port: number): SandboxBridge {
   return { kind: "loopback", host: "127.0.0.1", port };
 }
 
-class FakeSession implements SandboxSession {
-  readonly listeners = new Set<SandboxBlockListener>();
-  fence: SandboxFence = { state: "fenced" };
-  closeCount = 0;
-  readonly profile: SandboxProfile;
-
-  constructor(profile: SandboxProfile) {
-    this.profile = profile;
-  }
-
-  start(): never {
-    throw new Error("not used here");
-  }
-
-  onBlocked(listener: SandboxBlockListener): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
-
-  async close(): Promise<void> {
-    this.closeCount += 1;
-    this.fence = { state: "stopped" };
-  }
-}
-
-class FakeSandbox implements Sandbox {
-  readonly opened: FakeSession[] = [];
-  openCalls = 0;
-  hold: Promise<void> | undefined;
-  readonly openCalled = later();
-
-  async check(): Promise<SandboxCheck> {
-    return { ok: true, reason: null, missing: [] };
-  }
-
-  capabilities(): SandboxCapabilities {
-    return { files: "shared", strength: "os" };
-  }
-
-  async open(profile: SandboxProfile): Promise<SandboxSession> {
-    this.openCalls += 1;
-    this.openCalled.settle();
-    await this.hold;
-    const session = new FakeSession(profile);
-    this.opened.push(session);
-    return session;
-  }
-}
-
-function later(): { promise: Promise<void>; settle: () => void } {
-  let settle: () => void = () => {};
-  const promise = new Promise<void>((resolve) => {
-    settle = resolve;
-  });
-  return { promise, settle };
-}
-
 let server: HostServer | undefined;
 let sandbox: FakeSandbox;
 let sessions: SessionTable;
@@ -118,7 +53,10 @@ async function started(): Promise<{ url: string; port: number }> {
   sandbox = new FakeSandbox();
   sessions = new SessionTable();
   openConnectionsClosed = 0;
-  server = await startHostServer(token, sandboxRoutes(sandbox, sessions).map(heardClosing));
+  server = await startHostServer(
+    token,
+    sandboxRoutes(sandbox, sessions, anyProfile).map(heardClosing),
+  );
   return { url: server.url, port: Number(new URL(server.url).port) };
 }
 

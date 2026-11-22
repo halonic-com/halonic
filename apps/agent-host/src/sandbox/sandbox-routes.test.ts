@@ -17,6 +17,7 @@ import { maxBodyBytes } from "../server/json-body.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { maxUnsentBytes } from "../server/ndjson-stream.ts";
 import { maxTimeLimitMs } from "./profile-schema.ts";
+import { anyProfile } from "./sandbox-routes.test-helper.ts";
 import { sandboxRoutes } from "./sandbox-routes.ts";
 import { SessionTable } from "./session-table.ts";
 
@@ -116,7 +117,7 @@ afterEach(async () => {
 async function started(table = new SessionTable()): Promise<string> {
   sandbox = new FakeSandbox();
   sessions = table;
-  server = await startHostServer(token, sandboxRoutes(sandbox, sessions));
+  server = await startHostServer(token, sandboxRoutes(sandbox, sessions, anyProfile));
   return server.url;
 }
 

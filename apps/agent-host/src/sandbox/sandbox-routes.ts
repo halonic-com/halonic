@@ -4,6 +4,7 @@ import { s } from "@halonicjs/schema-kit";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { startNdjsonStream } from "../server/ndjson-stream.ts";
+import type { BuiltProfiles } from "./built-profiles.ts";
 import { sandboxProfileSchema } from "./profile-schema.ts";
 import type { SessionTable } from "./session-table.ts";
 
@@ -12,6 +13,8 @@ const sessionBody = s.object({ session: s.string().min(1) }).strict();
 
 const unknownSessionMessage = "The agent host has no open sandbox session with this id.";
 const hostStoppingMessage = "The agent host is stopping and opens no more sessions.";
+const notBuiltMessage =
+  "The agent host opens a session only for a profile it built, once; ask for the profile again.";
 const tooManySessionsMessage =
   "The agent host already has the most sandbox sessions it allows. Close one first.";
 
@@ -59,7 +62,10 @@ async function openSession(
  * - `POST /v1/sandbox/sessions/open` with `{ profile }` opens a session and
  *   answers `{ session, fence }`: its id and the fence proof, or 503
  *   `host_stopping` once the host has begun to stop, or 429
- *   `too_many_sessions` when the session table is full;
+ *   `too_many_sessions` when the session table is full. The profile must be
+ *   one of `built`, with at most the harness's variables added, and opens
+ *   one session only: anything else is 403 `profile_not_built`, so the
+ *   caller can't set the fence;
  * - `POST /v1/sandbox/sessions/blocked` with `{ session }` streams the
  *   session's blocked accesses, one `SandboxBlock` per line, until it closes;
  * - `POST /v1/sandbox/sessions/close` with `{ session }` closes it.
@@ -67,7 +73,11 @@ async function openSession(
  * A session that ends by itself (time limit) is closed here too, which ends
  * its stream; the host closes every session when it stops.
  */
-export function sandboxRoutes(sandbox: Sandbox, sessions: SessionTable): HostRoute[] {
+export function sandboxRoutes(
+  sandbox: Sandbox,
+  sessions: SessionTable,
+  built: BuiltProfiles,
+): HostRoute[] {
   return [
     {
       method: "GET",
@@ -95,6 +105,10 @@ export function sandboxRoutes(sandbox: Sandbox, sessions: SessionTable): HostRou
           return;
         }
         try {
+          if (!built.take(body.profile)) {
+            sendError(response, 403, "profile_not_built", notBuiltMessage);
+            return;
+          }
           await openSession(sandbox, sessions, body.profile, response);
         } finally {
           release();
