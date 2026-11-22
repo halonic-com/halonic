@@ -22,6 +22,8 @@ mod store;
 #[cfg(test)]
 mod answers_tests;
 #[cfg(test)]
+mod connect_tests;
+#[cfg(test)]
 mod host_tests;
 #[cfg(test)]
 mod start_tests;

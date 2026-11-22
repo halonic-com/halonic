@@ -190,3 +190,37 @@ async fn phone_tunnel_pairing_says_why_the_computer_could_not_be_reached() {
         PairingOutcome::Stopped(Problem::CodeEnded)
     );
 }
+
+#[tokio::test]
+async fn phone_tunnel_pairing_again_keeps_the_id_and_ends_the_earlier_connection() {
+    let phone = Phone::new("pairing-again", LocalNetwork::Allowed);
+    let gateway = Gateway::start().await;
+    let id = phone.pair(&gateway).await;
+    let computer = ComputerId::parse(&id).unwrap();
+    let earlier_key = phone.list().keys().load(&computer).unwrap().unwrap().public;
+    let (_, mut earlier) = tokio::join!(phone.tunnel.connect(&id), gateway.accept());
+    gateway.reconnect(&mut earlier).await;
+
+    // The computer was set up again, with a new key and a new address, and
+    // the person chose Pair again on it.
+    let moved = Gateway::start().await;
+    let again = start(json!({
+        "route": "typed",
+        "code": CODE,
+        "endpoints": [moved.endpoint()],
+        "again": id,
+    }));
+    assert_eq!(phone.pair_from(&moved, again).await, id);
+
+    assert!(closed(&mut earlier).await, "the earlier connection ends");
+    let list = phone.list();
+    let kept = list.keys().load(&computer).unwrap().expect("a key");
+    assert_ne!(kept.public, earlier_key);
+    let details = list.details(&computer).unwrap().expect("listed");
+    assert_eq!(details.standing.host_key(), Some(&moved.host.public_key()));
+    assert_eq!(details.endpoints, [moved.endpoint(), gateway.endpoint()]);
+    let ComputersAnswer::Computers(listed) = phone.tunnel.computers().await else {
+        panic!("the list reads");
+    };
+    assert_eq!(listed.len(), 1, "listed once");
+}

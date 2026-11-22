@@ -92,6 +92,9 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
             let id = id.clone();
             self.store.run(move |computers| computers.forget(&id)).await
         };
+        // A connect that started meanwhile may have read the key before it
+        // was wiped: it ends too, and one still opening finds it ended.
+        self.connections.end(&id);
         self.connections.forget_status(&id);
         match forgotten {
             Ok(()) => ForgetOutcome::Forgotten,

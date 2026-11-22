@@ -4,7 +4,7 @@
 //! connection is never left idle and the 130 seconds count from message 3
 //! (Liam and Julian on HAL-15208). The page's wait only collects it.
 
-use std::sync::PoisonError;
+use std::sync::{Arc, PoisonError};
 
 use halonic_device_keys::{
     ComputerId, DeviceKeyPair, DeviceKeyStore, NewPairing, PairedComputer, PrivateKey,
@@ -123,19 +123,21 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
             private: PrivateKey::new(*paired.keys.private()),
         };
         drop(paired.keys);
+        let connections = Arc::clone(&self.connections);
         let kept = self
             .store
             .run(move |computers| {
                 let id = computers.add(&pairing, &pair, again.as_ref())?;
+                // Still under the store's lock, so the earlier connection
+                // has nothing left to note once it is released; anything
+                // it noted meanwhile is checked against the new key first.
+                connections.end(&id);
                 let details = computers.details(&id)?;
                 Ok(PairedComputer { id, details })
             })
             .await;
         match kept {
-            Ok(computer) => {
-                self.connections.end(&computer.id);
-                PairingOutcome::Paired(ComputerView::from(&computer))
-            }
+            Ok(computer) => PairingOutcome::Paired(ComputerView::from(&computer)),
             Err(error) => {
                 self.host
                     .log(&format!("keeping a paired computer: {error}"));
