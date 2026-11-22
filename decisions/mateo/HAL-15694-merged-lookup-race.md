@@ -3,6 +3,7 @@
 - Task: HAL-15694
 - Approval: follow-up to the board's decision on HAL-15465 (Timothy, 21 Nov ~22:50 UTC, "Yes"); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3Gvtq9n5kHxwDkWx92ICsAyHzqhkTlOX6qIbcNiPhRQRIFakaxI9VCn7C8LErphNJW/PvgqhkN0KVqAmzxNeAw==
 
 ## What changes
 
