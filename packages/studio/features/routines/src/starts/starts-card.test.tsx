@@ -151,7 +151,7 @@ verifies("routines.starts.starts-card", () => {
 
   it("says once that a saved agent routine can't run, as the picker's hint (HAL-15607)", async () => {
     const line =
-      "Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow, then pick it under Starts.";
+      "Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then pick it under Starts.";
     const helper: RoutineTarget = { kind: "agent", hubId: "acme", id: "helper", prompt: "Hi." };
     const { page } = await card({ ...routineStarting(helper), targetName: "Helper" });
     expect(page.textContent?.split(line).length).toBe(2);
