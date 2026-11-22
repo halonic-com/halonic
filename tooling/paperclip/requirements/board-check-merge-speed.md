@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16194; the Board Checker addendum on HAL-15997, section 1 part (e), with Mateo's answer on HAL-16193 (22 Nov)
 
-In each 10-minute board-check pass, the Agent tools plugin shall read the PR watcher's GitHub snapshot from plugin state, without a GitHub request, and keep each pull request that left the merge queue since the last snapshot as merged or dropped with its minutes in the queue, for a week; and on the first pass of each hour, when the snapshot is at most 30 minutes old, it shall compare the last 6 hours' merges per hour, drop rate and median time in queue with the figures it last reported and, through the write gate, comment once on the Board Checker's task only when one moved clearly, keeping the first figures without a comment.
+When the board check runs its 10-minute pass, the Agent tools plugin shall read the PR watcher's GitHub snapshot from plugin state, without a GitHub request, and keep each pull request that left the merge queue since the last snapshot as merged or dropped with its minutes in the queue, for a week; and on the first pass of each hour, when the snapshot is at most 30 minutes old, it shall compare the last 6 hours' merges per hour, drop rate and median time in queue with the figures it last reported and, through the write gate, comment once on the Board Checker's task only when one moved clearly, keeping the first figures without a comment.
 
 ## Examples
 
