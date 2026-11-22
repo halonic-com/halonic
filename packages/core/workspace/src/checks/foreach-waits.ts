@@ -4,9 +4,9 @@ import type { CheckContext } from "./check-context.ts";
 
 /**
  * A for-each step whose workflow has a wait step, reported at the step's
- * `workflow` (requirement `workspace.foreach-child-waits`). An item's run
- * can't wait: the engine fails the run when one does and cancels the other
- * items' runs, so the check says it before any run starts. Only the
+ * `workflow` (requirement `workspace.foreach-child-waits`). A run for one
+ * item can't wait: the engine fails the run when one does and cancels the
+ * other items' runs, so the error stops the run before it starts. Only the
  * workflows of the step's own hub count, as for the step's other names; a
  * workflow the hub doesn't have is the workflow checks' unknown workflow.
  * A wait step in a workflow the item's workflow runs with a `workflow`
@@ -26,8 +26,14 @@ export function checkForEachWaits(context: CheckContext): WorkspaceIssue[] {
     );
     for (const [id, state] of Object.entries(workflow.value.states)) {
       const runs = state.type === "foreach" ? state.workflow : undefined;
+<<<<<<< HEAD
       const waits = runs === undefined ? undefined : waitIn(runs, hubStates, new Set());
       if (waits !== undefined) {
+=======
+      const waitStep = runs === undefined ? undefined : waitSteps.get(runs);
+      if (runs !== undefined && waitStep !== undefined) {
+        const message = `For-each step "${id}" runs "${runs}" once for each item, and a run for one item can't wait, but "${runs}" has the wait step "${waitStep}". Move "${waitStep}" into this workflow after "${id}", or take it out of "${runs}".`;
+>>>>>>> 6f2df0c97 (fix(routines): C613 words for the for-each wait refusal, Run now and three changesets (HAL-15686))
         const path = ["states", id, "workflow"];
         const message = waitsMessage(id, waits);
         issues.push(context.error(workflow.path, path, "foreach-child-waits", message));

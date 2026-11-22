@@ -65,7 +65,7 @@ verifies("workspace.foreach-child-waits", () => {
         "foreach-child-waits",
         "hubs/support/workflows/topics.workflow.yaml",
         "states.each.workflow",
-        'For-each step "each" runs "review-one" for each item, but "review-one" has the wait step "approve", and an item\'s run can\'t wait, so the run fails there. Move the wait step after "each", or take it out of "review-one".',
+        'For-each step "each" runs "review-one" once for each item, and a run for one item can\'t wait, but "review-one" has the wait step "approve". Move "approve" into this workflow after "each", or take it out of "review-one".',
       ],
     ]);
   });

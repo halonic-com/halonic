@@ -202,7 +202,8 @@ A state with `type: foreach` runs once for each item of a list.
   going end as cancelled, so none is left waiting (HAL-6090). The workspace
   loader refuses a for-each step whose workflow has a `wait` step, or runs
   one through its `workflow` steps (`foreach-child-waits`, HAL-15555), so
-  such a run doesn't start. An item agent
+  such a run doesn't start: move the wait step into the outer workflow, after
+  the for-each step, or take it out of the item's workflow. An item agent
   can't pause for an approval.
 - **Log.** An event from an item carries `item`.
 
