@@ -49,6 +49,7 @@ import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspa
 import { openWorkspaceEngine, type WorkspaceEngine } from "../../workspace-engine.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
+import { sendPayloadOf } from "../run/input.ts";
 import { liveLines } from "../run/live-lines.ts";
 import { runProgress } from "../run/result.ts";
 import type { RunSetup } from "../run/run.ts";
@@ -85,6 +86,10 @@ export async function sendToRun(
   setup: RunSetup,
 ): Promise<CommandResult | StoppedResult> {
   const { typed, event } = sendArguments(input);
+  // Read first, so a payload that can't be used stops the command before anything is checked or sent.
+  const givenPayload = input.options["payload"];
+  const payload =
+    typeof givenPayload === "string" ? await sendPayloadOf(givenPayload, context.cwd) : undefined;
   const workspace = await openWorkspaceDir(input, context);
   const runs = await openWorkspaceRuns(workspace.root, setup.profile);
   const dir = givenDir(input, workspace);
@@ -130,7 +135,7 @@ export async function sendToRun(
   try {
     let run: RunSummary;
     try {
-      run = await new RunEvents(engine, runs).sendEvent(summary.id, event, summary);
+      run = await new RunEvents(engine, runs).sendEvent(summary.id, event, summary, payload);
     } catch (error) {
       if (!(error instanceof RunEventRefused)) throw error;
       const refused = { ...named, workflow, clock: facts.clock };
@@ -191,7 +196,7 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
     this.target = target;
   }
 
-  async send(runId: string, event: string): Promise<RunSummary> {
+  async send(runId: string, event: string, payload?: unknown): Promise<RunSummary> {
     const { dir, workspace, runFiles, run, typedDir } = this.target;
     const nothingSent = sandboxMessages.nothingSent();
     const trust = await checkRunTrust(
@@ -214,7 +219,7 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
     // Before the event goes, so before the run's agents start again, as `halonic run` prints them.
     this.placed = this.engine.placed.map(placedWarning);
     for (const line of this.placed) this.context.printAhead(line);
-    return this.engine.executor.send(runId, event);
+    return this.engine.executor.send(runId, event, payload);
   }
 
   /** The ! lines printed once the engine opened, which the result repeats first. */

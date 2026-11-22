@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join, sep } from "node:path";
 import type { RunEvent } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
@@ -138,7 +138,7 @@ verifies("cli.commands.runs.send", () => {
       expect(none.code).toBe(exitCode.usage);
       expect(none.io.stderr).toEqual([
         "✕ halonic runs send needs a run id and an event.",
-        "  Usage: halonic runs send <run-id> <event> [--dir <folder>]",
+        "  Usage: halonic runs send <run-id> <event> [--payload <file or JSON>] [--dir <folder>]",
       ]);
 
       const three = await sendIn(acme, ["09d9a0", "approve", "reject"]);
@@ -156,6 +156,40 @@ verifies("cli.commands.runs.send", () => {
       expect(io.stderr[0]).toBe(
         "✕ Couldn't send approve to run 09d9a0: there's no workspace.yaml here.",
       );
+    });
+  });
+});
+
+verifies("cli.commands.runs.send-payload", () => {
+  describe("a payload that can't be used", () => {
+    it("says why, and sends nothing", async () => {
+      await storeRuns(waiting);
+      await writeFile(join(acme, "list.json"), "[1, 2]");
+      await writeFile(join(acme, "broken.json"), "{diff:");
+
+      const missing = await sendIn(acme, ["09d9a0", "approve", "--payload", "missing.json"]);
+      expect(missing.code).toBe(exitCode.usage);
+      expect(missing.io.stderr).toEqual([
+        "✕ Couldn't send approve to run 09d9a0: there's no file missing.json.",
+        "  Check the file name. It's looked for from the folder you ran the command in.",
+      ]);
+
+      const list = await sendIn(acme, ["09d9a0", "approve", "--payload", "list.json"]);
+      expect(list.io.stderr).toEqual([
+        "✕ Couldn't send approve to run 09d9a0: the payload must be a JSON object.",
+        "  Pass a JSON object, in a file or as text, such as --payload payload.json.",
+      ]);
+
+      const broken = await sendIn(acme, ["09d9a0", "approve", "--payload", "broken.json"]);
+      expect(broken.io.stderr[0]).toBe(
+        "✕ Couldn't send approve to run 09d9a0: broken.json isn't valid JSON.",
+      );
+
+      const text = await sendIn(acme, ["09d9a0", "approve", "--payload", "{diff"]);
+      expect(text.io.stderr[0]).toBe(
+        "✕ Couldn't send approve to run 09d9a0: the payload isn't valid JSON.",
+      );
+      expect(await eventsOf(waiting.id)).toHaveLength(3);
     });
   });
 });

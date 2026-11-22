@@ -1,4 +1,5 @@
 import type { CliCommand } from "../../command.ts";
+import { inputValueName } from "../../messages/run.ts";
 import { runsMessages } from "../../messages/runs.ts";
 import { runsListMessages } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
@@ -62,12 +63,19 @@ function showCommandWith(setup: RunSetup): CliCommand {
 function sendCommandWith(setup: RunSetup): CliCommand {
   return {
     name: "send",
-    usage: "<run-id> <event> [--dir <folder>]",
+    usage: `<run-id> <event> [--payload <${inputValueName}>] [--dir <folder>]`,
     takesArguments: true,
     summary: runsMessages.sendSummary(),
     action: (input) =>
       runsMessages.sendAction(input.positionals[1] ?? "", input.positionals[0] ?? ""),
-    options: { dir: dirOption },
+    options: {
+      payload: {
+        type: "string",
+        valueName: inputValueName,
+        description: runsMessages.payloadOption(),
+      },
+      dir: dirOption,
+    },
     run: (input, context) => sendToRun(input, context, setup),
   };
 }

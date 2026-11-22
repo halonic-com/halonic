@@ -345,3 +345,39 @@ verifies("cli.workspace-file-problems", () => {
     expect(await eventsOfTheRun()).toEqual(before);
   });
 });
+
+verifies("cli.commands.runs.send-payload", () => {
+  describe("a payload with the event", { timeout: heavyTestTimeout }, () => {
+    it("goes into the run's context with the event, from a file", async () => {
+      await startWaitingRun();
+      await writeFile(join(acme, "note.json"), '{"note": "Sent as written."}');
+
+      const { code, io } = await halonic([
+        "runs",
+        "send",
+        "01JD8Q",
+        "approve",
+        "--payload",
+        "note.json",
+      ]);
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout[0]).toBe("✓ Sent approve to run 01jd8q. Support reply goes on.");
+      const events = await eventsOfTheRun();
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "event.received",
+          event: "approve",
+          payload: { note: "Sent as written." },
+        }),
+      );
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "context.updated",
+          key: "lastEvent",
+          value: { note: "Sent as written." },
+        }),
+      );
+    });
+  });
+});
