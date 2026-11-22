@@ -142,6 +142,7 @@ jobs:
       sandbox-mxc: ${{ steps.diff.outputs.sandbox-mxc }}
       android: ${{ steps.diff.outputs.android }}
       agent_host: ${{ steps.diff.outputs.agent_host }}
+      installer: ${{ steps.diff.outputs.installer }}
       studio: ${{ steps.diff.outputs.studio }}
       docs: ${{ steps.diff.outputs.docs }}
       workflows: ${{ steps.diff.outputs.workflows }}
@@ -181,6 +182,15 @@ jobs:
             "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/adapters/integration-runner/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$|tooling/check/(licences\.json$|licence-texts/[^/]+\.txt$|src/(cli/sbom|lib/(gradle-notices|sbom|licences))\.ts$))"
             "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|infra/wsl-image/(runtime-archive\.sh|files/halonic-runtime)$|packages/adapters/e2e-noise/|package\.json$)"
+            # The Windows installer and update jobs, 12 to 15 minutes each
+            # (HAL-15970): how the installer is built and what it ships (the
+            # agent host's build, the WSL runtime, srt-win's setup version,
+            # the notices, src-tauri/windows, the Tauri configs and
+            # manifests), the shell's updater and agent-host code, and this
+            # workflow. The agent host's code is built and run on Windows by
+            # the agent host job, the rest of the shell by the Tauri job, and
+            # main's run tests the installer whatever changed.
+            "installer=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/(package\.json$|scripts/)|apps/studio/package\.json$|apps/studio/src-tauri/(windows/|binaries/|Cargo\.(toml|lock)$|build\.rs$|rust-toolchain\.toml$|tauri(\.installer|\.runtime)?\.conf\.json$|windows-app-manifest\.xml$|src/(main|lib|sandbox_elevate|agent_host[a-z_]*|updates[a-z_]*)\.rs$|crates/(agent-host|update-state|sandbox-elevate|elevate-start)/)|infra/wsl-image/(runtime-archive\.sh|files/halonic-runtime)$|packages/adapters/sandbox-srt/(package\.json|windows-setup-version\.json)$|tooling/check/src/(cli/sbom|lib/(sbom|licences))\.ts$|package\.json$|LICENSE$|NOTICE$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
             "workflows=^\.github/"
@@ -197,7 +207,14 @@ jobs:
           changed=""
           by_area=false
           if [ "$EVENT" = "pull_request" ]; then
-            changed=$(git diff --name-only --no-renames "$BASE...HEAD")
+            # The checkout is GitHub's merge of the pull request into the
+            # newest main, whose first parent is that main. pull_request.base.sha
+            # is main when the pull request was last pushed, so a diff from
+            # it also lists everything merged since and ran unrelated area
+            # jobs (#4958 ran the Windows installer for a Vitest setting;
+            # HAL-15970). A first parent that can't be read diffs from BASE.
+            parent=$(git rev-parse --verify --quiet HEAD^1) || parent=$BASE
+            changed=$(git diff --name-only --no-renames "$parent...HEAD")
             by_area=true
           elif [ "$EVENT" = "merge_group" ]; then
             # The group against the commit it is built on: main, or the head
@@ -2413,7 +2430,7 @@ jobs:
     # published.
     name: WSL runtime (Linux agent host, packed)
     needs: changes
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -2454,7 +2471,7 @@ jobs:
     # and that the uninstaller removes the agent sandbox. Signing is later.
     name: Windows installer (build, install, uninstall)
     needs: [changes, wsl-runtime]
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 45
     permissions:
@@ -2695,7 +2712,7 @@ jobs:
     # only and are never uploaded.
     name: Windows update (0.1.0 to 0.1.1)
     needs: changes
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 75
     permissions:

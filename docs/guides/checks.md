@@ -862,7 +862,8 @@ passed, so they don't run again, and the guard sees the same counts. Use
 *Re-run all jobs* to get new counts.
 
 On a pull request, the `Changed areas` job decides which of those jobs run
-from the pull request's diff. In the merge queue it reads the group's diff
+from the pull request's diff against the `main` it is merged into, so what
+`main` merged since the pull request's base doesn't count (HAL-15970). In the merge queue it reads the group's diff
 against the commit the group is built on (`main`, or the entry ahead of it
 in the queue) and applies the same area rules to the Linux jobs, so a group that doesn't
 touch `apps/studio/src-tauri` skips Tauri and Android. Each entry ahead
@@ -897,8 +898,8 @@ requirement guard, and the workflow lint unless the group changes
 | Sandbox packages | when sandbox adapters or the ports change: typecheck and test on macOS and Windows. The Windows leg also tests the changed packages (and their dependants) among those that touch paths, files and processes, such as the CLI, the agent host and the file and system adapters |
 | Agent host executable | when `apps/agent-host` changes: builds the executable on Linux, macOS and Windows (Linux only in the queue), runs it and reports its size |
 | Keychain contract on macOS | when `apps/studio/src-tauri` changes: the keychain crate's contract test against a real macOS Keychain |
-| Windows installer | when the Tauri shell or `apps/agent-host` changes: builds the installer from the custom NSIS template, installs it silently into a temporary folder and uninstalls it |
-| Windows update (0.1.0 to 0.1.1) | when the Tauri shell or `apps/agent-host` changes: updates an installed 0.1.0 to 0.1.1 and opens it again, refuses a bad signature and a failed download, and goes back to 0.1.1 from a 0.1.2 that doesn't start |
+| Windows installer | when the installer area changes (the installer's build and what it ships, the shell's updater and agent-host code, the agent host's build, this workflow; `installer` in the `changes` job): builds the installer from the custom NSIS template, installs it silently into a temporary folder and uninstalls it |
+| Windows update (0.1.0 to 0.1.1) | when the installer area changes: updates an installed 0.1.0 to 0.1.1 and opens it again, refuses a bad signature and a failed download, and goes back to 0.1.1 from a 0.1.2 that doesn't start |
 | Android shell | when the Tauri shell, Studio's connect page, the lockfile or the notices check changes: builds the debug APK, then lists the release build's Gradle libraries and checks their licences with `pnpm check:sbom --notices --gradle` |
 | End-to-end, docs | the Studio's Playwright tests when their area changes; the docs job is a stub until `apps/docs` exists |
 | Live cloud suites passed | pull requests and the queue, when the change touches a cloud path (`cloud-affected.ts`). In the merge queue it waits for `live-cloud.yml`'s `live-cloud` job on the group's commit (HAL-15970). On a pull request it passes with a notice, unless the change touches what the suites exercise directly (`on-pull-request`: the Cloudflare and S3 adapters, `packages/targets`, the live suites, the deploy command, the live workflow and its code): then a ready pull request fails at once until that job passed on its head, and `live-cloud-gate.yml` re-runs it when they pass. A draft gets only a notice; a fork's pull request that touches any cloud path fails. Only a notice while `LIVE_CLOUD_ENABLED` isn't `true` |
