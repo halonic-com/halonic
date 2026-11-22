@@ -62,10 +62,12 @@ export async function withProposals<T>(
 }
 
 /**
- * What `read` gives, or an `unavailable` error the person can act on when
- * the proposal's texts were deleted outside Halonic.
+ * What `read` gives, or a `conflict` error the person can act on when the
+ * proposal's texts were deleted outside Halonic: the proposal is still
+ * listed, but its state doesn't allow showing or accepting it. Not
+ * `unavailable`, whose exit code 9 says to try again later (C710 2).
  *
- * @throws OwnLineError `unavailable` for a `ProposalUnavailableError`
+ * @throws OwnLineError `conflict` for a `ProposalUnavailableError`
  */
 export async function unlessUnavailable<T>(
   read: () => Promise<T>,
@@ -77,7 +79,7 @@ export async function unlessUnavailable<T>(
   } catch (error) {
     if (!(error instanceof ProposalUnavailableError)) throw error;
     throw new OwnLineError(
-      "unavailable",
+      "conflict",
       proposalsMessages.unavailable(shownRunId),
       proposalsMessages.unavailableFix(shownRunId, place.dir),
     );

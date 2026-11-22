@@ -101,9 +101,12 @@ export const proposalsMessages = defineMessages("proposals", {
   /** Some files are still to decide. */
   stillLeft: (left: number, runId: string, dir?: string) =>
     phrase`${counted(left, "file is", "files are")} still to decide: ${suggestedCommand("proposals show", dir, runId)}.`,
-  /** A proposal whose texts were deleted outside Halonic was removed by reject. */
+  /**
+   * A proposal whose texts were deleted outside Halonic was removed by reject: Studio's toast after
+   * Remove from Inbox, "Removed run 01JD8Q from the Inbox", with the CLI's list (C710 2).
+   */
   removedUnavailable: (runId: string) =>
-    phrase`Removed run ${runId}'s proposal: its changes were deleted outside Halonic.`,
+    phrase`Removed run ${runId} from the list: its changes were deleted outside Halonic.`,
 
   /** No open proposal for the id typed (`not_found`). */
   noProposal: (runId: string, workspace: string) =>
@@ -119,11 +122,15 @@ export const proposalsMessages = defineMessages("proposals", {
   noFile: (path: string, runId: string) => phrase`Run ${runId} proposes no change to ${path}.`,
   noFileFix: (runId: string, dir?: string) =>
     phrase`See its files with ${suggestedCommand("proposals show", dir, runId)}.`,
-  /** The proposal's texts are gone (`unavailable`). */
+  /**
+   * The proposal's texts are gone (`conflict`: the proposal is still listed, but can't be shown or
+   * accepted). The fix says what Studio's Remove from Inbox does, removing the run from the list,
+   * so "reject" isn't read as rejecting changes (C710 2).
+   */
   unavailable: (runId: string) =>
     phrase`Run ${runId}'s changes were deleted outside Halonic, so they can't be shown or accepted.`,
   unavailableFix: (runId: string, dir?: string) =>
-    phrase`Remove them from the list with ${suggestedCommand("proposals reject", dir, runId)}.`,
+    phrase`Remove run ${runId} from the list with ${suggestedCommand("proposals reject", dir, runId)}.`,
   /** Usage: `show`, `accept` and `reject` take one run id, and a file for the last two. */
   takesOneRunId: () => phrase`Give one run id.`,
   takesRunIdAndFile: () => phrase`Give one run id, and a file if you want to decide only that one.`,

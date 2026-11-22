@@ -135,7 +135,7 @@ function whatColumn(
     case "waiting":
       return waitingWhat(summary, step, clock);
     case "done":
-      return doneWhat(run);
+      return doneWhat(run, workflow);
     case "stopped":
       return summary.reason === "budget"
         ? runsListMessages.budgetReached(step).phrase
@@ -147,17 +147,43 @@ function whatColumn(
  * A completed run, never an empty column (cli-output 3.4, revisions 32 and
  * 38): what it sent and its estimated cost, as the receipt says them. A run
  * whose tool calls sent nothing has no sent part, so then its estimated cost,
- * or for a run that had no priced call (a subscription), "Finished".
+ * or for a run that had no priced call (a subscription), "Finished". When its
+ * workflow has more than one ending, the ending it reached comes first, so a
+ * rejected reply doesn't read as a sent one (C705 1, HAL-16449).
  */
-function doneWhat(run: RunToList): Phrase {
+function doneWhat(run: RunToList, workflow: WorkflowDefinition | undefined): Phrase {
   const cost = run.summary.cost > 0 ? moneyAmount(run.summary.cost) : undefined;
   const sends = run.sends === undefined ? [] : sendsInWords(run.sends);
+  const ending = runEnding(run.summary, workflow);
+  if (ending !== undefined) {
+    return runsListMessages.ending(ending, sends, cost).phrase;
+  }
   if (sends.length > 0) {
     return runsListMessages.whatItSent(sends, cost).phrase;
   }
   return cost === undefined
     ? runsListMessages.finished().phrase
     : runsListMessages.estimatedCost(cost).phrase;
+}
+
+/**
+ * The final state a finished run ended in, named as a step is, when its
+ * workflow has more than one: "Finished" alone can't tell a sent reply from
+ * a rejected one (HAL-16276). `runs show`, `run` and the list all name it.
+ * `undefined` for a workflow with one ending, one that's gone, or a run that
+ * didn't stop in a final state.
+ */
+export function runEnding(
+  summary: RunSummary,
+  workflow: WorkflowDefinition | undefined,
+): string | undefined {
+  const states = workflow?.states ?? {};
+  const finals = Object.values(states).filter((state) => state.type === "final");
+  const ended = summary.state === null ? undefined : states[summary.state];
+  if (summary.state === null || ended?.type !== "final" || finals.length < 2) {
+    return undefined;
+  }
+  return stepName(summary.state, ended.description);
 }
 
 /**
