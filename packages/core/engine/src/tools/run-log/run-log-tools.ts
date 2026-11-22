@@ -2,6 +2,7 @@
 // model. An agent gets them with `runLogs: true`. It sees only its own hub's
 // runs, so one hub's agent never reads another hub's work.
 
+import { fenceUntrusted } from "@halonicjs/app";
 import type { RunStatus, RunSummary } from "@halonicjs/events";
 import type { Clock, RunStore } from "@halonicjs/ports";
 import type { HalonicTool } from "../../agent/turn-tools.ts";
@@ -105,7 +106,10 @@ function readRunTool(options: RunLogToolsOptions): HalonicTool {
   };
 }
 
-/** One run as a line of `list_runs`, its fields joined with " | ". */
+/**
+ * One run as a line of `list_runs`, its fields joined with " | ". Its error
+ * can hold what a tool or a model said, so it is fenced as untrusted.
+ */
 function runListLine(run: RunSummary): string {
   const seconds =
     run.endedAt === null
@@ -121,6 +125,6 @@ function runListLine(run: RunSummary): string {
     seconds === null ? "-" : `${seconds}s`,
     `${run.usage.inputTokens}+${run.usage.outputTokens} tokens`,
     `cost ${run.cost.toFixed(4)}${unpriced}`,
-    run.error ?? "",
+    run.error === null || run.error === "" ? "" : fenceUntrusted(run.error),
   ].join(" | ");
 }

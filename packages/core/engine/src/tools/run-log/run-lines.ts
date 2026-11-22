@@ -1,3 +1,4 @@
+import { fenceUntrusted } from "@halonicjs/app";
 import { type RunEvent, upgradeEvent } from "@halonicjs/events";
 import { shortText } from "../tool-args.ts";
 
@@ -5,10 +6,22 @@ import { shortText } from "../tool-args.ts";
 const maxValueText = 200;
 
 /**
+ * A text of the log that a model, a server or someone outside the workspace
+ * may have written: a tool call's arguments and result, or why a run
+ * failed. It is cut first, then fenced as untrusted, so the closing marker
+ * is always kept. A model reading the log reads it, but doesn't follow it.
+ */
+function fencedValue(value: unknown): string {
+  return fenceUntrusted(shortText(value, maxValueText));
+}
+
+/**
  * A run's events as `read_run` shows them: one line per event that says
  * something to a model reading the history, indented under the state and
  * the agent, and each provider note once, under the first model call that
- * had it. Other events, and the full texts and context, are left out.
+ * had it. Other events, and the full texts and context, are left out. Tool
+ * arguments, results and a run's error are fenced ({@link fencedValue}), so
+ * such a "line" spans the fence's lines.
  */
 export function runLines(events: readonly RunEvent[]): string[] {
   const lines: string[] = [];
@@ -49,9 +62,9 @@ function eventLine(event: RunEvent): string | null {
       return `  model ${event.model}: ${tokens}${cost}, ${event.latencyMs} ms`;
     }
     case "tool.called":
-      return `  tool ${event.tool} ${shortText(event.args, maxValueText)}`;
+      return `  tool ${event.tool} ${fencedValue(event.args)}`;
     case "tool.result":
-      return `    -> ${shortText(event.result, maxValueText)}`;
+      return `    -> ${fencedValue(event.result)}`;
     // Wording: Sofia, HAL-5582.
     case "tool.unasked":
       return `  Ran without asking: \`${event.tool}\` is in your workspace's \`read\` list.`;
@@ -64,7 +77,7 @@ function eventLine(event: RunEvent): string | null {
     case "run.completed":
       return "completed";
     case "run.failed":
-      return `failed: ${event.error}`;
+      return `failed: ${fenceUntrusted(event.error)}`;
     case "run.cant-try":
       return `couldn't try: ${event.cantTry.map((found) => found.step ?? found.item).join(", ")}`;
     default:

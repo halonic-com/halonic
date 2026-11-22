@@ -13,18 +13,28 @@ export const fenceEnd = "</untrusted>";
 const markerName = "untrusted";
 
 /**
- * Characters a model doesn't see as part of a word: invisible format
- * characters such as the zero-width space and the soft hyphen (`\p{Cf}`),
- * combining marks (`\p{M}`) and whitespace.
+ * Characters a model doesn't see as part of a word: control characters such
+ * as NUL, ESC and the C1 controls (`\p{Cc}`), invisible format characters
+ * such as the zero-width space and the soft hyphen (`\p{Cf}`), combining
+ * marks (`\p{M}`) and whitespace.
  */
-const unseen = /[\p{Cf}\p{M}\s]/gu;
+const unseen = /[\p{Cc}\p{Cf}\p{M}\s]/gu;
+
+/**
+ * Angle brackets that look like `<` though NFKC keeps them apart: the single
+ * guillemet, the CJK and mathematical angle brackets (`〈` is also what NFKC
+ * makes of U+2329), the modifier arrowhead and the Canadian syllabic `ᐸ`.
+ */
+const lessThanLookalikes: ReadonlySet<string> = new Set(["‹", "〈", "⟨", "˂", "ᐸ"]);
 
 /**
  * Whether a character is `<` or a lookalike of it, such as the fullwidth
- * `＜` or the small `﹤`: every character that NFKC maps to `<`.
+ * `＜`, the small `﹤` (every character that NFKC maps to `<`) or one of
+ * {@link lessThanLookalikes}.
  */
 function isLessThan(char: string): boolean {
-  return char.normalize("NFKC") === "<";
+  const normal = char.normalize("NFKC");
+  return normal === "<" || lessThanLookalikes.has(normal);
 }
 
 /**
