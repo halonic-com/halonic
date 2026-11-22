@@ -115,8 +115,22 @@ verifies("workspace.run-problems", () => {
       ["another hub's workflow", "hubs/reports/workflows/support-reply.workflow.yaml"],
       ["another hub's agent", "hubs/reports/agents/writer.agent.yaml"],
       ["its test file", "hubs/support/workflows/support-reply.test.yaml"],
+      // C605 #1 (HAL-15637): the routine can't start, but the workflow runs.
+      ["a routine that starts it", "hubs/support/workflows/routines/nightly-check.routine.yaml"],
+      ["another hub's routine", "hubs/reports/workflows/routines/weekly.routine.yaml"],
+      ["a workspace routine", "workflows/routines/nightly-check.routine.yaml"],
     ])("%s", async (_, file) => {
       expect(await stopping([errorIn(file)])).toEqual([]);
+    });
+
+    it("a routine whose file doesn't load", async () => {
+      const routinePath = "hubs/support/workflows/routines/nightly-check.routine.yaml";
+      const workspace = await loadWorkspace(
+        new MemorySource({ ...acme, [routinePath]: "id: [\n" }),
+      );
+
+      expect(workspace.issues.map((issue) => issue.file)).toContain(routinePath);
+      expect(errorsStoppingRun(workspace, workspace.issues, supportReply)).toEqual([]);
     });
 
     it("any file, when the problem is only a warning", async () => {
