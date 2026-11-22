@@ -13,6 +13,7 @@ import {
   KeyBody,
   LocalBody,
   LocalStateLine,
+  LockedLine,
   OffOption,
   OptionCard,
 } from "./pick-model-options.tsx";
@@ -47,7 +48,7 @@ export function PickModelScreen({ pick, onBack }: PickModelScreenProps) {
   return (
     <section
       aria-labelledby={headingId}
-      className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-8"
+      className="mx-auto flex w-full max-w-column flex-col gap-4 px-4 py-8"
     >
       <div className="flex flex-col gap-1">
         <h1 id={headingId} className="text-title text-fg">
@@ -79,7 +80,7 @@ function Options(props: {
     // min-w-0 lets it shrink with the screen instead of growing to its content.
     <fieldset
       aria-labelledby={props.labelId}
-      className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
+      className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0"
     >
       {state.keysOff ? (
         <OffOption title={words.key} why={words.keysOff} />
@@ -130,7 +131,7 @@ function Options(props: {
 /** What the test or Continue found, inside the ticked option: amber when the choice is fine, else red. */
 function Message({ state }: { readonly state: PickModelState }) {
   if (state.message === undefined) return null;
-  const tone = isAmber(state.message) ? "warning" : "danger";
+  const tone = isAmber(state.message) ? "attention" : "danger";
   return (
     <Callout tone={tone} announce="polite">
       {messageText(state.message, state.provider)}
@@ -167,7 +168,9 @@ function Footer(props: {
         </Button>
       </div>
       {line !== undefined && (
-        <p className="text-right text-small text-fg-muted phone:text-left">{line}</p>
+        <p className="text-right text-small text-fg-muted phone:text-left">
+          <LockedLine>{line}</LockedLine>
+        </p>
       )}
     </div>
   );

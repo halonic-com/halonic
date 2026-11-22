@@ -130,4 +130,42 @@ verifies("first-run.pick-model", () => {
     expect(key?.reveal()).toBe("sk-ant-pasted");
     expect(root.textContent).toContain("Anthropic didn't accept this key.");
   });
+
+  // jsdom draws no CSS, so these check for classes the kit defines (C574): `max-w-xl` and a
+  // `focus-ring` under `peer-` built to nothing, and the kit's amber is `attention`.
+  it("caps the screen at the kit's column width", async () => {
+    const root = await open(fakeService([], { kind: "not-found", cause: "off" }));
+    expect(root.querySelector("section")?.classList).toContain("max-w-column");
+  });
+
+  it("rings the provider a keyboard user moved to, with an outline in forced colours", async () => {
+    const root = await open(fakeService([], { kind: "not-found", cause: "off" }));
+    const openai = root.querySelectorAll('input[name="pick-model-provider"]')[1];
+    const face = openai?.nextElementSibling?.classList;
+    expect(face).toContain("peer-focus-visible:shadow-(--focus-ring)");
+    expect(face).toContain("forced-colors:peer-focus-visible:outline-[Highlight]");
+    expect(face).not.toContain("peer-focus-visible:focus-ring");
+  });
+
+  it("puts a hidden lock before the trust line and where the key is kept", async () => {
+    const root = await open(fakeService([], { kind: "not-found", cause: "off" }));
+    const lockBefore = (text: string) =>
+      [...root.querySelectorAll("span")].find(
+        (span) => span.textContent === text && span.querySelector("svg") !== null,
+      );
+    const trust = lockBefore("Will pass 1 secret to Anthropic. Turns off Local only.");
+    const kept = lockBefore("Kept encrypted on this computer. Studio never shows it again.");
+    for (const line of [trust, kept]) {
+      expect(line?.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+    }
+  });
+
+  it("draws Ollama's missing model in amber, not the violet of your turn", async () => {
+    const root = await open(fakeService(["openai"], { kind: "none-downloaded" }));
+    const line = [...root.querySelectorAll("span")].find(
+      (span) => span.textContent === "Ollama is running, but has no model yet.",
+    );
+    expect(line?.classList).toContain("text-attention");
+    expect(root.querySelector(".text-warning")).toBeNull();
+  });
 });

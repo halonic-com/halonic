@@ -6,6 +6,7 @@ import {
   Field,
   InfoIcon,
   Input,
+  LockIcon,
   Select,
   Spinner,
   TickIcon,
@@ -23,9 +24,13 @@ import {
   pickModelWords as words,
 } from "../pick-model/pick-model-words.ts";
 
-/** A card's edge: `primary` while it is ticked, dashed while it is off (8e.5). */
+/**
+ * A card's edge: `primary` with a 3px `accent-soft` halo while it is ticked, and `Highlight` in
+ * forced colours, where the halo isn't drawn; dashed while it is off (8e.5).
+ */
 const cardClasses = {
-  ticked: "rounded-md border border-primary bg-surface",
+  ticked:
+    "rounded-md border border-primary bg-surface shadow-[0_0_0_3px_var(--color-accent-soft)] forced-colors:border-[Highlight]",
   open: "rounded-md border border-border bg-surface",
   off: "rounded-md border border-dashed border-border bg-surface",
 } as const;
@@ -58,7 +63,7 @@ export function OptionCard(props: {
         </span>
       </label>
       {props.ticked && props.children !== undefined && (
-        <div className="flex flex-col gap-3 pr-4 pb-4 pl-11">{props.children}</div>
+        <div className="flex flex-col gap-3 pr-4 pb-4 pl-11 phone:pl-4">{props.children}</div>
       )}
     </div>
   );
@@ -108,6 +113,18 @@ function StateLine({
   );
 }
 
+/** A line with the 14px lock before it (sheets 01 and 07): the trust line and where a key is kept. */
+export function LockedLine({ children }: { readonly children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="size-3.5 shrink-0 *:size-full" aria-hidden="true">
+        <LockIcon />
+      </span>
+      {children}
+    </span>
+  );
+}
+
 /** The local option's state line, by what the detection found. */
 export function LocalStateLine({ local }: { readonly local: LocalState }) {
   if (local.kind === "one" || local.kind === "several") {
@@ -119,7 +136,7 @@ export function LocalStateLine({ local }: { readonly local: LocalState }) {
   }
   if (local.kind === "none-downloaded") {
     return (
-      <StateLine icon={<WarningIcon />} tone="text-warning">
+      <StateLine icon={<WarningIcon />} tone="text-attention">
         {localLine(local)}
       </StateLine>
     );
@@ -174,7 +191,7 @@ function LoadingNote({ slow }: { readonly slow: boolean }) {
     );
   }
   return (
-    <Callout tone="warning" icon={<Spinner />} announce="polite">
+    <Callout tone="attention" icon={<Spinner />} announce="polite">
       {words.loadingHint} {words.slowHint}
     </Callout>
   );
@@ -208,7 +225,7 @@ export function KeyBody(props: {
           </button>
         </p>
       ) : (
-        <Field label={words.keyField} hint={words.keyKept}>
+        <Field label={words.keyField} hint={<LockedLine>{words.keyKept}</LockedLine>}>
           <Input
             ref={props.keyField}
             type="password"
@@ -257,7 +274,7 @@ function ProviderSwitch(props: {
               onChange={() => props.onChoose(provider)}
               className="peer sr-only"
             />
-            <span className="block cursor-pointer rounded-sm px-3 py-1 text-small text-fg-muted peer-checked:bg-surface peer-checked:text-fg peer-focus-visible:focus-ring">
+            <span className="block cursor-pointer rounded-sm px-3 py-1 text-small text-fg-muted peer-checked:bg-surface peer-checked:text-fg peer-focus-visible:shadow-(--focus-ring) forced-colors:peer-focus-visible:outline-2 forced-colors:peer-focus-visible:outline-[Highlight]">
               {firstRunProviders[provider].name}
             </span>
           </label>
