@@ -191,7 +191,8 @@ const gridClasses = "grid grid-cols-[1fr_minmax(12rem,auto)_1fr] items-start gap
 /** 94 px side columns at 360 px, with 16 px for each line to cross between them and the centre. */
 const phoneGridClasses =
   "grid grid-cols-[minmax(5.75rem,6.25rem)_6.75rem_minmax(5.75rem,6.25rem)] justify-center items-start gap-x-4 gap-y-6 p-4";
-const stackedClasses = "flex flex-col gap-6 p-4";
+/** Flush rows edge to edge; the centre card insets itself (component specs 15.8). */
+const stackedClasses = "flex flex-col gap-6 py-4";
 
 /** The classes of the map's cells' container in each layout. */
 function gridOf(stacked: boolean, phone: boolean): string {

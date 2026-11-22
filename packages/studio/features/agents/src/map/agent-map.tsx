@@ -1,4 +1,4 @@
-import { HandIcon, LetterTile } from "@halonicjs/studio-kit";
+import { HandIcon, LetterTile, ListHeading } from "@halonicjs/studio-kit";
 import type { CloseStack } from "@halonicjs/studio-shell";
 import { type ReactNode, useContext, useId, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -14,6 +14,7 @@ import {
 } from "../api.ts";
 import { MapFrame, MapStacked } from "./map-frame.tsx";
 import type { MapSide } from "./map-geometry.ts";
+import { StackedAddRow, StackedRow, stackedRowsClasses } from "./map-rows.tsx";
 import { MAX_SIDE_CARDS, SummaryCard, SummaryDrawer } from "./map-summary.tsx";
 import { mapWords as words } from "./map-words.ts";
 
@@ -170,25 +171,21 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
         ...routines.map((routine) => (
           <Card
             key={`${routine.hubId ?? ""}/${routine.id}`}
+            kind={words.routine}
+            name={routine.name}
             // A routine at the workspace's root has no page of its own yet, so its card is text.
             onOpen={openRoutine && routine.hubId !== null ? () => openRoutine(routine) : undefined}
-          >
-            <Kind>{words.routine}</Kind>
-            <span>{routine.name}</span>
-          </Card>
+          />
         )),
         ...users.map((user) => (
           <Card
             key={`${user.hubId}/${user.id}`}
+            kind={words.workflow}
+            name={user.name}
+            detail={words.steps(user.stepNames ?? user.stepIds)}
             label={words.workflowCard(user.name, settings.name, user.stepNames ?? user.stepIds)}
             onOpen={openWorkflow && (() => openWorkflow(user))}
-          >
-            <Kind>{words.workflow}</Kind>
-            <span>{user.name}</span>
-            <span className="text-caption text-fg-muted">
-              {words.steps(user.stepNames ?? user.stepIds)}
-            </span>
-          </Card>
+          />
         )),
         ...handsWork.map((member) => (
           <AgentCard key={member.id} agent={member} onOpen={openAgent} />
@@ -217,6 +214,14 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
   };
 }
 
+const stepLinksClasses = "flex flex-col gap-1 phone:gap-0 phone:divide-y phone:divide-border";
+const stepLinkClasses =
+  "text-small text-fg underline-offset-2 hover:underline focus-ring phone:flex phone:min-h-touch phone:w-full phone:items-center phone:font-medium phone:text-accent-text";
+// Stacked, the agent steps are the phone's 48 px rows at every size, since larger text stacks it.
+const stepRowsClasses = "flex flex-col divide-y divide-border";
+const stepRowClasses =
+  "flex min-h-touch w-full items-center text-small font-medium text-accent-text focus-ring";
+
 /**
  * The agent itself: its avatar and name, which open nothing, and its agent steps, each a card. On a
  * phone the steps are 48 px rows across the card, with a line between them (HAL-485 11.6).
@@ -226,12 +231,16 @@ function CentreCard({
   openAgentStep,
 }: Pick<AgentMapProps, "settings" | "openAgentStep">) {
   const stepsId = useId();
+  // Stacked, it's a card inset 16 px between the rows, its name a section title (15.8).
+  const stacked = useContext(MapStacked);
   return (
     <div
       data-map-centre=""
-      className="col-start-2 row-start-1 flex flex-col gap-2 rounded-lg border border-border-strong bg-surface-raised p-4 phone:p-2"
+      className={`col-start-2 row-start-1 flex flex-col gap-2 rounded-lg border border-border-strong bg-surface-raised ${stacked ? "mx-4 px-4 py-3" : "p-4 phone:p-2"}`}
     >
-      <p className="flex items-center gap-2 text-body-strong text-fg">
+      <p
+        className={`flex items-center gap-2 text-fg ${stacked ? "text-section" : "text-body-strong"}`}
+      >
         <LetterTile name={settings.name} />
         {settings.name}
       </p>
@@ -241,12 +250,12 @@ function CentreCard({
           <p id={stepsId} className="text-caption text-fg-muted">
             {words.agentSteps}
           </p>
-          <ul className="flex flex-col gap-1 phone:gap-0 phone:divide-y phone:divide-border">
+          <ul className={stacked ? stepRowsClasses : stepLinksClasses}>
             {settings.agentSteps.map((step) => (
               <li key={step.id}>
                 <button
                   type="button"
-                  className="text-small text-fg underline-offset-2 hover:underline focus-ring phone:flex phone:min-h-touch phone:w-full phone:items-center phone:font-medium phone:text-accent-text"
+                  className={stacked ? stepRowClasses : stepLinkClasses}
                   onClick={() => openAgentStep(step)}
                 >
                   {step.id} ›
@@ -277,20 +286,21 @@ function toolCards({ settings, tools, openTool }: AgentMapProps): readonly React
       return (
         <Card
           key={`${list}/${id}`}
+          kind={words.kinds[list]}
+          name={name}
+          detail={
+            asksFirst && (
+              <span className="inline-flex items-center gap-1 font-medium text-warning">
+                <span aria-hidden="true" className="inline-grid size-icon-sm shrink-0 *:size-full">
+                  <HandIcon />
+                </span>
+                {asksFirst}
+              </span>
+            )
+          }
           label={asksFirst && `${words.kinds[list]} ${name}, ${asksFirst}`}
           onOpen={openTool && (() => openTool(list))}
-        >
-          <Kind>{words.kinds[list]}</Kind>
-          <span>{name}</span>
-          {asksFirst && (
-            <span className="inline-flex items-center gap-1 text-caption font-medium text-warning">
-              <span aria-hidden="true" className="inline-grid size-icon-sm shrink-0 *:size-full">
-                <HandIcon />
-              </span>
-              {asksFirst}
-            </span>
-          )}
-        </Card>
+        />
       );
     }),
   );
@@ -308,7 +318,7 @@ function Side({
 }: {
   /** Which side it is, for the lines to its cards. */
   readonly side: MapSide;
-  /** Three a row, two in a stacked map, for what it can use; one under the other otherwise. */
+  /** Three a row for what it can use; one under the other otherwise, and always when stacked. */
   readonly columns?: boolean;
   /** The summary card that stands for its cards, when it has too many. */
   readonly summary: ReactNode;
@@ -316,7 +326,19 @@ function Side({
 }) {
   const headingId = useId();
   const stacked = useContext(MapStacked);
-  const grid = stacked ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 gap-2";
+  if (stacked) {
+    // A flush list under the kit's List heading (component specs 15.8, 18.3).
+    return (
+      // biome-ignore lint/a11y/useSemanticElements: a side of cards, not form fields, so not a fieldset.
+      <div role="group" aria-labelledby={headingId} data-map-side={side}>
+        <ListHeading id={headingId} name={content.heading} />
+        <div className={stackedRowsClasses}>
+          {summary || content.items}
+          {content.add}
+        </div>
+      </div>
+    );
+  }
   return (
     // biome-ignore lint/a11y/useSemanticElements: a side of cards, not form fields, so not a fieldset.
     <div
@@ -328,7 +350,7 @@ function Side({
       <h2 id={headingId} className="text-caption text-fg-muted uppercase">
         {content.heading}
       </h2>
-      <div className={columns ? grid : "flex flex-col gap-2"}>
+      <div className={columns ? "grid grid-cols-3 gap-2" : "flex flex-col gap-2"}>
         {summary || content.items}
         {content.add}
       </div>
@@ -336,17 +358,50 @@ function Side({
   );
 }
 
-/** A card of the map: a button that opens its item, or text where the app can't open it. */
+/**
+ * A card of the map: a button that opens its item, or text where the app can't open it. In the
+ * stacked map it's a row, its name over its kind and detail (component specs 15.8).
+ */
 function Card({
+  kind,
+  name,
+  detail,
   label,
   onOpen,
-  children,
 }: {
+  /** What kind of item it is, in small caps; read before its name. */
+  readonly kind: string;
+  readonly name: string;
+  /** One more line under its name: a workflow's steps, a connector's tools that ask first. */
+  readonly detail?: ReactNode;
   /** Its accessible name, when its text doesn't say enough. */
   readonly label?: string | undefined;
   readonly onOpen?: (() => void) | undefined;
-  readonly children: ReactNode;
 }) {
+  const stacked = useContext(MapStacked);
+  if (stacked) {
+    const more = detail ? <> · {detail}</> : null;
+    return (
+      <StackedRow
+        name={name}
+        detail={
+          <>
+            {kind}
+            {more}
+          </>
+        }
+        label={label}
+        onOpen={onOpen}
+      />
+    );
+  }
+  const children = (
+    <>
+      <span className="text-caption text-fg-muted uppercase">{kind} </span>
+      <span>{name}</span>
+      {detail && <span className="text-caption text-fg-muted">{detail}</span>}
+    </>
+  );
   if (onOpen === undefined) {
     return (
       <div data-map-card="" className={cardClasses}>
@@ -375,21 +430,13 @@ function AgentCard({
   readonly agent: AgentListing;
   readonly onOpen?: ((agent: AgentListing) => void) | undefined;
 }) {
-  return (
-    <Card onOpen={onOpen && (() => onOpen(agent))}>
-      <Kind>{words.agent}</Kind>
-      <span>{agent.name}</span>
-    </Card>
-  );
+  return <Card kind={words.agent} name={agent.name} onOpen={onOpen && (() => onOpen(agent))} />;
 }
 
-/** What kind of item a card is, in small caps; read before its name. */
-function Kind({ children }: { readonly children: string }) {
-  return <span className="text-caption text-fg-muted uppercase">{children} </span>;
-}
-
-/** The add button a side ends in, also when the side is empty. */
+/** The add button a side ends in, also when the side is empty; the last row in a stacked map. */
 function AddButton({ label, onAdd }: { readonly label: string; readonly onAdd: () => void }) {
+  const stacked = useContext(MapStacked);
+  if (stacked) return <StackedAddRow label={label} onAdd={onAdd} />;
   return (
     <button type="button" className={addClasses} onClick={onAdd}>
       <span aria-hidden="true">+ </span>

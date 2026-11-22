@@ -76,6 +76,9 @@ test.describe("phone", () => {
       if (panel === null) return;
       expect(panel.height, "the map's panel has room").toBeGreaterThan(0);
       await expect(page.locator("[data-map-stacked]"), "the map isn't stacked").toHaveCount(0);
+      // The panel stays inside the screen too, so the page doesn't scroll sideways.
+      const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      expect(pageWidth, "the page doesn't scroll sideways").toBeLessThanOrEqual(360);
       for (const card of await cardsWithin(page, panel)) {
         expect(card.height, "the card is a 48 px target").toBeGreaterThanOrEqual(48);
       }
