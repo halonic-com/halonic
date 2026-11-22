@@ -43,9 +43,11 @@ export function modelsFileFailed(context: CheckContext): boolean {
 
 /**
  * What validate says about an alias in `models.yaml` or a `hub.yaml` on a
- * provider no file names. It ends with the fix, as the run view's banner for
- * the same cause does, so validate isn't the one place that leaves it out
- * (C618, HAL-15709), and both files' aliases read the same (C638, HAL-15830).
+ * provider no file names. Its first sentence is the one a run that stops for
+ * the same cause says (C637, HAL-15841), and it ends with the fix, as the run
+ * view's banner for the same cause does, so validate isn't the one place that
+ * leaves it out (C618, HAL-15709), and both files' aliases read the same
+ * (C638, HAL-15830).
  */
 export function unknownProviderMessage(
   alias: string,
@@ -55,15 +57,15 @@ export function unknownProviderMessage(
   const near = nearMatch(provider, providers);
   const fix =
     near === undefined
-      ? `Add providers/${provider}.yaml, or point the alias ${alias} at a provider the workspace has.`
+      ? `Add providers/${provider}.yaml, or point the model alias ${alias} at a provider the workspace has.`
       : `Did you mean ${near}?`;
-  return `Alias ${alias} uses unknown provider ${provider}. ${fix}`;
+  return `The model alias ${alias} names the provider ${provider}, which the workspace doesn't have. ${fix}`;
 }
 
 /**
  * The aliases in `models.yaml`: each one's provider must exist, and each
  * alias it falls back to too. The messages are the old loader's, except the
- * unknown provider's, which ends with its fix ({@link unknownProviderMessage}). A provider
+ * unknown provider's, which is the run's ({@link unknownProviderMessage}). A provider
  * whose file failed its own checks isn't unknown: that file's error says
  * what to fix (HAL-14260, HAL-14261).
  */
