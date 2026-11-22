@@ -255,3 +255,22 @@ verifies("first-run.bar-skip-focus", () => {
     expect(main.tabIndex).toBe(-1);
   });
 });
+
+verifies("first-run.run", () => {
+  it("says Run cancelled. in Cancel run's place, until Continue starts another run", async () => {
+    const firstRun = firstRunOf(on("run"));
+    const cancelRun = vi.fn().mockResolvedValue(undefined);
+    const startRun = vi.fn().mockResolvedValue({ runId: "run-1" });
+    const start = new FirstRunStart(firstRun, { startRun, cancelRun });
+    await start.continueWith({ kind: "sample" }, () => {});
+    const bar = renderBar(firstRun, "desktop", start);
+    expect(bar.querySelector("[role=status]")?.textContent).toBe("");
+    await act(async () => bar.querySelector("button")?.click());
+    expect(cancelRun).toHaveBeenCalledWith("run-1");
+    expect(bar.querySelector("[role=status]")?.textContent).toBe("Run cancelled.");
+    expect(bar.querySelector("button")).toBeNull();
+    await act(async () => start.continueWith({ kind: "sample" }, () => {}));
+    expect(bar.querySelector("[role=status]")?.textContent).toBe("");
+    expect(bar.querySelector("button")?.textContent).toBe("Cancel run");
+  });
+});

@@ -18,6 +18,8 @@ export const barWords = {
   /** The way out while the run is going (3.4). */
   cancel: "Cancel run",
   cancelFailed: "Couldn't cancel the run. Try again.",
+  /** Said after **Cancel run**, where the button was, so the change isn't silent (C672 #3). */
+  cancelled: "Run cancelled.",
 } as const;
 
 /**

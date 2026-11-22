@@ -72,7 +72,7 @@ verifies("workflows.page.guide-run", () => {
   });
 
   // The run's log is empty here, so there is no input to try again with: the runs feature's
-  // tests cover Try again beside it (`runs.run-view.guided-run`).
+  // tests cover Run again beside it (`runs.run-view.guided-run`).
   it("offers Pick another model on the card of a failed run", async () => {
     const pickAnotherModel = vi.fn();
     const page = await pageWithRun(guideAdding({ notes: [], pickAnotherModel }), "failed");
