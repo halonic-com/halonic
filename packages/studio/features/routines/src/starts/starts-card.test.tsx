@@ -186,7 +186,7 @@ verifies("routines.starts.starts-card", () => {
     const { page, saved } = await card(supportReplyWith("{}"), supportChoices);
     expect(page.textContent).toContain("Answer a customer's email");
     expect(page.textContent).toContain(
-      "Support reply needs this. Left empty, it starts with nothing to work on.",
+      "Support reply needs this. Left empty, the routine won't start.",
     );
     expect((page.querySelector("details") as HTMLDetailsElement).open).toBe(false);
     await typeInto(page.querySelector("textarea") as HTMLTextAreaElement, "{{trigger.message}}");
@@ -211,7 +211,6 @@ verifies("routines.starts.starts-card", () => {
     expect(error?.textContent).toBe(
       "Support reply needs this. Left empty, the routine won't start.",
     );
-    expect(page.textContent).not.toContain("it starts with nothing to work on");
     // The field's error says it; the row's sentence doesn't repeat it above (HAL-15721).
     expect(page.textContent).not.toContain(missingMail);
   });
@@ -242,6 +241,12 @@ verifies("routines.starts.starts-card", () => {
       ...supportReply,
       input: '{"mail":"Hello","tone":"short"}',
     });
+    // Cleared, the field leaves the input, so the engine refuses the start as the line says (C656 #5).
+    await typeInto(field, " ");
+    expect(saved.at(-1)?.target).toEqual({ ...supportReply, input: '{"tone":"short"}' });
+    expect(page.textContent).toContain(
+      "Support reply needs this. Left empty, the routine won't start.",
+    );
   });
 
   it("shows only the JSON while the start field holds something other than text", async () => {

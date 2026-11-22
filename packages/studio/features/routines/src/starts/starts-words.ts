@@ -9,14 +9,12 @@ export const startsWords = {
   open: (name: string) => `Open ${name}`,
   input: "Input",
   inputHint: "The workflow's input, as a JSON object.",
-  /** Under the workflow's own start field while it is empty: a run then has nothing to work on. */
-  startEmpty: (name: string) =>
-    `${name} needs this. Left empty, it starts with nothing to work on.`,
   /**
-   * The start field's error while the input lacks it and the engine refuses the start for that
-   * (`missing-routine-input`, RT2 of HAL-15304).
+   * Under the workflow's own start field while it is empty, and its error once the engine refuses
+   * the start for it (`missing-routine-input`, RT2 of HAL-15304): an empty field leaves the key out
+   * of the input, so the routine doesn't start (C656 #5).
    */
-  startMissing: (name: string) => `${name} needs this. Left empty, the routine won't start.`,
+  startEmpty: (name: string) => `${name} needs this. Left empty, the routine won't start.`,
   advanced: "Advanced",
   notObject: "The input has to be a JSON object, such as {}.",
   prompt: "Prompt",

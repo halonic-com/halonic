@@ -302,6 +302,33 @@ verifies("routines.runs.view", () => {
     }
   });
 
+  it("offers Review, which opens the trust check, on a paused routine's empty view (C656 #4)", async () => {
+    let asked = 0;
+    const host = hostWith(async () => ({ runs: [], skips: [] }), {
+      ...daily,
+      pausedUntilTrusted: true,
+    });
+    const page = await openRuns({
+      ...host,
+      askTrust: async () => {
+        asked += 1;
+        return "declined";
+      },
+    });
+    expect(page.textContent).toContain("It's paused until you trust this workspace.");
+    await act(async () => buttonNamed(page, "Review")?.click());
+    expect(asked).toBe(1);
+    unmount();
+
+    // Without a trust check to open there's no button, and an off routine never offers one.
+    expect(buttonNamed(await openRuns(host), "Review")).toBeUndefined();
+    unmount();
+    const off = hostWith(async () => ({ runs: [], skips: [] }), { ...daily, enabled: false });
+    expect(
+      buttonNamed(await openRuns({ ...off, askTrust: async () => "trusted" }), "Review"),
+    ).toBeUndefined();
+  });
+
   it("says the runs can't be read and tries again", async () => {
     let fail = true;
     const page = await openRuns(

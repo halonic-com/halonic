@@ -234,8 +234,8 @@ function WorkflowInput({
 
 /**
  * The workflow's own start field, such as "Answer a customer's email": written as it is typed.
- * Empty, it says what that means: a field the input lacks while the engine refuses the start for
- * it is an error; one that holds empty text starts a run with nothing to work on.
+ * Empty, it says the routine won't start: as an error while the engine refuses the start for it,
+ * else as a hint until the engine's check catches up with the field just cleared.
  */
 function StartField({
   name,
@@ -258,7 +258,7 @@ function StartField({
     <Field
       label={start.label}
       hint={empty && !refused ? words.startEmpty(name) : undefined}
-      error={empty && refused ? words.startMissing(name) : null}
+      error={empty && refused ? words.startEmpty(name) : null}
     >
       <TextArea
         value={text}
@@ -382,7 +382,12 @@ function hasField(input: string, field: string): boolean {
 
 /** The input with the start field set to `text`, keeping everything else it holds. */
 function withStartValue(input: string, field: string, text: string): string {
-  return JSON.stringify({ ...jsonObject(input), [field]: text });
+  const object = jsonObject(input) ?? {};
+  if (text.trim() !== "") return JSON.stringify({ ...object, [field]: text });
+  // A cleared field leaves the input, so the engine refuses the start, as the field then says,
+  // rather than start a run with nothing to work on (C656 #5).
+  const { [field]: _cleared, ...rest } = object;
+  return JSON.stringify(rest);
 }
 
 /** Whether the start field is all the input holds, so Advanced has nothing more to show. */

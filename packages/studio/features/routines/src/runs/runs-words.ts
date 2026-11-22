@@ -20,6 +20,8 @@ export const runsWords = {
   emptyOff: "It's off, so it runs only when you press Run now.",
   /** The list's "Paused until trusted" as a sentence (C587 #1). */
   emptyPaused: "It's paused until you trust this workspace.",
+  /** The paused sentence's button: it opens the trust check, as the title bar's badge does (C656 #4). */
+  review: "Review",
   /** Said by a screen reader before a queued row's text; not drawn. */
   queuedPrefix: "Queued, ",
   tabNeedsYou: (count: number) => `${count} needs you`,
