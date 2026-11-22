@@ -3,6 +3,7 @@
 - Task: HAL-15894
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15894 (plan approved by Liam on the task, 22 Nov); security review on its review task
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9iDMS8+ix3eCzxg9zyHi4wx7fVwVJyVw4RnCzUt1MdCBdLoEgoFHdexT0ihFrbcxCZEdwtCUng1Fe+iIWUiBBA==
 
 ## What changes
 
