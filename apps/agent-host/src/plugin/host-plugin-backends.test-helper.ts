@@ -151,6 +151,8 @@ export async function setup(
     /** The plugin's saved setting values. */
     settings?: Record<string, string>;
     localTools?: PluginConnectorSources["localTools"];
+    /** The fence the runner proves at its start; `fenced` unless a test says otherwise. */
+    fence?: StartedRunner["fence"];
   } = {},
 ) {
   const { check = passes, trusted = true, platform = "linux", localTools = noLocalTools } = options;
@@ -216,7 +218,7 @@ export async function setup(
       const inLauncher = startOptions.sandbox === launcher;
       if (inLauncher) launched.inLauncher += 1;
       const runner: StartedRunner = {
-        fence: inLauncher ? { state: "off" } : { state: "fenced" },
+        fence: inLauncher ? { state: "off" } : (options.fence ?? { state: "fenced" }),
         declaration: {
           name: "acme",
           version: "1.0.0",

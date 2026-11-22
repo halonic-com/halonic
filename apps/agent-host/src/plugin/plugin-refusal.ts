@@ -7,6 +7,7 @@ import { sendError } from "../server/host-server.ts";
  *
  * - `plugin_not_trusted`: the host's own trust record doesn't cover the plugin as it is in its folder now.
  * - `not_fenced`: the sandbox that fences a plugin isn't available on this computer, such as Windows before HAL-3403.
+ * - `plugin_stopped`: the computer passed the sandbox check, but the runner's fence didn't hold, so the host stopped it before the plugin ran.
  * - `not_in_this_build`: the shipped single executable has no runner mode yet, so it starts no plugin backend.
  * - `too_many_plugins`: the table already holds the most plugins it allows.
  * - `host_stopping`: the host is stopping and starts no more plugins.
@@ -14,6 +15,7 @@ import { sendError } from "../server/host-server.ts";
 export type PluginRefusalCode =
   | "plugin_not_trusted"
   | "not_fenced"
+  | "plugin_stopped"
   | "not_in_this_build"
   | "too_many_plugins"
   | "host_stopping";
@@ -39,6 +41,11 @@ const refusals: Record<PluginRefusalCode, { status: number; message: string }> =
     status: 403,
     message:
       "Plugin tools can't run on this computer yet: the sandbox that fences a plugin isn't available here.",
+  },
+  plugin_stopped: {
+    status: 403,
+    message:
+      "Halonic stopped this plugin: its sandbox didn't hold, so it didn't run. The next call tries the sandbox again.",
   },
   not_in_this_build: {
     status: 403,

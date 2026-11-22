@@ -188,6 +188,20 @@ verifies("plugins.plugin-cards", () => {
     expect(() => button(view, "Try again")).toThrow();
   });
 
+  it("names the plugin the host stopped and links its page, with Try again and ↻", async () => {
+    const { caller, calls, answer } = callerWithAnswers();
+    const { view, details } = showCard(caller);
+    await answer(Object.assign(new Error("host's own text"), { kind: "plugin_stopped" }));
+    expect(view.querySelector('[aria-live="polite"] p')?.textContent).toBe(
+      "Halonic stopped Weather: its sandbox didn't hold, so it didn't run. Open Weather to check again.",
+    );
+    expect(button(view, "Refresh Today's weather")).toBeDefined();
+    act(() => button(view, "Weather").click());
+    expect(details).toHaveBeenCalledOnce();
+    act(() => button(view, "Try again").click());
+    expect(calls).toHaveLength(2);
+  });
+
   it("keeps a card whose plugin isn't trusted empty, with Review, and calls nothing", () => {
     const { caller, calls } = callerWithAnswers();
     const { view, review } = showCard(caller, "not-trusted");

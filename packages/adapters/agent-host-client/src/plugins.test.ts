@@ -30,6 +30,19 @@ verifies("agent-host-client.plugins", () => {
       });
     });
 
+    it("says in the page's words that Halonic stopped a plugin whose sandbox didn't hold", async () => {
+      const host = new FakeHost().answer(route, refused(403, "plugin_stopped", "host's own text"));
+
+      await expect(
+        new AgentHostPluginToolCaller(host).call("acme-notes", "add", {}),
+      ).rejects.toMatchObject({
+        status: 403,
+        kind: "plugin_stopped",
+        message:
+          "Halonic stopped this plugin: its sandbox didn't hold, so it didn't run. Try again to check the sandbox again.",
+      });
+    });
+
     it("fails with the host's kind when the trust doesn't cover the plugin", async () => {
       const host = new FakeHost().answer(route, refused(403, "plugin_not_trusted", "x"));
 

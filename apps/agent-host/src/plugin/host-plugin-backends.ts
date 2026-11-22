@@ -2,6 +2,7 @@ import {
   openPluginBackend,
   type PluginBackendMachine,
   PluginBackendNotFencedError,
+  PluginBackendStoppedError,
   RunnerToolError,
 } from "@halonicjs/adapter-integration-runner";
 import {
@@ -94,11 +95,15 @@ export function hostPluginBackends(
 
 /**
  * Whether `error` says one part of the plugin didn't start, while the others
- * may: it can't run fenced here (`not_fenced`) or a setting it needs has no
- * value. A plugin the trust no longer covers isn't one; it stops whole.
+ * may: it can't run fenced here (`not_fenced`), its runner's fence didn't
+ * hold, so the host stopped it (`plugin_stopped`), or a setting it needs has no
+ * value. A plugin the trust no longer covers isn't one; it stops whole. A
+ * local tool proves its own fence, so one runner stopped doesn't stop it.
  */
 function isPartStartRefusal(error: unknown): boolean {
-  if (error instanceof PluginRefusal) return error.code === "not_fenced";
+  if (error instanceof PluginRefusal) {
+    return error.code === "not_fenced" || error.code === "plugin_stopped";
+  }
   return pluginPartUnavailableReason(error).kind === "settings-not-set";
 }
 
@@ -181,9 +186,15 @@ function declaresTools(plugin: Plugin): boolean {
  * The refusal an error from a part's start stands for, or `undefined` when it
  * is a failure of the plugin, the runner or a setting with no value. A local
  * tool this computer can't fence is `not_fenced`, as a backend is; the
- * connector already logged why (`partOffLine`).
+ * connector already logged why (`partOffLine`). A runner whose fence didn't
+ * hold is `plugin_stopped`: the answer carries only the code, never the
+ * plugin's name or the error's text.
  */
 function refusalFor(error: unknown, log: (text: string) => void): PluginRefusal | undefined {
+  if (findCause(error, PluginBackendStoppedError) !== undefined) {
+    log("A plugin didn't start: its runner's fence didn't hold, so the host stopped it.\n");
+    return new PluginRefusal("plugin_stopped");
+  }
   const notFenced = findCause(error, PluginBackendNotFencedError);
   if (notFenced !== undefined) {
     log(`A plugin didn't start: no sandbox fences it (${notFenced.reason}).\n`);

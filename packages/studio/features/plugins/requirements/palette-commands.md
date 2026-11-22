@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1740; plugin screens design section 8.1 (HAL-1739); UX acceptance checklist 7, B2 and B6 (HAL-1952); Liam's review of #1705 (HAL-5306)
+- Source: HAL-1740; plugin screens design section 8.1 (HAL-1739); UX acceptance checklist 7, B2 and B6 (HAL-1952); Liam's review of #1705 (HAL-5306); HAL-15537
 
-The Studio shall add each command of each trusted plugin to Ctrl K through the command source `plugins.commands`, as `plugins.commands.<plugin>.<command>`, with the command's title and the source "*name* plugin", and only while the plugin gives it. Running one shall open that command's dialog, in place of a dialog that's open, and Cancel or Close shall close it. A dialog opened again shall start fresh. A command without a form shall run once its dialog has mounted, also when React mounts it twice. If a plugin's tool doesn't answer within 30 seconds, then the call shall fail with "the plugin didn't answer in 30 seconds", so the dialog offers Try again.
+The Studio shall add each command of each trusted plugin to Ctrl K through the command source `plugins.commands`, as `plugins.commands.<plugin>.<command>`, with the command's title and the source "*name* plugin", and only while the plugin gives it. Running one shall open that command's dialog, in place of a dialog that's open, and Cancel or Close shall close it. A dialog opened again shall start fresh. When the person opens the page of a plugin the host stopped from its dialog, the dialog shall close and the plugin's page shall open. A command without a form shall run once its dialog has mounted, also when React mounts it twice. If a plugin's tool doesn't answer within 30 seconds, then the call shall fail with "the plugin didn't answer in 30 seconds", so the dialog offers Try again.
 
 ## Examples
 

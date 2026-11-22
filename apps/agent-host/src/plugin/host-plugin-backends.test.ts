@@ -89,6 +89,17 @@ verifies("agent-host.plugin-routes", () => {
       expect(seen.starts).toBe(0);
     });
 
+    it("answers plugin_stopped, naming nothing of the plugin's, when the runner's fence doesn't hold, and the next call tries again", async () => {
+      const { backends, seen, logged } = await setup({ fence: { state: "stopped" } });
+      const client = await backends.open("acme", await backends.trustedFingerprint("acme"));
+      const refused = await client.callTool("echo", {}).catch((error: unknown) => error);
+      expect(refused).toMatchObject({ code: "plugin_stopped", message: "plugin_stopped" });
+      expect(seen).toEqual({ starts: 1, stops: 1 });
+      expect(logged.join("")).toContain("its runner's fence didn't hold");
+      expect(await refusedWith(client.callTool("echo", {}))).toBe("plugin_stopped");
+      expect(seen.starts).toBe(2);
+    });
+
     it("starts without the sandbox only with the user's saved yes for the reason at this start", async () => {
       const { backends, seen, launched } = await setup({ platform: "win32", allowed: "windows" });
       const fingerprint = await backends.trustedFingerprint("acme");
@@ -139,6 +150,13 @@ verifies("agent-host.plugin-routes", () => {
         true,
       );
       expect(backends.runnerSurvives(new Error("the runner stopped"))).toBe(false);
+    });
+
+    it("keeps the plugin's other parts when one runner's fence didn't hold, as for not_fenced", async () => {
+      const { backends } = await setup();
+      expect(backends.runnerSurvives(new PluginRefusal("plugin_stopped"))).toBe(true);
+      expect(backends.runnerSurvives(new PluginRefusal("not_fenced"))).toBe(true);
+      expect(backends.runnerSurvives(new PluginRefusal("plugin_not_trusted"))).toBe(false);
     });
   });
 });

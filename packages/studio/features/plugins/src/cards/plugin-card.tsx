@@ -15,6 +15,7 @@ import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { fromPlugin, TRY_AGAIN } from "../commands/command-text.ts";
 import type { PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
+import { CheckAgainLine, isPluginStopped, stoppedLine } from "../commands/plugin-stopped.tsx";
 import { cantRunLine } from "../commands/tools-cant-run.ts";
 import { PluginResult } from "../ui/plugin-result.tsx";
 import {
@@ -63,6 +64,8 @@ type Run =
   | { readonly kind: "loading" }
   | { readonly kind: "done"; readonly text: string; readonly refreshing: boolean }
   | { readonly kind: "failed"; readonly reason: string }
+  /** The host stopped the plugin because its sandbox didn't hold: Try again and ↻ stay. */
+  | { readonly kind: "stopped" }
   /** The host can't run plugin tools at all here: the line, with no Try again and no ↻. */
   | { readonly kind: "cant-run"; readonly line: string };
 
@@ -72,7 +75,8 @@ type Run =
  * plugin is on, the card calls its tool when it shows, ↻ calls it again and a failure says why
  * with **Try again**; only a failure is announced. When the host can't run plugin tools at all
  * (not in this build, or not fenced on this computer), the card says so with neither **Try
- * again** nor ↻, since pressing them can't help. A plugin that isn't trusted or can't load
+ * again** nor ↻, since pressing them can't help. When the host stopped the plugin because its
+ * sandbox didn't hold, the card names the plugin and links its page, with **Try again**. A plugin that isn't trusted or can't load
  * leaves the card in place, empty, with **Review** or **Details**, so Home doesn't jump when it
  * turns on. The title row is 28px in every state, so an empty card lines up with a live one
  * (T16-F23). The title and the footer show at once; only the answer has a skeleton, and ↻ turns
@@ -107,6 +111,10 @@ export function PluginCard({
       },
       (error: unknown) => {
         if (call !== latest.current) return;
+        if (isPluginStopped(error)) {
+          setRun({ kind: "stopped" });
+          return;
+        }
         const line = cantRunLine(error, notInThisBuildLine(card.title));
         setRun(
           line === undefined
@@ -158,7 +166,13 @@ export function PluginCard({
         </div>
         <div className="min-h-16" aria-busy={status === "on" && run.kind === "loading"}>
           {status === "on" ? (
-            <CardAnswer card={card} run={run} onTryAgain={callAgain} />
+            <CardAnswer
+              card={card}
+              plugin={plugin.name}
+              run={run}
+              onTryAgain={callAgain}
+              onOpenPlugin={onDetails}
+            />
           ) : (
             <CardEmpty
               icon={status === "cant-load" ? <WarningIcon /> : <DashedRingIcon />}
@@ -187,12 +201,18 @@ export function PluginCard({
 /** The tool's answer, its skeleton while it loads, or why it failed: with Try again when that can help. */
 function CardAnswer({
   card,
+  plugin,
   run,
   onTryAgain,
+  onOpenPlugin,
 }: {
   readonly card: PluginCardUi;
+  /** The plugin's name, which is untrusted text. */
+  readonly plugin: string;
   readonly run: Run;
   readonly onTryAgain: () => void;
+  /** Opens the plugin's page, where **Check again** is. */
+  readonly onOpenPlugin: () => void;
 }) {
   return (
     <>
@@ -205,6 +225,18 @@ function CardAnswer({
             icon={<AlertIcon />}
             tone="danger"
             line={cardFailedLine(card.title, run.reason)}
+            action={TRY_AGAIN}
+            onAction={onTryAgain}
+          />
+        ) : null}
+        {run.kind === "stopped" ? (
+          <CardEmpty
+            icon={<WarningIcon />}
+            line={
+              <>
+                {stoppedLine(plugin)} <CheckAgainLine name={plugin} onOpen={onOpenPlugin} />
+              </>
+            }
             action={TRY_AGAIN}
             onAction={onTryAgain}
           />
@@ -225,7 +257,7 @@ function CardEmpty({
 }: {
   readonly icon: ReactNode;
   readonly tone?: "muted" | "danger";
-  readonly line: string;
+  readonly line: ReactNode;
   readonly action?: string;
   readonly onAction?: () => void;
 }) {
@@ -237,7 +269,7 @@ function CardEmpty({
         >
           {icon}
         </span>
-        {line}
+        <span>{line}</span>
       </p>
       {action === undefined ? null : (
         <Button variant="secondary" size="sm" onClick={onAction}>

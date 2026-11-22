@@ -35,8 +35,8 @@ export class FakeBackends implements PluginBackends {
   /** The fingerprint each trusted plugin has now; a plugin that isn't here isn't trusted. */
   readonly trusted = new Map<string, string>([["acme", "hfp1:one"]]);
   readonly started: { plugin: string; backend: FakeBackend }[] = [];
-  /** Set to refuse every start with this code, as a computer with no sandbox does. */
-  refuseStart: "not_fenced" | undefined;
+  /** Set to refuse every start with this code, as a computer with no sandbox, or a fence that didn't hold, does. */
+  refuseStart: "not_fenced" | "plugin_stopped" | undefined;
 
   async trustedFingerprint(plugin: string): Promise<string> {
     const fingerprint = this.trusted.get(plugin);
