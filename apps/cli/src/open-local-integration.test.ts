@@ -427,11 +427,13 @@ verifies("cli.local-integration-stopped", () => {
       });
       const call = client().callTool("read-note", {});
       await expect(call).rejects.toThrow(
-        "Connector \"notes\" didn't start: Halonic stopped the integration notes: the sandbox didn't work when the integration started, so none of it ran. Halonic tries notes in the sandbox again the next time a run uses it.",
+        "Connector \"notes\" didn't start: the sandbox didn't work when the integration notes started, so none of it ran. Halonic tries notes in the sandbox again the next time a run uses it.",
       );
       await expect(call).rejects.not.toThrow(/failed its check/);
       expect(seen.stops).toBe(1);
-      await expect(client().callTool("read-note", {})).rejects.toThrow(/Halonic stopped/);
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        /the sandbox didn't work when the integration notes started/,
+      );
       expect(seen.starts).toBe(2);
     });
   });
