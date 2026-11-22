@@ -57,6 +57,9 @@ verifies("studio.installer-rollback-guard", () => {
     expect(refuse).toContain('"-SetupVersion ${SRTSETUPVERSION}"');
     expect(refuse).toMatch(/\$\{ElseIf\} \$R1 = 1[\s\S]*SetErrorLevel 2\s+Quit/);
     expect(refuse).toContain("(Settings › Agent sandbox › Remove the sandbox…)");
+    // An uninstall can leave the sandbox behind (flow 2.7), so the newer
+    // version may be gone by now.
+    expect(refuse).toContain("If it's no longer installed, install it again to remove the sandbox.");
   });
 
   it("keeps the setup version beside the kept installer, and the shell prunes both", () => {
