@@ -32,12 +32,16 @@ function hashed(bytes: Uint8Array): Uint8Array {
   return new Uint8Array([...body, ...createHash("sha1").update(body).digest()]);
 }
 
-/** The gitlinks real git finds in `bytes`, written as the index of a new repository. */
-async function gitlinksOfGit(bytes: Uint8Array): Promise<string[]> {
+/**
+ * The gitlinks real git finds in `bytes`, written as the index of a new
+ * repository, with `config` (such as `index.threads=3`) set for git.
+ */
+async function gitlinksOfGit(bytes: Uint8Array, config: string[] = []): Promise<string[]> {
   const repository = join(work, "git");
   const env = { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: join(work, "none") };
+  const settings = ["core.fsmonitor=false", ...config].flatMap((setting) => ["-c", setting]);
   const git = (args: string[]) =>
-    spawnSync("git", ["-c", "core.fsmonitor=false", ...args], { cwd: repository, env });
+    spawnSync("git", [...settings, ...args], { cwd: repository, env });
   await mkdir(repository);
   expect(git(["init", "-q"]).status).toBe(0);
   await writeFile(join(repository, ".git", "index"), hashed(bytes));
@@ -64,6 +68,61 @@ function nameWithNuls(): Uint8Array {
   // the first name is taken only up to its first NUL.
   bytes.set([...new TextEncoder().encode("ABCD"), ...u32(64)], 12 + 136);
   return bytes;
+}
+
+/** A name and size of an extension header, the way git hashes them for its `EOIE` extension. */
+function header(name: string, size: number): number[] {
+  return [...new TextEncoder().encode(name), ...u32(size)];
+}
+
+/**
+ * The `EOIE` hash of an unknown extension `Z…` with no data and an `IEOT` of
+ * `ieotSize` bytes after it, for the first such name whose hash is 10 bytes
+ * other than NUL, then a NUL: so its first 11 bytes also read as a 10-byte name.
+ */
+function hashReadableAsName(ieotSize: number): { name: string; hash: Uint8Array } {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (let at = 0; at < letters.length ** 3; at++) {
+    const name = `Z${letters[at % 26]}${letters[Math.floor(at / 26) % 26]}${letters[Math.floor(at / 676)]}`;
+    const headers = [...header(name, 0), ...header("IEOT", ieotSize)];
+    const hash = createHash("sha1").update(new Uint8Array(headers)).digest();
+    if (hash[10] === 0 && hash.subarray(0, 10).every((byte) => byte !== 0)) return { name, hash };
+  }
+  throw new Error("no extension name gives such a hash");
+}
+
+/**
+ * An index of two files whose bytes, where git looks for an `EOIE` extension
+ * (last before the file's hash), hold one inside the last entry. It names an
+ * offset inside that entry, where an `IEOT` extension lists two blocks: one
+ * starting 4 bytes into the first entry, read there as a gitlink, then the last
+ * entry. Git follows it when it reads the entries in parallel.
+ */
+function endOfEntriesInsideAnEntry(): { bytes: Uint8Array; gitlink: string } {
+  const gitlink = `${"a".repeat(61)}/sub`;
+  // 4017 bytes of name make the first entry end, and the last start, at 4092.
+  const first = `ab?A${gitlink}/${"x".repeat(4017 - 5 - gitlink.length)}`;
+  const entries = index([
+    { path: first, mode: fileMode },
+    { path: "0123456789", mode: fileMode },
+  ]);
+  const last = 4092;
+  // Two bytes after the entries, too few for an extension, then the file's hash.
+  const bytes = new Uint8Array([...entries.subarray(0, -20), 0, 0, ...entries.subarray(-20)]);
+  // Read from 4 bytes into the first entry: a gitlink's mode, then flags that
+  // take the first name's bytes 2 and 3 (assume-valid, a 65-byte name: 0x41 is "A").
+  bytes.set(u32(gitlinkMode), 12 + 4 + 24);
+  bytes[12 + 62 + 2] = 0x80;
+  // The extensions git reads from 14 bytes into the last entry, among its stat data.
+  const extensions = last + 14;
+  const blocks = [...u32(1), ...u32(12 + 4), ...u32(1), ...u32(last), ...u32(1)];
+  const { name, hash } = hashReadableAsName(blocks.length);
+  bytes.set([...header(name, 0), ...header("IEOT", blocks.length), ...blocks], extensions);
+  // The EOIE's offset (0x0000100A) also gives the last entry its flags: stage 1, a
+  // 10-byte name. That name, its NUL, its padding and the two bytes are the hash.
+  expect(extensions).toBe(0x100a);
+  bytes.set([...header("EOIE", 4 + 20), ...u32(extensions), ...hash], bytes.byteLength - 20 - 32);
+  return { bytes, gitlink };
 }
 
 const names: Entry[] = [
@@ -172,6 +231,15 @@ verifies("sandbox-srt.session", () => {
 
     it("refuses an EOIE extension that doesn't point where the entries end", () => {
       const bytes = withExtension(index(entries), "EOIE", endOfEntries(entriesEnd + 8));
+      expect(() => parseIndex(bytes, 20)).toThrow(
+        "git index EOIE extension doesn't match its entries",
+      );
+    });
+
+    it("refuses an EOIE extension inside the entries that points elsewhere, as git may read it", async () => {
+      const { bytes, gitlink } = endOfEntriesInsideAnEntry();
+      // Git copies the byte after a name too, where a well-formed index has its NUL.
+      expect(await gitlinksOfGit(bytes, ["index.threads=3"])).toEqual([`${gitlink}/`]);
       expect(() => parseIndex(bytes, 20)).toThrow(
         "git index EOIE extension doesn't match its entries",
       );
