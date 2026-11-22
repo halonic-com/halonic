@@ -35,6 +35,7 @@ import {
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
+import { failedChildEnding } from "./failed-child.ts";
 import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
 import { connectorNotStartedLines } from "./show-connectors.ts";
@@ -106,6 +107,7 @@ export async function showRun(
             () => workspaceModelsOf(loaded, run.summary.hubId, providerAddress),
             dir,
             context.debugging,
+            await failedChildEnding(history, run, loaded),
           ),
           ...(withOutput ? [] : outputHintLines(run, dir)),
         ],

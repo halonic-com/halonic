@@ -1,15 +1,15 @@
 import { secretVariableName } from "@halonicjs/adapter-env-secrets";
 import { providerTypes } from "@halonicjs/adapter-workspace-models";
 import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
-import { type BusyRetries, isModelAlias, type RunFailure } from "@halonicjs/app/run-failure";
+import { isModelAlias, type RunFailure } from "@halonicjs/app/run-failure";
 import { shellWord } from "../output/shell-word.ts";
-import { counted, listInWords, timesInWords } from "./counts.ts";
+import { counted, listInWords } from "./counts.ts";
 import { dayAndMonth } from "./dates.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
-import { harnessNames } from "./harness-names.ts";
 import { type Phrase, phrase } from "./phrase.ts";
 import { proxyFixInWords, proxyProblemInWords } from "./proxy-failures.ts";
+import { busyInWords, harnessName, minutesInWords, secondsInWords } from "./run-failure-words.ts";
 import { sandboxMessages } from "./sandbox.ts";
 import { asSentence } from "./sentence.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -25,6 +25,19 @@ export interface FailedRun {
   readonly dir?: string | undefined;
   /** `--debug` was given: the general lines' fix doesn't ask for it again (HAL-6613). */
   readonly debugging?: boolean;
+  /**
+   * For a child run whose failure is said on its parent's line (HAL-15555):
+   * the parent, which then leads line 1.
+   */
+  readonly startedBy?: StartingRun;
+}
+
+/** The run that started a failed child run, and the step and item it started it for. */
+export interface StartingRun {
+  readonly title: string;
+  readonly step: string;
+  /** The for-each item, 0-based; `undefined` for a `workflow` step. */
+  readonly item: number | undefined;
 }
 
 /** A reason's sentence, given the run and that reason's own facts. */
@@ -233,7 +246,7 @@ const lineOne = {
     }
     // A known cause's message is the reason, so Halonic doesn't say it can't tell (HAL-13862).
     return failure.causeKnown === true
-      ? phrase`${run.title} failed in the step ${run.step}. ${asSentence(message)}`
+      ? phrase`${failedInStep(run)}. ${asSentence(message)}`
       : phrase`${cantTellCause(run, ":")} ${asSentence(message)}`;
   },
   // A bug's own text never shows without --debug (cli-output 1.3 rule 5).
@@ -386,7 +399,25 @@ function bugFix(run: FailedRun, fix = errorMessages.internalFix): Phrase {
 }
 
 function failedIn(run: FailedRun, reason: Phrase): Phrase {
-  return phrase`${run.title} failed in the step ${run.step}: ${reason}`;
+  return phrase`${failedInStep(run)}: ${reason}`;
+}
+
+/**
+ * "Support reply failed in the step Draft a reply"; for a child run, its
+ * parent first: "Topics failed in the step Each: the run it started for item
+ * 2 failed in the step Draft" (HAL-15555), as "the run that started it" names
+ * the parent on the child's own line.
+ */
+function failedInStep(run: FailedRun): Phrase {
+  const parent = run.startedBy;
+  if (parent === undefined) {
+    return phrase`${run.title} failed in the step ${run.step}`;
+  }
+  const child =
+    parent.item === undefined
+      ? phrase`the run it started`
+      : phrase`the run it started for item ${String(parent.item + 1)}`;
+  return phrase`${parent.title} failed in the step ${parent.step}: ${child} failed in the step ${run.step}`;
 }
 
 /** Why the step can't go on from the event it ended with. */
@@ -418,7 +449,7 @@ function aKind(kind: string): string {
 
 /** "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet." */
 function cantTellCause(run: FailedRun, end: "." | ":" = "."): Phrase {
-  return phrase`${run.title} failed in the step ${run.step}. Halonic can't tell the cause yet${end}`;
+  return phrase`${failedInStep(run)}. Halonic can't tell the cause yet${end}`;
 }
 
 /**
@@ -439,33 +470,6 @@ function modelOrAlias(failure: { readonly model: string; readonly alias: string 
   return isModelAlias(failure.alias)
     ? phrase`the model alias ${failure.alias}`
     : phrase`the model ${failure.model}`;
-}
-
-/**
- * "Anthropic was busy and asked Halonic to slow down.", then the tries, which
- * are named only when they happened (cli-output 3.4, revision 39).
- */
-function busyInWords(provider: string, retried: BusyRetries | undefined): Phrase {
-  const busy = phrase`${provider} was busy and asked Halonic to slow down.`;
-  if (retried === undefined) {
-    return busy;
-  }
-  return phrase`${busy} Halonic tried ${timesInWords(retried.tries)} over ${minutesInWords(retried.overMs)}, then stopped.`;
-}
-
-/** A harness program by its name, such as "Claude Code", or else by its id. */
-function harnessName(id: string): string {
-  return harnessNames.get(id) ?? id;
-}
-
-/** A wait in whole seconds, such as "60 seconds". */
-function secondsInWords(ms: number): string {
-  return counted(Math.round(ms / 1000), "second", "seconds");
-}
-
-/** A wait in whole minutes, such as "5 minutes". */
-function minutesInWords(ms: number): string {
-  return counted(Math.round(ms / 60_000), "minute", "minutes");
 }
 
 /** `provider-busy`, `model-timeout` and `tool-timeout`: nothing the user set caused it. */

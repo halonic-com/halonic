@@ -23,7 +23,12 @@ import {
   stepLines,
 } from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
-import { failedRunDebugText, outputHintLines, showEnding } from "../runs/show-ending.ts";
+import {
+  type FailedChildEnding,
+  failedRunDebugText,
+  outputHintLines,
+  showEnding,
+} from "../runs/show-ending.ts";
 
 /** What the result is about besides the run. */
 export interface RunResultFacts {
@@ -37,6 +42,8 @@ export interface RunResultFacts {
   readonly unusedEvents?: readonly string[];
   /** `--debug` was given: a failed run's general lines don't ask for it again. */
   readonly debugging?: boolean;
+  /** The child run a failed run's step failed with, whose cause its lines say (HAL-15555). */
+  readonly failedChild?: FailedChildEnding | undefined;
 }
 
 /**
@@ -143,7 +150,15 @@ function ending(
   facts: RunResultFacts,
 ): Phrase[] {
   const models = () => workspaceModelsOf(facts.workspace, run.summary.hubId, providerAddress);
-  const lines = showEnding(run, title, definitions, models, facts.dir, facts.debugging);
+  const lines = showEnding(
+    run,
+    title,
+    definitions,
+    models,
+    facts.dir,
+    facts.debugging,
+    facts.failedChild,
+  );
   if (run.summary.status !== "completed") {
     return lines;
   }

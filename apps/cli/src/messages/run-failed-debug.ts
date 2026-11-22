@@ -1,4 +1,5 @@
-// What `--debug` prints under a failed run's two lines (`run-failures.ts`).
+// What `--debug` prints under a failed run's lines, kept apart from the
+// failure lines themselves (`run-failures.ts`), which a user reads without it.
 
 import type { ModelSkipReason } from "@halonicjs/events";
 import { timesInWords } from "./counts.ts";

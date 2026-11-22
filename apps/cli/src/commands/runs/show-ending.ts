@@ -9,6 +9,7 @@ import {
   failedModelOf,
   failedStartOf,
   type RunFailedEvent,
+  type RunFailure,
   runFailureOf,
   type WorkspaceModels,
 } from "@halonicjs/app/run-failure";
@@ -16,7 +17,7 @@ import { endedWithParent, type RunEvent, type RunSummary } from "@halonicjs/even
 import { duration } from "../../messages/duration.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
-import { runFailedLines } from "../../messages/run-failures.ts";
+import { type FailedRun, runFailedLines } from "../../messages/run-failures.ts";
 import { type CancelledAt, runsMessages } from "../../messages/runs.ts";
 import { stepName } from "../../messages/step-name.ts";
 import { runFailureDetails } from "../../run-failure-details.ts";
@@ -31,6 +32,7 @@ import { waitDescription } from "./listed-run.ts";
  *
  * @param models - the workspace's models, read only for a failed run
  * @param debugging - `--debug` was given, so a failed run's general lines don't ask for it
+ * @param child - the child run a failed run's step failed with, whose cause its lines say
  */
 export function showEnding(
   run: RunDetail,
@@ -39,12 +41,13 @@ export function showEnding(
   models: () => WorkspaceModels,
   dir: string | undefined,
   debugging = false,
+  child?: FailedChildEnding,
 ): Phrase[] {
   switch (run.summary.status) {
     case "completed":
       return finishedEnding(run, title);
     case "failed":
-      return failedEnding(run, title, definitions, models, { dir, debugging });
+      return failedEnding({ run, title, definitions, models }, { dir, debugging, child });
     case "cant-try":
       return cantTryEnding(run, title, definitions);
     case "waiting":
@@ -67,42 +70,48 @@ export function outputHintLines(run: RunDetail, dir: string | undefined): Phrase
 }
 
 /**
+ * A failed run, with what its lines need from the workspace: its title, its
+ * workflow's steps and agents, and its models.
+ */
+interface EndedRun {
+  readonly run: RunDetail;
+  readonly title: string;
+  readonly definitions: RunDefinitions;
+  readonly models: () => WorkspaceModels;
+}
+
+/** The child run a failed run's step failed with (HAL-15555), read as {@link EndedRun}. */
+export interface FailedChildEnding extends EndedRun {
+  /** The for-each item it ran for, 0-based; `undefined` for a `workflow` step. */
+  readonly item: number | undefined;
+}
+
+interface FailedEndingOptions {
+  readonly dir: string | undefined;
+  readonly debugging: boolean;
+  readonly child: FailedChildEnding | undefined;
+}
+
+/**
  * A failed or stopped run (cli-output 3.4, revision 31): its ✕ line 1, the
  * fix indented under it, then the receipt, the same two lines `halonic run`
  * prints when the run fails. A run cancelled somewhere else has one line,
  * where the cancel landed, and no fix (revision 28); so has a run whose
  * cause is known but has no words of its own yet (HAL-6451). A child run its
- * parent's end cancelled has the way to that parent under its line.
+ * parent's end cancelled has the way to that parent under its line. A run
+ * whose step failed because its child run failed says the child's cause
+ * instead, with the way to that child.
  */
-function failedEnding(
-  run: RunDetail,
-  title: string,
-  definitions: RunDefinitions,
-  models: () => WorkspaceModels,
-  { dir, debugging }: { dir: string | undefined; debugging: boolean },
-): Phrase[] {
+function failedEnding(ended: EndedRun, options: FailedEndingOptions): Phrase[] {
+  const { run, title } = ended;
   const failed = runFailedEvent(run);
-  const named = (stepId: string) =>
-    stepName(stepId, definitions.workflow?.states[stepId]?.description);
-  const failure = runFailureOf(
-    failed,
-    failedModelOf(run.events, models()),
-    namedStart(failedStartOf(run.events, failed), definitions),
-  );
-  let lines: Phrase[];
-  if (failure === undefined) {
-    lines = cancelledLines(run.summary, title, cancelledAt(run.events, failed, named), dir);
-  } else {
-    const failedRun = {
-      title,
-      step: named(failed.state ?? run.summary.state ?? ""),
-      runId: shortRunId(run.summary.id),
-      dir,
-      debugging,
-    };
-    const { message, fix } = runFailedLines(failedRun, failure);
-    lines = fix === undefined ? [message.phrase] : [message.phrase, phrase`  ${fix.phrase}`];
-  }
+  const named = stepNamer(ended.definitions);
+  const step = named(failed.state ?? run.summary.state ?? "");
+  const own = failureLines(ended, { dir: options.dir, debugging: options.debugging });
+  const lines =
+    own === undefined
+      ? cancelledLines(run.summary, title, cancelledAt(run.events, failed, named), options.dir)
+      : (childFailedLines(options, { title, step }) ?? own.lines);
   const [first = [], ...rest] = lines;
   const receipt = runMessages.receipt(receiptOf(run.events, run.summary)).phrase;
   return [
@@ -111,6 +120,71 @@ function failedEnding(
     ...rest,
     ...(receipt.length === 0 ? [] : [phrase`  ${receipt}`]),
   ];
+}
+
+/**
+ * A failed run's line 1 and its fix indented under it, from its
+ * `run.failed`, with the reason they say; `undefined` for a cancelled run,
+ * which has no failure. With `startedBy`, the run is a child whose parent
+ * leads line 1.
+ */
+function failureLines(
+  { run, title, definitions, models }: EndedRun,
+  options: Pick<FailedRun, "dir" | "debugging" | "startedBy">,
+): { readonly lines: Phrase[]; readonly reason: RunFailure["reason"] } | undefined {
+  const failed = runFailedEvent(run);
+  const failure = runFailureOf(
+    failed,
+    failedModelOf(run.events, models()),
+    namedStart(failedStartOf(run.events, failed), definitions),
+  );
+  if (failure === undefined) {
+    return undefined;
+  }
+  const failedRun = {
+    ...options,
+    title,
+    step: stepNamer(definitions)(failed.state ?? run.summary.state ?? ""),
+    runId: shortRunId(run.summary.id),
+  };
+  const { message, fix } = runFailedLines(failedRun, failure);
+  const lines = fix === undefined ? [message.phrase] : [message.phrase, phrase`  ${fix.phrase}`];
+  return { lines, reason: failure.reason };
+}
+
+/**
+ * The lines of a run whose step failed because the child run it started
+ * failed (HAL-15555): the child's own failure lines, led by the parent's
+ * step, then the way to the child, as Studio's run page offers Open run.
+ * `undefined` when there is no such child, or it was cancelled, so the
+ * parent's own lines stay.
+ */
+function childFailedLines(
+  { child, dir, debugging }: FailedEndingOptions,
+  parent: { readonly title: string; readonly step: string },
+): Phrase[] | undefined {
+  if (child === undefined) {
+    return undefined;
+  }
+  const lines = failureLines(child, {
+    dir,
+    debugging,
+    startedBy: { ...parent, item: child.item },
+  });
+  if (lines === undefined) {
+    return undefined;
+  }
+  // A turn limit's fix already says to see what the agent did with `runs show` of that child.
+  if (lines.reason === "turn-limit") {
+    return lines.lines;
+  }
+  const childId = shortRunId(child.run.summary.id);
+  return [...lines.lines, phrase`  ${runsMessages.showChildRun(childId, dir).phrase}`];
+}
+
+/** A step by the name its workflow gives it, as the step lines name it. */
+function stepNamer(definitions: RunDefinitions): (stepId: string) => string {
+  return (stepId) => stepName(stepId, definitions.workflow?.states[stepId]?.description);
 }
 
 /**

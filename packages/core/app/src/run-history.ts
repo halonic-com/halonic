@@ -11,6 +11,7 @@ import {
   summarize,
 } from "@halonicjs/events";
 import type { RunFilter, RunStore } from "@halonicjs/ports";
+import { failedChildOf } from "./failed-child.ts";
 
 /** How many runs a list shows when the caller doesn't say: the 20 newest. */
 export const defaultRunListLimit = 20;
@@ -170,4 +171,30 @@ export class RunHistory {
     if (summary === null) return { found: "none" };
     return { found: "one", run: { summary, events } };
   }
+
+  /**
+   * The child run a failed run's step failed with, and its whole log, so a
+   * caller can say the child's cause on the parent's line (requirement
+   * `app.failed-child-run`). `undefined` when the run failed with no child,
+   * or the child's log is gone.
+   *
+   * @example
+   * await history.failedChild(run);
+   * // { item: 1, run: { summary: { id: "run_a1.4.1", status: "failed", … }, events: […] } }
+   */
+  async failedChild(run: RunDetail): Promise<FailedChildRun | undefined> {
+    const child = failedChildOf(run.events);
+    if (child === undefined) return undefined;
+    const events = await this.#runs.events(child.runId);
+    const summary = summarize(events);
+    if (summary === null) return undefined;
+    return { item: child.item, run: { summary, events } };
+  }
+}
+
+/** The child run a failed run's step failed with, as {@link RunHistory.failedChild} reads it. */
+export interface FailedChildRun {
+  /** The for-each item it ran for, 0-based; `undefined` for a `workflow` step. */
+  readonly item: number | undefined;
+  readonly run: RunDetail;
 }
