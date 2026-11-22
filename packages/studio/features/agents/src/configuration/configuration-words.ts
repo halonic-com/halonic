@@ -9,6 +9,9 @@ function dayAndTime(at: Date, now: Date): string {
   return `${day} at ${time}`;
 }
 
+/** Follows the warning's file changed line: Sofia's words on HAL-15766. */
+const cantShowWhatChanged = "Studio can't show what changed, so check the file before you confirm.";
+
 /** Configuration's words (flow-agents 5.1 and 5.2; microcopy 8.5). */
 export const configurationWords = {
   tab: "Configuration",
@@ -151,13 +154,16 @@ export const configurationWords = {
       `${agent}'s file changed since you chose On this computer, so it runs in the sandbox until you confirm again.`,
     reviewAndConfirm: "Review and confirm",
     /**
-     * Microcopy 23.4, the warning's first line while the choice is on hold, and its link to
-     * Changes (checklist 3.8): with the day and time it changed, when the host can tell.
+     * Microcopy 23.4, the warning's first line while the choice is on hold, and its link to the
+     * agent's file (checklist 3.8): with the day and time it changed, when the host can tell. A
+     * choice keeps only the file's fingerprint, so the line says Studio can't show what changed;
+     * the link opens the file beside the agent instead of Changes, which lists only edits not in
+     * a version yet (C626, HAL-15753).
      */
-    fileChanged: (agent: string) => `${agent}'s file changed.`,
+    fileChanged: (agent: string) => `${agent}'s file changed. ${cantShowWhatChanged}`,
     fileChangedOn: (agent: string, at: string, now = new Date()) =>
-      `${agent}'s file changed on ${dayAndTime(new Date(at), now)}.`,
-    seeWhatChanged: "See what changed ›",
+      `${agent}'s file changed on ${dayAndTime(new Date(at), now)}. ${cantShowWhatChanged}`,
+    openFile: "Open the file ›",
     /**
      * The chip in the agent page's header while the agent runs on this computer, not while that
      * choice is on hold (checklist 3.8, HAL-15552); a screen reader hears the spoken line instead,
