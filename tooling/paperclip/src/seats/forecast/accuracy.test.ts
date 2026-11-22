@@ -1,94 +1,121 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import {
+  type AccuracyInput,
   type AccuracyScore,
-  accuracyAlerts,
+  accuracy,
   goodDaysInARow,
-  type Outcome,
-  type StoredForecast,
+  type HorizonMinutes,
+  type StoredForecastPoint,
   scoreForecasts,
+  sessionOneHourDegraded,
 } from "./accuracy.ts";
+import type { WindowReading } from "./types.ts";
 
-const forecast = (
-  madeAt: string,
-  horizonHours: number,
+const minuteMs = 60_000;
+
+/** A forecast of made-up `seat-a`'s 5-hour window, made `horizon` minutes before `targetAt`. */
+const point = (
+  targetAt: string,
+  horizon: number,
   p50: number,
   p90: number,
-): StoredForecast => ({
-  scope: "seat-session",
-  subject: "seat-a",
-  madeAt,
-  horizonHours,
+): StoredForecastPoint => ({
+  madeAt: new Date(Date.parse(targetAt) - horizon * minuteMs).toISOString(),
+  seatId: "seat-a",
+  window: "session",
+  horizon: horizon as HorizonMinutes,
+  targetAt,
   p50,
   p90,
 });
-const outcome = (at: string, value: number, subject = "seat-a"): Outcome => ({
-  scope: "seat-session",
-  subject,
+const reading = (at: string, usedPercent: number, seatId = "seat-a"): WindowReading => ({
+  seatId,
+  window: "session",
   at,
-  value,
+  usedPercent,
+  resetsAt: undefined,
 });
-const score = (day: string, medianError: number): AccuracyScore => ({
+const input = (
+  points: StoredForecastPoint[],
+  readings: WindowReading[],
+  history: AccuracyScore[] = [],
+): AccuracyInput => ({ points, readings, readIntervalMs: 10 * minuteMs, history });
+const score = (day: string, medianErrorPoints: number): AccuracyScore => ({
   day,
-  scope: "seat-session",
-  horizonHours: 1,
-  scored: 100,
-  medianError,
-  p90Error: medianError * 2,
+  window: "session",
+  horizon: 60,
+  samples: 100,
+  medianErrorPoints,
+  p90ErrorPoints: medianErrorPoints * 2,
   insideBand: 0.4,
-  atOrBelowP90: 0.9,
 });
 
 verifies("paperclip.seats-accuracy", () => {
-  test("each forecast is scored against the reading nearest its time", () => {
+  test("each point is scored against the reading of its seat and window nearest its target", () => {
     const scores = scoreForecasts(
-      [
-        forecast("2026-11-21T10:00:00.000Z", 1, 40, 50),
-        forecast("2026-11-21T11:00:00.000Z", 1, 40, 50),
-        forecast("2026-11-21T12:00:00.000Z", 1, 40, 50),
-      ],
-      [
-        outcome("2026-11-21T11:04:00.000Z", 45),
-        outcome("2026-11-21T12:00:00.000Z", 38),
-        outcome("2026-11-21T13:02:00.000Z", 60),
-        outcome("2026-11-21T13:00:00.000Z", 70, "seat-b"),
-      ],
+      input(
+        [
+          point("2026-11-21T11:00:00.000Z", 60, 40, 50),
+          point("2026-11-21T12:00:00.000Z", 60, 40, 50),
+          point("2026-11-21T13:00:00.000Z", 60, 40, 50),
+        ],
+        [
+          reading("2026-11-21T11:04:00.000Z", 45),
+          reading("2026-11-21T12:00:00.000Z", 38),
+          reading("2026-11-21T13:02:00.000Z", 60),
+          reading("2026-11-21T13:00:00.000Z", 70, "seat-b"),
+        ],
+      ),
     );
     expect(scores).toEqual([
       {
         day: "2026-11-21",
-        scope: "seat-session",
-        horizonHours: 1,
-        scored: 3,
-        medianError: 5,
-        p90Error: 17,
+        window: "session",
+        horizon: 60,
+        samples: 3,
+        medianErrorPoints: 5,
+        p90ErrorPoints: 17,
         insideBand: 1 / 3,
-        atOrBelowP90: 2 / 3,
       },
     ]);
   });
 
-  test("horizons are scored apart, and a forecast with no reading near its time isn't scored", () => {
+  test("horizons are scored apart, and a point with no reading near its target isn't scored", () => {
     const scores = scoreForecasts(
-      [
-        forecast("2026-11-21T10:00:00.000Z", 5, 60, 70),
-        forecast("2026-11-21T10:00:00.000Z", 24, 60, 70),
-        forecast("2026-11-21T10:00:00.000Z", 2, 60, 70),
-      ],
-      [outcome("2026-11-21T15:00:00.000Z", 61), outcome("2026-11-22T10:30:00.000Z", 10)],
+      input(
+        [
+          point("2026-11-21T15:00:00.000Z", 300, 60, 70),
+          point("2026-11-22T10:00:00.000Z", 1440, 60, 70),
+          point("2026-11-21T12:00:00.000Z", 120, 60, 70),
+        ],
+        [
+          reading("2026-11-21T15:00:00.000Z", 61),
+          reading("2026-11-22T10:30:00.000Z", 10),
+          reading("2026-11-21T12:00:00.000Z", 60),
+        ],
+      ),
     );
-    expect(scores.map((s) => [s.horizonHours, s.scored, s.medianError])).toEqual([[5, 1, 1]]);
+    expect(scores.map((s) => [s.horizon, s.samples, s.medianErrorPoints])).toEqual([[300, 1, 1]]);
   });
 
-  test("two days in a row with a 1-hour median error above 3 points raise the alert", () => {
-    const scores = [
-      score("2026-11-18", 4),
-      score("2026-11-19", 2),
-      score("2026-11-20", 3.5),
-      score("2026-11-21", 5),
-    ];
-    expect(accuracyAlerts(scores)).toEqual(["2026-11-21"]);
-    expect(accuracyAlerts([score("2026-11-19", 4), score("2026-11-21", 4)])).toEqual([]);
+  test("two days in a row with a 1-hour median error above 3 points degrade the session forecast", () => {
+    expect(sessionOneHourDegraded([score("2026-11-20", 3.5), score("2026-11-21", 5)])).toBe(true);
+    expect(sessionOneHourDegraded([score("2026-11-20", 2), score("2026-11-21", 5)])).toBe(false);
+    expect(sessionOneHourDegraded([score("2026-11-19", 4), score("2026-11-21", 4)])).toBe(false);
+    expect(sessionOneHourDegraded([])).toBe(false);
+  });
+
+  test("the nightly run raises the flag from a stored bad day and tonight's bad day", () => {
+    const report = accuracy(
+      input(
+        [point("2026-11-21T11:00:00.000Z", 60, 40, 50)],
+        [reading("2026-11-21T11:00:00.000Z", 46)],
+        [score("2026-11-20", 4)],
+      ),
+    );
+    expect(report.scores.map((s) => s.medianErrorPoints)).toEqual([6]);
+    expect(report.sessionOneHourDegraded).toBe(true);
   });
 
   test("good days are counted back from the newest, stopping at a bad or missing day", () => {
