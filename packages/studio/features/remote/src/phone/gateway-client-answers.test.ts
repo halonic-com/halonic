@@ -128,6 +128,7 @@ verifies("remote.phone-remote-answers", () => {
     });
 
     it("lets the person answer again when the reconnect shows the answer never landed", async () => {
+      // The phone already holds the listed lastSeq, so no event follows: the list itself settles it.
       const scene = waitingOn();
       const lost = scene.client.answer("session-1", "a-1", "approve");
       scene.drop();

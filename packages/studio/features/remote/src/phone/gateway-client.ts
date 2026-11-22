@@ -181,6 +181,8 @@ export class GatewayClient implements PhoneRemote {
       this.send({ kind: "unwatch", sessionId }, (id) => ({ type: "unwatch", id, sessionId }));
     }
     for (const sessionId of plan.watch) this.watch(sessionId);
+    // A resumed session may already hold its listed `lastSeq` and get no new
+    // event, so a cut-off answer is settled here, not only as events arrive.
     for (const [sessionId, memory] of this.memories) {
       this.sentAnswers.caughtUp(sessionId, memory.lastSeq);
     }
