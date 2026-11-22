@@ -2,15 +2,18 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-12410 (UX check C2 on HAL-12390: the agent host says why a connector failed)
+- Source: HAL-12410 (UX check C2 on HAL-12390: the agent host says why a connector failed); `program-stopped` from HAL-15606 (C600 #1c: Studio said only "stopped before it answered", with no next step)
 
-When a connector's start or call fails, the agent host shall answer 502 `connector_failed` with its fixed message and, when the error's type says why, a `reason` Studio can word: `program-missing` with the `program` that isn't on this computer, `secret-missing` with the name of the `secret` that isn't set, `secret-refused` when the server refused the secret (HTTP 401 or 403), and `stopped` when the program ended or didn't answer in time. For any other failure it shall answer without a `reason`. The answer shall never hold the error's own text, the program's output or a secret's value; the detail goes only to the host's log.
+When a connector's start or call fails, the agent host shall answer 502 `connector_failed` with its fixed message and, when the error's type says why, a `reason` Studio can word: `program-missing` with the `program` that isn't on this computer, `program-stopped` with the `program` that stopped by itself right after it started, before it answered, `secret-missing` with the name of the `secret` that isn't set, `secret-refused` when the server refused the secret (HTTP 401 or 403), and `stopped` when the program ended or didn't answer in time otherwise. For any other failure it shall answer without a `reason`. The answer shall never hold the error's own text, the program's output or a secret's value; the detail goes only to the host's log.
 
 ## Examples
 
 - Given an open connector whose program `npx` isn't on this computer,
   when Studio lists its tools,
   then the answer is 502 `connector_failed` with `reason` `program-missing` and `program` `npx`.
+- Given an open connector whose program `sh` exits right after it starts,
+  when Studio lists its tools,
+  then the answer has `reason` `program-stopped` and `program` `sh`, and nothing the program wrote.
 - Given an open connector whose secret `NOTES_TOKEN` isn't set,
   when Studio lists its tools,
   then the answer has `reason` `secret-missing` and `secret` `NOTES_TOKEN`, and no value.

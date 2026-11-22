@@ -28,6 +28,23 @@ verifies("library.listed-tools-waiting", () => {
       expect(line).toMatchObject({ button: "try-again", copyDetails: false });
     });
 
+    it("names a program that stopped right after it started in code type, with how to see why", () => {
+      const line = loadFailureLine(
+        new ConnectorCouldntList({ reason: "program-stopped", program: "sh" }),
+        "notes-mcp",
+        desktop,
+      );
+
+      expect(line.parts).toEqual([
+        { text: "Couldn't list the tools: the program " },
+        { text: "sh", code: true },
+        {
+          text: " of notes-mcp stopped right after it started. To see why, run the command and args from its connector file yourself.",
+        },
+      ]);
+      expect(line).toMatchObject({ button: "try-again", copyDetails: false });
+    });
+
     it("names a secret that isn't set, with no command, which couldn't set it for Studio", () => {
       const line = loadFailureLine(
         new ConnectorCouldntList({ reason: "secret-missing", secret: "NOTES_TOKEN" }),
