@@ -45,7 +45,7 @@ export function arrowsOf(workflow: Workflow): WorkflowArrow[] {
  * it. `undefined` when there is none, or when the line still holds a `{{ }}` placeholder that only
  * a run can fill in.
  */
-function stepTitle(description: string | undefined): string | undefined {
+export function stepTitle(description: string | undefined): string | undefined {
   const line = description?.split("\n")[0]?.trim();
   return line === undefined || line === "" || line.includes("{{") ? undefined : line;
 }

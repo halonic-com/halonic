@@ -194,16 +194,14 @@ export function WorkflowScreen({
     setMadeTest({ name: undefined, n: testsMade.current });
   });
   // Steps another feature asked to see, such as those that run an agent: outlined on Flow, no card.
-  const { outlined, clear: clearOutline } = useOutline(
-    outline,
-    outlineAsked,
-    load,
-    announce,
-    () => {
-      showView("flow");
-      setPickedStep(undefined);
-    },
-  );
+  const {
+    outlined,
+    line: outlineLine,
+    clear: clearOutline,
+  } = useOutline(outline, outlineAsked, load, announce, () => {
+    showView("flow");
+    setPickedStep(undefined);
+  });
   const problemsAsk = useOpenProblems(view, madeTest, { setDock, setMadeTest, showView });
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
@@ -416,6 +414,7 @@ export function WorkflowScreen({
               edit={canvasEdit}
               pickedStep={pickedStep}
               outlined={outlined}
+              outlineLine={outlineLine}
               docked={docked}
               onClearStep={() => {
                 clearOutline();

@@ -271,6 +271,11 @@ export interface AgentUser {
   readonly name: string;
   /** The ids of the workflow's steps that run the agent, in the workflow's order: one or more. */
   readonly stepIds: readonly string[];
+  /**
+   * Those steps as their cards on the workflow's canvas name them, in the same order: each one's
+   * title, else its id (C618). Absent names them by id.
+   */
+  readonly stepNames?: readonly string[] | undefined;
 }
 
 /** A routine that starts an agent by itself, not through a workflow. */

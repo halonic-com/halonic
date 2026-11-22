@@ -27,6 +27,8 @@ export interface FlowViewProps {
   readonly pickedStep: string | undefined;
   /** The steps the page was opened to outline (flow-workflows 9); absent is none. */
   readonly outlined?: readonly string[] | undefined;
+  /** Why they are outlined, shown over the canvas while they are (C618); absent shows nothing. */
+  readonly outlineLine?: string | undefined;
   /** A card is docked at the right, over the canvas's old right edge. */
   readonly docked: boolean;
   /** A click on the canvas's background: the picked step's card closes. */
@@ -50,6 +52,7 @@ export function FlowView({
   edit,
   pickedStep,
   outlined,
+  outlineLine,
   docked,
   onClearStep,
   kept,
@@ -68,6 +71,12 @@ export function FlowView({
             label={startWords.clearStrip}
             onClick={onClearStrip}
           />
+        </p>
+      )}
+      {outlineLine !== undefined && (
+        <p className="flex flex-wrap items-baseline gap-x-3 border-b border-border px-6 py-2 text-small">
+          {outlineLine}
+          <span className="text-fg-muted">{pageWords.outlineClears}</span>
         </p>
       )}
       {load.kind === "ready" && load.value.id === id && load.value.hubId === hubId && (

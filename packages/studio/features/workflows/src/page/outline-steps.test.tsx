@@ -21,7 +21,7 @@ const sorted: WorkflowView = {
   name: "Support reply",
   initial: "triage",
   steps: [
-    { id: "triage", type: "task", agent: "sorter" },
+    { id: "triage", type: "task", agent: "sorter", title: "Read the email" },
     { id: "draft", type: "task", agent: "sorter" },
     { id: "done", type: "final" },
   ],
@@ -37,12 +37,20 @@ const sorted: WorkflowView = {
 const outlined = (page: HTMLElement) =>
   [...page.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")]
     .filter((card) => card.className.includes("border-dashed"))
-    .map((card) => sorted.steps.find((step) => card.textContent?.includes(step.id))?.id);
+    .map((card) => sorted.steps.find((step) => card.textContent?.includes(name(step)))?.id);
+
+/** A step's name as its card shows it. */
+const name = (step: { id: string; title?: string | undefined }) => step.title ?? step.id;
 
 const card = (page: HTMLElement, stepId: string) =>
-  [...page.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")].find((one) =>
-    one.textContent?.includes(stepId),
-  );
+  [...page.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")].find((one) => {
+    const step = sorted.steps.find((it) => it.id === stepId);
+    return step !== undefined && one.textContent?.includes(name(step));
+  });
+
+/** The line over the canvas that says why steps are outlined. */
+const outlineLine = (page: HTMLElement) =>
+  [...page.querySelectorAll("p")].find((one) => one.textContent?.includes(" use"))?.textContent;
 
 const selectedTab = (page: HTMLElement) =>
   page.querySelector("[role=tab][aria-selected=true]")?.textContent;
@@ -73,8 +81,11 @@ verifies("workflows.page.outline-steps", () => {
     expect(selectedTab(page)?.startsWith("Flow")).toBe(true);
     expect(outlined(page)).toEqual(["triage", "draft"]);
     expect(page.querySelector("[aria-pressed=true]")).toBeNull();
-    expect(page.textContent).not.toContain("Step triage");
-    expect(said).toEqual(["2 steps use Sorter: triage, draft"]);
+    expect(page.textContent).not.toContain("Support reply › triage");
+    expect(said).toEqual(["2 steps use Sorter: Read the email, draft"]);
+    expect(outlineLine(page)).toBe(
+      "2 steps use Sorter: Read the email, draftPick a step or an empty spot to clear.",
+    );
   });
 
   it("says one step in the singular", async () => {
@@ -90,7 +101,7 @@ verifies("workflows.page.outline-steps", () => {
         announce={(line) => said.push(line)}
       />,
     );
-    expect(said).toEqual(["1 step uses Sorter: triage"]);
+    expect(said).toEqual(["1 step uses Sorter: Read the email"]);
   });
 
   it("goes back to Flow and outlines again when an open page is asked", async () => {
@@ -122,7 +133,7 @@ verifies("workflows.page.outline-steps", () => {
 
     expect(selectedTab(page)?.startsWith("Flow")).toBe(true);
     expect(outlined(page)).toEqual(["triage"]);
-    expect(said).toEqual(["1 step uses Sorter: triage"]);
+    expect(said).toEqual(["1 step uses Sorter: Read the email"]);
   });
 
   it("drops the outline when a step is picked", async () => {
@@ -140,6 +151,7 @@ verifies("workflows.page.outline-steps", () => {
     await act(async () => card(page, "draft")?.click());
 
     expect(outlined(page)).toEqual([]);
+    expect(outlineLine(page)).toBeUndefined();
     expect(card(page, "draft")?.getAttribute("aria-pressed")).toBe("true");
   });
 
@@ -157,6 +169,7 @@ verifies("workflows.page.outline-steps", () => {
       />,
     );
     expect(outlined(page)).toEqual([]);
+    expect(outlineLine(page)).toBeUndefined();
     expect(said).toEqual([]);
   });
 });

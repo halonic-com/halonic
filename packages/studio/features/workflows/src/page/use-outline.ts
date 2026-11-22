@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { WorkflowView } from "../api.ts";
 import { pageWords } from "./page-words.ts";
 import type { WorkflowLoad } from "./use-workflow.ts";
 
@@ -8,8 +9,9 @@ import type { WorkflowLoad } from "./use-workflow.ts";
  * while `outline` is given; then `onAsked` runs, during the render, as `useAskedForTests` does).
  * `clear` drops the outline, for a picked step or a press on the canvas's background.
  *
- * Each ask is read once to screen readers when the workflow is there, "2 steps use Sorter: triage,
- * draft", if the outlined steps that are still in the file all run one agent.
+ * `line` says why, "2 steps use Sorter: Read the email, draft", if the outlined steps that are
+ * still in the file all run one agent; the Flow tab shows it while the outline is on (C618). Each
+ * ask also reads it once to screen readers when the workflow is there.
  */
 export function useOutline(
   outline: readonly string[] | undefined,
@@ -28,25 +30,30 @@ export function useOutline(
       onAsked();
     }
   }
-  const read = useRef<number | undefined>(undefined);
   const workflow = load.kind === "ready" ? load.value : undefined;
+  const line = useMemo(
+    () => (workflow === undefined ? undefined : outlineLine(workflow, shown.ids)),
+    [workflow, shown.ids],
+  );
+  const read = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (workflow === undefined || shown.ids === undefined || read.current === shown.n) return;
     read.current = shown.n;
-    const ids = shown.ids;
-    const steps = workflow.steps.filter((step) => ids.includes(step.id));
-    const agent = steps[0]?.agent;
-    if (agent === undefined || steps.some((step) => step.agent !== agent)) return;
-    const name = workflow.agents?.find((one) => one.id === agent)?.name ?? agent;
-    announce?.(
-      pageWords.outlined(
-        steps.map((step) => step.id),
-        name,
-      ),
-    );
-  }, [workflow, shown, announce]);
+    if (line !== undefined) announce?.(line);
+  }, [workflow, shown, line, announce]);
   return {
     outlined: shown.ids,
+    line,
     clear: () => setShown((now) => (now.ids === undefined ? now : { ids: undefined, n: now.n })),
   };
+}
+
+/** Why `ids` are outlined, when those still in the file all run one agent; else `undefined`. */
+function outlineLine(workflow: WorkflowView, ids: readonly string[] | undefined) {
+  if (ids === undefined) return undefined;
+  const steps = workflow.steps.filter((step) => ids.includes(step.id));
+  const agent = steps[0]?.agent;
+  if (agent === undefined || steps.some((step) => step.agent !== agent)) return undefined;
+  const name = workflow.agents?.find((one) => one.id === agent)?.name ?? agent;
+  return pageWords.outlined(steps.map(pageWords.stepCard.title), name);
 }
