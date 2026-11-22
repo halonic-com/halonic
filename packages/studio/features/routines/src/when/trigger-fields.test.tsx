@@ -73,7 +73,6 @@ verifies("routines.when.trigger-fields", () => {
       "Manual only",
       "On a schedule",
       "Every …",
-      "New mail",
       "On a signal",
     ]);
     await choose(select, "manual");

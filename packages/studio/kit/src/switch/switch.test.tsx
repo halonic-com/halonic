@@ -168,3 +168,22 @@ verifies("kit.switch", () => {
     expect(trackIn(container).className).toContain("switch-forced");
   });
 });
+
+verifies("kit.switch-row-target", () => {
+  it("covers the whole row round it with rowTarget, and a press there turns it on", async () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <div className="relative">
+        <span>When</span>
+        <Switch label="Runs on its own" rowTarget checked={false} onChange={onChange} />
+      </div>,
+    );
+    const target = container.querySelector("label") as HTMLElement;
+    expect(target.className).toContain("after:absolute after:inset-0");
+    // Positioned itself, the label would keep its ::after to its own 32px.
+    expect(target.className.split(" ")).not.toContain("relative");
+    expect(target.className).not.toContain("hit-touch");
+    await click(target);
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+});

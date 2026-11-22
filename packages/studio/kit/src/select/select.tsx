@@ -17,6 +17,12 @@ export interface SelectOption {
    * shows it under the option; the desktop's native list has no room for it.
    */
   readonly reason?: string;
+  /**
+   * A second line under the option in the phone's picker sheet: the sentence a trigger would
+   * write, "Every hour (UTC)". The desktop's native list has no room for it. An unavailable
+   * option's `reason` takes its place.
+   */
+  readonly description?: string;
 }
 
 /** The props of `Select`. */
@@ -206,6 +212,7 @@ function PickerButton({
   const choices: readonly PickerOption[] = options.map((option) => ({
     value: option.value,
     label: option.label,
+    ...(option.description === undefined ? {} : { description: option.description }),
     // Without a reason, the unavailable option's row has no second line.
     ...(option.disabled === true ? { unavailable: { reason: option.reason ?? "" } } : {}),
   }));

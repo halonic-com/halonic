@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
+import { createRef } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Field } from "../field/field.tsx";
 import { Input } from "../input/input.tsx";
@@ -247,5 +248,15 @@ verifies("kit.action-bar", () => {
     );
     expect(container.querySelector("input")?.hasAttribute("data-text-entry")).toBe(true);
     expect(container.querySelector("textarea")?.hasAttribute("data-text-entry")).toBe(true);
+  });
+});
+
+verifies("kit.action-bar-focus", () => {
+  it("passes a button's ref on, so the page can give it the focus", () => {
+    const runNow = createRef<HTMLButtonElement>();
+    const { container } = render(<ActionBar rows={[[{ label: "Run now", ref: runNow }]]} />);
+    runNow.current?.focus();
+    expect(document.activeElement).toBe(buttons(container)[0]);
+    expect(runNow.current?.textContent).toContain("Run now");
   });
 });

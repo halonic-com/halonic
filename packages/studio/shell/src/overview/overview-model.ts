@@ -16,6 +16,13 @@ export interface OverviewItem {
    * line: for a long one, such as a workflow's Last run, so the detail keeps the row's width.
    */
   readonly usedByOwnLine?: boolean;
+  /**
+   * On a phone, give the detail up to two lines, then a last line that starts with the chips and
+   * ends in the used-by text: "[Off]", "[Needs you] next Mon 07:30" (component specs section 6,
+   * revision 11: a row with a ⋮ puts its state chip at the start of its last line). A routine's
+   * row, whose sentence is what the row is about.
+   */
+  readonly chipsBeforeUsedBy?: boolean;
   /** Pinned items come first in their section. */
   readonly pinned?: boolean;
   /** A 28px avatar before the name, such as a workflow's letter. Screen readers skip it. */

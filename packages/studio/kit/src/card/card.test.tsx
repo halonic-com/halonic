@@ -195,3 +195,24 @@ verifies("kit.card", () => {
     expect((container.firstElementChild as HTMLElement).className).toContain("text-fg-disabled");
   });
 });
+
+verifies("kit.switch-row-target", () => {
+  it("makes a header with actions the box a row target covers, 48px on a phone", () => {
+    const { container } = render(
+      <Card label="When" headingLevel={2} actions={<span>On</span>}>
+        Weekdays at 07:30
+      </Card>,
+    );
+    const header = nameElement(container.firstElementChild as HTMLElement)
+      .parentElement as HTMLElement;
+    expect(header.className).toContain("relative phone:min-h-touch");
+  });
+
+  it("leaves a header without actions as it is", () => {
+    const { container } = render(<Card label="Starts">Briefing</Card>);
+    const header = nameElement(container.firstElementChild as HTMLElement)
+      .parentElement as HTMLElement;
+    expect(header.className).not.toContain("relative");
+    expect(header.className).not.toContain("min-h-touch");
+  });
+});

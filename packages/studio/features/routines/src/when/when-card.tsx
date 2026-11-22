@@ -1,4 +1,4 @@
-import { Callout, Card, Switch } from "@halonicjs/studio-kit";
+import { Callout, Card, Switch, usePresentation } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
 import type { RoutinesHost, RoutineTrigger, RoutineView } from "../api.ts";
 import { cantStartReason, pageStartFacts } from "../cant-start.ts";
@@ -15,8 +15,6 @@ export interface WhenCardProps {
   readonly routine: RoutineView;
   /** Reads text to screen readers, politely. */
   readonly announce: (text: string) => void;
-  /** Opens New connector, for the link shown when a mail trigger has no Google connector to watch; without it there is no link. */
-  readonly addConnector?: () => void;
   /** Whether the Trigger picker should take the focus now. */
   readonly focusTrigger?: boolean;
   /** Called once the picker has taken the focus. */
@@ -35,7 +33,6 @@ export function WhenCard({
   host,
   routine,
   announce,
-  addConnector,
   focusTrigger,
   onTriggerFocused,
 }: WhenCardProps) {
@@ -106,8 +103,10 @@ export function WhenCard({
             <span aria-hidden="true" className="text-small text-fg-muted">
               {routine.enabled ? words.on : words.off}
             </span>
+            {/* The whole 48px header row is the switch's target, "When" included (WCAG 2.5.8). */}
             <Switch
               label={words.switchName}
+              rowTarget
               checked={routine.enabled}
               onChange={(enabled) => void turn(enabled)}
               {...(blocked && { unavailable: { reason: reasonId } })}
@@ -120,9 +119,9 @@ export function WhenCard({
         <p className="text-body">{routine.triggerSentence}</p>
         <TriggerFields
           trigger={routine.trigger}
+          sentence={routine.triggerSentence}
           enabled={routine.enabled}
           mailboxes={mailboxes}
-          {...(addConnector && { addConnector })}
           focusTrigger={focusTrigger ?? false}
           onTriggerFocused={onTriggerFocused}
           next={<NextTimesLines shown={shown} atNextCheck={times?.atNextCheck === true} />}
@@ -164,7 +163,8 @@ function startsOnlyLine(routine: RoutineView, cantStart: boolean): string | unde
 
 /**
  * The next start times in words, or "at the next check", followed by the line that they start on
- * time while Halonic is open. Shows nothing when there is no next start.
+ * time while Halonic is open. On a phone each time has a line of its own, so none breaks in two
+ * (flow-routines 5.3). Shows nothing when there is no next start.
  */
 function NextTimesLines({
   shown,
@@ -173,13 +173,24 @@ function NextTimesLines({
   readonly shown: readonly string[];
   readonly atNextCheck: boolean;
 }) {
+  const phone = usePresentation() === "phone";
   if (shown.length === 0 && !atNextCheck) return null;
   return (
     <>
-      {shown.length > 0 && (
+      {shown.length > 0 && !phone && (
         <p className="text-small">
           <span className="text-fg-muted">{words.next}</span> {shown.join(" · ")}
         </p>
+      )}
+      {shown.length > 0 && phone && (
+        <div className="flex flex-col text-small">
+          <span className="text-fg-muted">{words.next}</span>
+          <ul className="m-0 list-none p-0">
+            {shown.map((time) => (
+              <li key={time}>{time}</li>
+            ))}
+          </ul>
+        </div>
       )}
       {atNextCheck && (
         <p className="text-small">
