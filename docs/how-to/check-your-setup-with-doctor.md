@@ -104,7 +104,7 @@ the command line, move it into your Linux home folder (`~`).
 model providers that your workspace's model aliases use, then any provider an
 agent names directly (such as `claude/claude-sonnet-5-5`). For a model server
 on this computer, `doctor` asks whether it answers and which models it has
-loaded. For a cloud provider, it checks that the provider's API key is stored.
+loaded. It reads at most 1 MiB of the server's answer. For a cloud provider, it checks that the provider's API key is stored.
 It never reads or shows the key itself. Shown inside a workspace that uses
 such a provider, or whose agents need a default model it doesn't have. The
 built-in test model needs nothing, so it isn't listed.
