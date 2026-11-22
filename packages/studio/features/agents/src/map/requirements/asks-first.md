@@ -8,7 +8,7 @@ Where the agent map shows a connector, the agents feature shall show on its card
 
 ## Examples
 
-- Given "Mail triage" uses the connector "Acme mail", whose file has no `tools.read`, then its card shows "✋ Every tool asks first" and is named "Connector Acme mail, Every tool asks first".
+- Given "Mail triage" uses the connector "Acme mail", whose file has no `tools.read`, then its card shows the approval hand (the kit's drawn `HandIcon`, not an emoji) and "Every tool asks first" and is named "Connector Acme mail, Every tool asks first".
 - Given the connector says `tools.approve: all`, then its card shows "Every tool asks first".
 - Given `tools.read` names `search_mail` and `read_mail`, and `tools.approve` names `read_mail`, then its card shows "Asks first, except 1 read-only tool".
 - Given `tools.read` names two tools that agents can see and `tools.approve` names neither, then its card shows "Asks first, except 2 read-only tools".

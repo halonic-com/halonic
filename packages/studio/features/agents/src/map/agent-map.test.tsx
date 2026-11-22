@@ -323,25 +323,25 @@ verifies("agents.map.asks-first", () => {
     });
     expect(side(page, "What it can use")).toEqual([
       "Skill tone",
-      "Connector acme-mail✋ Asks first, except 1 read-only tool",
-      "Connector big-mail✋ Asks first, except 2 read-only tools",
+      "Connector acme-mailAsks first, except 1 read-only tool",
+      "Connector big-mailAsks first, except 2 read-only tools",
       "+ Add a tool",
     ]);
     expect(
       page.querySelector("[aria-label='Connector acme-mail, Asks first, except 1 read-only tool']"),
     ).not.toBeNull();
-    // The hand is a picture; its words say it.
-    const hand = [...page.querySelectorAll("[aria-hidden=true]")].find((each) =>
-      each.textContent?.includes("✋"),
+    // The hand is the kit's drawn mark, not an emoji (C606); its words say it.
+    const hand = page.querySelector(
+      "[aria-label='Connector acme-mail, Asks first, except 1 read-only tool'] svg",
     );
-    expect(hand).toBeDefined();
+    expect(hand?.closest("[aria-hidden=true]")).not.toBeNull();
   });
 
   it("says every tool asks first when none runs without asking", async () => {
     const page = await openFlow({ agents: asking({ id: "notes-mcp", toolsWithoutAsking: 0 }) });
     expect(side(page, "What it can use")).toEqual([
       "Skill tone",
-      "Connector notes-mcp✋ Every tool asks first",
+      "Connector notes-mcpEvery tool asks first",
       "+ Add a tool",
     ]);
   });

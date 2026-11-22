@@ -2515,7 +2515,8 @@ group, so a long action ("Sign in with Google") goes under the text and lines up
 
 ## Other exports
 
-The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `HelpIcon` (a circled ?, the sidebar's Help row,
+The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `HandIcon` (an open raised palm, the agent map's
+"asks first" hand, drawn like the place icons), `HelpIcon` (a circled ?, the sidebar's Help row,
 drawn like the place icons), `InfoIcon`, `MaximiseIcon` (⤢), `RefreshIcon`
 (a circle arrow, the ↻ of a plugin card), `RestoreIcon` (the restore mark), `SettingsIcon` (a gear, the sidebar's Settings row, drawn like
 the place icons), `ShieldIcon` (the sandbox's shield) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
