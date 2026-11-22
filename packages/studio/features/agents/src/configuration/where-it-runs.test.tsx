@@ -183,7 +183,10 @@ verifies("agents.configuration.where-it-runs", () => {
       await press(buttonNamed(document.body, words.openFile));
       await nextFrame();
       expect(opened).toEqual([]);
-      expect(warning()?.textContent).toContain("Couldn't open the file of Writer");
+      expect(warning()?.textContent).toContain(
+        "Couldn't open Writer's file: The agent host isn't answering.",
+      );
+      expect(warning()?.textContent).not.toContain("answering..");
     });
 
     it("says the file changed without a link where the app can't open files, and not on a first choice", async () => {
