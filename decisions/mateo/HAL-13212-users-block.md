@@ -2,6 +2,7 @@
 
 - Approval: HAL-13212
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4oUsSBEyb7uBPr79s8vjo6XrHEpZTr0N8vfzaQl1LIM+kqEafFd5nkv2Su0N+9f1VGm3OQoRpajarrFeZQjFDw==
 
 Slice S1-1 of the selling layer (design on HAL-12483, sections 1 and 8) adds
 an optional `users` block to each deployment in `deployments.yaml`: `mode`
