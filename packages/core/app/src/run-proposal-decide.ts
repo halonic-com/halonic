@@ -16,10 +16,12 @@ import type { ProposalReader, ProposalTexts } from "./run-proposal-texts.ts";
 import type {
   AcceptResult,
   Decision,
+  ProposalCompareChoice,
   ProposedFile,
   RefusalReason,
   UndoFileWrite,
 } from "./run-proposal-types.ts";
+import { CannotCombineError, compareTexts } from "./workspace-compare.ts";
 
 /** What deciding a proposal needs from the host. */
 export interface DecideContext {
@@ -77,6 +79,70 @@ export async function acceptFile(
   return outcome === "changed-on-disk"
     ? { kind: "changed-on-disk" }
     : { kind: "accepted", write: { path: file.path, before: saved, after: run } };
+}
+
+/** A choice made in Compare for one file, with what it is made from. */
+export interface ChosenFile {
+  readonly file: ProposedFile;
+  readonly reader: ProposalReader;
+  /** The run's text, less what the person rejected of it; `null` for a delete. */
+  readonly run: string | null;
+  readonly choice: ProposalCompareChoice;
+  /** What Compare showed of the saved file: its digest, or `absent`. */
+  readonly seen: ExpectedContent;
+}
+
+/**
+ * Accepts one file the person changed since the run's base with their
+ * Compare choice: writes the run's text, or both put together, only while
+ * the saved file still holds what Compare showed. Trust rule A holds as
+ * for {@link acceptFile}.
+ *
+ * @throws CannotCombineError for `combine-both` when the texts change the same lines
+ */
+export async function chooseFile(
+  context: DecideContext,
+  chosen: ChosenFile,
+): Promise<AcceptedFile> {
+  const { file, run, seen } = chosen;
+  const why = refusalOf(file.path);
+  if (why !== null) {
+    return { kind: "refused", why };
+  }
+  const saved = await storeRefusing(() => context.store.read(file.path));
+  if (saved === refused) {
+    return { kind: "refused", why: "outside-workspace" };
+  }
+  if (!(await matchesExpected(saved, seen, context.digest))) {
+    return { kind: "changed-on-disk" };
+  }
+  const text = chosen.choice === "use-run" ? run : await combinedOf(chosen, saved);
+  if (saved === text) {
+    return { kind: "accepted", write: null };
+  }
+  const outcome = await putFile(context, file.path, text, seen);
+  if (outcome === refused) {
+    return { kind: "refused", why: "outside-workspace" };
+  }
+  return outcome === "changed-on-disk"
+    ? { kind: "changed-on-disk" }
+    : { kind: "accepted", write: { path: file.path, before: saved, after: text } };
+}
+
+/**
+ * The saved text and the run's put together over the run's base, as
+ * Compare's Combine both.
+ *
+ * @throws CannotCombineError when one is a delete, or they change the same lines
+ */
+async function combinedOf(chosen: ChosenFile, saved: string | null): Promise<string> {
+  const { path } = chosen.file;
+  const base = await chosen.reader.read("base", path);
+  const text = compareTexts(path, base, saved, chosen.run).combined;
+  if (text === null) {
+    throw new CannotCombineError(path);
+  }
+  return text;
 }
 
 /**

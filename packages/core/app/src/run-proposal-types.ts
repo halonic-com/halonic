@@ -114,6 +114,12 @@ export interface CompareTexts {
   readonly refused?: RefusalReason;
 }
 
+/**
+ * What the person chose in Compare for a file they changed since the run's
+ * base, other than Keep mine (a reject): the run's text, or both put together.
+ */
+export type ProposalCompareChoice = "use-run" | "combine-both";
+
 /** What one Accept or Reject covers: one file, or every undecided file. */
 export type ProposalTarget = { readonly file: string } | "all";
 

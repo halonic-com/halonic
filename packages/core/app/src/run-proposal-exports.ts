@@ -17,6 +17,7 @@ export {
   type HistoryOnProposal,
   type InFileProposalTarget,
   type InFileResult,
+  type ProposalCompareChoice,
   type ProposalFileParts,
   type ProposalTarget,
   ProposalUnavailableError,

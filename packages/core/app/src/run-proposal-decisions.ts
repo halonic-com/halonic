@@ -2,9 +2,11 @@
 // Reject, Compare, and Undo and Redo of those decisions. Internal to
 // `core/app`; `RunProposals` hands its calls here.
 
+import type { ExpectedContent } from "@halonicjs/ports";
 import { refused, storeRefusing } from "./review-gate.ts";
 import {
   acceptFiles,
+  chooseFile,
   type DecideContext,
   expectedOf,
   refusalOf,
@@ -22,6 +24,7 @@ import type {
   AcceptResult,
   CompareTexts,
   Decision,
+  ProposalCompareChoice,
   ProposalTarget,
   ProposedFile,
   RefusalReason,
@@ -90,6 +93,48 @@ export class ProposalDecisions {
       return { base, saved: null, run, refused: why ?? "outside-workspace" };
     }
     return { base, saved, run };
+  }
+
+  /** See `RunProposals.choose`. */
+  choose(
+    runId: string,
+    path: string,
+    choice: ProposalCompareChoice,
+    seen: ExpectedContent,
+  ): Promise<AcceptResult> {
+    return this.records.inTurn(runId, async () => {
+      const record = await this.records.proposed(runId);
+      const file = record.proposal.files.find((entry) => entry.path === path);
+      if (file === undefined) {
+        throw new Error(`Run ${runId} proposes no change to ${path}.`);
+      }
+      if (record.decisions[path] !== "undecided") {
+        throw new Error(`${path} of run ${runId} is already decided.`);
+      }
+      const reader = await this.readerOf(record);
+      const run = record.partly?.[path]?.run ?? (await reader.read("run", path));
+      const outcome = await chooseFile(this.context, { file, reader, run, choice, seen });
+      if (outcome.kind === "changed-on-disk") {
+        return { undo: null, written: [], changedOnDisk: [path], refused: [] };
+      }
+      const decision = outcome.kind === "refused" ? "not-applicable" : "accepted";
+      const decisions = await this.saveDecisions(record, { ...record.decisions, [path]: decision });
+      if (outcome.kind === "refused") {
+        return {
+          undo: null,
+          written: [],
+          changedOnDisk: [],
+          refused: [{ path, why: outcome.why }],
+        };
+      }
+      const writes = outcome.write === null ? [] : [outcome.write];
+      return {
+        undo: writes.length === 0 ? null : stepOf(runId, [...writes, ...decisions]),
+        written: writes.map((write) => write.path),
+        changedOnDisk: [],
+        refused: [],
+      };
+    });
   }
 
   /** See `RunProposals.restore`. */

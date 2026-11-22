@@ -10,8 +10,14 @@ import type { ProposedRecord, Settled } from "./run-proposal-record.ts";
 import type { ProposalRecordStore } from "./run-proposal-store.ts";
 import type { ProposalTexts } from "./run-proposal-texts.ts";
 
+/** A proposal that is settled. */
+type SettledRecord = ProposedRecord & { readonly settled: Settled };
+
 /** How long a proposal stays open when nobody decides it. */
 const openFor = 30 * 24 * 60 * 60 * 1000;
+
+/** How long a settled proposal shows under the Inbox's Done heading (flow-inbox 2.2). */
+const doneFor = 30 * 24 * 60 * 60 * 1000;
 
 /** What {@link ProposalSettling.settle} did. */
 export type SettleResult =
@@ -58,6 +64,16 @@ export class ProposalSettling {
       await this.settleRecord(record, "decided");
       return "settled";
     });
+  }
+
+  /** See `RunProposals.done`. */
+  async done(): Promise<ProposedRecord[]> {
+    const since = this.clock.now().getTime() - doneFor;
+    const settled = (await this.records.proposals()).filter(
+      (record): record is SettledRecord =>
+        record.settled !== undefined && Date.parse(record.settled.at) > since,
+    );
+    return settled.sort((a, b) => b.settled.at.localeCompare(a.settled.at));
   }
 
   /** See `RunProposals.isUnavailable`. */
