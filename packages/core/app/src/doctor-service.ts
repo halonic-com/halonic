@@ -39,6 +39,7 @@ import type { AliasProvider, DoctorProvider, ModelsLine } from "./doctor-models-
 import { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 import { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
 import type { DoctorPluginProblem, PluginsLine } from "./doctor-plugins-line.ts";
+import { type ProfileLine, type ProfileProblem, profileLine } from "./doctor-profile-line.ts";
 import type { SecretsFound, SecretsLine, UsedSecret } from "./doctor-secrets-line.ts";
 import {
   type AgentSettingsFolder,
@@ -177,6 +178,11 @@ export interface DoctorServiceOptions {
    */
   network?: () => NetworkProblem | null;
   /**
+   * How the workspace and the profile folder overlap, for the Profile line
+   * (HAL-15201). Left out, or `null`, there is no such line.
+   */
+  profile?: ProfileProblem | null;
+  /**
    * The clock each check's 5-second limit runs on: `setTimeout` and
    * `clearTimeout`, or a test's own.
    */
@@ -188,6 +194,8 @@ export interface DoctorServiceOptions {
  * A check that didn't answer in 5 seconds has a {@link TimedOutLine} instead.
  */
 export interface DoctorReport {
+  /** Only when the host found the workspace and the profile folder overlap. */
+  profile?: ProfileLine;
   /** Only inside a workspace. */
   workspace?: WorkspaceLine | TimedOutLine<"workspace">;
   /** Only inside a workspace with model aliases. */
@@ -287,7 +295,7 @@ export class DoctorService {
       ),
     );
     if (harnessLine !== undefined) report.harnesses = harnessLine;
-    const found = { ...report, ...hostFoundLines(node, this.options.network) };
+    const found = { ...report, ...hostFoundLines(node, this.options) };
 
     return { ...found, summary: doctorSummary(linesOf(found)) };
   }
@@ -417,23 +425,26 @@ function firstRunLines(
   return lines;
 }
 
-/** The Node.js and Network lines, each only when the host found a problem. */
+/** The Profile, Node.js and Network lines, each only when the host found a problem. */
 function hostFoundLines(
   node: NodeProblem | null | typeof timedOut,
-  network: DoctorServiceOptions["network"],
-): Pick<DoctorReport, "node" | "network"> {
+  { network, profile }: Pick<DoctorServiceOptions, "network" | "profile">,
+): Pick<DoctorReport, "profile" | "node" | "network"> {
   const nodeFound = lineOf(node, "node", nodeLine);
   const networkFound = networkLine(network?.() ?? null);
+  const profileFound = profileLine(profile ?? null);
   return {
+    ...(profileFound === undefined ? {} : { profile: profileFound }),
     ...(nodeFound === undefined ? {} : { node: nodeFound }),
     ...(networkFound === undefined ? {} : { network: networkFound }),
   };
 }
 
 function linesOf(report: Omit<DoctorReport, "summary">): DoctorLine[] {
-  const { workspace, models, secrets, plugins, sandbox, mxc, noSandbox, harnesses } = report;
-  const { node, network, disk } = report;
+  const { profile, workspace, models, secrets, plugins, sandbox, mxc, noSandbox } = report;
+  const { harnesses, node, network, disk } = report;
   return [
+    profile,
     workspace,
     models,
     secrets,

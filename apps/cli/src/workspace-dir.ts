@@ -1,5 +1,5 @@
-import { access, constants } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { access, constants, stat } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
 import type { DefinitionStore } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { isUnreadable, settingsPath } from "@halonicjs/workspace";
@@ -57,7 +57,8 @@ export function workspaceDir(input: CommandInput, cwd: string): WorkspaceDir {
  * Finds the workspace the command was pointed at (see {@link workspaceDir})
  * and opens its files, with the profile fenced off. A workspace that holds a
  * moved profile folder, or lies inside the profile, is refused before
- * anything in it is read (HAL-15201).
+ * anything in it is read (HAL-15201); a folder without `workspace.yaml` is
+ * no workspace, so it gets "no workspace" whatever the profile's place.
  *
  * @throws NoWorkspaceError when the folder has no `workspace.yaml`, or doesn't exist.
  * @throws KindedError `invalid_input` when the folder, or its `workspace.yaml`, can't be read.
@@ -68,12 +69,31 @@ export async function openWorkspaceDir(
   context: Pick<CommandContext, "cwd">,
 ): Promise<OpenWorkspaceDir> {
   const dir = workspaceDir(input, context.cwd);
+  if (!(await holdsWorkspaceFile(dir.root))) throw new NoWorkspaceError();
   await checkProfilePlace(dir.root);
   const store = workspaceStore(dir.root, dir.shown);
   if ((await readSettings(store, dir.root)) === null) {
     throw new NoWorkspaceError();
   }
   return { ...dir, store };
+}
+
+/**
+ * Whether `root` has a `workspace.yaml`, by a plain look at the folder: the
+ * workspace's store isn't opened yet, since it is fenced from the profile
+ * and the profile check comes first. A folder this account can't read counts
+ * as holding one, so opening it says what can't be read.
+ *
+ * @param root - the folder a command was pointed at
+ */
+export async function holdsWorkspaceFile(root: string): Promise<boolean> {
+  try {
+    await stat(join(root, settingsPath));
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return code !== "ENOENT" && code !== "ENOTDIR";
+  }
 }
 
 /**

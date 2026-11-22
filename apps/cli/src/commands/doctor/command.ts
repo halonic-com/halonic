@@ -20,10 +20,12 @@ import { doctorWorkspace, usedConnectors } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import { doctorMessages } from "../../messages/doctor.ts";
 import { doctorReportLines } from "../../output/doctor-report.ts";
+import { profileProblem } from "../../profile-place.ts";
 import { studioWatchedFileLimit } from "../../studio-watch-limit.ts";
 import { halonicVersion } from "../../version.ts";
 import {
   dirOption,
+  holdsWorkspaceFile,
   NoWorkspaceError,
   type WorkspaceDir,
   workspaceDir,
@@ -55,19 +57,22 @@ export function createDoctorCommand(
       const given = givenDir(input);
       const computer = machine();
       const secrets = workspaceSecrets(context.secrets);
-      const read = await readWorkspace(
-        workspaceDir(input, context.cwd),
-        given !== undefined,
-        watchedFileLimit,
-        computer,
-        secrets,
-      );
+      const dir = workspaceDir(input, context.cwd);
+      // Every other command refuses a workspace that overlaps the profile;
+      // `doctor` shows it on the Profile line and leaves the workspace unread,
+      // since its files are fenced off from the profile (HAL-15201). A folder
+      // without `workspace.yaml` is no workspace, so there's nothing to overlap.
+      const profile = (await holdsWorkspaceFile(dir.root)) ? await profileProblem(dir.root) : null;
+      const read =
+        profile === null
+          ? await readWorkspace(dir, given !== undefined, watchedFileLimit, computer, secrets)
+          : null;
       const workspace =
         read === null
           ? null
           : await withHarnessSettingsFolders(withWindowsDrive(read, computer), computer.profile);
       // The store as a run reads it, so `doctor` can't call set a name a run refuses.
-      const doctor = await doctorService(computer, secrets, workspace);
+      const doctor = await doctorService(computer, secrets, workspace, profile);
       const report = await doctor.check(workspace?.workspace ?? null);
       const lines = doctorReportLines(report, {
         version: halonicVersion,
@@ -202,11 +207,21 @@ function withWindowsDrive(
  * with its `check` and `status` (`ok`, `warning` or `failed`), and the counts.
  */
 function doctorJson(report: DoctorReport) {
-  const { workspace, models, secrets, plugins, sandbox, harnesses, node, network, disk } = report;
+  const { profile, workspace, models, secrets, plugins, sandbox, harnesses } = report;
+  const { node, network, disk } = report;
   return {
-    checks: [workspace, models, secrets, plugins, sandbox, harnesses, node, network, disk].filter(
-      (line) => line !== undefined,
-    ),
+    checks: [
+      profile,
+      workspace,
+      models,
+      secrets,
+      plugins,
+      sandbox,
+      harnesses,
+      node,
+      network,
+      disk,
+    ].filter((line) => line !== undefined),
     problems: report.summary.problems,
     warnings: report.summary.warnings,
   };

@@ -18,6 +18,7 @@ import {
   type NetworkProblem,
   type NodeProblem,
   type PlacementReader,
+  type ProfileProblem,
   ResourceReport,
   type SaveTimers,
   type TrustService,
@@ -179,7 +180,8 @@ export function nodeDoctorMachine(): DoctorMachine {
 /**
  * The `DoctorService` over `machine`, with a source of loaded models for
  * each server on this computer the workspace uses, and the run data of
- * every workspace in the profile as the Disk line's use.
+ * every workspace in the profile as the Disk line's use. `profile` is how
+ * the workspace and the profile folder overlap, for the Profile line.
  *
  * It reads no run logs: `doctor` shows no waits in 0.1 (P6 on HAL-2264).
  */
@@ -187,6 +189,7 @@ export async function doctorService(
   machine: DoctorMachine,
   secrets: Secrets,
   workspace: MachineWorkspace | null,
+  profile: ProfileProblem | null = null,
 ): Promise<DoctorService> {
   const trust = cliTrustService(machine.trustStore, systemClock);
   const trusted = await isTrusted(trust, workspace);
@@ -208,6 +211,7 @@ export async function doctorService(
     secrets,
     ...(machine.node === undefined ? {} : { node: machine.node }),
     ...(machine.network === undefined ? {} : { network: machine.network }),
+    profile,
     timers: checkTimers,
   });
 }
