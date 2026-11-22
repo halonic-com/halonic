@@ -1,8 +1,8 @@
 /**
  * Which areas are failing on main, for the nightly in `scheduled.yml`. It
  * reads the area table in `docs/guides/area-owners.md`, maps each failed
- * job of the newest finished push run on main to an area, and marks the
- * jobs that also failed on the run from the night before.
+ * job of the newest finished push run and hourly run on main to an area, and
+ * marks the jobs that also failed on the runs from the night before.
  */
 
 export interface Area {
@@ -228,6 +228,22 @@ export function areaReports(options: {
     slug: slugOf(area.name),
     failures: failures.get(area.name) ?? [],
   }));
+}
+
+/**
+ * The runs the nightly reads as one: the newest push run of CI on main and
+ * the newest hourly run, which alone runs the macOS and Windows jobs
+ * (HAL-15889). Each job keeps its own link; the link names every run.
+ */
+export function combinedRun(runs: readonly (Run | undefined)[]): Run | undefined {
+  const present = runs.filter((run): run is Run => run !== undefined);
+  if (present.length === 0) {
+    return undefined;
+  }
+  return {
+    url: present.map((run) => run.url).join(" and "),
+    jobs: present.flatMap((run) => run.jobs),
+  };
 }
 
 /** The issue text for a failing area. */

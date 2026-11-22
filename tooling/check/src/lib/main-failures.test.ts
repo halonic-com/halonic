@@ -6,6 +6,7 @@ import {
   areaOfJob,
   areaOfPath,
   areaReports,
+  combinedRun,
   failedFolders,
   fallbackArea,
   issueBody,
@@ -84,6 +85,10 @@ verifies("check.main-failures", () => {
         "Windows update (0.1.0 to 0.1.1)",
         "Sandbox fence on Windows (canary probes)",
         "Requirements and the requirement guard (merge base's copy)",
+        "Sandbox packages on Windows",
+        "Agent host executable (Windows)",
+        "WSL runtime (Linux agent host, packed)",
+        "Windows installer (build, install, uninstall)",
       ];
       expect(named.filter((name) => areaOfJob(name, table) === undefined)).toEqual([]);
     });
@@ -185,6 +190,26 @@ verifies("check.main-failures", () => {
       expect(
         areaReports({ table, latest: { url: "run", jobs: [] }, logs: new Map() }),
       ).toHaveLength(table.areas.length);
+    });
+  });
+
+  describe("combinedRun", () => {
+    test("reads the hourly run's macOS and Windows jobs with the push run's", () => {
+      const push = { url: "push", jobs: [job("Leak guard", "success")] };
+      const hourly = { url: "hourly", jobs: [job("Keychain contract on macOS")] };
+      const run = combinedRun([push, hourly]);
+      expect(run?.url).toBe("push and hourly");
+      const reports = areaReports({ table, latest: run ?? push, logs: new Map() });
+      const studio = reports.find((report) => report.area === "Studio");
+      expect(studio?.failures.map((failure) => failure.job)).toEqual([
+        "Keychain contract on macOS",
+      ]);
+    });
+
+    test("leaves out a run that isn't there, and is nothing when no run is", () => {
+      const push = { url: "push", jobs: [] };
+      expect(combinedRun([push, undefined])).toEqual(push);
+      expect(combinedRun([undefined, undefined])).toBeUndefined();
     });
   });
 

@@ -40,7 +40,7 @@ Most CI jobs check one area. A failing job goes to its area's owner.
 | Sandbox | Sandbox fence (bubblewrap), Sandbox fence (Seatbelt), Sandbox fence (MXC on Windows 11), Sandbox packages on macOS, Sandbox packages on Windows, Sandbox fence on Windows (canary probes) |  |
 | Studio | Tauri shell (Rust checks), Tauri shell on Windows, Keychain contract on macOS, Android shell (debug APK), Android device keys (emulator), Studio end-to-end (Playwright) | `android-screens.yml` |
 | Engine and CLI | Live cloud suites passed |  |
-| Adapters | Agent host executable |  |
+| Adapters | Agent host executable, WSL runtime |  |
 | Tooling and CI | Changed areas, Fast gates, Leak guard, Coverage floors don't go down, Secret scan (gitleaks), Workflow lint (zizmor), Requirements and the requirement guard, Empty package and feature pass every check, Policy rules, Windows installer, Windows update, ci-ok | the jobs in `scheduled.yml` |
 | Docs | Docs build and link check |  |
 
@@ -53,8 +53,9 @@ it goes to Liam.
 ## The nightly
 
 Every night `scheduled.yml` runs `tooling/check/src/cli/main-failures.ts`. It
-reads the newest finished push run of `ci.yml` on `main` and the newest
-`android-screens.yml` run, sorts their failed jobs into areas with the tables
+reads the newest finished push run of `ci.yml` on `main`, the newest finished
+hourly run of `ci.yml` (the only run on `main` with the macOS and Windows jobs)
+and the newest `android-screens.yml` run, sorts their failed jobs into areas with the tables
 above, and opens or updates one GitHub issue per failing area, labelled
 `nightly:<area>` (for example `nightly:engine-and-cli`). It closes the issue of
 an area that is green again, and then starts `android-screens.yml` for the next

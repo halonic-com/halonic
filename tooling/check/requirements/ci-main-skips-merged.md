@@ -10,7 +10,7 @@ When a push to `main` runs `.github/workflows/ci.yml`, the `merged` job shall lo
 
 - Given a push to `main` whose commit passed its merge group with `fast`, `build` and `trace`,
   when CI runs,
-  then those three jobs skip and the macOS, Windows and GitHub-hosted Linux jobs still run.
+  then those three jobs skip and the GitHub-hosted Linux jobs still run (the macOS and Windows jobs run hourly instead, `check.ci-desktop-hourly`).
 - Given a push to `main` whose merge group skipped `e2e` because no Studio file changed,
   when CI runs,
   then `e2e` runs on the push.
