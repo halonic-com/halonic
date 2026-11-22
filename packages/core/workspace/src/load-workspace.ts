@@ -147,9 +147,10 @@ export async function loadWorkspace(
     if (outcome.loaded !== null) {
       files.push(outcome.loaded);
     }
-    issues.push(...outcome.issues);
+    // A loop, not `push(...list)`: spreading a very long list overflows the stack.
+    for (const issue of outcome.issues) issues.push(issue);
   }
-  issues.push(...checkWorkspace(files, read, paths, options.sheetHosts));
+  for (const issue of checkWorkspace(files, read, paths, options.sheetHosts)) issues.push(issue);
   return {
     location: source.location,
     version,

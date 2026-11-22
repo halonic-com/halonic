@@ -4,6 +4,11 @@ import { isSecretVariableName } from "@halonicjs/std";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { checkKeysIn } from "../../shared/key-in-value.ts";
 import {
+  startReadingLimit,
+  startReadingSize,
+  tooMuchToReadMessage,
+} from "../../shared/program-start.ts";
+import {
   checkReservedSecretName,
   checkSecretName,
   looksLikeKey,
@@ -21,6 +26,7 @@ export const connectorKind: FileKind<Connector> = {
   ],
   idFromPlace: "fallback",
   check: (connector) => [
+    ...checkStartSize(connector),
     ...checkSecretNames(connector),
     ...checkGoogleValues(connector),
     ...checkPastedKeys(connector),
@@ -29,6 +35,29 @@ export const connectorKind: FileKind<Connector> = {
     ...checkReadTools(connector),
   ],
 };
+
+/**
+ * A local program's arguments and `env` values must be short enough to read
+ * for the paths they name (`format.program-start-limit`). The working-folder
+ * guards read them on every load and start, and refuse a start past the
+ * limit; refusing the file here says so before anything runs.
+ */
+function checkStartSize(connector: Connector): KindCheckProblem[] {
+  if (!("stdio" in connector.transport)) {
+    return [];
+  }
+  if (startReadingSize(connector.transport.stdio) <= startReadingLimit) {
+    return [];
+  }
+  return [
+    {
+      severity: "error",
+      code: "start-too-long-to-check",
+      path: ["transport", "stdio"],
+      message: tooMuchToReadMessage,
+    },
+  ];
+}
 
 /**
  * Every value the connector gives as a secret's name: its own `secret` (the

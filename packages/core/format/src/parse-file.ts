@@ -88,7 +88,7 @@ export function parseFile<Name extends KindName>(
   if (!parsed.ok) {
     const worded = wordIssues(parsed.error, prepared.data);
     const issues = fileKind.wordIssues?.(worded, prepared.data) ?? worded;
-    const problems = issues.map((issue) => schemaProblem(issue, source));
+    const problems = cappedSchemaProblems(issues, source);
     // An id that is wrong in itself, such as `in process`, is the one to fix first.
     const idFailed = problems.some((problem) => formatPath(problem.path) === "id");
     return err([
@@ -192,6 +192,31 @@ function syntaxProblem(problem: YamlProblem): FileProblem {
     line: problem.line,
     col: problem.col,
   };
+}
+
+/**
+ * How many schema problems one file reports (`format.schema-problem-limit`).
+ * Each problem's position is looked up in the file, so a file with thousands
+ * of them would take quadratic time to report; past this many, one problem
+ * says how many more there are.
+ */
+export const schemaProblemLimit = 100;
+
+/** The first {@link schemaProblemLimit} issues as problems, and one that counts the rest. */
+function cappedSchemaProblems(issues: readonly Issue[], source: Source): FileProblem[] {
+  const problems = issues.slice(0, schemaProblemLimit).map((issue) => schemaProblem(issue, source));
+  const more = issues.length - schemaProblemLimit;
+  if (more > 0) {
+    problems.push({
+      severity: "error",
+      source: "schema",
+      code: "too-many-problems",
+      path: [],
+      message: `This file has ${more} more ${more === 1 ? "problem" : "problems"}. Fix the ones above, then check it again.`,
+      ...source.positionOf([]),
+    });
+  }
+  return problems;
 }
 
 /** A schema problem, placed at its value; an unrecognized key at the key's own line (HAL-14261). */

@@ -213,7 +213,9 @@ export function keepLineComment(
 ): { to: number; rendered: string } {
   const lineBreak = text.indexOf("\n", from);
   const lineEnd = lineBreak === -1 ? text.length : lineBreak;
-  const comment = /^[ \t]*[:-]?(?:[ \t]+[|>][-+1-9]*)?[ \t]+(#.*)$/.exec(
+  // Written so no two runs of blanks can trade characters: a long run of
+  // blanks with no comment after it would otherwise take quadratic time.
+  const comment = /^(?:[ \t]*[:-])?(?:[ \t]+[|>][-+1-9]*)?[ \t]+(#.*)$/.exec(
     text.slice(from, lineEnd),
   )?.[1];
   if (comment === undefined) {

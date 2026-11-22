@@ -158,7 +158,9 @@ function movesItem(edit: YamlEdit): boolean {
  * rendered again. Comments stay; spacing may not.
  */
 function renderWithDocument(text: string, edit: YamlEdit, expected: unknown): string | undefined {
-  const document = parseDocument(text);
+  // `editYaml` read the text with `readYaml`, which found no key twice in a
+  // map, and reads the result back; the library's own check is quadratic.
+  const document = parseDocument(text, { uniqueKeys: false });
   if (edit.kind === "delete") {
     document.deleteIn(edit.path);
     return render(text, document);

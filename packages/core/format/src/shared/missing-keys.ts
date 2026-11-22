@@ -25,13 +25,16 @@ const nearDistance = 2;
  * // ['There's no field "modle" in this file. Did you mean "model"?']
  */
 export function wordIssues(issues: readonly Issue[], data: unknown): Issue[] {
-  const missing = issues.filter((issue) => isMissingKey(issue, data));
+  // Sets and a map built once, so a file with many issues is worded in linear time.
+  const missing = new Set(issues.filter((issue) => isMissingKey(issue, data)));
+  const missingByMap = missingKeysByMap(missing);
   return issues.flatMap((issue) => {
-    if (missing.includes(issue)) {
+    if (missing.has(issue)) {
       return [{ ...issue, message: `Missing required key "${String(issue.path.at(-1))}"` }];
     }
     if (issue.code === "unrecognized_keys" && issue.keys !== undefined) {
-      return unknownFieldIssues(issue, issue.keys, missingKeysIn(missing, issue.path), data);
+      const missingHere = missingByMap.get(formatPath(issue.path)) ?? [];
+      return unknownFieldIssues(issue, issue.keys, missingHere, data);
     }
     return [issue];
   });
@@ -84,12 +87,16 @@ function valueAt(data: unknown, path: Path): unknown {
   return value;
 }
 
-/** The missing keys of the map at `path`. */
-function missingKeysIn(missing: readonly Issue[], path: Path): string[] {
-  const where = formatPath(path);
-  return missing
-    .filter((issue) => formatPath(issue.path.slice(0, -1)) === where)
-    .map((issue) => String(issue.path.at(-1)));
+/** The missing keys of each map, by the map's formatted path. */
+function missingKeysByMap(missing: ReadonlySet<Issue>): Map<string, string[]> {
+  const byMap = new Map<string, string[]>();
+  for (const issue of missing) {
+    const where = formatPath(issue.path.slice(0, -1));
+    const keys = byMap.get(where) ?? [];
+    keys.push(String(issue.path.at(-1)));
+    byMap.set(where, keys);
+  }
+  return byMap;
 }
 
 /**
