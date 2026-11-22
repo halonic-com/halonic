@@ -199,6 +199,21 @@ impl Connections {
         }
     }
 
+    /// The generation of the session open on each computer's connection.
+    pub(crate) fn sessions(&self) -> Vec<(ComputerId, u64)> {
+        let running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
+        running
+            .iter()
+            .filter_map(|(computer, noted)| match noted {
+                Running::Open {
+                    session: Some(open),
+                    ..
+                } => Some((computer.clone(), open.generation)),
+                _ => None,
+            })
+            .collect()
+    }
+
     /// Whether `serial` is the computer's current connection.
     pub(crate) fn is_current(&self, computer: &ComputerId, serial: u64) -> bool {
         let running = self.running.lock().unwrap_or_else(PoisonError::into_inner);

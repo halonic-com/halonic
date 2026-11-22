@@ -101,6 +101,8 @@ fn main() {
         "phone_connect",
         "phone_disconnect",
         "phone_tunnel_watch",
+        "tunnel_send",
+        "tunnel_end_session",
         "update_status",
         "update_watch",
         "update_check",

@@ -6,6 +6,7 @@ mod common;
 
 use common::support::{open, seal};
 use common::{Gateway, Phone, Server, Told, binary, closed, send};
+use halonic_device_keys::ComputerId;
 use halonic_phone_tunnel::{ConnectOutcome, LocalNetwork, SendRefusal};
 use halonic_tunnel::FrameKind;
 use snow::TransportState;
@@ -59,6 +60,11 @@ async fn phone_tunnel_messages_end_only_the_session_the_page_names() {
     let (id, mut server, mut session, first) = connected(&mut phone, &gateway).await;
     let hello = r#"{"type":"hello","id":"h1","version":2}"#;
 
+    assert_eq!(
+        phone.tunnel.sessions(),
+        [(ComputerId::parse(&id).unwrap(), first)]
+    );
+
     // A stale generation, or another computer, ends nothing.
     assert!(!phone.tunnel.end_session(&id, first + 1));
     assert!(!phone.tunnel.end_session("another-computer", first));
@@ -67,6 +73,7 @@ async fn phone_tunnel_messages_end_only_the_session_the_page_names() {
     assert_eq!(sent, hello.as_bytes());
 
     assert!(phone.tunnel.end_session(&id, first));
+    assert!(phone.tunnel.sessions().is_empty());
     assert_eq!(
         phone.tunnel.send(&id, first, hello).await,
         Err(SendRefusal::NotOpen)

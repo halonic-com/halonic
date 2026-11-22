@@ -1,6 +1,6 @@
 {
   "identifier": "phone-tunnel",
-  "description": "On Android, the app's own page may pair with a computer, list, forget, connect to and disconnect from paired computers, and watch their statuses, through the phone_* commands and phone_tunnel_watch (HAL-15157). The shell keeps every key: the page gets only check codes, computer names, ids, endpoints, times and states. Statuses reach the page only while the window is on the app's own page. It is local only, so the Studio the computer serves gets none of these.",
+  "description": "On Android, the app's own page may pair with a computer, list, forget, connect to and disconnect from paired computers, and watch their statuses, through the phone_* commands and phone_tunnel_watch (HAL-15157), and send and end gateway sessions through tunnel_send and tunnel_end_session (HAL-15177). The shell keeps every key and does the sealing: the page gets only check codes, computer names, ids, endpoints, times, states, session generations and gateway message text. Statuses and messages reach the page only while the window is on the app's own page. It is local only, so the Studio the computer serves gets none of these.",
   "local": true,
   "windows": [
     "main"
@@ -16,6 +16,8 @@
     "allow-phone-forget",
     "allow-phone-connect",
     "allow-phone-disconnect",
-    "allow-phone-tunnel-watch"
+    "allow-phone-tunnel-watch",
+    "allow-tunnel-send",
+    "allow-tunnel-end-session"
   ]
 }
