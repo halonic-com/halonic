@@ -4,11 +4,13 @@ import {
   type SandboxedAsksPaths,
   sandboxedAsks,
 } from "@halonicjs/host-harness-host";
-import type {
-  HarnessBridgeServer,
-  OpenHarnessBridge,
-  SandboxSession,
-  Secrets,
+import {
+  type BridgeProvider,
+  bridgeKeyProviders,
+  type HarnessBridgeServer,
+  type OpenHarnessBridge,
+  type SandboxSession,
+  type Secrets,
 } from "@halonicjs/ports";
 import { SecretScrubber } from "@halonicjs/std";
 import { CallChannel } from "../server/call-channel.ts";
@@ -46,6 +48,8 @@ const tooManyBridgesMessage =
 
 interface OpenBridge {
   bridge: OpenHarnessBridge;
+  /** The providers the bridge serves with a key Halonic keeps, as the harness's environment reads them. */
+  keyProviders: readonly BridgeProvider[];
   channel: CallChannel;
   stream: NdjsonStream;
   /**
@@ -290,7 +294,13 @@ async function openBridge(
     stream.end();
     return undefined;
   }
-  const id = bridges.add({ bridge, channel, stream, bindSession: sessionBinder(asks) });
+  const id = bridges.add({
+    bridge,
+    keyProviders: bridgeKeyProviders(body.providers),
+    channel,
+    stream,
+    bindSession: sessionBinder(asks),
+  });
   const { url, token, socketPath } = bridge;
   stream.send({
     type: "opened",

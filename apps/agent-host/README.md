@@ -80,6 +80,8 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `GET /v1/sandbox/check` | the `SandboxCheck`, as the port answers it |
 | `GET /v1/sandbox/capabilities` | the `SandboxCapabilities` |
 | `POST /v1/sandbox/sessions/open` with `{"profile"}` | `{"session","fence"}`: the new session's id and its fence proof |
+| `GET /v1/sandbox/this-computer` | `{"offered"}`: whether the host can open a session without the sandbox, for an agent a person set to "On this computer" (with a profile folder, not on Windows) |
+| `POST /v1/sandbox/this-computer/open` with `{"workspace","hubId","agentId","profile"}` | `{"session","fence"}` with the fence `off`, opened with the launcher once the host's own checks pass (below); `403 not_offered`, `404 unknown_workspace` / `unknown_agent`, `403 workspace_not_trusted` / `not_on_this_computer` / `profile_not_built` |
 | `POST /v1/sandbox/sessions/blocked` with `{"session"}` | a stream, one `SandboxBlock` per line (NDJSON), until the session closes |
 | `POST /v1/sandbox/sessions/close` with `{"session"}` | `{"closed":true}` |
 | `GET /v1/sandbox/setup` | `{"running","last"}`: the setup or removal running now, if any, and the last one that ended |
@@ -116,7 +118,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/integrations/sign-in/status` with `{"integration"}` | `{"signIns":[{"signIn","state","lastOutcome"?,"outcomeCount"?}]}`; `state` is `signedIn`, `signedOut`, `approvalChanged` or `cannotSignIn` |
 | `POST /v1/integrations/sign-in/cancel` with `{"integration","signIn"}` | `204` |
 | `POST /v1/integrations/sign-in/sign-out` with `{"integration","signIn"}` | `{"result"}`: `{"kind":"notSignedIn"}` or `{"kind":"signedOut","revoke"}` |
-| `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below), or `409 bridge_in_use` when a run already started the bridge in another session |
+| `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below), or `409 bridge_in_use` when a run already started the bridge in another session, or `403 environment_not_host` in a session without the sandbox whose environment isn't the host's own |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |
 | `GET /v1/remote/state` | an NDJSON stream of the `RemoteState`, the current one first, then each change. A host offers remote only with a tunnel provider, which no launch of the executable has until phase C, so every launch answers `"available":false` and never changes it |
@@ -161,6 +163,10 @@ The host keeps secrets of its own: today `remote-host-key`, the static key paire
 Studio gives the engine a stand-in `Sandbox` that calls these routes, and the host runs the real one (`SrtSandbox`). The profile arrives as data, so the host checks it before the sandbox sees it: every field present, nothing extra, every path absolute (`400 body_invalid` names each problem with its path). A session that can't open gets `422 sandbox_open_failed` with the sandbox's reason.
 
 A session is named by an id the host makes; any other id gets `404 unknown_session`. When a session's time limit runs out, the host closes it: its id is forgotten and its blocked stream ends. The host keeps at most 64 sessions open, counting those still opening; past that, opening one answers `429 too_many_sessions`. A `timeLimitMs` above 2,147,483,647 (about 24.8 days, the longest a timer can hold) is refused. When the host stops, it closes every open session before it stops serving, so no sandboxed program outlives it.
+
+## Sessions on this computer
+
+An agent a person set to "On this computer" runs without the sandbox, with all the person's rights, so the host opens its session only past checks it makes on its own records (`agent-host.this-computer-sessions`). Everything in the request is a claim: the host loads the workspace and the agent's file from disk itself, needs the person's trust record for the workspace to list the agent as its file is now, and needs the person's choice for the file's exact bytes, read with the same `AgentPlacement` as the CLI. The profile must be one the host built for that agent and no session has opened with, the same in every field but its environment. The session then opens with the launcher the CLI uses (`createHostSandbox()`), whose bridge must be on loopback (`"runsOn":"this-computer"`). When a run starts in it, the host works out the environment itself, from the profile it built and the harness's own variables for the run's bridge and task, and refuses any other: no variable the page picks reaches the program.
 
 ## The bridge over loopback
 

@@ -16,16 +16,26 @@ const tooManySessionsMessage =
   "The agent host already has the most sandbox sessions it allows. Close one first.";
 
 /** Answers that the host is stopping and opens no more sessions. */
-function sendHostStopping(response: ServerResponse): void {
+export function sendHostStopping(response: ServerResponse): void {
   sendError(response, 503, "host_stopping", hostStoppingMessage);
 }
 
-/** Opens a session in a place the caller reserved in `sessions`, and answers its id. */
-async function openSession(
+/** Answers that the session table is full. */
+export function sendTooManySessions(response: ServerResponse): void {
+  sendError(response, 429, "too_many_sessions", tooManySessionsMessage);
+}
+
+/**
+ * Opens a session in a place the caller reserved in `sessions`, and answers
+ * its id. `onAdded` hears the id once the session is in the table, before
+ * the answer goes out, so nothing can name the session before it.
+ */
+export async function openSession(
   sandbox: Sandbox,
   sessions: SessionTable,
   profile: SandboxProfile,
   response: ServerResponse,
+  onAdded: (id: string) => void = () => {},
 ): Promise<void> {
   let callerGone = false;
   response.once("close", () => {
@@ -47,8 +57,12 @@ async function openSession(
   // Read the fence before adding: a host that is stopping closes the session in `add`.
   const fence = session.fence;
   const id = await sessions.add(session);
-  if (id === undefined) sendHostStopping(response);
-  else sendJson(response, 200, { session: id, fence });
+  if (id === undefined) {
+    sendHostStopping(response);
+    return;
+  }
+  onAdded(id);
+  sendJson(response, 200, { session: id, fence });
 }
 
 /**
@@ -91,7 +105,7 @@ export function sandboxRoutes(sandbox: Sandbox, sessions: SessionTable): HostRou
         }
         const release = sessions.reserve();
         if (release === undefined) {
-          sendError(response, 429, "too_many_sessions", tooManySessionsMessage);
+          sendTooManySessions(response);
           return;
         }
         try {
