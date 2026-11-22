@@ -118,7 +118,8 @@ verifies("cli.commands.routines.watch", () => {
     expect(await watching).toBe(130);
   });
 
-  it("starts a routine from the tick after its file is fixed", {
+  // C610 #3 (HAL-15664): the fix used to go by without a line.
+  it("starts a routine from the tick after its file is fixed, and says it can start now", {
     timeout: watchTestTimeout,
   }, async () => {
     const time = fakeTime(engineStart);
@@ -129,8 +130,9 @@ verifies("cli.commands.routines.watch", () => {
       [digestPath]: brokenDigest.replace("workflow: gone", "workflow: follow-up"),
     });
     time.set("2026-11-10T15:00:10.000Z");
-    await waitUntil("both started lines", () => wokenUp(time) && io.stdout.length > 3, slowWatch);
+    await waitUntil("both started lines", () => wokenUp(time) && io.stdout.length > 4, slowWatch);
     expect(io.stdout.slice(2).sort()).toEqual([
+      "✓ Friday digest can start now",
       expect.stringMatching(/^✓ Started Friday digest · run \w{6} · due 15:00$/u),
       expect.stringMatching(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u),
     ]);
