@@ -11,7 +11,7 @@ import {
   startedInWords,
 } from "./runs-list.ts";
 import { suggestedCommand } from "./suggested-command.ts";
-import { trustMessages } from "./trust.ts";
+import { type RefusedFile, trustMessages } from "./trust.ts";
 
 /**
  * The sentences of `halonic routines` and `halonic routines watch` (HAL-4844). cli-output has no section
@@ -63,6 +63,14 @@ export const routinesMessages = defineMessages("routines", {
   /** The same, when the workspace changed since it was trusted, in `run`'s words. */
   changedPaused: (workspace: string, dir?: string) =>
     phrase`${markPart("needsYou")} ${workspace} changed since you trusted it, so its routines don't start ${markPart("separator")} ${suggestedCommand("trust", dir)}`,
+  /**
+   * The same, when a file names something trust can't cover, such as a URL
+   * with user info: `halonic trust` would refuse too, so the line says which
+   * file and why, in `trust`'s words, and how to fix it instead. The address
+   * is never shown, as it may hold a password.
+   */
+  refusedPaused: (workspace: string, refused: readonly RefusedFile[]) =>
+    phrase`${markPart("needsYou")} ${workspace}'s routines don't start: ${trustMessages.refused(refused).phrase} ${trustMessages.refusedFix().phrase}`,
   /** The Next column of a routine that is off. */
   off: () => phrase`Off`,
   /** The Next column of a routine no clock starts: manual, a signal, mail, or a schedule that doesn't parse. */

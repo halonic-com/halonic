@@ -22,6 +22,7 @@ import type { OpenWorkspaceHistory } from "../../run-workspace.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import {
+  type WorkspaceTrustAnswer,
   type WorkspaceTrustMachine,
   type WorkspaceTrustState,
   workspaceNameOf,
@@ -37,7 +38,8 @@ import { type NotLiveRoutines, notLiveRoutines } from "./not-live.ts";
  * Routines whose files have errors are counted above the list, which then
  * exits 1. Routines with saved changes that aren't live yet get a line each
  * under it. A workspace that isn't trusted here gets a line above it with
- * `halonic trust`, and its routines that are on read "Paused until trusted".
+ * `halonic trust`, or with the file trust refused and why, and its routines
+ * that are on read "Paused until trusted".
  *
  * @throws NoWorkspaceError when the folder holds no workspace
  */
@@ -62,12 +64,12 @@ export async function listRoutines(
   }
   const typedDir = givenDir(input, workspace);
   const trust = await workspaceTrustState(workspace, setup.trust(), loaded);
-  const row: RowOptions = { withHub: spansHubs(routines), paused: !startsHere(trust) };
+  const row: RowOptions = { withHub: spansHubs(routines), paused: !startsHere(trust.state) };
   const withProblems = routines.filter((each) => each.problems > 0).length;
   const problemsLine =
     withProblems === 0 ? [] : [routinesMessages.routinesCantStart(withProblems, typedDir).phrase];
   const pausedLine = routines.some((each) => isPaused(each, row))
-    ? [pausedMessage(trust)(printable(workspaceNameOf(loaded, workspace)), typedDir).phrase]
+    ? [pausedLineOf(trust, printable(workspaceNameOf(loaded, workspace)), typedDir)]
     : [];
   const notLive = await notLiveRoutines(workspace, loaded, setup.history);
   return {
@@ -79,7 +81,7 @@ export async function listRoutines(
       ...notLiveLines(routines, notLive),
       routinesMessages.watchHint().phrase,
     ],
-    json: { ...json, trusted: startsHere(trust) },
+    json: { ...json, trusted: startsHere(trust.state) },
   };
 }
 
@@ -110,9 +112,18 @@ function isPaused(routine: ListedRoutine, row: RowOptions): boolean {
   return row.paused && routine.problems === 0 && routine.enabled;
 }
 
-/** The line above the list for a workspace that isn't trusted: changed since, or not trusted yet. */
-function pausedMessage(trust: WorkspaceTrustState): typeof routinesMessages.notTrustedPaused {
-  return trust === "changed" ? routinesMessages.changedPaused : routinesMessages.notTrustedPaused;
+/**
+ * The line above the list for a workspace that isn't trusted: a file trust
+ * can't cover, with why and no `halonic trust`, which would refuse too;
+ * changed since; or not trusted yet.
+ */
+function pausedLineOf(trust: WorkspaceTrustAnswer, workspace: string, dir?: string): Phrase {
+  if (trust.state === "refused") {
+    return routinesMessages.refusedPaused(workspace, trust.refused).phrase;
+  }
+  const message =
+    trust.state === "changed" ? routinesMessages.changedPaused : routinesMessages.notTrustedPaused;
+  return message(workspace, dir).phrase;
 }
 
 /**

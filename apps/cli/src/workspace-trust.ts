@@ -28,7 +28,7 @@ import { keyAddressLists } from "./key-address-lists.ts";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
-import { trustMessages } from "./messages/trust.ts";
+import { type RefusedFile, trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
 import { printable } from "./output/printable.ts";
 import { trustChangesDocument } from "./output/trust-changes-json.ts";
@@ -164,13 +164,22 @@ export function assertTrustable(
   if (check.status !== "refused") {
     return;
   }
-  const refused = check.refused.map(({ kind, id, reason }) => ({
+  throw new KindedError(
+    "invalid_input",
+    plainText(trustMessages.refused(refusedFilesOf(check, workspace)).phrase),
+    { fix: plainText(trustMessages.refusedFix().phrase) },
+  );
+}
+
+/** Each file a check refused, workspace-relative, and why; empty when it refused nothing. */
+function refusedFilesOf(check: TrustCheck, workspace: WorkspaceTrust): RefusedFile[] {
+  if (check.status !== "refused") {
+    return [];
+  }
+  return check.refused.map(({ kind, id, reason }) => ({
     file: workspace.files.get(refusedFileKey(kind, id)) ?? id,
     reason,
   }));
-  throw new KindedError("invalid_input", plainText(trustMessages.refused(refused).phrase), {
-    fix: plainText(trustMessages.refusedFix().phrase),
-  });
 }
 
 /**
@@ -178,6 +187,13 @@ export function assertTrustable(
  * it reaches only the test model, else the trust record's answer.
  */
 export type WorkspaceTrustState = "not-needed" | TrustCheck["status"] | "unreadable";
+
+/** Where trust stands, and when the check `refused`, which files and why. */
+export interface WorkspaceTrustAnswer {
+  readonly state: WorkspaceTrustState;
+  /** Each file the check refused and why, so a line can name them; empty unless `refused`. */
+  readonly refused: readonly RefusedFile[];
+}
 
 /**
  * Where trust stands for `loaded` in `dir`, by the rule `run` and `routines
@@ -189,16 +205,16 @@ export async function workspaceTrustState(
   dir: OpenWorkspaceDir,
   machine: WorkspaceTrustMachine,
   loaded: LoadedWorkspace,
-): Promise<WorkspaceTrustState> {
+): Promise<WorkspaceTrustAnswer> {
   try {
     if (await needsNoTrust(dir, loaded)) {
-      return "not-needed";
+      return { state: "not-needed", refused: [] };
     }
     const workspace = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
     const check = await cliTrustService(machine.trustStore, machine.clock).check(workspace.subject);
-    return check.status;
+    return { state: check.status, refused: refusedFilesOf(check, workspace) };
   } catch {
-    return "unreadable";
+    return { state: "unreadable", refused: [] };
   }
 }
 
