@@ -58,9 +58,21 @@ export function onlyExtraExportsChanged(
   return before !== after && restBefore !== undefined && restBefore === restAfter;
 }
 
+/**
+ * Whether `file` falls under one entry of a path list. A folder ends in
+ * `/`. `.gitattributes` stands for that file in every folder, since a
+ * nested one also changes how git shows and counts the files below it.
+ */
+export function fallsUnder(path: string, file: string): boolean {
+  if (path.endsWith("/")) {
+    return file.startsWith(path);
+  }
+  return file === path || (path === ".gitattributes" && file.endsWith("/.gitattributes"));
+}
+
 /** The entry of `guardedPaths` a file falls under, if any. */
 export function guardedPathOf(file: string): string | undefined {
-  return guardedPaths.find((path) => (path.endsWith("/") ? file.startsWith(path) : file === path));
+  return guardedPaths.find((path) => fallsUnder(path, file));
 }
 
 /**

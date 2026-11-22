@@ -45,6 +45,31 @@ export interface InstalledPackage {
   readonly licence: string;
 }
 
+/**
+ * Reads the output of `pnpm licenses list --json`: licence → packages.
+ * Empty output reads as no packages; `emptyListingProblem` decides whether
+ * that can be right.
+ */
+export function parseLicenceListing(output: string): InstalledPackage[] {
+  const byLicence = JSON.parse(output.trim() === "" ? "{}" : output) as Record<
+    string,
+    readonly { readonly name: string; readonly versions: readonly string[] }[]
+  >;
+  return Object.entries(byLicence).flatMap(([licence, entries]) =>
+    entries.map((entry) => ({ name: entry.name, versions: entry.versions, licence })),
+  );
+}
+
+/**
+ * The repo always installs packages, so a listing of all of them that comes
+ * back empty means pnpm listed nothing, and no licence was checked.
+ */
+export function emptyListingProblem(all: readonly InstalledPackage[]): string | undefined {
+  return all.length === 0
+    ? "pnpm licenses listed no installed packages, so no licence was checked. Run pnpm install, then run the check again."
+    : undefined;
+}
+
 function tokenize(expression: string): string[] {
   return expression.replace(/[()]/g, " $& ").trim().split(/\s+/).filter(Boolean);
 }

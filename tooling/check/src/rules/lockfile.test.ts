@@ -45,6 +45,22 @@ describe("lockfile check", () => {
     );
   });
 
+  it("reads a resolution only in the shape pnpm writes, never from text around it", () => {
+    const other = "https://example.com/a-1.0.0.tgz";
+    const found = problems(
+      [
+        `  a@1.0.0:\n    resolution: {integrity: ${integrity}} # tarball: ${npm}\n`,
+        `  b@1.0.0:\n    resolution: {integrity: ${integrity}, 'tarball': ${other}} # tarball: ${npm}\n`,
+        `  c@1.0.0:\n    resolution: {tarball: ${other}, integrity: ${integrity}, tarball: ${npm}}\n`,
+        `  d@1.0.0:\n    resolution: {integrity: sha1-AAAA} # integrity: ${integrity}, tarball: ${npm}\n`,
+      ].join("\n"),
+    );
+    expect(found).toHaveLength(4);
+    for (const problem of found) {
+      expect(problem).toMatch(/shape pnpm doesn't write/);
+    }
+  });
+
   it("reads nested fields without mistaking them for packages", () => {
     const { entries, unreadableLines } = readLockedPackages(
       lockfile(

@@ -127,6 +127,13 @@ function tarballProblem(key: string, tarball: string): string | undefined {
   return undefined;
 }
 
+/**
+ * A registry package's resolution as pnpm writes it: a sha512 hash, then
+ * the tarball URL when there is one.
+ */
+const registryResolution =
+  /^\{integrity: sha512-[A-Za-z0-9+/]+={0,2}(?:, tarball: (https:\/\/[^\s,{}#'"]+))?\}$/;
+
 /** Explains what is wrong with one locked package, or returns `undefined` if it is fine. */
 export function lockedPackageProblem(entry: LockedPackage): string | undefined {
   const { resolution, key } = entry;
@@ -143,10 +150,16 @@ export function lockedPackageProblem(entry: LockedPackage): string | undefined {
   ) {
     return `${key} comes from git or a local folder, not from the npm registry.`;
   }
+  // Only the exact shape pnpm writes is read, so nothing else on the line
+  // (a comment, a quoted key, a second field) can stand in for a value.
+  const shape = registryResolution.exec(resolution);
+  if (shape === null) {
+    return `${key} has a resolution in a shape pnpm doesn't write.`;
+  }
   // pnpm leaves the URL out when it is the default for the package's
   // registry, so a mirror would look like npm. lockfileIncludeTarballUrl
   // makes pnpm always write it.
-  const tarball = /\btarball:\s*([^\s,}]+)/.exec(resolution)?.[1];
+  const tarball = shape[1];
   if (entry.forPackageManager === true && !/^(?:pnpm|@pnpm\/exe\.[\w-]+)@/.test(key)) {
     return `${key} is in the package-manager part of the lockfile, which may hold only pnpm.`;
   }
@@ -158,9 +171,6 @@ export function lockedPackageProblem(entry: LockedPackage): string | undefined {
   const tarballIssue = tarball === undefined ? undefined : tarballProblem(key, tarball);
   if (tarballIssue !== undefined) {
     return tarballIssue;
-  }
-  if (!/\bintegrity:\s*sha512-/.test(resolution)) {
-    return `${key} has no sha512 integrity hash.`;
   }
   if (/@(?:file|link|git\+|https?):/.test(key) || /\((?:file|git)/.test(key)) {
     return `${key} is not a registry package.`;

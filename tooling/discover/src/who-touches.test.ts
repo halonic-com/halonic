@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  describePullRequest,
   type Fetch,
   fetchOpenPullRequests,
   repoFromRemote,
@@ -128,5 +129,19 @@ describe("resolvePackage", () => {
       "@halonicjs/target-cloudflare-runtime",
     ]);
     expect(resolvePackage("packages/targets/node/runtime", packages)).toHaveLength(1);
+  });
+});
+
+describe("describePullRequest", () => {
+  test("shows a title's and a branch's control characters as escapes, never raw", () => {
+    const line = describePullRequest({
+      number: 7,
+      title: "fix: a\nsecond line \u001b[31mred\u001b[0m \u202eright",
+      headRefName: "main\r",
+      files: [],
+    });
+    expect(line).toBe(
+      "  #7  main\\u{d}  fix: a\\u{a}second line \\u{1b}[31mred\\u{1b}[0m \\u{202e}right",
+    );
   });
 });
