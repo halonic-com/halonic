@@ -14,6 +14,7 @@ import {
   type NetworkProblem,
   type NodeProblem,
   type PlacementReader,
+  type ProfileProblem,
   ResourceReport,
   type SaveTimers,
   TrustService,
@@ -100,6 +101,11 @@ export type DoctorServiceMachine = Pick<
 export interface DoctorOptions {
   /** Its version, as a trust check records it, such as "0.1.0". */
   readonly appVersion: string;
+  /**
+   * How the workspace and the profile folder overlap, for the Profile line
+   * (HAL-15201); left out, or `null`, there is no Profile line.
+   */
+  readonly profile?: ProfileProblem | null;
 }
 
 /**
@@ -147,6 +153,7 @@ export async function doctorService(
     secrets,
     ...(machine.node === undefined ? {} : { node: machine.node }),
     ...(machine.network === undefined ? {} : { network: machine.network }),
+    profile: options.profile ?? null,
     timers: checkTimers,
   });
 }

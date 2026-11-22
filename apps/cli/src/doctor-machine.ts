@@ -17,7 +17,12 @@ import {
 import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { NodeResourceProbe } from "@halonicjs/adapter-system-node";
-import { AgentPlacement, type DoctorService, type DoctorWorkspace } from "@halonicjs/app";
+import {
+  AgentPlacement,
+  type DoctorService,
+  type DoctorWorkspace,
+  type ProfileProblem,
+} from "@halonicjs/app";
 import type { Secrets } from "@halonicjs/ports";
 import { placementFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -103,14 +108,19 @@ export function nodeDoctorMachine(): DoctorMachine {
 
 /**
  * The `DoctorService` over `machine`, as the package builds it, with the
- * CLI's version on any trust record the check updates.
+ * CLI's version on any trust record the check updates. `profile` is how
+ * the workspace and the profile folder overlap, for the Profile line.
  */
 export async function doctorService(
   machine: DoctorMachine,
   secrets: Secrets,
   workspace: MachineWorkspace | null,
+  profile: ProfileProblem | null = null,
 ): Promise<DoctorService> {
-  return await machineDoctorService(machine, secrets, workspace, { appVersion: halonicVersion });
+  return await machineDoctorService(machine, secrets, workspace, {
+    appVersion: halonicVersion,
+    profile,
+  });
 }
 
 /**
