@@ -2,6 +2,7 @@
 
 - Approval: the build plan's "Loading by name" row, approved by Liam on HAL-13512 (HAL-6702); HAL-7114 (the CLI never imports a target package); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GGAeoHsYp9HoNOxZG0MemJNMRhnB2hLvXztim6a+nsSigrZSt0FIW7o3BWEhX3pVpkrXF4M+KqmSoJxxH7MdCQ==
 
 ## What changes
 
