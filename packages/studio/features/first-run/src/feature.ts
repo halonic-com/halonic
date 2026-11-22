@@ -1,4 +1,10 @@
+import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
+import {
+  ModelKeysService,
+  ModelsFilesService,
+  ProviderCheckService,
+} from "@halonicjs/studio-feature-models/api";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { WorkflowGuideService } from "@halonicjs/studio-feature-workflows/api";
 import { defineFeature } from "@halonicjs/studio-shell";
@@ -13,14 +19,22 @@ import { helpWords } from "./first-run-words.ts";
  * The First Run feature (`first-run.state`): the first run's state on this device, the first-run
  * bar under the top bar (`first-run.bar`) and the guide card on Support reply's page
  * (`first-run.guide-card`), from **Open demo** until the first win, the Inbox's setup item
- * of a paused first run (`first-run.setup-item`), and **Help › First run** (`first-run.help`).
+ * of a paused first run (`first-run.setup-item`), **Help › First run** (`first-run.help`), and
+ * Home's Get set up in a workspace that isn't the sample (`first-run.own-card`).
  */
 export const firstRunFeature = defineFeature({
   id: "first-run",
   title: "First Run",
   needs: [SampleWorkspaceService, FirstRunDeviceService, RunsListService],
-  // A paused first run has a setup item in the Inbox, where there is one.
-  wants: [InboxService],
+  // A paused first run has a setup item in the Inbox, where there is one. Get set up reads the
+  // agents and the model files where the app has them, and a key or a check to judge step 1.
+  wants: [
+    InboxService,
+    AgentsHostService,
+    ModelsFilesService,
+    ModelKeysService,
+    ProviderCheckService,
+  ],
   provides: [FirstRunService, WorkflowGuideService],
   register(studio) {
     studio.services.provide(FirstRunService, (services) => {
@@ -41,6 +55,11 @@ export const firstRunFeature = defineFeature({
       order: 10,
       view: "FirstRunBar",
       load: () => import("./ui/first-run-bar.tsx"),
+    });
+    studio.home.addCard({
+      id: "setup",
+      view: "OwnCard",
+      load: () => import("./ui/own-card.tsx"),
     });
     studio.help.add({
       id: "first-run.help",

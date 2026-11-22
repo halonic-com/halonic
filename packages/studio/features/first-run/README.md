@@ -1,6 +1,6 @@
 # @halonicjs/studio-feature-first-run
 
-The First Run feature of the Studio: the first run's state, the first-run bar and the guide card.
+The First Run feature of the Studio: the first run's state, the first-run bar, the guide card and Home's Get set up.
 
 - **Layer:** studio
 - **Owner:** elena
@@ -21,6 +21,13 @@ with **Continue**, which takes it up again and opens Support reply, and **Dismis
 **Help › First run** (`first-run.help`) shows only in the demo. **Show the guide** takes a paused or dismissed
 first run up again at its step, and **Start over** turns the first run off and asks the app for a fresh copy of
 the demo through the device's `startOver`. The copy starts the first run when it opens.
+
+In a workspace that isn't the sample, Home's Get set up section shows three steps (`first-run.own-card`):
+**Connect your own model**, **Make your first agent** and **Run it once**, done by the rules of
+`first-run.own-progress`. Step 1 asks a local provider with the Models feature's `ProviderCheckService`, gives up
+after 5 seconds, and offers **Check again** and **Open Models** when it doesn't answer. The card stays for the
+visit in which the last step gets done; `SampleWorkspace`'s `ownCardMemory` and `recordOwnCard` remember it per
+folder, so it is gone the next time Home opens.
 
 `ModelChoiceHostService` is the engine side of the Pick a model screen's **Test and continue**: the app
 provides it for each open folder. `test` makes one tiny call through the adapter a run uses, with only the
