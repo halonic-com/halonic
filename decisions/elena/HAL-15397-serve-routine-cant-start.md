@@ -2,7 +2,6 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15397 (team wording call on flow check C570 #1 to #4, HAL-15386; small wording on approved CLI output, HAL-2282)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FoYNG99FiSh+aSv1JmXxd+A4hbr0qyGR66i2yo39EaUznS0RH3CPXZZ60pi4fBz+IP+WWQBL8WGrsTL1kTkODg==
 
 Flow check C570 found four things about webhook routines in the CLI:
 
