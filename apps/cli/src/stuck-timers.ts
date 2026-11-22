@@ -38,10 +38,13 @@ export interface StuckTimerWatch {
    * the engine leaves such a timer untried for as long as it is open.
    */
   holds(timer: ScheduledTimer): boolean;
+  /** Aborts {@link signal} with `error` now, unless it already is: for what no retry fixes. */
+  stop(error: unknown): void;
   /**
    * Aborted, with the last error as its reason, once a timer, the
    * scheduler's wake-up or its tick has failed {@link failuresBeforeStuck}
-   * times in a row. With `stuckRuns`, a timer never aborts it.
+   * times in a row, or {@link stop} was called. With `stuckRuns`, a timer
+   * never aborts it.
    */
   readonly signal: AbortSignal;
 }
@@ -144,6 +147,9 @@ export function stuckTimerWatch(
     },
     holds(timer) {
       return held.has(keyOf(timer));
+    },
+    stop(error) {
+      if (!stuck.signal.aborted) stuck.abort(error);
     },
   };
 }

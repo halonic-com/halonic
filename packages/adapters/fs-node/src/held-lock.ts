@@ -49,6 +49,18 @@ export class LockHeldError extends Error {
   }
 }
 
+/**
+ * Says that a held lock was lost: this process missed its renewals for
+ * longer than the stale limit, such as while the computer slept or the
+ * process was paused, and the lock was taken over or given up.
+ */
+export class LockLostError extends Error {
+  constructor(file: string, because: string) {
+    super(`The lock ${file} ${because}.`);
+    this.name = "LockLostError";
+  }
+}
+
 /** A lock this process holds until {@link HeldLock.release}. */
 export interface HeldLock {
   /** Stops renewing the lock and removes it, while it is still this process's. Safe to call twice. */
@@ -63,7 +75,7 @@ export interface HoldLockOptions {
    * lock isn't renewed any more; the holder should stop what the lock
    * guards.
    */
-  onLost(error: Error): void;
+  onLost(error: LockLostError): void;
   /** Hears a renewal that failed; the next one is tried as planned. */
   onRenewError(error: unknown): void;
   /** How the renewals are timed; Node's own timer by default. */
@@ -110,7 +122,7 @@ export async function holdLock(file: string, options: HoldLockOptions): Promise<
       const renewal = await renew(file, ownText, holder, system);
       if ("lostBecause" in renewal) {
         released = true;
-        options.onLost(new Error(`The lock ${file} ${renewal.lostBecause}.`));
+        options.onLost(new LockLostError(file, renewal.lostBecause));
         return;
       }
       ownText = renewal.renewedText;

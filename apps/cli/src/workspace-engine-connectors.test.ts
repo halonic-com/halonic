@@ -10,6 +10,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import type { CommandContext } from "./command.ts";
+import { engineErrorReporter } from "./engine-error-reporter.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { stuckTimerWatch } from "./stuck-timers.ts";
@@ -17,11 +18,7 @@ import { noSavedSending } from "./test/no-saved-sending.ts";
 import { noSheetHosts } from "./test/no-sheet-hosts.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
-import {
-  engineErrorReporter,
-  openWorkspaceEngine,
-  type WorkspaceEngineSetup,
-} from "./workspace-engine.ts";
+import { openWorkspaceEngine, type WorkspaceEngineSetup } from "./workspace-engine.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 
 // The runs' connectors of the CLI's engine (HAL-6277): the grant they start

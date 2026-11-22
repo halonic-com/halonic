@@ -98,6 +98,13 @@ export const workspaceMessages = defineMessages("workspace", {
   workspaceInProfileFix: () => phrase`Move the workspace somewhere else.`,
   /** The fix when the command that holds the engine runs until it is stopped, as `routines watch` and `serve` do. */
   engineOpenStopFix: () => phrase`Stop it with Ctrl C there, then run again.`,
+  /**
+   * Why a command that had the engine open stopped: it lost the engine's
+   * lock, because the process was paused past the lock's limit (HAL-16337).
+   */
+  engineLockLost: () =>
+    phrase`The engine stopped: this command was paused too long, such as while the computer slept, and lost its hold on this workspace.`,
+  engineLockLostFix: () => phrase`Run the command again.`,
 });
 
 /**

@@ -22,6 +22,11 @@ afterEach(() => {
 /** The renewals a test runs by hand, in the order they were planned. */
 let planned: { renew: () => Promise<void>; ms: number; cancelled: boolean }[];
 let lost: Error[];
+
+/** What `onLost` hears: a `LockLostError` with `message`. */
+function lockLost(message: string): unknown {
+  return expect.objectContaining({ name: "LockLostError", message });
+}
 let renewErrors: unknown[];
 
 beforeEach(() => {
@@ -185,7 +190,7 @@ verifies("fs-node.held-lock", () => {
 
     await renewNow();
 
-    expect(lost).toEqual([new Error(`The lock ${file} was taken over by another process.`)]);
+    expect(lost).toEqual([lockLost(`The lock ${file} was taken over by another process.`)]);
     expect(planned).toHaveLength(1);
     await lock.release();
     expect(await readFile(file, "utf8")).toBe(other);
@@ -204,7 +209,7 @@ verifies("fs-node.held-lock", () => {
     await renewNow();
 
     expect(lost).toEqual([
-      new Error(`The lock ${file} wasn't renewed within the stale limit, so it was given up.`),
+      lockLost(`The lock ${file} wasn't renewed within the stale limit, so it was given up.`),
     ]);
     expect(planned).toHaveLength(1);
     await expect(readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
