@@ -121,6 +121,7 @@ export class WorkspaceChanges implements ChangesSource {
         );
       },
       isPrivate: (path) => isUnversionedPath(path) || isPrivateWorkspacePath(path),
+      leftToGit: isPrivateWorkspacePath,
     });
   }
 

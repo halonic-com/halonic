@@ -35,6 +35,11 @@ export interface UpdatesMergeOptions {
   readonly changedPaths: () => Promise<ReadonlySet<string>>;
   /** Whether a path is one of Halonic's own and so not part of the workspace's versions. */
   readonly isPrivate: (path: string) => boolean;
+  /**
+   * Whether Halonic leaves a path to git and never writes it, such as `.env.example`. Get updates
+   * refuses to start when the shared copy changed one, rather than keep this workspace's file.
+   */
+  readonly leftToGit: (path: string) => boolean;
 }
 
 /** One text kept for this workspace: what the person chose so far in a half-done Get updates. */
@@ -117,6 +122,7 @@ export class UpdatesMerge {
       return { kind: "not-needed" };
     }
     const base = (await this.#ok(["merge-base", "HEAD", theirs], "get")).trim();
+    await this.#refuseLeftToGit(base, theirs);
     const [mine, sams] = [await this.#changed(base, "HEAD"), await this.#changed(base, theirs)];
     const dirty = await this.#o.changedPaths();
     if ([...sams].some((path) => dirty.has(path))) {
@@ -303,8 +309,28 @@ export class UpdatesMerge {
     return (await this.#o.run(["merge-base", "--is-ancestor", ancestor, of])).code === 0;
   }
 
-  /** Each path that differs between `base` and `commit`; a renamed file counts as two. */
+  /**
+   * Refuses to start when the shared copy changed a file Halonic leaves to git: `merge -s ours`
+   * would keep this workspace's file, and Finish would record that, taking the other person's
+   * change back for everyone.
+   */
+  async #refuseLeftToGit(base: string, theirs: string): Promise<void> {
+    const left = [...(await this.#changedPaths(base, theirs))].filter(this.#o.leftToGit).sort();
+    if (left.length === 0) return;
+    throw new KindedError(
+      "unavailable",
+      `updates change ${new Intl.ListFormat("en", { type: "conjunction" }).format(left)}, which Halonic leaves to git. Get these updates with git instead.`,
+    );
+  }
+
+  /** Each workspace path that differs between `base` and `commit`; a renamed file counts as two. */
   async #changed(base: string, commit: string): Promise<Set<string>> {
+    const paths = await this.#changedPaths(base, commit);
+    return new Set([...paths].filter((path) => !this.#o.isPrivate(path)));
+  }
+
+  /** Each path that differs between `base` and `commit`, Halonic's own included. */
+  async #changedPaths(base: string, commit: string): Promise<Set<string>> {
     const out = await this.#ok(["diff", "--name-status", "-z", base, commit], "get");
     const parts = out.split("\0");
     const paths = new Set<string>();
@@ -313,7 +339,7 @@ export class UpdatesMerge {
       if (status === "") break;
       const count = status.startsWith("R") || status.startsWith("C") ? 2 : 1;
       for (const path of parts.slice(i + 1, i + 1 + count)) {
-        if (path !== undefined && path !== "" && !this.#o.isPrivate(path)) paths.add(path);
+        if (path !== undefined && path !== "") paths.add(path);
       }
       i += 1 + count;
     }
