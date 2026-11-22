@@ -26,6 +26,7 @@ import {
   type SecretEntry,
   secretsFileText,
 } from "./secrets-file-format.ts";
+import { isPermissionDenied, unreadableSecretsFileError } from "./unreadable-file-error.ts";
 
 /** The write lock, in the secrets file's folder. */
 const writeLockName = "write.lock";
@@ -38,7 +39,8 @@ const writeLockName = "write.lock";
  *   `0600`, with that mode when it is opened, never changed afterwards. On
  *   Linux and macOS a file that group or others can read is refused, with the
  *   fix; Windows has no such check, and the profile folder's own permissions
- *   protect the file there.
+ *   protect the file there. A file the person may not read at all is
+ *   refused with its fix too, never with the file system's own error.
  * - **Whole:** a save writes a temporary file in the same folder, flushes it
  *   and renames it over the secrets file, so a reader finds the old secrets
  *   or the new, never half of them. On Linux and macOS the folder is
@@ -223,7 +225,14 @@ export class FileSecretStore implements SecretStore, KeyOrigins {
     if (process.platform !== "win32" && !stats.isSymbolicLink() && (stats.mode & 0o077) !== 0) {
       throw new ReadableSecretsFileError(this.#file);
     }
-    return parseSecretsFile(await readUnlinkedFile(this.#file), this.#file);
+    const text = await readUnlinkedFile(this.#file).catch((error: unknown) => {
+      if (isPermissionDenied(error)) {
+        const found = { file: this.#file, ownerId: stats.uid, userId: process.getuid?.() };
+        throw unreadableSecretsFileError(found, error);
+      }
+      throw error;
+    });
+    return parseSecretsFile(text, this.#file);
   }
 
   async #save(entries: ReadonlyMap<string, SecretEntry>): Promise<void> {
