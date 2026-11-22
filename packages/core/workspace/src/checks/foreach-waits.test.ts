@@ -65,7 +65,7 @@ verifies("workspace.foreach-child-waits", () => {
         "foreach-child-waits",
         "hubs/support/workflows/topics.workflow.yaml",
         "states.each.workflow",
-        'For-each step "each" runs "review-one" for each item, but "review-one" has the wait step "approve", and an item\'s run can\'t wait, so the run fails there. Move the wait step after "each", or take it out of "review-one".',
+        'For-each step "each" runs "review-one" once for each item, and a run for one item can\'t wait, but "review-one" has the wait step "approve". Move "approve" into this workflow after "each", or take it out of "review-one".',
       ],
     ]);
   });
@@ -148,6 +148,16 @@ const signOffRunsReviewOne = [
   "",
 ].join("\n");
 
+/** Sign-off, whose step `ask` runs Ask. */
+const signOffRunsAsk = [
+  "name: Sign-off",
+  "initial: ask",
+  "states:",
+  "  ask: { type: workflow, workflow: ask, on: [{ to: done }] }",
+  "  done: { type: final }",
+  "",
+].join("\n");
+
 verifies("workspace.foreach-nested-waits", () => {
   it("refuses a for-each step whose workflow runs a workflow with a wait step", async () => {
     expect(
@@ -162,8 +172,21 @@ verifies("workspace.foreach-nested-waits", () => {
         "foreach-child-waits",
         "hubs/support/workflows/topics.workflow.yaml",
         "states.each.workflow",
-        `For-each step "each" runs "review-one" for each item, but "review-one" runs "sign-off", which has the wait step "approve", and an item's run can't wait, so the run fails there. Move the wait step after "each", or take it out of "sign-off".`,
+        `For-each step "each" runs "review-one" once for each item, and a run for one item can't wait, but "review-one" runs "sign-off", which has the wait step "approve". Move "approve" into this workflow after "each", or take it out of "sign-off".`,
       ],
+    ]);
+  });
+
+  it("names each workflow on the way to a wait step further down", async () => {
+    const { issues } = await acme({
+      "hubs/support/workflows/topics.workflow.yaml": topics,
+      "hubs/support/workflows/review-one.workflow.yaml": reviewOneRunsSignOff,
+      "hubs/support/workflows/sign-off.workflow.yaml": signOffRunsAsk,
+      "hubs/support/workflows/ask.workflow.yaml": signOffWaiting.replace("Sign-off", "Ask"),
+    });
+
+    expect(issues.map((issue) => issue.message)).toEqual([
+      `For-each step "each" runs "review-one" once for each item, and a run for one item can't wait, but "review-one" runs "sign-off", which runs "ask", which has the wait step "approve". Move "approve" into this workflow after "each", or take it out of "ask".`,
     ]);
   });
 

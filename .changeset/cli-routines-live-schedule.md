@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-`halonic routines` now shows the schedule a routine really runs on: while its changes aren't committed yet, that's the last committed one, as in the Studio.
+`halonic routines` now lists a routine whose saved schedule isn't live yet by its live schedule, the one `halonic routines watch` runs, as Studio does.
