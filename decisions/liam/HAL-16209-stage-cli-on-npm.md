@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16209 (Chief asked Liam to decide how `halonic` gets to npm, for HAL-16207); Julian signs it, as Liam wrote the pull request
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:Pqi1Q/ewt69Tz2gG6KMQLuKYlzbngoDkf3tmBMXZay44Bf7pbBBK39yv5VAZgp2LmgHhQ4v9yqxIR51eBFeADQ==
 
 `release.yml` gets an `npm-cli` job. On a real `v*` tag run, after the draft release exists, it
 takes the `cli-package` tarball the build job installed and ran, and stages it on npm as
