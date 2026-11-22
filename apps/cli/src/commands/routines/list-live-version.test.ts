@@ -1,0 +1,115 @@
+import { readdir } from "node:fs/promises";
+import { join, relative } from "node:path";
+import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
+import { testGit } from "@halonicjs/adapter-git/testing";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { exitCode } from "../../exit-code.ts";
+import { runCli } from "../../run-cli.ts";
+import { type OpenWorkspaceHistory, openGitHistory } from "../../run-workspace.ts";
+import {
+  type AcmeRuns,
+  acmeRunsSetup,
+  makeAcmeRuns,
+  removeAcmeRuns,
+  writeFiles,
+} from "../../test/acme-runs.ts";
+import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
+import { routinesCommandWith } from "./command.ts";
+
+const weeklyPath = "hubs/support/workflows/routines/weekly-report.routine.yaml";
+
+/** The Weekly report routine, which runs Support reply on `schedule`. */
+function weeklyReport(schedule: string): string {
+  return [
+    "id: weekly-report",
+    "name: Weekly report",
+    `trigger: { schedule: "${schedule}" }`,
+    "run: { workflow: support-reply }",
+    "",
+  ].join("\n");
+}
+
+/** Each test's time, with git on a busy runner (HAL-5244). */
+const gitTimeout = 60_000;
+
+let acmeRuns: AcmeRuns;
+let runner: GitRunner;
+let vcs: GitVcs;
+
+beforeEach(async () => {
+  acmeRuns = await makeAcmeRuns("routines-list-live");
+  runner = await GitRunner.create({ git: await testGit() });
+  vcs = new GitVcs(acmeRuns.acme, { runner, author: { name: "Test", email: "test@example.com" } });
+});
+
+afterEach(async () => {
+  await runner.close();
+  await removeAcmeRuns(acmeRuns);
+});
+
+/** The workspace's history through git itself, as the CLI opens it. */
+const history: OpenWorkspaceHistory = async (root) =>
+  openGitHistory(root, { git: await testGit() });
+
+/** Commits every file in the workspace folder as a new version. */
+async function makeLive(): Promise<void> {
+  const entries = await readdir(acmeRuns.acme, { recursive: true, withFileTypes: true });
+  const files = entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => relative(acmeRuns.acme, join(entry.parentPath, entry.name)))
+    .map((path) => path.replaceAll("\\", "/"))
+    .filter((path) => !path.startsWith(".git/"));
+  if (!(await vcs.status()).isRepo) await vcs.init();
+  await vcs.stage(files);
+  await vcs.commit("Weekly report on Mondays");
+}
+
+/** `halonic routines` with `args`, opening the history with `opener`. */
+async function routinesIn(
+  opener: OpenWorkspaceHistory,
+  ...args: string[]
+): Promise<{ code: number; io: CapturedIo }> {
+  const io = captureIo(acmeRuns.acme);
+  const command = routinesCommandWith({ ...acmeRunsSetup(acmeRuns), history: opener });
+  const code = await runCli(["routines", ...args], io, [command]);
+  return { code, io };
+}
+
+verifies("cli.commands.routines.list-live-version", () => {
+  it(
+    "lists a schedule saved but not live as the watch runs it",
+    async () => {
+      await writeFiles(acmeRuns.acme, { [weeklyPath]: weeklyReport("0 9 * * 1") });
+      await makeLive();
+      await writeFiles(acmeRuns.acme, { [weeklyPath]: weeklyReport("0 9 * * 0") });
+
+      const { code, io } = await routinesIn(history);
+      const json = await routinesIn(history, "--json");
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout.slice(0, 2)).toEqual([
+        "Weekly report   Mondays at 09:00   Next 16 Nov 09:00   Never ran",
+        "! Weekly report has changes that aren't live yet. It runs as last committed until you commit them.",
+      ]);
+      expect(JSON.parse(json.io.stdout.join("\n")).routines[0]).toMatchObject({
+        trigger: "Mondays at 09:00",
+        nextRun: "2026-11-16T09:00:00.000Z",
+      });
+    },
+    gitTimeout,
+  );
+
+  it(
+    "lists a routine that has never been live from its saved file",
+    async () => {
+      await makeLive();
+      await writeFiles(acmeRuns.acme, { [weeklyPath]: weeklyReport("0 9 * * 0") });
+
+      const { io } = await routinesIn(history);
+
+      expect(io.stdout[0]).toBe("Weekly report   Sundays at 09:00   Next 15 Nov 09:00   Never ran");
+    },
+    gitTimeout,
+  );
+});

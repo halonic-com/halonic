@@ -4,9 +4,11 @@
 // says what the routine scheduler does. A routine file that doesn't load is
 // listed too, with its error, so a typing mistake doesn't hide it (HAL-12607),
 // and each routine counts the errors on its file, so the list can say which
-// routines won't start (HAL-14299).
+// routines won't start (HAL-14299). Given the live version, a routine whose
+// saved file isn't live yet is listed as the scheduler runs it (HAL-15479).
 
 import type { RunSummary } from "@halonicjs/events";
+import type { Routine } from "@halonicjs/format";
 import type { RunStore } from "@halonicjs/ports";
 import {
   CronError,
@@ -15,7 +17,15 @@ import {
   type PlacedRoutine,
   routineKey,
 } from "@halonicjs/routines";
-import { filesOf, type LoadedWorkspace, placeOf, type WorkspaceIssue } from "@halonicjs/workspace";
+import {
+  filesOf,
+  type LoadedFileOf,
+  type LoadedWorkspace,
+  placeOf,
+  type WorkspaceIssue,
+} from "@halonicjs/workspace";
+import type { LiveStateInput } from "./live-state.ts";
+import { routineVersions } from "./routine-versions.ts";
 
 /** One routine of the list. */
 export interface ListedRoutine {
@@ -74,6 +84,8 @@ export class RoutineList {
    * @param now - the next run is the first one after it
    * @param timeZone - the zone of a schedule that names none: the computer's
    *   own, as the routine scheduler's tick policy has it
+   * @param live - the live version, so each routine is listed as it runs
+   *   (see {@link runningRoutine}); left out, as its saved file has it
    *
    * @example
    * await new RoutineList(runStore).listRoutines(workspace, new Date(), "Europe/Amsterdam");
@@ -83,16 +95,23 @@ export class RoutineList {
     workspace: LoadedWorkspace,
     now: Date,
     timeZone: string,
+    live?: LiveStateInput,
   ): Promise<ListedRoutine[]> {
     const lastRuns = newestPerRoutine(await this.#runs.list({ kind: "run" }));
     const problems = errorsPerFile(workspace);
-    const loaded = filesOf(workspace, "routine").map((file) => ({
-      path: file.path,
-      listed: {
-        ...loadedRoutine({ hub: file.hub, routine: file.value }, now, timeZone),
-        problems: problems.get(file.path) ?? 0,
-      },
-    }));
+    const loaded = await Promise.all(
+      filesOf(workspace, "routine").map(async (file) => ({
+        path: file.path,
+        listed: {
+          ...loadedRoutine(
+            { hub: file.hub, routine: await runningRoutine(file, live) },
+            now,
+            timeZone,
+          ),
+          problems: problems.get(file.path) ?? 0,
+        },
+      })),
+    );
     const unloaded = unloadedRoutineFiles(workspace).map((file) => ({
       path: file.path,
       listed: { ...unloadedRoutine(file), problems: problems.get(file.path) ?? 0 },
@@ -102,6 +121,27 @@ export class RoutineList {
       .sort((a, b) => (a.path < b.path ? -1 : 1))
       .map(({ listed }) => ({ ...listed, lastRun: lastRuns.get(listed.key) ?? null }));
   }
+}
+
+/**
+ * The routine at `file` as the routine scheduler runs it (requirement
+ * `app.routine-list-live-schedule`). While its saved file isn't live, that is
+ * the live version's routine, with the saved name, and On or Off as saved,
+ * since Off acts at once (`LiveRoutines`). Otherwise, without `live`, or for
+ * a routine never live, it is the saved routine.
+ */
+async function runningRoutine(
+  file: LoadedFileOf<"routine">,
+  live: LiveStateInput | undefined,
+): Promise<Routine> {
+  if (live === undefined) {
+    return file.value;
+  }
+  const versions = await routineVersions(live, file.path);
+  if (versions.liveState.state !== "not-live" || versions.live === null) {
+    return file.value;
+  }
+  return { ...versions.live, name: file.value.name, enabled: file.value.enabled };
 }
 
 /** A routine as the list gives it, before its problems and last run are looked up. */
