@@ -5,6 +5,8 @@
  */
 import { errorKindOf, KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+import type { NewWorkflow, TrashedWorkflow, WorkflowHub, WorkflowUsers } from "./lifecycle-api.ts";
+import type { WorkflowTests } from "./tests-api.ts";
 
 /**
  * What {@link WorkflowsHost.startRun} rejects with when the engine can't be reached: the shell's
@@ -260,65 +262,8 @@ export interface WorkflowConfiguration extends WorkflowRef {
   readonly problems: readonly WorkflowProblem[];
 }
 
-/** How one test case ended the last time it ran. */
-export interface WorkflowTestResult {
-  readonly passed: boolean;
-  /** The test run's id, for **Open run**; absent when the run left no log. */
-  readonly runId?: string | undefined;
-  /** Why it failed, as the core says it: `Expected to end in "archive", ended in "reply".` */
-  readonly failure?: string | undefined;
-  /** The steps the case expects the run to take, when it names them. */
-  readonly expectedPath?: readonly string[] | undefined;
-  /** The steps the run took. */
-  readonly actualPath?: readonly string[] | undefined;
-}
-
-/** One test case of a workflow, as the Tests page lists it. */
-export interface WorkflowTestCase {
-  readonly name: string;
-  /** The run input the case starts with, as JSON text. */
-  readonly input: string;
-  /** The step the case expects the run to end in; absent when it doesn't say. */
-  readonly endsIn?: string | undefined;
-  /** The last result; absent until the case has run. */
-  readonly result?: WorkflowTestResult | undefined;
-}
-
-/** A workflow's test cases and when they last ran. */
-export interface WorkflowTests {
-  readonly cases: readonly WorkflowTestCase[];
-  /** ISO time of the last run of all of them; absent when they never ran together. */
-  readonly ranAt?: string | undefined;
-}
-
-/** A workflow that was moved to the trash, and the way to bring it back. */
-export interface TrashedWorkflow {
-  /**
-   * Puts the workflow and its tests back, after later changes too. It rejects with `conflict`, and
-   * undoes nothing, when a file has taken their place since.
-   */
-  undo(): Promise<void>;
-}
-
-/** What runs a workflow, counted for the warning of its delete. */
-export interface WorkflowUsers {
-  /** The routines that start it. */
-  readonly routines: number;
-  /** The steps of the hub's other workflows that run it. */
-  readonly steps: number;
-}
-
-/** A hub a new workflow can go in. */
-export interface WorkflowHub {
-  readonly id: string;
-  readonly name: string;
-}
-
-/** What the New workflow dialog hands over. */
-export interface NewWorkflow {
-  readonly name: string;
-  readonly hubId: string;
-}
+export type { NewWorkflow, TrashedWorkflow, WorkflowHub, WorkflowUsers } from "./lifecycle-api.ts";
+export type { WorkflowTestCase, WorkflowTestResult, WorkflowTests } from "./tests-api.ts";
 
 /**
  * The workspace's workflows, as the app reads and changes them. The app saves to the workspace's

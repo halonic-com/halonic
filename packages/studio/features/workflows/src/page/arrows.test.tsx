@@ -83,7 +83,7 @@ verifies("workflows.page.step-problems", () => {
     );
     const [answered, approved] = plates(page);
 
-    expect(approved?.querySelector("text")?.textContent).toBe("approved · △ Never fires");
+    expect(approved?.querySelector("text")?.textContent).toBe("approved · △ Never taken");
     expect(approved?.querySelector("title")?.textContent).toBe(
       'In "Check the reply", the transition to "ship" can never fire: an earlier one on "answer" has no condition',
     );

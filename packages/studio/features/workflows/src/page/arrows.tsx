@@ -124,7 +124,7 @@ const LABEL_AND_PROBLEM = " · ";
 
 /**
  * The words on an arrow, on an opaque chip beside the line so no line runs through them. An arrow
- * with a problem has its plate in the problem's colour, its line ("✕ Never fires") after the
+ * with a problem has its plate in the problem's colour, its line ("✕ Never taken") after the
  * arrow's words, and each problem's full message as its tooltip (flow-workflows 4.4).
  */
 function ArrowLabel({
