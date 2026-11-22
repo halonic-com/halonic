@@ -1,8 +1,14 @@
 import { Button, LetterTile, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { agentRowLine, agentStateWords, oldestApprovalOf } from "./agent-line.ts";
 import { spoken } from "./phone-forms.ts";
-import type { RemoteApproval, RemoteSession, RemoteView } from "./remote-view.ts";
+import type {
+  RemoteApproval,
+  RemoteSendOutcome,
+  RemoteSession,
+  RemoteView,
+} from "./remote-view.ts";
+import { sendOutcomeLine } from "./send-words.ts";
 
 const stateTone: Record<RemoteSession["state"], StatusChipTone> = {
   running: "running",
@@ -12,6 +18,13 @@ const stateTone: Record<RemoteSession["state"], StatusChipTone> = {
 };
 
 const decisions = ["approve", "deny"] as const;
+
+/** `PhoneRemote.answer`; what became of the answer shows under the buttons. */
+type OnAnswer = (
+  sessionId: string,
+  approvalId: string,
+  decision: "approve" | "deny",
+) => Promise<RemoteSendOutcome> | undefined;
 
 const decisionWords: Record<(typeof decisions)[number], string> = {
   approve: "Approve",
@@ -32,7 +45,7 @@ export function AgentsList({
 }: {
   readonly view: RemoteView;
   /** `PhoneRemote.answer`. Called only while the approval can be answered. */
-  readonly onAnswer: (sessionId: string, approvalId: string, decision: "approve" | "deny") => void;
+  readonly onAnswer: OnAnswer;
   readonly now?: () => Date;
 }) {
   if (view.sessions.length === 0) return null;
@@ -66,7 +79,7 @@ function AgentRow({
   readonly session: RemoteSession;
   readonly line: string | undefined;
   readonly approval: RemoteApproval | undefined;
-  readonly onAnswer: (sessionId: string, approvalId: string, decision: "approve" | "deny") => void;
+  readonly onAnswer: OnAnswer;
 }) {
   const state = agentStateWords[session.state];
   const name = [session.title, line, state].filter(Boolean).join(", ");
@@ -103,16 +116,18 @@ function AgentRow({
 /**
  * Approve and Deny for one approval. Off with the view's reason written under them; off and busy
  * on the one the phone sent while the host hasn't confirmed it, which it never sends again, and
- * the other one gone meanwhile.
+ * the other one gone meanwhile. Once the host answers, a refusal or a cut-off connection is
+ * written under them; nothing is sent again by itself.
  */
 function ApprovalButtons({
   approval,
   onAnswer,
 }: {
   readonly approval: RemoteApproval;
-  readonly onAnswer: (decision: "approve" | "deny") => void;
+  readonly onAnswer: (decision: "approve" | "deny") => Promise<RemoteSendOutcome> | undefined;
 }) {
   const reasonId = useId();
+  const [outcomeLine, setOutcomeLine] = useState<string | undefined>(undefined);
   const { canAnswer, offReason, sent } = approval;
   const unavailable = offReason === undefined ? undefined : { reason: reasonId };
   return (
@@ -128,7 +143,11 @@ function ApprovalButtons({
               unavailable={unavailable}
               busy={sent === decision}
               onClick={() => {
-                if (canAnswer) onAnswer(decision);
+                if (!canAnswer) return;
+                setOutcomeLine(undefined);
+                void onAnswer(decision)?.then((outcome) =>
+                  setOutcomeLine(sendOutcomeLine("answer", outcome)),
+                );
               }}
             >
               {decisionWords[decision]}
@@ -140,6 +159,10 @@ function ApprovalButtons({
           {offReason}
         </p>
       )}
+      {/* Refused, not sent or cut off: said once, as it appears. */}
+      <p role="status" className="text-small text-fg-muted">
+        {outcomeLine}
+      </p>
     </div>
   );
 }
