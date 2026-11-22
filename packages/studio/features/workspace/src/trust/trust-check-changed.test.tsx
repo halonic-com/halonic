@@ -3,7 +3,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { REFUSED_PAUSE_MS } from "./trust-check-dialog.tsx";
 import {
   badge,
   button,
@@ -14,6 +13,7 @@ import {
   show,
   tearDownTrustBadgeWindow,
 } from "./trust-badge.test-helper.tsx";
+import { REFUSED_PAUSE_MS } from "./trust-check-dialog.tsx";
 
 beforeEach(setUpTrustBadgeWindow);
 afterEach(() => {
