@@ -41,6 +41,7 @@ import {
 import type { ToolLister } from "../connect/agent-host-tool-lister.ts";
 import { resolveWorkingFolders } from "../connect/studio-run-connectors.ts";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
+import { connectorProgramCommand } from "./connector-program-command.ts";
 
 type ListedToolPick = Parameters<ListedToolsHost["approve"]>[1][number];
 type ListedToolsApproval = Awaited<ReturnType<ListedToolsHost["approve"]>>;
@@ -72,6 +73,8 @@ export interface WorkspaceListedToolsOptions {
 interface OpenedSource {
   readonly workspace: LoadedWorkspace;
   readonly connector: Connector;
+  /** The path in the workspace of the file that holds the connector. */
+  readonly file: string;
   readonly location: string;
 }
 
@@ -192,19 +195,20 @@ export class WorkspaceListedTools implements ListedToolsHost {
 
   async #open(connectorId: string): Promise<OpenedSource> {
     const workspace = await loadWorkspace(this.#options.definitions);
-    const connector = filesOf(workspace, "connector")
-      .map((file) => file.value)
-      .find((candidate) => candidate.id === connectorId);
-    if (connector === undefined) {
+    const file = filesOf(workspace, "connector").find(
+      (candidate) => candidate.value.id === connectorId,
+    );
+    if (file === undefined) {
       throw new Error(`this workspace has no connector "${connectorId}"`);
     }
     const location = await this.#options.folder.locationOf();
     if (location === null) throw new Error("the workspace folder has no location");
-    return { workspace, connector, location };
+    return { workspace, connector: file.value, file: file.path, location };
   }
 
   /** Starts the connector and checks what it lists against the approvals, as a run would. */
-  async #check({ workspace, connector, location }: OpenedSource): Promise<ListedToolApprovalCheck> {
+  async #check(source: OpenedSource): Promise<ListedToolApprovalCheck> {
+    const { workspace, connector, location } = source;
     if ("http" in connector.transport) {
       throw new KindedError("unavailable", "Studio can't list this server's tools yet");
     }
@@ -229,7 +233,7 @@ export class WorkspaceListedTools implements ListedToolsHost {
       })
       .catch((error: unknown) => {
         if (!(error instanceof ConnectorFailedError)) throw error;
-        throw new ConnectorCouldntList(listingFailureOf(error, config), { cause: error });
+        throw new ConnectorCouldntList(listingFailureOf(error, config, source), { cause: error });
       });
     const check = await checkConnectorTools({
       location,
@@ -247,12 +251,19 @@ export class WorkspaceListedTools implements ListedToolsHost {
 
 /**
  * The cause the agent host named, for the connector page's words (UX check C2). The server doesn't
- * say which secret it refused, so a refused secret carries all the connector's secrets.
+ * say which secret it refused, so a refused secret carries all the connector's secrets. A program
+ * that stopped right after it started carries its file and the line that starts it, so the page
+ * says where to look and what to run (C634 #5).
  */
 function listingFailureOf(
   { failure }: ConnectorFailedError,
   config: ConnectorConfig,
+  { connector, file, location }: OpenedSource,
 ): ListingFailure {
+  if (failure.reason === "program-stopped" && "stdio" in connector.transport) {
+    const command = connectorProgramCommand(location, connector.transport.stdio);
+    return { ...failure, file, ...(command === undefined ? {} : { command }) };
+  }
   if (failure.reason !== "secret-refused") return failure;
   const secrets = new Set([
     ...(config.secret === undefined ? [] : [config.secret]),

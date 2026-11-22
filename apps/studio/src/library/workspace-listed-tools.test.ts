@@ -17,6 +17,8 @@ import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { WorkspaceListedTools } from "./workspace-listed-tools.ts";
 
 const notesFile = "name: Notes\ntransport:\n  stdio:\n    command: acme-notes-server\n";
+/** A Windows drive, apart from the path, so no line reads as a path on one machine. */
+const drive = "D:";
 const grant = { location: "memory:folder", fingerprint: "hfp1:made-up" };
 
 const readNote: ConnectorTool = {
@@ -55,6 +57,8 @@ function hostOf(
     refusals?: RefusalsFeed;
     /** The window's trust check. */
     askTrust?: () => Promise<"trusted" | "declined">;
+    /** The workspace folder's absolute path. */
+    location?: string;
   } = {},
 ) {
   const started: ConnectorFactoryContext[] = [];
@@ -62,7 +66,7 @@ function hostOf(
   const approvals = new MemoryToolApprovalStore();
   const host = new WorkspaceListedTools({
     definitions: options.files ?? acmeFiles(),
-    folder: new MemoryFolderReader(),
+    folder: new MemoryFolderReader(options.location),
     trust: options.trust ?? trustedAs(options.trusted ?? true),
     approvals,
     digest: webCryptoDigest,
@@ -164,6 +168,43 @@ verifies("studio.workspace-listed-tools", () => {
       expect(error).toMatchObject({
         failure: { reason: "program-missing", program: "npx" },
         cause: failed,
+      });
+    });
+
+    it("passes on a stopped program's file and the line that starts it, to see why", async () => {
+      const failed = new ConnectorFailedError({ reason: "program-stopped", program: "sh" });
+      const { host } = hostOf({
+        listError: failed,
+        location: "/acme/Acme sample",
+        files: acmeFiles({
+          "library/connectors/notes.connector.yaml":
+            "name: Notes\ntransport:\n  stdio:\n    command: sh\n    args: [-c, exit 1]\n",
+        }),
+      });
+
+      const error = await host.review("notes").catch((reason: unknown) => reason);
+
+      expect(error).toMatchObject({
+        failure: {
+          reason: "program-stopped",
+          program: "sh",
+          file: "library/connectors/notes.connector.yaml",
+          command: 'cd "/acme/Acme sample" && sh -c "exit 1"',
+        },
+      });
+    });
+
+    it("gives a stopped program in a Windows folder no line to run, since its terminal can't", async () => {
+      const failed = new ConnectorFailedError({ reason: "program-stopped", program: "sh" });
+      const { host } = hostOf({ listError: failed, location: `${drive}\\Acme` });
+
+      const error = await host.review("notes").catch((reason: unknown) => reason);
+
+      expect(error).toBeInstanceOf(ConnectorCouldntList);
+      expect((error as ConnectorCouldntList).failure).toEqual({
+        reason: "program-stopped",
+        program: "sh",
+        file: "library/connectors/notes.connector.yaml",
       });
     });
 

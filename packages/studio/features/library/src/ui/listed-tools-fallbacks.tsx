@@ -1,4 +1,4 @@
-import { Button, Callout, SkeletonBar } from "@halonicjs/studio-kit";
+import { Button, Callout, CommandBox, SkeletonBar } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { useEffect, useId, useState } from "react";
 import { type LoadFailureLine, loadFailureLine } from "../listed-tools-load-failure.ts";
@@ -97,6 +97,11 @@ function LoadFailedCallout({
   return (
     <Callout tone="danger" action={useLoadFailedActions(line, handlers)}>
       <LoadFailedText line={line} />
+      {line.command === undefined ? null : (
+        <div className="mt-2">
+          <CommandBox command={line.command} />
+        </div>
+      )}
     </Callout>
   );
 }
