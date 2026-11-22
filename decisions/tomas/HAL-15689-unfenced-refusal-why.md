@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this change on HAL-15689 (https://paperclip.halonic.com/HAL/issues/HAL-15689), from flow check C611 on HAL-15671. The words are the refusal's own (microcopy 24.1 R18, its fix decided by the team on HAL-15144) and the sandbox reasons of `app.runner-unfenced-words` (microcopy 23.3); a team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:droJTPgRFkfl/OUfTjhc5FrxBPU1jCZ1xPMoAeCyxHdjqbqWjudQb/Gwfw+/ULI00pY24/3ewNRZmLt8hx3IDg==
 
 ## What changes
 
