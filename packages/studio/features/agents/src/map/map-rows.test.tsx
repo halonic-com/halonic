@@ -56,20 +56,44 @@ const openMap = () =>
     </ToastStoreProvider>,
   );
 
+const placeIcon = (svg: SVGElement) => svg.getAttribute("data-place-icon");
+
 const sideOf = (page: HTMLElement, side: "in" | "use" | "out") =>
   page.querySelector<HTMLElement>(`[data-map-side="${side}"]`);
 
 verifies("agents.map.stacked", () => {
-  it("shows each item as a 56 px row, its name over its kind and detail", async () => {
+  it("shows each item as a 56 px row, its kind's icon before its name over its kind and detail", async () => {
     const page = await openMap();
     expect(page.querySelector("[data-map-stacked]")).not.toBeNull();
     // Text here, as this page can't open a workflow, so with no chevron.
     const workflow = sideOf(page, "in")?.querySelector("[data-map-card]");
     expect(workflow?.className).toContain("min-h-14");
     expect(workflow?.textContent).toBe("Support replyWorkflow · sort, reply");
-    expect(workflow?.querySelector("svg")).toBeNull();
+    expect([...(workflow?.querySelectorAll("svg") ?? [])].map(placeIcon)).toEqual(["workflows"]);
+    expect(workflow?.firstElementChild?.className).toContain("size-icon-md shrink-0 text-fg-muted");
     const connector = sideOf(page, "use")?.querySelector("[data-map-card]");
     expect(connector?.textContent).toBe("Acme mailConnector · Every tool asks first");
+    expect(connector?.querySelector("svg")?.getAttribute("data-place-icon")).toBe("library");
+  });
+
+  it("gives the subagent rows the agents icon, and every row the inset focus ring", async () => {
+    const page = await show(
+      <ToastStoreProvider store={createToastStore()}>
+        <AgentScreen
+          host={host()}
+          hubId="acme"
+          id="writer"
+          closeStack={createCloseStack()}
+          openAgent={() => undefined}
+        />
+      </ToastStoreProvider>,
+    );
+    const handsWork = sideOf(page, "in")?.querySelector<HTMLElement>("button[data-map-card]");
+    expect(handsWork?.textContent).toBe("Mail triageAgent");
+    expect(handsWork?.querySelector("svg")?.getAttribute("data-place-icon")).toBe("agents");
+    for (const row of sideOf(page, "in")?.querySelectorAll("button") ?? []) {
+      expect(row.className).toContain("focus-ring-inset");
+    }
   });
 
   it("names each group with the kit's List heading, over one flush list of rows", async () => {
@@ -88,10 +112,14 @@ verifies("agents.map.stacked", () => {
       "Add subagent",
     ]);
     expect(rows[0]?.className).toContain("min-h-14");
-    expect(rows[0]?.querySelector("svg")).not.toBeNull();
+    // No icon, as it stands for several kinds, but its text starts where the names above do.
+    expect(rows[0]?.className).toContain("ps-12 pe-4");
+    expect(rows[0]?.className).toContain("focus-ring-inset");
+    expect([...(rows[0]?.querySelectorAll("svg") ?? [])].map(placeIcon)).toEqual([null]);
     expect(rows[0]?.getAttribute("aria-haspopup")).toBe("dialog");
     expect(rows[1]?.className).toContain("min-h-touch");
     expect(rows[1]?.className).toContain("text-accent-text");
+    expect(rows[1]?.className).toContain("focus-ring-inset");
   });
 
   it("shows the agent as a card inset 16 px, its agent steps as 48 px rows", async () => {
