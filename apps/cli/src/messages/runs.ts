@@ -58,6 +58,22 @@ export const runsMessages = defineMessages("runs", {
   sendAction: (event: string, runId: string) => phrase`send ${event} to run ${runId}`,
   /** The same, when there's no such run: "✕ Couldn't send approve: …". */
   sendActionNoRun: (event: string) => phrase`send ${event}`,
+  /** `--payload`'s line in `halonic runs send --help` (HAL-16440). */
+  payloadOption: () => phrase`Data to send with the event: a JSON object, in a file or as text.`,
+  /**
+   * The reason after "Couldn't send diff to run 01jd8q:" when `--payload`
+   * isn't JSON; `source` is the file, or left out for the text. A missing,
+   * folder or unreadable file reads as `run --input`'s does.
+   */
+  payloadNotJson: (source?: string) =>
+    source === undefined
+      ? phrase`the payload isn't valid JSON.`
+      : phrase`${source} isn't valid JSON.`,
+  /** The same, when the JSON is a list, a string or a number. */
+  payloadNotAnObject: () => phrase`the payload must be a JSON object.`,
+  /** The fix under a payload that isn't a JSON object, as `run`'s {@link runMessages} `inputFix`. */
+  payloadFix: () =>
+    phrase`Pass a JSON object, in a file or as text, such as --payload payload.json.`,
 
   /**
    * A `reject` reads as `runs show` says it ({@link youAnswered}, C692), so

@@ -1,6 +1,7 @@
 // `halonic run --input <file or JSON>`: the run's input, from a JSON file or
 // from the JSON itself. Text that starts with `{` or `[` is JSON; anything
 // else names a file, relative to the folder the command runs in.
+// `halonic runs send --payload` reads its payload the same way, in its own words.
 
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -10,6 +11,7 @@ import { missingStartFields } from "@halonicjs/workflow";
 import type { Message } from "../../messages/define.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
+import { runsMessages } from "../../messages/runs.ts";
 
 /**
  * `--input` couldn't be read as a JSON object (`invalid_input`, exit 2).
@@ -45,20 +47,56 @@ export async function runInputOf(
   if (given === undefined) {
     return {};
   }
+  return await jsonObjectOf(given, cwd, inputWords);
+}
+
+/**
+ * The payload of `halonic runs send --payload`, read as `--input` is
+ * (requirement `cli.commands.runs.send-payload`).
+ *
+ * @throws RunInputError as {@link runInputOf} does, in the payload's words
+ *
+ * @example
+ * await sendPayloadOf("diff.json", "/work/acme"); // { diff: "diff --git …" }
+ */
+export async function sendPayloadOf(given: string, cwd: string): Promise<Record<string, unknown>> {
+  return await jsonObjectOf(given, cwd, payloadWords);
+}
+
+/** How a JSON object option's own errors read: `--input`'s or `--payload`'s. */
+interface JsonObjectWords {
+  notJson(source?: string): Message;
+  notAnObject(): Message;
+  fix(): Message;
+}
+
+const inputWords: JsonObjectWords = {
+  notJson: runMessages.inputNotJson,
+  notAnObject: runMessages.inputNotAnObject,
+  fix: runMessages.inputFix,
+};
+
+const payloadWords: JsonObjectWords = {
+  notJson: runsMessages.payloadNotJson,
+  notAnObject: runsMessages.payloadNotAnObject,
+  fix: runsMessages.payloadFix,
+};
+
+async function jsonObjectOf(
+  given: string,
+  cwd: string,
+  words: JsonObjectWords,
+): Promise<Record<string, unknown>> {
   const looksLikeJson = /^\s*[{[]/.test(given);
-  const text = looksLikeJson ? given : await inputFile(given, cwd);
+  const text = looksLikeJson ? given : await inputFile(given, cwd, words);
   let value: unknown;
   try {
     value = JSON.parse(text);
   } catch (error) {
-    throw new RunInputError(
-      runMessages.inputNotJson(looksLikeJson ? undefined : given),
-      runMessages.inputFix(),
-      error,
-    );
+    throw new RunInputError(words.notJson(looksLikeJson ? undefined : given), words.fix(), error);
   }
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new RunInputError(runMessages.inputNotAnObject(), runMessages.inputFix());
+    throw new RunInputError(words.notAnObject(), words.fix());
   }
   return value as Record<string, unknown>;
 }
@@ -90,21 +128,21 @@ export function checkFirstStepInput(
  * The text of the input file. A file that isn't there, a folder or a file
  * that can't be read is the user's to fix, so it gets a reason, not a crash.
  */
-async function inputFile(path: string, cwd: string): Promise<string> {
+async function inputFile(path: string, cwd: string, words: JsonObjectWords): Promise<string> {
   try {
     return await readFile(resolve(cwd, path), "utf8");
   } catch (error) {
-    throw unreadableInput(path, error);
+    throw unreadableInput(path, error, words);
   }
 }
 
 /** Why the file couldn't be read, as a {@link RunInputError} when the user can fix it. */
-function unreadableInput(path: string, error: unknown): unknown {
+function unreadableInput(path: string, error: unknown, words: JsonObjectWords): unknown {
   switch ((error as NodeJS.ErrnoException).code) {
     case "ENOENT":
       return new RunInputError(runMessages.noInputFile(path), runMessages.noInputFileFix(), error);
     case "EISDIR":
-      return new RunInputError(runMessages.inputIsFolder(path), runMessages.inputFix(), error);
+      return new RunInputError(runMessages.inputIsFolder(path), words.fix(), error);
     // EPERM is what Windows gives for a file the account may not read.
     case "EACCES":
     case "EPERM":

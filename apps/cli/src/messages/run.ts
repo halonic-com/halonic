@@ -14,7 +14,7 @@ import { countInWords } from "./words.ts";
 /** "Nothing ran.": the fail-closed promise when `run` was refused before its first step (cli-output 1.3). */
 const nothingRan = phrase`Nothing ran.`;
 
-/** What `--input` takes, in the usage line and the help (cli-output 3.4). */
+/** What `--input` takes, in the usage line and the help (cli-output 3.4), and `runs send --payload` too. */
 export const inputValueName = "file or JSON";
 
 /** What a finished run did, for its receipt line. Only the parts that apply are shown. */

@@ -119,6 +119,8 @@ export class RunEvents {
    *   it up with `RunHistory.findRun` first
    * @param event - such as "approve"
    * @param seen - the run's summary as the person saw it when they chose `event`
+   * @param payload - data that goes with the event, which the waiting step
+   *   writes to the run's context (requirement `app.run-send-payload`)
    * @throws RunEventRefused when there is no such run, the run isn't
    *   waiting, it doesn't take this event now, or the approval `seen` lists
    *   was answered first. A run that ends between the check and the send is
@@ -132,6 +134,7 @@ export class RunEvents {
     runId: string,
     event: string,
     seen?: Pick<RunSummary, "approvals">,
+    payload?: unknown,
   ): Promise<RunSummary> {
     const callId = seen?.approvals[0]?.callId;
     const summary = await this.#summary(runId);
@@ -144,7 +147,7 @@ export class RunEvents {
       return await this.#executor.send(
         runId,
         event,
-        undefined,
+        payload,
         callId === undefined ? undefined : { callId },
       );
     } catch (error) {

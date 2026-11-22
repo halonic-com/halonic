@@ -255,3 +255,28 @@ verifies("app.run-send-seen-approval", () => {
     expect(refused.refusal).toMatchObject({ reason: "answered" });
   });
 });
+
+verifies("app.run-send-payload", () => {
+  describe("sendEvent with a payload", () => {
+    it("hands the payload to the executor with the event", async () => {
+      const { executor, events } = given([started, enteredReview, waiting]);
+
+      await events.sendEvent("run_a1", "approve", undefined, { note: "Looks right." });
+
+      expect(executor.sends).toEqual([
+        { runId: "run_a1", event: "approve", payload: { note: "Looks right." } },
+      ]);
+    });
+
+    it("refuses a payload's event the step doesn't take as without one, and sends nothing", async () => {
+      const { executor, events } = given([started, enteredReview, waiting]);
+
+      const refused = await refusalOf(
+        events.sendEvent("run_a1", "aprove", undefined, { note: "x" }),
+      );
+
+      expect(errorKindOf(refused)).toBe("invalid_input");
+      expect(executor.sends).toEqual([]);
+    });
+  });
+});
