@@ -39,7 +39,6 @@ import { FlowView } from "../map/flow-view.tsx";
 import { mapWords } from "../map/map-words.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
-import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { FullAccessChip } from "./full-access-chip.tsx";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { PageCard } from "./page-card.tsx";
@@ -47,6 +46,7 @@ import { pageWords } from "./page-words.ts";
 import { RenameField, titleClasses } from "./rename-field.tsx";
 import { RunsView } from "./runs-view.tsx";
 import { useAgentCards } from "./use-agent-cards.ts";
+import { type AgentView, useAgentView } from "./use-agent-view.ts";
 import { type Load, useLoad } from "./use-load.ts";
 
 /**
@@ -448,41 +448,8 @@ function AgentRead({
   );
 }
 
-type AgentView = "flow" | "configuration" | "runs";
-
 /** The views stacked cards open over: a subagent or an agent step opens from either. */
 const cardViews: ReadonlySet<AgentView | "read"> = new Set(["flow", "configuration"]);
-
-/**
- * The view the page shows. It opens on Flow, the agent map (flow-agents 2.2, HAL-119 U10). An
- * agent just made with nothing written opens on Configuration › Behaviour with Instructions focused
- * instead (`agents.page.new-agent`); once the person picks a view, it is a page like any other, so
- * coming back to Behaviour doesn't take the focus again.
- *
- * Each request to open at the model shows Configuration again if the person left it. The request
- * waits until Configuration has shown its Model page, so coming back to Configuration by hand later
- * opens it as usual.
- */
-function useAgentView(hubId: string, id: string, modelRequest: string | undefined) {
-  const [fresh, setFresh] = useState(() => isFreshAgent(hubId, id));
-  useEffect(() => forgetFreshAgent(hubId, id), [hubId, id]);
-  const [view, setView] = useState<AgentView>(() =>
-    isFreshAgent(hubId, id) ? "configuration" : "flow",
-  );
-  const [shownFor, setShownFor] = useState<string>();
-  const [modelWaiting, setModelWaiting] = useState(false);
-  if (modelRequest !== undefined && modelRequest !== shownFor) {
-    setShownFor(modelRequest);
-    setView("configuration");
-    setModelWaiting(true);
-  }
-  const selectView = (next: AgentView) => {
-    setView(next);
-    setFresh(false);
-  };
-  const modelShown = useCallback(() => setModelWaiting(false), []);
-  return { view, selectView, fresh, modelWaiting, modelShown };
-}
 
 /** The page's views, as far as they are built: the Try it chat joins them later. */
 const agentTabs: readonly Tab<AgentView>[] = [
