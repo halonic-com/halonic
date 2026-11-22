@@ -80,16 +80,17 @@ export const MODEL_STEP = "model";
  * step `model`, it opens at the model picker (`agents.configuration.open-at-model`).
  */
 export function AgentPage({ item, context, step, asked, Sections, sections }: ItemViewProps) {
-  const { openPlace, openItem, runCommand, closeStack, announcer } = context;
+  const { openPlace, openItem, openItemInNewTab, runCommand, closeStack, announcer } = context;
   const announce = useCallback(
     (text: string, politeness?: "polite" | "assertive") => announcer.announce(text, politeness),
     [announcer],
   );
   const host = context.services.get(AgentsHostService);
-  const openChanges = openPlace && (() => openPlace("changes"));
+  // The warning's file link opens a tab beside this one, so Review and confirm stays where it was.
+  const openFileBeside = openItemInNewTab && ((path: string) => openItemInNewTab(fileItemOf(path)));
   // One read of where the agent runs, so the header's chip follows a choice in Where it runs.
   return (
-    <PlacementProvider host={host} hubId={item.hub} id={item.id} openChanges={openChanges}>
+    <PlacementProvider host={host} hubId={item.hub} id={item.id} openFile={openFileBeside}>
       <AgentScreen
         host={host}
         saving={context.saving}

@@ -9,6 +9,7 @@ import {
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useId, useState } from "react";
 import type { AgentPlacementState, AgentSettings, AgentsHost } from "../api.ts";
+import { deleteWords } from "../trash/delete-words.ts";
 import { configurationWords } from "./configuration-words.ts";
 import { usePlacement } from "./use-placement.ts";
 
@@ -70,14 +71,14 @@ function optionsFor(placement: AgentPlacementState): RadioOption<RunsOn>[] {
  * saves at once. On this computer saves only after the warning, for the file the person was
  * warned about: Cancel is focused and **Run on this computer** is the danger button. When the
  * agent's file changed since, the choice is on hold: On this computer says so, and a Callout under
- * it with **Review and confirm** opens the same warning. While the agent's file has unsaved
- * changes, the warning says to confirm once they're saved: the choice is for the saved file, which
- * may hold what they already took out. Where Studio can't choose (the browser), only a line
- * pointing to the desktop app is drawn.
+ * it with **Review and confirm** opens the same warning, which can open the file beside the
+ * agent's tab. While the agent's file has unsaved changes, the warning says to confirm once
+ * they're saved: the choice is for the saved file, which may hold what they already took out.
+ * Where Studio can't choose (the browser), only a line pointing to the desktop app is drawn.
  */
 export function WhereItRuns({ host, settings }: WhereItRunsProps) {
   const ref = { hubId: settings.hubId, id: settings.id };
-  const { load, reload, openChanges } = usePlacement(host, settings.hubId, settings.id);
+  const { load, reload, openFile } = usePlacement(host, settings.hubId, settings.id);
   const [warning, setWarning] = useState<Warning | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +136,20 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
     }
   };
 
+  // Closes the warning only once the file opens: the Callout's Review and confirm brings it back.
+  const openAgentFile = (open: (path: string) => void, shown: Warning) =>
+    host.filePath(ref).then(
+      (path) => {
+        setWarning(null);
+        open(path);
+      },
+      (thrown: unknown) =>
+        setWarning({
+          ...shown,
+          error: `${deleteWords.couldntOpenFile(settings.name)}: ${errorReasonFor(thrown)}`,
+        }),
+    );
+
   return (
     <>
       <Field label={words.label} error={error}>
@@ -177,13 +192,7 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
             <FileChangedLine
               agent={settings.name}
               changedAt={placement.changedAt}
-              openChanges={
-                openChanges &&
-                (() => {
-                  setWarning(null);
-                  openChanges();
-                })
-              }
+              openFile={openFile && (() => void openAgentFile(openFile, warning))}
             />
           )}
           <p>{words.warningAccess(settings.name)}</p>
@@ -201,30 +210,32 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
 
 /**
  * The warning's first line while the choice is on hold: the agent's file changed, on the day the
- * host says when it can tell, then **See what changed ›**, which closes the warning and opens
- * Changes. The link never wraps on its own (checklist 3.8).
+ * host says when it can tell, and Studio can't show what changed, since a choice keeps only the
+ * file's fingerprint. Then **Open the file ›**, which closes the warning and opens the file in a
+ * tab beside the agent's, so the Callout's **Review and confirm** stays where it was
+ * (HAL-15753). The link never wraps on its own (checklist 3.8).
  */
 function FileChangedLine({
   agent,
   changedAt,
-  openChanges,
+  openFile,
 }: {
   readonly agent: string;
   readonly changedAt: string | undefined;
-  readonly openChanges: (() => void) | undefined;
+  readonly openFile: (() => void) | undefined;
 }) {
   return (
     <p>
       {changedAt === undefined ? words.fileChanged(agent) : words.fileChangedOn(agent, changedAt)}
-      {openChanges && (
+      {openFile && (
         <>
           {" "}
           <button
             type="button"
             className={`${inlineLinkClasses} whitespace-nowrap`}
-            onClick={openChanges}
+            onClick={openFile}
           >
-            {words.seeWhatChanged}
+            {words.openFile}
           </button>
         </>
       )}

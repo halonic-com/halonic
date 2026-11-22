@@ -129,11 +129,16 @@ verifies("agents.configuration.where-it-runs", () => {
       expect((await host.placement(ref))?.runsOn).toBe("this-computer");
     });
 
-    it("starts the warning on hold with the file changed, and See what changed opens Changes", async () => {
+    it("starts the warning on hold with the file changed, and Open the file opens it beside the agent", async () => {
       const host = agentsHost();
-      let opened = 0;
+      const opened: string[] = [];
       const page = await show(
-        <PlacementProvider host={host} hubId="acme" id="writer" openChanges={() => (opened += 1)}>
+        <PlacementProvider
+          host={host}
+          hubId="acme"
+          id="writer"
+          openFile={(path) => opened.push(path)}
+        >
           <WhereItRuns host={host} settings={await host.settings(ref)} />
         </PlacementProvider>,
       );
@@ -142,16 +147,49 @@ verifies("agents.configuration.where-it-runs", () => {
       await press(buttonNamed(page, words.reviewAndConfirm));
       expect(document.activeElement?.textContent).toBe(words.cancel);
       const first = warning()?.querySelector("p");
-      expect(first?.textContent).toBe(`${words.fileChanged("Writer")} ${words.seeWhatChanged}`);
-      const link = buttonNamed(document.body, words.seeWhatChanged);
+      expect(first?.textContent).toBe(`${words.fileChanged("Writer")} ${words.openFile}`);
+      const link = buttonNamed(document.body, words.openFile);
       expect(link?.className).toContain("whitespace-nowrap");
       await press(link);
-      expect(opened).toBe(1);
+      expect(opened).toEqual([await host.filePath(ref)]);
       expect(warning()).toBeUndefined();
       expect((await host.placement(ref))?.runsOn).toBe("on-hold");
+      // The way back: the Callout's Review and confirm is still on the page.
+      expect(buttonNamed(page, words.reviewAndConfirm)).toBeDefined();
     });
 
-    it("says the file changed without a link where the app can't open Changes, and not on a first choice", async () => {
+    it("keeps the warning open and says why when the file can't be opened", async () => {
+      const host = agentsHost();
+      const failing: AgentsHost = {
+        ...host,
+        filePath: async () => {
+          throw new KindedError("unavailable", "The agent host isn't answering.");
+        },
+      };
+      const opened: string[] = [];
+      const page = await show(
+        <PlacementProvider
+          host={failing}
+          hubId="acme"
+          id="writer"
+          openFile={(path) => opened.push(path)}
+        >
+          <WhereItRuns host={failing} settings={await host.settings(ref)} />
+        </PlacementProvider>,
+      );
+      await chooseThisComputer(page);
+      await act(async () => host.update(ref, { instructions: "Reply to everyone." }));
+      await press(buttonNamed(page, words.reviewAndConfirm));
+      await press(buttonNamed(document.body, words.openFile));
+      await nextFrame();
+      expect(opened).toEqual([]);
+      expect(warning()?.textContent).toContain(
+        "Couldn't open Writer's file: The agent host isn't answering.",
+      );
+      expect(warning()?.textContent).not.toContain("answering..");
+    });
+
+    it("says the file changed without a link where the app can't open files, and not on a first choice", async () => {
       const host = agentsHost();
       const page = await open(host);
       await press(radioNamed(page, words.onThisComputer));
@@ -160,7 +198,7 @@ verifies("agents.configuration.where-it-runs", () => {
       await act(async () => host.update(ref, { instructions: "Reply to everyone." }));
       await press(buttonNamed(page, words.reviewAndConfirm));
       expect(warning()?.querySelector("p")?.textContent).toBe(words.fileChanged("Writer"));
-      expect(buttonNamed(document.body, words.seeWhatChanged)).toBeUndefined();
+      expect(buttonNamed(document.body, words.openFile)).toBeUndefined();
     });
 
     it("says on which day and time the file changed, where the host can tell", async () => {
@@ -173,10 +211,12 @@ verifies("agents.configuration.where-it-runs", () => {
       await press(buttonNamed(page, words.reviewAndConfirm));
       const first = warning()?.querySelector("p")?.textContent;
       expect(first).toBe(words.fileChangedOn("Writer", changedAt));
-      expect(first).toBe("Writer's file changed on 9 Nov at 14:02.");
+      expect(first).toBe(
+        "Writer's file changed on 9 Nov at 14:02. Studio can't show what changed, so check the file before you confirm.",
+      );
       const lastYear = new Date(2025, 10, 9, 14, 2).toISOString();
       expect(words.fileChangedOn("Writer", lastYear, new Date(2026, 0, 5))).toBe(
-        "Writer's file changed on 9 Nov 2025 at 14:02.",
+        "Writer's file changed on 9 Nov 2025 at 14:02. Studio can't show what changed, so check the file before you confirm.",
       );
     });
 
