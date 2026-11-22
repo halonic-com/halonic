@@ -193,13 +193,30 @@ export async function savedAgentBytes(
   hubId: string,
   agentId: string,
 ): Promise<Uint8Array> {
+  const { text } = await savedAgentFile(definitions, hubId, agentId);
+  return new TextEncoder().encode(text);
+}
+
+/**
+ * An agent's file as it is saved now: its path from the workspace folder and
+ * its text.
+ *
+ * @throws when the hub has no such agent
+ */
+export async function savedAgentFile(
+  definitions: DefinitionSource,
+  hubId: string,
+  agentId: string,
+): Promise<{ readonly path: string; readonly text: string }> {
   const workspace = await loadWorkspace(definitions);
   const file = filesOf(workspace, "agent").find(
     (each) => each.hub === hubId && each.value.id === agentId,
   );
   const text = file === undefined ? null : await definitions.read(file.path);
-  if (text === null) throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
-  return new TextEncoder().encode(text);
+  if (file === undefined || text === null) {
+    throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
+  }
+  return { path: file.path, text };
 }
 
 /**

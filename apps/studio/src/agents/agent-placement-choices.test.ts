@@ -3,7 +3,7 @@ import { MemoryAgentPlacementStore } from "@halonicjs/adapter-memory";
 import { AgentPlacement } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { AgentPlacementChoices } from "./agent-placement-choices.ts";
+import { AgentPlacementChoices, type AgentPlacementParts } from "./agent-placement-choices.ts";
 import { WorkspaceAgents } from "./workspace-agents.ts";
 
 const writer = { hubId: "acme", id: "writer" };
@@ -37,7 +37,11 @@ function filesOf({ saved, unsaved }: ReturnType<typeof workspace>) {
 }
 
 /** Studio on one computer: its own placement choices, over the workspace's files. */
-function computer(files: ReturnType<typeof workspace>, studioStartsUnfenced?: boolean) {
+function computer(
+  files: ReturnType<typeof workspace>,
+  studioStartsUnfenced?: boolean,
+  changedAt?: AgentPlacementParts["changedAt"],
+) {
   const placement = new AgentPlacement({
     store: new MemoryAgentPlacementStore(),
     digest: webCryptoDigest,
@@ -55,6 +59,7 @@ function computer(files: ReturnType<typeof workspace>, studioStartsUnfenced?: bo
         return new TextEncoder().encode(text);
       },
       ...(studioStartsUnfenced === undefined ? {} : { studioStartsUnfenced }),
+      ...(changedAt === undefined ? {} : { changedAt }),
     }),
   });
 }
@@ -106,6 +111,35 @@ verifies("studio.agent-placement-choices", () => {
       expect(held?.fingerprint).not.toBe(before?.fingerprint);
       expect(await confirm(host)).toEqual({ saved: true });
       expect(await host.placement(writer)).toMatchObject({ runsOn: "this-computer" });
+    });
+
+    it("says when the file changed after the choice, as the workspace's versions tell", async () => {
+      const files = workspace();
+      const asked: unknown[] = [];
+      const host = computer(files, undefined, async (ref, since) => {
+        asked.push([ref, since]);
+        return "2026-11-10T09:30:00.000Z";
+      });
+      await confirm(host);
+      expect(await host.placement(writer)).not.toHaveProperty("changedAt");
+      files.saved[writerPath] = `${files.saved[writerPath]}instructions: Reply to everyone.\n`;
+      expect(await host.placement(writer)).toMatchObject({
+        runsOn: "on-hold",
+        changedAt: "2026-11-10T09:30:00.000Z",
+      });
+      expect(asked).toEqual([[writer, chosenAt]]);
+    });
+
+    it("leaves the time out when the versions can't tell it, or can't be read", async () => {
+      for (const changedAt of [async () => undefined, () => Promise.reject(new Error("no git"))]) {
+        const files = workspace();
+        const host = computer(files, undefined, changedAt);
+        await confirm(host);
+        files.saved[writerPath] = `${files.saved[writerPath]}instructions: Reply to everyone.\n`;
+        const held = await host.placement(writer);
+        expect(held?.runsOn).toBe("on-hold");
+        expect(held).not.toHaveProperty("changedAt");
+      }
     });
 
     it("saves nothing when the file changed after the warning was shown", async () => {

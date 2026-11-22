@@ -84,6 +84,8 @@ export interface MemoryAgentsHostOptions {
   readonly unsaved?: ((ref: AgentRef) => boolean) | undefined;
   /** Whether this Studio can start an agent outside its sandbox; it can't when left out, as today. */
   readonly studioStartsUnfenced?: boolean | undefined;
+  /** When an agent's file changed after a choice now on hold, as ISO text; no time when left out. */
+  readonly changedAt?: ((ref: AgentRef) => string | undefined) | undefined;
 }
 
 /** A choice of On this computer: for the file with this fingerprint, at this time. */
@@ -162,7 +164,12 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
     const fingerprint = fingerprintOf(ref);
     const chosen = choices.get(keyOf(ref));
     if (chosen === undefined) return { runsOn: "sandbox", fingerprint };
-    if (chosen.fingerprint !== fingerprint) return { runsOn: "on-hold", fingerprint };
+    if (chosen.fingerprint !== fingerprint) {
+      const changedAt = options.changedAt?.(ref);
+      return changedAt === undefined
+        ? { runsOn: "on-hold", fingerprint }
+        : { runsOn: "on-hold", fingerprint, changedAt };
+    }
     return { runsOn: "this-computer", fingerprint, chosenAt: chosen.chosenAt };
   };
 

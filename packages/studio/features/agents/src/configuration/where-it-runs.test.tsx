@@ -20,7 +20,12 @@ beforeAll(openDialogsInJsdom);
 afterEach(unmount);
 
 function agentsHost(
-  options: { placement?: boolean; unsaved?: () => boolean; studioStartsUnfenced?: boolean } = {},
+  options: {
+    placement?: boolean;
+    unsaved?: () => boolean;
+    studioStartsUnfenced?: boolean;
+    changedAt?: () => string;
+  } = {},
 ) {
   return memoryAgentsHost({
     hubs: [{ id: "acme", name: "Acme" }],
@@ -156,6 +161,23 @@ verifies("agents.configuration.where-it-runs", () => {
       await press(buttonNamed(page, words.reviewAndConfirm));
       expect(warning()?.querySelector("p")?.textContent).toBe(words.fileChanged("Writer"));
       expect(buttonNamed(document.body, words.seeWhatChanged)).toBeUndefined();
+    });
+
+    it("says on which day and time the file changed, where the host can tell", async () => {
+      // 14:02 on 9 Nov in the person's own time zone, whichever the test runs in.
+      const changedAt = new Date(new Date().getFullYear(), 10, 9, 14, 2).toISOString();
+      const host = agentsHost({ changedAt: () => changedAt });
+      const page = await open(host);
+      await chooseThisComputer(page);
+      await act(async () => host.update(ref, { instructions: "Reply to everyone." }));
+      await press(buttonNamed(page, words.reviewAndConfirm));
+      const first = warning()?.querySelector("p")?.textContent;
+      expect(first).toBe(words.fileChangedOn("Writer", changedAt));
+      expect(first).toBe("Writer's file changed on 9 Nov at 14:02.");
+      const lastYear = new Date(2025, 10, 9, 14, 2).toISOString();
+      expect(words.fileChangedOn("Writer", lastYear, new Date(2026, 0, 5))).toBe(
+        "Writer's file changed on 9 Nov 2025 at 14:02.",
+      );
     });
 
     it("saves nothing when the file changes while the warning is open, and warns again", async () => {

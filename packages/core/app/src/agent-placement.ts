@@ -45,6 +45,11 @@ export type PlacementAnswer =
       readonly agentFingerprint: string;
       readonly reason: SandboxReason;
       /**
+       * For `file-changed`, when the person chose for the earlier version, as ISO text: Studio
+       * names the day the file changed after it (checklist 3.8).
+       */
+      readonly chosenAt?: string;
+      /**
        * The store's error when the choice couldn't be read, for the host to
        * log and show the person. It can name paths in the user's profile.
        */
@@ -141,7 +146,12 @@ export class AgentPlacement implements PlacementReader {
       return { runsOn: "sandbox", agentFingerprint: fingerprint, reason: "unreadable", error };
     }
     if (record.agentFingerprint !== fingerprint) {
-      return { runsOn: "sandbox", agentFingerprint: fingerprint, reason: "file-changed" };
+      return {
+        runsOn: "sandbox",
+        agentFingerprint: fingerprint,
+        reason: "file-changed",
+        chosenAt: record.chosenAt,
+      };
     }
     return { runsOn: "this-computer", agentFingerprint: fingerprint, chosenAt: record.chosenAt };
   }
