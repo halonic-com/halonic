@@ -3,6 +3,15 @@
  * not in the desktop shell, so nothing under `src/phone/` imports `@halonicjs/studio-shell`
  * (`phone-boundary.test.ts`).
  */
+
+export {
+  NOT_HALONIC_MS,
+  type PairingFlowOptions,
+  type PairingView,
+  PhonePairingFlow,
+  type PhoneScanner,
+  type PickedComputer,
+} from "./pairing-flow.ts";
 export {
   agentsAsOfText,
   asOfText,
