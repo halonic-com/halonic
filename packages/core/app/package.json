@@ -5,6 +5,7 @@
   "description": "The headless app kernel: command bus, event bus, service registry, workspace-wide undo and the routine scheduler service. No React.",
   "exports": {
     ".": "./src/index.ts",
+    "./failed-call": "./src/failed-call.ts",
     "./listed-tools": "./src/listed-tools.ts",
     "./outside-run": "./src/outside-run-gate.ts",
     "./routines": "./src/routines.ts",
