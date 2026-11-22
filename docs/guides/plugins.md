@@ -387,7 +387,8 @@ app reads only a folder you picked: for a path typed into **Folder**, it asks yo
 
 An `https://` address works only for a public repository: the export uses none of your git
 settings, so no credential helper signs in, and a password or a user name in the address is
-refused, since that's where a token would go. For a private repository, use an `ssh://` address, such as
+refused: Halonic would keep it and show it with the plugin, and it's where a token would go.
+For a private repository, use an `ssh://` address, such as
 `ssh://git@github.com/acme/weather`: git signs in with your ssh key.
 
 Both leave private names out of the copy, at any depth: `.git`, `.studio`, `.env`, `.env.*` and
