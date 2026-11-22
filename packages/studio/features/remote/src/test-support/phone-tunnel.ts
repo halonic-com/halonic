@@ -1,6 +1,9 @@
 import type {
   ComputerId,
   ConnectOutcome,
+  ForgetOutcome,
+  KeysUnavailable,
+  ListedComputer,
   PairedComputer,
   PairingId,
   PairingOutcome,
@@ -19,7 +22,9 @@ type Listener = (computer: ComputerId, status: PhoneStatus) => void;
  * keeps the computer's id, and only `forget` deletes an entry.
  */
 export class FakePhoneTunnel implements PhoneTunnel {
-  readonly computers = new Map<ComputerId, PairedComputer>();
+  readonly computers = new Map<ComputerId, ListedComputer>();
+  /** False makes the calls that need the phone's key storage answer `keys-unavailable`. */
+  keysWork = true;
   readonly started: TunnelPairingStart[] = [];
   readonly calls: string[] = [];
   nextStep: PairingStep = {
@@ -57,13 +62,16 @@ export class FakePhoneTunnel implements PhoneTunnel {
     this.calls.push(`cancel ${pairing}`);
   }
 
-  async pairedComputers(): Promise<readonly PairedComputer[]> {
+  async pairedComputers(): Promise<readonly ListedComputer[] | KeysUnavailable> {
+    if (!this.keysWork) return { kind: "keys-unavailable" };
     return [...this.computers.values()];
   }
 
-  async forget(computer: ComputerId): Promise<void> {
+  async forget(computer: ComputerId): Promise<ForgetOutcome> {
+    if (!this.keysWork) return { kind: "keys-unavailable" };
     this.computers.delete(computer);
     this.statuses.delete(computer);
+    return { kind: "forgotten" };
   }
 
   async connect(computer: ComputerId): Promise<ConnectOutcome> {
@@ -84,7 +92,8 @@ export class FakePhoneTunnel implements PhoneTunnel {
   /** Sends a status as the shell would. `removed` marks the entry removed and keeps it. */
   push(computer: ComputerId, status: PhoneStatus): void {
     const entry = this.computers.get(computer);
-    if (entry !== undefined && (status.state === "removed" || status.state === "cant-confirm")) {
+    const marks = status.state === "removed" || status.state === "cant-confirm";
+    if (entry !== undefined && entry.standing !== "unreadable" && marks) {
       this.computers.set(computer, {
         ...entry,
         standing: status.state === "removed" ? "removed" : "cant-confirm",
