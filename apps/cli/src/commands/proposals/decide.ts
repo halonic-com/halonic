@@ -1,6 +1,6 @@
-// `halonic proposals accept|discard <run-id> [<file>]`: decides a run's
+// `halonic proposals accept|reject <run-id> [<file>]`: decides a run's
 // proposal, all of it or one file. A thin command over `RunProposals`:
-// Accept writes each file only while it is still the run's base, Discard
+// Accept writes each file only while it is still the run's base, Reject
 // leaves the files alone. The CLI has no Undo toast, so a proposal with
 // nothing left to decide is settled straight away.
 
@@ -69,12 +69,12 @@ export function acceptProposal(
 }
 
 /**
- * Discards the proposal, or one file of it: the saved files stay as they
+ * Rejects the proposal, or one file of it: the saved files stay as they
  * are. A proposal whose texts were deleted outside Halonic is removed.
  *
  * @throws as for {@link acceptProposal}, except for gone texts
  */
-export function discardProposal(
+export function rejectProposal(
   input: CommandInput,
   context: CommandContext,
   setup: ProposalsSetup,
@@ -90,8 +90,8 @@ export function discardProposal(
       (path) => target === "all" || path === target.file,
     );
     await proposals.reject(runId, target);
-    const lines = [proposalsMessages.discarded(covered.length).phrase];
-    return { lines, conflict: false, json: { discarded: covered } };
+    const lines = [proposalsMessages.rejected(covered.length).phrase];
+    return { lines, conflict: false, json: { rejected: covered } };
   });
 }
 

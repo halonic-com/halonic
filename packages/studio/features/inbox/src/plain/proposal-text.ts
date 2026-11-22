@@ -146,7 +146,7 @@ export const decideElsewhereLine =
   "Studio can't accept or reject these changes here. To see them and decide, run this in a terminal:";
 
 /**
- * The command that shows a run's proposal with its diffs, and ends with how to accept or discard
+ * The command that shows a run's proposal with its diffs, and ends with how to accept or reject
  * it: "halonic proposals show 01JD8Q". The CLI takes the short id in either case.
  */
 export function decideCommand(runId: string): string {

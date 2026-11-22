@@ -7,7 +7,7 @@ import { suggestedCommand } from "./suggested-command.ts";
 export type ShownChange = "added" | "modified" | "deleted";
 
 /** Where a proposed file stands, as `show` heads it. */
-export type ShownDecision = "undecided" | "accepted" | "discarded" | "cantWrite";
+export type ShownDecision = "undecided" | "accepted" | "rejected" | "cantWrite";
 
 /**
  * What `show` prints after a text's last line when it has no newline, so a
@@ -19,24 +19,24 @@ export const noNewlineMarker = "\\ No newline at end of file";
 const decisionWords: Readonly<Record<ShownDecision, string>> = {
   undecided: "",
   accepted: "accepted",
-  discarded: "discarded",
+  rejected: "rejected",
   cantWrite: "can't be written",
 };
 
 /**
  * `halonic proposals`: what agents' runs propose to change in the workspace,
- * and accepting or discarding it (HAL-6477, board yes on HAL-9332). Nothing
+ * and accepting or rejecting it (HAL-6477, board yes on HAL-9332). Nothing
  * changes in the person's files until they accept.
  */
 export const proposalsMessages = defineMessages("proposals", {
-  summary: () => phrase`See what agents' runs propose to change, and accept or discard it`,
+  summary: () => phrase`See what agents' runs propose to change, and accept or reject it`,
   action: (workspace: string) => phrase`list the proposals in ${workspace}`,
   showSummary: () => phrase`Show what one run proposes, file by file`,
   showAction: (runId: string) => phrase`show the proposal of run ${runId}`,
   acceptSummary: () => phrase`Write a run's proposed changes to your files`,
   acceptAction: (runId: string) => phrase`accept the proposal of run ${runId}`,
-  discardSummary: () => phrase`Drop a run's proposed changes; your files stay as they are`,
-  discardAction: (runId: string) => phrase`discard the proposal of run ${runId}`,
+  rejectSummary: () => phrase`Reject a run's proposed changes; your files stay as they are`,
+  rejectAction: (runId: string) => phrase`reject the proposal of run ${runId}`,
 
   /** After `halonic run`, when the run left a proposal: nothing in the files changed yet. */
   waiting: (runId: string, files: number, dir?: string) =>
@@ -67,7 +67,7 @@ export const proposalsMessages = defineMessages("proposals", {
   noDifference: () => phrase`  Your file already has these changes.`,
   /** How to decide, under `show`. */
   howToDecide: (runId: string, dir?: string) =>
-    phrase`Accept with ${suggestedCommand("proposals accept", dir, runId)}, or discard with ${suggestedCommand("proposals discard", dir, runId)}.`,
+    phrase`Accept with ${suggestedCommand("proposals accept", dir, runId)}, or reject with ${suggestedCommand("proposals reject", dir, runId)}.`,
 
   /** `accept`: the files written. */
   wrote: (paths: readonly string[]) =>
@@ -76,21 +76,21 @@ export const proposalsMessages = defineMessages("proposals", {
   wroteNothing: () => phrase`No file was written.`,
   /** Files the person changed since the run: they stay undecided. */
   changedOnDisk: (paths: readonly string[]) =>
-    phrase`${listInWords(paths)} changed since the run, so ${paths.length === 1 ? "it wasn't" : "they weren't"} written. Edit by hand, or discard.`,
+    phrase`${listInWords(paths)} changed since the run, so ${paths.length === 1 ? "it wasn't" : "they weren't"} written. Edit by hand, or reject.`,
   /** The `--json` error when a file changed since the run (`conflict`). */
   changedOnDiskFailure: () => phrase`Some files changed since the run, so they weren't written.`,
   /** Files Accept may never write. */
   cantWrite: (paths: readonly string[]) =>
     phrase`${listInWords(paths)} can't be written: Halonic never writes inside .git, .halonic or its own data folder.`,
-  /** `discard`. */
-  discarded: (files: number) =>
-    phrase`Discarded the changes to ${counted(files, "file", "files")}. Your files stay as they are.`,
+  /** `reject`. */
+  rejected: (files: number) =>
+    phrase`Rejected the changes to ${counted(files, "file", "files")}. Your files stay as they are.`,
   /** Nothing left to decide: the proposal is closed. */
   done: (runId: string) => phrase`Run ${runId}'s proposal is done.`,
   /** Some files are still to decide. */
   stillLeft: (left: number, runId: string, dir?: string) =>
     phrase`${counted(left, "file is", "files are")} still to decide: ${suggestedCommand("proposals show", dir, runId)}.`,
-  /** A proposal whose texts were deleted outside Halonic was removed by discard. */
+  /** A proposal whose texts were deleted outside Halonic was removed by reject. */
   removedUnavailable: (runId: string) =>
     phrase`Removed run ${runId}'s proposal: its changes were deleted outside Halonic.`,
 
@@ -112,8 +112,8 @@ export const proposalsMessages = defineMessages("proposals", {
   unavailable: (runId: string) =>
     phrase`Run ${runId}'s changes were deleted outside Halonic, so they can't be shown or accepted.`,
   unavailableFix: (runId: string, dir?: string) =>
-    phrase`Remove the proposal with ${suggestedCommand("proposals discard", dir, runId)}.`,
-  /** Usage: `show`, `accept` and `discard` take one run id, and a file for the last two. */
+    phrase`Reject it with ${suggestedCommand("proposals reject", dir, runId)} to remove it.`,
+  /** Usage: `show`, `accept` and `reject` take one run id, and a file for the last two. */
   takesOneRunId: () => phrase`Give one run id.`,
   takesRunIdAndFile: () => phrase`Give one run id, and a file if you want to decide only that one.`,
 });

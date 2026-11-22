@@ -16,6 +16,8 @@ const runsMessages = defineMessages("runs", {
   limit: () => phrase`How many runs to list.`,
   pluginSummary: () => phrase`Add, list or remove plugins`,
   pluginListSummary: () => phrase`List the plugins`,
+  proposalsSummary: () => phrase`See what runs propose to change`,
+  rejectSummary: () => phrase`Reject a run's proposed changes`,
 });
 
 /** A result with one line for stdout and nothing for `--json`. */
@@ -190,6 +192,57 @@ verifies("cli.subcommand-placement", () => {
     expect(io.stderr).toEqual([
       "✕ show goes right after runs, before any options.",
       "  Usage: halonic runs show <run-id>",
+    ]);
+  });
+});
+
+/** `proposals reject <run-id>`, renamed from `discard`, which still runs it. */
+const proposalsCommand: CliCommand = {
+  name: "proposals",
+  usage: "",
+  summary: runsMessages.proposalsSummary(),
+  options: {},
+  subcommands: [
+    {
+      name: "reject",
+      aliases: ["discard"],
+      usage: "<run-id>",
+      takesArguments: true,
+      summary: runsMessages.rejectSummary(),
+      options: {},
+      async run(input) {
+        const [runId] = input.positionals;
+        if (runId === undefined) {
+          throw new UsageError(runsMessages.whichRun());
+        }
+        return oneLine(`Rejected ${runId}`);
+      },
+    },
+  ],
+};
+
+verifies("cli.subcommand-aliases", () => {
+  it("runs a renamed subcommand for its old word, with the arguments after it", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["proposals", "discard", "01JD8Q"], io, [proposalsCommand])).toBe(
+      exitCode.ok,
+    );
+    expect(io.stdout).toEqual(["Rejected 01JD8Q"]);
+  });
+
+  it("lists only the new name in the help", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["proposals", "--help"], io, [proposalsCommand])).toBe(exitCode.ok);
+    expect(io.stdout).toContain("  reject  Reject a run's proposed changes");
+    expect(io.stdout.join("\n")).not.toContain("discard");
+  });
+
+  it("names the new word in the usage line for the old one", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["proposals", "discard"], io, [proposalsCommand])).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      "✕ Say which run to show.",
+      "  Usage: halonic proposals reject <run-id>",
     ]);
   });
 });

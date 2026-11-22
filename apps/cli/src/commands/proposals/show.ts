@@ -37,7 +37,7 @@ interface ShownFile {
 /**
  * Shows the open proposal of one run: a heading, then each file with how
  * the run changed it and, while it is undecided, its diff; then how to
- * accept or discard it. With `--json`, the proposal as recorded and each
+ * accept or reject it. With `--json`, the proposal as recorded and each
  * file's diff lines.
  *
  * @throws UsageError when there isn't exactly one run id
@@ -103,7 +103,7 @@ function fileLines(file: ShownFile): Phrase[] {
   return [[], heading, ...since, ...diff];
 }
 
-/** How to accept or discard, while a file is left to decide. */
+/** How to accept or reject, while a file is left to decide. */
 function decideLines(record: ProposedRecord, shownId: string, place: ProposalPlace): Phrase[] {
   if (undecidedFiles(record).length === 0) return [];
   return [[], proposalsMessages.howToDecide(shownId, place.dir).phrase];
@@ -116,7 +116,7 @@ function shownDecision(decision: Decision): ShownDecision {
     case "accepted":
       return "accepted";
     case "rejected":
-      return "discarded";
+      return "rejected";
     case "not-applicable":
       return "cantWrite";
   }
