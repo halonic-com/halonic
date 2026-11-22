@@ -18,9 +18,11 @@ const fallbackSlug = "item";
  */
 export function slugify(name: string): string {
   const slug = name
-    .toLowerCase()
-    // Splits "é" into "e" and a combining accent, which the next step removes.
+    // Splits "é" into "e" and a combining accent, which a later step removes,
+    // and turns compatibility letters such as "𝐀" into plain ones. Before
+    // lowering the case, so those come out lowercase too.
     .normalize("NFKD")
+    .toLowerCase()
     .replace(/[^\w\s-]/g, "")
     .trim()
     .replace(/[\s_]+/g, "-")

@@ -93,20 +93,73 @@ export class SecretScrubber {
    * A copy of JSON-shaped data with {@link scrub} applied to every string in
    * it, object keys included, at any depth. Numbers, booleans, `null` and
    * anything that isn't a string, an array or a plain object are kept as
-   * they are. The value given is not changed.
+   * they are. The value given is not changed. A `__proto__` key stays a key
+   * of the copy, and deep data doesn't overflow the call stack: the copy
+   * keeps its own list of what is left to copy instead of recursing.
    *
    * @example
    * scrubber.scrubValue({ headers: [`Bearer ${token}`] }); // { headers: ["Bearer [secret removed]"] }
    */
   scrubValue(value: unknown): unknown {
-    if (typeof value === "string") return this.scrub(value);
-    if (Array.isArray(value)) return value.map((item) => this.scrubValue(item));
-    if (!isPlainObject(value)) return value;
-    const scrubbed: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
-      scrubbed[this.scrub(key)] = this.scrubValue(item);
+    const root: { copy?: unknown } = {};
+    const pending: PendingCopy[] = [
+      {
+        value,
+        put: (copy) => {
+          root.copy = copy;
+        },
+      },
+    ];
+    for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+      const items = this.#copyOne(next);
+      // From the last, so the first comes off the stack first; a loop, as
+      // spreading a very long list into `push` overflows the stack.
+      for (let index = items.length - 1; index >= 0; index -= 1) {
+        const item = items[index];
+        if (item !== undefined) pending.push(item);
+      }
     }
-    return scrubbed;
+    return root.copy;
+  }
+
+  /**
+   * Copies one value: a string scrubbed, anything else that isn't an array or
+   * a plain object as it is. An array or object is put in place empty, and
+   * its items come back as copies still to make, in order, so a later key
+   * that scrubs to the same text as an earlier one still wins.
+   */
+  #copyOne({ value, put }: PendingCopy): PendingCopy[] {
+    if (typeof value === "string") {
+      put(this.scrub(value));
+      return [];
+    }
+    if (Array.isArray(value)) {
+      const copy: unknown[] = [];
+      put(copy);
+      return value.map((item, index) => ({
+        value: item,
+        put: (made) => {
+          copy[index] = made;
+        },
+      }));
+    }
+    if (!isPlainObject(value)) {
+      put(value);
+      return [];
+    }
+    const copy: Record<string, unknown> = {};
+    put(copy);
+    return Object.entries(value).map(([key, item]) => {
+      const scrubbedKey = this.scrub(key);
+      // Defined, not assigned: assigning `__proto__` would set the copy's prototype.
+      Object.defineProperty(copy, scrubbedKey, ownValue(undefined));
+      return {
+        value: item,
+        put: (made) => {
+          Object.defineProperty(copy, scrubbedKey, ownValue(made));
+        },
+      };
+    });
   }
 
   /**
@@ -123,4 +176,15 @@ export class SecretScrubber {
     }
     return hidden;
   }
+}
+
+/** A value still to copy, and where its copy goes. */
+interface PendingCopy {
+  readonly value: unknown;
+  readonly put: (copy: unknown) => void;
+}
+
+/** A plain own property, as an assignment makes one. */
+function ownValue(value: unknown): PropertyDescriptor {
+  return { value, writable: true, enumerable: true, configurable: true };
 }

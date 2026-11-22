@@ -37,6 +37,9 @@ verifies("format.program-start-paths", () => {
       ["after an @", "@tools/args.txt", "tools/args.txt"],
       ["between spaces", "--require tools/x.js", "tools/x.js"],
       ["behind a short flag", "-ctools/x.js", "tools/x.js"],
+      ["in a comma list", "--paths=tools/a,tools/x.js", "tools/x.js"],
+      ["in brackets", "[tools/x.js]", "tools/x.js"],
+      ["in parentheses", "require(tools/x.js)", "tools/x.js"],
       ["behind a short flag after a split", "--opt=-ctools/x.js", "tools/x.js"],
     ])("reads a path %s", (_, arg, path) => {
       expect(pathsOf(start("node", [arg]))).toContain(path);

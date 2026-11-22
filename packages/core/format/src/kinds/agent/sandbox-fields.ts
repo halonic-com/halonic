@@ -32,8 +32,9 @@ export const MAX_ALLOWED_SITES = 50;
 /**
  * The first parts of a workspace path that hold definition files or data
  * that isn't the agent's to write: git's own folder, Halonic's reserved
- * folder, every kind's folder, the hubs and the kind files in the workspace
- * root. A test checks that every kind's place is covered, so a new kind
+ * folder, every kind's folder, the hubs, the local integrations' code
+ * (`integrations/`, which the runner runs outside the sandbox) and the kind
+ * files in the workspace root. A test checks that every kind's place is covered, so a new kind
  * can't be missed. They are compared after {@link foldName}.
  */
 export const PROTECTED_TOP_NAMES: readonly string[] = [
@@ -43,6 +44,7 @@ export const PROTECTED_TOP_NAMES: readonly string[] = [
   "deployments.yaml",
   "hub.yaml",
   "hubs",
+  "integrations",
   "library",
   "models.yaml",
   "providers",
