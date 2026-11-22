@@ -21,9 +21,18 @@ verifies("remote.phone-pairing-problems", () => {
     expect(pairWords.cantConfirm.body(laptop)).toContain("same network as Tim's laptop");
   });
 
-  it("sends the person to the button the computer's ended code shows, by its name (C618)", () => {
-    expect(pairWords.ended.body).toContain(`choose **${MAKE_NEW_CODE}**`);
-    expect(pairWords.ended.bodyNoAllow(laptop)).toContain(`choose **${MAKE_NEW_CODE}**`);
+  it("names the button the computer's ended screens show, not New code (C626 #3)", () => {
+    const named = `choose **${MAKE_NEW_CODE}**`;
+    expect(pairWords.ended.body).toContain(named);
+    expect(pairWords.ended.bodyNoAllow(laptop)).toContain(named);
+    const allWords = JSON.stringify([
+      pairWords.ended.body,
+      pairWords.ended.bodyNoAllow(laptop),
+      pairWords.used.next,
+      pairWords.used.nextTyped,
+      pairWords.generic.body,
+    ]);
+    expect(allWords).not.toContain("New code");
   });
 
   it("names the computer on Check the code and Paired", () => {
