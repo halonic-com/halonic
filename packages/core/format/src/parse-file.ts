@@ -194,7 +194,6 @@ function syntaxProblem(problem: YamlProblem): FileProblem {
   };
 }
 
-/** A schema problem, placed at its value; an unrecognized key at the key's own line (HAL-14261). */
 /**
  * How many schema problems one file reports (`format.schema-problem-limit`).
  * Each problem's position is looked up in the file, so a file with thousands
@@ -213,13 +212,14 @@ function cappedSchemaProblems(issues: readonly Issue[], source: Source): FilePro
       source: "schema",
       code: "too-many-problems",
       path: [],
-      message: `This file has ${more} more problems. Fix the ones above, then check it again.`,
+      message: `This file has ${more} more ${more === 1 ? "problem" : "problems"}. Fix the ones above, then check it again.`,
       ...source.positionOf([]),
     });
   }
   return problems;
 }
 
+/** A schema problem, placed at its value; an unrecognized key at the key's own line (HAL-14261). */
 function schemaProblem(issue: Issue, source: Source): FileProblem {
   const [onlyKey, ...otherKeys] = issue.keys ?? [];
   const position =

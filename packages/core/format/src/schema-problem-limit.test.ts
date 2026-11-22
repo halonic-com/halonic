@@ -27,6 +27,15 @@ verifies("format.schema-problem-limit", () => {
     });
   });
 
+  it("counts one left-out problem in the singular", () => {
+    const problems = problemsOf("agent", agentWithExtraFields(101));
+    expect(problems).toHaveLength(101);
+    expect(problems.at(-1)).toMatchObject({
+      code: "too-many-problems",
+      message: "This file has 1 more problem. Fix the ones above, then check it again.",
+    });
+  });
+
   it("reports 100 schema problems without a count", () => {
     const problems = problemsOf("agent", agentWithExtraFields(100));
     expect(problems).toHaveLength(100);
