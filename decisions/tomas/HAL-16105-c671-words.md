@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-16105 asks for these changes, from Sofia's words check C671 (rows 28, 50 and 56). The team decides them under the HAL-2282 rule, since they reword lines that are already there, for the same cases. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Hk14p2F6xgMtD4YH5cJiHXfrr0Sxza1ECRG0SKJFxQ27s6t6K0uiMoOSawrHNp87WyeUT7r14oJpwEQX/wohBQ==
 
 ## What changes
 
