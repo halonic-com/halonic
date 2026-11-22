@@ -10,19 +10,22 @@ import { createCloseStack } from "../../src/close-stack/close-stack.ts";
  * width and a desktop's in a real browser.
  */
 function AgentPage() {
-  const titles = (new URLSearchParams(location.search).get("cards") ?? "draft-reply").split(",");
+  const query = new URLSearchParams(location.search);
+  const titles = (query.get("cards") ?? "draft-reply").split(",");
+  // `width` narrows the panel, as a narrow panel on the desktop is.
+  const panelWidth = Number(query.get("width") ?? window.innerWidth);
   const [stack, setStack] = useState<CardStack>(
     titles.reduce((cards, title) => openCard(cards, { key: `part/${title}`, title }), noCards),
   );
   const [closeStack] = useState(createCloseStack);
   return (
-    <div className="h-screen">
+    <div className="h-screen" style={{ width: panelWidth }}>
       <StackedCards
         itemPath={["Acme Mail", "Writer"]}
         stack={stack}
         onChange={setStack}
         closeStack={closeStack}
-        panelWidth={window.innerWidth}
+        panelWidth={panelWidth}
         renderCard={() => <p className="p-4">The card's body.</p>}
       >
         <p>The agent's map.</p>

@@ -44,6 +44,23 @@ test("on a phone, a long title wraps onto two lines instead of being cut", async
   expect(box?.height ?? 0).toBeGreaterThan(lineHeight * 1.5);
 });
 
+test("on a phone, the named ← is as tall as ✕, 48px (HAL-15413)", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(twoCards);
+  const back = await page.getByRole("button", { name: "Back to draft-reply" }).boundingBox();
+  const close = await page.getByRole("button", { name: "Close all cards" }).boundingBox();
+  expect(back?.height).toBe(48);
+  expect(back?.y).toBe(close?.y);
+  expect(back?.height).toBe(close?.height);
+});
+
+test("in a narrow panel on a desktop, the named ← keeps the small size", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`${twoCards}&width=360`);
+  const back = await page.getByRole("button", { name: "Back to draft-reply" }).boundingBox();
+  expect(back?.height).toBe(28);
+});
+
 test("on a desktop, the header keeps ←, the whole path and ✕", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(twoCards);

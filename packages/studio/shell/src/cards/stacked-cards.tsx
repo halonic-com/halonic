@@ -228,7 +228,9 @@ function TopCard({ card, look, behind, itemPath, stack, onGoBack, children }: To
             />
             <CardBreadcrumb itemPath={itemPath} stack={stack} onGoBack={onGoBack} />
           </div>
-          <div className="hidden min-w-0 flex-1 @max-[30rem]:flex">
+          {/* On a phone a worded sm button is 40px and ✕ is 48px, so ← takes the touch height
+              to line up with it; a narrow panel on the desktop keeps sm (Sofia, HAL-15413). */}
+          <div className="hidden min-w-0 flex-1 @max-[30rem]:flex phone:[&>button]:min-h-touch">
             <Button
               variant="ghost"
               size="sm"
