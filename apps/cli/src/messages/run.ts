@@ -328,6 +328,9 @@ export const runMessages = defineMessages("run", {
     part.kind === "backend"
       ? phrase`The backend of the plugin ${plugin} didn't start, so its tools are off in this run.`
       : phrase`The program ${part.name} of the plugin ${plugin} didn't start, so its tools are off in this run.`,
+  /** Line 1 in its place when the backend's code can't run in the sandbox here, as `plugin list` says it (C642 #5). */
+  pluginBackendOffHere: (plugin: string) =>
+    phrase`The backend of the plugin ${plugin} is off on this computer, so its tools are off in this run.`,
   /**
    * Line 1 of the warning when a local integration starts without the
    * sandbox, with the user's yes given in Studio (microcopy 24.1 R18, with

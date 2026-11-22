@@ -2,16 +2,21 @@
 // (HAL-12343): the plugin's other parts keep working, so without it a run
 // would end with no word on why the agent had none of that part's tools.
 
+import { PluginBackendNotFencedError } from "@halonicjs/adapter-integration-runner";
 import {
+  isRunnerUnfencedReason,
   type PluginPartUnavailable,
   type PluginPartUnavailableReason,
+  type RunnerUnfencedReason,
   runnerUnfencedWords,
 } from "@halonicjs/app";
+import { findCause } from "@halonicjs/std";
 import { docsBase } from "./messages/docs.ts";
 import { errorMessages } from "./messages/general.ts";
 import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
 import { type PluginPartShown, runMessages } from "./messages/run.ts";
 import { sandboxDocsLink, sandboxMessages } from "./messages/sandbox.ts";
+import { offHereLines } from "./output/plugin-off-here.ts";
 import { printable } from "./output/printable.ts";
 
 /** Where the run's connectors tell the person about a plugin part that can't start, and log a failed clean-up. */
@@ -25,8 +30,10 @@ export interface RunConnectorLines {
  * plugin whose tools are off, shown with or without `--debug`, so a run
  * never leaves them out silently. Line 1 has the shape of the other
  * connector warnings, and the reason follows on the lines under it
- * (C484-1, HAL-12343). Each is written once for each connector, part and
- * reason, a reason's details included.
+ * (C484-1, HAL-12343). A backend whose code can't run in the sandbox here
+ * is off on this computer, with the reason, its fix and where to allow it,
+ * as `plugin list` says it (C642 #5). Each is written once for each
+ * connector, part and reason, a reason's details included.
  *
  * @param wslDistro - the WSL distro the CLI runs in, for the WSL 1 fix's command
  * @example
@@ -50,6 +57,13 @@ export function pluginPartReporter(
         : { kind: "program", name: printable(part.slice("local:".length)) };
     // By its name, as `plugin list` shows it (C642 #6); the manifest's name is outside text.
     const shownPlugin = printable(name ?? plugin);
+    const offHere = offHereOf(error);
+    if (part === "backend" && offHere !== undefined) {
+      const first = runMessages.pluginBackendOffHere(shownPlugin);
+      for (const line of offHereLines(first, offHere, shownPlugin)) lines.warn(line);
+      lines.warn(phrase`  ${errorMessages.more(sandboxDocsLink(offHere), offHere).phrase}`);
+      return;
+    }
     lines.warn(
       phrase`${markPart("needsYou")} ${runMessages.pluginPartOff(shownPlugin, shown).phrase}`,
     );
@@ -120,6 +134,17 @@ function pluginPartWhy(
       // Only a host with no sandbox at all gives this, and the CLI always has one.
       return [];
   }
+}
+
+/**
+ * Why the backend is off on this computer, when it didn't start because its
+ * code can't run in the sandbox here: the agent host reads the same error
+ * (`host-plugin-backends.ts`). A code this version doesn't know isn't, so
+ * the error's own words show.
+ */
+function offHereOf(error: unknown): RunnerUnfencedReason | undefined {
+  const reason = findCause(error, PluginBackendNotFencedError)?.reason;
+  return reason !== undefined && isRunnerUnfencedReason(reason) ? reason : undefined;
 }
 
 /** A thrown value's message, safe to print on one line. */

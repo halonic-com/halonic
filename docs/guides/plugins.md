@@ -97,7 +97,7 @@ is the reference.
 | a validation error naming a field | unknown or mistyped field; every object is strict | fix the field named |
 | "added but off" | you answered No, or there was no terminal | `halonic trust --plugin <id>` |
 | "changed since you trusted it" | a file or the manifest changed | trust it again |
-| "off on this computer" | the plugin has a backend, and plugin code can't run in the sandbox here (the line under it says why); the CLI never runs it without | fix what the line names, or allow it in the Halonic desktop app to use it there: **Settings › Plugins**, open the plugin, then **Review** |
+| "off on this computer" (in `plugin list`, and in a run as "The backend of the plugin <name> is off on this computer, so its tools are off in this run.") | the plugin has a backend, and plugin code can't run in the sandbox here (the line under it says why); the CLI never runs it without | fix what the line names, or allow it in the Halonic desktop app to use it there: **Settings › Plugins**, open the plugin, then **Review** |
 | a local tool "needs the desktop app" | no sandbox on Android or in the browser | use the desktop app, the CLI or `serve` |
 | a tool refused | the server offers a tool the manifest doesn't declare | declare it, or remove it from the server |
 | "<connector> didn't start, so its tools are off in this run.", with "The sandbox didn't work when the plugin <name> started, so none of it ran." and "Halonic tries <name> in the sandbox again the next time a run uses it." under it | the computer passed the sandbox check, but the sandbox didn't work when the plugin started, so Halonic stopped it | nothing to do; the next run that uses it tries the sandbox again |

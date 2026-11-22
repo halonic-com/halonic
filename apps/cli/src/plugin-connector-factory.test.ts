@@ -2,15 +2,23 @@ import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
-import type { PluginBackendMachine } from "@halonicjs/adapter-integration-runner";
+import {
+  type PluginBackendMachine,
+  PluginBackendNotFencedError,
+} from "@halonicjs/adapter-integration-runner";
 import { nodeLaunchFolders } from "@halonicjs/adapter-mcp";
 import { MemorySecrets, MemoryTokenStore, MemoryTrustStore } from "@halonicjs/adapter-memory";
-import { type PluginPartUnavailable, readPluginFolder } from "@halonicjs/app";
+import {
+  type PluginPartUnavailable,
+  pluginPartUnavailableReason,
+  readPluginFolder,
+} from "@halonicjs/app";
 import type { ConnectorFactoryContext, Sandbox, SandboxCheck } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { plainText } from "./messages/phrase.ts";
+import { sandboxMessages } from "./messages/sandbox.ts";
 import { PluginConnectorFactory, pluginConnectorSources } from "./plugin-connector-factory.ts";
 import { pluginPartReporter } from "./plugin-part-warnings.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
@@ -186,6 +194,33 @@ verifies("cli.plugin-local-tools", () => {
     expect(lines.slice(1)).toEqual([
       "warn   Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
       "warn   More: https://docs.halonic.dev/security/sandbox/#other (from-a-newer-port)",
+    ]);
+  });
+
+  it("says a backend whose code can't run in the sandbox here is off on this computer, as plugin list does (C642 #5)", () => {
+    const { lines, report } = reporter();
+    // As the backend's connector wraps the start's error.
+    const error = new Error('Connector "weather" didn\'t start', {
+      cause: new PluginBackendNotFencedError("container"),
+    });
+    const reason = pluginPartUnavailableReason(error);
+    report("weather", { plugin: "weather", name: "Weather", part: "backend", reason, error });
+    expect(lines).toEqual([
+      "warn ! The backend of the plugin Weather is off on this computer, so its tools are off in this run.",
+      `warn   ${plainText(sandboxMessages.reasonAndFix("container").phrase)}`,
+      "warn   Or allow this in the Halonic desktop app: Settings › Plugins › Weather › Review. The halonic command runs plugin code only in the sandbox.",
+      "warn   More: https://docs.halonic.dev/security/sandbox/#container (container)",
+    ]);
+    expect(lines.join("\n")).not.toContain("isn't allowed yet");
+  });
+
+  it("keeps the error's words for a reason code this version doesn't know", () => {
+    const { lines, report } = reporter();
+    const error = new PluginBackendNotFencedError("from-a-newer-gate");
+    report("weather", { plugin: "weather", part: "backend", reason: { kind: "failed" }, error });
+    expect(lines).toEqual([
+      "warn ! The backend of the plugin weather didn't start, so its tools are off in this run.",
+      `warn   ${error.message}`,
     ]);
   });
 
