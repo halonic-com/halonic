@@ -250,7 +250,8 @@ export class LocalRuns {
 
   /**
    * Before the first run starts or resumes, end the runs the engine lost when it last stopped
-   * (a failure is tried again on the next call). Resolves to how many ended as `interrupted`.
+   * (a failure is tried again on the next call). Resolves to how many ended as `interrupted`;
+   * to 0, with the store untouched, when the options turn `sweepsLostRuns` off.
    */
   ready(): Promise<number> {
     this.#started ??= this.#endInterruptedRuns().catch((error: unknown) => {
@@ -267,6 +268,7 @@ export class LocalRuns {
    * folder adapter that throws must not keep a parent from hearing.
    */
   async #endInterruptedRuns(): Promise<number> {
+    if (this.#options.sweepsLostRuns === false) return 0;
     await this.#connectorCalls.markCutShort();
     return sweepLostRuns(this.store, this.#clock, this.#options.scheduler, (runId) =>
       this.#ended(runId),

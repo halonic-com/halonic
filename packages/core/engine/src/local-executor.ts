@@ -69,9 +69,9 @@ const chatAgent = "chat";
  * agent runs are built (step 4).
  *
  * A run moves on one step per scheduler timer, so the scheduler's listener
- * must forward its timers to {@link LocalExecutor.onTimer}. Before the first
- * run starts or resumes, the executor ends the runs it lost when it last
- * stopped (`endInterruptedRuns`); it assumes it is the only engine on its store.
+ * must forward its timers to {@link LocalExecutor.onTimer}. Before the first run starts or resumes,
+ * it ends the runs it lost when it last stopped (`endInterruptedRuns`), taking itself for the only
+ * engine on its store; a host with many engines on one store turns `runs.sweepsLostRuns` off.
  */
 export class LocalExecutor implements RunExecutor {
   readonly id = "local";

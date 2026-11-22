@@ -39,6 +39,7 @@ import type { ModelScope } from "../local-executor-options.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
 import type { AbortOnStop } from "./abort-on-stop.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
+import type { LocalRunsOptions } from "./local-runs-options.ts";
 import type { RunProposalFolders } from "./proposal-folders.ts";
 import type { RunConnectors } from "./run-connectors.ts";
 
@@ -160,11 +161,23 @@ export interface RunsSetup {
   readonly scriptedAlias?: { readonly alias: string; readonly secret: string };
   /** How a model call's stop becomes an `AbortSignal`; model calls get none when left out. */
   readonly abortOnStop?: AbortOnStop;
+  /** Whether getting ready ends the runs lost when the engine last stopped; it does when left out. */
+  readonly sweepsLostRuns?: boolean;
   /**
    * Gets each request the executor resolves a model for, such as a method's alias; the model is
    * picked once what it returns has settled.
    */
   readonly onResolveModel?: (request: ChatTurnRequest, scope?: ModelScope) => unknown;
+}
+
+/** The runs options the setup gives, each only when it gives it. */
+function runsExtrasOf(setup: RunsSetup): Partial<LocalRunsOptions> {
+  return {
+    ...(setup.connectorCalls === undefined ? {} : { connectorCalls: setup.connectorCalls }),
+    ...(setup.proposalFolders === undefined ? {} : { proposalFolders: setup.proposalFolders }),
+    ...(setup.runConnectors === undefined ? {} : { runConnectors: setup.runConnectors }),
+    ...(setup.sweepsLostRuns === undefined ? {} : { sweepsLostRuns: setup.sweepsLostRuns }),
+  };
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -226,9 +239,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       ...(harnesses === undefined ? {} : { harnesses }),
       ...(setup.budget === undefined ? {} : { budget: async () => setup.budget }),
       ...(setup.mayStartHarness === undefined ? {} : { mayStartHarness: setup.mayStartHarness }),
-      ...(setup.connectorCalls === undefined ? {} : { connectorCalls: setup.connectorCalls }),
-      ...(setup.proposalFolders === undefined ? {} : { proposalFolders: setup.proposalFolders }),
-      ...(setup.runConnectors === undefined ? {} : { runConnectors: setup.runConnectors }),
+      ...runsExtrasOf(setup),
       definitionsOf: async (hubId, workflowId, version) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
         versionsAsked.push(version);
