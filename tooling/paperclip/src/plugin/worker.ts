@@ -3,6 +3,7 @@ import { boardCheck } from "./board-check.ts";
 import { registerBoardTools } from "./board-tools.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
 import { runWatcher } from "./job.ts";
+import { registerReadyForReview } from "./ready-for-review.ts";
 import { registerTools } from "./tools.ts";
 
 /**
@@ -31,6 +32,7 @@ export const plugin = definePlugin({
       await board.onRunFailed(event, new Date());
     });
     registerTools(ctx);
+    registerReadyForReview(ctx);
     registerBoardTools(ctx);
   },
   async onApiRequest(input) {

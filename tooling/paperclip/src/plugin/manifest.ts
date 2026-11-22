@@ -11,7 +11,7 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.agent-tools",
   apiVersion: 1,
-  version: "0.2.0",
+  version: "0.3.0",
   displayName: "Agent tools",
   description:
     "Halonic's tools beside Paperclip. The PR watcher marks a task done once its pull requests merged with a green ci-ok, and wakes the author for a red ci-ok, a conflict or a new review finding.",
@@ -28,7 +28,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "issue.comments.read",
     "issue.comments.create",
     // Only GET requests to api.github.com and GraphQL queries to its /graphql (both readers'
-    // guards); the manifest can't list hosts.
+    // guards); the manifest can't list hosts. ready_for_review also calls the precheck service
+    // at the address in the settings (src/plugin/ready-for-review.ts).
     "http.outbound",
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
@@ -82,6 +83,12 @@ export const manifest: PaperclipPluginManifestV1 = {
         title: "Dry run",
         description: "Only log what it would do. Turn off once the first runs look right.",
         default: true,
+      },
+      precheckUrl: {
+        type: "string",
+        title: "Precheck service",
+        description:
+          "The address of the precheck service that ready_for_review calls, on Paperclip's Docker network. Empty: http://halonic-precheck:8787.",
       },
       boardCheckerTask: {
         type: "string",
@@ -179,6 +186,31 @@ export const manifest: PaperclipPluginManifestV1 = {
       description:
         "The merge queue from the PR watcher's last snapshot (at most about 10 minutes old, and it says when it's older): each entry's position, state, group ci-ok, time in the queue and who queued it; merge-group jobs waiting for a runner and the longest wait; open pull requests labelled fast-track with who added the label (unknown never counts as allowed). Sends no GitHub request.",
       parametersSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "ready_for_review",
+      displayName: "Ready for review",
+      description:
+        "Call before you open or update a pull request on halonic-com/halonic: checks your pushed branch merged into current main (repo checks, format, generated files, typecheck and lint, affected tests, coverage floors) and answers PASS, FAIL with a short summary per failed step, RUNNING with a checkId to pass on the next call, or CHECK UNAVAILABLE. On FAIL, fix, push and call it again; on PASS or CHECK UNAVAILABLE, go on. CI still has the final say.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          branch: {
+            type: "string",
+            description: "The branch you pushed, for example mateo/HAL-16437-ready-for-review.",
+          },
+          sha: {
+            type: "string",
+            description:
+              "Optional: the full 40-character commit you pushed, so a stale push fails at once.",
+          },
+          checkId: {
+            type: "string",
+            description:
+              "The id from an earlier RUNNING answer: reads that check instead of starting a new one.",
+          },
+        },
+      },
     },
     {
       name: "board_asks",
