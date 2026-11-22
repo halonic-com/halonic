@@ -3,6 +3,7 @@
 - Task: HAL-16326
 - Approval: Liam asked for this change on HAL-16326; it changes `guard-notes.yml`, a trust root of the guard, so Liam and Julian both sign it as guardians
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VYEmX4Yz8haAo4D5aZCZLkHV5x81RI/vbAkPwKbf8gmZiB7h5IiPirYR4HLSLJjDtyoO0q57Tcs5mrca6gLcDQ==
 
 ## What changes
 
