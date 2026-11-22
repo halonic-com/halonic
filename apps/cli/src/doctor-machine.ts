@@ -42,6 +42,7 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { findCommand, nodeCommandSearch } from "./command-paths.ts";
+import { type AddedPlugins, addedPluginsOf } from "./connector-plugin.ts";
 import { networkProblemOf } from "./doctor-network.ts";
 import { engineHttp } from "./engine-http.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
@@ -50,6 +51,7 @@ import {
   type LocalModelServer,
   localLoadedModels,
 } from "./local-model-servers.ts";
+import { openPluginService } from "./plugin-host.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { profileKeyOrigins } from "./secret-host.ts";
@@ -96,6 +98,8 @@ export interface DoctorMachine {
    * Left out, it asks about every agent's sign-in.
    */
   readonly keyOrigins?: KeyOrigins;
+  /** The plugins added in the profile, for the Plugins line (HAL-14296); left out, no line. */
+  readonly plugins?: AddedPlugins;
 }
 
 /** The workspace for {@link doctorService}, with the provider files its servers are read from. */
@@ -167,6 +171,8 @@ export function nodeDoctorMachine(): DoctorMachine {
       clock: systemClock,
     }),
     keyOrigins: profileKeyOrigins(),
+    // Opened only when a connector uses a plugin, as `tools review` opens it.
+    plugins: () => addedPluginsOf(openPluginService({}))(),
   };
 }
 
