@@ -2,6 +2,7 @@
 
 - Approval: Paperclip tasks HAL-15808 (flow check C634 #4 on HAL-15803), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kWOt4JcQRENFRTdpOXDyEUS7wZiyYxBoOoWxCGIfqx0AAROrx7kJiJrfIkS/BYH9FcVt05iPOwud66lc/RZgAg==
 - Task: HAL-15808, HAL-15815
 
 ## What changes
