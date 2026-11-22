@@ -13,7 +13,12 @@ import {
   runFailureOf,
   type WorkspaceModels,
 } from "@halonicjs/app/run-failure";
-import { endedWithParent, type RunEvent, type RunSummary } from "@halonicjs/events";
+import {
+  answerChoicesOf,
+  endedWithParent,
+  type RunEvent,
+  type RunSummary,
+} from "@halonicjs/events";
 import { duration } from "../../messages/duration.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
@@ -97,10 +102,10 @@ interface FailedEndingOptions {
  * fix indented under it, then the receipt, the same two lines `halonic run`
  * prints when the run fails. A run cancelled somewhere else has one line,
  * where the cancel landed, and no fix (revision 28); so has a run whose
- * cause is known but has no words of its own yet (HAL-6451). A cancelled
- * child run has the way to its parent under its line. A run
+ * cause is known but has no words of its own yet (HAL-6451). A run
  * whose step failed because its child run failed says the child's cause
- * instead, with the way to that child.
+ * instead, with the way to that child. A child run, cancelled or failed,
+ * has the way to its parent under its lines (HAL-15755, HAL-15864).
  */
 function failedEnding(ended: EndedRun, options: FailedEndingOptions): Phrase[] {
   const { run, title } = ended;
@@ -110,9 +115,9 @@ function failedEnding(ended: EndedRun, options: FailedEndingOptions): Phrase[] {
   const own = failureLines(ended, { dir: options.dir, debugging: options.debugging });
   const lines =
     own === undefined
-      ? cancelledLines(run.summary, title, cancelledAt(run.events, failed, named), options.dir)
+      ? [cancelledLine(run.summary, title, cancelledAt(run.events, failed, named))]
       : (childFailedLines(options, { title, step }) ?? own.lines);
-  const [first = [], ...rest] = lines;
+  const [first = [], ...rest] = [...lines, ...parentRunLines(run.summary, options.dir)];
   const receipt = runMessages.receipt(receiptOf(run.events, run.summary)).phrase;
   return [
     [],
@@ -147,7 +152,7 @@ function failureLines(
     step: stepNamer(definitions)(failed.state ?? run.summary.state ?? ""),
     runId: shortRunId(run.summary.id),
   };
-  const { message, fix } = runFailedLines(failedRun, failure);
+  const { message, fix } = runFailedLines(failedRun, offOptionsNamed(failure, failed, definitions));
   const lines = fix === undefined ? [message.phrase] : [message.phrase, phrase`  ${fix.phrase}`];
   return { lines, reason: failure.reason };
 }
@@ -180,6 +185,30 @@ function childFailedLines(
   }
   const childId = shortRunId(child.run.summary.id);
   return [...lines.lines, phrase`  ${runsMessages.showChildRun(childId, dir).phrase}`];
+}
+
+/**
+ * An answer that isn't one of the step's options, with its agent as its file
+ * names it: "The agent Picker answered …", as the step line above names it
+ * (HAL-15864). The engine's line names the agent by id; its typed cause says
+ * which agent, so only that id is swapped. A line from a log without the
+ * cause, or that doesn't start as the engine writes it, stays as it is.
+ */
+function offOptionsNamed(
+  failure: RunFailure,
+  failed: RunFailedEvent,
+  definitions: RunDefinitions,
+): RunFailure {
+  const agent = answerChoicesOf(failed.cause)?.agent;
+  if (failure.reason !== "error" || agent === undefined) {
+    return failure;
+  }
+  const byId = `The agent ${agent} answered `;
+  if (failure.message?.startsWith(byId) !== true) {
+    return failure;
+  }
+  const byName = `The agent ${agentName(agent, definitions)} answered `;
+  return { ...failure, message: byName + failure.message.slice(byId.length) };
 }
 
 /** A step by the name its workflow gives it, as the step lines name it. */
@@ -261,25 +290,26 @@ function runFailedEvent(run: RunDetail): RunFailedEvent {
 /**
  * A cancelled run's one line, which says so when the run that started it
  * ended (its typed cause, HAL-15555); a log written before the cause keeps
- * the plain line. Any child run, whatever ended it, has the way to its parent
- * under that line, as Studio's run page has Open run (HAL-12411), so a
- * for-each item whose parent the person cancelled still leads there
- * (HAL-15755).
+ * the plain line.
  */
-function cancelledLines(
-  summary: RunSummary,
-  title: string,
-  at: CancelledAt,
-  dir: string | undefined,
-): Phrase[] {
-  const line = endedWithParent(summary.cause)
+function cancelledLine(summary: RunSummary, title: string, at: CancelledAt): Phrase {
+  return endedWithParent(summary.cause)
     ? runsMessages.showCancelledWithParent(title, at).phrase
     : runsMessages.showCancelled(title, at).phrase;
+}
+
+/**
+ * The way to the run that started this one, indented under its ending, as
+ * Studio's run page has Open run (HAL-12411): for any child run, cancelled
+ * whatever ended it, so a for-each item whose parent the person cancelled
+ * still leads there (HAL-15755), or failed (HAL-15864). None for a run
+ * nothing else started.
+ */
+function parentRunLines(summary: RunSummary, dir: string | undefined): Phrase[] {
   const parentId = summary.parentRunId;
-  if (parentId === null) {
-    return [line];
-  }
-  return [line, phrase`  ${runsMessages.showParentRun(shortRunId(parentId), dir).phrase}`];
+  return parentId === null
+    ? []
+    : [phrase`  ${runsMessages.showParentRun(shortRunId(parentId), dir).phrase}`];
 }
 
 /**
