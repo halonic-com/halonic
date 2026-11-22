@@ -40,7 +40,8 @@
 # A push to main doesn't test again what its merge group already passed
 # (board decision, HAL-15465, 21 Nov): with squash merges, the commit that
 # lands on main is the exact commit its merge group tested. The `merged` job
-# looks for a green merge-group run of this file for the pushed commit; the
+# looks for a merge-group run of this file for the pushed commit with a green
+# ci-ok, even one still finishing (HAL-15694); the
 # jobs on our own CI server that passed there (fast, build, trace, and
 # scaffold, e2e and docs when the group ran them) skip on the push. A job the
 # group skipped by area still runs here, so a gap in the area rules still
@@ -246,10 +247,15 @@ jobs:
           full() { echo "::notice title=Full run::$1, so every job runs."; exit 0; }
           [ "$SWITCH" != off ] || full "CI_MAIN_SKIP_MERGED is off"
           [ "$ATTEMPT" = 1 ] || full "This is a re-run (attempt $ATTEMPT)"
-          runs=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=merge_group&status=success&per_page=10" \
-            | jq -r --arg sha "$SHA" '.workflow_runs[] | select(.head_sha == $sha and .event == "merge_group" and .conclusion == "success") | "\(.id) \(.html_url)"') \
+          # Every merge-group run of the commit, whatever its status: the
+          # group's run often still finishes (its trailing "Cancel the run on
+          # the first failure" job) a few seconds after the merge pushed, and
+          # a status=success query missed it then (HAL-15694). Its ci-ok job,
+          # checked below, is what counts.
+          runs=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=merge_group&per_page=10" \
+            | jq -r --arg sha "$SHA" '.workflow_runs[] | select(.head_sha == $sha and .event == "merge_group") | "\(.id) \(.html_url)"') \
             || full "Couldn't list the merge-group runs of $SHA"
-          [ -n "$runs" ] || full "No green merge-group run tested $SHA (a bypass merge, a direct push, or a group that failed or was lost)"
+          [ -n "$runs" ] || full "No merge-group run tested $SHA (a bypass merge, a direct push, or a group that was lost)"
           while read -r id url; do
             jobs=$(gh api --paginate "repos/$REPO/actions/runs/$id/jobs?per_page=100&filter=latest" --jq '.jobs[] | {name, conclusion}' | jq -s .) \
               || full "Couldn't list the jobs of $url"
