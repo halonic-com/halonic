@@ -160,3 +160,28 @@ verifies("runs.run-view.key-origin-answered", () => {
     expect(lines[1]).toMatchObject({ text: expect.stringContaining("gate\\u202eway") });
   });
 });
+
+verifies("runs.run-view.key-origin-asked", () => {
+  const asked: RunEventBody = {
+    type: "key-origin.asked",
+    provider: "Gateway",
+    key: "gateway-key",
+    origin: "https://gateway.example.com",
+  };
+
+  it("says the question in words, with its number and time", () => {
+    const lines = runLogLines(logOf("run_a_01jd8q", [[1, asked]]));
+    expect(lines[1]).toEqual({
+      kind: "words",
+      seq: 2,
+      time: "10:41:00",
+      text: 'Asked whether provider "Gateway" may send key "gateway-key" to https://gateway.example.com.',
+    });
+  });
+
+  it("writes a hidden character in a name as its escape", () => {
+    const event = { ...asked, key: "gate\u202eway" } as RunEventBody;
+    const lines = runLogLines(logOf("run_a_01jd8q", [[1, event]]));
+    expect(lines[1]).toMatchObject({ text: expect.stringContaining("gate\\u202eway") });
+  });
+});

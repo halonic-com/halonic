@@ -7,6 +7,7 @@ import { escapeHidden } from "@halonicjs/std";
 import { keyOriginAnswerWords } from "../run-words.ts";
 import { clockTimeWithSeconds } from "../time-words.ts";
 import { logSiteLimit } from "./blocked-sites.tsx";
+import { keyOriginAskedWords } from "./key-origin-wait.ts";
 
 /** One line of the run log view. */
 export type RunLogLine =
@@ -24,8 +25,9 @@ export type RunLogLine =
   /** A step's blocked sites, once per step at its first, in place of its blocked-site events. */
   | { readonly kind: "blocked"; readonly seq: number; readonly step: StepBlockedSites }
   /**
-   * A person's answer to "Allow this address?", in words, in place of its `key-origin.answered`
-   * event: the time with seconds and what was allowed or not, never who answered.
+   * The question "Allow this address?" or a person's answer to it, in words, in place of its
+   * `key-origin.asked` or `key-origin.answered` event: the time with seconds and what was asked,
+   * or what was allowed or not, never who answered.
    */
   | { readonly kind: "words"; readonly seq: number; readonly time: string; readonly text: string };
 
@@ -38,8 +40,9 @@ const shownApart = new Set(["runId", "seq", "at", "entry", "type"]);
  * written as its `\uXXXX` escape, so a value can't turn the line around.
  * A step's blocked sites become one "Blocked: …" line per site, in place of
  * their `sandbox.blocked` events (requirement `runs.run-view.blocked-sites`);
- * blocked files stay events. A `key-origin.answered` event is one line in words
- * (requirement `runs.run-view.key-origin-answered`).
+ * blocked files stay events. A `key-origin.asked` and a `key-origin.answered` event are
+ * one line in words each (requirements `runs.run-view.key-origin-asked` and
+ * `runs.run-view.key-origin-answered`).
  *
  * @example
  * runLogLines(events);
@@ -59,14 +62,10 @@ export function runLogLines(events: readonly RunEvent[]): RunLogLine[] {
     if (event.type === "sandbox.blocked" && event.block.kind === "network") {
       continue;
     }
-    if (event.type === "key-origin.answered") {
+    const words = keyOriginWords(event);
+    if (words !== undefined) {
       const time = clockTimeWithSeconds(new Date(event.at));
-      lines.push({
-        kind: "words",
-        seq: event.seq,
-        time,
-        text: escapeHidden(keyOriginAnswerWords(event)),
-      });
+      lines.push({ kind: "words", seq: event.seq, time, text: escapeHidden(words) });
       continue;
     }
     lines.push({
@@ -78,6 +77,13 @@ export function runLogLines(events: readonly RunEvent[]): RunLogLine[] {
     });
   }
   return lines;
+}
+
+/** "Allow this address?" or its answer in words; `undefined` for any other event. */
+function keyOriginWords(event: RunEvent): string | undefined {
+  if (event.type === "key-origin.asked") return keyOriginAskedWords(event);
+  if (event.type === "key-origin.answered") return keyOriginAnswerWords(event);
+  return undefined;
 }
 
 /** The event's own fields as one line of JSON. */
