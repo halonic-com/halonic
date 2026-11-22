@@ -33,6 +33,29 @@ verifies("cli.run-failure", () => {
     expect(isSetupCause(failed.cause)).toBe(true);
   });
 
+  it("quotes a macOS file, which has a space in it, so chmod gets one path", () => {
+    const macFile = "/srv/sam/Library/Application Support/halonic/secrets/secrets.json";
+    const failure = runFailureOf(
+      {
+        ...failedWith("error"),
+        cause: {
+          kind: "denied" as const,
+          code: "secrets.file-readable",
+          detail: { file: macFile },
+        },
+      },
+      undefined,
+    );
+    if (failure === undefined) throw new Error("expected a failure");
+    const { fix } = runFailedLines(
+      { title: "Support reply", step: "Draft a reply", runId: "01JD8Q" },
+      failure,
+    );
+    expect(fix === undefined ? undefined : plainText(fix.phrase)).toBe(
+      `Run chmod 600 "${macFile}", then run again.`,
+    );
+  });
+
   it("gives the general lines when the cause doesn't name the file", () => {
     const failed = {
       ...failedWith("error"),

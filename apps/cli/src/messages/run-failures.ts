@@ -301,7 +301,7 @@ const lineTwo = {
   "unknown-model-alias": (_run, failure) =>
     phrase`Add ${failure.alias} to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.`,
   "secrets-file-readable": (_run, failure) =>
-    phrase`Run chmod 600 ${failure.file}, then run again.`,
+    phrase`Run chmod 600 ${shellWord(failure.file)}, then run again.`,
   "unknown-provider": (_run, failure) =>
     "alias" in failure
       ? phrase`Add providers/${failure.provider}.yaml, or point the model alias ${failure.alias} at a provider the workspace has.`
