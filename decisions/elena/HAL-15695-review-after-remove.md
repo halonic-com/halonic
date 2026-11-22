@@ -3,6 +3,7 @@
 - Task: HAL-15695
 - Approval: a team decision under HAL-2282: it reuses the untrusted refusal and its **Review**, both already approved (H16, C144 RT1), for a refusal the person can only fix by trusting again. Follow-up of Sofia's check question on HAL-15683 (words check C613, row 33). Liam signs at review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2VJ75Ux2ghNR7ta10lI3dMYqnqFBBiicTGNJFnkwKHH6LmktP0ACxkvtnW0vwNDvzppZxnbwCDMw2qdeT5r9Aw==
 
 ## What changes
 
