@@ -3,7 +3,6 @@
 - Task: HAL-15452
 - Approval: a detail of an approved screen (the Triggers section, flow-routines 2.3), decided by the team under the HAL-2282 rule from flow check C579 findings 1 and 2 (HAL-15448), confirmed by Sofia on HAL-15460. Liam signs this note at code review.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:j4wzuhYVa3ndLm9lAM87uhzbE27Yo7wJcuIprpnmmHdcQAmeO0GEzyeazeNuF2+Jf8NxPiFfscpbHFxtBOI4CQ==
 
 ## What changes
 
@@ -32,7 +31,10 @@ Requirements changed: `routines.triggers.agent-cant-run-note` (rewritten for the
 `routines.triggers.empty-state` (no agent line), and the sentence quoted in
 `routines.new.create`, `routines.starts.starts-card`, `studio.engine-service` and `cli.commands.serve.serve`;
 `studio.workspace-routines` gains that it gives an agent's section the workflows that run the agent
-as a step, with one example.
+as a step, with one example. `routines.triggers.add-trigger-from-page` and
+`agents.map.add-button-per-side`: the agent map's **+ Add trigger** still opens the section on its
+add step, but on an agent that step now shows the section as it is, with the way in to its
+workflows, and makes nothing; on a workflow it still makes the routine once.
 
 Tests changed: in `triggers-section.test.tsx` the four tests of an agent's Prompt (asks first, Cancel,
 focus after Cancel, the line above the Prompt) are removed with the behaviour they test, and the
@@ -52,6 +54,8 @@ today. When Halonic can run an agent on its own, Add trigger on an agent comes b
 
 - routines.triggers.agent-cant-run-note
 - routines.triggers.add-trigger-creates-routine
+- routines.triggers.add-trigger-from-page
+- agents.map.add-button-per-side
 - routines.triggers.empty-state
 - routines.new.create
 - routines.starts.starts-card
