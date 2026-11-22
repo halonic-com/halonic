@@ -26,14 +26,8 @@ export function checkForEachWaits(context: CheckContext): WorkspaceIssue[] {
     );
     for (const [id, state] of Object.entries(workflow.value.states)) {
       const runs = state.type === "foreach" ? state.workflow : undefined;
-<<<<<<< HEAD
       const waits = runs === undefined ? undefined : waitIn(runs, hubStates, new Set());
       if (waits !== undefined) {
-=======
-      const waitStep = runs === undefined ? undefined : waitSteps.get(runs);
-      if (runs !== undefined && waitStep !== undefined) {
-        const message = `For-each step "${id}" runs "${runs}" once for each item, and a run for one item can't wait, but "${runs}" has the wait step "${waitStep}". Move "${waitStep}" into this workflow after "${id}", or take it out of "${runs}".`;
->>>>>>> 6f2df0c97 (fix(routines): C613 words for the for-each wait refusal, Run now and three changesets (HAL-15686))
         const path = ["states", id, "workflow"];
         const message = waitsMessage(id, waits);
         issues.push(context.error(workflow.path, path, "foreach-child-waits", message));
@@ -80,18 +74,18 @@ function waitIn(
 }
 
 /**
- * The error's message: the item's workflow and its wait step; for a wait
- * further down, each workflow on the way, and the fix names the one that
- * has the wait step.
+ * The error's message: the item's workflow and its wait step, with the fix
+ * that moves the step; for a wait further down, each workflow on the way,
+ * and the fix names the one that has the wait step.
  */
 function waitsMessage(stepId: string, { through, waitStep }: ItemWait): string {
   const [runs, ...further] = through;
+  if (further.length === 0) {
+    return `For-each step "${stepId}" runs "${runs}" once for each item, and a run for one item can't wait, but "${runs}" has the wait step "${waitStep}". Move "${waitStep}" into this workflow after "${stepId}", or take it out of "${runs}".`;
+  }
   const hasWaitStep = `has the wait step "${waitStep}"`;
   // "review-one" runs "sign-off", which runs "ask", which has the wait step "approve"
-  const waits =
-    further.length === 0
-      ? `"${runs}" ${hasWaitStep}`
-      : `"${runs}" runs ${further.map((id) => `"${id}"`).join(", which runs ")}, which ${hasWaitStep}`;
+  const waits = `"${runs}" runs ${further.map((id) => `"${id}"`).join(", which runs ")}, which ${hasWaitStep}`;
   const last = further.at(-1) ?? runs;
   return `For-each step "${stepId}" runs "${runs}" for each item, but ${waits}, and an item's run can't wait, so the run fails there. Move the wait step after "${stepId}", or take it out of "${last}".`;
 }
