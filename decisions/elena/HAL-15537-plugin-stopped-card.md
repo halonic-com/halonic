@@ -6,7 +6,7 @@
 
 ## What changes
 
-Four active requirements are edited:
+Five active requirements are edited:
 
 - `agent-host.plugin-routes`: when the computer passed the sandbox check but a runner's fence didn't hold, the host refuses the call with 403 `plugin_stopped` and its own fixed message ("Halonic stopped this plugin: its sandbox didn't hold, so it didn't run. The next call tries the sandbox again."), never the plugin's name or the error's text. It keeps the plugin's other parts running, as for `not_fenced`, and the next call tries the sandbox again. Before, the stop came back as an unexplained failure.
 - `agent-host-client.plugins`: the page's message for `plugin_stopped` is "Halonic stopped this plugin: its sandbox didn't hold, so it didn't run. Try again to check the sandbox again."
