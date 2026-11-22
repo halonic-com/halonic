@@ -176,7 +176,8 @@ marker.
 ### A run waiting for "Allow this address?"
 
 A run whose model call waits for your answer to "Allow this address?" shows as
-"! Needs you" in `halonic runs`. `halonic runs show` ends with "! Waiting for
+"! Needs you" in `halonic runs`, with "Waiting for your answer to "Allow this
+address?" in Studio, in the step <step>" under What. `halonic runs show` ends with "! Waiting for
 your answer in Studio: may provider "gateway" send key "gateway-key" to
 https://gw.example?" and, under it, "Answer "Allow this address?" in Studio.
 Without an answer within 10 minutes, the model call fails." Only Studio can

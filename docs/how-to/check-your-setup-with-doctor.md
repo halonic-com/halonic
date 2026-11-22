@@ -206,6 +206,9 @@ Common reasons and their fixes:
 | socat or ripgrep isn't installed (Linux) | Install both, for example with `sudo apt install socat ripgrep`. |
 | ripgrep isn't installed (macOS) | Install it, for example with `brew install ripgrep`. |
 | Ubuntu 24.04 blocks user namespaces | Allow them for bubblewrap with an AppArmor rule. The sandbox page has the commands. |
+| Hardware virtualisation is turned off (Windows) | Turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation. |
+| WSL isn't installed (Windows) | Run `wsl --install --no-distribution` in a terminal run as administrator, then restart Windows. |
+| Windows needs to restart to finish setting up WSL | Restart Windows. |
 | The distro runs on WSL 1 | Switch it to WSL 2. The fix line gives the PowerShell command with your distro's name. |
 | WSL works, but Halonic's own Linux system for the sandbox isn't installed (Windows) | Use Halonic inside WSL 2. |
 | Another program set up the sandbox on this computer, in a way Halonic can't use (Windows) | Remove the other program's sandbox setup, then run `halonic sandbox setup`. |
