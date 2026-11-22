@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-15955 (from the words check C655, row 49, on HAL-15936). The team decides it under the HAL-2282 rule, since it gives an approved screen's existing line its reason.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xt2FGMn0Lks/awcWporVGN1P0UTWTvfLc4oqT0Zsa5TLYJrPvVUp6g31pAWlekNq+eeY044FqVgo5qJUA8t6Dg==
 - Task: HAL-15955
 
 ## What changes
