@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, it } from "vitest";
@@ -39,7 +39,20 @@ verifies("git.repository-refused", () => {
     expect(refusal.kind).toBe("denied");
     expect(refusal.message).toContain("keeps its git files outside the folder");
     expect(refusal.fix).toBe(
-      "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule.",
+      "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule, or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.",
+    );
+  });
+
+  it("names the main folder of a linked worktree in the fix (C715 #2)", async () => {
+    const main = await repositoryWith(scratch);
+    const worktree = join(await scratch.folder(), "linked");
+    await plainGit(main, ["worktree", "add", "--quiet", worktree]);
+
+    const refusal = await refusalOf(worktree);
+
+    expect(refusal.kind).toBe("denied");
+    expect(refusal.fix).toBe(
+      `Use the repository's own folder, ${await realpath(main)}, or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.`,
     );
   });
 

@@ -1,5 +1,5 @@
 import { lstat, readdir, readFile, realpath } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { RepositoryRefusedError } from "./repository-refused.ts";
 
 // Where a repository's git files are: all of them must be inside the
@@ -8,12 +8,46 @@ import { RepositoryRefusedError } from "./repository-refused.ts";
 /** git reads alternates five deep; so does the check. */
 const maxAlternateDepth = 5;
 
-/** The error for a repository whose git files are outside its folder. */
-export function outsideFolder(top: string): RepositoryRefusedError {
+/**
+ * The error for a repository whose git files are outside its folder. Its fix
+ * names `ownFolder`, the main folder of a linked worktree, when known, so the
+ * person knows where to go, and says that `test` and `validate` still work
+ * here: they don't use git, so they passed in this folder a moment ago (C715 #2).
+ */
+export function outsideFolder(top: string, ownFolder?: string): RepositoryRefusedError {
+  const stillWorks = "halonic test and halonic validate still work in this folder.";
   return new RepositoryRefusedError(
     `The repository at ${top} keeps its git files outside the folder, which Halonic doesn't allow.`,
-    "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule.",
+    ownFolder === undefined
+      ? `Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule, or clone the repository again into a folder of its own. ${stillWorks}`
+      : `Use the repository's own folder, ${ownFolder}, or clone the repository again into a folder of its own. ${stillWorks}`,
   );
+}
+
+/**
+ * The main folder of the repository a linked worktree at `top` belongs to,
+ * from its `.git` file (`gitdir: <main>/.git/worktrees/<name>`), for the
+ * refusal's words only: nothing is run or opened there. `undefined` when
+ * `.git` isn't such a file, or that folder has no `.git` folder of its own,
+ * as for a submodule.
+ */
+export async function linkedWorktreeMain(top: string): Promise<string | undefined> {
+  const dotGit = join(top, ".git");
+  const stats = await lstat(dotGit);
+  if (!stats.isFile()) return undefined;
+  const line = (await readFile(dotGit, "utf8")).split("\n")[0]?.trimEnd() ?? "";
+  if (!line.startsWith("gitdir: ")) return undefined;
+  const worktreeGitDir = resolve(top, line.slice("gitdir: ".length));
+  const worktrees = dirname(worktreeGitDir);
+  const mainGitDir = dirname(worktrees);
+  if (basename(worktrees) !== "worktrees" || basename(mainGitDir) !== ".git") return undefined;
+  try {
+    if (!(await lstat(mainGitDir)).isDirectory()) return undefined;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+  return dirname(mainGitDir);
 }
 
 /** The folder must be the top, with its own `.git` folder as both git folders, not a linked worktree or a `gitdir:` file. */

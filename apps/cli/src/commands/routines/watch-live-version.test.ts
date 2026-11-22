@@ -426,3 +426,22 @@ verifies("cli.commands.routines.watch", () => {
     );
   });
 });
+
+verifies("cli.commands.routines.watch-not-live", () => {
+  // C715 #8: routines list said the change wasn't live, the watch said nothing.
+  it("says a routine's saved changes aren't live yet, as routines list does", {
+    timeout: gitWatchTimeout,
+  }, async () => {
+    await makeLive("First version");
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/workflows/routines/hourly-follow-up.routine.yaml": hourly.replace("1h", "2h"),
+    });
+    const watch = startWatch(fakeTime(engineStart));
+    await watchUntil(watch, () => watch.io.stdout.length === 2);
+
+    expect(watch.io.stdout).toEqual([
+      "! Hourly follow-up has changes that aren't live yet. It runs as last committed until you commit them or make them live in Halonic Studio.",
+      "Watching 1 routine in Acme. Stop with Ctrl C.",
+    ]);
+  });
+});

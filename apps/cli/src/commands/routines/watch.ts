@@ -14,12 +14,14 @@
 // soon as it opens (docs/specs/workflow-semantics.md, "Timers").
 //
 // A routine whose own file has errors, or whose agent is in a harness, is
-// left out with a ✕ line, and the others start (HAL-15372, HAL-15396).
+// left out with a ✕ line, and the others start (HAL-15372, HAL-15396). One
+// whose saved changes aren't live yet gets the list's ! line, since the
+// watch runs it as last committed (C715 #8).
 
 import { workspaceRoutineScheduler } from "@halonicjs/app";
 import type { RoutineScheduler } from "@halonicjs/app/routines";
 import type { RunStore } from "@halonicjs/ports";
-import { DEFAULT_TICK_POLICY, type PlacedRoutine } from "@halonicjs/routines";
+import { DEFAULT_TICK_POLICY, type PlacedRoutine, routineKey } from "@halonicjs/routines";
 import { KindedError } from "@halonicjs/std";
 import {
   filesOf,
@@ -29,7 +31,7 @@ import {
 } from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, StoppedResult } from "../../command.ts";
 import type { RoutineEngine } from "../../local-engine-host.ts";
-import { plainText } from "../../messages/phrase.ts";
+import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { runMessages } from "../../messages/run.ts";
 import { printable } from "../../output/printable.ts";
@@ -45,6 +47,7 @@ import {
   openWorkspaceEngine,
   type WorkspaceEngineTarget,
 } from "../../workspace-engine.ts";
+import { routinesWithProblemsOf } from "../../workspace-problems.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunSetup } from "../run/run.ts";
 import { checkRoutinesTrust } from "../run/trust.ts";
@@ -142,9 +145,13 @@ async function watchVersions(
     // Before the watching line, so that line means the scheduler has caught up; its runs print after.
     if (scheduler !== undefined) report.tick(await scheduler.tick());
     const onAClock = routines.filter(({ routine }) => routine.enabled && isOnAClock(routine));
-    const notLiveYet = routinesNotLiveYet(await loadWorkspace(dir.store), await versions.live());
+    const saved = await loadWorkspace(dir.store);
+    const notLiveYet = routinesNotLiveYet(saved, await versions.live());
     if (notLiveYet > 0) {
       context.printAhead(routinesMessages.routinesNeverLive(notLiveYet).phrase);
+    }
+    for (const line of await changesNotLiveLines(saved, versions, routines, typedDir)) {
+      context.printAhead(line);
     }
     const name = printable(workspaceNameOf(workspace, dir));
     // With every routine left out, the ✕ lines above say what to fix, and this one what happens then (C666 #2).
@@ -167,6 +174,35 @@ async function watchVersions(
     throw engine.stuck.reason;
   }
   return { stopped: true, json: { started: report.started } };
+}
+
+/**
+ * One line for each routine the watch starts whose saved changes aren't live
+ * yet, as `halonic routines` writes it under the list, so someone who only
+ * runs the watch learns their edit isn't used yet (C715 #8). A routine that
+ * is off doesn't run, and one left out has its ✕ line already.
+ */
+async function changesNotLiveLines(
+  saved: LoadedWorkspace,
+  versions: WatchedVersions,
+  scheduled: readonly PlacedRoutine[],
+  typedDir: string | undefined,
+): Promise<Phrase[]> {
+  const keys = new Set(scheduled.map(routineKey));
+  const withErrors = new Set(routinesWithProblemsOf(saved).map((each) => each.key));
+  const lines: Phrase[] = [];
+  for (const file of await versions.routinesNotLive(saved)) {
+    const key = routineKey({ hub: file.hub, routine: file.value });
+    if (!file.value.enabled || !keys.has(key)) continue;
+    // The name comes from the routine's file, so it is made printable (cli-output section 5).
+    const name = printable(file.value.name);
+    lines.push(
+      withErrors.has(key)
+        ? routinesMessages.changesNotLiveWithErrors(name, typedDir).phrase
+        : routinesMessages.changesNotLive(name).phrase,
+    );
+  }
+  return lines;
 }
 
 /**
