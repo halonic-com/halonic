@@ -3,6 +3,7 @@
 - Task: HAL-16334
 - Approval: follows the release review's follow-ups that Liam assigned on HAL-16334; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3BFks6FO4y9k2+N73YpBoM8J6TH4UJzXhAqMN4HmqQGT7FB04BvT3x2Wf+fy3P6tohZcz80U6/zIWVa0KboFCg==
 
 ## What changes
 
