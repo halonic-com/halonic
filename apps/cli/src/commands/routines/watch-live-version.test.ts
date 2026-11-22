@@ -336,6 +336,15 @@ verifies("cli.commands.routines.watch", () => {
     // `routines watch` has no --harness, so it doesn't suggest one (HAL-12597).
     expect(io.stderr.join("\n")).not.toContain("--harness");
     expect(await storedRuns()).toEqual([]);
+
+    // HAL-15664's line holds for this kind too: Writer back in Halonic's own loop can start.
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\n",
+    });
+    await makeLive("Writer drafts in Halonic's own loop");
+    expect(await nextLineAt(time, watch, "2026-11-10T16:00:10.000Z")).toBe(
+      "✓ Hourly follow-up can start now",
+    );
     signals.send("SIGINT");
     expect(await watching).toBe(130);
   });
