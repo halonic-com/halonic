@@ -125,6 +125,7 @@ verifies("paperclip.pr-watcher-wake", () => {
           state: "COMMENTED",
           submitted_at: "2026-11-21T21:10:00Z",
           body: "LGTM",
+          author_association: "MEMBER",
         },
       ],
       "/repos/halonic-com/halonic/issues/4588/comments?per_page=100&page=1": [
@@ -132,13 +133,52 @@ verifies("paperclip.pr-watcher-wake", () => {
           id: 2,
           created_at: "2026-11-21T21:11:00Z",
           body: "Julian: approved. No changes requested.",
+          author_association: "MEMBER",
         },
-        { id: 3, created_at: "2026-11-21T21:12:00Z", body: "- [nit] a word" },
-        { id: 4, created_at: "2026-11-21T21:13:00Z", body: "Addressed the changes requested." },
+        {
+          id: 3,
+          created_at: "2026-11-21T21:12:00Z",
+          body: "- [nit] a word",
+          author_association: "MEMBER",
+        },
+        {
+          id: 4,
+          created_at: "2026-11-21T21:13:00Z",
+          body: "Addressed the changes requested.",
+          author_association: "MEMBER",
+        },
       ],
     };
     const paperclip = fakePaperclip([task(4588, agents.priya)]);
     const github = fakeGitHub(recording("review-finding"), quiet);
+    expect((await run(github, paperclip).summary).woken).toBe(0);
+  });
+
+  test("ignores findings from people who aren't owners, members or collaborators", async () => {
+    const pulls = "/repos/halonic-com/halonic/pulls/4588";
+    const head = "7651f8c1e4af38752f56d353156c5dd19ff54984";
+    const stranger = (id: number, at: string) => ({
+      id,
+      commit_id: head,
+      original_commit_id: head,
+      state: "CHANGES_REQUESTED",
+      created_at: at,
+      submitted_at: at,
+      body: "- [major] (a stranger's finding)",
+      author_association: "NONE",
+    });
+    const outsiders = {
+      [`${pulls}/reviews?per_page=100&page=1`]: [stranger(1, "2026-11-21T21:10:00Z")],
+      [`${pulls}/comments?sort=created&direction=desc&per_page=100`]: [
+        { ...stranger(2, "2026-11-21T21:11:00Z"), author_association: "CONTRIBUTOR" },
+      ],
+      "/repos/halonic-com/halonic/issues/4588/comments?per_page=100&page=1": [
+        { ...stranger(3, "2026-11-21T21:12:00Z"), author_association: "FIRST_TIMER" },
+        { ...stranger(4, "2026-11-21T21:13:00Z"), author_association: undefined },
+      ],
+    };
+    const paperclip = fakePaperclip([task(4588, agents.priya)]);
+    const github = fakeGitHub(recording("review-finding"), outsiders);
     expect((await run(github, paperclip).summary).woken).toBe(0);
   });
 

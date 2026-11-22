@@ -79,6 +79,18 @@ interface Review {
   readonly created_at?: string;
   readonly state?: string;
   readonly body?: string | null;
+  readonly author_association?: string;
+}
+
+/**
+ * Who may ask our authors for changes: the repository's owner, members of
+ * its organization and its collaborators. On a public repository anyone else
+ * can comment too, and their comments don't wake anyone.
+ */
+const reviewerAssociations: ReadonlySet<string> = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+
+function byReviewer(item: Review): boolean {
+  return reviewerAssociations.has(item.author_association ?? "");
 }
 
 /** Every item of a list endpoint, page by page. */
@@ -110,7 +122,8 @@ export function asksForChanges(body: string): boolean {
 }
 
 /**
- * The newest review comment the author may not have seen: a review on the
+ * The newest review comment the author may not have seen, from someone who
+ * may review (`byReviewer`): a review on the
  * head commit that requests changes or asks for them in words, an inline
  * comment on the head commit, or a conversation comment that asks for
  * changes. Our reviewers post most reviews as conversation comments, since
@@ -132,13 +145,16 @@ export async function latestReview(
   ])) as [Review[], Review[], Review[]];
   const found = [
     ...reviews
+      .filter(byReviewer)
       .filter((review) => review.commit_id === head)
       .filter((review) => review.state === "CHANGES_REQUESTED" || asksForChanges(review.body ?? ""))
       .map((review) => ({ id: `r${review.id}`, at: review.submitted_at ?? "" })),
     ...inline
+      .filter(byReviewer)
       .filter((comment) => (comment.original_commit_id ?? comment.commit_id) === head)
       .map((comment) => ({ id: `c${comment.id}`, at: comment.created_at ?? "" })),
     ...conversation
+      .filter(byReviewer)
       .filter((comment) => asksForChanges(comment.body ?? ""))
       .map((comment) => ({ id: `i${comment.id}`, at: comment.created_at ?? "" })),
   ].sort((a, b) => b.at.localeCompare(a.at));

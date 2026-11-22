@@ -30,12 +30,14 @@
     {
       "id": 7068971810,
       "created_at": "2026-11-21T20:44:22Z",
-      "body": "(recorded comment)"
+      "body": "(recorded comment)",
+      "author_association": "MEMBER"
     },
     {
       "id": 7069067870,
       "created_at": "2026-11-21T20:52:27Z",
-      "body": "- [major] (recorded finding)"
+      "body": "- [major] (recorded finding)",
+      "author_association": "MEMBER"
     }
   ]
 }

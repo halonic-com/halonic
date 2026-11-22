@@ -42,13 +42,17 @@ verifies("paperclip.pr-watcher-plugin", () => {
     const full = Array.from({ length: 100 }, (_, index) => ({
       number: index + 1,
       updated_at: "2026-11-22T06:00:00Z",
-      head: { ref: `mateo/HAL-${index + 1}-x` },
+      head: { ref: `mateo/HAL-${index + 1}-x`, repo: { full_name: "acme/tools" } },
     }));
     const github = fakeGitHub({
       "/repos/acme/tools/pulls?state=open&per_page=100&page=1": [],
       [closed(1)]: full,
       [closed(2)]: [
-        { number: 200, updated_at: "2026-11-01T00:00:00Z", head: { ref: "mateo/HAL-200-x" } },
+        {
+          number: 200,
+          updated_at: "2026-11-01T00:00:00Z",
+          head: { ref: "mateo/HAL-200-x", repo: { full_name: "acme/tools" } },
+        },
       ],
     });
     const found = await discoverPulls(github.get, ["acme/tools"], now);
@@ -58,6 +62,26 @@ verifies("paperclip.pr-watcher-plugin", () => {
       "1",
       "2",
     ]);
+  });
+
+  test("leaves out pull requests from forks, even with a branch named like ours", async () => {
+    const pull = (number: number, repo: { full_name: string } | null) => ({
+      number,
+      updated_at: "2026-11-22T06:00:00Z",
+      head: { ref: "mateo/HAL-15359-x", repo },
+    });
+    const github = fakeGitHub({
+      "/repos/acme/tools/pulls?state=open&per_page=100&page=1": [
+        pull(1, { full_name: "stranger/tools" }),
+        pull(2, null),
+        pull(3, { full_name: "Acme/Tools" }),
+      ],
+      "/repos/acme/tools/pulls?state=closed&sort=updated&direction=desc&per_page=100&page=1": [
+        pull(4, { full_name: "stranger/tools" }),
+      ],
+    });
+    const found = await discoverPulls(github.get, ["acme/tools"], now);
+    expect(found.get("HAL-15359")?.map((ref) => ref.number)).toEqual([3]);
   });
 
   test("reads the task from a branch name", () => {

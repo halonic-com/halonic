@@ -22,7 +22,7 @@ const lists = {
     {
       number: 4485,
       updated_at: "2026-11-21T20:00:00Z",
-      head: { ref: "priya/HAL-4485-month-spend" },
+      head: { ref: "priya/HAL-4485-month-spend", repo: { full_name: "halonic-com/halonic" } },
     },
   ],
 };

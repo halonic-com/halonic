@@ -15,6 +15,12 @@ plan on HAL-15359 the same day, with stricter rules for marking a task done.
   to name the agent that holds the task and no unfinished child task. Wake
   now also asks Paperclip to wake the author, since a plugin's comment
   wakes nobody.
+- On Liam's review of #4962: the repository is public, so anyone can
+  comment on our pull requests. `paperclip.pr-watcher-wake` now counts
+  only review comments by the repository's owner, organization members and
+  collaborators (GitHub's `author_association`), so a stranger's `[major]`
+  wakes nobody. Pull requests from forks are left out too
+  (`paperclip.pr-watcher-plugin`).
 - The HTTP Paperclip client and its test
   (`tooling/paperclip/src/pr-watcher/paperclip.test.ts`) are removed: there
   is no process agent with its own key any more. The plugin's host adapter

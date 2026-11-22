@@ -19,7 +19,8 @@ every 10 minutes.
 **How it finds pull requests.** By branch name, as the root `AGENTS.md`
 names branches: `mateo/HAL-15359-pr-watcher` is Mateo's work on HAL-15359.
 Each run it lists every open pull request and every one updated in the last
-3 days on the configured repositories. A pull request that merged more
+3 days on the configured repositories, leaving out pull requests from forks
+(anyone can name a fork's branch like ours). A pull request that merged more
 than 3 days ago while its task stayed open is missed; close such a task by
 hand. Nobody has to link pull requests on the task.
 
@@ -33,7 +34,7 @@ has a run going, it does nothing and logs why.
 | Every pull request found for the task is closed, at least one merged, each merged one has `ci-ok` passed on its merge commit (the merge-group run) or is included in the base branch's newest green CI push run, the task has no child task that isn't done or cancelled, and the author hasn't held it (below) | Marks the task `done` and comments |
 | `ci-ok` failed on an open pull request's own head | Comments and wakes the author |
 | It conflicts with its base branch and isn't in the merge queue | Comments and wakes the author |
-| A review comment newer than the watcher's and the author's last comment on the task: a GitHub review that requests changes, an inline comment on the head, or a review or conversation comment with a `[blocker]`, `[major]` or `[minor]` finding or a "changes requested" verdict ("No changes requested" and approvals don't count) | Comments and wakes the author |
+| A review comment newer than the watcher's and the author's last comment on the task: a GitHub review that requests changes, an inline comment on the head, or a review or conversation comment with a `[blocker]`, `[major]` or `[minor]` finding or a "changes requested" verdict ("No changes requested" and approvals don't count), by the repository's owner, an organization member or a collaborator | Comments and wakes the author |
 
 Any open pull request keeps the task open, a stacked one included; one
 closed without merging is ignored.

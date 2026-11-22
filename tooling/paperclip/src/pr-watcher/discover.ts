@@ -23,7 +23,7 @@ export const closedWindowDays = 3;
 interface ListedPull {
   readonly number: number;
   readonly updated_at: string;
-  readonly head: { readonly ref: string };
+  readonly head: { readonly ref: string; readonly repo: { readonly full_name: string } | null };
 }
 
 /** The task a branch names: `mateo/HAL-15359-x` names `HAL-15359`. */
@@ -48,9 +48,18 @@ async function recentlyClosed(get: GitHubGet, repo: string, since: number): Prom
 }
 
 /**
+ * Whether the pull request's branch lives in the watched repository. Anyone
+ * can open a pull request from a fork with a branch named like ours, so only
+ * our own branches count. A fork that was deleted has no `head.repo`.
+ */
+function fromRepo(pull: ListedPull, repo: string): boolean {
+  return pull.head.repo?.full_name.toLowerCase() === repo.toLowerCase();
+}
+
+/**
  * Every open pull request, and every one closed in the last
  * `closedWindowDays` days, on each repository, grouped by the task its
- * branch names. Branches that name no task are left out.
+ * branch names. Branches that name no task, and branches in forks, are left out.
  */
 export async function discoverPulls(
   get: GitHubGet,
@@ -62,7 +71,7 @@ export async function discoverPulls(
   for (const repo of repos) {
     const open = (await everyPage(get, `/repos/${repo}/pulls?state=open`)) as ListedPull[];
     const closed = await recentlyClosed(get, repo, since);
-    for (const pull of [...open, ...closed]) {
+    for (const pull of [...open, ...closed].filter((listed) => fromRepo(listed, repo))) {
       const task = taskOfBranch(pull.head.ref);
       const known = found.get(task ?? "") ?? [];
       // A pull request that closed between the two reads is in both lists.

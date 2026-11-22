@@ -4,7 +4,10 @@
       "number": 4959,
       "updated_at": "2026-11-22T07:13:58Z",
       "head": {
-        "ref": "mateo/HAL-15930-ci-dynamic-memory"
+        "ref": "mateo/HAL-15930-ci-dynamic-memory",
+        "repo": {
+          "full_name": "halonic-com/halonic"
+        }
       },
       "base": {
         "ref": "main"
@@ -14,7 +17,10 @@
       "number": 4957,
       "updated_at": "2026-11-22T07:12:22Z",
       "head": {
-        "ref": "priya/HAL-15905-adapter-git-test-speed"
+        "ref": "priya/HAL-15905-adapter-git-test-speed",
+        "repo": {
+          "full_name": "halonic-com/halonic"
+        }
       },
       "base": {
         "ref": "main"
@@ -24,7 +30,10 @@
       "number": 4944,
       "updated_at": "2026-11-22T07:11:26Z",
       "head": {
-        "ref": "priya/HAL-15897-c645-words"
+        "ref": "priya/HAL-15897-c645-words",
+        "repo": {
+          "full_name": "halonic-com/halonic"
+        }
       },
       "base": {
         "ref": "priya/HAL-15891-runs-show-send-fix"
@@ -34,7 +43,10 @@
       "number": 4900,
       "updated_at": "2026-11-22T06:40:00Z",
       "head": {
-        "ref": "release-notes-draft"
+        "ref": "release-notes-draft",
+        "repo": {
+          "full_name": "halonic-com/halonic"
+        }
       },
       "base": {
         "ref": "main"
@@ -47,7 +59,10 @@
       "updated_at": "2026-11-22T07:17:00Z",
       "merged_at": "2026-11-22T07:17:00Z",
       "head": {
-        "ref": "priya/HAL-15905-adapter-git-test-speed"
+        "ref": "priya/HAL-15905-adapter-git-test-speed",
+        "repo": {
+          "full_name": "halonic-com/halonic"
+        }
       }
     },
     {
@@ -55,7 +70,10 @@
       "updated_at": "2026-11-22T07:16:20Z",
       "merged_at": "2026-11-22T07:16:18Z",
       "head": {
-        "ref": "tomas/HAL-15830-provider-file-example"
+        "ref": "tomas/HAL-15830-provider-file-example",
+        "repo": {
+          "full_name": "halonic-com/halonic"
+        }
       }
     },
     {
@@ -63,7 +81,10 @@
       "updated_at": "2026-11-22T07:15:08Z",
       "merged_at": "2026-11-22T07:15:06Z",
       "head": {
-        "ref": "tomas/HAL-15525-routines-paused-until-trusted"
+        "ref": "tomas/HAL-15525-routines-paused-until-trusted",
+        "repo": {
+          "full_name": "halonic-com/halonic"
+        }
       }
     },
     {
@@ -71,7 +92,10 @@
       "updated_at": "2026-11-09T14:02:11Z",
       "merged_at": "2026-11-09T14:02:10Z",
       "head": {
-        "ref": "priya/HAL-1375-03-connect-page-wiring"
+        "ref": "priya/HAL-1375-03-connect-page-wiring",
+        "repo": {
+          "full_name": "halonic-com/halonic"
+        }
       }
     }
   ]
