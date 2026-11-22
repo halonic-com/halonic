@@ -3,6 +3,7 @@
 - Task: HAL-15788
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15788 (flow check C630 #4, found on HAL-15782; wording is a team call under HAL-2282, recorded on HAL-15788)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yTIIckqwVtdLTCYHcd4GF3+XbnPkOR5jfgaHDEjVgmaRiDhyHUg8M635g/nQMDf+Rmi4L9jjnaci+rPmlyWfBA==
 
 ## What changes
 
