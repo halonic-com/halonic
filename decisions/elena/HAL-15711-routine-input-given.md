@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15711 (team wording call on C615, HAL-15698; small wording on an approved check, HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xQT9VSn3kR7LrTwSft47Mchyqji2D3TGy3ZfQR70OxkdT4xNVuWh0/eLYjx8ohooOY2cdKkOb85062fRag4DDQ==
 
 ## What changes
 
