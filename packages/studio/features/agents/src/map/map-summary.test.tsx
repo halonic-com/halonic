@@ -121,7 +121,7 @@ verifies("agents.map.side-summary-card", () => {
   it("counts the routines that start it after its workflows", async () => {
     const page = await openFlow("routed");
     expect(side(page, "What brings it work")).toEqual([
-      "2 workflows · 2 routineswhat brings it work",
+      "2 routines · 2 workflowswhat brings it work",
     ]);
   });
 

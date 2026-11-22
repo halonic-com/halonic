@@ -164,7 +164,7 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
   return {
     in: {
       heading: words.workIn,
-      counts: words.summary.in(users.length, routines.length, handsWork.length),
+      counts: words.summary.in(routines.length, users.length, handsWork.length),
       items: [
         ...routines.map((routine) => (
           <Card
