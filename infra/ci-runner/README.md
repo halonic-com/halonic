@@ -99,25 +99,25 @@ for it to exit and cleans up. systemd starts the next cycle.
 
 | Slot | Label | CPUs | Pinned to vCPUs | Memory (= swap): start → most | Work dir |
 | --- | --- | --- | --- | --- | --- |
-| `large-1` … `large-11` | `halonic-ci-large` | 6 | 0-5, 6-11, … 60-65 (`(N-1)*6`–`N*6-1`) | 10 GB (fixed) | 20 GB |
+| `large-1` … `large-11` | `halonic-ci-large` | 6 | 0-5, 6-11, … 60-65 (`(N-1)*6`–`N*6-1`) | 6 GB → 16 GB | 20 GB |
+| `large-12` … `large-14` | `halonic-ci-large` | 6 | 3-8, 27-32, 51-56 (shared with two other large slots each) | 6 GB → 16 GB | 20 GB |
+| `large-15` … `large-19` | `halonic-ci-large` | 6 | 72-77, 78-83, … 96-101 | 6 GB → 16 GB | 20 GB |
 | `small-1` … `small-3` | `halonic-ci-small` | 2 each | 66-71 (shared) | 2 GB → 3 GB | 6 GB |
-| `fast-1` … `fast-3` | `halonic-ci-fast` | 6 | those of `large-11`, `large-10`, `large-9` | 10 GB (fixed) | 20 GB |
+| `fast-1` … `fast-3` | `halonic-ci-fast` | 6 | those of `large-11`, `large-10`, `large-9` | 6 GB → 16 GB | 20 GB |
 
-The VM has 80 vCPUs (40 cores) and 128 GB. Each slot is pinned to its own vCPUs
+The VM has 112 vCPUs (56 cores) and 128 GB. Each slot is pinned to its own vCPUs
 (`--cpuset-cpus`), so a job sees only those (`nproc`, Node's `availableParallelism`) and test
-runners don't start a worker for each of the VM's 80. The eleven large slots take vCPUs 0-65, the
-three small slots share 66-71 (capped at 2 CPUs each), and vCPUs 72-79 are left for the VM itself.
+runners don't start a worker for each of the VM's 112. The eleven large slots take vCPUs 0-65, the
+three small slots share 66-71 (capped at 2 CPUs each), large-15..19 take 72-101, and 102-111 are left
+for the VM itself.
 
-**Large and fast slots get their 10 GB from the start** (HAL-15994). With a 4 GB start, jobs that start
-hundreds of processes at once (`changeset version`) outgrew the 3-second step and were killed at
-6 GB, and the kernel's reclaim at `memory.high` pushed the VM's load past 200. A fast slot takes
-a large slot's place, so it doesn't change the total. Eleven large slots at 10 GB plus three small at 3 GB are 119 GB of the VM's 126 GB usable; don't enable more large
-slots without taking memory from somewhere else.
-
-**Small slots' memory grows as a job needs it** (since 22 Nov 2026). A container starts at its start size
-(`MEM_START`). Every 3 s the slot script reads the job's anon + shmem (process memory plus the
+**Memory grows as a job needs it** (since 22 Nov 2026; HAL-15994 asked for a fixed 10 GB start after
+kills at 6 GB under the old 4 GB start, 2 GB step and 3 s check. With the 6 GB start, 4 GB step every
+2 s and #4976 cutting Fast gates to under 1 GB, nothing was killed since 08:07 UTC, and a fixed 10 GB
+on 19 large slots would allow 190 GB on the 128 GB VM). A container starts at its start size
+(`MEM_START`). Every 2 s the slot script reads the job's anon + shmem (process memory plus the
 `/tmp` tmpfs; file cache doesn't count, the kernel drops it under pressure). When that comes within
-1.5 GB of the limit, the script raises the limit and swap by 2 GB with `docker update`, up to the
+2 GB of the limit, the script raises the limit and swap by 4 GB with `docker update`, up to the
 most (`MEM`), as long as the VM keeps 4 GB available; otherwise it logs that it didn't. The
 cgroup's `memory.high` sits 512 MB under the limit, so the kernel reclaims cache and slows the job
 before the hard limit kills it, which gives the loop time to grow it. Every slot at its most

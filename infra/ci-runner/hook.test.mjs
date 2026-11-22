@@ -194,9 +194,11 @@ test("each job container is capped and unprivileged (C5)", () => {
 
 test("a job container starts at MEM_START and grows only up to MEM, with swap kept equal", () => {
   const slot = read("vm/halonic-runner-slot.sh");
-  // Large slots start at their most (HAL-15994): a 4 GB start was killed at 6 GB in merge groups.
-  assert.match(slot, /^ {2}large-\*\).* MEM=10g; MEM_START=10g; /m);
-  assert.match(slot, /^ {2}fast-\[1-3\]\).* MEM=10g; MEM_START=10g; /m);
+  // Large and fast slots start at 6 GB and grow 4 GB every 2 s up to 16 GB: no OOM since 22 Nov 08:07
+  // UTC with this, and #4976 cut the biggest job (Fast gates) to under 1 GB. A fixed 10 GB start on
+  // 19 large slots would allow 190 GB on a 128 GB VM with no free-memory check below 10 GB.
+  assert.match(slot, /^ {2}large-\*\).* MEM=16g; MEM_START=6g; /m);
+  assert.match(slot, /^ {2}fast-\[1-3\]\).* MEM=16g; MEM_START=6g; /m);
   assert.match(slot, /^ {2}small-\*\).* MEM=3g; {2}MEM_START=2g; /m);
   assert.ok(slot.includes('--memory "$MEM_START" --memory-swap "$MEM_START"'));
   assert.doesNotMatch(slot, /--memory "\$MEM" /);
