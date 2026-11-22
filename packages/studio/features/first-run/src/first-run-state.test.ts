@@ -79,7 +79,7 @@ verifies("first-run.state", () => {
     });
   });
 
-  it("takes a first run paused or dismissed in the folder up again at its step on Show the guide", () => {
+  it("takes a first run paused or dismissed in the folder up again at its step on Show the guide again", () => {
     const atModel = after(demo, { kind: "model-picking" }, { kind: "left" });
     const again = { kind: "guide-reopened", folder: demo.folder, at: "later" } as const;
     expect(after(atModel, again)).toEqual({ ...demo, step: "model" });
@@ -96,7 +96,7 @@ verifies("first-run.state", () => {
     expect(after(savedBefore, again)).toEqual({ ...demo, since: "later" });
   });
 
-  it("begins again at the demo on Show the guide, whatever it was", () => {
+  it("begins again at the demo on Show the guide again, whatever it was", () => {
     const again = { kind: "guide-reopened", folder: "/docs/Acme sample 2", at: "later" } as const;
     for (const state of [off, demo, { kind: "done", folder: demo.folder } as const]) {
       expect(after(state, again)).toEqual({

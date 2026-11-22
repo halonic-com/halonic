@@ -8,7 +8,7 @@ The shell shall let a feature add a group of items to the Help menu only through
 
 ## Examples
 
-- Given _first-run_ adds the group "First run" with **Show the guide** and **Start over**,
+- Given _first-run_ adds the group "First run" with **Show the guide again** and **Start over**,
   when the user opens **Help** in the sidebar,
   then the menu shows the heading "First run" over the two items.
 - Given two groups, "Check this computer" (order 10, no title) and "First run" (order 20),

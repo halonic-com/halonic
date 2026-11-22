@@ -97,8 +97,8 @@ export class FirstRun {
   }
 
   /**
-   * **Show the guide**: takes a first run paused or dismissed here up again at its step, else
-   * begins it again at Demo.
+   * **Show the guide again**: takes a first run paused or dismissed here up again at its step,
+   * else begins it again at Demo.
    */
   showGuide(): void {
     if (this.isOnHere) return;

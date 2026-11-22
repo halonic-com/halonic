@@ -51,7 +51,7 @@ export const setupWords = {
  */
 export const helpWords = {
   title: "First run",
-  showGuide: "Show the guide",
+  showGuide: "Show the guide again",
   showGuideAbout: "Brings back the first-run bar and the guide card where you left off.",
   startOver: "Start over",
   startOverAbout:
