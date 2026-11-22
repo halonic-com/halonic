@@ -88,6 +88,11 @@ export function pileLine(
 export interface PilesPlan {
   readonly writes: readonly BoardWrite[];
   readonly record: PilesRecord;
+  /**
+   * The record to save when the line was only logged (writes off): the new
+   * piles count as not reported yet, so the line goes out once writes are on.
+   */
+  readonly recordIfUnsent: PilesRecord;
 }
 
 /**
@@ -115,13 +120,18 @@ export function planPiles(
       body: `Queued runs piling up (${pileSize} or more for one agent): ${pileLine(count.piles, options.names)}.${partial}`,
     });
   }
+  const record: PilesRecord = {
+    at: options.now.toISOString(),
+    piles: count.piles,
+    partial: count.partial,
+    reported: piled,
+  };
   return {
     writes,
-    record: {
-      at: options.now.toISOString(),
-      piles: count.piles,
-      partial: count.partial,
-      reported: piled,
+    record,
+    recordIfUnsent: {
+      ...record,
+      reported: piled.filter((agentId) => previous.reported.includes(agentId)),
     },
   };
 }

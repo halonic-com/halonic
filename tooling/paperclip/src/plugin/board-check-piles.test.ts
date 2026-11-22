@@ -59,6 +59,19 @@ verifies("paperclip.board-check-piles", () => {
     expect(state.get("piles")).toMatchObject({ piles: [{ agentId: "agent-mateo", queued: 6 }] });
   });
 
+  test("names the pile on the first hour after the board turns writes on, with the same queue", async () => {
+    let config: Record<string, unknown> = { boardCheckerTask: checkerTask.id };
+    const fake = fakeBoardContext({ tasks, comments: {}, config: () => config });
+    const board = boardCheck(fake.ctx);
+    await board.run(new Date("2026-11-22T14:00:00Z"));
+    config = settings;
+    await board.run(new Date("2026-11-22T15:00:00Z"));
+    await board.run(new Date("2026-11-22T16:00:00Z"));
+    const comments = fake.sent.filter((write) => write.call === "createComment");
+    expect(comments).toHaveLength(1);
+    expect(String(comments[0]?.args[1])).toContain("Mateo 6.");
+  });
+
   test("reads no task's runs between the hours", async () => {
     const { board, state } = setUp();
     await board.run(new Date("2026-11-22T14:20:00Z"));

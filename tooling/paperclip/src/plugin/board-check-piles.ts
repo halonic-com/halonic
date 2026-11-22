@@ -49,5 +49,12 @@ export async function planPilesPart(
     { piles: queuedPiles(runs), partial: withRuns.length > subtreeReadLimit },
     { boardCheckerTaskId: input.boardCheckerTaskId, names: input.names, now },
   );
-  return { writes: plan.writes, save: () => ctx.state.set(key, plan.record) };
+  return {
+    writes: plan.writes,
+    save: (sent) =>
+      ctx.state.set(
+        key,
+        plan.writes.every((write) => sent.has(write)) ? plan.record : plan.recordIfUnsent,
+      ),
+  };
 }

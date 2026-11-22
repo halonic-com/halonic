@@ -317,8 +317,9 @@ through `issue.subtree.read`, the queued and running runs of each open task
 the listing shows with an active run (at most 60 tasks a pass), and counts
 each agent's queued runs. An agent with 5 or more gets one line on the
 Board Checker's task, naming every pile and its count; it is named again
-only after its queue dropped under 5. `failed_runs` adds the last count as
-one line.
+only after its queue dropped under 5. A line only logged while writes are
+off doesn't count, so the pile is named once writes are on. `failed_runs`
+adds the last count as one line.
 
 **Tools.** `board_asks(since?)` lists the asks since an ISO time (24 hours
 by default) with their links and whether the board or the Board Checker has
