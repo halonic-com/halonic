@@ -73,7 +73,9 @@ export function checkGitExport(address: string, ref = "HEAD"): void {
   checkGitAddress(address);
   const url = parseAddress(address);
   if (url?.protocol === "https:" && url.username !== "") {
-    throw refused("it has a user name in it, which halonic plugin list would show. Leave it out");
+    throw refused(
+      "it has a user name in it, and Halonic would keep it and show it with the plugin. Leave it out, or use an ssh:// address with a key",
+    );
   }
   if (ref !== "HEAD" && !isPlainRef(ref)) {
     throw new Error(`Can't use "${ref}" as a commit: use a branch, a tag or a full commit id.`);

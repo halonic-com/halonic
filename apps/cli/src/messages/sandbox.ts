@@ -60,7 +60,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   "runtime-missing":
     "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish. Use Halonic inside WSL 2 on this computer, then run it again.",
   "setup-conflict":
-    "Another program set up the sandbox on this computer, in a way Halonic can't use. Remove the other program's sandbox setup, then set it up with halonic sandbox setup.",
+    "Another program set up the sandbox on this computer, in a way Halonic can't use. Remove the other program's sandbox setup, then set up the sandbox with halonic sandbox setup and run it again.",
   "setup-needed":
     "The sandbox's one-time setup isn't done for this version of Halonic. Set it up with halonic sandbox setup, then run it again.",
   "user-namespaces-restricted":
@@ -124,7 +124,7 @@ const fixes: Readonly<Record<WordedReason, string>> = {
   "distro-missing": "use Halonic inside WSL 2 on this computer.",
   "runtime-missing": "use Halonic inside WSL 2 on this computer.",
   "setup-conflict":
-    "remove the other program's sandbox setup, then set it up with halonic sandbox setup.",
+    "remove the other program's sandbox setup, then set up the sandbox with halonic sandbox setup. Windows asks for administrator rights once.",
   "setup-needed":
     "set it up with halonic sandbox setup. Windows asks for administrator rights once.",
   "user-namespaces-restricted":
