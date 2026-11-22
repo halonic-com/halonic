@@ -40,7 +40,9 @@ function runBaseStep(baseRef: string) {
 verifies("check.guard-notes-base", () => {
   test("the note check runs again on every edit, for pull requests into main or a release branch", () => {
     const on = triggers();
-    expect(on).toMatch(/pull_request_target:\n {4}types: \[opened, synchronize, reopened, edited\]\n/);
+    expect(on).toMatch(
+      /pull_request_target:\n {4}types: \[opened, synchronize, reopened, edited\]\n/,
+    );
     expect(on).toMatch(/\n {4}branches: \[main, "release\/\*\*"\]\n/);
     // The job runs in full on every edit, not only on a base change.
     expect(workflow).not.toMatch(/^ {4}if: /m);
