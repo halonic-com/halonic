@@ -166,6 +166,7 @@ async function withIndexCopy<T>(
     return await work((args) => repository.output({ ...where, args, indexFile }));
   } finally {
     await rm(indexFile, { force: true });
+    repository.changed();
   }
 }
 

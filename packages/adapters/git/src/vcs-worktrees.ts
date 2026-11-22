@@ -65,6 +65,7 @@ export class GitWorktrees {
       await repository.output({ args: [...args, "--", worktree.folder, version] });
       await checkUsable(repository, await this.#known(repository, id));
       await writeFile(join(worktree.gitDir, versionFile), `${version}\n`);
+      repository.changed();
       await checkOut(repository, worktree, version);
     } catch (error) {
       await removeWorktree(worktree);

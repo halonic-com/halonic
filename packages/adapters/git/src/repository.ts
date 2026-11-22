@@ -1,5 +1,6 @@
 import { lstat, realpath } from "node:fs/promises";
 import { join } from "node:path";
+import { CallChecks, skipsNestedListing } from "./check-scope.ts";
 import type { GitResult, GitRunner } from "./git-runner.ts";
 import type { ConfigEntry } from "./hardening.ts";
 import {
@@ -59,20 +60,39 @@ export interface GitCalls {
   output(call: RepositoryCall): Promise<Buffer>;
 }
 
+/** How a port call gets its {@link Repository}: see {@link Repository.forCall}. */
+export interface CallOptions {
+  /**
+   * Whether to check on opening too: for a port call that reads or writes
+   * a file in the repository before its first git command.
+   */
+  checkAtOpen: boolean;
+  /** The error when the folder is no repository. */
+  notARepository: () => Error;
+}
+
 /**
  * The repository at one workspace folder, checked before every call: the
  * folder is its root, all of its files are inside the folder, and the
- * programs its own config names are neutralised.
+ * programs its own config names are neutralised. One made for a port call
+ * ({@link Repository.forCall}) holds a check for the commands after it, as
+ * long as they can't change what it read.
  */
 export class Repository implements GitCalls {
   readonly #runner: GitRunner;
   readonly #top: string;
   readonly #gitDir: string;
+  /** The checks of a port call; `null` checks before every call. */
+  readonly #calls: CallChecks<ConfigEntry[]> | null;
+  readonly #notARepository: (() => Error) | null;
+  #checkedOnce = false;
 
-  private constructor(runner: GitRunner, top: string) {
+  private constructor(runner: GitRunner, top: string, call?: CallOptions) {
     this.#runner = runner;
     this.#top = top;
     this.#gitDir = join(top, ".git");
+    this.#calls = call === undefined ? null : new CallChecks();
+    this.#notARepository = call?.notARepository ?? null;
   }
 
   /**
@@ -83,15 +103,40 @@ export class Repository implements GitCalls {
    */
   static async open(runner: GitRunner, folder: string): Promise<Repository | null> {
     const repository = new Repository(runner, await realpath(folder));
-    return (await repository.#check()) === null ? null : repository;
+    return (await repository.#check(true)) === null ? null : repository;
+  }
+
+  /**
+   * The repository for one port call. Its first git command checks in full,
+   * and the check holds for the commands after it until one could change
+   * what the check read ({@link keepsCheck}) or the adapter writes a file
+   * itself ({@link Repository.changed}); the next command then checks again.
+   * Nothing is kept from another call or from {@link Repository.open}: with
+   * `checkAtOpen`, that check is made and dropped.
+   *
+   * @throws Error from `notARepository` when the folder is no repository, and as {@link Repository.open} with `checkAtOpen`
+   */
+  static async forCall(runner: GitRunner, folder: string, call: CallOptions): Promise<Repository> {
+    const repository = new Repository(runner, await realpath(folder), call);
+    if (call.checkAtOpen) {
+      if ((await repository.#check(true)) === null) throw call.notARepository();
+      repository.#checkedOnce = true;
+    }
+    return repository;
   }
 
   /**
    * Like {@link Repository.open}, for reads: the repository is checked once,
-   * and `null` is no repository.
+   * and `null` is no repository. Without `readsFiles`, the check skips the
+   * nested-repository listing, and the reader refuses `status` and `diff`
+   * without `--cached`, which look at the files.
    */
-  static async openReader(runner: GitRunner, folder: string): Promise<RepositoryReader | null> {
-    return new Repository(runner, await realpath(folder)).reader();
+  static async openReader(
+    runner: GitRunner,
+    folder: string,
+    readsFiles = true,
+  ): Promise<RepositoryReader | null> {
+    return new Repository(runner, await realpath(folder)).reader(readsFiles);
   }
 
   /** The repository's root folder, as a real path. */
@@ -113,13 +158,40 @@ export class Repository implements GitCalls {
   async run(call: RepositoryCall): Promise<GitResult> {
     checkSubcommand(call.args);
     checkOptions(call.args);
-    // The workspace can change between calls, and a call such as `checkout`
-    // or `merge` can change what the next one reads, so every call checks.
-    const neutralising = await this.#check();
+    const calls = this.#calls;
+    if (calls === null) {
+      // The workspace can change between calls, and a call such as `checkout`
+      // or `merge` can change what the next one reads, so every call checks.
+      const neutralising = this.#found(await this.#check(true));
+      return this.#runChecked(call, neutralising);
+    }
+    const withListing = !skipsNestedListing(call.args);
+    const neutralising = calls.held(withListing) ?? (await this.#checkToHold(calls, withListing));
+    return calls.running(call.args, () => this.#runChecked(call, neutralising));
+  }
+
+  /**
+   * Says the adapter itself wrote into the files or the git files, so the
+   * check a port call holds ends and the next command checks again.
+   */
+  changed(): void {
+    this.#calls?.changed();
+  }
+
+  async #checkToHold(calls: CallChecks<ConfigEntry[]>, withListing: boolean) {
+    const epoch = calls.epoch;
+    const neutralising = this.#found(await this.#check(withListing));
+    calls.hold(epoch, { result: neutralising, withListing });
+    return neutralising;
+  }
+
+  #found(neutralising: ConfigEntry[] | null): ConfigEntry[] {
     if (neutralising === null) {
+      if (!this.#checkedOnce && this.#notARepository !== null) throw this.#notARepository();
       throw new Error(`The folder ${this.#top} is no longer a git repository.`);
     }
-    return this.#runChecked(call, neutralising);
+    this.#checkedOnce = true;
+    return neutralising;
   }
 
   /**
@@ -128,10 +200,11 @@ export class Repository implements GitCalls {
    *
    * @throws Error as {@link Repository.open} does
    */
-  async reader(): Promise<RepositoryReader | null> {
-    const neutralising = await this.#check();
+  async reader(readsFiles = true): Promise<RepositoryReader | null> {
+    const neutralising = await this.#check(readsFiles);
     if (neutralising === null) return null;
-    return new RepositoryReader((call) => this.#runChecked(call, neutralising, true));
+    const runChecked = (call: RepositoryCall) => this.#runChecked(call, neutralising, true);
+    return new RepositoryReader(runChecked, readsFiles);
   }
 
   async #runChecked(
@@ -174,9 +247,11 @@ export class Repository implements GitCalls {
   /**
    * Checks that the folder is the repository's root with all of its git
    * files inside it, and gives the config that neutralises the programs its
-   * own config names; `null` when the folder is no repository.
+   * own config names; `null` when the folder is no repository. Without
+   * `withListing`, it leaves out the nested repositories' filters, which
+   * only a command that looks at the files runs.
    */
-  async #check(): Promise<ConfigEntry[] | null> {
+  async #check(withListing: boolean): Promise<ConfigEntry[] | null> {
     const kind = await kindOf(this.#gitDir);
     if (kind === "missing") return null;
     // A `.git` file or link names git files elsewhere, which `init` would also reach.
@@ -200,7 +275,7 @@ export class Repository implements GitCalls {
       ...(await linksInGitFolder(this.#gitDir)),
     ]);
     await checkAlternates(this.#top, join(this.#gitDir, "objects"), 0);
-    return neutralisingConfig(this.#runner, this.#top, this.#gitDir);
+    return neutralisingConfig(this.#runner, this.#top, this.#gitDir, withListing);
   }
 }
 
@@ -226,15 +301,18 @@ const readSubcommands = new Set([
  * before every call because a call such as `checkout` can change what the
  * next one reads, nothing a reader runs changes the folder or the git files,
  * so the check at its start holds for all of its calls. It refuses any
- * subcommand that isn't in {@link readSubcommands}, and every call keeps the
- * config that neutralises the repository's programs and the explicit git dir
- * and work tree. Make a new one for each read.
+ * subcommand that isn't in {@link readSubcommands}, and, when its check
+ * skipped the nested-repository listing, any that looks at the files. Every
+ * call keeps the config that neutralises the repository's programs and the
+ * explicit git dir and work tree. Make a new one for each read.
  */
 export class RepositoryReader implements GitCalls {
   readonly #runChecked: (call: RepositoryCall) => Promise<GitResult>;
+  readonly #readsFiles: boolean;
 
-  constructor(runChecked: (call: RepositoryCall) => Promise<GitResult>) {
+  constructor(runChecked: (call: RepositoryCall) => Promise<GitResult>, readsFiles = true) {
     this.#runChecked = runChecked;
+    this.#readsFiles = readsFiles;
   }
 
   /**
@@ -246,6 +324,11 @@ export class RepositoryReader implements GitCalls {
     const [subcommand = ""] = call.args;
     if (!readSubcommands.has(subcommand)) {
       throw new Error(`A read in the git adapter doesn't run git ${subcommand}.`);
+    }
+    if (!this.#readsFiles && !skipsNestedListing(call.args)) {
+      throw new Error(
+        `This read in the git adapter doesn't look at the files: no git ${subcommand}.`,
+      );
     }
     // The runner adds `--no-optional-locks` to every read.
     return this.#runChecked(call);
@@ -283,12 +366,15 @@ async function neutralisingConfig(
   runner: GitRunner,
   top: string,
   gitDir: string,
+  withListing: boolean,
 ): Promise<ConfigEntry[]> {
   const entries = await listConfig(runner, top, gitDir);
   checkRefusedKeys(entries);
   const filters = new Set(filterNames(entries));
-  const nesting = { top, visited: new Set([top]) };
-  await addNestedFilterNames(runner, top, [`--git-dir=${gitDir}`], filters, nesting);
+  if (withListing) {
+    const nesting = { top, visited: new Set([top]) };
+    await addNestedFilterNames(runner, top, [`--git-dir=${gitDir}`], filters, nesting);
+  }
   return [...blankFilters([...filters]), ...neutralisePrograms(entries)];
 }
 
