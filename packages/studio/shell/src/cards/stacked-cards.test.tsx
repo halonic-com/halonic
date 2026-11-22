@@ -99,6 +99,15 @@ verifies("shell.stacked-cards", () => {
       expect(container.querySelector(".bg-\\(--stack-scrim\\)")).not.toBeNull();
     });
 
+    // jsdom doesn't paint, so this checks the classes; the workflows e2e spec checks the paint.
+    it("draws the card over a layer in the view that has a z-index (C662)", () => {
+      const { container } = renderPage();
+      press(button(container, "draft-reply"));
+      expect(view(container).classList.contains("isolate")).toBe(true);
+      const card = container.querySelector("section") as HTMLElement;
+      expect(view(container).compareDocumentPosition(card)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
     it("shows the top card and at most 2 bands behind it, each one step higher and narrower", () => {
       const { container } = renderPage({ initial: stackOf("A", "B", "C", "D") });
       const bands = container.querySelectorAll<HTMLElement>('[aria-hidden="true"].rounded-md');

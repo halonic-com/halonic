@@ -84,7 +84,9 @@ export function StackedCards(props: StackedCardsProps) {
   const goBackTo = (level: number) => onChange(backToCard(stack, level));
   return (
     <div ref={layer} className="relative h-full min-h-0">
-      <div className="h-full" inert={look === "full" || look === "docked-covering"}>
+      {/* Its own stacking context, so a layer in the view, such as the agent map's phone sheet
+          (z-10), stays under the cards and the scrim that come after it (C662, HAL-16001). */}
+      <div className="isolate h-full" inert={look === "full" || look === "docked-covering"}>
         {children}
       </div>
       {look === "full" ? (
