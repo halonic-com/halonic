@@ -16,12 +16,12 @@ import { LibraryItemsHostService } from "../library-items-host.ts";
 import { ListedToolsHostService } from "../listed-tools-host.ts";
 import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
 import { asksFirstWords, connectorPageWords, connectorToolsWords } from "../new-connector-words.ts";
+import { sharedHubKey } from "../shared-hub-key.ts";
 import { ConnectorConnectionSummary } from "./connector-connection-summary.tsx";
 import { ConnectorSecretsSection } from "./connector-secrets-section.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
 import { HttpConnectorSecret, hasHttpSecretLines } from "./http-connector-secret.tsx";
 import { useItemTrash } from "./item-trash.tsx";
-import { sharedHubKey } from "./library-place.tsx";
 import { ListedToolsElsewhere } from "./listed-tools-elsewhere.tsx";
 import { ListedToolsWaiting, type ListedToolsWaitingProps } from "./listed-tools-waiting.tsx";
 
