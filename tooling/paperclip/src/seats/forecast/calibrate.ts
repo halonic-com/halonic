@@ -22,6 +22,9 @@ import {
   type WindowReading,
 } from "./types.ts";
 
+/** The token types a fit prices separately. */
+export type TokenKind = keyof TokenCounts;
+
 /** What a fit is for: one plan, one model, one window. */
 export interface CalibrationKey {
   readonly plan: string;
@@ -29,22 +32,31 @@ export interface CalibrationKey {
   readonly window: WindowKey;
 }
 
+/** One nightly fit, as the plugin stores it (the forecast contract on HAL-16030). */
 export interface Calibration extends CalibrationKey {
-  readonly fittedAt: string;
-  /** Points per million tokens of each type. */
-  readonly pointsPerMillion: TokenCounts;
+  /** The UTC day the fit was made, "2026-11-22". With plan, model and window it is the key. */
+  readonly day: string;
+  /** The first and last usage bucket the fit used. */
+  readonly from: string;
+  readonly to: string;
+  readonly pointsPerMillion: Readonly<Record<TokenKind, number>>;
   readonly quality: {
+    /** 10-minute steps used, after skipping resets, moves and gaps. */
     readonly steps: number;
-    /** The middle error of one step's points, as fitted. */
-    readonly medianAbsError: number;
-    readonly rSquared: number;
-    /** Each token type's share of the tokens fitted, to compare fits on the same mix. */
-    readonly mix: TokenCounts;
+    readonly medianErrorPoints: number;
+    readonly p90ErrorPoints: number;
   };
+  /** Change against the fit of the week before, on this fit's token mix (0.3 is 30% dearer); undefined when there is none. */
+  readonly weekShift: number | undefined;
+  /** `weekShift` is more than 25% either way: a plan or price may have changed. */
+  readonly shifted: boolean;
 }
 
 /** One usable step: the points a window of a seat gained and the tokens behind them. */
 export interface CalibrationStep extends CalibrationKey {
+  /** The first and last usage bucket in the step. */
+  readonly from: string;
+  readonly to: string;
   readonly tokens: TokenCounts;
   readonly points: number;
 }
@@ -57,6 +69,8 @@ export interface CalibrationInput {
   readonly readIntervalMs: number;
   readonly placements: readonly Placement[];
   readonly usage: readonly AgentUsage[];
+  /** Fits of the last 8 days, to measure each new fit's shift against the week before. */
+  readonly history: readonly Calibration[];
 }
 
 export const calibrationDays = 7;
@@ -72,9 +86,8 @@ export function keyOf(key: CalibrationKey): string {
   return `${key.plan}|${key.model}|${key.window}`;
 }
 
-/** The points a token count costs under a fit. */
-export function pointsFor(calibration: Calibration, tokens: TokenCounts): number {
-  const rate = calibration.pointsPerMillion;
+/** The points a token count costs at a fit's rates (`calibration.pointsPerMillion`). */
+export function pointsFor(rate: Readonly<Record<TokenKind, number>>, tokens: TokenCounts): number {
   return (
     (tokens.input * rate.input + tokens.cached * rate.cached + tokens.output * rate.output) /
     million
@@ -82,8 +95,7 @@ export function pointsFor(calibration: Calibration, tokens: TokenCounts): number
 }
 
 /** Points per million tokens of a given mix (shares adding up to 1). */
-export function ratePerMillion(calibration: Calibration, mix: TokenCounts): number {
-  const rate = calibration.pointsPerMillion;
+function ratePerMillion(rate: Readonly<Record<TokenKind, number>>, mix: TokenCounts): number {
   return mix.input * rate.input + mix.cached * rate.cached + mix.output * rate.output;
 }
 
@@ -148,10 +160,13 @@ function stepBetween(
   if (model === undefined || models.size > 1) {
     return undefined;
   }
+  const buckets = used.map((u) => u.bucketStart).sort();
   return {
     plan: planOf(seat),
     model,
     window: earlier.window,
+    from: buckets[0] ?? earlier.at,
+    to: buckets.at(-1) ?? earlier.at,
     tokens: used.reduce((sum, u) => addTokens(sum, u.tokens), noTokens),
     points: later.usedPercent - earlier.usedPercent,
   };
@@ -188,27 +203,71 @@ function shares(tokens: TokenCounts): TokenCounts {
   };
 }
 
+/** The value 90% of `values` are at or below (nearest rank). */
+function p90(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.ceil(0.9 * sorted.length) - 1] ?? Number.NaN;
+}
+
+function dayOf(at: string): string {
+  return at.slice(0, "2026-11-22".length);
+}
+
+/**
+ * The change against the oldest fit of the 7 days before, compared on the new
+ * steps' token mix so a noisy rate for a rare token type doesn't move it by
+ * itself. Undefined when there is no fit to compare with.
+ */
+function weekShift(
+  key: CalibrationKey,
+  day: string,
+  rates: Readonly<Record<TokenKind, number>>,
+  mix: TokenCounts,
+  history: readonly Calibration[],
+): number | undefined {
+  const dayMsOf = (d: string) => Date.parse(`${d}T00:00:00.000Z`);
+  const weekBefore = history
+    .filter((old) => keyOf(old) === keyOf(key))
+    .filter((old) => old.day < day && dayMsOf(old.day) >= dayMsOf(day) - 7 * dayMs)
+    .sort((a, b) => a.day.localeCompare(b.day));
+  const oldest = weekBefore[0];
+  const before = oldest === undefined ? 0 : ratePerMillion(oldest.pointsPerMillion, mix);
+  return before > 0 ? ratePerMillion(rates, mix) / before - 1 : undefined;
+}
+
 function fitOne(
   key: CalibrationKey,
   steps: readonly CalibrationStep[],
-  fittedAt: string,
+  input: CalibrationInput,
 ): Calibration {
   const data = steps.map((s) => ({
     x: [s.tokens.input / million, s.tokens.cached / million, s.tokens.output / million],
     y: s.points,
   }));
   const fit = robustFit(data, 3);
-  const [input = 0, cached = 0, output = 0] = fit.coefficients;
+  const [inputRate = 0, cachedRate = 0, outputRate = 0] = fit.coefficients;
+  const pointsPerMillion = { input: inputRate, cached: cachedRate, output: outputRate };
+  const errors = steps.map((s) => Math.abs(s.points - pointsFor(pointsPerMillion, s.tokens)));
+  const mix = shares(steps.reduce((sum, s) => addTokens(sum, s.tokens), noTokens));
+  const day = dayOf(input.now);
+  const shift = weekShift(key, day, pointsPerMillion, mix, input.history);
   return {
     ...key,
-    fittedAt,
-    pointsPerMillion: { input, cached, output },
+    day,
+    from: steps.map((s) => s.from).sort()[0] ?? input.now,
+    to:
+      steps
+        .map((s) => s.to)
+        .sort()
+        .at(-1) ?? input.now,
+    pointsPerMillion,
     quality: {
       steps: steps.length,
-      medianAbsError: fit.medianAbsResidual,
-      rSquared: fit.rSquared,
-      mix: shares(steps.reduce((sum, s) => addTokens(sum, s.tokens), noTokens)),
+      medianErrorPoints: fit.medianAbsResidual,
+      p90ErrorPoints: p90(errors),
     },
+    weekShift: shift,
+    shifted: shift !== undefined && Math.abs(shift) > shiftLimit,
   };
 }
 
@@ -234,48 +293,8 @@ export function calibrate(input: CalibrationInput): CalibrationRun {
     if (steps.length < fewestSteps) {
       tooFewSteps.push({ ...key, steps: steps.length });
     } else {
-      calibrations.push(fitOne(key, steps, input.now));
+      calibrations.push(fitOne(key, steps, input));
     }
   }
   return { calibrations, tooFewSteps };
-}
-
-export interface CalibrationShift extends CalibrationKey {
-  readonly since: string;
-  /** Relative change in points per million tokens, on the new fit's token mix: 0.3 is 30% dearer. */
-  readonly change: number;
-}
-
-/**
- * Fits that moved more than 25% against the oldest fit of the week before,
- * compared on the new fit's token mix so a noisy rate for a rare token type
- * doesn't raise a flag by itself.
- */
-export function calibrationShifts(
-  current: readonly Calibration[],
-  history: readonly Calibration[],
-): CalibrationShift[] {
-  return current.flatMap((fit) => {
-    const fittedMs = Date.parse(fit.fittedAt);
-    const weekBefore = history
-      .filter((old) => keyOf(old) === keyOf(fit))
-      .filter(
-        (old) =>
-          Date.parse(old.fittedAt) < fittedMs && Date.parse(old.fittedAt) >= fittedMs - 7 * dayMs,
-      )
-      .sort((a, b) => Date.parse(a.fittedAt) - Date.parse(b.fittedAt));
-    const oldest = weekBefore[0];
-    const mix = fit.quality.mix;
-    const before = oldest === undefined ? 0 : ratePerMillion(oldest, mix);
-    if (oldest === undefined || before <= 0) {
-      return [];
-    }
-    const change = ratePerMillion(fit, mix) / before - 1;
-    if (Math.abs(change) <= shiftLimit) {
-      return [];
-    }
-    return [
-      { plan: fit.plan, model: fit.model, window: fit.window, since: oldest.fittedAt, change },
-    ];
-  });
 }

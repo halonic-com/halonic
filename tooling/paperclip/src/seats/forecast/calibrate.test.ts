@@ -4,7 +4,6 @@ import {
   type Calibration,
   type CalibrationInput,
   calibrate,
-  calibrationShifts,
   calibrationSteps,
   pointsFor,
 } from "./calibrate.ts";
@@ -59,6 +58,7 @@ function history(steps: number, pointsPerStep: (step: number) => number): Calibr
       { agentId: "agent-1", seatId: "seat-a", from: at(-10), to: undefined, source: "observed" },
     ],
     usage,
+    history: [],
   };
 }
 
@@ -70,6 +70,8 @@ verifies("paperclip.seats-calibrate", () => {
       plan: "max-20x",
       model: "opus",
       window: "week",
+      from: at(0),
+      to: at(0),
       tokens: { input: 2_000_000, cached: 20_000_000, output: 500_000 },
       points: 1,
     });
@@ -137,10 +139,20 @@ verifies("paperclip.seats-calibrate", () => {
     const perStep =
       fit === undefined
         ? 0
-        : pointsFor(fit, input.usage[0]?.tokens ?? { input: 0, cached: 0, output: 0 });
+        : pointsFor(
+            fit.pointsPerMillion,
+            input.usage[0]?.tokens ?? { input: 0, cached: 0, output: 0 },
+          );
     expect(perStep).toBeGreaterThan(0.3);
     expect(perStep).toBeLessThan(0.5);
-    expect(fit?.fittedAt).toBe(now);
+    expect(fit?.day).toBe("2026-11-22");
+    expect(fit?.from).toBe(at(0));
+    expect(fit?.to).toBe(at(287));
+    // Whole-percent readings are off by up to a point a step.
+    expect(fit?.quality.medianErrorPoints).toBeLessThan(1);
+    expect(fit?.quality.p90ErrorPoints).toBeLessThan(1);
+    expect(fit?.weekShift).toBeUndefined();
+    expect(fit?.shifted).toBe(false);
   });
 
   test("too few steps give no fit, and say so", () => {
@@ -149,40 +161,45 @@ verifies("paperclip.seats-calibrate", () => {
     expect(run.tooFewSteps).toEqual([{ plan: "max-20x", model: "opus", window: "week", steps: 5 }]);
   });
 
-  const fitAt = (fittedAt: string, output: number): Calibration => ({
+  /** A stored fit of the same key whose output tokens cost `output` points per million. */
+  const fitOn = (day: string, output: number): Calibration => ({
     plan: "max-20x",
     model: "opus",
     window: "week",
-    fittedAt,
-    pointsPerMillion: { input: 0.1, cached: 0.01, output },
-    quality: {
-      steps: 100,
-      medianAbsError: 0.2,
-      rSquared: 0.9,
-      mix: { input: 0.1, cached: 0.85, output: 0.05 },
-    },
+    day,
+    from: `${day}T00:00:00.000Z`,
+    to: `${day}T00:00:00.000Z`,
+    pointsPerMillion: { input: 0, cached: 0, output },
+    quality: { steps: 100, medianErrorPoints: 0.2, p90ErrorPoints: 0.5 },
+    weekShift: undefined,
+    shifted: false,
   });
+  // 30 steps of 1 point, each with 0.5 M output: the fit prices them at about 2 points per million.
+  const thirty = () => {
+    const base = history(30, () => 1);
+    const usage = base.usage.map((u) => ({
+      ...u,
+      tokens: { input: 0, cached: 0, output: 500_000 },
+    }));
+    return { ...base, usage };
+  };
 
   test("a fit more than 25% off the oldest fit of the week before is flagged", () => {
-    const history = [fitAt("2026-11-15T03:00:00.000Z", 2), fitAt("2026-11-18T03:00:00.000Z", 3)];
-    const shifts = calibrationShifts([fitAt("2026-11-22T03:00:00.000Z", 3)], history);
-    expect(shifts).toHaveLength(1);
-    expect(shifts[0]?.since).toBe("2026-11-15T03:00:00.000Z");
-    expect(shifts[0]?.change).toBeCloseTo(0.05 / 0.1185, 3);
+    const run = calibrate({
+      ...thirty(),
+      history: [fitOn("2026-11-15", 1.4), fitOn("2026-11-18", 2)],
+    });
+    const [fit] = run.calibrations;
+    expect(fit?.weekShift).toBeCloseTo(2 / 1.4 - 1, 3);
+    expect(fit?.shifted).toBe(true);
   });
 
-  test("a small shift, or no fit to compare with, raises nothing", () => {
-    expect(
-      calibrationShifts(
-        [fitAt("2026-11-22T03:00:00.000Z", 2.2)],
-        [fitAt("2026-11-16T03:00:00.000Z", 2)],
-      ),
-    ).toEqual([]);
-    expect(
-      calibrationShifts(
-        [fitAt("2026-11-22T03:00:00.000Z", 9)],
-        [fitAt("2026-11-01T03:00:00.000Z", 2)],
-      ),
-    ).toEqual([]);
+  test("a small shift, or no fit within the week before, raises nothing", () => {
+    const small = calibrate({ ...thirty(), history: [fitOn("2026-11-16", 1.85)] });
+    expect(small.calibrations[0]?.weekShift).toBeCloseTo(2 / 1.85 - 1, 3);
+    expect(small.calibrations[0]?.shifted).toBe(false);
+    const old = calibrate({ ...thirty(), history: [fitOn("2026-11-01", 1)] });
+    expect(old.calibrations[0]?.weekShift).toBeUndefined();
+    expect(old.calibrations[0]?.shifted).toBe(false);
   });
 });
