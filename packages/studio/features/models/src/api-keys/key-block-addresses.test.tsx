@@ -5,6 +5,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it } from "vitest";
 import type { KeyAddresses, ModelKeys } from "../api.ts";
+import { useKeyAddresses } from "./key-addresses.tsx";
 import { KeyBlock } from "./key-block.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -165,6 +166,56 @@ verifies("models.api-keys.address-field", () => {
     expect(view.textContent).toContain("This address isn't encrypted.");
   });
 
+  it("says a new key is still stored when its address isn't kept and it can't be removed", async () => {
+    const made = keysWith([]);
+    const stored: string[] = [];
+    const keys: ModelKeys = {
+      ...made.keys,
+      stored: async (name) => stored.includes(name),
+      save: async (name) => {
+        stored.push(name);
+      },
+      remove: async () => {
+        throw new Error("the keychain is locked");
+      },
+      addresses: {
+        ...(made.keys.addresses as KeyAddresses),
+        allow: async (name) => (stored.includes(name) ? { result: "full" } : { result: "no-key" }),
+      },
+    };
+    await show(keys);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    const view = element as HTMLElement;
+
+    await type(keyInput(view), "sk-acme-test-123");
+    await type(addressInput(view), "https://llm.example.com");
+    await press(view, "Save key");
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(view.textContent).toContain(
+      "This key can't take more addresses. To start again, remove the key and save it with one address. The key is still stored, with no address yet.",
+    );
+    expect(view.textContent).not.toContain("keychain is locked");
+    expect(view.textContent).toContain("Not bound yet");
+  });
+
+  it("never shows one key's addresses under another key's name", async () => {
+    const { keys } = keysWith(["anthropic", "openai"], { anthropic: ["https://api.example.com"] });
+    const seen: string[] = [];
+    function Probe({ name }: { readonly name: string }) {
+      seen.push(`${name} ${useKeyAddresses(keys.addresses, name, true, 0)?.kind}`);
+      return null;
+    }
+    element = document.createElement("div");
+    root = createRoot(element);
+    await act(async () => root?.render(<Probe name="anthropic" />));
+    await act(async () => root?.render(<Probe name="openai" />));
+
+    expect(seen).toContain("anthropic listed");
+    expect(seen).not.toContain("openai listed");
+    expect(seen.at(-1)).toBe("openai none");
+  });
+
   it("lists a key's addresses, opens the rest in place, and adds one only when asked", async () => {
     await keysAndShow(["anthropic"], undefined, {
       anthropic: ["https://api.example.com", "https://gateway.example.com"],
@@ -217,6 +268,19 @@ verifies("models.api-keys.not-bound-yet", () => {
     expect(view.textContent).toContain("Address saved: https://api.anthropic.com");
     expect(view.textContent).not.toContain("Not bound yet");
     expect(document.activeElement).toBe(keyInput(view));
+  });
+
+  it("names a wrong address on an old key before asking for the key", async () => {
+    const { lists } = await keysAndShow(["anthropic"]);
+    const view = element as HTMLElement;
+
+    await type(addressInput(view), "llm.example.com");
+    await press(view, "Save key");
+
+    expect(view.textContent).toContain("Enter a full address, starting with https:// or http://.");
+    expect(view.textContent).not.toContain("Paste the key first.");
+    expect(document.activeElement).toBe(addressInput(view));
+    expect(lists["anthropic"]).toBeUndefined();
   });
 
   it("says when the addresses can't be read, with no badge, address or field", async () => {

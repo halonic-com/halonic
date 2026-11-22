@@ -92,8 +92,8 @@ verifies("workflows.configuration.problem-lines", () => {
       problem("wait-without-events", "warning", "wait-1"),
     ]);
     expect(rows.map((row) => row.text)).toEqual([
-      "Has no agent, so every run fails here. Pick one on its card, or make it a Wait.",
-      "Has no way out. Add an arrow from it on its card, or make it an End.",
+      "Has no agent, so every run fails here. Pick one on its card, or make it a wait step.",
+      "Has no way out. Add an arrow from it on its card, or make it an end step.",
       "Can't be reached: no arrow leads to it.",
       "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
     ]);
@@ -118,6 +118,31 @@ verifies("workflows.configuration.problem-lines", () => {
     const missing = problem("wait-without-events", "warning", "wait-1");
     expect(cardSummary([missing])).toBe("△ Has no answers to pick");
     expect(problemRows([missing])[0]?.text).toContain("no answers to pick");
+  });
+
+  it("gives a wait step's signal a short card line and a row without the step's id (C622 #3)", () => {
+    const signal: WorkflowProblem = {
+      severity: "error",
+      code: "wait-with-signal",
+      message: `Wait step "wait-1" can't send a signal. Put signal: on the step after it.`,
+      stepId: "wait-1",
+    };
+    expect(cardProblems([signal], "wait-1")?.line).toBe("Can't send a signal");
+    expect(problemRows([signal])[0]?.text).toBe(
+      "Can't send a signal: a wait step has no moment to send one. Move the signal to the step after it, in the workflow's file.",
+    );
+  });
+
+  it("names a step's kind as a wait step or an end step, as validate does, not the Type picker's Wait", () => {
+    const lines = [
+      problemLine(problem("timer-outside-wait", "error", "write")),
+      ...problemRows([
+        problem("task-without-agent", "error", "step-1"),
+        problem("dead-end", "error", "step-1"),
+      ]).map((row) => row.text),
+    ];
+    expect(lines.join(" ")).not.toMatch(/\b(Wait|End)\b/);
+    expect(lines[0]).toBe("Only a wait step has timers");
   });
 
   it("counts errors and warnings", () => {
@@ -207,6 +232,7 @@ verifies("workflows.page.step-problems", () => {
     expect(cardProblems([], "first")).toBeUndefined();
   });
   it("marks an arrow's plate with that arrow's problems only, the worst first", () => {
+    const review = { from: "review", to: "ship", event: "answer" };
     const onArrow = (code: string, severity: WorkflowProblem["severity"], arrowIndex: number) => ({
       ...problem(code, severity, "review"),
       message: `"review" ${code}`,
@@ -219,16 +245,29 @@ verifies("workflows.page.step-problems", () => {
       { ...problem("dead-end", "error", "review"), arrowIndex: 1 },
     ];
 
-    expect(arrowProblems(problems, "review", 1, () => "Check")).toEqual({
+    expect(arrowProblems(problems, review, 1, () => "Check")).toEqual({
       severity: "error",
       glyph: "✕",
       line: "Goes to a missing step",
-      detail: '"Check" unknown-target\n"Check" unguarded-shadow',
+      detail:
+        '"Check" unknown-target\nThis arrow is never taken: an earlier arrow on answer always matches first. Change the order or the conditions in Arrows on Check\'s card.',
     });
-    expect(arrowProblems(problems, "review", 2)).toMatchObject({
+    expect(arrowProblems(problems, review, 2)).toMatchObject({
       line: "Goes to a missing step",
     });
-    expect(arrowProblems(problems, "review", 0)).toBeUndefined();
-    expect(arrowProblems(problems, "other", 1)).toBeUndefined();
+    expect(arrowProblems(problems, review, 0)).toBeUndefined();
+    expect(arrowProblems(problems, { ...review, from: "other" }, 1)).toBeUndefined();
+  });
+
+  it("says a never-taken arrow on its plate as its Problems row does, naming its event and step", () => {
+    const shadow = { ...problem("unguarded-shadow", "warning", "review"), arrowIndex: 1 };
+    const onDone = { from: "review", to: "draft" };
+
+    expect(arrowProblems([shadow], onDone, 1, () => "Check the reply")?.detail).toBe(
+      "This arrow is never taken: an earlier arrow on done always matches first. Change the order or the conditions in Arrows on Check the reply's card.",
+    );
+    expect(problemRows([shadow])[0]?.text).toBe(
+      "Has an arrow that's never taken: an earlier arrow on the same event always matches first. Change the order or the conditions in Arrows on its card.",
+    );
   });
 });

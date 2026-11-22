@@ -18,9 +18,12 @@ export function firstStep(): KindedError {
   );
 }
 
-/** Why a removal's undo puts nothing back: the workspace changed after it. */
-export function cantPutBack(what: string): string {
-  return `${what} can't be put back, because the workspace changed after it was removed.`;
+/**
+ * Why a removal's undo puts nothing back: the workspace changed after it. Only the cause, because
+ * the page's toast title already names what can't be put back (C637).
+ */
+export function cantPutBack(): string {
+  return "The workspace changed after it was removed.";
 }
 
 /** What an edit of a workflow's file rejects with when the file is written in a way it can't change. */

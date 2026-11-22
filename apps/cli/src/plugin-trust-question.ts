@@ -7,6 +7,7 @@
 
 import type {
   PluginEntry,
+  PluginInstall,
   PluginProblem,
   PluginService,
   RunnerUnfencedReason,
@@ -85,27 +86,14 @@ export async function askToTrustPlugin(
   // The manifest's name is outside text (cli-output 5).
   const name = printable(plugin.name);
   const install = await service.install(id);
-  const turnsOn = answer.offHere === undefined;
-  const check = pluginTrustCheckLines(
-    entry.content,
-    entry.location,
-    answer.programsRun,
-    install?.source,
-    turnsOn,
-  );
+  const { check, wontTurnOn } = pluginCheckAsAsked(entry, answer, install?.source);
   const fix = pluginMessages.noTerminalFix(id, fingerprint);
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
-    throw fingerprintNotCurrent(entry, { check, fingerprint });
+    throw fingerprintNotCurrent(entry, { check: [...check, ...wontTurnOn], fingerprint });
   }
 
-  // Said before the question, and before the command a script would run without a terminal,
-  // so nobody says yes expecting it to turn on (C565 row 5, C626 #1).
-  const wontTurnOn =
-    answer.offHere === undefined
-      ? []
-      : [phrase``, ...offHereLines(pluginMessages.trustWontTurnOn(name), answer.offHere, name)];
   const trusted = await answer.context.ask({
-    question: pluginMessages.trustQuestion(name, turnsOn),
+    question: pluginMessages.trustQuestion(name, answer.offHere === undefined),
     shownFirst: [...check, ...pluginFingerprintLines(fingerprint), ...wontTurnOn, phrase``],
     yes: answer.yes,
     refusal: () =>
@@ -152,6 +140,35 @@ export async function askToTrustPlugin(
 type CheckedPlugin = Exclude<PluginEntry, { status: "broken" }>;
 
 /**
+ * The trust check as the question shows it: "Trust <name>?" while its backend
+ * would be off on this computer, else "Trust <name> and turn it on?", and the
+ * warning that trusting won't turn it on, with why and where to allow it.
+ * The warning goes before the question, and before the command a script would
+ * run without a terminal or after a stale `--fingerprint`, so nobody says yes
+ * expecting it to turn on (C565 row 5, C626 #1, C642 #4).
+ */
+export function pluginCheckAsAsked(
+  entry: CheckedPlugin,
+  answer: Pick<PluginTrustAnswer, "programsRun" | "offHere">,
+  source?: PluginInstall["source"],
+): { readonly check: readonly Phrase[]; readonly wontTurnOn: readonly Phrase[] } {
+  // The manifest's name is outside text (cli-output 5).
+  const name = printable(entry.plugin.name);
+  const check = pluginTrustCheckLines(
+    entry.content,
+    entry.location,
+    answer.programsRun,
+    source,
+    answer.offHere === undefined,
+  );
+  const wontTurnOn =
+    answer.offHere === undefined
+      ? []
+      : [phrase``, ...offHereLines(pluginMessages.trustWontTurnOn(name), answer.offHere, name)];
+  return { check, wontTurnOn };
+}
+
+/**
  * "✕ That fingerprint doesn't match Weather as it is now.",
  * leaving the plugin as it is (exit 3). The refusal ends with the fingerprint
  * the plugin has now, as a check run now would, so a script can pass it to
@@ -162,15 +179,13 @@ type CheckedPlugin = Exclude<PluginEntry, { status: "broken" }>;
  * changed during the question, nobody has seen them as they are now, so the
  * fix asks for a review first.
  *
- * @param now - what changed during the question: no check to show again and
- *   the fingerprint the files have now; by default, the entry's own
+ * @param now - the check as it is now and its fingerprint, or what changed
+ *   during the question: no check to show again and the fingerprint the files
+ *   have now
  */
 export function fingerprintNotCurrent(
   entry: CheckedPlugin,
-  now: { readonly check: readonly Phrase[]; readonly fingerprint: string } = {
-    check: pluginTrustCheckLines(entry.content, entry.location),
-    fingerprint: entry.fingerprint,
-  },
+  now: { readonly check: readonly Phrase[]; readonly fingerprint: string },
 ): NotTrustedError {
   const fix =
     now.check.length === 0

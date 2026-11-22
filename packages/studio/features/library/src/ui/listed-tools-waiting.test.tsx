@@ -271,13 +271,36 @@ describe("the connector page's listed tools", () => {
       );
       await settled();
       expect(root.textContent).toContain(
-        "Couldn't list the tools: the program sh of Notes stopped right after it started. To see why, run the command and args from library/connectors/notes.connector.yaml yourself:",
+        "Couldn't list the tools: Notes's program sh stopped right after it started. To see why, run the command and args from library/connectors/notes.connector.yaml yourself:",
       );
       expect(root.textContent).toContain('cd /acme && sh -c "exit 1"');
       expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
       const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
       expect(buttons).toContain("Try again");
       expect(buttons).not.toContain("Copy details");
+    });
+
+    it("puts the line to run right under its sentence, before Try again (C652 #3)", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => {
+              throw new ConnectorCouldntList({
+                reason: "program-stopped",
+                program: "sh",
+                file: "library/connectors/notes.connector.yaml",
+                command: 'cd /acme && sh -c "exit 1"',
+              });
+            }),
+          )}
+        />,
+      );
+      await settled();
+      const buttons = [...root.querySelectorAll("button")];
+      const copy = buttons.findIndex((b) => b.getAttribute("aria-label") === "Copy command");
+      const tryAgain = buttons.findIndex((b) => b.textContent === "Try again");
+      expect(copy).toBeGreaterThanOrEqual(0);
+      expect(tryAgain).toBeGreaterThan(copy);
     });
 
     it("says the engine isn't answering when the agent host isn't running", async () => {

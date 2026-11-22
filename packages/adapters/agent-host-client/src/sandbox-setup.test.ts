@@ -93,6 +93,12 @@ describe("AgentHostSandboxSetup", () => {
     expect(await new AgentHostSandboxSetup(host).status()).toEqual({ running: null, last });
   });
 
+  it("reads a removal that is done but keeps some access until it's removed again", async () => {
+    const kept = { ok: true, keptAccess: "manual" };
+    const elevated = new FakeHost().answer("POST /v1/sandbox/remove/elevated", ok(kept));
+    expect(await new AgentHostSandboxSetup(elevated).afterRemoveHelper(0)).toEqual(kept);
+  });
+
   it("refuses a done removal with a key it doesn't know", async () => {
     const odd = { ok: true, keptAccess: "until_next_start", extra: 1 };
     const elevated = new FakeHost().answer("POST /v1/sandbox/remove/elevated", ok(odd));

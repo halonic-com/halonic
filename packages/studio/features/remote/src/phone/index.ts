@@ -10,7 +10,14 @@ export type {
   ComputerTunnelRefusal,
   ComputerTunnelSendResult,
 } from "./computer-tunnel.ts";
+export {
+  type ComputerRoute,
+  computerMeta,
+  computersWords,
+  routeOf,
+} from "./computers-words.ts";
 export { pairWords } from "./pair-words.ts";
+export { computerRowState, PairedComputers } from "./paired-computers.tsx";
 export {
   NOT_HALONIC_MS,
   type PairingFlowOptions,
@@ -86,4 +93,12 @@ export {
   type RemoteSession,
   type RemoteView,
 } from "./remote-view.ts";
+export {
+  StatusSheet,
+  type StatusSheetActions,
+  type StatusSheetOf,
+  type StatusSheetProps,
+  statusSheetTitle,
+} from "./status-sheet.tsx";
+export { sheetRouteWords, sheetWords } from "./status-words.ts";
 export { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";

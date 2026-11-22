@@ -31,6 +31,6 @@ export const deleteWords = {
       ? `Couldn't delete ${name}.`
       : `Couldn't delete ${name}: ${reason.replace(/\.$/, "")}.`,
   /** The toast when the agent's file path can't be read, so there is nothing to open. */
-  couldntOpenFile: (name: string) => `Couldn't open the file of ${name}`,
+  couldntOpenFile: (name: string) => `Couldn't open ${name}'s file`,
   couldntUndo: (name: string) => `Couldn't put ${name} back`,
 } as const;

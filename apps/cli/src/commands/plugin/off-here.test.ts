@@ -227,6 +227,28 @@ verifies("cli.commands.plugin.off-here", () => {
     ]);
   });
 
+  it("refuses a stale --fingerprint with the check the question would show, and the warning", async () => {
+    const old = await addOff();
+    await writeFile(
+      join(folder, "profile", "plugins", "weather", "backend", "index.js"),
+      "export default { changed: true };\n",
+    );
+
+    const refused = await trust("--plugin", "weather", "--yes", "--fingerprint", old);
+
+    expect(refused.code).toBe(exitCode.notTrusted);
+    // The check is the question's, so it doesn't promise to turn it on (C642 #4, HAL-15865).
+    expect(refused.io.stderr[0]).toBe("Trust Weather?");
+    expect(refused.io.stderr.join("\n")).not.toContain("and turn it on");
+    expect(refused.io.stderr.join("\n")).toContain(
+      [
+        "! Trusting Weather won't turn it on: it stays off on this computer until you allow plugins and integrations to run without the sandbox.",
+        ...reasonLines,
+        "✕ That fingerprint doesn't match Weather as it is now.",
+      ].join("\n"),
+    );
+  });
+
   it("asks without the warning in the sandbox", async () => {
     fence = { state: "fenced" };
     const { terminal, written } = terminalTyping("n");

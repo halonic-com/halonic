@@ -50,6 +50,11 @@ export interface IntegrationSignInStatus {
   readonly state: IntegrationSignInState;
   /** How the last sign-in ended since the host started, if one did. */
   readonly lastOutcome?: IntegrationSignInOutcome | undefined;
+  /**
+   * How many sign-ins of this one have ended since the host started, set with `lastOutcome`. It
+   * changes with every outcome, so the same outcome twice in a row still reads as new.
+   */
+  readonly outcomeCount?: number | undefined;
 }
 
 /**
@@ -109,6 +114,7 @@ const statusSchema = s
           signIn: s.string(),
           state: s.enum(["signedIn", "signedOut", "approvalChanged", "cannotSignIn"]),
           lastOutcome: outcomeSchema.optional(),
+          outcomeCount: s.number().optional(),
         })
         .strict(),
     ),

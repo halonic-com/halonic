@@ -1,6 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
+import { FileAgentPlacementStore } from "@halonicjs/adapter-fs-node";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import { AgentPlacement, RunHistory } from "@halonicjs/app";
@@ -17,15 +17,14 @@ import {
   acmeRunsSetup,
   makeAcmeRuns,
   removeAcmeRuns,
+  trustAcmeRuns,
   writeFiles,
 } from "../../test/acme-runs.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { type FakeTime, fakeTime, wokenUp } from "../../test/fake-time.ts";
 import { engineStart } from "../../test/run-setup.ts";
-import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns, webCryptoDigest } from "../../workspace-runs.ts";
-import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { routinesCommandWith } from "./command.ts";
 
 /** Follow up, which moves on by itself `after` its wait starts. */
@@ -226,17 +225,6 @@ async function storedRuns() {
   return runs.runs;
 }
 
-/** Trusts Acme as it is now, in the trust store the watch reads. */
-async function trustAcme(): Promise<void> {
-  const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acmeRuns.acme });
-  const { subject } = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
-  const store = new FileTrustStore(join(acmeRuns.folder, "trust"));
-  const trust = cliTrustService(store, fixedClock(engineStart));
-  const check = await trust.check(subject);
-  if (check.status === "refused") throw new Error("Acme has no connector to refuse.");
-  expect((await trust.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
-}
-
 /** The `run.started` of the stored run due at `at`. */
 async function runStartedAt(at: string): Promise<RunEvent | undefined> {
   const run = (await storedRuns()).find((each) => each.trigger?.at === at);
@@ -323,7 +311,8 @@ verifies("cli.commands.routines.watch", () => {
     expect(await watching).toBe(130);
   });
 
-  it("starts no run from a newer version whose agent needs a sandbox that can't start", {
+  // HAL-15396: such a routine is left out at the tick, before its run's sandbox check.
+  it("leaves out a routine whose newer version moves its agent into a harness", {
     timeout: gitWatchTimeout,
   }, async () => {
     await makeLive("First version");
@@ -337,15 +326,25 @@ verifies("cli.commands.routines.watch", () => {
       "hubs/support/agents/writer.agent.yaml": writerInClaudeCode,
     });
     await makeLive("Writer drafts in Claude Code");
-    // Trusted as it is now, so only the sandbox check can stop the run.
-    await trustAcme();
+    // Trusted as it is now, so trust doesn't stop the run.
+    await trustAcmeRuns(acmeRuns);
     const line = await nextLineAt(time, watch, "2026-11-10T15:00:10.000Z");
 
-    expect(line).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
-    expect(io.stderr.join("\n")).toContain("the sandbox can't start on this computer");
+    expect(line).toBe(
+      "✕ Hourly follow-up can't start: routines can't run agents in Claude Code yet, and Writer is in Claude Code. Set the agent to Halonic's own loop, or turn the routine off.",
+    );
     // `routines watch` has no --harness, so it doesn't suggest one (HAL-12597).
     expect(io.stderr.join("\n")).not.toContain("--harness");
     expect(await storedRuns()).toEqual([]);
+
+    // HAL-15664's line holds for this kind too: Writer back in Halonic's own loop can start.
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\n",
+    });
+    await makeLive("Writer drafts in Halonic's own loop");
+    expect(await nextLineAt(time, watch, "2026-11-10T16:00:10.000Z")).toBe(
+      "✓ Hourly follow-up can start now",
+    );
     signals.send("SIGINT");
     expect(await watching).toBe(130);
   });

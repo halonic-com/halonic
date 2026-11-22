@@ -84,6 +84,34 @@ verifies("plugins.plugin-sign-in-waiting", () => {
     expect(button("Sign in")).toBeDefined();
   });
 
+  it("ends the wait when the sign-in ended the same way as the last one", async () => {
+    const signIns = new FakeSignIns();
+    signIns.statuses = [
+      {
+        signIn: "account",
+        state: "signedOut",
+        lastOutcome: { kind: "cancelled" },
+        outcomeCount: 1,
+      },
+    ];
+    const view = await show(signIns);
+    await press("Sign in");
+    signIns.statuses = [
+      {
+        signIn: "account",
+        state: "signedOut",
+        lastOutcome: { kind: "cancelled" },
+        outcomeCount: 2,
+      },
+    ];
+
+    await comeBack();
+
+    expect(view.textContent).not.toContain(waitingLine);
+    expect(view.textContent).toContain("You cancelled the sign-in.");
+    expect(button("Sign in")).toBeDefined();
+  });
+
   it("hides how the last sign-in ended while it waits for a new one", async () => {
     const signIns = new FakeSignIns();
     signIns.statuses = [

@@ -24,8 +24,11 @@ export interface PlacementState {
   readonly load: PlacementLoad;
   /** Reads it again; resolves when the answer is in, and never rejects. */
   readonly reload: () => Promise<void>;
-  /** Opens the Changes page, for the warning's **See what changed ›**; absent where the app can't. */
-  readonly openChanges?: (() => void) | undefined;
+  /**
+   * Opens the agent's file at `path` in a new tab next to the agent's, for the warning's
+   * **Open the file ›**; absent where the app can't.
+   */
+  readonly openFile?: ((path: string) => void) | undefined;
 }
 
 /**
@@ -82,8 +85,8 @@ export interface PlacementProviderProps {
   readonly host: AgentsHost;
   readonly hubId: string;
   readonly id: string;
-  /** Opens the Changes page; absent where the app can't open a place. */
-  readonly openChanges?: (() => void) | undefined;
+  /** Opens a file in a new tab next to the agent's; absent where the app can't open one. */
+  readonly openFile?: ((path: string) => void) | undefined;
   readonly children: ReactNode;
 }
 
@@ -92,14 +95,8 @@ export interface PlacementProviderProps {
  * follows a choice made in Where it runs at once: a choice changes no file, so the host's
  * file-change signal alone wouldn't tell the chip.
  */
-export function PlacementProvider({
-  host,
-  hubId,
-  id,
-  openChanges,
-  children,
-}: PlacementProviderProps) {
-  const state = { ...useOwnPlacement(host, hubId, id), openChanges };
+export function PlacementProvider({ host, hubId, id, openFile, children }: PlacementProviderProps) {
+  const state = { ...useOwnPlacement(host, hubId, id), openFile };
   return createElement(SharedPlacementContext.Provider, { value: { hubId, id, state } }, children);
 }
 

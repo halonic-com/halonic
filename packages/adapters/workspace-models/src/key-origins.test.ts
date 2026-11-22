@@ -364,4 +364,21 @@ verifies("cli.key-origin-ask", () => {
     });
     expect(JSON.stringify(failure)).not.toContain("fake-key-value");
   });
+
+  it("names the store whose list refused, so a host names the fix that changes it (HAL-15762)", async () => {
+    const workspace = await workspaceOf({ type: "openai", secret: keyName });
+    const refusal = (keyOrigins: KeyOrigins) =>
+      workspaceModelResolver({ workspace, secrets, http, isTrusted: () => true, keyOrigins })(
+        call,
+      ).catch((error: unknown) => error);
+    const listed = originsOf({ [keyName]: ["https://gateway.example.com"] });
+
+    expect(await refusal({ ...listed, store: "secrets-file" })).toMatchObject({
+      failureCause: { detail: { key: keyName, store: "secrets-file" } },
+    });
+    expect(await refusal({ ...listed, store: "keychain" })).toMatchObject({
+      failureCause: { detail: { store: "keychain" } },
+    });
+    expect(await refusal(listed)).not.toHaveProperty("failureCause.detail.store");
+  });
 });

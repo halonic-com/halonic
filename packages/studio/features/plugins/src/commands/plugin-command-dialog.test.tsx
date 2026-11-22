@@ -266,7 +266,7 @@ verifies("plugins.plugin-commands", () => {
       "Halonic stopped Weather: the sandbox didn't work when it started, so none of it ran.",
     );
     expect(dialog().textContent).toContain(
-      "Try again starts it in the sandbox again. Open Weather for details.",
+      "Try again starts it in the sandbox. Open Weather for details.",
     );
     expect(dialog().textContent).not.toContain("host's own text");
     act(() => button("Weather").click());
@@ -284,7 +284,7 @@ verifies("plugins.plugin-commands", () => {
     );
     await settle();
     expect(dialog().textContent).toContain(
-      "Try again starts it in the sandbox again. Open Weather for details.",
+      "Try again starts it in the sandbox. Open Weather for details.",
     );
     expect(buttonWords()).not.toContain("Weather");
   });

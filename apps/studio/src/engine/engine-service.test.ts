@@ -342,7 +342,7 @@ verifies("studio.engine-service", () => {
       expect(refusal).toMatchObject({
         kind: "unavailable",
         message:
-          "Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow, then pick it under Starts.",
+          "Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then pick it under Starts.",
         fix: undefined,
       });
       await service.close();

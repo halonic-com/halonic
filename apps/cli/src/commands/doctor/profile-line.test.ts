@@ -132,6 +132,30 @@ verifies("cli.commands.doctor.profile-line", () => {
       expect(io.stderr[0]).toContain("there's no workspace.yaml here.");
     });
 
+    it("isn't there for a --dir inside the profile without workspace.yaml, which is no workspace", async () => {
+      const profile = join(folder, "profile");
+      mkdirSync(join(profile, "empty"), { recursive: true });
+      vi.stubEnv("HALONIC_HOME", profile);
+
+      const { code, io } = await doctorIn(folder, profile, "--dir", join(profile, "empty"));
+
+      expect(code).toBe(exitCode.notFound);
+      expect(io.stderr[0]).toContain("there's no workspace.yaml here.");
+    });
+
+    it("checks only the computer in a folder inside the profile without workspace.yaml", async () => {
+      const profile = join(folder, "profile");
+      const empty = join(profile, "empty");
+      mkdirSync(empty, { recursive: true });
+      vi.stubEnv("HALONIC_HOME", profile);
+
+      const { code, io } = await doctorIn(empty, profile);
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout.some((line) => line.includes("Profile"))).toBe(false);
+      expect(io.stdout.some((line) => line.includes("Workspace"))).toBe(false);
+    });
+
     it("isn't there for a sibling folder whose name starts the same", async () => {
       const acme = join(folder, "acme");
       writeWorkspace(acme);

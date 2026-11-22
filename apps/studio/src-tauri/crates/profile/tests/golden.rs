@@ -99,10 +99,41 @@ fn trust_folder_names_why_an_environment_is_refused() {
 
     environment.halonic_home = Some("profile".to_owned());
     let chosen = profile_folder(&environment).unwrap_err();
-    let message = chosen.to_string();
     assert_eq!(
-        message,
-        "HALONIC_HOME must be a full path, not \"profile\"."
+        chosen.to_string(),
+        "HALONIC_HOME must be a full path, not \"profile\". \
+         Set HALONIC_HOME to a full path, such as $HOME/.halonic."
+    );
+}
+
+/// The CLI's sentence and fix (`cli.profile-home`), so the Studio says the
+/// same when its login shell sets a relative `HALONIC_HOME` (HAL-15439).
+#[test]
+fn a_relative_halonic_home_gets_the_clis_fix() {
+    let mut environment = ProfileEnvironment {
+        platform: Platform::Macos,
+        home_folder: "/srv/acme".to_owned(),
+        halonic_home: Some("~/.halonic".to_owned()),
+        local_app_data: None,
+        xdg_data_home: None,
+    };
+    assert_eq!(
+        profile_folder(&environment).unwrap_err().to_string(),
+        "HALONIC_HOME must be a full path, not \"~/.halonic\". \
+         Inside quotes the shell doesn't turn ~ into your home folder. \
+         Use $HOME instead: HALONIC_HOME=\"$HOME/.halonic\"."
+    );
+
+    // Joined, so the leak guard doesn't take it for a real local path.
+    let home = ["C:", "Users", "acme"].join("\\");
+    environment.platform = Platform::Windows;
+    environment.home_folder = home.clone();
+    assert_eq!(
+        profile_folder(&environment).unwrap_err().to_string(),
+        format!(
+            "HALONIC_HOME must be a full path, not \"~/.halonic\". \
+             Set HALONIC_HOME to a full path, such as {home}\\.halonic."
+        )
     );
 }
 

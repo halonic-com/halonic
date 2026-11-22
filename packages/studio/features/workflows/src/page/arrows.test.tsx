@@ -72,7 +72,7 @@ const stepName = (stepId: string) => (stepId === "review" ? "Check the reply" : 
 const plates = (page: Element) => [...page.querySelectorAll<SVGGElement>("svg g[data-plate]")];
 
 verifies("workflows.page.step-problems", () => {
-  it("marks the plate of the arrow that never fires, after its words, and names the step in its tooltip", async () => {
+  it("marks the plate of the arrow that's never taken, after its words, and names the step in its tooltip", async () => {
     const page = await show(
       <Arrows
         arrows={reviewArrows}
@@ -85,7 +85,7 @@ verifies("workflows.page.step-problems", () => {
 
     expect(approved?.querySelector("text")?.textContent).toBe("approved · △ Never taken");
     expect(approved?.querySelector("title")?.textContent).toBe(
-      'In "Check the reply", the transition to "ship" can never fire: an earlier one on "answer" has no condition',
+      "This arrow is never taken: an earlier arrow on answer always matches first. Change the order or the conditions in Arrows on Check the reply's card.",
     );
     expect(approved?.getAttribute("class")).toBe("pointer-events-auto");
     expect(approved?.querySelector("rect:last-of-type")?.getAttribute("class")).toContain(

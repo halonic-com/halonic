@@ -19,6 +19,18 @@ export class AddressRefused extends Error {
   }
 }
 
+/**
+ * A new key whose address wasn't kept and which couldn't be removed again, so it is still stored
+ * with no address. `cause` is why the address wasn't kept. Such a key falls back to the rule for
+ * keys saved before addresses existed, like any old key.
+ */
+export class KeyLeftWithoutAddress extends Error {
+  constructor(cause: unknown) {
+    super("the key is still stored, with no address", { cause });
+    this.name = "KeyLeftWithoutAddress";
+  }
+}
+
 /** What one Save stores: a new key, an address for the key, or both. At least one is set. */
 export interface KeySave {
   readonly key?: SecretText | undefined;
@@ -33,9 +45,11 @@ export interface KeySave {
  *   addresses (`studio.src-tauri.crates.secrets.key-origins`).
  * - With none stored (the store answers `no-key`), the key is stored, then the address. If the
  *   address isn't kept, the new key is removed again, so it never stands without an address.
+ *   If removing it fails too, {@link KeyLeftWithoutAddress} says so and keeps the first error.
  *
  * @returns the address as it is kept, when one was saved
- * @throws AddressRefused when the store answers `full` or `bad-address`; anything the store throws
+ * @throws AddressRefused when the store answers `full` or `bad-address`; KeyLeftWithoutAddress
+ *   when a new key stays stored without one; anything the store throws
  */
 export async function saveKey(
   keys: Pick<ModelKeys, "save" | "remove">,
@@ -58,7 +72,11 @@ export async function saveKey(
   try {
     return keptAddress(await addresses.allow(secretName, address));
   } catch (error) {
-    await keys.remove(secretName);
+    try {
+      await keys.remove(secretName);
+    } catch {
+      throw new KeyLeftWithoutAddress(error);
+    }
     throw error;
   }
 }

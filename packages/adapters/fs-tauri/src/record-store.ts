@@ -163,6 +163,8 @@ export function recordFailure(reason: unknown): Error {
   return new KindedError(
     errorKinds[reason.kind],
     `The record store refused the call: ${reason.message}`,
+    // The refusal is the cause, so a page can tell a folder that isn't open (`folder_not_open`).
+    { cause: reason },
   );
 }
 

@@ -369,6 +369,12 @@ export interface KeyOrigins {
    * @throws RangeError when the name breaks the secret name rule
    */
   allowedOrigins(name: string): Promise<readonly string[] | undefined>;
+  /**
+   * Where the lists are kept, which a refusal names in its cause so a host can name the fix
+   * (HAL-15762): the OS keychain, whose lists Studio's Models edits, or the profile's secrets
+   * file, whose lists `halonic models allow-address` edits. Absent when the host doesn't say.
+   */
+  readonly store?: "keychain" | "secrets-file";
 }
 
 /**

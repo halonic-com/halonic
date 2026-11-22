@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-13180; flow-agents 6; UX checklist 9.9; microcopy 8.4; HAL-15441 (C561 finding 4.2)
+- Source: HAL-13180; flow-agents 6; UX checklist 9.9; microcopy 8.4; HAL-15441 (C561 finding 4.2); HAL-15452
 
-The agents feature shall end each side of the agent map in its add button, also when the side is empty, where **Add a tool** opens Configuration › Tools, **Add subagent** opens Configuration › Subagents with its Add subagent dialog open, and **Add trigger** opens Configuration › Triggers on the section's add step (`SECTION_ADD_STEP`), so the section starts adding at once, and is there only once a feature adds Triggers to the agent's page; an agent with no work in, no tools and no subagents shall show only the centre card and the add buttons, with no other text.
+The agents feature shall end each side of the agent map in its add button, also when the side is empty, where **Add a tool** opens Configuration › Tools, **Add subagent** opens Configuration › Subagents with its Add subagent dialog open, and **Add trigger** opens Configuration › Triggers on the section's add step (`SECTION_ADD_STEP`), where the section does what adding a trigger to the agent means (`routines.triggers.add-trigger-from-page`), and is there only once a feature adds Triggers to the agent's page; an agent with no work in, no tools and no subagents shall show only the centre card and the add buttons, with no other text.
 
 ## Examples
 

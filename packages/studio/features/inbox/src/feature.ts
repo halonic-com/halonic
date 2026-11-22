@@ -6,6 +6,7 @@ import {
   InboxRequestsService,
   InboxRunsService,
   InboxService,
+  ProposalDecisionsService,
   SandboxPassesService,
   SandboxRefusalsService,
 } from "./api.ts";
@@ -29,6 +30,8 @@ export const inboxFeature = defineFeature({
     SandboxRefusalsService,
     sandboxStartCheckKey,
     SandboxPassesService,
+    // A run proposal's Accept and Reject, from the agent host (HAL-10916).
+    ProposalDecisionsService,
     // The page reads each run's workflow and starter from the Runs list for the card and row.
     RunsListService,
   ],

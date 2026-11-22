@@ -36,6 +36,7 @@ import {
   askToTrustPlugin,
   brokenPluginError,
   fingerprintNotCurrent,
+  pluginCheckAsAsked,
 } from "../../plugin-trust-question.ts";
 
 /** The options `--plugin` can't go with: they name workspaces, and a plugin id is never one. */
@@ -85,14 +86,26 @@ export async function trustPlugin(
     throw brokenPluginError(entry.folder, entry.problems);
   }
   const { plugin } = entry;
+  // Worked out first, so the refusal's check below says what the question
+  // would: "Trust Weather?" and that it stays off here (C642 #4).
+  const offHere = await offHereFor(setup, [plugin]);
   if (fingerprint !== undefined && fingerprint !== entry.fingerprint) {
     // Checked before "already on", as workspace `trust` does: a fingerprint
     // that isn't the current one is never a yes, whatever the state.
-    throw fingerprintNotCurrent(entry);
+    const programsRun = await programsRunFor(setup, [entry.content]);
+    const install = await service.install(entry.folder);
+    const { check, wontTurnOn } = pluginCheckAsAsked(
+      entry,
+      { programsRun, offHere },
+      install?.source,
+    );
+    throw fingerprintNotCurrent(entry, {
+      check: [...check, ...wontTurnOn],
+      fingerprint: entry.fingerprint,
+    });
   }
   // The manifest's name is outside text (cli-output 5).
   const name = printable(plugin.name);
-  const offHere = await offHereFor(setup, [plugin]);
   if (entry.status === "trusted") {
     const json = {
       id: entry.folder,
@@ -179,7 +192,7 @@ async function removeTrust(service: PluginService, entry: PluginEntry): Promise<
     signedOut: signInsSignedOut(signedOut),
     signOutNotConfirmed: signInsNotConfirmed(signedOut),
   };
-  const signOutLines = pluginSignedOutLines(shown, signedOut);
+  const signOutLines = pluginSignedOutLines(signedOut);
   if (!hadTrust) {
     return {
       exitCode: exitCode.ok,

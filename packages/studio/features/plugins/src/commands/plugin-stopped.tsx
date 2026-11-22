@@ -39,7 +39,7 @@ export function StoppedLine({
 }
 
 /**
- * The second line, "Try again starts it in the sandbox again. Open *Tides* for details.", with the
+ * The second line, "Try again starts it in the sandbox. Open *Tides* for details.", with the
  * plugin's name as a link to its page. Without `onOpen`, where the window can't open pages, the
  * name is plain italics.
  */
@@ -58,7 +58,7 @@ export function TryAgainLine({
   );
   return (
     <>
-      Try again starts it in the sandbox again. Open{" "}
+      Try again starts it in the sandbox. Open{" "}
       {onOpen === undefined ? (
         named
       ) : (

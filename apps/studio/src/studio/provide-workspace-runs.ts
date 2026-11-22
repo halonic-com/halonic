@@ -2,6 +2,7 @@
 // both read, and what the Inbox derives from them. Kept apart from `provideFolderServices`, which
 // gives the folder everything else.
 
+import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
   type TauriFileShell,
@@ -11,6 +12,7 @@ import type { ServiceRegistry } from "@halonicjs/app";
 import {
   InboxNoticesService,
   InboxRunsService,
+  ProposalDecisionsService,
   SandboxRefusalsService,
 } from "@halonicjs/studio-feature-inbox/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
@@ -19,8 +21,10 @@ import { engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
 import { WorkspaceSandboxRefusals } from "../inbox/workspace-sandbox-refusals.ts";
+import { hostProposalDecisionsOf, hostProposalsOf } from "../runs/host-proposals.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { focusOf, storageOf } from "./page-window.ts";
+import type { WorkspaceTrust } from "./workspace-trust.ts";
 
 /**
  * Gives the workspace in `location` its runs, read through the shell, as both the Runs
@@ -33,14 +37,19 @@ export function provideWorkspaceRuns(
     files,
     window,
     remoteEngine,
+    transport,
+    trust,
   }: {
     ipc: TauriIpc;
     files: TauriFileShell;
     window: object;
     remoteEngine?: RemoteEngine | undefined;
+    transport: AgentHostTransport | undefined;
+    trust: WorkspaceTrust;
   },
   location: string,
 ): void {
+  const trusted = () => trust.mayStartNow();
   const runs = new WorkspaceRuns({
     runs: new TauriRunStore(ipc, location),
     definitions: new TauriDefinitionStore(files, location),
@@ -56,7 +65,18 @@ export function provideWorkspaceRuns(
           followRuns: (listener) => remoteEngine.followRuns(listener),
           reportError: (error) => console.error("The background engine's run changes", error),
         }),
+    // Run proposals live in the agent host's records (HAL-10916); without the host there are none,
+    // and an untrusted folder asks the host nothing.
+    ...(transport === undefined
+      ? {}
+      : { proposals: hostProposalsOf(transport, location, trusted) }),
   });
+  if (transport !== undefined) {
+    services.provide(
+      ProposalDecisionsService,
+      hostProposalDecisionsOf(transport, location, trusted),
+    );
+  }
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);
   services.provide(SandboxRefusalsService, new WorkspaceSandboxRefusals(runs));

@@ -12,6 +12,15 @@ import type { RunSummary } from "@halonicjs/events";
  */
 export type ProposalEnding = "finished" | "failed" | "stopped";
 
+/** One file a run changed, as its proposal's page lists it (Q5). */
+export interface ProposalFile {
+  /** From the workspace root. */
+  readonly path: string;
+  readonly change: "added" | "modified" | "deleted";
+  /** `not-applicable` for a file that can't be written (Q8). */
+  readonly decision: "accepted" | "rejected" | "undecided" | "not-applicable";
+}
+
 /** The changes one run proposes, one item per run however many items it changed (Q1). */
 export interface ProposalItem {
   readonly kind: "proposal";
@@ -24,6 +33,8 @@ export interface ProposalItem {
   readonly items: readonly string[];
   /** The items' names as their files say, in the same order; an id when the file can't be read. */
   readonly itemNames: readonly string[];
+  /** Every file the run changed, in the proposal's order, with what was decided on it. */
+  readonly files: readonly ProposalFile[];
   /** `null` when the run's record can't be read: the row then says only when it ended. */
   readonly ending: ProposalEnding | null;
   /** ISO time the run ended: from its record, else when the proposal was made. Newest first. */
@@ -72,6 +83,11 @@ function proposalItem(
     runId,
     changes: files.length,
     items,
+    files: files.map(({ path, change }) => ({
+      path,
+      change,
+      decision: record.decisions[path] ?? "undecided",
+    })),
     itemNames: items.map(nameOfItem),
     ending: run === undefined ? null : endingOf(run),
     since: run?.endedAt ?? record.finishedAt,

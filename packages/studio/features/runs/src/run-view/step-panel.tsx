@@ -147,7 +147,11 @@ export function StepPanel({
           <section className="flex flex-col gap-1">
             <h3 className="text-body-strong">{stepEventsWords.toolCalls}</h3>
             {connectorsNotStarted.map((notStarted) => (
-              <ConnectorNotStartedLine key={notStarted.id} notStarted={notStarted} />
+              <ConnectorNotStartedLine
+                key={notStarted.id}
+                notStarted={notStarted}
+                openPlugin={openPlugin}
+              />
             ))}
             <ul className="-mx-4 divide-y divide-border">
               {toolCalls.map((call) => (

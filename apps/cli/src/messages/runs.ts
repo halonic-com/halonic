@@ -1,4 +1,5 @@
 import type { Mark } from "../output/paint.ts";
+import { shellWord } from "../output/shell-word.ts";
 import { countInWords, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { markPart, phrase } from "./phrase.ts";
@@ -179,6 +180,11 @@ export const runsMessages = defineMessages("runs", {
     }
     return why;
   },
+  /**
+   * Under a child run's heading, as Studio's run page says what started a child run: "Started by
+   * run 2ad348" (HAL-15951).
+   */
+  showStartedBy: (parentId: string) => phrase`Started by run ${parentId}`,
   /** Under that line, in place of Studio's Open run: the way to the run that started it. */
   showParentRun: (parentId: string, dir?: string) =>
     phrase`See the run that started it: ${suggestedCommand("runs show", dir, parentId)}`,
@@ -213,6 +219,15 @@ export const runsMessages = defineMessages("runs", {
    */
   showSendingOff: (tool: string, connector: string) =>
     phrase`${markPart("needsYou")} The call to ${tool} was refused: sending is off for ${connector}, so nothing was sent.`,
+  /**
+   * HAL-15891 (C646): the fix under {@link showSendingOff} for a Google connector, the command
+   * that switches its sending on, as the model's refusal names it. `connector` is the id from
+   * the workspace's own file, as one shell word. Team wording, as HAL-2282 allows.
+   */
+  showSendingOffFix: (connector: string, dir?: string) =>
+    phrase`To switch it on, run ${suggestedCommand("google allow-sending", dir, `${shellWord(connector)} on`)}`,
+  /** The line under {@link showSendingOff} for any other connector, which has no such command yet. */
+  showSendingOffNoFix: () => phrase`The halonic command can't switch sending on for it yet.`,
 });
 
 function notWaitingInWords(why: NotWaiting): string {

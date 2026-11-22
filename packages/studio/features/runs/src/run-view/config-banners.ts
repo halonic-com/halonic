@@ -12,7 +12,14 @@ import type { RunBanner } from "./run-page-model.ts";
 /** The config causes `setupFailureOf` reads from the engine's cause (`run-failure-config.ts`). */
 type ConfigFailure = Extract<
   RunFailure,
-  { reason: "unknown-provider" | "items-not-a-list" | "no-transition" | "task-without-agent" }
+  {
+    reason:
+      | "unknown-provider"
+      | "items-not-a-list"
+      | "no-transition"
+      | "task-without-agent"
+      | "item-run-waits";
+  }
 >;
 
 /** Whether a setup failure is one of the workspace's config causes. */
@@ -22,6 +29,7 @@ export function isConfigFailure(failure: RunFailure | undefined): failure is Con
     case "items-not-a-list":
     case "no-transition":
     case "task-without-agent":
+    case "item-run-waits":
       return true;
     default:
       return false;
@@ -60,6 +68,11 @@ export function configBanner(
       ]);
     case "task-without-agent":
       return inTheStep([words.taskWithoutAgent(workflow, step), words.taskWithoutAgentFix]);
+    case "item-run-waits":
+      return inTheStep([
+        words.itemRunWaits(workflow, step, failure.item),
+        words.itemRunWaitsFix(step, failure.workflow),
+      ]);
   }
 }
 

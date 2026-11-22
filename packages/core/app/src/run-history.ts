@@ -190,6 +190,39 @@ export class RunHistory {
     if (summary === null) return undefined;
     return { item: child.item, run: { summary, events } };
   }
+
+  /**
+   * The run a waiting run's answer goes to, and its whole log, when the run
+   * waits because a child run it started waits (requirement
+   * `app.waiting-child-run`): the child it waits on, or that child's own
+   * waiting child, down to the run that waits for the person. `undefined`
+   * when the run doesn't wait on a child, a log on the way is gone, or the
+   * runs go deeper than {@link maxChildDepth}.
+   *
+   * @example
+   * await history.waitingChild(run);
+   * // { summary: { id: "run_triage.2", status: "waiting", accepts: ["approve", "reject"], … }, events: […] }
+   */
+  async waitingChild(run: RunDetail): Promise<RunDetail | undefined> {
+    let childId = waitingOnOf(run.summary);
+    for (let depth = 0; childId !== undefined && depth < maxChildDepth; depth++) {
+      const events = await this.#runs.events(childId);
+      const summary = summarize(events);
+      if (summary === null) return undefined;
+      const next = waitingOnOf(summary);
+      if (next === undefined) return { summary, events };
+      childId = next;
+    }
+    return undefined;
+  }
+}
+
+/** How many runs deep {@link RunHistory.waitingChild} follows a run waiting on its child. */
+const maxChildDepth = 8;
+
+/** The child run a waiting run waits on; `undefined` for any other run. */
+function waitingOnOf(summary: RunSummary): string | undefined {
+  return summary.status === "waiting" && summary.waitingOn !== null ? summary.waitingOn : undefined;
 }
 
 /** The child run a failed run's step failed with, as {@link RunHistory.failedChild} reads it. */

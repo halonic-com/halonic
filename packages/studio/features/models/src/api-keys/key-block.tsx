@@ -3,7 +3,7 @@ import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { KeyEntry, ModelKeys } from "../api.ts";
 import { type Stored, useAddressStep } from "./address-step.tsx";
-import { saveKey } from "./key-save.ts";
+import { KeyLeftWithoutAddress, saveKey } from "./key-save.ts";
 import {
   addressSavedLine,
   CHANGE_KEY,
@@ -12,6 +12,7 @@ import {
   KEY_CHECK_FAILED,
   KEY_CHECKING,
   KEY_HEADING,
+  KEY_LEFT_WITHOUT_ADDRESS,
   KEY_REMOVED_LINE,
   KEY_SET,
   keptLine,
@@ -218,6 +219,7 @@ function KeyField({
     if (secretName === undefined || (value === "" && typed === undefined)) return;
     let kept: string | undefined;
     let refused: string | undefined;
+    let leftStored = false;
     const saved = await run(
       async () => {
         try {
@@ -226,15 +228,27 @@ function KeyField({
             address: typed,
           });
         } catch (error) {
-          refused = address.refused(error);
-          throw error;
+          // The line names why the address wasn't kept, and then that the key is still stored.
+          const first = error instanceof KeyLeftWithoutAddress ? error.cause : error;
+          leftStored = first !== error;
+          refused = address.refused(first);
+          throw first;
         }
       },
-      (reason) => refused ?? saveFailedLine(reason, stored === "set"),
+      (reason) => {
+        const line = refused ?? saveFailedLine(reason, stored === "set");
+        return leftStored ? `${line} ${KEY_LEFT_WITHOUT_ADDRESS}` : line;
+      },
       () => (kept === undefined ? savedLine(providerName) : addressSavedLine(kept, value !== "")),
       value,
     );
-    if (!saved) return;
+    if (saved) afterSave(value, kept);
+    // The key is stored after all, so the block reads it again and shows "Not bound yet".
+    else if (leftStored) check();
+  }
+
+  /** After a save: the addresses read again, the key's field cleared, and the focus back in it. */
+  function afterSave(value: string, kept: string | undefined) {
     if (kept !== undefined) address.kept();
     // The Address field may be gone now, so the focus goes back to the key's field either way.
     input.current?.focus();
@@ -254,21 +268,29 @@ function KeyField({
     }
   }
 
+  /** What Save is missing, or `undefined` when it can go ahead. A wrong address shows its own error. */
+  function missing(): "key" | "address" | undefined {
+    // A stored key may get just an address; a new one needs the key first. On a stored key, a
+    // wrong address is named before "Paste the key first", since that is what needs fixing.
+    const needsKey = !hasText && stored !== "set";
+    if (!needsKey && !address.checked()) return "address";
+    if (needsKey || (!hasText && address.typed() === undefined)) return "key";
+    return undefined;
+  }
+
   function save() {
     if (busy) return;
-    // A stored key may get just an address; a new one needs the key first.
-    const addressOnly = !hasText && stored === "set" && address.typed() !== undefined;
-    if (!hasText && !addressOnly) {
+    const first = missing();
+    if (first !== undefined) {
       setDone("");
-      setProblem(PASTE_FIRST);
-      input.current?.focus();
+      if (first === "key") {
+        setProblem(PASTE_FIRST);
+        input.current?.focus();
+      }
       return;
     }
-    if (!address.checked()) {
-      setDone("");
-      return;
-    }
-    if (addressOnly || stored === "none") void send();
+    // With no key typed, only the address is saved, so there is nothing to confirm.
+    if (!hasText || stored === "none") void send();
     else setConfirm(stored === "unknown" ? "save" : "change");
   }
 

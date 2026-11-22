@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-In a narrow panel or at larger text, the agent map's stacked list now shows each item as a full-width row with its kind and details, and ends each group in a large add row.
+When an agent's Flow tab is too narrow for the map's columns, in a small panel or with larger text, the map now shows each item as a full-width row with its kind and details, and ends each group with a large add row.

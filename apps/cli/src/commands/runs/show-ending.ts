@@ -13,10 +13,16 @@ import {
   runFailureOf,
   type WorkspaceModels,
 } from "@halonicjs/app/run-failure";
-import { endedWithParent, type RunEvent, type RunSummary } from "@halonicjs/events";
+import {
+  answerChoicesOf,
+  endedWithParent,
+  type RunEvent,
+  type RunSummary,
+} from "@halonicjs/events";
 import { duration } from "../../messages/duration.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
+import { offOptionsStart } from "../../messages/run-failure-words.ts";
 import { type FailedRun, runFailedLines } from "../../messages/run-failures.ts";
 import { type CancelledAt, runsMessages } from "../../messages/runs.ts";
 import { stepName } from "../../messages/step-name.ts";
@@ -32,7 +38,7 @@ import { waitDescription } from "./listed-run.ts";
  *
  * @param models - the workspace's models, read only for a failed run
  * @param debugging - `--debug` was given, so a failed run's general lines don't ask for it
- * @param child - the child run a failed run's step failed with, whose cause its lines say
+ * @param children - the child runs the run failed with or waits on, whose lines it says
  */
 export function showEnding(
   run: RunDetail,
@@ -41,17 +47,22 @@ export function showEnding(
   models: () => WorkspaceModels,
   dir: string | undefined,
   debugging = false,
-  child?: FailedChildEnding,
+  children: ChildEndings = {},
 ): Phrase[] {
   switch (run.summary.status) {
     case "completed":
       return finishedEnding(run, title);
     case "failed":
-      return failedEnding({ run, title, definitions, models }, { dir, debugging, child });
+      return failedEnding(
+        { run, title, definitions, models },
+        { dir, debugging, child: children.failed },
+      );
     case "cant-try":
       return cantTryEnding(run, title, definitions);
     case "waiting":
-      return waitingEnding(run.summary, definitions, dir);
+      return runWait(run.summary).kind === "child-run" && children.waiting !== undefined
+        ? waitingEnding(children.waiting.summary, children.waiting.definitions, dir)
+        : waitingEnding(run.summary, definitions, dir);
     case "running":
       return [];
   }
@@ -86,6 +97,21 @@ export interface FailedChildEnding extends EndedRun {
   readonly item: number | undefined;
 }
 
+/**
+ * The run a waiting run's answer goes to when it waits on a child run
+ * (`app.waiting-child-run`), with the workflow and agents its lines name.
+ */
+export interface WaitingChildEnding {
+  readonly summary: RunSummary;
+  readonly definitions: RunDefinitions;
+}
+
+/** The child runs whose lines end the run that started them; either may be missing. */
+export interface ChildEndings {
+  readonly failed?: FailedChildEnding | undefined;
+  readonly waiting?: WaitingChildEnding | undefined;
+}
+
 interface FailedEndingOptions {
   readonly dir: string | undefined;
   readonly debugging: boolean;
@@ -97,10 +123,10 @@ interface FailedEndingOptions {
  * fix indented under it, then the receipt, the same two lines `halonic run`
  * prints when the run fails. A run cancelled somewhere else has one line,
  * where the cancel landed, and no fix (revision 28); so has a run whose
- * cause is known but has no words of its own yet (HAL-6451). A cancelled
- * child run has the way to its parent under its line. A run
+ * cause is known but has no words of its own yet (HAL-6451). A run
  * whose step failed because its child run failed says the child's cause
- * instead, with the way to that child.
+ * instead, with the way to that child. A child run, cancelled or failed,
+ * has the way to its parent under its lines (HAL-15755, HAL-15864).
  */
 function failedEnding(ended: EndedRun, options: FailedEndingOptions): Phrase[] {
   const { run, title } = ended;
@@ -110,9 +136,9 @@ function failedEnding(ended: EndedRun, options: FailedEndingOptions): Phrase[] {
   const own = failureLines(ended, { dir: options.dir, debugging: options.debugging });
   const lines =
     own === undefined
-      ? cancelledLines(run.summary, title, cancelledAt(run.events, failed, named), options.dir)
+      ? [cancelledLine(run.summary, title, cancelledAt(run.events, failed, named))]
       : (childFailedLines(options, { title, step }) ?? own.lines);
-  const [first = [], ...rest] = lines;
+  const [first = [], ...rest] = [...lines, ...parentRunLines(run.summary, options.dir)];
   const receipt = runMessages.receipt(receiptOf(run.events, run.summary)).phrase;
   return [
     [],
@@ -147,7 +173,7 @@ function failureLines(
     step: stepNamer(definitions)(failed.state ?? run.summary.state ?? ""),
     runId: shortRunId(run.summary.id),
   };
-  const { message, fix } = runFailedLines(failedRun, failure);
+  const { message, fix } = runFailedLines(failedRun, offOptionsNamed(failure, failed, definitions));
   const lines = fix === undefined ? [message.phrase] : [message.phrase, phrase`  ${fix.phrase}`];
   return { lines, reason: failure.reason };
 }
@@ -180,6 +206,30 @@ function childFailedLines(
   }
   const childId = shortRunId(child.run.summary.id);
   return [...lines.lines, phrase`  ${runsMessages.showChildRun(childId, dir).phrase}`];
+}
+
+/**
+ * An answer that isn't one of the step's options, with its agent as its file
+ * names it: "The agent Picker answered …", as the step line above names it
+ * (HAL-15864). The engine's line names the agent by id; its typed cause says
+ * which agent, so only that id is swapped. A line from a log without the
+ * cause, or that doesn't start as the engine writes it, stays as it is.
+ */
+function offOptionsNamed(
+  failure: RunFailure,
+  failed: RunFailedEvent,
+  definitions: RunDefinitions,
+): RunFailure {
+  const agent = answerChoicesOf(failed.cause)?.agent;
+  if (failure.reason !== "error" || agent === undefined) {
+    return failure;
+  }
+  const byId = offOptionsStart(agent);
+  if (failure.message?.startsWith(byId) !== true) {
+    return failure;
+  }
+  const byName = offOptionsStart(agentName(agent, definitions));
+  return { ...failure, message: byName + failure.message.slice(byId.length) };
 }
 
 /** A step by the name its workflow gives it, as the step lines name it. */
@@ -261,25 +311,26 @@ function runFailedEvent(run: RunDetail): RunFailedEvent {
 /**
  * A cancelled run's one line, which says so when the run that started it
  * ended (its typed cause, HAL-15555); a log written before the cause keeps
- * the plain line. Any child run, whatever ended it, has the way to its parent
- * under that line, as Studio's run page has Open run (HAL-12411), so a
- * for-each item whose parent the person cancelled still leads there
- * (HAL-15755).
+ * the plain line.
  */
-function cancelledLines(
-  summary: RunSummary,
-  title: string,
-  at: CancelledAt,
-  dir: string | undefined,
-): Phrase[] {
-  const line = endedWithParent(summary.cause)
+function cancelledLine(summary: RunSummary, title: string, at: CancelledAt): Phrase {
+  return endedWithParent(summary.cause)
     ? runsMessages.showCancelledWithParent(title, at).phrase
     : runsMessages.showCancelled(title, at).phrase;
+}
+
+/**
+ * The way to the run that started this one, indented under its ending, as
+ * Studio's run page has Open run (HAL-12411): for any child run, cancelled
+ * whatever ended it, so a for-each item whose parent the person cancelled
+ * still leads there (HAL-15755), or failed (HAL-15864). None for a run
+ * nothing else started.
+ */
+function parentRunLines(summary: RunSummary, dir: string | undefined): Phrase[] {
   const parentId = summary.parentRunId;
-  if (parentId === null) {
-    return [line];
-  }
-  return [line, phrase`  ${runsMessages.showParentRun(shortRunId(parentId), dir).phrase}`];
+  return parentId === null
+    ? []
+    : [phrase`  ${runsMessages.showParentRun(shortRunId(parentId), dir).phrase}`];
 }
 
 /**
@@ -307,11 +358,12 @@ function cancelledAt(
  * word (cli-output 3.4): "! Waiting for you: Approve this reply?" and how to
  * answer. A run waiting for tool approvals has one "! Waiting for your
  * approval: Writer wants to use send_email" line for each, oldest first, and
- * the same answer line: one answer takes the oldest, and a line under the answer says so. A run waiting for its
- * child run or a time has no such lines; its step line already says what it
- * waits for. What the run waits for is {@link runWait}'s, so a run with an
- * open approval and a child run asks for the approval, as the list does
- * (HAL-10646).
+ * the same answer line: one answer takes the oldest, and a line under the answer says so. A run
+ * waiting for a time has no such lines; its step line already says what it waits for. A run
+ * waiting for its child run ends with that child's lines instead, its id in the answer line, so
+ * the person learns what the child asks and how to answer it (HAL-15951). What the run waits for
+ * is {@link runWait}'s, so a run with an open approval and a child run asks for the approval, as
+ * the list does (HAL-10646).
  */
 function waitingEnding(
   summary: RunSummary,

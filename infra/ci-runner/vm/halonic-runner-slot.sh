@@ -22,8 +22,8 @@ fail() { echo "slot ${SLOT}: $1" >&2; exit 1; }
 [ -f "$KEY" ] && [ ! -L "$KEY" ] || fail "$KEY missing or not a file"
 [ "$(stat -c '%u %a' "$KEY")" = "0 400" ] || fail "$KEY must be owned by root with mode 0400"
 case "$SLOT" in
-  large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=10g; QUOTA=20g; TMPFS=1g ;;
-  small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  QUOTA=6g;  TMPFS=512m ;;
+  large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=10g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
+  small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
@@ -96,7 +96,7 @@ trap cleanup EXIT
 echo "slot $SLOT: runner $NAME (id $RUNNER_ID) waiting for a job"
 STARTED=$(date +%s)
 docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
-  --cpus "$CPUS" --cpuset-cpus "$CPUSET" --memory "$MEM" --memory-swap "$MEM" --pids-limit 8192 \
+  --cpus "$CPUS" --cpuset-cpus "$CPUSET" --memory "$MEM_START" --memory-swap "$MEM_START" --pids-limit 8192 \
   --cap-drop ALL --security-opt no-new-privileges \
   --tmpfs "/tmp:rw,exec,nosuid,nodev,size=$TMPFS" \
   -v "$RUN:/run/halonic-ci:ro" \
@@ -109,14 +109,25 @@ docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
   "$IMAGE" &
 DPID=$!
 
-# Sample the container every 5 s for the status feed: busy (a job's Runner.Worker is running),
-# peak memory and CPU time from its cgroup. Read-only; nothing here touches the job.
+# Sample the container every 3 s for the status feed: busy (a job's Runner.Worker is running),
+# peak memory and CPU time from its cgroup. The only thing it changes is the job's memory limit (below).
 JOB_START=0; PEAK=0; CPU_US=0; EV=""; REF=""; SHA=""
+# memory.peak also counts file cache, which the kernel drops under pressure. ANON_PEAK is the highest
+# sampled anon + shmem (process memory plus the /tmp tmpfs): what the job can't give back, so the
+# number that decides how small a slot may be. Sampled every 3 s, so short spikes can be missed.
+ANON_PEAK=0
+# Dynamic memory (22 Nov 2026): a job starts at MEM_START and gets STEP more whenever its anon + shmem
+# comes within HEAD of the limit, up to MEM, as long as the VM keeps RESERVE free. memory.high sits
+# 512 MB under the limit, so the kernel reclaims cache and slows the job before the hard limit kills
+# it, which gives this 3-second loop time to grow it. Every slot at MEM still fits the VM, so growth
+# can't overcommit it; the reserve check matters once the VM is made smaller than that.
+LIMIT_B=$(numfmt --from=iec "${MEM_START^^}"); MAX_B=$(numfmt --from=iec "${MEM^^}")
+STEP_B=2147483648; HEAD_B=1610612736; RESERVE_B=4294967296; GROWS=0; HIGH_SET=""
 write_state() {
   local now; now=$(date +%s)
   jq -nc --arg slot "$SLOT" --arg runner "$NAME" --arg label "$LABEL" --argjson up "$STARTED" \
     --argjson js "$JOB_START" --argjson peak "$PEAK" --argjson cpu "$CPU_US" --argjson now "$now" \
-    --arg ev "$EV" --arg ref "$REF" --arg sha "$SHA" --argjson memlimit "$(numfmt --from=iec "${MEM^^}")" \
+    --arg ev "$EV" --arg ref "$REF" --arg sha "$SHA" --argjson memlimit "$LIMIT_B" \
     '{slot:$slot, runner:$runner, label:$label, registered_at:$up, busy:($js>0),
       job_started_at:(if $js>0 then $js else null end), job_seconds:(if $js>0 then $now-$js else null end),
       event:(if $ev=="" then null else $ev end), ref:(if $ref=="" then null else $ref end), sha:(if $sha=="" then null else $sha end),
@@ -129,6 +140,22 @@ while kill -0 "$DPID" 2>/dev/null; do
   if [ -n "$cid" ] && [ -d "$cg" ]; then
     PEAK=$(cat "$cg/memory.peak" 2>/dev/null || echo "$PEAK")
     CPU_US=$(awk '$1=="usage_usec"{print $2}' "$cg/cpu.stat" 2>/dev/null || echo "$CPU_US")
+    anon=$(awk '$1=="anon"||$1=="shmem"{s+=$2} END{print s+0}' "$cg/memory.stat" 2>/dev/null || echo 0)
+    [ "$anon" -gt "$ANON_PEAK" ] && ANON_PEAK=$anon
+    if [ -z "$HIGH_SET" ]; then echo $((LIMIT_B - 536870912)) > "$cg/memory.high" 2>/dev/null && HIGH_SET=1; fi
+    if [ $((anon + HEAD_B)) -gt "$LIMIT_B" ] && [ "$LIMIT_B" -lt "$MAX_B" ]; then
+      avail=$(awk '$1=="MemAvailable:"{print $2*1024}' /proc/meminfo)
+      if [ "${avail:-0}" -gt $((STEP_B + RESERVE_B)) ]; then
+        new=$((LIMIT_B + STEP_B)); [ "$new" -gt "$MAX_B" ] && new=$MAX_B
+        if docker update --memory "$new" --memory-swap "$new" "hci-$SLOT" >/dev/null 2>&1; then
+          LIMIT_B=$new; GROWS=$((GROWS + 1))
+          echo $((LIMIT_B - 536870912)) > "$cg/memory.high" 2>/dev/null || true
+          echo "slot $SLOT: memory limit raised to $((LIMIT_B / 1048576)) MiB (anon+shmem $((anon / 1048576)) MiB)"
+        fi
+      else
+        echo "slot $SLOT: memory not raised, VM has $((avail / 1048576)) MiB available"
+      fi
+    fi
     procs=$(for p in $(cat "$cg/cgroup.procs" 2>/dev/null); do cat "/proc/$p/comm" 2>/dev/null; done || true)
     if [ "$JOB_START" = 0 ] && [[ "$procs" == *Runner.Worker* ]]; then
       JOB_START=$(date +%s)
@@ -147,7 +174,7 @@ while kill -0 "$DPID" 2>/dev/null; do
     fi
   fi
   write_state
-  sleep 5
+  sleep 3
 done
 RC=0; wait "$DPID" || RC=$?
 echo "slot $SLOT: container exited with $RC"
@@ -155,9 +182,11 @@ if [ "$JOB_START" != 0 ]; then
   END=$(date +%s)
   jq -nc --arg slot "$SLOT" --arg runner "$NAME" --arg label "$LABEL" --argjson s "$JOB_START" --argjson e "$END" \
     --argjson peak "$PEAK" --argjson cpu "$CPU_US" --argjson rc "$RC" --arg ev "$EV" --arg ref "$REF" --arg sha "$SHA" \
-    --argjson memlimit "$(numfmt --from=iec "${MEM^^}")" --argjson cpus "$CPUS" \
+    --argjson memlimit "$LIMIT_B" --argjson cpus "$CPUS" --argjson anon "$ANON_PEAK" \
+    --argjson memstart "$(numfmt --from=iec "${MEM_START^^}")" --argjson grows "$GROWS" \
     '{slot:$slot, runner:$runner, label:$label, event:$ev, ref:$ref, sha:$sha, started_at:$s, ended_at:$e,
-      seconds:($e-$s), mem_peak:$peak, mem_limit:$memlimit, cpu_seconds:($cpu/1000000|floor), cpus:$cpus, exit:$rc}' >> "$JOBLOG"
+      seconds:($e-$s), mem_peak:$peak, mem_anon_peak:$anon, mem_start:$memstart, mem_limit:$memlimit, mem_grows:$grows,
+      cpu_seconds:($cpu/1000000|floor), cpus:$cpus, exit:$rc}' >> "$JOBLOG"
   # keep the last 5000 jobs
   if [ "$(wc -l < "$JOBLOG")" -gt 6000 ]; then tail -n 5000 "$JOBLOG" > "$JOBLOG.tmp" && mv -f "$JOBLOG.tmp" "$JOBLOG"; fi
 fi

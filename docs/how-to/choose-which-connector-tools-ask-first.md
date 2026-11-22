@@ -26,7 +26,8 @@ Two more things always win:
   `halonic run`, `halonic runs send`, `halonic serve` and
   `halonic routines watch` read that choice. Studio's runs don't read it yet,
   so they refuse every `send` call, and so does a CLI run for a connector
-  that isn't a Google one.
+  that isn't a Google one. `halonic runs show` says "The call to <tool> was
+  refused: sending is off for <connector>, so nothing was sent."
 - A tool its server lists as `read` still asks, until `tools.read` names it.
   A server, a plugin's manifest or an integration's permission sheet can make
   a tool ask, never stop it from asking.

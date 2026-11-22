@@ -94,6 +94,7 @@ export function openPluginConnector(
     return new PluginConnector({
       id: names.id,
       plugin: names.plugin,
+      name: trusted.plugin.name,
       parts: await pluginParts(sources, names, context, trusted, grant),
       onUnavailable: (unavailable) => sources.onUnavailable?.(names.id, unavailable),
     });

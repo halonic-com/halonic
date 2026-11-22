@@ -83,7 +83,7 @@ verifies("format.routine-file", () => {
     const problems = problemsOf("routine", routine("trigger: { manual: true }", run));
     expect(summary(problems)).toEqual(["run invalid_union 4"]);
     expect(problems[0]?.message).toBe(
-      'A workflow routine\'s input is a list of fields, such as input: { mail: "{{trigger.body}}" }.',
+      'A workflow routine\'s input takes named fields, such as input: { mail: "{{trigger.body}}" }.',
     );
   });
 });

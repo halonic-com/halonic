@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { RunWorkflow } from "../api.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
-import { type RunPageContext, runBanner, runHeader } from "./run-page-model.ts";
+import { type RunPageContext, runBanner, runHeader, withParentRun } from "./run-page-model.ts";
 
 const supportReply: RunWorkflow = {
   name: "Support reply",
@@ -260,6 +260,25 @@ verifies("runs.run-page", () => {
       expect(page({ ...item, state: null, statesVisited: [] }).banner).toMatchObject({
         parent: { runId: "run_c_4f2a1b" },
       });
+    });
+
+    it("links a failed child run to the run that started it, after its own links (HAL-15864)", () => {
+      const failed = summaryWith({
+        status: "failed",
+        reason: "error",
+        state: "draft",
+        parentRunId: "run_c_4f2a1b",
+      });
+      const banner = runBanner({ summary: failed }, context);
+      expect(withParentRun(failed, banner)).toEqual({
+        ...banner,
+        links: [{ kind: "open-run", runId: "run_c_4f2a1b", label: "Open run 4f2a1b" }],
+      });
+      // A run nothing else started, and a child that hasn't failed, keep their banners.
+      const own = summaryWith({ status: "failed", reason: "error", state: "draft" });
+      expect(withParentRun(own, banner)).toBe(banner);
+      const waiting = summaryWith({ parentRunId: "run_c_4f2a1b" });
+      expect(withParentRun(waiting, banner)).toBe(banner);
     });
   });
 });

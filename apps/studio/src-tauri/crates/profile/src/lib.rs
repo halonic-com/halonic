@@ -94,8 +94,10 @@ pub struct ProfileFolder {
 pub enum ProfileError {
     /// `HALONIC_HOME` is set but isn't absolute. It is refused, not resolved
     /// against the current folder, which would split the person's runs
-    /// across many profiles.
-    HalonicHomeNotAbsolute { value: String },
+    /// across many profiles. `fix` says what to set instead, in the CLI's
+    /// words (`cli.profile-home`), because the shell passes this error on as
+    /// one sentence and has no place for a fix of its own (HAL-15439).
+    HalonicHomeNotAbsolute { value: String, fix: String },
     /// The home folder isn't absolute.
     HomeNotAbsolute { value: String },
 }
@@ -105,10 +107,10 @@ impl fmt::Display for ProfileError {
         match self {
             // The CLI's sentence, from the profile package (HAL-15440), so
             // Studio and the CLI name the same problem the same way.
-            ProfileError::HalonicHomeNotAbsolute { value } => {
+            ProfileError::HalonicHomeNotAbsolute { value, fix } => {
                 write!(
                     formatter,
-                    "HALONIC_HOME must be a full path, not {value:?}."
+                    "HALONIC_HOME must be a full path, not {value:?}. {fix}"
                 )
             }
             ProfileError::HomeNotAbsolute { value } => {
@@ -134,6 +136,7 @@ pub fn profile_folder(environment: &ProfileEnvironment) -> Result<ProfileFolder,
         if !is_absolute_path(platform, chosen) {
             return Err(ProfileError::HalonicHomeNotAbsolute {
                 value: chosen.to_owned(),
+                fix: halonic_home_fix(environment, chosen),
             });
         }
         let root = without_trailing_separators(platform, chosen);
@@ -203,6 +206,24 @@ fn user_data_folder(environment: &ProfileEnvironment) -> Result<String, ProfileE
         return Ok(folder.to_owned());
     }
     Ok(join_path(platform, home, fallback))
+}
+
+/// What to set `HALONIC_HOME` to instead, as the CLI says it
+/// (`apps/cli/src/messages/profile.ts`). On Windows the example is the
+/// person's own home folder, also for a `~`: a user environment variable
+/// there doesn't expand `$HOME`. Elsewhere a `~` gets its own fix, because a
+/// quoted `export HALONIC_HOME="~/.halonic"` is the usual cause.
+fn halonic_home_fix(environment: &ProfileEnvironment, chosen: &str) -> String {
+    if environment.platform == Platform::Windows {
+        let home = &environment.home_folder;
+        return format!("Set HALONIC_HOME to a full path, such as {home}\\.halonic.");
+    }
+    if chosen.starts_with('~') {
+        return "Inside quotes the shell doesn't turn ~ into your home folder. \
+                Use $HOME instead: HALONIC_HOME=\"$HOME/.halonic\"."
+            .to_owned();
+    }
+    "Set HALONIC_HOME to a full path, such as $HOME/.halonic.".to_owned()
 }
 
 /// The variable's value, or `None` when it is unset or empty.

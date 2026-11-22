@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import {
+  createToastStore,
+  type Presentation,
+  PresentationProvider,
+  ToastStoreProvider,
+} from "@halonicjs/studio-kit";
 import { type CloseStack, createCloseStack } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -74,11 +79,14 @@ async function openFlow(
   id: string,
   closeStack: CloseStack = createCloseStack(),
   agents: AgentsHost = host(),
+  presentation: Presentation = "desktop",
 ) {
   return show(
-    <ToastStoreProvider store={createToastStore()}>
-      <AgentScreen host={agents} hubId="acme" id={id} closeStack={closeStack} />
-    </ToastStoreProvider>,
+    <PresentationProvider presentation={presentation}>
+      <ToastStoreProvider store={createToastStore()}>
+        <AgentScreen host={agents} hubId="acme" id={id} closeStack={closeStack} />
+      </ToastStoreProvider>
+    </PresentationProvider>,
   );
 }
 
@@ -206,5 +214,58 @@ verifies("agents.map.summary-drawer", () => {
     );
     expect(drawer(page)).toBeNull();
     expect(document.activeElement).toBe(buttonNamed(page, "Agent Writer"));
+  });
+});
+
+verifies("agents.map.phone-summary-sheet", () => {
+  const openSheet = async (closeStack: CloseStack = createCloseStack()) => {
+    const page = await openFlow("triage", closeStack, host(), "phone");
+    const summary = buttonNamed(page, "4 subagents");
+    await act(async () => summary?.click());
+    return { page, summary };
+  };
+
+  it("opens a panel sheet over the map, with Back and every item as a row", async () => {
+    const { page } = await openSheet();
+    const sheet = drawer(page);
+    expect(sheet?.getAttribute("role")).toBe("dialog");
+    expect(sheet?.className).toContain("inset-0");
+    expect(drawerName(page)).toBe("Who it hands work to");
+    expect(document.activeElement?.textContent).toBe("Who it hands work to");
+    const buttons = [...(sheet?.querySelectorAll("button") ?? [])].map(
+      (button) => button.getAttribute("aria-label") ?? button.textContent,
+    );
+    expect(buttons).toEqual([
+      "Back",
+      "WriterAgent",
+      "CheckerAgent",
+      "TranslatorAgent",
+      "FilerAgent",
+      "Add subagent",
+    ]);
+    // Rows, not cards: 56 px, the name over its kind.
+    expect((sheet && buttonNamed(sheet, "Writer"))?.className).toContain("min-h-14");
+  });
+
+  it("closes on Back and gives the focus back to its summary card", async () => {
+    const { page, summary } = await openSheet();
+    const sheet = drawer(page);
+    await act(async () => sheet?.querySelector<HTMLElement>("[aria-label=Back]")?.click());
+    expect(drawer(page)).toBeNull();
+    expect(document.activeElement).toBe(summary);
+  });
+
+  it("opens a subagent from the sheet as a card over it, which Esc closes first", async () => {
+    const closeStack = createCloseStack();
+    const { page, summary } = await openSheet(closeStack);
+    const sheet = drawer(page);
+    await act(async () => (sheet && buttonNamed(sheet, "Filer"))?.click());
+    expect(page.querySelector("[data-top-card-title]")?.textContent?.trim()).toBe("Filer");
+    await act(async () => void closeStack.escape());
+    expect(page.querySelector("[data-top-card-title]")).toBeNull();
+    expect(drawerName(page)).toBe("Who it hands work to");
+    await act(async () => void closeStack.escape());
+    expect(drawer(page)).toBeNull();
+    expect(document.activeElement).toBe(summary);
   });
 });

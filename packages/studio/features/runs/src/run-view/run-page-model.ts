@@ -88,6 +88,8 @@ export type BannerFix =
   | { readonly kind: "change-budget" }
   /** **See the step**: opens the panel of the step the run failed in, as a blocked run's banner does. */
   | { readonly kind: "see-step" }
+  /** **Open run 4f2a1b**: a failed child run's link to the run that started it (HAL-15864). */
+  | OpenRunAction
   | {
       readonly kind: "open-external";
       readonly label: string;
@@ -258,23 +260,44 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
  * A cancelled run's note: in its step or before it started, and, for a child run its parent's end
  * cancelled (the engine's typed cause), why (UX check R9). Any child run, whatever ended it, gets
  * **Open run** for the run that started it, so a for-each item whose parent the person cancelled
- * still leads there (C626 on HAL-15755).
+ * still leads there (C626 on HAL-15755). A failed child's banner gets it from
+ * {@link withParentRun}.
  */
 function cancelledNote(summary: RunSummary, workflow: string, step: string): RunBanner {
   const text = cancelledText(summary, workflow, step);
-  const parentId = summary.parentRunId;
-  if (parentId === null) {
-    return { kind: "note", text };
+  const parent = openParentRun(summary);
+  return parent === undefined ? { kind: "note", text } : { kind: "note", text, parent };
+}
+
+/**
+ * A failed child run's banner with **Open run** for the run that started it, after its other
+ * links, as a cancelled child's note has it (HAL-15864); any other banner as it is.
+ *
+ * @example
+ * withParentRun(failedChild, banner);
+ * // { …banner, links: [{ kind: "open-run", runId: "run_c_4f2a1b", label: "Open run 4f2a1b" }] }
+ */
+export function withParentRun(
+  summary: RunSummary,
+  banner: RunBanner | undefined,
+): RunBanner | undefined {
+  const parent = summary.status === "failed" ? openParentRun(summary) : undefined;
+  if (parent === undefined || banner?.kind !== "callout") {
+    return banner;
   }
-  return {
-    kind: "note",
-    text,
-    parent: {
-      kind: "open-run",
-      runId: parentId,
-      label: runPageWords.openRun(shortRunId(parentId)),
-    },
-  };
+  return { ...banner, links: [...(banner.links ?? []), parent] };
+}
+
+/** **Open run** for the run that started this one; `undefined` for a run nothing else started. */
+function openParentRun(summary: RunSummary): OpenRunAction | undefined {
+  const parentId = summary.parentRunId;
+  return parentId === null
+    ? undefined
+    : {
+        kind: "open-run",
+        runId: parentId,
+        label: runPageWords.openRun(shortRunId(parentId)),
+      };
 }
 
 /** Where the cancel landed, and whether the run's parent's end cancelled it. */

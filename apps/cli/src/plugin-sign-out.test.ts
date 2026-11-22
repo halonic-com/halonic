@@ -317,7 +317,7 @@ verifies("cli.commands.trust.plugin", () => {
 
     expect(io.stdout.slice(1)).toEqual([
       "✓ Signed you out of weather-account.",
-      "! You're signed out here. Weather didn't confirm, so the token may still work there until it expires.",
+      "! You're signed out here. The provider didn't confirm the sign-out, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
     ]);
     expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
   });

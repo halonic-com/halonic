@@ -10,7 +10,7 @@ When a step the checks found problems in is picked, the workflows feature shall 
 
 - Given the step `write`, titled "Write the report", uses the agent `reportr`, which the hub doesn't have, and the core guesses `reporter`,
   when its card on the canvas is picked,
-  then the docked card says `"Write the report" uses unknown agent "reportr". Did you mean "reporter"?` in a danger Callout under the breadcrumb, and the Agent field is invalid, says "Pick one of this hub's agents." and is described by that sentence.
+  then the docked card says `"Write the report" uses the agent "reportr", which its hub doesn't have. Did you mean "reporter"?` in a danger Callout under the breadcrumb, and the Agent field is invalid, says "Pick one of this hub's agents." and is described by that sentence.
 - Given the same step,
   when **Reporter** is picked in the Agent field,
   then the field is no longer marked invalid.
@@ -21,4 +21,4 @@ When a step the checks found problems in is picked, the workflows feature shall 
   when it is picked,
   then its docked card has no Callout.
 - Given the step with the missing agent,
-  then its card on the canvas is described by `"Write the report" uses unknown agent "reportr". Did you mean "reporter"?` and then where it leads.
+  then its card on the canvas is described by `"Write the report" uses the agent "reportr", which its hub doesn't have. Did you mean "reporter"?` and then where it leads.

@@ -188,6 +188,13 @@ export const ProviderCheckService: ServiceKey<ProviderCheck> =
 export const loadModelsSettingsSection = () => import("./settings/models-settings-section.tsx");
 
 /**
+ * Loads the "Allow this address?" dialog, for the CI screenshots and the UX checks in a real
+ * browser (`docs/guides/e2e-screenshots.md`), which draw it with a made-up question. The app never
+ * calls it: the feature's dialog host draws the dialog for the engine's questions.
+ */
+export const loadAllowAddressDialog = () => import("./key-address/allow-address-dialog.tsx");
+
+/**
  * What Studio asks in "Allow this address?" (HAL-11873): may a provider send a stored key to an
  * address that isn't on that key's list.
  */

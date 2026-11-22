@@ -120,18 +120,36 @@ verifies("agents.chat.not-trusted", () => {
     const ask = vi.fn(async () => "trusted" as const);
     const { page, requests, toasts, box } = await refusedByEngine(
       ask,
-      new KindedError("denied", "Acme isn't an opened folder."),
+      new KindedError("denied", "The computer refused the message."),
     );
     expect(ask).not.toHaveBeenCalled();
     expect(requests).toHaveLength(1);
     expect(page.querySelector(".text-danger")?.textContent).toBe(
-      "Sorter's reply failed: Acme isn't an opened folder.",
+      "Sorter's reply failed: The computer refused the message.",
     );
     expect(said(page)).toEqual([
       "Sort this mail",
-      "Sorter's reply failed: Acme isn't an opened folder.",
+      "Sorter's reply failed: The computer refused the message.",
     ]);
     expect(box()).toBe("");
+    expect(toasts.list()).toHaveLength(0);
+  });
+
+  it("shows a folder that isn't open as a failure it can't explain, with no path (C613 row 33)", async () => {
+    const ask = vi.fn(async () => "trusted" as const);
+    const { page, toasts } = await refusedByEngine(
+      ask,
+      new KindedError(
+        "denied",
+        "The run store refused the call: /workspaces/acme is not an opened folder",
+        { cause: { kind: "folder_not_open", message: "/workspaces/acme is not an opened folder" } },
+      ),
+    );
+    expect(ask).not.toHaveBeenCalled();
+    expect(page.querySelector(".text-danger")?.textContent).toBe(
+      "Sorter's reply failed: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(page.textContent).not.toContain("/workspaces/acme");
     expect(toasts.list()).toHaveLength(0);
   });
 

@@ -1988,8 +1988,10 @@ FunctionEnd
 
 ; Removes the agent sandbox (flow 2.7, CHECK I9), and sets $SandboxOutcome to
 ; "removed", "removed_kept" (removed, but the access it kept on the user's
-; folders goes at Halonic's next start), "none" (nothing was set up, nothing
-; asked), "refused", "failed"
+; folders goes at Halonic's next start, so only if it's installed again),
+; "removed_manual" (removed, but some access it kept stays until a removal
+; without administrator rights, HAL-15836), "none" (nothing was set up,
+; nothing asked), "refused", "failed"
 ; (with $SandboxReason) or "skipped" (a silent uninstall without administrator
 ; rights, which can't ask).
 Function un.RemoveSandbox
@@ -2026,7 +2028,11 @@ Function un.RemoveSandbox
     ; it starts as the user (HAL-5404 S2).
     StrCpy $SandboxOutcome "removed_kept"
     DetailPrint "✓ Removed the agent sandbox"
-    DetailPrint "   Its access to your project folders ends the next time you start ${PRODUCTNAME}."
+    DetailPrint "   Its access to your project folders stays until you install ${PRODUCTNAME} again and start it."
+  ${ElseIf} $2 == "3"
+    StrCpy $SandboxOutcome "removed_manual"
+    DetailPrint "✓ Removed the agent sandbox"
+    DetailPrint "   It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again, start it normally, not as administrator, then set up the sandbox in Settings › Agent sandbox and remove it."
   ${ElseIf} $2 == "20"
     StrCpy $SandboxOutcome "none"
   ${ElseIf} $2 == "10"
@@ -2055,9 +2061,10 @@ Function un.PageDone
 
   ${If} $SandboxOutcome == "removed"
   ${OrIf} $SandboxOutcome == "removed_kept"
+  ${OrIf} $SandboxOutcome == "removed_manual"
     ${NSD_CreateLabel} 0 0 100% 10u "✓ The agent sandbox is removed."
     Pop $0
-    ${If} $SandboxOutcome == "removed_kept"
+    ${If} $SandboxOutcome != "removed"
       ; Lined up under line 1's text, not its ✓: measured in pixels with the
       ; label's own font, so it holds at any display scaling (HAL-15004).
       SendMessage $0 ${WM_GETFONT} 0 0 $1
@@ -2074,8 +2081,14 @@ Function un.PageDone
       System::Call '*$3(i, i, i .r5)'
       System::Free $3
       IntOp $5 $5 - $4
-      ; Two lines high, so a wrap at a larger scaling isn't cut off.
-      ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders ends the next time you start ${PRODUCTNAME}."
+      ; Halonic is gone now, so the next start that takes the access back is
+      ; one after installing it again (HAL-15836). Two lines high, four for
+      ; the longer one, so a wrap at a larger scaling isn't cut off.
+      ${If} $SandboxOutcome == "removed_kept"
+        ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders stays until you install ${PRODUCTNAME} again and start it."
+      ${Else}
+        ${NSD_CreateLabel} $4 12u $5 40u "It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again, start it normally, not as administrator, then set up the sandbox in Settings › Agent sandbox and remove it."
+      ${EndIf}
       Pop $0
     ${EndIf}
   ${ElseIf} $SandboxOutcome == "refused"

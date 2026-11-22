@@ -5,7 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { buttonNamed, unmount } from "../test-support.tsx";
-import { arrowsSection, pick, showPage } from "./step-arrows.test-helper.tsx";
+import { arrowsSection, pick, reply, showPage } from "./step-arrows.test-helper.tsx";
 
 // jsdom has no popover: a menu closes itself after a pick by hiding it.
 beforeAll(() => {
@@ -24,10 +24,17 @@ async function press(page: HTMLElement, name: string) {
 /** The step card on the canvas that has focus, by its step's id. */
 const focusedStep = () => (document.activeElement as HTMLElement | null)?.dataset["step"];
 
+/** Support reply with its steps titled as their cards name them, but `done`, named by its id. */
+const titles: Record<string, string> = { sort: "Sort", approve: "Approve", write: "Write" };
+const workflow = {
+  ...reply,
+  steps: reply.steps.map((step) => ({ ...step, title: titles[step.id] })),
+};
+
 verifies("workflows.page.remove", () => {
   it("removes a step at once and says what went with it, with Undo", async () => {
-    const { page, removeStep, toasts, announce } = await showPage(vi.fn);
-    await pick(page, "write");
+    const { page, removeStep, toasts, announce } = await showPage(vi.fn, { workflow });
+    await pick(page, "Write");
 
     await press(page, "Remove step");
 
@@ -35,7 +42,7 @@ verifies("workflows.page.remove", () => {
     expect(toasts.list()).toEqual([
       expect.objectContaining({
         tone: "success",
-        title: "Removed step write and 3 arrows",
+        title: "Removed step Write and 3 arrows",
         action: expect.objectContaining({ label: "Undo" }),
       }),
     ]);
@@ -56,10 +63,10 @@ verifies("workflows.page.remove", () => {
 
   it("puts the step back from the toast's Undo, and says why when it can't", async () => {
     const undo = vi.fn(async () => {
-      throw new KindedError("conflict", "Step write can't be put back.");
+      throw new KindedError("conflict", "The workspace changed after it was removed.");
     });
-    const { page, toasts } = await showPage(vi.fn, { undo });
-    await pick(page, "write");
+    const { page, toasts } = await showPage(vi.fn, { undo, workflow });
+    await pick(page, "Write");
     await press(page, "Remove step");
 
     await act(async () => toasts.list()[0]?.action?.onClick());
@@ -68,8 +75,27 @@ verifies("workflows.page.remove", () => {
     expect(toasts.list()).toContainEqual(
       expect.objectContaining({
         tone: "danger",
-        title: "Couldn't put back step write",
-        text: "Step write can't be put back.",
+        title: "Couldn't put back step Write",
+        text: "The workspace changed after it was removed.",
+      }),
+    );
+  });
+
+  it("names the arrow's steps when its Undo can't put it back", async () => {
+    const undo = vi.fn(async () => {
+      throw new KindedError("conflict", "The workspace changed after it was removed.");
+    });
+    const { page, toasts } = await showPage(vi.fn, { undo, workflow });
+    await pick(page, "Sort");
+    await press(page, "Remove arrow 1");
+
+    await act(async () => toasts.list()[0]?.action?.onClick());
+
+    expect(toasts.list()).toContainEqual(
+      expect.objectContaining({
+        tone: "danger",
+        title: "Couldn't put back the arrow from Sort to Approve",
+        text: "The workspace changed after it was removed.",
       }),
     );
   });
@@ -90,17 +116,17 @@ verifies("workflows.page.remove", () => {
   });
 
   it("removes an arrow from its trash button, focusing the next row, else Add", async () => {
-    const { page, removeArrow, toasts } = await showPage(vi.fn);
-    await pick(page, "sort");
+    const { page, removeArrow, toasts } = await showPage(vi.fn, { workflow });
+    await pick(page, "Sort");
 
     await press(page, "Remove arrow 1");
 
     expect(removeArrow).toHaveBeenCalledWith(expect.anything(), "sort", 0, "approve");
-    expect(arrowsSection(page).rows).toEqual(["1 → write on done"]);
+    expect(arrowsSection(page).rows).toEqual(["1 → Write on done"]);
     expect(toasts.list()).toEqual([
-      expect.objectContaining({ title: "Removed the arrow from sort to approve" }),
+      expect.objectContaining({ title: "Removed the arrow from Sort to Approve" }),
     ]);
-    expect(document.activeElement?.textContent).toBe("→ write on done");
+    expect(document.activeElement?.textContent).toBe("→ Write on done");
 
     await press(page, "Remove arrow 1");
 

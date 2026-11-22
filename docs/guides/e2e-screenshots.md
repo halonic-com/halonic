@@ -62,6 +62,19 @@ the plugin's page on, not trusted yet and can't load (`page-on`, `page-not-trust
 `page-cant-load`), its panel (`panel`) and its cards in each state (`cards`). CI uploads them
 from `packages/studio/features/plugins/test-results/screenshots`.
 
+## Allow this address?
+
+`allow-address-dialog-<light|dark>.png` is the Models feature's "Allow this address?" dialog over
+the run that asks it, and `allow-address-waiting-<light|dark>.png` is that run's step showing
+**Waiting for your answer** without the dialog (HAL-15873). `allow-address-dialog-640.png` and
+`allow-address-dialog-320.png` are the dialog at 200 % zoom and in a 320 px wide window, where the
+page uses the phone layout as the app does and the buttons stack. The page loads the dialog through `loadAllowAddressDialog` in the models feature's `api.ts`.
+`e2e/allow-address.spec.ts` also checks row X-5 of the dialog's UX checklist: its text has 4.5:1
+contrast and its focus ring 3:1 in both colour schemes, and with "more contrast" set its button
+edges 3:1 too, as the kit promises there. It measures the colours the browser drew
+(`e2e/contrast.ts`). At both narrow sizes nothing scrolls sideways, no text is cut and both
+buttons can be reached.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a

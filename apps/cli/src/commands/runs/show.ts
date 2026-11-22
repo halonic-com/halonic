@@ -3,9 +3,9 @@
 // service the Studio's run page reads too: this file finds the run by the id
 // the user typed, and prints the heading, the step lines (`run-view.ts`,
 // shared with `halonic run`), why a connector didn't start
-// (`show-connectors.ts`) and how the run ended (`show-ending.ts`). It never
-// prints where the run log is (Liam, HAL-1984). The words are the
-// catalogue's (`runsMessages`).
+// (`show-connectors.ts`), why a send was refused (`show-refused.ts`) and
+// how the run ended (`show-ending.ts`). It never prints where the run log
+// is (Liam, HAL-1984). The words are the catalogue's (`runsMessages`).
 
 import { type RunDetail, RunHistory, shortRunId } from "@halonicjs/app";
 import { workspaceModelsOf } from "@halonicjs/app/run-failure";
@@ -18,10 +18,14 @@ import {
   OwnLineError,
   UsageError,
 } from "../../command.ts";
-import { connectorFileOf, isIntegrationConnector } from "../../connector-file.ts";
+import {
+  connectorFileOf,
+  isGoogleConnector,
+  isIntegrationConnector,
+} from "../../connector-file.ts";
 import { providerAddress } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
-import type { Phrase } from "../../messages/phrase.ts";
+import { type Phrase, phrase } from "../../messages/phrase.ts";
 import { runsMessages, type ShownEnd } from "../../messages/runs.ts";
 import { startedInWords } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
@@ -30,7 +34,7 @@ import { providerNoteLines, runViewDefinitions, stepLinesWithDetails } from "../
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
-import { failedChildEnding } from "./failed-child.ts";
+import { childEndings } from "./child-endings.ts";
 import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
 import { connectorNotStartedLines } from "./show-connectors.ts";
@@ -87,12 +91,13 @@ export async function showRun(
         exitCode: exitCode.ok,
         lines: [
           heading(run, title, workspaceName, clock),
+          ...startedByLines(run.summary),
           ...(steps.length === 0 ? [] : [[], ...steps]),
           ...connectorNotStartedLines(run.events, dir, {
             fileOf: (id) => connectorFileOf(loaded, id),
             isIntegration: (id) => isIntegrationConnector(loaded, id),
           }),
-          ...sendingOffLines(run.events),
+          ...sendingOffLines(run.events, dir, (id) => isGoogleConnector(loaded, id)),
           ...providerNoteLines(run.events),
           ...showEnding(
             run,
@@ -101,7 +106,7 @@ export async function showRun(
             () => workspaceModelsOf(loaded, run.summary.hubId, providerAddress),
             dir,
             context.debugging,
-            await failedChildEnding(history, run, loaded),
+            await childEndings(history, run, loaded),
           ),
           ...(withOutput ? [] : outputHintLines(run, dir)),
         ],
@@ -132,6 +137,14 @@ function heading(run: RunDetail, title: string, workspaceName: string, clock: Ru
     started,
     shownEnd(summary, clock),
   ).phrase;
+}
+
+/** "  Started by run 2ad348" under a child run's heading; nothing for a run nobody else started. */
+function startedByLines(summary: RunSummary): Phrase[] {
+  const parentId = summary.parentRunId;
+  return parentId === null
+    ? []
+    : [phrase`  ${runsMessages.showStartedBy(shortRunId(parentId)).phrase}`];
 }
 
 /**

@@ -96,9 +96,10 @@ verifies("check.affected-tests", () => {
     });
 
     test("selects every package for a file outside every package that isn't docs", () => {
-      expect(testSelection(["infra/turbo-cache/src/worker.ts"], packages)).toEqual({
+      expect(testSelection(["infra/wsl-image/runtime-archive.sh"], packages)).toEqual({
         kind: "all",
-        reason: "infra/turbo-cache/src/worker.ts is outside every package, so any test may read it",
+        reason:
+          "infra/wsl-image/runtime-archive.sh is outside every package, so any test may read it",
       });
     });
 
@@ -110,6 +111,16 @@ verifies("check.affected-tests", () => {
         testSelection(["infra/ci-runner/vm/entry.sh", "packages/core/format/src/a.ts"], packages),
       ).toEqual({ kind: "some", packages: ["@halonicjs/format"] });
       expect(testSelection(["infra/ci-runner-old/x.sh"], packages).kind).toBe("all");
+    });
+
+    test("selects no package for the Cloudflare workers, whose tests ci.yml runs itself", () => {
+      expect(
+        testSelection(
+          ["infra/turbo-cache/worker.mjs", "infra/spend-guard/src/guard.mjs"],
+          packages,
+        ),
+      ).toEqual({ kind: "some", packages: [] });
+      expect(testSelection(["infra/turbo-cache-old/worker.mjs"], packages).kind).toBe("all");
     });
 
     test("no package's tests read the paths in noPackageTestPaths", () => {

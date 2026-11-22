@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-Routines say why a routine won't start, and New routine opens the routine on its Trigger picker.
+In Studio, a routine's page now says when its input lacks a field its workflow needs, Run now says why a start failed instead of saying the engine isn't answering, and New routine opens the new routine at its trigger.

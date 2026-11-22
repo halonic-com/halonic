@@ -59,6 +59,15 @@ export function placeholderPath(items: string): string | undefined {
   return /^\{\{\s*([^{}\s]+)\s*\}\}$/.exec(items.trim())?.[1];
 }
 
+/**
+ * How the engine's line for an answer outside the step's options starts,
+ * "The agent picker answered ", so `runs show` can swap the agent's id for
+ * its name (HAL-15864).
+ */
+export function offOptionsStart(agent: string): string {
+  return `The agent ${agent} answered `;
+}
+
 /** "a text", "an object", "a number". */
 export function aKind(kind: string): string {
   return kind === "object" ? "an object" : `a ${kind}`;

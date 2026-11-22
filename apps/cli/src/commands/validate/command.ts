@@ -1,5 +1,5 @@
 import { workspaceProblemsOf } from "@halonicjs/adapter-workspace-models";
-import type { PluginEntry } from "@halonicjs/app";
+import { integrationSheetProblems, type PluginEntry } from "@halonicjs/app";
 import { loadWorkspace, type WorkspaceIssue } from "@halonicjs/workspace";
 import type { CliCommand, CommandInput } from "../../command.ts";
 import { addedPlugin } from "../../connector-plugin.ts";
@@ -21,7 +21,8 @@ import { dirOption, givenDir, openWorkspaceDir, workspaceDir } from "../../works
  * the workspace and lists what to fix, grouped by file (cli-output 3.2). It
  * starts nothing, so it needs no trust and no sandbox. It reads the installed
  * plugins and the local integrations, so `privacy.localOnly` counts the hosts
- * their sheets list, and a plugin connector whose plugin isn't added gets a
+ * their sheets list, a local integration's sheet that doesn't parse gets its
+ * own problems, and a plugin connector whose plugin isn't added gets a
  * warning.
  */
 export const validateCommand: CliCommand = {
@@ -52,6 +53,9 @@ export const validateCommand: CliCommand = {
       ...loaded,
       issues: [
         ...workspaceProblemsOf(loaded),
+        // The loader reads no `integration.yaml`, and a sheet that doesn't
+        // parse is left out of the hosts above, so say why here (HAL-15751).
+        ...(await integrationSheetProblems(workspace.store)),
         ...(added === undefined ? [] : pluginConnectorProblems(loaded, added)),
       ],
     });

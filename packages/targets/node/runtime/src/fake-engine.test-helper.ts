@@ -26,6 +26,8 @@ export class FakeEngine implements RunExecutor {
   lastTurnSignal: AbortSignal | undefined;
   /** While set, a chat turn waits until its signal aborts and then rejects, like a slow model call. */
   holdTurns = false;
+  /** When set, a chat turn fails with it, like a model call that failed. */
+  turnError: Error | undefined;
   #next = 1;
 
   async start(request: StartRunRequest): Promise<RunSummary> {
@@ -127,6 +129,7 @@ export class FakeEngine implements RunExecutor {
       await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()));
       throw new Error("the model call was aborted");
     }
+    if (this.turnError !== undefined) throw this.turnError;
     return { content: "hello", toolCalls: [], finishReason: "stop", model: "test" } as never;
   }
 

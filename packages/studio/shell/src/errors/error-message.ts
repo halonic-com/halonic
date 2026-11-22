@@ -80,6 +80,9 @@ const words = {
   copyDetails: copyDetailsWords.label,
 } as const;
 
+/** The reason of a failure Halonic can't explain (microcopy 22 F13). */
+export const unexplainedReason = words.cantExplain;
+
 /**
  * The message for a failed action, from the error's kind. This is the one
  * place the Studio turns an error kind into words (rule 4 of the

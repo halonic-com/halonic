@@ -8,6 +8,7 @@ import {
   acmeRunsSetup,
   makeAcmeRuns,
   removeAcmeRuns,
+  trustAcmeRuns,
   writeFiles,
 } from "../../test/acme-runs.ts";
 import { captureIo } from "../../test/capture-io.ts";
@@ -213,28 +214,48 @@ verifies("cli.commands.routines.watch", () => {
     expect(await watching).toBe(143);
   });
 
-  it("refuses a routine whose one agent is in a harness, and writes nothing to the run log", async () => {
+  // C570 #2 (HAL-15396): one routine whose agent is in Claude Code used to stop the watch for all of them.
+  it("leaves out a routine whose one agent is in a harness, says why, and starts the others", {
+    timeout: watchTestTimeout,
+  }, async () => {
     await writeFiles(acmeRuns.acme, {
       "hubs/support/agents/writer.agent.yaml":
         "id: writer\nname: Writer\ninstructions: Reply.\nharness: claude-code\n",
-      "hubs/support/workflows/routines/hourly-follow-up.routine.yaml": hourly.replace(
-        "run: { workflow: follow-up }",
-        "run: { agent: writer, prompt: Follow up on the open emails. }",
-      ),
+      "hubs/support/workflows/routines/daily-notes.routine.yaml": [
+        "id: daily-notes",
+        "name: Daily notes",
+        "trigger: { every: 1m }",
+        "run: { agent: writer, prompt: Write the notes. }",
+        "",
+      ].join("\n"),
     });
-    const io = captureIo(acmeRuns.acme);
-
-    const code = await runCli(["routines", "watch"], io, [watchCommand(fakeTime(engineStart))]);
-
-    expect(code).toBe(exitCode.unavailable);
+    // Trust is the workspace's, and its agent in Claude Code is part of it, as `run` shows it.
+    await trustAcmeRuns(acmeRuns);
+    const time = fakeTime(engineStart);
+    const { io, signals, watching } = startWatch(time);
+    await waitUntil("the first watch lines", () => io.stdout.length === 2, slowWatch);
     // `run` starts such agents now, so the line names routines rather than Halonic (HAL-13857).
-    expect(io.stderr.join("\n")).toContain(
-      "Routines can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran.",
-    );
-    expect(await storedRuns()).toEqual([]);
+    expect(io.stdout).toEqual([
+      "✕ Daily notes can't start: routines can't run agents in Claude Code yet, and Writer is in Claude Code. Set the agent to Halonic's own loop, or turn the routine off.",
+      "Watching 1 routine in Acme. Stop with Ctrl C.",
+    ]);
+
+    time.set("2026-11-10T15:00:10.000Z");
+    await waitUntil("the started line", () => wokenUp(time) && io.stdout.length > 2, slowWatch);
+    expect(io.stdout.slice(2)).toEqual([
+      expect.stringMatching(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u),
+    ]);
+    expect((await storedRuns()).map((run) => run.trigger?.routineId)).toEqual([
+      "support/hourly-follow-up",
+    ]);
+
+    signals.send("SIGINT");
+    expect(await watching).toBe(130);
   });
 
-  it("refuses a routine whose workflow has an agent in a harness", async () => {
+  it("leaves out a routine whose workflow has an agent in a harness, and starts nothing for it", {
+    timeout: watchTestTimeout,
+  }, async () => {
     await writeFiles(acmeRuns.acme, {
       "hubs/support/agents/writer.agent.yaml":
         "id: writer\nname: Writer\ninstructions: Reply.\nharness: claude-code\n",
@@ -254,12 +275,22 @@ verifies("cli.commands.routines.watch", () => {
         "",
       ].join("\n"),
     });
-    const io = captureIo(acmeRuns.acme);
+    await trustAcmeRuns(acmeRuns);
+    const time = fakeTime(engineStart);
+    const { io, signals, watching } = startWatch(time);
+    await waitUntil("the first watch lines", () => io.stdout.length === 2, slowWatch);
+    expect(io.stdout).toEqual([
+      "✕ Hourly follow-up can't start: routines can't run agents in Claude Code yet, and Writer is in Claude Code. Set the agent to Halonic's own loop, or turn the routine off.",
+      "Watching 0 routines in Acme. Stop with Ctrl C.",
+    ]);
 
-    const code = await runCli(["routines", "watch"], io, [watchCommand(fakeTime(engineStart))]);
-
-    expect(code).toBe(exitCode.unavailable);
+    time.set("2026-11-10T15:00:10.000Z");
+    await waitUntil("the next tick", () => wokenUp(time), slowWatch);
+    expect(io.stdout).toHaveLength(2);
     expect(await storedRuns()).toEqual([]);
+
+    signals.send("SIGINT");
+    expect(await watching).toBe(130);
   });
 
   it("refuses an untrusted workspace that reaches a real model, and writes nothing to the run log", async () => {

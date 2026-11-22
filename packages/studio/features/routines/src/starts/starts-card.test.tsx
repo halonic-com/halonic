@@ -134,7 +134,7 @@ verifies("routines.starts.starts-card", () => {
 
   it("says under the picker that an agent can't run on its own yet, and nothing for a workflow", async () => {
     const line =
-      "Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow, then pick it under Starts.";
+      "Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then pick it under Starts.";
     const { page } = await card(routineStarting(briefing));
     expect(page.textContent).not.toContain(line);
 

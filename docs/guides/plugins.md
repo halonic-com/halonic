@@ -100,7 +100,7 @@ is the reference.
 | "off on this computer" | the plugin has a backend, and plugin code can't run in the sandbox here (the line under it says why); the CLI never runs it without | fix what the line names, or allow it in the Halonic desktop app to use it there: **Settings › Plugins**, open the plugin, then **Review** |
 | a local tool "needs the desktop app" | no sandbox on Android or in the browser | use the desktop app, the CLI or `serve` |
 | a tool refused | the server offers a tool the manifest doesn't declare | declare it, or remove it from the server |
-| "Halonic stopped the plugin <name>: the sandbox didn't work when the plugin started, so none of it ran. Halonic tries <name> in the sandbox again the next time a run uses it." | the computer passed the sandbox check, but the sandbox didn't work when the plugin started, so Halonic stopped it | nothing to do; the next run that uses it tries the sandbox again |
+| "<connector> didn't start, so its tools are off in this run.", with "The sandbox didn't work when the plugin <name> started, so none of it ran." and "Halonic tries <name> in the sandbox again the next time a run uses it." under it | the computer passed the sandbox check, but the sandbox didn't work when the plugin started, so Halonic stopped it | nothing to do; the next run that uses it tries the sandbox again |
 
 The backend in the sample is plain JavaScript with no imports and no build
 step. If you write TypeScript, build it to one JavaScript file first and point
@@ -231,7 +231,7 @@ In Studio, the plugin's page has a **Sign-ins** section with a block for each
 one: **Sign in** opens the sign-in page in the browser, and the block shows
 "Waiting for *service*… Finish in your browser." with **Cancel** until you
 finish there. **Cancel** drops the pending sign-in. After 10 minutes without an
-answer the block says "The sign-in didn't finish. Try again." Signed in, it
+answer the block says "The sign-in didn't finish. Nothing was saved." Signed in, it
 shows **Sign out**. A sign-in whose manifest entry changed asks you to
 **Sign in again**.
 
@@ -421,8 +421,10 @@ needs `--yes`), then removes the plugin with its trust, settings and the API
 key you entered. Both, and **Remove trust** in Studio, also sign you out of
 the plugin's sign-ins on this computer: each token is revoked at the provider
 where the sign-in has a revoke address, and forgotten here either way. When the
-provider doesn't confirm, the command (or Studio) says so, because the token
-may still work there until it expires.
+provider doesn't confirm the sign-out, the command (or Studio) names the sign-ins and says
+the token may still work there until it expires: "To end it now, remove the
+access you gave in your account settings at the provider." By then the trust or
+the plugin is gone, so Halonic has nothing left to retry.
 
 In a script, `plugin add` and `trust --plugin` take
 `--yes --fingerprint <fingerprint>`; the fingerprint must match what the check

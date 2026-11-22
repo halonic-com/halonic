@@ -48,23 +48,26 @@ export function usePageActions() {
     toastAddedOff: (name: string) => {
       toasts?.show({ tone: "info", title: addedOffToast(name), text: ADDED_OFF_TOAST_BODY });
     },
-    toastSignedOut: (name: string, signOut: PluginSignOut) => {
-      const warning = notConfirmedLine(name, signOut);
+    toastSignedOut: (signOut: PluginSignOut) => {
+      const warning = notConfirmedLine(signOut);
       if (warning !== undefined) toasts?.show({ tone: "warning", title: warning });
     },
     toastRemoved: (name: string, signOut: PluginSignOut) => {
-      const warning = notConfirmedLine(name, signOut);
+      const warning = notConfirmedLine(signOut);
       toasts?.show(
         warning === undefined
           ? { tone: "success", title: removedToast(name) }
-          : { tone: "warning", title: removedToast(name), text: warning },
+          : { tone: "warning", title: removedToast(name, true), text: warning },
       );
     },
   };
 }
 
-/** **Sign out**'s words when a sign-in's token may still work at the provider; `undefined` otherwise. */
-function notConfirmedLine(name: string, signOut: PluginSignOut): string | undefined {
-  const tokens = signOut.signInsNotConfirmed.length;
-  return tokens === 0 ? undefined : signedOutNotConfirmed(name, tokens);
+/**
+ * **Sign out**'s words, naming the sign-ins, when a sign-in's token may still work at the
+ * provider; `undefined` otherwise.
+ */
+function notConfirmedLine(signOut: PluginSignOut): string | undefined {
+  const signIns = signOut.signInsNotConfirmed;
+  return signIns.length === 0 ? undefined : signedOutNotConfirmed(signIns);
 }

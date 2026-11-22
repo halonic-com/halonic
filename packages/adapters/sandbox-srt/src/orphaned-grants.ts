@@ -15,19 +15,23 @@ const takeBackElevated =
 
 /**
  * What a removal that skipped the user's kept grants for its administrator
- * rights gives (HAL-7585). It logs that they go at the next start only when
- * that start will see them, as srt then lists kept grants while its sandbox
- * account is gone (see {@link KeptGrants.orphaned}), and only then sets
- * `keptAccess`, so the uninstaller's last page can say so (HAL-15004).
- * Never rejects.
+ * rights gives (HAL-7585), from what srt keeps after it
+ * ({@link KeptGrants.keptState}): `keptAccess: "until_next_start"` when the
+ * next start takes them back, as srt lists kept grants while its sandbox
+ * account is gone (HAL-15004); `keptAccess: "manual"` when they may stay
+ * until the sandbox is removed again without administrator rights
+ * (HAL-15836); and no `keptAccess` when srt keeps none. So Settings, the CLI
+ * and the uninstaller can say so. It logs the first two. Never rejects.
  */
 export async function removedGrantsKept(
-  grants: Pick<KeptGrants, "orphaned">,
+  grants: Pick<KeptGrants, "keptState">,
   warn: (message: string) => void,
 ): Promise<SandboxRemoval> {
-  if (!(await grants.orphaned())) {
+  const state = await grants.keptState();
+  if (state === "none") return { ok: true };
+  if (state === "kept") {
     warn(grantsKeptElevated);
-    return { ok: true };
+    return { ok: true, keptAccess: "manual" };
   }
   warn(grantsKeptOrphaned);
   return { ok: true, keptAccess: "until_next_start" };

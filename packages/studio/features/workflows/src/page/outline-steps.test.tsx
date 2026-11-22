@@ -2,10 +2,11 @@
 
 import { selectStepsStep } from "@halonicjs/studio-feature-agents/api";
 import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { WorkflowsHostService, type WorkflowView } from "../api.ts";
 import { workflowsFeature } from "../feature.ts";
 import { memoryHost, memoryRuns, show, unmount } from "../test-support.tsx";
@@ -134,6 +135,31 @@ verifies("workflows.page.outline-steps", () => {
     expect(selectedTab(page)?.startsWith("Flow")).toBe(true);
     expect(outlined(page)).toEqual(["triage"]);
     expect(said).toEqual(["1 step uses Sorter: Read the email"]);
+  });
+
+  it("on a phone, opens the view-only Flow with the steps outlined", async () => {
+    const { host } = memoryHost([], [], [sorted], [settings], {
+      addStep: vi.fn(async () => "step"),
+      resetLayout: vi.fn(async () => {}),
+      changeArrows: vi.fn(async () => {}),
+    });
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <WorkflowScreen
+          host={host}
+          runs={memoryRuns().source}
+          hubId="acme"
+          id="reply"
+          outline={["triage", "draft"]}
+        />
+      </PresentationProvider>,
+    );
+
+    expect(selectedTab(page)?.startsWith("Flow")).toBe(true);
+    expect(outlined(page)).toEqual(["triage", "draft"]);
+    expect(page.querySelector("[aria-pressed=true]")).toBeNull();
+    expect(page.querySelector("[role=group][aria-label='Flow tools']")).toBeNull();
+    expect(page.querySelector("[data-connect-port]")).toBeNull();
   });
 
   it("drops the outline when a step is picked", async () => {

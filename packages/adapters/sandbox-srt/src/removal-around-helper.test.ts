@@ -8,9 +8,9 @@ import { removedGrantsKept } from "./orphaned-grants.ts";
 /** The user's half of a removal, with what it was asked kept. */
 function steps(elevated: boolean, failed: string[] = []) {
   const asked = { forgetAll: 0 };
-  const given: RemovalSteps & { orphaned(): Promise<boolean> } = {
+  const given: RemovalSteps & { keptState(): Promise<"orphaned" | "kept" | "none"> } = {
     elevated: async () => elevated,
-    orphaned: async () => false,
+    keptState: async () => "kept",
     forgetAll: async () => {
       asked.forgetAll++;
       return failed;
@@ -68,15 +68,16 @@ verifies("sandbox-srt.removal-around-helper", () => {
       const { given } = steps(true);
       expect(await removalAfterHelper(0, "win32", given, (line) => logged.push(line))).toEqual({
         ok: true,
+        keptAccess: "manual",
       });
       const expected: string[] = [];
-      await removedGrantsKept({ orphaned: async () => false }, (line) => expected.push(line));
+      await removedGrantsKept({ keptState: async () => "kept" }, (line) => expected.push(line));
       expect(logged).toEqual(expected);
     });
 
     it("says the kept grants go at the next start when srt will see them as orphaned", async () => {
       const { given } = steps(true);
-      given.orphaned = async () => true;
+      given.keptState = async () => "orphaned";
       expect(await removalAfterHelper(0, "win32", given, quiet)).toEqual({
         ok: true,
         keptAccess: "until_next_start",

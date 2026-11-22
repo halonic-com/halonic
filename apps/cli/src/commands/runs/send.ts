@@ -52,7 +52,7 @@ import { liveLines } from "../run/live-lines.ts";
 import { runProgress } from "../run/result.ts";
 import type { RunSetup } from "../run/run.ts";
 import { checkRunTrust } from "../run/trust.ts";
-import { failedChildEnding } from "./failed-child.ts";
+import { childEndings } from "./child-endings.ts";
 import { listedStatus } from "./listed-run.ts";
 
 /** The run id and the event, as the user typed them. */
@@ -143,8 +143,8 @@ export async function sendToRun(
     if ("stopped" in followed) {
       return followed;
     }
-    const failedChild = await failedChildEnding(new RunHistory(runs), followed, loaded);
-    const progress = runProgress(followed, { ...facts, failedChild });
+    const children = await childEndings(new RunHistory(runs), followed, loaded);
+    const progress = runProgress(followed, { ...facts, children });
     return { ...progress, lines: [...ahead, ...progress.lines] };
   } finally {
     live.end();

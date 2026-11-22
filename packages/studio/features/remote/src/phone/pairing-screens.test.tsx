@@ -2,7 +2,7 @@
 
 import type { PairingQrPayload } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { FakePhoneTunnel } from "../test-support/phone-tunnel.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -117,6 +117,45 @@ verifies("remote.phone-pairing", () => {
     await press(screen, "Scan code");
     act(() => unmountAll());
     expect(scanner.closes).toBe(2);
+  });
+
+  it("leaves the camera alone when the screen goes away while not scanning", () => {
+    const { scanner } = setUp();
+    act(() => unmountAll());
+    expect(scanner.closes).toBe(0);
+  });
+
+  it("keeps the background see-through while scanning, with an inline camera callback", async () => {
+    const flow = new PhonePairingFlow(new FakePhoneTunnel(), new HeldScanner(), {
+      setTimer: () => () => undefined,
+    });
+    const camera: boolean[] = [];
+    let rerender: () => void = () => undefined;
+    function Page() {
+      const [renders, setRenders] = useState(0);
+      rerender = () => setRenders(renders + 1);
+      return (
+        <PairingScreens
+          flow={flow}
+          typed={() => null}
+          onOpenSettings={() => undefined}
+          onOpenAgents={() => undefined}
+          onCamera={(showing) => camera.push(showing)}
+        />
+      );
+    }
+    const screen = render(<Page />);
+    await press(screen, "Scan code");
+    act(() => rerender());
+    act(() => rerender());
+    expect(camera).toEqual([true]);
+  });
+
+  it("draws the X in the camera's white, since a ghost button's own colour vanishes on it", async () => {
+    const { screen } = setUp();
+    await press(screen, "Scan code");
+    const x = button(screen, "Close scanner")?.querySelector("svg");
+    expect(x?.parentElement?.className).toContain("text-qr-light");
   });
 
   it("offers settings and the typed route without the camera, and only typing without a scanner", async () => {

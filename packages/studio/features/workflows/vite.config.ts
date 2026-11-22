@@ -27,6 +27,7 @@ export default defineConfig({
         canvas: `${import.meta.dirname}/e2e/pages/canvas.html`,
         "agent-map": `${import.meta.dirname}/e2e/pages/agent-map.html`,
         configuration: `${import.meta.dirname}/e2e/pages/configuration.html`,
+        "allow-address": `${import.meta.dirname}/e2e/pages/allow-address.html`,
       },
     },
   },

@@ -74,7 +74,10 @@ function WaitingLine({
 
 /**
  * The "Couldn't list the tools" line with its buttons. While its **Try again** lists the tools,
- * the button stays where it is, busy.
+ * the button stays where it is, busy. When the line gives a command to run, its sentence ends in a
+ * colon, so the command comes straight under it and the buttons follow in their own row: on screen
+ * and for Tab, **Copy command** comes before **Try again** (C652 #3). Without a command the buttons
+ * sit beside the sentence.
  */
 function LoadFailed({
   line,
@@ -87,21 +90,31 @@ function LoadFailed({
   readonly retrying: boolean;
 }) {
   const actions = useLoadFailedActions(line, handlers);
+  const buttons = actions.map((action) => (
+    <Button
+      key={action.label}
+      variant="secondary"
+      busy={retrying && action.label === listedToolsWords.tryAgain}
+      onClick={() => void action.onClick()}
+    >
+      {action.label}
+    </Button>
+  ));
+  const text = <LoadFailedText line={line} />;
+  if (line.command === undefined) {
+    return (
+      <WaitingLine text={text} textRef={textRef}>
+        {buttons}
+      </WaitingLine>
+    );
+  }
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <WaitingLine text={<LoadFailedText line={line} />} textRef={textRef}>
-        {actions.map((action) => (
-          <Button
-            key={action.label}
-            variant="secondary"
-            busy={retrying && action.label === listedToolsWords.tryAgain}
-            onClick={() => void action.onClick()}
-          >
-            {action.label}
-          </Button>
-        ))}
+      <WaitingLine text={text} textRef={textRef}>
+        {null}
       </WaitingLine>
-      {line.command === undefined ? null : <CommandBox command={line.command} />}
+      <CommandBox command={line.command} />
+      <div className="flex flex-wrap gap-2">{buttons}</div>
     </div>
   );
 }

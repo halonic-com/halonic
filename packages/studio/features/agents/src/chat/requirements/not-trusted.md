@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-13177; Review on the toast, C638 (HAL-15828); flow-agents 4.4; microcopy 8.3 and 14.1; states (HAL-5896) section 4, H16; workspace flow 3.1; only the engine's untrusted refusal, by its code (HAL-14813, HAL-15002)
+- Source: HAL-13177; Review on the toast, C638 (HAL-15828); flow-agents 4.4; microcopy 8.3 and 14.1; states (HAL-5896) section 4, H16; workspace flow 3.1; only the engine's untrusted refusal, by its code (HAL-14813, HAL-15002); a folder that isn't open as S4's unexplained failure (C613 row 33, HAL-15683)
 
-When the person sends a Try it message while this computer doesn't trust the workspace, the chat shall send nothing, keep the message in the box, and open the workspace's trust gate where the app has one. When the person trusts the workspace there, the chat shall send the message. When they pick **Not now**, or the app has no gate to open, the chat shall show the toast "Not started: *Acme* isn't trusted yet", with the workspace's name, and the message shall stay in the box. Where the app has a gate, the toast shall offer **Review**, which opens the gate again. When the engine itself refuses a message because the workspace isn't trusted (`denied` with the code `workspace.untrusted`), the chat shall do the same: take the turn back with no failure line, put the message back in the box unless the person already wrote another, and open the gate or show the toast. Any other `denied`, such as a folder that isn't open, shall end the reply as a failure in its own words ("*Sorter*'s reply failed: *reason*.") and open no gate.
+When the person sends a Try it message while this computer doesn't trust the workspace, the chat shall send nothing, keep the message in the box, and open the workspace's trust gate where the app has one. When the person trusts the workspace there, the chat shall send the message. When they pick **Not now**, or the app has no gate to open, the chat shall show the toast "Not started: *Acme* isn't trusted yet", with the workspace's name, and the message shall stay in the box. Where the app has a gate, the toast shall offer **Review**, which opens the gate again. When the engine itself refuses a message because the workspace isn't trusted (`denied` with the code `workspace.untrusted`), the chat shall do the same: take the turn back with no failure line, put the message back in the box unless the person already wrote another, and open the gate or show the toast. Any other `denied` shall end the reply as a failure in its own words ("*Sorter*'s reply failed: *reason*.") and open no gate, except the desktop shell's refusal of a folder that isn't open (`folder_not_open`), whose words hold the folder's path: that reply shall read "*Sorter*'s reply failed: Halonic ran into a problem it can't explain yet." (UX check S4).
 
 ## Examples
 
@@ -23,6 +23,6 @@ When the person sends a Try it message while this computer doesn't trust the wor
 - Given the engine refuses "Sort this mail" as `denied` with the code `workspace.untrusted`,
   when the person trusts the workspace in the gate,
   then "Sort this mail" is sent again, once.
-- Given the engine refuses "Sort this mail" with "Acme isn't an opened folder." (`denied`, no code),
+- Given the engine refuses "Sort this mail" with "The run store refused the call: /workspaces/acme is not an opened folder" (`denied`, the shell's `folder_not_open` as its cause),
   when the answer comes back,
-  then the reply reads "Sorter's reply failed: Acme isn't an opened folder.", the gate doesn't open and no toast shows.
+  then the reply reads "Sorter's reply failed: Halonic ran into a problem it can't explain yet.", the gate doesn't open and no toast shows.

@@ -23,6 +23,11 @@ with the request's body.
        event: "{{trigger.headers.x-shop-event}}"
    ```
 
+   The workflow's `input` takes named fields, one per value the workflow
+   reads, as above. `input: "{{trigger.body}}"` on its own is refused:
+   `halonic validate` says "A workflow routine's input takes named fields,
+   such as input: { mail: "{{trigger.body}}" }."
+
    `headers` lists the request headers the run may read, in lowercase. Leave
    it out when the run needs none. A routine on a webhook can use
    `{{trigger.at}}`, `{{trigger.lastRun}}`, `{{trigger.body}}` and
@@ -99,7 +104,7 @@ Here `ORDERS_HOOK` holds the secret's value in the sender's environment.
 | 403 | The workspace changed since it was trusted. Run `halonic trust`. |
 | 409 | This delivery id was already received. A resend with the same id starts nothing. |
 | 429 | A run of the routine is still going and its `overlap` is `queue`. Send it again after the time in `Retry-After`. |
-| 501 | The routine starts an agent. The answer says "Halonic can't run an agent on its own yet, only as a step in a workflow." Make a workflow with the agent as a step, then start that. |
+| 501 | The routine starts an agent. The answer says "Halonic can't run an agent on its own yet, only as a step in a workflow." Make a workflow with the agent as a step, then have the routine start that workflow. |
 
 The terminal that runs `halonic serve` prints a line when a signed
 request starts a run, is skipped, gets a 400 or a 501, or fails. Other

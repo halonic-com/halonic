@@ -2,7 +2,7 @@ import type { ItemUsage } from "@halonicjs/app";
 import { Button, Field } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { Fragment } from "react";
-import { sharedHubKey } from "./library-place.tsx";
+import { sharedHubKey } from "../shared-hub-key.ts";
 
 interface UsedByFieldProps {
   readonly usage: ItemUsage | undefined;

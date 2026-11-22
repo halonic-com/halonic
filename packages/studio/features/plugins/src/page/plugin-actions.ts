@@ -143,9 +143,12 @@ export function removeTitle(name: string): string {
 export const REMOVE_PLUGIN = "Remove plugin";
 export const REMOVING = "Removing…";
 
-/** The toast after removing (T11). */
-export function removedToast(name: string): string {
-  return `${name} removed`;
+/**
+ * The toast after removing (T11). With a warning under it the title ends in a full stop, as a toast
+ * with a second sentence does throughout (microcopy 1.3, words check C633).
+ */
+export function removedToast(name: string, withWarning = false): string {
+  return withWarning ? `${name} removed.` : `${name} removed`;
 }
 
 /** The toast after **Trust** (T11): the name, then where its command and card are. */

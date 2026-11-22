@@ -358,7 +358,7 @@ const lineTwo = {
   "task-without-agent": () => phrase`Give it an agent (agent: <id>), or make it a wait step.`,
   // `validate` names the wait step, which the engine's cause doesn't.
   "item-run-waits": (run, failure) =>
-    phrase`Move the wait step in ${failure.workflow} into this workflow after ${run.step}, or take it out of ${failure.workflow}. ${suggestedCommand("validate", run.dir)} names it.`,
+    phrase`Move the wait step in ${failure.workflow} into this workflow after ${run.step}, or take it out of ${failure.workflow}. To see which step it is, run ${suggestedCommand("validate", run.dir)}.`,
   // The key's list is in the profile, not the workspace, so the command takes no --dir.
   "key-address-not-allowed": (_run, failure) =>
     phrase`Only allow an address you recognise. To allow it, run halonic models allow-address "${failure.key}" ${shellWord(failure.address)}, then run again.`,

@@ -117,10 +117,32 @@ export function stepLinesWithDetails(
   clock: RunClock,
   { output }: { readonly output: boolean },
 ): Phrase[] {
+  return stepLineGroups(events, summary, definitions, clock, { output }).flat();
+}
+
+/**
+ * The lines of {@link stepLinesWithDetails}, one group for each step: its
+ * line, then the lines under it. `halonic run` prints a step's group as
+ * soon as the step ends (`live-lines.ts`), so it reads them by step.
+ * `widths` lines the steps up in the workflow's columns, as {@link stepLines}.
+ *
+ * @example
+ * stepLineGroups(events, summary, definitions, clock, { output: false }).map((group) => group.map(plainText));
+ * // [["✓ Read the email   Writer · smart   1 s",
+ * //   "  Didn't work: the tool search_pages broke off without an answer, so it may or may not have done its work."],
+ * //  ["✓ Classify it   Sorter · default   1 s"]]
+ */
+export function stepLineGroups(
+  events: readonly RunEvent[],
+  summary: RunSummary,
+  definitions: RunDefinitions,
+  clock: RunClock,
+  { output, widths }: { readonly output: boolean; readonly widths?: StepColumns },
+): Phrase[][] {
   const steps = runSteps(events, summary);
   const stepLogs = eventsBySteps(events);
   // One line for each step, in the same order; the end state's events come last and get none.
-  return stepLines(events, summary, definitions, clock).flatMap((line, index) => {
+  return stepLines(events, summary, definitions, clock, widths).map((line, index) => {
     const step = steps[index];
     if (step === undefined) {
       return [line];

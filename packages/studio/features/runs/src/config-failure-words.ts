@@ -77,6 +77,11 @@ export const configFailureWords = {
   taskWithoutAgent: (workflow: string, step: string) =>
     `${workflow} failed in the step ${step}: it's an agent step with no agent.`,
   taskWithoutAgentFix: "Pick an agent on its card, or make it a wait step.",
+  /** `workflow.item-run-waits`: the CLI's words, after C613's for `validate`'s foreach-child-waits. */
+  itemRunWaits: (workflow: string, step: string, item: number) =>
+    `${workflow} failed in the step ${step}: the run it started for item ${item + 1} waited, and a run for one item can't wait.`,
+  itemRunWaitsFix: (step: string, itemWorkflow: string) =>
+    `Move the wait step in ${itemWorkflow} into this workflow after ${step}, or take it out of ${itemWorkflow}.`,
 } as const;
 
 /** What names the missing provider: a model alias, or an agent's `provider/model` shorthand. */

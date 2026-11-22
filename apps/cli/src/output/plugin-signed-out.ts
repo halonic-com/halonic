@@ -8,16 +8,12 @@ import { printable } from "./printable.ts";
 
 /**
  * "✓ Signed you out of acme-account.", and, when the provider didn't confirm,
- * "! You're signed out here. Acme Orders didn't confirm, …". None when the
+ * "! You're signed out here. The provider didn't confirm, …". None when the
  * plugin had no sign-in to sign out.
  *
- * @param name - the plugin's name, as the line above it shows it
  * @param signedOut - what the plugin service's sign-out gave
  */
-export function pluginSignedOutLines(
-  name: string,
-  signedOut: readonly PluginSignedOut[],
-): Phrase[] {
+export function pluginSignedOutLines(signedOut: readonly PluginSignedOut[]): Phrase[] {
   const gone = signInsSignedOut(signedOut);
   if (gone.length === 0) return [];
   const lines = [
@@ -25,7 +21,7 @@ export function pluginSignedOutLines(
   ];
   const notConfirmed = signInsNotConfirmed(signedOut);
   if (notConfirmed.length > 0) {
-    const warning = pluginMessages.signedOutNotConfirmed(name, notConfirmed.length);
+    const warning = pluginMessages.signedOutNotConfirmed(notConfirmed.length);
     lines.push(phrase`${markPart("needsYou")} ${warning.phrase}`);
   }
   return lines;

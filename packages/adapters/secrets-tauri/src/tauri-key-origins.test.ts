@@ -30,6 +30,8 @@ verifies("secrets-tauri.key-origins", () => {
         origin: "https://llm.example.com",
       });
       expect(await origins.allowedOrigins("ACME-KEY")).toEqual(["https://llm.example.com"]);
+      // A refusal names the keychain's list, which Studio's Models edits (HAL-15762).
+      expect(origins.store).toBe("keychain");
       expect(shell.calls.slice(1)).toEqual([
         {
           command: "secret_allow_origin",

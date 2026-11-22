@@ -48,14 +48,14 @@ verifies("workspace.references", () => {
   );
 
   it(
-    "ends an unknown provider in models.yaml with its fix, as the run view's banner does",
+    "says an unknown provider in models.yaml in the run's words and ends with its fix (C637)",
     async () => {
       // C618 #5 (HAL-15709): validate stops this before any run, so it says the fix itself.
       expect(await errorsOf("models/unknown-provider")).toEqual([
         {
           ...expectedError("models/unknown-provider"),
           message:
-            "Alias smart uses unknown provider cloud. Add providers/cloud.yaml, or point the alias smart at a provider the workspace has.",
+            "The model alias smart names the provider cloud, which the workspace doesn't have. Add providers/cloud.yaml, or point the model alias smart at a provider the workspace has.",
         },
       ]);
     },

@@ -58,7 +58,7 @@ import {
 import { misplacedFilesOf, refuseFileProblems } from "../../workspace-problems.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
-import { failedChildEnding } from "../runs/failed-child.ts";
+import { childEndings } from "../runs/child-endings.ts";
 import { connectorWarnings } from "./connector-warnings.ts";
 import { eventLines } from "./event-lines.ts";
 import { runHarnessOf } from "./harness.ts";
@@ -213,7 +213,7 @@ export async function followWorkflow(
     clock,
     unusedEvents,
     debugging: context.debugging === true,
-    failedChild: await failedChildEnding(history, run, workspace),
+    children: await childEndings(history, run, workspace),
   });
   const proposal = await waitingProposal(dir, run, setup, typedDir);
   const json = {

@@ -6,6 +6,7 @@
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { Inbox, InboxRuns } from "./inbox.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
+import type { ProposalDecisions } from "./proposal-decisions.ts";
 import type { InboxRequests } from "./request/inbox-requests.ts";
 import type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 
@@ -47,7 +48,8 @@ export { type FailedRunNotice, failedRunNotices } from "./notices/failed-run-not
 export type { InboxNotice, InboxNotices, SandboxFixedNotice } from "./notices/inbox-notices.ts";
 export { newestFirst as newestNoticeFirst } from "./notices/merge-notices.ts";
 export { clockTime } from "./plain/waiting-time.ts";
-export type { ProposalEnding, ProposalItem } from "./proposal-items.ts";
+export type { ProposalDecided, ProposalDecisions, ProposalUndone } from "./proposal-decisions.ts";
+export type { ProposalEnding, ProposalFile, ProposalItem } from "./proposal-items.ts";
 export {
   BudgetUsedUp,
   type InboxRequests,
@@ -91,3 +93,10 @@ export const SandboxRefusalsService: ServiceKey<SandboxRefusals> =
  */
 export const SandboxPassesService: ServiceKey<SandboxPasses> =
   serviceKey<SandboxPasses>("inbox.sandbox-passes");
+
+/**
+ * Accept, Reject and Undo on the workspace's run proposals. The app provides it with the agent
+ * host; without it a proposal opens with its changes but no buttons.
+ */
+export const ProposalDecisionsService: ServiceKey<ProposalDecisions> =
+  serviceKey<ProposalDecisions>("inbox.proposal-decisions");

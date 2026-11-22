@@ -93,5 +93,22 @@ verifies("shell.start-failure", () => {
       });
       expect(detailsOf("Couldn't start the run", error)).toContain(raw);
     });
+    it("says the shell's refusal of a folder that isn't open as a failure it can't explain", () => {
+      const refusal = new KindedError(
+        "denied",
+        "The run store refused the call: /workspaces/acme is not an opened folder",
+        { cause: { kind: "folder_not_open", message: "/workspaces/acme is not an opened folder" } },
+      );
+      expect(startFailureOf(refusal, desktop)).toEqual({
+        reason: "Halonic ran into a problem it can't explain yet.",
+        fix: undefined,
+        command: undefined,
+        tryAgain: false,
+        copyDetails: true,
+      });
+      expect(detailsOf("Couldn't start the run.", refusal)).toContain(
+        "/workspaces/acme is not an opened folder",
+      );
+    });
   });
 });

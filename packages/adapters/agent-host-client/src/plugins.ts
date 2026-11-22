@@ -15,7 +15,7 @@ const refusalMessages: Readonly<Record<string, string>> = {
   not_fenced:
     "Plugin tools can't run on this computer yet: the sandbox that fences a plugin isn't available here (Windows, until it is). Nothing was started.",
   plugin_stopped:
-    "Halonic stopped this plugin: its sandbox didn't hold, so it didn't run. Try again to check the sandbox again.",
+    "Halonic stopped this plugin: the sandbox didn't work when it started, so none of it ran.",
   not_in_this_build: "Plugin tools aren't available in this build of Halonic yet.",
   plugin_not_trusted:
     "This computer's trust record doesn't cover this plugin as it is now. Review it and trust it first.",

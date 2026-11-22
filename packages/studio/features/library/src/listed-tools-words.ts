@@ -136,10 +136,10 @@ export const listedToolsWords = {
       file: string | undefined,
       withCommand: boolean,
     ): readonly RefusalLinePart[] => [
-      { text: "Couldn't list the tools: the program " },
+      { text: `Couldn't list the tools: ${source}'s program ` },
       { text: program, code: true },
       {
-        text: ` of ${source} stopped right after it started. To see why, run the command and args from `,
+        text: " stopped right after it started. To see why, run the command and args from ",
       },
       ...(file === undefined
         ? [{ text: "its connector file" }]

@@ -24,7 +24,8 @@ export interface StartFailedCalloutProps {
   /**
    * Opens the workspace's trust check; absent where there is none. A start refused because the
    * workspace isn't trusted ({@link isUntrustedRefusal}) then offers **Review** in place of **Try
-   * again** (C144 RT1); any other `denied`, such as a folder that isn't open, keeps **Try again**.
+   * again** (C144 RT1); any other `denied` keeps **Try again**, but a folder that isn't open is a
+   * failure Halonic can't explain, with **Copy details** only (`startFailureOf`).
    */
   readonly review?: (() => void) | undefined;
   /** Moves focus to the Callout when it shows a failure, as the Run panel's card does (D7). */

@@ -1,5 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
-import { WorkspaceRoutines, type WorkspaceRoutinesParts } from "./workspace-routines.ts";
+import { WorkspaceRoutines } from "./workspace-routines.ts";
+import type { WorkspaceRoutinesParts } from "./workspace-routines-parts.ts";
 
 /** Acme's agent `analyst`, with no harness set. */
 export const analystFile = "id: analyst\nname: Analyst\nmodel: fast\ninstructions: Report.\n";
