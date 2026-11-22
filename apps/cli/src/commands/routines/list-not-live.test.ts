@@ -16,7 +16,7 @@ import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { routinesCommandWith } from "./command.ts";
 
 const hint =
-  "Routines start on time only while `halonic routines watch` is running or the Studio is open.";
+  "Routines start on time only while this workspace is open in Halonic Studio or `halonic routines watch` is running.";
 const routinePath = "hubs/support/workflows/routines/morning.routine.yaml";
 
 /** Morning check of the support hub, on `schedule`. */
@@ -123,7 +123,7 @@ verifies("cli.commands.routines.list", () => {
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
       "Morning check   Daily at 08:00   Next tomorrow 08:00   Never ran",
-      "! Couldn't check what's live: git can't start on this computer, so the live version can't be read. So the list doesn't say which changes aren't live yet.",
+      "! Couldn't check what's live: git can't start on this computer, so the live version can't be read. This list can't show which routines have changes that aren't live yet.",
       "Install git and make sure it's on your PATH, then try again.",
       hint,
     ]);

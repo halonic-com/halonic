@@ -123,7 +123,8 @@ export const routinesMessages = defineMessages("routines", {
   /**
    * The line under the list for a routine whose saved file isn't live yet:
    * `watch` and the Studio start the last commit's (HAL-15204), as the
-   * Studio's "Changes not live yet" says. In the words of `run`'s
+   * Studio's "Changes not live yet" says. A routine starts something, and
+   * the next step comes first (HAL-15504). In the words of `run`'s
    * {@link runMessages.changesNotLive}, since a commit makes it live.
    */
   changesNotLive: (name: string) =>
@@ -151,12 +152,14 @@ export const routinesMessages = defineMessages("routines", {
     phrase`${markPart("needsYou")} ${name} isn't live yet, so it doesn't run. To start it, commit it or make it live ${inStudio}.`,
   /**
    * Ends the reason when git can't start, so the list can't tell which
-   * routines' changes are live (HAL-15204), after `run`'s reason.
+   * routines' changes are live (HAL-15204), after `run`'s reason. It starts
+   * with "This list", since the reason before it already has a "so" (HAL-15504).
    */
-  liveNotChecked: () => phrase`So the list doesn't say which changes aren't live yet.`,
+  liveNotChecked: () =>
+    phrase`This list can't show which routines have changes that aren't live yet.`,
   /**
    * The line under the list when git can't start, with `run`'s reason: "! Couldn't check what's
-   * live: git can't start on this computer, so the live version can't be read. So the list …".
+   * live: git can't start on this computer, so the live version can't be read. This list …".
    * The list still shows, since listing needs no git; the fix follows, dimmed.
    */
   liveCheckFailed: (reason: Phrase) =>
@@ -164,11 +167,14 @@ export const routinesMessages = defineMessages("routines", {
 
   /**
    * The dim line under the list: a routine starts on time only while `watch`
-   * runs or the Studio is open, since the Studio's engine starts them too (HAL-14205, HAL-15204).
+   * runs or its workspace is open in Halonic Studio, since the Studio's engine
+   * starts the open workspace's routines too (HAL-14205, HAL-15204). "Halonic
+   * Studio" in full, as the allow-address error says it, since plain
+   * "Halonic" is ambiguous in a terminal (HAL-15504).
    */
   watchHint: () => [
     dim(
-      "Routines start on time only while `halonic routines watch` is running or the Studio is open.",
+      "Routines start on time only while this workspace is open in Halonic Studio or `halonic routines watch` is running.",
     ),
   ],
 
