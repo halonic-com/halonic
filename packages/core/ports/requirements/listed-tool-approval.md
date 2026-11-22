@@ -2,7 +2,7 @@
 
 - Status: draft
 - Since: 0.1.0
-- Source: HAL-6654 (`inheritEnv` in a `stdio` address, from Liam's review of halonic#1976); HAL-520, from the HAL-517 decision on the MCP tools review (HAL-504): a server can change a listed tool's description after the workspace connects it, and `ports.untrusted-tool-listings` fences that text but doesn't stop it. The board signed off the proposal on HAL-850 on 2026-11-09 (A1, B1, C2, D1). It becomes active when `listedToolFingerprint` and `approveListedTools` in `@halonicjs/app` prove the examples.
+- Source: HAL-6654 (`inheritEnv` in a `stdio` address, from Liam's review of halonic#1976); HAL-520, from the HAL-517 decision on the MCP tools review (HAL-504): a server can change a listed tool's description after the workspace connects it, and `ports.untrusted-tool-listings` fences that text but doesn't stop it. The board signed off the proposal on HAL-850 on 2026-11-09 (A1, B1, C2, D1). It becomes active when `listedToolFingerprint` and `approveListedTools` in `@halonicjs/app` prove the examples. HAL-15962 names the waiting group in HAL-15645's on/off words, as the connector's Status section says it (HAL-15903).
 
 The host shall offer the model a listed tool (as `ports.untrusted-tool-listings` defines it) only after a person has approved it as the model would see it, at the server it comes from, and only for as long as the tool and the server stay the same. Declared tools need no approval, because Halonic reviewed them.
 
@@ -20,7 +20,7 @@ The host shall offer the model a listed tool (as `ports.untrusted-tool-listings`
   - _offered_: listed tools whose approval has the same server and the same fingerprint. Only these, and declared tools, go on to the fence and the model.
   - _waiting_: every other listed tool, with its fingerprint and text now, and, when it has an approval, the approved text, so the screen can show what changed. A waiting tool never reaches the model, and a call to it is refused like a call to any tool not offered in the turn.
 
-  A tool the host refused while reading the listing is in neither list. Waiting is not refused: the integration status shows "Waiting for approval" and "Refused" as two separate groups, both as plain text with names cut to 64 characters.
+  A tool the host refused while reading the listing is in neither list. Waiting is not refused: the integration status shows "Off until you review them" and "Refused" as two separate groups, both as plain text with names cut to 64 characters.
 
 - **Removed tools.** An approval whose tool the listing no longer returns stays in the store and asks nothing. If the tool comes back unchanged at the same server, it is offered again without asking. Disconnecting a source revokes all of its approvals.
 
