@@ -57,7 +57,11 @@ verifies("paperclip.pr-tools", () => {
     test("the worker registers pr_status and my_prs, and answers without a token with an error", async () => {
       const harness = createTestHarness({ manifest, config: {} });
       await plugin.definition.setup(harness.ctx);
-      expect(manifest.tools?.map((tool) => tool.name)).toEqual(["pr_status", "my_prs"]);
+      expect(manifest.tools?.map((tool) => tool.name)).toEqual([
+        "pr_status",
+        "my_prs",
+        "queue_state",
+      ]);
       expect(await harness.executeTool("pr_status", { pr: 4588 })).toEqual({
         error: "pr_status: no GitHub token is set in the plugin's settings.",
       });

@@ -214,3 +214,66 @@ verifies("paperclip.github-snapshot", () => {
     ]);
   });
 });
+
+verifies("paperclip.queue-state", () => {
+  test("reads each group's ci-ok and its jobs waiting for a runner with the first page only", async () => {
+    const answers = recording();
+    const first = answers.open.data as {
+      repository: {
+        mergeQueue: { entries: { nodes: { headCommit: Record<string, unknown> | null }[] } };
+        pullRequests: { pageInfo: { hasNextPage: boolean; endCursor: string | null } };
+      };
+    };
+    const entries = first.repository.mergeQueue.entries.nodes;
+    const run = (name: string, status: string, conclusion: string | null, startedAt: string) => ({
+      name,
+      status,
+      conclusion,
+      startedAt,
+    });
+    const rollup = (nodes: unknown[]) => ({
+      statusCheckRollup: { contexts: { pageInfo: { hasNextPage: false }, nodes } },
+    });
+    Object.assign(
+      entries[0]?.headCommit ?? {},
+      rollup([run("ci-ok", "COMPLETED", "SUCCESS", "2026-11-22T14:30:00Z")]),
+    );
+    Object.assign(
+      entries[1]?.headCommit ?? {},
+      rollup([
+        run("Fast gates", "IN_PROGRESS", null, "2026-11-22T14:57:00Z"),
+        run("Typecheck, lint, test, build (core)", "QUEUED", null, "2026-11-22T14:59:00Z"),
+        run("Typecheck, lint, test, build (app-studio)", "QUEUED", null, "2026-11-22T14:58:00Z"),
+      ]),
+    );
+    first.repository.pullRequests.pageInfo = { hasNextPage: true, endCursor: "page-2" };
+    const second = {
+      repository: {
+        defaultBranchRef: { name: "main" },
+        pullRequests: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+      },
+    };
+    const asked: unknown[] = [];
+    const base = fakeQuery(answers).query;
+    const snapshot = await takeSnapshot({
+      query: async (document, variables) => {
+        if (document.includes("query OpenPulls")) {
+          asked.push(variables["withQueue"]);
+          return variables["after"] === null ? first : second;
+        }
+        return base(document, variables);
+      },
+      repos,
+      now: new Date("2026-11-22T15:00:00Z"),
+      fallback: noFallback,
+    });
+    expect(asked).toEqual([true, false]);
+    const [ready, building] = snapshot.repos[0]?.queue ?? [];
+    expect(ready).toMatchObject({ groupCiOk: "success", jobsWaiting: 0, waitingSince: null });
+    expect(building).toMatchObject({
+      groupCiOk: "missing",
+      jobsWaiting: 2,
+      waitingSince: "2026-11-22T14:58:00Z",
+    });
+  });
+});

@@ -9,7 +9,10 @@ import type {
 } from "@paperclipai/plugin-sdk";
 import { myPrs, myPrsText } from "../pr-tools/my-prs.ts";
 import { prStatus, statusText } from "../pr-tools/pr-status.ts";
+import { queueState, queueStateText } from "../pr-tools/queue-state.ts";
 import { type GitHubGet, gitHubReader } from "../pr-watcher/github.ts";
+import type { Snapshot } from "../snapshot/shape.ts";
+import { loadSnapshot, type StateApi } from "../snapshot/store.ts";
 import { readSettings, requestTimeoutMs } from "./job.ts";
 import { manifest } from "./manifest.ts";
 import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
@@ -17,11 +20,12 @@ import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
 /**
  * The agent tools `pr_status` and `my_prs`. Like the watcher, they read
  * GitHub with GET requests only, through `ctx.http`, with the company's
- * read-only token.
+ * read-only token. `queue_state` reads the watcher's last snapshot from
+ * plugin state and sends no request at all.
  */
 
 /** The part of the plugin context the tools use, so tests can fake it. */
-export interface ToolsApi extends MetricsApi {
+export interface ToolsApi extends MetricsApi, StateApi {
   readonly tools: Pick<PluginToolsClient, "register">;
   readonly agents: Pick<PluginAgentsClient, "get">;
   readonly config: PluginConfigClient;
@@ -89,10 +93,20 @@ async function run(
   } catch (error) {
     result = { error: `${name}: ${(error as Error).message}` };
   }
-  // The agent gets its answer even when the metrics don't save.
+  return recordCall(ctx, name, runCtx, result, requests());
+}
+
+/** Counts one tool call. The agent gets its answer even when the metrics don't save. */
+async function recordCall(
+  ctx: ToolsApi,
+  name: string,
+  runCtx: ToolRunContext,
+  result: ToolResult,
+  requests: number,
+): Promise<ToolResult> {
   await writeMetrics(
     ctx,
-    { "tools.calls": 1, "tools.github_requests": requests() },
+    { "tools.calls": 1, "tools.github_requests": requests },
     {
       companyId: runCtx.companyId,
       tool: name,
@@ -102,7 +116,27 @@ async function run(
   return result;
 }
 
-/** Registers `pr_status` and `my_prs` as the manifest declares them. */
+/** Runs one tool call on the company's last snapshot, without GitHub. */
+async function fromSnapshot(
+  ctx: ToolsApi,
+  name: string,
+  runCtx: ToolRunContext,
+  body: (snapshot: Snapshot) => ToolResult,
+): Promise<ToolResult> {
+  let result: ToolResult;
+  try {
+    const snapshot = await loadSnapshot(ctx, runCtx.companyId);
+    result =
+      snapshot === undefined
+        ? { error: `${name}: no GitHub snapshot yet; the PR watcher hasn't finished a pass.` }
+        : body(snapshot);
+  } catch (error) {
+    result = { error: `${name}: ${(error as Error).message}` };
+  }
+  return recordCall(ctx, name, runCtx, result, 0);
+}
+
+/** Registers `pr_status`, `my_prs` and `queue_state` as the manifest declares them. */
 export function registerTools(ctx: ToolsApi): void {
   const declared = new Map((manifest.tools ?? []).map((tool) => [tool.name, tool]));
   const declaration = (name: string) => {
@@ -132,6 +166,13 @@ export function registerTools(ctx: ToolsApi): void {
       }
       const prs = await myPrs(get, repos, agent.urlKey);
       return { content: myPrsText(agent.urlKey, prs), data: prs };
+    }),
+  );
+
+  ctx.tools.register("queue_state", declaration("queue_state"), (_params, runCtx) =>
+    fromSnapshot(ctx, "queue_state", runCtx, (snapshot) => {
+      const state = queueState(snapshot, new Date());
+      return { content: queueStateText(state), data: state };
     }),
   );
 }

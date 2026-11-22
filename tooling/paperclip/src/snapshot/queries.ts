@@ -20,15 +20,21 @@ const checkRuns = `contexts(first: 100) {
   nodes { ... on CheckRun { name status conclusion startedAt } }
 }`;
 
-/** A repository's merge queue and one page of its open pull requests. */
-export const openPullsQuery = `query OpenPulls($owner: String!, $name: String!, $after: String) {
+/**
+ * One page of a repository's open pull requests, and on the first page
+ * (`$withQueue`) its merge queue with each group commit's checks: `ci-ok`,
+ * and the jobs still waiting for a runner. A job waiting on another job has
+ * no check run yet, so a queued one waits for a runner.
+ */
+export const openPullsQuery = `query OpenPulls($owner: String!, $name: String!, $after: String, $withQueue: Boolean!) {
   repository(owner: $owner, name: $name) {
     defaultBranchRef { name }
-    mergeQueue {
+    mergeQueue @include(if: $withQueue) {
       entries(first: 100) {
         nodes {
           position state enqueuedAt estimatedTimeToMerge solo
-          enqueuer { login } headCommit { oid } pullRequest { number }
+          enqueuer { login } pullRequest { number }
+          headCommit { oid statusCheckRollup { ${checkRuns} } }
         }
       }
     }

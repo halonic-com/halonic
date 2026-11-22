@@ -5,7 +5,7 @@ import { registerTools } from "./tools.ts";
 /**
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch` job on its
- * schedule and answers the `pr_status` and `my_prs` tools.
+ * schedule and answers the `pr_status`, `my_prs` and `queue_state` tools.
  */
 export const plugin = definePlugin({
   async setup(ctx) {
