@@ -6,8 +6,10 @@ import {
 } from "../board-check/settings.ts";
 import { ceilings, commitWrites, type GateRefusal, type WriteGate } from "../board-check/writes.ts";
 import { type BoardCheckApi, errorCode, type PartPlan, type Trigger } from "./board-check-api.ts";
-import { planAsks } from "./board-check-asks.ts";
+import { type AskScope, planAsks } from "./board-check-asks.ts";
 import { planRuns, recordFailedRun } from "./board-check-runs.ts";
+import { planWaiting } from "./board-check-waiting.ts";
+import { everyIssue } from "./host.ts";
 import { companyConfig } from "./job.ts";
 import { manifest } from "./manifest.ts";
 import { writeMetrics } from "./metrics.ts";
@@ -43,6 +45,33 @@ function gateFor(ctx: BoardCheckApi, companyId: string, settings: BoardCheckSett
   };
 }
 
+/** Parts (b), (c) and (e) run on the first job pass of each hour. */
+export function hourlyPass(trigger: Trigger, now: Date): boolean {
+  return trigger === "job" && now.getUTCMinutes() < 10;
+}
+
+/** The job's parts after the asks, all planned from the pass's one listing of open tasks. */
+async function planJobParts(
+  ctx: BoardCheckApi,
+  companyId: string,
+  settings: BoardCheckSettings,
+  openTasks: Awaited<ReturnType<typeof everyIssue>>,
+  asks: PartPlan,
+  now: Date,
+): Promise<PartPlan[]> {
+  // The ask's wake comes first; failed runs get the wakes left under the ceiling.
+  const asksWakes = asks.writes.filter((write) => write.kind === "wake").length;
+  const parts = [
+    await planRuns(ctx, companyId, settings.seatSupervisorTaskId, ceilings.wake - asksWakes),
+  ];
+  if (hourlyPass("job", now)) {
+    const agents = await ctx.agents.list({ companyId, limit: 500 });
+    const names = new Map(agents.map((agent) => [agent.id, agent.name]));
+    parts.push(await planWaiting(ctx, companyId, openTasks, names, now));
+  }
+  return parts;
+}
+
 /** One pass for one company: plan every part, send the writes through the gate, then save. */
 async function pass(
   ctx: BoardCheckApi,
@@ -52,14 +81,13 @@ async function pass(
   trigger: Trigger,
   only?: string,
 ): Promise<void> {
-  const asks = await planAsks(ctx, companyId, settings.boardCheckerTaskId, now, only);
+  // One listing of open tasks per job pass, shared by every part that reads tasks.
+  const openTasks = only === undefined ? await everyIssue(ctx, companyId) : [];
+  const scope: AskScope = only === undefined ? { openTasks } : { only };
+  const asks = await planAsks(ctx, companyId, settings.boardCheckerTaskId, now, scope);
   const parts: PartPlan[] = [asks];
   if (trigger === "job") {
-    // The ask's wake comes first; failed runs get the wakes left under the ceiling.
-    const asksWakes = asks.writes.filter((write) => write.kind === "wake").length;
-    parts.push(
-      await planRuns(ctx, companyId, settings.seatSupervisorTaskId, ceilings.wake - asksWakes),
-    );
+    parts.push(...(await planJobParts(ctx, companyId, settings, openTasks, asks, now)));
   }
   const outcome = await commitWrites(
     ctx,

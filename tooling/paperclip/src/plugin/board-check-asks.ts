@@ -8,7 +8,7 @@ import {
   rememberAsks,
 } from "../board-check/asks.ts";
 import { type BoardCheckApi, type PartPlan, stateKey } from "./board-check-api.ts";
-import { everyIssue } from "./host.ts";
+import type { ListedIssue } from "./host.ts";
 
 /** The board check's ask part: spots new board asks and plans the `board-asks` document and one wake. */
 
@@ -24,14 +24,17 @@ function askComment(task: { id: string; identifier: string | null }) {
   });
 }
 
+/** Where a pass looks for asks: the one task an event names, or the pass's listing of open tasks. */
+export type AskScope = { readonly only: string } | { readonly openTasks: readonly ListedIssue[] };
+
 /** The tasks to read comments on: the one an event names, or every open task active in the window. */
-async function askTasks(ctx: BoardCheckApi, companyId: string, now: Date, only?: string) {
-  if (only !== undefined) {
-    const task = await ctx.issues.get(only, companyId);
+async function askTasks(ctx: BoardCheckApi, companyId: string, now: Date, scope: AskScope) {
+  if ("only" in scope) {
+    const task = await ctx.issues.get(scope.only, companyId);
     return task === null ? [] : [task];
   }
   const since = now.getTime() - askWindowMs;
-  return (await everyIssue(ctx, companyId)).filter(
+  return scope.openTasks.filter(
     (task) => new Date(task.lastActivityAt ?? task.updatedAt).getTime() >= since,
   );
 }
@@ -42,7 +45,7 @@ export async function planAsks(
   companyId: string,
   checkerTaskId: string,
   now: Date,
-  only?: string,
+  scope: AskScope,
 ): Promise<PartPlan & { readonly found: number }> {
   const checkerTask = await ctx.issues.get(checkerTaskId, companyId);
   const agents = await ctx.agents.list({ companyId, limit: 500 });
@@ -53,7 +56,7 @@ export async function planAsks(
   const seen = readSeenAsks(await ctx.state.get(stateKey(companyId, "asks")));
   const seenIds = new Set(seen.map((ask) => ask.commentId));
   const found = [];
-  for (const task of await askTasks(ctx, companyId, now, only)) {
+  for (const task of await askTasks(ctx, companyId, now, scope)) {
     const comments = (await ctx.issues.listComments(task.id, companyId)).map(askComment(task));
     found.push(...newAsks(comments, seenIds, rules, now));
   }

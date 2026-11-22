@@ -10,12 +10,14 @@ import type {
 import { askLink, readSeenAsks, type SeenAsk } from "../board-check/asks.ts";
 import { type FailedRun, readRecord } from "../board-check/failed-runs.ts";
 import { readBoardCheckSettings } from "../board-check/settings.ts";
+import { readWaitingRecord, waitingLine } from "../board-check/waiting.ts";
 import { errorCode, stateKey } from "./board-check-api.ts";
 import { manifest } from "./manifest.ts";
 import { type MetricsApi, writeMetrics } from "./metrics.ts";
 
 /**
- * The board check's read tools, `board_asks` and `failed_runs`. They read
+ * The board check's read tools: `board_asks`, `board_waiting` and
+ * `failed_runs`. They read
  * only what the board check kept in plugin state and a few task fields, so
  * a call costs no GitHub request. Answers carry ids, names, times and cause
  * codes, never comment or error text.
@@ -139,9 +141,30 @@ async function failedRuns(ctx: BoardToolsApi, companyId: string, since: Date): P
   };
 }
 
-/** Registers `board_asks` and `failed_runs` as the manifest declares them. */
+/** The ranked list from the board check's last hourly pass; it takes no `since`. */
+async function boardWaiting(ctx: BoardToolsApi, companyId: string): Promise<ToolResult> {
+  const record = readWaitingRecord(await ctx.state.get(stateKey(companyId, "waiting")));
+  if (record === undefined) {
+    return {
+      content:
+        "The board check hasn't listed what waits on the board yet; it does on the first pass of each hour.",
+      data: null,
+    };
+  }
+  const names = await agentNames(ctx, companyId);
+  const lines = record.tasks.map((task, index) => `${index + 1}. ${waitingLine(task, names)}`);
+  return {
+    content: [
+      `Waiting on the board as of ${record.at}: ${record.tasks.length} tasks, most held up first. No titles: open a task to read it.`,
+      ...lines,
+    ].join("\n"),
+    data: record,
+  };
+}
+
+/** Registers `board_asks`, `board_waiting` and `failed_runs` as the manifest declares them. */
 export function registerBoardTools(ctx: BoardToolsApi): void {
-  const tools = { board_asks: boardAsks, failed_runs: failedRuns };
+  const tools = { board_asks: boardAsks, board_waiting: boardWaiting, failed_runs: failedRuns };
   for (const [name, answer] of Object.entries(tools)) {
     const declaration = manifest.tools?.find((tool) => tool.name === name);
     if (declaration === undefined) {

@@ -41,7 +41,8 @@ function isoOrNull(value: Date | string | null | undefined): string | null {
   return value == null ? null : new Date(value).toISOString();
 }
 
-type ListedIssue = Awaited<ReturnType<HostApi["issues"]["list"]>>[number];
+/** A task as Paperclip lists it. */
+export type ListedIssue = Awaited<ReturnType<HostApi["issues"]["list"]>>[number];
 
 /** Every task whose work isn't finished, page by page. */
 export async function everyIssue(

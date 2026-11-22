@@ -2,6 +2,7 @@ import type {
   PluginAgentsClient,
   PluginCompaniesClient,
   PluginConfigClient,
+  PluginIssueRelationsClient,
   PluginIssuesClient,
   PluginLogger,
   PluginStateClient,
@@ -18,7 +19,9 @@ import type { MetricsApi } from "./metrics.ts";
 /** The part of the plugin context the board check uses, so tests can fake it. */
 export interface BoardCheckApi extends MetricsApi {
   readonly issues: BoardWriteApi["issues"] &
-    Pick<PluginIssuesClient, "list" | "get" | "listComments">;
+    Pick<PluginIssuesClient, "list" | "get" | "listComments" | "listInteractions"> & {
+      readonly relations: Pick<PluginIssueRelationsClient, "get">;
+    };
   readonly agents: Pick<PluginAgentsClient, "list">;
   readonly state: Pick<PluginStateClient, "get" | "set">;
   readonly config: PluginConfigClient;
@@ -36,7 +39,7 @@ export interface PartPlan {
 export type Trigger = "event" | "job";
 
 /** Where the board check keeps `key` for a company in plugin state. */
-export const stateKey = (companyId: string, key: "asks" | "failed-runs") =>
+export const stateKey = (companyId: string, key: "asks" | "failed-runs" | "waiting") =>
   ({
     scopeKind: "company",
     scopeId: companyId,

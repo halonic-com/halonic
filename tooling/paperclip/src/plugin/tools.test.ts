@@ -62,6 +62,7 @@ verifies("paperclip.pr-tools", () => {
         "my_prs",
         "queue_state",
         "board_asks",
+        "board_waiting",
         "failed_runs",
       ]);
       expect(await harness.executeTool("pr_status", { pr: 4588 })).toEqual({
