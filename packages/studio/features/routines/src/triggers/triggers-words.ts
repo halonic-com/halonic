@@ -14,7 +14,7 @@ export const triggersWords = {
   empty: (kind: TriggerOwner["kind"]) =>
     kind === "workflow"
       ? "Nothing starts this workflow on its own yet; it runs when called or with Run."
-      : "Nothing starts this agent on its own yet; it runs when called.",
+      : "No trigger starts this agent.",
   /**
    * Said on an agent before Add trigger asks for its prompt, since a routine that starts an agent
    * can't run it yet (HAL-15334).
