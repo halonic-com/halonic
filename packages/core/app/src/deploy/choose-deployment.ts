@@ -63,7 +63,9 @@ export function chooseDeployment(
  * The chosen deployment, unless it counts usage with `meter: cloud`: the
  * format accepts that meter so files can be written ahead, but nothing can
  * report usage to Halonic Cloud yet, and a deployment that ran without its
- * limits would let every user run unmetered.
+ * limits would let every user run unmetered. `meter: config` limits aren't
+ * enforced yet either; that is safe only while nothing acts on `mode: many`,
+ * so the slice that lets other users in must enforce or refuse them too.
  */
 function chosen(id: string, deployment: Deployment): ChosenDeployment {
   if (deployment.users?.meter === "cloud") {
