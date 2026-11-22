@@ -32,7 +32,7 @@ import { waitDescription } from "./listed-run.ts";
  *
  * @param models - the workspace's models, read only for a failed run
  * @param debugging - `--debug` was given, so a failed run's general lines don't ask for it
- * @param child - the child run a failed run's step failed with, whose cause its lines say
+ * @param children - the child runs the run failed with or waits on, whose lines it says
  */
 export function showEnding(
   run: RunDetail,
@@ -41,17 +41,22 @@ export function showEnding(
   models: () => WorkspaceModels,
   dir: string | undefined,
   debugging = false,
-  child?: FailedChildEnding,
+  children: ChildEndings = {},
 ): Phrase[] {
   switch (run.summary.status) {
     case "completed":
       return finishedEnding(run, title);
     case "failed":
-      return failedEnding({ run, title, definitions, models }, { dir, debugging, child });
+      return failedEnding(
+        { run, title, definitions, models },
+        { dir, debugging, child: children.failed },
+      );
     case "cant-try":
       return cantTryEnding(run, title, definitions);
     case "waiting":
-      return waitingEnding(run.summary, definitions, dir);
+      return runWait(run.summary).kind === "child-run" && children.waiting !== undefined
+        ? waitingEnding(children.waiting.summary, children.waiting.definitions, dir)
+        : waitingEnding(run.summary, definitions, dir);
     case "running":
       return [];
   }
@@ -84,6 +89,21 @@ interface EndedRun {
 export interface FailedChildEnding extends EndedRun {
   /** The for-each item it ran for, 0-based; `undefined` for a `workflow` step. */
   readonly item: number | undefined;
+}
+
+/**
+ * The run a waiting run's answer goes to when it waits on a child run
+ * (`app.waiting-child-run`), with the workflow and agents its lines name.
+ */
+export interface WaitingChildEnding {
+  readonly summary: RunSummary;
+  readonly definitions: RunDefinitions;
+}
+
+/** The child runs whose lines end the run that started them; either may be missing. */
+export interface ChildEndings {
+  readonly failed?: FailedChildEnding | undefined;
+  readonly waiting?: WaitingChildEnding | undefined;
 }
 
 interface FailedEndingOptions {
@@ -307,11 +327,12 @@ function cancelledAt(
  * word (cli-output 3.4): "! Waiting for you: Approve this reply?" and how to
  * answer. A run waiting for tool approvals has one "! Waiting for your
  * approval: Writer wants to use send_email" line for each, oldest first, and
- * the same answer line: one answer takes the oldest, and a line under the answer says so. A run waiting for its
- * child run or a time has no such lines; its step line already says what it
- * waits for. What the run waits for is {@link runWait}'s, so a run with an
- * open approval and a child run asks for the approval, as the list does
- * (HAL-10646).
+ * the same answer line: one answer takes the oldest, and a line under the answer says so. A run
+ * waiting for a time has no such lines; its step line already says what it waits for. A run
+ * waiting for its child run ends with that child's lines instead, its id in the answer line, so
+ * the person learns what the child asks and how to answer it (HAL-15951). What the run waits for
+ * is {@link runWait}'s, so a run with an open approval and a child run asks for the approval, as
+ * the list does (HAL-10646).
  */
 function waitingEnding(
   summary: RunSummary,

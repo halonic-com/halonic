@@ -180,6 +180,11 @@ export const runsMessages = defineMessages("runs", {
     }
     return why;
   },
+  /**
+   * Under a child run's heading, as Studio's run page says what started a child run: "Started by
+   * run 2ad348" (HAL-15951).
+   */
+  showStartedBy: (parentId: string) => phrase`Started by run ${parentId}`,
   /** Under that line, in place of Studio's Open run: the way to the run that started it. */
   showParentRun: (parentId: string, dir?: string) =>
     phrase`See the run that started it: ${suggestedCommand("runs show", dir, parentId)}`,

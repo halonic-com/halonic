@@ -25,7 +25,7 @@ import {
 } from "../../connector-file.ts";
 import { providerAddress } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
-import type { Phrase } from "../../messages/phrase.ts";
+import { type Phrase, phrase } from "../../messages/phrase.ts";
 import { runsMessages, type ShownEnd } from "../../messages/runs.ts";
 import { startedInWords } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
@@ -34,7 +34,7 @@ import { providerNoteLines, runViewDefinitions, stepLinesWithDetails } from "../
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
-import { failedChildEnding } from "./failed-child.ts";
+import { childEndings } from "./child-endings.ts";
 import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
 import { connectorNotStartedLines } from "./show-connectors.ts";
@@ -91,6 +91,7 @@ export async function showRun(
         exitCode: exitCode.ok,
         lines: [
           heading(run, title, workspaceName, clock),
+          ...startedByLines(run.summary),
           ...(steps.length === 0 ? [] : [[], ...steps]),
           ...connectorNotStartedLines(run.events, dir, {
             fileOf: (id) => connectorFileOf(loaded, id),
@@ -105,7 +106,7 @@ export async function showRun(
             () => workspaceModelsOf(loaded, run.summary.hubId, providerAddress),
             dir,
             context.debugging,
-            await failedChildEnding(history, run, loaded),
+            await childEndings(history, run, loaded),
           ),
           ...(withOutput ? [] : outputHintLines(run, dir)),
         ],
@@ -136,6 +137,14 @@ function heading(run: RunDetail, title: string, workspaceName: string, clock: Ru
     started,
     shownEnd(summary, clock),
   ).phrase;
+}
+
+/** "  Started by run 2ad348" under a child run's heading; nothing for a run nobody else started. */
+function startedByLines(summary: RunSummary): Phrase[] {
+  const parentId = summary.parentRunId;
+  return parentId === null
+    ? []
+    : [phrase`  ${runsMessages.showStartedBy(shortRunId(parentId)).phrase}`];
 }
 
 /**
