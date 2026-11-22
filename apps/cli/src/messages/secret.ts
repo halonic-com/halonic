@@ -22,6 +22,8 @@ export const secretMessages = defineMessages("secret", {
   /** After a new sign-in password: saving it ended every open sign-in. */
   signedOut: () => phrase`  Every browser and phone that was signed in has to sign in again.`,
   removed: (name: string) => phrase`${markPart("done")} Removed ${name}.`,
+  /** `secret remove` of a name no secret is saved under. */
+  notSaved: (name: string) => phrase`${name} wasn't set. Nothing changed.`,
   noSecrets: () => phrase`No secrets are saved.`,
 
   setNeedsName: () => phrase`halonic secret set needs the secret's name.`,
