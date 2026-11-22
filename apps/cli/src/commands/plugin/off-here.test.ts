@@ -223,7 +223,8 @@ verifies("cli.commands.plugin.off-here", () => {
       "! Trusting Weather won't turn it on: it stays off on this computer until you allow plugins and integrations to run without the sandbox.",
       ...reasonLines,
       "! Weather is added but off, because there's no terminal to ask you to trust it.",
-      `  Read the list above, then run: halonic trust --plugin weather --yes --fingerprint ${added.io.stdout.at(-1)}`,
+      // Trusting doesn't turn it on here, so it isn't offered as the last step (C656 #3).
+      `  Read the list above. To trust it anyway, run: halonic trust --plugin weather --yes --fingerprint ${added.io.stdout.at(-1)}`,
     ]);
   });
 

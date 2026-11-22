@@ -185,13 +185,16 @@ class PluginBackendOpening {
     bridge: LocalRunnerBridge,
   ): Promise<RunnerConnection> {
     const { runtime, runnerExists = existsSync, startRunner: begin = startRunner } = this.#machine;
-    if (!runnerExists(runtime.runnerFile)) {
-      throw new Error("the integration runner isn't built");
-    }
     const runnerMachine = await this.#machine.runnerMachine();
     const gated = await starts.start(
       this.#request.plugin,
       (sandbox, trusted, backend): Promise<StartedRunner> => {
+        // Checked once the gate allows a start, so a computer where the
+        // sandbox can't start hears that first: building the runner
+        // wouldn't let the backend run there (HAL-15947).
+        if (!runnerExists(runtime.runnerFile)) {
+          throw new Error("the integration runner isn't built");
+        }
         this.#requireFingerprint(trusted);
         this.#requireReadPlugin(trusted, readPlugin);
         this.#requireTrustedFiles(trusted);

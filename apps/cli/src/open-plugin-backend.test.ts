@@ -319,6 +319,17 @@ verifies("cli.open-plugin-backend", () => {
       );
       expect(seen.starts).toBe(0);
     });
+
+    it("names the sandbox, not the runner, when neither is there, and reports the backend off for it", async () => {
+      const { seen, client, unavailable } = await setup({ check: onWindows, runnerBuilt: false });
+      await expect(client().callTool("get-forecast", {})).rejects.toThrow(
+        /the sandbox isn't available here \(windows\)/,
+      );
+      expect(seen.starts).toBe(0);
+      expect(unavailable.map(({ part, reason }) => ({ part, reason }))).toEqual([
+        { part: "backend", reason: { kind: "sandbox-unavailable", reason: "windows" } },
+      ]);
+    });
   });
 });
 

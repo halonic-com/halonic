@@ -19,12 +19,17 @@ const csi = "\u001b[";
 
 verifies("cli.output-style", () => {
   it("turns colour and live lines on in a terminal, with the Unicode marks", () => {
-    expect(decideStyle(inputs())).toEqual({ colour: true, live: true, unicode: true });
+    expect(decideStyle(inputs())).toEqual({
+      colour: true,
+      live: true,
+      unicode: true,
+      person: true,
+    });
   });
 
   it("writes no escape code to a pipe", () => {
     const style = decideStyle(inputs({ isTerminal: false }));
-    expect(style).toEqual({ colour: false, live: false, unicode: true });
+    expect(style).toEqual({ colour: false, live: false, unicode: true, person: false });
     const paint = paintFor(style);
     expect([paint.mark("done"), paint.bold("acme"), paint.dim("0.4 s")]).toEqual([
       "✓",
@@ -38,6 +43,7 @@ verifies("cli.output-style", () => {
       colour: false,
       live: true,
       unicode: true,
+      person: true,
     });
   });
 

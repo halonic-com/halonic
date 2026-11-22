@@ -29,6 +29,11 @@ export interface OutputStyle {
   readonly live: boolean;
   /** Whether the marks are ✓ ✕ ! ◌ · ›, or their plain-text stand-ins. */
   readonly unicode: boolean;
+  /**
+   * Whether a person reads the stream: a terminal outside CI. Left out, a
+   * script or a log may, as for a pipe or a file.
+   */
+  readonly person?: boolean;
 }
 
 /**
@@ -41,13 +46,14 @@ export interface OutputStyle {
  *
  * @example
  * decideStyle({ env: { NO_COLOR: "1" }, isTerminal: true, platform: "linux", noColor: false, json: false });
- * // { colour: false, live: true, unicode: true }
+ * // { colour: false, live: true, unicode: true, person: true }
  */
 export function decideStyle(inputs: StyleInputs): OutputStyle {
   return {
     colour: colourIsOn(inputs),
     live: liveIsOn(inputs),
     unicode: outputIsUtf8(inputs),
+    person: inputs.isTerminal && !runsInCi(inputs.env),
   };
 }
 
