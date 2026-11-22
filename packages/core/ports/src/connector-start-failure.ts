@@ -66,14 +66,12 @@ export function connectorStartFailureOf(value: unknown): ConnectorStartFailure |
 
 /** The failure `error` itself says, without looking at its `cause`. */
 function knownFailureOf(error: Error): ConnectorStartFailure | undefined {
-  const { program, secretName, plugin, pluginName, reason, sandboxReason } = error as {
-    program?: unknown;
-    secretName?: unknown;
-    plugin?: unknown;
-    pluginName?: unknown;
-    reason?: unknown;
-    sandboxReason?: unknown;
-  };
+  return programFailureOf(error) ?? pluginFailureOf(error);
+}
+
+/** A failure of the connector's own program or its secrets, as an MCP adapter names it. */
+function programFailureOf(error: Error): ConnectorStartFailure | undefined {
+  const { program, secretName } = error as { program?: unknown; secretName?: unknown };
   if (error.name === "ProgramNotFoundError" && isName(program)) {
     return { reason: "program-missing", program };
   }
@@ -83,6 +81,17 @@ function knownFailureOf(error: Error): ConnectorStartFailure | undefined {
   if (error.name === "SecretNotSetError" && isName(secretName)) {
     return { reason: "secret-not-set", secret: secretName };
   }
+  return undefined;
+}
+
+/** A failure of the plugin the connector comes from, or of its sandbox. */
+function pluginFailureOf(error: Error): ConnectorStartFailure | undefined {
+  const { plugin, pluginName, reason, sandboxReason } = error as {
+    plugin?: unknown;
+    pluginName?: unknown;
+    reason?: unknown;
+    sandboxReason?: unknown;
+  };
   if (error.name === "PluginConnectorNotTrustedError" && isName(plugin)) {
     if (reason === "not-trusted") return { reason: "plugin-not-trusted", plugin };
     if (reason === "changed") return { reason: "plugin-changed", plugin };
