@@ -280,6 +280,29 @@ describe("the connector page's listed tools", () => {
       expect(buttons).not.toContain("Copy details");
     });
 
+    it("puts the line to run right under its sentence, before Try again (C652 #3)", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => {
+              throw new ConnectorCouldntList({
+                reason: "program-stopped",
+                program: "sh",
+                file: "library/connectors/notes.connector.yaml",
+                command: 'cd /acme && sh -c "exit 1"',
+              });
+            }),
+          )}
+        />,
+      );
+      await settled();
+      const buttons = [...root.querySelectorAll("button")];
+      const copy = buttons.findIndex((b) => b.getAttribute("aria-label") === "Copy command");
+      const tryAgain = buttons.findIndex((b) => b.textContent === "Try again");
+      expect(copy).toBeGreaterThanOrEqual(0);
+      expect(tryAgain).toBeGreaterThan(copy);
+    });
+
     it("says the engine isn't answering when the agent host isn't running", async () => {
       const root = render(
         <ConnectorPage
