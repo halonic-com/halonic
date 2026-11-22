@@ -4,8 +4,7 @@
 - Since: unreleased
 - Source: HAL-15157 (tunnel D6; port shape agreed with D5 on HAL-15166 and HAL-15712)
 
-When the phone's own page uses the phone tunnel in the Android app, the page shall call only the shell's `phone_*` commands and `phone_tunnel_watch`, and shall hand over no more than the pairing code, the scanned QR code's host key and the computer's endpoints. The page shall read each answer into the `PhoneTunnel` port's typed kinds, never a raw message: `denied` as `refused`, `timed-out` as `timeout`, `not-paired` from a start as `bad-start`, a listed computer whose details can't be read as an unreadable computer, and `nextTryAtMs` as the ISO time `nextTryAt`. If an answer isn't one the page knows, then the page shall report it and read it as that call's safest outcome. A wait or a cancel for a pairing that a newer start replaced shall not reach the shell. The page shall watch statuses on one channel while anyone listens, and a later listener shall get each computer's latest status first.
-
+When the phone's own page uses the phone tunnel in the Android app, the page shall call only the shell's `phone_*` commands and `phone_tunnel_watch`, and shall hand over no more than the pairing code, the scanned QR code's host key and the computer's endpoints. The page shall read each answer into the `PhoneTunnel` port's typed kinds, never a raw message: `denied` as `refused`, `timed-out` as `timeout`, `not-paired` from a start as `bad-start`, a listed computer whose details can't be read as an unreadable computer, and `nextTryAtMs` as the ISO time `nextTryAt`. If an answer isn't one the page knows, then the page shall report it and read it as that call's safest outcome. A wait or a cancel for a pairing that a newer start replaced shall not reach the shell. The page shall watch statuses on one channel, opened for the first listener and kept until the page loads again, and a later listener shall get each computer's latest status first.
 ## Examples
 
 - Given a scanned pairing code,
@@ -20,3 +19,6 @@ When the phone's own page uses the phone tunnel in the Android app, the page sha
 - Given the shell sends `{"kind":"status","computer":"c1","status":{"state":"reconnecting","nextTryAtMs":500}}`,
   when a listener is told,
   then it gets `nextTryAt` `1970-01-01T00:00:00.500Z`.
+- Given a listener that stopped listening,
+  when another listener starts,
+  then the page doesn't call `phone_tunnel_watch` again.

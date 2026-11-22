@@ -37,9 +37,12 @@ type StatusListener = (computer: ComputerId, status: PhoneStatus) => void;
  * - **One pairing:** the shell keeps one pairing, without an id. The adapter names each start,
  *   and a wait or a cancel for a pairing a newer start replaced doesn't reach the shell, so it
  *   can't end the newer one.
- * - **Statuses:** one channel through `phone_tunnel_watch`, open while anyone listens. The shell
- *   sends on it only while the window is on the app's own page (H1 on HAL-15181) and starts
- *   with each computer's current status; a later listener gets the latest ones from here.
+ * - **Statuses:** one channel through `phone_tunnel_watch`, opened for the first listener and
+ *   kept for the page's life. The shell has no unwatch: it keeps every channel it was handed
+ *   until the page loads again, so a channel per listener would send each status once per
+ *   listener the page ever had. The shell sends only while the window is on the app's own page
+ *   (H1 on HAL-15181) and starts with each computer's current status; a later listener gets the
+ *   latest ones from here.
  * - **Answers** are read with `phone-tunnel-answers.ts`; one the page doesn't know goes to
  *   `report`. A call the shell refuses rejects, as the port's callers expect.
  */
@@ -48,7 +51,7 @@ export class TauriPhoneTunnel implements PhoneTunnel {
   readonly #report: Report;
   readonly #listeners = new Set<StatusListener>();
   readonly #latest = new Map<ComputerId, PhoneStatus>();
-  #channel: TauriChannel | undefined;
+  #watching = false;
   #pairings = 0;
   #pairing: PairingId | undefined;
 
@@ -99,33 +102,25 @@ export class TauriPhoneTunnel implements PhoneTunnel {
 
   onStatus(listener: StatusListener): () => void {
     this.#listeners.add(listener);
-    if (this.#channel === undefined) {
-      this.#watch();
-    } else {
-      for (const [computer, status] of this.#latest) listener(computer, status);
-    }
+    for (const [computer, status] of this.#latest) listener(computer, status);
+    if (!this.#watching) this.#watch();
+    // The channel stays open when the last listener goes, so the next one doesn't open another.
     return () => {
-      // A second call of the same unsubscribe does nothing.
-      if (this.#listeners.delete(listener) && this.#listeners.size === 0) this.#stopWatching();
+      this.#listeners.delete(listener);
     };
   }
 
   #watch(): void {
+    // Set before the answer and never cleared: a refused watch isn't asked again. The shell
+    // refuses only off the app's own page, and this adapter runs only on that page.
+    this.#watching = true;
     const channel = new TauriChannel(this.#ipc, (event) => this.#receive(event));
-    this.#channel = channel;
     this.#ipc.invoke("phone_tunnel_watch", { onEvent: channel.argument }).then(
       (watching) => {
-        // The shell refuses a watch unless the window is on the app's own page.
         if (watching !== true) this.#report("phone_tunnel_watch refused the watch");
       },
       () => this.#report("phone_tunnel_watch was refused"),
     );
-  }
-
-  #stopWatching(): void {
-    this.#channel?.close();
-    this.#channel = undefined;
-    this.#latest.clear();
   }
 
   #receive(event: unknown): void {
