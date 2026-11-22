@@ -40,7 +40,8 @@ const input = (
   points: StoredForecastPoint[],
   readings: WindowReading[],
   history: AccuracyScore[] = [],
-): AccuracyInput => ({ points, readings, readIntervalMs: 10 * minuteMs, history });
+  day = "2026-11-21",
+): AccuracyInput => ({ day, points, readings, readIntervalMs: 10 * minuteMs, history });
 const score = (day: string, medianErrorPoints: number): AccuracyScore => ({
   day,
   window: "session",
@@ -86,12 +87,12 @@ verifies("paperclip.seats-accuracy", () => {
       input(
         [
           point("2026-11-21T15:00:00.000Z", 300, 60, 70),
-          point("2026-11-22T10:00:00.000Z", 1440, 60, 70),
+          point("2026-11-21T10:00:00.000Z", 1440, 60, 70),
           point("2026-11-21T12:00:00.000Z", 120, 60, 70),
         ],
         [
           reading("2026-11-21T15:00:00.000Z", 61),
-          reading("2026-11-22T10:30:00.000Z", 10),
+          reading("2026-11-21T10:30:00.000Z", 10),
           reading("2026-11-21T12:00:00.000Z", 60),
         ],
       ),
@@ -100,10 +101,15 @@ verifies("paperclip.seats-accuracy", () => {
   });
 
   test("two days in a row with a 1-hour median error above 3 points degrade the session forecast", () => {
-    expect(sessionOneHourDegraded([score("2026-11-20", 3.5), score("2026-11-21", 5)])).toBe(true);
-    expect(sessionOneHourDegraded([score("2026-11-20", 2), score("2026-11-21", 5)])).toBe(false);
-    expect(sessionOneHourDegraded([score("2026-11-19", 4), score("2026-11-21", 4)])).toBe(false);
-    expect(sessionOneHourDegraded([])).toBe(false);
+    const day = "2026-11-21";
+    expect(sessionOneHourDegraded([score("2026-11-20", 3.5), score(day, 5)], day)).toBe(true);
+    expect(sessionOneHourDegraded([score("2026-11-20", 2), score(day, 5)], day)).toBe(false);
+    expect(sessionOneHourDegraded([score("2026-11-19", 4), score(day, 4)], day)).toBe(false);
+    // Two bad days that ended before `day` no longer raise it.
+    expect(sessionOneHourDegraded([score("2026-11-19", 4), score("2026-11-20", 4)], day)).toBe(
+      false,
+    );
+    expect(sessionOneHourDegraded([], day)).toBe(false);
   });
 
   test("the nightly run raises the flag from a stored bad day and tonight's bad day", () => {
@@ -118,14 +124,33 @@ verifies("paperclip.seats-accuracy", () => {
     expect(report.sessionOneHourDegraded).toBe(true);
   });
 
-  test("good days are counted back from the newest, stopping at a bad or missing day", () => {
+  test("good days are counted back from the scored day, stopping at a bad or missing day", () => {
+    const day = "2026-11-21";
+    const goodWeek = [score("2026-11-19", 1), score("2026-11-20", 2), score(day, 3)];
+    expect(goodDaysInARow(goodWeek, day)).toBe(3);
     expect(
-      goodDaysInARow([score("2026-11-19", 1), score("2026-11-20", 2), score("2026-11-21", 3)]),
-    ).toBe(3);
-    expect(
-      goodDaysInARow([score("2026-11-19", 1), score("2026-11-20", 4), score("2026-11-21", 1)]),
+      goodDaysInARow([score("2026-11-19", 1), score("2026-11-20", 4), score(day, 1)], day),
     ).toBe(1);
-    expect(goodDaysInARow([score("2026-11-18", 1), score("2026-11-21", 1)])).toBe(1);
-    expect(goodDaysInARow([])).toBe(0);
+    expect(goodDaysInARow([score("2026-11-18", 1), score(day, 1)], day)).toBe(1);
+    // A later, partial day in the stored scores doesn't decide the streak.
+    expect(goodDaysInARow([...goodWeek, score("2026-11-22", 9)], day)).toBe(3);
+    expect(goodDaysInARow([], day)).toBe(0);
+  });
+
+  test("a point targeting the next day isn't scored and doesn't change the alert", () => {
+    const report = accuracy(
+      input(
+        [
+          point("2026-11-21T23:00:00.000Z", 60, 40, 50),
+          point("2026-11-22T01:00:00.000Z", 60, 40, 50),
+        ],
+        [reading("2026-11-21T23:00:00.000Z", 41), reading("2026-11-22T01:00:00.000Z", 90)],
+        [score("2026-11-20", 4)],
+      ),
+    );
+    expect(report.scores.map((s) => [s.day, s.samples, s.medianErrorPoints])).toEqual([
+      ["2026-11-21", 1, 1],
+    ]);
+    expect(report.sessionOneHourDegraded).toBe(false);
   });
 });

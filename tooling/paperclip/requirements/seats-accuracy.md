@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16026; the seat usage forecast on HAL-15997 (document `seat-forecast`, section 4.5), part of the `seats` plugin (HAL-16008)
 
-When the `seats.accuracy` job runs, the seats forecast shall score every stored forecast point 1, 5 and 24 hours ahead against the reading of the same seat and window nearest its target time (within one read interval), giving per day, window and horizon the number scored, the median and 90th-percentile error of P50 in points and the share between P50 and P90; it shall report the 5-hour window as degraded when its 1-hour forecasts had a median error above 3 points on the newest scored day and the day before, counting scores stored by earlier runs, and count the good days in a row that phase 4 needs.
+When the `seats.accuracy` job runs for a whole UTC day, the seats forecast shall score every stored forecast point 1, 5 and 24 hours ahead whose target time falls in that day against the reading of the same seat and window nearest its target time (within one read interval), giving per window and horizon the number scored, the median and 90th-percentile error of P50 in points and the share between P50 and P90; it shall report the 5-hour window as degraded when its 1-hour forecasts had a median error above 3 points on that day and the day before, counting scores stored by earlier runs, and count the good days in a row ending on that day that phase 4 needs.
 
 ## Examples
 
@@ -22,4 +22,7 @@ When the `seats.accuracy` job runs, the seats forecast shall score every stored 
   then the 5-hour window is degraded.
 - Given good days on 19, 20 and 21 November,
   when the good days are counted,
-  then the streak is 3; a bad or missing day ends it.
+  then the streak ending on the 21st is 3; a bad or missing day ends it, and a later day doesn't count.
+- Given the run for 21 November, a stored bad day on 20 November, a good forecast at 23:00 on the 21st and a forecast off by 50 points at 01:00 on the 22nd,
+  when the nightly run scores it,
+  then only the 23:00 forecast is scored and the 5-hour window is not degraded.

@@ -45,9 +45,15 @@ export interface AccuracyReport {
 }
 
 export interface AccuracyInput {
-  /** Forecast points of the last 25 hours. */
+  /**
+   * The whole UTC day to score, "2026-11-21": the nightly job scores
+   * yesterday. Scoring a day that is still running would let its first few
+   * hours decide the alert and the streak.
+   */
+  readonly day: string;
+  /** Forecast points whose `targetAt` falls in `day` (loaded by target time, not by `madeAt`); others are ignored. */
   readonly points: readonly StoredForecastPoint[];
-  /** The readings in that span. */
+  /** The readings of `day`, plus one read interval on each side. */
   readonly readings: readonly WindowReading[];
   /** How often the plugin reads a seat; a reading this close to a target counts for it. */
   readonly readIntervalMs: number;
@@ -70,22 +76,54 @@ function quantileOf(sorted: readonly number[], share: number): number {
   return below + (above - below) * (position - Math.floor(position));
 }
 
+function dayOf(at: string): string {
+  return at.slice(0, "2026-11-21".length);
+}
+
 function dayBefore(day: string, back: number): string {
   return new Date(Date.parse(`${day}T00:00:00.000Z`) - back * dayMs).toISOString().slice(0, 10);
 }
 
+/** A reading with its time parsed once. */
+interface TimedReading {
+  readonly reading: WindowReading;
+  readonly ms: number;
+}
+
+/** The readings of each seat window, so a point looks only at its own (about 150 a day). */
+type ReadingsByWindow = ReadonlyMap<string, readonly TimedReading[]>;
+
+function windowKeyOf(at: { readonly seatId: SeatId; readonly window: WindowKey }): string {
+  return `${at.seatId}|${at.window}`;
+}
+
+function readingsByWindow(readings: readonly WindowReading[]): ReadingsByWindow {
+  const byWindow = new Map<string, TimedReading[]>();
+  for (const reading of readings) {
+    const timed = { reading, ms: Date.parse(reading.at) };
+    const group = byWindow.get(windowKeyOf(reading));
+    if (group === undefined) {
+      byWindow.set(windowKeyOf(reading), [timed]);
+    } else {
+      group.push(timed);
+    }
+  }
+  return byWindow;
+}
+
 /** The reading of this point's seat and window closest to its target, if one is close enough. */
-function readingFor(point: StoredForecastPoint, input: AccuracyInput): WindowReading | undefined {
+function readingFor(
+  point: StoredForecastPoint,
+  readings: ReadingsByWindow,
+  readIntervalMs: number,
+): WindowReading | undefined {
   const targetMs = Date.parse(point.targetAt);
   let best: WindowReading | undefined;
-  let bestGap = input.readIntervalMs;
-  for (const reading of input.readings) {
-    if (reading.seatId !== point.seatId || reading.window !== point.window) {
-      continue;
-    }
-    const gap = Math.abs(Date.parse(reading.at) - targetMs);
+  let bestGap = readIntervalMs;
+  for (const timed of readings.get(windowKeyOf(point)) ?? []) {
+    const gap = Math.abs(timed.ms - targetMs);
     if (gap <= bestGap) {
-      best = reading;
+      best = timed.reading;
       bestGap = gap;
     }
   }
@@ -100,14 +138,18 @@ interface Scored {
   readonly inside: boolean;
 }
 
-function scoreOne(point: StoredForecastPoint, input: AccuracyInput): Scored | undefined {
-  const reading = readingFor(point, input);
+function scoreOne(
+  point: StoredForecastPoint,
+  readings: ReadingsByWindow,
+  readIntervalMs: number,
+): Scored | undefined {
+  const reading = readingFor(point, readings, readIntervalMs);
   if (reading === undefined) {
     return undefined;
   }
   const actual = reading.usedPercent;
   return {
-    day: point.targetAt.slice(0, 10),
+    day: dayOf(point.targetAt),
     window: point.window,
     horizon: point.horizon,
     error: Math.abs(actual - point.p50),
@@ -133,21 +175,28 @@ function summarise(group: readonly Scored[]): AccuracyScore | undefined {
 }
 
 /**
- * Scores per day, window and horizon (1, 5 and 24 hours). A point with no
- * reading near its target (a failed read, or not yet due) isn't scored.
+ * Scores of `input.day` per window and horizon (1, 5 and 24 hours). A point
+ * targeting another day, or with no reading near its target (a failed read),
+ * isn't scored.
  */
 export function scoreForecasts(input: AccuracyInput): AccuracyScore[] {
+  const readings = readingsByWindow(input.readings);
   const groups = new Map<string, Scored[]>();
   for (const point of input.points) {
-    if (!horizons.includes(point.horizon)) {
+    if (!horizons.includes(point.horizon) || dayOf(point.targetAt) !== input.day) {
       continue;
     }
-    const scored = scoreOne(point, input);
+    const scored = scoreOne(point, readings, input.readIntervalMs);
     if (scored === undefined) {
       continue;
     }
-    const key = `${scored.day}|${scored.window}|${scored.horizon}`;
-    groups.set(key, [...(groups.get(key) ?? []), scored]);
+    const key = `${scored.window}|${scored.horizon}`;
+    const group = groups.get(key);
+    if (group === undefined) {
+      groups.set(key, [scored]);
+    } else {
+      group.push(scored);
+    }
   }
   return [...groups.values()]
     .map(summarise)
@@ -158,58 +207,51 @@ export function scoreForecasts(input: AccuracyInput): AccuracyScore[] {
     );
 }
 
-/** The 1-hour scores of the 5-hour window, one per day, newest first; new scores win over stored ones. */
-function sessionOneHourByDay(scores: readonly AccuracyScore[]): AccuracyScore[] {
-  const byDay = new Map<string, AccuracyScore>();
+/** The 1-hour median error of the 5-hour window per day; later scores win over earlier ones. */
+function sessionOneHourByDay(scores: readonly AccuracyScore[]): Map<string, number> {
+  const byDay = new Map<string, number>();
   for (const score of scores) {
     if (score.window === "session" && score.horizon === 60) {
-      byDay.set(score.day, score);
+      byDay.set(score.day, score.medianErrorPoints);
     }
   }
-  return [...byDay.values()].sort((a, b) => b.day.localeCompare(a.day));
+  return byDay;
 }
 
 /**
- * Whether the newest scored day and the day before it (by calendar) both had
- * 1-hour forecasts of the 5-hour window with a median error above 3 points.
+ * Whether `day` and the day before it both had 1-hour forecasts of the
+ * 5-hour window with a median error above 3 points. A day with no score
+ * doesn't count as bad.
  */
-export function sessionOneHourDegraded(scores: readonly AccuracyScore[]): boolean {
-  const days = sessionOneHourByDay(scores);
-  const newest = days[0]?.day;
-  if (newest === undefined) {
-    return false;
-  }
-  return Array.from({ length: alertDays }, (_, back) => dayBefore(newest, back)).every((day) =>
-    days.some((s) => s.day === day && s.medianErrorPoints > alertMedianError),
+export function sessionOneHourDegraded(scores: readonly AccuracyScore[], day: string): boolean {
+  const byDay = sessionOneHourByDay(scores);
+  return Array.from({ length: alertDays }, (_, back) => dayBefore(day, back)).every(
+    (scored) => (byDay.get(scored) ?? 0) > alertMedianError,
   );
 }
 
 /**
- * How many days in a row, up to the newest scored day, the 1-hour forecasts
- * of the 5-hour window kept a median error of 3 points or less. Phase 4
- * (automatic moves) needs 14.
+ * How many days in a row, ending on `day`, the 1-hour forecasts of the
+ * 5-hour window kept a median error of 3 points or less. A day with no score
+ * ends the streak. Phase 4 (automatic moves) needs 14.
  */
-export function goodDaysInARow(scores: readonly AccuracyScore[]): number {
-  const days = sessionOneHourByDay(scores);
-  const newest = days[0]?.day;
+export function goodDaysInARow(scores: readonly AccuracyScore[], day: string): number {
+  const byDay = sessionOneHourByDay(scores);
   let streak = 0;
-  for (const score of days) {
-    if (newest === undefined || score.day !== dayBefore(newest, streak)) {
-      break;
-    }
-    if (score.medianErrorPoints > alertMedianError) {
-      break;
+  for (;;) {
+    const error = byDay.get(dayBefore(day, streak));
+    if (error === undefined || error > alertMedianError) {
+      return streak;
     }
     streak += 1;
   }
-  return streak;
 }
 
-/** The nightly run: today's scores, and the alert over them and the stored ones. */
+/** The nightly run: the scores of `input.day`, and the alert over them and the stored ones. */
 export function accuracy(input: AccuracyInput): AccuracyReport {
   const scores = scoreForecasts(input);
   return {
     scores,
-    sessionOneHourDegraded: sessionOneHourDegraded([...input.history, ...scores]),
+    sessionOneHourDegraded: sessionOneHourDegraded([...input.history, ...scores], input.day),
   };
 }
