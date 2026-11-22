@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this change on HAL-16057 (https://paperclip.halonic.com/HAL/issues/HAL-16057), from Iris's flow check C666 (#2 and #5) on HAL-16045. The words build on the ones the team approved for `halonic routines` in C642 #2 (HAL-15863), as HAL-2282 allows for a small wording on approved output
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iSKOy89akb8AQ9x9qBDyyS/x3VpTrWrNPZ+dnIhv+B1TbZT128a3jg+PdVcOO9TVhUWV9lJ0+eNuMEhbH62pBw==
 
 ## What changes
 
