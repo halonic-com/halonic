@@ -1,6 +1,7 @@
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
 import type {
   ComputerId,
+  ComputerTunnelSendResult,
   ConnectOutcome,
   ForgetOutcome,
   KeysUnavailable,
@@ -13,8 +14,8 @@ import type {
 } from "@halonicjs/studio-feature-remote/phone";
 
 /**
- * The shell's phone tunnel answers (`halonic-phone-tunnel`'s `answers.rs` and `status.rs`), read
- * into the `PhoneTunnel` port's types. Each answer is checked against its schema first, so the
+ * The shell's phone tunnel answers (`halonic-phone-tunnel`'s `answers.rs`, `status.rs` and
+ * `messages.rs`), read into the `PhoneTunnel` and `ComputerTunnel` ports' types. Each answer is checked against its schema first, so the
  * page never acts on a shape it doesn't know: such an answer goes to `report` and reads as the
  * call's safest outcome. No answer carries a key, the pairing code or its psk; the schemas are
  * strict, so one that did would not read either.
@@ -97,15 +98,59 @@ const statusSchema = s.discriminatedUnion("state", [
     .strict(),
 ]);
 
-/** One event on the `phone_tunnel_watch` channel (`TunnelEvent`); D7 adds its kinds here. */
-const eventSchema = s
-  .object({ kind: s.literal("status"), computer: s.string().min(1), status: statusSchema })
-  .strict();
+/** A session's number: the shell counts them from 1 and never gives one out twice. */
+const generationSchema = s.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
+
+/** One event on the `phone_tunnel_watch` channel (the shell's `TunnelEvent`). */
+const eventSchema = s.discriminatedUnion("kind", [
+  s
+    .object({ kind: s.literal("status"), computer: s.string().min(1), status: statusSchema })
+    .strict(),
+  s
+    .object({
+      kind: s.literal("session-opened"),
+      computer: s.string().min(1),
+      generation: generationSchema,
+    })
+    .strict(),
+  s
+    .object({
+      kind: s.literal("message"),
+      computer: s.string().min(1),
+      generation: generationSchema,
+      text: s.string(),
+    })
+    .strict(),
+]);
+
+/** The answer to `tunnel_send` (`SendAnswer`). */
+const sendSchema = s.union([
+  s.object({ sent: s.literal(true) }).strict(),
+  s
+    .object({ sent: s.literal(false), reason: s.enum(["not-open", "too-large", "not-allowed"]) })
+    .strict(),
+]);
+
+/**
+ * One event from the shell, read: a computer's status, a session that opened on it, or one of
+ * that session's host messages, as text the gateway client parses itself.
+ */
+export type TunnelEvent =
+  | { readonly kind: "status"; readonly computer: ComputerId; readonly status: PhoneStatus }
+  | { readonly kind: "session-opened"; readonly computer: ComputerId; readonly generation: number }
+  | {
+      readonly kind: "message";
+      readonly computer: ComputerId;
+      readonly generation: number;
+      readonly text: string;
+    };
 
 /** Where an answer the page doesn't know goes, with the command that gave it. */
 export type Report = (line: string) => void;
 
 const keysUnavailable: KeysUnavailable = { kind: "keys-unavailable" };
+/** A send the shell didn't make, for any reason the page can't tell apart. */
+export const notOpen: ComputerTunnelSendResult = { sent: false, reason: "not-open" };
 /** A pairing answer the page can't use: the screens show the generic problem screen. */
 const badStart = { kind: "bad-start" } as const;
 
@@ -205,18 +250,34 @@ export function readConnect(answer: unknown, report: Report): ConnectOutcome {
   }
 }
 
-/** A status event's computer and status, or `undefined` for an event the page doesn't know. */
-export function readTunnelEvent(
-  event: unknown,
-  report: Report,
-): { readonly computer: ComputerId; readonly status: PhoneStatus } | undefined {
+/** An event from the watch channel, or `undefined` for an event the page doesn't know. */
+export function readTunnelEvent(event: unknown, report: Report): TunnelEvent | undefined {
   const parsed = parse(eventSchema, event);
   if (!parsed.ok) {
+    // Only the event's kind is safe to name: a message's text stays out of the log.
     report("phone_tunnel_watch sent an event the page doesn't know");
     return undefined;
   }
-  const { computer, status } = parsed.value;
-  return { computer: computer as ComputerId, status: pageStatus(status) };
+  const read = parsed.value;
+  const computer = read.computer as ComputerId;
+  switch (read.kind) {
+    case "status":
+      return { kind: "status", computer, status: pageStatus(read.status) };
+    case "session-opened":
+      return { kind: "session-opened", computer, generation: read.generation };
+    case "message":
+      return { kind: "message", computer, generation: read.generation, text: read.text };
+  }
+}
+
+/**
+ * The answer to `tunnel_send`. One the page doesn't know reads as `not-open`: the client then
+ * says the message wasn't sent, which is true as far as the page can tell.
+ */
+export function readSendAnswer(answer: unknown, report: Report): ComputerTunnelSendResult {
+  const parsed = parse(sendSchema, answer);
+  if (!parsed.ok) return unknownAnswer("tunnel_send", report, notOpen);
+  return parsed.value;
 }
 
 /** `nextTryAtMs` becomes the port's ISO `nextTryAt`; the screen counts down from it. */
