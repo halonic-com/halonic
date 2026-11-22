@@ -3,6 +3,7 @@ import type { LoadedFile, WorkspaceIssue } from "../load-workspace.ts";
 import { checkAgents } from "./agent-references.ts";
 import { CheckContext, type ReadFile } from "./check-context.ts";
 import { checkDelegationLoops } from "./delegation-loops.ts";
+import { checkForEachWaits } from "./foreach-waits.ts";
 import { checkHubUses } from "./hub-uses.ts";
 import { checkDefaultRuntimes, checkInstructionFiles } from "./ignored-settings.ts";
 import { checkIntegrationSettings } from "./integration-settings.ts";
@@ -33,6 +34,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkWorkflowTests,
   checkWorkflows,
   checkSubflowLoops,
+  checkForEachWaits,
   checkRoutines,
   checkLocalOnly,
   checkIntegrationSettings,
