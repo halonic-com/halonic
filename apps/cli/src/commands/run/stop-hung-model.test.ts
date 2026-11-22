@@ -20,6 +20,7 @@ import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
@@ -60,7 +61,7 @@ async function sorterOnHungServer(): Promise<void> {
   await appendFile(join(acme, "models.yaml"), "  slow:\n    provider: hang\n    model: slow\n");
   await appendFile(join(acme, "hubs/support/agents/sorter.agent.yaml"), "model: slow\n");
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const read = await readWorkspaceTrust(dir, noCommands);
+  const read = await readWorkspaceTrust(dir, noCommands, await savedVersionOf(dir));
   const { subject } = read;
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(engineStart));
   const check = await trust.check(subject);

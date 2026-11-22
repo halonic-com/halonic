@@ -9,6 +9,7 @@ import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { serveMessages } from "./messages/serve.ts";
+import { savedVersionOf } from "./workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { type WorkspaceTrustMachine, workspaceTrustState } from "./workspace-trust.ts";
 
@@ -48,7 +49,7 @@ async function trustAnswerOf(
   } catch {
     return { state: "unreadable", sentence: sentenceOf.unreadable() };
   }
-  const { state } = await workspaceTrustState(dir, machine, loaded);
+  const { state } = await workspaceTrustState(dir, machine, await savedVersionOf(dir, loaded));
   // A workspace that reaches only the test model starts nothing that
   // needs trust, so it answers `trusted` with its own sentence (HAL-12011).
   if (state === "not-needed") {

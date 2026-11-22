@@ -45,6 +45,7 @@ import { printable } from "../../output/printable.ts";
 import { placedWarning } from "../../sandbox-gate.ts";
 import { workspaceTrustGate } from "../../serve-trust-gate.ts";
 import { halonicVersion } from "../../version.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { checkEngineRuns, openWorkspaceEngine } from "../../workspace-engine.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
@@ -144,10 +145,12 @@ async function serveVersions(
   const workspace = versions.latest();
   const typedDir = givenDir(input, dir);
   // No grant for a workspace that reaches only the test model, as `run` has none (HAL-12011).
-  const trusted = async (loaded: LoadedWorkspace): Promise<TrustGrant | null> =>
-    (await needsNoTrust(dir, loaded))
+  const trusted = async (loaded: LoadedWorkspace): Promise<TrustGrant | null> => {
+    const version = await savedVersionOf(dir, loaded);
+    return needsNoTrust(version)
       ? null
-      : await trustedGrant(dir, setup.trust(), typedDir, serveMessages.nothingServed(), loaded);
+      : await trustedGrant(dir, setup.trust(), typedDir, serveMessages.nothingServed(), version);
+  };
   // Before anything opens: a workspace that needs trust and isn't trusted here serves nothing.
   const grant = await trusted(workspace);
   const warned = new Set<string>();

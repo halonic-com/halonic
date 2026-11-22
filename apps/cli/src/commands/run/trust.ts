@@ -15,6 +15,7 @@ import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
 import { savedWorkspaceOf } from "../../run-workspace.ts";
 import type { SandboxGateRun } from "../../sandbox-gate.ts";
+import { savedVersionOf, type WorkspaceAtVersion } from "../../workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import { refuseFileProblems, refuseFileProblemsOutsideRoutines } from "../../workspace-problems.ts";
 import { needsNoTrust, trustedGrant, type WorkspaceTrustMachine } from "../../workspace-trust.ts";
@@ -56,7 +57,8 @@ export async function checkRunTrust(
     run,
     saved: savedWorkspaceOf(dir),
   });
-  return await trustGrantOf(dir, workspace, machine, typedDir, nothingDone, run?.harness);
+  const version = await savedVersionOf(dir, workspace);
+  return await trustGrantOf(dir, version, machine, typedDir, nothingDone, run?.harness);
 }
 
 /**
@@ -84,18 +86,19 @@ export async function checkRoutinesTrust(
     typedDir,
     savedWorkspaceOf(dir),
   );
-  return await trustGrantOf(dir, workspace, machine, typedDir, nothingRan);
+  const version = await savedVersionOf(dir, workspace);
+  return await trustGrantOf(dir, version, machine, typedDir, nothingRan);
 }
 
 /** The trust check after the file problems were refused: never called without that refusal. */
 async function trustGrantOf(
   dir: OpenWorkspaceDir,
-  workspace: LoadedWorkspace,
+  version: WorkspaceAtVersion,
   machine: RunTrustMachine,
   typedDir: string | undefined,
   nothingDone: Message,
   harness?: string,
 ): Promise<TrustGrant | null> {
-  if (await needsNoTrust(dir, workspace, harness)) return null;
-  return await trustedGrant(dir, machine, typedDir, nothingDone, workspace);
+  if (needsNoTrust(version, harness)) return null;
+  return await trustedGrant(dir, machine, typedDir, nothingDone, version);
 }

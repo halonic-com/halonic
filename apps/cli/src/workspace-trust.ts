@@ -3,11 +3,7 @@
 // they all compute one fingerprint for the same files on the same computer.
 
 import { realpath } from "node:fs/promises";
-import {
-  type CommandSearch,
-  commandPaths,
-  workspaceIntegrations,
-} from "@halonicjs/adapter-doctor-node";
+import { type CommandSearch, commandPaths } from "@halonicjs/adapter-doctor-node";
 import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 import {
   type TrustCheck,
@@ -21,7 +17,6 @@ import { KindedError } from "@halonicjs/std";
 import {
   filesOf,
   type LoadedWorkspace,
-  loadWorkspace,
   type RefusedKind,
   reachesOnlyTheTestModel,
 } from "@halonicjs/workspace";
@@ -36,6 +31,7 @@ import { trustChangesDocument } from "./output/trust-changes-json.ts";
 import { type FingerprintedCheck, trustCheckLines } from "./output/trust-check.ts";
 import type { PluginHosts } from "./sheet-hosts.ts";
 import { halonicVersion } from "./version.ts";
+import type { WorkspaceAtVersion } from "./workspace-at-version.ts";
 import type { OpenWorkspaceDir, WorkspaceDir } from "./workspace-dir.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 
@@ -44,22 +40,17 @@ import { webCryptoDigest } from "./workspace-runs.ts";
  * only reach the built-in test model (Liam, HAL-1984): nothing outside
  * Halonic starts. `run`, `routines watch`, `runs send`, `serve` and the
  * serve trust gate all ask this one rule (HAL-12011), so they never
- * disagree about the same folder. It reads the files and local integrations
- * as they are now, so an edit that adds a connector or a real provider
- * turns the answer to `false` at once.
+ * disagree about the same folder. It reads the definitions and local
+ * integrations of the version that will be used, so a version that adds a
+ * connector or a real provider turns the answer to `false`.
  *
- * @param workspace - the workspace as it will be used
+ * @param version - the workspace and its integrations as they will be used
  * @param harness - the harness a run names for all its agents, such as
  *   `--harness codex`; it starts a program, so it always needs trust
  */
-export async function needsNoTrust(
-  dir: OpenWorkspaceDir,
-  workspace: LoadedWorkspace,
-  harness?: string,
-): Promise<boolean> {
+export function needsNoTrust(version: WorkspaceAtVersion, harness?: string): boolean {
   if (startsAProgram(harness)) return false;
-  const integrations = await workspaceIntegrations(dir.root, dir.shown);
-  return reachesOnlyTheTestModel(trustContentInputOf(workspace, integrations));
+  return reachesOnlyTheTestModel(trustContentInputOf(version.workspace, version.integrations));
 }
 
 /**
@@ -101,27 +92,27 @@ export function refusedFileKey(kind: RefusedKind, id: string): string {
 }
 
 /**
- * Loads the workspace in `dir`, reads its local integrations and finds each
- * connector's program on this computer, for a trust check. A run passes the
- * workspace it starts, the live version, so trust is checked on what runs,
- * not on the saved files.
+ * The trust subject of `version`, with each connector's program found on
+ * this computer, for a trust check. A run passes the version it starts,
+ * the live version's definitions and integrations, so trust is checked on
+ * what runs, not on the saved files.
  *
  * @example
- * await readWorkspaceTrust(await openWorkspaceDir(input, io), nodeCommandSearch());
+ * await readWorkspaceTrust(dir, nodeCommandSearch(), await savedVersionOf(dir));
  * // { name: "Acme", subject: { location: "/work/acme", connectors: [ … ], … } }
  */
 export async function readWorkspaceTrust(
   dir: OpenWorkspaceDir,
   search: CommandSearch,
-  loaded?: LoadedWorkspace,
+  version: WorkspaceAtVersion,
 ): Promise<WorkspaceTrust> {
-  const workspace = loaded ?? (await loadWorkspace(dir.store));
+  const { workspace } = version;
   const name = workspaceNameOf(workspace, dir);
   const connectorFiles = filesOf(workspace, "connector");
   const connectors = connectorFiles.map((file) => file.value);
   const subject = trustSubjectOf({
     workspace,
-    integrations: await workspaceIntegrations(dir.root, dir.shown),
+    integrations: version.integrations,
     location: await realpath(dir.root),
     commandPaths: await commandPaths(connectors, search),
   });
@@ -182,7 +173,7 @@ export interface WorkspaceTrustAnswer {
 }
 
 /**
- * Where trust stands for `loaded` in `dir`, by the rule `run` and `routines
+ * Where trust stands for `version` in `dir`, by the rule `run` and `routines
  * watch` refuse by, without refusing: `serve`'s gate and the `routines` list
  * ask it (HAL-15525). Anything it can't read counts as `unreadable`, so a
  * failure never reads as trust.
@@ -190,13 +181,13 @@ export interface WorkspaceTrustAnswer {
 export async function workspaceTrustState(
   dir: OpenWorkspaceDir,
   machine: WorkspaceTrustMachine,
-  loaded: LoadedWorkspace,
+  version: WorkspaceAtVersion,
 ): Promise<WorkspaceTrustAnswer> {
   try {
-    if (await needsNoTrust(dir, loaded)) {
+    if (needsNoTrust(version)) {
       return { state: "not-needed", refused: [] };
     }
-    const workspace = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
+    const workspace = await readWorkspaceTrust(dir, machine.commandSearch, version);
     const check = await cliTrustService(machine.trustStore, machine.clock).check(workspace.subject);
     return { state: check.status, refused: refusedFilesOf(check, workspace) };
   } catch {
@@ -231,9 +222,9 @@ export interface WorkspaceTrustMachine {
  *
  * @param nothingDone - the end of line 1 saying nothing happened, such as
  *   `runMessages.nothingRan()`
- * @param loaded - the workspace as it will be used, such as the live
- *   version a run starts. It is required so trust is checked on what is
- *   used, never on a second read of the files
+ * @param version - the workspace and its integrations as they will be
+ *   used, such as the live version a run starts. It is required so trust
+ *   is checked on what is used, never on a second read of the files
  * @throws NotTrustedError when the workspace was never trusted here, or
  *   changed since; its check and fingerprint are shown (exit 3)
  * @throws KindedError when a file names something that can't be trusted (exit 2)
@@ -243,9 +234,9 @@ export async function trustedGrant(
   machine: WorkspaceTrustMachine,
   typedDir: string | undefined,
   nothingDone: Message,
-  loaded: LoadedWorkspace,
+  version: WorkspaceAtVersion,
 ): Promise<TrustGrant> {
-  const workspace = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
+  const workspace = await readWorkspaceTrust(dir, machine.commandSearch, version);
   const { subject } = workspace;
   // Escaped for the ✕ line, which is printed after the check (HAL-11883).
   const name = printable(workspace.name);

@@ -18,6 +18,7 @@ import { connectorStartError } from "./connector-start-error.ts";
 import type { Message } from "./messages/define.ts";
 import { printable } from "./output/printable.ts";
 import { realWorkingFolders } from "./working-folders.ts";
+import { savedVersionOf } from "./workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { trustedGrant } from "./workspace-trust.ts";
 
@@ -66,12 +67,13 @@ export async function readSourceListing(
   secrets: Secrets,
   nothingDone: Message,
 ): Promise<SourceListing> {
+  // The source's workspace is the saved files, so its integrations are too.
   const trust = await trustedGrant(
     target.dir,
     machine,
     target.typedDir,
     nothingDone,
-    target.workspace,
+    await savedVersionOf(target.dir, target.workspace),
   );
   const context = {
     secrets: workspaceSecrets(secrets),

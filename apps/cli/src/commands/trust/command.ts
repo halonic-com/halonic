@@ -31,6 +31,7 @@ import { type PluginSetup, setupPluginsFolder } from "../../plugin-host.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
 import { profileKeyOrigins } from "../../secret-host.ts";
 import { installedPluginHosts, type PluginHosts } from "../../sheet-hosts.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
@@ -156,7 +157,11 @@ async function reviewAndTrust(
     );
   }
   const opened = await openWorkspaceDir(input, context);
-  const workspace = await readWorkspaceTrust(opened, machine.commandSearch);
+  const workspace = await readWorkspaceTrust(
+    opened,
+    machine.commandSearch,
+    await savedVersionOf(opened),
+  );
   const facts = { name: workspace.name, folder: opened.shown };
   // The name comes from `workspace.yaml`, so each sentence quotes it escaped:
   // the question and the refusal follow the check on the same screen, and a
@@ -208,7 +213,11 @@ async function reviewAndTrust(
 
   // Read the files again: they can change while the person answers, and only
   // what the check showed them is trusted.
-  const answered = await readWorkspaceTrust(opened, machine.commandSearch);
+  const answered = await readWorkspaceTrust(
+    opened,
+    machine.commandSearch,
+    await savedVersionOf(opened),
+  );
   const granted = await trust.grant(answered.subject, check.fingerprint, "cli");
   if (!granted.ok) {
     // The files changed between the check and the answer: the refusal gives

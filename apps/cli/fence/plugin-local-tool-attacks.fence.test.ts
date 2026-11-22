@@ -15,6 +15,7 @@ import type { CommandContext } from "../src/command.ts";
 import { runMessages } from "../src/messages/run.ts";
 import { computerSheetHosts } from "../src/sheet-hosts.ts";
 import { removeTestFolder } from "../src/test/remove-folder.ts";
+import { savedVersionOf } from "../src/workspace-at-version.ts";
 import { openWorkspaceDir } from "../src/workspace-dir.ts";
 import { openWorkspaceEngine } from "../src/workspace-engine.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../src/workspace-runs.ts";
@@ -169,8 +170,7 @@ async function trustWorkspaceCalling(calls: readonly ToolCall[]): Promise<void> 
   });
   const machine = trustMachine();
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const loaded = await loadWorkspace(dir.store);
-  const read = await readWorkspaceTrust(dir, noCommands, loaded);
+  const read = await readWorkspaceTrust(dir, noCommands, await savedVersionOf(dir));
   const service = cliTrustService(machine.trustStore, machine.clock);
   const check = await service.check(read.subject);
   assertTrustable(check, read);
@@ -191,12 +191,13 @@ async function runReport(): Promise<RunOutcome> {
   const workspace = await loadWorkspace(dir.store, {
     sheetHosts: await computerSheetHosts(dir.root, dir.shown, profileEnvironment()),
   });
+  const version = await savedVersionOf(dir, workspace);
   const grant = await trustedGrant(
     dir,
     trustMachine(),
     undefined,
     runMessages.nothingRan(),
-    workspace,
+    version,
   );
   const context = {
     cwd: acme,

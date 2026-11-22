@@ -28,6 +28,7 @@ import { heavyTestTimeout } from "./test/golden.ts";
 import { turnOffLocalOnly } from "./test/local-only.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { testRunSetup } from "./test/run-setup.ts";
+import { savedVersionOf } from "./workspace-at-version.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
@@ -98,7 +99,7 @@ async function writeConnectors(connectors: readonly Connector[]): Promise<void> 
 async function trustAcme({ before }: FingerprintCase): Promise<void> {
   await writeConnectors(before);
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const read = await readWorkspaceTrust(dir, noCommands);
+  const read = await readWorkspaceTrust(dir, noCommands, await savedVersionOf(dir));
   const service = cliTrustService(machine.trustStore, machine.clock);
   const shown = await service.check(read.subject);
   assertTrustable(shown, read);
