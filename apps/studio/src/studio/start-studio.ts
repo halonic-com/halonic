@@ -1,96 +1,45 @@
 import { TauriPickedFolders } from "@halonicjs/adapter-fs-tauri";
-import { ServiceRegistry } from "@halonicjs/app";
-import {
-  type FilesHost,
-  FilesHostService,
-  fileItem,
-  followFilesHost,
-} from "@halonicjs/studio-feature-files/api";
-import {
-  FirstRunDeviceService,
-  SampleWorkspaceService,
-} from "@halonicjs/studio-feature-first-run/api";
-import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
-import { SampleHintService } from "@halonicjs/studio-feature-runs/api";
 import {
   BrowserDisplayPrefs,
   DisplaySettings,
   type DisplayStorage,
-  TauriUpdater,
   watchAppearance,
 } from "@halonicjs/studio-feature-settings";
 import {
-  DisplaySettingsService,
-  HostSettingsService,
-  RestartRunsService,
-  UpdaterService,
-} from "@halonicjs/studio-feature-settings/api";
-import {
   FreshCopyAsks,
-  folderName,
   mountWorkspaceWindow,
   NewWorkspaceAsks,
-  type OpenedWorkspace,
   type RecentStorage,
   RecentWorkspaces,
   WorkspaceSwitcher,
 } from "@halonicjs/studio-feature-workspace";
-import {
-  TrustedSourcesService,
-  WorkspacePageService,
-} from "@halonicjs/studio-feature-workspace/api";
-import {
-  onWindowCloseRequested,
-  provideShellHostSettings,
-  provideShellSecrets,
-  type TauriCallbacks,
-  type TauriIpc,
-  tauriAgentHostTransport,
-  tauriChannelIpc,
-  tauriIpc,
-} from "@halonicjs/studio-services";
+import { onWindowCloseRequested, type TauriIpc, tauriIpc } from "@halonicjs/studio-services";
 import {
   createShell,
-  itemLocationKey,
   type KeyboardPlatform,
-  placeNames,
   type Shell,
   type StudioHost,
-  StudioWorkspace,
 } from "@halonicjs/studio-shell";
-import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
-import { openShellEngine } from "../engine/remote-engine.ts";
-import { provideRemoteControl } from "../remote/provide-remote.ts";
-import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
 import { newWorkspaceOf } from "./desktop-new-workspace.ts";
 import { watchDesktopResources } from "./desktop-resources.ts";
 import type { DeviceMemory } from "./device-memory.ts";
-import { openFolderScope, savingOf } from "./open-folder-scope.ts";
-import { halonicVersion, openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
-import { provideAgentSandbox } from "./provide-agent-sandbox.ts";
-import { provideFolderServices } from "./provide-folder-services.ts";
-import { restartRunsOfWindow } from "./restart-runs.ts";
-import { sampleWorkspaceOf } from "./sample-workspace.ts";
+import { noStorage, openFolder } from "./open-folder.ts";
+import { halonicVersion } from "./open-trusts.ts";
 import { startServedStudio } from "./served-studio.ts";
 import { watchStart } from "./start-watch.ts";
 
+export { openFolder } from "./open-folder.ts";
 export { servedServices } from "./served-studio.ts";
 
-import { firstRunDeviceOf } from "./first-run-device.ts";
-import { unfencedRunsOf } from "./integration-runs-status.ts";
 import { keyboardPlatform, studioHost } from "./studio-host.ts";
 import { followSystemRegion } from "./system-region.ts";
-import { demoModelWatch } from "./test-model-watch.ts";
-import { desktopTrustedSources } from "./trusted-sources.ts";
 import {
   closeLimitMs,
   leaveFocusedField,
   windowCloseHandler,
   withinLimit,
 } from "./window-close.ts";
-import { hostSettingsOf } from "./window-host-settings.ts";
-import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
 export { desktopFeatures };
 
@@ -238,153 +187,6 @@ function once(task: () => Promise<void>): () => Promise<void> {
     return run;
   };
 }
-
-/**
- * Opens the workspace in a folder with a scope of its own (`openWorkspace`): the folder's files
- * through the shell's file commands, the assistant's changes to review kept in the profile, and
- * the workspace's save, undo and redo. The OS keychain becomes its secrets and tokens before any
- * feature's services are built, so no token lands in the data folder (threat model 4.4,
- * HAL-2952), and the profile's `settings/host.json` its host settings (HAL-6261). In the shell,
- * its runs are the run logs in the folder's run folder, the ones the CLI writes
- * (`studio.workspace-runs`). Its display settings are the window's `display`, the same for every
- * folder open in it. In the shell, it is checked for trust before it opens, as the CLI checks it
- * (`studio.workspace-trust`): its name is the one in `workspace.yaml`, else the folder's, and the
- * assistant may write more than Halonic items only once a person has trusted what the folder
- * holds. Its host settings are the window's, loaded once (`settings.ai-agent-prefs`). Outside the
- * shell there are no files to open, so the scope has only the services above.
- */
-export async function openFolder(
-  shell: Shell,
-  window: object,
-  location: string,
-  display: DisplaySettings,
-  device: DeviceMemory = { recent: new RecentWorkspaces(noStorage), storage: noStorage },
-): Promise<OpenedWorkspace> {
-  const ipc = tauriChannelIpc(window);
-  const files = ipc === undefined ? undefined : shellFiles(ipc);
-  const trust = ipc === undefined ? undefined : workspaceTrustOf(ipc, location);
-  await trust?.refresh();
-  const open = openTrustsOf(shell);
-  if (trust !== undefined) open.add(trust);
-  const name = trust?.name ?? folderName(location);
-  const scope =
-    files === undefined || trust === undefined
-      ? undefined
-      : openFolderScope(files, location, trust);
-  const services = scope?.services ?? new ServiceRegistry();
-  // The plugins are provided with the folder's services, below.
-  const plugins = () =>
-    services.has(PluginsHostService) ? services.get(PluginsHostService).feed : undefined;
-  const trustView =
-    trust === undefined
-      ? undefined
-      : new WorkspaceTrustView(trust, location, unfencedRunsOf(window), plugins);
-  services.provide(DisplaySettingsService, display);
-  services.provide(WorkspacePageService, { name, trust: trustView });
-  const sample = sampleWorkspaceOf(
-    location,
-    device.recent,
-    device.storage,
-    device.startOwnWorkspace,
-  );
-  services.provide(SampleWorkspaceService, sample);
-  services.provide(FirstRunDeviceService, firstRunDeviceOf(location, device));
-  services.provide(SampleHintService, sample);
-  services.provide(TrustedSourcesService, desktopTrustedSources(window, open));
-  provideShellSecrets(services, window);
-  provideShellHostSettings(services, window);
-  services.provide(HostSettingsService, await hostSettingsOf(services, window));
-  await provideAgentSandbox(services, window, ipc);
-  provideRemoteControl(services, tauriAgentHostTransport(window));
-  if (ipc !== undefined) {
-    services.provide(UpdaterService, updaterOf(ipc));
-    services.provide(RestartRunsService, restartRunsOfWindow);
-  }
-  const assistant = provideAssistant(services, files, location, name, scope);
-  if (ipc !== undefined && files !== undefined && trust !== undefined && scope !== undefined) {
-    provideFolderServices(services, {
-      ipc,
-      files,
-      window,
-      trust,
-      askTrust: () => trustView?.asks.ask() ?? Promise.resolve("declined"),
-      location,
-      platform: device.platform ?? "linux",
-      name,
-      scope,
-      remoteEngine: await openShellEngine(ipc),
-      // Run waits through the workspace's own save, which is made below, once the workspace is.
-      settle: async () => {
-        if (!((await saving?.saveNow()) ?? true))
-          throw new Error("The workspace is still unsaved.");
-      },
-      onEngineLockLost: () =>
-        showEngineLockLost({
-          toasts: shell.toasts,
-          name,
-          openRuns: () => workspace.tabs.openHere({ key: "runs", title: placeNames.runs.label }),
-        }),
-    });
-  }
-  shell.services.instantiate(services);
-  const testModel = demoModelWatch(services, () => device.recent.isSample(location));
-  const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
-  const outside = showFilesOutside(services, shell.toasts, workspace);
-  const saving = scope === undefined ? undefined : savingOf(scope, workspace, name, outside.onHeld);
-  return {
-    name,
-    workspace,
-    saving,
-    trust: trustView,
-    testModel,
-    dispose: () => {
-      if (trust !== undefined) open.delete(trust);
-      testModel?.dispose();
-      outside.stop();
-      assistant?.dispose();
-      return scope === undefined ? services.dispose() : scope.close();
-    },
-  };
-}
-
-/**
- * Shows what happens to the workspace's files outside Halonic, as toasts and in the save note, and
- * gives the save the way to tell the Files host about a file it held. Both do nothing without a Files host.
- */
-function showFilesOutside(
-  services: ServiceRegistry,
-  toasts: Shell["toasts"],
-  workspace: StudioWorkspace,
-): { onHeld: (held: Parameters<FilesHost["noteHeld"]>[0]) => void; stop: () => void } {
-  if (!services.has(FilesHostService)) return { onHeld: () => undefined, stop: () => undefined };
-  const host = services.get(FilesHostService);
-  const stop = followFilesHost({
-    host,
-    toasts,
-    saving: workspace.saving,
-    open: (path) =>
-      workspace.tabs.openHere({
-        key: itemLocationKey(fileItem(path)),
-        title: path.slice(path.lastIndexOf("/") + 1),
-      }),
-  });
-  return { onHeld: (held) => host.noteHeld(held), stop };
-}
-
-/**
- * The page's one updater: the shell keeps each watch channel until the page reloads, so every
- * workspace the window opens shares this one instead of opening its own.
- */
-const updaters = new WeakMap<object, TauriUpdater>();
-
-function updaterOf(ipc: TauriIpc & TauriCallbacks): TauriUpdater {
-  const known = updaters.get(ipc);
-  if (known !== undefined) return known;
-  const updater = new TauriUpdater(ipc);
-  updaters.set(ipc, updater);
-  return updater;
-}
-
 /**
  * The window's display settings, one for every workspace in it, so a change in Settings reaches
  * the whole window at once. They are kept in the page's storage until the app profile keeps them
@@ -415,10 +217,4 @@ const unsavedStorage: DisplayStorage = {
   setItem: () => {
     throw new Error("This page has no storage.");
   },
-};
-
-/** Recent on a page without storage: nothing is remembered. */
-const noStorage: RecentStorage = {
-  getItem: () => null,
-  setItem: () => {},
 };
