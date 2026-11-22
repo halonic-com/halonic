@@ -3,6 +3,7 @@
 - Task: HAL-15787
 - Approval: HAL-15787 (flow check C630 finding 3 on HAL-15782; fix 1 of the two the finding gives, built on the approved delete-with-Undo flows, decided by the team under the HAL-2282 rule). Liam signs this note at code review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0STs1rjJx3S+UFfxuWj01oXO4QtfjhmiYLuqZf/S5s0amC/aP/UdB1UPkHJ4Iog1PlncTztzZImpmMBGc7p+BQ==
 
 ## What changes
 
