@@ -1,6 +1,11 @@
+import type { Tab } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useState } from "react";
+import { configurationWords } from "../configuration/configuration-words.ts";
+import { mapWords } from "../map/map-words.ts";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
+import { pageWords } from "./page-words.ts";
 
+/** The agent page's views: the panel beside the chat, or the page on a phone. */
 export type AgentView = "flow" | "configuration" | "runs";
 
 /**
@@ -33,3 +38,10 @@ export function useAgentView(hubId: string, id: string, modelRequest: string | u
   const modelShown = useCallback(() => setModelWaiting(false), []);
   return { view, selectView, fresh, modelWaiting, modelShown };
 }
+
+/** The panel's views. */
+export const agentTabs: readonly [Tab<AgentView>, ...Tab<AgentView>[]] = [
+  { id: "flow", label: mapWords.tab },
+  { id: "configuration", label: configurationWords.tab },
+  { id: "runs", label: pageWords.runsHeading },
+];

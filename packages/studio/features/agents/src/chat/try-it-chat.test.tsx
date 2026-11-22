@@ -87,6 +87,37 @@ verifies("agents.chat.try-it", () => {
     expect(buttonNamed(page, "Try again")).toBeUndefined();
     expect(announce).toHaveBeenCalledExactlyOnceWith("Stopped by you.");
   });
+
+  it("stops the reply when the page closes, and announces nothing", async () => {
+    const { host, requests, finish } = scriptedHost();
+    const announce = vi.fn();
+    const page = await show(<Chat host={host} announce={announce} />);
+    await sendMessage(page, "Sort this mail");
+    unmount();
+    expect(requests[0]?.signal?.aborted).toBe(true);
+    await finish({ messages: [], end: { reason: "stopped", toolsRan: false } });
+    expect(announce).not.toHaveBeenCalled();
+  });
+});
+
+verifies("agents.chat.try-it", () => {
+  it("announces a failure after a tool with its whole line", async () => {
+    const { host, requests, finish } = scriptedHost();
+    const announce = vi.fn();
+    const page = await show(<Chat host={host} announce={announce} />);
+    await sendMessage(page, "Sort this mail");
+    await act(async () =>
+      requests[0]?.listener?.onToolCall?.({ id: "c1", name: "send_reply", arguments: {} }),
+    );
+    await finish({
+      messages: [],
+      end: { reason: "failed", error: new Error("Anthropic was busy"), toolsRan: true },
+    });
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      "Sorter's reply failed: Anthropic was busy. Some tool calls already ran. Send a new message to continue.",
+      "assertive",
+    );
+  });
 });
 
 verifies("agents.chat.reply-ends", () => {
@@ -191,6 +222,7 @@ verifies("agents.chat.box-lines", () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]?.messages).toEqual([{ role: "user", content: `My key is ${key}` }]);
     expect(page.querySelector("[role=status]")?.textContent).toBe("");
+    expect(document.activeElement).toBe(page.querySelector("textarea"));
   });
 
   it("sends a message that only mentions a key prefix as usual", async () => {
@@ -211,6 +243,7 @@ verifies("agents.chat.box-lines", () => {
   it.each([
     ["not-installed", "Sorter can't run until Claude Code is installed."],
     ["too-old", "Sorter can't run until Claude Code is updated."],
+    ["signed-out", "Sorter can't run until it's signed in to Claude Code."],
   ] as const)(
     "makes Send wait when the harness is %s, with the line as its reason",
     async (strip, line) => {
