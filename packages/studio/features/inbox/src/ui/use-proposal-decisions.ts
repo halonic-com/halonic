@@ -1,5 +1,5 @@
 import { type ToastStore, useToastStore } from "@halonicjs/studio-kit";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { changeLine, decidedToast, undoLeftAloneLine } from "../plain/proposal-text.ts";
 import type { ProposalDecided, ProposalDecisions } from "../proposal-decisions.ts";
 import type { ProposalFile, ProposalItem } from "../proposal-items.ts";
@@ -23,6 +23,8 @@ export interface ProposalDecisionState {
   readonly files: readonly ProposalFile[];
   /** The decision on its way, whose button is busy; the others ignore presses meanwhile. */
   readonly pending: { readonly verb: ProposalVerb; readonly target: DecisionTarget } | null;
+  /** The busy button's `id`, which the others point at as why they're unavailable meanwhile. */
+  readonly busyId: string;
   readonly failure: DecisionFailure | null;
   /** The files an Accept left alone because the person changed them after the run started. */
   readonly changedSinceRun: ReadonlySet<string>;
@@ -48,6 +50,7 @@ export function useProposalDecisions(
 ): ProposalDecisionState {
   const [files, setFiles] = useState(item.files);
   const [pending, setPending] = useState<ProposalDecisionState["pending"]>(null);
+  const busyId = useId();
   const [failure, setFailure] = useState<DecisionFailure | null>(null);
   const [changedSinceRun, setChangedSinceRun] = useState<ReadonlySet<string>>(new Set());
   const [announcement, setAnnouncement] = useState("");
@@ -99,7 +102,7 @@ export function useProposalDecisions(
     undoSteps.track(deciding);
   }
 
-  return { files, pending, failure, changedSinceRun, announcement, decided, decide };
+  return { files, pending, busyId, failure, changedSinceRun, announcement, decided, decide };
 }
 
 /**
