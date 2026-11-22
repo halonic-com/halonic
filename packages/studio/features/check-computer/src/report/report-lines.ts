@@ -1,17 +1,18 @@
-import type {
-  DefaultModelLine,
-  DiskLine,
-  HarnessesLine,
-  HarnessProblem,
-  LastRunLine,
-  SandboxLine,
-  WorkspaceLine,
+import {
+  type DefaultModelLine,
+  type DiskLine,
+  type HarnessesLine,
+  type HarnessProblem,
+  isSandboxStartReason,
+  type LastRunLine,
+  type SandboxLine,
+  type WorkspaceLine,
 } from "@halonicjs/app";
 import { shownSize } from "@halonicjs/words";
 import type { CheckFact, CheckLineId, GoogleFact, NotCheckedFact } from "../check-facts.ts";
 import { type CheckMark, checkMark } from "../check-marks.ts";
 import { modelsReport } from "./report-models.ts";
-import { causeInReport, dayInReport, providerInReport } from "./report-names.ts";
+import { causeInReport, dayInReport, providerInReport, wholeInReport } from "./report-names.ts";
 
 /** One line of the report: its label, its mark, and its facts, the first beside the label. */
 export interface ReportLine {
@@ -47,7 +48,10 @@ const trustWords: Readonly<Record<WorkspaceLine["trust"], string>> = {
 /** The Workspace line without its name: the demo, its trust, and counts. */
 function workspaceReport(line: WorkspaceLine, demo: boolean): string[] {
   const facts = [...(demo ? ["demo · can open"] : []), trustWords[line.trust]];
-  if (line.fileProblems !== undefined) facts.push(`${line.fileProblems} problems in its files`);
+  if (line.fileProblems !== undefined) {
+    const count = wholeInReport(line.fileProblems);
+    facts.push(count === undefined ? "problems in its files" : `${count} problems in its files`);
+  }
   if (line.windowsDrive !== undefined) facts.push("on a Windows drive");
   if (line.tooManyFilesToWatch !== undefined) facts.push("too many files to watch");
   return [facts.join(" · ")];
@@ -60,10 +64,13 @@ const strengthWords = {
   none: "no fence",
 } as const;
 
-/** The Sandbox line: its fence, or the closed reason code it can't start with, never `missing`. */
+/**
+ * The Sandbox line: its fence, or the reason code it can't start with, never `missing`. The code
+ * passes only when Halonic knows it; anything else reads "unknown".
+ */
 function sandboxReport(line: SandboxLine): string[] {
   if (line.status === "ok") return [`ready · ${strengthWords[line.capabilities.strength]}`];
-  return [`can't start · ${line.reason}`];
+  return [`can't start · ${isSandboxStartReason(line.reason) ? line.reason : "unknown"}`];
 }
 
 const harnessProblemWords: Readonly<Record<HarnessProblem["problem"], string>> = {
@@ -108,9 +115,17 @@ function labelOf(line: string): string {
   return labels[line] ?? "a line above";
 }
 
+/** "step 4 of 7", or `undefined` when either isn't a whole number. */
+function stepOf(step: number, steps: number): string | undefined {
+  const at = wholeInReport(step);
+  const of = wholeInReport(steps);
+  return at === undefined || of === undefined ? undefined : `step ${at} of ${of}`;
+}
+
 /** The Last run line: step n of m and the cause, never the step's or the agent's name. */
 function lastRunReport(line: LastRunLine): string[] {
-  const where = `failed at step ${line.step} of ${line.steps}`;
+  const step = stepOf(line.step, line.steps);
+  const where = step === undefined ? "failed at a step" : `failed at ${step}`;
   if (line.causeShownOn !== undefined)
     return [`${where} · because of ${labelOf(line.causeShownOn)}`];
   return [`${where} · cause ${causeInReport(line.cause)}`];
@@ -118,7 +133,9 @@ function lastRunReport(line: LastRunLine): string[] {
 
 /** The Google line: the step and the day it started, never the account's address. */
 function googleReport(line: GoogleFact): string[] {
-  return [`setup at step ${line.step} of ${line.steps}, started ${dayInReport(line.startedAt)}`];
+  const step = stepOf(line.step, line.steps);
+  const setup = step === undefined ? "setup" : `setup at ${step}`;
+  return [`${setup}, started ${dayInReport(line.startedAt)}`];
 }
 
 function notCheckedReport(line: NotCheckedFact): string[] {

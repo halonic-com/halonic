@@ -49,6 +49,19 @@ export function causeInReport(cause: string): string {
   return /^[a-z-]+\.[a-z-]+$/.test(cause) ? cause : "unknown";
 }
 
+/**
+ * A count or a step number as the report may hold it: a whole number of zero or more. The host's
+ * facts are checked only for their `check` and `status`, so a field typed as a number can still
+ * hold text; then this is `undefined`, and the line says what it found without the number.
+ *
+ * @example
+ * wholeInReport(2); // 2
+ * wholeInReport("Draft the Acme refund reply"); // undefined
+ */
+export function wholeInReport(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
 /** A day as "8 Nov", the same in every language. */
 export function dayInReport(at: Date): string {
   const months = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
