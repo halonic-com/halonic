@@ -106,6 +106,18 @@ export interface TrustShrink {
   readonly providers: readonly string[];
 }
 
+/** How {@link TrustService.check} checks. */
+export interface TrustCheckOptions {
+  /**
+   * Answers without ever writing the record: a change that only removes counts as trusted, as
+   * always, but the record keeps what it lists. For a caller that checks files it read earlier,
+   * such as an engine's copy of the saved files: a person may have trusted something added since,
+   * and shrinking the record to the older files would undo that trust (HAL-16381). The grant
+   * it gives is the stored record's, so a check of the grant against the store still passes.
+   */
+  readonly readOnly?: boolean;
+}
+
 /** Whether a workspace is trusted, and if not, why. */
 export type TrustCheck =
   | (CurrentTrust & {
@@ -156,10 +168,12 @@ export class TrustService {
    * Whether the workspace is trusted now. A change that only removes whole
    * connectors or harness agents shrinks the record and counts as trusted, without asking.
    * Content with something that can't be trusted is `refused`, whatever the record says.
+   * With `readOnly`, the answer is the same, but the record is never written, and the grant
+   * is the stored record's.
    *
    * @throws when shrinking the record can't be saved
    */
-  async check(subject: TrustSubject): Promise<TrustCheck> {
+  async check(subject: TrustSubject, options: TrustCheckOptions = {}): Promise<TrustCheck> {
     const content = contentOf(subject);
     if (content.refused !== undefined && content.refused.length > 0) {
       return { status: "refused", content, refused: content.refused };
@@ -186,13 +200,19 @@ export class TrustService {
     const trusted = await this.trustedContent(record);
     const changes = trustChanges(trusted ?? { connectors: [] }, current.content);
     if (trusted !== null && changes.onlyRemoves) {
-      const shrunk = await this.shrink(record, current, changes);
+      // Read-only, the grant is the stored record's: whoever checks a grant against the store
+      // (the agent host does) finds that record, which still holds all the current content.
+      let saved = record;
+      if (options.readOnly !== true) {
+        saved = this.shrunk(record, current, changes);
+        await this.options.store.grant(saved);
+      }
       return {
         status: "trusted",
         ...current,
-        grant: grantOf(shrunk),
+        grant: grantOf(saved),
         shrunk: removedIds(changes),
-        trustedAt: shrunk.grantedAt,
+        trustedAt: saved.grantedAt,
       };
     }
     return { status: "changed", ...current, changes, trustedAt: record.grantedAt };
@@ -281,25 +301,20 @@ export class TrustService {
     return fingerprint === record.fingerprint ? record.content : null;
   }
 
-  private async shrink(
-    record: TrustRecord,
-    current: CurrentTrust,
-    changes: TrustChanges,
-  ): Promise<TrustRecord> {
+  /** The record shrunk to the current content, not yet saved. */
+  private shrunk(record: TrustRecord, current: CurrentTrust, changes: TrustChanges): TrustRecord {
     // Pins belong to connectors; a removed agent has none.
     const removed = new Set(removedIds(changes).connectors);
     const pins = Object.fromEntries(
       Object.entries(record.pins).filter(([connector]) => !removed.has(connector)),
     );
-    const shrunk: TrustRecord = {
+    return {
       ...record,
       fingerprint: current.fingerprint,
       content: current.content,
       appVersion: this.options.appVersion,
       pins,
     };
-    await this.options.store.grant(shrunk);
-    return shrunk;
   }
 }
 

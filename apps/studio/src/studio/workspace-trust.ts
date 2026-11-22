@@ -2,6 +2,7 @@ import {
   commandPaths,
   readLocalIntegrations,
   type TrustCheck,
+  type TrustCheckOptions,
   type TrustService,
   type TrustSubject,
   trustSubjectOf,
@@ -33,6 +34,11 @@ export interface WorkspaceTrustSources {
  * keeps the last check and answers from it. Until the first check ends, after a check that
  * failed, and while a new check runs, the answer is no. While a new check runs, {@link check}
  * still holds the last settled one, so the window doesn't flicker on every save.
+ *
+ * Only {@link refresh}, which reads the files itself, may shrink the trust record to files that
+ * lost something. A check of a workspace the caller loaded never writes the record: by the time
+ * it runs, a person may have saved and trusted more, such as a connector added while the engine
+ * kept its copy of the files, and shrinking to that older load would undo the trust (HAL-16381).
  *
  * @example
  * const trust = new WorkspaceTrust(sources);
@@ -145,21 +151,23 @@ export class WorkspaceTrust {
 
   /**
    * Checks the trust of a workspace the caller already loaded, so a caller that starts something
-   * checks the very content it starts from, never a second read of the files. Changes nothing
-   * here: the page's last check, its listeners and its subject stay as they are.
+   * checks the very content it starts from, never a second read of the files. Changes nothing,
+   * the trust record included: the page's last check, its listeners and its subject stay as they
+   * are.
    */
   async checkLoaded(workspace: LoadedWorkspace): Promise<TrustCheck> {
-    return (await this.#checkSubject(workspace)).check;
+    return (await this.#checkSubject(workspace, LOADED)).check;
   }
 
   /**
    * Whether something may start from a workspace the caller already loaded, by the rule the CLI
    * starts runs by (`needsNoTrust`, HAL-1984, HAL-12409): a person trusted exactly this content,
-   * or it can only reach the test model. Never rejects: a check that fails is a no.
+   * or it can only reach the test model. Never writes the trust record ({@link checkLoaded}).
+   * Never rejects: a check that fails is a no.
    */
   async mayStart(workspace: LoadedWorkspace): Promise<boolean> {
     try {
-      const { check, subject } = await this.#checkSubject(workspace);
+      const { check, subject } = await this.#checkSubject(workspace, LOADED);
       return check.status === "trusted" || reachesOnlyTheTestModel(subject);
     } catch {
       return false;
@@ -191,7 +199,7 @@ export class WorkspaceTrust {
     this.#changed();
     try {
       const workspace = await loadWorkspace(this.#sources.definitions);
-      const { check, subject } = await this.#checkSubject(workspace);
+      const { check, subject } = await this.#checkSubject(workspace, { readOnly: false });
       const name = filesOf(workspace, "workspace")[0]?.value.name;
       if (mine !== this.#latest) return;
       this.#name = name;
@@ -218,6 +226,7 @@ export class WorkspaceTrust {
 
   async #checkSubject(
     workspace: LoadedWorkspace,
+    options: TrustCheckOptions,
   ): Promise<{ check: TrustCheck; subject: TrustSubject }> {
     const { folder, digest, trust } = this.#sources;
     const connectors = filesOf(workspace, "connector").map((file) => file.value);
@@ -232,6 +241,9 @@ export class WorkspaceTrust {
         async (command) => (await this.#sources.findCommand(command)) ?? null,
       ),
     });
-    return { check: await trust.check(subject), subject };
+    return { check: await trust.check(subject, options), subject };
   }
 }
+
+/** How a workspace the caller loaded is checked: never writing the record. */
+const LOADED: TrustCheckOptions = { readOnly: true };

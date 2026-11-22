@@ -20,7 +20,7 @@ import {
   tokenStoreKey,
 } from "@halonicjs/studio-services";
 import type { GitAnswer } from "../changes/workspace-changes.ts";
-import { EngineService } from "../engine/engine-service.ts";
+import { EngineService, type EngineServiceOptions } from "../engine/engine-service.ts";
 import { windowKeyOriginPrompt } from "../engine/key-origin-prompt.ts";
 import { PageVersions } from "../engine/page-versions.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
@@ -70,11 +70,7 @@ export function folderEngine(services: ServiceRegistry, parts: FolderEngineParts
     http: new ShellHttpClient(ipc),
     clock: systemClock,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
-    mayStart: (workspace) => trust.mayStart(workspace),
-    isTrustedNow: () => trust.isTrusted(),
-    // Removing the trust here or in Settings › Trusted sources checks it again.
-    onTrustChange: (listener) => trust.subscribe(listener),
+    ...engineTrustOptions(trust),
     ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
     setTimer: (callback, delayMs) => {
       const timer = setTimeout(callback, delayMs);
@@ -109,4 +105,21 @@ export function folderEngine(services: ServiceRegistry, parts: FolderEngineParts
             }),
         }),
   });
+}
+
+/**
+ * How the folder's engine asks the folder's trust. Every check is of a workspace the engine
+ * loaded, often its copy of the files as saved at the latest start, so none writes the trust
+ * record (HAL-16381).
+ */
+export function engineTrustOptions(
+  trust: WorkspaceTrust,
+): Pick<EngineServiceOptions, "isTrusted" | "mayStart" | "isTrustedNow" | "onTrustChange"> {
+  return {
+    isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
+    mayStart: (workspace) => trust.mayStart(workspace),
+    isTrustedNow: () => trust.isTrusted(),
+    // Removing the trust here or in Settings › Trusted sources checks it again.
+    onTrustChange: (listener) => trust.subscribe(listener),
+  };
 }
