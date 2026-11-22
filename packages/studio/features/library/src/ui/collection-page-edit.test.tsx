@@ -2,11 +2,12 @@
 import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   amountEdit,
   cell,
   cleanUp,
+  fakeBrowserParts,
   leave,
   meal,
   opened,
@@ -21,6 +22,7 @@ import {
   typeInto,
 } from "../test-support/collection-page.tsx";
 
+beforeEach(fakeBrowserParts);
 afterEach(cleanUp);
 
 verifies("library.collection-page", () => {

@@ -1,3 +1,5 @@
 import { definePackageTestConfig } from "@halonicjs/tooling-config/vitest";
 
-export default definePackageTestConfig();
+// Test files share a worker's modules and environment: about twice as fast,
+// because most of the time went to setting both up per file (HAL-15904).
+export default definePackageTestConfig({ test: { isolate: false } });

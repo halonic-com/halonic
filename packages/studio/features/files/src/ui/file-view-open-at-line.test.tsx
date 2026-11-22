@@ -7,33 +7,20 @@ import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FilesHost } from "../files-host.ts";
 import { requestOpenAtLine } from "../open-at-line.ts";
+import { forgetOpenedEditors, openedEditors } from "../test-support/code-editor.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost } from "../test-support/sidebar.ts";
 import { FileView } from "./file-view.tsx";
 
 /** The lines each opened editor was sent to, in the order the editors opened. */
-const goneTo: number[][] = [];
+const goneTo = () => openedEditors.map((editor) => editor.goneTo.map(([line]) => line));
 
 // The real editor is tested in its own package; here a stand-in notes the lines it is sent to.
-vi.mock("@halonicjs/studio-code-editor", () => ({
-  languageFor: () => "yaml",
-  openCodeEditor: async (options: { text: string }) => {
-    const lines: number[] = [];
-    goneTo.push(lines);
-    return {
-      text: () => options.text,
-      load: () => {},
-      focus: () => {},
-      setProblems: () => {},
-      goTo: (line: number) => lines.push(line),
-      destroy: () => {},
-    };
-  },
-}));
+vi.mock("@halonicjs/studio-code-editor", () => import("../test-support/code-editor.ts"));
 
 afterEach(() => {
   unmountAll();
-  goneTo.length = 0;
+  forgetOpenedEditors();
 });
 
 const writer = "hubs/support/agents/writer.agent.yaml";
@@ -60,11 +47,11 @@ verifies("files.ui.open-at-line", () => {
   it("opens the file with the cursor on the line asked for, and only once", async () => {
     requestOpenAtLine(writer, 2);
     await showFile(writer);
-    expect(goneTo).toEqual([[2]]);
+    expect(goneTo()).toEqual([[2]]);
 
     unmountAll();
     await showFile(writer);
-    expect(goneTo).toEqual([[2], []]);
+    expect(goneTo()).toEqual([[2], []]);
   });
 
   it("moves the cursor of a tab that is already open", async () => {
@@ -72,7 +59,7 @@ verifies("files.ui.open-at-line", () => {
 
     act(() => requestOpenAtLine(writer, 4));
 
-    expect(goneTo).toEqual([[4]]);
+    expect(goneTo()).toEqual([[4]]);
   });
 
   it("leaves another file's tab alone", async () => {
@@ -80,10 +67,10 @@ verifies("files.ui.open-at-line", () => {
 
     act(() => requestOpenAtLine(writer, 4));
 
-    expect(goneTo).toEqual([[]]);
+    expect(goneTo()).toEqual([[]]);
     // The request still waits for the writer's own tab.
     unmountAll();
     await showFile(writer);
-    expect(goneTo).toEqual([[], [4]]);
+    expect(goneTo()).toEqual([[], [4]]);
   });
 });

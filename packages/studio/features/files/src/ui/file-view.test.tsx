@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import type { CodeEditorOptions, EditorProblem } from "@halonicjs/studio-code-editor";
 import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -7,57 +6,19 @@ import { afterEach, expect, it, vi } from "vitest";
 import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FileIssue, FilesHost } from "../files-host.ts";
+import { forgetOpenedEditors, openedEditors as opened } from "../test-support/code-editor.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
-const opened: {
-  options: CodeEditorOptions;
-  destroyed: boolean;
-  text: string;
-  loads: string[];
-  shown: readonly EditorProblem[];
-  goneTo: [number, number | undefined][];
-}[] = [];
-
 // The real editor is tested in its own package; here a stand-in lets the test type.
-vi.mock("@halonicjs/studio-code-editor", () => ({
-  languageFor: (path: string) => (path.endsWith(".md") ? "markdown" : "yaml"),
-  openCodeEditor: async (options: CodeEditorOptions) => {
-    const entry = {
-      options,
-      destroyed: false,
-      text: options.text,
-      loads: [] as string[],
-      shown: [] as readonly EditorProblem[],
-      goneTo: [] as [number, number | undefined][],
-    };
-    opened.push(entry);
-    return {
-      text: () => entry.text,
-      load: (text: string) => {
-        entry.text = text;
-        entry.loads.push(text);
-      },
-      focus: () => {},
-      setProblems: (problems: readonly EditorProblem[]) => {
-        entry.shown = problems;
-      },
-      goTo: (line: number, col?: number) => {
-        entry.goneTo.push([line, col]);
-      },
-      destroy: () => {
-        entry.destroyed = true;
-      },
-    };
-  },
-}));
+vi.mock("@halonicjs/studio-code-editor", () => import("../test-support/code-editor.ts"));
 
 const announced: string[] = [];
 const openedItems: string[] = [];
 
 afterEach(() => {
   unmountAll();
-  opened.length = 0;
+  forgetOpenedEditors();
   announced.length = 0;
   openedItems.length = 0;
   vi.useRealTimers();

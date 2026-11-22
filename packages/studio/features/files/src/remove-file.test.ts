@@ -1,10 +1,12 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { RemovedFile } from "./files-host.ts";
 import { removeFile } from "./remove-file.ts";
 import { kinded } from "./test-support/kinded.ts";
-import { trashedFile } from "./trash.ts";
+import { forgetAllTrashed, trashedFile } from "./trash.ts";
+
+afterEach(forgetAllTrashed);
 
 function toastsOf() {
   const show = vi.fn();

@@ -12,16 +12,14 @@ import { type NewCollectionHost, NewCollectionHostService } from "../new-collect
 import { type NewConnectorHost, NewConnectorHostService } from "../new-connector-host.ts";
 import { requestNewConnector } from "../new-connector-request.ts";
 import { type NewSkillHost, NewSkillHostService } from "../new-skill-host.ts";
+import { requestFilesReveal } from "../test-support/files-reveal.ts";
 import { fakeModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { LibraryPlace } from "./library-place.tsx";
 
-const filesApi = vi.hoisted(() => ({ requestFilesReveal: vi.fn(async () => "shown") }));
-vi.mock("@halonicjs/studio-feature-files/api", () => filesApi);
-
 afterEach(() => {
   unmountAll();
-  filesApi.requestFilesReveal.mockReset();
+  requestFilesReveal.mockReset();
 });
 
 const noUsage = { agents: [], hubs: [], routines: [], collections: [] };
@@ -452,13 +450,13 @@ verifies("library.open-docs-folder", () => {
 
     act(() => docsButton(page)?.click());
 
-    expect(filesApi.requestFilesReveal).toHaveBeenCalledExactlyOnceWith("docs");
+    expect(requestFilesReveal).toHaveBeenCalledExactlyOnceWith("docs");
     expect(showSidebarView).toHaveBeenCalledExactlyOnceWith("files");
   });
 
   /** Clicks the button while the reveal answers `answer`, and returns the toasts shown. */
   async function toastsAfterReveal(answer: "shown" | "nearest") {
-    filesApi.requestFilesReveal.mockResolvedValue(answer);
+    requestFilesReveal.mockResolvedValue(answer);
     const toasts = createToastStore();
     const { context } = contextOf("knowledge", { showSidebarView: vi.fn() });
     const page = render(

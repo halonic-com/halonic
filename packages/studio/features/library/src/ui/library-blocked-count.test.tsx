@@ -14,8 +14,6 @@ import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items
 import { render, unmountAll } from "../test-support/render.tsx";
 import { LibraryPlace } from "./library-place.tsx";
 
-vi.mock("@halonicjs/studio-feature-files/api", () => ({ requestFilesReveal: vi.fn() }));
-
 afterEach(unmountAll);
 
 const noUsage = { agents: [], hubs: [], routines: [], collections: [] };

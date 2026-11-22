@@ -1,0 +1,75 @@
+import type {
+  CodeEditor,
+  CodeEditorOptions,
+  EditorLanguage,
+  EditorProblem,
+} from "@halonicjs/studio-code-editor";
+
+/** One editor the stand-in opened: what it was opened with and what the tab did to it since. */
+export interface OpenedEditor {
+  options: CodeEditorOptions;
+  text: string;
+  loads: string[];
+  shown: readonly EditorProblem[];
+  goneTo: [number, number | undefined][];
+  focused: number;
+  destroyed: boolean;
+}
+
+/** Every editor opened since the last {@link forgetOpenedEditors}, oldest first. */
+export const openedEditors: OpenedEditor[] = [];
+
+/** Empties {@link openedEditors}; a test file calls it after each test. */
+export function forgetOpenedEditors(): void {
+  openedEditors.length = 0;
+}
+
+/** The stand-in's language: Markdown for a `.md` file, YAML for any other. */
+export function languageFor(path: string): EditorLanguage {
+  return path.endsWith(".md") ? "markdown" : "yaml";
+}
+
+/**
+ * A stand-in for the real editor, which is tested in its own package. Every test file that renders
+ * a file tab mocks `@halonicjs/studio-code-editor` with this module and reads
+ * {@link openedEditors}. Test files share their modules in a worker (`isolate: false`,
+ * HAL-15904), so the first file's mock is the one the file tab keeps: one shared stand-in keeps
+ * that the same for every file.
+ */
+export async function openCodeEditor(options: CodeEditorOptions): Promise<CodeEditor> {
+  const entry: OpenedEditor = {
+    options,
+    text: options.text,
+    loads: [],
+    shown: [],
+    goneTo: [],
+    focused: 0,
+    destroyed: false,
+  };
+  openedEditors.push(entry);
+  return {
+    text: () => entry.text,
+    load: (text: string) => {
+      entry.text = text;
+      entry.loads.push(text);
+    },
+    setReadOnly: () => {},
+    focus: () => {
+      entry.focused++;
+    },
+    setProblems: (problems: readonly EditorProblem[]) => {
+      entry.shown = problems;
+    },
+    goTo: (line: number, column?: number) => {
+      entry.goneTo.push([line, column]);
+    },
+    undo: () => false,
+    redo: () => false,
+    canUndo: () => false,
+    canRedo: () => false,
+    tabMovesFocus: () => false,
+    destroy: () => {
+      entry.destroyed = true;
+    },
+  };
+}

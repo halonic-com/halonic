@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import type { CodeEditorOptions } from "@halonicjs/studio-code-editor";
 import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -7,30 +6,16 @@ import { afterEach, expect, it, vi } from "vitest";
 import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FilesHost } from "../files-host.ts";
+import { forgetOpenedEditors, openedEditors } from "../test-support/code-editor.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
-const opened: string[] = [];
-
 // The real editor is tested in its own package; here a stand-in records the text it opens on.
-vi.mock("@halonicjs/studio-code-editor", () => ({
-  languageFor: () => "markdown",
-  openCodeEditor: async (options: CodeEditorOptions) => {
-    opened.push(options.text);
-    return {
-      text: () => options.text,
-      load: () => {},
-      focus: () => {},
-      setProblems: () => {},
-      goTo: () => {},
-      destroy: () => {},
-    };
-  },
-}));
+vi.mock("@halonicjs/studio-code-editor", () => import("../test-support/code-editor.ts"));
 
 afterEach(() => {
   unmountAll();
-  opened.length = 0;
+  forgetOpenedEditors();
 });
 
 function hostOf(read: FilesHost["read"]): FilesHost {
@@ -95,7 +80,7 @@ verifies("files.ui.file-tab-try-again", () => {
 
     expect(reads).toBe(2);
     expect(page.textContent).not.toContain("Couldn't open this file");
-    expect(opened.at(-1)).toBe("# Back");
+    expect(openedEditors.at(-1)?.options.text).toBe("# Back");
   });
 
   it("shows a kinded error's own sentence, with Try again", async () => {

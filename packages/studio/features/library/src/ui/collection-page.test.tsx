@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cellText } from "../collection-format.ts";
 import type { CollectionColumn } from "../collection-host.ts";
 import {
   cell,
   chips,
   cleanUp,
+  fakeBrowserParts,
   nobody,
   opened,
   rich,
@@ -18,6 +19,7 @@ import {
   typeInto,
 } from "../test-support/collection-page.tsx";
 
+beforeEach(fakeBrowserParts);
 afterEach(cleanUp);
 
 verifies("library.collection-page", () => {
