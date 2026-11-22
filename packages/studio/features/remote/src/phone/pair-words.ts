@@ -99,4 +99,26 @@ export const pairWords = {
     body: (computer: string) =>
       `The computer that answered isn't the one that showed this code, so nothing was shared. Check that your phone is on the same network as ${computer}, then scan again.`,
   },
+  /** Microcopy 28 (C599): the computer's answer can't be read. */
+  unreadable: {
+    title: (computer: string) => `Couldn't read ${computer}'s answer`,
+    body: "Nothing was shared. Make a new code, then try again.",
+  },
+  /** Microcopy 28 (C599 row 10): `cant-reach` while the phone's own network is down. */
+  phoneOffline: {
+    /** `phone.sheet.phoneOffline.title`. */
+    title: "Your phone is offline",
+    body: (computer: string) =>
+      `It has no internet, so it can't reach ${computer}. Turn on Wi-Fi or mobile data, then try again.`,
+    bodyWifi: (computer: string) =>
+      `It isn't on Wi-Fi, so it can't reach ${computer}. Connect to the same Wi-Fi as the computer, then try again.`,
+  },
+  /**
+   * The generic problem screen, for a code or key the page got wrong (a bug, logged). Decided by
+   * the team on HAL-12248 until the strings table has its own entry.
+   */
+  generic: {
+    title: "Couldn't start pairing",
+    body: "Nothing was shared. On your computer, choose New code, then try again.",
+  },
 } as const;
