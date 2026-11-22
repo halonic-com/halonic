@@ -58,6 +58,7 @@ export {
   type PinnedPackage,
   type PinRegistry,
 } from "./connector-pin.ts";
+export { type ConnectorTrustFields, connectorTrustFields } from "./connector-trust-fields.ts";
 export { type ChosenDeployment, chooseDeployment } from "./deploy/choose-deployment.ts";
 export { type DeployNews, deployNews, hasNews } from "./deploy/deploy-news.ts";
 export {

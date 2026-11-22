@@ -68,6 +68,13 @@ lists, in this order (requirement `cli.trust-check`):
   to, a `!` line takes the place of that second line: it says the address
   isn't allowed for the key, so a run that uses this provider fails, and
   gives the `halonic models allow-address` command that allows it.
+- **Under every connector,** program or address, the check also shows what
+  else its fingerprint covers (`cli.trust-check-connector-lines`, and in
+  Studio `studio.trust-review-connector-lines`): "Offered tools" when
+  `tools.allow` limits them, "Asks first" with the tools that ask a person
+  first (or "every tool"), "Without asking" with the tools that don't, an
+  HTTP connector's headers, and "Other settings" with every field the schema
+  doesn't know, so a field added later can't change a connector unseen.
 - **Fingerprint:** the full fingerprint, never shortened.
 
 Studio's trust check marks hidden characters, such as control, zero-width and

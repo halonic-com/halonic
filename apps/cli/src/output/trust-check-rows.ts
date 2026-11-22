@@ -18,39 +18,30 @@ import type {
 } from "@halonicjs/workspace";
 import { columnGap } from "../messages/columns.ts";
 import type { Message } from "../messages/define.ts";
-import {
-  dim,
-  markPart,
-  type Phrase,
-  phrase,
-  plainText,
-  visibleLength,
-} from "../messages/phrase.ts";
+import { dim, markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
 import { type SecretPick, trustMessages } from "../messages/trust.ts";
 import type { PluginHosts } from "../sheet-hosts.ts";
 import { printable } from "./printable.ts";
 import { shellWord } from "./shell-word.ts";
-
-/**
- * The first column: a row's id, at least as wide as cli-output 3.5's example,
- * so short ids line up the same way. Lines under a row start past it.
- */
-const firstColumn = 14;
+import {
+  connectorLines,
+  firstColumn,
+  type LabelledLine,
+  labelledLines,
+  rowIndent,
+  siteLines,
+  underRow,
+} from "./trust-row-lines.ts";
 
 /** The workspace folder a local integration's connector names its folder in. */
 const integrationsFolder = "integrations";
 
-/** Where a section's rows start. */
-export const rowIndent = "  ";
-
-/** Where the lines under a row start: under its second column. */
-export const underRow = " ".repeat(rowIndent.length + firstColumn);
-
 /**
  * "  mail-mcp      npx @acme/mail-mcp 2.3.1 · gets the secret GMAIL_TOKEN ·
- * takes AWS_PROFILE from your environment", then its ! line, then, where the
- * sandbox works, every site it may reach in it, as an agent's. Without a
+ * takes AWS_PROFILE from your environment", then its ! line, its program and
+ * connector lines, then, where the sandbox works, every site it may reach in
+ * it, as an agent's. Without a
  * sandbox no site is shown, so the check suggests no fence that isn't there.
  */
 export function programRow(
@@ -69,7 +60,10 @@ export function programRow(
     lines.push(phrase`${underRow}${markPart("needsYou")} ${warning.phrase}`);
   }
   const sites = sandboxWorks ? siteLines(fields.sites) : [];
-  return [...lines, ...labelledLines([...programLines(fields), ...sites])];
+  return [
+    ...lines,
+    ...labelledLines([...programLines(fields), ...connectorLines(connector), ...sites]),
+  ];
 }
 
 /**
@@ -114,7 +108,8 @@ export function programSites(connector: ConnectorTrustContent): readonly string[
  * HAL-15094). The hosts come from
  * `pluginHosts`, the installed plugins' manifests, which the plugin's own
  * trust check covered; they show what the connector reaches and aren't in
- * the workspace's fingerprint.
+ * the workspace's fingerprint. Every connector's row then has its connector
+ * lines: tool lists, headers and other settings (HAL-16336).
  *
  * @param pluginHosts - the hosts each installed plugin may reach, by its id; left out, none are shown
  */
@@ -122,6 +117,11 @@ export function addressRows(
   connector: ConnectorTrustContent,
   pluginHosts: PluginHosts = new Map(),
 ): Phrase[] {
+  return [...addressRowLines(connector, pluginHosts), ...labelledLines(connectorLines(connector))];
+}
+
+/** The connector's row with its address, and a plugin's Reaches line. */
+function addressRowLines(connector: ConnectorTrustContent, pluginHosts: PluginHosts): Phrase[] {
   if (connector.transport === "integration") {
     return [integrationConnectorRow(connector)];
   }
@@ -354,26 +354,6 @@ export function agentRow(agent: AgentTrustContent): Phrase[] {
   ];
 }
 
-/** A line under a row: its label, empty to continue the one above, and its value. */
-type LabelledLine = readonly [label: Phrase, value: Phrase];
-
-/** "Allowed sites" and the first site, then every other site under it. */
-function siteLines(sites: readonly string[]): LabelledLine[] {
-  return sites.map((site, index) => [
-    index === 0 ? trustMessages.allowedSites().phrase : phrase``,
-    shownSite(site),
-  ]);
-}
-
-/** The lines under a row, their values lined up past the longest label. */
-function labelledLines(lines: readonly LabelledLine[]): Phrase[] {
-  const width = Math.max(0, ...lines.map(([label]) => visibleLength(label, true)));
-  return lines.map(([label, value]) => {
-    const padding = " ".repeat(width - visibleLength(label, true) + columnGap);
-    return phrase`${underRow}${label}${padding}${value}`;
-  });
-}
-
 /** One Changed row per field that changed, harness first, then sites, then the folder, then `asks`. */
 export function agentFieldChanges(agent: ChangedAgent): Phrase[] {
   const { before, after } = agent;
@@ -399,22 +379,6 @@ export function agentFieldChanges(agent: ChangedAgent): Phrase[] {
     changes.push(trustMessages.asksChanged(after.asks === "in-sandbox").phrase);
   }
   return changes;
-}
-
-/** A site in its stored form, with its note: a wildcard names its domain, Punycode is flagged. */
-function shownSite(site: string): Phrase {
-  const notes = [
-    ...(site.startsWith("*.")
-      ? [trustMessages.everySiteUnder(printable(site.slice(2))).phrase]
-      : []),
-    ...(site.split(".").some((label) => label.startsWith("xn--"))
-      ? [trustMessages.nonLatin().phrase]
-      : []),
-  ];
-  return notes.reduce(
-    (shown, note) => phrase`${shown} ${markPart("separator")} ${note}`,
-    phrase`${printable(site)}`,
-  );
 }
 
 /** The row's id in the first column, then its detail. */

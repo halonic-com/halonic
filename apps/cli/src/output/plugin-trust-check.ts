@@ -31,7 +31,8 @@ import { trustMessages } from "../messages/trust.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
 import { shownPluginSource } from "./plugin-source.ts";
 import { printable } from "./printable.ts";
-import { hostText, row, rowIndent, shownHost, underRow } from "./trust-check-rows.ts";
+import { hostText, row, shownHost } from "./trust-check-rows.ts";
+import { rowIndent, underRow } from "./trust-row-lines.ts";
 
 /** The tool risks in the order the check lists them, each with its group's heading. */
 const riskGroups: readonly { readonly risk: string; readonly heading: () => Message }[] = [
