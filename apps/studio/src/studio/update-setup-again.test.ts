@@ -46,7 +46,9 @@ verifies("studio.update-setup-again", () => {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
     expect(again).toContain('"-SetUpAgain -SetupVersion ${SRTSETUPVERSION}"');
     expect(again).toMatch(/Call CheckSetupVersion\s+\$\{If\} \$R1 = 0\s+StrCpy \$SandboxState/);
-    expect(again).toMatch(/\$\{If\} \$\{Silent\}\s+\$\{AndIf\} \$R1 = 0\s+Return/);
+    expect(again).toMatch(
+      /\$\{If\} \$\{Silent\}\s+\$\{AndIf\} \$R1 = 0\s+(?:;[^\n]*\s+)?StrCpy \$SandboxOutcome "skipped"\s+Return/,
+    );
   });
 
   it("sets it up again only for a marker below the installer's own number", () => {

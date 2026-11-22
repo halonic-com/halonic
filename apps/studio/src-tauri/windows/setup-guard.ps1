@@ -65,8 +65,10 @@ function Read-Marker([string]$SetupVersion, [Microsoft.Win32.RegistryHive]$Hive,
 }
 
 function Invoke-SetupGuard([string]$SetupVersion, [Microsoft.Win32.RegistryHive]$Hive, [string]$KeyPath) {
-  $code, $wanted, $marker = Read-Marker $SetupVersion $Hive $KeyPath
-  if ($null -ne $code) { return @($code, $wanted) }
+  # $second is the reason when $code answers, else the wanted setup version.
+  $code, $second, $marker = Read-Marker $SetupVersion $Hive $KeyPath
+  if ($null -ne $code) { return @($code, $second) }
+  $wanted = $second
   if ($marker -le $wanted) { return @(0, "the sandbox was set up for setup version $marker") }
   return @(1, "the sandbox was set up for setup version $marker, newer than setup version $wanted")
 }
@@ -77,9 +79,10 @@ function Invoke-SetupGuard([string]$SetupVersion, [Microsoft.Win32.RegistryHive]
 # for this one or a newer one; 2 when it can't tell. The update's own number
 # in latest.json isn't signed, so this decides, not the number Studio got.
 function Invoke-SetUpAgainCheck([string]$SetupVersion, [Microsoft.Win32.RegistryHive]$Hive, [string]$KeyPath) {
-  $code, $wanted, $marker = Read-Marker $SetupVersion $Hive $KeyPath
-  if ($code -eq 2) { return @(2, $wanted) }
-  if ($null -ne $code) { return @(1, $wanted) }
+  $code, $second, $marker = Read-Marker $SetupVersion $Hive $KeyPath
+  if ($code -eq 2) { return @(2, $second) }
+  if ($null -ne $code) { return @(1, $second) }
+  $wanted = $second
   if ($marker -lt $wanted) { return @(0, "the sandbox was set up for setup version $marker, older than setup version $wanted") }
   return @(1, "the sandbox is already set up for setup version $marker")
 }
