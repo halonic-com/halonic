@@ -1,6 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import { type Provider, parseFile } from "@halonicjs/format";
-import type { AgentsHost } from "@halonicjs/studio-feature-agents/api";
+import type { AgentRef } from "@halonicjs/studio-feature-agents/api";
 import type { ModelKeys, ModelsFiles, ProviderCheck } from "@halonicjs/studio-feature-models/api";
 
 /** The alias step 1 is about: the model agents use when nothing else names one. */
@@ -106,12 +106,9 @@ async function cloudModelStep(
   return (await keys.stored(provider.secret)) ? { status: "done" } : { status: "todo" };
 }
 
-/**
- * Whether step 2, **Make your first agent**, is done: the workspace has an agent. It rejects when
- * the agents can't be read.
- */
-export async function agentStepDone(agents: Pick<AgentsHost, "list">): Promise<boolean> {
-  return (await agents.list()).length > 0;
+/** Whether step 2, **Make your first agent**, is done: the workspace has an agent. */
+export function agentStepDone(agents: readonly AgentRef[]): boolean {
+  return agents.length > 0;
 }
 
 /**

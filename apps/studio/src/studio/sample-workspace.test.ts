@@ -79,3 +79,22 @@ verifies("studio.try-sample", () => {
     expect(opened).toBe(1);
   });
 });
+
+verifies("first-run.own-card", () => {
+  it("remembers Get set up per folder, reads anything else as unseen, and survives a full storage", () => {
+    const pages = storage();
+    const recent = new RecentWorkspaces(pages);
+    const acme = sampleWorkspaceOf("/docs/acme", recent, pages);
+    expect(acme.ownCardMemory()).toBe("unseen");
+
+    acme.recordOwnCard("showing");
+    expect(sampleWorkspaceOf("/docs/acme", recent, pages).ownCardMemory()).toBe("showing");
+    expect(sampleWorkspaceOf("/docs/acme 2", recent, pages).ownCardMemory()).toBe("unseen");
+
+    pages.setItem("halonic.first-run.own-card./docs/acme", "shown");
+    expect(acme.ownCardMemory()).toBe("unseen");
+    expect(() =>
+      sampleWorkspaceOf("/docs/acme", recent, storage(true)).recordOwnCard("finished"),
+    ).not.toThrow();
+  });
+});

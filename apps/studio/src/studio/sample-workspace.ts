@@ -1,4 +1,5 @@
 import {
+  type OwnCardMemory,
   type SampleStepId,
   type SampleWorkspace,
   sampleSteps,
@@ -13,6 +14,21 @@ function stepsKey(location: string): string {
 /** The storage key for "the finished card was shown" in one folder. */
 function finishedKey(location: string): string {
   return `halonic.first-run.finished.${location}`;
+}
+
+/** The storage key for what this device remembers of one folder's Get set up card. */
+function ownCardKey(location: string): string {
+  return `halonic.first-run.own-card.${location}`;
+}
+
+/** The Get set up card's memory saved in `storage`; anything else, or storage that can't be read, is "unseen". */
+function readOwnCard(storage: RecentStorage, location: string): OwnCardMemory {
+  try {
+    const text = storage.getItem(ownCardKey(location));
+    return text === "showing" || text === "finished" ? text : "unseen";
+  } catch {
+    return "unseen";
+  }
 }
 
 /** The steps saved in `text`; text that isn't a list of steps counts as none. */
@@ -66,6 +82,14 @@ export function sampleWorkspaceOf(
         storage.setItem(finishedKey(location), "shown");
       } catch {
         // Storage is full or blocked: the card shows once more next time, which is harmless.
+      }
+    },
+    ownCardMemory: () => readOwnCard(storage, location),
+    recordOwnCard: (memory) => {
+      try {
+        storage.setItem(ownCardKey(location), memory);
+      } catch {
+        // Storage is full or blocked: the next visit works the card out again, as if it were new.
       }
     },
     ...(startOwnWorkspace === undefined ? {} : { startOwnWorkspace }),

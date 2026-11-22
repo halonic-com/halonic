@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import type { AgentRef } from "@halonicjs/studio-feature-agents/api";
 import type { ProviderCheck } from "@halonicjs/studio-feature-models/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -106,10 +107,10 @@ verifies("first-run.own-progress", () => {
   });
 
   describe("step 2, Make your first agent", () => {
-    it("is done once the workspace has an agent", async () => {
-      expect(await agentStepDone({ list: async () => [] })).toBe(false);
-      const writer = { hubId: "default", id: "writer" } as never;
-      expect(await agentStepDone({ list: async () => [writer] })).toBe(true);
+    it("is done once the workspace has an agent", () => {
+      expect(agentStepDone([])).toBe(false);
+      const writer: AgentRef = { hubId: "default", id: "writer" };
+      expect(agentStepDone([writer])).toBe(true);
     });
   });
 
