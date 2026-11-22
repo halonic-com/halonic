@@ -1,6 +1,7 @@
-import { definePlugin, runWorker } from "@paperclipai/plugin-sdk";
+import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
 import { boardCheck } from "./board-check.ts";
 import { registerBoardTools } from "./board-tools.ts";
+import { handleGhGuard } from "./gh-guard-route.ts";
 import { runWatcher } from "./job.ts";
 import { registerTools } from "./tools.ts";
 
@@ -8,10 +9,14 @@ import { registerTools } from "./tools.ts";
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch` and
  * `board-check` jobs on their schedules, looks at each new comment for a
- * board ask, keeps each failed run, and answers the agent tools.
+ * board ask, keeps each failed run, and answers the agent tools and the
+ * `gh` wrapper's route.
  */
+let context: PluginContext | undefined;
+
 export const plugin = definePlugin({
   async setup(ctx) {
+    context = ctx;
     ctx.jobs.register("pr-watch", async () => {
       await runWatcher(ctx, new Date());
     });
@@ -27,6 +32,15 @@ export const plugin = definePlugin({
     });
     registerTools(ctx);
     registerBoardTools(ctx);
+  },
+  async onApiRequest(input) {
+    if (context === undefined) {
+      return { status: 503, body: { error: "The Agent tools plugin is still starting." } };
+    }
+    if (input.routeKey !== "gh-guard") {
+      return { status: 404, body: { error: "No such Agent tools route." } };
+    }
+    return await handleGhGuard(input, context);
   },
 });
 
