@@ -53,6 +53,8 @@ export interface RunCardProps {
   readonly notes?: readonly string[] | undefined;
   /** A guided run's **Pick another model**, which gives the card its waiting line (`runs.run-view.guided-run`). */
   readonly pickAnotherModel?: (() => void) | undefined;
+  /** Whether the card is drawn for a phone, where its waiting line names Ollama on "your computer". */
+  readonly phone?: boolean | undefined;
 }
 
 /**
@@ -76,6 +78,7 @@ export function RunCard({
   openBudget,
   notes = [],
   pickAnotherModel,
+  phone,
 }: RunCardProps) {
   const read = useRunLog(source, run.summary.id, run.summary.lastSeq, run);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -134,6 +137,7 @@ export function RunCard({
         openModels={openModels}
         openBudget={openBudget}
         pickAnotherModel={pickAnotherModel}
+        phone={phone}
       />
       {(onOpenLog || saveAsTest) && (
         <div className="flex flex-wrap gap-2">

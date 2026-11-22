@@ -121,6 +121,8 @@ interface RunDockProps {
   readonly onClosePickedStep: () => void;
   /** What a guide adds while the shown run's card is docked: its notes and Pick another model. */
   readonly guideRun?: WorkflowGuideRun | undefined;
+  /** Whether the page is drawn for a phone, which the run card's waiting line words for. */
+  readonly phone?: boolean | undefined;
 }
 
 /**
@@ -195,6 +197,7 @@ export function RunDock({
   pickedStep,
   onClosePickedStep,
   guideRun,
+  phone,
 }: RunDockProps) {
   const { startRun } = host;
   const started = (runId: string) => {
@@ -264,6 +267,7 @@ export function RunDock({
         openBudget={openBudget}
         notes={guideRun?.notes}
         pickAnotherModel={guideRun?.pickAnotherModel}
+        phone={phone}
       />
     );
   }
