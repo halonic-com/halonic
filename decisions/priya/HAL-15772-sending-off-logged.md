@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-15765 (decided by Liam, from C623); task HAL-15772, part 1
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xvEf5DCZfPxVnr+mZXN9Dn/ExZKCeHUsTSVovFmMzia8DWXtg1nQXgfrKOx9PDhg5JjmUFsAUUiEmRcwXU3gBQ==
 - Task: HAL-15772
 
 ## What changes
