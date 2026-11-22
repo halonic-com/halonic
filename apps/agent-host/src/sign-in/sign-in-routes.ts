@@ -56,7 +56,7 @@ const callbackPageHeaders = {
  *   is missing or wrong) or `client_secret_missing`; 501 `callback_unavailable`
  *   when the request's socket names no port.
  * - `POST /v1/integrations/sign-in/status` with `{ integration }`: answers
- *   `{ signIns: [{ signIn, state, lastOutcome? }] }` (see `SignInStatus`).
+ *   `{ signIns: [{ signIn, state, lastOutcome?, outcomeCount? }] }` (see `SignInStatus`).
  * - `POST /v1/integrations/sign-in/cancel` with `{ integration, signIn }`:
  *   drops the pending sign-in and answers 204, whether or not one was pending.
  * - `POST /v1/integrations/sign-in/sign-out` with `{ integration, signIn }`:

@@ -41,9 +41,14 @@ verifies("agent-host-client.integration-sign-in", () => {
         statusRoute,
         ok({
           signIns: [
-            { signIn: "account", state: "signedOut", lastOutcome: cancelled },
-            { signIn: "other", state: "signedIn", lastOutcome: signedIn },
-            { signIn: "third", state: "approvalChanged", lastOutcome: failedAtProvider },
+            { signIn: "account", state: "signedOut", lastOutcome: cancelled, outcomeCount: 2 },
+            { signIn: "other", state: "signedIn", lastOutcome: signedIn, outcomeCount: 1 },
+            {
+              signIn: "third",
+              state: "approvalChanged",
+              lastOutcome: failedAtProvider,
+              outcomeCount: 3,
+            },
           ],
         }),
       );
@@ -55,6 +60,7 @@ verifies("agent-host-client.integration-sign-in", () => {
         signedIn,
         failedAtProvider,
       ]);
+      expect(answer.map((each) => each.outcomeCount)).toEqual([2, 1, 3]);
     });
 
     it("fails with answer_invalid for a state it doesn't know", async () => {

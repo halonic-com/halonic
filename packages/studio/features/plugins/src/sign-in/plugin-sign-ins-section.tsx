@@ -38,6 +38,8 @@ export interface PluginSignInStatus {
   readonly signIn: string;
   readonly state: PluginSignInState;
   readonly lastOutcome?: SignInOutcome | undefined;
+  /** How many sign-ins of this one have ended since the host started; new with every outcome. */
+  readonly outcomeCount?: number | undefined;
 }
 
 /** How a sign-out ended (`IntegrationSignOutResult`). */
@@ -202,12 +204,11 @@ interface SignInBlockProps {
 /**
  * One sign-in: what it does, where it stands, its one button and the line under it. Once the
  * browser opens, the block waits for it with **Open again** and **Cancel** in place of the button,
- * until the host
- * reports the sign-in differently from when it opened, the person cancels, or the host's wait
- * ends. A sign-in that fails the same way twice in a row reads the same, so that wait ends only
- * by **Cancel** or the host's wait. Focus follows the person: onto **Cancel** when the wait
- * starts from the block's button, and back to the block's button when the wait ends while they
- * were on its row (C569).
+ * until the host reports the sign-in differently from when it opened, the person cancels, or the
+ * host's wait ends. Every outcome counts up the host's `outcomeCount`, so a sign-in that ends the
+ * same way twice in a row ends the wait too. Focus follows the person: onto **Cancel** when the
+ * wait starts from the block's button, and back to the block's button when the wait ends while
+ * they were on its row (C569).
  */
 function SignInBlock({
   service,
@@ -317,7 +318,7 @@ function SignInBlock({
       const result = await signIns.signOut(plugin, name);
       const confirmed =
         result.kind === "notSignedIn" || result.revoke === "revoked" || result.revoke === "skipped";
-      if (!confirmed) setLine(signedOutNotConfirmed(service));
+      if (!confirmed) setLine(signedOutNotConfirmed());
       await onChanged();
     } catch (error) {
       setLine(signOutFailed(messageOf(error)));
@@ -409,13 +410,17 @@ function hasFocus(element: HTMLElement | null): boolean {
   return element?.contains(document.activeElement) ?? false;
 }
 
-/** Whether the host reports a sign-in as it did before: the same state and the same last outcome. */
+/**
+ * Whether the host reports a sign-in as it did before: the same state, the same last outcome and
+ * the same number of outcomes, so a repeat of the last outcome counts as a change.
+ */
 function sameStatus(
   before: PluginSignInStatus | undefined,
   now: PluginSignInStatus | undefined,
 ): boolean {
   return (
     before?.state === now?.state &&
+    before?.outcomeCount === now?.outcomeCount &&
     JSON.stringify(before?.lastOutcome) === JSON.stringify(now?.lastOutcome)
   );
 }

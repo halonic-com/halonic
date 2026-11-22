@@ -227,6 +227,24 @@ verifies("integration-sign-in.sign-in-host", () => {
       const [status] = (await test.host.integration("example")?.status()) ?? [];
       expect(status?.lastOutcome).toEqual({ kind: "codeRefused", signIn: signInName });
     });
+
+    it("counts the sign-ins that ended, so the same outcome twice in a row reads as new", async () => {
+      const test = exampleHost();
+      const parts = test.host.integration("example");
+      const cancelled = async () => {
+        await parts?.flow.start(signInName, port);
+        parts?.flow.cancel(signInName);
+        return await parts?.status();
+      };
+
+      expect((await parts?.status())?.[0]?.outcomeCount).toBeUndefined();
+      expect(await cancelled()).toMatchObject([
+        { lastOutcome: { kind: "cancelled" }, outcomeCount: 1 },
+      ]);
+      expect(await cancelled()).toMatchObject([
+        { lastOutcome: { kind: "cancelled" }, outcomeCount: 2 },
+      ]);
+    });
   });
 });
 

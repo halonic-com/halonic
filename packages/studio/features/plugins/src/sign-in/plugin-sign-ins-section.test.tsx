@@ -95,7 +95,7 @@ verifies("plugins.plugin-sign-ins", () => {
       await press("Sign out");
 
       expect(view.textContent).toContain(
-        "You're signed out here. acme didn't confirm, so the token may still work there until it expires.",
+        "You're signed out here. The provider didn't confirm, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
       );
     });
   });

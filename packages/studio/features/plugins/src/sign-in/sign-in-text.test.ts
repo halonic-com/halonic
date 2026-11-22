@@ -128,12 +128,15 @@ verifies("plugins.plugin-sign-in-text", () => {
     });
   });
 
-  it("says the token may still work when the provider didn't confirm a sign-out", () => {
-    expect(signedOutNotConfirmed("Acme")).toBe(
-      "You're signed out here. Acme didn't confirm, so the token may still work there until it expires.",
+  it("says the token may still work when the provider didn't confirm a sign-out, and how to end it", () => {
+    expect(signedOutNotConfirmed()).toBe(
+      "You're signed out here. The provider didn't confirm, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
     );
-    expect(signedOutNotConfirmed("Acme", 2)).toBe(
-      "You're signed out here. Acme didn't confirm, so the tokens may still work there until they expire.",
+    expect(signedOutNotConfirmed(["acme-account"])).toBe(
+      "You're signed out of acme-account here. The provider didn't confirm, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
+    );
+    expect(signedOutNotConfirmed(["acme-account", "acme-files"])).toBe(
+      "You're signed out of acme-account and acme-files here. The provider didn't confirm, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.",
     );
   });
 });

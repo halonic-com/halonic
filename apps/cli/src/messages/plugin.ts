@@ -300,12 +300,13 @@ export const pluginMessages = defineMessages("plugin", {
   signedOut: (signIns: readonly string[]) => phrase`Signed you out of ${signIns.join(", ")}.`,
   /**
    * With a !, under {@link signedOut}, when the provider didn't confirm, or
-   * there was no address to revoke at: Studio's words after **Sign out**.
+   * there was no address to revoke at: Studio's words after **Sign out**,
+   * with the step that ends the token at the provider (HAL-15807).
    */
-  signedOutNotConfirmed: (name: string, tokens: number) =>
+  signedOutNotConfirmed: (tokens: number) =>
     tokens === 1
-      ? phrase`You're signed out here. ${name} didn't confirm, so the token may still work there until it expires.`
-      : phrase`You're signed out here. ${name} didn't confirm, so the tokens may still work there until they expire.`,
+      ? phrase`You're signed out here. The provider didn't confirm, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.`
+      : phrase`You're signed out here. The provider didn't confirm, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.`,
 
   /**
    * A plugin's backend doesn't start for lack of trust (`PluginBackendNotTrustedError`

@@ -93,7 +93,7 @@ export async function removePlugin(
     exitCode: exitCode.ok,
     lines: [
       phrase`${markPart("done")} ${removedLine(plugin)}`,
-      ...pluginSignedOutLines(plugin.name, removed.value),
+      ...pluginSignedOutLines(removed.value),
     ],
     json: {
       id,

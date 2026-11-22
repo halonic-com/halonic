@@ -179,7 +179,7 @@ async function removeTrust(service: PluginService, entry: PluginEntry): Promise<
     signedOut: signInsSignedOut(signedOut),
     signOutNotConfirmed: signInsNotConfirmed(signedOut),
   };
-  const signOutLines = pluginSignedOutLines(shown, signedOut);
+  const signOutLines = pluginSignedOutLines(signedOut);
   if (!hadTrust) {
     return {
       exitCode: exitCode.ok,
