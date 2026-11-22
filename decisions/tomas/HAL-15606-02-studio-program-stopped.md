@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this change on HAL-15606 (https://paperclip.halonic.com/HAL/issues/HAL-15606), from flow check C600 (#1c) on HAL-15594. The words follow `halonic tools review`'s, approved on HAL-13731 and HAL-13732; Tomas decided the Studio line as the team (HAL-2282 rule: a small wording on an approved screen, built on approved words).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EubMaHLDrDejpS+ypcLd3tCQYoiw0wk/FRng+RegVdYHDSClMt4Ocb/ubM9W+xIklnY1efEvaenC5vv2GnkTDA==
 
 ## What changes
 
