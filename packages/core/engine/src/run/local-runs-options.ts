@@ -77,6 +77,15 @@ export interface LocalRunsOptions {
    * executor's `connectors`, started once for all runs.
    */
   readonly runConnectors?: RunConnectors;
+  /**
+   * Whether getting ready ends the runs the engine lost when it last stopped, and marks their
+   * connector calls cut short (requirement `engine.skip-lost-run-sweep`). `true` when left out:
+   * the sweep takes every `running` run in the store for lost, so only the one engine on a store
+   * may do it. Set `false` where many engines share one store, as each isolate and run object's
+   * engine on the Worker does: there a sweep would end the other engines' live runs, and the
+   * watchdog finds stuck runs instead.
+   */
+  readonly sweepsLostRuns?: boolean;
 }
 
 /**

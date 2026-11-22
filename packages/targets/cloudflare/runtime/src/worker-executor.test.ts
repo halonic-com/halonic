@@ -73,9 +73,9 @@ class RunObjectTimers implements Scheduler {
   }
 }
 
-/** The Worker's engine on stand-in ports, with a scripted model and the given agents. */
-function setUp(agents: Record<string, Agent>) {
-  const ports = {
+/** Stand-ins for the Worker's ports. */
+function workerPorts() {
+  return {
     clock,
     secrets: new MemorySecrets(),
     runStore: new MemoryRunStore(),
@@ -83,6 +83,13 @@ function setUp(agents: Record<string, Agent>) {
     scheduler: new RunObjectTimers(),
     coordination: new MemoryCoordination(clock),
   };
+}
+
+/**
+ * The Worker's engine on stand-in ports, with a scripted model and the given agents. Pass the
+ * ports of another engine for a second isolate on the same run list.
+ */
+function setUp(agents: Record<string, Agent>, ports = workerPorts()) {
   const model = new ScriptedLlmProvider();
   const definitions: RunDefinitions = { workflow: replyWorkflow, agents };
   const engine = workerExecutor(ports, {
@@ -137,5 +144,20 @@ verifies("runtime.worker-executor", () => {
       expect(model.calls().started).toBe(0);
       await engine.close();
     });
+  });
+});
+
+verifies("engine.skip-lost-run-sweep", () => {
+  it("leaves another isolate's running run going when a new isolate's engine starts a run", async () => {
+    const first = setUp({ writer: writerAgent() });
+    const going = await first.engine.executor.start({ ...replyStart, runId: "run_going" });
+    expect(going.status).toBe("running");
+
+    const second = setUp({ writer: writerAgent() }, first.ports);
+    await second.engine.executor.start({ ...replyStart, runId: "run_new" });
+
+    expect(await first.ports.runStore.get("run_going")).toMatchObject({ status: "running" });
+    await first.engine.close();
+    await second.engine.close();
   });
 });

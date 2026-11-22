@@ -104,6 +104,9 @@ export function workerExecutor(
         blobs: ports.blobs,
         ids: input.ids ?? randomIds(webRandomBytes, clock),
         definitionsOf: input.definitionsOf,
+        // Each isolate and run object builds its own engine on the one run list, so a sweep
+        // would end the others' live runs; the watchdog finds stuck runs instead.
+        sweepsLostRuns: false,
       },
     },
     coordination: ports.coordination,
