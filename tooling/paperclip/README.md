@@ -1,38 +1,47 @@
 # @halonicjs/tooling-paperclip
 
-Scripts that run beside Paperclip, the control plane our agents work in,
-without a model: the PR watcher, and the reviewer path list that it and the
-reviewer-routing check share.
+Tools that run beside Paperclip, the control plane our agents work in,
+without a model: the Agent tools plugin with its PR watcher, and the
+reviewer path list that the watcher and the reviewer-routing check share.
 
 - **Layer:** tooling
 - **Owner:** mateo
-- **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide` and its readers; `reviewerFor`, `isLiamPath` and the path lists)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.reviewer-paths`
+- **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; `reviewerFor`, `isLiamPath` and the path lists)
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.reviewer-paths`
 
 ## PR watcher
 
 Replaces the model runs that only ask "is my PR green, has it merged, does
-it need a rebase" (the seat plan on HAL-15298, section 3, item 2). Every
-10 minutes it looks at every open task (`todo`, `in_progress`, `in_review`)
-that has a pull request linked as a **`pull_request` work product**. It
-doesn't search comments, so a pull request that isn't linked that way isn't
-watched.
+it need a rebase" (the seat plan on HAL-15298, section 3, item 2). It runs
+as the `pr-watch` job of the Agent tools plugin (HAL-15920, trigger A1),
+every 10 minutes.
 
-It acts only when the task is held by the agent its branch names
-(`mateo/HAL-1-…` belongs to Mateo). When the reviewer holds it, or the
-author already has a run going, it does nothing.
+**How it finds pull requests.** By branch name, as the root `AGENTS.md`
+names branches: `mateo/HAL-15359-pr-watcher` is Mateo's work on HAL-15359.
+Each run it lists every open pull request and every one updated in the last
+3 days on the configured repositories, leaving out pull requests from forks
+(anyone can name a fork's branch like ours). A pull request that merged more
+than 3 days ago while its task stayed open is missed; close such a task by
+hand. Nobody has to link pull requests on the task.
+
+It looks at open tasks (`todo`, `in_progress`, `in_review`) and acts only
+when every branch found for the task names the agent that holds it. When the
+reviewer holds it, the branches name different agents, or the author already
+has a run going, it does nothing and logs why.
 
 | What it sees | What it does |
 | --- | --- |
-| Every linked pull request is closed, at least one merged, and each merged one has `ci-ok` passed on its merge commit (the merge-group run) or is included in the base branch's newest green CI push run, and the author hasn't held the task (below) | Comments and marks the task `done` |
-| `ci-ok` failed on an open pull request's own head | Comments, which wakes the author |
-| It conflicts with its base branch and isn't in the merge queue | Comments |
-| A review comment newer than the watcher's and the author's last comment on the task: a GitHub review that requests changes, an inline comment on the head, or a review or conversation comment with a `[blocker]`, `[major]` or `[minor]` finding or a "changes requested" verdict ("No changes requested" and approvals don't count) | Comments |
+| Every pull request found for the task is closed, at least one merged, each merged one has `ci-ok` passed on its merge commit (the merge-group run) or is included in the base branch's newest green CI push run, the task has no child task that isn't done or cancelled, and the author hasn't held it (below) | Marks the task `done` and comments |
+| `ci-ok` failed on an open pull request's own head | Comments and wakes the author |
+| It conflicts with its base branch and isn't in the merge queue | Comments and wakes the author |
+| A review comment newer than the watcher's and the author's last comment on the task: a GitHub review that requests changes, an inline comment on the head, or a review or conversation comment with a `[blocker]`, `[major]` or `[minor]` finding or a "changes requested" verdict ("No changes requested" and approvals don't count), by the repository's owner, an organization member or a collaborator | Comments and wakes the author |
+
+Any open pull request keeps the task open, a stacked one included; one
+closed without merging is ignored.
 
 **More PRs to come.** A task that delivers several pull requests one after
 another would otherwise be closed after its first merge. To hold it open,
-put this line in your task comment when you link a pull request that isn't
-the last one:
+put this line in your task comment when a pull request isn't the last one:
 
 ```text
 PR watcher: more PRs to come
@@ -43,37 +52,49 @@ you comment again without the line. Leave it out of the comment for the last
 pull request.
 
 A failed merge group isn't the author's: the queue session finds the
-culprit. Each comment carries a hidden marker per pull request, head and
-reason, so the author hears about each new state once, not every 10
-minutes. The watcher keeps no state of its own.
+culprit. Each comment starts with `PR watcher:` and carries a hidden marker
+per pull request, head and reason, so the author hears about each new state
+once, not every 10 minutes. The host stores no plugin id on a comment, so
+the watcher's own comments are the ones with neither an agent nor a user as
+author that start with `PR watcher:`. It keeps no state of its own.
 
 It only sends GET requests to GitHub, and only to `api.github.com`. About
-four requests per open pull request and two per merged one each pass.
+four requests per open pull request whose author holds the task, two per
+merged one, and one or two list pages per repository each pass.
 
-### Running it
+## The Agent tools plugin
 
-From the root of a clone of `main`:
+`src/plugin/` holds the plugin: `manifest.ts`, `worker.ts` (the job) and
+`host.ts`, the adapter to Paperclip's plugin API. It asks for the fewest
+capabilities the watcher needs: jobs, reading companies, agents, tasks and
+comments, creating comments, wake-ups, `issues.update`, outbound HTTP and
+reading a secret. No webhooks, agent tools, UI, files or processes.
+
+- **Status changes:** the manifest can't narrow `issues.update`, so
+  `host.ts` is the only file that changes a task's status, and its
+  `doneOnly` refuses anything but `{ status: "done" }`. A test fails if
+  another file calls `issues.update(`.
+- **Outbound HTTP:** the manifest can't list allowed hosts, so the GitHub
+  reader's origin guard keeps the token on `api.github.com`.
+- **Settings per company:** `githubToken` (the secret
+  `PR_WATCHER_GITHUB_TOKEN`, a read-only fine-grained token), `repos`
+  (default `halonic-com/halonic`) and `dryRun`. **Dry run is on unless it is
+  set to `false`**: the job then only logs what it would do. A company
+  without a token is skipped.
+- **Trust:** a plugin worker runs with the host's rights and no sandbox. The
+  token is read at run time and never logged or kept.
+
+### Building and installing it
 
 ```sh
-pnpm exec node tooling/paperclip/src/cli/pr-watcher.ts --dry-run
+pnpm --filter @halonicjs/tooling-paperclip run build:plugin
 ```
 
-`--dry-run` prints what it would do and writes nothing. It reads `GH_TOKEN`
-and the `PAPERCLIP_*` variables a Paperclip run sets (`PAPERCLIP_API_URL`,
-`PAPERCLIP_API_KEY`, `PAPERCLIP_COMPANY_ID`, `PAPERCLIP_AGENT_ID`, and
-`PAPERCLIP_RUN_ID` when there is one). It exits with 1 when it couldn't
-check a task, and names the task.
-
-### The watcher agent
-
-- **Adapter:** `process`, running the command above without `--dry-run`, in a
-  clone of `main` that it updates first (`git pull --ff-only`).
-- **Heartbeat:** every 10 minutes. No model.
-- **Secrets:** only `PR_WATCHER_GITHUB_TOKEN`, given to it as `GH_TOKEN`: a
-  fine-grained token for `halonic-com/halonic` and `halonic-com/website`,
-  read-only (pull requests, checks, commit statuses, actions, contents).
-- **Paperclip:** its own key. It writes only task comments and the `done`
-  status.
+writes `dist/worker.js` (the SDK bundled in) and `dist/manifest.js`, which
+`package.json`'s `paperclipPlugin` block names. The board installs it from
+that folder of a `main` checkout on Halonic Server (Settings → Plugins);
+publishing it to npm would be a release. Run it in dry run first, read the
+job log, then turn `dryRun` off.
 
 ## Reviewer path list
 

@@ -4,7 +4,7 @@ Owner: mateo · Layer: tooling · Read the root `AGENTS.md` first; this file add
 
 ## Scope
 
-Scripts that run beside Paperclip without a model: the PR watcher and the reviewer path list.
+Tools that run beside Paperclip without a model: the Agent tools plugin with its PR watcher, and the reviewer path list.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

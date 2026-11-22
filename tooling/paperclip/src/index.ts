@@ -1,5 +1,16 @@
-/** Public entry point of tooling/paperclip, for tests and other tooling. */
+/** Public entry point of tooling/paperclip, for tests and other tooling. The plugin worker is src/plugin/worker.ts. */
+
+export { doneOnly, type HostApi, paperclipHost } from "./plugin/host.ts";
 export {
+  type JobApi,
+  readSettings,
+  requestTimeoutMs,
+  runWatcher,
+  type WatcherSettings,
+} from "./plugin/job.ts";
+export { manifest } from "./plugin/manifest.ts";
+export {
+  branchesOwner,
   branchOwner,
   type CheckState,
   candidates,
@@ -12,27 +23,28 @@ export {
   type Reason,
   type WatchedTask,
 } from "./pr-watcher/decide.ts";
+export {
+  closedWindowDays,
+  discoverPulls,
+  type FoundPulls,
+  type PullRef,
+  taskOfBranch,
+} from "./pr-watcher/discover.ts";
 export { type BaseGreenSince, baseGreenSince, pullFacts } from "./pr-watcher/facts.ts";
 export {
   ciOk,
+  everyPage,
   type Fetch,
   type GitHubGet,
   gitHubApi,
   gitHubReader,
   inMergeQueue,
   latestReview,
-  parsePullUrl,
 } from "./pr-watcher/github.ts";
-export {
-  type AgentRow,
-  type CommentRow,
-  type Paperclip,
-  type PaperclipOptions,
-  paperclipClient,
-  type TaskRow,
-} from "./pr-watcher/paperclip.ts";
+export type { AgentRow, CommentRow, Paperclip, TaskRow } from "./pr-watcher/paperclip.ts";
 export {
   doneMessage,
+  isSelf,
   marker,
   readMemory,
   type TickOptions,
