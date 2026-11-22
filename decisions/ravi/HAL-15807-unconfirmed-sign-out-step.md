@@ -3,6 +3,7 @@
 - Task: HAL-15807, with HAL-15814 bundled in
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15807 (from flow check C634 on HAL-15803, items 3 and 7; the words are a detail of an approved screen, decided with Sofia on HAL-15819, HAL-2282 rule); the toast title from words check C633 on HAL-15814
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EBYqGZmhwYmJMSS+xqc3Rcn+JF7IxALIyP6DtzxIGYqVv117+qKFda6yRFg5RLLqMJLtwnIz5XhPUZDjnHB2Ag==
 
 ## What changes
 
