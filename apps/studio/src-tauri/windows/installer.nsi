@@ -1990,8 +1990,8 @@ FunctionEnd
 ; "removed", "removed_kept" (removed, but the access it kept on the user's
 ; folders goes at Halonic's next start, so only if it's installed again),
 ; "removed_manual" (removed, but some access it kept stays until a removal
-; without administrator rights, HAL-15836), "none" (nothing was set up,
-; nothing asked), "refused", "failed"
+; without administrator rights, which nothing here can run yet, HAL-15836,
+; HAL-16077), "none" (nothing was set up, nothing asked), "refused", "failed"
 ; (with $SandboxReason) or "skipped" (a silent uninstall without administrator
 ; rights, which can't ask).
 Function un.RemoveSandbox
@@ -2032,7 +2032,7 @@ Function un.RemoveSandbox
   ${ElseIf} $2 == "3"
     StrCpy $SandboxOutcome "removed_manual"
     DetailPrint "✓ Removed the agent sandbox"
-    DetailPrint "   It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again and open it normally, not as administrator. Then set up the sandbox in Settings › Agent sandbox and remove it."
+    DetailPrint "   It may still have access to some of your project folders. ${PRODUCTNAME} can't end that yet. To get help, open an issue at github.com/halonic-com/halonic/issues."
   ${ElseIf} $2 == "20"
     StrCpy $SandboxOutcome "none"
   ${ElseIf} $2 == "10"
@@ -2087,7 +2087,7 @@ Function un.PageDone
       ${If} $SandboxOutcome == "removed_kept"
         ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders stays until you install ${PRODUCTNAME} again and start it."
       ${Else}
-        ${NSD_CreateLabel} $4 12u $5 40u "It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again and open it normally, not as administrator. Then set up the sandbox in Settings › Agent sandbox and remove it."
+        ${NSD_CreateLabel} $4 12u $5 40u "It may still have access to some of your project folders. ${PRODUCTNAME} can't end that yet. To get help, open an issue at github.com/halonic-com/halonic/issues."
       ${EndIf}
       Pop $0
     ${EndIf}

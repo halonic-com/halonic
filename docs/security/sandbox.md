@@ -143,8 +143,10 @@ Halonic again after such an uninstall, the access stays on your folders.
 Installing and starting Halonic again takes it back.
 
 If srt still lists its sandbox account, or Halonic can't read its status, the
-next start doesn't take it back; Settings, `halonic sandbox remove` and the
-uninstaller say how to end it.
+next start doesn't take it back. Only a removal run again on Windows without
+administrator rights ends it, and Halonic can't run one for you yet: Settings ›
+Agent sandbox is off for now, and on Windows the command line runs inside WSL,
+which can't reach srt's Windows account.
 
 ## "This computer" has none of it
 
