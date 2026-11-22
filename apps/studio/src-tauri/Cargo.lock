@@ -1723,6 +1723,7 @@ dependencies = [
 name = "halonic-profile"
 version = "0.1.0"
 dependencies = [
+ "halonic-workspace-files",
  "icu_normalizer",
  "serde_json",
  "sha2",

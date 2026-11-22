@@ -5,7 +5,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use halonic_git_guard::{OpenedFolders, plain_path};
-use halonic_trust_grant::{FolderProbe, PickedFolders, TrustState};
+use halonic_trust_grant::{FolderPlace, FolderProbe, PickedFolders, TrustState};
+
+/// `InProfile` when `inside`, else `Apart`: the place a test's profile gives.
+fn in_profile(inside: bool) -> FolderPlace {
+    if inside {
+        FolderPlace::InProfile
+    } else {
+        FolderPlace::Apart
+    }
+}
 
 /// Folders of its own for one test: `documents`, `projects`, `profile`.
 struct Scratch(PathBuf);
@@ -70,7 +79,12 @@ impl Shell {
         name: &str,
     ) -> Result<FolderProbe, &'static str> {
         self.state
-            .probe_workspace(Some(&scratch.path("documents")), |_| false, parent, name)
+            .probe_workspace(
+                Some(&scratch.path("documents")),
+                |_| FolderPlace::Apart,
+                parent,
+                name,
+            )
             .map_err(|refusal| refusal.kind())
     }
 
@@ -81,13 +95,13 @@ impl Shell {
         name: &str,
         ask: impl FnOnce(&str) -> bool,
     ) -> Result<Option<String>, &'static str> {
-        self.open_with(scratch, |_| false, parent, name, ask)
+        self.open_with(scratch, |_| FolderPlace::Apart, parent, name, ask)
     }
 
     fn open_with(
         &self,
         scratch: &Scratch,
-        fenced: impl Fn(&Path) -> bool,
+        place: impl Fn(&Path) -> FolderPlace,
         parent: &str,
         name: &str,
         ask: impl FnOnce(&str) -> bool,
@@ -97,7 +111,7 @@ impl Shell {
                 &self.folders,
                 &scratch.list(),
                 Some(&scratch.path("documents")),
-                fenced,
+                place,
                 parent,
                 name,
                 ask,
@@ -186,7 +200,12 @@ fn trust_grants_probe_makes_the_checks_of_creating() {
     assert_eq!(
         shell
             .state
-            .probe_workspace(None, |target| target == profile_here, &chosen, "Cfg")
+            .probe_workspace(
+                None,
+                |target| in_profile(target == profile_here),
+                &chosen,
+                "Cfg",
+            )
             .map_err(|r| r.kind()),
         Err("parent_private")
     );
@@ -285,7 +304,7 @@ fn trust_grants_open_refuses_before_asking() {
     assert_eq!(
         shell.open_with(
             &scratch,
-            |target| target == mine,
+            |target| in_profile(target == mine),
             &documents,
             "Mine",
             no_question

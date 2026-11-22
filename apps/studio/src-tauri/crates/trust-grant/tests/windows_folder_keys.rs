@@ -14,7 +14,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use halonic_git_guard::{OpenedFolders, plain_path};
-use halonic_trust_grant::TrustState;
+use halonic_trust_grant::{FolderPlace, TrustState};
 use halonic_trust_store::FileTrustStore;
 use serde::Deserialize;
 use serde_json::json;
@@ -114,7 +114,11 @@ fn trust_grants_key_a_windows_folder_alike_in_any_case_or_short_name() {
         let state = TrustState::default();
         let folders = OpenedFolders::new();
         let picked = state
-            .pick(&folders, || Some(root.folders().join(&case.given)))
+            .pick(
+                &folders,
+                |_| FolderPlace::Apart,
+                || Some(root.folders().join(&case.given)),
+            )
             .expect("picking a folder works");
         assert_eq!(
             picked,
@@ -133,15 +137,19 @@ fn trust_grants_refuse_a_windows_folder_in_another_case_or_short_name() {
     let state = TrustState::default();
     let folders = OpenedFolders::new();
     state
-        .pick(&folders, || Some(root.folders()))
+        .pick(&folders, |_| FolderPlace::Apart, || Some(root.folders()))
         .expect("picking a folder works");
     let store = FileTrustStore::new(root.0.join("profile").join("trust"));
     let grant = |location: &str| {
         let record = json!({"location": location, "pins": {}});
         state
-            .grant(&store, &folders, &record, |_| -> bool {
-                panic!("the shell asked about a folder inside the picked one")
-            })
+            .grant(
+                &store,
+                &folders,
+                &record,
+                |_| FolderPlace::Apart,
+                |_| -> bool { panic!("the shell asked about a folder inside the picked one") },
+            )
             .map_err(|refusal| refusal.kind())
     };
     for case in root.cases(&golden) {

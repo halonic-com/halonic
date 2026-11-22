@@ -78,8 +78,9 @@ fn opened_components(path: &Path) -> Vec<String> {
 }
 
 /// The real path of the longest part of `path` that exists, followed by the
-/// rest as written.
-fn real_path_as_far_as_it_exists(path: &Path) -> std::path::PathBuf {
+/// rest as written. The shell also compares the profile's place with it
+/// (HAL-15201), so a workspace is refused by the paths this fence sees.
+pub fn real_path_as_far_as_it_exists(path: &Path) -> std::path::PathBuf {
     let mut rest: Vec<OsString> = Vec::new();
     let mut existing = path;
     loop {

@@ -19,6 +19,9 @@ publish.workspace = true
 [dependencies]
 icu_normalizer = { version = "=2.4.0", default-features = false, features = ["compiled_data"] }
 sha2 = { version = "=0.10.9", default-features = false }
+# Where the profile may be is compared by names as the file fence opens
+# them (HAL-15201), so both use the one `segment_as_opened`.
+halonic-workspace-files = { path = "../workspace-files" }
 
 # serde_json reads the shared golden cases in the tests.
 [dev-dependencies]

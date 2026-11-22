@@ -18,14 +18,13 @@ use halonic_git_guard::plain_path;
 use halonic_profile::join_path;
 use halonic_trust_grant::{FolderProbe, PickedFolders, TrustRefusal, TrustState};
 use halonic_trust_store::FileTrustStore;
-use halonic_workspace_files::Fence;
 use serde_json::Value;
 use tauri::{AppHandle, Manager, Runtime};
 
-use crate::files::profile_fence;
 use crate::git::GitState;
 use crate::native_dialogs::{ask_to_trust, pick_folder as show_folder_picker};
 use crate::profile::cli_profile;
+use crate::profile_place::folder_place;
 
 /// The trust records in the profile the CLI uses.
 fn trust_store<R: Runtime>(app: &AppHandle<R>) -> Result<FileTrustStore, TrustRefusal> {
@@ -64,21 +63,24 @@ where
 ///
 /// The pick is remembered in the profile, so `reopen_folder` can open the
 /// folder after a restart. If that fails, the folder is still open for now,
-/// so the pick isn't refused; why goes to the log.
+/// so the pick isn't refused; why goes to the log. A folder that holds a
+/// moved profile, or is inside the profile, is refused as `profile_inside`
+/// or `workspace_inside_profile` (HAL-15201), and isn't remembered.
 #[tauri::command]
 pub async fn pick_folder<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>, TrustRefusal> {
     on_worker(app, |app| {
         let folders = app.state::<GitState>().folders();
         let state = app.state::<TrustState>();
         let choose = || show_folder_picker(app);
+        let place = |real: &Path| folder_place(app, real);
         match picked_folders(app) {
-            Ok(list) => state.pick_remembered(&folders, &list, choose),
+            Ok(list) => state.pick_remembered(&folders, &list, place, choose),
             Err(refusal) => {
                 halonic_shell_log::record(
                     "pick_folder",
                     format!("picks can't be remembered: {refusal:?}"),
                 );
-                state.pick(&folders, choose)
+                state.pick(&folders, place, choose)
             }
         }
     })
@@ -134,7 +136,7 @@ pub async fn create_workspace_folder<R: Runtime>(
     name: String,
 ) -> Result<String, TrustRefusal> {
     on_worker(app, move |app| {
-        let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+        cli_profile(app).map_err(TrustRefusal::io)?;
         let list = picked_folders(app)?;
         let folders = app.state::<GitState>().folders();
         let documents = app.path().document_dir().ok();
@@ -142,7 +144,7 @@ pub async fn create_workspace_folder<R: Runtime>(
             &folders,
             &list,
             documents.as_deref(),
-            |created| profile_fence(&profile, created) == Fence::Whole,
+            |created| folder_place(app, created),
             &parent,
             &name,
         )
@@ -161,11 +163,11 @@ pub async fn probe_workspace_folder<R: Runtime>(
     name: String,
 ) -> Result<FolderProbe, TrustRefusal> {
     on_worker(app, move |app| {
-        let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+        cli_profile(app).map_err(TrustRefusal::io)?;
         let documents = app.path().document_dir().ok();
         app.state::<TrustState>().probe_workspace(
             documents.as_deref(),
-            |target| profile_fence(&profile, target) == Fence::Whole,
+            |target| folder_place(app, target),
             &parent,
             &name,
         )
@@ -186,7 +188,7 @@ pub async fn open_workspace_folder<R: Runtime>(
     name: String,
 ) -> Result<Option<String>, TrustRefusal> {
     on_worker(app, move |app| {
-        let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+        cli_profile(app).map_err(TrustRefusal::io)?;
         let list = picked_folders(app)?;
         let folders = app.state::<GitState>().folders();
         let documents = app.path().document_dir().ok();
@@ -194,7 +196,7 @@ pub async fn open_workspace_folder<R: Runtime>(
             &folders,
             &list,
             documents.as_deref(),
-            |target| profile_fence(&profile, target) == Fence::Whole,
+            |target| folder_place(app, target),
             &parent,
             &name,
             |question| ask_to_trust(app, question),
@@ -204,8 +206,9 @@ pub async fn open_workspace_folder<R: Runtime>(
 }
 
 /// Opens a folder the person picked before, after a restart, without the
-/// dialog: only a location the shell remembered from a pick, and only while
-/// it is still that folder (see `TrustState::reopen`).
+/// dialog: only a location the shell remembered from a pick, only while it
+/// is still that folder, and only while it neither holds a moved profile nor
+/// is inside the profile (see `TrustState::reopen`).
 #[tauri::command]
 pub async fn reopen_folder<R: Runtime>(
     app: AppHandle<R>,
@@ -214,7 +217,9 @@ pub async fn reopen_folder<R: Runtime>(
     on_worker(app, move |app| {
         let list = picked_folders(app)?;
         let folders = app.state::<GitState>().folders();
-        app.state::<TrustState>().reopen(&folders, &list, &location)
+        let place = |real: &Path| folder_place(app, real);
+        app.state::<TrustState>()
+            .reopen(&folders, &list, place, &location)
     })
     .await
 }
@@ -295,7 +300,8 @@ pub async fn trust_grant<R: Runtime>(app: AppHandle<R>, record: Value) -> Result
         let store = trust_store(app)?;
         let folders = app.state::<GitState>().folders();
         let state = app.state::<TrustState>();
-        state.grant(&store, &folders, &record, |question| {
+        let place = |real: &Path| folder_place(app, real);
+        state.grant(&store, &folders, &record, place, |question| {
             ask_to_trust(app, question)
         })
     })

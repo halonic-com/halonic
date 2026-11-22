@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{MAIN_SEPARATOR, Path, PathBuf};
 
 use halonic_git_guard::{OpenedFolders, plain_path};
-use halonic_trust_grant::{TrustState, question_text};
+use halonic_trust_grant::{FolderPlace, TrustState, question_text};
 use halonic_trust_store::FileTrustStore;
 use serde_json::{Value, json};
 
@@ -59,7 +59,11 @@ impl Shell {
         let state = TrustState::default();
         let folders = OpenedFolders::new();
         let picked = state
-            .pick(&folders, || Some(scratch.path("work/acme")))
+            .pick(
+                &folders,
+                |_| FolderPlace::Apart,
+                || Some(scratch.path("work/acme")),
+            )
             .expect("picking a folder works");
         assert_eq!(picked, Some(scratch.location("work/acme")));
         let store = FileTrustStore::new(scratch.path("profile").join("trust"));
@@ -83,12 +87,16 @@ impl Shell {
         answer: bool,
     ) -> (Result<(), &'static str>, Vec<String>) {
         let mut asked = Vec::new();
-        let result = self
-            .state
-            .grant(&self.store, &self.folders, record, |question| {
+        let result = self.state.grant(
+            &self.store,
+            &self.folders,
+            record,
+            |_| FolderPlace::Apart,
+            |question| {
                 asked.push(question.to_owned());
                 answer
-            });
+            },
+        );
         (result.map_err(|refusal| refusal.kind()), asked)
     }
 
@@ -116,6 +124,27 @@ impl Shell {
 
 fn record(location: &str) -> Value {
     json!({"location": location, "pins": {}})
+}
+
+#[test]
+fn profile_place_refuses_a_grant_before_asking() {
+    let shell = Shell::with_acme_picked("grant-place");
+    let other = shell.location("work/other");
+    for (place, kind) in [
+        (FolderPlace::HoldsProfile("HALONIC_HOME"), "profile_inside"),
+        (FolderPlace::InProfile, "workspace_inside_profile"),
+    ] {
+        let result = shell.state.grant(
+            &shell.store,
+            &shell.folders,
+            &record(&other),
+            |_| place,
+            |_| panic!("no question for a folder refused for its place"),
+        );
+        assert_eq!(result.map_err(|refusal| refusal.kind()), Err(kind));
+    }
+    assert!(!shell.is_saved(&other));
+    assert!(!shell.is_open(&other));
 }
 
 #[test]
@@ -223,12 +252,16 @@ fn trust_grants_open_the_checked_folder_even_if_a_link_is_swapped_in_while_askin
     let shell = Shell::with_acme_picked("swap-while-asking");
     fs::create_dir_all(shell.scratch.path("home")).expect("home can be made");
     let other = shell.location("work/other");
-    let result = shell
-        .state
-        .grant(&shell.store, &shell.folders, &record(&other), |_| {
+    let result = shell.state.grant(
+        &shell.store,
+        &shell.folders,
+        &record(&other),
+        |_| FolderPlace::Apart,
+        |_| {
             swap_for_link(&shell.scratch, "work/other", "home");
             true
-        });
+        },
+    );
     assert!(result.is_ok());
     assert!(!shell.is_open(&shell.location("home")));
 }
@@ -289,19 +322,25 @@ fn trust_grants_show_one_dialog_at_a_time() {
     let evil = shell.location("work/acme-evil");
     let hubs = shell.location("work/acme/hubs");
     let mut while_asking = Vec::new();
-    let result = shell
-        .state
-        .grant(&shell.store, &shell.folders, &record(&other), |_| {
+    let result = shell.state.grant(
+        &shell.store,
+        &shell.folders,
+        &record(&other),
+        |_| FolderPlace::Apart,
+        |_| {
             // While the question is open, another question or the folder dialog
             // is refused at once; a grant that needs no question goes through.
             while_asking.push(shell.grant(&evil, true).0);
-            let picked = shell
-                .state
-                .pick(&shell.folders, || panic!("no dialog while one is open"));
+            let picked = shell.state.pick(
+                &shell.folders,
+                |_| FolderPlace::Apart,
+                || panic!("no dialog while one is open"),
+            );
             while_asking.push(picked.map(|_| ()).map_err(|refusal| refusal.kind()));
             while_asking.push(shell.grant(&hubs, true).0);
             true
-        });
+        },
+    );
     assert!(result.is_ok());
     assert_eq!(while_asking, [Err("busy"), Err("busy"), Ok(())]);
     assert!(!shell.is_saved(&evil));
@@ -356,7 +395,9 @@ fn trust_grants_ask_again_after_a_picked_folder_is_granted_and_revoked() {
 #[test]
 fn trust_grants_pick_nothing_when_the_person_cancels_the_dialog() {
     let shell = Shell::with_acme_picked("cancel-pick");
-    let picked = shell.state.pick(&shell.folders, || None);
+    let picked = shell
+        .state
+        .pick(&shell.folders, |_| FolderPlace::Apart, || None);
     assert_eq!(picked.map_err(|refusal| refusal.kind()), Ok(None));
     assert!(!shell.is_open(&shell.location("work/other")));
 }
