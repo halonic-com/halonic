@@ -41,7 +41,7 @@ export interface FirstRunModelChoiceParts {
    * the browser demo: Continue then changes nothing.
    */
   readonly settle: (() => Promise<void>) | undefined;
-  readonly keys: Pick<ModelKeys, "save">;
+  readonly keys: Pick<ModelKeys, "save" | "remove">;
   /**
    * The keys saved on this computer, read as a run reads them (`workspaceSavedKeys`): the one
    * lookup both "is a key saved?" and the test with the saved key use.
@@ -172,6 +172,9 @@ export class FirstRunModelChoice implements ModelChoiceService {
     let keySaved = false;
     if (passed.key !== undefined && secretName !== undefined) {
       try {
+        // Allowed origins belong to a value, not a name: a provider file's own name (`team-key`)
+        // may hold an earlier key's origins, and a new key starts with none (HAL-16409).
+        await this.#parts.keys.remove(secretName);
         await this.#parts.keys.save(secretName, passed.key);
         keySaved = true;
       } catch (error) {
