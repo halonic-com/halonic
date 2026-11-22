@@ -154,6 +154,7 @@ export function serviceOn(
     timeZone: "UTC",
     isTrusted: async () => true,
     mayStart: async () => true,
+    isTrustedNow: () => true,
     ids,
     setTimer: () => () => {},
     newToken: () => "token",

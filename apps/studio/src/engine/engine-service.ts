@@ -26,7 +26,8 @@
 // the test model, the CLI's rule (HAL-1984, HAL-12409): the engine checks it
 // on the workspace it loaded, when it opens and before each start, and it
 // closes when the trust is removed while it is open (HAL-12799), ending the runs it stopped
-// right then, so no page keeps saying they're going (HAL-13678).
+// right then, so no page keeps saying they're going (HAL-13678). A start that the shell refuses
+// because Remove trust closed the folder is refused as untrusted too (`engine-trust.ts`).
 // While it is open, it starts the workspace's routines on time, as
 // `halonic routines watch` does (`pageRoutines`, HAL-14205).
 
@@ -44,13 +45,12 @@ import type { startOfDueRun } from "@halonicjs/app";
 import {
   type AssembledEngine,
   assembleEngine,
-  endStoppedRuns,
   type LocalExecutor,
   noListedToolApproval,
 } from "@halonicjs/engine";
 import type { RunSummary } from "@halonicjs/events";
 import type { SendOptions } from "@halonicjs/ports";
-import { type ServiceKey, serviceKey, WorkspaceUntrusted } from "@halonicjs/studio-shell";
+import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
   filesOf,
   type LoadedWorkspace,
@@ -64,6 +64,11 @@ import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
 import { savedFiles, startRoutineOn } from "./engine-routine-start.ts";
 import { pageRoutines, routineSkipsOf, SkipListeners } from "./engine-routines.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
+import {
+  closeAndEndStoppedRuns,
+  refuseUntrusted,
+  untrustedWhenFolderClosed,
+} from "./engine-trust.ts";
 import { withKeyOriginPrompt } from "./key-origin-prompt.ts";
 import {
   agentRefusalOf,
@@ -74,15 +79,10 @@ import {
 } from "./page-refusal.ts";
 
 export type { PageEngineLock } from "./engine-lock.ts";
+export { trustRemovedCause } from "./engine-trust.ts";
 
 /** What a routine starts, with its placeholders filled in: what the routine scheduler would start. */
 export type RoutineRunStart = ReturnType<typeof startOfDueRun>;
-
-/**
- * The typed cause of a run the engine stopped because the workspace's trust was removed; the run
- * page's banner says so by this code (`runs.run-view.trust-removed`).
- */
-export const trustRemovedCause = { kind: "denied", code: "workspace.trust-removed" } as const;
 
 /** The hub's agent a routine starts. */
 export interface AgentRef {
@@ -152,24 +152,20 @@ export class EngineService {
    * time it's asked when its workspace may start nothing now, such as after a person removed their
    * trust while the engine was open. Everything that starts on the engine goes through here.
    *
-   * @throws KindedError `denied`, or what {@link EngineService.open} throws
+   * @throws KindedError `denied`, also for the shell's refusal of a folder Remove trust closed, or
+   *   what {@link EngineService.open} throws
    */
-  async openForStart(): Promise<AssembledEngine> {
-    const { engine, workspace } = await this.#open();
-    await this.#refuseUntrusted(workspace);
-    return engine;
+  openForStart(): Promise<AssembledEngine> {
+    return this.#asStart(async () => {
+      const { engine, workspace } = await this.#open();
+      await refuseUntrusted(this.#options.mayStart, workspace);
+      return engine;
+    });
   }
 
-  /**
-   * Refuses, failing closed, a workspace that isn't trusted and reaches more than the test model.
-   *
-   * @throws WorkspaceUntrusted `denied`, with the code that tells it from other `denied` errors
-   */
-  async #refuseUntrusted(workspace: LoadedWorkspace): Promise<void> {
-    const may = await this.#options.mayStart(workspace).catch(() => false);
-    if (!may) {
-      throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");
-    }
+  /** Runs a start, with the shell's refusal of a folder Remove trust closed said as untrusted. */
+  #asStart<T>(start: () => Promise<T>): Promise<T> {
+    return untrustedWhenFolderClosed(start, this.#options.isTrustedNow);
   }
 
   /**
@@ -224,13 +220,15 @@ export class EngineService {
     input: Record<string, unknown>,
     from: "manual" | "inbox" = "manual",
   ): Promise<{ readonly id: string }> {
-    await this.check(run);
-    const engine = await this.openForStart();
-    // A run started from the window is the person's own, so it names a trigger: with none, the
-    // Runs list says it was started in the terminal.
-    const trigger = { type: from, at: this.#options.clock.now().toISOString() };
-    const { id } = await engine.executor.start({ ...run, input, trigger, version: savedFiles });
-    return { id };
+    return this.#asStart(async () => {
+      await this.check(run);
+      const engine = await this.openForStart();
+      // A run started from the window is the person's own, so it names a trigger: with none, the
+      // Runs list says it was started in the terminal.
+      const trigger = { type: from, at: this.#options.clock.now().toISOString() };
+      const { id } = await engine.executor.start({ ...run, input, trigger, version: savedFiles });
+      return { id };
+    });
   }
 
   /** Starts what a routine runs, for its Run now ({@link startRoutineOn}). */
@@ -238,7 +236,7 @@ export class EngineService {
     start: RoutineRunStart,
     trigger: { readonly routineKey: string; readonly at: string },
   ): Promise<{ readonly id: string }> {
-    return startRoutineOn(this, start, trigger);
+    return this.#asStart(() => startRoutineOn(this, start, trigger));
   }
 
   /**
@@ -258,14 +256,12 @@ export class EngineService {
     payload?: unknown,
     options?: SendOptions,
   ): Promise<RunSummary> {
-    const { engine, workspace, runs } = await this.#forAnswer();
-    await refuseConnectorApprove(
-      { runs, workspace, startsConnectors: this.pageRuns.startsConnectors },
-      runId,
-      event,
-      options,
-    );
-    return engine.executor.send(runId, event, payload, options);
+    return this.#asStart(async () => {
+      const { engine, workspace, runs } = await this.#forAnswer();
+      const { startsConnectors } = this.pageRuns;
+      await refuseConnectorApprove({ runs, workspace, startsConnectors }, runId, event, options);
+      return engine.executor.send(runId, event, payload, options);
+    });
   }
 
   /**
@@ -286,7 +282,7 @@ export class EngineService {
     const open = await this.#open().catch((error: unknown) => {
       throw answerRefusalOf(error);
     });
-    await this.#refuseUntrusted(open.workspace);
+    await refuseUntrusted(this.#options.mayStart, open.workspace);
     return open;
   }
 
@@ -324,26 +320,8 @@ export class EngineService {
     // Not when the engine was closed or opened afresh meanwhile: that one was checked as it opened.
     if (may || this.#opening !== opening) return;
     this.#opening = undefined;
-    this.#ending = this.#closeAndEndStoppedRuns(open);
+    this.#ending = closeAndEndStoppedRuns(open.engine, open.lock, this.#options);
     await this.#ending;
-  }
-
-  /**
-   * Closes `open`'s engine and ends the runs it stopped, holding the workspace's lock until they
-   * are ended: an engine that took the lock in between, the CLI's or another window's, could have
-   * started a run this would end while it is going (`end-interrupted-runs.ts`). For the same
-   * reason it ends nothing once another process took the lock over.
-   */
-  async #closeAndEndStoppedRuns({ engine, lock }: OpenEngine): Promise<void> {
-    const { ipc, location, clock } = this.#options;
-    lock.kept = true;
-    try {
-      await engine.close();
-      if (lock.lost) return;
-      await endStoppedRuns(new TauriRunStore(ipc, location), clock, trustRemovedCause);
-    } finally {
-      await lock.held.release();
-    }
   }
 
   /**
@@ -372,7 +350,7 @@ export class EngineService {
       const workspace = await loadWorkspace(this.#options.definitions);
       // Before the scheduler and the harness host start, so an untrusted workspace's
       // routines don't fire and its open harness runs don't resume either.
-      await this.#refuseUntrusted(workspace);
+      await refuseUntrusted(this.#options.mayStart, workspace);
       const runConnectors = await this.#options.openRunConnectors?.();
       const connectors = runConnectors?.connectors;
       const runStore = new TauriRunStore(ipc, location);
@@ -390,7 +368,7 @@ export class EngineService {
         await this.check({ hubId, workflowId }).catch((error: unknown) => {
           throw routineRefusalOf(error);
         });
-        await this.#refuseUntrusted(workspace);
+        await refuseUntrusted(this.#options.mayStart, workspace);
       });
       const fromWorkspace = workspaceExecutorOptions({
         workspace,

@@ -1,7 +1,6 @@
 import { AgentHostChat } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
-  TauriEngineLock,
   type TauriFileShell,
   TauriInstructionTrustStore,
   TauriRecordStore,
@@ -13,7 +12,7 @@ import {
   type WorkspaceScope,
   workspaceFilesKey,
 } from "@halonicjs/app";
-import { randomIds, systemClock } from "@halonicjs/std";
+import { systemClock } from "@halonicjs/std";
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { InboxRequestsService, monthBudgetUse } from "@halonicjs/studio-feature-inbox/api";
@@ -45,7 +44,6 @@ import {
   shellKeyOrigins,
   type TauriIpc,
   tauriAgentHostTransport,
-  tokenStoreKey,
 } from "@halonicjs/studio-services";
 import { EngineNotAnswering, type KeyboardPlatform } from "@halonicjs/studio-shell";
 import { loadWorkspace } from "@halonicjs/workspace";
@@ -55,9 +53,7 @@ import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { provideChangesServices } from "../changes/provide-changes-services.ts";
 import { answerChatOn } from "../engine/answer-chat-on.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
-import { windowKeyOriginPrompt } from "../engine/key-origin-prompt.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
-import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { provideFilesServices } from "../files/provide-files-services.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
@@ -78,7 +74,7 @@ import { WorkspaceProviderCheck } from "../models/workspace-provider-check.ts";
 import { providePlugins } from "../plugins/provide-plugins.ts";
 import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
-import { openStudioRunConnectors } from "./open-run-connectors.ts";
+import { folderEngine } from "./folder-engine.ts";
 import { focusOf, storageOf } from "./page-window.ts";
 import { provideEngineAutoOpen } from "./provide-engine-auto-open.ts";
 import { provideRunStart } from "./provide-run-start.ts";
@@ -171,55 +167,16 @@ export function provideFolderServices(
     remoteEngine ??
     services.provide(
       engineServiceKey,
-      new EngineService({
+      folderEngine(services, {
         ipc,
-        lock: new TauriEngineLock(files, location),
+        files,
+        trust,
         location,
         name,
-        definitions: new TauriDefinitionStore(files, location),
-        secrets: shellKeychain(ipc),
-        keyOrigins: shellKeyOrigins(ipc),
-        keyOriginPrompt: windowKeyOriginPrompt(services, ipc),
-        http: new ShellHttpClient(ipc),
-        clock: systemClock,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
-        mayStart: (workspace) => trust.mayStart(workspace),
-        // Removing the trust here or in Settings › Trusted sources checks it again.
-        onTrustChange: (listener) => trust.subscribe(listener),
-        ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
-        setTimer: (callback, delayMs) => {
-          const timer = setTimeout(callback, delayMs);
-          return () => clearTimeout(timer);
-        },
-        newToken: () => crypto.randomUUID(),
-        reportError: (error) => console.error("The engine", error),
-        ...(onEngineLockLost === undefined ? {} : { onLockLost: onEngineLockLost }),
-        ...(transport === undefined
-          ? {}
-          : {
-              openHarnessHost: (decisions) =>
-                openStudioHarnessHost({
-                  transport,
-                  location,
-                  definitions: new TauriDefinitionStore(files, location),
-                  digest: webCryptoDigest,
-                  clock: systemClock,
-                  instructionTrust,
-                  ...decisions,
-                  reportError: (error) => console.error("The harness host", error),
-                }),
-              openRunConnectors: () =>
-                openStudioRunConnectors({
-                  ipc,
-                  files,
-                  location,
-                  transport,
-                  trust,
-                  tokens: services.get(tokenStoreKey),
-                  onWaiting: refusals.recordWaitingOf,
-                }),
-            }),
+        instructionTrust,
+        transport,
+        refusals,
+        onEngineLockLost,
       }),
     );
   provideEngineAutoOpen(services, { ipc, files, trust, location, scope, remoteEngine });
