@@ -184,7 +184,7 @@ verifies("cli.commands.plugin.off-here", () => {
     });
   });
 
-  it("gives the CLI's own fix for a sandbox that isn't set up, never Studio's Settings", async () => {
+  it("gives the CLI's own fix for a sandbox that isn't set up, not Studio's Settings", async () => {
     fence = { state: "not-fenced", reason: "setup-needed" };
     await trust("--plugin", "weather", "--yes", "--fingerprint", await addOff());
 
@@ -194,7 +194,8 @@ verifies("cli.commands.plugin.off-here", () => {
       "  The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer.",
       reasonLines[1],
     ]);
-    expect(listed.io.stdout.join("\n")).not.toContain("Settings");
+    // Only the place line names the desktop app's Settings; the fix doesn't.
+    expect(listed.io.stdout[1]).not.toContain("Settings");
   });
 
   it("says it stays off here, why and where to allow it before asking to trust it", async () => {
