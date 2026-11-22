@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-15637 (C605 #1, found on /HAL/issues/HAL-15625; the fix the task proposes, decided by the team as an exception to the shared rule of /HAL/issues/HAL-15127)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tpbRbHKSdd1Gaq7QiA3DvGGTV0XQp5wWAUMFALie4havoCcSCIjedfoeexIiJJl5maD8T1+xlUAPw/uHMAjwBQ==
 
 **What was wrong.** `workspace.run-problems` stops a run of workflow W for an error in any file that isn't a workflow, agent or test file, because every run may depend on such a file: a provider, `models.yaml`, a hub file. Routines fell under that rule too. So in Acme, the paused routine Nightly check, which starts `support-reply` without the `mail` its first step reads, made Weekly report in another hub and Handbook fix, which doesn't use `support-reply` at all, say "can't run: it has 1 problem", with Run unavailable, and `halonic run` refused them the same way.
 
