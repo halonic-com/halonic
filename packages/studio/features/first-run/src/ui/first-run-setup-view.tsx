@@ -9,11 +9,16 @@ import { useFirstRunState } from "./first-run-bar.tsx";
 /**
  * A progress piece's fill: done, current, or still to come. The later pieces take the border colour,
  * not a surface, because a surface matches the Inbox's canvas and the line would vanish (C564). High
- * contrast drops fills, so each piece sets a system colour or an edge of its own.
+ * contrast drops fills, so each piece sets a system colour or an edge of its own. The current piece is
+ * half accent, half the later pieces' colour: a tint of the accent sat at about 1:1 against them
+ * (C587), and a half-filled bar stays apart by its shape in high contrast too, where `Highlight` and
+ * `CanvasText` can be alike.
  */
 function pieceFill(index: number, reached: number): string {
   if (index < reached) return "bg-accent forced-colors:bg-[CanvasText]";
-  if (index === reached) return "bg-accent-soft forced-colors:bg-[Highlight]";
+  if (index === reached) {
+    return "border border-transparent bg-linear-to-r bg-origin-border from-accent from-[50%] to-border to-[50%] forced-colors:border-[CanvasText] forced-colors:from-[Highlight] forced-colors:to-[Canvas]";
+  }
   return "border border-transparent bg-border forced-colors:border-[CanvasText] forced-colors:bg-[Canvas]";
 }
 
