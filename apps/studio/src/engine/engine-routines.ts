@@ -3,11 +3,14 @@
 // workspace's routines start on time while the window is open. It is built
 // with the engine and stops when the engine closes.
 //
-// The page's engine starts every run from the saved files it loaded and
-// checked for trust (`studio.engine-service`), so its routines come from the
-// saved files too: `LiveRoutines` without version control, read again on
-// every tick, so turning a routine off counts by the next one. Each start
-// goes through the page's own checks first, as Run does.
+// The routines come from the live version, as `halonic routines watch` reads
+// them (`app.scheduler-live-routines`, HAL-14229): `LiveRoutines` over the
+// page's reader of the live version, so a saved change to a routine counts
+// only once it is made live, and a routine that has never been live isn't
+// scheduled. On and Off come from the saved files, read again on every tick,
+// so turning a routine off counts by the next one. With history off,
+// everything comes from the saved files. Each start goes through the page's
+// own checks first, as Run does.
 
 import { LiveRoutines, workspaceRoutineScheduler } from "@halonicjs/app";
 import { type RoutineTickResult, type SkipRecord, SkipRecords } from "@halonicjs/app/routines";
@@ -15,13 +18,16 @@ import type { AssembledEngine, RoutineEngine, RoutineTicks } from "@halonicjs/en
 import type { DefinitionSource, RunExecutor, StartRunRequest } from "@halonicjs/ports";
 import { DEFAULT_TICK_POLICY } from "@halonicjs/routines";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import type { LiveVersions } from "./page-versions.ts";
 
 /** What {@link pageRoutines} reads of the engine service's options. */
 export interface PageRoutinesOptions {
   /** The workspace folder, whose name stands in for an id `workspace.yaml` doesn't give. */
   readonly location: string;
-  /** The saved files, which the routines are read from on every tick. */
+  /** The saved files, which each routine's On and Off is read from on every tick. */
   readonly definitions: DefinitionSource;
+  /** The workspace's live version, which the routines come from; left out, history is off. */
+  readonly versions?: LiveVersions | undefined;
   /** The zone of a schedule that names none: the computer's own. */
   readonly timeZone: string;
   /** Hears what a tick couldn't do, such as a routine whose run didn't start. */
@@ -52,7 +58,7 @@ export function pageRoutines(
   options: PageRoutinesOptions,
   beforeStart: (request: StartRunRequest) => Promise<void>,
 ): PageRoutines {
-  const live = new LiveRoutines({ vcs: null, saved: options.definitions });
+  const live = new LiveRoutines({ vcs: options.versions ?? null, saved: options.definitions });
   let tick: (() => Promise<void>) | undefined;
   // The scheduler drops a tick that comes while another runs, so a wake-up during the catch-up
   // (a computer waking from sleep as the window opens) waits for it instead of being lost.

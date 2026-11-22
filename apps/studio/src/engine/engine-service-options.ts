@@ -12,6 +12,7 @@ import type { TauriIpc } from "@halonicjs/studio-services";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { PageEngineLock } from "./engine-lock.ts";
 import type { KeyOriginPrompt } from "./key-origin-prompt.ts";
+import type { LiveVersions } from "./page-versions.ts";
 import type { EngineParts, StudioHarnessHost } from "./studio-harness-host.ts";
 
 /** What an {@link EngineService} is built from. */
@@ -26,6 +27,11 @@ export interface EngineServiceOptions {
   readonly name: string;
   /** The workspace's files, read when the engine opens. */
   readonly definitions: DefinitionStore;
+  /**
+   * The workspace's live version (`PageVersions`), which its routines come from. Left out, the
+   * workspace has history off and everything comes from the saved files.
+   */
+  readonly versions?: LiveVersions;
   /** The keychain, as `Secrets`. */
   readonly secrets: Secrets;
   /**

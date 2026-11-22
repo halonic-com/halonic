@@ -5,6 +5,7 @@ import {
   TauriDefinitionStore,
   TauriEngineLock,
   type TauriFileShell,
+  TauriFolderReader,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import type { InstructionTrustService, ServiceRegistry } from "@halonicjs/app";
@@ -18,8 +19,10 @@ import {
   type tauriAgentHostTransport,
   tokenStoreKey,
 } from "@halonicjs/studio-services";
+import type { GitAnswer } from "../changes/workspace-changes.ts";
 import { EngineService } from "../engine/engine-service.ts";
 import { windowKeyOriginPrompt } from "../engine/key-origin-prompt.ts";
+import { PageVersions } from "../engine/page-versions.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { openStudioRunConnectors } from "./open-run-connectors.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -52,6 +55,15 @@ export function folderEngine(services: ServiceRegistry, parts: FolderEngineParts
     location,
     name,
     definitions: new TauriDefinitionStore(files, location),
+    versions: new PageVersions({
+      git: async (args) =>
+        (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
+      // The folder's own entries, `.git` included, which the workspace's files never list.
+      hasGitFolder: async () =>
+        (await new TauriFolderReader(ipc, location).entries(undefined, { recursive: false })).some(
+          (entry) => entry.path === ".git",
+        ),
+    }),
     secrets: shellKeychain(ipc),
     keyOrigins: shellKeyOrigins(ipc),
     keyOriginPrompt: windowKeyOriginPrompt(services, ipc),
