@@ -7,7 +7,7 @@
 
 import { type IntegrationSheet, parseFile } from "@halonicjs/format";
 import type { DefinitionSource, Digest, FolderEntry, FolderReader } from "@halonicjs/ports";
-import type { LocalIntegrationInput } from "@halonicjs/workspace";
+import type { LocalIntegrationInput, WorkspaceIssue } from "@halonicjs/workspace";
 import { type IntegrationFolder, readIntegrationFolder } from "./integration-folder.ts";
 
 /** The workspace's folder for local integrations, one folder each. */
@@ -96,6 +96,34 @@ export async function readIntegrationSheets(
 }
 
 /**
+ * What is wrong with each local integration's sheet that doesn't parse, on
+ * its `integrations/<folder>/integration.yaml`, with the line and column, as
+ * `loadWorkspace` gives a workspace file's problems. The readers above leave
+ * such a sheet out, so its integration never starts, and a local-only
+ * workspace says only that the sheet "can't be read" (HAL-15751); these say
+ * why. A sheet that can't be read at all gives none: starting its
+ * integration reads the folder again and says so.
+ *
+ * @param workspace - the workspace's files, such as the folder `validate` checks
+ *
+ * @example
+ * await integrationSheetProblems(store);
+ * // [{ file: "integrations/notes/integration.yaml", line: 6, col: 5, severity: "error", … }]
+ */
+export async function integrationSheetProblems(
+  workspace: DefinitionSource,
+): Promise<WorkspaceIssue[]> {
+  const problems: WorkspaceIssue[] = [];
+  for (const folder of await sheetFolders(workspace)) {
+    const path = `${folder}/${sheetName}`;
+    const parsed = await parseSheet(workspace, path);
+    if (parsed === undefined || parsed.ok) continue;
+    problems.push(...parsed.error.map((problem) => ({ ...problem, file: path })));
+  }
+  return problems;
+}
+
+/**
  * Every folder in `workspace` with an `integrations/<folder>/integration.yaml`,
  * by the folder's name. It sorts the folders, not the sheets' paths, the
  * way {@link readLocalIntegrations} does: `integrations/a-b/integration.yaml`
@@ -123,11 +151,15 @@ async function readSheet(
   workspace: DefinitionSource,
   path: string,
 ): Promise<IntegrationSheet | undefined> {
+  const parsed = await parseSheet(workspace, path);
+  return parsed?.ok === true ? parsed.value.value : undefined;
+}
+
+/** The sheet at `path` as `parseFile` reads it, or `undefined` when it can't be read. */
+async function parseSheet(workspace: DefinitionSource, path: string) {
   try {
     const text = await workspace.read(path);
-    if (text === null) return undefined;
-    const parsed = parseFile("integration", text);
-    return parsed.ok ? parsed.value.value : undefined;
+    return text === null ? undefined : parseFile("integration", text);
   } catch {
     return undefined;
   }

@@ -152,7 +152,7 @@ function targetMessage(target: unknown): string {
   // a workflow, with its input" would send the reader looking for neither
   // (HAL-15734). The input has to be named fields.
   if (has("workflow") && !has("agent") && has("input") && !isFields(target["input"])) {
-    return 'A workflow routine\'s input is a list of fields, such as input: { mail: "{{trigger.body}}" }.';
+    return 'A workflow routine\'s input takes named fields, such as input: { mail: "{{trigger.body}}" }.';
   }
   return "run needs a workflow, with its input, or an agent, with its prompt.";
 }

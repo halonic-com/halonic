@@ -1,6 +1,6 @@
 import type { DefinitionSource } from "@halonicjs/ports";
 import { describe, expect, it } from "vitest";
-import { readIntegrationSheets } from "./local-integrations.ts";
+import { integrationSheetProblems, readIntegrationSheets } from "./local-integrations.ts";
 
 /** A sheet for the integration `id` that lists `hosts`. */
 function sheet(id: string, hosts: string): string {
@@ -85,5 +85,37 @@ describe("readIntegrationSheets", () => {
 
     expect(await readIntegrationSheets(unlistable)).toEqual([]);
     expect(await readIntegrationSheets(unreadable)).toEqual([]);
+  });
+});
+
+describe("integrationSheetProblems", () => {
+  it("gives each problem of a sheet that doesn't parse on its file, and none for one that parses", async () => {
+    const problems = await integrationSheetProblems(
+      version({
+        "integrations/station/integration.yaml": sheet("station", "[api.station.example]"),
+        "integrations/notes/integration.yaml": `${sheet("notes", "[]")}limits: 3\n`,
+        "integrations/broken/integration.yaml": "id: [",
+      }),
+    );
+
+    expect(problems.map(({ file, severity }) => [file, severity])).toEqual([
+      ["integrations/broken/integration.yaml", "error"],
+      ["integrations/notes/integration.yaml", "error"],
+    ]);
+    expect(problems[1]?.line).toBe(8);
+  });
+
+  it("gives none when integrations/ can't be listed, or a sheet can't be read", async () => {
+    const unlistable: DefinitionSource = {
+      ...version({}),
+      list: () => Promise.reject(new Error("unreadable")),
+    };
+    const unreadable: DefinitionSource = {
+      ...version({ "integrations/station/integration.yaml": "" }),
+      read: () => Promise.reject(new Error("unreadable")),
+    };
+
+    expect(await integrationSheetProblems(unlistable)).toEqual([]);
+    expect(await integrationSheetProblems(unreadable)).toEqual([]);
   });
 });

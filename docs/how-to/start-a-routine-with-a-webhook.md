@@ -23,6 +23,11 @@ with the request's body.
        event: "{{trigger.headers.x-shop-event}}"
    ```
 
+   The workflow's `input` takes named fields, one per value the workflow
+   reads, as above. `input: "{{trigger.body}}"` on its own is refused:
+   `halonic validate` says "A workflow routine's input takes named fields,
+   such as input: { mail: "{{trigger.body}}" }."
+
    `headers` lists the request headers the run may read, in lowercase. Leave
    it out when the run needs none. A routine on a webhook can use
    `{{trigger.at}}`, `{{trigger.lastRun}}`, `{{trigger.body}}` and
