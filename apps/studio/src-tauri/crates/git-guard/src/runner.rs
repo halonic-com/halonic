@@ -8,7 +8,7 @@ use crate::error::GitError;
 use crate::limited_run::{GitOutput, Limits, new_command, run_limited};
 use crate::opened_folders::{OpenedFolders, canonical, plain_path};
 use crate::repo_config::{
-    ConfigEntry, add_repository_filters, blank_filters, blank_merge_options, check_listing,
+    ConfigEntry, add_filters, blank_filters, blank_merge_options, check_listing,
     check_refused_keys, has_command_entry, neutralise_programs, parse_listing,
 };
 use crate::repository::{LOCATE_ARGS, Repository, check_located, gitlinks, untracked_repositories};
@@ -184,7 +184,7 @@ impl GitRunner {
         let entries = self.read_config(root, Some(&repository), deadline)?;
         check_refused_keys(&entries)?;
         let mut filters = Vec::new();
-        add_repository_filters(&entries, &mut filters);
+        add_filters(&entries, &mut filters);
         let mut visited = vec![repository.top.clone()];
         self.add_nested_filters(folders, &repository, &mut visited, &mut filters, deadline)?;
         self.check_untracked_nested(folders, &repository, call, deadline)?;
@@ -218,7 +218,7 @@ impl GitRunner {
     }
 
     /// Checks every repository nested in `repository` as a gitlink, such as
-    /// a submodule, and adds the filters its own config defines.
+    /// a submodule, and adds the filters its config defines.
     ///
     /// git looks into them on its own: `add`, `status` and `diff` run
     /// `git status` inside each, which reads that repository's config. The
@@ -256,7 +256,7 @@ impl GitRunner {
             }
             visited.push(nested.top.clone());
             let entries = self.read_config(&nested.top, Some(&nested), deadline)?;
-            add_repository_filters(&entries, filters);
+            add_filters(&entries, filters);
             self.add_nested_filters(folders, &nested, visited, filters, deadline)?;
         }
         Ok(())

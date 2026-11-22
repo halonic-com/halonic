@@ -1,5 +1,5 @@
 use super::{
-    ConfigEntry, add_repository_filters, blank_filters, blank_merge_options, check_listing,
+    ConfigEntry, add_filters, blank_filters, blank_merge_options, check_listing,
     check_refused_keys, neutralise_programs, parse_listing,
 };
 use crate::error::GitError;
@@ -41,23 +41,25 @@ fn repo_config_refuses_a_listing_git_could_not_give() {
 }
 
 #[test]
-fn repo_config_blanks_only_the_repositorys_filters_whatever_their_name() {
+fn repo_config_blanks_every_filter_from_any_file_whatever_its_name() {
     let entries = [
         entry("global", "filter.lfs.clean", "git-lfs clean -- %f"),
+        entry("global", "filter.lfs.required", "true"),
         entry("local", "filter.x.clean", "touch owned"),
         entry("worktree", "filter.a.b=c.smudge", "touch owned"),
         entry("local", "filter.x.process", "touch owned"),
+        entry("system", "filter.crlf.smudge", "acme-crlf"),
     ];
     let mut names = Vec::new();
-    add_repository_filters(&entries, &mut names);
-    assert_eq!(names, ["x", "a.b=c"]);
+    add_filters(&entries, &mut names);
+    assert_eq!(names, ["lfs", "x", "a.b=c", "crlf"]);
     assert_eq!(
         pairs(&blank_filters(&names[..1])),
         [
-            ("filter.x.clean", ""),
-            ("filter.x.smudge", ""),
-            ("filter.x.process", ""),
-            ("filter.x.required", "false"),
+            ("filter.lfs.clean", ""),
+            ("filter.lfs.smudge", ""),
+            ("filter.lfs.process", ""),
+            ("filter.lfs.required", "false"),
         ]
     );
 }
@@ -191,7 +193,7 @@ fn repo_config_leaves_a_clean_repository_as_it_is() {
     ];
     assert!(neutralise_programs(&entries).is_empty());
     let mut names = Vec::new();
-    add_repository_filters(&entries, &mut names);
+    add_filters(&entries, &mut names);
     assert!(names.is_empty());
 }
 
@@ -239,6 +241,44 @@ fn repo_leaks_refuses_keys_that_redirect_or_expose_git_traffic() {
             );
         }
     }
+}
+
+#[test]
+fn repo_config_refuses_lfs_keys_that_name_a_program_from_the_repository_only() {
+    for key in [
+        "lfs.extension.acme.clean",
+        "lfs.extension.acme.smudge",
+        "lfs.Extension.acme.priority",
+        "lfs.customtransfer.acme.path",
+        "lfs.customTransfer.acme.args",
+        "lfs.standalonetransferagent",
+        "lfs.https://git.acme.example/.standaloneTransferAgent",
+    ] {
+        for scope in ["local", "worktree"] {
+            assert_eq!(
+                check_refused_keys(&[entry(scope, key, "acme")]),
+                Err(GitError::ConfigNotAllowed {
+                    key: key.to_owned(),
+                }),
+                "{scope} {key}"
+            );
+        }
+    }
+    assert_eq!(
+        check_refused_keys(&[
+            entry("global", "lfs.extension.acme.clean", "acme-clean %f"),
+            entry("global", "lfs.customtransfer.acme.path", "acme-transfer"),
+            entry("global", "lfs.standalonetransferagent", "acme"),
+            entry(
+                "local",
+                "lfs.url",
+                "https://git.acme.example/acme.git/info/lfs"
+            ),
+            entry("local", "lfs.repositoryformatversion", "0"),
+            entry("local", "lfs.fetchinclude", "assets"),
+        ]),
+        Ok(())
+    );
 }
 
 #[test]
