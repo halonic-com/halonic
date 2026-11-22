@@ -17,6 +17,7 @@
 //! That refuses some calls git could have made without the filter, which
 //! costs a terminal command; a commit without it costs more.
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -61,16 +62,36 @@ pub(crate) fn passes_content(call: &CheckedCall) -> bool {
 }
 
 /// The revisions whose attribute files the call brings in: those it names
-/// before `--` for `checkout`, `switch` and `reset`, and the upstream for
-/// `pull`, as it was last fetched. Arguments that are paths don't resolve
-/// and are skipped later.
+/// before `--` for `checkout`, `switch` and `reset`, and for `pull` the
+/// upstream and the branches it names, as they were last fetched.
+/// Arguments that are paths don't resolve and are skipped later.
 fn target_revisions(call: &CheckedCall) -> Vec<String> {
     let args = call.args().get(1..).unwrap_or_default();
     match call.subcommand() {
         "checkout" | "switch" | "reset" => positional(args).1,
-        "pull" => vec!["@{upstream}".to_owned()],
+        "pull" => pulled_revisions(&positional(args).0),
         _ => Vec::new(),
     }
+}
+
+/// For `pull [<remote> [<refspec>…]]`, the upstream and each named
+/// branch's remote-tracking ref: `main`, `+main` or `main:topic` read
+/// `refs/remotes/<remote>/main`. The allow-list lets only a remote's name,
+/// never a URL, stand for the remote.
+fn pulled_revisions(arguments: &[String]) -> Vec<String> {
+    let mut revisions = vec!["@{upstream}".to_owned()];
+    let Some((remote, refspecs)) = arguments.split_first() else {
+        return revisions;
+    };
+    for refspec in refspecs {
+        let source = refspec.trim_start_matches('+');
+        let source = source.split(':').next().unwrap_or_default();
+        let branch = source.strip_prefix("refs/heads/").unwrap_or(source);
+        if !branch.is_empty() {
+            revisions.push(format!("refs/remotes/{remote}/{branch}"));
+        }
+    }
+    revisions
 }
 
 /// The options before `--`.
@@ -151,8 +172,9 @@ impl GitRunner {
         }
         let mut files = vec![repository.common_dir.join("info").join("attributes")];
         files.extend(self.user_attributes_file(repository, deadline)?);
+        let limit = self.limits().max_output_bytes;
         for file in files {
-            if let Some(filter) = named_filter(&read_text(&file), filters) {
+            if let Some(filter) = named_filter(&read_attribute_file(&file, limit)?, filters) {
                 return Err(refuse(filter));
             }
         }
@@ -214,7 +236,9 @@ impl GitRunner {
     }
 
     /// The user's own attributes file: `core.attributesFile`, or git's
-    /// default under `$XDG_CONFIG_HOME` or `~/.config`.
+    /// default under `$XDG_CONFIG_HOME` or `~/.config`. A relative
+    /// `core.attributesFile` is read from the top of the working tree, where
+    /// git runs, not from the shell's own folder.
     fn user_attributes_file(
         &self,
         repository: &Repository,
@@ -225,7 +249,9 @@ impl GitRunner {
         match output.code {
             Some(0) => {
                 let path = String::from_utf8_lossy(&output.stdout);
-                Ok(Some(PathBuf::from(path.trim_end_matches(['\n', '\r']))))
+                let path = path.trim_end_matches(['\n', '\r']);
+                // An empty value names no file.
+                Ok((!path.is_empty()).then(|| repository.top.join(path)))
             }
             // 1 is git config's "not set".
             Some(1) => Ok(default_user_attributes_file()),
@@ -258,12 +284,39 @@ fn default_user_attributes_file() -> Option<PathBuf> {
     )
 }
 
-/// A file's text, or none when it can't be read. git skips an attribute
-/// file it can't read too, so it picks no filter.
-fn read_text(file: &Path) -> String {
-    std::fs::read(file)
-        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
-        .unwrap_or_default()
+/// An attribute file's text, read inside the shell's own process, so with
+/// the limits a git process gets. A missing or unreadable file gives none:
+/// git skips it too, so it picks no filter. The path is the repository's to
+/// choose (`core.attributesFile` can come from its config, and
+/// `info/attributes` can be a link), so anything but a regular file, such as
+/// a FIFO that would block the read forever or a device that never ends, and
+/// a file over `limit` bytes refuse the call with `repository_unreadable`
+/// rather than pass it unread.
+pub(crate) fn read_attribute_file(file: &Path, limit: usize) -> Result<String, GitError> {
+    // `metadata` follows links and opens nothing, so a FIFO is caught before
+    // an open that would wait for a writer.
+    match std::fs::metadata(file) {
+        Ok(metadata) if metadata.is_file() => {}
+        Ok(_) => return Err(GitError::RepositoryUnreadable),
+        Err(_) => return Ok(String::new()),
+    }
+    let Ok(opened) = std::fs::File::open(file) else {
+        return Ok(String::new());
+    };
+    // The file opened may not be the one looked at if it was swapped in
+    // between; then it is checked again here, and the read is capped anyway.
+    if !opened.metadata().is_ok_and(|metadata| metadata.is_file()) {
+        return Err(GitError::RepositoryUnreadable);
+    }
+    let mut bytes = Vec::new();
+    let cap = u64::try_from(limit).unwrap_or(u64::MAX).saturating_add(1);
+    if opened.take(cap).read_to_end(&mut bytes).is_err() {
+        return Ok(String::new());
+    }
+    if bytes.len() > limit {
+        return Err(GitError::RepositoryUnreadable);
+    }
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 #[cfg(test)]

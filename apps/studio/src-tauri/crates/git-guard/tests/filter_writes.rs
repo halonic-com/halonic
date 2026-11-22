@@ -128,3 +128,50 @@ fn filter_writes_lets_a_call_through_when_no_attribute_names_a_blanked_filter() 
         ".gitattributes\nnotes.md\ntodo.txt\n"
     );
 }
+
+#[test]
+fn filter_writes_reads_a_relative_user_attributes_file_from_the_working_tree() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.append_config(FILTER);
+    sandbox.append_config("[core]\n\tattributesFile = acme-attributes\n");
+    sandbox.write("acme-attributes", "*.md filter=x\n");
+    sandbox.write("notes.md", "acme notes\n");
+    assert_eq!(answer(&sandbox, "add -A"), refused("add"));
+}
+
+/// A FIFO the repository names as an attribute file would block a read
+/// forever, so the call is refused at once, within the test's own wait.
+#[cfg(unix)]
+#[test]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+fn filter_writes_refuses_an_attribute_file_that_is_no_regular_file() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.append_config(FILTER);
+    let fifo = sandbox.temporary.path().join("fifo-attributes");
+    let made = std::process::Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .expect("mkfifo runs");
+    assert!(made.success());
+    sandbox.append_config(&format!(
+        "[core]\n\tattributesFile = {}\n",
+        config_path(&fifo)
+    ));
+    sandbox.write("notes.md", "acme notes\n");
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let answer = answer(&sandbox, "add -A");
+        let staged = sandbox.git_ok("ls-files");
+        let _ = sender.send((answer, staged));
+    });
+    let (answer, staged) = receiver
+        .recv_timeout(std::time::Duration::from_secs(60))
+        .expect("the call returns instead of waiting on the FIFO");
+    assert_eq!(answer, Err(GitError::RepositoryUnreadable));
+    assert_eq!(staged, "");
+}

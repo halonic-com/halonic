@@ -1,5 +1,6 @@
-use super::{named_filter, passes_content, target_revisions};
+use super::{named_filter, passes_content, read_attribute_file, target_revisions};
 use crate::check_args::{CheckedCall, check_args};
+use crate::error::GitError;
 
 fn call(text: &str) -> CheckedCall {
     let args: Vec<String> = text.split(' ').map(str::to_owned).collect();
@@ -58,9 +59,21 @@ fn filter_writes_reads_the_revisions_a_call_brings_in() {
     );
     assert_eq!(target_revisions(&call("switch -c topic main")), ["main"]);
     assert_eq!(target_revisions(&call("reset --hard main")), ["main"]);
+    assert_eq!(target_revisions(&call("pull --ff-only")), ["@{upstream}"]);
     assert_eq!(
-        target_revisions(&call("pull --ff-only origin main")),
+        target_revisions(&call("pull --ff-only origin")),
         ["@{upstream}"]
+    );
+    assert_eq!(
+        target_revisions(&call(
+            "pull --ff-only origin main +topic refs/heads/next:next"
+        )),
+        [
+            "@{upstream}",
+            "refs/remotes/origin/main",
+            "refs/remotes/origin/topic",
+            "refs/remotes/origin/next",
+        ]
     );
     assert!(target_revisions(&call("checkout -- main")).is_empty());
     assert!(target_revisions(&call("add -A")).is_empty());
@@ -90,4 +103,27 @@ fn filter_writes_finds_a_blanked_filter_in_patterns_and_macros_only() {
     ] {
         assert_eq!(named_filter(text, &blanked), None, "{text:?}");
     }
+}
+
+#[test]
+fn filter_writes_reads_only_a_regular_attribute_file_within_the_limit() {
+    let root = std::env::temp_dir().join(format!("git-guard-attributes-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("folder")).expect("the folder is created");
+    let small = root.join("small");
+    std::fs::write(&small, "*.md filter=x\n").expect("the file writes");
+    let large = root.join("large");
+    std::fs::write(&large, "*.md -text\n".repeat(4)).expect("the file writes");
+    let limit = 16;
+    let results = [
+        read_attribute_file(&small, limit),
+        read_attribute_file(&large, limit),
+        read_attribute_file(&root.join("folder"), limit),
+        read_attribute_file(&root.join("missing"), limit),
+    ];
+    std::fs::remove_dir_all(&root).expect("the folder is removed");
+    assert_eq!(results[0], Ok("*.md filter=x\n".to_owned()));
+    assert_eq!(results[1], Err(GitError::RepositoryUnreadable));
+    assert_eq!(results[2], Err(GitError::RepositoryUnreadable));
+    assert_eq!(results[3], Ok(String::new()));
 }

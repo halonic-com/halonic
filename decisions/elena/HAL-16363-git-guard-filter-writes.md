@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16363 (Liam's decision: keep the blank, and make write calls refuse cleanly instead of storing or writing unfiltered content)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:asahmay8ij6qzMaW+jBC6BTLMee/iEWhwQuu0OPFHl9/roJU9/SIXmCgmHyes1mpEU2alnb8uWAfoJdZficSBQ==
 
 Since HAL-16325 the git guard blanks every filter driver, so in a repository that uses one (git-lfs, git-crypt) `add` and `commit` stored the raw file and `checkout` and `pull` wrote the stored content. The new requirement `filter-writes` refuses those calls with `filter_not_run` when an attribute file names a blanked filter.
 
