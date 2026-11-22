@@ -32,6 +32,7 @@ import type { OpenWorkspaceHistory } from "../../run-workspace.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import {
+  type WorkspaceTrustAnswer,
   type WorkspaceTrustMachine,
   type WorkspaceTrustState,
   workspaceNameOf,
@@ -50,7 +51,8 @@ import { listAsLive, type NotLiveRoutines } from "./not-live.ts";
  * Routines with saved changes that aren't live yet are listed as the watch
  * runs them, from the live version, and get a line each under it.
  * A workspace that isn't trusted here gets a line above it with
- * `halonic trust`, and its routines that are on read "Paused until trusted".
+ * `halonic trust`, or with the file trust refused and why, and its routines
+ * that are on and start read "Paused until trusted".
  *
  * @throws NoWorkspaceError when the folder holds no workspace
  */
@@ -80,7 +82,7 @@ export async function listRoutines(
   }
   const dir = givenDir(input, workspace);
   const trust = await workspaceTrustState(workspace, setup.trust(), loaded);
-  const row: RowOptions = { withHub: spansHubs(routines), paused: !startsHere(trust) };
+  const row: RowOptions = { withHub: spansHubs(routines), paused: !startsHere(trust.state) };
   const blocked = await webhookRoutinesThatWontStart(loaded, context.secrets);
   const withProblems = routines.filter((each) => each.problems > 0);
   // A fix that is saved but not committed: validate reads the saved file and finds nothing (C642 #2).
@@ -89,8 +91,10 @@ export async function listRoutines(
   // A routine with file errors is counted once, under validate, which shows them,
   // and one that starts an agent once, on its own line under the list.
   const webOnly = routines.filter((each) => !cantStart(each) && blocked.has(each.key)).length;
-  const pausedLine = routines.some((each) => isPaused(each, row))
-    ? [pausedMessage(trust)(printable(workspaceNameOf(loaded, workspace)), dir).phrase]
+  // Only a routine whose row says "Paused until trusted" earns the line: a
+  // webhook routine serve won't start reads "Can't start" instead.
+  const pausedLine = routines.some((each) => isPaused(each, row) && !blocked.has(each.key))
+    ? [pausedLineOf(trust, printable(workspaceNameOf(loaded, workspace)), dir)]
     : [];
   return {
     exitCode: withProblems.length + webOnly === 0 ? exitCode.ok : exitCode.failed,
@@ -104,7 +108,7 @@ export async function listRoutines(
       ...notLiveLines(routines, notLive, dir),
       routinesMessages.watchHint().phrase,
     ],
-    json: { ...json, trusted: startsHere(trust) },
+    json: { ...json, trusted: startsHere(trust.state) },
   };
 }
 
@@ -140,9 +144,18 @@ function isPaused(routine: ListedRoutine, row: RowOptions): boolean {
   return row.paused && !cantStart(routine) && routine.enabled && routine.liveState !== "never-live";
 }
 
-/** The line above the list for a workspace that isn't trusted: changed since, or not trusted yet. */
-function pausedMessage(trust: WorkspaceTrustState): typeof routinesMessages.notTrustedPaused {
-  return trust === "changed" ? routinesMessages.changedPaused : routinesMessages.notTrustedPaused;
+/**
+ * The line above the list for a workspace that isn't trusted: a file trust
+ * can't cover, with why and no `halonic trust`, which would refuse too;
+ * changed since; or not trusted yet.
+ */
+function pausedLineOf(trust: WorkspaceTrustAnswer, workspace: string, dir?: string): Phrase {
+  if (trust.state === "refused") {
+    return routinesMessages.refusedPaused(workspace, trust.refused).phrase;
+  }
+  const message =
+    trust.state === "changed" ? routinesMessages.changedPaused : routinesMessages.notTrustedPaused;
+  return message(workspace, dir).phrase;
 }
 
 /** One line for each routine that starts an agent on its own, in the list's order: why it can't start and the fix. */

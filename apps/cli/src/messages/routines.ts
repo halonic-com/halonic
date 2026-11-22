@@ -11,7 +11,7 @@ import {
   startedInWords,
 } from "./runs-list.ts";
 import { suggestedCommand } from "./suggested-command.ts";
-import { trustMessages } from "./trust.ts";
+import { type RefusedFile, trustMessages } from "./trust.ts";
 
 /**
  * The fix for a routine whose agent is in a harness: `watch` has no
@@ -94,6 +94,14 @@ export const routinesMessages = defineMessages("routines", {
   changedPaused: (workspace: string, dir?: string) =>
     phrase`${markPart("needsYou")} ${workspace} changed since you trusted it, so its routines don't start ${markPart("separator")} ${suggestedCommand("trust", dir)}`,
   /**
+   * The same, when a file names something trust can't cover, such as a URL
+   * with user info: `halonic trust` would refuse too, so the line says which
+   * file and why, in `trust`'s words, and how to fix it instead. The address
+   * is never shown, as it may hold a password.
+   */
+  refusedPaused: (workspace: string, refused: readonly RefusedFile[]) =>
+    phrase`${markPart("needsYou")} ${workspace}'s routines don't start: ${trustMessages.refused(refused).phrase} ${trustMessages.refusedFix().phrase}`,
+  /**
    * The line under the list for a routine that starts an agent on its own,
    * which Halonic can't run yet (HAL-15607): why, in the words the Studio's
    * Starts card and `serve`'s webhook line use, and the fix in the file's
@@ -151,12 +159,14 @@ export const routinesMessages = defineMessages("routines", {
     phrase`${markPart("needsYou")} ${name} isn't live yet, so it doesn't run. To start it, commit it or make it live ${inStudio}.`,
   /**
    * Ends the reason when git can't start, so the list can't tell which
-   * routines' changes are live (HAL-15204), after `run`'s reason.
+   * routines' changes are live (HAL-15204), after `run`'s reason. It starts
+   * with "This list", since the reason before it already has a "so" (HAL-15504).
    */
-  liveNotChecked: () => phrase`So the list doesn't say which changes aren't live yet.`,
+  liveNotChecked: () =>
+    phrase`This list can't show which routines have changes that aren't live yet.`,
   /**
    * The line under the list when git can't start, with `run`'s reason: "! Couldn't check what's
-   * live: git can't start on this computer, so the live version can't be read. So the list …".
+   * live: git can't start on this computer, so the live version can't be read. This list …".
    * The list still shows, since listing needs no git; the fix follows, dimmed.
    */
   liveCheckFailed: (reason: Phrase) =>
@@ -164,11 +174,14 @@ export const routinesMessages = defineMessages("routines", {
 
   /**
    * The dim line under the list: a routine starts on time only while `watch`
-   * runs or the Studio is open, since the Studio's engine starts them too (HAL-14205, HAL-15204).
+   * runs or its workspace is open in Halonic Studio, since the Studio's engine
+   * starts the open workspace's routines too (HAL-14205, HAL-15204). "Halonic
+   * Studio" in full, as the allow-address error says it, since plain
+   * "Halonic" is ambiguous in a terminal (HAL-15504).
    */
   watchHint: () => [
     dim(
-      "Routines start on time only while `halonic routines watch` is running or the Studio is open.",
+      "Routines start on time only while this workspace is open in Halonic Studio or `halonic routines watch` is running.",
     ),
   ],
 
