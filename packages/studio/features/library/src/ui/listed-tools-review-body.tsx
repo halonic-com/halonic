@@ -12,6 +12,11 @@ export interface ListedToolsReviewBodyProps {
   readonly onRemoved: (toast: string) => void;
   /** Called with what a tool's own **Turn it on anyway** did: close with the toast, or stay. */
   readonly onOutcome: (outcome: ReviewOutcome) => void;
+  /**
+   * Show Approved open. With nothing waiting, switching a tool off is the only reason to be here,
+   * so its **Remove approval** comes first (C667).
+   */
+  readonly approvedOpen?: boolean;
 }
 
 /**
@@ -19,7 +24,12 @@ export interface ListedToolsReviewBodyProps {
  * then Not approved), Keeps changing, Refused, then Approved folded. The dialog around it owns
  * the title, the top line and the button bar. It reads the model with `useSyncExternalStore`.
  */
-export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToolsReviewBodyProps) {
+export function ListedToolsReviewBody({
+  model,
+  onRemoved,
+  onOutcome,
+  approvedOpen = false,
+}: ListedToolsReviewBodyProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
   const { snapshot } = state;
@@ -95,7 +105,10 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
         </section>
       )}
       {snapshot.approved.length === 0 ? null : (
-        <Disclosure summary={listedToolsWords.approvedHeading(snapshot.approved.length)}>
+        <Disclosure
+          summary={listedToolsWords.approvedHeading(snapshot.approved.length)}
+          defaultOpen={approvedOpen}
+        >
           <PlainList className="flex flex-col gap-2">
             {snapshot.approved.map((name) => (
               <li key={name} className="flex min-w-0 flex-wrap items-center justify-between gap-2">

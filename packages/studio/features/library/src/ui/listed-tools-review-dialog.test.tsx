@@ -335,4 +335,28 @@ describe("the review dialog", () => {
       expect(container.querySelector("footer")).toBeNull();
     });
   });
+
+  verifies("library.listed-tools-review-approved-open", () => {
+    it("opens Approved with nothing waiting, Remove approval first after the line", async () => {
+      const { container } = await open(snapshot([], ["read_note", "send", "tag"]));
+      expect(container.querySelector("details")?.open).toBe(true);
+      const line = [...container.querySelectorAll("p")].find(
+        (each) => each.textContent === "Nothing to review.",
+      );
+      // The kit's 8 px between paragraphs, under the top line (C667).
+      expect(line?.classList.contains("mt-2")).toBe(true);
+      const after = [...container.querySelectorAll("button")].filter(
+        (each) =>
+          line !== undefined &&
+          (line.compareDocumentPosition(each) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      );
+      expect(after[0]?.textContent).toBe("Remove approval for read_note");
+    });
+
+    it("keeps Approved folded while tools wait", async () => {
+      const { container } = await open(snapshot(["a", "b"], ["read_note"]));
+      expect(container.textContent).toContain("Approved (1)");
+      expect(container.querySelector("details")?.open).toBe(false);
+    });
+  });
 });

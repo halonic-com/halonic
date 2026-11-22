@@ -132,10 +132,27 @@ verifies("workspace.trust-check-unfenced-yes", () => {
       (each) => each.textContent?.trim() ?? "",
     );
     expect(amberLine).toContain(amber);
-    expect(amberLine).toContain("· not in the sandbox");
+    expect(amberLine).toContain("not in the sandbox");
     for (const mark of dialog().querySelectorAll(".text-attention [aria-hidden='true']")) {
       expect(mark.textContent).toBe("");
     }
+  });
+
+  it("puts the dot before the triangle, with no empty detail between it and the name (C667)", () => {
+    render(review, []);
+
+    const name = [...dialog().querySelectorAll("code")].find(
+      (each) => each.textContent === "home-station",
+    );
+    const row = name?.parentElement;
+    // The name, then the flag: no empty detail span keeping its gap between them.
+    expect(row?.children).toHaveLength(2);
+    const flag = row?.lastElementChild;
+    expect(flag?.textContent).toBe("· not in the sandbox");
+    // The dot stays plain; the amber words start with the triangle.
+    const amber = flag?.querySelector(".text-attention");
+    expect(amber?.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+    expect(amber?.textContent).toBe("not in the sandbox");
   });
 
   it("asks nothing, and Trust passes no tick, without unfencedYes", () => {
