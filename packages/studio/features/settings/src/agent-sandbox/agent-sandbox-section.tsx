@@ -157,7 +157,9 @@ export function AgentSandboxHostView({
         onCheckAgain={sandbox.checkAgain}
         statusRef={status}
         resultRef={result}
-        notAvailable={<NotAvailableLines start={start} announce={announce} />}
+        notAvailable={
+          <NotAvailableLines start={start} viewOnly={place === "served"} announce={announce} />
+        }
         newAgents={
           <>
             {wslRemoval}

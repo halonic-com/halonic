@@ -9,13 +9,17 @@ import * as text from "./sandbox-text.ts";
  * microcopy 23.3). While the start check says why the sandbox can't start, {@link NotAvailableFix}
  * draws its reason and fix as it does for a failed host check, so both read and look the same.
  * Otherwise, before it answers and where nothing can check, 13.1's one line. **Check again** only
- * checks: it never changes a system setting.
+ * checks: it never changes a system setting. Served Studio gets the words for doing it on the
+ * computer, as a host check's Not available does there (C711-2).
  */
 export function NotAvailableLines({
   start,
+  viewOnly,
   announce,
 }: {
   readonly start: SandboxStart;
+  /** Served Studio, used from another device such as a phone. */
+  readonly viewOnly: boolean;
   /** Says a result: the settings container's live region. */
   readonly announce: (line: string) => void;
 }) {
@@ -29,7 +33,7 @@ export function NotAvailableLines({
   };
   return (
     <NotAvailableFix
-      words={notAvailableWords(start.refused, false)}
+      words={notAvailableWords(start.refused, viewOnly)}
       note={start.checkFailed ? cantRunWords.checkFailed : undefined}
       checking={start.checking}
       onCheckAgain={() => void checkAgain()}
@@ -41,7 +45,7 @@ export function NotAvailableLines({
  * A Not available state whose reason is known, whichever check found it (23.3, C701-1): the reason
  * on its own line, then the fix on its own line (none where the section's own set-up button is the
  * fix, 23.3a), then **Check again** in the section's own style with the guide beside it, then
- * "You can run an agent on this computer after a warning." in muted text.
+ * the way round ("You can run an agent on this computer after a warning.") in muted text.
  */
 export function NotAvailableFix({
   words,
@@ -74,7 +78,7 @@ export function NotAvailableFix({
         </Button>
         <ExternalLink href={words.docs.href}>{words.docs.name}</ExternalLink>
       </div>
-      <p className="text-fg-muted">{text.RUN_HERE_AFTER_WARNING}</p>
+      <p className="text-fg-muted">{words.wayRound}</p>
     </div>
   );
 }
