@@ -133,14 +133,9 @@ export class SrtSandbox implements Sandbox {
         ...(residuals.length > 0 ? { residuals } : {}),
       };
     }
-    const { reason, missing, fix, setupAgain } = unavailable;
-    return {
-      ok: false,
-      reason,
-      missing: [missing],
-      ...(fix === undefined ? {} : { fix }),
-      ...(setupAgain === undefined ? {} : { setupAgain }),
-    };
+    // `fix`, `setupAgain` and `accessKept` go along only when set.
+    const { reason, missing, ...flags } = unavailable;
+    return { ok: false, reason, missing: [missing], ...flags };
   }
 
   /**

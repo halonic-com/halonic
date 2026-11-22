@@ -182,9 +182,10 @@ Each place says how to do it from there:
   isn't running as administrator. That works only in a terminal on Windows
   itself, not inside WSL. Running it again is fine after a removal.
 - Settings: quit Halonic and open it again normally, not as administrator, then
-  set the sandbox up again and remove it. Settings offers removal only for a
-  sandbox that is set up, so this takes two administrator prompts, one for the
-  setup and one for the removal, and Settings says so.
+  remove the sandbox in Settings › Agent sandbox. While srt still lists the
+  access with its sandbox account, Settings offers **Remove the sandbox…**
+  under **Needs setting up** too (`accessKept` on the check), so you don't
+  have to set the sandbox up again first.
 - The uninstaller's last page, for when Halonic is already gone: install
   Halonic again with "Set up the agent sandbox" on, then uninstall it normally,
   not as administrator. A normal uninstall runs without administrator rights,

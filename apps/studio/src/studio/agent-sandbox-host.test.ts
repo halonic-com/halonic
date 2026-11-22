@@ -102,6 +102,20 @@ verifies("studio.agent-sandbox-host", () => {
     });
   });
 
+  it("passes on access a removal with administrator rights left (HAL-15851)", async () => {
+    const { transport } = host({
+      "GET /v1/sandbox/capabilities": capabilities,
+      "GET /v1/sandbox/check": {
+        status: 200,
+        body: { ok: false, reason: "setup-needed", missing: [], accessKept: true },
+      },
+    });
+    expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
+      state: "needs-setup",
+      accessKept: true,
+    });
+  });
+
   it("hands the section the reason's code, for the catalogue's words", async () => {
     const { transport } = host({
       "GET /v1/sandbox/capabilities": capabilities,

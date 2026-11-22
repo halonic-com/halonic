@@ -32,6 +32,11 @@ export type SandboxCheckFacts =
       readonly state: "needs-setup";
       /** The setup is on this computer, but for an older release of the sandbox (HAL-5404). */
       readonly setupAgain?: true;
+      /**
+       * A removal with administrator rights left some access that only removing it again without
+       * them takes back (`keptAccess: "manual"`), so **Remove the sandbox…** shows too (HAL-15851).
+       */
+      readonly accessKept?: true;
     }
   | { readonly state: "needs-repair"; readonly reason: string }
   /**
@@ -268,9 +273,17 @@ function checkedView(
         callout,
         hint: hint(text.ADMIN_ONCE),
         primary: viewOnly ? null : { action: "set-up", label: text.SET_UP, busy: false },
-        secondary: ["check-again"],
+        secondary: needsSetupActions(check.accessKept === true && !viewOnly),
       };
   }
+}
+
+/**
+ * **Check again**, and **Remove the sandbox…** while a removal with administrator rights kept some
+ * access that only removing it again without them takes back (HAL-15851).
+ */
+function needsSetupActions(accessKept: boolean): readonly SandboxAction[] {
+  return accessKept ? ["check-again", "remove"] : ["check-again"];
 }
 
 /**

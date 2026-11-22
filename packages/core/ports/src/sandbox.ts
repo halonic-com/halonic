@@ -21,8 +21,10 @@
  * release of the backend (docs/adr/2026-11-21-sandbox-check-setup-again.md).
  * 10: the reason code `runtime-missing`, for Halonic's WSL distro without its
  * runtime (docs/adr/2026-11-21-sandbox-reason-runtime-missing.md).
+ * 11: `SandboxCheck.accessKept`, for access a removal with administrator
+ * rights left (docs/adr/2026-11-22-sandbox-check-access-kept.md).
  */
-export const sandboxVersion = 10;
+export const sandboxVersion = 11;
 
 /**
  * How files reach the sandbox. `shared`: the program sees the same folders as
@@ -123,6 +125,10 @@ export type SandboxUnavailableReason = (typeof sandboxUnavailableReasons)[number
  *   on this machine, but for an older release of the backend than this one
  *   needs (since version 9; optional). Without it, `setup-needed` may also
  *   mean the setup was never done. Studio words the two apart.
+ * - `accessKept`, only with `setup-needed`, says the backend still keeps
+ *   access to the user's folders that a removal with administrator rights
+ *   left, which only removing it again without them takes back (since
+ *   version 11; optional). Studio then offers that removal too.
  */
 export type SandboxCheck =
   | { ok: true; reason: null; missing: []; residuals?: SandboxResidual[] }
@@ -132,6 +138,7 @@ export type SandboxCheck =
       missing: string[];
       fix?: SandboxFix;
       setupAgain?: true;
+      accessKept?: true;
     };
 
 /**

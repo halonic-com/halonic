@@ -57,6 +57,7 @@ code is built the way it is, before you change something they describe.
 | [Desktop engines are keyed by workspace path](2026-11-21-desktop-engines-are-keyed-by-workspace-path.md) | One supervisor runs an engine per workspace whatever window or app profile opens it; per-computer state sits in a folder keyed by the workspace's path; Code loads its own workspace under the project's |
 | [The merge queue writes only its own cache area](2026-11-20-the-merge-queue-writes-only-its-own-cache-area.md) | The queue's cache token uploads only to `q/<hash>` and reads it before `main`'s entry; `main` never reads `q/`; only `ci.yml`'s `build` job uses the remote cache (proposed) |
 | [A setup done for an older release says `setupAgain`](2026-11-21-sandbox-check-setup-again.md) | An optional flag on a `setup-needed` refusal, so Studio can tell "set up again" from "never set up" (v9) |
+| [Access a removal with administrator rights left says `accessKept`](2026-11-22-sandbox-check-access-kept.md) | An optional flag on a `setup-needed` refusal, so Settings offers to remove the sandbox again (v11) |
 | [A WSL distro without its runtime says `runtime-missing`](2026-11-21-sandbox-reason-runtime-missing.md) | A new `SandboxUnavailableReason` for Halonic's distro without its runtime, which repair installs without importing the distro again (v10) |
 
 The exact rules of the workflow decision are in the

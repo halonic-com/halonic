@@ -94,9 +94,12 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
         : { state: "ready", checkedAt };
     }
     if (check.reason === "setup-needed") {
-      return check.setupAgain === true
-        ? { state: "needs-setup", setupAgain: true }
-        : { state: "needs-setup" };
+      return {
+        state: "needs-setup",
+        ...(check.setupAgain === true ? { setupAgain: true } : {}),
+        // HAL-15851: Settings offers to remove it again.
+        ...(check.accessKept === true ? { accessKept: true } : {}),
+      };
     }
     if (check.reason === "restart-needed") return { state: "restart-needed" };
     return { state: "unavailable", code: check.reason };
