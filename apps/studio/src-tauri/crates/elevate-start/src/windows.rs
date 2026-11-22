@@ -218,7 +218,6 @@ fn plain_path(path: &[u16]) -> std::borrow::Cow<'_, [u16]> {
     }
 }
 
-/// `text` as a null-terminated UTF-16 string.
 /// Whether this process runs raised from an account whose other programs
 /// run without administrator rights, by [`raised`]'s rule.
 pub fn raised_start() -> bool {
@@ -261,6 +260,7 @@ fn elevation() -> Option<Elevation> {
     .find_map(|(value, elevation)| (value == kind).then_some(elevation))
 }
 
+/// `text` as a null-terminated UTF-16 string.
 fn wide(text: &OsStr) -> Vec<u16> {
     text.encode_wide().chain(std::iter::once(0)).collect()
 }
