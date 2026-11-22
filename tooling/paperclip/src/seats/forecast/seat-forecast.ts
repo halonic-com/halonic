@@ -78,7 +78,12 @@ function scaled(mix: TokenCounts, tokens: number): TokenCounts {
   return { input: mix.input * tokens, cached: mix.cached * tokens, output: mix.output * tokens };
 }
 
-function latestBy<T>(items: readonly T[], keyOf: (item: T) => string, order: (item: T) => string) {
+/** The newest item per key, newest by `order` (an ISO time or day). */
+export function latestBy<T>(
+  items: readonly T[],
+  keyOf: (item: T) => string,
+  order: (item: T) => string,
+): Map<string, T> {
   const latest = new Map<string, T>();
   for (const [key, group] of groupBy(items, keyOf)) {
     const [newest] = [...group].sort((a, b) => order(b).localeCompare(order(a)));
@@ -96,8 +101,30 @@ interface TimedPlacement {
   readonly toMs: number;
 }
 
+/** Points and tokens per hour of the agents on one seat window at one instant. */
+export interface SeatRate {
+  readonly points: Level;
+  readonly tokens: Level;
+}
+
+/** No agents, or none with a fit. */
+export const noRate: SeatRate = { points: empty, tokens: empty };
+
+/** Two rates added together. */
+export function addRates(a: SeatRate, b: SeatRate): SeatRate {
+  return {
+    points: { p50: a.points.p50 + b.points.p50, p90: a.points.p90 + b.points.p90 },
+    tokens: { p50: a.tokens.p50 + b.tokens.p50, p90: a.tokens.p90 + b.tokens.p90 },
+  };
+}
+
+/** Whether a seat gets a forecast: active, and not the paid API. */
+export function forecastable(seat: Seat): boolean {
+  return seat.status === "active" && seat.role !== "paid-api";
+}
+
 /** Prices the agents on a seat at any hour, and notes the ones without a fit. */
-class SeatPricing {
+export class SeatPricing {
   private readonly input: SeatForecastInput;
   private readonly nowMs: number;
   private readonly profiles: Map<AgentId, DemandProfile>;
@@ -128,33 +155,46 @@ class SeatPricing {
 
   /** Points per hour a window of a seat gains at any instant, from the agents on it then. */
   pointsPerHour(seat: Seat, window: WindowKey): (atMs: number) => Level {
+    const rate = this.ratePerHour(seat, window);
+    return (atMs) => rate(atMs).points;
+  }
+
+  /**
+   * Points and tokens per hour a window of a seat gains at any instant. The
+   * tokens count only agents whose model has a fit, so tokens per point stays
+   * true to the points.
+   */
+  ratePerHour(seat: Seat, window: WindowKey): (atMs: number) => SeatRate {
     const placements = this.placements.filter((placement) => placement.seatId === seat.id);
     return (atMs) =>
       placements
         .filter((placement) => placement.fromMs <= atMs && atMs < placement.toMs)
-        .map((placement) => this.agentPoints(placement.agentId, seat, window, atMs))
-        .reduce((sum, level) => ({ p50: sum.p50 + level.p50, p90: sum.p90 + level.p90 }), empty);
+        .map((placement) => this.agentRate(placement.agentId, seat, window, atMs))
+        .reduce(addRates, noRate);
   }
 
   uncalibrated(): (CalibrationKey & { agentId: AgentId })[] {
     return [...this.missing.values()];
   }
 
-  private agentPoints(agentId: AgentId, seat: Seat, window: WindowKey, atMs: number): Level {
+  private agentRate(agentId: AgentId, seat: Seat, window: WindowKey, atMs: number): SeatRate {
     const profile = this.profiles.get(agentId);
     if (profile === undefined || !countsAgainst(window, profile.model, this.input.modelWindows)) {
-      return empty;
+      return noRate;
     }
     const key = { plan: planOf(seat), model: profile.model, window };
     const calibration = this.calibrations.get(keyOf(key));
     if (calibration === undefined) {
       this.missing.set(`${keyOf(key)}|${agentId}`, { ...key, agentId });
-      return empty;
+      return noRate;
     }
     const demand = demandAt(profile, this.nowMs, Math.floor(atMs / hourMs) * hourMs);
     const price = (tokens: number) =>
       pointsFor(calibration.pointsPerMillion, scaled(profile.mix, tokens));
-    return { p50: price(demand.p50), p90: price(demand.p90) };
+    return {
+      points: { p50: price(demand.p50), p90: price(demand.p90) },
+      tokens: { p50: demand.p50, p90: demand.p90 },
+    };
   }
 }
 
@@ -170,7 +210,7 @@ export function forecastSeats(input: SeatForecastInput): SeatForecastRun {
   const seats: SeatForecast[] = [];
   const refills: Refill[] = [];
   for (const seat of input.seats) {
-    if (seat.status !== "active" || seat.role === "paid-api") {
+    if (!forecastable(seat)) {
       continue;
     }
     for (const reading of latest.values()) {
