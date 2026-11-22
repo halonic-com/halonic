@@ -145,13 +145,19 @@ verifies("workflows.configuration.problem-lines", () => {
     expect(lines[0]).toBe("Only a wait step has timers");
   });
 
-  it("says arrow and answer for a wait's arrow without an event, and keeps it off the card", () => {
-    const bare = problem("wait-arrow-without-event", "warning", "review");
-    expect(problemLine(bare)).toBe("Never taken: no answer");
+  it("says a wait's arrow without an event is taken on Done, and keeps it off the card", () => {
+    const bare = { ...problem("wait-arrow-without-event", "warning", "review"), arrowIndex: 1 };
+    expect(problemLine(bare)).toBe("Taken on Done");
     expect(problemRows([bare])[0]?.text).toBe(
-      "Has an arrow with no answer, so it's never taken: a person picks from its named answers. Give the arrow an answer, or a timer, in the workflow's file.",
+      "Has an arrow with no answer, so it's taken only if someone answers Done. Give the arrow an answer, or a timer, in the workflow's file.",
     );
     expect(cardProblems([bare], "review")).toBeUndefined();
+    // The plate's tooltip in Studio's words, not the core's "transition … event" with the step's id.
+    expect(arrowProblems([bare], { from: "review", to: "ship" }, 1)).toMatchObject({
+      line: "Taken on Done",
+      detail:
+        "This arrow has no answer, so it's taken only if someone answers Done. Give it an answer, or a timer, in the workflow's file.",
+    });
   });
 
   it("counts errors and warnings", () => {
