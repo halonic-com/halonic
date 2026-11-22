@@ -12,6 +12,7 @@ export {
   type ActionBarRow,
 } from "./action-bar/action-bar.tsx";
 export { type DecisionEvent, decisionRows } from "./action-bar/decision-rows.ts";
+export { Avatar, type AvatarProps } from "./avatar/avatar.tsx";
 export {
   Button,
   type ButtonProps,
@@ -161,6 +162,7 @@ export {
   useGridNavigation,
 } from "./grid-navigation/use-grid-navigation.ts";
 export { type HaloPreset, haloPresets } from "./halo-presets.ts";
+export { HalonicMark, type HalonicMarkProps } from "./halonic-mark/halonic-mark.tsx";
 export {
   HeaderBadge,
   type HeaderBadgeButton,
@@ -179,6 +181,7 @@ export { HeaderBadgeSheetDialog } from "./header-badge/header-badge-sheet-dialog
 export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
 export { AlertIcon } from "./icons/alert-icon.tsx";
 export { BackIcon } from "./icons/back-icon.tsx";
+export { BarsIcon } from "./icons/bars-icon.tsx";
 export { ChevronDownIcon } from "./icons/chevron-down-icon.tsx";
 export { ChevronRightIcon } from "./icons/chevron-right-icon.tsx";
 export { CloseIcon } from "./icons/close-icon.tsx";
@@ -193,6 +196,7 @@ export { LockIcon } from "./icons/lock-icon.tsx";
 export { MaximiseIcon } from "./icons/maximise-icon.tsx";
 export { MenuIcon } from "./icons/menu-icon.tsx";
 export { MoreIcon } from "./icons/more-icon.tsx";
+export { PeopleIcon } from "./icons/people-icon.tsx";
 export {
   PlaceIcon,
   type PlaceIconName,
