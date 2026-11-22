@@ -1,3 +1,4 @@
+import { JsonRpcCallError, PLUGIN_RPC_ERROR_CODES } from "@paperclipai/plugin-sdk";
 import type { HostApi } from "./host.ts";
 import type { JobApi } from "./job.ts";
 
@@ -68,12 +69,14 @@ export interface SentRequest {
 }
 
 /**
- * A plugin context for the job: one company per entry in `configs`, a
- * secret store, and an outbound HTTP that answers GitHub from `answers`.
+ * A plugin context for the job: one company per entry in `configs`, plus the
+ * `unconfigured` companies the board saved no settings for, a secret store,
+ * and an outbound HTTP that answers GitHub from `answers`.
  */
 export function fakeJobContext(options: {
   host: HostApi;
   configs: Record<string, Record<string, unknown>>;
+  unconfigured?: readonly string[];
   answers: Record<string, unknown>;
   secret?: () => Promise<string>;
 }) {
@@ -84,9 +87,22 @@ export function fakeJobContext(options: {
   const ctx = {
     ...options.host,
     companies: {
-      list: async () => Object.keys(options.configs).map((id) => ({ id })),
+      list: async () =>
+        [...(options.unconfigured ?? []), ...Object.keys(options.configs)].map((id) => ({ id })),
     },
-    config: { get: async (companyId: string) => options.configs[companyId] ?? {} },
+    config: {
+      // Like the host for a scheduled job: a company without saved settings is refused.
+      get: async (companyId: string) => {
+        const config = options.configs[companyId];
+        if (config === undefined) {
+          throw new JsonRpcCallError({
+            code: PLUGIN_RPC_ERROR_CODES.INVOCATION_SCOPE_DENIED,
+            message: `Plugin is not allowed to perform "config.get": company context is required`,
+          });
+        }
+        return config;
+      },
+    },
     secrets: {
       resolve: async (ref: unknown) => {
         resolved.push(ref);
