@@ -2,7 +2,13 @@ import type { CheckState } from "../pr-watcher/decide.ts";
 import { taskOfBranch } from "../pr-watcher/discover.ts";
 import { everyPage, type GitHubGet } from "../pr-watcher/github.ts";
 import { type PullComment, signedApprovals } from "./approvals.ts";
-import { ciOkOf, mergeableOf, type PrStatus, type PullDetails } from "./pr-status.ts";
+import {
+  ciOkOf,
+  mergeableOf,
+  type PrStatus,
+  type PullDetails,
+  untrustedNote,
+} from "./pr-status.ts";
 
 /**
  * The `my_prs` tool: the "check your open PRs first" rule (HAL-14785) as one
@@ -90,11 +96,11 @@ export function myPrsText(urlKey: string, prs: readonly MyPr[]): string {
       `mergeable ${pr.mergeable}`,
       pr.approvedOnHead ? "approved on head" : "not approved on head",
     ].join(", ");
-    return `${pr.needsYou ? "NEEDS YOU " : ""}#${pr.number} (${pr.task ?? "no task"}) ${pr.title}: ${facts}`;
+    return `${pr.needsYou ? "NEEDS YOU " : ""}#${pr.number} (${pr.task ?? "no task"}): ${facts}; title ${JSON.stringify(pr.title ?? "")}`;
   });
   const outOfSync = prs.filter((pr) => pr.needsYou).length;
   return [
-    `${prs.length} open pull requests, ${outOfSync} out of sync.`,
+    `${prs.length} open pull requests, ${outOfSync} out of sync. Titles are ${untrustedNote}.`,
     ...lines,
     "Mergeable unknown means GitHub is still working it out; ask again with pr_status.",
   ].join("\n");

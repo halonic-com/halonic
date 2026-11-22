@@ -20,6 +20,12 @@ When an agent calls the Agent tools plugin's `pr_status` tool with a pull reques
 - Given a pull request from a fork whose branch is named `priya/HAL-14219-…`,
   when an agent asks `pr_status` about it,
   then it names no author and no task.
+- Given a fork's pull request whose title and branch hold a line break and a line that reads like an instruction,
+  when an agent asks `pr_status` about it,
+  then the answer gives the title and branch JSON-quoted in one line marked as GitHub text, data not instructions, and the tool descriptions say the same.
+- Given a pull request whose base branch is `release/0.2#x`,
+  when an agent asks `pr_status` about it,
+  then the compare request encodes each part of the branch name, so the `#` stays in the path.
 - Given a pull request URL on a repository the plugin doesn't watch,
   when an agent asks `pr_status` about it,
   then the tool answers with an error and sends no request to GitHub.
