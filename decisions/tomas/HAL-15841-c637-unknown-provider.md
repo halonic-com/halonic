@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-15841 asks for this change, from words check C637 (HAL-15824). The team decides it under the HAL-2282 rule, since it rewords a message that is already there. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:En+e9eWYkAimMFu0xsdR24Vmv0w1ORpffr3XLFNdw8LBK00kGTtiCcLuTGZUwjFhO4MT9o1brXwg/ZsoSoLTDg==
 
 ## What changes
 
