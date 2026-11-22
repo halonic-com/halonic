@@ -99,7 +99,7 @@ Here `ORDERS_HOOK` holds the secret's value in the sender's environment.
 | 403 | The workspace changed since it was trusted. Run `halonic trust`. |
 | 409 | This delivery id was already received. A resend with the same id starts nothing. |
 | 429 | A run of the routine is still going and its `overlap` is `queue`. Send it again after the time in `Retry-After`. |
-| 501 | The routine starts an agent. The answer says "Halonic can't run an agent on its own yet, only as a step in a workflow." Make a workflow with the agent as a step, then start that. |
+| 501 | The routine starts an agent. The answer says "Halonic can't run an agent on its own yet, only as a step in a workflow." Make a workflow with the agent as a step, then have the routine start that workflow. |
 
 The terminal that runs `halonic serve` prints a line when a signed
 request starts a run, is skipped, gets a 400 or a 501, or fails. Other

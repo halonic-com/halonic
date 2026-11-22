@@ -7,7 +7,7 @@ import { routineKey, routineStart } from "@halonicjs/routines";
 import type { RunNowResult } from "@halonicjs/studio-feature-routines/api";
 import type { RoutineRunStart } from "../engine/engine-service.ts";
 import { runNowFailureOf } from "./run-now-failure.ts";
-import type { WorkspaceRoutinesParts } from "./workspace-routines.ts";
+import type { WorkspaceRoutinesParts } from "./workspace-routines-parts.ts";
 
 /**
  * Starts the routine's workflow or agent now, with `at` as its trigger's time.

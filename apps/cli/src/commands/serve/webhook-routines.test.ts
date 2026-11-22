@@ -78,7 +78,7 @@ verifies("cli.commands.serve.serve", () => {
 
       expect(await lines([routine], secretsOf({ "friday-hook": "s" }))).toEqual([
         "Friday digest has the web address http://localhost:4747/api/webhooks/notes/friday-digest",
-        "✕ Friday digest can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that.",
+        "✕ Friday digest can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.",
       ]);
     });
 

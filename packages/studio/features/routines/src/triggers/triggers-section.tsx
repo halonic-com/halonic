@@ -6,24 +6,27 @@ import {
   usePresentation,
 } from "@halonicjs/studio-kit";
 import { type ItemPageSectionViewProps, SECTION_ADD_STEP } from "@halonicjs/studio-shell";
-import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   type RoutinesHost,
   RoutinesHostService,
   type TriggerOwner,
   type TriggerRow,
+  type WorkflowWithAgent,
 } from "../api.ts";
 import { nextWhen } from "../list/list-words.ts";
-import { PromptField } from "../new/prompt-field.tsx";
 import { failureReason } from "../page/page-words.ts";
 import { TRIGGER_STEP } from "../page/trigger-step.ts";
 import { triggersWords } from "./triggers-words.ts";
 import { useTriggerRows } from "./use-trigger-rows.ts";
 
+/** The command that opens New workflow, as the Routines page's empty state runs it. */
+const newWorkflowCommand = "workflows.new";
+
 /** The **Triggers** section on an agent's or a workflow's page: the routines that start it. */
 export function TriggersSection({ item, context, step }: ItemPageSectionViewProps) {
   const kind = item.kind === "workflow" ? "workflow" : "agent";
-  const { openItem } = context;
+  const { openItem, runCommand } = context;
   return (
     <TriggersView
       host={context.services.get(RoutinesHostService)}
@@ -33,6 +36,7 @@ export function TriggersSection({ item, context, step }: ItemPageSectionViewProp
         openRoutine: (hubId: string, id: string, step?: string) =>
           openItem({ kind: "routine", hub: hubId, id }, step === undefined ? {} : { step }),
       })}
+      {...(runCommand && { newWorkflow: () => void runCommand(newWorkflowCommand) })}
     />
   );
 }
@@ -48,121 +52,76 @@ export interface TriggersViewProps {
   readonly openRoutine?: (hubId: string, id: string, step?: string) => void;
   /**
    * Set when the page asks the section to start adding, such as the agent map's **Add trigger**:
-   * on a workflow the section then does what its own Add trigger does, once; on an agent it focuses
-   * its Add trigger, so the person reads that Halonic can't run the agent on its own yet first.
+   * on a workflow the section then does what its own Add trigger does, once.
    */
   readonly startAdding?: boolean;
+  /** Opens New workflow, for an agent that is a step in no workflow; without it there's no button. */
+  readonly newWorkflow?: () => void;
 }
 
 /**
  * The section's body (`routines.triggers.lists-routines-that-start-it`,
  * `routines.triggers.empty-state`, `routines.triggers.add-trigger-creates-routine`): a row per
- * routine in the owner's hub that starts it, sorted by name, then **Add trigger**, which opens the
- * new routine with its Trigger picker focused. On an agent, **Add trigger** first asks for the
- * agent's prompt, since that is the agent's real task, and makes the routine only once one is typed.
- * Above it, an agent's section says that a routine can't run an agent yet
- * (`routines.triggers.agent-cant-run-note`), so nobody writes that task before learning it.
- * Opened with `startAdding`, it presses its own Add trigger once it is drawn on a workflow, and
- * focuses it on an agent (`routines.triggers.add-trigger-from-page`).
+ * routine in the owner's hub that starts it, sorted by name, then on a workflow **Add trigger**,
+ * which makes a routine and opens it with its Trigger picker focused. Halonic can't run an agent on
+ * its own yet, so an agent's section offers no Add trigger: it says so and leads to the workflows
+ * the agent is a step in instead (`routines.triggers.agent-cant-run-note`). Opened with
+ * `startAdding`, a workflow's section presses its own Add trigger once it is drawn; an agent's
+ * shows as it is, since that way in is what adding a trigger to it means for now
+ * (`routines.triggers.add-trigger-from-page`).
  */
-export function TriggersView({ host, owner, openRoutine, startAdding = false }: TriggersViewProps) {
+export function TriggersView({
+  host,
+  owner,
+  openRoutine,
+  startAdding = false,
+  newWorkflow,
+}: TriggersViewProps) {
   const { load, retry } = useTriggerRows(host, owner);
-  const [adding, setAdding] = useState(false);
+  /** The workflow a trigger is being made for, while the host makes it. */
+  const [adding, setAdding] = useState<string>();
   const [addError, setAddError] = useState<string>();
-  /** The agent's name while the section asks for its prompt. */
-  const [asking, setAsking] = useState<string>();
-  const [prompt, setPrompt] = useState("");
-  const [promptMissing, setPromptMissing] = useState(false);
-  const promptField = useRef<HTMLTextAreaElement>(null);
-  const addButton = useRef<HTMLButtonElement>(null);
-  const noteId = useId();
-  // Halonic can't run an agent on its own yet (`routines.triggers.agent-cant-run-note`). The note,
-  // its tie to Add trigger and what the page's add step does all follow this one flag, so the add
-  // step opens an agent's Prompt straight away again once the note goes.
-  const cantRunOnItsOwn = owner.kind === "agent";
 
-  useEffect(() => {
-    if (asking !== undefined) promptField.current?.focus();
-  }, [asking]);
-
-  /** Runs `step` with the button busy, and says why when it fails. */
-  const attempt = async (step: () => Promise<void>) => {
-    setAdding(true);
+  const addTo = async (workflowId: string) => {
+    setAdding(workflowId);
     setAddError(undefined);
     try {
-      await step();
+      const ref = await host.addTrigger({ kind: "workflow", hubId: owner.hubId, id: workflowId });
+      openRoutine?.(ref.hubId ?? owner.hubId, ref.id, TRIGGER_STEP);
     } catch (error) {
       setAddError(triggersWords.addFailed(failureReason(error)));
     } finally {
-      setAdding(false);
+      setAdding(undefined);
     }
-  };
-
-  const make = (withPrompt?: string) =>
-    attempt(async () => {
-      const ref = await host.addTrigger(owner, withPrompt);
-      setAsking(undefined);
-      setPrompt("");
-      openRoutine?.(ref.hubId ?? owner.hubId, ref.id, TRIGGER_STEP);
-    });
-
-  const add = () => {
-    if (owner.kind === "workflow") return make();
-    if (asking === undefined) {
-      return attempt(async () => setAsking((await host.ownerName(owner)) ?? owner.id));
-    }
-    if (prompt.trim() === "") {
-      setPromptMissing(true);
-      promptField.current?.focus();
-      return;
-    }
-    return make(prompt);
   };
 
   // Once per drawn section, so a second run of the effect can't make a workflow's routine twice.
-  // An agent's Prompt waits for the person's own press: focus lands on Add trigger, which the note
-  // describes, so nobody writes a task for a routine that can't start before reading why (C622).
   const startedAdding = useRef(false);
-  const addOnStart = useEffectEvent(() => {
-    if (cantRunOnItsOwn) addButton.current?.focus();
-    else void add();
-  });
+  const addOnStart = useEffectEvent(() => void addTo(owner.id));
   useEffect(() => {
-    if (!startAdding || startedAdding.current) return;
+    if (!startAdding || owner.kind !== "workflow" || startedAdding.current) return;
     startedAdding.current = true;
     addOnStart();
-  }, [startAdding]);
-
-  const cancel = () => {
-    setAsking(undefined);
-    setPrompt("");
-    setPromptMissing(false);
-    setAddError(undefined);
-    // Cancel removes itself, so put focus back where the user started rather than on the page body.
-    addButton.current?.focus();
-  };
+  }, [startAdding, owner.kind]);
 
   // A plain wrapper with no heading or name of its own: the section is a Configuration page, and
   // the page's tab panel already names it "Triggers", like the built pages.
   return (
     <div className="flex flex-col gap-2">
       <Rows load={load} owner={owner} retry={retry} openRoutine={openRoutine} />
-      {cantRunOnItsOwn && (
-        <p id={noteId} className="text-small text-fg-muted">
-          {triggersWords.agentCantRun}
-        </p>
+      {owner.kind === "workflow" && (
+        <div className="flex gap-2">
+          <Button variant="secondary" busy={adding === owner.id} onClick={() => addTo(owner.id)}>
+            {triggersWords.addTrigger}
+          </Button>
+        </div>
       )}
-      {asking !== undefined && (
-        <PromptField
-          ref={promptField}
-          agentName={asking}
-          prompt={prompt}
-          missing={promptMissing}
-          busy={adding}
-          onChange={(next) => {
-            setPromptMissing(false);
-            setPrompt(next);
-          }}
+      {owner.kind === "agent" && load.kind === "ready" && (
+        <AgentWayIn
+          workflows={load.workflows}
+          adding={adding}
+          addTo={addTo}
+          newWorkflow={newWorkflow}
         />
       )}
       {addError !== undefined && (
@@ -170,23 +129,52 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
           {addError}
         </p>
       )}
-      <div className="flex gap-2">
-        <Button
-          ref={addButton}
-          variant={asking === undefined ? "secondary" : "primary"}
-          {...(cantRunOnItsOwn && { "aria-describedby": noteId })}
-          busy={adding}
-          onClick={add}
-        >
-          {triggersWords.addTrigger}
-        </Button>
-        {asking !== undefined && (
-          <Button variant="secondary" onClick={cancel}>
-            {triggersWords.cancel}
-          </Button>
-        )}
-      </div>
     </div>
+  );
+}
+
+/**
+ * What an agent's section offers in place of Add trigger: the line saying why, then an Add trigger
+ * for each workflow the agent is a step in, or New workflow when there is none.
+ */
+function AgentWayIn({
+  workflows,
+  adding,
+  addTo,
+  newWorkflow,
+}: {
+  readonly workflows: readonly WorkflowWithAgent[];
+  readonly adding: string | undefined;
+  readonly addTo: (workflowId: string) => void;
+  readonly newWorkflow: (() => void) | undefined;
+}) {
+  const inWorkflows = workflows.length > 0;
+  return (
+    <>
+      <p className="text-small text-fg-muted">{triggersWords.agentCantRun(inWorkflows)}</p>
+      {inWorkflows && (
+        <ul className="flex flex-wrap gap-2">
+          {workflows.map((workflow) => (
+            <li key={workflow.id}>
+              <Button
+                variant="secondary"
+                busy={adding === workflow.id}
+                onClick={() => addTo(workflow.id)}
+              >
+                {triggersWords.addTriggerTo(workflow.name)}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!inWorkflows && newWorkflow && (
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={newWorkflow}>
+            {triggersWords.newWorkflow}
+          </Button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -213,8 +201,12 @@ function Rows({
       />
     );
   }
-  if (load.rows.length === 0)
-    return <p className="text-fg-muted">{triggersWords.empty(owner.kind)}</p>;
+  if (load.rows.length === 0) {
+    // On an agent, the line under the rows says why nothing starts it, and what to do.
+    return owner.kind === "workflow" ? (
+      <p className="text-fg-muted">{triggersWords.empty}</p>
+    ) : null;
+  }
   const now = new Date();
   return (
     <ul className="flex flex-col">

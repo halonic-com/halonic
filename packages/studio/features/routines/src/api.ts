@@ -293,6 +293,12 @@ export interface TriggerOwner {
   readonly id: string;
 }
 
+/** A workflow in an agent's hub that runs the agent as a step. */
+export interface WorkflowWithAgent {
+  readonly id: string;
+  readonly name: string;
+}
+
 /** One row of a Triggers section: a routine that starts its workflow or agent. */
 export interface TriggerRow extends RoutineRef {
   readonly name: string;
@@ -403,6 +409,12 @@ export interface RoutinesHost {
    * workflow with input `{}`, or an agent with `prompt`. Writes nothing for an agent without a prompt.
    */
   addTrigger(owner: TriggerOwner, prompt?: string): Promise<RoutineRef>;
+  /**
+   * The workflows in the agent's hub that run it as a step, directly or in a workflow they call,
+   * in the hub's order, so the agent's Triggers section can lead to them while Halonic can't run an
+   * agent on its own.
+   */
+  workflowsWithAgent(agent: TriggerOwner): Promise<readonly WorkflowWithAgent[]>;
 }
 
 /**
@@ -431,20 +443,7 @@ export class RoutineInputRefused extends KindedError {
   }
 }
 
-const agentCantRunWhy = "Halonic can't run an agent on its own yet, only as a step in a workflow.";
-const agentCantRunInstead = "Make a workflow, then pick it under Starts";
-
-/**
- * Why a routine can't start an agent yet (C52 claim 1.6) and what to do instead, written once for
- * the New routine dialog, the Starts card and Run now's refusal (HAL-14647).
- */
-export const agentCantRunWords = {
-  why: agentCantRunWhy,
-  /** Names Starts with no full stop, so the New routine dialog can add where Starts is. */
-  instead: agentCantRunInstead,
-  /** Both as one line, for the routine's own page, where Starts is. */
-  line: `${agentCantRunWhy} ${agentCantRunInstead}.`,
-} as const;
+export { agentCantRunWords } from "./agent-cant-run-words.ts";
 
 /** What {@link RoutinesHost.create} rejects with when the hub has no workflow and no agent to run. */
 export class NothingToRun extends KindedError {

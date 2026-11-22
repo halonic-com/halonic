@@ -12,6 +12,7 @@ import type {
   RoutineTarget,
   RoutineTargetChoice,
   TriggerOwner,
+  WorkflowWithAgent,
 } from "@halonicjs/studio-feature-routines/api";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { targetOfFile } from "./routine-files.ts";
@@ -155,6 +156,22 @@ export function targetsOf(workspace: LoadedWorkspace, hubId: string | null): Rou
         name: file.value.name,
       })),
   ];
+}
+
+/**
+ * The workflows of the agent's hub, in the hub's order, that run the agent as a step, directly or in
+ * a workflow they call, so starting one runs the agent.
+ */
+export function workflowsWithAgent(
+  workspace: LoadedWorkspace,
+  agent: TriggerOwner,
+): WorkflowWithAgent[] {
+  const { hubId } = agent;
+  const runsAgent = (workflowId: string) =>
+    workflowAgentsOf(workspace, { hubId, workflowId }).some((one) => one.value.id === agent.id);
+  return targetsOf(workspace, hubId)
+    .filter((choice) => choice.kind === "workflow" && runsAgent(choice.id))
+    .map(({ id, name }) => ({ id, name }));
 }
 
 /** The Google connectors a routine of the hub can watch for mail: the hub's own first, then the shared ones at the root. */

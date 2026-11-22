@@ -89,7 +89,7 @@ export const serveMessages = defineMessages("serve", {
    * in the words Studio's Starts card uses (microcopy 1.5 L2).
    */
   webhookRoutineAgent: (name: string) =>
-    phrase`${markPart("failed")} ${name} can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that.`,
+    phrase`${markPart("failed")} ${name} can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.`,
   /**
    * Line 1 of a web request for a routine that failed with a 500: a bug, so
    * the error shape's F16 line 1 (microcopy 25.1 L4, HAL-15277).
