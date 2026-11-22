@@ -226,7 +226,7 @@ describe("a connector's secrets on its page", () => {
       const root = render(<ConnectorPage {...page({ secrets: readable })} />);
       await settled();
       expect(root.textContent).toContain(
-        "Kept in your system keychain, never in files. Notes gives it to the program it starts. It's Studio's own: halonic secret set doesn't reach it.",
+        "Kept in your system keychain, never in files. Notes gives it to the program it starts. Studio uses this one; halonic secret set keeps a separate one for the command line.",
       );
       expect(root.textContent).not.toContain("Not set");
       expect(get).not.toHaveBeenCalled();
