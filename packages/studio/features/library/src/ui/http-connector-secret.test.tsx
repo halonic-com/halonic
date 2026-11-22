@@ -24,18 +24,18 @@ verifies("library.http-connector-secret", () => {
   it("says in the desktop app which runs use the secret, that Studio can't tell, and both ways to set it", () => {
     const root = render(<HttpConnectorSecret connection={tracker} host="desktop-app" />);
     expect(linesOf(root)).toEqual([
-      "Studio can't connect to a server over HTTP yet, so it doesn't use tracker-token. Runs started with halonic run or halonic routines watch do. Studio can't tell whether it's set for them. To save it, run this in a terminal:",
+      "Studio can't connect to a server over HTTP yet, so only runs started with halonic run or halonic routines watch use tracker-token. Studio can't tell whether it's set for them. To save it, run this in a terminal:",
       "Or set HALONIC_SECRET_TRACKER_TOKEN in the terminal you start them from.",
     ]);
     expect(root.textContent).toContain("halonic secret set tracker-token");
   });
 
   it.each(["served", "phone", undefined] as const)(
-    "says elsewhere (%s) that the computer Halonic runs on reads it",
+    "says elsewhere (%s) that the computer running halonic serve reads it",
     (host) => {
       const root = render(<HttpConnectorSecret connection={tracker} host={host} />);
       expect(linesOf(root)).toEqual([
-        "Studio can't set tracker-token, or tell whether it's set. Halonic reads it from the secrets of the computer it runs on. To save it, run this in a terminal on that computer:",
+        "Studio can't set tracker-token here, or tell whether it's set. Halonic reads it on the computer running halonic serve. To save it, run this in a terminal on that computer:",
         "Or set HALONIC_SECRET_TRACKER_TOKEN for Halonic on that computer.",
       ]);
       expect(root.textContent).toContain("halonic secret set tracker-token");

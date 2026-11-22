@@ -75,7 +75,9 @@ describe("ConnectorPage", () => {
     ]);
     const root = render(<ConnectorPage {...props("notes")} />);
     await settled();
-    expect(root.textContent).toContain("Studio can't set notes-token, or tell whether it's set.");
+    expect(root.textContent).toContain(
+      "Studio can't set notes-token here, or tell whether it's set.",
+    );
     expect(root.textContent).toContain("halonic secret set notes-token");
     expect(root.textContent).toContain("Or set HALONIC_SECRET_NOTES_TOKEN");
     // The name shows once: the lines name it, so How it connects has no Secrets row.

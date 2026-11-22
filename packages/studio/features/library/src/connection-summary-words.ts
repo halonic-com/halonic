@@ -35,9 +35,9 @@ export const connectionSummaryWords = {
    */
   httpSecret: {
     desktopApp: (secret: string) =>
-      `Studio can't connect to a server over HTTP yet, so it doesn't use ${secret}. Runs started with halonic run or halonic routines watch do. Studio can't tell whether it's set for them. To save it, run this in a terminal:`,
+      `Studio can't connect to a server over HTTP yet, so only runs started with halonic run or halonic routines watch use ${secret}. Studio can't tell whether it's set for them. To save it, run this in a terminal:`,
     elsewhere: (secret: string) =>
-      `Studio can't set ${secret}, or tell whether it's set. Halonic reads it from the secrets of the computer it runs on. To save it, run this in a terminal on that computer:`,
+      `Studio can't set ${secret} here, or tell whether it's set. Halonic reads it on the computer running halonic serve. To save it, run this in a terminal on that computer:`,
     after: {
       desktopApp: (variable: string) => `Or set ${variable} in the terminal you start them from.`,
       elsewhere: (variable: string) => `Or set ${variable} for Halonic on that computer.`,
