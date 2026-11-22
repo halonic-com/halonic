@@ -1155,6 +1155,10 @@ FunctionEnd
 ; serve, on top of the window opening and the page loading. 180 s is three
 ; times START_WAIT, so a slow or busy machine doesn't lose a working update.
 ; Keep it above START_WAIT plus a generous margin if either number changes.
+; Where the sandbox choice is the host in the WSL distro, the proof is the
+; host beside the shell (`host_answers`, apps/studio/src-tauri/src/
+; agent_host_life.rs): the distro's own first start installs the runtime and
+; security updates and can take minutes, so it never counts against the 180 s.
 ;
 ; If the user quits the new version before it proves it starts, the marker is
 ; never written and the installer goes back after the wait. That is on

@@ -6,10 +6,11 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
+use std::time::Duration;
 
 use halonic_agent_host::{
     AgentHost, AgentHostError, Handshake, SettingCopy, WslError, copy_sandbox_setting,
-    distro_host_command, distro_installed, executable_beside, host_command, wsl_exe,
+    distro_host_command, distro_installed_within, executable_beside, host_command, wsl_exe,
 };
 use halonic_git_guard::plain_path;
 use halonic_host_settings::SandboxSetting;
@@ -178,6 +179,11 @@ pub(super) fn copy_into_distro(
     })
 }
 
+/// How long `wsl.exe` may take to list the distros before the start gives up
+/// on it: the list runs while the host's lock is held, so a hung WSL service
+/// would otherwise hold up every host call.
+const LIST_LIMIT: Duration = Duration::from_secs(20);
+
 /// `wsl.exe` and the command for the host in Halonic's distro, once `wsl.exe`
 /// is found and lists the distro. Refuses with the sandbox reason when it doesn't: a
 /// missing distro never falls back to the local host.
@@ -188,7 +194,16 @@ pub(super) fn distro_host_command_for_real_wsl() -> Result<(PathBuf, DistroComma
             .with_reason("wsl-missing")
             .with_failure(StartFailure::of(FailureCause::WslMissing))
     })?;
-    match distro_installed(&wsl) {
+    distro_host_command_for(wsl, LIST_LIMIT)
+}
+
+/// [`distro_host_command_for_real_wsl`] for a found `wsl.exe`, which has
+/// `limit` to list the distros; one that hasn't by then fails as `wsl_failed`.
+fn distro_host_command_for(
+    wsl: PathBuf,
+    limit: Duration,
+) -> Result<(PathBuf, DistroCommand), HostRefusal> {
+    match distro_installed_within(&wsl, limit) {
         Ok(true) => {}
         Ok(false) => {
             return Err(unavailable("Halonic's WSL distro isn't installed")

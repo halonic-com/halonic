@@ -4,6 +4,8 @@
 
 use tauri::{AppHandle, Manager, Runtime};
 
+use super::choice::HostKind;
+use super::start::{chosen_host, local_host_starts};
 use super::{AgentHostState, running_host};
 
 /// Ends every stream of the page `page`. The shell calls this when that
@@ -31,9 +33,42 @@ pub fn stop_host<R: Runtime>(app: &AppHandle<R>) {
 /// works and says what is left to set up, and a PC without the distro must
 /// still be able to prove an update. It counts only when the host file
 /// beside the shell starts and answers, so a broken host never passes.
+///
+/// Where the choice asks for the host in the distro, the host beside the
+/// shell is the proof straight away: starting the distro's host first
+/// cleans mounts and installs the runtime and security updates, which can
+/// take longer than the installer waits before it goes back, and a
+/// `wsl.exe` that fails names no sandbox reason.
 pub async fn host_answers<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let chosen = chosen_host(app).ok().map(|(kind, _)| kind);
+    if proves_beside_shell(chosen) {
+        return local_host_starts(app).await;
+    }
     match running_host(app).await {
         Ok(_) => true,
-        Err(refusal) => refusal.reason.is_some() && super::start::local_host_starts(app).await,
+        Err(refusal) => refusal.reason.is_some() && local_host_starts(app).await,
+    }
+}
+
+/// Whether an update proves itself with the host beside the shell rather
+/// than the host the choice starts: only for the host in the distro. The
+/// local host is proved by starting it, as it then keeps running.
+fn proves_beside_shell(chosen: Option<HostKind>) -> bool {
+    chosen == Some(HostKind::Distro)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::choice::HostKind;
+    use super::proves_beside_shell;
+
+    /// Failure path 2 (HAL-1206): an update on a PC whose choice is the host
+    /// in the distro proves itself with the host beside the shell, so a slow
+    /// first start in the distro doesn't send it back.
+    #[test]
+    fn update_proof_uses_the_host_beside_the_shell_for_the_distro_choice() {
+        assert!(proves_beside_shell(Some(HostKind::Distro)));
+        assert!(!proves_beside_shell(Some(HostKind::Local)));
+        assert!(!proves_beside_shell(None));
     }
 }

@@ -48,9 +48,9 @@ pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates
 use stderr_log::log_stderr;
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
-    SettingCopy, WslError, copy_sandbox_setting, distro_host_command, distro_installed,
-    distro_installed_within, file_sha256, install_runtime, install_runtime_within,
-    run_runtime_step, run_runtime_step_within, runtime_command, setting_copy_command, wsl_exe,
+    SettingCopy, WslError, copy_sandbox_setting, distro_host_command, distro_installed_within,
+    file_sha256, install_runtime, install_runtime_within, run_runtime_step,
+    run_runtime_step_within, runtime_command, setting_copy_command, wsl_exe,
 };
 
 /// The host's executable name, without the `.exe` Windows adds.
