@@ -151,7 +151,7 @@ function targetMessage(target: unknown): string {
   // `input: "{{trigger.body}}"` has both a workflow and an input, so "run needs
   // a workflow, with its input" would send the reader looking for neither
   // (HAL-15734). The input has to be named fields.
-  if (has("workflow") && !has("agent") && has("input") && !isFields(target.input)) {
+  if (has("workflow") && !has("agent") && has("input") && !isFields(target["input"])) {
     return 'A workflow routine\'s input is a list of fields, such as input: { mail: "{{trigger.body}}" }.';
   }
   return "run needs a workflow, with its input, or an agent, with its prompt.";
