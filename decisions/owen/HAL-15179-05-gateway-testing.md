@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-15179 (Liam agreed to the `./testing` entry there on 21 Nov); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:890PGMPbHgDweTYZSaK3KHqcxbsJFmfmX6APKPo3OCyvfbCzDxed+hoTNa2p3czvEHJPWCMkcMjMQw9yySYYCQ==
 
 The interop test in `packages/testing/integration` runs the phone's gateway client against the real remote
 gateway, so it needs two new subpaths, both registered in `extraExports` of `tooling/check/policy.json`, which
