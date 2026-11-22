@@ -3,6 +3,7 @@
 - Task: HAL-15504
 - Approval: HAL-15504; team wording on approved command output (HAL-2282), from the words check C588 (rows 22 to 25); the reviewer signs this note as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:L9uyeJHT/KFPFJYuodTBsKJHECxIaMF4ZYlNtVcyONln5DHc+w6YK2trn83y3CZWyZzMagqqHPkPf618mY5/AA==
 
 ## What changes
 
