@@ -2,6 +2,7 @@
 
 - Approval: option 2 on HAL-15744, decided by the team under HAL-2282 (Sofia); the package owner (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:P0LgPNuqcQkZLTXGk8DZiak8KkpxE+GtkrJh4KrDskijMQRKyXN3kzjGLX2aViA6pTKtJquO5bxgWw+Y3qp0DQ==
 
 ## What changes
 
