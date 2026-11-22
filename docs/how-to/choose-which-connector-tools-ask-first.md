@@ -26,11 +26,11 @@ Two more things always win:
   `halonic run`, `halonic runs send`, `halonic serve` and
   `halonic routines watch` read that choice. Studio's runs don't read it yet,
   so they refuse every `send` call, and so does a CLI run for a connector
-  that isn't a Google one. `halonic runs show` says "The call to <tool> was
-  refused: sending is off for <connector>, so nothing was sent." and, under it,
-  "To switch it on, run halonic google allow-sending [--dir …] <connector> on"
-  for a Google connector, or "The halonic command can't switch sending on for
-  it yet." for any other.
+  that isn't a Google one. `halonic runs show` says "! The call to <tool> (<connector>) wasn't
+  made, because sending is turned off." and goes on in the same line: "To
+  switch it on, run halonic google allow-sending <connector> on." for a Google
+  connector (with `--dir …` after `allow-sending` when you gave one), or
+  "Halonic can't switch it on for <connector> yet." for any other.
   - Studio has no Allow sending switch yet. To send through a Google
     connector, start the run with `halonic run` instead.
   - A connector that isn't a Google one can't have sending switched on
