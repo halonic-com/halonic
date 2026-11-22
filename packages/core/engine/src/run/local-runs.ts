@@ -12,7 +12,6 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
-import type { BudgetCheck } from "../budget/keep-to-budget.ts";
 import type { WaitedOnCall } from "../harness/serial-run-log.ts";
 import { checkStartTimeouts } from "../harness/start-limits.ts";
 import type { AnswerHarnessEffect, DecideInput, Effect } from "../kernel/decide-types.ts";
@@ -24,7 +23,13 @@ import { childNow, endChildrenOf, parentEnded, receiverOf } from "./child-runs.t
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { type CallModel, LocalModelCalls } from "./local-model-calls.ts";
-import { budgetCheckOf, builtEffectsOf, type LocalRunsOptions } from "./local-runs-options.ts";
+import {
+  builtEffectsOf,
+  type LocalRunLimits,
+  type LocalRunsOptions,
+  runLimitsOf,
+  unbuiltEffectFailure,
+} from "./local-runs-options.ts";
 import { RunsProposalFolders } from "./proposal-folders.ts";
 import { type RecordStartPorts, recordStart } from "./record-start.ts";
 import {
@@ -58,7 +63,7 @@ export class LocalRuns {
   readonly #feed: RunFeed;
   readonly #startDeadlines: StartDeadlines;
   readonly #builtEffects: ReadonlySet<Effect["type"]>;
-  readonly #budget: BudgetCheck | undefined;
+  readonly #limits: LocalRunLimits;
   /** The calls being carried out now, so a timer delivered twice makes one call. */
   readonly #calling = new Set<string>();
   readonly #unrecorded = new UnrecordedResults();
@@ -92,7 +97,7 @@ export class LocalRuns {
     this.#folders = new RunsProposalFolders(this.store, options.proposalFolders);
     this.#connectors = connectors;
     this.#builtEffects = builtEffectsOf(options);
-    this.#budget = budgetCheckOf(options);
+    this.#limits = runLimitsOf(options);
     this.#harnessCalls = new LocalHarnessCalls({
       store: this.store,
       blobs: options.blobs,
@@ -100,7 +105,7 @@ export class LocalRuns {
       folders: this.#folders,
       startDeadlines: this.#startDeadlines,
       clock,
-      ...(this.#budget === undefined ? {} : { budget: this.#budget }),
+      ...(this.#limits.budget === undefined ? {} : { budget: this.#limits.budget }),
       ...(options.mayStartHarness === undefined
         ? {}
         : { mayStart: options.mayStartHarness.bind(options) }),
@@ -349,28 +354,21 @@ export class LocalRuns {
    */
   async #record(runId: string, input: DecideInput): Promise<readonly RunEvent[]> {
     const { blobs } = this.#options;
-    const ports = {
-      runs: this.store,
-      blobs,
-      ...(this.#budget === undefined ? {} : { budget: this.#budget }),
-    };
+    const ports = { runs: this.store, blobs, ...this.#limits };
     const { run, events, effects } = await step(ports, runId, input);
-    const unbuilt = effects.find((effect) => !this.#builtEffects.has(effect.type));
+    const unbuilt = unbuiltEffectFailure(effects, this.#builtEffects);
     if (unbuilt !== undefined) {
       // The events are stored, so throwing would leave the run going with no
       // timer to move it on. Until the agent loop (4a) carries these out,
       // the run fails and none of its effects are scheduled.
-      const reason = unbuilt.type === "run-harness" ? "harness-unavailable" : "error";
-      await this.#fail(
-        runId,
-        { error: `The local executor can't carry out a ${unbuilt.type} effect yet.` },
-        reason,
-      );
+      await this.#fail(runId, unbuilt.failure, unbuilt.reason);
       await this.#ended(runId);
       return events;
     }
     await this.#effects.carryOut(run, effects);
-    if (events.length > 0 && hasEnded(run.status)) await this.#ended(runId);
+    if (events.length === 0 || !hasEnded(run.status)) return events;
+    await this.#ended(runId);
+    await this.#limits.meter.ended(run);
     return events;
   }
 
@@ -456,6 +454,7 @@ export class LocalRuns {
       folders: this.#folders,
       record: (runId, input) => this.#record(runId, input),
       now: () => this.#now(),
+      mayStart: (runId) => this.#limits.meter.mayStart(runId),
     };
   }
 

@@ -1,13 +1,15 @@
 // What the local executor's runs are given, and what they make of it: the
 // effects they can carry out, and the budget check they keep to.
 
-import type { RunVersion } from "@halonicjs/events";
+import type { RunFailureReason, RunVersion } from "@halonicjs/events";
 import type { BlobStore, IdGenerator, RunStore, Scheduler } from "@halonicjs/ports";
 import type { Budget } from "../budget/budget.ts";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
 import { spendOf } from "../budget/spend.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import type { Effect, RunDefinitions } from "../kernel/decide-types.ts";
+import { noRunMeter, type RunMeter, RunsMeter } from "../meter/run-meter.ts";
+import type { Failure } from "./append-failed.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
 import type { RunProposalFolders } from "./proposal-folders.ts";
 import type { RunConnectors } from "./run-connectors.ts";
@@ -67,6 +69,12 @@ export interface LocalRunsOptions {
    */
   mayStartHarness?(): Promise<boolean>;
   /**
+   * Counts each customer's usage and refuses at their plan's limits: before a
+   * run starts, and before each model call and harness run. Without it,
+   * `NoMeter` for the workspace's owner, which allows everything.
+   */
+  readonly meter?: RunMeter;
+  /**
    * What runs need to reach connectors. Without it, a run's model call
    * offers no connector's tools, and a `call-tool` effect fails the run.
    */
@@ -106,11 +114,40 @@ export function builtEffectsOf(options: LocalRunsOptions): ReadonlySet<Effect["t
   return new Set(built);
 }
 
+/**
+ * How a run fails when its step asks for an effect that isn't `built`;
+ * `undefined` when every effect is.
+ */
+export function unbuiltEffectFailure(
+  effects: readonly Effect[],
+  built: ReadonlySet<Effect["type"]>,
+): { readonly failure: Failure; readonly reason: RunFailureReason } | undefined {
+  const unbuilt = effects.find((effect) => !built.has(effect.type));
+  if (unbuilt === undefined) return undefined;
+  return {
+    failure: { error: `The local executor can't carry out a ${unbuilt.type} effect yet.` },
+    reason: unbuilt.type === "run-harness" ? "harness-unavailable" : "error",
+  };
+}
+
+/** What the runs in `options.store` are kept to: their budget, when the options give one, and their meter. */
+export interface LocalRunLimits {
+  readonly budget?: BudgetCheck;
+  readonly meter: RunsMeter;
+}
+
 /** The budget check of runs in `options.store`, when the options give a budget. */
 export function budgetCheckOf(options: LocalRunsOptions): BudgetCheck | undefined {
   const budget = options.budget;
   if (budget === undefined) return undefined;
   return { budget, spend: (run, at) => spendOf(options.store, run, at) };
+}
+
+/** The limits of runs in `options.store`: the budget the options give, if any, and their meter or `NoMeter`. */
+export function runLimitsOf(options: LocalRunsOptions): LocalRunLimits {
+  const meter = new RunsMeter(options.meter ?? noRunMeter(), options.store);
+  const budget = budgetCheckOf(options);
+  return budget === undefined ? { meter } : { budget, meter };
 }
 
 /**

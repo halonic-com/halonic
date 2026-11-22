@@ -4,7 +4,7 @@
 // detail. A cause's detail holds strings only, so the plan's fields are flat.
 
 import type { RunFailureCause } from "@halonicjs/events";
-import type { BudgetStop } from "../budget/budget.ts";
+import type { PlanStop } from "./meter.ts";
 
 /** The customer's plan, as a stop names it. */
 export interface StopPlan {
@@ -38,7 +38,7 @@ const notUnits: ReadonlySet<string> = new Set(["concurrency", "none", "suspended
  *
  * @throws RangeError when `unit` isn't a word, or is one of the other codes' words
  */
-export function planLimitStop(reached: ReachedLimit): BudgetStop {
+export function planLimitStop(reached: ReachedLimit): PlanStop {
   const error =
     reached.reserve === undefined
       ? `Plan limit reached: ${reached.used} of ${reached.limit} ${unitWords(reached)} used.`
@@ -53,18 +53,17 @@ export function planLimitStop(reached: ReachedLimit): BudgetStop {
  *
  * @throws RangeError when `unit` isn't a word, or is one of the other codes' words
  */
-export function memberLimitStop(reached: Omit<ReachedLimit, "canUpgrade">): BudgetStop {
+export function memberLimitStop(reached: Omit<ReachedLimit, "canUpgrade">): PlanStop {
   const detail = reachedDetail({ ...reached, canUpgrade: false });
-  const error = `Your share of this organisation's ${unitWords(reached)} is used: ${reached.used} of ${reached.limit}.`;
+  const error =
+    reached.reserve === undefined
+      ? `Your share of this organisation's ${unitWords(reached)} is used: ${reached.used} of ${reached.limit}.`
+      : `Your share of this organisation's ${unitWords(reached)} is too small: the step needs up to ${reached.reserve.needed}, and ${reached.reserve.left} is left.`;
   return planStop(`plan.member.${checkedUnit(reached.unit)}`, error, detail);
 }
 
 /** The stop for starting a run while as many run as the scope's or the member's cap allows: code `plan.concurrency`. */
-export function concurrencyStop(
-  running: number,
-  limit: number,
-  cap: "scope" | "member",
-): BudgetStop {
+export function concurrencyStop(running: number, limit: number, cap: "scope" | "member"): PlanStop {
   const error = `Too many runs at once: ${running} of ${limit} are running.`;
   return planStop("plan.concurrency", error, {
     running: String(running),
@@ -74,17 +73,17 @@ export function concurrencyStop(
 }
 
 /** The stop when the meter knows no limits for the scope: code `plan.none`. No limits never means no limit. */
-export function noPlanStop(): BudgetStop {
+export function noPlanStop(): PlanStop {
   return planStop("plan.none", "No plan is set up for this account, so nothing can run.");
 }
 
 /** The stop for a customer who isn't active: code `plan.suspended`. */
-export function suspendedStop(): BudgetStop {
+export function suspendedStop(): PlanStop {
   return planStop("plan.suspended", "This account isn't active, so nothing can run.");
 }
 
 /** The stop for someone no longer a member of the organisation: code `plan.member-removed`. */
-export function memberRemovedStop(): BudgetStop {
+export function memberRemovedStop(): PlanStop {
   return planStop(
     "plan.member-removed",
     "You're no longer a member of this organisation, so nothing can run in it.",
@@ -104,7 +103,7 @@ function planStop(
   code: string,
   error: string,
   detail?: Readonly<Record<string, string>>,
-): BudgetStop {
+): PlanStop {
   return {
     error,
     cause: { kind: "limit_reached", code, ...(detail === undefined ? {} : { detail }) },

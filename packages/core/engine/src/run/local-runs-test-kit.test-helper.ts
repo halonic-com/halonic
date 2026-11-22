@@ -36,6 +36,7 @@ import {
 import type { AgentKnowledgeOptions } from "../knowledge/agent-knowledge.ts";
 import { LocalExecutor } from "../local-executor.ts";
 import type { ModelScope } from "../local-executor-options.ts";
+import type { RunMeter } from "../meter/run-meter.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
 import type { AbortOnStop } from "./abort-on-stop.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
@@ -126,6 +127,8 @@ export interface RunsSetup {
   readonly budget?: Budget;
   /** Whether a harness step may start now; every one may when left out. */
   readonly mayStartHarness?: () => Promise<boolean>;
+  /** The customer's meter; `NoMeter` when left out. */
+  readonly meter?: RunMeter;
   /** The scripted model's price per million tokens; unpriced when left out. */
   readonly price?: ModelPrice;
   /** The connected servers; none when left out. */
@@ -177,6 +180,7 @@ function runsExtrasOf(setup: RunsSetup): Partial<LocalRunsOptions> {
     ...(setup.proposalFolders === undefined ? {} : { proposalFolders: setup.proposalFolders }),
     ...(setup.runConnectors === undefined ? {} : { runConnectors: setup.runConnectors }),
     ...(setup.sweepsLostRuns === undefined ? {} : { sweepsLostRuns: setup.sweepsLostRuns }),
+    ...(setup.meter === undefined ? {} : { meter: setup.meter }),
   };
 }
 

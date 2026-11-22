@@ -105,11 +105,13 @@ verifies("engine.meter-port", () => {
       cost: 0,
       counted: "cached",
     } as const;
+    // The type errors are the test (tsconfig.test.json checks them); NoMeter
+    // still takes the calls without throwing.
     // @ts-expect-error: only the engine makes what the meter counts.
-    await meter.record(principal, written);
+    const recorded = meter.record(principal, written);
     // @ts-expect-error: a step's times come from the engine's clock.
-    await meter.settle({ id: "none", principal }, { wallMs: 0, harnessMs: 0 });
-    expect(true).toBe(true);
+    const settled = meter.settle({ id: "none", principal }, { wallMs: 0, harnessMs: 0 });
+    await expect(Promise.all([recorded, settled])).resolves.toHaveLength(2);
   });
 
   it("allows everything with NoMeter", async () => {

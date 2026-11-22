@@ -72,6 +72,13 @@ verifies("engine.plan-stops", () => {
     expect(stop.cause.detail).toMatchObject({ canUpgrade: "false", used: "50", limit: "50" });
   });
 
+  it("says in a member's stop when a reservation was refused, as its detail does", () => {
+    const stop = memberLimitStop({ ...reached, reserve: { needed: 30, left: 12 } });
+    expect(stop.cause.detail).toMatchObject({ phase: "reserve", needed: "30", left: "12" });
+    expect(stop.error).toContain("needs up to 30");
+    expect(stop.error).toContain("12 is left");
+  });
+
   it("names the cap a run start hit", () => {
     expect(concurrencyStop(3, 3, "member").cause).toEqual({
       kind: "limit_reached",

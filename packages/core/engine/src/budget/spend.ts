@@ -72,7 +72,7 @@ export async function monthsSpend(
 }
 
 /** The run at the top of `run`'s parents: `run` itself when it has none. */
-async function topRunOf(runs: Pick<RunStore, "get">, run: RunState): Promise<string> {
+export async function topRunOf(runs: Pick<RunStore, "get">, run: RunState): Promise<string> {
   let top = run.runId;
   let parent = run.parent?.runId ?? null;
   for (let hop = 0; parent !== null && hop < maxParentHops; hop += 1) {

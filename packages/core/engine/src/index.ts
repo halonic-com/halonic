@@ -151,6 +151,8 @@ export {
   type StopPlan,
   suspendedStop,
 } from "./meter/plan-stops.ts";
+export { stopOfAnswer } from "./meter/read-answer.ts";
+export { PlanRefusedError, type RunMeter } from "./meter/run-meter.ts";
 export type { AbortOnStop } from "./run/abort-on-stop.ts";
 export {
   type EndedLostRuns,

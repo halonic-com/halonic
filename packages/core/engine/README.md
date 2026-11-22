@@ -84,6 +84,7 @@ loop of one model turn, which the local chat turn runs.
 | budget stops | a model call or harness run is refused at or over the run or month budget, and a `parallel` or `foreach` state checks before it starts its branches or items (see Budgets) | `engine.budget-stops`, `engine.budget-composite-stops`, `engine.budget-stop-message` |
 | meter | the `Meter` port a deployment that sells runs counts usage through, and `NoMeter` as the default (see Meter) | `engine.meter-port` |
 | plan stops | the `plan.*` causes a meter refuses with, next to `budget.run` and `budget.month`, which stay final (see Budgets) | `engine.plan-stops` |
+| meter checks | a run's start, and a step that asks for a paid call, are checked with the meter between the run and the monthly budget; a top-level run's end is recorded (see Meter) | `engine.meter-checks` |
 
 A run's turn writes through a `LargeResultsTurnLog` wrapped round its `RunStoreTurnLog`. A tool
 result over 256 KB of UTF-8 goes to the blob store as `text/plain`, and its `tool.result` keeps the
@@ -418,6 +419,19 @@ an organisation's scope (`o/…`) shares one pool. The meter only takes what the
 adds calls up with, `stepTimesOf` times a step by the engine's `Clock`, and `runEndUsageOf` takes an
 ended run's state. Their types carry a mark no other package can write, so a step can't report its
 own use (requirement `engine.meter-port`). `NoMeter` allows everything and records nothing.
+
+The local executor meters its runs through `runs.meter`, a `RunMeter`: the `Meter` and
+`principalOf(topRunId)`, the principal the host verified when it was asked to start that run (a
+host that starts runs for many people gives each start its `runId`). Without one it uses `NoMeter`
+for the workspace's owner. Before a top-level run's start is recorded it asks `run-start`, and a
+refusal throws `PlanRefusedError` (`limit_reached`, with the meter's cause such as
+`plan.concurrency`) with nothing recorded. In `step`, a decision that asks for a paid call is
+checked from inner to outer: the run budget, the meter (`model-call`, or `harness-run` when it starts
+one), then the monthly budget; the first stop fails the run with reason `budget` as a budget stop
+does. A child run counts against its top-level run's principal, and only a top-level run's end is
+recorded. `stopOfAnswer` fails closed: anything but `allowed: true` refuses, with `plan.none` when
+the answer gives no `plan.` stop, and a meter that can't be asked stops the step before anything is
+stored (requirement `engine.meter-checks`).
 
 ## Example
 

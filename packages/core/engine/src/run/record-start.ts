@@ -16,6 +16,8 @@ export interface RecordStartPorts {
   /** Records the input for the run, and carries out what it causes. */
   readonly record: (runId: string, input: DecideInput) => Promise<unknown>;
   readonly now: () => string;
+  /** Refuses a start the customer's plan doesn't allow, such as one past their cap of runs at once. */
+  readonly mayStart: (runId: string) => Promise<void>;
 }
 
 /**
@@ -23,6 +25,7 @@ export interface RecordStartPorts {
  * start. A start repeated at the same moment records nothing: the other one did.
  *
  * @throws InputRefused when the input lacks a field the first step reads; nothing is kept
+ * @throws PlanRefusedError when the meter refuses the start; nothing is kept
  * @throws when the definitions can't be kept, the folder can't be opened or the start can't be recorded
  */
 export async function recordStart(
@@ -32,6 +35,7 @@ export async function recordStart(
   definitions: RunDefinitions,
 ): Promise<void> {
   checkStartInput(request, definitions.workflow);
+  await ports.mayStart(runId);
   const { hubId, workflowId, harness, version } = request;
   const definitionsVersion = await keepDefinitions(ports.blobs, definitions);
   const folderRun = { runId, hubId, workflowId, version: version ?? null };
