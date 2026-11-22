@@ -3,6 +3,7 @@
 - Task: HAL-16162
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16162 (a team decision with no board card, HAL-2282 rule: wording of approved CLI output; rows 37 and 38 of words check C681 on HAL-16153)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Zi0xvDk2BQsZXCgNs4ZBcf/hBtLLubucY6ta1THssXrW8rTnzrdEJJfoP1hHhs6UihNvSS/8NdrwTVLRhjsGDg==
 
 ## What changes
 
