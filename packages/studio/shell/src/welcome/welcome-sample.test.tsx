@@ -154,6 +154,41 @@ verifies("shell.welcome-sample", () => {
     expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
   });
 
+  it("shows the copy error after the time line and above New workspace…", async () => {
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        onNewWorkspace={() => {}}
+        onTrySample={async () => ({ folder: "Documents", reason: "permission denied." })}
+      />,
+    );
+
+    await act(async () => sampleButton(root)?.click());
+
+    const alert = root.querySelector('[role="alert"]');
+    const timeParagraph = [...root.querySelectorAll("p")].find((each) =>
+      each.textContent?.includes(timeLine),
+    );
+    const newWorkspace = [...root.querySelectorAll("button")].find(
+      (each) => each.textContent === "New workspace…",
+    );
+    const follows = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(timeParagraph?.compareDocumentPosition(alert as Node) ?? 0).toBe(follows);
+    expect(alert?.compareDocumentPosition(newWorkspace as Node) ?? 0).toBe(follows);
+  });
+
+  it("stacks Open demo and Open folder at one width on a narrow window", () => {
+    const root = render(
+      <Welcome onOpenFolder={async () => undefined} onTrySample={async () => undefined} />,
+    );
+    const column = root.querySelector("h1")?.parentElement?.parentElement;
+    const row = sampleButton(root)?.closest("div.flex-wrap");
+
+    expect(column?.className).toContain("@container");
+    expect(row?.className).toContain("@max-xs:flex-col");
+    expect(row?.className).toContain("@max-xs:self-stretch");
+  });
+
   it("tries again by itself, then says the engine isn't answering after 10 seconds", async () => {
     vi.useFakeTimers();
     try {
