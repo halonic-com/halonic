@@ -117,10 +117,11 @@ export const pairWords = {
   },
   /**
    * The generic problem screen, for a code or key the page got wrong (a bug, logged). Decided by
-   * the team on HAL-12248 until the strings table has its own entry.
+   * the team on HAL-12248 until the strings table has its own entry. The computer may show a live
+   * code (**New code**) or an ended one (**Make a new code**), so the body names no button (C630).
    */
   generic: {
     title: "Couldn't start pairing",
-    body: "Nothing was shared. On your computer, choose New code, then try again.",
+    body: "Nothing was shared. Make a new code on your computer, then try again.",
   },
 } as const;

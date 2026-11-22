@@ -30,6 +30,7 @@ verifies("remote.phone-pairing-problems", () => {
       pairWords.ended.bodyNoAllow(laptop),
       pairWords.used.next,
       pairWords.used.nextTyped,
+      pairWords.generic.body,
     ]);
     expect(allWords).not.toContain("New code");
   });
