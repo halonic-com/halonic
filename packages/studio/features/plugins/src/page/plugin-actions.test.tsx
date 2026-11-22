@@ -228,7 +228,7 @@ verifies("plugins.plugin-actions", () => {
     expect(toastTitles()).toEqual(["Weather removed"]);
   });
 
-  it("says under Weather removed when the provider didn't confirm its sign-outs", async () => {
+  it("says under Weather removed. when the provider didn't confirm its sign-outs", async () => {
     const { actions } = recordingActions({
       removed: { kind: "removed", signInsNotConfirmed: ["weather-account", "weather-admin"] },
     });
@@ -240,7 +240,7 @@ verifies("plugins.plugin-actions", () => {
     expect(shownToasts()).toEqual([
       {
         tone: "warning",
-        title: "Weather removed",
+        title: "Weather removed.",
         text: "You're signed out of weather-account and weather-admin here. The provider didn't confirm, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.",
       },
     ]);

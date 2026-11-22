@@ -1,7 +1,7 @@
 # Decision: an unconfirmed sign-out says how to end the token, and a repeated outcome ends the wait
 
-- Task: HAL-15807
-- Approval: https://paperclip.halonic.com/HAL/issues/HAL-15807 (from flow check C634 on HAL-15803, items 3 and 7; the words are a detail of an approved screen, decided with Sofia on HAL-15819, HAL-2282 rule)
+- Task: HAL-15807, with HAL-15814 bundled in
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-15807 (from flow check C634 on HAL-15803, items 3 and 7; the words are a detail of an approved screen, decided with Sofia on HAL-15819, HAL-2282 rule); the toast title from words check C633 on HAL-15814
 - Kind: user-visible
 
 ## What changes
@@ -20,7 +20,9 @@ Requirements: `plugins.plugin-actions`, `plugins.plugin-sign-in-text`, `plugins.
 and `cli.commands.trust.plugin` change the quoted line and say the new step;
 `integration-sign-in.sign-in-host` and `agent-host-client.integration-sign-in` say the status
 carries the count, each with one new or extended example; `plugins.plugin-sign-in-waiting` says a
-repeated outcome ends the wait, with a new example. No example or test was removed or weakened.
+repeated outcome ends the wait, with a new example. `plugins.plugin-actions` also says the
+"*name* removed." title ends in a full stop when a warning is under it (words check C633, row 3,
+microcopy 1.3). No example or test was removed or weakened.
 The tests that pinned the old words check the new ones.
 
 ## Why

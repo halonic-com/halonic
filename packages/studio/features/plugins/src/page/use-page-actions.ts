@@ -57,7 +57,7 @@ export function usePageActions() {
       toasts?.show(
         warning === undefined
           ? { tone: "success", title: removedToast(name) }
-          : { tone: "warning", title: removedToast(name), text: warning },
+          : { tone: "warning", title: removedToast(name, true), text: warning },
       );
     },
   };
