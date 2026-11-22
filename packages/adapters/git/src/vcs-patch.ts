@@ -14,7 +14,12 @@ import { nulSeparated } from "./vcs-versions.ts";
  * Before that, every path goes through the port's path rules twice: as the
  * patch's headers write it, and as git reads it (`--numstat`), which
  * tidies some, such as `a//b.yaml` into `a/b.yaml`. So neither a path git
- * would tidy nor one git would read differently gets past.
+ * would tidy nor one git would read differently gets past. The first check
+ * comes before the repository is opened, so a patch refused on its text
+ * starts no git at all.
+ *
+ * @param folder - the workspace folder, as a real path
+ * @param openRepository - opens and checks the repository at `folder`
  *
  * @throws RangeError for a patch that does more than change a text file's
  *   lines (see {@link plainTextPatchPaths}), that git can't read, or that
@@ -22,12 +27,13 @@ import { nulSeparated } from "./vcs-versions.ts";
  * @throws Error `The change no longer matches the file.` when it doesn't apply cleanly
  */
 export async function applyToWorkingTree(
-  repository: Repository,
+  folder: string,
+  openRepository: () => Promise<Repository>,
   patch: string,
   reverse: boolean,
 ): Promise<void> {
-  const written = plainTextPatchPaths(patch);
-  await checkVcsPaths(repository.top, written);
+  await checkVcsPaths(folder, plainTextPatchPaths(patch));
+  const repository = await openRepository();
   // In git's own folder, never in the working tree; the name is new each time.
   const patchFile = join(repository.gitDir, `halonic-patch-${randomUUID()}.diff`);
   await writeFile(patchFile, patch, "utf8");

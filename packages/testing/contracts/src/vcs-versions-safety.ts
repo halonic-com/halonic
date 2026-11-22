@@ -2,15 +2,15 @@ import { expect, it } from "vitest";
 import { type MakeVcs, optionLikePaths, patternLikePaths, unsafeVcsPaths } from "./vcs-harness.ts";
 import { changesOf, stateOf } from "./vcs-helpers.ts";
 import { deletePatch, linePatch } from "./vcs-patch-inputs.ts";
-import { vcsPatchSafetyCases } from "./vcs-patch-safety.ts";
 import { patternLikeIt } from "./vcs-safety.ts";
 import { invalidCommitRefs, privateWorkspaceFiles, unknownCommit } from "./vcs-version-inputs.ts";
 
 /**
  * The safety part of the {@link Vcs} contract for port version 2: worktrees
- * live outside the workspace folder, a patch is applied whole or not at all
- * and never reaches a path the port refuses, private entries never get into
- * a version, and a version is only ever a full commit id.
+ * live outside the workspace folder, private entries never get into a
+ * version, and a version is only ever a full commit id. The patch cases
+ * (`vcs-patch-safety.ts`) run as a part of their own, under the same
+ * requirement.
  */
 export function vcsVersionSafetyCases(make: MakeVcs): void {
   worktreeFolderCases(make);
@@ -20,7 +20,6 @@ export function vcsVersionSafetyCases(make: MakeVcs): void {
   nonCommitIdCases(make);
   worktreeIdCases(make);
   pathCases(make);
-  vcsPatchSafetyCases(make);
 }
 
 /** Whether `path` is `folder` or inside it, in any case and with either separator. */

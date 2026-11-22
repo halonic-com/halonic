@@ -206,11 +206,13 @@ export class Repository implements GitCalls {
 
 /**
  * The subcommands a {@link RepositoryReader} runs: the ones that only read.
- * `status` is one of them because the reader gives it `--no-optional-locks`,
- * which keeps it from refreshing `.git/index`.
+ * `status` and `diff` are among them because the reader gives them
+ * `--no-optional-locks`, which keeps them from refreshing `.git/index`;
+ * every call gets `--no-ext-diff --no-textconv` (`withoutDiffPrograms`).
  */
 const readSubcommands = new Set([
   "cat-file",
+  "diff",
   "for-each-ref",
   "log",
   "ls-tree",
@@ -324,12 +326,9 @@ async function addNestedFilterNames(
   names: Set<string>,
   nesting: Nesting,
 ): Promise<void> {
-  const index = await runner.run({ cwd: folder, args: [...located, "ls-files", "--stage", "-z"] });
-  if (index.code !== 0) throw gitError(["ls-files"], index);
-  // `add --all` adds an untracked one as a gitlink too, and reads its git folder to do so.
-  const untracked = await runner.run({ cwd: folder, args: [...located, ...untrackedArgs] });
-  if (untracked.code !== 0) throw gitError(["ls-files"], untracked);
-  for (const path of [...gitlinks(index.stdout), ...untrackedRepositories(untracked.stdout)]) {
+  const listing = await runner.run({ cwd: folder, args: [...located, ...nestedListingArgs] });
+  if (listing.code !== 0) throw gitError(nestedListingArgs, listing);
+  for (const path of nestedRepositories(listing.stdout)) {
     const nested = join(folder, path);
     // A submodule that isn't checked out has no `.git`, and git doesn't look into it.
     if ((await kindOf(join(nested, ".git"))) === "missing") continue;
@@ -344,25 +343,33 @@ async function addNestedFilterNames(
   }
 }
 
-/** What lists the untracked files that aren't ignored, and the untracked nested repositories. */
-const untrackedArgs = ["ls-files", "--others", "--exclude-standard", "-z"];
+/**
+ * What lists, in one git call, the index with each entry's mode, and the
+ * untracked files that aren't ignored. `add --all` adds an untracked nested
+ * repository as a gitlink too, and reads its git folder to do so, so both
+ * count. `-t` puts a tag before each entry, `? ` before an untracked one,
+ * so no path can pass for the other kind.
+ */
+const nestedListingArgs = ["ls-files", "--stage", "--others", "--exclude-standard", "-t", "-z"];
 
-/** The untracked nested repositories in the output of {@link untrackedArgs}: git lists each as a folder, with a `/` at the end. */
-function untrackedRepositories(listing: Buffer): string[] {
-  return listing
-    .toString("utf8")
-    .split("\0")
-    .filter((path) => path.endsWith("/"))
-    .map((path) => path.slice(0, -1));
-}
-
-/** The paths of the gitlinks in the output of `ls-files --stage -z`: mode 160000. */
-export function gitlinks(listing: Buffer): string[] {
+/**
+ * The nested repositories in the output of {@link nestedListingArgs}: each
+ * gitlink in the index (mode 160000), and each untracked folder git lists
+ * as a repository, with a `/` at the end.
+ */
+export function nestedRepositories(listing: Buffer): string[] {
   const paths: string[] = [];
   for (const entry of listing.toString("utf8").split("\0")) {
-    if (!entry.startsWith("160000 ")) continue;
-    const tab = entry.indexOf("\t");
-    if (tab !== -1) paths.push(entry.slice(tab + 1));
+    // A one-letter tag and a space: `?` for an untracked entry, another letter for one in the index.
+    const tag = entry.slice(0, 2);
+    const rest = entry.slice(2);
+    if (tag === "? ") {
+      if (rest.endsWith("/")) paths.push(rest.slice(0, -1));
+      continue;
+    }
+    if (!rest.startsWith("160000 ")) continue;
+    const tab = rest.indexOf("\t");
+    if (tab !== -1) paths.push(rest.slice(tab + 1));
   }
   return paths;
 }

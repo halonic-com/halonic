@@ -9,7 +9,7 @@ import {
   neutralisePrograms,
   parseConfigListing,
 } from "./repo-config.ts";
-import { gitlinks } from "./repository.ts";
+import { nestedRepositories } from "./repository.ts";
 
 // Ported from the desktop's `git-guard` (`src/repo_config_tests.rs`), less
 // the user-config cases: this adapter reads no user config at all.
@@ -109,8 +109,14 @@ verifies("git.repo-config", () => {
   describe("gitlinks in the index", () => {
     it("finds the repositories nested as gitlinks, a path with a tab among them", () => {
       const listing =
-        "100644 1111 0\tnotes.md\x00160000 2222 0\tvendor/acme\x00160000 3333 0\twith\ttab\0";
-      expect(gitlinks(Buffer.from(listing))).toEqual(["vendor/acme", "with\ttab"]);
+        "H 100644 1111 0\tnotes.md\x00H 160000 2222 0\tvendor/acme\x00S 160000 3333 0\twith\ttab\0";
+      expect(nestedRepositories(Buffer.from(listing))).toEqual(["vendor/acme", "with\ttab"]);
+    });
+
+    it("finds the untracked nested repositories, and no untracked file that reads like an index entry", () => {
+      const listing =
+        "? notes.md\x00? vendor/beta/\x00? 160000 4444 0\tplanted\x00H 100644 1111 0\tnotes.md\0";
+      expect(nestedRepositories(Buffer.from(listing))).toEqual(["vendor/beta"]);
     });
   });
 });
