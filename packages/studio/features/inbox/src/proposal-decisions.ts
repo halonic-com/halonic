@@ -14,6 +14,21 @@ export interface ProposalDecided {
   readonly cantBeWritten: readonly string[];
 }
 
+/** A file's two texts for Compare (Q9), on a file the person changed after the run started. */
+export interface ProposalCompare {
+  /** The saved file as it is now; `null` when there is none. */
+  readonly saved: string | null;
+  /** The run's text; `null` when the run deleted the file. */
+  readonly run: string | null;
+  /** Whether **Combine both** can put the two together: they don't change the same lines. */
+  readonly canCombine: boolean;
+  /** Names the saved text Compare shows, for {@link ProposalDecisions.choose}. */
+  readonly seen: string;
+}
+
+/** **Use the run's** or **Combine both** in Compare; **Keep mine** is a reject. */
+export type ProposalCompareChoice = "use-run" | "combine-both";
+
 /** What an Undo left as it was. A file it didn't put back keeps its decision. */
 export interface ProposalUndone {
   /**
@@ -55,8 +70,8 @@ export class ProposalFailedError extends Error {
 }
 
 /**
- * Accept, Reject, Undo, settle and Remove on the open workspace's run proposals. Every call fails
- * with {@link ProposalGoneError} when its texts are gone, and otherwise with
+ * Accept, Reject, Compare, Undo, settle and Remove on the open workspace's run proposals. Every
+ * call fails with {@link ProposalGoneError} when its texts are gone, and otherwise with
  * {@link ProposalFailedError}, which the page words by its `failure`.
  *
  * @example
@@ -68,6 +83,19 @@ export class ProposalFailedError extends Error {
 export interface ProposalDecisions {
   /** Writes the run's text to one file, or to every undecided one. */
   accept(runId: string, target: ProposalTarget): Promise<ProposalDecided>;
+  /** The texts Compare shows for a file the person changed after the run started. */
+  compare(runId: string, path: string): Promise<ProposalCompare>;
+  /**
+   * Accepts a file the person changed after the run started with the choice made in Compare. It
+   * is written only while the saved file still holds `seen`; otherwise nothing is, and the file
+   * is under `changedSinceRun` again.
+   */
+  choose(
+    runId: string,
+    path: string,
+    choice: ProposalCompareChoice,
+    seen: string,
+  ): Promise<ProposalDecided>;
   /** Leaves one file, or every undecided one, as it is. */
   reject(runId: string, target: ProposalTarget): Promise<ProposalDecided>;
   /** Takes back the decision whose undo id an Accept or a Reject gave, as far as the host can. */

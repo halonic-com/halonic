@@ -22,6 +22,8 @@ const decisions: ProposalDecisions = {
   undo: async () => ({ leftAlone: [], decidedAfter: false }),
   settle: async () => {},
   remove: async () => {},
+  compare: async () => ({ saved: null, run: null, canCombine: false, seen: "absent" }),
+  choose: async () => ({ undo: "u3", changedSinceRun: [], cantBeWritten: [] }),
 };
 
 /** The Inbox with nothing waiting, once its first load has settled. */

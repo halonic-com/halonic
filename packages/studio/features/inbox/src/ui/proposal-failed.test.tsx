@@ -29,6 +29,8 @@ function decisionsFailing(failure: ProposalFailure) {
     undo: vi.fn(() => failedWith(failure)),
     settle: vi.fn(async () => {}),
     remove: vi.fn(async () => {}),
+    compare: vi.fn(),
+    choose: vi.fn(),
   } satisfies ProposalDecisions;
 }
 

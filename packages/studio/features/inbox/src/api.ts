@@ -41,6 +41,8 @@ export type { InboxNotice, InboxNotices, SandboxFixedNotice } from "./notices/in
 export { newestFirst as newestNoticeFirst } from "./notices/merge-notices.ts";
 export { clockTime } from "./plain/waiting-time.ts";
 export {
+  type ProposalCompare,
+  type ProposalCompareChoice,
   type ProposalDecided,
   type ProposalDecisions,
   ProposalFailedError,

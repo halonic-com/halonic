@@ -30,6 +30,8 @@ function fakeDecisions(overrides: Partial<ProposalDecisions> = {}) {
     undo: vi.fn(async () => ({ leftAlone: [] as readonly string[], decidedAfter: false })),
     settle: vi.fn(async () => {}),
     remove: vi.fn(async () => {}),
+    compare: vi.fn(),
+    choose: vi.fn(),
     ...overrides,
   } satisfies ProposalDecisions;
 }

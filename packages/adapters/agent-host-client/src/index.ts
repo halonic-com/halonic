@@ -63,6 +63,7 @@ export {
 export {
   AgentHostRunProposals,
   type ProposalAccepted,
+  type ProposalCompared,
   type ProposalRestored,
 } from "./run-proposals.ts";
 export { AgentHostSandbox, AgentHostSession } from "./sandbox.ts";

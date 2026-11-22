@@ -16,7 +16,15 @@ const runId = "run_mfx3k2a1_0001JD8Q";
 /** Decisions whose Remove does what `remove` does; the page calls nothing else here. */
 function decisionsRemoving(remove: ProposalDecisions["remove"]): ProposalDecisions {
   const unused = () => Promise.reject(new Error("Not called on this line."));
-  return { accept: unused, reject: unused, undo: unused, settle: unused, remove };
+  return {
+    accept: unused,
+    reject: unused,
+    undo: unused,
+    settle: unused,
+    remove,
+    compare: unused,
+    choose: unused,
+  };
 }
 
 function show(

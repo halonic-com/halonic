@@ -67,6 +67,8 @@ function host(failing = 0) {
       }));
     }),
     remove: vi.fn(),
+    compare: vi.fn(),
+    choose: vi.fn(),
   } satisfies ProposalDecisions;
   const { runs } = fakeRuns([]);
   const inbox = new Inbox({

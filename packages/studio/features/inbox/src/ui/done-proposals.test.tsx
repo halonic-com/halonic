@@ -49,6 +49,8 @@ const decisions: ProposalDecisions = {
   undo: vi.fn(),
   settle: vi.fn(),
   remove: vi.fn(),
+  compare: vi.fn(),
+  choose: vi.fn(),
 };
 
 const names = (id: string) => (id === "support-triage" ? "Support triage" : id);
