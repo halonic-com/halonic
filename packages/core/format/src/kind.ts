@@ -1,4 +1,4 @@
-import type { Path, Schema } from "@halonicjs/schema-kit";
+import type { Issue, Path, Schema } from "@halonicjs/schema-kit";
 
 /**
  * Where files of a kind sit in a workspace, in the one layout the new loader
@@ -64,6 +64,12 @@ export interface FileKind<Value = unknown> {
    * so older files keep loading (for example `flow:` for `workflow:`).
    */
   readonly upgradeKeys?: (data: Readonly<Record<string, unknown>>) => Record<string, unknown>;
+  /**
+   * Words the schema's issues for cases only this kind knows how to explain,
+   * after the shared wording (`wordIssues`) and with the data the schema got.
+   * Codes and paths stay the schema's.
+   */
+  readonly wordIssues?: (issues: readonly Issue[], data: unknown) => Issue[];
   /** Checks that span several fields, run after the schema passed. */
   readonly check?: (value: Value) => readonly KindCheckProblem[];
 }
