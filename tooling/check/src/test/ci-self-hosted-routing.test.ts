@@ -7,13 +7,24 @@ const workflow = readFileSync(
   "utf8",
 );
 
+/** The fast pool's part (HAL-15972): a fast-track pull request from our own branch. */
+const FAST =
+  "github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != ''" +
+  " && github.event.pull_request.head.repo.full_name == github.repository" +
+  " && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST)";
+
+/** The pool's part: a merge group or a push to main, for the runner in `variable`. */
+function pool(variable: "CI_RUNNER_LARGE" | "CI_RUNNER_SMALL"): string {
+  return (
+    `vars.${variable} != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name)` +
+    " && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main')" +
+    ` && fromJSON(vars.${variable})`
+  );
+}
+
 /** The one expression a job on our own CI server uses, for the runner in `variable`. */
 function routing(variable: "CI_RUNNER_LARGE" | "CI_RUNNER_SMALL"): string {
-  return (
-    `\${{ vars.${variable} != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name)` +
-    " && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main')" +
-    ` && fromJSON(vars.${variable}) || 'ubuntu-24.04' }}`
-  );
+  return `\${{ ${FAST} || ${pool(variable)} || 'ubuntu-24.04' }}`;
 }
 
 /** Every job's `runs-on` value in ci.yml, by job key. */
@@ -67,14 +78,30 @@ verifies("check.ci-self-hosted-routing", () => {
       expect(workflow).not.toMatch(/vars\.MERGE_QUEUE_RUNNER/);
     });
 
-    test("the expression only routes merge groups and pushes to main, and only with the variable set", () => {
-      const expression = routing("CI_RUNNER_LARGE");
-      expect(expression.startsWith("${{ vars.CI_RUNNER_LARGE != '' && ")).toBe(true);
+    test("the pool's part only routes merge groups and pushes to main, and only with the variable set", () => {
+      const expression = pool("CI_RUNNER_LARGE");
+      expect(expression.startsWith("vars.CI_RUNNER_LARGE != '' && ")).toBe(true);
       expect(expression).toContain(
         "github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main'",
       );
       expect(expression).not.toContain("pull_request");
-      expect(expression.endsWith("|| 'ubuntu-24.04' }}")).toBe(true);
+      expect(routing("CI_RUNNER_LARGE").endsWith(`|| ${expression} || 'ubuntu-24.04' }}`)).toBe(
+        true,
+      );
+    });
+
+    test("only a fast-track pull request from our own branch goes to the fast pool, with its variable set", () => {
+      const expression = routing("CI_RUNNER_SMALL");
+      expect(expression.startsWith(`\${{ ${FAST} || `)).toBe(true);
+      // Every condition must hold: the fast part is one chain of &&, without an ||.
+      expect(FAST).not.toContain("||");
+      expect(FAST.split(" && ")).toEqual([
+        "github.event_name == 'pull_request'",
+        "vars.CI_RUNNER_FAST != ''",
+        "github.event.pull_request.head.repo.full_name == github.repository",
+        "contains(github.event.pull_request.labels.*.name, 'fast-track')",
+        "fromJSON(vars.CI_RUNNER_FAST)",
+      ]);
     });
   });
 });

@@ -29,12 +29,18 @@
 # name the runner group and label (for example
 # {"group":"halonic-ci","labels":["halonic-ci-large"]}), and
 # CI_SELF_HOSTED_EVENTS lists the events that use it (["push"], later
-# ["push","merge_group"]). Only merge groups and pushes to main can ever go
-# there; pull requests, release branches and forks stay on `ubuntu-24.04`.
+# ["push","merge_group"]). Only merge groups and pushes to main can go to
+# those pools; release branches and forks stay on `ubuntu-24.04`.
+# The one exception is the fast pool (board decision, HAL-15972, 22 Nov):
+# a pull request from a halonic-com/halonic branch whose event carries the
+# `fast-track` label goes to CI_RUNNER_FAST when it is set, every other pull
+# request stays on `ubuntu-24.04`. Adding the label doesn't start a new run
+# (no "labeled" trigger, see `on:`); the next push does.
 # This routing isn't the security boundary: a fork's pull request runs its
 # own copy of this file, so a hook in the runner image refuses every job that
-# isn't one of ours (infra/ci-runner/). Clear CI_RUNNER_LARGE and
-# CI_RUNNER_SMALL and every job is back on `ubuntu-24.04` on its next run.
+# isn't one of ours, and asks GitHub about a fast-track pull request when its
+# job starts (infra/ci-runner/). Clear CI_RUNNER_LARGE, CI_RUNNER_SMALL and
+# CI_RUNNER_FAST and every job is back on `ubuntu-24.04` on its next run.
 # Every copy of the expression must stay identical; tooling/check tests that.
 # It replaces MERGE_QUEUE_RUNNER (HAL-14115), which was never set.
 #
@@ -123,7 +129,7 @@ env:
 jobs:
   changes:
     name: Changed areas
-    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -299,7 +305,7 @@ jobs:
     if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' fast ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
     # A large slot on our own CI server: on a 2-CPU slot it took 50 s, as
     # long as on GitHub (HAL-14831).
-    runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     permissions:
@@ -567,7 +573,7 @@ jobs:
     # Skips on a push to main when its merge group passed it (`merged`).
     needs: merged
     if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' build ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
     timeout-minutes: 15
     # One job took 14-17 minutes in the merge queue and up to 24 on a cold
@@ -649,9 +655,11 @@ jobs:
       # On our own CI server Turbo's cache lives on the server's cache disk,
       # shared by every slot and kept between jobs, like the pnpm store:
       # fetching and saving it through GitHub's cache took about 15 s of every
-      # shard (HAL-15467). Only pushes to main and merge groups run there (the
+      # shard (HAL-15467). Only pushes to main and merge groups write there (the
       # runner hook refuses everything else), so it holds only reviewed code's
-      # results. Without the mount the job uses GitHub's cache, as below.
+      # results. A fast-track pull request (HAL-15972) sees it through an
+      # overlay: it reads those results, and what it writes is deleted with
+      # the job. Without the mount the job uses GitHub's cache, as below.
       # Elsewhere it is Turbo's own default folder (gitignored); actions/cache
       # refuses a path with "..", so the earlier ../turbo-cache was never saved.
       - id: turbo-dir
@@ -878,7 +886,7 @@ jobs:
     name: Requirements and their tests (trace)
     needs: [merged, build]
     if: ${{ !cancelled() && github.event_name != 'pull_request' && !contains(needs.merged.outputs.passed, ' trace ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -1345,7 +1353,7 @@ jobs:
     name: Empty package and feature pass every check
     needs: [changes, merged]
     if: ${{ !cancelled() && needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' scaffold ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 35
     permissions:
       contents: read
@@ -2936,7 +2944,7 @@ jobs:
     name: Studio end-to-end (Playwright)
     needs: [changes, merged]
     if: ${{ !cancelled() && needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' e2e ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -3027,7 +3035,7 @@ jobs:
     name: Docs build and link check
     needs: [changes, merged]
     if: ${{ !cancelled() && needs.changes.outputs.docs == 'true' && !contains(needs.merged.outputs.passed, ' docs ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 2
     permissions: {}
     steps:
@@ -3215,7 +3223,7 @@ jobs:
     # the pull request's lists.
     name: Policy rules (base commit's copy)
     if: ${{ github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
