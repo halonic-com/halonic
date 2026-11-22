@@ -51,6 +51,11 @@ export type RunBanner =
        * which never shows on screen (microcopy 22 F13). Absent: no Copy details.
        */
       readonly details?: string;
+      /**
+       * The links after **Copy details**, for a next step that needs the details first, such as
+       * **Report a problem ↗**. The page shows them only with Copy details.
+       */
+      readonly afterDetails?: readonly BannerFix[];
     }
   /**
    * A cancelled run's plain note, without a Callout's colour: nothing needs fixing. A child run

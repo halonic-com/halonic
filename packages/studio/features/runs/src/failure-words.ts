@@ -118,10 +118,15 @@ export const failureWords = {
   /**
    * `this-computer-start-failed`: the CLI's line 1 (`cli.run-failed-this-computer-start`) without
    * the launcher's reason, which is Halonic's own text and stays in Copy details, then its line 2's
-   * next step (C566, row 11). It names no sandbox, since the person chose to run without one.
+   * next step (C566, row 11), which names the place, as the CLI's link does (C587, item 6). It names
+   * no sandbox, since the person chose to run without one. The reason can still hold a folder or a
+   * user name, and the issues are public, so it says to read the details before posting them.
    */
   thisComputerStartFailed: (workflow: string, step: string, agent: string) =>
-    `${workflow} failed in the step ${step}: ${agent} didn't start on this computer. Nothing ran in that step. Halonic can't fix this from here: copy the details and report it.`,
+    `${workflow} failed in the step ${step}: ${agent} didn't start on this computer. Nothing ran in that step. Halonic can't fix this from here: copy the details and report it on GitHub. Reports there are public, so take out anything private first.`,
+  /** **Report a problem ↗**, after Copy details: a new issue, as Settings › About Halonic opens. */
+  reportProblem: "Report a problem",
+  reportProblemAddress: "https://github.com/halonic-com/halonic/issues/new",
   /** F7: names the model alias the call went to, or the model when an older log doesn't give it. */
   cloudModelUnreachable: (
     provider: string,

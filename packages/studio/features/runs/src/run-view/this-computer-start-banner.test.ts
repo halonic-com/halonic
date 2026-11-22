@@ -33,7 +33,7 @@ const callout = (banner: ReturnType<typeof causeBanner>) =>
 verifies("runs.run-view.this-computer-start", () => {
   describe("a launcher on this computer that didn't start the step's agent", () => {
     const line =
-      "Support reply failed in the step Draft: Writer didn't start on this computer. Nothing ran in that step. Halonic can't fix this from here: copy the details and report it.";
+      "Support reply failed in the step Draft: Writer didn't start on this computer. Nothing ran in that step. Halonic can't fix this from here: copy the details and report it on GitHub. Reports there are public, so take out anything private first.";
 
     it("says what halonic run says, with the agent's name and a next step", () => {
       const banner = callout(causeBanner(summary, refusedLog(true), named, false));
@@ -55,6 +55,19 @@ verifies("runs.run-view.this-computer-start", () => {
 
       expect(banner?.details?.split("\n")).toEqual([line, expect.stringMatching(/^Run /), reason]);
       expect(banner?.noRunAgain).toBe(true);
+    });
+
+    it("offers Report a problem after Copy details, at a new issue on Halonic's GitHub", () => {
+      const banner = callout(causeBanner(summary, refusedLog(true), named, false));
+
+      expect(banner?.afterDetails).toEqual([
+        {
+          kind: "open-external",
+          label: "Report a problem",
+          address: "https://github.com/halonic-com/halonic/issues/new",
+          opens: "Opens GitHub",
+        },
+      ]);
     });
 
     it("names an agent the workspace no longer has by its id", () => {

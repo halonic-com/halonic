@@ -233,7 +233,10 @@ function Banner({
   const copy =
     details === undefined
       ? []
-      : [{ label: copyDetailsWords.label, onClick: () => copyDetails(details) }];
+      : [
+          { label: copyDetailsWords.label, onClick: () => copyDetails(details) },
+          ...buttonsOf(banner.afterDetails),
+        ];
   const action = [...(own === undefined ? [] : [own]), ...fixes, ...again, ...links, ...copy];
   return (
     <section aria-label={banner.name}>
