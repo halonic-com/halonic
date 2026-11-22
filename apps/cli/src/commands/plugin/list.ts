@@ -1,5 +1,5 @@
 // `halonic plugin list`: the plugins in the profile, one row each (cli-output
-// 3.6), and under a plugin with programs, whether they run on this computer
+// 3.6), a folder source as the copy it is, with the day (C45), and under a plugin with programs, whether they run on this computer
 // (cli.plugin-programs-run), and for a plugin that is on but whose backend is
 // off here, why (HAL-15080). A thin command over `PluginService.load`: it
 // lists, and writes nothing, so it needs no trust.
@@ -7,6 +7,7 @@
 import type {
   LocalToolState,
   PluginEntry,
+  PluginInstall,
   PluginService,
   RunnerUnfencedReason,
 } from "@halonicjs/app";
@@ -15,6 +16,7 @@ import type { CommandContext, CommandInput, CommandResult } from "../../command.
 import { pluginStateOf } from "../../connector-plugin.ts";
 import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
+import { dayInWords, localDay } from "../../messages/dates.ts";
 import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { type PluginState, pluginMessages } from "../../messages/plugin.ts";
 import { offHereReasonLines } from "../../output/plugin-off-here.ts";
@@ -90,13 +92,13 @@ async function pluginRow(
   { programsRun, offHere }: RunsHere,
 ): Promise<PluginRow> {
   const install = await service.install(entry.folder);
-  const source = install === null ? "" : shownPluginSource(install.source, profile);
+  const source = install === null ? phrase`` : sourceCell(install, profile);
   if (entry.status === "broken") {
     return {
       cells: [
         phrase`${printable(entry.folder)}`,
         phrase``,
-        dimmed(phrase`${printable(source)}`),
+        dimmed(source),
         phrase`${markPart("failed")} ${pluginMessages.broken().phrase}`,
       ],
       under: [],
@@ -110,7 +112,7 @@ async function pluginRow(
     cells: [
       phrase`${printable(entry.plugin.name)}`,
       phrase`${printable(entry.plugin.version)}`,
-      dimmed(phrase`${printable(source)}`),
+      dimmed(source),
       off === undefined ? stateCell(state, entry.folder) : offHereCell(),
     ],
     under: [
@@ -123,10 +125,22 @@ async function pluginRow(
       version: entry.plugin.version,
       status: state,
       source: install?.source ?? null,
+      addedAt: install?.addedAt ?? null,
       programsRun: runs ?? null,
       offOnThisComputer: off ?? null,
     },
   };
+}
+
+/**
+ * Where it came from: a git address at its commit, or for a folder "copied
+ * from ~/acme-orders on 20 Nov", the day it was added or last updated.
+ */
+function sourceCell(install: PluginInstall, profile: ProfileEnvironment): Phrase {
+  const shown = printable(shownPluginSource(install.source, profile));
+  if (install.source.kind === "git") return phrase`${shown}`;
+  const day = dayInWords(localDay(new Date(install.addedAt)));
+  return pluginMessages.listCopiedFrom(shown, day).phrase;
 }
 
 /** "  ! Programs: Doesn't start on this computer: …", with no mark when they run. */
