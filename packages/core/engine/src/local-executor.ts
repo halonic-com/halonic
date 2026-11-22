@@ -2,7 +2,6 @@
 // `runs` set, workflow runs through the run kernel.
 
 import type { RunSummary } from "@halonicjs/events";
-import type { Agent } from "@halonicjs/format";
 import {
   AgentRunsNotAvailable,
   type BridgeApprovals,
@@ -17,21 +16,14 @@ import {
   type StartRunRequest,
 } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
-import { chatToolCheckOf } from "./agent/check-chat-tool-call.ts";
-import { agentParamsOf } from "./agent/model-params.ts";
-import { runModelTurn } from "./agent/run-model-turn.ts";
 import type { TurnLog } from "./agent/turn-log.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
-import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts";
+import { ChatHarnessTurns } from "./harness/chat-harness-turns.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn, definitionsOf } from "./kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
-import {
-  type AgentKnowledge,
-  agentKnowledge,
-  noKnowledge,
-  openSources,
-} from "./knowledge/agent-knowledge.ts";
+import { type AgentKnowledge, agentKnowledge, noKnowledge } from "./knowledge/agent-knowledge.ts";
+import { halonicToolsOf, localChatTurn } from "./local-chat-turn.ts";
 import type { LocalExecutorOptions } from "./local-executor-options.ts";
 import { type RunTurn, runLocalSubagent } from "./local-subagent.ts";
 import { callAlongsideOthers } from "./run/alongside-others.ts";
@@ -40,27 +32,17 @@ import {
   noRunApprovals,
   noRunDecisions,
 } from "./run/bridge-approvals.ts";
-import {
-  allowedToolsOf,
-  connectorsOf,
-  effectBoundary,
-  makeRunConnectorCall,
-} from "./run/connector-calls.ts";
+import { effectBoundary, makeRunConnectorCall } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
 import { runsOptionsOf } from "./run/local-runs-options.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
 import { RunsConnectors } from "./run/run-connectors.ts";
 import { runModelCall } from "./run/run-model-call.ts";
 import { runTurnLogOf } from "./run/run-store-turn-log.ts";
-import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
-import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
 import { knowledgeTools } from "./tools/knowledge/knowledge-tools.ts";
 
 /** The round limit of a chat turn when the options don't set one. */
 export const defaultMaxRounds = 20;
-
-/** The agent name a chat turn's model calls carry when the request names none. */
-const chatAgent = "chat";
 
 /**
  * The {@link RunExecutor} that runs the engine in this process. It runs chat
@@ -254,69 +236,17 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
-   * Runs one chat turn with the caller's tools, Halonic's tools, the agent's
-   * knowledge tools and the connected servers' tools: only those its file
-   * lists when the turn names an agent with a file. It keeps no run log,
-   * because a chat turn belongs to no run: the models it skipped are in
-   * `skipped` instead.
-   *
-   * A turn whose agent's file names a harness program runs in that harness
-   * instead, as one harness call ({@link ChatHarnessTurns.turn}).
+   * Runs one chat turn ({@link localChatTurn}).
    *
    * @throws when no model fits the request
    * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
    * @throws when the agent runs in a harness and the executor has no `runs.harnesses`, or the harness call fails
    */
-  async chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse> {
-    const agent = await this.chatAgentFileOf(request);
-    const harnessTurn = harnessTurnOf(request, agent);
-    if (harnessTurn !== undefined) {
-      if (this.chatHarnesses === undefined) {
-        throw new Error(
-          `Agent "${harnessTurn.agentId}" runs in ${harnessTurn.harness}, and this executor has no harnesses to run it in.`,
-        );
-      }
-      return this.chatHarnesses.turn(harnessTurn);
-    }
-    const knowledge = await this.chatKnowledgeOf(request);
-    const lists = await this.options.chatConnectorToolsOf?.(request);
-    const connectors =
-      agent === undefined ? this.options.connectors : connectorsOf(this.options.connectors, agent);
-    return runModelTurn({
-      model: await this.options.resolveModel(request),
-      secrets: this.options.secrets,
-      messages: request.messages,
-      callerTools: request.tools,
-      halonicTools: [...this.halonicToolsOf(request.agentId), ...knowledgeTools(knowledge.sources)],
-      connectors: lists === undefined ? connectors : allowedToolsOf(connectors, lists),
-      listedToolApproval: this.options.listedToolApproval,
-      ...(lists === undefined ? {} : { checkCall: chatToolCheckOf(lists) }),
-      ...agentParamsOf(agent, request.params),
-      maxRounds: this.maxRounds,
-      agent: request.agentId ?? chatAgent,
-      clock: this.options.clock,
-      autoKnowledge: knowledge.auto,
-      localOnly: this.options.localOnly === true,
-    });
-  }
-
-  /**
-   * The file of the agent a chat turn names, as the workspace has it now;
-   * `undefined` when it names none, the agent has no file, or the executor
-   * has no `chatAgentOf`.
-   */
-  private async chatAgentFileOf(request: ChatTurnRequest): Promise<Agent | undefined> {
-    if (request.agentId === undefined || this.options.chatAgentOf === undefined) return undefined;
-    return this.options.chatAgentOf(request);
-  }
-
-  /** The knowledge sources of a chat turn's agent, as the workspace has them now. */
-  private async chatKnowledgeOf(request: ChatTurnRequest): Promise<AgentKnowledge> {
-    const options = this.options.knowledge;
-    if (options === undefined || request.agentId === undefined) {
-      return noKnowledge;
-    }
-    return openSources(request.hubId, await options.chatSourcesOf(request), options);
+  chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse> {
+    return localChatTurn(
+      { options: this.options, maxRounds: this.maxRounds, chatHarnesses: this.chatHarnesses },
+      request,
+    );
   }
 
   /**
@@ -338,28 +268,6 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
-   * Halonic's tools for a turn: the agent's memory tools come last, when
-   * there is an agent and a store. A chat turn adds the agent's knowledge
-   * tools; a run's agent also gets those and what its file grants
-   * ({@link LocalExecutor.runToolsOf}).
-   *
-   * @param runId - the run the turn is in, which the agent's notes name; absent in a chat
-   */
-  private halonicToolsOf(agentId: string | undefined, runId?: string): readonly HalonicTool[] {
-    const records = this.options.memory;
-    if (agentId === undefined || records === undefined) {
-      return this.options.halonicTools;
-    }
-    const memory = new AgentMemory({
-      records,
-      clock: this.options.clock,
-      agentId,
-      ...(runId === undefined ? {} : { runId }),
-    });
-    return [...this.options.halonicTools, ...memoryTools(memory)];
-  }
-
-  /**
    * The tools of an agent in a run: Halonic's tools, its memory tools and
    * its knowledge tools, then the run-log, records and subagent tools its
    * kept file grants. An agent the definitions have no file for gets the
@@ -374,7 +282,7 @@ export class LocalExecutor implements RunExecutor {
     signal?: AbortSignal,
   ): readonly HalonicTool[] {
     const own = [
-      ...this.halonicToolsOf(agentId, turn.run.runId),
+      ...halonicToolsOf(this.options, agentId, turn.run.runId),
       ...knowledgeTools(knowledge.sources),
     ];
     const agent = agentIn(turn.definitions, agentId);
