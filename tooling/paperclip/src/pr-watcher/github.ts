@@ -55,7 +55,8 @@ async function gitHubMessage(response: Pick<Response, "json">): Promise<string> 
   }
 }
 
-interface CheckRun {
+/** One run of a check, as the REST API lists it. */
+export interface CheckRun {
   readonly status?: string;
   readonly conclusion?: string | null;
   readonly started_at?: string | null;
@@ -76,7 +77,12 @@ export async function ciOk(
   )) as {
     check_runs?: CheckRun[];
   };
-  const runs = [...(body.check_runs ?? [])].sort((a, b) =>
+  return newestCheck(body.check_runs ?? []);
+}
+
+/** The result of the newest of one check's runs. A cancelled or skipped run counts as pending. */
+export function newestCheck(checkRuns: readonly CheckRun[]): CheckState {
+  const runs = [...checkRuns].sort((a, b) =>
     (b.started_at ?? "").localeCompare(a.started_at ?? ""),
   );
   const newest = runs[0];
@@ -94,7 +100,8 @@ export async function ciOk(
     : "failure";
 }
 
-interface Review {
+/** A review, inline comment or conversation comment, as the REST API lists it. */
+export interface Review {
   readonly id?: number;
   readonly commit_id?: string;
   readonly original_commit_id?: string;
@@ -166,6 +173,19 @@ export async function latestReview(
     get(`/repos/${repo}/pulls/${number}/comments?sort=created&direction=desc&per_page=100`),
     everyPage(get, `/repos/${repo}/issues/${number}/comments`),
   ])) as [Review[], Review[], Review[]];
+  return newestFinding({ reviews, inline, conversation }, head);
+}
+
+/** `latestReview`'s rule on lists already read, by REST or GraphQL. */
+export function newestFinding(
+  lists: {
+    readonly reviews: readonly Review[];
+    readonly inline: readonly Review[];
+    readonly conversation: readonly Review[];
+  },
+  head: string,
+): PullFacts["latestReview"] {
+  const { reviews, inline, conversation } = lists;
   const found = [
     ...reviews
       .filter(byReviewer)
