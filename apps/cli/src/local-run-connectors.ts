@@ -15,6 +15,7 @@ import {
 } from "@halonicjs/ports";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import type { ProgramFolders } from "./program-folders.ts";
+import { runSendingSettings } from "./run-sending.ts";
 import { programWorkingFolders } from "./working-folders.ts";
 
 /** What the engine's runs start their connectors with, as the command gives it. */
@@ -35,6 +36,12 @@ export interface LocalRunConnectorsInput {
    * under `folder`, a run's program folder, may reach (`computerSheetHosts`).
    */
   sheetHostsOf(folder: string): Promise<SheetHosts>;
+  /**
+   * The sending choices a person saved for each connector with `halonic
+   * google allow-sending` (`openConnectionSettings`): only the read side,
+   * so nothing on a call's path can switch sending on. Off without a choice.
+   */
+  readonly sending: SendingSettings;
   /** Frees what the factories made on this computer, such as the runners' temp folders; called once the connectors have closed. */
   dispose?(): Promise<void>;
 }
@@ -83,17 +90,6 @@ export interface LocalRunConnectors {
 }
 
 /**
- * What the CLI answers every connector's sending check with: off, as it
- * keeps no connector settings yet. Only tools labelled `send` are refused.
- */
-const sendingOff: SendingSettings = {
-  checkSending: async ({ connector }) => ({
-    allowed: false,
-    reason: `sending is off for the connector "${connector}": the CLI can't switch it on yet`,
-  }),
-};
-
-/**
  * The runs' connectors on `engine`. Close them with
  * `runs.runConnectors.closeAll()` once the executor and scheduler have
  * closed, before the program folders.
@@ -126,7 +122,8 @@ export function localRunConnectors(
       runConnectors,
       connectorCalls: {
         location: engine.location,
-        sending: sendingOff,
+        // The saved choice, keyed by `location` as `allow-sending` saves it (HAL-15772).
+        sending: runSendingSettings(given.sending, engine.workspace),
         reportSettingsError: (connector, error) => {
           const reason = error instanceof Error ? error.message : String(error);
           engine.reportError(
