@@ -191,6 +191,13 @@ export const pluginMessages = defineMessages("plugin", {
     phrase`Read the list above. To trust it anyway, run: halonic trust --plugin ${id} --yes --fingerprint ${fingerprint}`,
   /** After the refusal's reason from the attack-test list; never more detail than the reason. */
   refusedSourceFix: () => phrase`Check the folder or git address.`,
+  /**
+   * The reason when git failed with more than one line to say: its first
+   * line, such as "Couldn't reach the repository: Host key verification
+   * failed.", after "Couldn't add the plugin:"; git's other lines follow it,
+   * indented (HAL-16503).
+   */
+  gitFailed: (firstLine: string) => phrase`${firstLine}`,
   /** The refusal for a source that is, holds or is inside the profile folder or a workspace's data (HAL-13713). */
   halonicData: () =>
     phrase`a plugin can't be added from Halonic's own data, or from a folder that holds it.`,

@@ -1,5 +1,5 @@
 import { type ErrorKind, errorKindOf, type SecretScrubber } from "@halonicjs/std";
-import { OwnLineError, UsageError } from "./command.ts";
+import { DetailedError, OwnLineError, UsageError } from "./command.ts";
 import type { Message } from "./messages/define.ts";
 import { errorMessages } from "./messages/general.ts";
 import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
@@ -100,7 +100,7 @@ export function errorDocument(error: unknown, context: PrintErrorContext = {}): 
       message: plainText(report.reason),
       ...(report.fix === undefined ? {} : { fix: plainText(report.fix) }),
       ...(error instanceof NotTrustedError ? notTrustedFields(error) : {}),
-      ...(error instanceof OwnLineError ? error.jsonFields : {}),
+      ...(error instanceof DetailedError ? error.jsonFields : {}),
     },
   };
 }
@@ -202,9 +202,9 @@ function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
   };
 }
 
-/** An {@link OwnLineError}'s `terminalDetails`, scrubbed, as the report's `terminal`. */
+/** A {@link DetailedError}'s `terminalDetails`, scrubbed, as the report's `terminal`. */
 function terminalOf(error: unknown, scrub: Scrub): Pick<ErrorReport, "terminal"> {
-  const details = error instanceof OwnLineError ? error.terminalDetails : undefined;
+  const details = error instanceof DetailedError ? error.terminalDetails : undefined;
   if (details === undefined) {
     return {};
   }
