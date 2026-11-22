@@ -210,4 +210,9 @@ export interface RestoreResult {
   readonly changedOnDisk: readonly string[];
   /** Entries that may never be written, as for Accept; nothing of them was written. */
   readonly refused: readonly { readonly path: string; readonly why: RefusalReason }[];
+  /**
+   * `true` when one of the step's files was decided again after the step,
+   * so nothing of it was restored and every entry is under `changedOnDisk`.
+   */
+  readonly decidedAfter: boolean;
 }

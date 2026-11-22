@@ -53,7 +53,7 @@ const acceptAnswer = s
 const rejectAnswer = s.object({ undo: text }).strict();
 
 const restoreAnswer = s
-  .object({ changedOnDisk: s.array(text), refused: s.array(refusal) })
+  .object({ changedOnDisk: s.array(text), refused: s.array(refusal), decidedAfter: s.boolean() })
   .strict();
 
 const settleAnswer = s.object({ result: s.enum(["settled", "open"]) }).strict();
@@ -71,6 +71,8 @@ export interface ProposalAccepted {
 export interface ProposalRestored {
   readonly changedOnDisk: readonly string[];
   readonly refused: readonly { readonly path: string; readonly why: RefusalReason }[];
+  /** A later decision on one of the step's files kept all of it from coming back. */
+  readonly decidedAfter: boolean;
 }
 
 /**

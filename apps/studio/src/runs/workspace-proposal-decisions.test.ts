@@ -45,6 +45,7 @@ verifies("studio.workspace-proposal-decisions", () => {
     const { transport, request } = hostAnswering({
       changedOnDisk: [file],
       refused: [{ path: ".git/config", why: "under-git" }],
+      decidedAfter: false,
     });
     expect(await hostProposalDecisionsOf(transport, workspace, () => true).undo("u1")).toEqual({
       leftAlone: [file, ".git/config"],

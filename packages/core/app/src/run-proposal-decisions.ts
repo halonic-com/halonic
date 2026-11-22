@@ -10,14 +10,19 @@ import {
   type DecideContext,
   expectedOf,
   refusalOf,
-  restoreFile,
 } from "./run-proposal-decide.ts";
 import {
   type PartlyDecided,
   type ProposedRecord,
-  recordPathOf,
   serializeRunProposalRecord,
 } from "./run-proposal-record.ts";
+import {
+  filesDecidedIn,
+  recordSidesOf,
+  restoreFiles,
+  standingWith,
+  stillAsLeft,
+} from "./run-proposal-restore.ts";
 import type { ProposalRecordStore } from "./run-proposal-store.ts";
 import type { ProposalReader } from "./run-proposal-texts.ts";
 import type {
@@ -27,10 +32,8 @@ import type {
   ProposalCompareChoice,
   ProposalTarget,
   ProposedFile,
-  RefusalReason,
   RejectResult,
   RestoreResult,
-  UndoFileWrite,
   UndoStep,
 } from "./run-proposal-types.ts";
 
@@ -145,65 +148,35 @@ export class ProposalDecisions {
     const { runId } = step.source;
     return this.records.inTurn(runId, async () => {
       // The history drops a settled run's steps; one that comes back anyway changes nothing.
-      await this.records.proposed(runId);
+      const record = await this.records.proposed(runId);
       const entries = to === "before" ? [...step.files].reverse() : step.files;
-      if (!(await this.decisionsAsLeft(runId, entries, to))) {
-        // A later decision on the run changed its record: writing the files
-        // back alone would leave a file the record no longer describes.
-        return { changedOnDisk: entries.map((entry) => entry.path), refused: [] };
+      // The decisions record is named in the step as Elena's history shows
+      // it, but lives in the records' own store: it is set file by file below.
+      const recordEntry = entries.find((entry) => entry.path === decisionsPathOf(runId));
+      const sides = recordEntry === undefined ? null : recordSidesOf(recordEntry, runId);
+      if (recordEntry !== undefined && (sides === null || !stillAsLeft(record, sides, to))) {
+        // A later decision on one of the step's files: writing the files
+        // back would leave a file its decision no longer describes.
+        return {
+          changedOnDisk: entries.map((entry) => entry.path),
+          refused: [],
+          decidedAfter: true,
+        };
       }
-      const changedOnDisk: string[] = [];
-      const refusedEntries: { path: string; why: RefusalReason }[] = [];
-      for (const entry of entries) {
-        const outcome = await this.restoreEntry(runId, entry, to);
-        if (outcome === "changed-on-disk") {
-          changedOnDisk.push(entry.path);
-        } else if (outcome !== "restored") {
-          refusedEntries.push({ path: entry.path, why: outcome.refused });
-        }
+      const files = entries.filter((entry) => entry !== recordEntry);
+      const restored = await restoreFiles(this.context, files, to);
+      if (sides !== null) {
+        // A file left alone keeps its decision: its content is still the one decided.
+        const leftAlone = new Set([
+          ...restored.changedOnDisk,
+          ...restored.refused.map((file) => file.path),
+        ]);
+        const paths = filesDecidedIn(sides).filter((path) => !leftAlone.has(path));
+        const { decisions, partly } = standingWith(record, sides[to], paths);
+        await this.saveDecisions(record, decisions, partly);
       }
-      return { changedOnDisk, refused: refusedEntries };
+      return { ...restored, decidedAfter: false };
     });
-  }
-
-  /**
-   * Whether the run's decisions record is still as the step left it, so
-   * its files may come back with it. A step without a decisions entry
-   * has nothing to keep in step.
-   */
-  private async decisionsAsLeft(
-    runId: string,
-    entries: readonly UndoFileWrite[],
-    to: "before" | "after",
-  ): Promise<boolean> {
-    const entry = entries.find((write) => write.path === decisionsPathOf(runId));
-    if (entry === undefined) {
-      return true;
-    }
-    const current = await this.records.store.read(recordPathOf(runId));
-    return current === (to === "before" ? entry.after : entry.before);
-  }
-
-  /** Puts one entry of a run's step back, in the run's turn. */
-  private async restoreEntry(
-    runId: string,
-    entry: UndoFileWrite,
-    to: "before" | "after",
-  ): Promise<"restored" | "changed-on-disk" | { readonly refused: RefusalReason }> {
-    if (entry.path === decisionsPathOf(runId)) {
-      // The decisions record is named in the step as Elena's history
-      // shows it, but lives in the records' own store.
-      const recordContext: DecideContext = { ...this.context, store: this.records.store };
-      const recordEntry = { ...entry, path: recordPathOf(runId) };
-      return (await restoreFile(recordContext, recordEntry, to)) ? "restored" : "changed-on-disk";
-    }
-    // A step comes back from the history, which Accept didn't build:
-    // trust rule A holds for each of its files as it does for Accept.
-    const why = refusalOf(entry.path);
-    if (why !== null) {
-      return { refused: why };
-    }
-    return (await restoreFile(this.context, entry, to)) ? "restored" : "changed-on-disk";
   }
 
   /** @throws ProposalUnavailableError when the proposal's texts are gone */
