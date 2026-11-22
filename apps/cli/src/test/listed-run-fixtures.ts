@@ -31,7 +31,7 @@ export const findWorkflow: FindWorkflow = (hubId, workflowId) =>
 export const clock: RunClock = { now: new Date(Date.UTC(2026, 10, 9, 12, 0)), timeZone: "UTC" };
 
 /** The `run.started` event every test run begins with. */
-export const started: RunEventBody = {
+export const started: Extract<RunEventBody, { type: "run.started" }> = {
   type: "run.started",
   hubId: "acme",
   workflowId: "support-reply",

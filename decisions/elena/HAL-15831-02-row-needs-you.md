@@ -27,7 +27,9 @@ the run page shows no banner for it (the dialog that asks is open, and the step 
 running count no longer counts such a run, as for a run with an open approval.
 
 No test is weakened: the run page's existing tests of `runs.run-view.key-origin-waiting` pass unchanged through
-the summary, and the rule's own cases are now tested in `@halonicjs/events`. The question hasn't been released,
+the summary, and the rule's own cases are now tested in `@halonicjs/events`. `apps/cli/src/commands/runs/listed-run.test.ts`
+runs fewer tests because it would have grown past the 480-line headroom: its tests of waiting and Needs you rows
+moved unchanged to `listed-run-waits.test.ts`, next to it, and its setup to `apps/cli/src/test/listed-run-fixtures.ts`. The question hasn't been released,
 so there is no changeset.
 
 ## Covers
@@ -38,3 +40,4 @@ so there is no changeset.
 - packages/core/events/src/key-origin-questions.test.ts
 - packages/core/app/src/run-standing.test.ts
 - packages/studio/features/runs/src/list/run-row.test.ts
+- apps/cli/src/commands/runs/listed-run.test.ts
