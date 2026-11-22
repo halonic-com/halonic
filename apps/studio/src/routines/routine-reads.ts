@@ -222,7 +222,9 @@ export function targetFound(workspace: LoadedWorkspace, target: RoutineTarget): 
  *
  * The checks start each message with `Routine "<id>": `. The row already names the routine and cuts
  * its line to one, so the prefix goes and the line starts with the problem; otherwise the fix at the
- * end is what a narrow window cuts off.
+ * end is what a narrow window cuts off. Each line is a sentence, as the page's other lines are: a
+ * capital letter and a full stop. A mail trigger's connector that is gone or isn't Google gets
+ * Studio's own sentence, which names where to pick another (C591, HAL-15549).
  */
 export function errorsOf(workspace: LoadedWorkspace, file: PlacedFile): readonly string[] {
   return workspace.issues
@@ -242,10 +244,36 @@ export function inputMissingOf(workspace: LoadedWorkspace, file: PlacedFile): st
   return issue === undefined ? undefined : problemSentence(issue, file);
 }
 
-/** A check's message without its `Routine "<id>": ` prefix (see {@link errorsOf}). */
+/** A check's message as a sentence without its `Routine "<id>": ` prefix (see {@link errorsOf}). */
 function problemSentence(issue: LoadedWorkspace["issues"][number], file: PlacedFile): string {
+  const studioSentence = mailboxSentence(file, issue.code);
+  if (studioSentence !== undefined) return studioSentence;
   const prefix = `Routine "${idOf(file)}": `;
-  return issue.message.startsWith(prefix) ? issue.message.slice(prefix.length) : issue.message;
+  return asSentence(
+    issue.message.startsWith(prefix) ? issue.message.slice(prefix.length) : issue.message,
+  );
+}
+
+/** The When card picks a mail trigger's connector under Mailbox; microcopy 12.2 calls it an inbox. */
+const pickMailbox = "Pick another mailbox under When.";
+
+/** Studio's sentence for a check on a mail trigger's connector, by the check's code. */
+function mailboxSentence(file: PlacedFile, code: string): string | undefined {
+  const trigger = file.value.trigger;
+  if (!("mail" in trigger)) return undefined;
+  const connector = trigger.mail.connector;
+  if (code === "unknown-connector") return `${connector} isn't in this workspace. ${pickMailbox}`;
+  if (code === "not-a-mailbox") {
+    return `${connector} isn't a Google connector, so it has no inbox to watch. ${pickMailbox}`;
+  }
+  return undefined;
+}
+
+/** A check's message with a capital first letter and one full stop at the end. */
+function asSentence(message: string): string {
+  const text = message.trim();
+  const capital = text.charAt(0).toUpperCase() + text.slice(1);
+  return /[.!?]$/.test(capital) ? capital : `${capital}.`;
 }
 
 /**
