@@ -40,7 +40,7 @@ afterEach(async () => {
 
 /** The list's last line in a month that spent nothing, in a workspace without `budget.monthly`. */
 const nothingSpent =
-  "Estimated spend this month: €0.00. To cap it, set budget.monthly in workspace.yaml or in Studio's Settings › Models.";
+  "Estimated spend this month: €0.00. To cap it, set budget.monthly in workspace.yaml, or the monthly budget under Models in Studio.";
 
 const golden = (name: string) => join(import.meta.dirname, "golden", name);
 
@@ -359,7 +359,7 @@ verifies("cli.commands.runs.month-spend", () => {
     const { io } = await runsIn(acme);
 
     expect(io.stdout.at(-1)).toBe(
-      "Estimated spend this month: about €0.42. To cap it, set budget.monthly in workspace.yaml or in Studio's Settings › Models.",
+      "Estimated spend this month: €0.42. To cap it, set budget.monthly in workspace.yaml, or the monthly budget under Models in Studio.",
     );
   });
 
@@ -379,7 +379,7 @@ verifies("cli.commands.runs.month-spend", () => {
 
     expect(io.stdout).toEqual([
       "! Needs you   09d9a0   Support reply   Waiting for you: Approve this reply?   10:40",
-      "Estimated spend this month: about €0.42 of your €20.00 budget.",
+      "Estimated spend this month: €0.42 of your €20.00 budget.",
     ]);
   });
 
@@ -389,16 +389,16 @@ verifies("cli.commands.runs.month-spend", () => {
 
     const { io } = await runsIn(acme);
 
-    expect(io.stdout.at(-1)).toBe("Estimated spend this month: about $0.42 of your $15.00 budget.");
+    expect(io.stdout.at(-1)).toBe("Estimated spend this month: $0.42 of your $15.00 budget.");
   });
 
-  it("isn't about anything when the month spent nothing or less than the money rule shows", async () => {
+  it("keeps the money rule's under €0.001 for a month that spent less than it shows", async () => {
     await storeRuns(pricedRun("run_mfx3k2a1_b0b0b0", today("08:00:00"), 0.0002));
 
     const { io } = await runsIn(acme);
 
     expect(io.stdout.at(-1)).toBe(
-      "Estimated spend this month: under €0.001. To cap it, set budget.monthly in workspace.yaml or in Studio's Settings › Models.",
+      "Estimated spend this month: under €0.001. To cap it, set budget.monthly in workspace.yaml, or the monthly budget under Models in Studio.",
     );
   });
 
