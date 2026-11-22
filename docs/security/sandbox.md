@@ -87,9 +87,11 @@ WSL folder.
 
 The CLI and Studio give different fixes for two of these codes,
 `runtime-missing` and `setup-conflict`, on purpose.
-The command in a Windows terminal can't run integration code in the sandbox at
-all, so for `distro-missing` and `runtime-missing` it says to use Halonic
-inside WSL 2. Studio starts the sandbox itself, so it says the same for
+With the WSL sandbox, the command in a Windows terminal can't run integration
+code in the sandbox at all, so for `distro-missing` and `runtime-missing` it
+says to use Halonic inside WSL 2. With srt's Windows mode (the sandbox choice
+that isn't WSL) it can, so `setup-conflict` is the one it answers with a
+command, below. Studio starts the sandbox itself, so it says the same for
 `distro-missing`, but for `runtime-missing` it says to choose **Check again**
 and, if the setup still doesn't finish, to reinstall the Halonic desktop app.
 For `setup-conflict` both say to remove the other program's sandbox setup
