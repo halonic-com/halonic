@@ -1,0 +1,47 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index cb8aea9b38fa1ef49e88a312bdacd89a9f032e68..e9154f811c111f4779a6597347bba3f5ccc21faa 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -42,6 +42,24 @@ async function getDivergedCommit(cwd, ref) {
+ 	return cmd.stdout.toString().trim();
+ }
+ /**
++* Halonic patch (HAL-15966): one `git log --follow` per changeset, all at
++* once, took over 5 GB with 590 pending changesets, and more with each new
++* one. Run at most GIT_LOG_CONCURRENCY of them at a time, in input order.
++*/
++const GIT_LOG_CONCURRENCY = 8;
++async function mapWithLimit(items, limit, mapItem) {
++	const results = new Array(items.length);
++	let next = 0;
++	const worker = async () => {
++		while (next < items.length) {
++			const index = next++;
++			results[index] = await mapItem(items[index]);
++		}
++	};
++	await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
++	return results;
++}
++/**
+ * Get the SHAs for the commits that added files, including automatically
+ * extending a shallow clone if necessary to determine any commits.
+ * @param gitPaths - Paths to fetch
+@@ -51,7 +69,7 @@ async function getCommitsThatAddFiles(gitPaths, { cwd, short = false }) {
+ 	const map = /* @__PURE__ */ new Map();
+ 	let remaining = gitPaths;
+ 	do {
+-		const commitInfos = await Promise.all(remaining.map(async (gitPath) => {
++		const commitInfos = await mapWithLimit(remaining, GIT_LOG_CONCURRENCY, async (gitPath) => {
+ 			const [commitSha, parentSha] = (await exec("git", [
+ 				"log",
+ 				"--diff-filter=AC",
+@@ -65,7 +83,7 @@ async function getCommitsThatAddFiles(gitPaths, { cwd, short = false }) {
+ 				commitSha,
+ 				parentSha
+ 			};
+-		}));
++		});
+ 		const commitsWithMissingParents = [];
+ 		for (const info of commitInfos) if (info.commitSha) if (info.parentSha) map.set(info.path, info.commitSha);
+ 		else commitsWithMissingParents.push(info);

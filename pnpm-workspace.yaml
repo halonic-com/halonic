@@ -26,6 +26,7 @@ catalog:
   "@codemirror/view": ^6.43.15
   "@lezer/highlight": ^1.2.5
   "@changesets/cli": ^3.0.3
+  "@changesets/git": 4.0.1
   "@cloudflare/workers-types": 5.20260730.1
   "@playwright/test": ^1.65.0
   "@stryker-mutator/core": ^10.1.1
@@ -107,3 +108,4 @@ overrides:
   "@anthropic-ai/sandbox-runtime>zod": 4.6.7
 patchedDependencies:
   "@anthropic-ai/sandbox-runtime@0.0.82": patches/@anthropic-ai__sandbox-runtime@0.0.82.patch
+  "@changesets/git@4.0.1": patches/@changesets__git@4.0.1.patch
