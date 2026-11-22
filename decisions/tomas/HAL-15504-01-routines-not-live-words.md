@@ -19,6 +19,11 @@ Four lines of `halonic routines` that #4613 (HAL-15204) and HAL-15664 added get 
 - The line for saved changes with errors, which HAL-15664 added after this note was first
   written: "… and they have errors (halonic validate). It starts as it was last committed." (was
   "It runs as last committed."), for the same reason as the first line.
+- The trust line above the list, from Liam's review of #4741 (HAL-15525): when the trust check
+  comes back refused, it names the file and why, in `halonic trust`'s words and with its fix,
+  instead of suggesting `halonic trust`, which would refuse too; and it shows only when a row
+  says "Paused until trusted", so a webhook routine `halonic serve` won't start, which reads
+  "Can't start", no longer brings it on its own. The changeset of #4741 says so too.
 
 The requirement `cli.commands.routines.list` and its examples say the new words, its two golden
 files take the new last line, and the tests expect the new lines. `cli.commands.routines.list-live-version`

@@ -11,7 +11,7 @@ import {
   startedInWords,
 } from "./runs-list.ts";
 import { suggestedCommand } from "./suggested-command.ts";
-import { trustMessages } from "./trust.ts";
+import { type RefusedFile, trustMessages } from "./trust.ts";
 
 /**
  * The fix for a routine whose agent is in a harness: `watch` has no
@@ -93,6 +93,14 @@ export const routinesMessages = defineMessages("routines", {
   /** The same, when the workspace changed since it was trusted, in `run`'s words. */
   changedPaused: (workspace: string, dir?: string) =>
     phrase`${markPart("needsYou")} ${workspace} changed since you trusted it, so its routines don't start ${markPart("separator")} ${suggestedCommand("trust", dir)}`,
+  /**
+   * The same, when a file names something trust can't cover, such as a URL
+   * with user info: `halonic trust` would refuse too, so the line says which
+   * file and why, in `trust`'s words, and how to fix it instead. The address
+   * is never shown, as it may hold a password.
+   */
+  refusedPaused: (workspace: string, refused: readonly RefusedFile[]) =>
+    phrase`${markPart("needsYou")} ${workspace}'s routines don't start: ${trustMessages.refused(refused).phrase} ${trustMessages.refusedFix().phrase}`,
   /**
    * The line under the list for a routine that starts an agent on its own,
    * which Halonic can't run yet (HAL-15607): why, in the words the Studio's

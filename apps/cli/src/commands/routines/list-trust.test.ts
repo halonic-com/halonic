@@ -10,6 +10,7 @@ import {
   writeFiles,
 } from "../../test/acme-runs.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
+import { userInfoConnectorYaml } from "../../test/user-info-connector.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { routinesCommandWith } from "./command.ts";
@@ -101,6 +102,46 @@ verifies("cli.commands.routines.list", () => {
     expect(io.stdout[0]).toBe(
       "! Acme changed since you trusted it, so its routines don't start · halonic trust --dir .",
     );
+  });
+
+  it("says which file trust refuses and why, without halonic trust, which would refuse too", async () => {
+    await writeFiles(acmeRuns.acme, {
+      ...realModel,
+      [routinePath]: morning(),
+      "library/connectors/web.connector.yaml": userInfoConnectorYaml,
+    });
+
+    const { code, io } = await routinesIn();
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      "! Acme's routines don't start: library/connectors/web.connector.yaml can't be trusted, because the URL has user info. Fix the address in that file, then try again.",
+      "Morning check   Daily at 08:00   ! Paused until trusted   Never ran",
+      hint,
+    ]);
+  });
+
+  it("gives no trust line when the only routine that is on is a webhook one serve won't start", async () => {
+    await writeFiles(acmeRuns.acme, {
+      ...realModel,
+      [routinePath]: [
+        "id: morning",
+        "name: New mail",
+        "trigger: { webhook: { secret: mail-hook } }",
+        "run: { workflow: support-reply }",
+        "",
+      ].join("\n"),
+    });
+
+    const { code, io } = await routinesIn();
+
+    // No row says "Paused until trusted", so no line above the list points to halonic trust.
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout).toEqual([
+      "! 1 routine can't start on a web request · halonic serve",
+      "New mail   On a signed web request   ✕ Can't start   Never ran",
+      hint,
+    ]);
   });
 
   it("leaves a routine that is off as Off, with no trust line", async () => {
