@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 const elsewhere =
-  "Changes your runs propose show only in the desktop app, or with halonic proposals in a terminal.";
+  "To see changes your runs propose, open Halonic on your computer or run halonic proposals in a terminal there.";
 
 const decisions: ProposalDecisions = {
   accept: async () => ({ undo: "u1", changedSinceRun: [], cantBeWritten: [] }),
@@ -41,6 +41,6 @@ verifies("inbox.proposal-items", () => {
 
   it("says nothing of it where the window lists proposals", async () => {
     const root = await openInbox(decisions);
-    expect(root.textContent).not.toContain("show only in the desktop app");
+    expect(root.textContent).not.toContain("open Halonic on your computer");
   });
 });

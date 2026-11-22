@@ -96,8 +96,8 @@ export const SandboxPassesService: ServiceKey<SandboxPasses> =
 
 /**
  * Accept, Reject and Undo on the workspace's run proposals. The app provides it with the agent
- * host, where it lists proposals; without it Needs you says proposals show only in the desktop app,
- * and a proposal opens with its changes and the terminal command that decides them (HAL-15986).
+ * host, where it lists proposals; without it Needs you says to see them on the computer, and a
+ * proposal opens with its changes and the terminal command that decides them (HAL-15986).
  */
 export const ProposalDecisionsService: ServiceKey<ProposalDecisions> =
   serviceKey<ProposalDecisions>("inbox.proposal-decisions");
