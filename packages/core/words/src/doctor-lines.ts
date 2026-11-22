@@ -402,8 +402,10 @@ function profileItems(line: ProfileLine): DoctorLineItem[] {
   // The variable is one of the names the profile is read from; the path comes from the environment.
   return line.problem === "profile-in-workspace"
     ? [
-        { sentence: doctorMessages.profileInWorkspace(printable(line.profile)).phrase },
-        { fix: doctorMessages.profileInWorkspaceFix(line.movedBy).phrase },
+        {
+          sentence: doctorMessages.profileInWorkspace(printable(line.profile), line.movedBy).phrase,
+        },
+        { fix: doctorMessages.profileInWorkspaceFix().phrase },
       ]
     : [
         { sentence: doctorMessages.workspaceInProfile(printable(line.profile)).phrase },

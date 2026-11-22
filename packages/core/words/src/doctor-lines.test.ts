@@ -186,13 +186,14 @@ verifies("words.doctor-lines", () => {
     expect(worded(moved)).toEqual({
       label: "Profile",
       items: [
-        "Your profile folder ~/acme/.data/\\u001b[31mhalonic is inside this workspace.",
-        "fix: Fix: XDG_DATA_HOME puts it there. A change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.",
+        "Your profile folder ~/acme/.data/\\u001b[31mhalonic is inside this workspace. XDG_DATA_HOME puts it there. A change to this workspace could change what you trust.",
+        "fix: Fix: move the profile folder out, then set HALONIC_HOME to its new place.",
       ],
     });
-    expect(worded({ ...moved, movedBy: "HALONIC_HOME" }).items[1]).toBe(
-      "fix: Fix: a change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.",
-    );
+    expect(worded({ ...moved, movedBy: "HALONIC_HOME" }).items).toEqual([
+      "Your profile folder ~/acme/.data/\\u001b[31mhalonic is inside this workspace. A change to this workspace could change what you trust.",
+      "fix: Fix: move the profile folder out, then set HALONIC_HOME to its new place.",
+    ]);
     const inside: ProfileLine = {
       check: "profile",
       status: "failed",
