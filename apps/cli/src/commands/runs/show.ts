@@ -3,9 +3,9 @@
 // service the Studio's run page reads too: this file finds the run by the id
 // the user typed, and prints the heading, the step lines (`run-view.ts`,
 // shared with `halonic run`), why a connector didn't start
-// (`show-connectors.ts`) and how the run ended (`show-ending.ts`). It never
-// prints where the run log is (Liam, HAL-1984). The words are the
-// catalogue's (`runsMessages`).
+// (`show-connectors.ts`), why a send was refused (`show-refused.ts`) and
+// how the run ended (`show-ending.ts`). It never prints where the run log
+// is (Liam, HAL-1984). The words are the catalogue's (`runsMessages`).
 
 import { type RunDetail, RunHistory, shortRunId } from "@halonicjs/app";
 import { workspaceModelsOf } from "@halonicjs/app/run-failure";
@@ -18,7 +18,11 @@ import {
   OwnLineError,
   UsageError,
 } from "../../command.ts";
-import { connectorFileOf, isIntegrationConnector } from "../../connector-file.ts";
+import {
+  connectorFileOf,
+  isGoogleConnector,
+  isIntegrationConnector,
+} from "../../connector-file.ts";
 import { providerAddress } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import type { Phrase } from "../../messages/phrase.ts";
@@ -92,7 +96,7 @@ export async function showRun(
             fileOf: (id) => connectorFileOf(loaded, id),
             isIntegration: (id) => isIntegrationConnector(loaded, id),
           }),
-          ...sendingOffLines(run.events),
+          ...sendingOffLines(run.events, dir, (id) => isGoogleConnector(loaded, id)),
           ...providerNoteLines(run.events),
           ...showEnding(
             run,
