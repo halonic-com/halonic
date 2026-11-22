@@ -25,7 +25,7 @@ with the request's body.
 
    The workflow's `input` takes named fields, one per value the workflow
    reads, as above. `input: "{{trigger.body}}"` on its own is refused:
-   `halonic validate` says "A workflow routine's input takes named fields,
+   `halonic validate` says "A workflow routine's input needs named fields,
    such as input: { mail: "{{trigger.body}}" }."
 
    `headers` lists the request headers the run may read, in lowercase. Leave

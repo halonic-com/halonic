@@ -425,8 +425,8 @@ function failedIn(run: FailedRun, reason: Phrase): Phrase {
 
 /**
  * "Support reply failed in the step Draft a reply"; for a child run, its
- * parent first: "Topics failed in the step Each: the run it started for item
- * 2 failed in the step Draft" (HAL-15555), as "the run that started it" names
+ * parent first: "Topics failed in the step Each because the run it started
+ * for item 2 failed in the step Draft" (HAL-15555, C621), as "the run that started it" names
  * the parent on the child's own line.
  */
 function failedInStep(run: FailedRun): Phrase {
@@ -438,7 +438,7 @@ function failedInStep(run: FailedRun): Phrase {
     parent.item === undefined
       ? phrase`the run it started`
       : phrase`the run it started for item ${String(parent.item + 1)}`;
-  return phrase`${parent.title} failed in the step ${parent.step}: ${child} failed in the step ${run.step}`;
+  return phrase`${parent.title} failed in the step ${parent.step} because ${child} failed in the step ${run.step}`;
 }
 
 /** "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet." */

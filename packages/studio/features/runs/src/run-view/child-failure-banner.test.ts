@@ -64,7 +64,7 @@ verifies("runs.run-view.failed-child-run", () => {
   it("leads the child's cause with the parent's step and the item, counted from 1", () => {
     const banner = callout(childFailureBanner(parent, topics, itemsNotAList, false));
     expect(banner?.lines).toEqual([
-      "Topics failed in the step Each: the run it started for item 1 failed in the step Draft: its items ({{input.topics}}) are a text, not a list.",
+      "Topics failed in the step Each because the run it started for item 1 failed in the step Draft: its items ({{input.topics}}) are a text, not a list.",
       'Pass a JSON list, such as ["Monday", "Tuesday"].',
     ]);
     expect(banner?.tone).toBe("danger");
@@ -87,7 +87,7 @@ verifies("runs.run-view.failed-child-run", () => {
       childFailureBanner(review, topics, child({ reason: "error" }, undefined), false),
     );
     expect(banner?.lines).toEqual([
-      "Topics failed in the step Review: the run it started failed in the step Draft. Halonic can't tell the cause yet.",
+      "Topics failed in the step Review because the run it started failed in the step Draft. Halonic can't tell the cause yet.",
     ]);
   });
 
@@ -97,7 +97,7 @@ verifies("runs.run-view.failed-child-run", () => {
     );
     expect(banner?.details).toBe(
       [
-        "Topics failed in the step Each: the run it started for item 1 failed in the step Draft. Halonic can't tell the cause yet.",
+        "Topics failed in the step Each because the run it started for item 1 failed in the step Draft. Halonic can't tell the cause yet.",
         `Run ${childId}`,
         "engine text",
         `Started by run ${parent.id}`,
@@ -111,7 +111,7 @@ verifies("runs.run-view.failed-child-run", () => {
     ]);
     const banner = callout(childFailureBanner(parent, topics, outOfMemory, false));
     expect(banner?.lines).toEqual([
-      "Topics failed in the step Each: the run it started for item 2 failed in the step Draft.",
+      "Topics failed in the step Each because the run it started for item 2 failed in the step Draft.",
       "Ollama couldn't load llama3.1:70b: this computer doesn't have enough free memory for it.",
       "Close other programs, or pick a smaller model in Models.",
     ]);
@@ -130,7 +130,7 @@ verifies("runs.run-view.failed-child-run", () => {
     );
     const banner = callout(childFailureBanner(parent, topics, failedInItsChild, false));
     expect(banner?.lines).toEqual([
-      "Topics failed in the step Each: the run it started for item 1 failed in the step Each. Halonic can't tell the cause yet.",
+      "Topics failed in the step Each because the run it started for item 1 failed in the step Each. Halonic can't tell the cause yet.",
     ]);
     expect(banner?.action).toEqual({
       kind: "open-run",

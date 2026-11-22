@@ -76,7 +76,7 @@ verifies("cli.commands.validate.integration-sheet", () => {
 
     expect(code).toBe(exitCode.failed);
     const text = io.stdout.join("\n");
-    expect(text).toContain("The sheet of the integration in integrations/notes can't be read");
+    expect(text).toContain("the sheet of its integration in integrations/notes can't be read");
     expect(io.stdout).toContain(sheetFile);
   });
 

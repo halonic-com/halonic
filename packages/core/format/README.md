@@ -112,7 +112,7 @@ not here.
   `every` is a number followed by `m`, `h` or `d`, such as `15m` (requirement `routine-mail-interval`).
   A routine's `run` is a workflow with its `input`, named fields such as
   `input: { mail: "{{trigger.body}}" }`, or an agent with its `prompt`. A workflow whose `input` is
-  a text or a list fails at `run` with "A workflow routine's input takes named fields, such as
+  a text or a list fails at `run` with "A workflow routine's input needs named fields, such as
   input: { mail: "{{trigger.body}}" }.", and an agent with `input` and no `prompt` with "An agent
   routine takes prompt, not input." (requirement `routine-file`).
 - Connectors: besides the local and remote transports, `integration: { folder: <id> }` (a folder

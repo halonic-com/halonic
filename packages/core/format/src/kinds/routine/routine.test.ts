@@ -65,7 +65,7 @@ verifies("format.routine-file", () => {
     const problems = problemsOf("routine", text);
     expect(summary(problems)).toEqual(["run invalid_union 4", "overlap invalid_value 5"]);
     expect(problems[0]?.message).toBe(
-      "run needs a workflow, with its input, or an agent, with its prompt.",
+      "A routine's run needs a workflow with its input, or an agent with its prompt.",
     );
   });
 
@@ -83,7 +83,7 @@ verifies("format.routine-file", () => {
     const problems = problemsOf("routine", routine("trigger: { manual: true }", run));
     expect(summary(problems)).toEqual(["run invalid_union 4"]);
     expect(problems[0]?.message).toBe(
-      'A workflow routine\'s input takes named fields, such as input: { mail: "{{trigger.body}}" }.',
+      'A workflow routine\'s input needs named fields, such as input: { mail: "{{trigger.body}}" }.',
     );
   });
 });

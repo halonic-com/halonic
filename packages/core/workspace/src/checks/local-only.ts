@@ -102,7 +102,8 @@ const keepOff = "set privacy.localOnly: false in workspace.yaml to use it";
  * program, an address, or code whose sheet keeps it on this computer and its
  * network. A plugin or integration names its reason (HAL-15396), since "the
  * local integration in integrations/notes isn't local" reads as a
- * contradiction without one.
+ * contradiction without one. Every line starts with the connector, as the
+ * check's other lines do (C621).
  */
 function connectorMessage(connector: Connector, context: CheckContext): string {
   if (!runsInRunner(connector)) {
@@ -114,7 +115,7 @@ function connectorMessage(connector: Connector, context: CheckContext): string {
   }
   const hosts = sheetHostsOf(connector, sheetHosts);
   if (hosts === undefined) {
-    return unknownHostsMessage(connector);
+    return `${notLocal(connector)}${unknownHostsReason(connector)}`;
   }
   const outside = outsideHosts(hosts);
   if (outside.length > 0) {
@@ -123,7 +124,12 @@ function connectorMessage(connector: Connector, context: CheckContext): string {
   if (connector.local === false) {
     return `Connector "${connector.id}" says local: false, and the workspace is local only: ${keepOff}`;
   }
-  return `${codeOf(connector)} reaches nothing outside this computer and its network, but connector "${connector.id}" doesn't say local: true: set local: true in its file, ${turnOff}`;
+  return `${notLocal(connector)}its file doesn't say local: true, though ${localCodeOf(connector)} reaches nothing outside this computer and its network. Set local: true in its file, ${turnOff}`;
+}
+
+/** The start of a line about a connector that isn't local, up to its reason. */
+function notLocal(connector: Connector): string {
+  return `Connector "${connector.id}" isn't local, and the workspace is local only: `;
 }
 
 /**
@@ -135,16 +141,16 @@ function connectorMessage(connector: Connector, context: CheckContext): string {
  * names its hosts, where that choice is a fair one (HAL-15806). An
  * integration's sheet is in the workspace, so its way out stays.
  */
-function unknownHostsMessage({ transport }: Connector): string {
-  const unknown = "so nothing says which hosts it reaches";
+function unknownHostsReason({ transport }: Connector): string {
+  const unknown = "so Halonic can't tell which hosts it reaches";
   if ("plugin" in transport) {
-    return `The plugin ${transport.plugin.id} isn't added here or can't be read, ${unknown}: add it, or fix what halonic plugin list says about it, then Halonic can tell whether it's local`;
+    return `its plugin ${transport.plugin.id} isn't added here or can't be read, ${unknown}. Add it, or fix what halonic plugin list says about it, then Halonic can tell whether it's local`;
   }
   const noSheet =
     "integration" in transport
-      ? `The sheet of the integration in integrations/${transport.integration.folder} can't be read`
-      : "Its code has no sheet";
-  return `${noSheet}, ${unknown}, and it isn't local: ${keepOff}`;
+      ? `the sheet of its integration in integrations/${transport.integration.folder} can't be read`
+      : "its code has no sheet";
+  return `${noSheet}, ${unknown}. Set privacy.localOnly: false in workspace.yaml to use it`;
 }
 
 /**
@@ -166,6 +172,14 @@ function codeOf({ transport }: Connector): string {
   return "integration" in transport
     ? `The integration in integrations/${transport.integration.folder}`
     : "Its code";
+}
+
+/** Whose code a runner connector runs, mid-sentence: "the plugin acme-orders" or "the local integration in integrations/notes". */
+function localCodeOf({ transport }: Connector): string {
+  if ("plugin" in transport) return `the plugin ${transport.plugin.id}`;
+  return "integration" in transport
+    ? `the local integration in integrations/${transport.integration.folder}`
+    : "its code";
 }
 
 /** A sheet's host as written, or the setting that holds it. */

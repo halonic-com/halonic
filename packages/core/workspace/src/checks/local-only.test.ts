@@ -129,9 +129,10 @@ verifies("workspace.local-only-sheet-hosts", () => {
 
   it("doesn't count local: true for a sheet it wasn't given, and says the sheet is why", async () => {
     const none: SheetHosts = { plugins: new Map(), integrations: new Map() };
+    const why = "so Halonic can't tell which hosts it reaches";
     expect(await issuesIn(true, { ...local, ...runners }, none)).toEqual([
-      `error library/connectors/notes.connector.yaml local: The sheet of the integration in integrations/notes can't be read, so nothing says which hosts it reaches, and it isn't local: set privacy.localOnly: false in workspace.yaml to use it`,
-      `error library/connectors/orders.connector.yaml local: The plugin acme-orders isn't added here or can't be read, so nothing says which hosts it reaches: add it, or fix what halonic plugin list says about it, then Halonic can tell whether it's local`,
+      `error library/connectors/notes.connector.yaml local: Connector "notes" isn't local, and the workspace is local only: the sheet of its integration in integrations/notes can't be read, ${why}. Set privacy.localOnly: false in workspace.yaml to use it`,
+      `error library/connectors/orders.connector.yaml local: Connector "orders" isn't local, and the workspace is local only: its plugin acme-orders isn't added here or can't be read, ${why}. Add it, or fix what halonic plugin list says about it, then Halonic can tell whether it's local`,
     ]);
   });
 
@@ -140,7 +141,7 @@ verifies("workspace.local-only-sheet-hosts", () => {
     expect(
       await issuesIn(true, { ...local, "library/connectors/notes.connector.yaml": notes }, inside),
     ).toEqual([
-      `error library/connectors/notes.connector.yaml transport: The integration in integrations/notes reaches nothing outside this computer and its network, but connector "notes" doesn't say local: true: set local: true in its file, or set privacy.localOnly: false in workspace.yaml`,
+      `error library/connectors/notes.connector.yaml transport: Connector "notes" isn't local, and the workspace is local only: its file doesn't say local: true, though the local integration in integrations/notes reaches nothing outside this computer and its network. Set local: true in its file, or set privacy.localOnly: false in workspace.yaml`,
     ]);
   });
 

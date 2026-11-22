@@ -149,7 +149,7 @@ export const routinesMessages = defineMessages("routines", {
    * live version, so the errors are named here. `dir` is the user's own `--dir`.
    */
   changesNotLiveWithErrors: (name: string, dir?: string) =>
-    phrase`${markPart("needsYou")} ${name} has changes that aren't live yet, and they have errors (${suggestedCommand("validate", dir)}). It runs as last committed.`,
+    phrase`${markPart("needsYou")} ${name} has changes that aren't live yet, with errors. It runs as last committed. See the errors with ${suggestedCommand("validate", dir)}.`,
   /**
    * The line under the list for a routine that is on but no commit has
    * (HAL-15664), in the words of the Studio's routine page: the watch and

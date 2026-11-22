@@ -139,10 +139,14 @@ export const RoutineTarget = s.union(
   { error: (issue) => (issue.code === "invalid_union" ? targetMessage(issue.input) : undefined) },
 );
 
+/** What a target that names neither a workflow nor an agent is told. */
+const NO_TARGET_KIND =
+  "A routine's run needs a workflow with its input, or an agent with its prompt.";
+
 /** Which key a target that is neither kind needs, by the keys it has. */
 function targetMessage(target: unknown): string {
   if (!isFields(target)) {
-    return "run needs a workflow, with its input, or an agent, with its prompt.";
+    return NO_TARGET_KIND;
   }
   const has = (key: string) => key in target;
   if (has("agent") && has("input") && !has("prompt")) {
@@ -152,9 +156,9 @@ function targetMessage(target: unknown): string {
   // a workflow, with its input" would send the reader looking for neither
   // (HAL-15734). The input has to be named fields.
   if (has("workflow") && !has("agent") && has("input") && !isFields(target["input"])) {
-    return 'A workflow routine\'s input takes named fields, such as input: { mail: "{{trigger.body}}" }.';
+    return 'A workflow routine\'s input needs named fields, such as input: { mail: "{{trigger.body}}" }.';
   }
-  return "run needs a workflow, with its input, or an agent, with its prompt.";
+  return NO_TARGET_KIND;
 }
 
 /** Whether a value is named fields (a YAML map), not a text, a list or nothing. */

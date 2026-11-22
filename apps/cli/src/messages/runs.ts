@@ -187,13 +187,13 @@ export const runsMessages = defineMessages("runs", {
   showStartedBy: (parentId: string) => phrase`Started by run ${parentId}`,
   /** Under that line, in place of Studio's Open run: the way to the run that started it. */
   showParentRun: (parentId: string, dir?: string) =>
-    phrase`See the run that started it: ${suggestedCommand("runs show", dir, parentId)}`,
+    phrase`See the run that started it with ${suggestedCommand("runs show", dir, parentId)}.`,
   /**
    * Under a run's failure lines that say why the child run it started failed
    * (HAL-15555), in place of Studio's Open run: the way to that child run.
    */
   showChildRun: (childId: string, dir?: string) =>
-    phrase`See that run: ${suggestedCommand("runs show", dir, childId)}`,
+    phrase`See that run with ${suggestedCommand("runs show", dir, childId)}.`,
   /**
    * `runs show` without a run id, or with more than one (usage, exit 2); the
    * usage line is line 2. The shape of `init`'s "takes one folder name"
