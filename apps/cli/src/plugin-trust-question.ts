@@ -87,7 +87,10 @@ export async function askToTrustPlugin(
   const name = printable(plugin.name);
   const install = await service.install(id);
   const { check, wontTurnOn } = pluginCheckAsAsked(entry, answer, install?.source);
-  const fix = pluginMessages.noTerminalFix(id, fingerprint);
+  const fix =
+    answer.offHere === undefined
+      ? pluginMessages.noTerminalFix(id, fingerprint)
+      : pluginMessages.noTerminalFixOffHere(id, fingerprint);
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
     throw fingerprintNotCurrent(entry, { check: [...check, ...wontTurnOn], fingerprint });
   }

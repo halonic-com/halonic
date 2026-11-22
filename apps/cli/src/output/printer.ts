@@ -1,7 +1,7 @@
 import type { SecretScrubber } from "@halonicjs/std";
 import type { CliIo, CommandResult, JsonFields, StoppedResult } from "../command.ts";
 import type { Message } from "../messages/define.ts";
-import { type Phrase, phrase, renderPhrase } from "../messages/phrase.ts";
+import { type Phrase, phrase, plainText, renderPhrase } from "../messages/phrase.ts";
 import { stopMessages } from "../messages/stop.ts";
 import { NotTrustedError } from "../not-trusted.ts";
 import {
@@ -214,7 +214,8 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
         return;
       }
       if (error instanceof NotTrustedError) {
-        printNotTrusted(error, { out, err: scrubbed(err, options.scrubber) }, context);
+        const streams = { out, err: scrubbed(err, options.scrubber) };
+        printNotTrusted(error, streams, context, options.out.person === true);
       } else {
         printError(error, err, context);
       }
@@ -277,16 +278,28 @@ function printLines(print: (line: Phrase) => void, lines: readonly Phrase[]): vo
  * The untrusted workspace's three parts, in order (`cli.not-trusted`): the
  * trust check on stderr, the ✕ and fix lines on stderr, then the bare
  * fingerprint as the last stdout line, so `tail -n1` gives exactly what
- * `--fingerprint` takes.
+ * `--fingerprint` takes. When a person reads stdout, at a terminal outside
+ * CI, and the lines above hold the fingerprint, the last part is left out.
  */
 function printNotTrusted(
   error: NotTrustedError,
   streams: { out: (line: Phrase) => void; err: (line: Phrase) => void },
   context: PrintErrorContext,
+  personReadsOut: boolean,
 ): void {
   printLines(streams.err, error.check);
   printError(error, streams.err, context);
+  // A script reads the bare fingerprint as stdout's last line (`tail -n1`).
+  // A person at a terminal has just read it in the check or the fix, so it
+  // isn't said twice (C656 #6, HAL-15947).
+  if (personReadsOut && fingerprintShown(error)) return;
   streams.out(phrase`${error.fingerprint}`);
+}
+
+/** Whether the check or the fix line, printed on stderr, already holds the fingerprint. */
+function fingerprintShown(error: NotTrustedError): boolean {
+  const shown = [...error.check, error.fixMessage.phrase];
+  return shown.some((line) => plainText(line).includes(error.fingerprint));
 }
 
 /**

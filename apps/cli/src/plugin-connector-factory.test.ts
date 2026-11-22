@@ -175,6 +175,21 @@ verifies("cli.plugin-local-tools", () => {
     );
   });
 
+  it("says why a backend the sandbox can't start for is off as plugin list does, and points to doctor", () => {
+    const { lines, report } = reporter();
+    report("orders", {
+      plugin: "acme-orders",
+      part: "backend",
+      reason: { kind: "sandbox-unavailable", reason: "container" },
+      error: new Error("the sandbox isn't available here (container)"),
+    });
+    expect(lines).toEqual([
+      "warn ! The backend of the plugin acme-orders didn't start, so its tools are off in this run.",
+      "warn   Halonic is running inside a container, and the sandbox can't start there. Run Halonic on the computer itself, not in a container.",
+      "warn   See why with halonic doctor.",
+    ]);
+  });
+
   it("words a reason code it doesn't know as other's, never the code alone", () => {
     const { lines, report } = reporter();
     report("my-files", {

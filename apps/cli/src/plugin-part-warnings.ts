@@ -7,6 +7,7 @@ import {
   type PluginPartUnavailableReason,
   runnerUnfencedWords,
 } from "@halonicjs/app";
+import { connectorStartMessages } from "./messages/connector-start.ts";
 import { docsBase } from "./messages/docs.ts";
 import { errorMessages } from "./messages/general.ts";
 import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
@@ -53,7 +54,11 @@ export function pluginPartReporter(
     lines.warn(
       phrase`${markPart("needsYou")} ${runMessages.pluginPartOff(shownPlugin, shown).phrase}`,
     );
-    for (const line of pluginPartWhy(reason, error, wslDistro)) {
+    const why =
+      part === "backend" && reason.kind === "sandbox-unavailable"
+        ? backendOffHereWhy(reason.reason)
+        : pluginPartWhy(reason, error, wslDistro);
+    for (const line of why) {
       lines.warn(phrase`  ${line}`);
     }
     if (reason.kind === "sandbox-not-fenced") {
@@ -88,6 +93,19 @@ export function unfencedIntegrationReporter(
       phrase`  ${errorMessages.more(`${docsBase}/${words.docsKey}`, printable(reason)).phrase}`,
     );
   };
+}
+
+/**
+ * Why a backend the start gate didn't start is off, in the words `plugin
+ * add` and `plugin list` use for a plugin that is off on this computer, and
+ * where to see more. Building the runner or trusting the plugin again
+ * wouldn't start it here, so this comes first (C656 #3, HAL-15947).
+ */
+function backendOffHereWhy(reason: string): Phrase[] {
+  return [
+    sandboxMessages.reasonAndFix(reason).phrase,
+    connectorStartMessages.sandboxNotReadyFix().phrase,
+  ];
 }
 
 /**

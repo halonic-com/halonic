@@ -21,6 +21,8 @@ import {
   PluginLocalToolNotTrustedError,
 } from "./plugin-local-tools.ts";
 import type { PluginPart } from "./plugin-trust-content.ts";
+import type { RunnerUnfencedReason } from "./runner-fence.ts";
+import { isRunnerUnfencedReason } from "./runner-unfenced-words.ts";
 
 /** One part of a plugin behind its connector: its backend or one local tool. */
 export interface PluginConnectorPart {
@@ -35,12 +37,16 @@ export interface PluginConnectorPart {
  * Why a part of a plugin offers no tools.
  *
  * - A {@link LocalToolUnavailable} state, for a local tool this computer can't run.
+ * - `sandbox-unavailable` with a {@link RunnerUnfencedReason}, for a backend
+ *   the start gate didn't start: the sandbox can't start here, and nobody
+ *   allowed its code to run without it (HAL-15947).
  * - `settings-not-set`: a required setting the part takes has no value.
  * - `not-trusted`: the person's trust doesn't cover the plugin as it is now.
  * - `failed`: anything else; `error` on the report says what.
  */
 export type PluginPartUnavailableReason =
   | LocalToolUnavailable
+  | { readonly kind: "sandbox-unavailable"; readonly reason: RunnerUnfencedReason }
   | { readonly kind: "settings-not-set"; readonly settings: readonly string[] }
   | { readonly kind: "not-trusted"; readonly reason: PluginBackendTrustReason }
   | { readonly kind: "failed" };
@@ -183,39 +189,41 @@ export class PluginConnector implements ConnectorClient {
  * it in.
  */
 export function pluginPartUnavailableReason(error: unknown): PluginPartUnavailableReason {
-  const known = knownCause(error);
-  return known === undefined ? { kind: "failed" } : reasonOf(known);
-}
-
-type KnownError =
-  | LocalToolUnavailableError
-  | LocalToolSettingsNotSetError
-  | PluginLocalToolNotTrustedError
-  | PluginBackendNotTrustedError;
-
-/** The first error in `error`'s chain of causes that Halonic's own parts throw. */
-function knownCause(error: unknown): KnownError | undefined {
   const seen = new Set<unknown>();
   let current = error;
   while (current instanceof Error && !seen.has(current)) {
-    if (
-      current instanceof LocalToolUnavailableError ||
-      current instanceof LocalToolSettingsNotSetError ||
-      current instanceof PluginLocalToolNotTrustedError ||
-      current instanceof PluginBackendNotTrustedError
-    ) {
-      return current;
-    }
+    const reason = ownReason(current);
+    if (reason !== undefined) return reason;
     seen.add(current);
     current = current.cause;
   }
-  return undefined;
+  return { kind: "failed" };
 }
 
-function reasonOf(error: KnownError): PluginPartUnavailableReason {
+/** The code for one error Halonic's own parts throw, or `undefined` for any other error. */
+function ownReason(error: Error): PluginPartUnavailableReason | undefined {
   if (error instanceof LocalToolUnavailableError) return error.state;
   if (error instanceof LocalToolSettingsNotSetError) {
     return { kind: "settings-not-set", settings: error.settings };
   }
-  return { kind: "not-trusted", reason: error.reason };
+  if (
+    error instanceof PluginLocalToolNotTrustedError ||
+    error instanceof PluginBackendNotTrustedError
+  ) {
+    return { kind: "not-trusted", reason: error.reason };
+  }
+  const offHere = backendOffHereReason(error);
+  return offHere === undefined ? undefined : { kind: "sandbox-unavailable", reason: offHere };
+}
+
+/**
+ * The reason of a `PluginBackendNotFencedError`, which the integration
+ * runner's opener throws when the start gate starts no runner for want of a
+ * sandbox. Core can't import an adapter, so it is read by name and field,
+ * as `connectorStartFailureOf` reads it.
+ */
+function backendOffHereReason(error: Error): RunnerUnfencedReason | undefined {
+  if (error.name !== "PluginBackendNotFencedError" || !("reason" in error)) return undefined;
+  const { reason } = error;
+  return typeof reason === "string" && isRunnerUnfencedReason(reason) ? reason : undefined;
 }

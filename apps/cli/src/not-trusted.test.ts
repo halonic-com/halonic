@@ -50,6 +50,25 @@ async function start(...args: string[]) {
   return { code, stdout: io.stdout, stderr: io.stderr };
 }
 
+/** As {@link start}, with stdout and stderr on a terminal, where a person reads them. */
+async function startAtTerminal(check: readonly string[]) {
+  const command: CliCommand = {
+    ...startCommand,
+    async run() {
+      throw new NotTrustedError({
+        problem: trustMessages.notTrustedYet("Acme"),
+        fix: trustMessages.reviewThenTrust("./acme"),
+        fingerprint,
+        check: check.map((line) => phrase`${line}`),
+      });
+    },
+  };
+  const io = captureIo("<cwd>");
+  const terminal = { env: {}, platform: "linux", stdoutIsTerminal: true, stderrIsTerminal: true };
+  const code = await runCli(["start"], io, [command], { secrets, terminal });
+  return { code, stdout: io.stdout, stderr: io.stderr };
+}
+
 verifies("cli.not-trusted", () => {
   it("shows the check, then the ✕ and fix lines on stderr, and exits with 3", async () => {
     const { code, stderr } = await start();
@@ -66,6 +85,16 @@ verifies("cli.not-trusted", () => {
     const { stdout } = await start();
     expect(stdout).toEqual([fingerprint]);
     expect(stdout.at(-1)).toMatch(bareFingerprint);
+  });
+
+  it("leaves the bare fingerprint out on a terminal when the check above shows it", async () => {
+    const shown = await startAtTerminal(["Fingerprint", `  ${fingerprint}`]);
+    expect(shown.code).toBe(exitCode.notTrusted);
+    expect(shown.stdout).toEqual([]);
+    expect(shown.stderr.filter((line) => line.includes(fingerprint))).toHaveLength(1);
+
+    const notShown = await startAtTerminal(["Trust check for Acme (./acme)"]);
+    expect(notShown.stdout).toEqual([fingerprint]);
   });
 
   it("gives --json one error document with kind not_trusted and the full fingerprint", async () => {

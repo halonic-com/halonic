@@ -191,3 +191,26 @@ describe("pluginPartUnavailableReason", () => {
     ).toEqual({ kind: "failed" });
   });
 });
+
+verifies("app.plugin-connector", () => {
+  describe("pluginPartUnavailableReason for a backend", () => {
+    it("reads a backend the gate didn't start for want of a sandbox as sandbox-unavailable, with its reason", () => {
+      const notFenced = Object.assign(new Error("the sandbox isn't available here (container)"), {
+        name: "PluginBackendNotFencedError",
+        reason: "container",
+      });
+      const wrapped = new Error(`Connector "orders" didn't start: ${notFenced.message}`, {
+        cause: notFenced,
+      });
+      expect(pluginPartUnavailableReason(wrapped)).toEqual({
+        kind: "sandbox-unavailable",
+        reason: "container",
+      });
+      const unknownReason = Object.assign(new Error("not fenced"), {
+        name: "PluginBackendNotFencedError",
+        reason: "a-reason-from-a-newer-version",
+      });
+      expect(pluginPartUnavailableReason(unknownReason)).toEqual({ kind: "failed" });
+    });
+  });
+});

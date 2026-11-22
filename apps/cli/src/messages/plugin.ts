@@ -168,6 +168,14 @@ export const pluginMessages = defineMessages("plugin", {
    */
   noTerminalFix: (id: string, fingerprint: string) =>
     phrase`Read the list above, then run: halonic trust --plugin ${id} --yes --fingerprint ${fingerprint}`,
+  /**
+   * {@link noTerminalFix} for a plugin that stays off on this computer once
+   * trusted: the lines above say what turns it on, so trusting it is only
+   * the choice to trust it anyway, never the last step to turn it on
+   * (C656 #3, HAL-15947).
+   */
+  noTerminalFixOffHere: (id: string, fingerprint: string) =>
+    phrase`Read the list above. To trust it anyway, run: halonic trust --plugin ${id} --yes --fingerprint ${fingerprint}`,
   /** After the refusal's reason from the attack-test list; never more detail than the reason. */
   refusedSourceFix: () => phrase`Check the folder or git address.`,
   /** The refusal for a source that is, holds or is inside the profile folder or a workspace's data (HAL-13713). */
