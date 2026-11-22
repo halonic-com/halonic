@@ -205,7 +205,7 @@ verifies("workspace.trusted-sources", () => {
       await vi.advanceTimersByTimeAsync(50);
     });
     expect(document.querySelector("dialog")?.textContent).toContain(
-      "Removed trust from inbox-helper, but couldn't sign it out: The agent host isn't running. Remove trust again to try the sign-out again.",
+      "Removed trust from inbox-helper, but couldn't sign it out: The agent host isn't running. Press Remove trust again to sign it out.",
     );
     expect(element.querySelector("li")?.textContent).toContain("Trust removed, not signed out");
     expect(announce).not.toHaveBeenCalled();
