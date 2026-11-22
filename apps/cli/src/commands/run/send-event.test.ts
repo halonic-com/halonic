@@ -46,6 +46,26 @@ verifies("cli.run", () => {
       expect(await sendEvent(runEvents, place, run, "approve")).toBe(false);
     });
 
+    it("sends with the run as this command showed it, so only the approval it showed is answered", async () => {
+      const seen: unknown[] = [];
+      const runEvents = {
+        sendEvent: async (_id: string, _event: string, shown?: unknown) => {
+          seen.push(shown);
+          return summary;
+        },
+      };
+
+      await sendEvent(runEvents, place, run, "approve");
+
+      expect(seen).toEqual([summary]);
+    });
+
+    it("says it wasn't sent when the approval it showed was answered first", async () => {
+      const runEvents = refusing({ reason: "answered", run: summary });
+
+      expect(await sendEvent(runEvents, place, run, "approve")).toBe(false);
+    });
+
     it("refuses with runs send's words when the run is gone", async () => {
       const sending = sendEvent(refusing({ reason: "no-run" }), place, run, "approve");
 

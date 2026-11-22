@@ -1,7 +1,8 @@
 // One `halonic run --event`, sent to the run's wait. It reads like `runs
 // send`: an event the step doesn't take, or a run that is gone, gets the
-// same words. A run that no longer waits was answered by someone else
-// first, such as in Studio, and isn't an error.
+// same words. A run that no longer waits, or whose approval it showed was
+// answered, was answered by someone else first, such as in Studio, and
+// isn't an error.
 
 import { type RunDetail, RunEventRefused, type RunEvents, shortRunId } from "@halonicjs/app";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -36,7 +37,8 @@ export async function sendEvent(
   event: string,
 ): Promise<boolean> {
   try {
-    await runEvents.sendEvent(run.summary.id, event);
+    // The approval this command showed, so a late send can't answer the next one.
+    await runEvents.sendEvent(run.summary.id, event, run.summary);
     return true;
   } catch (error) {
     if (!(error instanceof RunEventRefused)) throw error;
@@ -44,6 +46,7 @@ export async function sendEvent(
     const runId = shortRunId(run.summary.id);
     switch (refusal.reason) {
       case "not-waiting":
+      case "answered":
         return false;
       case "no-run":
         throw noRun(event, runId, place);

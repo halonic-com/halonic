@@ -17,12 +17,15 @@ export type RunEventRefusal =
   /** The run exists but isn't waiting: it has ended or is still running. */
   | { reason: "not-waiting"; run: RunSummary }
   /** The run waits, at the step `step`, but not for this event; it takes `accepts`. */
-  | { reason: "event-not-taken"; step: string; accepts: string[] };
+  | { reason: "event-not-taken"; step: string; accepts: string[] }
+  /** The approval the send was for was answered first; the run may wait on another one now. */
+  | { reason: "answered"; run: RunSummary };
 
 const kindOfRefusal: Record<RunEventRefusal["reason"], ErrorKind> = {
   "no-run": "not_found",
   "not-waiting": "conflict",
   "event-not-taken": "invalid_input",
+  answered: "conflict",
 };
 
 /**
@@ -51,6 +54,7 @@ const engineRefusalCodes: readonly string[] = [
   "engine.run-unknown",
   "engine.run-ended",
   "engine.input-not-accepted",
+  "engine.decision-callid-must-match",
 ];
 
 function isEngineRefusal(error: unknown): boolean {
@@ -85,6 +89,13 @@ function eventNotTaken(summary: RunSummary): RunEventRefusal {
   return { reason: "event-not-taken", step: summary.state ?? "", accepts: [...summary.accepts] };
 }
 
+/** The refusal of a send for the approval of `callId` when the run doesn't wait on it any more. */
+function answeredFirst(summary: RunSummary, callId: string | undefined): RunEventRefusal | null {
+  if (callId === undefined) return null;
+  const waits = summary.approvals.some((approval) => approval.callId === callId);
+  return waits ? null : { reason: "answered", run: summary };
+}
+
 /** Sends events to a workspace's waiting runs, through its {@link RunExecutor}. */
 export class RunEvents {
   readonly #executor: Pick<RunExecutor, "send">;
@@ -96,40 +107,66 @@ export class RunEvents {
   }
 
   /**
-   * Sends `event` to a waiting run (requirement `app.run-send`). It names no
-   * call, so the engine answers the oldest waiting item (C224). The summary
-   * it returns may still say "running": follow the run with `subscribe`.
+   * Sends `event` to a waiting run (requirement `app.run-send`). Without
+   * `seen`, it names no call, so the engine answers the oldest waiting item
+   * (C224). With the run's summary a surface showed the person, it names
+   * the oldest approval that summary lists, so a send that comes late
+   * doesn't answer the approval that waits after it (requirement
+   * `app.run-send-seen-approval`). The summary it returns may still say
+   * "running": follow the run with `subscribe`.
    *
    * @param runId - the run's full id; a surface that takes a short id looks
    *   it up with `RunHistory.findRun` first
    * @param event - such as "approve"
+   * @param seen - the run's summary as the person saw it when they chose `event`
    * @throws RunEventRefused when there is no such run, the run isn't
-   *   waiting, or it doesn't take this event now. A run that ends between
-   *   the check and the send is refused the same way.
+   *   waiting, it doesn't take this event now, or the approval `seen` lists
+   *   was answered first. A run that ends between the check and the send is
+   *   refused the same way.
    *
    * @example
-   * await runEvents.sendEvent("run_mfx3k2a1_a1b2c3d4", "approve");
+   * await runEvents.sendEvent("run_mfx3k2a1_a1b2c3d4", "approve", shown);
    * // { id: "run_mfx3k2a1_a1b2c3d4", status: "running", … }
    */
-  async sendEvent(runId: string, event: string): Promise<RunSummary> {
-    const refusal = refusalOf(await this.#summary(runId), event);
+  async sendEvent(
+    runId: string,
+    event: string,
+    seen?: Pick<RunSummary, "approvals">,
+  ): Promise<RunSummary> {
+    const callId = seen?.approvals[0]?.callId;
+    const summary = await this.#summary(runId);
+    const refusal =
+      refusalOf(summary, event) ?? (summary === null ? null : answeredFirst(summary, callId));
     if (refusal !== null) {
       throw new RunEventRefused(runId, event, refusal);
     }
     try {
-      return await this.#executor.send(runId, event);
+      return await this.#executor.send(
+        runId,
+        event,
+        undefined,
+        callId === undefined ? undefined : { callId },
+      );
     } catch (error) {
       if (!isEngineRefusal(error)) throw error;
-      // The run moved on after the check. Its log now says why; a run that
-      // still waits for this event refused it because no transition's
-      // condition held, which reads the same as an event it doesn't take.
-      const summary = await this.#summary(runId);
-      const refused: RunEventRefusal =
-        summary === null
-          ? { reason: "no-run" }
-          : (refusalOf(summary, event) ?? eventNotTaken(summary));
-      throw new RunEventRefused(runId, event, refused, error);
+      throw new RunEventRefused(runId, event, await this.#movedOn(runId, event, callId), error);
     }
+  }
+
+  /**
+   * Why the engine refused a send that passed the check: the run moved on
+   * after it. Its log now says why; a run that still waits for this event
+   * refused it because no transition's condition held, which reads the same
+   * as an event it doesn't take.
+   */
+  async #movedOn(
+    runId: string,
+    event: string,
+    callId: string | undefined,
+  ): Promise<RunEventRefusal> {
+    const summary = await this.#summary(runId);
+    if (summary === null) return { reason: "no-run" };
+    return refusalOf(summary, event) ?? answeredFirst(summary, callId) ?? eventNotTaken(summary);
   }
 
   async #summary(runId: string): Promise<RunSummary | null> {
