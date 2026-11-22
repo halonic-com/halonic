@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-A misspelled step name in `to:` now gives `validate` one error, with its Did you mean, and no longer a second one about what the next step reads.
+`halonic validate` now gives one error for a misspelled step name in `to:`, with its Did you mean, and no second one about what the next step reads.

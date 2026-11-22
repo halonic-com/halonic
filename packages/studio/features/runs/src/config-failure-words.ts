@@ -1,9 +1,10 @@
 // The words of the failed banners for the workspace's own config (HAL-14899): a provider a model
 // names that the workspace doesn't have, and a workflow step the run can't go on from. Each says
 // the CLI's two lines (`apps/cli/src/messages/run-failures.ts`, HAL-14301) with the same facts and
-// the same fix; only the provider's fix is in Models rather than a file.
+// the same fix, in Studio's words rather than the file's (C617): an arrow, not a transition, and
+// the arrow card's On event and Condition, the card **See the step** opens.
 
-/** "done or approve": the events a step's transitions take, as the CLI lists them. */
+/** "done or approve": the events a step's arrows are on, as the CLI lists them. */
 const eventList = new Intl.ListFormat("en-GB", { type: "disjunction" });
 
 /** "a text", "an object", "a number". */
@@ -23,7 +24,7 @@ export const configFailureWords = {
   unknownProviderFix: (provider: string, named: ModelNamed) =>
     "alias" in named
       ? `Add the provider ${provider} in Models, or point the model alias ${named.alias} at a provider the workspace has.`
-      : `Add the provider ${provider} in Models, or change ${named.model} to a provider the workspace has.`,
+      : `Add the provider ${provider} in Models, or give the agent a model from a provider the workspace has.`,
   /** `workflow.items-not-a-list`: Nina's C340 wording, with the template the step wrote. */
   itemsNotAList: (workflow: string, step: string, items: string, gives: string) =>
     gives === "nothing"
@@ -42,42 +43,46 @@ export const configFailureWords = {
       ? `Check the name in ${items}, and pass a JSON list there, such as ["Monday", "Tuesday"].`
       : `Pass a JSON list, such as ["Monday", "Tuesday"].`;
   },
-  /** `workflow.no-transition`: worded like `validate`'s no-done-transition. */
+  /** `workflow.no-transition`: `validate`'s no-done-transition, with arrows and their conditions. */
   noTransition: (workflow: string, step: string, failure: NoTransition) => {
     const start = `${workflow} failed in the step ${step}:`;
     if (failure.guarded) {
-      return `${start} its transitions for ${failure.event} all have a when that didn't pass.`;
+      return `${start} its arrows on ${failure.event} all have a condition that didn't match.`;
     }
     return failure.takes.length === 0
-      ? `${start} it ended with the event ${failure.event}, and it has no transition.`
-      : `${start} it ended with the event ${failure.event}, but its transitions only take ${eventList.format(failure.takes)}.`;
+      ? `${start} it ended with the event ${failure.event}, and it has no arrows.`
+      : `${start} it ended with the event ${failure.event}, but its arrows are only on ${eventList.format(failure.takes)}.`;
   },
-  /** The same fixes as `validate`'s no-done-transition: a transition without event takes done. */
+  /**
+   * `validate`'s no-done-transition fixes, said on the arrow card: an arrow whose On event is empty
+   * shows done, and an arrow with no condition always matches.
+   */
   noTransitionFix: (failure: NoTransition) => {
     if (failure.guarded) {
-      return `Add a transition for ${failure.event} without when, as the last one, so the run always has somewhere to go.`;
+      return `Add an arrow on ${failure.event} with no condition, as the last one, so the run always has somewhere to go.`;
     }
     if (failure.event !== "done") {
-      return `Add a transition with event: ${failure.event}.`;
+      return `Add an arrow on ${failure.event}.`;
     }
     if (failure.takes.length === 0) {
-      return "Add a transition without event.";
+      // The Problems row's own fix for a step with no arrows (9.3).
+      return "Add an arrow from it on its card.";
     }
     const [only, ...more] = failure.takes;
     return only !== undefined && more.length === 0
-      ? `Remove event: ${only}, or add a transition without event.`
-      : "Remove their event, or add a transition without event.";
+      ? `Change the On event of the arrow on ${only} to ${failure.event}, or add an arrow on ${failure.event}.`
+      : `Change one arrow's On event to ${failure.event}, or add an arrow on ${failure.event}.`;
   },
-  /** `workflow.task-without-agent`: the same fix as `validate`'s task-without-agent. */
+  /** `workflow.task-without-agent`: the card's Agent field is what `agent:` sets in the file. */
   taskWithoutAgent: (workflow: string, step: string) =>
-    `${workflow} failed in the step ${step}: the step names no agent.`,
-  taskWithoutAgentFix: "Give it an agent (agent: <id>), or make it a wait step.",
+    `${workflow} failed in the step ${step}: it's an agent step with no agent.`,
+  taskWithoutAgentFix: "Pick an agent on its card, or make it a wait step.",
 } as const;
 
 /** What names the missing provider: a model alias, or an agent's `provider/model` shorthand. */
 export type ModelNamed = { readonly alias: string } | { readonly model: string };
 
-/** The facts of a step that ended with an event none of its transitions took. */
+/** The facts of a step that ended with an event none of its arrows are on. */
 export interface NoTransition {
   readonly event: string;
   readonly takes: readonly string[];
