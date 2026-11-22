@@ -12,7 +12,8 @@
 
 import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
-import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
+import { join } from "node:path";
+import { FileSandboxSettingStore, FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import { type AddressCheckingHttpClient, connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient, type Resolve } from "@halonicjs/adapter-http-node";
 import {
@@ -47,7 +48,7 @@ import type { PluginBackendMachine } from "./open-plugin-backend.ts";
 import { openPluginService } from "./plugin-host.ts";
 import { type RunConnectorLines, unfencedIntegrationReporter } from "./plugin-part-warnings.ts";
 import { proxySetting } from "./proxy-setting.ts";
-import { SavedUnfencedYes } from "./saved-unfenced-yes.ts";
+import { SavedUnfencedYes, studioYesReaches } from "./saved-unfenced-yes.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import {
@@ -139,6 +140,12 @@ export function computerIntegrationMachine(
     gate,
     sandboxes,
     unreadableYes: () => saved.unreadableFile,
+    // The choice Studio's shell saves in `<profile>/sandbox`, as the agent host reads it.
+    studioYesReaches: () =>
+      studioYesReaches(
+        process.platform,
+        new FileSandboxSettingStore(join(profile.root, "sandbox")),
+      ),
     startedUnfenced: reportUnfenced,
     runtime: {
       node: process.execPath,

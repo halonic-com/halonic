@@ -138,6 +138,8 @@ async function setup(
     unreadableYes?: string;
     /** What a fenced runner's fence proof says; it holds unless a test says otherwise. */
     fenceProof?: StartedRunner["fence"];
+    /** Whether a yes given in Studio reaches the command; it does unless a test says otherwise. */
+    studioYesReaches?: boolean;
   } = {},
 ) {
   const { check = passes, runnerBuilt = true, beforeTrustCheck, trustedSettings } = options;
@@ -201,6 +203,7 @@ async function setup(
       timers: idleTimers,
     }),
     unreadableYes: () => options.unreadableYes,
+    studioYesReaches: async () => options.studioYesReaches ?? true,
     startedUnfenced: (reason) => seen.unfenced.push(reason),
     runtime: { node: "/node/bin/node", nodeFolder: "/node", runnerFile: "/runner/runner.mjs" },
     transport: options.transport ?? ({ fetch: async () => new Response("{}") } as never),
@@ -334,6 +337,14 @@ verifies("cli.open-local-integration", () => {
       );
       expect(seen.starts).toBe(0);
     });
+
+    it("leaves out where to give the yes when Studio's yes doesn't reach the command", async () => {
+      const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\.$/,
+      );
+      expect(seen.starts).toBe(0);
+    });
   });
 });
 
@@ -387,6 +398,14 @@ verifies("format.integration-host-class", () => {
       );
       expect(seen.starts).toBe(0);
     });
+
+    it("leaves out where to give the yes when Studio's yes doesn't reach the command", async () => {
+      const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\.$/,
+      );
+      expect(seen.starts).toBe(0);
+    });
   });
 });
 
@@ -413,6 +432,14 @@ verifies("cli.local-integration-unfenced-yes", () => {
       const { seen, client } = await setup({ check: onWindows, unreadableYes: file });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
         `the saved yes to run without it can't be read (${JSON.stringify(file)}), so nothing runs. To allow it, trust this workspace in Studio on this computer.`,
+      );
+      expect(seen.starts).toBe(0);
+    });
+
+    it("leaves out where to give the yes when Studio's yes doesn't reach the command", async () => {
+      const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\.$/,
       );
       expect(seen.starts).toBe(0);
     });

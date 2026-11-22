@@ -14,7 +14,7 @@ export interface UnfencedRunsRoutes {
   takeBack(): Promise<void>;
 }
 
-/** The window's yes to run plugin code without the sandbox: the trust check's and Take back's. */
+/** The window's yes to run plugins and integrations without the sandbox: the trust checks' and Take back's. */
 export interface DesktopUnfencedRuns extends PluginUnfencedRuns {
   /** Takes the yes back and stops every plugin running without the sandbox. */
   readonly takeBack: () => Promise<void>;

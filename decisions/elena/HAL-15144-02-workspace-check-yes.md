@@ -8,6 +8,7 @@
 
 - `studio.workspace-trust-integrations`: where integration code can't run in the sandbox, **Runs** gives R12's amber line in place of R11's "Doesn't start on this computer.", the row's name gets "· not in the sandbox" and the section the triangle. Without a saved yes for the reason, the check asks with R5's checkbox, and **Trust** saves the yes first, then trust; with one, R6 replaces the checkbox. The summary counts the integration as run. Option A's team note on R11 goes, because it said this would come once the command line honours the yes, which it does now (`cli.local-integration-unfenced-yes`, #4534). Its tests change with it: the two that expected R11 and no checkbox now expect R12, the flag and the mark, and the one that read a saved yes as "doesn't start" now expects its day. New tests cover the yes saved before trust, a changed reason, a yes the host couldn't save, and no yes without the tick or in the sandbox.
 - `studio.desktop-unfenced-runs`: the workspace trust check gets the same one object per window as the plugin check and Take back, so a yes from either check waits for a Take back under way. A new test checks it's the same object.
+- `cli.local-integration-unfenced-yes`: on Windows with the WSL sandbox chosen or no choice saved (WSL is the default there), and when the saved choice can't be read, the refusal leaves out "To allow it, trust this workspace in Studio on this computer.", because Studio's agent host keeps its yes in its own profile inside Halonic's WSL distro and the command can't see it. One new example says so. Liam's condition (b) from words check C612 (HAL-15675). New tests cover the refusal without the line and when the choice reaches the command.
 
 ## Why
 
@@ -17,3 +18,4 @@ The CLI now honours the yes for local integrations (PR 1, merged), so the check 
 
 - studio.workspace-trust-integrations
 - studio.desktop-unfenced-runs
+- cli.local-integration-unfenced-yes

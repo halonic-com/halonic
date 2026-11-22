@@ -50,6 +50,8 @@ export interface LocalIntegrationMachine {
   readonly gate: RunnerStartGate;
   /** The saved yes's file when the gate's last read of it failed, so the refusal names it. */
   unreadableYes?(): string | undefined;
+  /** Whether a yes given in Studio reaches this command; when it doesn't, the refusal doesn't send the person there. Left out, it does. */
+  studioYesReaches?(): Promise<boolean>;
   /** Called when a runner started without the sandbox, with the user's yes for `reason`. */
   startedUnfenced?(reason: string): void;
   /** Node and the built runner. */
@@ -184,7 +186,7 @@ class LocalIntegrationOpening {
     if (gated.run === "unfenced") this.#machine.startedUnfenced?.(gated.reason);
     if (gated.run === "fenced" || gated.run === "unfenced") return gated.runner;
     if (gated.run === "stopped") throw new Error(this.#stopped());
-    throw new Error(this.#needsYes(gated.reason));
+    throw new Error(await this.#needsYes(gated.reason));
   }
 
   /**
@@ -200,14 +202,16 @@ class LocalIntegrationOpening {
   /**
    * Why a start that needs the user's yes started nothing, and where to give
    * it (microcopy 24.1 R18, its fix decided by the team on HAL-15144). A
-   * saved yes that can't be read blocks the start too, and names its file.
+   * saved yes that can't be read blocks the start too, and names its file. Where Studio's yes
+   * doesn't reach the command (Windows with the WSL sandbox), the fix is left out (C612).
    */
-  #needsYes(reason: string): string {
-    const allow = "To allow it, trust this workspace in Studio on this computer.";
+  async #needsYes(reason: string): Promise<string> {
+    const reaches = (await this.#machine.studioYesReaches?.()) ?? true;
+    const allow = reaches ? " To allow it, trust this workspace in Studio on this computer." : "";
     const unreadable = this.#machine.unreadableYes?.();
     if (unreadable !== undefined) {
-      return `the sandbox isn't available here (${reason}) and the saved yes to run without it can't be read (${JSON.stringify(unreadable)}), so nothing runs. ${allow}`;
+      return `the sandbox isn't available here (${reason}) and the saved yes to run without it can't be read (${JSON.stringify(unreadable)}), so nothing runs.${allow}`;
     }
-    return `the sandbox isn't available here (${reason}) and running without it isn't allowed yet. ${allow}`;
+    return `the sandbox isn't available here (${reason}) and running without it isn't allowed yet.${allow}`;
   }
 }
