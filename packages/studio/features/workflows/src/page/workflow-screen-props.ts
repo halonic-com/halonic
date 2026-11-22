@@ -1,7 +1,7 @@
 import type { SandboxStartCheck } from "@halonicjs/app";
 import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
-import type { SaveState } from "@halonicjs/studio-shell";
+import type { FilesWithErrorsSource, SaveState } from "@halonicjs/studio-shell";
 import type { WorkflowGuide, WorkflowsHost } from "../api.ts";
 import type { AnnounceState } from "../start/run-announcement.ts";
 
@@ -61,6 +61,13 @@ export interface WorkflowScreenProps {
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
   /** Opens an agent's page, for the can't-run Callout's "*Writer*'s settings ›"; without it there is no link. */
   readonly openAgent?: (agentId: string) => void;
+  /**
+   * Opens a file at a line (1-based), for the problems band's **Open writer.agent.yaml**; without
+   * it the band names the file with no link.
+   */
+  readonly openFileAt?: (path: string, line: number) => void;
+  /** The workspace's files with errors, which the problems band names another file from; none when absent. */
+  readonly filesWithErrors?: FilesWithErrorsSource | undefined;
   /** Another feature's guide card, such as the first run's; without it the page shows none. */
   readonly guide?: WorkflowGuide | undefined;
 }

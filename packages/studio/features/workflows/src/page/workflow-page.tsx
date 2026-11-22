@@ -15,7 +15,7 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
+import { engineWordsOf, FilesWithErrorsService, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { WorkflowGuideService, WorkflowsHostService } from "../api.ts";
@@ -30,6 +30,7 @@ import { useSaveAsTest } from "../runs/use-save-as-test.ts";
 import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
+import { blockingFileOf, openFileAtLine, useFilesWithErrors } from "./blocking-file.ts";
 import { StepEditDock, stepCardDocks } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { insteadOfPage } from "./gone-state.tsx";
@@ -86,10 +87,12 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
         openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}
       shownRuns={context.services.find(InboxService)?.shownRuns}
+      filesWithErrors={context.services.find(FilesWithErrorsService)}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
         openAgent: (agentId: string) => openItem({ kind: "agent", hub: item.hub, id: agentId }),
+        openFileAt: openFileAtLine(openItem),
       })}
       {...(openPlace && {
         goToWorkflows: () => openPlace("workflows"),
@@ -133,6 +136,8 @@ export function WorkflowScreen({
   saving,
   sandboxStartCheck,
   openAgent,
+  openFileAt,
+  filesWithErrors,
   guide,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
@@ -206,6 +211,8 @@ export function WorkflowScreen({
   const dockStep = view === "flow" ? pickedStep : undefined;
   const fileProblems = settings.load.kind === "ready" ? settings.load.value.problems : [];
   const errors = countProblems(fileProblems).errors;
+  const missingAlias = missingAliasOf(fileProblems);
+  const filesWithErrorsList = useFilesWithErrors(filesWithErrors);
   // A problem names its step as the canvas's card does (C544-3).
   const stepName = stepNamesOf(load.kind === "ready" ? load.value.steps : undefined);
   const problems = useProblemsGate(errors);
@@ -312,9 +319,11 @@ export function WorkflowScreen({
       <ProblemsBand
         name={name}
         problems={problems}
-        missingAlias={missingAliasOf(fileProblems)}
+        missingAlias={missingAlias}
+        blockingFile={blockingFileOf(filesWithErrorsList, fileProblems, hubId, missingAlias)}
         onOpen={problemsAsk.open}
         openAgent={openAgent}
+        openFileAt={openFileAt}
       />
       <SandboxCantRunCallout
         name={name}

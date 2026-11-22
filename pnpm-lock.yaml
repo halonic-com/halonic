@@ -3472,6 +3472,9 @@ importers:
       '@halonicjs/studio-feature-agents':
         specifier: workspace:*
         version: link:../agents
+      '@halonicjs/studio-feature-files':
+        specifier: workspace:*
+        version: link:../files
       '@halonicjs/studio-feature-models':
         specifier: workspace:*
         version: link:../models

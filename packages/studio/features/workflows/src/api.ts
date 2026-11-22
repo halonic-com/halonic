@@ -216,6 +216,11 @@ export interface WorkflowProblem {
   readonly agent?: WorkflowAgentChoice | undefined;
   /** For `unknown-model-alias` on the agent's own `model`: that alias, which the workspace doesn't have. */
   readonly modelAlias?: string | undefined;
+  /**
+   * The path of the file it is in, from the workspace folder, when that isn't the workflow's own
+   * file: another file whose error stops the workflow's run, such as an agent's it uses.
+   */
+  readonly file?: string | undefined;
 }
 
 /**
