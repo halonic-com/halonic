@@ -1251,6 +1251,8 @@ Function SetUpAgain
   System::Call 'shell32::IsUserAnAdmin() i .R1'
   ${If} ${Silent}
   ${AndIf} $R1 = 0
+    ; As for /SANDBOX=1: a silent update can't let anyone answer the prompt.
+    StrCpy $SandboxOutcome "skipped"
     Return
   ${EndIf}
   StrCpy $R0 "-SetUpAgain -SetupVersion ${SRTSETUPVERSION}"
