@@ -3,6 +3,7 @@
 - Task: HAL-13177
 - Approval: decided by the team on HAL-13177 (Sofia's design check C516 on HAL-14955, S-4 to S-6; flow-agents 3.1's page states, approved by the board). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tZ8qPk7yza79T8WvxeWH2yOinDcJNASkHP2dvqmggWX6stu9B02Jc5h3tj188kxJ2CTr2ltZT0OqNo1qWKW7BQ==
 
 ## What changes
 
