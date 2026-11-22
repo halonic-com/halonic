@@ -43,6 +43,14 @@ The page draws them as one kit List with `groups` and `columns`: an `h3` for eac
 
 The Started by column reads the run's trigger: "You, with Run", "You, in the Inbox" for a request from the Inbox's form, "Weekly report routine, with Run now" for Run now on a routine ("A routine, with Run now", with its key in the tooltip, once the routine is gone), "A message arrived", "A signal arrived", "Schedule · weekdays at 08:00" with the routine's name in a tooltip (from the source's `routine`), "Caught up after sleep" for a catch-up run, and `Test “<case>”` for a test run. A run without a trigger was started in the terminal, "You, in the terminal", and a child run names its parent, "Run 7k2m9p". Until the run log records which test case started a test run, the source has no `testCase` and the column says "A test case". The row's sentence has its own words after "Started by", which read on from it: "a message", "the schedule, weekdays at 08:00", "a catch-up after sleep" (`rowLabelWords.startedBy`). A trigger this Studio doesn't know, from a newer Halonic's run log, reads as "You, with Run".
 
+A run that waits or is done whose every model call went to the built-in test model carries the outline "Sample answers" chip where a test run has its Test tag, and its sentence ends ", on Sample answers." (requirement `runs.sample-chip`). `runModelPath(source, runId)` reads it from the run's own log, so the chip stays right after the model is changed: `sample`, `local` or `cloud`, with a test model told by the source's optional `isTestModel` (the provider file's `type: mock`, whatever its id). It keeps the answer for an ended run, per source; the Inbox's wait card reads it through `useRunModelPath` and shows the chip above its title.
+
+```ts
+import { runModelPath } from "@halonicjs/studio-feature-runs/api";
+
+await runModelPath(source, "run_mfx3k2a1_01jd8q"); // "sample", "local", "cloud", or undefined with no model call
+```
+
 A change of the filters is read once the list has settled, under the key `runs-filter`: "2 runs.", "1 run.", or the filter's own line when it shows none ("No failed runs."). A row that changes status isn't read: Needs you's own announcement says what needs the person (requirement `runs.list-announcements`).
 
 Not on the list yet: the spend line (it needs T4's spend function), opening a run in a new tab, the text and hub filters, and the row's ⋮.

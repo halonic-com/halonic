@@ -4,6 +4,7 @@ import { type EngineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type RunnableWorkflow, RunStartHostService, SampleHintService } from "../api.ts";
 import { listRows } from "../list/list-rows.ts";
+import { useSampleRuns } from "../list/run-model-path.ts";
 import type { RunRow } from "../list/run-row.ts";
 import {
   type EmptyList,
@@ -20,7 +21,7 @@ import { useAnnounceFilterChange } from "../list/use-filter-announcement.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
 import { emptyListWords, pageWords } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
-import { DayList, runColumns } from "./day-list.tsx";
+import { DayList, runColumns, sampleCandidates } from "./day-list.tsx";
 import { NoRuns, type NoRunsWays } from "./no-runs.tsx";
 import type { PressRun } from "./press-run-line.tsx";
 
@@ -107,6 +108,7 @@ export function RunsView({
   }, [list]);
   const retry = () => void list.refresh();
   const rows = listRows(list, now());
+  const samples = useSampleRuns(list.source, sampleCandidates(rows));
   useAnnounceFilterChange(
     filters,
     state.loaded ? filterChangeText(rows, filters) : undefined,
@@ -146,6 +148,7 @@ export function RunsView({
         showTestRuns={showTestRuns}
         showEveryWorkflow={showEveryWorkflow}
         openRow={openRow}
+        samples={samples}
         now={now()}
         phone={phone}
         noRuns={{ isSample, canRun, ...(openWorkflow === undefined ? {} : { openWorkflow }) }}
@@ -165,6 +168,7 @@ function PageBody({
   showTestRuns,
   showEveryWorkflow,
   openRow,
+  samples,
   now,
   phone,
   noRuns,
@@ -178,6 +182,7 @@ function PageBody({
   readonly showTestRuns: () => void;
   readonly showEveryWorkflow: () => void;
   readonly openRow: ((id: string) => void) | undefined;
+  readonly samples: ReadonlySet<string>;
   readonly now: Date;
   readonly phone: boolean;
   readonly noRuns: NoRunsWays;
@@ -210,6 +215,7 @@ function PageBody({
         showTestRuns={showTestRuns}
         showEveryWorkflow={showEveryWorkflow}
         openRow={openRow}
+        samples={samples}
         now={now}
       />
     </>
@@ -225,6 +231,7 @@ function Runs({
   showTestRuns,
   showEveryWorkflow,
   openRow,
+  samples,
   now,
 }: {
   readonly loaded: boolean;
@@ -235,6 +242,7 @@ function Runs({
   readonly showTestRuns: () => void;
   readonly showEveryWorkflow: () => void;
   readonly openRow: ((id: string) => void) | undefined;
+  readonly samples: ReadonlySet<string>;
   readonly now: Date;
 }) {
   if (!loaded) {
@@ -250,7 +258,7 @@ function Runs({
     );
   }
   if (empty === undefined) {
-    return <DayList rows={rows} openRow={openRow} now={now} />;
+    return <DayList rows={rows} openRow={openRow} samples={samples} now={now} />;
   }
   if (empty.kind === "only-test-runs") {
     return (
