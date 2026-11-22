@@ -5,6 +5,7 @@ import { act } from "react";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import type { RoutinesHost, RoutineTarget } from "../api.ts";
 import { buttonNamed, openDialogsInJsdom, show, unmount } from "../test-support.tsx";
+import { deviceTimeZone, nextTime } from "../when/when-words.ts";
 import { daily, hostReading } from "./page.test-helper.tsx";
 import { RoutineScreen } from "./routine-page.tsx";
 
@@ -74,8 +75,11 @@ verifies("routines.page.phone-layout", () => {
     const { page } = await open();
     const lines = [...page.querySelectorAll("li")].map((line) => line.textContent);
     expect(lines).toHaveLength(3);
-    expect(lines[0]).toMatch(/^Mon 23 Nov/);
-    expect(page.textContent).not.toContain(" · Tue");
+    // Each time as the device shows it, so the test passes in any time zone (HAL-15931).
+    const shown = times.map((time) => nextTime(time, undefined, deviceTimeZone()));
+    expect(lines).toEqual(shown);
+    const secondWeekday = shown[1]?.slice(0, 3);
+    expect(page.textContent).not.toContain(` · ${secondWeekday}`);
   });
 
   it("makes the whole When header row the switch's target, 48px high", async () => {
