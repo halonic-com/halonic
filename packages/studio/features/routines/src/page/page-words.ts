@@ -1,4 +1,4 @@
-import { engineWordsOf, errorReasonFor } from "@halonicjs/studio-shell";
+import { engineReasonFor, engineWordsOf } from "@halonicjs/studio-shell";
 
 /** The routine page's words (microcopy 12.3, flow-routines 3.1, 3.2 and 3.10). */
 export const pageWords = {
@@ -26,14 +26,15 @@ export const pageWords = {
 } as const;
 
 /**
- * The reason a failed read gives, as one sentence ending in a full stop. An error that isn't the
- * engine's own kinded one says the engine isn't answering (`notAnswering`), never its raw text.
+ * The reason a failed read gives, as one sentence ending in a full stop: a kinded error's own
+ * words, the engine's (`notAnswering`) only when it can't be reached, and "Halonic ran into a
+ * problem it can't explain yet." for any other error, never its raw text (microcopy 22 F13).
  */
 export function failureReason(
   error: unknown,
   notAnswering: string = engineWordsOf({}).notAnswering,
 ): string {
-  const message = errorReasonFor(error, notAnswering);
+  const message = engineReasonFor(error, notAnswering);
   return message.endsWith(".") ? message : `${message}.`;
 }
 
