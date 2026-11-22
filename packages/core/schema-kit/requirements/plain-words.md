@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-14277, from Nina's check C337 (HAL-14257, rows 17–20 and 24–26, code row C19): "Too small: expected array to have >=1 items" and "expected number, received string" don't say what to write
+- Source: HAL-14277, from Nina's check C337 (HAL-14257, rows 17–20 and 24–26, code row C19): "Too small: expected array to have >=1 items" and "expected number, received string" don't say what to write; an empty value and http:// for an address on this computer are the team's call on HAL-15402, from words check C571 rows 62 and 63, recorded in `decisions/tomas/HAL-15402-c571-words.md`
 
 When `parse` finds one of these issues and the schema has no message of its own, the issue's message shall name the field (the path from its last key on) and say how to fix it:
 
@@ -11,8 +11,9 @@ When `parse` finds one of these issues and the schema has no message of its own,
 - a list written as one value: `<field> is a list: write [<value>].`, and written as a map: `<field> is a list: start each item with "- <first key>:".`;
 - a number or `true` where text goes: `<field> is text: write "<value>" in quotes.`;
 - an empty list: `<field> needs at least one item.`; empty text: `<field> is empty: write a value.`;
+- a key with nothing after it (YAML's `null`) where a number, `true` or `false`, or text goes: `<field> is empty: write a number.`, `<field> is empty: write true or false.` or `<field> is empty: write a value.`, never "not nothing";
 - a number below its least: `<field> is too small: use <least> or more.`, or `<field> must be more than <least>.` when the least itself isn't allowed, and the same for too big;
-- an address without a scheme: `<field> needs https://, such as https://<value>.`
+- an address without a scheme: `<field> needs https://, such as https://<value>.`, and `<field> needs http://, such as http://<value>.` when its host is `localhost`, `127.0.0.1` or `[::1]`, because a model server on this computer answers on plain http.
 
 A value is repeated only when it's one line of at most 40 characters; a longer one gets a general example. Any other issue, an issue at the top of the input and an issue whose schema has its own message keep their message. The code and the path stay Zod's.
 
@@ -30,6 +31,12 @@ A value is repeated only when it's one line of at most 40 characters; a longer o
 - Given `url: tracker.example.com/mcp` where Zod's URL check applies,
   when it is parsed,
   then the message is `url needs https://, such as https://tracker.example.com/mcp.`.
+- Given `baseUrl: 127.0.0.1:11434/v1` where Zod's URL check applies,
+  when it is parsed,
+  then the message is `baseUrl needs http://, such as http://127.0.0.1:11434/v1.`.
+- Given `temperature:` with nothing after it where a number goes,
+  when it is parsed,
+  then the message is `temperature is empty: write a number.`.
 - Given a field whose schema says `own message`,
   when it fails,
   then the message is `own message`.

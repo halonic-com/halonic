@@ -43,11 +43,34 @@ verifies("studio.workspace-trust-review", () => {
       {
         id: "notes",
         detail: "integrations/notes",
-        lines: [["Gets secrets", "sync-key, backup as api-key and my-notes-key as notes-key"]],
+        lines: [["Gets secrets", "sync-key, backup (as api-key) and my-notes-key (as notes-key)"]],
       },
       { id: "tasks", detail: "integrations/tasks", lines: [] },
     ]);
     expect(JSON.stringify(review)).not.toContain("‹secret");
+  });
+
+  it("names a workspace secret once, with every sheet name it's given as in brackets (C571)", () => {
+    const review = trustReviewOf(
+      {
+        status: "new",
+        content: {
+          connectors: [
+            integrationConnector("notes", {
+              "notes-key": "‹secret my-notes-key›",
+              "sync-key": "‹secret my-notes-key›",
+            }),
+          ],
+        },
+        fingerprint,
+        unpinned: [],
+      },
+      facts,
+    );
+
+    expect(review?.sections[0]?.rows[0]?.lines).toEqual([
+      ["Gets secrets", "my-notes-key (as notes-key and sync-key)"],
+    ]);
   });
 
   it("lists a local integration's connector once under Addresses, with the integration in its own section (C552)", () => {
@@ -88,7 +111,7 @@ verifies("studio.workspace-trust-review", () => {
       {
         id: "notes",
         detail: "integrations/notes",
-        lines: [["Gets secrets", "my-notes-key as notes-key"]],
+        lines: [["Gets secrets", "my-notes-key (as notes-key)"]],
       },
     ]);
   });

@@ -288,11 +288,11 @@ function addressRow(
 /**
  * A local integration's connector: the folder it runs, then the workspace
  * secret each secret of the integration's sheet gets, by name only, as
- * "sync-key and my-notes-key as notes-key" when the names differ (HAL-14734,
- * words from HAL-14737). Joined with "and", as the CLI does: a comma would
- * read as two names for the secret before it (C552). The picks that keep
- * their name come first, as in the CLI, so "as" never reads as a second name
- * either (C569).
+ * "sync-key and my-notes-key (as notes-key)" when the names differ
+ * (HAL-14734, words from HAL-14737). Joined with "and", as the CLI does: a
+ * comma would read as two names for the secret before it (C552). The picks
+ * that keep their name come first, as in the CLI (C569), and each workspace
+ * secret's sheet names are in brackets after it (C571).
  */
 function integrationConnectorRow(connector: ConnectorTrustContent): TrustRowView {
   const picks = secretPicks(connector);

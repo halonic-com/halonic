@@ -11,7 +11,8 @@ const longestEcho = 40;
  * Says one of Zod's issues in plain words, with the field's name and how to
  * fix it, for the issues a new user meets most (HAL-14277): a number or
  * `true` written in quotes, a list written as one value or as a map, an empty
- * list or text, a number out of range and an address without `https://`.
+ * list or text, an empty value, a number out of range and an address
+ * without `https://`.
  * Returns `undefined` for the rest, so Zod's own message stays.
  *
  * Only called for issues whose schema has no message of its own: Zod asks a
@@ -76,7 +77,15 @@ function wrongType(field: string, expected: string, input: unknown): string | un
   }
 }
 
+/**
+ * YAML reads a key with nothing after it, such as `temperature:`, as `null`:
+ * the person left it empty, so the message says so rather than "not nothing"
+ * (C571).
+ */
 function notANumber(field: string, input: unknown): string {
+  if (input === null) {
+    return `${field} is empty: write a number.`;
+  }
   if (typeof input === "string" && input.trim() !== "" && Number.isFinite(Number(input))) {
     const value = echo(input);
     return value === undefined
@@ -87,6 +96,9 @@ function notANumber(field: string, input: unknown): string {
 }
 
 function notTrueOrFalse(field: string, input: unknown): string {
+  if (input === null) {
+    return `${field} is empty: write true or false.`;
+  }
   const text = typeof input === "string" ? input.trim().toLowerCase() : "";
   if (text === "true" || text === "false") {
     return `${field} is true or false: write ${text} without quotes.`;
@@ -108,6 +120,9 @@ function notAList(field: string, input: unknown): string {
 }
 
 function notText(field: string, input: unknown): string {
+  if (input === null) {
+    return `${field} is empty: write a value.`;
+  }
   const value = echo(input);
   if (value !== undefined && (typeof input === "number" || typeof input === "boolean")) {
     return `${field} is text: write "${value}" in quotes.`;
@@ -165,13 +180,30 @@ function tooBig(
   }
 }
 
-/** An address that isn't a full URL; one without a scheme gets it added as the example. */
+/**
+ * An address that isn't a full URL; one without a scheme gets it added as the
+ * example. An address on this computer gets http://, because a local model
+ * server (Ollama, LM Studio) answers only on plain http (C571).
+ */
 function notAnAddress(field: string, input: unknown): string {
   const value = echo(input);
   if (value !== undefined && !value.includes("://")) {
-    return `${field} needs https://, such as https://${value}.`;
+    const scheme = isOnThisComputer(value) ? "http://" : "https://";
+    return `${field} needs ${scheme}, such as ${scheme}${value}.`;
   }
   return `${field} needs a full address that starts with https://.`;
+}
+
+/** The host names that always mean this computer. */
+const thisComputer = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Whether an address without a scheme, such as `localhost:11434/v1`, names this computer. */
+function isOnThisComputer(address: string): boolean {
+  const [authority = ""] = address.split(/[/?#]/u);
+  const host = authority.startsWith("[")
+    ? authority.slice(0, authority.indexOf("]") + 1)
+    : (authority.split(":")[0] ?? "");
+  return thisComputer.has(host.toLowerCase());
 }
 
 /** A short one-line value as the user wrote it, or `undefined` when it's too long to repeat. */
