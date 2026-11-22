@@ -32,7 +32,7 @@ function baseStep(): string {
 /** Runs the step with a base ref, as a pull request or a merge group passes it. */
 function runBaseStep(baseRef: string) {
   return spawnSync("bash", ["-e", "-c", baseStep()], {
-    env: { PATH: process.env.PATH, BASE_REF: baseRef },
+    env: { PATH: process.env["PATH"], BASE_REF: baseRef },
     encoding: "utf8",
   });
 }
