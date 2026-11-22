@@ -14,6 +14,7 @@ import { halonicVersion } from "../studio/open-trusts.ts";
 import { aboutHalonic } from "../studio/start-watch.ts";
 import { googleSetupFacts } from "./google-setups.ts";
 import { lastFailedRun } from "./last-failed-run.ts";
+import { sandboxKindOf } from "./sandbox-kind.ts";
 import { WorkspaceCheckSource } from "./workspace-check-source.ts";
 
 /** What {@link provideCheckComputer} reads: the folder, its files, the agent host and the engine. */
@@ -46,6 +47,7 @@ export function provideCheckComputer(services: ServiceRegistry, parts: CheckComp
     CheckComputerSourceService,
     new WorkspaceCheckSource({
       about: aboutHalonic(halonicVersion, parts.platform),
+      sandboxKind: sandboxKindOf(parts.platform),
       isDemo: () => sample.isSample(),
       // Without a background engine the page runs its own, which is there while the window is.
       engineAnswers: async () => (remoteEngine === undefined ? true : remoteEngine.answers()),

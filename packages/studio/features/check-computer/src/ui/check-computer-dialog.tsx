@@ -44,7 +44,11 @@ function Heading({ lines }: { readonly lines: readonly CheckLine[] }) {
 export function CheckComputerDialog({ source, handlers, onClose }: CheckComputerDialogProps) {
   const { facts, checking, run } = useCheck(source);
   const copyDetails = useCopyDetails();
-  const context = { about: source.about, demo: source.isDemo() };
+  const context = {
+    about: source.about,
+    demo: source.isDemo(),
+    ...(source.sandboxKind === undefined ? {} : { sandboxKind: source.sandboxKind }),
+  };
   const all = facts.map((fact) => checkLine(fact, context));
   // Not checked is a quiet sentence under the list, not a line of it (4.1).
   const lines = all.filter((line) => line.id !== "not-checked");

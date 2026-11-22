@@ -45,6 +45,17 @@ function testFact(test: ModelTest | undefined, local: boolean): string {
   return `last test ${local ? "answered" : "accepted"}, ${timeInReport(test.at)}`;
 }
 
+/**
+ * A key Halonic couldn't read, such as from a locked keychain, in the Models page's own word for
+ * where keys are kept ("system keychain"), with the step that fixes it.
+ */
+function keyUnreadable(name: string): LineSentence[] {
+  return [
+    found(`${name}: Halonic couldn't read its key from your system keychain.`),
+    fix("Fix: check that your system keychain is unlocked, then check again."),
+  ];
+}
+
 /** A server on this computer that answered (4.2): its address, its models, its last test. */
 function serverSentences(ready: ProviderReport, tests: readonly ModelTest[]): LineSentence[] {
   const name = printable(ready.name);
@@ -83,7 +94,7 @@ function problemSentences(problem: ModelProblem): LineSentence[] {
     case "no-key":
       return [found(`${name}: no key yet.`), fix("Fix: add its key on the Models page.")];
     case "key-unreadable":
-      return [found(`${name}: Halonic couldn't read its key from this computer's key store.`)];
+      return keyUnreadable(name);
   }
 }
 
@@ -91,7 +102,7 @@ function problemSentences(problem: ModelProblem): LineSentence[] {
 function keySentences(key: ModelKey, tests: readonly ModelTest[]): LineSentence[] {
   const name = printable(key.provider);
   if (key.keyStored === "unreadable") {
-    return [found(`${name}: Halonic couldn't read its key from this computer's key store.`)];
+    return keyUnreadable(name);
   }
   if (!key.keyStored) {
     return [found(`${name}: no key yet.`), fix("Fix: add its key on the Models page.")];

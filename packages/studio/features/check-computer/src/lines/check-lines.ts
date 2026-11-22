@@ -17,11 +17,13 @@ import { modelsSentences } from "./models-sentences.ts";
 import { defaultModelSentences, lastRunSentences } from "./run-sentences.ts";
 import { sandboxSentences } from "./sandbox-sentences.ts";
 
-/** What the dialog knows besides the facts: Halonic's version and system, and whether the demo is open. */
+/** What the dialog knows besides the facts: Halonic's version and system, whether the demo is open, and the sandbox's kind. */
 export interface LinesContext {
   /** "Halonic 0.1.0 · macOS arm64", for the Engine line. */
   readonly about: string;
   readonly demo: boolean;
+  /** The sandbox's kind for a ready Sandbox line, such as "Seatbelt"; left out when Studio can't tell. */
+  readonly sandboxKind?: string;
 }
 
 /**
@@ -129,7 +131,7 @@ function sentencesOf(fact: CheckFact, context: LinesContext): LineSentence[] {
     case "last-run":
       return lastRunSentences(fact);
     case "sandbox":
-      return sandboxSentences(fact);
+      return sandboxSentences(fact, context.sandboxKind);
     case "google":
       return googleSentences(fact);
     case "not-checked":

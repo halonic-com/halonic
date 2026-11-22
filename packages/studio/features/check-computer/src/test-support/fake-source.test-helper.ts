@@ -22,6 +22,7 @@ export class WorkspaceServices implements ServiceTarget {
  */
 export class FakeCheckSource implements CheckComputerSource {
   readonly about = "Halonic 0.1.0 · macOS arm64";
+  readonly sandboxKind = "Seatbelt";
   readonly signals: AbortSignal[] = [];
   facts: readonly CheckFact[];
   readonly #demo: boolean;

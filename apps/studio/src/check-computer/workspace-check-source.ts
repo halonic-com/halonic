@@ -36,6 +36,8 @@ export type LastFailedRun = LastRunInput & { readonly hub: string };
 export interface CheckSourceParts {
   /** "Halonic 0.1.0 · macOS". */
   readonly about: string;
+  /** The sandbox's kind for a ready Sandbox line, such as "Seatbelt"; `undefined` when Studio can't tell. */
+  readonly sandboxKind: string | undefined;
   readonly isDemo: () => boolean;
   /** Whether the open folder's engine answers now. */
   readonly engineAnswers: () => Promise<boolean>;
@@ -109,6 +111,10 @@ export class WorkspaceCheckSource implements CheckComputerSource {
 
   get about(): string {
     return this.#parts.about;
+  }
+
+  get sandboxKind(): string | undefined {
+    return this.#parts.sandboxKind;
   }
 
   isDemo(): boolean {

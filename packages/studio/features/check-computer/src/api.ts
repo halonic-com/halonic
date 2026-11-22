@@ -35,6 +35,11 @@ export const checkComputerCommand = "check-computer.open";
 export interface CheckComputerSource {
   /** Halonic's version and the system, for the Engine line and the report: "Halonic 0.1.0 · macOS arm64". */
   readonly about: string;
+  /**
+   * The kind of sandbox the agent host runs, as `halonic doctor` names it, such as "Seatbelt" or
+   * "bubblewrap", for a ready Sandbox line; `undefined` when Studio can't tell.
+   */
+  readonly sandboxKind: string | undefined;
   /** Whether the open folder is the demo, which the dialog shows with the demo's lines. */
   isDemo(): boolean;
   /**

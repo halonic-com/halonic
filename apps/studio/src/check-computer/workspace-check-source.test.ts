@@ -41,6 +41,7 @@ const hostReport: HostDoctorReport = {
 function demoParts(changes: Partial<CheckSourceParts> = {}): CheckSourceParts {
   return {
     about: "Halonic 0.1.0 · macOS",
+    sandboxKind: "Seatbelt",
     isDemo: () => true,
     engineAnswers: async () => true,
     hostDoctor: async () => hostReport,
