@@ -124,7 +124,7 @@ verifies("user-secrets.envelope", () => {
     const second = await makeDataKey(kek, "eu_acme", 2);
     const sealed = await sealSecret(first.dataKey, "github-token", value);
     await expect(openSecret(second.dataKey, "github-token", sealed)).rejects.toThrow(
-      "sealed with version 1 of the user's data key, but version 2 was given",
+      "sealed with version 1 of this user's data key, not version 2, so it can't be opened.",
     );
   });
 

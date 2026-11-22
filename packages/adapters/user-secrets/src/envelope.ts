@@ -120,7 +120,7 @@ export async function openSecret(
   }
   if (version !== dataKey.version) {
     throw new UnreadableUserSecretError(
-      `${describeSecretName(name)} was sealed with version ${version} of the user's data key, but version ${dataKey.version} was given.`,
+      `${describeSecretName(name)} was sealed with version ${version} of this user's data key, not version ${dataKey.version}, so it can't be opened.`,
     );
   }
   const context = secretContext(dataKey.endUserId, secretKey(name), version);
