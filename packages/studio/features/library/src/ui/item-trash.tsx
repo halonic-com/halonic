@@ -100,11 +100,11 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
 
   const onUndo = useCallback(async () => {
     if (removed === undefined) return;
-    if (await putBack(removed, name, toasts)) {
+    await putBack(removed, name, toasts, () => {
       focusTitle.current = true;
       setRemoved(undefined);
       // Nothing is announced: the title takes focus and reads the name (microcopy 19.7).
-    }
+    });
   }, [removed, name, toasts]);
 
   const entries = [

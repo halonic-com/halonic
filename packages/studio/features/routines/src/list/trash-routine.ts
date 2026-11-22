@@ -59,16 +59,14 @@ export async function trashRoutine(
     text: rowMenuWords.movedLine(listing.targetName),
     action: {
       label: rowMenuWords.undo,
-      onClick: () =>
-        void putBackRoutine(trashed, name, toasts).then((restored) => {
-          if (restored) options.onRestored?.();
-        }),
+      onClick: () => void putBackRoutine(trashed, name, toasts, options.onRestored),
     },
   });
 }
 
 /**
- * Puts a deleted routine back. When it can't, a toast says why.
+ * Puts a deleted routine back, and calls `onBack` once it is. When it can't, a toast that stays
+ * says why, with Undo, so the person can clear the way and undo again.
  *
  * @returns whether the routine is back
  */
@@ -76,14 +74,25 @@ export async function putBackRoutine(
   trashed: TrashedRoutine,
   name: string,
   toasts: ToastStore | null,
+  onBack?: () => void,
 ): Promise<boolean> {
   try {
     await trashed.undo();
+    onBack?.();
     return true;
   } catch (error) {
     const title = rowMenuWords.couldntUndo(name);
     const reason = reasonOf(error, title);
-    toasts?.show({ tone: "danger", title, ...(reason === undefined ? {} : { text: reason }) });
+    toasts?.show({
+      tone: "danger",
+      title,
+      ...(reason === undefined ? {} : { text: reason }),
+      sticky: true,
+      action: {
+        label: rowMenuWords.undo,
+        onClick: () => void putBackRoutine(trashed, name, toasts, onBack),
+      },
+    });
     return false;
   }
 }

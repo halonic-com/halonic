@@ -142,35 +142,41 @@ verifies("files.ui.delete-file", () => {
     expect(opened.at(-1)?.options.readOnly).toBe(true);
   });
 
-  it("falls back to the missing-file text when Undo can no longer bring the file back", async () => {
+  it("keeps the strip and its Undo when Undo can't bring the file back yet", async () => {
     const state = { text: "keep" as string | null };
     const { host, notify } = hostOf(state);
-    const remove = async () => ({
-      places: 0,
-      undo: async () => {
-        throw new Error("notes/a.md can't be put back, because the workspace changed.");
-      },
-    });
+    const undo = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(
+        new Error("notes/a.md can't be put back, because there is a new notes/a.md."),
+      )
+      .mockImplementation(async () => {
+        state.text = "keep";
+      });
     const toasts = { show: vi.fn() } as unknown as Parameters<typeof removeFile>[1];
     const page = show(host, path);
     await settle();
 
     state.text = null;
     await act(async () => {
-      await removeFile({ remove }, toasts, path);
+      await removeFile({ remove: async () => ({ places: 0, undo }) }, toasts, path);
     });
     notify();
     await settle();
+    const pressUndo = async () => {
+      await act(async () => {
+        [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo")?.click();
+      });
+      await settle();
+    };
+
+    await pressUndo();
     expect(page.textContent).toContain("This file was deleted");
 
-    await act(async () => {
-      [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo")?.click();
-    });
+    await pressUndo();
+    act(() => notify());
     await settle();
-
+    expect(undo).toHaveBeenCalledTimes(2);
     expect(page.textContent).not.toContain("This file was deleted");
-    expect(page.textContent).toContain("This file isn't in this workspace any more.");
-    expect([...page.querySelectorAll("button")].map((b) => b.textContent)).toContain("Go to Files");
-    expect(opened.at(-1)?.destroyed).toBe(true);
   });
 });

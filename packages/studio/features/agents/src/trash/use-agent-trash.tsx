@@ -114,10 +114,10 @@ export function useAgentTrash({
     );
   const onUndo = async () => {
     if (removed === undefined) return;
-    if (await putBackAgent(removed.trashed, removed.name, toasts)) {
+    await putBackAgent(removed.trashed, removed.name, toasts, () => {
       setRemoved(undefined);
       onRestored();
-    }
+    });
   };
   const onOpenAsFile = () =>
     host.filePath({ hubId, id }).then(

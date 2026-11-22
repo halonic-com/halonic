@@ -104,15 +104,22 @@ verifies("library.library-delete", () => {
     expect(toasts.list()).toHaveLength(1);
   });
 
-  it("says why Undo failed", async () => {
+  it("says why Undo failed, in a toast that stays with Undo to try again", async () => {
     const { host, undo } = itemsHost(nobody);
-    undo.mockRejectedValue(
-      kinded("conflict", "Tone can't be put back, because the workspace changed."),
+    undo.mockRejectedValueOnce(
+      kinded("conflict", "Tone can't be put back, because there is a new library/skills/tone."),
     );
     const { page, toasts } = await showLibrary(host);
     await pick(page, "More actions for Tone", "Delete");
     await act(async () => toasts.list()[0]?.action?.onClick());
-    expect(toasts.list().at(-1)).toMatchObject({ tone: "danger", title: "Couldn't put Tone back" });
+    expect(toasts.list().at(-1)).toMatchObject({
+      tone: "danger",
+      title: "Couldn't put Tone back",
+      sticky: true,
+      action: { label: "Undo" },
+    });
+    await act(async () => toasts.list().at(-1)?.action?.onClick());
+    expect(undo).toHaveBeenCalledTimes(2);
   });
 
   it("gives an item nobody uses no second line", async () => {

@@ -3,7 +3,7 @@ import { errorReasonFor, PhoneTopBarActions, useInPhoneTopBar } from "@halonicjs
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import type { WorkflowRef, WorkflowsHost } from "../api.ts";
 import { deleteWords } from "./delete-words.ts";
-import { type LeftDeleted, showLeftDeletedToast } from "./left-deleted-toast.ts";
+import { type LeftDeleted, putBackWorkflow, showLeftDeletedToast } from "./left-deleted-toast.ts";
 
 /** What {@link useWorkflowTrash} needs to know of the page's workflow. */
 export interface ShownWorkflow {
@@ -126,17 +126,10 @@ export function useWorkflowTrash(
   };
   const onUndo = async () => {
     if (removed === undefined) return;
-    try {
-      await removed.trashed.undo();
+    await putBackWorkflow(removed.trashed, removed.name, toasts, () => {
       focusWhenBack.current = true;
       setRemoved(undefined);
-    } catch (error) {
-      toasts?.show({
-        tone: "danger",
-        title: deleteWords.couldntPutBack(removed.name),
-        text: errorReasonFor(error),
-      });
-    }
+    });
   };
 
   const button = (
