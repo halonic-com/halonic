@@ -1601,6 +1601,7 @@ dependencies = [
 name = "halonic-agent-host"
 version = "0.1.0"
 dependencies = [
+ "halonic-secrets",
  "halonic-shell-log",
  "serde",
  "serde_json",
