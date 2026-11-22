@@ -1,0 +1,25 @@
+# paperclip.seats-calibrate
+
+- Status: active
+- Since: unreleased
+- Source: HAL-16026; the seat usage forecast on HAL-15997 (document `seat-forecast`, sections 4.2 and 5), part of the `seats` plugin (HAL-16008)
+
+When the `seats.calibrate` job runs, the seats forecast shall fit the points per million input, cached and output tokens for each plan, model and window (5-hour session and week) from the 10-minute steps of the last 7 days, skipping any step that holds a reset, an agent moving on or off the seat, a gap of more than 20 minutes or tokens from two models; it shall store each fit with its time, number of steps, middle error and token mix, give no fit for fewer than 24 usable steps, and flag a fit whose cost on its own token mix moved more than 25% against the oldest fit of the week before.
+
+## Examples
+
+- Given a made-up seat whose week reading rises 1 point between two readings 10 minutes apart, with one agent's tokens in between,
+  when the steps are built,
+  then that step holds those tokens and 1 point.
+- Given steps with a drop in the percentage, an agent placed on the seat, a 40-minute gap or two models,
+  when the steps are built,
+  then those steps are left out.
+- Given 2 days of whole-percent readings of a seat that really uses 0.4 points a step,
+  when it is calibrated,
+  then the fitted cost of one step's tokens is between 0.3 and 0.5 points.
+- Given only 5 usable steps for a plan, model and window,
+  when it is calibrated,
+  then there is no fit and the run says it had too few steps.
+- Given a fit 42% dearer on its token mix than the fit of 7 days before,
+  when shifts are checked,
+  then it is flagged with the old fit's time; a 8% change, or no fit within the week before, raises nothing.
