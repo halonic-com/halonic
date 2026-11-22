@@ -72,16 +72,24 @@ read-only snapshot instead (C2, C8), never these folders.
 just-in-time runner config (one runner, one job), starts `docker run --rm` of the image, waits
 for it to exit and cleans up. systemd starts the next cycle.
 
-| Slot | Label | CPUs | Pinned to vCPUs | Memory (= swap) | Work dir |
+| Slot | Label | CPUs | Pinned to vCPUs | Memory (= swap): start → most | Work dir |
 | --- | --- | --- | --- | --- | --- |
-| `large-1` … `large-11` | `halonic-ci-large` | 6 | 0-5, 6-11, … 60-65 (`(N-1)*6`–`N*6-1`) | 10 GB | 20 GB |
-| `small-1` … `small-3` | `halonic-ci-small` | 2 each | 66-71 (shared) | 3 GB | 6 GB |
+| `large-1` … `large-11` | `halonic-ci-large` | 6 | 0-5, 6-11, … 60-65 (`(N-1)*6`–`N*6-1`) | 4 GB → 10 GB | 20 GB |
+| `small-1` … `small-3` | `halonic-ci-small` | 2 each | 66-71 (shared) | 2 GB → 3 GB | 6 GB |
 
 The VM has 80 vCPUs (40 cores) and 128 GB. Each slot is pinned to its own vCPUs
 (`--cpuset-cpus`), so a job sees only those (`nproc`, Node's `availableParallelism`) and test
-runners don't start a worker for each of the VM's 80. The eleven large slots take vCPUs 0-65 and
-110 GB, the three small slots share 66-71 (capped at 2 CPUs each) and take 9 GB, and vCPUs 72-79
-are left for the VM itself.
+runners don't start a worker for each of the VM's 80. The eleven large slots take vCPUs 0-65, the
+three small slots share 66-71 (capped at 2 CPUs each), and vCPUs 72-79 are left for the VM itself.
+
+**Memory grows as a job needs it** (since 22 Nov 2026). A container starts at its start size
+(`MEM_START`). Every 3 s the slot script reads the job's anon + shmem (process memory plus the
+`/tmp` tmpfs; file cache doesn't count, the kernel drops it under pressure). When that comes within
+1.5 GB of the limit, the script raises the limit and swap by 2 GB with `docker update`, up to the
+most (`MEM`), as long as the VM keeps 4 GB available; otherwise it logs that it didn't. The
+cgroup's `memory.high` sits 512 MB under the limit, so the kernel reclaims cache and slows the job
+before the hard limit kills it, which gives the loop time to grow it. Every slot at its most
+(110 GB large, 9 GB small) still fits the VM's 128 GB, so growth can't overcommit it.
 
 Every container: all capabilities dropped, `no-new-privileges`, Docker's default seccomp and
 AppArmor profiles, `--pids-limit 8192`, no host devices, no Docker socket. The image
@@ -129,7 +137,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   running without libvirtd. After editing the rules, `systemctl reload halonic-ci-nft` swaps them
   in one step, and a file that doesn't load keeps the old ones.
 - **Status:** the host writes `/srv/ci/status/ci-status.json` and `jobs.jsonl` (per job: event,
-  ref, seconds, `mem_peak`, `cpu_seconds`). On GitHub, a job's `runnerName` starting with `hci-`
+  ref, seconds, `mem_peak`, `mem_anon_peak`, `mem_start`, `mem_limit` at the end, `mem_grows`,
+  `cpu_seconds`). On GitHub, a job's `runnerName` starting with `hci-`
   ran here. The status files carry fields a job controls (ref, event), so a dashboard or an agent
   reads them as untrusted text, never as commands or markup.
 
