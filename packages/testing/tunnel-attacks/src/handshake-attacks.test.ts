@@ -1,6 +1,7 @@
 import { pairingPsk } from "@halonicjs/adapter-e2e-noise";
 import {
   gatewayFrameKinds,
+  gatewayMaxFrameBytes,
   gatewayMaxHandshakeBytes,
   gatewayMaxMessageBytes,
 } from "@halonicjs/ports";
@@ -68,7 +69,7 @@ async function inSession(): Promise<{ client: WireClient; stop: () => Promise<vo
 
 verifies("tunnel-attacks.handshake-attacks", () => {
   describe("the pairing code and the check code", () => {
-    it("never appear in a frame either way, in pair-refused, in the host's log or in the mDNS records", async () => {
+    it("never appear in a frame the host sends, in pair-refused, in the host's log or in the mDNS records", async () => {
       await onHost(async (rig) => {
         const pairing = await rig.startPairing();
         const qr = await pairing.qr();
@@ -151,19 +152,28 @@ verifies("tunnel-attacks.handshake-attacks", () => {
   });
 
   describe("oversized frames", () => {
-    it("closes, answering nothing and counting no try, on a handshake message over its limit", async () => {
+    it("reads a handshake message at its limit, and closes, answering nothing and counting no try, on one a byte over", async () => {
       await onHost(async (rig) => {
-        const pairing = await rig.startPairing();
-        const qr = await pairing.qr();
+        const atLimit = Buffer.alloc(gatewayMaxHandshakeBytes, 1);
         const tooLong = Buffer.alloc(gatewayMaxHandshakeBytes + 1, 1);
+        // With no code open, a message 1 the host reads gets its refusal; only the size check stops it earlier.
+        const [refusal] = await answersTo(rig, [binary(gatewayFrameKinds.pair1, atLimit)]);
+        expect(refusal?.[0]).toBe(gatewayFrameKinds["pair-refused"]);
+        // A reconnect's message 1 that doesn't decrypt gets handshake-failed when it's read.
+        expect(await answersTo(rig, [binary(gatewayFrameKinds.resume1, atLimit)])).toEqual([
+          Buffer.of(gatewayFrameKinds["handshake-failed"]),
+        ]);
         for (const kind of [gatewayFrameKinds.pair1, gatewayFrameKinds.resume1]) {
           expect(await answersTo(rig, [binary(kind, tooLong)])).toEqual([]);
         }
+        const pairing = await rig.startPairing();
+        const qr = await pairing.qr();
+        expect(await answersTo(rig, [binary(gatewayFrameKinds.pair1, tooLong)])).toEqual([]);
         expect(await tryCode(rig, wrongCode(qr))).toMatchObject({ triesLeft: 4 });
       });
     });
 
-    it("reads a message of exactly 65,519 bytes in the session, and closes on a Noise message one byte longer", async () => {
+    it("reads a message of exactly 65,519 bytes in the session, and closes on a frame announcing one byte more, before its body", async () => {
       const largest = Buffer.from(JSON.stringify(hello).padEnd(gatewayMaxMessageBytes, " "));
       const fits = await inSession();
       try {
@@ -175,8 +185,10 @@ verifies("tunnel-attacks.handshake-attacks", () => {
       const over = await inSession();
       try {
         const sealed = over.client.phone?.seal(largest) ?? Buffer.alloc(0);
-        expect(sealed.length).toBe(1 + gatewayMaxMessageBytes + 16);
-        over.client.write(wireFrame(op.binary, Buffer.concat([sealed, Buffer.of(0)])));
+        expect(sealed.length).toBe(gatewayMaxFrameBytes);
+        // Only the header and mask of a frame one byte over: a host that waited for the body would stay open.
+        const oneOver = wireFrame(op.binary, Buffer.alloc(gatewayMaxFrameBytes + 1));
+        over.client.write(oneOver.subarray(0, oneOver.length - (gatewayMaxFrameBytes + 1)));
         expect(await over.client.isClosed()).toBe(true);
         expect(over.client.textFrames()).toEqual([]);
       } finally {

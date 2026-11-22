@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: tunnel phase B build plan, the B7 row (HAL-12232); task HAL-12242; ADR "Pairing and the end-to-end session"
 
-When a seeded run of hostile handshakes reaches the host's pairing through a tunnel, each sending pairing message 1, pairing message 3 after a good message 1, or a paired phone's reconnect message 1 truncated, with a bit flipped, too long or too short, sometimes followed by a copy or random bytes, the host shall answer each with handshake frames only and close it, open no session, show no check code and pair no phone, ask its sessions nothing, and afterwards still pair a good phone and welcome the paired one. The run shall be the same for the same seed, fit a time budget that stops it early on a slow runner, and name its seed when it fails.
+When a seeded run of hostile handshakes reaches the host's pairing through a tunnel, each sending pairing message 1, pairing message 3 after a good message 1, or a paired phone's reconnect message 1 truncated, with a bit flipped, too long or too short, sometimes followed by a copy or random bytes, the host shall answer each with handshake frames only and close it, open no session, show no check code and pair no phone, ask its sessions nothing, and afterwards still pair a good phone and welcome the paired one. The same seed shall give the same breaks (which message, how it's cut, which bit flips, what follows it), while the phones' keys and the handshakes' ephemeral keys stay random as a phone's are, and how many runs fit the time budget, which stops the run early on a slow runner, may differ; a failing run shall name its seed.
 
 ## Examples
 
