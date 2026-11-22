@@ -98,10 +98,12 @@ pub enum ProfileError {
 impl fmt::Display for ProfileError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            // The CLI's sentence, from the profile package (HAL-15440), so
+            // Studio and the CLI name the same problem the same way.
             ProfileError::HalonicHomeNotAbsolute { value } => {
                 write!(
                     formatter,
-                    "HALONIC_HOME must be an absolute folder, not {value:?}"
+                    "HALONIC_HOME must be a full path, not {value:?}."
                 )
             }
             ProfileError::HomeNotAbsolute { value } => {
