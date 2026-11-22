@@ -13,7 +13,8 @@ type Agent = LoadedFileOf<"agent">;
 /**
  * The problems of one workflow as its page shows them (`studio.workflow-problem-agent`): its own
  * file's, with the step each is about, and the errors of the agents its steps name, with the agent
- * and, for a model alias the workspace doesn't have, that alias (UX check S7, HAL-12412).
+ * and, for the agent's own model alias the workspace doesn't have, that alias (UX check S7,
+ * HAL-12412).
  */
 export function workflowProblemsOf(
   workspace: LoadedWorkspace,
@@ -34,18 +35,13 @@ export function workflowProblemsOf(
   });
 }
 
-/** The agent an issue is in, and the alias it names when the issue is that the alias is missing. */
+/**
+ * The agent an issue is in, and the alias it names when the issue is that the agent's own model
+ * alias is missing. A method's (agent step's) alias gets none: its model can't be changed on the
+ * agent's page, so the page's line would point to a fix that isn't there (Sofia, #4515).
+ */
 function agentFacts(agent: Agent, issue: WorkspaceIssue): Partial<WorkflowProblem> {
   const named = { agent: { id: agent.value.id, name: agent.value.name } };
-  if (issue.code !== "unknown-model-alias") return named;
-  return { ...named, modelAlias: modelAt(agent, issue.path) };
-}
-
-/**
- * The model the issue's path points at: the agent's own `model`, or a method's
- * (`methods.<id>.model`), as the check names them.
- */
-function modelAt(agent: Agent, path: WorkspaceIssue["path"]): string | undefined {
-  if (path[0] === "methods") return agent.value.methods[String(path[1])]?.model;
-  return agent.value.model;
+  if (issue.code !== "unknown-model-alias" || issue.path[0] !== "model") return named;
+  return { ...named, modelAlias: agent.value.model };
 }
