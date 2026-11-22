@@ -1,0 +1,6 @@
+# gitleaks' own default rules, and nothing else. action.yml passes this file
+# with --config, so a .gitleaks.toml in the scanned checkout is never read.
+title = "halonic: gitleaks default rules"
+
+[extend]
+useDefault = true

@@ -28,13 +28,17 @@ runs:
         image=$(sed -n 's/^FROM //p' "$GITHUB_ACTION_PATH/Dockerfile")
         mkdir -p "$GITHUB_WORKSPACE/.git/info"
         echo '* diff' >> "$GITHUB_WORKSPACE/.git/info/attributes"
-        args=(git --redact --no-banner --exit-code 1 --report-format json --report-path /out/gitleaks.json)
+        # The rules and the ignore list come from this folder, never from the
+        # scanned checkout, where a pull request could add its own
+        # .gitleaks.toml or .gitleaksignore. This folder holds no ignore list.
+        args=(git --redact --no-banner --exit-code 1 --report-format json --report-path /out/gitleaks.json
+          --config /action/gitleaks.toml --gitleaks-ignore-path /action)
         if [ -n "$LOG_OPTS" ]; then
           args+=("--log-opts=$LOG_OPTS")
         fi
         log="$RUNNER_TEMP/gitleaks.log"
         set +e
-        docker run --rm -v "$GITHUB_WORKSPACE:/repo" -v "$RUNNER_TEMP:/out" -w /repo \
+        docker run --rm -v "$GITHUB_WORKSPACE:/repo" -v "$RUNNER_TEMP:/out" -v "$GITHUB_ACTION_PATH:/action:ro" -w /repo \
           -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
           "$image" "${args[@]}" . > "$log" 2>&1
         status=$?

@@ -104,6 +104,7 @@ async function oidc(claims) {
     aud: "halonic-turbo-cache",
     exp: Math.floor(Date.now() / 1000) + 300,
     repository: "halonic-com/halonic",
+    repository_id: "1449714644",
     ...claims,
   });
   const sig = await crypto.subtle.sign(
@@ -289,6 +290,12 @@ test("turbo-cache: only a main push OIDC token buys a write token; the merge que
         await oidc({ event_name: "push", ref: "refs/heads/main", repository: "evil/halonic" }),
       )
     ).status,
+    403,
+  );
+  // The right name on another repository (renamed, then taken) is not ours either.
+  assert.equal(
+    (await exchange(await oidc({ event_name: "push", ref: "refs/heads/main", repository_id: "1" })))
+      .status,
     403,
   );
   assert.equal(

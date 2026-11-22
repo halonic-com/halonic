@@ -12,6 +12,8 @@ const json = (body, status = 200) =>
 const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
 const OIDC_AUDIENCE = "halonic-turbo-cache";
 const OIDC_REPOSITORY = "halonic-com/halonic";
+// The repository's id never changes: a name can be renamed away and then taken by another repository.
+const OIDC_REPOSITORY_ID = "1449714644";
 const WRITE_TOKEN_SECONDS = 30 * 60;
 const b64 = (s) =>
   Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
@@ -69,7 +71,8 @@ async function verifyGithubToken(jwt) {
 // Only a push to main writes the shared area. The merge queue runs the queued change's own code, so it writes only
 // to its own area (q/<hash>): later queue entries reuse what the ones ahead of them built, and main never trusts it.
 function tokenKind(claims) {
-  if (claims.repository !== OIDC_REPOSITORY) return null;
+  if (claims.repository !== OIDC_REPOSITORY || claims.repository_id !== OIDC_REPOSITORY_ID)
+    return null;
   if (claims.event_name === "merge_group")
     return claims.ref?.startsWith("refs/heads/gh-readonly-queue/main/") ? "q" : null;
   return claims.event_name === "push" && claims.ref === "refs/heads/main" ? "w" : null;
