@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15914 (flow check C651 #3 on HAL-15910; small wording on the approved "Allow this address?" flow, decided by the team under HAL-2282, no board card); the reviewer signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4B+VADDXnHstct80cX8vc3wIyhEllU5/be55oR8l/h4BwqpdfIsNs26txhJcUdAbL3dDQw8k6ZIzc5qH8XxwDQ==
 
 ## What changes
 
