@@ -1,14 +1,15 @@
 import { useToastStore } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
-import type { WorkflowRef, WorkflowsHost, WorkflowView } from "../api.ts";
+import type { WorkflowRef, WorkflowsHost } from "../api.ts";
 import { arrowAddedLine } from "./arrow-announcements.ts";
 import { pageWords } from "./page-words.ts";
+import type { WorkflowLoad } from "./use-workflow.ts";
 import type { CanvasEdit } from "./workflow-canvas.tsx";
 
 /**
  * How the canvas's toolbar and its cards' ports change the workflow through the host, saying why
  * on a toast when it can't. `undefined` where the host can't add steps, and on a phone, whose Flow is view-only.
- * `workflow` is the one the canvas draws, so an arrow added by a drag is announced as the step
+ * `workflow` is the read the canvas draws, so an arrow added by a drag is announced as the step
  * card's **Add** announces it.
  */
 export function useCanvasEdit(
@@ -16,7 +17,7 @@ export function useCanvasEdit(
   ref: WorkflowRef,
   name: string,
   phone: boolean,
-  workflow: Pick<WorkflowView, "steps" | "arrows"> | undefined,
+  workflow: WorkflowLoad,
   announce?: (line: string) => void,
 ): CanvasEdit | undefined {
   const toasts = useToastStore();
@@ -47,8 +48,9 @@ export function useCanvasEdit(
       ((from, to) =>
         changeArrows.call(host, ref, from, { kind: "add", to }).then(
           () => {
-            const steps = workflow?.steps ?? [];
-            const arrows = workflow?.arrows.filter((arrow) => arrow.from === from) ?? [];
+            const drawn = workflow.kind === "ready" ? workflow.value : undefined;
+            const steps = drawn?.steps ?? [];
+            const arrows = drawn?.arrows.filter((arrow) => arrow.from === from) ?? [];
             announce?.(arrowAddedLine(steps, arrows, from, to));
             return true;
           },
