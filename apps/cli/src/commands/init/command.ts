@@ -146,7 +146,7 @@ async function copyExample(
 
 /** The example by its name, or a usage error naming the ones there are. */
 function knownExample(name: string): InitExample {
-  const example = initExamples[name];
+  const example = exampleNamed(name);
   if (example !== undefined) {
     return example;
   }
@@ -157,6 +157,14 @@ function knownExample(name: string): InitExample {
       ? initMessages.unknownExample(printable(name))
       : initMessages.unknownExampleNear(printable(name), near);
   throw new UsageError(problem, initMessages.examples(names));
+}
+
+/**
+ * The example called `name`, or `undefined`. Own keys only, so a name such as
+ * `constructor` or `__proto__` is no example (HAL-16336).
+ */
+function exampleNamed(name: string): InitExample | undefined {
+  return Object.hasOwn(initExamples, name) ? initExamples[name] : undefined;
 }
 
 /** The first of `./acme`, `./acme-2`, `./acme-3`, … that is missing or empty. */
@@ -177,7 +185,7 @@ async function freeExampleFolder(example: InitExample, cwd: string): Promise<Ini
  */
 function defaultFolder(input: CommandInput): string {
   const example = input.options["example"];
-  return typeof example === "string" && initExamples[example] !== undefined ? example : ".";
+  return typeof example === "string" && exampleNamed(example) !== undefined ? example : ".";
 }
 
 /** The folder the user named, resolved from here; the default folder without one. */

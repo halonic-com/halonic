@@ -334,6 +334,17 @@ verifies("cli.commands.init.copy-example", () => {
 
       expect(io.stderr[0]).toBe('✕ There\'s no example called "billing".');
     });
+
+    it.each(["constructor", "toString", "__proto__"])(
+      "says there's no example called %s, and writes nothing",
+      async (name) => {
+        const { code, io } = await initIn(folder, "--example", name);
+
+        expect(code).toBe(exitCode.usage);
+        expect(io.stderr).toEqual([`✕ There's no example called "${name}".`, "  Examples: acme"]);
+        expect(readdirSync(folder)).toEqual([]);
+      },
+    );
   });
 
   // It copies the whole example once per mode: up to 3 s on Linux and 16 s on Windows in CI (HAL-5473).

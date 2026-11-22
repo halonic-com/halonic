@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { jsonSchemaOf, kindNames } from "@halonicjs/format";
 import { type CliCommand, UsageError } from "../../command.ts";
@@ -26,7 +27,7 @@ export const schemaCommand: CliCommand = {
     await mkdir(target, { recursive: true });
     const kinds = kindNames();
     for (const kind of kinds) {
-      await writeFile(
+      await replaceFile(
         join(target, schemaFileName(kind)),
         `${JSON.stringify(jsonSchemaOf(kind), null, 2)}\n`,
       );
@@ -42,6 +43,23 @@ export const schemaCommand: CliCommand = {
     };
   },
 };
+
+/**
+ * Writes `text` to a new file beside `path`, then gives it `path`'s name, so a
+ * symbolic or hard link already there is replaced, never written through to
+ * the file it leads to (HAL-16336). The new file is made with `wx`, which
+ * also follows no link.
+ */
+async function replaceFile(path: string, text: string): Promise<void> {
+  const fresh = `${path}.${randomUUID()}.tmp`;
+  await writeFile(fresh, text, { flag: "wx" });
+  try {
+    await rename(fresh, path);
+  } catch (error) {
+    await rm(fresh, { force: true });
+    throw error;
+  }
+}
 
 /** `agent` → `agent.schema.json`, the old CLI's file names. */
 export function schemaFileName(kind: string): string {

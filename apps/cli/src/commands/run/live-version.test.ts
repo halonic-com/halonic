@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { cp, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, cp, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -316,4 +316,24 @@ verifies("cli.run-live-version", () => {
       gitTimeout,
     );
   });
+});
+
+verifies("cli.repository-refused", () => {
+  it(
+    "says why the git adapter refuses the repository and how to fix it, and stores no run",
+    async () => {
+      await makeLive();
+      await appendFile(join(acme, ".git", "config"), "[include]\n\tpath = elsewhere.gitconfig\n");
+
+      const { code, stderr } = await run();
+
+      expect(code).toBe(exitCode.denied);
+      expect(stderr).toEqual([
+        "✕ Couldn't run support-reply: the repository's config sets include.path, which Halonic doesn't allow.",
+        "  Remove it from .git/config and try again.",
+      ]);
+      expect(await storedRuns()).toBe(0);
+    },
+    gitTimeout,
+  );
 });
