@@ -14,6 +14,7 @@ import type { WorkflowTests } from "./tests-api.ts";
  */
 export { EngineNotAnswering } from "@halonicjs/studio-shell";
 export {
+  RUN_FORM_STEP,
   type WorkflowGuide,
   type WorkflowGuideCard,
   type WorkflowGuideLine,

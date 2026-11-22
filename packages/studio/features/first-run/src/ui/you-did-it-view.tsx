@@ -1,16 +1,18 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { AnsweredViewProps } from "@halonicjs/studio-feature-inbox/api";
 import { type RunModelPath, type RunsList, runModelPath } from "@halonicjs/studio-feature-runs/api";
+import { RUN_FORM_STEP } from "@halonicjs/studio-feature-workflows/api";
 import { Button, SkeletonBar } from "@halonicjs/studio-kit";
-import type { ItemRef } from "@halonicjs/studio-shell";
+import type { ItemRef, OpenItemOptions } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SUPPORT_HUB, SUPPORT_WORKFLOW } from "../first-run.ts";
 import { youDidItWords } from "../first-run-words.ts";
+import { DEFAULT_ALIAS } from "../own-progress.ts";
 import { youDidItFacts } from "../you-did-it.ts";
 
 const supportReply: ItemRef = { kind: "workflow", hub: SUPPORT_HUB, id: SUPPORT_WORKFLOW };
 /** The demo's model alias, whose tab Pick a model opens once the first run is done. */
-const defaultModel: ItemRef = { kind: "model-alias", hub: "local", id: "default" };
+const defaultModel: ItemRef = { kind: "model-alias", hub: "local", id: DEFAULT_ALIAS };
 
 /** Props for {@link YouDidItView}: the Inbox's, and the runs it reads the run's record from. */
 export interface YouDidItViewProps extends AnsweredViewProps {
@@ -32,7 +34,7 @@ export function YouDidItView({ item, runs, close, openItem }: YouDidItViewProps)
     summary === undefined || path === undefined
       ? undefined
       : youDidItFacts(summary, path.path, runs.source.currency());
-  const open = (target: ItemRef) => () => openItem?.(target);
+  const open = (target: ItemRef, options?: OpenItemOptions) => () => openItem?.(target, options);
   return (
     <section className="flex flex-col gap-4 p-6">
       <h2 ref={title} tabIndex={-1} className="flex items-baseline gap-2 text-title">
@@ -52,9 +54,9 @@ export function YouDidItView({ item, runs, close, openItem }: YouDidItViewProps)
           {facts.sample && <p className="text-small">{youDidItWords.sample}</p>}
         </div>
       )}
-      <div className="flex flex-col gap-2">
-        <h3 className="text-body font-medium">{youDidItWords.next}</h3>
-        {facts !== undefined && openItem !== undefined && (
+      {facts !== undefined && openItem !== undefined && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-body font-medium">{youDidItWords.next}</h3>
           <ul className="flex flex-col items-start gap-1">
             <li>
               {facts.sample ? (
@@ -62,7 +64,7 @@ export function YouDidItView({ item, runs, close, openItem }: YouDidItViewProps)
                   {youDidItWords.pickModel}
                 </Button>
               ) : (
-                <Button variant="ghost" onClick={open(supportReply)}>
+                <Button variant="ghost" onClick={open(supportReply, { step: RUN_FORM_STEP })}>
                   {youDidItWords.runAgain}
                 </Button>
               )}
@@ -74,8 +76,8 @@ export function YouDidItView({ item, runs, close, openItem }: YouDidItViewProps)
               <span className="text-small text-fg-muted">{youDidItWords.changeHint}</span>
             </li>
           </ul>
-        )}
-      </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-2">
         <p className="max-w-prose text-small text-fg-muted">{youDidItWords.google}</p>
         <Button variant="ghost" onClick={close}>

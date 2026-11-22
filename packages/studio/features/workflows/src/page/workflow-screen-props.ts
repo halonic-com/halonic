@@ -39,6 +39,11 @@ export interface WorkflowScreenProps {
    */
   readonly testsAsked?: number;
   /**
+   * How many times the tab was asked for its Run form (`openItem`'s `step: "run"`), or absent when
+   * it wasn't: the page opens the form once it has read the workflow, and again when this changes.
+   */
+  readonly runFormAsked?: number | undefined;
+  /**
    * The steps to outline on Flow with no step card open, as `openItem`'s `select:` step asks
    * (`stepsToSelect`, flow-workflows 9); absent outlines none.
    */

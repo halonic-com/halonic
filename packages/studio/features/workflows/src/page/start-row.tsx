@@ -42,6 +42,8 @@ export function useStartRefusal(host: WorkflowsHost, ref: WorkflowRef, errors: n
   return {
     id,
     refusal,
+    /** The read itself: until it is in, or failed, a refusal may still come. */
+    load,
     unavailable: refusal === undefined ? undefined : { reason: id },
   };
 }

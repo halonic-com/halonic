@@ -1,4 +1,9 @@
-import { type ItemRef, loadView, type ViewRef } from "@halonicjs/studio-shell";
+import {
+  type ItemRef,
+  loadView,
+  type OpenItemOptions,
+  type ViewRef,
+} from "@halonicjs/studio-shell";
 import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 import type { AnsweredViewProps } from "../answered-view.ts";
 import type { AfterAnswer } from "../decide.ts";
@@ -37,7 +42,7 @@ export function AnsweredView({ view, props, fallback }: AnsweredViewLoaderProps)
 export interface AnsweredViews {
   readonly inbox: Pick<Inbox, "answeredView">;
   readonly close: () => void;
-  readonly openItem?: ((item: ItemRef) => void) | undefined;
+  readonly openItem?: ((item: ItemRef, options?: OpenItemOptions) => void) | undefined;
 }
 
 /**

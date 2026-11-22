@@ -41,6 +41,7 @@ import {
   useStartRefusal,
 } from "./start-row.tsx";
 import { stepCardIn } from "./step-card.tsx";
+import { useAskedForRunForm } from "./use-asked-for-run-form.ts";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useOpenProblems } from "./use-open-problems.ts";
@@ -73,6 +74,7 @@ export function WorkflowScreen({
   shownRuns,
   startOnTests,
   testsAsked = 0,
+  runFormAsked,
   outline,
   outlineAsked = 0,
   announceState,
@@ -199,6 +201,8 @@ export function WorkflowScreen({
   };
   const guideSlot = { guide, workflow: { hubId, id }, view, docked, phone, button: guideButton };
   const guidePage = { openRunForm: () => openStart("guide") };
+  // Asked for its Run form, the page opens it as Run does, once it knows whether a run can start.
+  useAskedForRunForm(runFormAsked, [load, settings.load, cantStart.load], () => openStart("run"));
   const guideScreen = useGuideScreen(guide, { hubId, id });
   const guideRun = useGuideRun(guide, { hubId, id }, shownId, () => {
     setShownId(undefined);

@@ -15,6 +15,12 @@ export interface WorkflowGuideLine {
   readonly text: string;
 }
 
+/**
+ * The step that opens a workflow's page at its Run form, as `openItem(workflow, { step: "run" })`,
+ * such as First Run's **Run it again with your own message** (`workflows.page.open-run-form`).
+ */
+export const RUN_FORM_STEP = "run";
+
 /** What the guide card's one button can ask of the workflow's page. */
 export interface WorkflowGuidePage {
   /**

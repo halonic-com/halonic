@@ -1,4 +1,4 @@
-import type { ItemRef, ViewRef } from "@halonicjs/studio-shell";
+import type { ItemRef, OpenItemOptions, ViewRef } from "@halonicjs/studio-shell";
 import type { AfterAnswer } from "./decide.ts";
 import type { WaitItem } from "./inbox-items.ts";
 
@@ -28,6 +28,9 @@ export interface AnsweredViewProps {
   readonly item: WaitItem;
   /** Closes the view and leaves the pane empty, as **Not now** does for an item. */
   readonly close: () => void;
-  /** Opens an item's page, such as Support reply; left out where the page can't open one. */
-  readonly openItem?: ((item: ItemRef) => void) | undefined;
+  /**
+   * Opens an item's page, such as Support reply, or a part of it (`step`), such as its Run form;
+   * left out where the page can't open one.
+   */
+  readonly openItem?: ((item: ItemRef, options?: OpenItemOptions) => void) | undefined;
 }
