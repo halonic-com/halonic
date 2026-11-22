@@ -219,7 +219,8 @@ export const failureWords = {
   /**
    * `models.key-origin-not-allowed` (HAL-15523): the CLI's first line (`cli.run-failure`), then the
    * fix by the list that refused (HAL-15762): the keychain's is on the Models page, the profile's
-   * secrets file's only takes the command, and a cause that doesn't say names both.
+   * secrets file's only takes the command, and a cause that doesn't say names both. The provider
+   * is quoted, as the CLI's line and the key beside it are (C625 row 7).
    */
   keyOriginNotAllowed: (
     workflow: string,
@@ -228,13 +229,17 @@ export const failureWords = {
     key: string,
     origin: string,
   ) =>
-    `${workflow} failed in the step ${step}: provider ${provider} can't send key "${key}" to ${origin}. That address isn't allowed for this key.`,
+    `${workflow} failed in the step ${step}: provider "${provider}" can't send key "${key}" to ${origin}. That address isn't allowed for this key.`,
   keyOriginNotAllowedFix: (key: string, origin: string) =>
     `To allow it, add ${origin} to the addresses of key "${key}" in Models, then run again. Only allow an address you recognise.`,
-  keyOriginNotAllowedCommandFix: (key: string, origin: string, phone: boolean) =>
-    `To allow it, run ${allowAddressCommand(key, origin)} ${phone ? "on your computer" : "in a terminal"}, then run again. Only allow an address you recognise.`,
-  keyOriginNotAllowedEitherFix: (key: string, origin: string, phone: boolean) =>
-    `To allow it, ${phone ? "on your computer " : ""}add ${origin} to the addresses of key "${key}" in Models, or run ${allowAddressCommand(key, origin)}${phone ? "" : " in a terminal"} if the key is in the profile's secrets file, then run again. Only allow an address you recognise.`,
+  /** The lines around the command for a key in the profile's secrets file (C625 row 8, R17's shape). */
+  keyOriginNotAllowedInTerminal: "To allow it, run this in a terminal:",
+  keyOriginNotAllowedAfterCommand: "Only allow an address you recognise. Then run again.",
+  keyOriginNotAllowedTerminalInstead: "For a run started in a terminal, run this instead:",
+  keyOriginNotAllowedOnComputer: (key: string, origin: string) =>
+    `Fix this on your computer: run ${allowAddressCommand(key, origin)}`,
+  keyOriginNotAllowedTerminalInsteadPhone: (key: string, origin: string) =>
+    `For a run started in a terminal, run ${allowAddressCommand(key, origin)} on your computer instead.`,
   /** The command Copy command copies for a key's address (HAL-15762). */
   allowAddressCommand,
   copyCommand: "Copy command",

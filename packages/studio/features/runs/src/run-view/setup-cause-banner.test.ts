@@ -161,61 +161,65 @@ verifies("runs.run-view.failure-banners", () => {
           ...(store === undefined ? {} : { store }),
         });
       const cause =
-        "Support reply failed in the step Draft: provider gateway can't send key \"gw-key\" to https://gw.example.com. That address isn't allowed for this key.";
+        'Support reply failed in the step Draft: provider "gateway" can\'t send key "gw-key" to https://gw.example.com. That address isn\'t allowed for this key.';
       const command = "halonic models allow-address gw-key https://gw.example.com";
-      const noRunAgain = (banner: ReturnType<typeof causeBanner>) =>
-        banner?.kind === "callout" && banner.noRunAgain;
+      const modelsFix =
+        'To allow it, add https://gw.example.com to the addresses of key "gw-key" in Models, then run again. Only allow an address you recognise.';
+      // Each fix line ends "then run again", so each banner has Run again (C625 row 8, E2).
+      const runAgain = (banner: ReturnType<typeof causeBanner>) =>
+        banner?.kind === "callout" && banner.noRunAgain !== true;
 
-      it("names the key and the address, as the CLI does, with Open Models in place of Run again for the keychain's list", () => {
+      it("names the key and the address, both quoted as the CLI does, with Open Models then Run again for the keychain's list", () => {
         const banner = causeBanner(refusedBy("keychain"), undefined, context, false);
-        expect(lines(banner)).toEqual([
-          cause,
-          'To allow it, add https://gw.example.com to the addresses of key "gw-key" in Models, then run again. Only allow an address you recognise.',
-        ]);
+        expect(lines(banner)).toEqual([cause, modelsFix]);
         expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
-        expect(noRunAgain(banner)).toBe(true);
+        expect(runAgain(banner)).toBe(true);
       });
 
       it("says to fix the keychain's list in Models on the computer on a phone, with no button", () => {
         const banner = causeBanner(refusedBy("keychain"), undefined, context, true);
         expect(lines(banner)?.at(-1)).toBe("Fix this on your computer: Models");
         expect(fixes(banner)).toBeUndefined();
-        expect(noRunAgain(banner)).toBe(true);
+        expect(runAgain(banner)).toBe(true);
       });
 
       // Models edits only the keychain's lists, so it can't change the profile's (HAL-15762).
-      it("gives the command with Copy command, not Models, for the profile's secrets file's list", () => {
+      it("gives the command on a line of its own with Copy command, not Models, for the profile's secrets file's list", () => {
         const banner = causeBanner(refusedBy("secrets-file"), undefined, context, false);
         expect(lines(banner)).toEqual([
           cause,
-          `To allow it, run ${command} in a terminal, then run again. Only allow an address you recognise.`,
+          "To allow it, run this in a terminal:",
+          command,
+          "Only allow an address you recognise. Then run again.",
         ]);
         expect(fixes(banner)).toEqual([{ kind: "copy-command", command }]);
-        expect(noRunAgain(banner)).toBe(true);
+        expect(runAgain(banner)).toBe(true);
       });
 
       it("says to run the command on the computer on a phone, with no button", () => {
         const banner = causeBanner(refusedBy("secrets-file"), undefined, context, true);
-        expect(lines(banner)).toEqual([
-          cause,
-          `To allow it, run ${command} on your computer, then run again. Only allow an address you recognise.`,
-        ]);
+        expect(lines(banner)).toEqual([cause, `Fix this on your computer: run ${command}`]);
         expect(fixes(banner)).toBeUndefined();
-        expect(noRunAgain(banner)).toBe(true);
+        expect(runAgain(banner)).toBe(true);
       });
 
-      it("names both fixes when the cause doesn't say which list refused", () => {
+      it("gives Models, then the command for a run started in a terminal, when the cause doesn't say which list refused", () => {
         const banner = causeBanner(refusedBy(), undefined, context, false);
         expect(lines(banner)).toEqual([
           cause,
-          `To allow it, add https://gw.example.com to the addresses of key "gw-key" in Models, or run ${command} in a terminal if the key is in the profile's secrets file, then run again. Only allow an address you recognise.`,
+          modelsFix,
+          "For a run started in a terminal, run this instead:",
+          command,
         ]);
         expect(fixes(banner)).toEqual([{ kind: "open-models" }, { kind: "copy-command", command }]);
-        expect(noRunAgain(banner)).toBe(true);
+        expect(runAgain(banner)).toBe(true);
         const phone = causeBanner(refusedBy("a-store-nobody-knows"), undefined, context, true);
-        expect(lines(phone)?.at(-1)).toBe(
-          `To allow it, on your computer add https://gw.example.com to the addresses of key "gw-key" in Models, or run ${command} if the key is in the profile's secrets file, then run again. Only allow an address you recognise.`,
-        );
+        expect(lines(phone)).toEqual([
+          cause,
+          modelsFix,
+          "Fix this on your computer: Models",
+          `For a run started in a terminal, run ${command} on your computer instead.`,
+        ]);
         expect(fixes(phone)).toBeUndefined();
       });
 

@@ -64,9 +64,10 @@ export function setupBanner(
 /**
  * A key whose list of addresses leaves out its provider's (HAL-15523), fixed where the list that
  * refused is kept (HAL-15762): the keychain's in Models, with Open Models; the profile's secrets
- * file's, which Models doesn't edit, by `halonic models allow-address` with Copy command, as the
- * secrets file's own banner does (F24). A cause that doesn't say which names both. A phone says
- * to do it on the computer. Run again would be refused the same way until the list changes.
+ * file's, which Models doesn't edit, by `halonic models allow-address` on a line of its own with
+ * Copy command, in R17's shape (C625 row 8). A cause that doesn't say which gives Models, then the
+ * command for a run started in a terminal. A phone says to do it on the computer. Each line ends
+ * "then run again", so each has **Run again** (E2), as a provider Halonic can't call does.
  */
 function keyAddressBanner(
   failure: Extract<RunFailure, { reason: "key-address-not-allowed" }>,
@@ -76,25 +77,30 @@ function keyAddressBanner(
 ): RunBanner {
   const { provider, key, address, store } = failure;
   const cause = failureWords.keyOriginNotAllowed(workflow, step, provider, key, address);
-  if (store === "keychain") {
-    const fix = failureWords.keyOriginNotAllowedFix(key, address);
+  const command = failureWords.allowAddressCommand(key, address);
+  const copy: BannerFix = { kind: "copy-command", command };
+  if (store === "secrets-file") {
     return phone
-      ? danger([cause, fix, failureWords.fixOnComputer(failureWords.modelsPlace)], {
-          noRunAgain: true,
-        })
-      : danger([cause, fix], { fixes: [openModels], noRunAgain: true });
+      ? danger([cause, failureWords.keyOriginNotAllowedOnComputer(key, address)])
+      : danger(
+          [
+            cause,
+            failureWords.keyOriginNotAllowedInTerminal,
+            command,
+            failureWords.keyOriginNotAllowedAfterCommand,
+          ],
+          { fixes: [copy] },
+        );
   }
-  const fix =
-    store === "secrets-file"
-      ? failureWords.keyOriginNotAllowedCommandFix(key, address, phone)
-      : failureWords.keyOriginNotAllowedEitherFix(key, address, phone);
-  if (phone) return danger([cause, fix], { noRunAgain: true });
-  const copy: BannerFix = {
-    kind: "copy-command",
-    command: failureWords.allowAddressCommand(key, address),
-  };
-  return danger([cause, fix], {
-    fixes: store === "secrets-file" ? [copy] : [openModels, copy],
-    noRunAgain: true,
-  });
+  const models = [cause, failureWords.keyOriginNotAllowedFix(key, address)];
+  if (store === "keychain") return fixInModels(models, phone);
+  return phone
+    ? danger([
+        ...models,
+        failureWords.fixOnComputer(failureWords.modelsPlace),
+        failureWords.keyOriginNotAllowedTerminalInsteadPhone(key, address),
+      ])
+    : danger([...models, failureWords.keyOriginNotAllowedTerminalInstead, command], {
+        fixes: [openModels, copy],
+      });
 }
