@@ -45,7 +45,7 @@ verifies("agent-host-client.run-proposal-decisions", () => {
     it("undoes with only the workspace, the id and the direction", async () => {
       const host = new FakeHost().answer(
         "POST /v1/proposals/restore",
-        ok({ changedOnDisk: [], refused: [] }),
+        ok({ changedOnDisk: [], refused: [], decidedAfter: false }),
       );
       await new AgentHostRunProposals(host, workspace).restore("u1", "before");
       expect(host.calls).toEqual([

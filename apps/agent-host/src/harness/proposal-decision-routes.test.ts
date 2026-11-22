@@ -97,7 +97,10 @@ verifies("agent-host.proposal-decision-routes", () => {
     });
     expect(await notes()).toBe("hello from the run");
     const undone = await ask("restore", { workspace, undo: "undo_1", to: "before" });
-    expect(undone).toEqual({ status: 200, body: { changedOnDisk: [], refused: [] } });
+    expect(undone).toEqual({
+      status: 200,
+      body: { changedOnDisk: [], refused: [], decidedAfter: false },
+    });
     expect(await notes()).toBe("hello");
   });
 

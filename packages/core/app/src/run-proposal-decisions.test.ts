@@ -50,6 +50,7 @@ verifies("app.run-proposal-accept", () => {
       expect(await setup.proposals.restore(undo, "before")).toEqual({
         changedOnDisk: [],
         refused: [],
+        decidedAfter: false,
       });
       expect(setup.store.files.get(clerkPath)).toBe(clerk);
       expect((await decisionsOf(setup))?.[clerkPath]).toBe("undecided");
@@ -121,7 +122,7 @@ verifies("app.run-proposal-accept", () => {
   });
 
   describe("undoing after the file changed again", () => {
-    it("keeps the person's edit and lists the file", async () => {
+    it("keeps the person's edit, lists the file and keeps it accepted (HAL-16083)", async () => {
       const setup = await setUpRun();
       const { undo } = await setup.proposals.accept("01JD8Q", { file: clerkPath });
       if (undo === null) {
@@ -131,24 +132,27 @@ verifies("app.run-proposal-accept", () => {
       expect(await setup.proposals.restore(undo, "before")).toEqual({
         changedOnDisk: [clerkPath],
         refused: [],
+        decidedAfter: false,
       });
       expect(setup.store.files.get(clerkPath)).toBe("name: Clerk\nmodel: mine\n");
-      expect((await decisionsOf(setup))?.[clerkPath]).toBe("undecided");
+      expect((await decisionsOf(setup))?.[clerkPath]).toBe("accepted");
     });
 
-    it("keeps a step whose decisions changed since, so the file and its decision agree", async () => {
+    it("keeps a step whose file was decided again since, so the file and its decision agree", async () => {
       const setup = await setUpRun();
-      const { undo } = await setup.proposals.accept("01JD8Q", { file: clerkPath });
-      if (undo === null) {
+      const step = await setup.proposals.accept("01JD8Q", { file: clerkPath });
+      if (step.undo === null) {
         throw new Error("Accept wrote nothing.");
       }
-      await setup.proposals.reject("01JD8Q", { file: "notes/today.md" });
-      expect(await setup.proposals.restore(undo, "before")).toEqual({
-        changedOnDisk: [".halonic/proposals/01JD8Q.json", clerkPath],
+      await setup.proposals.restore(step.undo, "before");
+      await setup.proposals.reject("01JD8Q", { file: clerkPath });
+      expect(await setup.proposals.restore(step.undo, "after")).toEqual({
+        changedOnDisk: [clerkPath, ".halonic/proposals/01JD8Q.json"],
         refused: [],
+        decidedAfter: true,
       });
-      expect(setup.store.files.get(clerkPath)).toBe(smart);
-      expect((await decisionsOf(setup))?.[clerkPath]).toBe("accepted");
+      expect(setup.store.files.get(clerkPath)).toBe(clerk);
+      expect((await decisionsOf(setup))?.[clerkPath]).toBe("rejected");
     });
 
     it("refuses a step that isn't a run proposal's", async () => {
@@ -263,6 +267,7 @@ verifies("app.run-proposal-trust", () => {
         );
         expect(result).toEqual({
           changedOnDisk: [],
+          decidedAfter: false,
           refused: expect.arrayContaining([
             { path: hook, why: "under-git" },
             { path: otherRecord, why: "under-halonic" },
