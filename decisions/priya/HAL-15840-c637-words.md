@@ -2,6 +2,7 @@
 
 - Approval: Sofia decides the words as the team on HAL-15840 (https://paperclip.halonic.com/HAL/issues/HAL-15840), from words check C637 (rows 17, 33, 34 and 35) on HAL-15824 (HAL-2282 rule: small wording on approved screens, built on microcopy 9.3 and the step names of C595-32 and C618).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JflBq/Uo/XAW+Yef38wtRsIDCT2F2KTCM9LWVKg+Pasm+/KSLM3UsXpX8kTjossrhXalh3QvCF0yf1HVXw6UDg==
 
 ## What changes
 
