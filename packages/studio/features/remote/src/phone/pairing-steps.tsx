@@ -79,21 +79,27 @@ export function ScannerStep({
   readonly notHalonic: boolean;
   readonly onClose: () => void;
 }) {
-  // The camera picture is the same in every theme, so the marks and the hint use the kit's
-  // always-white scanning colour, not a theme colour that turns dark in a light theme.
+  // The camera picture is the same in every theme, so the X, the marks and the hint use the kit's
+  // always-white scanning colour, not a theme colour that turns dark in a light theme. The X
+  // carries it on its icon, since a ghost button sets its own text colour.
   const corner = "absolute size-10 border-qr-light";
   return (
-    <div className="relative min-h-full bg-transparent text-qr-light">
+    <div className="relative grid min-h-full place-items-center bg-transparent text-qr-light">
       <div className="absolute start-3 top-3">
         <Button
           variant="ghost"
           size="touch"
-          icon={<CloseIcon />}
+          icon={
+            <span className="inline-grid place-items-center text-qr-light *:size-full">
+              <CloseIcon />
+            </span>
+          }
           label={pairWords.scanner.close}
           onClick={onClose}
         />
       </div>
-      <div className="flex min-h-full flex-col items-center justify-center gap-8 px-6">
+      {/* 64px at the top keeps the frame clear of the 48px X on a short screen. */}
+      <div className="flex flex-col items-center gap-8 px-6 pt-16 pb-6">
         <div aria-hidden="true" className="relative size-60">
           <span className={`${corner} start-0 top-0 rounded-ss-md border-s-4 border-t-4`} />
           <span className={`${corner} end-0 top-0 rounded-se-md border-e-4 border-t-4`} />
@@ -206,18 +212,24 @@ export function PairedStep({
       }
     >
       <div className="flex flex-col items-center gap-4 pt-8 text-center">
-        <IconTile>
-          <TickIcon />
-        </IconTile>
+        {/* The problem screens' 56px tile, in the halo colours (p-m4). */}
+        <span
+          aria-hidden="true"
+          className="inline-grid size-14 place-items-center rounded-lg bg-halo-tint text-accent-text"
+        >
+          <span className="inline-grid size-icon-md place-items-center *:size-full">
+            <TickIcon />
+          </span>
+        </span>
         <h2 className="text-title text-fg">{pairWords.done.heading(computer.name)}</h2>
       </div>
       <dl className="divide-y divide-border rounded-md border border-border">
         <div className={row}>
-          <dt className="text-label text-fg-muted">{pairWords.done.canLabel}</dt>
+          <dt className="text-label uppercase text-fg-muted">{pairWords.done.canLabel}</dt>
           <dd className="text-body text-fg">{pairWords.done.can}</dd>
         </div>
         <div className={row}>
-          <dt className="text-label text-fg-muted">{pairWords.done.staysLabel}</dt>
+          <dt className="text-label uppercase text-fg-muted">{pairWords.done.staysLabel}</dt>
           <dd className="text-body text-fg">{pairWords.done.stays}</dd>
         </div>
       </dl>
