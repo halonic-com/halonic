@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14808 (Liam's D4 on the plan: the class moves into core, so `halonic serve` can use it)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Lv2kbuIQjmNa7yGcKSD9+RQAW/PG8rhwGW69XRoq2Hn3D4sGpQ2oQxBtWOS6UGzQnTPPO7NlfQWjdlVRLDICCQ==
 
 ## What changes
 
