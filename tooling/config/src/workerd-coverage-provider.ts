@@ -1,9 +1,11 @@
 import { mkdir, readdir, readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import v8CoverageModule from "@vitest/coverage-v8";
 // A private path, like the members used below: check this file on every Vitest upgrade (see README).
 import { V8CoverageProvider } from "@vitest/coverage-v8/dist/provider.js";
-import type { CoverageProviderModule, ReportContext, Vitest } from "vitest/node";
+import type { CoverageProviderModule, ReportContext, TestProject, Vitest } from "vitest/node";
+import { sameOffsetJavaScript } from "./same-offset-jsx.ts";
 
 /**
  * The environment variable that tells a workerd run where to leave its
@@ -11,6 +13,12 @@ import type { CoverageProviderModule, ReportContext, Vitest } from "vitest/node"
  * in `src/node/workerd-coverage.ts` there): a run without it counts nothing.
  */
 export const workerdCoverageDirVariable = "HALONIC_WORKERD_COVERAGE_DIR";
+
+/** The extensions of the sources with JSX, and the language to parse each in. */
+const jsxLanguages = new Map<string, "jsx" | "tsx">([
+  [".jsx", "jsx"],
+  [".tsx", "tsx"],
+]);
 
 /** What the V8 provider's `convertCoverage` takes: V8 script coverage, and where to read the sources. */
 interface V8Converter {
@@ -71,6 +79,27 @@ class WorkerdCoverageProvider extends V8CoverageProvider {
     });
     coverageMap.merge(workerdMap);
     return coverageMap;
+  }
+
+  /**
+   * Vitest reads a source that Vite didn't transform (workerd's coverage is in offsets into the
+   * source) as JavaScript, stripping the types of a `.ts` file but not reading JSX, so a `.tsx` or
+   * `.jsx` file failed to parse and was left out. Such a file is turned into JavaScript of the same
+   * length instead. Vitest calls this through `convertCoverage` for the Node run's files too.
+   */
+  override async transformFile(
+    url: string,
+    project: TestProject,
+    viteEnvironment: string,
+    isTransformedByVite = true,
+  ): ReturnType<V8CoverageProvider["transformFile"]> {
+    const filename = url.split("?")[0] ?? url;
+    const language = jsxLanguages.get(extname(filename));
+    if (isTransformedByVite || language === undefined) {
+      return await super.transformFile(url, project, viteEnvironment, isTransformedByVite);
+    }
+    const path = filename.startsWith("file://") ? fileURLToPath(filename) : filename;
+    return { code: await sameOffsetJavaScript(await readFile(path, "utf8"), language), map: null };
   }
 
   /** Reads what the workerd runs left, one entry per run, and clears the folder for the next run. */
