@@ -2,12 +2,11 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14808 (Liam's D4 on the plan: the class moves into core, so `halonic serve` can use it)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Lv2kbuIQjmNa7yGcKSD9+RQAW/PG8rhwGW69XRoq2Hn3D4sGpQ2oQxBtWOS6UGzQnTPPO7NlfQWjdlVRLDICCQ==
 
 ## What changes
 
 `FirstRunModelChoice`, its trust preview and its test secrets move from `apps/studio/src/models/`
-into `packages/core/app/src/`, with their three test files and their test helper. The tests move
+into `packages/core/app/src/`, with their four test files and their test helper. The tests move
 unchanged apart from their imports: a core `choiceKey` stands in for Studio's `SecretText`, and the
 fake time limit gives an `AbortSignal` in place of a timer callback. Every test still runs, with the
 same `expect` calls, under the same requirement IDs.
@@ -25,3 +24,4 @@ moved to another package. No test was weakened.
 - apps/studio/src/models/first-run-model-choice.test.ts
 - apps/studio/src/models/first-run-choice-trust.test.ts
 - apps/studio/src/models/first-run-saved-key.test.ts
+- apps/studio/src/models/first-run-new-key-origins.test.ts
