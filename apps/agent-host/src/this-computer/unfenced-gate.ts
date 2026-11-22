@@ -18,8 +18,10 @@ import {
   type TrustStore,
 } from "@halonicjs/ports";
 import { canonicalJson } from "@halonicjs/std";
+import { agentsTrustContent } from "@halonicjs/workspace";
 import type { HostRunInstructions } from "../harness/host-instructions.ts";
-import type { BuiltProfile, HostHarnessProfiles } from "../harness/host-profiles.ts";
+import type { BuiltProfile, HostHarnessProfiles, ProfileAgent } from "../harness/host-profiles.ts";
+import type { HostProposalFolders } from "../harness/host-proposals.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
 import { type AgentFile, agentFileOf } from "./agent-file.ts";
 import { isAgentTrusted } from "./agent-trust.ts";
@@ -72,6 +74,14 @@ export interface UnfencedGateOptions {
    * counts for nothing here.
    */
   readonly instructionTrust: InstructionTrustStore | undefined;
+  /**
+   * The proposal folders this host made for the runs still open. A profile
+   * built with any other proposal folder doesn't pass: the builder only
+   * keeps it in Halonic's data folder, where a fenced agent's own temp and
+   * settings folders are too, and the agent's working folder, with the
+   * `CLAUDE.md` or `AGENTS.md` its harness reads at start, lies in it.
+   */
+  readonly proposals: Pick<HostProposalFolders, "folderOf">;
   readonly digest: Digest;
   readonly clock: Clock;
 }
@@ -88,7 +98,9 @@ export interface UnfencedGateOptions {
  * 4. the profile is one this host built for that agent and no session has
  *    opened with yet, field for field; only its environment may differ, by
  *    the variables the harness adds, which the run's start checks. It was
- *    built with no instructions folder, or with one this host made holding
+ *    built with the working folder and sites of the agent's file on disk,
+ *    with no proposal folder or the one this host made for the run, and
+ *    with no instructions folder, or with one this host made holding
  *    exactly the agent's instructions and skills as the workspace's own
  *    files on disk make them (the page sends the texts, so they count only
  *    when they are the workspace's);
@@ -161,6 +173,13 @@ export class UnfencedGate {
         "The agent host didn't build this profile for this agent, or a session already opened with it.",
       );
     }
+    if (!(await this.#isRunsProposalFolder(root, built.agent))) {
+      return refusal(
+        403,
+        "profile_not_built",
+        "The profile's proposal folder isn't the one the agent host made for this run, so the agent doesn't leave the sandbox in it.",
+      );
+    }
     const pin = await this.#workspacePinOf(built, found);
     if (pin === undefined) {
       return refusal(
@@ -177,6 +196,20 @@ export class UnfencedGate {
       );
     }
     return built;
+  }
+
+  /**
+   * Whether `agent` was built with no proposal folder, or with the one this
+   * host made for its run, which is still open. Never rejects: a record it
+   * can't read is a no.
+   */
+  async #isRunsProposalFolder(root: string, agent: ProfileAgent): Promise<boolean> {
+    if (agent.filesFolder === null) return true;
+    try {
+      return (await this.#options.proposals.folderOf(root, agent.runId)) === agent.filesFolder;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -250,7 +283,26 @@ function isBuiltFor(
     built.agent.hubId === request.hubId &&
     built.agent.agentId === request.agentId &&
     built.agent.harness === agent.harness &&
+    hasFoldersAndSitesOf(built.agent, agent) &&
     canonicalJson(withoutEnv(built.profile)) === canonicalJson(withoutEnv(request.profile))
+  );
+}
+
+/**
+ * Whether the page built the profile with the working folder and sites of
+ * the agent's file on disk, normalised as the trust record holds them. The
+ * page names both when it asks for the profile, and without the sandbox the
+ * working folder decides which `CLAUDE.md` or `AGENTS.md` the harness reads.
+ */
+function hasFoldersAndSitesOf(built: ProfileAgent, agent: Agent): boolean {
+  const { workingFolder: _fileFolder, ...rest } = agent;
+  const asBuilt: Agent = {
+    ...rest,
+    ...(built.workingFolder === null ? {} : { workingFolder: built.workingFolder }),
+    allowedSites: [...built.allowedSites],
+  };
+  return (
+    canonicalJson(agentsTrustContent([asBuilt])) === canonicalJson(agentsTrustContent([agent]))
   );
 }
 

@@ -51,6 +51,8 @@ export interface ThisComputerSetup {
   readonly built: BuiltProfile;
   /** The instruction folders the host "made", with their pins; the built profile's holds the coder's instructions. */
   readonly madeInstructions: Map<string, InstructionPin>;
+  /** The proposal folders the host "made" for open runs, by run id. */
+  readonly proposalFolders: Map<string, string>;
   readonly gate: UnfencedGate;
   /** A gate over the same workspace and profiles, but with another trust store. */
   gateWith(trustStore: TrustStore | undefined): UnfencedGate;
@@ -89,6 +91,7 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
   const madeInstructions = new Map([
     [built.instructionsFolder ?? "", await pinInstructions(coderInstructions)],
   ]);
+  const proposalFolders = new Map<string, string>();
   const options: UnfencedGateOptions = {
     workspaceRoots: [root],
     trustStore: trust,
@@ -96,6 +99,10 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
     profiles: { unopened: (tempFolder) => unopened.get(tempFolder) },
     instructions: { pinOf: (folder) => madeInstructions.get(folder) },
     instructionTrust,
+    proposals: {
+      folderOf: async (workspace, runId) =>
+        workspace === root ? (proposalFolders.get(runId) ?? null) : undefined,
+    },
     digest: webCryptoDigest,
     clock,
   };
@@ -109,6 +116,7 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
     unopened,
     built,
     madeInstructions,
+    proposalFolders,
     gate,
     gateWith: (trustStore) => new UnfencedGate({ ...options, trustStore }),
     gateWithInstructionTrust: (store) => new UnfencedGate({ ...options, instructionTrust: store }),

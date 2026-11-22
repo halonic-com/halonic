@@ -160,6 +160,51 @@ verifies("agent-host.unfenced-gate", () => {
       expect(await setup.gate.check(request())).toMatchObject({ kind: "profile_not_built" });
     });
 
+    it("refuses a profile the page built with another working folder than the agent's file names", async () => {
+      await chosen();
+      // A fenced agent may have left a `CLAUDE.md` there, which the harness reads at start.
+      setup.unopened.set(setup.built.profile.tempFolder, {
+        ...setup.built,
+        agent: { ...setup.built.agent, workingFolder: "files/agents/other" },
+      });
+      expect(await setup.gate.check(request())).toMatchObject({
+        status: 403,
+        kind: "profile_not_built",
+      });
+      // The default folder named in full is the same folder.
+      const named = { ...setup.built.agent, workingFolder: "./files/agents/coder/" };
+      setup.unopened.set(setup.built.profile.tempFolder, { ...setup.built, agent: named });
+      expect(await setup.gate.check(request())).toMatchObject({ agent: named });
+    });
+
+    it("refuses a profile the page built with other sites than the agent's file allows", async () => {
+      await chosen();
+      setup.unopened.set(setup.built.profile.tempFolder, {
+        ...setup.built,
+        agent: { ...setup.built.agent, allowedSites: ["api.example.com"] },
+      });
+      expect(await setup.gate.check(request())).toMatchObject({
+        status: 403,
+        kind: "profile_not_built",
+      });
+    });
+
+    it("refuses a proposal folder the host didn't make for the run, such as a fenced agent's settings folder", async () => {
+      await chosen();
+      const folder = join(setup.root, ".halonic-test", "proposals", "run_1");
+      const inFolder = { ...setup.built, agent: { ...setup.built.agent, filesFolder: folder } };
+      setup.unopened.set(setup.built.profile.tempFolder, inFolder);
+      expect(await setup.gate.check(request())).toMatchObject({
+        status: 403,
+        kind: "profile_not_built",
+        message: expect.stringMatching(/proposal folder isn't the one/),
+      });
+      setup.proposalFolders.set("run_1", join(setup.root, ".halonic-test", "settings"));
+      expect(await setup.gate.check(request())).toMatchObject({ kind: "profile_not_built" });
+      setup.proposalFolders.set("run_1", folder);
+      expect(await setup.gate.check(request())).toBe(inFolder);
+    });
+
     it("refuses a profile built with an instructions folder the host didn't make, such as a plugin with hooks", async () => {
       await chosen();
       // A folder holding `hooks/hooks.json` would become Claude Code's `--plugin-dir`.
