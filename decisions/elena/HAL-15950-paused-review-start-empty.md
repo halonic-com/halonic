@@ -3,7 +3,7 @@
 - Task: HAL-15950, from flow check C656 #4 and #5 on HAL-15937
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15950 (a button on an approved empty state that opens the trust check the app already has, and one sentence in place of two for one field, so a team decision under the HAL-2282 rule; Liam's code review signs this note)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5JBk5E+k8tUYoUWp68Xd5Jkkhb6JhANa6QaRD9yH7t+avlVi4n0tdKqfxF6Cc59aBcDn9Lyajcbfcu7mBbonDQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ff8tl/3NZkJw2cUQSWHH3E+ICcpV7JxBviSuKnYztHerNfn6cNvU6yJHLfTTEAr25pXE/x2YbhwgbsjQyflVCg==
 
 ## What changes
 
