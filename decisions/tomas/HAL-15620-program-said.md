@@ -2,6 +2,7 @@
 
 - Approval: Sofia chose the option and the words, and Liam approved the secrets part with one fix, on HAL-15620 (https://paperclip.halonic.com/HAL/issues/HAL-15620), from flow check C600 #1b on HAL-15606. A small wording change on an approved line, so a team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cyyvkm0y1joMr6Rdxe1SqolNZu8H9kck7gh6uEZHPPM8s9vJnMi05ATbLJ/PrVPmBprh5ahS1HEzwkqtiscJDg==
 
 ## What changes
 
