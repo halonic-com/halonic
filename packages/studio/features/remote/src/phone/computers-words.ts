@@ -45,6 +45,14 @@ export const computersWords = {
     name: "A computer this phone can't read",
     body: "Its name and address can't be read. Forget it, then pair that computer again.",
     forgetName: "Forget the computer this phone can't read",
+    /**
+     * Decided by the team on HAL-12248: with several, each Forget is numbered in list order, so
+     * a screen reader tells them apart.
+     */
+    forgetNameOf: (index: number, count: number) =>
+      count > 1
+        ? `Forget the computer this phone can't read, ${index} of ${count}`
+        : "Forget the computer this phone can't read",
     forget: {
       title: "Forget this computer?",
       body: "This phone clears what it saved for it.",

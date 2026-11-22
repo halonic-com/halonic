@@ -1,6 +1,7 @@
-import { Button, Dialog, EmptyState, PlusIcon } from "@halonicjs/studio-kit";
+import { Button, EmptyState, PlusIcon } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import { computerMeta, computersWords } from "./computers-words.ts";
+import { ForgetDialog, forgottenWords, isUnreadable } from "./forget-dialog.tsx";
 import { spoken } from "./phone-forms.ts";
 import type { PhoneState } from "./phone-status.ts";
 import {
@@ -13,25 +14,6 @@ import {
   phoneStatusLabelState,
   type UnreadableComputer,
 } from "./phone-tunnel.ts";
-
-const unreadable = (computer: ListedComputer): computer is UnreadableComputer =>
-  computer.standing === "unreadable";
-
-/** What Forget asks, says when it fails and announces once done, for a row with or without a name. */
-function forgetWords(computer: ListedComputer) {
-  if (unreadable(computer)) return computersWords.unreadable.forget;
-  return {
-    title: computersWords.forget.title(computer.name),
-    body: computersWords.forget.body,
-    stillPaired: computersWords.forget.stillPaired,
-    failed: computersWords.forget.failed(computer.name),
-  };
-}
-
-const forgottenWords = (computer: ListedComputer) =>
-  unreadable(computer)
-    ? computersWords.unreadable.forgotten
-    : computersWords.forgotten(computer.name);
 
 /**
  * A row's state: the computer's standing first, because Removed and Can't confirm hold until the
@@ -87,8 +69,6 @@ export function PairedComputers({
   readonly now?: () => Date;
 }) {
   const [forgetting, setForgetting] = useState<ListedComputer>();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
   const [said, setSaid] = useState("");
   const forgetButtons = useRef(new Map<ComputerId, HTMLButtonElement>());
   const pairButton = useRef<HTMLButtonElement>(null);
@@ -110,37 +90,21 @@ export function PairedComputers({
   }
   // Readable computers first; the ones this phone can't read after them (microcopy 28).
   const listed = [
-    ...computers.filter((each) => !unreadable(each)),
-    ...computers.filter(unreadable),
+    ...computers.filter((each) => !isUnreadable(each)),
+    ...computers.filter(isUnreadable),
   ];
 
-  const confirm = async (computer: ListedComputer) => {
-    setBusy(true);
-    setError(undefined);
-    let outcome: ForgetOutcome | undefined;
-    try {
-      outcome = await onForget(computer);
-    } catch {
-      // The line below says so.
-    }
-    if (outcome?.kind !== "forgotten") {
-      setBusy(false);
-      setError(
-        outcome === undefined
-          ? forgetWords(computer).failed
-          : computersWords.forget.keysUnavailable,
-      );
-      return;
-    }
+  const forgot = (computer: ListedComputer) => {
     const index = listed.findIndex((each) => each.id === computer.id);
     focusAfter.current = (listed[index + 1] ?? listed[index - 1])?.id;
-    setBusy(false);
     setForgetting(undefined);
-    setSaid(forgottenWords(computer));
+    // The same words twice in a row would change nothing, so a screen reader wouldn't say them.
+    const words = forgottenWords(computer);
+    setSaid((before) => (before === words ? `${words}\u00a0` : words));
   };
 
   const today = now();
-  const asking = forgetting === undefined ? undefined : forgetWords(forgetting);
+  const unreadables = listed.filter(isUnreadable);
   return (
     <div className="flex min-h-full flex-col gap-6 px-6 py-6">
       <p className="sr-only" aria-live="polite">
@@ -160,14 +124,15 @@ export function PairedComputers({
           <div className="flex flex-1 flex-col gap-4">
             <ul className="m-0 flex list-none flex-col divide-y divide-border rounded-lg border border-border p-0">
               {listed.map((computer) => {
-                const onRowForget = () => {
-                  setError(undefined);
-                  setForgetting(computer);
-                };
-                return unreadable(computer) ? (
+                const onRowForget = () => setForgetting(computer);
+                return isUnreadable(computer) ? (
                   <UnreadableRow
                     key={computer.id}
                     computer={computer}
+                    name={computersWords.unreadable.forgetNameOf(
+                      unreadables.indexOf(computer) + 1,
+                      unreadables.length,
+                    )}
                     buttons={forgetButtons.current}
                     onForget={onRowForget}
                   />
@@ -197,18 +162,12 @@ export function PairedComputers({
           </Button>
         </>
       )}
-      {forgetting === undefined || asking === undefined ? null : (
-        <Dialog
-          size="sm"
-          title={asking.title}
-          confirm={{
-            label: computersWords.forget.confirm,
-            variant: "danger",
-            busyLabel: computersWords.forget.busy,
-          }}
-          cancelLabel={computersWords.forget.cancel}
-          busy={busy}
-          {...(error === undefined ? {} : { error })}
+      {forgetting === undefined ? null : (
+        <ForgetDialog
+          computer={forgetting}
+          onForget={onForget}
+          onForgotten={() => forgot(forgetting)}
+          onCancel={() => setForgetting(undefined)}
           returnFocus={() => {
             const next = focusAfter.current;
             focusAfter.current = undefined;
@@ -216,12 +175,7 @@ export function PairedComputers({
               (next && forgetButtons.current.get(next)) || pairButton.current || emptyTitle.current
             );
           }}
-          onConfirm={() => void confirm(forgetting)}
-          onCancel={() => setForgetting(undefined)}
-        >
-          <p>{asking.body}</p>
-          <p className="text-fg-muted">{asking.stillPaired}</p>
-        </Dialog>
+        />
       )}
     </div>
   );
@@ -284,14 +238,17 @@ function ComputerRow({
 
 /**
  * A computer this phone can't read (microcopy 28): no name, route, day or dot, because it can't
- * be tried at all, and faded. Its Forget says which row it is.
+ * be tried at all, and faded. Its Forget says which row it is, numbered when there are several.
  */
 function UnreadableRow({
   computer,
+  name,
   buttons,
   onForget,
 }: {
   readonly computer: UnreadableComputer;
+  /** Its Forget's name, which numbers it when there is more than one. */
+  readonly name: string;
   readonly buttons: Map<ComputerId, HTMLButtonElement>;
   readonly onForget: () => void;
 }) {
@@ -304,7 +261,7 @@ function UnreadableRow({
       <Button
         variant="ghost"
         size="touch"
-        name={computersWords.unreadable.forgetName}
+        name={name}
         ref={(node) => {
           if (node) buttons.set(computer.id, node);
           else buttons.delete(computer.id);

@@ -3,6 +3,7 @@
  * the `phone.sheet.*` keys of the strings table on HAL-12233, same names in camelCase, a function
  * where a value goes in. `{asOf}` and `{seconds}` come from `phone-forms.ts`.
  */
+import { pairWords } from "./pair-words.ts";
 
 /** "the phone can't reach it" in each trouble sheet's Your phone card. */
 const cantReach = (computer: string) =>
@@ -60,3 +61,21 @@ export const sheetWords = {
  * route's list label says "This Wi-Fi" (decided by the team).
  */
 export const sheetRouteWords = { tailscale: "Tailscale", wifi: "this Wi-Fi" } as const;
+
+/**
+ * The words of Removed (`s-m7`) and Can't confirm (`s-m9`): the `phone.removed.*`,
+ * `phone.cantConfirm.*`, `phone.pairAgain` and `phone.forgetThisComputer` keys.
+ */
+export const standingWords = {
+  removed: {
+    heading: (computer: string) => `Removed from ${computer}`,
+    body: "This phone can't see agents there any more. What it saved from that computer is cleared. Your agents there are not affected.",
+  },
+  cantConfirm: {
+    heading: pairWords.cantConfirm.title,
+    body: "Its identity changed since you paired, so this phone won't connect. That happens after Halonic is reinstalled or the computer is restored from a backup. If neither happened, check the computer before you pair again.",
+    nothingCleared: "Nothing on this phone was cleared.",
+  },
+  pairAgain: "Pair again",
+  forgetThisComputer: "Forget this computer",
+} as const;

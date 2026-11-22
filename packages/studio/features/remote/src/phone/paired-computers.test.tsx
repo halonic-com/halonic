@@ -241,6 +241,20 @@ verifies("remote.phone-paired-computers", () => {
     expect(named("Forget the computer this phone can't read")).toBeDefined();
   });
 
+  it("numbers several unreadable rows' Forget, and says a second forgotten one again", async () => {
+    show([unreadable("c-8"), unreadable("c-9")]);
+    expect(named("Forget the computer this phone can't read")).toBeUndefined();
+    const live = () => document.querySelector("[aria-live=polite]")?.textContent ?? "";
+    await press("Forget the computer this phone can't read, 1 of 2");
+    await confirmForget();
+    const first = live();
+    await press("Forget the computer this phone can't read, 2 of 2");
+    await confirmForget();
+    // The same words twice would change nothing, so the region's text differs the second time.
+    expect(live()).not.toBe(first);
+    expect([first.trim(), live().trim()]).toEqual(["Computer forgotten.", "Computer forgotten."]);
+  });
+
   it("says Couldn't forget this computer for an unreadable row, and the key storage line", async () => {
     show(
       [unreadable("c-9")],
