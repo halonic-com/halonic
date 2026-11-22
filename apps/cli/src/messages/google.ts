@@ -28,15 +28,15 @@ export const googleMessages = defineMessages("google", {
   secretSummary: () => phrase`Save the client secret of a Google account`,
   /** What `secret` was doing, for "✕ Couldn't save the client secret: …". */
   secretAction: () => phrase`save the client secret`,
-  secretNeedsAccount: () => phrase`halonic google secret needs an account.`,
-  secretUsage: () => phrase`halonic google secret <account>`,
+  secretNeedsAccount: () => phrase`halonic google secret needs the setup's ref, which Studio's sign-in step shows.`,
+  secretUsage: () => phrase`halonic google secret <ref>`,
   /** Someone typed the secret after the account, where the shell would keep it. */
   secretAsArgument: () => phrase`A client secret can't be given as an argument.`,
-  secretAsArgumentFix: () => phrase`Run halonic google secret <account> and type it at the prompt.`,
+  secretAsArgumentFix: () => phrase`Run halonic google secret <ref> and type it at the prompt.`,
   /** The hidden prompt's label, after which ": " is written. */
   secretPrompt: () => phrase`Client secret`,
   secretNoTerminal: () => phrase`There's no terminal to type the client secret in.`,
-  secretNoTerminalFix: () => phrase`Run halonic google secret <account> in a terminal.`,
+  secretNoTerminalFix: () => phrase`Run halonic google secret <ref> in a terminal.`,
   secretNoValue: () => phrase`No client secret was given. Nothing was saved.`,
   secretSaved: () => phrase`${markPart("done")} Saved.`,
   unknownAccount: () => phrase`There's no Google account set up under that name.`,
@@ -68,7 +68,7 @@ export const googleMessages = defineMessages("google", {
   resetNothingThere: () =>
     phrase`Nothing to remove: this computer has no Google accounts or saved sign-ins.`,
   resetDone: () =>
-    phrase`${markPart("done")} Removed. Set up Google again in Studio. You can save the client secret and sign in there, or with halonic google secret <account> and halonic google sign-in <account>.`,
+    phrase`${markPart("done")} Removed. Set up Google again in Studio. You can save the client secret and sign in there, or with halonic google secret <ref> and halonic google sign-in <ref>.`,
   /** The account has signed in, or shares its client: a new secret has to be checked first. */
   secretNeedsStaging: () =>
     phrase`This account has signed in, so its secret can't be replaced here.`,
@@ -77,8 +77,8 @@ export const googleMessages = defineMessages("google", {
   signInSummary: () => phrase`Sign a Google account in, in the browser of this computer`,
   /** What `sign-in` was doing, for "✕ Couldn't sign in: …". */
   signInAction: () => phrase`sign in`,
-  signInNeedsMore: () => phrase`halonic google sign-in needs an account.`,
-  signInUsage: () => phrase`halonic google sign-in <account> [--connection <id>] [--dir <folder>]`,
+  signInNeedsMore: () => phrase`halonic google sign-in needs the setup's ref, which Studio's sign-in step shows.`,
+  signInUsage: () => phrase`halonic google sign-in <ref> [--connection <id>] [--dir <folder>]`,
   signInConnectionOption: () =>
     phrase`Check that the account is set up for this connector; it signs in the address of the account's own connector either way.`,
   signInOtherWorkspace: () => phrase`This account was set up for another workspace.`,
@@ -91,7 +91,7 @@ export const googleMessages = defineMessages("google", {
   signInNoClientId: () => phrase`This account has no client ID yet.`,
   signInNoClientIdFix: () => phrase`Finish the client step of the setup in Studio first.`,
   signInNoSecret: () => phrase`This account has no client secret yet.`,
-  signInNoSecretFix: () => phrase`Run halonic google secret <account> first.`,
+  signInNoSecretFix: () => phrase`Run halonic google secret <ref> first.`,
   signInNoServices: (workspace: string) =>
     phrase`No integration in ${workspace} asks for Google scopes, so there is nothing to sign in for.`,
   signInNoServicesFix: () => phrase`Add an integration with googleScopes to the workspace.`,
@@ -124,7 +124,7 @@ export const googleMessages = defineMessages("google", {
   signInWrongAccount: () => phrase`Another Google account signed in. Nothing was saved.`,
   signInWrongAccountFix: () => phrase`Sign in with the address of the connector.`,
   signInSecretRefused: () => phrase`Google refused the client secret. Nothing was saved.`,
-  signInSecretRefusedFix: () => phrase`Run halonic google secret <account> with the right secret.`,
+  signInSecretRefusedFix: () => phrase`Run halonic google secret <ref> with the right secret.`,
   signInCodeRefused: () => phrase`Google refused the sign-in. Nothing was saved.`,
   signInCodeRefusedFix: () => phrase`Run halonic google sign-in again.`,
   signInNoRefreshToken: () => phrase`Google gave no way to stay signed in. Nothing was saved.`,

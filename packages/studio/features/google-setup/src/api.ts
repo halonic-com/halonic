@@ -48,7 +48,7 @@ export type SecretEntry =
     }
   /**
    * There is no field: the browser demo, or a served Studio without a password. `commandExists`
-   * says whether `halonic google secret <account>` can be shown instead (it is a later feature of
+   * says whether `halonic google secret <ref>` can be shown instead (it is a later feature of
    * the host, so it is false until the host has it).
    */
   | {

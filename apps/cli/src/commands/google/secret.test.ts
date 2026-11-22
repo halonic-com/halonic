@@ -130,11 +130,11 @@ verifies("cli.commands.google.secret", () => {
     expect((await openGoogleHost(setup).setups.read(accountRef))?.clientSecret).toBeNull();
   });
 
-  it("needs an account", async () => {
+  it("needs the setup's ref", async () => {
     const { code, io } = await googleSecret([]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr[0]).toBe("✕ halonic google secret needs an account.");
+    expect(io.stderr[0]).toBe("✕ halonic google secret needs the setup's ref, which Studio's sign-in step shows.");
   });
 
   it("exits 4 for an account that has no setup, without asking", async () => {

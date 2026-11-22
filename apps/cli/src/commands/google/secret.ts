@@ -1,4 +1,4 @@
-// `halonic google secret <account>`: saves the Google client secret of an
+// `halonic google secret <ref>`: saves the Google client secret of an
 // account that was set up in the Studio. The value comes from the hidden
 // prompt only, never from an argument, an environment variable or a pipe, so
 // it isn't in shell history. It is saved by the same rules as the Studio's

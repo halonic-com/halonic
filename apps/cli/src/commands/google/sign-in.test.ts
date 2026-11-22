@@ -289,12 +289,12 @@ verifies("cli.commands.google.sign-in", () => {
     expect((await openGoogleHost(setup).setups.read(accountRef))?.signInStartedAt).toBeNull();
   });
 
-  it("needs an account", async () => {
+  it("needs the setup's ref", async () => {
     for (const args of [[], ["--connection", "mailbox"]]) {
       const { code, io } = await signIn(args, fakeBrowser(goodAnswer).machine);
 
       expect(code).toBe(exitCode.usage);
-      expect(io.stderr[0]).toContain("halonic google sign-in");
+      expect(io.stderr[0]).toBe("✕ halonic google sign-in needs the setup's ref, which Studio's sign-in step shows.");
     }
   });
 

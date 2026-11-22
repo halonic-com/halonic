@@ -42,7 +42,7 @@ export function googleCommandWith(
       },
       {
         name: "secret",
-        usage: "<account>",
+        usage: "<ref>",
         takesArguments: true,
         summary: googleMessages.secretSummary(),
         action: () => googleMessages.secretAction(),
@@ -51,7 +51,7 @@ export function googleCommandWith(
       },
       {
         name: "sign-in",
-        usage: "<account> [--connection <id>] [--dir <folder>]",
+        usage: "<ref> [--connection <id>] [--dir <folder>]",
         takesArguments: true,
         summary: googleMessages.signInSummary(),
         action: () => googleMessages.signInAction(),
