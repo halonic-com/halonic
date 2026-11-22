@@ -21,6 +21,10 @@ export function sandboxCommand(
     return sandbox()
       .remove()
       .then((result) => answer(io, result));
+  if (args.includes("--sandbox-take-back"))
+    return sandbox()
+      .takeBack()
+      .then((result) => answer(io, result));
   const profileCommand = profileCommandOf(args);
   if (profileCommand === undefined) return undefined;
   if (profileFolder === undefined) {

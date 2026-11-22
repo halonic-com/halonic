@@ -38,6 +38,14 @@ export async function removedGrantsKept(
 }
 
 /**
+ * What {@link takeBackOrphaned} did: `taken_back`, `none` when srt keeps
+ * nothing it should take back (or this isn't Windows), `elevated` when it
+ * skipped them for this process's administrator rights, `failed` when srt
+ * couldn't forget them.
+ */
+export type TakeBack = "taken_back" | "none" | "elevated" | "failed";
+
+/**
  * On Windows, takes back every grant srt kept for this user when srt lists
  * kept grants while its sandbox account is gone: what a removal run with
  * administrator rights leaves (HAL-5404 S2). It writes nothing of its own
@@ -47,26 +55,29 @@ export async function removedGrantsKept(
  * rejects.
  *
  * @param machine - its `elevated()` says whether this process runs with administrator rights; a machine without it counts as elevated
+ * @returns what it did, for the installer's `--sandbox-take-back` (HAL-16084)
  */
 export async function takeBackOrphaned(
   machine: Pick<Machine, "platform" | "elevated">,
   grants: Pick<KeptGrants, "orphaned" | "forgetAll">,
   warn: (message: string) => void,
-): Promise<void> {
-  if (machine.platform !== "win32") return;
+): Promise<TakeBack> {
+  if (machine.platform !== "win32") return "none";
   try {
-    if (!(await grants.orphaned())) return;
+    if (!(await grants.orphaned())) return "none";
     if ((await machine.elevated?.()) ?? true) {
       warn(takeBackElevated);
-      return;
+      return "elevated";
     }
     const failed = await grants.forgetAll();
     if (failed.length > 0) {
       warn(`${takeBackFailed} (${failed.join("; ")})`);
-      return;
+      return "failed";
     }
     warn(takenBack);
+    return "taken_back";
   } catch (error) {
     warn(`${takeBackFailed} (${error instanceof Error ? error.message : String(error)})`);
+    return "failed";
   }
 }

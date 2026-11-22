@@ -244,3 +244,49 @@ verifies("sandbox-srt.forget-after-admin-removal", () => {
     });
   });
 });
+
+verifies("sandbox-srt.take-back", () => {
+  describe("taking the grants back on its own, for the installer", () => {
+    /** `takeBack()` on `machine` with srt answering `answer`, and the calls it made. */
+    async function takeBack(machine: Machine, answer: (args: string[]) => Partial<SrtWinResult>) {
+      const { calls, grants } = fakeGrants(answer);
+      const sandbox = new SrtSandbox(machine, undefined, null, { grants, warn: () => {} });
+      return { result: await sandbox.takeBack(), calls };
+    }
+
+    it("takes them back when srt lists kept grants and its account is gone", async () => {
+      const { result, calls } = await takeBack(windows(), orphaned);
+      expect(result).toEqual({ ok: true, outcome: "taken_back" });
+      expect(forgotAll(calls)).toBe(true);
+    });
+
+    it("says none, and forgets nothing, when srt still lists its account or keeps nothing", async () => {
+      for (const status of [userStatus(true, "present"), userStatus(true, "none")]) {
+        const { result, calls } = await takeBack(windows(), (args) =>
+          args[0] === "user" ? { stdout: status } : {},
+        );
+        expect(result).toEqual({ ok: true, outcome: "none" });
+        expect(forgotAll(calls)).toBe(false);
+      }
+    });
+
+    it("takes nothing back with administrator rights, and says elevated", async () => {
+      const { result, calls } = await takeBack(windows(true), orphaned);
+      expect(result).toEqual({ ok: false, outcome: "elevated" });
+      expect(forgotAll(calls)).toBe(false);
+    });
+
+    it("says failed when srt can't forget them", async () => {
+      const { result } = await takeBack(windows(), (args) =>
+        args[0] === "acl" && args[2] === "--all" ? { status: 1, stderr: "denied" } : orphaned(args),
+      );
+      expect(result).toEqual({ ok: false, outcome: "failed" });
+    });
+
+    it("says none on Linux, without asking srt", async () => {
+      const { result, calls } = await takeBack(linux as Machine, orphaned);
+      expect(result).toEqual({ ok: true, outcome: "none" });
+      expect(calls).toEqual([]);
+    });
+  });
+});
