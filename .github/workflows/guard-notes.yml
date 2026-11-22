@@ -9,15 +9,24 @@ name: Guard notes
 # verifies against the base's approvers.json. The test-result comparison
 # stays in ci.yml's guard job.
 #
-# On merge_group, GitHub runs this file from the merge group's commit, which
-# includes the pull request's changes, so a pull request that edits this
-# file runs its own copy in the queue. Only the pull_request_target run is
-# out of the pull request's reach: that is the run to make required, and it
-# fails such an edit because .github/ is a guarded path.
+# The run that blocks a merge is the organisation's required copy of this
+# file, pinned by the ruleset to refs/heads/main, so a pull request can't
+# change it. GitHub runs that copy on its own event types (opened,
+# synchronize, reopened) and in the merge queue, where it compares the
+# queued head with main (mergeBaseOf). This repository's own file also runs
+# on merge_group from the merge group's commit, but that run is not the
+# required one.
+#
+# The check compares the head with the base, so this file also runs on
+# `edited`: after a base change it gives an early red on the pull request.
+# The gate stays the required run against main in the queue. It runs only for
+# pull requests into main or a release branch; the first step fails on any
+# other base. It runs in full on every `edited`, which is one short job.
 on:
   # zizmor: ignore[dangerous-triggers] runs only the base branch's code; the pull request is read as data
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, edited]
+    branches: [main, "release/**"]
   merge_group:
 
 permissions: {}
@@ -38,6 +47,18 @@ jobs:
       # The merge queue looks up the queued pull request's head.
       pull-requests: read
     steps:
+      - name: Base is main or a release branch
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.event.merge_group.base_ref }}
+        run: |
+          base="${BASE_REF#refs/heads/}"
+          case "$base" in
+            main | release/*) echo "Base: $base" ;;
+            *)
+              echo "::error::The note check runs only against main or a release branch, not '$base'. Change the pull request's base."
+              exit 1
+              ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
