@@ -10,7 +10,7 @@ When the person opens the entry of a step that started child runs, the step's si
 
 - Given step Check started a child run of Verify with the id run_a_01jd8q.7,
   when the person opens Check's entry,
-  then the panel reads "Started Verify → Run jd8q.7", and the button opens that run.
+  then the panel reads "Started Verify → Run 01jd8q.7", and the button opens that run.
 - Given a for-each step started a child run of Verify for each of 2 items,
   when the person opens its entry,
   then the panel names both child runs, the first item's first.

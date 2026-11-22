@@ -37,30 +37,54 @@ export interface RunDetail {
   events: RunEvent[];
 }
 
-/** How many characters of a run's id its short id has. */
+/**
+ * How many characters of a run's id its short id has, or, for a child run,
+ * how many of its top-level run's id come before the child's own part.
+ */
 export const shortRunIdLength = 6;
 
 /**
- * The id a person sees and types back: the last 6 characters of the run's id,
- * as stored and never uppercased. The command line and the Studio print the
- * same one (mc W4, cli-output 3.4).
+ * The id a person sees and types back, as stored and never uppercased. The
+ * command line and the Studio print the same one (mc W4, cli-output 3.4).
+ *
+ * A top-level run's is the last 6 characters of its id. A child run's id is
+ * its parent's id with `.<step>` or `.<step>.<item>` added (the engine's
+ * `workflow` and `forEach` steps), so its short id is the short id of the
+ * top-level run followed by everything from the first `.` on: it starts with
+ * the short id of the run that started it, and is never cut (HAL-15744).
  *
  * @example
  * shortRunId("run_mfx3k2a1_a1b2c3d4"); // "b2c3d4"
+ * shortRunId("run_mfx3k2a1_a17k2m9p.3.1"); // "7k2m9p.3.1"
  */
 export function shortRunId(runId: string): string {
-  return runId.slice(-shortRunIdLength);
+  const firstDot = runId.indexOf(".");
+  if (firstDot === -1) return runId.slice(-shortRunIdLength);
+  const topLevelEnd = runId.slice(0, firstDot).slice(-shortRunIdLength);
+  return topLevelEnd + runId.slice(firstDot);
+}
+
+/**
+ * Whether someone typed a short id rather than a whole run id: 6 characters,
+ * as every short id had before child runs got their own part (so an old
+ * `09.2.0` still works), or 6 characters before the first `.` and a child's
+ * part after it.
+ */
+function looksLikeShortRunId(typed: string): boolean {
+  if (typed.length === shortRunIdLength) return true;
+  const firstDot = typed.indexOf(".");
+  return firstDot === shortRunIdLength;
 }
 
 /**
  * What a run id someone typed points to: one run, no run, or several runs
- * whose ids end in the same 6 characters.
+ * whose ids end in the short id typed.
  */
 export type RunLookup<Run> =
   | { found: "one"; run: Run }
   | { found: "none" }
   /**
-   * `shortId` is the 6 characters as stored, as the list prints them, whatever
+   * `shortId` is the short id as stored, as the list prints it, whatever
    * case was typed; the caller asks for the full id instead.
    */
   | { found: "several"; shortId: string };
@@ -140,15 +164,16 @@ export class RunHistory {
     if ((await this.#runs.events(typed)).length > 0) {
       return { found: "one", run: typed };
     }
-    if (typed.length !== shortRunIdLength) {
+    if (!looksLikeShortRunId(typed)) {
       return { found: "none" };
     }
-    const [first, ...others] = ids.filter((id) => shortRunId(id).toLowerCase() === wanted);
+    const [first, ...others] = ids.filter((id) => id.toLowerCase().endsWith(wanted));
     if (first === undefined) {
       return { found: "none" };
     }
+    // The end of the stored id that was typed, so its case is as stored.
     return others.length > 0
-      ? { found: "several", shortId: shortRunId(first) }
+      ? { found: "several", shortId: first.slice(-typed.length) }
       : { found: "one", run: first };
   }
 

@@ -72,7 +72,11 @@ verifies("runs.run-view.failed-child-run", () => {
 
   it("opens the child run, and leaves out See the step, which would open the parent's step", () => {
     const banner = callout(childFailureBanner(parent, topics, itemsNotAList, false));
-    expect(banner?.action).toEqual({ kind: "open-run", runId: childId, label: "Open run c3.4.1" });
+    expect(banner?.action).toEqual({
+      kind: "open-run",
+      runId: childId,
+      label: "Open run a1b2c3.4.1",
+    });
     expect(banner?.fixes).toEqual([]);
     expect(banner?.links).toEqual([]);
   });
@@ -128,7 +132,11 @@ verifies("runs.run-view.failed-child-run", () => {
     expect(banner?.lines).toEqual([
       "Topics failed in the step Each: the run it started for item 1 failed in the step Each. Halonic can't tell the cause yet.",
     ]);
-    expect(banner?.action).toEqual({ kind: "open-run", runId: childId, label: "Open run c3.4.1" });
+    expect(banner?.action).toEqual({
+      kind: "open-run",
+      runId: childId,
+      label: "Open run a1b2c3.4.1",
+    });
   });
 
   it("leaves the parent's own banner for a child that was cancelled", () => {

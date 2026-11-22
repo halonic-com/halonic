@@ -95,7 +95,7 @@ verifies("runs.run-view.failed-child-run", () => {
     const opened: string[] = [];
     const root = await openParent("logged", opened);
     const open = [...root.querySelectorAll("button")].find(
-      (button) => button.textContent === "Open run 9p.3.1",
+      (button) => button.textContent === "Open run 7k2m9p.3.1",
     );
     await act(async () => {
       open?.click();
