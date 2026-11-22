@@ -1,6 +1,7 @@
 import type { Deployment } from "@halonicjs/format";
 import type {
   DefinitionSource,
+  DeployEvent,
   DeployedVersion,
   DeployPlan,
   DeployRequest,
@@ -160,6 +161,58 @@ verifies("app.deploy-service", () => {
     });
     expect(asked).toEqual([]);
     expect(deployed).toEqual([]);
+  });
+
+  describe("a lock taken after the plan (3.7)", () => {
+    const holder = {
+      who: "kim@example.com",
+      startedAt: "2026-11-19T14:33:00.000Z",
+      expiresAt: "2026-11-19T14:43:00.000Z",
+    };
+    const race = (lockedBy: typeof holder | undefined, before: readonly DeployEvent[] = []) => {
+      const taken = Object.assign(new Error("taken"), { code: "deploy-locked" });
+      const seen: DeployEvent[] = [];
+      const target = {
+        plan: async () => livePlan,
+        deploy: async (_request: DeployRequest, onEvent: (event: DeployEvent) => void) => {
+          for (const event of before) onEvent(event);
+          throw taken;
+        },
+        // The service reads only `lockedBy` from the status.
+        status: async () => ({ lockedBy }) as Awaited<ReturnType<DeployTarget["status"]>>,
+      } as Partial<DeployTarget> as DeployTarget;
+      const deploys = createDeployService({
+        loadTarget: async () => target,
+        clock: { now: () => new Date("2026-11-19T14:34:00.000Z") },
+        timeZone: "UTC",
+      });
+      const failure = deploys.deploy({ ...input, yes: true }, (event) => seen.push(event));
+      return { failure, seen };
+    };
+
+    it("names the holder while nothing has changed", async () => {
+      await expect(race(holder).failure).rejects.toMatchObject({
+        kind: "conflict",
+        message:
+          "Couldn't deploy web: a deploy of web by kim@example.com is still running, started 1 min ago. Nothing changed on Cloudflare.",
+      });
+      const started: DeployEvent = {
+        step: "upload",
+        version: 2,
+        files: 3,
+        secrets: 1,
+        phase: "started",
+      };
+      await expect(race(holder, [started]).failure).rejects.toMatchObject({ kind: "conflict" });
+      await expect(race(undefined).failure).rejects.toThrow("taken");
+    });
+
+    it("keeps the target's failure once a step has finished, since something changed", async () => {
+      const done: DeployEvent = { step: "database", changes: 2, first: false, phase: "done" };
+      const { failure, seen } = race(holder, [done]);
+      await expect(failure).rejects.toThrow("taken");
+      expect(seen).toEqual([done]);
+    });
   });
 
   it("lists every missing answer in one error without a terminal (4)", async () => {

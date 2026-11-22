@@ -57,6 +57,8 @@ export interface DeployOptions {
   readonly test: () => Promise<void>;
   /** Asks for missing secrets and builds the bundle and the upload from the snapshot at `commit` (steps 3–4). Not called by `plan`. */
   readonly prepare: (commit: string) => Promise<DeployPayload>;
+  /** Bindings that name what provisioning made, such as the database's id. Asked for after provisioning. */
+  readonly resourceBindings?: () => Promise<readonly WorkerBinding[]>;
   readonly migrations: readonly Migration[];
   readonly durableObjectMigrations?: readonly DurableObjectMigration[];
   readonly compatibilityDate: string;
@@ -173,6 +175,7 @@ export async function deploy(
   // before the lock because the lock lives in the database; migrate, upload and switch run inside it.
   const resources = await provision(api, { accountId, worker, ...adopt });
   report({ step: "provisioned", resources });
+  const bindings = [...payload.bindings, ...((await options.resourceBindings?.()) ?? [])];
 
   return withDeployLock(
     api,
@@ -210,7 +213,7 @@ export async function deploy(
         worker,
         bundle: payload.bundle,
         compatibilityDate: options.compatibilityDate,
-        bindings: withDefinitions(payload.bindings, definitions, version),
+        bindings: withDefinitions(bindings, definitions, version),
         secrets: payload.secrets,
         durableObjectMigrations: doMigrations,
         message: versionNote({

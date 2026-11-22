@@ -37,10 +37,11 @@ export function manageCalls(
   | "deploymentHistory"
   | "versionInfo"
   | "workersDevUrl"
+  | "workersDevAddress"
   | "listResources"
   | "deleteResource"
   | "emptyBucket"
-> & { workersDevAddress(accountId: string, worker: string): Promise<string> } {
+> {
   const { get, request, failed, workerPath, databaseId } = plumbing;
 
   /** The Worker's deployments, newest first, each as its versions. */

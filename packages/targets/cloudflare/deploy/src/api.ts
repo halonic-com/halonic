@@ -126,6 +126,8 @@ export interface CloudflareApi {
     accountId: string,
     databaseName: string,
   ): Promise<readonly string[] | undefined>;
+  /** The database's id, which the Worker's `DB` binding names; `undefined` when it doesn't exist. Reads only. */
+  databaseId(accountId: string, databaseName: string): Promise<string | undefined>;
   /** Runs the migration's statements and records its id in one D1 batch, so both happen or neither. */
   applyMigration(accountId: string, databaseName: string, migration: Migration): Promise<void>;
   /**
@@ -206,6 +208,11 @@ export interface CloudflareApi {
   ): Promise<VersionInfo | undefined>;
   /** The Worker's workers.dev URL, or `undefined` when that address is off. Unlike `openWorkersDev`, changes nothing. */
   workersDevUrl(accountId: string, worker: string): Promise<string | undefined>;
+  /**
+   * The Worker's workers.dev URL from the account's subdomain, whether that address is on or the
+   * Worker exists yet. Reads only.
+   */
+  workersDevAddress(accountId: string, worker: string): Promise<string>;
   /** Every Worker, database or bucket in the account whose name starts with `prefix`. Reads only. */
   listResources(
     accountId: string,
