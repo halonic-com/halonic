@@ -3,6 +3,7 @@
 - Task: HAL-16096
 - Approval: HAL-16096; team wording on approved command output (HAL-2282), from the flow check C672 #1 (HAL-16091); the reviewer signs this note as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:afXlCA8T/94rGZ862rUzR/WZ0lycMS3dyqjtDGZEPucAXx53DoGE+4BtN5ThtPfvJP8fJR5YmmyAP0G/S/GHAQ==
 
 ## What changes
 
