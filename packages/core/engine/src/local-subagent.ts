@@ -10,6 +10,7 @@ import { runAgentTurn } from "./agent/run-model-turn.ts";
 import type { EffectBoundary } from "./agent/run-tool-call.ts";
 import type { TurnLog } from "./agent/turn-log.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
+import type { CallBudget } from "./budget/call-budget.ts";
 import type { RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn } from "./kernel/kept-definitions.ts";
 import type { RunState } from "./kernel/run-state.ts";
@@ -41,6 +42,12 @@ export interface RunTurn {
    * subagent turn under it write to (requirement `engine.run-turn-log`).
    */
   readonly log: TurnLog;
+  /**
+   * The run's budget, kept to before each model call of the call's turn and
+   * of every subagent turn under it (requirement `engine.turn-budget`);
+   * absent when the runs keep no budget.
+   */
+  readonly budget?: CallBudget;
 }
 
 /** What a subagent's turn takes from the `LocalExecutor` that runs it. */
@@ -106,6 +113,8 @@ export async function runLocalSubagent(
     messages,
     tools: [],
   });
+  // No step of the run checked the budget before the subagent's first call.
+  await turn.budget?.keep();
   const knowledge = context.knowledgeOf(task.agent);
   const lists = turn.definitions.connectorTools ?? {};
   const connectors =
@@ -131,6 +140,7 @@ export async function runLocalSubagent(
     checkCall: runToolCheckOf(lists),
     autoKnowledge: knowledge.auto,
     log: turn.log,
+    ...(turn.budget === undefined ? {} : { budget: turn.budget }),
     ...(task.resumeFrom === undefined ? {} : { resumeFrom: task.resumeFrom }),
     localOnly: context.localOnly,
     ...(context.signal === undefined ? {} : { signal: context.signal }),
