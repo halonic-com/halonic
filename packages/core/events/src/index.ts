@@ -13,6 +13,7 @@ export {
   type StepBlockedSites,
 } from "./blocked-sites.ts";
 export type { ConnectorPartOffReason } from "./connector-part-off.ts";
+export { type ChargedCall, type ModelCallCharge, modelCallCharge } from "./model-call-charge.ts";
 export { endedWithParent, parentEndedCause, parentEndedCode } from "./parent-ended.ts";
 export { providerNotes } from "./provider-notes.ts";
 export type {

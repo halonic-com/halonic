@@ -82,6 +82,7 @@ loop of one model turn, which the local chat turn runs.
 | `run.cant-try` | a Try it or Test run ends with `run.cant-try`, never `run.failed`, at a step it can't try because it needs a change left out of the run: those the caller found at load (`cantTry` on the start) and those a call's `CantTryError` adds | `engine.run-cant-try` |
 | child runs at end | when a run ends, every child run it started and hasn't heard end is ended with `run.failed` and reason `cancelled`; at start, a waiting child whose parent has ended is ended the same way | `engine.child-runs-end-with-run`, `engine.end-orphaned-child-runs` |
 | budget stops | a model call or harness run is refused at or over the run or month budget, and a `parallel` or `foreach` state checks before it starts its branches or items (see Budgets) | `engine.budget-stops`, `engine.budget-composite-stops`, `engine.budget-stop-message` |
+| meter | the `Meter` port a deployment that sells runs counts usage through, and `NoMeter` as the default (see Meter) | `engine.meter-port` |
 
 A run's turn writes through a `LargeResultsTurnLog` wrapped round its `RunStoreTurnLog`. A tool
 result over 256 KB of UTF-8 goes to the blob store as `text/plain`, and its `tool.result` keeps the
@@ -396,6 +397,18 @@ spend the same way, with every earlier call's `llm.response` already in the log.
 the bridge refuses that call with 429 `limit_reached` and the budget's error, nothing goes to the
 provider, and the harness call stops its harness run, sandbox and bridge. The run then fails in that
 state with reason `budget` and the same error. As in `step`, the engine sets that reason itself.
+
+## Meter
+
+A deployment that sells runs counts each customer's usage through a `Meter`. `check(principal, { kind })`
+answers whether a run may start, or a model call or a harness run go ahead; `reserve(principal, maximum)`
+holds back the most a harness step may use; `settle(reservation, times)` records the finished step and
+lets go of the rest; `record(principal, usage)` counts a model call or a run's end. The principal is `{ actor, scope, role }`, and only the host that verified it gives it;
+an organisation's scope (`o/…`) shares one pool. The meter only takes what the engine makes:
+`modelCallUsageOf` counts a logged `llm.response` with `modelCallCharge`, the rule a run's summary
+adds calls up with, `stepTimesOf` times a step by the engine's `Clock`, and `runEndUsageOf` takes an
+ended run's state. Their types carry a mark no other package can write, so a step can't report its
+own use (requirement `engine.meter-port`). `NoMeter` allows everything and records nothing.
 
 ## Example
 
