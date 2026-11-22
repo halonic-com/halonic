@@ -24,8 +24,8 @@ export function sandboxNotReadyReason(
 /**
  * The reasons a check on this computer can't clear. `not-offered` is about where the agent is set
  * to run, not about the computer: the check could pass while the run would be refused again
- * (HAL-12804). The fix is a file save, and Run again is the honest test of it, so the banner says
- * to press it after the save.
+ * (HAL-12804). The fix is to set the agent back to the sandbox on its Harness page, and Run again
+ * is the honest test of it, so the banner says to press it after that.
  */
 const notCheckableReasons: ReadonlySet<string> = new Set(["not-offered"]);
 

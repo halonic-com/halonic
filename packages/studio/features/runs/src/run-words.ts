@@ -274,9 +274,9 @@ export const runPageWords = {
   sandboxCheckFailed: "Halonic couldn't check the sandbox. Try again.",
   /**
    * After the fix of a reason a check can't clear, where **Run again** shows at once: pressing it
-   * before the fix is saved fails the same way (C544-7).
+   * before the agent is set back to the sandbox fails the same way (C544-7, C596).
    */
-  sandboxRunAgainAfterFix: "Run again after you save the file.",
+  sandboxRunAgainAfterFix: "Run again after you set it back to In a sandbox.",
   budgetName: "Stopped at its budget",
   /** One tool approval (mc 15.2): who asks and what for, in the words of the Inbox card's title. */
   approval: (what: string, sends: boolean) =>

@@ -46,7 +46,7 @@ describe("the sandbox sentences", () => {
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
       "ripgrep isn't installed. Install it, for example on macOS with brew install ripgrep, then run it again.",
       "The sandbox needs you to sign in to its service first. Sign in, then run it again.",
-      "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Save any change to this agent's file, even one added space. A changed file undoes the choice to run the agent outside the sandbox. Then run it again.",
+      "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can. Set this agent back to In a sandbox on its Harness page, then run it again.",
       "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
     ]);
   });
@@ -128,8 +128,8 @@ describe("the sandbox sentences", () => {
         "Fix: sign in to the sandbox's service. Then run halonic doctor again.",
       ],
       [
-        "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
-        "Fix: save any change to this agent's file, even one added space. A changed file undoes the choice to run the agent outside the sandbox. Then run halonic doctor again.",
+        "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can.",
+        "Fix: set this agent back to In a sandbox on its Harness page. Then run halonic doctor again.",
       ],
       [
         "Halonic can't tell what the sandbox is missing.",

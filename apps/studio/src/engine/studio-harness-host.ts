@@ -233,7 +233,7 @@ export const studioStartsUnfenced = false;
 
 /** Why an agent set to "On this computer" doesn't start from the Studio. */
 const noUnfencedReason =
-  "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Set this agent back to the sandbox.";
+  "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can. Set this agent back to In a sandbox on its Harness page.";
 
 /**
  * The `this-computer` sandbox of the Studio: none. Its check says why, and
