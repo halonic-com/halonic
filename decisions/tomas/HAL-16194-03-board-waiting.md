@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews the board check's waiting-on-the-board part and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EdOlKSfQyi9WTD4KHuYhDBiS3NSwKVQwwVB3GdGe7UK45m/le6RL1+9lzqQV3/9s1UrrYsRqSdY/qOmWhQT7AQ==
 
 Part (b) of the board check (phase 1b, HAL-16194) ranks the tasks waiting
 on the board by what they hold up, so it reads Paperclip's blocker links
