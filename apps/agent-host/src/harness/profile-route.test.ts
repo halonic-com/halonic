@@ -65,6 +65,7 @@ beforeEach(async () => {
   const stream: NdjsonStream = { send: () => {}, end: () => {}, ended: new Promise(() => {}) };
   bridgeId = bridges.add({
     bridge: { url: "http://127.0.0.1:4100", token: bridgeToken, close: async () => {} },
+    keyProviders: [],
     channel: new CallChannel(stream),
     stream,
     bindSession: () => true,
@@ -199,6 +200,7 @@ verifies("agent-host.profile-route", () => {
     const stream: NdjsonStream = { send: () => {}, end: () => {}, ended: new Promise(() => {}) };
     const bridge = bridges.add({
       bridge: { url: "http://127.0.0.1:4100", token: bridgeToken, close: async () => {} },
+      keyProviders: [],
       channel: new CallChannel(stream),
       stream,
       bindSession: () => true,

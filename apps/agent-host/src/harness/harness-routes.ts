@@ -1,9 +1,18 @@
-import type { Harness, HarnessDetectOptions, HarnessEvent, HarnessRun } from "@halonicjs/ports";
+import type {
+  Harness,
+  HarnessBridge,
+  HarnessDetectOptions,
+  HarnessEvent,
+  HarnessRun,
+  HarnessTask,
+  SandboxSession,
+} from "@halonicjs/ports";
 import type { BridgeTable } from "../bridge/bridge-routes.ts";
 import type { SessionTable } from "../sandbox/session-table.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { type NdjsonStream, startNdjsonStream } from "../server/ndjson-stream.ts";
+import type { UnfencedSessions } from "../this-computer/unfenced-sessions.ts";
 import { detectBody, runBody, sendRunBody, startRunBody } from "./harness-schemas.ts";
 import type { RunTable } from "./run-table.ts";
 
@@ -13,6 +22,8 @@ export interface HarnessRouteDeps {
   sessions: SessionTable;
   bridges: BridgeTable;
   runs: RunTable;
+  /** The sessions opened without the sandbox, whose runs start only with the host's environment. */
+  unfenced: Pick<UnfencedSessions, "startRefusal">;
 }
 
 /**
@@ -28,6 +39,11 @@ export interface HarnessRouteDeps {
  *   `{ type: "finished" }` or `{ type: "failed", message }`. When Studio goes
  *   away, the run is cancelled. A bridge serves runs in one session only: it
  *   answers 409 `bridge_in_use` for a bridge a run started in another session.
+ *   In a session without the sandbox, it answers 403 `task_not_host` for a
+ *   task naming another agent or instructions folder than the host opened the
+ *   session with, and 403 `environment_not_host` unless the host opened the
+ *   session for an agent on this computer and its environment is exactly the
+ *   host's (`agent-host.unfenced-start`).
  * - `POST /v1/harnesses/runs/send` with `{ run, input }` passes a person's answer;
  * - `POST /v1/harnesses/runs/cancel` with `{ run }` stops the run.
  *
@@ -107,7 +123,7 @@ const bridgeInUseMessage =
 
 /** Starts a run and keeps its stream open, carrying the run's events, until the run ends. */
 function startRunHandler(
-  { sessions, bridges, runs }: HarnessRouteDeps,
+  { sessions, bridges, runs, unfenced }: HarnessRouteDeps,
   harnessById: (id: string) => Harness | undefined,
 ): HostRoute["handle"] {
   return async (request, response) => {
@@ -117,20 +133,9 @@ function startRunHandler(
       sendError(response, 503, "host_stopping", "The agent host is stopping and starts no runs.");
       return;
     }
-    const harness = harnessById(body.harness);
-    const session = sessions.get(body.session);
-    const open = bridges.get(body.bridge);
-    if (harness === undefined) return sendUnknown(response, "harness");
-    if (session === undefined) return sendUnknown(response, "session");
-    if (open === undefined) return sendUnknown(response, "bridge");
-    const { bridge } = open;
-    // The host's own session, so the bridge's approvals read the fence it really has.
-    // It binds before the harness starts, so a start that throws still uses the bridge
-    // up: binding after the start would let the program call the bridge unbound.
-    if (!open.bindSession(body.session, session)) {
-      sendError(response, 409, "bridge_in_use", bridgeInUseMessage);
-      return;
-    }
+    const ready = readyToStart({ sessions, bridges, unfenced }, harnessById, body, response);
+    if (ready === undefined) return;
+    const { harness, session, bridge } = ready;
 
     const stream = startNdjsonStream(response);
     let run: HarnessRun;
@@ -159,6 +164,51 @@ function startRunHandler(
   };
 }
 
+/** What a run starts with once {@link readyToStart} let it. */
+interface ReadyStart {
+  harness: Harness;
+  session: SandboxSession;
+  bridge: OpenBridgeEntry["bridge"];
+}
+
+/**
+ * Finds the run's harness, session and bridge, checks a run in a session
+ * without the sandbox against what the host opened it with, and binds the bridge to the session; or answers why
+ * the run can't start and gives `undefined`.
+ */
+function readyToStart(
+  { sessions, bridges, unfenced }: Pick<HarnessRouteDeps, "sessions" | "bridges" | "unfenced">,
+  harnessById: (id: string) => Harness | undefined,
+  body: { harness: string; session: string; bridge: string; task: HarnessTask },
+  response: Parameters<HostRoute["handle"]>[1],
+): ReadyStart | undefined {
+  const harness = harnessById(body.harness);
+  const session = sessions.get(body.session);
+  const open = bridges.get(body.bridge);
+  if (harness === undefined) return unknown(response, "harness");
+  if (session === undefined) return unknown(response, "session");
+  if (open === undefined) return unknown(response, "bridge");
+  const refusal = unfenced.startRefusal({
+    sessionId: body.session,
+    session,
+    harness,
+    task: body.task,
+    bridge: hostedBridgeOf(open),
+  });
+  if (refusal !== undefined) {
+    sendError(response, 403, refusal.code, refusal.message);
+    return undefined;
+  }
+  // The host's own session, so the bridge's approvals read the fence it really has.
+  // It binds before the harness starts, so a start that throws still uses the bridge
+  // up: binding after the start would let the program call the bridge unbound.
+  if (!open.bindSession(body.session, session)) {
+    sendError(response, 409, "bridge_in_use", bridgeInUseMessage);
+    return undefined;
+  }
+  return { harness, session, bridge: open.bridge };
+}
+
 /** Sends each event of the run, then how it ended, and tells `record` of each event. */
 async function sendEvents(
   run: HarnessRun,
@@ -177,6 +227,28 @@ async function sendEvents(
     stream.send({ type: "failed", message: messageOf(error) });
     return "failed";
   }
+}
+
+/** One bridge the host has open, as the table keeps it. */
+type OpenBridgeEntry = NonNullable<ReturnType<BridgeTable["get"]>>;
+
+/** The bridge as the harness's environment reads it, the way Studio's client gave it to the engine. */
+function hostedBridgeOf({ bridge, keyProviders }: OpenBridgeEntry): HarnessBridge {
+  return {
+    url: bridge.url,
+    token: bridge.token,
+    ...(bridge.socketPath === undefined ? {} : { socketPath: bridge.socketPath }),
+    ...(keyProviders.length === 0 ? {} : { keyProviders: [...keyProviders] }),
+  };
+}
+
+/** Answers that the host has no such thing, for a caller that then gives `undefined`. */
+function unknown(
+  response: Parameters<HostRoute["handle"]>[1],
+  what: "harness" | "session" | "bridge",
+): undefined {
+  sendUnknown(response, what);
+  return undefined;
 }
 
 function sendUnknown(

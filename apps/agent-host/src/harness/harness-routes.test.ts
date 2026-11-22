@@ -18,6 +18,7 @@ import { CallChannel } from "../server/call-channel.ts";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import type { NdjsonStream } from "../server/ndjson-stream.ts";
+import { UnfencedSessions } from "../this-computer/unfenced-sessions.ts";
 import { harnessRoutes } from "./harness-routes.ts";
 import { RunTable } from "./run-table.ts";
 
@@ -128,19 +129,27 @@ async function started(): Promise<{ url: string; session: string; bridge: string
   runTable = new RunTable();
   const openSession = {
     profile: { timeLimitMs: 60_000 },
+    fence: { state: "fenced" },
     close: async () => {},
   } as SandboxSession;
   const session = (await sessions.add(openSession)) ?? "";
   const stream: NdjsonStream = { send: () => {}, end: () => {}, ended: new Promise(() => {}) };
   const bridge = bridges.add({
     bridge: { url: "http://127.0.0.1:4100", token: bridgeToken, close: async () => {} },
+    keyProviders: [],
     channel: new CallChannel(stream),
     stream,
     bindSession: () => true,
   });
   server = await startHostServer(
     token,
-    harnessRoutes({ harnesses: [harness], sessions, bridges, runs: runTable }),
+    harnessRoutes({
+      harnesses: [harness],
+      sessions,
+      bridges,
+      runs: runTable,
+      unfenced: new UnfencedSessions(sessions),
+    }),
   );
   return { url: server.url, session, bridge };
 }
