@@ -97,5 +97,26 @@ export interface PluginRemoveRefusal {
  * also when the revoke fails. The grants live with the host, so the host
  * passes it. A plugin with no grant must succeed, so a remove that stopped
  * part way can run again.
+ *
+ * @returns each sign-in it signed out, and how, so the host can tell the
+ *   person; none for a plugin with no grant
  */
-export type SignOutPlugin = (id: string) => Promise<void>;
+export type SignOutPlugin = (id: string) => Promise<readonly PluginSignedOut[]>;
+
+/**
+ * One of a plugin's sign-ins that {@link SignOutPlugin} signed out, and how,
+ * in the shape the sign-in hosts give it. The grant is gone in every
+ * `signedOut` case; `revoke` says what the provider did about its copy:
+ * `revoked` when it confirmed, `notConfirmed` when it didn't or couldn't be
+ * reached, `noRevokeUrl` when the approved sign-in has no revoke address,
+ * and `skipped` when a revoke would have ended a newer grant.
+ */
+export interface PluginSignedOut {
+  readonly signIn: string;
+  readonly result:
+    | { readonly kind: "notSignedIn" }
+    | {
+        readonly kind: "signedOut";
+        readonly revoke: "revoked" | "notConfirmed" | "noRevokeUrl" | "skipped";
+      };
+}

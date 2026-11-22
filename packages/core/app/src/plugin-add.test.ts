@@ -59,7 +59,7 @@ function setup(halonicData?: readonly string[]) {
     trust,
     records: new TestRecordStore(),
     clock,
-    signOut: async () => undefined,
+    signOut: async () => [],
     ...(halonicData === undefined ? {} : { halonicData }),
   });
   return { folder, service };

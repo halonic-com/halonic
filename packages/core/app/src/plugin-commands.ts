@@ -14,6 +14,7 @@ import type {
   PluginAddRefusal,
   PluginEntry,
   PluginRemoveRefusal,
+  PluginSignedOut,
   PluginTrustRefusal,
 } from "./plugin-service-types.ts";
 
@@ -40,10 +41,13 @@ export interface PluginCommands {
   "plugins.add": CommandSpec<AddPluginCommand, Result<PluginEntry, PluginAddRefusal>>;
   /** Trusts the plugin only when the fingerprint is still exactly its own. */
   "plugins.trust": CommandSpec<TrustPluginCommand, Result<TrustGrant, PluginTrustRefusal>>;
-  /** Turns the plugin off by forgetting its trust; its settings and secrets stay. */
-  "plugins.revoke": CommandSpec<{ readonly id: string }, void>;
-  /** Removes the plugin with its trust, secrets and settings. */
-  "plugins.remove": CommandSpec<{ readonly id: string }, Result<void, PluginRemoveRefusal>>;
+  /** Turns the plugin off by signing out its sign-ins and forgetting its trust; its settings and secrets stay. */
+  "plugins.revoke": CommandSpec<{ readonly id: string }, readonly PluginSignedOut[]>;
+  /** Removes the plugin with its sign-ins, trust, secrets and settings. */
+  "plugins.remove": CommandSpec<
+    { readonly id: string },
+    Result<readonly PluginSignedOut[], PluginRemoveRefusal>
+  >;
 }
 
 declare module "./workspace-scope.ts" {

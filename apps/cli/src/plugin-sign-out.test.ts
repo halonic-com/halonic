@@ -7,6 +7,7 @@ import { type ApprovedSignIn, createSignInGrants } from "@halonicjs/oauth-sign-i
 import type { HttpClient } from "@halonicjs/ports";
 import { profileFolder, tokenFolders } from "@halonicjs/profile";
 import { encodeBase64url } from "@halonicjs/std";
+import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pluginCommandWith } from "./commands/plugin/command.ts";
 import { createTrustCommand, type TrustMachine } from "./commands/trust/command.ts";
@@ -104,11 +105,16 @@ async function addWeather() {
   return { code, io };
 }
 
-/** Adds Weather, trusts it and saves a grant for its sign-in and one for another plugin's. */
-async function addSignedInWeather(): Promise<void> {
+/** Adds Weather and trusts it. */
+async function addTrustedWeather(): Promise<void> {
   const { io } = await addWeather();
   const fingerprint = io.stdout.at(-1) ?? "";
   await trust(["--plugin", "weather", "--yes", "--fingerprint", fingerprint]);
+}
+
+/** Adds Weather, trusts it and saves a grant for its sign-in and one for another plugin's. */
+async function addSignedInWeather(): Promise<void> {
+  await addTrustedWeather();
   const { grants } = grantRecords();
   await grants.save("weather", "weather-account", { refreshToken, approved });
   await grants.save("rain", "rain-account", { refreshToken, approved });
@@ -123,8 +129,7 @@ function machine(): TrustMachine {
   };
 }
 
-async function trust(args: readonly string[]) {
-  const io = captureIo(folder);
+async function trust(args: readonly string[], io = captureIo(folder)) {
   return await runCli(["trust", ...args], io, [createTrustCommand(machine, setup)]);
 }
 
@@ -151,6 +156,7 @@ describe("app.plugin-sign-out in the CLI", () => {
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
       "✓ Removed trust for Weather. Nothing from this plugin runs until you trust it.",
+      "✓ Signed you out of weather-account.",
     ]);
     expect(revoked).toHaveLength(1);
     expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
@@ -214,5 +220,77 @@ describe("app.plugin-sign-out in the CLI", () => {
 
     expect(revoked).toHaveLength(1);
     expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
+  });
+});
+
+/** An `HttpClient` whose provider answers every revoke with a 503. */
+const unansweredRevoke: HttpClient = {
+  fetch: async () => new Response(null, { status: 503 }),
+};
+
+verifies("cli.commands.trust.plugin", () => {
+  it("says it signed you out when it removes the trust", async () => {
+    await addSignedInWeather();
+    const io = captureIo(folder);
+
+    expect(await trust(["--plugin", "weather", "--remove"], io)).toBe(exitCode.ok);
+
+    expect(io.stdout).toEqual([
+      "✓ Removed trust for Weather. Nothing from this plugin runs until you trust it.",
+      "✓ Signed you out of weather-account.",
+    ]);
+  });
+
+  it("says the token may still work when the provider didn't confirm", async () => {
+    await addSignedInWeather();
+    setup = { ...setup, http: unansweredRevoke };
+    const io = captureIo(folder);
+
+    expect(await trust(["--plugin", "weather", "--remove"], io)).toBe(exitCode.ok);
+
+    expect(io.stdout.slice(1)).toEqual([
+      "✓ Signed you out of weather-account.",
+      "! You're signed out here. Weather didn't confirm, so the token may still work there until it expires.",
+    ]);
+    expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
+  });
+
+  it("gives the sign-ins it signed out with --json", async () => {
+    await addSignedInWeather();
+    setup = { ...setup, http: unansweredRevoke };
+    const io = captureIo(folder);
+
+    expect(await trust(["--plugin", "weather", "--remove", "--json"], io)).toBe(exitCode.ok);
+
+    expect(JSON.parse(io.stdout.join("\n"))).toMatchObject({
+      status: "removed",
+      signedOut: ["weather-account"],
+      signOutNotConfirmed: ["weather-account"],
+    });
+  });
+
+  it("says nothing about signing out a plugin that had no sign-in", async () => {
+    await addTrustedWeather();
+    const io = captureIo(folder);
+
+    expect(await trust(["--plugin", "weather", "--remove"], io)).toBe(exitCode.ok);
+
+    expect(io.stdout).toEqual([
+      "✓ Removed trust for Weather. Nothing from this plugin runs until you trust it.",
+    ]);
+  });
+});
+
+verifies("cli.commands.plugin.remove", () => {
+  it("says it signed you out when it removes the plugin", async () => {
+    await addSignedInWeather();
+    const io = captureIo(folder);
+
+    await runCli(["plugin", "remove", "weather", "--yes"], io, [pluginCommandWith(setup)]);
+
+    expect(io.stdout).toEqual([
+      "✓ Removed Weather 1.2.0 and its trust.",
+      "✓ Signed you out of weather-account.",
+    ]);
   });
 });

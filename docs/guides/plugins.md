@@ -411,9 +411,13 @@ with `!` when they don't, so a plugin that is on but whose programs can't start
 here doesn't look as if they run.
 `halonic trust --plugin <id>` turns on a plugin already added;
 `halonic trust --plugin <id> --remove` removes the trust, so the plugin is off
-(its settings and secrets stay; its sign-ins are signed out). `halonic plugin remove <id>` asks first (or
+(its settings and secrets stay). `halonic plugin remove <id>` asks first (or
 needs `--yes`), then removes the plugin with its trust, settings and the API
-key you entered.
+key you entered. Both, and **Remove trust** in Studio, also sign you out of
+the plugin's sign-ins on this computer: each token is revoked at the provider
+where the sign-in has a revoke address, and forgotten here either way. When the
+provider doesn't confirm, the command says so, because the token may still
+work there until it expires.
 
 In a script, `plugin add` and `trust --plugin` take
 `--yes --fingerprint <fingerprint>`; the fingerprint must match what the check
@@ -447,8 +451,8 @@ describePluginConformance({
 It reads `plugin.yaml` the way Halonic does, and checks for these. It fails when:
 
 - the folder has no manifest, or both `plugin.yaml` and `integration.yaml`;
-- the manifest fails its schema or its own checks, or its `sdk` isn't this
-  Halonic's;
+- the manifest fails its schema or its own checks, or its `sdk` is newer than
+  this Halonic's;
 - a file the manifest names (the backend's `entry`, a local tool's `script`) is
   missing;
 - the backend's code differs from the manifest (name, version, a tool's text,
