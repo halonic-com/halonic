@@ -18,14 +18,14 @@ export function FirstRunBar({ context }: StripProps) {
   const start = context.services.get(FirstRunStartService);
   useEffect(() => firstRun.notice(), [firstRun]);
   const state = useFirstRunState(firstRun);
-  const cancelled = useLastCancelled(start);
+  const cancelled = useLastCancelled(firstRun, start);
   // On a phone the strip can wrap, and a rail would start a line, so it has none there.
   const rails = usePresentation() !== "phone";
   if (state.kind !== "on" || !firstRun.isOnHere) {
     return null;
   }
   const wayOut = barWayOut(state, start.canCancel);
-  // Said at Run until Continue starts another run; the button goes as soon as the engine answers.
+  // Said at Run until another run starts; the button goes as soon as the engine answers.
   const saysCancelled = cancelled && state.step === "run" && state.failed !== true;
   const backToSupportReply = () =>
     context.openItem?.({ kind: "workflow", hub: SUPPORT_HUB, id: SUPPORT_WORKFLOW });
@@ -115,10 +115,17 @@ export function useFirstRunState(firstRun: FirstRun) {
   );
 }
 
-/** Whether **Cancel run** ended the last run, read again at every change. */
-function useLastCancelled(start: FirstRunStart) {
+/** Whether **Cancel run** ended the last run, read again at every change, a new run's too. */
+function useLastCancelled(firstRun: FirstRun, start: FirstRunStart) {
   return useSyncExternalStore(
-    (listener) => start.subscribe(listener),
+    (listener) => {
+      const stopRun = firstRun.subscribe(listener);
+      const stopStart = start.subscribe(listener);
+      return () => {
+        stopRun();
+        stopStart();
+      };
+    },
     () => start.lastCancelled,
   );
 }

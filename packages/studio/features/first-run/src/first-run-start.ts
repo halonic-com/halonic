@@ -42,7 +42,7 @@ export class FirstRunStart {
   #captionShown = false;
   /** The runs **Cancel run** ended, which the page takes off so the guide card shows. */
   readonly #cancelled = new Set<string>();
-  /** Whether the last run ended with **Cancel run**, until Continue starts another. */
+  /** Whether the last run Continue started ended with **Cancel run**, until Continue starts another. */
   #lastCancelled = false;
 
   constructor(firstRun: FirstRun, runStart: RunStartHost | undefined) {
@@ -60,9 +60,12 @@ export class FirstRunStart {
     return this.#runStart?.cancelRun !== undefined;
   }
 
-  /** Whether **Cancel run** ended the last run, so the bar can say so until Continue starts another. */
+  /** Whether **Cancel run** ended the last run, so the bar can say so until another run starts. */
   get lastCancelled(): boolean {
-    return this.#lastCancelled;
+    if (!this.#lastCancelled) return false;
+    // A run started from the page's Run form or the CLI is going: Cancel run is its way out.
+    const runningId = this.#firstRun.runningId;
+    return runningId === undefined || this.#cancelled.has(runningId);
   }
 
   /** The change line of the last model Continue saved, for the guide card after Cancel run. */

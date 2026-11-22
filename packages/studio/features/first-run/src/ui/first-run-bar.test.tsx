@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
+import type { RunSummary } from "@halonicjs/events";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FirstRun } from "../first-run.ts";
+import { FirstRun, type FirstRunRuns } from "../first-run.ts";
 import { barSteps, barWayOut } from "../first-run-bar.ts";
 import { FirstRunStart, FirstRunStartService } from "../first-run-start.ts";
 import type { FirstRunState } from "../first-run-state.ts";
@@ -35,14 +36,21 @@ const folder = "/docs/Acme sample";
 const on = (step: Extract<FirstRunState, { kind: "on" }>["step"], extra = {}) =>
   ({ kind: "on", folder, since: "", step, ...extra }) as Extract<FirstRunState, { kind: "on" }>;
 
+/** A runs list with no runs, which never changes. */
+const staticRuns: FirstRunRuns = {
+  state: { runs: [], loaded: true, error: undefined, workflows: undefined },
+  subscribe: () => () => {},
+  source: { log: async () => [] },
+};
+
 /** The first run of a folder, from a saved state; `sample` says whether the folder is the demo. */
-function firstRunOf(saved: FirstRunState | undefined, sample = true, here = folder) {
+function firstRunOf(
+  saved: FirstRunState | undefined,
+  sample = true,
+  here = folder,
+  runs: FirstRunRuns = staticRuns,
+) {
   let text = saved === undefined ? undefined : JSON.stringify(saved);
-  const runs = {
-    state: { runs: [], loaded: true, error: undefined, workflows: undefined },
-    subscribe: () => () => {},
-    source: { log: async () => [] },
-  };
   const device = { folder: here, read: () => text, write: (next: string) => (text = next) };
   return new FirstRun(runs, { isSample: () => sample }, device, () => new Date(0));
 }
@@ -273,4 +281,53 @@ verifies("first-run.run", () => {
     expect(bar.querySelector("[role=status]")?.textContent).toBe("");
     expect(bar.querySelector("button")?.textContent).toBe("Cancel run");
   });
+
+  it("stops saying Run cancelled. once a run started elsewhere is going", async () => {
+    const runs = runsList();
+    const firstRun = firstRunOf(on("run"), true, folder, runs);
+    const cancelRun = vi.fn().mockResolvedValue(undefined);
+    const start = new FirstRunStart(firstRun, { startRun: vi.fn(), cancelRun });
+    const bar = renderBar(firstRun, "desktop", start);
+    act(() => runs.show(supportRun("run-1")));
+    await act(async () => bar.querySelector("button")?.click());
+    expect(cancelRun).toHaveBeenCalledWith("run-1");
+    expect(bar.querySelector("[role=status]")?.textContent).toBe("Run cancelled.");
+    // From the page's Run form or the CLI, while the list still shows the cancelled run going.
+    await act(async () => runs.show(supportRun("run-2"), supportRun("run-1")));
+    expect(bar.querySelector("[role=status]")?.textContent).toBe("");
+    expect(bar.querySelector("button")?.textContent).toBe("Cancel run");
+  });
 });
+
+/** A running Support reply run of the demo. */
+function supportRun(id: string): RunSummary {
+  return {
+    id,
+    hubId: "support",
+    workflowId: "support-reply",
+    kind: "run",
+    status: "running",
+    startedAt: "2026-11-21T09:01:00.000Z",
+  } as RunSummary;
+}
+
+/** The runs list in memory: `show` lists runs, newest first, and tells the listeners. */
+function runsList() {
+  const listeners = new Set<() => void>();
+  let state: FirstRunRuns["state"] = staticRuns.state;
+  const runs: FirstRunRuns & { show(...summaries: RunSummary[]): void } = {
+    get state() {
+      return state;
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    source: staticRuns.source,
+    show(...summaries) {
+      state = { ...state, runs: summaries.map((summary) => ({ summary })) };
+      for (const listener of [...listeners]) listener();
+    },
+  };
+  return runs;
+}

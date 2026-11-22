@@ -7,7 +7,7 @@
 ## What changes
 
 - `runs.run-view.guided-run`: a failed guided run's banner offers **Run again**, as every other failed run and the first run's guide card after **Cancel run** do, instead of **Try again**. The "Still no answer" line says "pick another model", the words of the button it offers, instead of "use another model". The slow line for a model on this computer says "Loading the model. The first run can take a few minutes." instead of "… The first run is slow.". The examples and tests change to the new words; what each test checks is the same.
-- `first-run.run`: after **Cancel run**, the first-run bar says "Run cancelled." in the button's place, in a status region so a screen reader hears it, until **Continue** starts another run. One example adds that line, and a new test covers it.
+- `first-run.run`: after **Cancel run**, the first-run bar says "Run cancelled." in the button's place, in a status region so a screen reader hears it, until another run starts, from **Continue**, the page's Run form or the CLI. One example adds that line, and two new tests cover it: Continue starting another run, and a run started elsewhere.
 
 ## Why
 
