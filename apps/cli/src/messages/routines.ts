@@ -196,6 +196,13 @@ export const routinesMessages = defineMessages("routines", {
   watching: (onAClock: number, workspace: string) =>
     phrase`Watching ${counted(onAClock, "routine", "routines")} in ${workspace}. Stop with Ctrl C.`,
   /**
+   * That line instead when none is on a clock because those that are can't
+   * start, each with its ✕ line above (C666 #2): the watch goes on and starts
+   * one once it can, so it says to leave it running.
+   */
+  watchingUntilOneCanStart: (workspace: string) =>
+    phrase`Watching 0 routines in ${workspace} for now. Once a routine above can start, the watch starts it on time, so leave this running. Stop with Ctrl C.`,
+  /**
    * A line of `watch` for a routine whose file has errors, in the list's
    * words: the watch leaves it out, runs the others on time (HAL-15372) and
    * starts it again by itself once its file is fixed (C609).

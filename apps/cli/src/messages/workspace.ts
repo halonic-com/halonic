@@ -38,6 +38,21 @@ export const workspaceMessages = defineMessages("workspace", {
     count === 1
       ? phrase`See it with: ${suggestedCommand("validate", dir)}`
       : phrase`See them with: ${suggestedCommand("validate", dir)}`,
+  /**
+   * The reason instead when the run reads the live version, the last commit,
+   * and the saved files have none of those errors (C666 #2): `validate`
+   * reads the saved files and finds nothing, so it names the commit, in the
+   * words `halonic routines` uses for a routine's fix (C642 #2): "Couldn't
+   * run support-reply: Acme's last commit has 1 problem in models.yaml, and
+   * its fix isn't live yet. Nothing ran."
+   */
+  fixNotLive: (workspace: string, count: number, files: readonly string[], nothingDone: Phrase) =>
+    phrase`${workspace}'s last commit has ${counted(count, "problem", "problems")} in ${filesInWords(files)}, and ${count === 1 ? "its fix isn't" : "their fixes aren't"} live yet. ${nothingDone}`,
+  /** Its fix: what makes a saved file live. */
+  fixNotLiveFix: (count: number) =>
+    count === 1
+      ? phrase`Commit the fix or make it live in Halonic Studio, then try again.`
+      : phrase`Commit the fixes or make them live in Halonic Studio, then try again.`,
   noWorkspaceFix: () =>
     phrase`Run it inside a workspace, create one with halonic init, or copy the example with halonic init --example acme.`,
   /**

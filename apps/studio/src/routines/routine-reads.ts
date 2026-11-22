@@ -254,7 +254,10 @@ function problemSentence(issue: LoadedWorkspace["issues"][number], file: PlacedF
   );
 }
 
-/** The When card picks a mail trigger's connector under Mailbox; microcopy 12.2 calls it an inbox. */
+/**
+ * The When card picks a mail trigger's connector under Mailbox, so the sentence says mailbox
+ * throughout, though microcopy 12.2 calls it an inbox (C666 #5).
+ */
 const pickMailbox = "Pick another mailbox under When.";
 
 /** Studio's sentence for a check on a mail trigger's connector, by the check's code. */
@@ -264,7 +267,7 @@ function mailboxSentence(file: PlacedFile, code: string): string | undefined {
   const connector = trigger.mail.connector;
   if (code === "unknown-connector") return `${connector} isn't in this workspace. ${pickMailbox}`;
   if (code === "not-a-mailbox") {
-    return `${connector} isn't a Google connector, so it has no inbox to watch. ${pickMailbox}`;
+    return `${connector} isn't a Google connector, so it has no mailbox to watch. ${pickMailbox}`;
   }
   return undefined;
 }

@@ -40,7 +40,11 @@ import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
-import { loadRunWorkspace, type OpenWorkspaceHistory } from "../../run-workspace.ts";
+import {
+  loadRunWorkspace,
+  type OpenWorkspaceHistory,
+  savedWorkspaceOf,
+} from "../../run-workspace.ts";
 import {
   type PlacedAgent,
   placedWarning,
@@ -124,13 +128,10 @@ export async function followWorkflow(
   // Before the lookup: a file with an error is left out, so its workflow
   // would look missing (HAL-12978); a workflow not found counts every error.
   // The trust check below refuses it too.
-  refuseFileProblems(
-    dir,
-    workspace,
-    runMessages.nothingRan(),
-    typedDir,
-    foundWorkflow(workspace, typed),
-  );
+  await refuseFileProblems(dir, workspace, runMessages.nothingRan(), typedDir, {
+    run: foundWorkflow(workspace, typed),
+    saved: savedWorkspaceOf(dir, setup.profile),
+  });
   const harness = await runHarnessOf(
     optionText(input, "harness"),
     (setup.harnesses ?? nodeHarnessPrograms)(),

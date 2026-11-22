@@ -132,6 +132,19 @@ export async function loadRunWorkspace(
 }
 
 /**
+ * Loads the saved files, as `halonic validate` reads them, for a refusal of
+ * the live version's errors: when they have none, the fix is saved but not
+ * live (C666 #2). `profile` holds the installed plugins, as for the run.
+ */
+export function savedWorkspaceOf(
+  dir: OpenWorkspaceDir,
+  profile?: ProfileEnvironment,
+): () => Promise<LoadedWorkspace> {
+  return async () =>
+    await loadWorkspace(dir.store, { sheetHosts: await versionSheetHosts(dir.store, profile) });
+}
+
+/**
  * The workspace `halonic runs send` checks the run's trust and sandbox on:
  * the version `halonic run` would start now. A waiting run can be answered
  * while nothing is live yet, so then it is the saved files, as for a run

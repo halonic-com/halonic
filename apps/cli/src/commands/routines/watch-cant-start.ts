@@ -71,6 +71,11 @@ export class RoutinesThatCantStart {
     this.#saved = saved;
   }
 
+  /** How many routines are left out now, each with its line printed. */
+  get leftOut(): number {
+    return this.#said.size;
+  }
+
   /**
    * `routines` without those that can't start in `workspace`, the version
    * they were read from, after printing the line of each one not said yet.
