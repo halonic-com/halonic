@@ -56,8 +56,8 @@ export const SETTINGS_NEEDED =
 export function signedOutNotConfirmed(signIns: readonly string[] = []): string {
   const where = signIns.length === 0 ? "" : ` of ${list.format(signIns)}`;
   return signIns.length > 1
-    ? `You're signed out${where} here. The provider didn't confirm, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.`
-    : `You're signed out${where} here. The provider didn't confirm, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.`;
+    ? `You're signed out${where} here. The provider didn't confirm the sign-out, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.`
+    : `You're signed out${where} here. The provider didn't confirm the sign-out, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.`;
 }
 
 /** The client secret a sign-in needs isn't set, in the shape of the approved refused line (team wording). */

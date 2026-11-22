@@ -200,7 +200,7 @@ verifies("plugins.plugin-actions", () => {
       {
         tone: "warning",
         title:
-          "You're signed out of weather-account here. The provider didn't confirm, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
+          "You're signed out of weather-account here. The provider didn't confirm the sign-out, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
         text: undefined,
       },
     ]);
@@ -241,7 +241,7 @@ verifies("plugins.plugin-actions", () => {
       {
         tone: "warning",
         title: "Weather removed.",
-        text: "You're signed out of weather-account and weather-admin here. The provider didn't confirm, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.",
+        text: "You're signed out of weather-account and weather-admin here. The provider didn't confirm the sign-out, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.",
       },
     ]);
   });

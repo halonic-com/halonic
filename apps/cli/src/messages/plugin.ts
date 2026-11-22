@@ -305,8 +305,8 @@ export const pluginMessages = defineMessages("plugin", {
    */
   signedOutNotConfirmed: (tokens: number) =>
     tokens === 1
-      ? phrase`You're signed out here. The provider didn't confirm, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.`
-      : phrase`You're signed out here. The provider didn't confirm, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.`,
+      ? phrase`You're signed out here. The provider didn't confirm the sign-out, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.`
+      : phrase`You're signed out here. The provider didn't confirm the sign-out, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.`,
 
   /**
    * A plugin's backend doesn't start for lack of trust (`PluginBackendNotTrustedError`

@@ -6,11 +6,13 @@
 
 ## What changes
 
-When the provider doesn't confirm a sign-out, the line now says "The provider didn't confirm"
-instead of naming the plugin, and adds "To end it now, remove the access you gave in your account
+When the provider doesn't confirm a sign-out, the line now says "The provider didn't confirm the
+sign-out" instead of naming the plugin, and adds "To end it now, remove the access you gave in your account
 settings at the provider." After **Remove trust** or **Remove plugin**, Studio's toast names the
 sign-ins ("You're signed out of weather-account here. …"), as the CLI already does. The CLI's `!`
 line, the line under a sign-in's own block after **Sign out**, and the guide use the same words.
+Sofia approved the words on HAL-15819, adding "the sign-out" after "didn't confirm". The toasts are
+`warning` toasts, which stay until the person closes them, so the step doesn't vanish on a timer.
 
 The host now counts each sign-in's outcomes (`outcomeCount`, next to `lastOutcome` in the status),
 and Studio's block counts a new count as a change. A sign-in cancelled in the browser twice in a

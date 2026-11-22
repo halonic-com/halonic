@@ -130,13 +130,16 @@ verifies("plugins.plugin-sign-in-text", () => {
 
   it("says the token may still work when the provider didn't confirm a sign-out, and how to end it", () => {
     expect(signedOutNotConfirmed()).toBe(
-      "You're signed out here. The provider didn't confirm, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
+      "You're signed out here. The provider didn't confirm the sign-out, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
     );
     expect(signedOutNotConfirmed(["acme-account"])).toBe(
-      "You're signed out of acme-account here. The provider didn't confirm, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
+      "You're signed out of acme-account here. The provider didn't confirm the sign-out, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.",
     );
     expect(signedOutNotConfirmed(["acme-account", "acme-files"])).toBe(
-      "You're signed out of acme-account and acme-files here. The provider didn't confirm, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.",
+      "You're signed out of acme-account and acme-files here. The provider didn't confirm the sign-out, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.",
+    );
+    expect(signedOutNotConfirmed(["acme-account", "acme-files", "acme-billing"])).toMatch(
+      /^You're signed out of acme-account, acme-files and acme-billing here\./,
     );
   });
 });

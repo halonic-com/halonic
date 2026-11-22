@@ -421,7 +421,7 @@ needs `--yes`), then removes the plugin with its trust, settings and the API
 key you entered. Both, and **Remove trust** in Studio, also sign you out of
 the plugin's sign-ins on this computer: each token is revoked at the provider
 where the sign-in has a revoke address, and forgotten here either way. When the
-provider doesn't confirm, the command (or Studio) names the sign-ins and says
+provider doesn't confirm the sign-out, the command (or Studio) names the sign-ins and says
 the token may still work there until it expires: "To end it now, remove the
 access you gave in your account settings at the provider." By then the trust or
 the plugin is gone, so Halonic has nothing left to retry.
