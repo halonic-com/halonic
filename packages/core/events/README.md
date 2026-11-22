@@ -90,6 +90,10 @@ optional and come with a requirement.
 - `harness.stopped`: a step's harness program gave its result but didn't exit
   within `afterMs`, so Halonic stopped it and kept the result; the step goes on
   (requirement `harness-stopped`).
+- `agent.answer-retried`: a step asked its agent again because the answer
+  didn't fit the agent's output, with the failure's `reason` and `cause`, the
+  `error` text, the `attempt` (from 1) and the new `prompt`; the step goes on
+  with the new call (requirement `agent-answer-retried`).
 - `sandbox.blocked` and `sandboxBlockedView(block, home)`: an access a step's
   sandbox refused, with `count`, the running total for that target in the step
   so far (a later event replaces an earlier count). A step's log

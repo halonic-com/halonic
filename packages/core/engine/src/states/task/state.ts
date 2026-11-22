@@ -1,5 +1,5 @@
 import { methodPrompt, stepPrompt, withGets } from "@halonicjs/workflow";
-import { checkAnswer } from "../../kernel/agent-answer.ts";
+import { answerAgainPrompt, type CheckedAnswer, checkAnswer } from "../../kernel/agent-answer.ts";
 import { agentCallEffect } from "../../kernel/agent-call.ts";
 import type { DecidedEvent, DecideInput } from "../../kernel/decide-types.ts";
 import {
@@ -29,7 +29,8 @@ import {
  * `done` when the answer comes back. When the agent's output is a `choice`,
  * an answer that isn't one of its options fails the run with
  * `answer-not-an-option`; when it is `json`, the answer is parsed into data,
- * and text that isn't JSON fails the run. When the agent stops at a tool call that needs a
+ * and text that isn't JSON fails the run, unless the agent's `answerRetries`
+ * allows asking it again (`askAgain`). When the agent stops at a tool call that needs a
  * person's OK, the state waits for `approve` or `reject`, then the agent goes
  * on with the answer: in a new model call, or in the harness call that
  * asked, which kept running while the run waited. When it stops before a
@@ -135,14 +136,18 @@ function takeCallResult(context: StateContext<"task">, input: DecideInput): Stat
 }
 
 function finishAgent(
-  { stateId, state, agents, scope }: StateContext<"task">,
+  context: StateContext<"task">,
   pending: PendingCall,
   answer: unknown,
 ): StateStep {
+  const { stateId, state, agents, scope } = context;
   const stepOutput = stepOutputOf(agents, pending.agent, state);
-  const checked = checkAnswer(agents, pending.agent, answer, stepOutput);
+  const retriesLeft = answerRetriesOf(agents, pending.agent) - (pending.answerRetry?.attempt ?? 0);
+  const checked = checkAnswer(agents, pending.agent, answer, stepOutput, retriesLeft > 0);
   if ("error" in checked) {
-    return { ...nothing, outcome: { type: "fail", ...checked } };
+    return retriesLeft > 0
+      ? askAgain(context, pending, checked)
+      : { ...nothing, outcome: { type: "fail", ...checked } };
   }
   const output = checked.output;
   const events: DecidedEvent[] = [
@@ -159,6 +164,45 @@ function finishAgent(
     events.push(artifact);
   }
   events.push(...signalSent(stateId, state, scope, events));
-  events.push(...conversationTurns(state, scope, pending.prompt, output));
+  const prompt = pending.answerRetry?.prompt ?? pending.prompt;
+  events.push(...conversationTurns(state, scope, prompt, output));
   return { events, effects: [], outcome: { type: "finish", event: "done" } };
+}
+
+/** How often the agent's file lets a step ask it again after an unusable answer; 0 when it doesn't say. */
+function answerRetriesOf(agents: StateContext<"task">["agents"], agent: string): number {
+  return Object.hasOwn(agents, agent) ? (agents[agent]?.answerRetries ?? 0) : 0;
+}
+
+/**
+ * Asks the agent again, in the same step, after an answer its output can't
+ * use: a new model or harness call whose prompt is the step's own prompt with
+ * the error after it. `agent.answer-retried` records why, so a host can count
+ * the retries.
+ */
+function askAgain(
+  { run, stateId, agents }: StateContext<"task">,
+  pending: PendingCall,
+  unusable: Extract<CheckedAnswer, { error: string }>,
+): StateStep {
+  const ownPrompt = pending.answerRetry?.prompt ?? pending.prompt;
+  const prompt = answerAgainPrompt(ownPrompt, unusable.error);
+  const attempt = (pending.answerRetry?.attempt ?? 0) + 1;
+  const { error, reason, cause } = unusable;
+  const call = { callId: nextCallId(run), state: stateId, agent: pending.agent, prompt };
+  return {
+    events: [
+      {
+        type: "agent.answer-retried",
+        state: stateId,
+        agent: pending.agent,
+        reason,
+        ...(cause === undefined ? {} : { cause }),
+        error,
+        attempt,
+        prompt,
+      },
+    ],
+    effects: [agentCallEffect(run, agents, call)],
+  };
 }

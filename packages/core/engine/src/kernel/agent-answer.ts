@@ -29,20 +29,25 @@ export type CheckedAnswer =
  * engine never keeps the text in its place. Any other answer is kept as it
  * is. A plain `task` state, a `parallel` branch and a `foreach` item all
  * check their answers here. A step's own output, from its `format` or the
- * method it calls (`stepOutputOf`), takes the place of the agent's.
+ * method it calls (`stepOutputOf`), takes the place of the agent's. With
+ * `refuseEmpty`, as when the agent may be asked again, no answer at all to a
+ * `json` output is refused as well, as an empty text is.
  */
 export function checkAnswer(
   agents: Readonly<Record<string, Agent>>,
   agentId: string,
   answer: unknown,
   stepOutput?: AgentOutput,
+  refuseEmpty = false,
 ): CheckedAnswer {
   const output = stepOutput ?? outputOf(agents, agentId);
   switch (output?.type) {
     case "choice":
       return checkChoice(agentId, output.options, answer);
     case "json":
-      return checkJson(agentId, answer);
+      return refuseEmpty && (answer === null || answer === undefined)
+        ? notJson(agentId, "")
+        : checkJson(agentId, answer);
     default:
       return { output: answer };
   }
@@ -83,13 +88,29 @@ function checkJson(agentId: string, answer: unknown): CheckedAnswer {
   try {
     return { output: JSON.parse(json) as unknown };
   } catch {
-    // The error already says the fix, so a host knows the cause (HAL-14301).
-    return {
-      error: notJsonError(agentId, answer),
-      reason: "error",
-      cause: { kind: "invalid_input", code: "answer.not-json", detail: { agent: agentId } },
-    };
+    return notJson(agentId, answer);
   }
+}
+
+/** The error already says the fix, so a host knows the cause (HAL-14301). */
+function notJson(agentId: string, answer: string): CheckedAnswer {
+  return {
+    error: notJsonError(agentId, answer),
+    reason: "error",
+    cause: { kind: "invalid_input", code: "answer.not-json", detail: { agent: agentId } },
+  };
+}
+
+/** What every unusable answer's error ends with: advice for the person, not the agent. */
+const advice = "Tighten the agent's instructions or use a larger model.";
+
+/**
+ * The prompt that asks an agent again after an unusable answer: the step's
+ * prompt, then the answer's error without the advice meant for a person.
+ */
+export function answerAgainPrompt(prompt: string, error: string): string {
+  const problem = error.endsWith(advice) ? error.slice(0, -advice.length).trim() : error;
+  return `${prompt}\n\nYour answer can't be used: ${problem} Answer again with only what your output asks for.`;
 }
 
 /** The longest part of an answer `run.failed` quotes, in characters. */
@@ -106,13 +127,13 @@ function quoted(answer: unknown): string {
 function notAnOptionError(agentId: string, options: readonly string[], answer: unknown): string {
   return (
     `The agent ${agentId} answered ${quoted(answer)}, which isn't one of its options (${options.join(", ")}). ` +
-    "Tighten the agent's instructions or use a larger model."
+    advice
   );
 }
 
 function notJsonError(agentId: string, answer: string): string {
   return (
     `Agent "${agentId}" answered ${quoted(answer)}, which isn't the JSON its output asks for. ` +
-    "Tighten the agent's instructions or use a larger model."
+    advice
   );
 }

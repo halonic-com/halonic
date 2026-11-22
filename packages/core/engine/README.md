@@ -260,6 +260,12 @@ with reason `error` and an error that quotes the answer; the engine never keeps 
 (requirement `engine.task-json-answer`). The engine doesn't check the answer against the output's
 `schema` yet.
 
+An agent with `answerRetries: 1` gets one more try in a `task` state: instead of failing the run, the
+state writes `agent.answer-retried` and asks the same agent again, in a new model or harness call, with
+the step's prompt and the error after it. No answer at all to a `json` output counts as unusable then
+too. A second unusable answer fails the run as before (requirement `engine.task-answer-retries`).
+`parallel` branches and `foreach` items don't retry.
+
 A `workflow` state runs another workflow of the hub as a child run, from the `workflows` the run
 kept with its definitions; a run kept without them can't start one. The child's id is the parent's
 id and the `seq` of the state's `state.entered` (`run_1.2`), so `decide` needs no id generator and a

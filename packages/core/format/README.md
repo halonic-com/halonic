@@ -280,6 +280,11 @@ count as 0). A limit left out doesn't apply. The agent's own `maxSteps`, 6 by
 default, is sized for Halonic's own loop and doesn't bound a harness step: a
 coding program makes hundreds of model calls in one.
 
+An optional `answerRetries` field, 0 or 1, says how often a `task` step asks
+the agent again when its answer doesn't fit its `json` or `choice` output
+(requirement `agent-answer-retries`). Left out, it is 0: the first unusable
+answer fails the run.
+
 An optional `asks` field says when a Claude Code or Codex agent's own tools
 ask for a person's OK (requirement `agent-asks`): `always`, the default, or
 `in-sandbox`. With `in-sandbox`, and only while the run is inside Halonic's

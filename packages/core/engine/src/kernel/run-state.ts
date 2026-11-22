@@ -37,6 +37,8 @@ export interface PendingCall {
   readonly prompt: string;
   /** Set when the agent goes on after a stop: where it stopped, and the answer. */
   readonly resume?: ResumeAfterStop;
+  /** Set when the call asks again after an unusable answer: how often so far, and the step's own prompt. */
+  readonly answerRetry?: { readonly attempt: number; readonly prompt: string };
 }
 
 /** Where an agent goes on from after it stopped, and what answers the call it stopped at. */
@@ -256,6 +258,8 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
       return startCall(state, event);
     case "agent.finished":
       return finishCall(state, event);
+    case "agent.answer-retried":
+      return retryCall(state, event);
     case "context.updated":
       return { ...state, context: { ...state.context, [event.key]: event.value } };
     case "run.waiting":
@@ -307,6 +311,22 @@ function startCall(state: RunState, event: Extract<RunEvent, { type: "agent.star
   if (item !== undefined) {
     return { ...state, calls, foreach: startItem(state.foreach, stateId, { item, call }) };
   }
+  return { ...state, calls, pendingCall: call };
+}
+
+/** A task state's agent is asked again after an unusable answer, in a new call. */
+function retryCall(
+  state: RunState,
+  event: Extract<RunEvent, { type: "agent.answer-retried" }>,
+): RunState {
+  const asked = state.pendingCall;
+  if (asked?.state !== event.state) {
+    return state;
+  }
+  const calls = state.calls + 1;
+  const answerRetry = { attempt: event.attempt, prompt: asked.answerRetry?.prompt ?? asked.prompt };
+  const { state: stateId, agent, prompt } = event;
+  const call: PendingCall = { callId: `call-${calls}`, state: stateId, agent, prompt, answerRetry };
   return { ...state, calls, pendingCall: call };
 }
 

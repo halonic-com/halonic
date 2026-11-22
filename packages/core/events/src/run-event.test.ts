@@ -36,6 +36,8 @@ verifies("events.run-log-contract", () => {
       | "run.started"
       | "state.entered"
       | "agent.started"
+      // Added after the reference by events.agent-answer-retried (HAL-16441).
+      | "agent.answer-retried"
       | "llm.request"
       | "llm.response"
       | "llm.fallback"

@@ -1,3 +1,4 @@
+import type { AgentAnswerRetriedEvent } from "./agent-answer-retried.ts";
 import type { AgentResume } from "./agent-resume.ts";
 import type { BridgeFailedEvent, HarnessAllowedEvent } from "./bridge-events.ts";
 import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts";
@@ -236,6 +237,7 @@ export type RunEventBody =
       sha256: string;
     }
   | HarnessStoppedEvent
+  | AgentAnswerRetriedEvent
   /**
    * A step's sandbox opened (requirement `events.sandbox-opened`). `sandbox`
    * is a display copy of its profile, never its environment variables.
