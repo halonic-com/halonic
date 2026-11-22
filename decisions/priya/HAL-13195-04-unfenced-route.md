@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-16384 (Julian's security check and Liam's review of #5155 asked for this wording and test)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lEg31hsqRc28QJ5ixYp1LnhWy0AqVEY1jyyo8aVm62dACOhBV6fyp6v84VZ1Xeptxy6TDFz6M60qSRU2RndTCg==
 - Task: HAL-13195
 
 ## What changes
