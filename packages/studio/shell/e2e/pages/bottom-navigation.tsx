@@ -16,7 +16,9 @@ import { showPlace } from "../../src/points/frame.ts";
 /**
  * The phone's frame with its real top bar and bottom navigation, the user in the place the
  * `place` query parameter names: `home` (the default), `inbox`, `runs` or `more`. Inbox carries
- * its count and Runs the running dot, so every item has its widest look.
+ * its count and Runs the running dot, so every item has its widest look. The page has a line far
+ * wider than a phone, as a real page's text does, so a frame that takes its width from its content
+ * runs off the window (C606).
  */
 const places = [
   showPlace("home", undefined),
@@ -53,6 +55,10 @@ createRoot(root).render(
       }
     >
       <h1 className="p-4">{titles[current]}</h1>
+      <p className="p-4">
+        Reply to the support question about the workflow that stopped overnight, then run your first
+        workflow from the guide card and check that each of its steps finished.
+      </p>
     </ShellFrame>
   </StrictMode>,
 );

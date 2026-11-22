@@ -226,7 +226,9 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
  * The page's column, beside the sidebar: on the desktop the strips at its top, over the page (sheet
  * 05, so the sidebar stays full height), then `main`. It's there in both layouts, so `main` keeps its
  * place when the width crosses `PHONE_MAX_WIDTH`. While the Places drawer is open its scrim covers
- * the strips too, so they are inert with the page.
+ * the strips too, so they are inert with the page. Only the inner div, a column's item, grows in a
+ * short window: on the outer one, an item of a row, `flex-[1_0_auto]` took the page's widest line
+ * as its width and wouldn't shrink, so the page ran off a narrow window (C606).
  */
 function PageColumn(props: {
   readonly desktop: boolean;
@@ -236,7 +238,7 @@ function PageColumn(props: {
 }) {
   const grow = props.desktop ? "" : phoneContent;
   return (
-    <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${grow}`} inert={props.inert}>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col" inert={props.inert}>
       {props.desktop ? props.strips : null}
       <div className={`flex min-h-0 flex-1 ${grow}`}>
         <main
