@@ -2,12 +2,12 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1707 (board, HAL-1601 proposal 1); HAL-10728 (Your sign-in); sandbox-screens (HAL-1747) 1; microcopy 23.1; ux-checklists-sandbox (HAL-1833) Part 1; Julian's conditions (HAL-1673); `events.sandbox-opened`, `events.sandbox-off`
+- Source: HAL-1707 (board, HAL-1601 proposal 1); HAL-10728 (Your sign-in); HAL-15659 (attention tone, as the Full access chip, HAL-15539); sandbox-screens (HAL-1747) 1; microcopy 23.1; ux-checklists-sandbox (HAL-1833) Part 1; Julian's conditions (HAL-1673); `events.sandbox-opened`, `events.sandbox-off`
 
 The run view shall show what each sandboxed step could do, read only from the step's `sandbox.opened` event, never from the agent's current settings:
 
 - under the step's meta line, one line, in this order and only the parts that apply: "In a sandbox · writes only in its working folder and its own temp and settings folders · reaches only Halonic", with "reaches Halonic and 2 sites" ("1 site" for one) when the step may reach sites, "In a virtual machine" for a `vm` sandbox, and the link "What it can do" at the end. The line is a child row with a shield icon that opens the step's entry, named "What *Draft* can do" for a screen reader;
-- a step that ran without the sandbox, from a `sandbox.off` event, says "Ran on this computer, without the sandbox" in warning tone, and its entry shows the Full access chip;
+- a step that ran without the sandbox, from a `sandbox.off` event, says "Ran on this computer, without the sandbox" with its shield in the attention tone (amber), and its entry shows the Full access chip;
 - a step whose `sandbox.opened` can't be read shows "Couldn't read what this step could do." and nothing else of it; the rest of the page works;
 - a step with no `sandbox.opened` or `sandbox.off`, an old run or a step with no program, shows no line;
 - in the step's open entry, after its other details, a list inside a panel, headed "What this step can do" while the run is live and "What this step could do" once it has ended, with rows in this order, a row with nothing in it left out:

@@ -158,7 +158,8 @@ function Timeline({
 /**
  * The line under a sandboxed step (sandbox-screens 1.2): "In a sandbox · writes only in its working
  * folder · reaches only Halonic", a child row with the shield that opens the step's entry, where
- * the full list sits. A step that ran without the sandbox says so in warning tone. A step with no
+ * the full list sits. A step that ran without the sandbox says so in the attention tone (amber),
+ * like the Full access chip: it asks for a look, not for the person's turn. A step with no
  * `sandbox.opened`, an old run or a program-less step, gets no row; a damaged one says it couldn't
  * be read, quietly.
  */
@@ -176,7 +177,7 @@ function sandboxRows(entry: StepEntry, log: readonly RunEvent[], place: "desktop
         ? sayText(`sandbox.line.off.${place}`)
         : `${sandboxLineText(sandbox.view)} · ${sayText("sandbox.line.link")}`,
       icon: (
-        <span className={`flex size-4 ${off ? "text-warning" : "text-fg-subtle"}`}>
+        <span className={`flex size-4 ${off ? "text-attention" : "text-fg-subtle"}`}>
           <ShieldIcon />
         </span>
       ),
