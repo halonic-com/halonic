@@ -20,11 +20,20 @@
 # -AgentHost names an executable to ship in place of the agent host. The
 # update test builds a 0.1.2 whose host is a stand-in that never answers, so
 # the shell never proves it starts.
+#
+# -Runtime names a folder holding the WSL runtime runtime-archive.sh packed
+# (halonic-runtime.tar.gz and halonic-runtime.json). The installer then puts
+# both next to Halonic.exe, where the shell finds the runtime it installs in
+# Halonic's distro (HAL-15136). Tauri refuses a resource whose file is
+# missing, so they come in through their own config (tauri.runtime.conf.json)
+# and a build without -Runtime ships no runtime. Both steps need it: the
+# build checks the resources, the pack packs them.
 param(
   [ValidateSet('all', 'build', 'pack')]
   [string]$Step = 'all',
   [string]$Config,
-  [string]$AgentHost
+  [string]$AgentHost,
+  [string]$Runtime
 )
 $ErrorActionPreference = 'Stop'
 # The release workflow sets HALONIC_SANDBOX_SIGNER to an empty string for an
@@ -42,6 +51,22 @@ $packedHelper = Join-Path $bin "halonic-sandbox-elevate-$triple.exe"
 
 $version = (Get-Content (Join-Path $shell 'tauri.conf.json') -Raw | ConvertFrom-Json).version
 $configs = @('--config', 'tauri.installer.conf.json')
+if ($Runtime) {
+  # The manifest pins the archive, as the shell checks before it installs it,
+  # so a mismatched pair stops the build rather than ship.
+  $Runtime = (Resolve-Path $Runtime).Path
+  $runtimeArchive = Join-Path $Runtime 'halonic-runtime.tar.gz'
+  $runtimeManifest = Join-Path $Runtime 'halonic-runtime.json'
+  foreach ($f in $runtimeArchive, $runtimeManifest) {
+    if (-not (Test-Path $f -PathType Leaf)) { throw "-Runtime: $f is missing" }
+  }
+  $pinned = (Get-Content $runtimeManifest -Raw | ConvertFrom-Json).sha256
+  $actual = (Get-FileHash $runtimeArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+  if ($pinned -ne $actual) { throw "-Runtime: halonic-runtime.json pins $pinned, the archive is $actual" }
+  New-Item -ItemType Directory -Force $bin | Out-Null
+  Copy-Item $runtimeArchive, $runtimeManifest $bin -Force
+  $configs += @('--config', 'tauri.runtime.conf.json')
+}
 if ($Config) {
   $Config = (Resolve-Path $Config).Path
   $extra = Get-Content $Config -Raw | ConvertFrom-Json

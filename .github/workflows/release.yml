@@ -3,7 +3,7 @@
 #
 # The CLI is the real package, built by `stage-cli` in tooling/publish and
 # checked in a clean folder (HAL-9558). The installer is the real Studio build
-# (HAL-7491). The updater files are added by their
+# (HAL-7491), with the WSL runtime the wsl-runtime job packs (HAL-15136). The updater files are added by their
 # own task. The APK comes from the Android Play build (android-play.yml),
 # called on real runs only: it is the APK Play signed, checked against Play's
 # app signing key. Dry runs ship a placeholder so the file name and checksum
@@ -237,9 +237,40 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  wsl-runtime:
+    # The runtime the installer ships for Halonic's WSL distro (HAL-15136):
+    # the Linux agent host executable, packed as CI packs it, with the
+    # version <tag's version>+<12-digit commit>. It goes into the installer
+    # only; it isn't a release file of its own.
+    name: Build the WSL runtime
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Build the Linux agent host
+        run: pnpm --filter @halonicjs/app-agent-host build:sea
+      - name: Pack the WSL runtime
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          infra/wsl-image/runtime-archive.sh apps/agent-host/dist/halonic-agent-host "$VERSION+$(git rev-parse --short=12 HEAD)" "$RUNNER_TEMP/wsl-runtime"
+          cat "$RUNNER_TEMP/wsl-runtime/halonic-runtime.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wsl-runtime
+          path: ${{ runner.temp }}/wsl-runtime/*
+          if-no-files-found: error
+          retention-days: 7
+
   studio:
     name: Build Studio (not yet packed)
-    needs: build
+    needs: [build, wsl-runtime]
     runs-on: windows-2025
     timeout-minutes: 60
     permissions:
@@ -267,12 +298,16 @@ jobs:
         run: |
           $app = (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
           if ($app -ne $env:VERSION) { throw "tauri.conf.json says $app, the tag says $env:VERSION" }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wsl-runtime
+          path: ${{ runner.temp }}/wsl-runtime
       - name: Build the app and the programs it ships
         working-directory: apps/studio/src-tauri
         # Empty when the run is unsigned: the helper then has no publisher.
         env:
           HALONIC_SANDBOX_SIGNER: ${{ needs.build.outputs.publisher }}
-        run: pwsh windows/build-installer.ps1 -Step build
+        run: pwsh windows/build-installer.ps1 -Step build -Runtime (Join-Path $env:RUNNER_TEMP 'wsl-runtime')
       # What `-Step pack` needs that the checkout doesn't have. The paths are
       # kept relative to src-tauri.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -336,13 +371,17 @@ jobs:
           & $env:SIGNTOOL sign /sha1 $env:THUMBPRINT /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 `
             apps\studio\src-tauri\binaries\halonic-sandbox-elevate-x86_64-pc-windows-msvc.exe
           if ($LASTEXITCODE -ne 0) { throw "signtool sign failed" }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wsl-runtime
+          path: ${{ runner.temp }}/wsl-runtime
       - name: Pack the installer
         working-directory: apps/studio/src-tauri
         env:
           HALONIC_SANDBOX_SIGNER: ${{ needs.build.outputs.publisher }}
           INSTALLER: ${{ needs.build.outputs.installer }}
         run: |
-          pwsh windows/build-installer.ps1 -Step pack
+          pwsh windows/build-installer.ps1 -Step pack -Runtime (Join-Path $env:RUNNER_TEMP 'wsl-runtime')
           # A dry run's tag isn't the app's version, so the installer gets
           # the name the tag gives it.
           $version = (Get-Content tauri.conf.json -Raw | ConvertFrom-Json).version
@@ -387,6 +426,9 @@ jobs:
           $dir = Join-Path $env:RUNNER_TEMP 'Halonic'
           $p = Start-Process "dist/$env:INSTALLER" -ArgumentList '/S', "/D=$dir" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
+          foreach ($f in 'halonic-runtime.tar.gz', 'halonic-runtime.json') {
+            if (-not (Test-Path (Join-Path $dir $f))) { throw "$f, the WSL runtime, is missing from the install folder" }
+          }
           $helper = Join-Path $dir 'halonic-sandbox-elevate.exe'
           Assert-Signed $helper
           # The helper's own check (S-4): the copy it leaves for Installed
@@ -485,12 +527,16 @@ jobs:
           timestamp-digest: SHA256
       # Refuses to pack a helper that isn't validly signed by this publisher.
       # Unsigned, there is no publisher and nothing to check.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wsl-runtime
+          path: ${{ runner.temp }}/wsl-runtime
       - name: Pack the installer
         working-directory: apps/studio/src-tauri
         shell: pwsh
         env:
           HALONIC_SANDBOX_SIGNER: ${{ needs.build.outputs.publisher }}
-        run: pwsh windows/build-installer.ps1 -Step pack
+        run: pwsh windows/build-installer.ps1 -Step pack -Runtime (Join-Path $env:RUNNER_TEMP 'wsl-runtime')
       - name: Sign the installer
         if: needs.build.outputs.signed == 'true'
         uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0

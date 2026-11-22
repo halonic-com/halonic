@@ -112,10 +112,13 @@ which carries Node, the engine and srt. `runtime-archive.sh` packs it as
 `files/halonic-runtime` as `sbin/halonic-runtime`, and checks the version
 with the updater's rule. The archive is reproducible: the same executable and
 version give the same bytes, so the SHA-256 Studio pins can be checked by
-building again. CI's Linux agent host job packs it on every pull request that
-changes the host, with the version `<Studio version>+<12-digit commit>`, and
-keeps it for 7 days (`halonic-wsl-runtime`). Build only: Studio doesn't bundle
-or install it yet (HAL-14644), and publishing it is a release. `check.sh`
+building again. CI's `wsl-runtime` job packs it on every pull request that
+changes the host or the Windows shell, with the version
+`<Studio version>+<12-digit commit>`, and keeps it for 7 days
+(`halonic-wsl-runtime`). The Windows installer ships it next to the app
+(`build-installer.ps1 -Runtime`, HAL-15136), and the shell installs it in the
+distro at host start (HAL-14644). The release builds it the same way with the
+tag's version; it reaches users only inside an installer the board released. `check.sh`
 packs a stand-in host twice, compares the bytes and installs it with the updater.
 
 Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap libcap2-bin` then
