@@ -11,6 +11,7 @@ import type {
   AgentOutput,
   AgentPlacementState,
   AgentRef,
+  AgentRoutine,
   AgentSettings,
   AgentStep,
   AgentsHost,
@@ -62,6 +63,8 @@ export interface MemoryAgentsHostOptions {
   readonly answer?: ((ref: AgentRef, request: AgentChatRequest) => Promise<ChatAnswer>) | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
+  /** The routines that start each agent, keyed by `hubId/id` of the agent. */
+  readonly routines?: Readonly<Record<string, readonly AgentRoutine[]>> | undefined;
   /**
    * The workspace's trust, for Try it: whether it may start now, the gate a test answers, and the
    * workspace's name. Left out, there is no folder to trust and every message may start.
@@ -306,6 +309,10 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
     referencesTo: async (ref) => {
       found(ref);
       return options.users?.[keyOf(ref)] ?? [];
+    },
+    routinesOf: async (ref) => {
+      found(ref);
+      return options.routines?.[keyOf(ref)] ?? [];
     },
     subscribe: (listener) => {
       listeners.add(listener);

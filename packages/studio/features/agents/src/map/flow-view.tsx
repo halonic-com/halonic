@@ -9,7 +9,7 @@ import { mapWords as words } from "./map-words.ts";
 
 /** Props for {@link FlowView}: the map's actions, and where its parts are read. */
 export interface FlowViewProps
-  extends Omit<AgentMapProps, "settings" | "team" | "tools" | "users"> {
+  extends Omit<AgentMapProps, "settings" | "team" | "tools" | "users" | "routines"> {
   readonly host: AgentsHost;
   readonly agent: AgentRef;
   /** The agent's name, for the loading label and the failure's title. */
@@ -20,7 +20,7 @@ export interface FlowViewProps
 
 /**
  * The page's Flow view: reads what the map shows (the agent's settings, its hub's agents and tools,
- * and the workflows that run it), again when a file changes, and draws the map. While it reads it
+ * and the workflows and routines that run it), again when a file changes, and draws the map. While it reads it
  * shows a skeleton; when it can't, it says "Couldn't show *Sorter*'s map" with the reason and
  * **Open as file** (microcopy 8.4), or **Try again** where the file can't be opened.
  */
@@ -29,13 +29,14 @@ export function FlowView({ host, agent, name, openAsFile, ...actions }: FlowView
   const source = useMemo(
     () => ({
       fetch: async () => {
-        const [settings, team, tools, users] = await Promise.all([
+        const [settings, team, tools, users, routines] = await Promise.all([
           host.settings({ hubId, id }),
           host.team({ hubId, id }),
           host.toolOptions({ hubId, id }),
           host.referencesTo({ hubId, id }),
+          host.routinesOf?.({ hubId, id }) ?? [],
         ]);
-        return { settings, team, tools, users };
+        return { settings, team, tools, users, routines };
       },
       subscribe: (onChange: () => void) => host.subscribe(onChange),
     }),

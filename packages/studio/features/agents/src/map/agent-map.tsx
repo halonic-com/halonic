@@ -3,6 +3,7 @@ import type { CloseStack } from "@halonicjs/studio-shell";
 import { type ReactNode, useId, useLayoutEffect, useRef, useState } from "react";
 import {
   type AgentListing,
+  type AgentRoutine,
   type AgentSettings,
   type AgentStep,
   type AgentTeamMember,
@@ -25,10 +26,14 @@ export interface AgentMapProps {
   readonly tools: Readonly<Record<AgentToolList, readonly AgentToolOption[]>>;
   /** The workflows that run it. */
   readonly users: readonly AgentUser[];
+  /** The routines that start it by itself. */
+  readonly routines: readonly AgentRoutine[];
   readonly openAgentStep: (step: AgentStep) => void;
   readonly openSubagent: (agent: AgentListing) => void;
   /** Opens another agent's page, for one that hands it work; absent leaves its card as text. */
   readonly openAgent?: ((agent: AgentListing) => void) | undefined;
+  /** Opens a routine's page; absent leaves its card as text, as does a routine at the root. */
+  readonly openRoutine?: ((routine: AgentRoutine) => void) | undefined;
   /** Opens a workflow's page; absent leaves its card as text. */
   readonly openWorkflow?: ((workflow: AgentUser) => void) | undefined;
   /** Opens Library on a Tools list; absent leaves the tools' cards as text. */
@@ -49,8 +54,8 @@ const addClasses =
 
 /**
  * The agent map (`agents.map.layout-by-side`, flow-agents 6): the agent in the centre with its
- * agent steps; on the left what brings it work (the workflows that run it and the agents that
- * hand it work), below what it can use (skills, knowledge, connectors, three a row), and on the
+ * agent steps; on the left what brings it work (the routines that start it, the workflows that
+ * run it and the agents that hand it work), below what it can use (skills, knowledge, connectors, three a row), and on the
  * right who it hands work to. Each side is a group named by its heading and ends in its add
  * button (`agents.map.add-button-per-side`). The DOM order is the reading order, left, centre,
  * below, right, so Tab goes card to card that way. A side with more than three cards shows one
@@ -147,7 +152,8 @@ interface SideContent {
 
 /** Each side's heading, cards, counts and add button, from what the map shows. */
 function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
-  const { settings, team, users, openSubagent, openAgent, openWorkflow } = props;
+  const { settings, team, users, routines, openSubagent, openAgent, openRoutine, openWorkflow } =
+    props;
   const handsWork = team.filter(
     (member) => member.id !== settings.id && member.subagents.includes(settings.id),
   );
@@ -155,8 +161,18 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
   return {
     in: {
       heading: words.workIn,
-      counts: words.summary.in(users.length, handsWork.length),
+      counts: words.summary.in(users.length, routines.length, handsWork.length),
       items: [
+        ...routines.map((routine) => (
+          <Card
+            key={`${routine.hubId ?? ""}/${routine.id}`}
+            // A routine at the workspace's root has no page of its own yet, so its card is text.
+            onOpen={openRoutine && routine.hubId !== null ? () => openRoutine(routine) : undefined}
+          >
+            <Kind>{words.routine}</Kind>
+            <span>{routine.name}</span>
+          </Card>
+        )),
         ...users.map((user) => (
           <Card
             key={`${user.hubId}/${user.id}`}
@@ -235,15 +251,34 @@ function CentreCard({
   );
 }
 
-/** The skills, knowledge and connectors it uses, by name, in the Tools page's order. */
+/**
+ * The skills, knowledge and connectors it uses, by name, in the Tools page's order. A connector
+ * whose tools wait for approval shows the hand with the words "1 tool asks first" (flow-agents 6,
+ * Noah's N1), so it isn't a bare icon (`agents.map.asks-first`).
+ */
 function toolCards({ settings, tools, openTool }: AgentMapProps): readonly ReactNode[] {
   return agentToolLists.flatMap((list) =>
-    settings[list].map((id) => (
-      <Card key={`${list}/${id}`} onOpen={openTool && (() => openTool(list))}>
-        <Kind>{words.kinds[list]}</Kind>
-        <span>{tools[list].find((option) => option.id === id)?.name ?? id}</span>
-      </Card>
-    )),
+    settings[list].map((id) => {
+      const option = tools[list].find((each) => each.id === id);
+      const name = option?.name ?? id;
+      const asksFirst = option?.asksFirst ? words.asksFirst(option.asksFirst) : undefined;
+      return (
+        <Card
+          key={`${list}/${id}`}
+          label={asksFirst && `${words.kinds[list]} ${name}, ${asksFirst}`}
+          onOpen={openTool && (() => openTool(list))}
+        >
+          <Kind>{words.kinds[list]}</Kind>
+          <span>{name}</span>
+          {asksFirst && (
+            <span className="text-caption font-medium text-warning">
+              <span aria-hidden="true">✋ </span>
+              {asksFirst}
+            </span>
+          )}
+        </Card>
+      );
+    }),
   );
 }
 
@@ -292,7 +327,7 @@ function Card({
   children,
 }: {
   /** Its accessible name, when its text doesn't say enough. */
-  readonly label?: string;
+  readonly label?: string | undefined;
   readonly onOpen?: (() => void) | undefined;
   readonly children: ReactNode;
 }) {

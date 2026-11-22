@@ -42,6 +42,7 @@ const host = () =>
         { hubId: "acme", id: "support-reply", name: "Support reply", stepIds: ["sort", "reply"] },
       ],
     },
+    routines: { "acme/triage": [{ hubId: "acme", id: "morning-sort", name: "Morning sort" }] },
   });
 
 /** Opens the agent's page on Flow. */
@@ -85,6 +86,7 @@ verifies("agents.map.layout-by-side", () => {
   it("puts work in on the left, the agent in the centre, tools below and subagents on the right", async () => {
     const page = await openFlow();
     expect(side(page, "What brings it work")).toEqual([
+      "Routine Morning sort",
       "Workflow Support replysort, reply",
       "Agent Sorter",
     ]);
@@ -211,11 +213,14 @@ verifies("agents.map.clicks", () => {
     expect(path.replace(/\s|›/g, "")).toBe("AcmeMailMailtriageWriter");
   });
 
-  it("opens a workflow, an agent that hands it work and a tool in their own places", async () => {
+  it("opens a routine, a workflow, an agent that hands it work and a tool in their own places", async () => {
+    const openRoutine = vi.fn();
     const openWorkflow = vi.fn();
     const openAgent = vi.fn();
     const openLibrary = vi.fn();
-    const page = await openFlow({ openWorkflow, openAgent, openLibrary });
+    const page = await openFlow({ openRoutine, openWorkflow, openAgent, openLibrary });
+    await act(async () => buttonNamed(page, "Routine Morning sort")?.click());
+    expect(openRoutine).toHaveBeenCalledWith(expect.objectContaining({ id: "morning-sort" }));
     await act(async () =>
       page
         .querySelector<HTMLElement>(
@@ -236,6 +241,19 @@ verifies("agents.map.clicks", () => {
     expect(buttonNamed(map, "Mail triage")).toBeUndefined();
     expect(map.querySelector("[aria-label^='Workflow Support reply']")).toBeNull();
     expect(buttonNamed(map, "Skill Tone")).toBeUndefined();
+    expect(buttonNamed(map, "Routine Morning sort")).toBeUndefined();
+  });
+
+  it("leaves a routine at the workspace's root as text, since it has no page", async () => {
+    const openRoutine = vi.fn();
+    const agents = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "Acme Mail" }],
+      agents: [mailTriage],
+      routines: { "acme/triage": [{ hubId: null, id: "weekly-digest", name: "Weekly digest" }] },
+    });
+    const page = await openFlow({ agents, openRoutine });
+    expect(side(page, "What brings it work")).toEqual(["Routine Weekly digest"]);
+    expect(buttonNamed(page, "Routine Weekly digest")).toBeUndefined();
   });
 });
 
@@ -269,5 +287,50 @@ verifies("agents.map.workflow-card-steps", () => {
         "[aria-label='Workflow Support reply, uses Mail triage in sort, check and reply']",
       ),
     ).not.toBeNull();
+  });
+});
+
+verifies("agents.map.asks-first", () => {
+  /** Mail triage's map, with the connectors' tools that ask first as given. */
+  const asking = (
+    ...connectors: readonly { readonly id: string; readonly asksFirst?: number | "all" }[]
+  ) =>
+    memoryAgentsHost({
+      hubs: [{ id: "acme", name: "Acme Mail" }],
+      agents: [{ ...mailTriage, subagents: [], connectors: connectors.map((each) => each.id) }],
+      toolOptions: { connectors: connectors.map((each) => ({ name: each.id, ...each })) },
+    });
+
+  it("shows the hand with how many tools ask first, and says it in the card's name", async () => {
+    const page = await openFlow({
+      agents: asking({ id: "acme-mail", asksFirst: 1 }, { id: "big-mail", asksFirst: 2 }),
+      openLibrary: () => undefined,
+    });
+    expect(side(page, "What it can use")).toEqual([
+      "Skill tone",
+      "Connector acme-mail✋ 1 tool asks first",
+      "Connector big-mail✋ 2 tools ask first",
+      "+ Add a tool",
+    ]);
+    expect(
+      page.querySelector("[aria-label='Connector acme-mail, 1 tool asks first']"),
+    ).not.toBeNull();
+    // The hand is a picture; its words say it.
+    const hand = [...page.querySelectorAll("[aria-hidden=true]")].find((each) =>
+      each.textContent?.includes("✋"),
+    );
+    expect(hand).toBeDefined();
+  });
+
+  it("says every tool asks first when the file says all, and nothing when none does", async () => {
+    const page = await openFlow({
+      agents: asking({ id: "notes-mcp", asksFirst: "all" }, { id: "calm" }),
+    });
+    expect(side(page, "What it can use")).toEqual([
+      "Skill tone",
+      "Connector notes-mcp✋ every tool asks first",
+      "Connector calm",
+      "+ Add a tool",
+    ]);
   });
 });

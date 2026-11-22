@@ -10,6 +10,7 @@ import type {
   AgentLiveState,
   AgentPlacementState,
   AgentRef,
+  AgentRoutine,
   AgentSettings,
   AgentsHost,
   AgentTeamMember,
@@ -26,6 +27,7 @@ import type {
 import { loopRefusal } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, loadWorkspace, modelAliases, settingsPath } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
+import { routineFolder } from "../routines/routine-files.ts";
 import { hubFilesFor } from "../studio/first-hub.ts";
 import {
   agentGone,
@@ -38,7 +40,7 @@ import {
 } from "./agent-file.ts";
 import { paramsEdits, paramsOf } from "./agent-params.ts";
 import { type AgentPlacementChoices, choicesHere } from "./agent-placement-choices.ts";
-import { agentUsersOf, defaultModelOf } from "./agent-reads.ts";
+import { agentRoutinesOf, agentUsersOf, defaultModelOf, toolOptionsOf } from "./agent-reads.ts";
 import { type NewAgentsParts, placeNewAgent } from "./new-agent-placing.ts";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
@@ -240,24 +242,7 @@ export class WorkspaceAgents implements AgentsHost {
     ref: AgentRef,
   ): Promise<Readonly<Record<AgentToolList, readonly AgentToolOption[]>>> {
     await this.#find(ref);
-    const workspace = await this.#load();
-    const uses = filesOf(workspace, "hub").find((file) => file.hub === ref.hubId)?.value.uses;
-    const optionsOf = (list: AgentToolList, kind: "skill" | "knowledge" | "connector") => {
-      const items = filesOf(workspace, kind);
-      const own = items.filter((item) => item.hub === ref.hubId);
-      const shared = items.filter(
-        (item) => item.hub === null && (uses === undefined || uses[list].includes(item.value.id)),
-      );
-      return [...own, ...shared].map((item) => ({
-        id: item.value.id,
-        name: item.value.name ?? item.value.id,
-      }));
-    };
-    return {
-      skills: optionsOf("skills", "skill"),
-      knowledge: optionsOf("knowledge", "knowledge"),
-      connectors: optionsOf("connectors", "connector"),
-    };
+    return toolOptionsOf(await this.#load(), ref.hubId);
   }
 
   /**
@@ -438,6 +423,11 @@ export class WorkspaceAgents implements AgentsHost {
     return agentUsersOf(await this.#load(), ref);
   }
 
+  async routinesOf(ref: AgentRef): Promise<readonly AgentRoutine[]> {
+    await this.#find(ref);
+    return agentRoutinesOf(await this.#load(), ref);
+  }
+
   subscribe(listener: () => void): () => void {
     return this.#parts.onChange(listener);
   }
@@ -476,8 +466,8 @@ export class WorkspaceAgents implements AgentsHost {
   }
 
   /**
-   * The workspace's hubs, its shared library, its `models.yaml` and its settings as files, with
-   * unsaved changes applied.
+   * The workspace's hubs, its shared library, its root routines (for the agent map), its
+   * `models.yaml` and its settings as files, with unsaved changes applied.
    */
   #source(): DefinitionSource {
     const { files } = this.#parts;
@@ -487,6 +477,7 @@ export class WorkspaceAgents implements AgentsHost {
       list: async () => [
         ...(await files.list("hubs")),
         ...(await files.list(sharedLibraryFolder)),
+        ...(await files.list(routineFolder(null))),
         ...(await existing(modelsFile)),
         ...(await existing(settingsPath)),
       ],
