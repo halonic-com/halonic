@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
@@ -152,10 +152,34 @@ verifies("cli.commands.google.reset", () => {
 
     const { code, io } = await google(["reset", "--yes"]);
 
-    expect(code).not.toBe(exitCode.ok);
+    expect(code).toBe(exitCode.denied);
     expect(io.stdout.join("\n")).not.toContain("Nothing to remove");
+    expect(io.stderr).toEqual([
+      `✕ Couldn't reset Google: Halonic can't read the folder ${folders().google}, so it can't tell what's in it. Nothing was removed.`,
+      "  Check that the folder belongs to you and that you can read it, then run halonic google reset again.",
+    ]);
     expect(await exists(folders().google)).toBe(true);
   });
+
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] needs POSIX modes: names a folder without read access before it asks, and exits 7 rather than No's 1",
+    async () => {
+      await profileWithLostKey();
+      await chmod(folders().google, 0o000);
+      const { terminal, written } = terminalTyping("y");
+
+      try {
+        const { code, io } = await google(["reset"], terminal);
+
+        expect(code).toBe(exitCode.denied);
+        expect(written).toEqual([]);
+        expect(io.stderr.join("\n")).toContain(`Halonic can't read the folder ${folders().google}`);
+        expect(await exists(folders().signIns)).toBe(true);
+      } finally {
+        await chmod(folders().google, 0o700);
+      }
+    },
+  );
 
   it("names every integration's saved sign-ins in its help", async () => {
     const { io } = await google(["reset", "--help"]);
