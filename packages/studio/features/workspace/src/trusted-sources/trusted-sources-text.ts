@@ -36,4 +36,4 @@ export const removeFailed = (name: string, reason: string) =>
   `Couldn't remove trust from ${name}: ${reason}.`;
 /** The record is gone but the plugin's sign-ins are left; removing again tries the sign-out again. */
 export const signOutFailed = (name: string, reason: string) =>
-  `Removed trust from ${name}, but couldn't sign it out: ${reason}. Remove trust again to try the sign-out again.`;
+  `Removed trust from ${name}, but couldn't sign it out: ${reason}. Press Remove trust again to sign it out.`;
