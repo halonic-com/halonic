@@ -14,7 +14,7 @@ import {
   type StartRunRequest,
 } from "@halonicjs/ports";
 import { ConnectionTracker } from "./connection.ts";
-import { RemoteHostError, readHostError } from "./errors.ts";
+import { RemoteHostError, readChatTurnError, readHostError } from "./errors.ts";
 import { type Fetcher, type HostCall, HostClient } from "./host-client.ts";
 import { followRun } from "./run-stream.ts";
 
@@ -221,7 +221,7 @@ export function createRemoteExecutor(options: RemoteExecutorOptions): RunExecuto
       const call: HostCall = { method: "POST", body, ...(signal === undefined ? {} : { signal }) };
       const response = await client.call("/api/chat-turn", call);
       if (!response.ok) {
-        throw await readHostError(response);
+        throw await readChatTurnError(response);
       }
       return (await response.json()) as ChatTurnResponse;
     },

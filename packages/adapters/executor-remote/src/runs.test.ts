@@ -1,4 +1,9 @@
-import { isHostTooOld, isRunTargetNotFound, runExecutorVersion } from "@halonicjs/ports";
+import {
+  isHostTooOld,
+  isModelCallError,
+  isRunTargetNotFound,
+  runExecutorVersion,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { RemoteHostError } from "./errors.ts";
@@ -213,6 +218,39 @@ verifies("executor-remote.runs", () => {
       await expect(executorFor(host).chatTurn(turn)).rejects.toMatchObject({
         code: "model_call_failed",
       });
+    });
+
+    it("rejects a failed model call with a ModelCallError of the host's reason", async () => {
+      const host = fakeHost(() =>
+        Response.json(
+          { code: "model_call_failed", message: "The model didn't answer.", reason: "no-key" },
+          { status: 502 },
+        ),
+      );
+
+      const error = await executorFor(host)
+        .chatTurn(turn)
+        .catch((caught: unknown) => caught);
+
+      expect(isModelCallError(error)).toBe(true);
+      expect(error).toMatchObject({ reason: "no-key", message: "The model didn't answer." });
+      expect((error as Error).cause).toMatchObject({ status: 502, code: "model_call_failed" });
+    });
+
+    it("keeps the host's refusal when the reason isn't one a model call can fail with", async () => {
+      const host = fakeHost(() =>
+        Response.json(
+          { code: "model_call_failed", message: "The model didn't answer.", reason: "gremlins" },
+          { status: 502 },
+        ),
+      );
+
+      const error = await executorFor(host)
+        .chatTurn(turn)
+        .catch((caught: unknown) => caught);
+
+      expect(isModelCallError(error)).toBe(false);
+      expect(error).toMatchObject({ code: "model_call_failed" });
     });
 
     it("rejects when the signal aborts the request", async () => {
