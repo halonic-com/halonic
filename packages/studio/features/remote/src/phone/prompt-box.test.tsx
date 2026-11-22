@@ -141,7 +141,7 @@ verifies("remote.phone-prompt-box", () => {
     );
   });
 
-  it("writes under Approve and Deny what became of an answer", async () => {
+  it("writes under Approve and Reject what became of an answer", async () => {
     const view = remoteView({
       sessions: [remoteSession({ id: "sorter", title: "Sorter", state: "waiting" })],
       openApprovals: [remoteApproval({ sessionId: "sorter" })],

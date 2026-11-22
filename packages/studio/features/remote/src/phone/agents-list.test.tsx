@@ -96,7 +96,7 @@ verifies("remote.phone-agents", () => {
     );
   });
 
-  it("keeps Approve and Deny off with the reason under them, and sends nothing", () => {
+  it("keeps Approve and Reject off with the reason under them, and sends nothing", () => {
     const { button, onAnswer } = show(staleView(live, "reconnecting"));
     const approve = button("Approve");
     expect(approve?.getAttribute("aria-disabled")).toBe("true");
@@ -113,13 +113,13 @@ verifies("remote.phone-agents", () => {
       offReason: ANSWER_RISKY_ON_COMPUTER,
     });
     const { screen, button } = show({ ...live, openApprovals: [risky] });
-    expect(button("Deny")?.getAttribute("aria-disabled")).toBe("true");
+    expect(button("Reject")?.getAttribute("aria-disabled")).toBe("true");
     expect(screen.textContent).toContain("Answer this on your computer.");
   });
 
   it("sends an answer while it can, and not again while it is on its way", () => {
     const { button, onAnswer } = show(live);
-    act(() => button("Deny")?.click());
+    act(() => button("Reject")?.click());
     expect(onAnswer).toHaveBeenCalledWith("sorter", "send-replies", "deny");
 
     unmountAll();

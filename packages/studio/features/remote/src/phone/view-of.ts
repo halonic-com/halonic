@@ -15,7 +15,7 @@ import type { SentAnswers } from "./sent-answers.ts";
 import type { SessionMemory } from "./session-memory.ts";
 
 /**
- * Why Approve and Deny are off for a `risky` approval: the phone answers none
+ * Why Approve and Reject are off for a `risky` approval: the phone answers none
  * until it has biometric unlock (board decision 4b). Interim words: the final
  * ones are a wording call with Elena and Sofia.
  */
