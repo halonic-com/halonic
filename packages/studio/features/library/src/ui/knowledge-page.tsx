@@ -12,7 +12,7 @@ import { KnowledgeModel } from "../knowledge-model.ts";
 import { knowledgeWords } from "../knowledge-words.ts";
 import { savingFor } from "../saving.ts";
 import { useItemTrash } from "./item-trash.tsx";
-import { sharedHubKey } from "./library-place.tsx";
+import { sharedHubKey } from "../shared-hub-key.ts";
 import { LoadFailed } from "./load-failed.tsx";
 import { SummaryField } from "./summary-field.tsx";
 import { UsedByField } from "./used-by-field.tsx";

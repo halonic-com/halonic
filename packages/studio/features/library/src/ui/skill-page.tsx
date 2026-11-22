@@ -16,7 +16,7 @@ import { SkillHostService, type SkillRef } from "../skill-host.ts";
 import { type SkillField, SkillModel } from "../skill-model.ts";
 import { skillWords } from "../skill-words.ts";
 import { useItemTrash } from "./item-trash.tsx";
-import { sharedHubKey } from "./library-place.tsx";
+import { sharedHubKey } from "../shared-hub-key.ts";
 import { LoadFailed } from "./load-failed.tsx";
 import { UsedByField } from "./used-by-field.tsx";
 

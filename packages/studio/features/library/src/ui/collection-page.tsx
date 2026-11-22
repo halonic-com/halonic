@@ -13,7 +13,7 @@ import { CollectionHostService, type CollectionRef } from "../collection-host.ts
 import { CollectionModel } from "../collection-model.ts";
 import { collectionWords } from "../collection-words.ts";
 import { type ItemTrash, useItemTrash } from "./item-trash.tsx";
-import { sharedHubKey } from "./library-place.tsx";
+import { sharedHubKey } from "../shared-hub-key.ts";
 import { RecordsGrid } from "./records-grid.tsx";
 import { UsedByField } from "./used-by-field.tsx";
 

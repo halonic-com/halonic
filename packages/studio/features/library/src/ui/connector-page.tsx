@@ -21,7 +21,7 @@ import { ConnectorSecretsSection } from "./connector-secrets-section.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
 import { HttpConnectorSecret, hasHttpSecretLines } from "./http-connector-secret.tsx";
 import { useItemTrash } from "./item-trash.tsx";
-import { sharedHubKey } from "./library-place.tsx";
+import { sharedHubKey } from "../shared-hub-key.ts";
 import { ListedToolsElsewhere } from "./listed-tools-elsewhere.tsx";
 import { ListedToolsWaiting, type ListedToolsWaitingProps } from "./listed-tools-waiting.tsx";
 
