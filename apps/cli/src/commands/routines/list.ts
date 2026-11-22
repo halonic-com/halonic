@@ -14,7 +14,9 @@
 // trusted", as the Studio does, since `watch` would refuse it (HAL-15525). A
 // routine that starts an agent on its own shows "Can't start" too, with why
 // under the list, since Halonic runs an agent only as a step in a workflow
-// (HAL-15607).
+// (HAL-15607). Every "Can't start" row is counted above the list and gets its
+// reason under it, file errors first, so none is left without a word and the
+// count matches the rows (C672 #1).
 
 import { placedRoutines } from "@halonicjs/app";
 import { type ListedRoutine, RoutineList } from "@halonicjs/app/routines";
@@ -46,8 +48,9 @@ import { listAsLive, type NotLiveRoutines } from "./not-live.ts";
 /**
  * Lists the workspace's routines, one lined-up row each: the name, what
  * starts it, its next run and its last run. No routines says so, and exits 0.
- * Routines whose files have errors, and webhook routines `halonic serve`
- * says can't start, are counted above the list, which then exits 1.
+ * Routines that can't start are counted above the list, each with its
+ * reason under it; one whose file has errors, or a webhook routine
+ * `halonic serve` says can't start, makes the list exit 1.
  * Routines with saved changes that aren't live yet are listed as the watch
  * runs them, from the live version, and get a line each under it.
  * A workspace that isn't trusted here gets a line above it with
@@ -87,9 +90,9 @@ export async function listRoutines(
   const withProblems = routines.filter((each) => each.problems > 0);
   // A fix that is saved but not committed: validate reads the saved file and finds nothing (C642 #2).
   const fixNotLive = withProblems.filter(isFixNotLive).length;
-  const toValidate = withProblems.length - fixNotLive;
-  // A routine with file errors is counted once, under validate, which shows them,
-  // and one that starts an agent once, on its own line under the list.
+  // Each row that says "Can't start" for a reason of its own; a fix not
+  // committed has a first line of its own, which names the commit.
+  const ownReason = routines.filter((each) => cantStart(each) && !isFixNotLive(each)).length;
   const webOnly = routines.filter((each) => !cantStart(each) && blocked.has(each.key)).length;
   // Only a routine whose row says "Paused until trusted" earns the line: a
   // webhook routine serve won't start reads "Can't start" instead.
@@ -99,12 +102,12 @@ export async function listRoutines(
   return {
     exitCode: withProblems.length + webOnly === 0 ? exitCode.ok : exitCode.failed,
     lines: [
-      ...(toValidate === 0 ? [] : [routinesMessages.routinesCantStart(toValidate, dir).phrase]),
+      ...(ownReason === 0 ? [] : [routinesMessages.routinesCantStart(ownReason).phrase]),
       ...(fixNotLive === 0 ? [] : [routinesMessages.routinesFixNotLive(fixNotLive).phrase]),
       ...(webOnly === 0 ? [] : [routinesMessages.webhookRoutinesCantStart(webOnly, dir).phrase]),
       ...pausedLine,
       ...columns(routines.map((each) => routineRow(each, clock, row, blocked.has(each.key)))),
-      ...agentLines(routines),
+      ...cantStartLines(routines, dir),
       ...notLiveLines(routines, notLive, dir),
       routinesMessages.watchHint().phrase,
     ],
@@ -158,11 +161,22 @@ function pausedLineOf(trust: WorkspaceTrustAnswer, workspace: string, dir?: stri
   return message(workspace, dir).phrase;
 }
 
-/** One line for each routine that starts an agent on its own, in the list's order: why it can't start and the fix. */
-function agentLines(routines: readonly ListedRoutine[]): Phrase[] {
-  return routines
-    .filter((each) => each.startsAgent)
-    .map((each) => routinesMessages.agentCantStart(printable(each.name)).phrase);
+/**
+ * One line for each routine that can't start, in the list's order: why, and
+ * what to do. File errors come first, so a routine whose agent isn't there
+ * is sent to `validate`, which names it, rather than told to make a workflow
+ * (C672 #1). A fix not committed gets its line with the not-live lines.
+ * `dir` is the user's own `--dir`.
+ */
+function cantStartLines(routines: readonly ListedRoutine[], dir: string | undefined): Phrase[] {
+  return routines.flatMap((each) => {
+    // The name comes from the routine's file, so it is made printable (cli-output section 5).
+    const name = printable(each.name);
+    if (isFixNotLive(each)) return [];
+    if (each.problems > 0) return [routinesMessages.fileCantStart(name, dir).phrase];
+    if (each.startsAgent) return [routinesMessages.agentCantStart(name).phrase];
+    return [];
+  });
 }
 
 /**

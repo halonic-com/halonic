@@ -29,6 +29,20 @@ function harnessFix() {
 const inStudio = "in Halonic Studio";
 
 /**
+ * Why a routine that starts an agent on its own can't start, and the fix in
+ * the file's terms, in the words the Studio's Starts card and `serve`'s
+ * webhook line use (HAL-15607): the list and the watch say it alike (C672 #1).
+ */
+function agentOnItsOwn() {
+  return phrase`Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.`;
+}
+
+/** "Friday digest can't start until its file is fixed · halonic validate", for the list and the watch. */
+function untilFileFixed(name: string, dir: string | undefined) {
+  return phrase`${name} can't start until its file is fixed ${markPart("separator")} ${suggestedCommand("validate", dir)}`;
+}
+
+/**
  * The sentences of `halonic routines` and `halonic routines watch` (HAL-4844). cli-output has no section
  * for it yet, so these are team wording built on the `halonic runs` list, as
  * HAL-2282 allows: the same columns, times and status words. The trigger's
@@ -57,12 +71,21 @@ export const routinesMessages = defineMessages("routines", {
    */
   cantStart: () => phrase`${markPart("failed")} Can't start`,
   /**
-   * The line above the list when routines have errors, which exits 1
-   * (HAL-14299): "! 1 routine can't start · halonic validate", which shows
-   * why. `dir` is the user's own `--dir`.
+   * The line above the list counting the routines that can't start for a
+   * reason of their own, file errors (HAL-14299) or an agent on its own
+   * (HAL-15607): "! 3 routines can't start. The lines under the list say
+   * why." Each has its own line there, since `validate` names only the file
+   * errors (C672 #1).
    */
-  routinesCantStart: (count: number, dir?: string) =>
-    phrase`${markPart("needsYou")} ${counted(count, "routine", "routines")} can't start ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
+  routinesCantStart: (count: number) =>
+    phrase`${markPart("needsYou")} ${counted(count, "routine", "routines")} can't start. ${count === 1 ? "The line under the list says" : "The lines under the list say"} why.`,
+  /**
+   * The line under the list for a routine whose file has errors, in the
+   * watch's words, so it names the routine and the command that shows why
+   * (C672 #1). `dir` is the user's own `--dir`.
+   */
+  fileCantStart: (name: string, dir?: string) =>
+    phrase`${markPart("needsYou")} ${untilFileFixed(name, dir)}`,
   /**
    * The line above the list when routines' live versions have errors that
    * their saved files no longer have (C642 #2): `validate` reads the saved
@@ -103,12 +126,13 @@ export const routinesMessages = defineMessages("routines", {
     phrase`${markPart("needsYou")} ${workspace}'s routines don't start: ${trustMessages.refused(refused).phrase} ${trustMessages.refusedFix().phrase}`,
   /**
    * The line under the list for a routine that starts an agent on its own,
-   * which Halonic can't run yet (HAL-15607): why, in the words the Studio's
-   * Starts card and `serve`'s webhook line use, and the fix in the file's
-   * terms, since the routine's `run` names what it starts.
+   * which Halonic can't run yet (HAL-15607): why, and the fix in the file's
+   * terms, since the routine's `run` names what it starts. A routine whose
+   * file has errors gets {@link fileCantStart} instead, since an agent that
+   * isn't there is the first thing to fix (C672 #1).
    */
   agentCantStart: (name: string) =>
-    phrase`${markPart("needsYou")} ${name} can't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the routine start that workflow.`,
+    phrase`${markPart("needsYou")} ${name} can't start: ${agentOnItsOwn()}`,
   /** The Next column of a routine that is off. */
   off: () => phrase`Off`,
   /** The Next column of a routine no clock starts: manual, a signal, mail, or a schedule that doesn't parse. */
@@ -210,7 +234,23 @@ export const routinesMessages = defineMessages("routines", {
    * `dir` is the user's own `--dir`.
    */
   routineCantStart: (name: string, dir?: string) =>
-    phrase`${markPart("failed")} ${name} can't start until its file is fixed ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
+    phrase`${markPart("failed")} ${untilFileFixed(name, dir)}`,
+  /**
+   * A line of `watch` for a routine that is on and starts an agent on its
+   * own, which the engine refuses (C672 #1): the watch leaves it out, as the
+   * list shows it "Can't start", instead of failing it when it is due.
+   */
+  agentRoutineCantStart: (name: string) =>
+    phrase`${markPart("failed")} ${name} can't start: ${agentOnItsOwn()}`,
+  /**
+   * The line of `watch` before {@link watching} for the routines that are on
+   * but no commit has, which the watch doesn't run (HAL-15664), so they
+   * aren't missing from its count without a word (C672 #1).
+   */
+  routinesNeverLive: (count: number) =>
+    count === 1
+      ? phrase`${markPart("needsYou")} 1 routine isn't live yet, so this watch doesn't run it. To start it, commit it or make it live ${inStudio}.`
+      : phrase`${markPart("needsYou")} ${counted(count, "routine", "routines")} aren't live yet, so this watch doesn't run them. To start them, commit them or make them live ${inStudio}.`,
   /**
    * That line instead when the saved file has no errors (C642 #2): the fix
    * is saved, so `validate` finds nothing, and the watch starts the routine
