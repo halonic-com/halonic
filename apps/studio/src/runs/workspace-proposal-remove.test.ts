@@ -1,4 +1,6 @@
-import { ProposalGoneError } from "@halonicjs/studio-feature-inbox/api";
+import { AgentHostError, type AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
+import { ProposalFailedError, ProposalGoneError } from "@halonicjs/studio-feature-inbox/api";
+import { AgentHostNotAnswering } from "@halonicjs/studio-services";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { hostProposalDecisionsOf } from "./host-proposals.ts";
@@ -42,4 +44,41 @@ verifies("studio.workspace-proposal-remove", () => {
     await expect(decisions.remove("01JD8Q")).rejects.toThrow("isn't trusted yet");
     expect(request).not.toHaveBeenCalled();
   });
+
+  it("says a Remove the host refused found the changes there again, keeping its words for details", async () => {
+    const message = "The proposal of run 01JD8Q is still available.";
+    const { transport } = hostAnswering(422, { error: { kind: "proposal_refused", message } });
+    const failure = await removedWith(transport);
+    expect(failure).toBeInstanceOf(ProposalFailedError);
+    expect(failure).toMatchObject({ failure: "changes-back", message });
+  });
+
+  it("says the engine isn't answering when the host isn't running", async () => {
+    const shell = new AgentHostError(0, "host_unavailable", "The shell refused the call.");
+    const failure = await removedWith(failingWith(new AgentHostNotAnswering(shell)));
+    expect(failure).toMatchObject({ failure: "not-answering" });
+  });
+
+  it("calls any other failure one Halonic can't explain", async () => {
+    const { transport } = hostAnswering(500, { error: { kind: "internal" } });
+    expect(await removedWith(transport)).toMatchObject({ failure: "unexplained" });
+    const shell = new AgentHostError(0, "shell_failed", "The shell's call failed.");
+    expect(await removedWith(failingWith(shell))).toMatchObject({ failure: "unexplained" });
+  });
 });
+
+/** What removing run `01JD8Q`'s proposal through `transport` fails with. */
+function removedWith(transport: AgentHostTransport): Promise<unknown> {
+  return hostProposalDecisionsOf(transport, workspace, () => true)
+    .remove("01JD8Q")
+    .then(() => expect.unreachable("The Remove went through."))
+    .catch((error: unknown) => error);
+}
+
+/** A transport whose every request rejects with `error`, as the shell's refusals do. */
+function failingWith(error: Error): AgentHostTransport {
+  return {
+    request: async () => Promise.reject(error),
+    stream: async () => Promise.reject(error),
+  };
+}

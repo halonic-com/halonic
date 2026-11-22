@@ -32,9 +32,29 @@ export class ProposalGoneError extends Error {
 }
 
 /**
+ * Why a call on a proposal failed, as the Inbox words it (C681 32): its changes are there again,
+ * the engine isn't answering, or a reason Halonic can't explain yet.
+ */
+export type ProposalFailure = "changes-back" | "not-answering" | "unexplained";
+
+/**
+ * A failure the app sorted by the host's kind, so the page picks its words from `failure`. The
+ * message is the host's own text, which reaches the person only through **Copy details**.
+ */
+export class ProposalFailedError extends Error {
+  override readonly name = "ProposalFailedError";
+  readonly failure: ProposalFailure;
+
+  constructor(failure: ProposalFailure, details: string) {
+    super(details);
+    this.failure = failure;
+  }
+}
+
+/**
  * Accept, Reject, Undo, settle and Remove on the open workspace's run proposals. Every call fails with
  * the reason when the proposal can't be decided now, and the page shows it; with
- * {@link ProposalGoneError} when its texts are gone.
+ * {@link ProposalGoneError} when its texts are gone, and Remove with {@link ProposalFailedError}.
  *
  * @example
  * const { undo } = await decisions.accept("01JD8Q", { file: "hubs/support/agents/triage.yaml" });
@@ -56,7 +76,7 @@ export interface ProposalDecisions {
   settle(runId: string): Promise<void>;
   /**
    * Removes a proposal whose texts are gone: it leaves Needs you and is done as not reviewed. One
-   * that can still be opened is refused.
+   * that can still be opened is refused, as `changes-back`.
    */
   remove(runId: string): Promise<void>;
 }

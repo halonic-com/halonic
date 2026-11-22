@@ -43,6 +43,8 @@ export { clockTime } from "./plain/waiting-time.ts";
 export {
   type ProposalDecided,
   type ProposalDecisions,
+  ProposalFailedError,
+  type ProposalFailure,
   ProposalGoneError,
   type ProposalUndone,
 } from "./proposal-decisions.ts";

@@ -51,7 +51,7 @@ export interface ProposalCardProps {
  * what the proposal came to. Where the window can't decide, the changes end with the terminal
  * command that does (HAL-15986).
  *
- * When the host says the proposal's texts are gone, the page offers only **Remove** (Q11).
+ * When the host says the proposal's texts are gone, the page offers only **Remove from Inbox** (Q11).
  *
  * Not here yet: a change's settings before and after, the diff, Compare and the phone's bar (Q5,
  * Q9, Q12).
