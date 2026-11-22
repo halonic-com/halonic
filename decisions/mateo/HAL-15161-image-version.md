@@ -3,6 +3,7 @@
 - Task: HAL-15161
 - Approval: Liam's yes to A+B on HAL-15168; this is B. Liam reviews it as a security PR and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nMTFmM98YBez/K8jWcDz6Y2xdK0IEHf5u0jJJIOXAyntjl30ynN3+0+1jD6iuqXQ4UU7TJ78Os5I+qUHEUC8CQ==
 
 ## What changes
 
