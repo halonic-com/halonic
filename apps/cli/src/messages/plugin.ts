@@ -110,6 +110,12 @@ export const pluginMessages = defineMessages("plugin", {
   folderHeading: () => phrase`${pluginTrustLocationHeadings.folder}`,
   /** The line under the plugin's folder: where it was copied from, as `plugin list` writes it (HAL-15142). */
   copiedFrom: (source: string) => phrase`Copied from ${source}`,
+  /**
+   * `plugin list`'s source for a plugin added from a folder: it runs its own
+   * copy, so editing the folder changes nothing until `plugin add --update`
+   * (C45, HAL-14325). A git source's commit already says which copy it is.
+   */
+  listCopiedFrom: (source: string, day: string) => phrase`copied from ${source} on ${day}`,
   /** The heading of the list of files the fingerprint covers. */
   filesHeading: () => phrase`${pluginTrustLocationHeadings.files}`,
   /** The last line of the file list when more files follow the ones shown. */
@@ -124,8 +130,15 @@ export const pluginMessages = defineMessages("plugin", {
   hostFromSetting: (setting: string) => phrase`the address in the setting ${setting}`,
   /** The refusal when a plugin with the id is already added; adding it again would be a conflict. */
   alreadyAdded: (id: string) => phrase`${id} is already added.`,
-  alreadyAddedFix: (id: string) =>
-    phrase`To add another version, remove it first: halonic plugin remove ${id}`,
+  /** Under {@link alreadyAdded}: `--update` replaces it and keeps its settings, which `remove` drops (C45, HAL-14325). */
+  alreadyAddedFix: () =>
+    phrase`To put this version in its place and keep its settings, run the same command with --update.`,
+  /** Under {@link alreadyAdded} when even `--update` couldn't place it, such as for a folder that is a link. */
+  alreadyAddedRemoveFix: (id: string) =>
+    phrase`To add this version, remove it first: halonic plugin remove ${id}`,
+  /** `--update`'s help line. */
+  updateOption: () =>
+    phrase`Put it in place of the added plugin with the same id and keep its settings; changed files are off until you trust them`,
   /** `plugin add` without a folder or git address; line 1 says what's missing (cli-output 1.3). */
   addNeedsSource: () => phrase`halonic plugin add needs a folder or a git address.`,
   addUsage: () => phrase`halonic plugin add <folder or git address>[@commit]`,
@@ -298,6 +311,17 @@ export const pluginMessages = defineMessages("plugin", {
   /** With a !, in place of `plugin add`'s "Added … It's on.". */
   addedButOffHere: (name: string, version: string) =>
     phrase`Added ${name} ${version}. It's trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.`,
+  /** `plugin add --update`'s words for each of the lines above, once it replaced the added copy (C45, HAL-14325). */
+  updated: (name: string, version: string) => phrase`Updated ${name} ${version}. It's on.`,
+  /** In place of {@link updated} when the new copy's files are the ones trusted, so nothing was asked. */
+  updatedUnchanged: (name: string, version: string) =>
+    phrase`Updated ${name} ${version}. Its files are the ones you trusted, so it's still on.`,
+  updatedButOff: (name: string, id: string) =>
+    phrase`${name} is updated but off. Nothing from it runs until you trust it: halonic trust --plugin ${id}`,
+  updateNoTerminal: (name: string) =>
+    phrase`${name} is updated but off, because there's no terminal to ask you to trust it.`,
+  updatedButOffHere: (name: string, version: string) =>
+    phrase`Updated ${name} ${version}. It's trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.`,
   /**
    * With a !, above the trust question while its backend would be off here:
    * a yes trusts it but doesn't turn it on (C565 row 5, HAL-15373).

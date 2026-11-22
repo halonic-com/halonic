@@ -26,11 +26,12 @@ export function pluginCommandWith(setup: PluginSetup): CliCommand {
 function addCommandWith(setup: PluginSetup): CliCommand {
   return {
     name: "add",
-    usage: "<folder|git-address>[@commit] [--yes --fingerprint <fingerprint>]",
+    usage: "<folder|git-address>[@commit] [--update] [--yes --fingerprint <fingerprint>]",
     takesArguments: true,
     summary: pluginMessages.addSummary(),
     action: () => pluginMessages.addAction(),
     options: {
+      update: { type: "boolean", description: pluginMessages.updateOption() },
       yes: { type: "boolean", description: trustMessages.yesOption() },
       fingerprint: {
         type: "string",

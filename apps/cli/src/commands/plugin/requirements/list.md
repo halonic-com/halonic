@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1736 (P3, plugin list); cli-output 3.6, approved on HAL-2123; off on this computer from HAL-15080
+- Source: HAL-1736 (P3, plugin list); cli-output 3.6, approved on HAL-2123; off on this computer from HAL-15080; a folder source as a copy with its day, and `addedAt`, from HAL-14325 (Nina's C340, C45)
 
-The `halonic plugin list` command, which is also what `halonic plugin` does on its own, shall list every plugin in the profile's plugins folder, one line per plugin with four columns lined up: the plugin's name, its version, where it was added from and whether it is on, which for a plugin that is on but whose backend doesn't run on this computer is "off on this computer", as `cli.commands.plugin.off-here` says. A git source shall be shown as its address without the scheme and `.git`, then `@` and the first seven characters of the commit; a folder shall be shown as its path, with the home folder written as `~`. A plugin that is trusted shall say "on" with ✓; one never trusted shall say "not trusted yet", and one that changed since it was trusted shall say "changed since you trusted it", each with ! and the `halonic trust --plugin <id>` command that trusts it. A folder that can't be read or checked shall be listed by its folder name with ✕ and "can't be read or checked", and shall not stop the others. With no plugins it shall say how to add one. With `--json`, it shall give each plugin's id, name, version, status and source. It shall write nothing and need no trust, and it shall exit 0 whenever it lists, empty or not.
+The `halonic plugin list` command, which is also what `halonic plugin` does on its own, shall list every plugin in the profile's plugins folder, one line per plugin with four columns lined up: the plugin's name, its version, where it was added from and whether it is on, which for a plugin that is on but whose backend doesn't run on this computer is "off on this computer", as `cli.commands.plugin.off-here` says. A git source shall be shown as its address without the scheme and `.git`, then `@` and the first seven characters of the commit; a folder shall be shown as "copied from", its path, with the home folder written as `~`, "on" and the day it was added or last updated in the computer's own time zone, such as "copied from ~/acme-orders on 20 Nov", because Halonic runs its own copy and editing the folder changes nothing until `halonic plugin add --update`. A plugin that is trusted shall say "on" with ✓; one never trusted shall say "not trusted yet", and one that changed since it was trusted shall say "changed since you trusted it", each with ! and the `halonic trust --plugin <id>` command that trusts it. A folder that can't be read or checked shall be listed by its folder name with ✕ and "can't be read or checked", and shall not stop the others. With no plugins it shall say how to add one. With `--json`, it shall give each plugin's id, name, version, status, source and `addedAt`, the time it was added or last updated. It shall write nothing and need no trust, and it shall exit 0 whenever it lists, empty or not.
 
 ## Examples
 
@@ -14,6 +14,9 @@ The `halonic plugin list` command, which is also what `halonic plugin` does on i
 - Given a plugin that was added and never trusted,
   when `halonic plugin list` is run,
   then its last column says "! not trusted yet · halonic trust --plugin tides".
+- Given a plugin Tides added on 20 Nov from the folder `~/tides`,
+  when `halonic plugin list` is run,
+  then its source column says "copied from ~/tides on 20 Nov".
 - Given no plugins,
   when `halonic plugin list` is run,
   then it prints "No plugins yet. Add one with halonic plugin add <folder or git address>." and exits 0.

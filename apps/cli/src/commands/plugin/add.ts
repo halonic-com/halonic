@@ -2,7 +2,8 @@
 // into the profile's plugins folder, shows the trust check and asks whether
 // to trust it (cli-output 3.6). A thin command over `PluginService.add` and
 // `trust`: the service reads, checks and places the plugin, this file shows
-// and asks. A git address is first exported to a temporary folder outside
+// and asks. With `--update`, a plugin that is already added is replaced in
+// place, keeping its settings (C45, HAL-14325). A git address is first exported to a temporary folder outside
 // every workspace (`git-source.ts`).
 
 import { readdir, stat } from "node:fs/promises";
@@ -53,7 +54,10 @@ type AddedPlugin = Exclude<PluginEntry, { status: "broken" }>;
 /**
  * Adds the plugin in a folder and asks whether to trust it. The plugin is
  * added in every case; answering No, or having no terminal, leaves it off
- * and ends with exit code 3, as Studio's Not now does (D4).
+ * and ends with exit code 3, as Studio's Not now does (D4). With `--update`,
+ * a plugin whose id is already added is put in its place: its settings and
+ * secrets stay, and changed files ask for trust again, because they change
+ * the fingerprint.
  *
  * @throws UsageError for `--yes` without `--fingerprint`, before anything is copied
  * @throws KindedError when the folder can't be read or checked, or the plugin is already added
@@ -72,6 +76,7 @@ export async function addPlugin(
   const given = input.options["fingerprint"];
   const fingerprint = typeof given === "string" ? given : undefined;
   const yes = input.options["yes"] === true;
+  const update = input.options["update"] === true;
   if (yes && fingerprint === undefined) {
     throw new UsageError(
       trustMessages.yesNeedsFingerprint(),
@@ -83,32 +88,41 @@ export async function addPlugin(
   const service = openPluginService(setup, context.cwd);
   let added: Awaited<ReturnType<PluginService["add"]>>;
   let nested: NestedManifest | undefined;
+  let updated = false;
   try {
     added = await service.add(new FileSystemFolderReader(opened.folder), {
       from: opened.from,
       replace: false,
     });
+    // Tried without `replace` first, so a plugin that isn't added yet is added
+    // as without `--update`, with the sign-outs of its leftovers.
+    if (update && !added.ok && added.error.kind === "taken") {
+      added = await service.add(new FileSystemFolderReader(opened.folder), {
+        from: opened.from,
+        replace: true,
+      });
+      updated = added.ok;
+    }
     if (!added.ok && opened.from.kind === "folder" && hasNoManifest(added.error)) {
       nested = await nestedManifest(opened.folder);
     }
   } finally {
     await opened.close();
   }
-  if (!added.ok) throw refused(added.error, nested);
+  if (!added.ok) throw refused(added.error, nested, update);
   const entry = added.value;
-  // Only a replace keeps a copy that can't be read back; `add` never replaces.
+  // Only a replace keeps a copy that can't be read back.
   if (entry.status === "broken") throw problemRefusal(entry.problems);
   const leftOut = leftOutLine(entry.leftOut, context);
   const programsRun = await programsRunFor(setup, [entry.content]);
   const offHere = await offHereFor(setup, [entry.plugin]);
-  const result = await trustAdded(service, entry, {
-    context,
-    yes,
-    fingerprint,
-    programsRun,
-    offHere,
-  });
-  return { ...result, lines: [...opened.printedAhead, ...leftOut, ...result.lines] };
+  const answer = { context, yes, fingerprint, programsRun, offHere };
+  const result = await trustAdded(service, entry, answer, updated);
+  return {
+    ...result,
+    lines: [...opened.printedAhead, ...leftOut, ...result.lines],
+    ...(updated && result.json !== undefined ? { json: { ...result.json, updated } } : {}),
+  };
 }
 
 /**
@@ -230,18 +244,26 @@ function repositoryName(address: string): string {
   return last.replace(/\.git$/u, "");
 }
 
-/** Says it's on, or asks whether to trust it, with `plugin add`'s words around the question. */
+/**
+ * Says it's on, or asks whether to trust it, with `plugin add`'s words around
+ * the question, or `--update`'s when it replaced the added copy.
+ */
 async function trustAdded(
   service: PluginService,
   entry: AddedPlugin,
   answer: PluginTrustAnswer,
+  updated: boolean,
 ): Promise<CommandResult> {
   const { plugin } = entry;
   // The manifest's name and version are outside text (cli-output 5).
   const name = printable(plugin.name);
   const version = printable(plugin.version);
-  const added = pluginMessages.added(name, version);
-  const offHere = pluginMessages.addedButOffHere(name, version);
+  const added = updated
+    ? pluginMessages.updatedUnchanged(name, version)
+    : pluginMessages.added(name, version);
+  const offHere = updated
+    ? pluginMessages.updatedButOffHere(name, version)
+    : pluginMessages.addedButOffHere(name, version);
   if (entry.status === "trusted") {
     const json = { id: entry.folder, name: plugin.name, version: plugin.version };
     if (answer.offHere !== undefined) {
@@ -262,6 +284,14 @@ async function trustAdded(
       json: { ...json, fingerprint: entry.fingerprint, status: "on" },
     };
   }
+  if (updated) {
+    return await askToTrustPlugin(service, entry, answer, {
+      on: pluginMessages.updated(name, version),
+      offHere,
+      off: pluginMessages.updatedButOff(name, entry.folder),
+      noTerminal: pluginMessages.updateNoTerminal(name),
+    });
+  }
   return await askToTrustPlugin(service, entry, answer, {
     on: added,
     offHere,
@@ -270,12 +300,23 @@ async function trustAdded(
   });
 }
 
-/** The refusal for a plugin that wasn't added: Halonic's own data, already added, or its first problem. */
-function refused(error: PluginAddRefusal, nested: NestedManifest | undefined): KindedError {
+/**
+ * The refusal for a plugin that wasn't added: Halonic's own data, already
+ * added, or its first problem. Already added points to `--update`, or after
+ * an `--update` that couldn't place it either, to `remove`.
+ */
+function refused(
+  error: PluginAddRefusal,
+  nested: NestedManifest | undefined,
+  update: boolean,
+): KindedError {
   if (error.kind === "halonic-data") return refusal(pluginMessages.halonicData().phrase);
   if (error.kind === "taken") {
+    const fix = update
+      ? pluginMessages.alreadyAddedRemoveFix(error.id)
+      : pluginMessages.alreadyAddedFix();
     return new KindedError("conflict", plainOf(pluginMessages.alreadyAdded(error.id)), {
-      fix: plainOf(pluginMessages.alreadyAddedFix(error.id)),
+      fix: plainOf(fix),
     });
   }
   if (nested !== undefined) {

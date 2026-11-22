@@ -77,8 +77,8 @@ verifies("cli.commands.plugin.list", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
-      `Tides     1.2.0   ~${sep}sources${sep}tides     ! not trusted yet · halonic trust --plugin tides`,
-      `Weather   1.2.0   ~${sep}sources${sep}weather   ✓ on`,
+      `Tides     1.2.0   copied from ~${sep}sources${sep}tides on 11 Nov     ! not trusted yet · halonic trust --plugin tides`,
+      `Weather   1.2.0   copied from ~${sep}sources${sep}weather on 11 Nov   ✓ on`,
     ]);
   });
 
@@ -93,7 +93,7 @@ verifies("cli.commands.plugin.list", () => {
     expect(io.stdout[0]).toMatch(/^empty .*✕ can't be read or checked$/);
   });
 
-  it("gives each plugin's id, name, version, status and source with --json", async () => {
+  it("gives each plugin's id, name, version, status, source and when it was added with --json", async () => {
     const source = await addPlugin("tides", "Tides", false);
 
     const { io } = await list("list", "--json");
@@ -107,6 +107,7 @@ verifies("cli.commands.plugin.list", () => {
           version: "1.2.0",
           status: "notTrusted",
           source: { kind: "folder", path: source },
+          addedAt: "2026-11-11T09:00:00.000Z",
         },
       ],
     });

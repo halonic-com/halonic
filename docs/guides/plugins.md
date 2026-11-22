@@ -81,14 +81,17 @@ is the reference.
 - **After you edit:** `plugin add` copies the plugin into the `plugins/<id>`
   folder of Halonic's data folder (`HALONIC_HOME`, see the
   [CLI README](../../apps/cli/README.md#environment)), and Halonic runs that
-  copy. Editing the folder you added it from changes nothing, although
-  `halonic plugin list` shows that folder as the plugin's source. Edit the
-  copy, or remove the plugin and add it again (see below). A changed file
-  changes the fingerprint, so the plugin is off until you trust it again. `halonic plugin list` shows it as "changed
-  since you trusted it"; run `halonic trust --plugin <id>` and read the check.
-- **Adding it twice is refused** ("is already added"). Removing it deletes its
-  settings and the API key you entered, so after `plugin remove` you enter them
-  again. Prefer changing the files and re-trusting over remove and add.
+  copy. Editing the folder you added it from changes nothing until you add it
+  again: `halonic plugin list` says so, as "copied from ~/my-plugin on 20 Nov".
+  To pick up your edits, run `halonic plugin add ./my-plugin --update`. It
+  puts the new copy in place and keeps the plugin's settings and the API key
+  you entered. A changed file changes the fingerprint, so it shows the check
+  and asks you to trust it again; No leaves it off, and `halonic plugin list`
+  shows it as "changed since you trusted it" until you run
+  `halonic trust --plugin <id>`.
+- **Adding it twice without `--update` is refused** ("is already added").
+  Don't remove and add it instead: removing it deletes its settings and the
+  API key you entered.
 - **Errors:** a backend or local tool that fails returns an error that names
   the plugin; the rest of Halonic keeps working.
 
