@@ -294,7 +294,10 @@ verifies("routines.runs.view", () => {
       [{ ...daily, startErrors: ["Unknown time zone Mars/Base."] }, "Unknown time zone Mars/Base."],
       [{ ...daily, enabled: false }, "It's off, so it runs only when you press Run now."],
       [{ ...daily, everLive: false }, "It isn't live yet, so it doesn't run."],
-      [{ ...daily, everLive: false, pausedUntilTrusted: true }, "It isn't live yet, so it doesn't run."],
+      [
+        { ...daily, everLive: false, pausedUntilTrusted: true },
+        "It isn't live yet, so it doesn't run.",
+      ],
       [{ ...daily, pausedUntilTrusted: true }, "It's paused until you trust this workspace."],
     ];
     for (const [routine, line] of cases) {
