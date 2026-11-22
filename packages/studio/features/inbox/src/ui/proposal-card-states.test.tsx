@@ -3,7 +3,11 @@ import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type ProposalDecisions, ProposalGoneError } from "../proposal-decisions.ts";
+import {
+  type ProposalDecisions,
+  ProposalFailedError,
+  ProposalGoneError,
+} from "../proposal-decisions.ts";
 import type { ProposalItem } from "../proposal-items.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { buttons, press, proposal, renderCard, wrote } from "./proposal-card.test-helper.tsx";
@@ -24,9 +28,13 @@ function fakeDecisions(overrides: Partial<ProposalDecisions> = {}) {
   } satisfies ProposalDecisions;
 }
 
-function open(decisions: ProposalDecisions | undefined, item = proposal()) {
+function open(
+  decisions: ProposalDecisions | undefined,
+  item = proposal(),
+  readAgain: () => Promise<void> = async () => {},
+) {
   const onDecided = vi.fn();
-  return { ...renderCard(decisions, item, onDecided), onDecided };
+  return { ...renderCard(decisions, item, onDecided, readAgain), onDecided };
 }
 
 const gone = () => Promise.reject(new ProposalGoneError("The run's branch was deleted."));
@@ -64,6 +72,33 @@ verifies("inbox.proposal-page-states", () => {
       ]);
       expect(root.querySelector('[role="dialog"]')).toBeNull();
     });
+
+    it("shows the changes again, under a line that has focus, when Remove finds them there again", async () => {
+      const decisions = fakeDecisions({
+        accept: vi.fn(gone),
+        remove: vi.fn(() =>
+          Promise.reject(new ProposalFailedError("changes-back", "still available")),
+        ),
+      });
+      const readAgain = vi.fn(async () => {});
+      const { root } = open(decisions, proposal(), readAgain);
+      await press(buttons(root, "Accept")[0]);
+      await press(buttons(root, "Remove from Inbox")[0]);
+
+      expect(readAgain).toHaveBeenCalledTimes(1);
+      const line = [...root.querySelectorAll("p")].find(
+        (p) => p.textContent === "Run 01JD8Q's changes are there again. Review them below.",
+      );
+      expect(line).toBeDefined();
+      expect(line?.className).toContain("text-fg");
+      expect(line?.className).not.toContain("text-danger");
+      expect(document.activeElement).toBe(line);
+      expect(root.textContent).not.toContain("deleted outside Halonic");
+      expect(buttons(root, "Remove from Inbox")).toEqual([]);
+      expect(buttons(root, "Accept")).toHaveLength(2);
+      expect(buttons(root, "Accept all")).toHaveLength(1);
+      expect(root.querySelector('[role="alert"]')).toBeNull();
+    });
   });
 
   it("shows the decisions the Inbox read again, such as one from another window", async () => {
@@ -78,6 +113,7 @@ verifies("inbox.proposal-page-states", () => {
           facts={undefined}
           decisions={fakeDecisions()}
           onDecided={() => {}}
+          readAgain={async () => {}}
         />
       );
     }

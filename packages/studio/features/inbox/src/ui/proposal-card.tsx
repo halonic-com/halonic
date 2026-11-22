@@ -10,6 +10,7 @@ import {
   beforeAcceptLines,
   changedSinceRunLine,
   changeLine,
+  changesBackLine,
   decideCommand,
   decidedSummary,
   decideElsewhereLine,
@@ -40,6 +41,11 @@ export interface ProposalCardProps {
   readonly decisions: ProposalDecisions | undefined;
   /** After each decision or Undo, so the Inbox reads its items again and the count drops. */
   readonly onDecided: () => void;
+  /**
+   * Reads the proposal again and fails when the read does: after a Remove the host refused because
+   * the changes are there again, so the page can show them (C711 4).
+   */
+  readonly readAgain: () => Promise<void>;
   readonly onOpenRun?: ((runId: string) => void) | undefined;
 }
 
@@ -52,6 +58,7 @@ export interface ProposalCardProps {
  * command that does (HAL-15986).
  *
  * When the host says the proposal's texts are gone, the page offers only **Remove from Inbox** (Q11).
+ * When it then finds them there again, the changes come back under a line that says so (C711 4).
  *
  * Not here yet: a change's settings before and after, the diff, Compare and the phone's bar (Q5,
  * Q9, Q12).
@@ -62,6 +69,7 @@ export function ProposalCard({
   facts,
   decisions,
   onDecided,
+  readAgain,
   onOpenRun,
 }: ProposalCardProps) {
   const titleId = useId();
@@ -77,7 +85,13 @@ export function ProposalCard({
           state={decisions !== undefined && open && !state.gone ? state : null}
         />
         {decisions !== undefined && state.gone ? (
-          <GoneLine runId={item.runId} decisions={decisions} onRemoved={onDecided} />
+          <GoneLine
+            runId={item.runId}
+            decisions={decisions}
+            onRemoved={onDecided}
+            readAgain={readAgain}
+            onChangesBack={state.changesBack}
+          />
         ) : (
           <ProposalChanges
             item={item}
@@ -113,6 +127,7 @@ function ProposalChanges({
   const { nextButtons, summary } = useFocusAfterDecision(state, open[0]?.path);
   return (
     <>
+      {state.back ? <ChangesBackLine runId={item.runId} /> : null}
       <FailedLine state={state} target="all" />
       <BeforeAccept item={item} onOpenRun={onOpenRun} />
       <ul className="flex flex-col gap-2">
@@ -152,16 +167,32 @@ function canAccept(state: ProposalDecisionState): boolean {
 }
 
 /**
+ * Above the changes once they are there again after the host said they were gone (C711 4). It
+ * takes focus, since it replaces **Remove from Inbox**, the button just pressed.
+ */
+function ChangesBackLine({ runId }: { readonly runId: string }) {
+  const line = useRef<HTMLParagraphElement>(null);
+  useEffect(() => line.current?.focus(), []);
+  return (
+    <p ref={line} tabIndex={-1} className="focus-ring text-body text-fg">
+      {changesBackLine(runId)}
+    </p>
+  );
+}
+
+/**
  * Q6: once a decision is back, focus goes to the next undecided file's **Accept**, or its
  * **Reject** when it changed since the run, else to what the proposal came to. A failed one leaves
- * it on its button, by its **Try again**.
+ * it on its button, by its **Try again**. Only decisions made while the changes show count: when
+ * they come back after the gone line, the line that says so keeps focus (C711 4).
  */
 function useFocusAfterDecision(state: ProposalDecisionState, nextPath: string | undefined) {
   const nextButtons = useRef(new Map<string, HTMLButtonElement>());
   const summary = useRef<HTMLParagraphElement>(null);
   const { decided, failure } = state;
+  const decidedWhenShown = useRef(decided);
   useEffect(() => {
-    if (decided === 0 || failure !== null) return;
+    if (decided === decidedWhenShown.current || failure !== null) return;
     const next = nextPath === undefined ? summary.current : nextButtons.current.get(nextPath);
     next?.focus();
   }, [decided, failure, nextPath]);

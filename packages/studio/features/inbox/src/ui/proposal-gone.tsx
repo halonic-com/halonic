@@ -14,6 +14,10 @@ export interface GoneLineProps {
   readonly decisions: ProposalDecisions;
   /** After the proposal is removed, so the Inbox reads its items again and the row leaves. */
   readonly onRemoved: () => void;
+  /** Reads the proposal again; fails when the read does. */
+  readonly readAgain: () => Promise<void>;
+  /** Once the changes are there again and were read, so the page shows them in place of this line. */
+  readonly onChangesBack: () => void;
 }
 
 /** A Remove that didn't go through: why, and the error, whose text goes only to **Copy details**. */
@@ -28,13 +32,25 @@ interface RemoveFailure {
  * Needs you at once, with no dialog: nothing is written, and it is done as not reviewed. A Remove
  * that fails says why by its kind, never in the host's words (C681 32). The line takes focus when
  * it shows, since it replaces the button just pressed.
+ *
+ * When the host refuses because the changes are there again, the page reads the proposal again and
+ * shows them (C711 4); only when that read fails does the refusal's line stay, with focus on it.
  */
-export function GoneLine({ runId, decisions, onRemoved }: GoneLineProps) {
+export function GoneLine({ runId, decisions, onRemoved, readAgain, onChangesBack }: GoneLineProps) {
   const toasts = useToastStore();
   const [removing, setRemoving] = useState(false);
   const [failed, setFailed] = useState<RemoveFailure | null>(null);
   const line = useRef<HTMLParagraphElement>(null);
   useEffect(() => line.current?.focus(), []);
+
+  async function refused(error: unknown) {
+    const failure = removeFailureOf(error);
+    if (failure.failure === "changes-back" && (await readBack(readAgain))) {
+      onChangesBack();
+      return;
+    }
+    setFailed(failure);
+  }
 
   function remove() {
     if (removing) return;
@@ -46,14 +62,15 @@ export function GoneLine({ runId, decisions, onRemoved }: GoneLineProps) {
         toasts?.show({ tone: "success", title: removedToast(runId) });
         onRemoved();
       })
-      .catch((error: unknown) => setFailed(removeFailureOf(error)))
+      .catch(refused)
       .finally(() => setRemoving(false));
   }
 
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p ref={line} tabIndex={-1} className="focus-ring min-w-0 flex-1 text-body text-fg">
+        {/* 20 rem before the button wraps under the line, so the line is never squeezed (C711 5). */}
+        <p ref={line} tabIndex={-1} className="focus-ring min-w-0 grow basis-80 text-body text-fg">
           {goneLine(runId)}
         </p>
         {failed?.failure === "changes-back" ? null : (
@@ -62,37 +79,34 @@ export function GoneLine({ runId, decisions, onRemoved }: GoneLineProps) {
           </Button>
         )}
       </div>
-      {failed === null ? null : <RemoveFailedLine runId={runId} failed={failed} retry={remove} />}
+      {failed === null ? null : <RemoveFailedLine runId={runId} failed={failed} />}
     </div>
   );
 }
 
 /**
- * Why a Remove failed, with what can be done next: **Try again** while the engine isn't answering,
- * **Copy details** for a reason Halonic can't explain, and nothing when the changes are back, as
- * **Remove from Inbox** is gone then too.
+ * Why a Remove failed. **Remove from Inbox** stays to try again while the engine isn't answering,
+ * so there is no second button for it (C711 6); a reason Halonic can't explain has **Copy details**.
+ * When the changes are there again, **Remove from Inbox** is gone, so the line takes focus.
  */
 function RemoveFailedLine({
   runId,
   failed,
-  retry,
 }: {
   readonly runId: string;
   readonly failed: RemoveFailure;
-  readonly retry: () => void;
 }) {
   const copyDetails = useCopyDetails();
   const reason = removeFailedLine(failed.failure, runId);
+  const alert = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (failed.failure === "changes-back") alert.current?.focus();
+  }, [failed]);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <p role="alert" className="text-small text-danger">
+      <p ref={alert} tabIndex={-1} role="alert" className="focus-ring text-small text-danger">
         {reason}
       </p>
-      {failed.failure === "not-answering" ? (
-        <Button size="sm" variant="ghost" onClick={retry}>
-          Try again
-        </Button>
-      ) : null}
       {failed.failure === "unexplained" ? (
         <Button
           size="sm"
@@ -104,6 +118,17 @@ function RemoveFailedLine({
       ) : null}
     </div>
   );
+}
+
+/** Whether the proposal could be read again; a read that fails is logged, and the page says the refusal. */
+async function readBack(readAgain: () => Promise<void>): Promise<boolean> {
+  try {
+    await readAgain();
+    return true;
+  } catch (error) {
+    console.error("Couldn't read the run proposal again", error);
+    return false;
+  }
 }
 
 /** A failure the app sorted keeps its kind; anything else is one Halonic can't explain. */

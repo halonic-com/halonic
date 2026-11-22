@@ -32,6 +32,8 @@ export interface ProposalDecisionState {
   readonly failure: DecisionFailure | null;
   /** Whether the host said the proposal's texts are gone, so it can only be removed (Q11). */
   readonly gone: boolean;
+  /** Whether the changes were gone and are there again, so the page says so above them (C711 4). */
+  readonly back: boolean;
   /** The files an Accept left alone because they changed after the run started; a Reject decides them. */
   readonly changedSinceRun: ReadonlySet<string>;
   /** The last decision said for a screen reader (Q6): "Accepted: notes.md added". */
@@ -39,6 +41,8 @@ export interface ProposalDecisionState {
   /** Goes up after each decision, so the page moves focus on (Q6). */
   readonly decided: number;
   decide(verb: ProposalVerb, target: DecisionTarget): void;
+  /** After a Remove found the changes there again and the Inbox read them: they show once more. */
+  changesBack(): void;
 }
 
 const pastTense = { accept: "Accepted", reject: "Rejected" } as const;
@@ -60,6 +64,7 @@ export function useProposalDecisions(
   const busyId = useId();
   const [failure, setFailure] = useState<DecisionFailure | null>(null);
   const [gone, setGone] = useState(false);
+  const [back, setBack] = useState(false);
   const [changedSinceRun, setChangedSinceRun] = useState<ReadonlySet<string>>(new Set());
   const [announcement, setAnnouncement] = useState("");
   const [decided, setDecided] = useState(0);
@@ -107,8 +112,10 @@ export function useProposalDecisions(
         onDecided();
       })
       .catch((error: unknown) => {
-        if (error instanceof ProposalGoneError) setGone(true);
-        else setFailure({ verb, target, reason: reasonOf(error) });
+        if (error instanceof ProposalGoneError) {
+          setGone(true);
+          setBack(false);
+        } else setFailure({ verb, target, reason: reasonOf(error) });
       })
       .finally(() => {
         setPending(null);
@@ -117,7 +124,24 @@ export function useProposalDecisions(
     undoSteps.track(deciding);
   }
 
-  return { files, pending, busyId, failure, gone, changedSinceRun, announcement, decided, decide };
+  function changesBack() {
+    setGone(false);
+    setBack(true);
+  }
+
+  return {
+    files,
+    pending,
+    busyId,
+    failure,
+    gone,
+    back,
+    changedSinceRun,
+    announcement,
+    decided,
+    decide,
+    changesBack,
+  };
 }
 
 /**

@@ -37,6 +37,7 @@ export function renderCard(
   decisions: ProposalDecisions | undefined,
   item: ProposalItem,
   onDecided: () => void,
+  readAgain: () => Promise<void> = async () => {},
 ) {
   const toasts = createToastStore();
   const root = render(
@@ -47,6 +48,7 @@ export function renderCard(
         facts={{ hubId: "support", workflow: "Support triage", startedBy: "a schedule" }}
         decisions={decisions}
         onDecided={onDecided}
+        readAgain={readAgain}
         onOpenRun={() => {}}
       />
     </ToastStoreProvider>,

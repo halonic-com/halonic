@@ -19,17 +19,27 @@ function decisionsRemoving(remove: ProposalDecisions["remove"]): ProposalDecisio
   return { accept: unused, reject: unused, undo: unused, settle: unused, remove };
 }
 
-function show(remove: ProposalDecisions["remove"]) {
+function show(
+  remove: ProposalDecisions["remove"],
+  readAgain: () => Promise<void> = async () => {},
+) {
   const onRemoved = vi.fn();
+  const onChangesBack = vi.fn();
   const writeClipboard = vi.fn(async (_text: string) => true);
   const root = render(
     <ToastStoreProvider store={createToastStore()}>
       <ClipboardProvider writeClipboard={writeClipboard}>
-        <GoneLine runId={runId} decisions={decisionsRemoving(remove)} onRemoved={onRemoved} />
+        <GoneLine
+          runId={runId}
+          decisions={decisionsRemoving(remove)}
+          onRemoved={onRemoved}
+          readAgain={readAgain}
+          onChangesBack={onChangesBack}
+        />
       </ClipboardProvider>
     </ToastStoreProvider>,
   );
-  return { root, onRemoved, writeClipboard };
+  return { root, onRemoved, onChangesBack, writeClipboard };
 }
 
 function button(root: HTMLElement, name: string): HTMLButtonElement | undefined {
@@ -42,9 +52,17 @@ async function press(target: HTMLButtonElement | undefined) {
 
 const alertOf = (root: HTMLElement) => root.querySelector('[role="alert"]')?.textContent;
 
+const changesBack = () =>
+  Promise.reject(
+    new ProposalFailedError(
+      "changes-back",
+      "The proposal of run run_mfx3k2a1_0001JD8Q is still available.",
+    ),
+  );
+
 verifies("inbox.proposal-page-states", () => {
   describe("a Remove from Inbox that fails", () => {
-    it("says the engine isn't answering, with Try again, and Try again removes it", async () => {
+    it("says the engine isn't answering, and Remove from Inbox, the only button, tries again", async () => {
       const remove = vi
         .fn<() => Promise<void>>()
         .mockRejectedValueOnce(new ProposalFailedError("not-answering", "host_unavailable"))
@@ -56,24 +74,39 @@ verifies("inbox.proposal-page-states", () => {
         "Couldn't remove this: the engine isn't answering. It may still be starting.",
       );
       expect(onRemoved).not.toHaveBeenCalled();
-      await press(button(root, "Try again"));
+      expect(button(root, "Try again")).toBeUndefined();
+      expect(root.querySelectorAll("button")).toHaveLength(1);
+      await press(button(root, "Remove from Inbox"));
       expect(onRemoved).toHaveBeenCalledTimes(1);
       expect(alertOf(root)).toBeUndefined();
     });
 
-    it("says the changes are there again, and offers nothing to press", async () => {
-      const refused = new ProposalFailedError(
-        "changes-back",
-        "The proposal of run run_mfx3k2a1_0001JD8Q is still available.",
-      );
-      const { root } = show(() => Promise.reject(refused));
+    it("reads the proposal again when its changes are there again, so the page shows them", async () => {
+      const readAgain = vi.fn(async () => {});
+      const { root, onChangesBack } = show(changesBack, readAgain);
       await press(button(root, "Remove from Inbox"));
 
+      expect(readAgain).toHaveBeenCalledTimes(1);
+      expect(onChangesBack).toHaveBeenCalledTimes(1);
+      expect(alertOf(root)).toBeUndefined();
+    });
+
+    it("says the changes are there again, with focus on that line, when they can't be read", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { root, onChangesBack } = show(changesBack, () =>
+        Promise.reject(new Error("The engine isn't answering.")),
+      );
+      await press(button(root, "Remove from Inbox"));
+
+      expect(onChangesBack).not.toHaveBeenCalled();
       expect(alertOf(root)).toBe(
         "Couldn't remove this: run 01JD8Q's changes are there again. Review them instead.",
       );
+      expect(document.activeElement).toBe(root.querySelector('[role="alert"]'));
       expect(root.textContent).not.toContain("still available");
       expect(root.querySelectorAll("button")).toHaveLength(0);
+      expect(error).toHaveBeenCalledWith("Couldn't read the run proposal again", expect.any(Error));
+      error.mockRestore();
     });
 
     it("never shows the host's own text, which only Copy details puts on the clipboard", async () => {
@@ -101,5 +134,13 @@ verifies("inbox.proposal-page-states", () => {
       );
       expect(button(root, "Remove from Inbox")).toBeDefined();
     });
+  });
+
+  it("keeps the line at least 20 rem wide, so the button wraps under it rather than squeezing it", () => {
+    const { root } = show(async () => {});
+    const line = root.querySelector("p");
+
+    expect(line?.className).toContain("basis-80");
+    expect(line?.className).toContain("grow");
   });
 });
