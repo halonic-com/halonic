@@ -153,9 +153,11 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     fix: "sign in to the sandbox's service.",
   },
   "not-offered": {
-    reason: "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
-    // Any byte counts: the choice holds only for the file as it was (`app.agent-placement`).
-    fix: "save any change to this agent's file, even one added space. A changed file undoes the choice to run the agent outside the sandbox.",
+    // The same fact as Settings' and the Harness page's line under On this computer (Sofia,
+    // HAL-13232), and the way back that page offers (C596 on HAL-15584).
+    reason:
+      "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can.",
+    fix: "set this agent back to In a sandbox on its Harness page.",
   },
   other: {
     reason: "Halonic can't tell what the sandbox is missing.",
