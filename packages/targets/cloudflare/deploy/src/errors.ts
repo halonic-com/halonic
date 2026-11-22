@@ -21,6 +21,7 @@ export type DeployErrorCode =
   | "destroy-changed"
   | "bucket-not-empty"
   | "admin-key-left"
+  | "newest-version-not-deployed"
   | "transfer-failed"
   | "export-refused"
   | "import-refused";
@@ -66,6 +67,23 @@ export class DeployLockedError extends DeployError {
     this.startedAt = startedAt;
     this.expiresAt = expiresAt;
   }
+}
+
+/**
+ * The error code Cloudflare answers a Workers secret change with when the Worker's newest version
+ * isn't the one serving all its traffic: after a failed self-test (a version uploaded, never
+ * deployed), a rollback, or a split deployment. A secret change makes a new version from the newest
+ * one and deploys it, so Cloudflare refuses rather than put that code live. Wrangler's
+ * `secret put` reads the same code.
+ */
+export const newestVersionNotDeployedCode = 10215;
+
+/** What a secret change refused with {@link newestVersionNotDeployedCode} fails with. Nothing was changed. */
+export function newestVersionNotDeployed(where: string): DeployError {
+  return new DeployError(
+    "newest-version-not-deployed",
+    `${where} was refused: the Worker's newest version isn't the one serving all its traffic (as after a failed self-test, a rollback or a split deployment), so Cloudflare won't change its secrets. Nothing was changed. Deploy again so the newest version serves all traffic, then try again.`,
+  );
 }
 
 /** The text a secret is replaced with. */

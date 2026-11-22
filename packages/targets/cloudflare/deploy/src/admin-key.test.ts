@@ -179,3 +179,48 @@ verifies("deploy.admin-key", () => {
     expect(api.calls).toContain("deployVersions A:100");
   });
 });
+
+verifies("deploy.admin-key-newest-version", () => {
+  const rolledBack = async () => {
+    const api = fakeCloudflareApi({
+      accounts: [],
+      resources: { "database hlt-w-data": { marked: true } },
+      deployment: [{ id: "B", percentage: 100 }],
+      earlier: [[{ id: "A", percentage: 100 }]],
+    });
+    await rollback(api, {
+      accountId: "a1",
+      worker: "hlt-w",
+      label: "mateo on laptop",
+      lock: { id: "rb" },
+      fetch: (async () => new Response("{}", { status: 404 })) as typeof fetch,
+    });
+    return api;
+  };
+
+  it("fails with newest-version-not-deployed after a rollback, and runs no job and no removal", async () => {
+    const api = await rolledBack();
+    let ran = false;
+    const error = (await withAdminKey(api, options, async () => {
+      ran = true;
+    }).catch((e) => e)) as DeployError;
+    expect(error.code).toBe("newest-version-not-deployed");
+    expect(error.message).toContain("Nothing was changed");
+    expect(ran).toBe(false);
+    expect(api.calls.some((c) => c.startsWith("deleteWorkerSecret"))).toBe(false);
+    expect(api.calls.at(-1)).toBe("releaseDeployLock mine");
+  });
+
+  it("fails the same way after a version was uploaded and never deployed", async () => {
+    const api = fakeCloudflareApi({ accounts: [], deployment: [{ id: "B", percentage: 100 }] });
+    await api.uploadVersion("a1", "hlt-w", {
+      script: "",
+      compatibilityDate: "2026-11-01",
+      bindings: [],
+      secrets: {},
+    });
+    const error = (await withAdminKey(api, options, async () => 1).catch((e) => e)) as DeployError;
+    expect(error.code).toBe("newest-version-not-deployed");
+    expect(api.workerSecretNames()).toEqual([]);
+  });
+});

@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { createCloudflareClient } from "./client.ts";
+import type { DeployError } from "./errors.ts";
 
 // Built while the test runs, so this file holds no secret-shaped text for the leak guard or `gitleaks`.
 const token = ["cfut", "abcdef0123456789"].join("_");
@@ -239,5 +240,22 @@ verifies("deploy.admin-key", () => {
   it("treats a secret that is already gone as removed", async () => {
     const api = client({ [`DELETE ${worker}/secrets/S`]: { status: 404 } }, []);
     await expect(api.deleteWorkerSecret("a1", "w", "S")).resolves.toBeUndefined();
+  });
+
+  it("tells a secret change refused because the newest version isn't deployed apart", async () => {
+    const refused = {
+      status: 400,
+      errors: [{ code: 10215, message: "latest version not deployed" }],
+    };
+    const api = client({ [`PUT ${worker}/secrets`]: refused }, []);
+    const error = (await api
+      .setWorkerSecret("a1", "w", "S", "value")
+      .catch((e) => e)) as DeployError;
+    expect(error.code).toBe("newest-version-not-deployed");
+    const other = client({ [`PUT ${worker}/secrets`]: { status: 500 } }, []);
+    const plain = (await other
+      .setWorkerSecret("a1", "w", "S", "value")
+      .catch((e) => e)) as DeployError;
+    expect(plain.code).toBe("cloudflare-request-failed");
   });
 });
