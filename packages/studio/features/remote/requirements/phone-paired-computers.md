@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-12248 (tunnel design on HAL-12206, decisions 7, 8, 15 and 24; strings table on HAL-12233, `d-m1` to `d-m3`, G16)
+- Source: HAL-12248 (tunnel design on HAL-12206, decisions 7, 8, 15 and 24; strings table on HAL-12233, `d-m1` to `d-m3`, G16; microcopy 28 on HAL-751)
 
-The phone shall list its paired computers, each with its name, how it is reached (Tailscale or this Wi-Fi) and the day it was paired, its state in words with a coloured dot (Connected, Reconnecting…, Can't reach, Phone offline, Removed, Can't confirm), and Forget. A removed computer and one the phone can't confirm shall say so whatever the connection reports, and only a computer it can't reach shall be dimmed. Under the list the phone shall say that Forget only removes the computer from this phone and that revoking it on the computer cuts the phone off for good. Forget shall ask once, saying that the computer still lists this phone as paired, and shall change nothing on Cancel. A Forget that fails shall keep the question open with the reason. With no computer paired, the phone shall say so and offer Pair with a computer.
+The phone shall list its paired computers, each with its name, how it is reached (Tailscale or this Wi-Fi) and the day it was paired, its state in words with a coloured dot (Connected, Reconnecting…, Can't reach, Phone offline, Removed, Can't confirm), and Forget. A removed computer and one the phone can't confirm shall say so whatever the connection reports, and only a computer it can't reach shall be dimmed. Under the list the phone shall say that Forget only removes the computer from this phone and that revoking it on the computer cuts the phone off for good. Forget shall ask once, saying that the computer still lists this phone as paired, and shall change nothing on Cancel. A Forget that fails shall keep the question open with the reason. Once a computer is forgotten, the phone shall say so politely, once. A paired computer whose saved details the phone can't read shall be listed after the others, without a name, route, day or state, as a computer this phone can't read that is to be forgotten and paired again; its Forget shall say it may still be listed on a computer. When the phone's key storage doesn't work, Forget shall keep the question open with that reason, and a list that can't be read shall say the key storage isn't working and offer Try again. With no computer paired, the phone shall say so and offer Pair with a computer.
 
 ## Examples
 
@@ -17,3 +17,6 @@ The phone shall list its paired computers, each with its name, how it is reached
 - Given no computer is paired,
   when the screen shows,
   then it says "No computers paired" and offers Pair with a computer.
+- Given the phone can't read the saved details of one paired computer,
+  when the list shows,
+  then that row reads "A computer this phone can't read" after the others, and its Forget asks "Forget this computer?".
