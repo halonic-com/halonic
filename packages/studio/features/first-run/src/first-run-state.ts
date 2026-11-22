@@ -55,7 +55,10 @@ export type FirstRunEvent =
   | { readonly kind: "guide-reopened"; readonly folder: string; readonly at: string }
   /** **Start over** in Help: it is off, so the fresh copy of the demo starts it when it opens. */
   | { readonly kind: "reset" }
+  /** **Run your first workflow** or **Pick another model** opened the Pick a model screen. */
   | { readonly kind: "model-picking" }
+  /** **Back** on the Pick a model screen: the runs put it at its step again. */
+  | { readonly kind: "model-closed" }
   | { readonly kind: "run-started" }
   | { readonly kind: "run-waiting" }
   | { readonly kind: "run-failed" }
@@ -119,12 +122,22 @@ function where(state: { readonly folder: string; readonly since: string }) {
 function runStep(
   event: Extract<
     FirstRunEvent,
-    { kind: "model-picking" | "run-started" | "run-waiting" | "run-failed" | "run-ended" }
+    {
+      kind:
+        | "model-picking"
+        | "model-closed"
+        | "run-started"
+        | "run-waiting"
+        | "run-failed"
+        | "run-ended";
+    }
   >,
 ): Pick<Extract<FirstRunState, { kind: "on" }>, "step" | "failed" | "ended"> {
   switch (event.kind) {
     case "model-picking":
       return { step: "model" };
+    case "model-closed":
+      return { step: "demo" };
     case "run-started":
       return { step: "run" };
     case "run-waiting":

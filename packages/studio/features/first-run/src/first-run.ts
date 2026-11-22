@@ -49,6 +49,17 @@ export class FirstRun {
   /** The text the device held when this folder last read or saved it. */
   #seen: string | undefined;
   #disposed = false;
+  /**
+   * Whether the Pick a model screen is open. It isn't saved: after a restart the guide card is
+   * back, one press from the screen. While it is open the runs don't move the steps, so a change
+   * in the runs list never closes the screen under the person.
+   */
+  #picking = false;
+  /**
+   * The newest run when Continue started one, until the runs list shows the new run: that older
+   * run would put the steps back where it ended.
+   */
+  #before: string | undefined;
 
   constructor(
     runs: FirstRunRuns,
@@ -100,6 +111,51 @@ export class FirstRun {
         at: this.#now().toISOString(),
       });
     }
+  }
+
+  /** Whether the Pick a model screen is open in this folder. */
+  get isPicking(): boolean {
+    return this.#picking && this.isOnHere;
+  }
+
+  /**
+   * The run of Support reply the first run is at: the newest since it began here, while it is on
+   * at Run and the run is going, for **Cancel run**; `undefined` otherwise.
+   */
+  get runningId(): string | undefined {
+    const state = this.#state;
+    if (state.kind !== "on" || state.step !== "run" || state.failed || state.ended)
+      return undefined;
+    const run = this.#newestRun();
+    if (run?.id === this.#before) return undefined;
+    return run?.status === "running" ? run.id : undefined;
+  }
+
+  /** Opens the Pick a model screen, from **Run your first workflow** or **Pick another model**. */
+  pickModel(): void {
+    if (!this.isOnHere) return;
+    this.#picking = true;
+    this.send({ kind: "model-picking" });
+    this.#tell();
+  }
+
+  /**
+   * Closes the Pick a model screen: after **Back** the steps follow the runs again (`model-closed`).
+   * After Continue the first run is at Run at once, so the bar offers **Cancel run** before the
+   * runs list has the new run, and that run moves the steps from then on.
+   */
+  closePicker(after: "back" | "started"): void {
+    if (!this.#picking) return;
+    this.#picking = false;
+    if (after === "back") {
+      this.#before = undefined;
+      this.send({ kind: "model-closed" });
+    } else {
+      this.#before = this.#newestRun()?.id;
+      this.send({ kind: "run-started" });
+    }
+    this.#tell();
+    void this.#follow();
   }
 
   /** Whether the open folder is the demo, where **Help › First run** shows the guide. */
@@ -210,8 +266,11 @@ export class FirstRun {
   async #follow(): Promise<void> {
     // Only tells: this is following the runs already.
     if (this.#reload()) this.#tell();
+    if (this.#picking) return;
     const newest = this.#newestRun();
     if (newest === undefined) return;
+    if (newest.id === this.#before) return;
+    this.#before = undefined;
     let event: FirstRunEvent;
     try {
       event = await this.#eventOf(newest);
@@ -223,6 +282,7 @@ export class FirstRun {
     // answer is then stale and would move the steps back.
     const stillNewest = this.#newestRun();
     if (stillNewest?.id !== newest.id || stillNewest.status !== newest.status) return;
+    if (this.#picking) return;
     this.send(event);
   }
 
@@ -248,6 +308,8 @@ export class FirstRun {
       case "waiting":
         return { kind: "run-waiting" };
       case "failed":
+        // **Cancel run** ends the run as cancelled: it is over without a win, not a failure.
+        return run.reason === "cancelled" ? { kind: "run-ended" } : { kind: "run-failed" };
       case "cant-try":
         return { kind: "run-failed" };
       case "completed":

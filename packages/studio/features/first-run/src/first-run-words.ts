@@ -15,6 +15,25 @@ export const barWords = {
   failed: "failed",
   /** The way out on the demo screen. */
   skip: "Skip, I'll explore",
+  /** The way out while the run is going (3.4). */
+  cancel: "Cancel run",
+  cancelFailed: "Couldn't cancel the run. Try again.",
+} as const;
+
+/**
+ * What the first run says about its run (first-run-flow 3.4, 8e.2 and 10.2 R4): the change Continue
+ * made, as one quiet line under the run's status and on the guide card after **Cancel run**, and
+ * the one caption under the drawing.
+ */
+export const runWords = {
+  caption: "Each box is an agent or a rule. You can change all of it later: it's plain files.",
+  changedLocal: (model: string) =>
+    `Changed 1 line in models.yaml: Agents now use ${model} on this computer.`,
+  changedKey: (provider: string) => `Changed 1 line in models.yaml: Agents now use ${provider}.`,
+  changedKeyAndLocalOnly: (provider: string) =>
+    `Changed 2 lines: Agents now use ${provider} (models.yaml), and Local only is off for this workspace (workspace.yaml).`,
+  /** A provider's file Continue added, which the line names too: the person owns those files. */
+  added: (file: string) => `Added ${file}.`,
 } as const;
 
 /** The guide card's words on Support reply's page (first-run-flow 3.2). */
