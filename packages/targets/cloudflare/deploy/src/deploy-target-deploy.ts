@@ -110,7 +110,15 @@ export async function deployThroughPort(
         secrets,
       }),
       resourceBindings: async () => {
-        const id = await cloudflare.databaseId(accountId, databaseNameFor(worker));
+        const name = databaseNameFor(worker);
+        const id = await cloudflare.databaseId(accountId, name);
+        // Provisioning has made it by now; binding `id: undefined` would fail later and less clearly.
+        if (id === undefined) {
+          throw new DeployError(
+            "cloudflare-request-failed",
+            `Cloudflare doesn't list the database ${name}, which this deploy just set up.`,
+          );
+        }
         return [{ type: "d1", name: "DB", id }];
       },
       migrations,

@@ -6,7 +6,7 @@
 ## What changes
 
 - `deploy.target-entry` said `deploy` and `revokeSessions` reject with `unexpected` until the next part. `deploy` is built in this PR, so the sentence now names only `revokeSessions`, and says `deploy` works as the new requirement `deploy.target-deploy` says.
-- `app.deploy-service` checks the lock before any question. It now also says what happens when another deploy takes the lock between that check and the deploy: the service reads the holder again and stops with the same `conflict` message. This is Liam's note 1 on PR 07, done without a port change.
+- `app.deploy-service` checks the lock before any question. It now also says what happens when another deploy takes the lock between that check and the deploy: the service reads the holder again and stops with the same `conflict` message, as long as no deploy step has finished. Once one has (a lock lost mid-deploy, or resources created before the lock was taken), that message's "Nothing changed on Cloudflare" would be wrong, so the target's own failure stands. This is Liam's note 1 on PR 07, done without a port change.
 
 ## Why
 
@@ -14,7 +14,7 @@ The sentence in `deploy.target-entry` said what wasn't there yet. In the app ser
 
 ## Tests
 
-`deploy-target-deploy.test.ts` checks `deploy` against the fake Cloudflare API: a first deploy, a deploy over a live version, a failed self-test, a stop, and no Worker loader. `deploy-service.test.ts` checks the lock race, with and without a holder to read.
+`deploy-target-deploy.test.ts` checks `deploy` against the fake Cloudflare API: a first deploy, a deploy over a live version, a failed self-test, a stop, and no Worker loader. `deploy-service.test.ts` checks the lock race, with and without a holder to read, and that a race after a finished step keeps the target's failure.
 
 ## Covers
 
