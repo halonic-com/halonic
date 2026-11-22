@@ -131,7 +131,7 @@ export const runsListMessages = defineMessages("runsList", {
    * Only Studio asks it, so the row names the dialog and Studio, as `runs show` does (HAL-16321).
    */
   waitingForAnswer: (step: string) =>
-    phrase`Waiting for your answer in Studio: "Allow this address?" in the step ${step}`,
+    phrase`Waiting for your answer to "Allow this address?" in Studio, in the step ${step}`,
   /** What: a run waiting for a time: "Waiting until 14:00", "until tomorrow 08:00", "until 3 Dec 08:00". */
   waitingUntil: (due: DueAt) => phrase`Waiting until ${dueInWords(due)}`,
   /** What: a run waiting for a child run, by the child's short id. */

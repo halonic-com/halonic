@@ -58,7 +58,7 @@ verifies("cli.commands.runs.list-address-question", () => {
       expect(row).toContain("! Needs you");
       expect(row).toContain("Support reply");
       expect(row).toContain(
-        'Waiting for your answer in Studio: "Allow this address?" in the step Draft a reply',
+        'Waiting for your answer to "Allow this address?" in Studio, in the step Draft a reply',
       );
       expect(io.stdout.join("\n")).not.toContain("halonic runs send");
     });

@@ -178,7 +178,7 @@ describe("listedRun: waits and Needs you", () => {
 
     expect(row(summary)).toMatchObject({
       status: "needsYou",
-      what: 'Waiting for your answer in Studio: "Allow this address?" in the step Draft a reply',
+      what: 'Waiting for your answer to "Allow this address?" in Studio, in the step Draft a reply',
     });
   });
 
