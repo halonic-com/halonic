@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-Try it chats with an agent when the desktop app runs your workspace in the background.
+Try it now answers in the desktop app when Halonic runs your workspace's engine in the background, where it said the engine wasn't answering.
