@@ -70,9 +70,7 @@ verifies("studio.workspace-workflow-remove", () => {
     await host.changeStep(reply, "sort", { description: "Sorts the mail." });
     const after = store[path];
 
-    await expect(removed.undo()).rejects.toThrow(
-      "Step draft can't be put back, because the workspace changed after it was removed.",
-    );
+    await expect(removed.undo()).rejects.toThrow("The workspace changed after it was removed.");
     expect(store[path]).toBe(after);
   });
 

@@ -1,7 +1,8 @@
 import { type ToastStore, useToastStore } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
-import type { WorkflowArrow, WorkflowRef, WorkflowRemoval, WorkflowsHost } from "../api.ts";
+import type { WorkflowArrow, WorkflowRemoval, WorkflowsHost, WorkflowView } from "../api.ts";
 import { pageWords } from "./page-words.ts";
+import { nameOf, stepNames } from "./step-names.ts";
 
 const words = pageWords.removed;
 
@@ -16,15 +17,18 @@ export interface Removing {
 /**
  * How the page removes a step or an arrow (flow-workflows 4.6, UX checklist 10.10): at once, with
  * no confirm, then a toast that says what went, with **Undo** for 10 s; the toast is all that is
- * said. When the host can't, a danger toast says why. `undefined` where the host can't remove.
+ * said. The toasts name steps as their cards do (C637), by the names `view` has before the
+ * removal. When the host can't, a danger toast says why. `undefined` where the host can't remove.
  */
 export function useRemoving(
   host: WorkflowsHost,
-  ref: WorkflowRef | undefined,
+  view: WorkflowView | undefined,
 ): Removing | undefined {
   const toasts = useToastStore();
   const { removeStep, removeArrow } = host;
-  if (removeStep === undefined || removeArrow === undefined || ref === undefined) return undefined;
+  if (removeStep === undefined || removeArrow === undefined || view === undefined) return undefined;
+  const names = stepNames(view.steps);
+  const name = (stepId: string) => nameOf(names, stepId);
   const refused = (stepId: string, error: unknown) =>
     toasts?.show({
       tone: "danger",
@@ -34,9 +38,9 @@ export function useRemoving(
   return {
     step: async (stepId) => {
       try {
-        const removed = await removeStep.call(host, ref, stepId);
-        removedToast(toasts, words.step(stepId, removed.arrows), removed, () =>
-          words.couldntPutBackStep(stepId),
+        const removed = await removeStep.call(host, view, stepId);
+        removedToast(toasts, words.step(name(stepId), removed.arrows), removed, () =>
+          words.couldntPutBackStep(name(stepId)),
         );
         return true;
       } catch (error) {
@@ -46,9 +50,11 @@ export function useRemoving(
     },
     arrow: async (stepId, index, arrow) => {
       try {
-        const removed = await removeArrow.call(host, ref, stepId, index, arrow.to);
-        removedToast(toasts, words.arrow(stepId, arrow.to), removed, () =>
-          words.couldntPutBackArrow(stepId, arrow.to),
+        const removed = await removeArrow.call(host, view, stepId, index, arrow.to);
+        const from = name(stepId);
+        const to = name(arrow.to);
+        removedToast(toasts, words.arrow(from, to), removed, () =>
+          words.couldntPutBackArrow(from, to),
         );
         return true;
       } catch (error) {

@@ -359,7 +359,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const stepIds = Object.keys(file.value.states);
     const { edits, arrows } = stepRemovalEdits(read.value.data, stepId, stepIds);
     this.#edit(file.path, text, `Removed step ${stepId} from workflow ${file.value.name}`, edits);
-    return { arrows, undo: undoWhileNewest(this.#parts.files, cantPutBack(`Step ${stepId}`)) };
+    return { arrows, undo: undoWhileNewest(this.#parts.files, cantPutBack()) };
   }
 
   /** Takes one arrow out of the step's `on` list in place, as one undoable change. */
@@ -376,7 +376,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const edits = arrowRemovalEdits(stepId, writtenArrows(read.value.data, stepId), index, to);
     const label = `Removed an arrow of step ${stepId} in workflow ${file.value.name}`;
     this.#edit(file.path, text, label, edits);
-    return { undo: undoWhileNewest(this.#parts.files, cantPutBack("The arrow")) };
+    return { undo: undoWhileNewest(this.#parts.files, cantPutBack()) };
   }
 
   subscribe(listener: () => void): () => void {
