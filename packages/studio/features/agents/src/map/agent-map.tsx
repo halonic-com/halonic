@@ -253,15 +253,18 @@ function CentreCard({
 
 /**
  * The skills, knowledge and connectors it uses, by name, in the Tools page's order. A connector
- * whose tools wait for approval shows the hand with the words "1 tool asks first" (flow-agents 6,
- * Noah's N1), so it isn't a bare icon (`agents.map.asks-first`).
+ * shows the hand with the words "Every tool asks first", or the read-only tools that don't
+ * (flow-agents 6, Noah's N1), so it isn't a bare icon (`agents.map.asks-first`).
  */
 function toolCards({ settings, tools, openTool }: AgentMapProps): readonly ReactNode[] {
   return agentToolLists.flatMap((list) =>
     settings[list].map((id) => {
       const option = tools[list].find((each) => each.id === id);
       const name = option?.name ?? id;
-      const asksFirst = option?.asksFirst ? words.asksFirst(option.asksFirst) : undefined;
+      const asksFirst =
+        option?.toolsWithoutAsking === undefined
+          ? undefined
+          : words.asksFirst(option.toolsWithoutAsking);
       return (
         <Card
           key={`${list}/${id}`}

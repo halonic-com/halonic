@@ -291,9 +291,9 @@ verifies("agents.map.workflow-card-steps", () => {
 });
 
 verifies("agents.map.asks-first", () => {
-  /** Mail triage's map, with the connectors' tools that ask first as given. */
+  /** Mail triage's map, with how many of the connectors' tools run without asking as given. */
   const asking = (
-    ...connectors: readonly { readonly id: string; readonly asksFirst?: number | "all" }[]
+    ...connectors: readonly { readonly id: string; readonly toolsWithoutAsking?: number }[]
   ) =>
     memoryAgentsHost({
       hubs: [{ id: "acme", name: "Acme Mail" }],
@@ -301,19 +301,22 @@ verifies("agents.map.asks-first", () => {
       toolOptions: { connectors: connectors.map((each) => ({ name: each.id, ...each })) },
     });
 
-  it("shows the hand with how many tools ask first, and says it in the card's name", async () => {
+  it("shows the hand with the read-only tools that don't ask, and says it in the card's name", async () => {
     const page = await openFlow({
-      agents: asking({ id: "acme-mail", asksFirst: 1 }, { id: "big-mail", asksFirst: 2 }),
+      agents: asking(
+        { id: "acme-mail", toolsWithoutAsking: 1 },
+        { id: "big-mail", toolsWithoutAsking: 2 },
+      ),
       openLibrary: () => undefined,
     });
     expect(side(page, "What it can use")).toEqual([
       "Skill tone",
-      "Connector acme-mail✋ 1 tool asks first",
-      "Connector big-mail✋ 2 tools ask first",
+      "Connector acme-mail✋ Asks first, except 1 read-only tool",
+      "Connector big-mail✋ Asks first, except 2 read-only tools",
       "+ Add a tool",
     ]);
     expect(
-      page.querySelector("[aria-label='Connector acme-mail, 1 tool asks first']"),
+      page.querySelector("[aria-label='Connector acme-mail, Asks first, except 1 read-only tool']"),
     ).not.toBeNull();
     // The hand is a picture; its words say it.
     const hand = [...page.querySelectorAll("[aria-hidden=true]")].find((each) =>
@@ -322,14 +325,11 @@ verifies("agents.map.asks-first", () => {
     expect(hand).toBeDefined();
   });
 
-  it("says every tool asks first when the file says all, and nothing when none does", async () => {
-    const page = await openFlow({
-      agents: asking({ id: "notes-mcp", asksFirst: "all" }, { id: "calm" }),
-    });
+  it("says every tool asks first when none runs without asking", async () => {
+    const page = await openFlow({ agents: asking({ id: "notes-mcp", toolsWithoutAsking: 0 }) });
     expect(side(page, "What it can use")).toEqual([
       "Skill tone",
-      "Connector notes-mcp✋ every tool asks first",
-      "Connector calm",
+      "Connector notes-mcp✋ Every tool asks first",
       "+ Add a tool",
     ]);
   });
