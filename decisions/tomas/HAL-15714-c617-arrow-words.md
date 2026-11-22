@@ -3,7 +3,7 @@
 - Task: HAL-15714
 - Approval: the words check C617, rows 42 to 46 and 48 (https://paperclip.halonic.com/HAL/issues/HAL-15700#document-c617), assigned on HAL-15714. A team decision on an approved banner and changesets, with no board card (HAL-2282 rule). The reviewer approves it in the review of this pull request.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BN2IsSM5HKlYPhDLWwNdpXosTdLFw3UjfXPAMfM/nvuH/kRLC+a1Gp9nj36RiJnrEZwEcztuWRO/AnnNYoFZCA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+upPDzI65VI6uOJQ7FEnPauZ21GgaT0MO4RucqwPKjyzpdaukz2P8jsreHOFpIJf+Ibo1vJSTDC3gUvkZMrjDw==
 
 ## What changes
 
