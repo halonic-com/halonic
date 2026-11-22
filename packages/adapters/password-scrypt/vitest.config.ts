@@ -1,6 +1,7 @@
 import { definePackageTestConfig } from "@halonicjs/tooling-config/vitest";
 
-// A scrypt check at the current settings takes 2 to 7 seconds on a free core,
-// but the CI job runs every package's tests at once, and on that runner the
-// same check has taken over a minute. The limit leaves room for that.
-export default definePackageTestConfig({ test: { testTimeout: 180_000, hookTimeout: 180_000 } });
+// The tests run scrypt at the current settings in a worker thread
+// (`src/test/scrypt-in-worker.spec.ts`), where one hash takes about 0.2 s on a
+// free core. The slowest test makes three. The limit leaves room for a CI
+// runner that runs every package's tests at once.
+export default definePackageTestConfig({ test: { testTimeout: 60_000, hookTimeout: 60_000 } });
