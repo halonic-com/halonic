@@ -67,6 +67,9 @@ export function commandHelp(path: CommandPath): Phrase[] {
     blank,
     ...wrapped(command.summary.phrase, 0),
   ];
+  if (command.aliases !== undefined && command.aliases.length > 0) {
+    lines.push(...wrapped(helpMessages.oldNames(command.aliases).phrase, 0));
+  }
   const subcommands = command.subcommands ?? [];
   if (subcommands.length > 0) {
     lines.push(blank, ...commandList(subcommands));

@@ -237,6 +237,14 @@ verifies("cli.subcommand-aliases", () => {
     expect(io.stdout.join("\n")).not.toContain("discard");
   });
 
+  it("names the old word in the renamed subcommand's own help", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["proposals", "reject", "--help"], io, [proposalsCommand])).toBe(
+      exitCode.ok,
+    );
+    expect(io.stdout).toContain("discard, its old name, still works.");
+  });
+
   it("names the new word in the usage line for the old one", async () => {
     const io = captureIo("/work");
     expect(await runCli(["proposals", "discard"], io, [proposalsCommand])).toBe(exitCode.usage);

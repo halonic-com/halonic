@@ -24,6 +24,14 @@ export const helpMessages = defineMessages("help", {
   commandUsage: (command: string, usage: string) =>
     phrase`Usage: halonic ${command}${usage === "" ? "" : ` ${usage}`}`,
   optionsHeading: () => phrase`Options:`,
+  /**
+   * Under a renamed subcommand's summary in its own help, the old words it still answers to:
+   * "discard, its old name, still works." (HAL-16157).
+   */
+  oldNames: (names: readonly string[]) =>
+    names.length === 1
+      ? phrase`${names.join("")}, its old name, still works.`
+      : phrase`${names.join(", ")}, its old names, still work.`,
 });
 
 const exitCodeMeanings: readonly (readonly string[])[] = [

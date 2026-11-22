@@ -65,7 +65,7 @@ verifies("cli.commands.proposals.decide", () => {
       expect(code).toBe(exitCode.conflict);
       expect(io.stdout).toEqual([
         "Wrote 1 file: notes/new.md.",
-        "notes/today.md changed since the run, so it wasn't written. Edit by hand, or reject.",
+        "notes/today.md changed since the run, so it wasn't written. To keep it as it is now, reject it.",
         "1 file is still to decide: halonic proposals show 01jd8q.",
       ]);
       expect(await savedFile(acmeRuns, "notes/today.md")).toBe("Four tickets.\n");

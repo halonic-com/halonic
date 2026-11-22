@@ -145,13 +145,14 @@ export function undoLeftAloneLine(verb: "accepted" | "rejected", paths: readonly
 /**
  * On a proposal the window can't decide (no Accept or Reject here), the line before the command
  * that shows it, {@link decideCommand}. Only a served Studio or a phone gets it, so it says where
- * to go, "on your computer", not "in a terminal" on the device in hand (C671 22).
+ * to go, "in a terminal on your computer", not a terminal on the device in hand (C671 22), in the
+ * words of the line for a window that lists no proposals, {@link proposalsElsewhere} (C682 1).
  */
 export const decideElsewhereLine =
-  "Studio can't accept or reject these changes here. To see them and decide, use the desktop app, or run this on your computer:";
+  "Studio can't accept or reject these changes here. To see them and decide, use the desktop app, or run this in a terminal on your computer:";
 
 /**
- * The command that shows a run's proposal with its diffs, and ends with how to accept or discard
+ * The command that shows a run's proposal with its diffs, and ends with how to accept or reject
  * it: "halonic proposals show 01JD8Q". The CLI takes the short id in either case.
  */
 export function decideCommand(runId: string): string {
