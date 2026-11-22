@@ -142,6 +142,15 @@ uninstaller's last page says so after such an uninstall. If you never start
 Halonic again after such an uninstall, the access stays on your folders.
 Installing and starting Halonic again takes it back.
 
+One case the next start doesn't end: a removal with administrator rights where
+srt's sandbox account is still listed or can't be read. The access then stays
+until you remove the sandbox again without administrator rights: run
+`halonic sandbox remove` from a terminal that isn't an administrator's, or
+install Halonic again, start it normally (not as administrator), set the sandbox
+up in Settings › Agent sandbox and remove it there. `halonic sandbox remove`
+says so under "Removed" (`keptAccess` is `manual` in `--json`), and so does the
+uninstaller's last page.
+
 ## "This computer" has none of it
 
 You can choose to run an agent on this computer, without the sandbox. You make
