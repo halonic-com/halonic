@@ -1,4 +1,4 @@
-import type { ProgramHarness } from "@halonicjs/engine";
+import type { Placement, ProgramHarness } from "@halonicjs/engine";
 import type { BridgeProvider, BridgeProviderAccess, ModelPrice } from "@halonicjs/ports";
 import { type Schema, s } from "@halonicjs/schema-kit";
 import type { ChannelAnswer } from "../server/call-channel.ts";
@@ -56,6 +56,11 @@ export interface OpenBridgeBody {
    */
   asks?: "always" | "in-sandbox";
   harness?: ProgramHarness;
+  /**
+   * Where the run's program runs, which the bridge serves where it can reach
+   * (requirement `agent-host.bridge-place`). Left out, `sandbox`.
+   */
+  runsOn?: Placement;
 }
 
 export const openBridgeBody = portSchema<OpenBridgeBody>(
@@ -72,6 +77,7 @@ export const openBridgeBody = portSchema<OpenBridgeBody>(
         .strict(),
       asks: s.enum(["always", "in-sandbox"]).optional(),
       harness: s.enum(["claude-code", "codex"]).optional(),
+      runsOn: s.enum(["sandbox", "this-computer"]).optional(),
     })
     .strict(),
 );

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Placement } from "@halonicjs/engine";
 import {
   type SandboxedAsksAgent,
   type SandboxedAsksPaths,
@@ -31,8 +32,11 @@ import {
   studioServices,
 } from "./studio-services.ts";
 
-/** Makes the bridge server of one run, which reads its provider keys from `secrets`. */
-export type BridgeServerFactory = (secrets: Secrets) => HarnessBridgeServer;
+/**
+ * Makes the bridge server of one run, which reads its provider keys from
+ * `secrets` and serves where a program that runs `runsOn` reaches it.
+ */
+export type BridgeServerFactory = (secrets: Secrets, runsOn: Placement) => HarnessBridgeServer;
 
 /** Who hears the approvals the bridge of this run and agent asks for (see {@link ApprovalObserver}). */
 export type ApprovalObserverFor = (runId: string, agentId: string) => ApprovalObserver;
@@ -147,7 +151,8 @@ export class BridgeTable {
  * and provider keys stay in Studio, and the bridge reaches them through a
  * {@link CallChannel}:
  *
- * - `POST /v1/bridge/open` with `{ runId, agentId, providers, prices }`
+ * - `POST /v1/bridge/open` with `{ runId, agentId, providers, prices }`,
+ *   and `runsOn` for where the run's program runs (`sandbox` when left out),
  *   answers with an NDJSON stream. Its first line is
  *   `{ type: "opened", bridge, url, token }`, with `socketPath` for a bridge on
  *   a Unix socket (or `{ type: "failed", message }`, with the error's `kind`
@@ -272,7 +277,8 @@ async function openBridge(
   });
   let bridge: OpenHarnessBridge;
   try {
-    bridge = await serverFor(studioSecrets(channel, body.providers, keys)).open({
+    const secrets = studioSecrets(channel, body.providers, keys);
+    bridge = await serverFor(secrets, body.runsOn ?? "sandbox").open({
       runId: body.runId,
       agentId: body.agentId,
       providers: body.providers,

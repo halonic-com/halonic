@@ -19,7 +19,11 @@ import type { Harness, SecretStore } from "@halonicjs/ports";
 import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeProviderFetches } from "./bridge/provider-fetches.ts";
-import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
+import {
+  bridgeSocketFolder,
+  socketFolderFor,
+  sweepLeftOverBridges,
+} from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
 import { hostDoctorRoutes } from "./doctor/host-doctor-routes.ts";
@@ -334,13 +338,15 @@ async function hostServices(
       after: (exitCode) => removalAfterHelper(exitCode),
     }),
     ...bridgeRoutes(
-      (secrets) =>
-        new NodeHarnessBridgeServer({
+      (secrets, runsOn) => {
+        const runFolder = socketFolderFor(runsOn, socketFolder);
+        return new NodeHarnessBridgeServer({
           secrets,
           fetch: providerFetches.fetch,
           compatibleFetch: providerFetches.compatibleFetch,
-          ...(socketFolder === undefined ? {} : { socketFolder }),
-        }),
+          ...(runFolder === undefined ? {} : { socketFolder: runFolder }),
+        });
+      },
       bridges,
       ledger === undefined
         ? undefined

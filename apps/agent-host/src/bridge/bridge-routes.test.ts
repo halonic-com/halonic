@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
+import type { Placement } from "@halonicjs/engine";
 import { type HarnessBridgeServer, harnessBridgeTokenHeader, type Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -11,6 +12,7 @@ import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { BridgeTable, bridgeRoutes } from "./bridge-routes.ts";
 import type { OpenBridgeBody } from "./bridge-schemas.ts";
+import { socketFolderFor } from "./socket-folder.ts";
 
 const token = randomLaunchToken();
 const authorization = { authorization: `Bearer ${token}` };
@@ -27,6 +29,9 @@ const openBody: OpenBridgeBody = {
 
 /** What the fake provider is asked: the key it got. */
 const providerKeys: (string | null)[] = [];
+
+/** The placement each bridge's server was made for, in order. */
+const placements: Placement[] = [];
 
 let server: HostServer | undefined;
 let bridges: BridgeTable;
@@ -56,6 +61,7 @@ afterEach(async () => {
   await server?.close();
   server = undefined;
   providerKeys.length = 0;
+  placements.length = 0;
   opening.refuse = false;
   opening.refusal = new Error("no free port");
   opening.hold = undefined;
@@ -73,12 +79,15 @@ async function started(table = new BridgeTable(), socketFolder?: string): Promis
     };
     return new Response(JSON.stringify(reply), { headers: { "content-type": "application/json" } });
   };
-  const serverFor = (secrets: Secrets): HarnessBridgeServer => {
+  // The host's own choice of place (`host.ts`), on the test's socket folder.
+  const serverFor = (secrets: Secrets, runsOn: Placement): HarnessBridgeServer => {
+    placements.push(runsOn);
+    const runFolder = socketFolderFor(runsOn, socketFolder);
     const real = new NodeHarnessBridgeServer({
       secrets,
       fetch,
       closeTimeoutMs: 1_000,
-      ...(socketFolder === undefined ? {} : { socketFolder }),
+      ...(runFolder === undefined ? {} : { socketFolder: runFolder }),
     });
     return {
       open: async (options) => {
@@ -119,9 +128,9 @@ class FakeStudio {
   };
   done: Promise<void> = Promise.resolve();
 
-  static async open(url: string, handlers: Handlers): Promise<FakeStudio> {
+  static async open(url: string, handlers: Handlers, body = openBody): Promise<FakeStudio> {
     const studio = new FakeStudio();
-    const response = await post(url, "/v1/bridge/open", openBody, studio.stopped.signal);
+    const response = await post(url, "/v1/bridge/open", body, studio.stopped.signal);
     const lines = readLines(response);
     studio.bridge = (await lines.next()).value as FakeStudio["bridge"];
     studio.done = (async () => {
@@ -379,5 +388,15 @@ verifies("agent-host.bridge-failure-cause", () => {
     opening.refuse = true;
     const failed = await FakeStudio.open(url, {});
     expect(failed.bridge).toEqual({ type: "failed", message: "no free port" });
+  });
+});
+
+verifies("agent-host.bridge-place", () => {
+  it("makes each bridge's server for the placement Studio names, and for the sandbox when it names none", async () => {
+    const url = await started();
+    await FakeStudio.open(url, {}, { ...openBody, runsOn: "this-computer" });
+    await FakeStudio.open(url, {}, { ...openBody, runsOn: "sandbox" });
+    await FakeStudio.open(url, {});
+    expect(placements).toEqual(["this-computer", "sandbox", "sandbox"]);
   });
 });

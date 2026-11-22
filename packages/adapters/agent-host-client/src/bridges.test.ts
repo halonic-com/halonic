@@ -33,7 +33,13 @@ verifies("agent-host-client.bridges", () => {
       const { bridges, bridge } = await openOn(host, served);
       expect(host.calls[0]).toEqual({
         route: "POST /v1/bridge/open",
-        body: { runId: "run-1", agentId: "writer", providers: served.providers, prices },
+        body: {
+          runId: "run-1",
+          agentId: "writer",
+          providers: served.providers,
+          prices,
+          runsOn: "sandbox",
+        },
       });
       expect(bridge).toMatchObject({ url: opened.url, token: opened.token });
       expect(bridge.providers).toBe(served.providers);
@@ -429,5 +435,19 @@ verifies("agent-host-client.bridge-socket", () => {
     const { bridge } = await openOn(hostAnswering());
 
     expect(bridge).not.toHaveProperty("socketPath");
+  });
+});
+
+verifies("agent-host-client.bridge-place", () => {
+  it("tells the host where the agent runs, so it serves the bridge there", async () => {
+    for (const runsOn of ["this-computer", "sandbox"] as const) {
+      const host = hostAnswering();
+      const bridges = new AgentHostBridges(host, { servicesFor: () => services() });
+      const streamOpened = host.nextStream("POST /v1/bridge/open");
+      const opening = bridges.open(agent, recorder, runsOn);
+      (await streamOpened).send(opened);
+      await opening;
+      expect(host.calls[0]?.body).toMatchObject({ runsOn });
+    }
   });
 });

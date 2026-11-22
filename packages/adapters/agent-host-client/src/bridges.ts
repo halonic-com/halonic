@@ -152,7 +152,8 @@ export class AgentHostBridges {
    * the providers sent to the host, so the harness's environment gives the
    * program a stand-in key.
    *
-   * @param runsOn - where the agent runs for this call, which `servicesFor` is told
+   * @param runsOn - where the agent runs for this call, which `servicesFor` is
+   *   told and the host serves the bridge for (requirement `agent-host.bridge-place`)
    *
    * @throws {@link AgentHostError} when the host refuses (`too_many_bridges`)
    *   or the bridge can't listen (`bridge_failed`, or the kind of the host's
@@ -171,6 +172,7 @@ export class AgentHostBridges {
       providers: services.providers,
       prices: services.prices,
       ...asksOf(agent),
+      runsOn,
     };
     const answer = await this.#transport.stream(openRoute, body, { signal: hangUp.signal });
     if (!answer.ok) throw answerError(openRoute, answer.answer);
