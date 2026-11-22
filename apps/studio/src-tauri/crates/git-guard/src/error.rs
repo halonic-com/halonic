@@ -44,6 +44,10 @@ pub enum GitError {
     /// The repository's own config sets a key no override reaches, such as
     /// `branch.<name>.mergeOptions`.
     ConfigNotAllowed { key: String },
+    /// A call that stores files or writes them into the working tree, in a
+    /// repository whose attribute files name a filter the runner blanked:
+    /// git would store or write those files without it.
+    FilterNotRun { subcommand: String, filter: String },
     /// The empty hooks folder has files in it, so it no longer stops hooks.
     HooksFolderNotEmpty,
     /// The empty hooks folder is gone or cannot be read.
@@ -96,6 +100,7 @@ impl GitError {
             GitError::RepositoryUnreadable => "repository_unreadable",
             GitError::AlternateMissing { .. } => "alternate_missing",
             GitError::ConfigNotAllowed { .. } => "config_not_allowed",
+            GitError::FilterNotRun { .. } => "filter_not_run",
             GitError::HooksFolderNotEmpty => "hooks_folder_not_empty",
             GitError::HooksFolderUnreadable => "hooks_folder_unreadable",
             GitError::GitTooOld => "git_too_old",
@@ -170,6 +175,10 @@ impl fmt::Display for GitError {
                     "the repository's config sets {key}, which is not allowed"
                 )
             }
+            GitError::FilterNotRun { subcommand, filter } => write!(
+                formatter,
+                "git {subcommand} would store or write files without their {filter} filter, which the Studio doesn't run; make this change with git in a terminal"
+            ),
             GitError::HooksFolderNotEmpty => write!(formatter, "the empty hooks folder has files"),
             GitError::HooksFolderUnreadable => {
                 write!(formatter, "the empty hooks folder cannot be read")
