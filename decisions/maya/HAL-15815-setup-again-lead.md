@@ -3,6 +3,7 @@
 - Task: HAL-15815 (words check C633, HAL-15802)
 - Approval: team wording on an approved screen (HAL-2282); Noah's sentence from HAL-14804 stays word for word; Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:A38Hw+22dOFgb0s2ZtiSHZTXWtNgBA4tzk5gxtxnpwkFtNvcU640ekyz/7e3Ww8jMCyZZ87GDf4e3cS1CeC/AA==
 
 ## What changes
 
