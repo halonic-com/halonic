@@ -11,6 +11,7 @@ import {
   lookUpWorkflow,
   type RunDetail,
   RunEvents,
+  RunHistory,
   type RunProposal,
   shortRunId,
   WorkflowRuns,
@@ -55,7 +56,9 @@ import {
   type WorkspaceEngineSetup,
 } from "../../workspace-engine.ts";
 import { misplacedFilesOf, refuseFileProblems } from "../../workspace-problems.ts";
+import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
+import { failedChildEnding } from "../runs/failed-child.ts";
 import { connectorWarnings } from "./connector-warnings.ts";
 import { eventLines } from "./event-lines.ts";
 import { runHarnessOf } from "./harness.ts";
@@ -200,6 +203,7 @@ export async function followWorkflow(
     return followed;
   }
   const { run, unusedEvents } = followed;
+  const history = new RunHistory(await openWorkspaceRuns(dir.root, setup.profile));
   const result = runResult(run, {
     workspace,
     workspaceName,
@@ -207,6 +211,7 @@ export async function followWorkflow(
     clock,
     unusedEvents,
     debugging: context.debugging === true,
+    failedChild: await failedChildEnding(history, run, workspace),
   });
   const proposal = await waitingProposal(dir, run, setup, typedDir);
   const json = {

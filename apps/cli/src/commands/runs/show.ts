@@ -10,7 +10,7 @@
 import { type RunDetail, RunHistory, shortRunId } from "@halonicjs/app";
 import { workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { RunSummary } from "@halonicjs/events";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { loadWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -35,15 +35,11 @@ import {
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
+import { failedChildEnding } from "./failed-child.ts";
 import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
 import { connectorNotStartedLines } from "./show-connectors.ts";
-import {
-  type FailedChildEnding,
-  failedRunDebugText,
-  outputHintLines,
-  showEnding,
-} from "./show-ending.ts";
+import { failedRunDebugText, outputHintLines, showEnding } from "./show-ending.ts";
 
 /**
  * Shows one run, real or test: its heading, then its steps. Exits 0 for any
@@ -120,34 +116,6 @@ export async function showRun(
       };
     }
   }
-}
-
-/**
- * The child run a failed run's step failed with, read with its own
- * workflow and models, so the run's lines can say the child's cause
- * (HAL-15555); `undefined` for any other run.
- */
-async function failedChildEnding(
-  history: RunHistory,
-  run: RunDetail,
-  loaded: LoadedWorkspace,
-): Promise<FailedChildEnding | undefined> {
-  if (run.summary.status !== "failed") {
-    return undefined;
-  }
-  const child = await history.failedChild(run);
-  if (child === undefined) {
-    return undefined;
-  }
-  const { summary } = child.run;
-  const definitions = runViewDefinitions(loaded, summary);
-  return {
-    item: child.item,
-    run: child.run,
-    title: workflowTitle(definitions.workflow, summary),
-    definitions,
-    models: () => workspaceModelsOf(loaded, summary.hubId, providerAddress),
-  };
 }
 
 /** The one argument, the run id as typed; else the usage error with the usage line. */
