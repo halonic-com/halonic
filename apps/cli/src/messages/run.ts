@@ -286,6 +286,12 @@ export const runMessages = defineMessages("run", {
     return phrase`the engine couldn't sweep a leftover program copy: ${reason}`;
   },
   /**
+   * A `--debug` line saying why the harness sandbox doesn't sweep kept
+   * Windows grants under the profile's host lock, or stopped sweeping
+   * (requirement `cli.sandbox-kept-grants`). srt's own words follow.
+   */
+  hostLockNote: (reason: string) => phrase`the harness sandbox's host lock: ${reason}`,
+  /**
    * A `--debug` line when the run log couldn't record a failure of a harness
    * run's bridge (requirement `harness-host.bridge-failures`): the failure,
    * then the run log's own error when it named one.

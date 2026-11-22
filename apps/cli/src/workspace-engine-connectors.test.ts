@@ -115,6 +115,22 @@ verifies("cli.local-engine", () => {
     expect(debugLines).toHaveLength(8);
   });
 
+  it("shows why the harness sandbox doesn't sweep as its own --debug line, not as a failed clean-up", () => {
+    const stuck = stuckTimerWatch();
+    const debugLines: string[] = [];
+    const reportError = engineErrorReporter(stuck, (line) => debugLines.push(plainText(line)));
+
+    reportError(
+      new Error("This process doesn't sweep kept grants: another process holds the host lock"),
+      "host-lock",
+    );
+
+    expect(stuck.signal.aborted).toBe(false);
+    expect(debugLines).toEqual([
+      "the harness sandbox's host lock: This process doesn't sweep kept grants: another process holds the host lock",
+    ]);
+  });
+
   it("shows a bridge failure the run log couldn't record as its own --debug line", () => {
     const stuck = stuckTimerWatch();
     const debugLines: string[] = [];
