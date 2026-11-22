@@ -25,6 +25,8 @@ in a deployment's Worker, in Cloud's Worker and on Node.
 - **The receiver decides which keys count.** `findKey` returns only keys
   accepted right now: a revoked key, or a retiring key past its time, isn't
   found.
+- **Key sets give each key one job.** In Cloud's published key set every key
+  is a `session` key or a `command` key, and is found only for that job.
 
 ## Example
 
