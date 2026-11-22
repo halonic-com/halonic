@@ -149,6 +149,22 @@ verifies("app.plugin-sign-out", () => {
     expect(await service.revoke("weather")).toEqual(host.answer);
     expect(await service.remove("weather", deleteSecret)).toEqual({ ok: true, value: host.answer });
   });
+
+  it("says whether there was a trust to forget, counting a record that can't be read", async () => {
+    const { service, store } = await setup();
+    const [record] = await store.list();
+    if (record === undefined) throw new Error("trusting the plugin saves its record");
+
+    expect(await service.revokeTrust("weather")).toEqual({ signedOut: [], hadTrust: true });
+    expect(await service.revokeTrust("weather")).toEqual({ signedOut: [], hadTrust: false });
+
+    await store.grant(record);
+    store.get = async () => {
+      throw new Error("the record is damaged");
+    };
+    expect(await service.revokeTrust("weather")).toEqual({ signedOut: [], hadTrust: true });
+    expect(await store.list()).toEqual([]);
+  });
 });
 
 verifies("app.plugin-sign-out", () => {

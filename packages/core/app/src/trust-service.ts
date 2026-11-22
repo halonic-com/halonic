@@ -240,9 +240,15 @@ export class TrustService {
     return await grantPluginTrust(this.options, subject, shownFingerprint, origin);
   }
 
-  /** Forgets the trust in a workspace or plugin, even when its record can't be read. */
-  async revoke(location: string): Promise<void> {
+  /**
+   * Forgets the trust in a workspace or plugin, even when its record can't be read.
+   *
+   * @returns whether there was a record to forget; one that can't be read counts
+   */
+  async revoke(location: string): Promise<boolean> {
+    const stored = await readTrustRecord(this.options.store, location);
     await this.options.store.revoke(location);
+    return stored.status !== "none";
   }
 
   /**

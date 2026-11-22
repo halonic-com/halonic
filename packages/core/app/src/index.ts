@@ -343,6 +343,7 @@ export type {
   PluginRemoveRefusal,
   PluginSignedOut,
   PluginTrustRefusal,
+  PluginTrustRevoked,
   ReadPlugin,
   SignOutPlugin,
 } from "./plugin-service-types.ts";

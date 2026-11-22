@@ -103,6 +103,13 @@ export interface PluginRemoveRefusal {
  */
 export type SignOutPlugin = (id: string) => Promise<readonly PluginSignedOut[]>;
 
+/** What `PluginService.revokeTrust` did: the sign-ins it signed out, and whether there was a trust. */
+export interface PluginTrustRevoked {
+  readonly signedOut: readonly PluginSignedOut[];
+  /** False when the plugin had no trust record, or its folder is gone. */
+  readonly hadTrust: boolean;
+}
+
 /**
  * One of a plugin's sign-ins that {@link SignOutPlugin} signed out, and how,
  * in the shape the sign-in hosts give it. The grant is gone in every

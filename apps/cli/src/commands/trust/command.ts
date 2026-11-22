@@ -316,11 +316,7 @@ async function removeTrust(
   }
   const name = await nameAt(location, dir.shown);
   // A record that can't be read is still there, and revoking deletes it.
-  const hadTrust = await machine.store.get(location).then(
-    (record) => record !== null,
-    () => true,
-  );
-  await cliTrustService(machine.store, machine.clock).revoke(location);
+  const hadTrust = await cliTrustService(machine.store, machine.clock).revoke(location);
   if (!hadTrust) {
     return {
       exitCode: exitCode.ok,
@@ -338,11 +334,12 @@ async function removeTrust(
 /**
  * Whether `location` is a plugin in this profile's plugins folder whose trust
  * goes the `--plugin` way: one with a plugin's record, or with no record at
- * all, as once its trust was removed, so it is named as a plugin. A plugin's
+ * all, as once its trust was removed, so it is named as a plugin, or with a
+ * record that can't be read, so it is signed out too (HAL-15476). A plugin's
  * record anywhere else (a moved profile folder, or `--dir` naming a copy) is
  * removed by location, as a workspace's is: going by its folder's name would
  * sign out and untrust another plugin with that id and leave the record
- * named. So is a record that can't be read, so the user can always start over.
+ * named.
  */
 async function isInstalledPlugin(
   store: TrustStore,
@@ -353,8 +350,7 @@ async function isInstalledPlugin(
   const realFolder = await realpath(folder).catch(() => resolve(folder));
   if (dirname(location) !== realFolder) return false;
   const record = await store.get(location).catch(() => "unreadable" as const);
-  if (record === "unreadable") return false;
-  if (record === null) return await isFolder(location);
+  if (record === "unreadable" || record === null) return await isFolder(location);
   return isPluginRecord(record);
 }
 
