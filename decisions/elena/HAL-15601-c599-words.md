@@ -3,6 +3,7 @@
 - Task: HAL-15601
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15593#document-c599 (row 18; wording on an approved command's output, so a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BYjcNyF5ZmcjLcFxPoRl5rUb0amgcOQAHvvFsP8spcTZQimuRVYRFYpn7tV1QH6DQ/NFy8krLEl2dLgX6SZUDA==
 
 ## What changes
 
