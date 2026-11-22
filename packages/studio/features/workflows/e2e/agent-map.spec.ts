@@ -89,3 +89,56 @@ test.describe("phone", () => {
     });
   }
 });
+
+// A card opened from the summary sheet comes over it (agents.map.phone-summary-sheet, C662). The
+// sheet has a z-index and ignores the pointer under a card, so a hit test alone can't tell: the
+// spec also hides the card and checks the screen changes where its title is.
+const sheetSizes = [
+  { name: "a 390 px phone", width: 390, height: 844 },
+  { name: "the desktop", width: 1280, height: 800 },
+];
+for (const size of sheetSizes) {
+  test.describe(size.name, () => {
+    test.use({ viewport: { width: size.width, height: size.height } });
+
+    test("a card opened from the summary sheet shows over it; Esc closes the card, then the sheet", async ({
+      page,
+    }) => {
+      await page.goto("/agent-map.html?agent=mail-triage");
+      const summary = page.getByRole("button", { name: /^4 subagents/ });
+      await summary.click();
+      const sheet = page.getByRole("dialog", { name: "Who it hands work to" });
+      await expect(sheet).toBeVisible();
+      await sheet.getByRole("button", { name: /Filer/ }).press("Enter");
+
+      const title = page.locator("[data-top-card-title]");
+      await expect(title).toHaveText("Filer");
+      await expect(title).toBeFocused();
+      const box = await title.boundingBox();
+      expect(box, "the card's title is shown").not.toBeNull();
+      if (box === null) return;
+      const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      const hit = await page.evaluate(
+        ({ x, y }) => document.elementFromPoint(x, y)?.closest("[data-top-card-title]") !== null,
+        centre,
+      );
+      expect(hit, "the card's title is what's at its place").toBe(true);
+      const shown = await page.screenshot({ clip: box });
+      const card = page.locator("section", { has: title });
+      await card.evaluate((element) => element.style.setProperty("visibility", "hidden"));
+      const underneath = await page.screenshot({ clip: box });
+      await card.evaluate((element) => element.style.removeProperty("visibility"));
+      expect(shown.equals(underneath), "the card's title is painted, not covered").toBe(false);
+      await page.screenshot({
+        path: `test-results/screenshots/agent-map-sheet-card-${size.width}.png`,
+      });
+
+      await page.keyboard.press("Escape");
+      await expect(title).toHaveCount(0);
+      await expect(sheet).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(sheet).toHaveCount(0);
+      await expect(summary).toBeFocused();
+    });
+  });
+}
