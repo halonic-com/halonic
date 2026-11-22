@@ -107,6 +107,26 @@ verifies("plugins.palette-commands", () => {
     expect(dialog()).toBeNull();
   });
 
+  it("closes the dialog, then opens the page of the plugin the host stopped", async () => {
+    const { opener } = shellWith(() => []);
+    const stopped: PluginToolCaller = {
+      call: async () => {
+        throw Object.assign(new Error("stopped"), { kind: "plugin_stopped" });
+      },
+    };
+    const pages: string[] = [];
+    render(
+      <PluginCommandHost opener={opener} caller={stopped} openPlugin={(id) => pages.push(id)} />,
+    );
+    const today = weather().ui.commands[0];
+    if (today === undefined) throw new Error("No command");
+    await act(async () => opener.open({ id: "weather", name: "Weather" }, { ...today, form: {} }));
+    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    press("Weather");
+    expect(opener.current()).toBeUndefined();
+    expect(pages).toEqual(["weather"]);
+  });
+
   it("starts a dialog opened again fresh", async () => {
     const { commands, opener } = shellWith(() => [weather()]);
     render(<PluginCommandHost opener={opener} caller={caller} />);

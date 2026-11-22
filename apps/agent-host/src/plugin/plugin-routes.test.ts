@@ -63,6 +63,20 @@ verifies("agent-host.plugin-routes", () => {
       expect(backends.started).toHaveLength(0);
     });
 
+    it("answers 403 plugin_stopped in the host's own words where the runner's fence didn't hold", async () => {
+      const { url, backends } = await started();
+      backends.refuseStart = "plugin_stopped";
+      const refused = await post(url, callBody());
+      expect(refused.status).toBe(403);
+      expect(await refused.json()).toEqual({
+        error: {
+          kind: "plugin_stopped",
+          message:
+            "Halonic stopped this plugin: its sandbox didn't hold, so it didn't run. The next call tries the sandbox again.",
+        },
+      });
+    });
+
     it("removes a runner that failed in a call, and the next call starts a new one", async () => {
       const { url, backends, logged } = await started();
       await post(url, callBody());

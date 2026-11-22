@@ -20,6 +20,7 @@ import {
   USES_THE_TOOL,
   WHICH_READS,
 } from "./command-text.ts";
+import { CheckAgainLine, isPluginStopped, stoppedLine } from "./plugin-stopped.tsx";
 import { cantRunLine } from "./tools-cant-run.ts";
 
 /** One command from a plugin's `ui.commands`. */
@@ -50,6 +51,11 @@ export interface PluginCommandDialogProps {
   readonly caller: PluginToolCaller;
   /** Cancel, Close, the ✕ and Escape. The screen unmounts the dialog. */
   readonly onClose: () => void;
+  /**
+   * Opens the plugin's page, where **Check again** is, for a plugin the host stopped because its
+   * sandbox didn't hold. Without it, where the window can't open pages, the name isn't a link.
+   */
+  readonly onOpenPlugin?: (() => void) | undefined;
 }
 
 type Run =
@@ -57,6 +63,8 @@ type Run =
   | { readonly kind: "running" }
   | { readonly kind: "done"; readonly text: string }
   | { readonly kind: "failed"; readonly reason: string }
+  /** The host stopped the plugin because its sandbox didn't hold: Try again stays. */
+  | { readonly kind: "stopped" }
   /** The host can't run plugin tools at all here: the line, with no Try again. */
   | { readonly kind: "cant-run"; readonly line: string };
 
@@ -66,7 +74,9 @@ type Run =
  * **Run command**. The answer shows in a Result box with Copy, and the
  * buttons become **Run again** and **Close**. A failure shows in the alert
  * slot with **Try again**, and the form keeps what was typed; when the host can't run plugin
- * tools at all here, the line stands alone, without **Try again**. A command
+ * tools at all here, the line stands alone, without **Try again**. When the host stopped the
+ * plugin because its sandbox didn't hold, the alert names the plugin, with **Try again**, and
+ * under it the plugin's name links its page. A command
  * without a form runs as soon as the dialog opens. Every word that acts is
  * Halonic's; the plugin's title, labels and answer are plain text.
  *
@@ -79,6 +89,7 @@ export function PluginCommandDialog({
   command,
   caller,
   onClose,
+  onOpenPlugin,
 }: PluginCommandDialogProps) {
   const fields = Object.entries(command.form);
   const [drafts, setDrafts] = useState<Readonly<Record<string, Draft>>>(() =>
@@ -100,6 +111,10 @@ export function PluginCommandDialog({
       if (attempt === latest.current) setRun({ kind: "done", text });
     } catch (error) {
       if (attempt !== latest.current) return;
+      if (isPluginStopped(error)) {
+        setRun({ kind: "stopped" });
+        return;
+      }
       const line = cantRunLine(error, commandNotInThisBuildLine(command.title));
       setRun(
         line === undefined
@@ -142,6 +157,17 @@ export function PluginCommandDialog({
       busy={run.kind === "running"}
       {...(run.kind === "failed"
         ? { error: commandFailedLine(command.title, run.reason), retryLabel: TRY_AGAIN }
+        : {})}
+      {...(run.kind === "stopped"
+        ? {
+            error: stoppedLine(plugin.name),
+            retryLabel: TRY_AGAIN,
+            errorDetails: (
+              <p className="text-small text-fg-muted wrap-anywhere">
+                <CheckAgainLine name={plugin.name} onOpen={onOpenPlugin} />
+              </p>
+            ),
+          }
         : {})}
       {...(run.kind === "cant-run" ? { error: run.line } : {})}
       onConfirm={submit}
@@ -198,6 +224,7 @@ const confirmLabels: Readonly<Record<Run["kind"], string>> = {
   running: RUN_COMMAND,
   done: RUN_AGAIN,
   failed: RUN_COMMAND,
+  stopped: RUN_COMMAND,
   "cant-run": RUN_COMMAND,
 };
 

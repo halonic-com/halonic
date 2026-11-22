@@ -75,7 +75,12 @@ function callerAnswering(...answers: (string | Error)[]) {
   return { caller, calls };
 }
 
-function open(command: PluginCommand, caller: PluginToolCaller, strict = false) {
+function open(
+  command: PluginCommand,
+  caller: PluginToolCaller,
+  strict = false,
+  onOpenPlugin?: () => void,
+) {
   let closed = 0;
   const Wrap = strict ? StrictMode : Fragment;
   render(
@@ -87,6 +92,7 @@ function open(command: PluginCommand, caller: PluginToolCaller, strict = false) 
         onClose={() => {
           closed += 1;
         }}
+        onOpenPlugin={onOpenPlugin}
       />
     </Wrap>,
   );
@@ -245,6 +251,38 @@ verifies("plugins.plugin-commands", () => {
     expect(dialog().textContent).toContain(line);
     expect(dialog().textContent).not.toContain("Couldn't run");
     expect(buttonWords()).not.toContain("Try again");
+  });
+
+  it("names the plugin the host stopped and links its page, with Try again", async () => {
+    const opened = vi.fn();
+    const { caller, calls } = callerAnswering(
+      Object.assign(new Error("host's own text"), { kind: "plugin_stopped" }),
+      "Sunny",
+    );
+    open(forecast, caller, false, opened);
+    type(fieldNamed("Place"), "Ghent");
+    await press("Run command");
+    expect(dialog().textContent).toContain(
+      "Halonic stopped Weather: its sandbox didn't hold, so it didn't run.",
+    );
+    expect(dialog().textContent).toContain("Open Weather to check again.");
+    expect(dialog().textContent).not.toContain("host's own text");
+    act(() => button("Weather").click());
+    expect(opened).toHaveBeenCalledOnce();
+    await press("Try again");
+    expect(calls).toHaveLength(2);
+    expect(dialog().querySelector("section")?.textContent).toContain("Sunny");
+  });
+
+  it("names the stopped plugin without a link where the window can't open pages", async () => {
+    open(
+      today,
+      callerAnswering(Object.assign(new Error("host's own text"), { kind: "plugin_stopped" }))
+        .caller,
+    );
+    await settle();
+    expect(dialog().textContent).toContain("Open Weather to check again.");
+    expect(buttonWords()).not.toContain("Weather");
   });
 
   it("runs a command without a form at once, under Halonic's button words", async () => {
