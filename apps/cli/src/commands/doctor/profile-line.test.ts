@@ -80,7 +80,7 @@ verifies("cli.commands.doctor.profile-line", () => {
 
       expect(code).toBe(exitCode.failed);
       expect(io.stdout[2]).toBe(
-        "✕ Profile     the profile folder HALONIC_HOME is inside this workspace.",
+        "✕ Profile     Your profile folder, set by HALONIC_HOME, is inside this workspace.",
       );
       expect(io.stdout[3]).toBe(
         "              Fix: move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.",

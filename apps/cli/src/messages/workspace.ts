@@ -59,12 +59,12 @@ export const workspaceMessages = defineMessages("workspace", {
   engineOpenFix: () => phrase`Wait until it has finished or stop it, then run again.`,
   /**
    * The reason when a variable put the profile folder in the workspace
-   * (HAL-15201): "Couldn't open ./acme: the profile folder HALONIC_HOME is
-   * inside this workspace." `variable` is `HALONIC_HOME`, `XDG_DATA_HOME` or
+   * (HAL-15201, C637): "Couldn't open ./acme: your profile folder, set by
+   * HALONIC_HOME, is inside this workspace." `variable` is `HALONIC_HOME`, `XDG_DATA_HOME` or
    * `LOCALAPPDATA`, whichever put it there.
    */
   profileInWorkspace: (variable: string) =>
-    phrase`the profile folder ${variable} is inside this workspace.`,
+    phrase`your profile folder, set by ${variable}, is inside this workspace.`,
   /**
    * Always names `HALONIC_HOME`, whichever variable moved the profile:
    * `XDG_DATA_HOME` and `LOCALAPPDATA` point at the parent folder, and
@@ -72,9 +72,9 @@ export const workspaceMessages = defineMessages("workspace", {
    */
   profileInWorkspaceFix: () =>
     phrase`Move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.`,
-  /** The reason when the workspace is inside the profile folder: "this workspace is inside the profile folder ~/.local/share/halonic." */
+  /** The reason when the workspace is inside the profile folder: "this workspace is inside your profile folder ~/.local/share/halonic." */
   workspaceInProfile: (profile: string) =>
-    phrase`this workspace is inside the profile folder ${profile}.`,
+    phrase`this workspace is inside your profile folder ${profile}.`,
   workspaceInProfileFix: () => phrase`Move the workspace somewhere else.`,
   /** The fix when the command that holds the engine runs until it is stopped, as `routines watch` and `serve` do. */
   engineOpenStopFix: () => phrase`Stop it with Ctrl C there, then run again.`,

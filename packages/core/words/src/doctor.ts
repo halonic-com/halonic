@@ -276,15 +276,15 @@ export const doctorMessages = defineMessages("doctor", {
   proxyReason: (reason: string) => phrase`${reason}`,
 
   // The Profile line (HAL-15201): the reason and the fix every other command refuses the workspace with.
-  /** Profile ✕ when a variable put the profile folder in the workspace: "the profile folder HALONIC_HOME is inside this workspace." */
+  /** Profile ✕ when a variable put the profile folder in the workspace: "Your profile folder, set by HALONIC_HOME, is inside this workspace." (C637) */
   profileInWorkspace: (variable: string) =>
-    phrase`the profile folder ${variable} is inside this workspace.`,
+    phrase`Your profile folder, set by ${variable}, is inside this workspace.`,
   /** Always names `HALONIC_HOME`, whichever variable moved the profile, as the refusal does (HAL-15232). */
   profileInWorkspaceFix: () =>
     phrase`Fix: move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.`,
-  /** Profile ✕ when the workspace is inside the profile folder: "this workspace is inside the profile folder ~/.local/share/halonic." */
+  /** Profile ✕ when the workspace is inside the profile folder: "This workspace is inside your profile folder ~/.local/share/halonic." */
   workspaceInProfile: (profile: string) =>
-    phrase`this workspace is inside the profile folder ${profile}.`,
+    phrase`This workspace is inside your profile folder ${profile}.`,
   workspaceInProfileFix: () => phrase`Fix: move the workspace somewhere else.`,
 
   noProblems: () => phrase`No problems.`,

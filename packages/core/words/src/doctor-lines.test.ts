@@ -185,7 +185,7 @@ verifies("words.doctor-lines", () => {
     expect(worded(moved)).toEqual({
       label: "Profile",
       items: [
-        "the profile folder XDG_DATA_HOME is inside this workspace.",
+        "Your profile folder, set by XDG_DATA_HOME, is inside this workspace.",
         "fix: Fix: move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.",
       ],
     });
@@ -196,7 +196,7 @@ verifies("words.doctor-lines", () => {
       profile: "~/.local/share/\u001b[31mhalonic",
     };
     expect(worded(inside).items).toEqual([
-      "this workspace is inside the profile folder ~/.local/share/\\u001b[31mhalonic.",
+      "This workspace is inside your profile folder ~/.local/share/\\u001b[31mhalonic.",
       "fix: Fix: move the workspace somewhere else.",
     ]);
   });

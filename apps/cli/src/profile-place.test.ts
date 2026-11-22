@@ -39,7 +39,9 @@ verifies("cli.profile-outside-workspace", () => {
       const { code, io } = await validateIn(acme);
 
       expect(code).toBe(exitCode.usage);
-      expect(io.stderr[0]).toContain("the profile folder HALONIC_HOME is inside this workspace.");
+      expect(io.stderr[0]).toContain(
+        "your profile folder, set by HALONIC_HOME, is inside this workspace.",
+      );
       expect(io.stderr[1]).toContain("set HALONIC_HOME to its new place");
     });
 
@@ -74,7 +76,7 @@ verifies("cli.profile-outside-workspace", () => {
         const { io } = await validateIn(acme);
 
         expect(io.stderr[0]).toContain(
-          "the profile folder XDG_DATA_HOME is inside this workspace.",
+          "your profile folder, set by XDG_DATA_HOME, is inside this workspace.",
         );
         expect(io.stderr[1]).toContain("set HALONIC_HOME to its new place");
         expect(io.stderr[1]).not.toContain("set XDG_DATA_HOME");
@@ -107,7 +109,7 @@ verifies("cli.profile-outside-workspace", () => {
       const code = await runCli(["init", "new"], io, [initCommand]);
 
       expect(code).toBe(exitCode.usage);
-      expect(io.stderr[0]).toContain("HALONIC_HOME is inside this workspace.");
+      expect(io.stderr[0]).toContain("set by HALONIC_HOME, is inside this workspace.");
     });
 
     it("isn't made a workspace by extract, which writes nothing there", async () => {
@@ -119,7 +121,7 @@ verifies("cli.profile-outside-workspace", () => {
       ]);
 
       expect(code).toBe(exitCode.usage);
-      expect(io.stderr[0]).toContain("HALONIC_HOME is inside this workspace.");
+      expect(io.stderr[0]).toContain("set by HALONIC_HOME, is inside this workspace.");
       expect(existsSync(join(folder, "new"))).toBe(false);
     });
   });
@@ -141,7 +143,7 @@ verifies("cli.profile-outside-workspace", () => {
       const { code, io } = await validateIn(inside);
 
       expect(code).toBe(exitCode.usage);
-      expect(io.stderr[0]).toContain("this workspace is inside the profile folder ~");
+      expect(io.stderr[0]).toContain("this workspace is inside your profile folder ~");
       expect(io.stderr[1]).toContain("Move the workspace somewhere else.");
     });
   });
