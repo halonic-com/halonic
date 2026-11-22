@@ -1,6 +1,7 @@
 import { Callout, Card, Switch } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
 import type { RoutinesHost, RoutineTrigger, RoutineView } from "../api.ts";
+import { cantStartReason, pageStartFacts } from "../cant-start.ts";
 import { failureReason } from "../page/page-words.ts";
 import { OnTimeHint } from "./on-time-hint.tsx";
 import { TriggerFields } from "./trigger-fields.tsx";
@@ -26,8 +27,9 @@ export interface WhenCardProps {
  * The When card (`routines.when.when-card`): the trigger in words, the On/Off switch that applies
  * at once, and the next start times from the live version, with the line that they start on time
  * while Halonic is open; a mail routine says mail doesn't start it yet. A routine
- * that has never been live can't be turned on here yet, and says so; a change that can't be saved
- * is shown in the card and the switch goes back to what is saved.
+ * that has never been live can't be turned on here yet, and says so; a routine that can't start
+ * shows no start times and points to the Starts card's reason (HAL-15376); a change that can't be
+ * saved is shown in the card and the switch goes back to what is saved.
  */
 export function WhenCard({
   host,
@@ -43,12 +45,20 @@ export function WhenCard({
   const mailboxes = useMailboxes(host, routine);
   const manual = routine.trigger.kind === "manual";
   const neverLive = !routine.everLive;
-  const times = useNextTimes(host, routine, routine.enabled && !neverLive && !manual, routine);
+  // A routine that can't start never starts at its times, so the card doesn't promise any; the
+  // Starts card says why, from the same `cantStartReason` as its Routines row.
+  const cantStart = cantStartReason(pageStartFacts(routine)) !== undefined;
+  const times = useNextTimes(
+    host,
+    routine,
+    routine.enabled && !neverLive && !manual && !cantStart,
+    routine,
+  );
   const timeZone = routine.trigger.kind === "schedule" ? routine.trigger.timeZone : undefined;
   const shown = times?.times.map((iso) => nextTime(iso, timeZone, deviceTimeZone())) ?? [];
-  const mail = routine.trigger.kind === "mail";
 
   const newTriggerNotLive = notLiveLine(routine);
+  const onlyLine = startsOnlyLine(routine, cantStart);
 
   const turn = async (enabled: boolean) => {
     if (saving) return;
@@ -59,7 +69,9 @@ export function WhenCard({
       if (!enabled) {
         announce(words.isOff(routine.name));
       } else {
-        const next = await host.nextTimes(routine, 1).catch(() => undefined);
+        const next = cantStart
+          ? undefined
+          : await host.nextTimes(routine, 1).catch(() => undefined);
         const first = next?.times[0];
         announce(words.isOn(routine.name, first && nextTime(first, timeZone, deviceTimeZone())));
       }
@@ -124,8 +136,7 @@ export function WhenCard({
         {newTriggerNotLive !== undefined && (
           <p className="text-small text-fg-muted">{newTriggerNotLive}</p>
         )}
-        {manual && <p className="text-small text-fg-muted">{words.manualOnly}</p>}
-        {mail && <p className="text-small text-fg-muted">{words.mailNotChecked}</p>}
+        {onlyLine !== undefined && <p className="text-small text-fg-muted">{onlyLine}</p>}
         {failure !== undefined && <Callout tone="danger">{failure}</Callout>}
       </div>
     </Card>
@@ -138,6 +149,17 @@ function notLiveLine(routine: RoutineView): string | undefined {
   if (live === undefined || live === routine.triggerSentence) return undefined;
   const scheduled = routine.trigger.kind === "schedule" || routine.trigger.kind === "every";
   return (scheduled ? words.newScheduleNotLive : words.newTriggerNotLive)(live);
+}
+
+/**
+ * The line for a routine that doesn't start at times of its own: one that can't start at all, a
+ * manual one, or a mail one, which Halonic doesn't check yet. Nothing for any other routine.
+ */
+function startsOnlyLine(routine: RoutineView, cantStart: boolean): string | undefined {
+  if (cantStart) return words.cantStart;
+  if (routine.trigger.kind === "manual") return words.manualOnly;
+  if (routine.trigger.kind === "mail") return words.mailNotChecked;
+  return undefined;
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { RoutineListing, RoutineTarget } from "./api.ts";
+import type { RoutineListing, RoutineTarget, RoutineView } from "./api.ts";
 
 /**
  * The words for a routine that can't start (HAL-15082). Its row, its Starts card and Run now's toast
@@ -28,4 +28,19 @@ export type StartFacts = Pick<
 export function cantStartReason(facts: StartFacts): string | undefined {
   if (!facts.targetFound) return cantStartWords.targetMissing(facts.targetName, facts.targetKind);
   return facts.problems[0];
+}
+
+/**
+ * The same facts read from the routine's page, so its Starts card says what its row says
+ * (HAL-15300). A workflow or agent that isn't there is named by its id, as the row names it.
+ */
+export function pageStartFacts(
+  routine: Pick<RoutineView, "target" | "targetState" | "problems">,
+): StartFacts {
+  return {
+    targetFound: routine.targetState !== "not-found",
+    targetName: routine.target.id,
+    targetKind: routine.target.kind,
+    problems: routine.problems,
+  };
 }

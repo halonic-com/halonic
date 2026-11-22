@@ -7,6 +7,8 @@ export const whenWords = {
   off: "Off",
   next: "Next",
   manualOnly: "Starts only with Run now.",
+  /** In place of the start times while the routine can't start; the Starts card says why (HAL-15376). */
+  cantStart: "Can't start until the problem under Starts is fixed.",
   atNextCheck: "At the next check (it hasn't run yet)",
   /** Under the trigger while the saved one isn't in the live version; `live` is what still runs. */
   newScheduleNotLive: (live: string) =>

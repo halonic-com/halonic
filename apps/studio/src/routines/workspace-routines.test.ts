@@ -52,7 +52,8 @@ verifies("studio.workspace-routines", () => {
     const listed = (await host.list()).find((row) => row.id === "broken");
     expect(listed?.nextRun).toBeUndefined();
     const view = await host.read({ hubId: "acme", id: "broken" });
-    expect(view.problems.length).toBeGreaterThan(0);
+    // Once, in the checks' words, without the `Routine "<id>": ` the row and page don't need.
+    expect(view.problems).toEqual(["Cron needs 5 fields (minute hour day month weekday), got 1."]);
   });
 
   it("lists whether the workflow or agent a routine starts is in the workspace", async () => {
@@ -98,6 +99,8 @@ verifies("studio.workspace-routines", () => {
     expect(listed?.problems).toEqual([
       expect.stringMatching(/^\{\{trigger\.date\}\} isn't a trigger value/),
     ]);
+    // HAL-15300: the page gets the same errors, so its Starts card says what the row says.
+    expect((await host.read(weekly)).problems).toEqual(listed?.problems);
   });
 
   it("reads a routine as the page draws it", async () => {

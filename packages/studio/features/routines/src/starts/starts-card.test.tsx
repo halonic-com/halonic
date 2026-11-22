@@ -270,6 +270,24 @@ verifies("routines.starts.starts-card", () => {
     );
   });
 
+  it("says why a routine with an error in its file can't start, as its row does", async () => {
+    // HAL-15300: the row shows the file's first error, so the page has to keep it too.
+    const problem = "{{trigger.date}} isn't a trigger value. Use {{trigger.at}}.";
+    const routine = { ...routineStarting(briefing), problems: [problem, "A second error."] };
+    const { page } = await card(routine);
+    expect(page.textContent).toContain(problem);
+    expect(page.textContent).not.toContain("A second error.");
+    unmount();
+    // A missing workflow comes first, since picking another one is the fix.
+    const ghost = {
+      ...routineStarting({ ...briefing, id: "ghost" }, "not-found"),
+      problems: [problem],
+    };
+    const missing = (await card(ghost)).page.textContent;
+    expect(missing).toContain("ghost isn't in this workspace. Pick another workflow.");
+    expect(missing).not.toContain(problem);
+  });
+
   it("says which target still starts while the saved one isn't live", async () => {
     const live: RoutineLiveValues = {
       triggerSentence: "Weekdays at 07:30",

@@ -1,6 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { Routine } from "@halonicjs/format";
-import { CronError, describeCron, nextRun, occurrences, routineKey } from "@halonicjs/routines";
+import { CronError, nextRun, occurrences, routineKey } from "@halonicjs/routines";
 import type { RoutineNextTimes } from "@halonicjs/studio-feature-routines/api";
 import { type PlacedFile, runsOf } from "./routine-reads.ts";
 
@@ -59,19 +59,6 @@ export function nextRunOf(routine: Routine, now: Date, timeZone: string): string
     return nextRun(routine.trigger, now, timeZone)?.toISOString();
   } catch (error) {
     if (error instanceof CronError) return undefined;
-    throw error;
-  }
-}
-
-/** What the checks of the schedule or interval say, which the file's own checks don't. */
-export function triggerProblems(file: PlacedFile, clock: RoutineClock): string[] {
-  try {
-    const { trigger } = file.value;
-    if ("schedule" in trigger) describeCron(trigger.schedule);
-    nextRun(trigger, clock.now(), clock.timeZone);
-    return [];
-  } catch (error) {
-    if (error instanceof CronError) return [error.message];
     throw error;
   }
 }
