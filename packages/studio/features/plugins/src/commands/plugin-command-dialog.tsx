@@ -20,7 +20,7 @@ import {
   USES_THE_TOOL,
   WHICH_READS,
 } from "./command-text.ts";
-import { CheckAgainLine, isPluginStopped, stoppedLine } from "./plugin-stopped.tsx";
+import { isPluginStopped, stoppedLine, TryAgainLine } from "./plugin-stopped.tsx";
 import { cantRunLine } from "./tools-cant-run.ts";
 
 /** One command from a plugin's `ui.commands`. */
@@ -52,8 +52,8 @@ export interface PluginCommandDialogProps {
   /** Cancel, Close, the ✕ and Escape. The screen unmounts the dialog. */
   readonly onClose: () => void;
   /**
-   * Opens the plugin's page, where **Check again** is, for a plugin the host stopped because its
-   * sandbox didn't hold. Without it, where the window can't open pages, the name isn't a link.
+   * Opens the plugin's page, for details, for a plugin the host stopped because the sandbox
+   * didn't work when it started. Without it, where the window can't open pages, the name isn't a link.
    */
   readonly onOpenPlugin?: (() => void) | undefined;
 }
@@ -63,7 +63,7 @@ type Run =
   | { readonly kind: "running" }
   | { readonly kind: "done"; readonly text: string }
   | { readonly kind: "failed"; readonly reason: string }
-  /** The host stopped the plugin because its sandbox didn't hold: Try again stays. */
+  /** The host stopped the plugin because the sandbox didn't work: Try again stays. */
   | { readonly kind: "stopped" }
   /** The host can't run plugin tools at all here: the line, with no Try again. */
   | { readonly kind: "cant-run"; readonly line: string };
@@ -75,8 +75,8 @@ type Run =
  * buttons become **Run again** and **Close**. A failure shows in the alert
  * slot with **Try again**, and the form keeps what was typed; when the host can't run plugin
  * tools at all here, the line stands alone, without **Try again**. When the host stopped the
- * plugin because its sandbox didn't hold, the alert names the plugin, with **Try again**, and
- * under it the plugin's name links its page. A command
+ * plugin because the sandbox didn't work, the alert names the plugin, with **Try again**, and
+ * under it the line points to **Try again** and the plugin's name links its page for details. A command
  * without a form runs as soon as the dialog opens. Every word that acts is
  * Halonic's; the plugin's title, labels and answer are plain text.
  *
@@ -164,7 +164,7 @@ export function PluginCommandDialog({
             retryLabel: TRY_AGAIN,
             errorDetails: (
               <p className="text-small text-fg-muted wrap-anywhere">
-                <CheckAgainLine name={plugin.name} onOpen={onOpenPlugin} />
+                <TryAgainLine name={plugin.name} onOpen={onOpenPlugin} />
               </p>
             ),
           }

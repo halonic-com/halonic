@@ -15,7 +15,7 @@ import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { fromPlugin, TRY_AGAIN } from "../commands/command-text.ts";
 import type { PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
-import { CheckAgainLine, isPluginStopped, stoppedLine } from "../commands/plugin-stopped.tsx";
+import { isPluginStopped, StoppedLine, TryAgainLine } from "../commands/plugin-stopped.tsx";
 import { cantRunLine } from "../commands/tools-cant-run.ts";
 import { PluginResult } from "../ui/plugin-result.tsx";
 import {
@@ -64,7 +64,7 @@ type Run =
   | { readonly kind: "loading" }
   | { readonly kind: "done"; readonly text: string; readonly refreshing: boolean }
   | { readonly kind: "failed"; readonly reason: string }
-  /** The host stopped the plugin because its sandbox didn't hold: Try again and ↻ stay. */
+  /** The host stopped the plugin because the sandbox didn't work: Try again and ↻ stay. */
   | { readonly kind: "stopped" }
   /** The host can't run plugin tools at all here: the line, with no Try again and no ↻. */
   | { readonly kind: "cant-run"; readonly line: string };
@@ -75,8 +75,8 @@ type Run =
  * plugin is on, the card calls its tool when it shows, ↻ calls it again and a failure says why
  * with **Try again**; only a failure is announced. When the host can't run plugin tools at all
  * (not in this build, or not fenced on this computer), the card says so with neither **Try
- * again** nor ↻, since pressing them can't help. When the host stopped the plugin because its
- * sandbox didn't hold, the card names the plugin and links its page, with **Try again**. A plugin that isn't trusted or can't load
+ * again** nor ↻, since pressing them can't help. When the host stopped the plugin because the
+ * sandbox didn't work, the card names the plugin, points to **Try again** and links its page. A plugin that isn't trusted or can't load
  * leaves the card in place, empty, with **Review** or **Details**, so Home doesn't jump when it
  * turns on. The title row is 28px in every state, so an empty card lines up with a live one
  * (T16-F23). The title and the footer show at once; only the answer has a skeleton, and ↻ turns
@@ -211,7 +211,7 @@ function CardAnswer({
   readonly plugin: string;
   readonly run: Run;
   readonly onTryAgain: () => void;
-  /** Opens the plugin's page, where **Check again** is. */
+  /** Opens the plugin's page, for details. */
   readonly onOpenPlugin: () => void;
 }) {
   return (
@@ -234,7 +234,7 @@ function CardAnswer({
             icon={<WarningIcon />}
             line={
               <>
-                {stoppedLine(plugin)} <CheckAgainLine name={plugin} onOpen={onOpenPlugin} />
+                <StoppedLine name={plugin} /> <TryAgainLine name={plugin} onOpen={onOpenPlugin} />
               </>
             }
             action={TRY_AGAIN}
