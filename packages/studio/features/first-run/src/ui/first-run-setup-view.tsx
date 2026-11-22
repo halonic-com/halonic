@@ -17,7 +17,7 @@ import { useFirstRunState } from "./first-run-bar.tsx";
 function pieceFill(index: number, reached: number): string {
   if (index < reached) return "bg-accent forced-colors:bg-[CanvasText]";
   if (index === reached) {
-    return "border border-transparent bg-linear-to-r bg-origin-border from-accent from-50% to-border to-50% forced-colors:border-[CanvasText] forced-colors:from-[Highlight] forced-colors:to-[Canvas]";
+    return "border border-transparent bg-linear-to-r bg-origin-border from-accent from-[50%] to-border to-[50%] forced-colors:border-[CanvasText] forced-colors:from-[Highlight] forced-colors:to-[Canvas]";
   }
   return "border border-transparent bg-border forced-colors:border-[CanvasText] forced-colors:bg-[Canvas]";
 }

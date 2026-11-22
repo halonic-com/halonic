@@ -131,7 +131,7 @@ verifies("first-run.setup-item", () => {
     );
     const current = [...root.querySelectorAll("[aria-hidden=true] > span")][1]?.classList;
     expect(current?.contains("bg-accent-soft")).toBe(false);
-    for (const stop of ["bg-origin-border", "from-accent", "from-50%", "to-border", "to-50%"]) {
+    for (const stop of ["bg-origin-border", "from-accent", "from-[50%]", "to-border", "to-[50%]"]) {
       expect(current?.contains(stop)).toBe(true);
     }
     for (const edge of ["forced-colors:from-[Highlight]", "forced-colors:to-[Canvas]"]) {
