@@ -3,8 +3,9 @@ import type { CheckState } from "../pr-watcher/decide.ts";
 /**
  * The GitHub snapshot one `pr.watch` pass takes, as other jobs and tools
  * read it from plugin state (`queue_state`, `merge_speed`). This shape is a
- * contract: add fields freely, but a rename or removal bumps `version`, and
- * readers refuse a version they don't know. Plain JSON only: `null`, never
+ * contract: add fields freely, optional so readers expect a snapshot saved
+ * before them, but a rename or removal bumps `version`, and readers refuse
+ * a version they don't know. Plain JSON only: `null`, never
  * `undefined`. It carries ids, states, names and times, never comment or
  * review text.
  */
@@ -47,6 +48,15 @@ export interface QueueEntry {
   /** GitHub's estimate in seconds, or null. */
   readonly estimatedSeconds: number | null;
   readonly solo: boolean;
+  /**
+   * `ci-ok` on the group's commit, or null before its group forms. Added
+   * after version 1 shipped: a snapshot saved before it has none.
+   */
+  readonly groupCiOk?: CheckState | null;
+  /** The group's jobs queued for a runner (a job waiting on another job isn't one yet). Added like `groupCiOk`. */
+  readonly jobsWaiting?: number;
+  /** When the longest-waiting of those jobs was queued, or null when none waits. Added like `groupCiOk`. */
+  readonly waitingSince?: string | null;
 }
 
 /** A pull request, open or closed. */

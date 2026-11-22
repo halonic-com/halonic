@@ -17,7 +17,10 @@ import {
 /**
  * Takes the snapshot: per repository, its merge queue and open pull requests
  * page by page, then closed ones until they are older than the window. About
- * 20 GraphQL calls on `halonic`, against some 450 REST requests before.
+ * 20 GraphQL calls on `halonic`, against some 450 REST requests before. The
+ * queue comes with the first page of open pull requests, with each group
+ * commit's `ci-ok` and its jobs waiting for a runner, so `queue_state` costs
+ * no request of its own.
  */
 
 /** Reads one check on a commit another way, for a commit with more than 100 checks. */
@@ -91,14 +94,15 @@ interface QueueNode {
   readonly estimatedTimeToMerge: number | null;
   readonly solo: boolean;
   readonly enqueuer: { readonly login: string } | null;
-  readonly headCommit: { readonly oid: string } | null;
+  readonly headCommit: { readonly oid: string; readonly statusCheckRollup?: Rollup | null } | null;
   readonly pullRequest: { readonly number: number } | null;
 }
 
 interface OpenPage {
   readonly repository: {
     readonly defaultBranchRef: { readonly name: string } | null;
-    readonly mergeQueue: { readonly entries: { readonly nodes: readonly QueueNode[] } } | null;
+    /** Only on the first page, which asks for it. */
+    readonly mergeQueue?: { readonly entries: { readonly nodes: readonly QueueNode[] } } | null;
     readonly pullRequests: Page<OpenNode>;
   };
 }
@@ -198,23 +202,40 @@ function pullOf(node: PullNode, open: OpenFacts | null): SnapshotPull {
   };
 }
 
-function queueOf(page: OpenPage): QueueEntry[] {
-  return (page.repository.mergeQueue?.entries.nodes ?? []).flatMap((entry) =>
-    entry.pullRequest === null
-      ? []
-      : [
-          {
-            number: entry.pullRequest.number,
-            position: entry.position,
-            state: entry.state,
-            enqueuedAt: entry.enqueuedAt,
-            enqueuedBy: entry.enqueuer?.login ?? null,
-            groupHead: entry.headCommit?.oid ?? null,
-            estimatedSeconds: entry.estimatedTimeToMerge,
-            solo: entry.solo,
-          },
-        ],
-  );
+/** A group commit's jobs queued for a runner, and since when the longest one waits. */
+function waitingOf(rollup: Rollup | null): { jobsWaiting: number; waitingSince: string | null } {
+  const queued = (rollup?.contexts.nodes ?? []).filter((node) => node.status === "QUEUED");
+  // GitHub sets a queued check run's `startedAt` to when it was queued.
+  const since = queued.flatMap((node) => (node.startedAt == null ? [] : [node.startedAt])).sort();
+  return { jobsWaiting: queued.length, waitingSince: since[0] ?? null };
+}
+
+async function queueOf(page: OpenPage, repo: string, fallback: CheckFallback) {
+  const entries: QueueEntry[] = [];
+  for (const entry of page.repository.mergeQueue?.entries.nodes ?? []) {
+    if (entry.pullRequest === null) {
+      continue;
+    }
+    const groupHead = entry.headCommit?.oid ?? null;
+    const rollup = entry.headCommit?.statusCheckRollup ?? null;
+    let groupCiOk: QueueEntry["groupCiOk"] = null;
+    if (groupHead !== null) {
+      groupCiOk = checkOf(rollup, "ci-ok") ?? (await fallback(repo, groupHead, "ci-ok"));
+    }
+    entries.push({
+      number: entry.pullRequest.number,
+      position: entry.position,
+      state: entry.state,
+      enqueuedAt: entry.enqueuedAt,
+      enqueuedBy: entry.enqueuer?.login ?? null,
+      groupHead,
+      estimatedSeconds: entry.estimatedTimeToMerge,
+      solo: entry.solo,
+      groupCiOk,
+      ...waitingOf(rollup),
+    });
+  }
+  return entries;
 }
 
 async function readRepo(
@@ -228,10 +249,10 @@ async function readRepo(
   let defaultBranch = "main";
   let queue: QueueEntry[] = [];
   for (let after: string | null = null, first = true; first || after !== null; first = false) {
-    const page = (await query(openPullsQuery, { ...names, after })) as OpenPage;
+    const page = (await query(openPullsQuery, { ...names, after, withQueue: first })) as OpenPage;
     if (first) {
       defaultBranch = page.repository.defaultBranchRef?.name ?? defaultBranch;
-      queue = queueOf(page);
+      queue = await queueOf(page, repo, fallback);
     }
     for (const node of page.repository.pullRequests.nodes) {
       pulls.push(pullOf(node, await openFacts(node, repo, fallback)));

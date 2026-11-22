@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`
 
 ## PR watcher
 
@@ -114,8 +114,8 @@ job log, then turn `dryRun` off.
 
 ## PR tools
 
-Two agent tools (HAL-15920, B1) that replace a handful of `gh` calls with
-one. Both read GitHub with GET requests only, through the same reader and
+Agent tools (HAL-15920, B1) that replace a handful of `gh` calls with
+one. The first two read GitHub with GET requests only, through the same reader and
 token as the watcher, and give up after 25 s.
 
 - **`pr_status(pr, repo?)`**: one pull request by number or URL, on one of
@@ -133,6 +133,16 @@ token as the watcher, and give up after 25 s.
   reviewer signed an approval on its head. The ones that conflict or have a
   red `ci-ok` come first, marked `NEEDS YOU`: the "check your open PRs
   first" rule (HAL-14785) in one call. About 3 requests per pull request.
+- **`queue_state()`** (Board Checker addendum on HAL-15997, for the Merger
+  and the Fast-track Monitor): the merge queue in order, each entry's
+  state, `ci-ok` on its group commit, minutes in the queue and who queued
+  it; the merge-group jobs queued for a runner (each group commit counted
+  once) and the longest wait; and every open pull request labelled
+  `fast-track` with who added the label. An adder GitHub doesn't give (older
+  than the 20 newest label events) is "unknown", which never counts as
+  allowed. It reads the last snapshot from plugin state and sends no
+  request; a snapshot older than 30 minutes is marked stale. Moves to the
+  `merge-queue` plugin in phase 2.
 
 ## Metrics
 
@@ -161,7 +171,10 @@ change 5). Each `pr-watch` pass takes it first, saves it in plugin state
 from it. A failed save is logged and the pass still decides; a failed read
 fails the company's pass, with no partial view.
 
-- **What it reads, per repository:** the default branch's merge queue, every
+- **What it reads, per repository:** the default branch's merge queue (with
+  the first page only, and each group commit's checks: `ci-ok`, and the jobs
+  queued for a runner; a job waiting on another job has no check run yet),
+  every
   open pull request (25 per call, with its labels and who added them, `ci-ok`
   and the draft `ci-ok` on its head, mergeable, in the queue, reviews and the
   100 newest conversation comments), then closed ones (100 per call) until
@@ -178,14 +191,15 @@ fails the company's pass, with no partial view.
 
 **The stored shape is a contract** (`src/snapshot/shape.ts`): `queue_state`
 and `merge_speed` (HAL-16194) read it from plugin state. Adding a field is
-fine; renaming or removing one bumps `snapshotVersion`, and readers refuse a
+fine, as an optional field, since readers still meet a snapshot saved before
+it; renaming or removing one bumps `snapshotVersion`, and readers refuse a
 version they don't know. Each pass replaces the whole snapshot.
 
 | Field | What it holds |
 | --- | --- |
 | `version`, `takenAt`, `closedWindowDays` | shape version, when the pass read it, how far back closed pull requests go |
 | `repos[].repo`, `.defaultBranch` | `owner/name`, its default branch |
-| `repos[].queue[]` | `number`, `position`, `state`, `enqueuedAt`, `enqueuedBy`, `groupHead`, `estimatedSeconds`, `solo` |
+| `repos[].queue[]` | `number`, `position`, `state`, `enqueuedAt`, `enqueuedBy`, `groupHead`, `estimatedSeconds`, `solo`; added later, so possibly absent: `groupCiOk` (null before the group forms), `jobsWaiting`, `waitingSince` (when the longest-waiting job was queued) |
 | `repos[].pulls[]` | `number`, `url`, `state` (`open`, `merged`, `closed`), `branch`, `headRepo` (a fork when it isn't `repo`), `base`, `head`, `updatedAt`, `mergedAt`, `mergeCommit` |
 | `repos[].pulls[].open` | null when closed; else `draft`, `mergeable` (`yes`, `no`, `unknown`), `ciOk`, `draftCiOk`, `inQueue`, `labels[]` (`name`, `addedBy`, `addedAt`), `finding` (`id`, `at`), `approvals[]` (`by`, `head`) |
 
