@@ -275,7 +275,7 @@ verifies("cli.run-plugin-connector-warning", () => {
     expect(warningFor(listingFailed(4, { why: "other" }), usesPlugin({ state: "broken" }))).toEqual(
       [
         "! handbook didn't start, so its tools are off in this run.",
-        "  acme-orders can't be read or checked, so it's off. See halonic plugin list.",
+        "  acme-orders can't be read or checked, so it's off. Remove it with halonic plugin remove acme-orders, then add a version that works.",
       ],
     );
   });
