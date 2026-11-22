@@ -3,6 +3,7 @@
 - Task: HAL-6702 (the `halonic deploy` command)
 - Approval: the build plan's "Loading by name" row, approved by Liam on HAL-13512; HAL-7114 (the CLI never imports a target package); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0eMU2T5Hjw522g00zjSsmkDDyqgzZ/2nmBtAPVeRuj1xHbrqsXm0z8Z7XM2AMz44Y/V6JMvQn3JAJB9bAsmQBw==
 
 ## What changes
 
