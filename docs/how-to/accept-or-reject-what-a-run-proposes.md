@@ -40,8 +40,8 @@ halonic proposals show 01jd8q
 shows each file the run added, modified or deleted, with a diff from your
 file as it is now to the run's text. A short id or the full one works.
 
-- "This file changed since the run, so accept won't write it." means you
-  edited the file after the run started. The diff is from your edit.
+- "This file changed since the run, so accept won't write it." means the
+  file changed after the run started. The diff is from your file now.
 - "Your file already has these changes." means there's nothing to write.
 - A file under `.git` or `.halonic`, or in Halonic's own data folder, is
   marked "can't be written". Halonic never writes there.
@@ -59,11 +59,11 @@ file as it is now to the run's text. A short id or the full one works.
 Reject says, for example, "Rejected the changes to 2 files. Your files stay
 as they are."
 
-Accept writes a file only while it is still as the run found it. A file you
+Accept writes a file only while it is still as the run found it. A file that
 changed since is left alone, and the command says "notes/today.md changed
-since the run, so it wasn't written. Edit by hand, or reject." and exits 5.
-Copy what you want from `halonic proposals show` by hand, then reject the
-proposal.
+since the run, so it wasn't written. To keep it as it is now, reject it." and
+exits 5. Copy what you want from `halonic proposals show` by hand, then reject
+that file.
 
 After you decide part of a proposal, the command says how many files are
 still to decide. Once none is left, it says "Run 01jd8q's proposal is done."
@@ -85,8 +85,9 @@ to see each file the run added, changed or deleted, with **Accept** and
 **Reject** for each, or **Accept all** and **Reject all**. After each decision,
 **Undo** shows for a moment, until its message goes.
 
-Studio doesn't show the diff yet. A file you changed after the run started
-says "You changed this file after run 01JD8Q started, so it wasn't accepted."
-and has no buttons: use `halonic proposals show` to see it, then edit by hand
-or `halonic proposals reject <run-id> <file>`. The served Studio and the
+Studio doesn't show the diff yet. A file that changed after the run started
+says "This file changed after run 01JD8Q started, so it wasn't accepted. To
+keep it as it is now, reject it." and has only **Reject**: use
+`halonic proposals show` to see the run's text, copy what you want by hand,
+then reject the file. The served Studio and the
 phone list no proposals; see them with `halonic proposals` on the computer.
