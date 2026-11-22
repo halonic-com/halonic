@@ -173,9 +173,10 @@ export function StepArrows({
     if (!(await change({ kind: "add", to: target }))) return;
     setTarget("");
     // The new arrow is on done without a condition. When an earlier arrow always beats it, its
-    // fields open, so its condition is one step away.
+    // fields open, so its condition is one step away. A wait moves only on the answer a person
+    // gives, so its new arrow's fields always open, for the answer that takes it.
     const added = [...arrows, { from: stepId, to: target }];
-    if (neverTaken(added)[arrows.length] !== undefined) setExpanded(arrows.length);
+    if (isWait || neverTaken(added)[arrows.length] !== undefined) setExpanded(arrows.length);
     announce?.(arrowAddedLine(steps, arrows, stepId, target));
   };
   // An arrow back to the step itself, on done, would run it again for ever, so Go to… leaves the

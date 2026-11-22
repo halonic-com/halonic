@@ -149,6 +149,20 @@ verifies("workflows.page.step-arrows", () => {
     expect(picker?.value).toBe("");
   });
 
+  it("opens a wait's new arrow at its fields, for the answer that takes it", async () => {
+    const { page } = await showPage(vi.fn);
+    await pick(page, "approve");
+
+    await goTo(page, "done");
+    await act(async () => buttonNamed(page, "Add")?.click());
+
+    const newRow = arrowsSection(page).section?.querySelectorAll("li")[2];
+    expect(newRow?.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded")).toBe(
+      "true",
+    );
+    expect(newRow?.textContent).toContain("On event");
+  });
+
   it("puts focus on Go to… when Add is pressed with no step picked, and adds nothing", async () => {
     const { page, changeArrows } = await showPage(vi.fn);
     await pick(page, "sort");

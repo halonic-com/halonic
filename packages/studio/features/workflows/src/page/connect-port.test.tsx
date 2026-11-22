@@ -104,6 +104,17 @@ verifies("workflows.canvas.drag-to-connect", () => {
     expect(portOf(page, "done")).toBeNull();
   });
 
+  it("draws no port on a wait step, as a drop can't say which answer takes the arrow", async () => {
+    const withWait: WorkflowView = {
+      ...reply,
+      steps: [...reply.steps, { id: "review", type: "wait", title: "Approve this reply?" }],
+      arrows: [...reply.arrows, { from: "review", to: "done", event: "approve" }],
+    };
+    const { page } = await showPage(editsThatWork(), false, withWait);
+    expect(portOf(page, "review")).toBeNull();
+    expect(portOf(page, "start")).not.toBeNull();
+  });
+
   it("draws a port muted until it's under the pointer or dragged from", async () => {
     const { page } = await showPage(editsThatWork());
     const ring = (stepId: string) => portOf(page, stepId)?.classList;
