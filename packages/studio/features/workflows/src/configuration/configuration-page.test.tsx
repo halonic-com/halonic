@@ -103,7 +103,7 @@ verifies("workflows.configuration.pages", () => {
 
     const rows = [...page.querySelectorAll("li")].map((row) => row.textContent);
     expect(rows[0]).toBe(
-      "✕Error:Has no way out. Add an arrow from it on its card, or make it an End.review",
+      "✕Error:Has no way out. Add an arrow from it on its card, or make it an end step.review",
     );
     expect(rows[1]).toBe("△Warning:Can't be reached: no arrow leads to it.start");
 

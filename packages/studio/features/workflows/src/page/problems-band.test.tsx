@@ -169,7 +169,7 @@ verifies("workflows.start.start-run", () => {
     await act(() => vi.advanceTimersByTimeAsync(1));
 
     expect(page.textContent).toContain(
-      "Has no way out. Add an arrow from it on its card, or make it an End.",
+      "Has no way out. Add an arrow from it on its card, or make it an end step.",
     );
     expect(document.activeElement?.getAttribute("role")).toBe("tab");
     expect(document.activeElement?.textContent).toContain("Problems");

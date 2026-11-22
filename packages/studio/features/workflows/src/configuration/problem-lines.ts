@@ -14,8 +14,9 @@ const stepLines: Readonly<Record<string, string>> = {
   "dead-end": "Has no way out",
   "unknown-gets": "Gets data not written yet",
   "unknown-template-name": "Uses data not written yet",
-  "timer-outside-wait": "Timers only work in Wait",
+  "timer-outside-wait": "Only a wait step has timers",
   "timer-with-event": "Has a timer and an event",
+  "wait-with-signal": "Can't send a signal",
   "foreach-without-items": "Has no list to go over",
   "foreach-without-work": "Needs agent or workflow",
   "self-subflow": "Runs its own workflow",
@@ -39,12 +40,16 @@ const stepLines: Readonly<Record<string, string>> = {
  * The sentence of Configuration › Problems for a step's check, in Studio's words where the core's
  * message speaks the file's (`agent: <id>`, "transitions", "final"). A newly added step gets these
  * checks, so they are the first problems a person meets (C544, HAL-15120). It leaves out the step's
- * name: the row's link names it.
+ * name: the row's link names it. A step's kind is "a wait step" or "an end step" here, as in
+ * `halonic validate` and "This workflow has no end step.", not the Type picker's "Wait" (C622 #3).
  */
 const rowSentences: Readonly<Record<string, string>> = {
+  // The core's message names the step by id and says `signal:`; the card can't edit a signal.
+  "wait-with-signal":
+    "Can't send a signal: a wait step has no moment to send one. Move the signal to the step after it, in the workflow's file.",
   "task-without-agent":
-    "Has no agent, so every run fails here. Pick one on its card, or make it a Wait.",
-  "dead-end": "Has no way out. Add an arrow from it on its card, or make it an End.",
+    "Has no agent, so every run fails here. Pick one on its card, or make it a wait step.",
+  "dead-end": "Has no way out. Add an arrow from it on its card, or make it an end step.",
   unreachable: "Can't be reached: no arrow leads to it.",
   "wait-without-events":
     "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
