@@ -1,7 +1,7 @@
 // The run part of the public API of @halonicjs/app, re-exported by
 // `index.ts` to keep that file under the size limit.
 export { type FailedChild, failedChildOf } from "./failed-child.ts";
-export { type RunEventRefusal, RunEventRefused, RunEvents } from "./run-events.ts";
+export { type RunEventRefusal, RunEventRefused, RunEvents, type SendFor } from "./run-events.ts";
 export {
   defaultRunListLimit,
   type FailedChildRun,

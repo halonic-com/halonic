@@ -219,25 +219,28 @@ export const runMessages = defineMessages("run", {
   /** With a !: the wait step's description, its first line, as written. */
   waitingForYou: (description: string) => phrase`Waiting for you: ${description}`,
   /**
-   * With a !, for a tool call that waits for the user's OK: who asked and which tool. Both come
-   * from workspace files and a connector, so they are made printable (cli-output section 5).
+   * With a !, for a tool call that waits for the user's OK: who asked, which tool, and the call's
+   * id that `runs send --call` takes (HAL-16382). All three come from workspace files, a connector
+   * or a model, so they are made printable (cli-output section 5).
    */
-  waitingForApproval: (agent: string, tool: string) =>
-    phrase`Waiting for your approval: ${printable(agent)} wants to use ${printable(tool)}`,
-  /** Under the answer line, when several tool calls wait: one answer settles only the first listed. */
-  oneAnswerTakesTheFirst: () => phrase`Each answer settles the first one listed.`,
+  waitingForApproval: (agent: string, tool: string, callId: string) =>
+    phrase`Waiting for your approval: ${printable(agent)} wants to use ${printable(tool)} ${dim(`(call ${printable(callId)})`)}`,
+  /** Under the answer line, when several tool calls wait: the line answers the first, `--call` another. */
+  answerAnotherCall: () => phrase`To answer another one, put the call from its line after --call.`,
   /** With a !, for a wait step without a description. */
   waitingInStep: (step: string) => phrase`Waiting for you in the step ${step}.`,
   /**
    * Under the waiting line: the events in the step's order, the first one written out, each with
-   * the author's label after it when it has one.
+   * the author's label after it when it has one. For a tool approval, the command names its call
+   * (`callId`), so the same command typed again can't answer the approval after it (HAL-16382).
    */
   answerHere: (
     runId: string,
     events: readonly string[],
     dir?: string,
     labels: Readonly<Record<string, string>> = {},
-  ) => answerLine(runId, events, dir, labels),
+    callId?: string,
+  ) => answerLine({ runId, events, dir, labels, callId }),
   /** With a !, before the run starts, for an agent set to "On this computer". Never a question. */
   onThisComputer: (agent: string, chosenOn: string) =>
     phrase`${agent} runs on this computer without the sandbox, as chosen on ${chosenOn}.`,
@@ -388,6 +391,15 @@ export const runMessages = defineMessages("run", {
     phrase`The run ${runId} wasn't cancelled, only no longer followed, so it may go on. See where it is: ${suggestedCommand("runs show", dir, runId)}`,
 });
 
+/** What the answer line names: the run, the events it takes, and the call of the approval it answers. */
+interface AnswerTo {
+  readonly runId: string;
+  readonly events: readonly string[];
+  readonly dir: string | undefined;
+  readonly labels: Readonly<Record<string, string>>;
+  readonly callId: string | undefined;
+}
+
 /**
  * "Answer with: halonic runs send 01jd8q approve (or reject)". No Inbox until the Studio shows one
  * (HAL-5915).
@@ -397,12 +409,7 @@ export const runMessages = defineMessages("run", {
  * free text, so it is escaped (cli-output section 5). An event is written as one shell word, so the
  * command can be copied and run as it is, whatever the workflow names it (HAL-16336).
  */
-function answerLine(
-  runId: string,
-  events: readonly string[],
-  dir: string | undefined,
-  labels: Readonly<Record<string, string>>,
-): Phrase {
+function answerLine({ runId, events, dir, labels, callId }: AnswerTo): Phrase {
   const labelOf = (event: string) => {
     // Own keys only: an event may be named `toString` or `constructor`.
     const label = Object.hasOwn(labels, event) ? labels[event] : undefined;
@@ -413,7 +420,8 @@ function answerLine(
     return label === undefined ? shellWord(event) : `${shellWord(event)} (${label})`;
   };
   const [first = "", ...others] = events;
-  const command = `${suggestedCommand("runs send", dir, runId)} ${shellWord(first)}`;
+  const call = callId === undefined ? "" : ` --call ${shellWord(callId)}`;
+  const command = `${suggestedCommand("runs send", dir, runId)} ${shellWord(first)}${call}`;
   const firstLabel = labelOf(first);
   const line =
     firstLabel === undefined
