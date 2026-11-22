@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-On Windows, when Halonic's own Linux system for the sandbox has no runtime, Welcome no longer says that Halonic's engine couldn't start: it counts the sandbox as not set up yet, as it does when that Linux system is missing.
+On Windows, when setting up Halonic's own Linux system for the sandbox didn't finish, Welcome no longer says that Halonic's engine couldn't start: it opens as usual, as it does when that Linux system is missing, and Settings › Agent sandbox says what's wrong.
