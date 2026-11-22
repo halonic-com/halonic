@@ -2,6 +2,7 @@
 
 - Approval: HAL-15762 (Paperclip task), from C624 item 3 on HAL-15756, confirmed by Liam there; wording decided by the team under HAL-2282 (the banner approved on HAL-15523, a different fix line); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jWnoKSazVclcEin5dm9CO1x2/i1X1Z6WMUrPH7yk7mmi7f+WGeSMXymaCLfDqAWL5RFpLgqVhCAzwmdV51UsDw==
 - Task: HAL-15762
 
 ## What changes
