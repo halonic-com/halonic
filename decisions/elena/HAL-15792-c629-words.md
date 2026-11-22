@@ -1,4 +1,4 @@
-# Decision: C629 words for a stopped plugin, the Dismiss toast and New code's marks
+# Decision: C629 words for a stopped plugin's message and the Dismiss toast
 
 - Task: HAL-15792 (words check C629, HAL-15781)
 - Approval: team wording on approved screens (HAL-2282); Sofia wrote the words in C629 and C633; Liam signs this note
@@ -6,15 +6,10 @@
 
 ## What changes
 
-A plugin the host stopped because its runner's sandbox didn't work (`plugin_stopped`, HAL-15537), C629 rows 21 to 26:
+A plugin the host stopped because its runner's sandbox didn't work (`plugin_stopped`, HAL-15537), C629 rows 21 to 26.
+The card's and the command dialog's words for this stop landed on `main` first, from flow check C630 #4 (#4869,
+HAL-15788), so this PR leaves them as they are and changes only the messages behind them:
 
-- `plugins.plugin-cards` and `plugins.plugin-commands`: the card and the command dialog say "Halonic stopped
-  *name*: the sandbox didn't work when it started, so none of it ran." with **Try again** (and ↻ on the card).
-  "Open *name* to check again." goes from both. The page's **Check again** only clears the page's note, while the
-  host tries the sandbox again at the next call, so **Try again** is the step that can work. "Didn't work" is the
-  plugin page's and the run's word for the same stop. The card's ⋮ › **Open plugin** still reaches the page.
-- `plugins.palette-commands`: the sentence about opening the stopped plugin's page from its dialog goes with the
-  link. The dialog no longer takes `onOpenPlugin`, and `PluginCommandHost` no longer takes `openPlugin`.
 - `agent-host-client.plugins`: the message for `plugin_stopped` is "Halonic stopped this plugin: the sandbox didn't
   work when it started, so none of it ran." It no longer promises a Try again the screen may not have.
 - `agent-host.plugin-routes`: the host's own 403 message is "Halonic stopped this plugin: the sandbox didn't work
@@ -29,20 +24,17 @@ The others:
   it back, pick Help › First run › Show the guide again.", because #4733 renamed the Help item to **Show the guide
   again** (the board's C520-9) and the toast still named the old item. The requirements' other mentions of the item
   and the unreleased changeset `first-run-dismiss-help.md` follow.
-- The phone's pairing problem screen (row 33): "choose **New code**" is marked in `generic.body`, `used.next` and
-  `used.nextTyped`, as **Make a new code** is next to them. No requirement quotes these lines.
+
+The phone's pairing words (row 33) aren't in this PR either: #4854 (HAL-15754) named the computer's **Make a new
+code** button there first.
 
 C629 row 37 (the line after a partial Take back) isn't in this PR: Sofia OK'd the words for that line on HAL-15796
 after C629, and they land with #4879 (HAL-15786).
 
-No test was weakened or skipped. The tests that pressed the plugin's name to open its page now check that no such
-button is there.
+No test was weakened or skipped.
 
 ## Covers
 
-- plugins.plugin-cards
-- plugins.plugin-commands
-- plugins.palette-commands
 - agent-host-client.plugins
 - agent-host.plugin-routes
 - first-run.setup-item
