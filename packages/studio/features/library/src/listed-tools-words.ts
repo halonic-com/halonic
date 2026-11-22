@@ -153,7 +153,7 @@ export const listedToolsWords = {
         : [{ text: file, code: true as const }]),
       {
         text: withCommand
-          ? " in a terminal. The line below doesn't set its env or secrets, so set any it needs first:"
+          ? " in a terminal. The line below leaves out the connector's environment variables and secrets. If the program needs them, set them in the terminal first:"
           : " yourself. Studio can't give you a line to copy for a Windows folder yet.",
       },
     ],

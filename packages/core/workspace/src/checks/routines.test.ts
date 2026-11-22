@@ -59,7 +59,7 @@ verifies("workspace.routines", () => {
       .filter((issue) => issue.code === "unknown-workflow")
       .map((issue) => issue.message);
     expect(messages).toEqual([
-      "Weekly report: weekly-reprot isn't in this workspace. Pick another workflow for run.workflow. Did you mean weekly-report?",
+      "Weekly report: weekly-reprot isn't in this workspace. Did you mean weekly-report? If not, pick another workflow for run.workflow.",
     ]);
   });
 

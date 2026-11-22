@@ -61,7 +61,7 @@ verifies("library.listed-tools-waiting", () => {
       );
 
       expect(refusalLineText(line.parts)).toBe(
-        "Couldn't list the tools from notes-mcp: its program sh stopped right after it started. To see why, run the command and args from library/connectors/notes-mcp.connector.yaml in a terminal. The line below doesn't set its env or secrets, so set any it needs first:",
+        "Couldn't list the tools from notes-mcp: its program sh stopped right after it started. To see why, run the command and args from library/connectors/notes-mcp.connector.yaml in a terminal. The line below leaves out the connector's environment variables and secrets. If the program needs them, set them in the terminal first:",
       );
       expect(line.parts).toContainEqual({
         text: "library/connectors/notes-mcp.connector.yaml",
