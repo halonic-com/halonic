@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16477 (fix decided on the visual check C711, HAL-16447, row 9)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:OnqzzC4l2FDTUUg/eYSXzw42YTySo14L+bHuBym5jAapOCtEiNJS8MC8kmZ1szQ8ylmtwFzARXqII4qjmdZ+AQ==
 
 Get updates refuses to start when the shared copy changed a file Halonic leaves to git, such as
 `.env.example` (HAL-16343). Its toast still offered Try again, which is refused the same way until
