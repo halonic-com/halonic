@@ -3,6 +3,7 @@
 - Task: HAL-15002
 - Approval: asked for by Liam as the follow-up to HAL-14813 (#4392); decided by the team on HAL-15002 (HAL-2282: it builds on the untrusted line and **Review** the team already decided on HAL-13143 and HAL-13177, and adds no new words)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5EzP6sd2lH3fnWDI2d206asW7dFeCZmK9h1HYPii1GUGY3kGd6UbTGMSAg7KckDvGqsjkjRuKuL+lYqrdVQSBg==
 
 ## What changes
 
