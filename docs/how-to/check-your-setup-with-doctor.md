@@ -58,6 +58,25 @@ every line in order, each with its `check` (such as `sandbox`) and `status`
 
 ## The checks
 
+### Profile
+
+Not in 0.1.0: on `main` only.
+
+**Checks:** that the workspace and this computer's profile folder, where
+Halonic keeps your trust records, don't overlap. Shown only when they do, and
+only in a folder with a `workspace.yaml`. Other commands refuse such a
+workspace; `doctor` says why instead. The line comes first, there are no
+Workspace lines under it, and `doctor` exits 1.
+
+| You see | Means | Fix |
+| --- | --- | --- |
+| ✕ "the profile folder HALONIC_HOME is inside this workspace" | `HALONIC_HOME` put the profile in the workspace, so a change in the workspace could change your trust records. When `XDG_DATA_HOME` put it there, the line names `XDG_DATA_HOME` instead. | Move the profile folder out of the workspace and set `HALONIC_HOME` to its new place, as the `Fix:` line says. |
+| ✕ "this workspace is inside the profile folder" | The workspace is inside the profile folder, which the line names, so its files would land in the profile. | Move the workspace somewhere else. |
+
+With `--json`, the check is `profile`, with `problem`: `profile-in-workspace`
+(and `movedBy`, the variable that moved the profile) or `workspace-in-profile`
+(and `profile`, the folder, with `~` for the home folder).
+
 ### Workspace
 
 **Checks:** whether the workspace's files load without errors, and whether
