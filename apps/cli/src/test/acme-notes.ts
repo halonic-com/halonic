@@ -24,6 +24,7 @@ import { cliConnectorFactories } from "../connector-machine.ts";
 import type { AddedPlugin } from "../connector-plugin.ts";
 import { noSecrets } from "../remembered-secrets.ts";
 import { runCli } from "../run-cli.ts";
+import { savedVersionOf } from "../workspace-at-version.ts";
 import { openWorkspaceDir } from "../workspace-dir.ts";
 import { webCryptoDigest } from "../workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../workspace-trust.ts";
@@ -131,7 +132,7 @@ export async function acmeNotes(): Promise<AcmeNotes> {
   });
   const trust = async () => {
     const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-    const read = await readWorkspaceTrust(dir, noCommands);
+    const read = await readWorkspaceTrust(dir, noCommands, await savedVersionOf(dir));
     const { subject } = read;
     const service = cliTrustService(trustStore, clock);
     const check = await service.check(subject);

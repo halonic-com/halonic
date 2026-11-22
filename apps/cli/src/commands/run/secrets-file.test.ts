@@ -14,6 +14,7 @@ import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { turnOffLocalOnly } from "../../test/local-only.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
@@ -60,7 +61,11 @@ async function useAnthropicForWriter(): Promise<void> {
   await writeFile(writer, `${await readFile(writer, "utf8")}model: smart\n`);
 
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const read = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
+  const read = await readWorkspaceTrust(
+    dir,
+    { path: undefined, endings: [] },
+    await savedVersionOf(dir),
+  );
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(engineStart));
   const check = await trust.check(read.subject);
   assertTrustable(check, read);

@@ -16,6 +16,7 @@ import type { HarnessProgram } from "../../harness-programs.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import {
   nodeProfileEnvironment,
@@ -70,7 +71,7 @@ afterEach(async () => {
 /** Acme trusted as it is now. */
 async function trustAcme(): Promise<void> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const read = await readWorkspaceTrust(dir, noCommands);
+  const read = await readWorkspaceTrust(dir, noCommands, await savedVersionOf(dir));
   const { subject } = read;
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(now));
   const check = await trust.check(subject);

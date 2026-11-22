@@ -11,6 +11,7 @@ import {
 } from "../../test/acme-runs.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { userInfoConnectorYaml } from "../../test/user-info-connector.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { routinesCommandWith } from "./command.ts";
@@ -55,7 +56,7 @@ async function routinesIn(...args: string[]): Promise<{ code: number; io: Captur
 async function trustAcme(): Promise<void> {
   const machine = acmeRunsSetup(acmeRuns).trust();
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acmeRuns.acme });
-  const read = await readWorkspaceTrust(dir, machine.commandSearch);
+  const read = await readWorkspaceTrust(dir, machine.commandSearch, await savedVersionOf(dir));
   const service = cliTrustService(machine.trustStore, machine.clock);
   const check = await service.check(read.subject);
   assertTrustable(check, read);

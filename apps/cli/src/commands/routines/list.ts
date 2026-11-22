@@ -31,6 +31,7 @@ import { routinesMessages } from "../../messages/routines.ts";
 import { printable } from "../../output/printable.ts";
 import { dueAt, type RunClock, startedAt } from "../../run-times.ts";
 import type { OpenWorkspaceHistory } from "../../run-workspace.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import {
@@ -84,7 +85,11 @@ export async function listRoutines(
     };
   }
   const dir = givenDir(input, workspace);
-  const trust = await workspaceTrustState(workspace, setup.trust(), loaded);
+  const trust = await workspaceTrustState(
+    workspace,
+    setup.trust(),
+    await savedVersionOf(workspace, loaded),
+  );
   const row: RowOptions = { withHub: spansHubs(routines), paused: !startsHere(trust.state) };
   const blocked = await webhookRoutinesThatWontStart(loaded, context.secrets);
   const withProblems = routines.filter((each) => each.problems > 0);

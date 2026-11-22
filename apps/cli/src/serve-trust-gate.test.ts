@@ -10,6 +10,7 @@ import { plainText } from "./messages/phrase.ts";
 import { serveMessages } from "./messages/serve.ts";
 import { workspaceTrustGate } from "./serve-trust-gate.ts";
 import { turnOffLocalOnly } from "./test/local-only.ts";
+import { savedVersionOf } from "./workspace-at-version.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import {
   cliTrustService,
@@ -57,7 +58,11 @@ async function gate() {
 /** Trusts the workspace as `halonic trust` does, for the fingerprint it shows. */
 async function trust(): Promise<void> {
   const { dir } = await gate();
-  const { subject } = await readWorkspaceTrust(dir, machine.commandSearch);
+  const { subject } = await readWorkspaceTrust(
+    dir,
+    machine.commandSearch,
+    await savedVersionOf(dir),
+  );
   const service = cliTrustService(machine.trustStore, machine.clock);
   const check = await service.check(subject);
   if (!("fingerprint" in check)) throw new Error("The workspace has no fingerprint.");

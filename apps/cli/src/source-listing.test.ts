@@ -14,6 +14,7 @@ import { runMessages } from "./messages/run.ts";
 import { readSourceListing } from "./source-listing.ts";
 import { FakeMcpServers } from "./test/fake-mcp-servers.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
+import { savedVersionOf } from "./workspace-at-version.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
 
@@ -63,7 +64,7 @@ async function acmeNotes() {
   const connector = filesOf(workspace, "connector").find((file) => file.value.id === "notes");
   if (connector === undefined) throw new TypeError("Acme has a notes source");
   const trust = async () => {
-    const read = await readWorkspaceTrust(dir, noCommands);
+    const read = await readWorkspaceTrust(dir, noCommands, await savedVersionOf(dir));
     const { subject } = read;
     const service = cliTrustService(machine.trustStore, clock);
     const check = await service.check(subject);

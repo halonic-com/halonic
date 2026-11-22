@@ -30,6 +30,7 @@ import { testCommandWith } from "./commands/test/command.ts";
 import { runCli } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
+import { savedVersionOf } from "./workspace-at-version.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns, webCryptoDigest } from "./workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
@@ -43,7 +44,7 @@ const noCommands = { path: undefined, endings: [] };
 /** Trusts the workspace in `trustStore` as it is now, as `halonic trust` would. */
 async function trust(workspace: string, trustStore: MemoryTrustStore): Promise<void> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: workspace });
-  const read = await readWorkspaceTrust(dir, noCommands);
+  const read = await readWorkspaceTrust(dir, noCommands, await savedVersionOf(dir));
   const { subject } = read;
   const service = cliTrustService(trustStore, fixedClock(start));
   const check = await service.check(subject);

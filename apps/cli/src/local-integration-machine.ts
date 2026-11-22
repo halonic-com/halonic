@@ -49,6 +49,7 @@ import { openPluginService } from "./plugin-host.ts";
 import { type RunConnectorLines, unfencedIntegrationReporter } from "./plugin-part-warnings.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { SavedUnfencedYes, studioYesReaches } from "./saved-unfenced-yes.ts";
+import { savedVersionOf } from "./workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import {
@@ -154,8 +155,11 @@ export function computerIntegrationMachine(
     },
     transport: input.transport ?? integrationTransport(),
     // Read again at every start: what was checked when the command began is never reused.
+    // The saved integrations, as the start hashes them in `workspace` above, so the two
+    // agree; one that differs from the trusted version fails closed.
     trustCheck: async () => {
-      const read = await readWorkspaceTrust(input.dir, input.trust.commandSearch, input.workspace);
+      const saved = await savedVersionOf(input.dir, input.workspace);
+      const read = await readWorkspaceTrust(input.dir, input.trust.commandSearch, saved);
       return await trust.check(read.subject);
     },
     runnerMachine: async (): Promise<RunnerMachine> => {

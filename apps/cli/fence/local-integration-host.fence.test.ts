@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CommandContext } from "../src/command.ts";
 import { runMessages } from "../src/messages/run.ts";
 import { removeTestFolder } from "../src/test/remove-folder.ts";
+import { savedVersionOf } from "../src/workspace-at-version.ts";
 import { openWorkspaceDir } from "../src/workspace-dir.ts";
 import { openWorkspaceEngine } from "../src/workspace-engine.ts";
 import { nodeProfileEnvironment } from "../src/workspace-runs.ts";
@@ -132,8 +133,7 @@ function trustMachine(): WorkspaceTrustMachine {
 async function trust(): Promise<void> {
   const machine = trustMachine();
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const loaded = await loadWorkspace(dir.store);
-  const read = await readWorkspaceTrust(dir, noCommands, loaded);
+  const read = await readWorkspaceTrust(dir, noCommands, await savedVersionOf(dir));
   const service = cliTrustService(machine.trustStore, machine.clock);
   const check = await service.check(read.subject);
   assertTrustable(check, read);
@@ -150,13 +150,14 @@ interface RunOutcome {
 /** Runs Weekly report in an engine with this computer's real connectors; its Reporter calls the integration's tool once. */
 async function runReport(): Promise<RunOutcome> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const workspace = await loadWorkspace(dir.store);
+  const version = await savedVersionOf(dir);
+  const { workspace } = version;
   const grant = await trustedGrant(
     dir,
     trustMachine(),
     undefined,
     runMessages.nothingRan(),
-    workspace,
+    version,
   );
   const context = {
     cwd: acme,

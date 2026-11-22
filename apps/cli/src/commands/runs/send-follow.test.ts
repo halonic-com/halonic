@@ -19,6 +19,7 @@ import { turnOffLocalOnly } from "../../test/local-only.ts";
 import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import {
   nodeProfileEnvironment,
@@ -182,7 +183,11 @@ async function writerOnHold(): Promise<void> {
 /** Trusts Acme as it is now, in the trust store every `halonic` command here reads. */
 async function trustAcme(): Promise<void> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const read = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
+  const read = await readWorkspaceTrust(
+    dir,
+    { path: undefined, endings: [] },
+    await savedVersionOf(dir),
+  );
   const { subject } = read;
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(engineStart));
   const check = await trust.check(subject);

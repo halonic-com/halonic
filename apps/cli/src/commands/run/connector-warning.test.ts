@@ -15,6 +15,7 @@ import { captureIo } from "../../test/capture-io.ts";
 import { heavyTestTimeout } from "../../test/golden.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
@@ -69,7 +70,11 @@ async function writerWith(transport: string, more = ""): Promise<void> {
   const writer = join(acme, "hubs/support/agents/writer.agent.yaml");
   await writeFile(writer, `${await readFile(writer, "utf8")}connectors: [handbook]\n`);
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const read = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
+  const read = await readWorkspaceTrust(
+    dir,
+    { path: undefined, endings: [] },
+    await savedVersionOf(dir),
+  );
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(engineStart));
   const check = await trust.check(read.subject);
   assertTrustable(check, read);

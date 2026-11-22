@@ -6,6 +6,7 @@ import type { RunEvent, RunEventBody, RunParent, RunTrigger } from "@halonicjs/e
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
 import type { RunSetup } from "../commands/run/run.ts";
+import { savedVersionOf } from "../workspace-at-version.ts";
 import { openWorkspaceDir } from "../workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../workspace-runs.ts";
 import { cliTrustService, readWorkspaceTrust } from "../workspace-trust.ts";
@@ -80,7 +81,8 @@ export function acmeRunsSetup(runs: AcmeRuns): RunSetup {
  */
 export async function trustAcmeRuns(runs: AcmeRuns): Promise<void> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: runs.acme });
-  const { subject } = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
+  const saved = await savedVersionOf(dir);
+  const { subject } = await readWorkspaceTrust(dir, { path: undefined, endings: [] }, saved);
   const store = new FileTrustStore(join(runs.folder, "trust"));
   const trust = cliTrustService(store, fixedClock(engineStart));
   const check = await trust.check(subject);

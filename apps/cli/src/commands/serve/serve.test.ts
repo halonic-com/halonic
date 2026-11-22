@@ -13,6 +13,7 @@ import {
 } from "../../test/acme-runs.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
+import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { serveCommandWith } from "./command.ts";
@@ -59,7 +60,11 @@ async function trustAcme(): Promise<void> {
     { cwd: acmeRuns.folder },
   );
   const machine = setup.trust();
-  const { subject } = await readWorkspaceTrust(dir, machine.commandSearch);
+  const { subject } = await readWorkspaceTrust(
+    dir,
+    machine.commandSearch,
+    await savedVersionOf(dir),
+  );
   const service = cliTrustService(machine.trustStore, machine.clock);
   const check = await service.check(subject);
   if (!("fingerprint" in check)) throw new Error("Acme has no fingerprint.");
