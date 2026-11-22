@@ -182,6 +182,31 @@ verifies("agents.chat.reply-ends", () => {
     expect(buttonNamed(page, "Try again")).toBeDefined();
   });
 
+  it("offers Open Models › after Try again when the model's key was the cause, and only then", async () => {
+    const { host, finish } = scriptedHost();
+    const goToKeyField = vi.fn();
+    const ways = { goToKeyField, openHarness: () => {} };
+    const page = await show(<Chat host={host} announce={vi.fn()} ways={ways} />);
+    await sendMessage(page, "Sort this mail");
+    await finish({
+      messages: [],
+      end: { reason: "failed", error: new Error("busy"), toolsRan: false },
+    });
+    expect(buttonNamed(page, "Open Models")).toBeUndefined();
+    await sendMessage(page, "Sort it again");
+    const noKey = new Error("Anthropic has no key");
+    await finish({
+      messages: [],
+      end: { reason: "failed", error: noKey, toolsRan: false, cause: { reason: "key-refused" } },
+    });
+    const line = page.querySelectorAll(".text-danger")[1]?.parentElement;
+    expect(
+      [...(line?.querySelectorAll("button") ?? [])].map((button) => button.textContent),
+    ).toEqual(["Try again", "Open Models ›"]);
+    await act(async () => buttonNamed(page, "Open Models")?.click());
+    expect(goToKeyField).toHaveBeenCalledOnce();
+  });
+
   it("offers Try again only on the last reply, and none after an answer", async () => {
     const { host, finish } = scriptedHost();
     const page = await show(<Chat host={host} announce={vi.fn()} />);

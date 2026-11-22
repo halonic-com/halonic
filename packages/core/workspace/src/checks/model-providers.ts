@@ -1,14 +1,15 @@
 import { nearMatch } from "@halonicjs/std";
 import type { WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
-import { isAliasName } from "./model-aliases.ts";
+import { isAliasName, unknownProviderMessage } from "./model-aliases.ts";
 import { aliasFiles, modelSettings } from "./model-settings.ts";
 
 /**
  * The provider a hub's model alias or a `provider/model` setting names must
  * have a file in `providers/`, as one in `models.yaml` must
  * ({@link checkModelsFile}): otherwise the run stops on it (HAL-14301, Nina's
- * C340 check). A provider whose file failed its own checks isn't unknown:
+ * C340 check). A hub's alias gets the same message as one in `models.yaml`
+ * ({@link unknownProviderMessage}, HAL-15830). A provider whose file failed its own checks isn't unknown:
  * that file's error says what to fix. An agent whose harness starts a program
  * passes its model to that program as written, so its provider isn't checked.
  */
@@ -20,12 +21,7 @@ export function checkModelProviders(context: CheckContext): WorkspaceIssue[] {
       Object.entries(aliases)
         .filter(([, target]) => !providers.has(target.provider))
         .map(([alias, target]) => {
-          const near = nearMatch(target.provider, providers);
-          const fix =
-            near === undefined
-              ? `add providers/${target.provider}.yaml, or use a provider the workspace has`
-              : `Did you mean ${near}?`;
-          const message = `Alias "${alias}" uses unknown provider "${target.provider}": ${fix}`;
+          const message = unknownProviderMessage(alias, target.provider, providers);
           return context.error(file, ["models", alias, "provider"], "unknown-provider", message);
         }),
     );

@@ -25,7 +25,7 @@ verifies("workspace.references", () => {
           "name: Billing\nmodels:\n  careful: { provider: mok, model: echo }\n",
       });
       expect(errors).toEqual([
-        'hubs/billing/hub.yaml models.careful.provider: Alias "careful" uses unknown provider "mok": Did you mean mock?',
+        "hubs/billing/hub.yaml models.careful.provider: Alias careful uses unknown provider mok. Did you mean mock?",
       ]);
     });
 
@@ -44,7 +44,7 @@ verifies("workspace.references", () => {
           "name: Billing\nmodels:\n  smart: { provider: anthropic, model: claude }\n",
       });
       expect(errors).toEqual([
-        'hubs/billing/hub.yaml models.smart.provider: Alias "smart" uses unknown provider "anthropic": add providers/anthropic.yaml, or use a provider the workspace has',
+        "hubs/billing/hub.yaml models.smart.provider: Alias smart uses unknown provider anthropic. Add providers/anthropic.yaml, or point the alias smart at a provider the workspace has.",
       ]);
     });
 

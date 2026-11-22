@@ -20,7 +20,13 @@ export type ReplyEnd =
   | { readonly kind: "answered" }
   | { readonly kind: "stopped" }
   | { readonly kind: "turn-limit"; readonly turns: number }
-  | { readonly kind: "failed"; readonly reason: string; readonly toolsRan: boolean }
+  | {
+      readonly kind: "failed";
+      readonly reason: string;
+      readonly toolsRan: boolean;
+      /** The model's provider has no key, or turned the key away: Models is where that's fixed. */
+      readonly needsKey?: true;
+    }
   | { readonly kind: "engine-stopped"; readonly toolsRan: boolean };
 
 /** A message the person sent and the agent's reply to it, as far as it got. */

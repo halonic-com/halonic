@@ -153,6 +153,7 @@ export function TryItChatView(props: TryItChatViewProps) {
               <Reply
                 turn={turn}
                 name={name}
+                openModels={props.ways.goToKeyField}
                 // Try again waits until the engine answers again (H13).
                 tryAgain={index === turns.length - 1 && !chat.engineQuiet ? tryAgain : undefined}
               />
@@ -181,10 +182,13 @@ export function TryItChatView(props: TryItChatViewProps) {
 function Reply({
   turn,
   name,
+  openModels,
   tryAgain,
 }: {
   readonly turn: ChatTurn;
   readonly name: string;
+  /** Opens Models, where keys are kept, for a failure because of the model's key. */
+  readonly openModels: () => void;
   /** Only the last reply offers Try again: it sends its message again. */
   readonly tryAgain: (() => void) | undefined;
 }) {
@@ -194,7 +198,9 @@ function Reply({
         // Steps are only added at the end, so their place is their key.
         <Step key={index} step={step} />
       ))}
-      {turn.end === undefined ? null : <EndLine end={turn.end} name={name} tryAgain={tryAgain} />}
+      {turn.end === undefined ? null : (
+        <EndLine end={turn.end} name={name} openModels={openModels} tryAgain={tryAgain} />
+      )}
     </ChatMessage>
   );
 }
@@ -208,19 +214,26 @@ function Step({ step }: { readonly step: ReplyStep }) {
 /**
  * The line a reply ends with (mc 8.3; states H13, H23, H24). Try again only when no tool ran,
  * since sending again could repeat what a tool did; after a tool, the sentence says to send a new
- * message instead. A reply that was simply answered has no line.
+ * message instead. A failure because of the model's key also leads to Models, as a failed run
+ * does (microcopy 15.3). A reply that was simply answered has no line.
  */
 function EndLine({
   end,
   name,
+  openModels,
   tryAgain,
 }: {
   readonly end: ReplyEnd;
   readonly name: string;
+  readonly openModels: () => void;
   readonly tryAgain: (() => void) | undefined;
 }) {
   const again: ChatAction[] =
     tryAgain === undefined ? [] : [{ label: tryItWords.tryAgain, onClick: tryAgain }];
+  const fixKey: ChatAction[] =
+    end.kind === "failed" && end.needsKey === true
+      ? [{ label: tryItWords.openModels, onClick: openModels, look: "link" }]
+      : [];
   switch (end.kind) {
     case "answered":
       return null;
@@ -231,7 +244,7 @@ function EndLine({
     case "failed":
     case "engine-stopped":
       return (
-        <ChatEndLine tone="danger" actions={end.toolsRan ? [] : again}>
+        <ChatEndLine tone="danger" actions={[...(end.toolsRan ? [] : again), ...fixKey]}>
           {tryItWords.endedBadly(name, end)}
         </ChatEndLine>
       );

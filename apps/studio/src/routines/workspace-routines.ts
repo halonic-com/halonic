@@ -212,6 +212,7 @@ export class WorkspaceRoutines implements RoutinesHost {
           targetName: targetName(workspace, file),
           nextRun: nextRunOf(routine, now, this.#parts.timeZone),
           changesNotLive: versions?.liveState.state === "not-live",
+          neverLive: versions?.liveState.state === "never-versioned",
           targetKind: target.kind,
           targetFound: targetFound(workspace, target),
           problems: errorsOf(workspace, file),

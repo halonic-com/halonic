@@ -5,17 +5,12 @@
 // the computer does, with `halonic trust`.
 
 import type { TrustDecision, TrustGate, TrustState } from "@halonicjs/host-server";
-import { loadWorkspace } from "@halonicjs/workspace";
+import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { serveMessages } from "./messages/serve.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
-import {
-  cliTrustService,
-  needsNoTrust,
-  readWorkspaceTrust,
-  type WorkspaceTrustMachine,
-} from "./workspace-trust.ts";
+import { type WorkspaceTrustMachine, workspaceTrustState } from "./workspace-trust.ts";
 
 const sentenceOf: Readonly<Record<TrustState, () => Message>> = {
   trusted: serveMessages.trusted,
@@ -47,19 +42,17 @@ async function trustAnswerOf(
   dir: OpenWorkspaceDir,
   machine: WorkspaceTrustMachine,
 ): Promise<{ readonly state: TrustState; readonly sentence: Message }> {
+  let loaded: LoadedWorkspace;
   try {
-    const loaded = await loadWorkspace(dir.store);
-    // A workspace that reaches only the test model starts nothing that
-    // needs trust, so it answers `trusted` with its own sentence (HAL-12011).
-    if (await needsNoTrust(dir, loaded)) {
-      return { state: "trusted", sentence: serveMessages.trustNotNeeded() };
-    }
-    const workspace = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
-    const { status } = await cliTrustService(machine.trustStore, machine.clock).check(
-      workspace.subject,
-    );
-    return { state: status, sentence: sentenceOf[status]() };
+    loaded = await loadWorkspace(dir.store);
   } catch {
     return { state: "unreadable", sentence: sentenceOf.unreadable() };
   }
+  const state = await workspaceTrustState(dir, machine, loaded);
+  // A workspace that reaches only the test model starts nothing that
+  // needs trust, so it answers `trusted` with its own sentence (HAL-12011).
+  if (state === "not-needed") {
+    return { state: "trusted", sentence: serveMessages.trustNotNeeded() };
+  }
+  return { state, sentence: sentenceOf[state]() };
 }

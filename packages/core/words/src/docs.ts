@@ -5,6 +5,12 @@
  */
 export const docsBase = "https://docs.halonic.dev";
 
+/**
+ * The provider file's reference, at its example: no command writes a provider
+ * file, so `validate` points here when it says to add one (C638, HAL-15830).
+ */
+export const providerFileDocs = `${docsBase}/reference/provider/#example`;
+
 /** The sandbox's docs page, where `More:` under a sandbox that can't start points. */
 export const sandboxDocs = `${docsBase}/security/sandbox/`;
 

@@ -59,6 +59,7 @@ verifies("events.tool-result-cause", () => {
         { code: "connector-not-started", why: "plugin-not-trusted", name: "files" },
         { code: "connector-not-started", why: "plugin-changed", name: "files" },
         { code: "connector-not-started", why: "plugin-stopped", name: "Weather" },
+        { code: "connector-not-started", why: "sandbox-not-ready" },
       ];
       for (const cause of causes) {
         expect(readLine(cause)).toStrictEqual(cause);

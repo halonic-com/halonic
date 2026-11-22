@@ -349,6 +349,8 @@ export const failureWords = {
   /** The line before a child's banner line that doesn't name its workflow: "… for item 2 failed in the step Draft." */
   startedRunFailedIn: (startedRun: string, step: string) =>
     `${startedRun} failed in the step ${step}.`,
+  /** Copy details' last line under a child's details: the run that started it. */
+  startedByRun: (runId: string) => `Started by run ${runId}`,
   /** The harness ids the engine logs, as the person knows the programs. */
   harnessNames: { "claude-code": "Claude Code", codex: "Codex" } as Readonly<
     Record<string, string>

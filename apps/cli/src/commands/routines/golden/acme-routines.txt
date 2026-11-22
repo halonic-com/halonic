@@ -33,6 +33,7 @@ stdout:
         "liveState": "live",
         "lastRun": null
       }
-    ]
+    ],
+    "trusted": true
   }
 stderr:

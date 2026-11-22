@@ -291,7 +291,7 @@ verifies("routines.runs.view", () => {
       [gone, "gone-report isn't in this workspace. Pick another workflow."],
       [{ ...daily, startErrors: ["Unknown time zone Mars/Base."] }, "Unknown time zone Mars/Base."],
       [{ ...daily, enabled: false }, "It's off, so it runs only when you press Run now."],
-      [{ ...daily, pausedUntilTrusted: true }, "It's paused until this workspace is trusted."],
+      [{ ...daily, pausedUntilTrusted: true }, "It's paused until you trust this workspace."],
     ];
     for (const [routine, line] of cases) {
       const page = await openRuns(hostWith(async () => ({ runs: [], skips: [] }), routine));

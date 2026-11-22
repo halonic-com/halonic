@@ -61,16 +61,35 @@ fn shipped(folder: &TempFolder) -> BundledRuntime {
 /// A stand-in for `wsl.exe` that writes its arguments to `arguments`, its
 /// input to `input`, then runs `then`.
 #[cfg(unix)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
 fn stand_in_wsl(folder: &TempFolder, then: &str) -> PathBuf {
-    use std::os::unix::fs::PermissionsExt;
-
     let script = format!(
-        "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{arguments}'\ncat > '{input}'\n{then}\n",
+        "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{arguments}'\ncat > '{input}'\n{then}",
         arguments = folder.0.join("arguments").display(),
         input = folder.0.join("input").display(),
     );
-    let wsl = folder.write("wsl", script.as_bytes());
-    std::fs::set_permissions(&wsl, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+    // Linux refuses to run a file any process holds open for writing
+    // ("Text file busy"), and a process another test thread starts while
+    // this one writes would inherit it open (HAL-14102). A child shell
+    // writes it instead, so this process never opens it. A new name each
+    // time, so a stand-in already running is never rewritten.
+    static NEXT_STAND_IN: AtomicU32 = AtomicU32::new(0);
+    let number = NEXT_STAND_IN.fetch_add(1, Ordering::Relaxed);
+    let wsl = folder.0.join(format!("wsl-{number}"));
+    let written = std::process::Command::new("/bin/sh")
+        .args([
+            "-c",
+            "printf '%s\\n' \"$2\" > \"$1\" && chmod 755 \"$1\"",
+            "sh",
+        ])
+        .arg(&wsl)
+        .arg(script)
+        .status()
+        .expect("start the shell that writes the stand-in");
+    assert!(written.success(), "write the stand-in: {written}");
     wsl
 }
 

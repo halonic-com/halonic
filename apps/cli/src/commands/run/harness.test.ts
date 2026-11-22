@@ -315,19 +315,15 @@ verifies("cli.run-harness-asks", () => {
   }
 
   it.each(["always", "in-sandbox"])(
-    "refuses to start an agent with asks: %s in Codex, before the sandbox",
+    "lets an agent with asks: %s start in Codex, which follows it too",
     async (asks) => {
       await writerAsks(asks);
       await trustAcme();
-      const { code, stderr } = await run(codexReady, sandboxReady, "--harness", "codex");
+      const { code } = await run(codexReady, bubblewrapMissing, "--harness", "codex");
 
-      expect(code).toBe(exitCode.usage);
-      expect(stderr).toEqual([
-        "✕ Couldn't run support-reply: Writer's file uses asks, which only Claude Code follows, but this run starts Writer in Codex. Nothing ran.",
-        "  Start the run again without --harness codex, so Writer runs in Claude Code, or remove asks from Writer's file.",
-      ]);
-      expect(checks).toBe(0);
-      expect(await startedRuns()).toEqual([]);
+      // It gets as far as the sandbox, which this computer doesn't have.
+      expect(code).toBe(exitCode.unavailable);
+      expect(checks).toBe(1);
     },
   );
 

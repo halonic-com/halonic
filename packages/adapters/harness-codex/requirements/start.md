@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-194 build plan D3; HAL-3998; `Harness` port v2
+- Source: HAL-194 build plan D3; HAL-3998; `Harness` port v2; HAL-15288 (the agent's `asks`)
 
-The Codex harness shall start a run by writing `config.toml` to the agent's settings folder and then starting `codex app-server` in the run's sandbox session, with the bridge's address as `-c` settings. When the task has an instructions folder, it shall add that folder's `skills` as an extra skills root (`skills/extraRoots/set`) before the thread starts. It shall open the conversation, start an ephemeral thread in the session's working folder, with the agent's model and its instructions as developer instructions when its file sets them, and start a turn with the task's prompt; when the session has no fence ("no sandbox"), the thread shall also set `approvalPolicy` to `untrusted`, so every command asks, whatever a settings file says; neither the prompt nor the instructions shall be in the arguments. The run's events shall be what the reader makes of Codex's notifications. Once the task's turn has completed, the harness shall stop Codex and everything it started before the final `agent.finished` is read; if the session can't stop Codex, then the run shall end with that error, without the bridge token, instead. `send` shall pass a person's answer into the running turn (`turn/steer`), and a decision on an `approval.requested` back to its request. A request for an OK shall go as `harness-codex.approvals` says, and any other request Codex sends shall be answered with an error, so Codex never waits for an answer no one will give. When Codex ends before the turn completed, the run shall end with an error that says how it ended, with the last line of its standard error but never the bridge token; when Codex prints a line that isn't JSON-RPC, the run shall end with an error and Codex shall be stopped. If the profile has no settings folder, then the run shall end with an error and start nothing.
+The Codex harness shall start a run by writing `config.toml` to the agent's settings folder and then starting `codex app-server` in the run's sandbox session, with the bridge's address as `-c` settings. When the task has an instructions folder, it shall add that folder's `skills` as an extra skills root (`skills/extraRoots/set`) before the thread starts. It shall open the conversation, start an ephemeral thread in the session's working folder, with the agent's model and its instructions as developer instructions when its file sets them, and start a turn with the task's prompt; the thread shall also set `approvalPolicy` to `untrusted`, so every command asks, whatever a settings file says, unless the task says `asks: "in-sandbox"` and the session's fence proof is `fenced`: for an agent with `asks: always` or no `asks`, and for a session whose fence is `off` ("no sandbox"), `not-fenced` or `stopped`, whatever its `asks`; neither the prompt nor the instructions shall be in the arguments. The run's events shall be what the reader makes of Codex's notifications. Once the task's turn has completed, the harness shall stop Codex and everything it started before the final `agent.finished` is read; if the session can't stop Codex, then the run shall end with that error, without the bridge token, instead. `send` shall pass a person's answer into the running turn (`turn/steer`), and a decision on an `approval.requested` back to its request. A request for an OK shall go as `harness-codex.approvals` says, and any other request Codex sends shall be answered with an error, so Codex never waits for an answer no one will give. When Codex ends before the turn completed, the run shall end with an error that says how it ended, with the last line of its standard error but never the bridge token; when Codex prints a line that isn't JSON-RPC, the run shall end with an error and Codex shall be stopped. If the profile has no settings folder, then the run shall end with an error and start nothing.
 
 ## Examples
 
@@ -14,9 +14,15 @@ The Codex harness shall start a run by writing `config.toml` to the agent's sett
 - Given Codex asks for an OK to run `touch a`,
   when a person approves it,
   then the stream has had `approval.requested` for `shell`, and Codex gets `accept` as the answer to its request.
-- Given a session with no fence,
+- Given an agent with `asks: in-sandbox`, in a fenced session,
   when the run starts,
-  then `thread/start` sets `approvalPolicy` to `untrusted`; in a fenced session it sets none.
+  then `thread/start` sets no `approvalPolicy`.
+- Given an agent with `asks: always`, or no `asks`, in a fenced session,
+  when the run starts,
+  then `thread/start` sets `approvalPolicy` to `untrusted`.
+- Given an agent with `asks: in-sandbox`, in a session with no fence, or one whose fence isn't proven,
+  when the run starts,
+  then `thread/start` sets `approvalPolicy` to `untrusted`.
 - Given a run waiting on Codex,
   when a person's answer is sent,
   then Codex gets it with `turn/steer` for the running turn.

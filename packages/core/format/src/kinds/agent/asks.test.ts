@@ -9,8 +9,13 @@ verifies("format.agent-asks", () => {
     expect(parsedValue("agent", agent("harness: claude-code"))).not.toHaveProperty("asks");
   });
 
-  it.each(["always", "in-sandbox"])("reads asks: %s on a Claude Code agent", (asks) => {
-    const value = parsedValue("agent", agent("harness: claude-code", `asks: ${asks}`));
+  it.each([
+    ["claude-code", "always"],
+    ["claude-code", "in-sandbox"],
+    ["codex", "always"],
+    ["codex", "in-sandbox"],
+  ])("reads asks on a %s agent: %s", (harness, asks) => {
+    const value = parsedValue("agent", agent(`harness: ${harness}`, `asks: ${asks}`));
     expect(value.asks).toBe(asks);
   });
 
@@ -19,17 +24,18 @@ verifies("format.agent-asks", () => {
     expect(summary(problems)).toEqual(["asks invalid_value 4"]);
   });
 
-  describe("refuses asks on any harness but Claude Code, even always", () => {
+  describe("refuses asks on Halonic's own loop, even always", () => {
     it.each([
-      ["Codex", ["harness: codex"]],
       ["Halonic's own loop", ["harness: halonic"]],
       ["Halonic's own loop", []],
     ])("%s", (harness, lines) => {
       for (const asks of ["always", "in-sandbox"]) {
         const problems = problemsOf("agent", agent(...lines, `asks: ${asks}`));
-        expect(summary(problems)).toEqual([`asks asks-needs-claude-code ${3 + lines.length}`]);
+        expect(summary(problems)).toEqual([
+          `asks asks-needs-a-program-harness ${3 + lines.length}`,
+        ]);
         expect(problems[0]?.message).toBe(
-          `asks works only for an agent with harness: claude-code, and this one runs in ${harness}. Remove asks, or set harness: claude-code.`,
+          `asks works only for an agent with harness: claude-code or harness: codex, and this one runs in ${harness}. Remove asks, or set harness: claude-code or harness: codex.`,
         );
       }
     });

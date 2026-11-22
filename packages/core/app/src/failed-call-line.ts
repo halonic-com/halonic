@@ -141,6 +141,7 @@ function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
       return "pluginChanged";
     case "plugin-stopped":
       return "pluginStopped";
+    case "sandbox-not-ready":
     case "other":
       return "notStarted";
   }
