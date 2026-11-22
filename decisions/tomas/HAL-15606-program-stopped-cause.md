@@ -2,7 +2,7 @@
 
 - Approval: Liam approves this change on HAL-15606 (https://paperclip.halonic.com/HAL/issues/HAL-15606), from flow check C600 (#1a and #8) on HAL-15594. The words are `halonic tools review`'s own, approved on HAL-13731 and HAL-13732; a team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cuJTW2+y0bwqD/ruoBfP2dEnukM2yadgShgjq7wmwez3iMVyhVE6Ir10M7edBHbjFIJecL10aAWBh46nsjzhCw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UggKG1Njnl1nAsqo5CKbIYdNsg0SSfzZbVbJdqxD8OgZoC/rti173sxqOVKBACLduBNtBX8+K+oc2PI/d5KaBw==
 
 ## What changes
 
