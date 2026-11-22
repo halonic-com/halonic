@@ -28,14 +28,14 @@ export const connectionSummaryWords = {
   /**
    * The lines around an HTTP connector's secret's `halonic secret set` command
    * (`library.http-connector-secret`, C565 #7, C618 #2). The desktop app's window connects to no
-   * server over HTTP yet, so only `halonic run` and `halonic routines watch` read the secret; behind
-   * `halonic serve`, the server's engine reads it from its own computer's secrets. Either way it is
+   * server over HTTP yet, so only runs the CLI starts or answers read the secret, with no list of
+   * commands to go stale (C636 #5); behind `halonic serve`, the server's engine reads it from its own computer's secrets. Either way it is
    * the CLI's store, which Studio can neither write nor read (HAL-14995), so the page can't say Set
    * or Not set. `after` gives the CLI's other way, the variable, as its refusals word it.
    */
   httpSecret: {
     desktopApp: (secret: string) =>
-      `Studio can't connect to a server over HTTP yet, so only runs started with halonic run or halonic routines watch use ${secret}. Studio can't tell whether it's set for them. To save it, run this in a terminal:`,
+      `Studio can't connect to a server over HTTP yet, so only runs you start or answer with halonic in a terminal use ${secret}. Studio can't tell whether it's set for them. To save it, run this in a terminal:`,
     elsewhere: (secret: string) =>
       `Studio can't set ${secret} here, or tell whether it's set. Halonic reads it on the computer running halonic serve. To save it, run this in a terminal on that computer:`,
     after: {

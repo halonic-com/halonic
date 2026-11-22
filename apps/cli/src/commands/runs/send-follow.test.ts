@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
-import { AgentPlacement, RunHistory } from "@halonicjs/app";
+import { AgentPlacement, agentFingerprint, RunHistory } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { SandboxCheck } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder, workspaceFolders } from "@halonicjs/profile";
@@ -71,17 +71,22 @@ async function halonic(
   sandbox: SandboxCheck = sandboxStarts,
 ): Promise<{ code: number; io: CapturedIo }> {
   const io = captureIo(acme);
-  const placement = new AgentPlacement({
-    store: new FileAgentPlacementStore(join(folder, "placements")),
-    digest: webCryptoDigest,
-    clock: fixedClock(engineStart),
-  });
+  const placement = placementHere();
   const setup = {
     ...testRunSetup(folder, profile),
     sandboxGate: () => ({ sandbox: { check: async () => sandbox }, placement }),
   };
   const code = await runCli(args, io, [runCommandWith(setup), runsCommandWith(setup)]);
   return { code, io };
+}
+
+/** Where each agent runs on this computer, as every `halonic` command here reads it. */
+function placementHere(): AgentPlacement {
+  return new AgentPlacement({
+    store: new FileAgentPlacementStore(join(folder, "placements")),
+    digest: webCryptoDigest,
+    clock: fixedClock(engineStart),
+  });
 }
 
 /** Starts Support reply on Sam's email, so it waits for the reply's approval. */
@@ -160,6 +165,20 @@ async function writerInClaudeCode(): Promise<void> {
   await trustAcme();
 }
 
+/**
+ * Chooses "On this computer" for Writer, for its file as it is now, then
+ * changes the file, so the choice is on hold, and trusts Acme as it is then.
+ */
+async function writerOnHold(): Promise<void> {
+  const file = join(acme, "hubs/support/agents/writer.agent.yaml");
+  const shown = new Uint8Array(await readFile(file));
+  const subject = { location: await realpath(acme), hub: "support", agent: "writer", file: shown };
+  const fingerprint = await agentFingerprint(shown, webCryptoDigest);
+  expect((await placementHere().chooseThisComputer(subject, fingerprint)).ok).toBe(true);
+  await writeFile(file, `${await readFile(file, "utf8")}# Changed after the choice.\n`);
+  await trustAcme();
+}
+
 /** Trusts Acme as it is now, in the trust store every `halonic` command here reads. */
 async function trustAcme(): Promise<void> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
@@ -187,6 +206,22 @@ verifies("cli.commands.runs.send", () => {
         "",
       ]);
       expect(io.stdout).toContainEqual(expect.stringMatching(/^✓ Support reply finished in /));
+      expect((await eventsOfTheRun()).at(-1)?.type).toBe("run.completed");
+    });
+
+    it("says first that an agent on hold runs in the sandbox, as halonic run does", async () => {
+      await startWaitingRun();
+      await writerInClaudeCode();
+      await writerOnHold();
+
+      const { code, io } = await halonic(["runs", "send", "01jd8q", "approve"]);
+
+      expect(io.stderr).toEqual([]);
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout.slice(0, 2)).toEqual([
+        "! Writer's file changed since you chose On this computer, so it runs in the sandbox until you confirm again in Studio › Writer › Harness › Where it runs.",
+        "✓ Sent approve to run 01jd8q. Support reply goes on.",
+      ]);
       expect((await eventsOfTheRun()).at(-1)?.type).toBe("run.completed");
     });
 

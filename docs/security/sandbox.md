@@ -158,16 +158,17 @@ and per computer. It lives in your profile folder, never in the workspace, so it
 doesn't carry to another computer. It is bound to the exact bytes of the agent's
 file: once the file changes, even only its whitespace, the choice is on hold and
 the agent runs in the sandbox again until you confirm again (**Review and
-confirm** on the Harness page). While it's on hold, `halonic run` and
-`halonic serve` print a `!` line for it before its run that says so and where
-to confirm again. When the sandbox can't start, the refusal says the agent
+confirm** on the Harness page). While it's on hold, a CLI command that would
+start it prints a `!` line for it first that says so and where to confirm
+again. When the sandbox can't start, the refusal says the agent
 needed it because its file changed, and doesn't offer the choice as a way out.
 
 What starts such an agent:
 
-- `halonic serve` and `halonic run` start it without the sandbox, and print a
-  `!` line for it before its run: "Writer runs on this computer without the
-  sandbox, as chosen on 9 Nov."
+- `halonic serve`, `halonic run` and `halonic runs send` (which lets a waiting
+  run go on) start it without the sandbox, and print a `!` line for it before
+  it starts: "Writer runs on this computer without the sandbox, as chosen on
+  9 Nov."
 - Studio doesn't start it yet: its run fails before the agent's program starts.
   The Harness page says so under **On this computer**: "Studio can't start it
   this way yet; halonic run and halonic serve on this computer can."
