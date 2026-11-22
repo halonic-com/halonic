@@ -53,6 +53,7 @@ fn main() {
         "engine_ready",
         "start_status",
         "engine_request",
+        "engine_request_end",
         "engine_stream",
         "engine_stream_end",
         "http_fetch",

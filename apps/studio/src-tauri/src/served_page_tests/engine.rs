@@ -16,7 +16,7 @@ fn served_page_test_sees_the_connect_page_allowed_the_engine_commands_on_desktop
         &window,
         CONNECT_PAGE,
         "engine_request",
-        json!({"route": "GET http://example.com/", "params": null, "body": null}),
+        json!({"route": "GET http://example.com/", "call": 1, "params": null, "body": null}),
     );
     let refusal = answer.expect_err("not a route");
     assert_eq!(refusal["kind"], "unknown_route", "{refusal}");
@@ -25,6 +25,13 @@ fn served_page_test_sees_the_connect_page_allowed_the_engine_commands_on_desktop
         CONNECT_PAGE,
         "engine_stream_end",
         json!({"stream": 7}),
+    );
+    assert_eq!(ended, Ok(Value::Null));
+    let ended = invoke(
+        &window,
+        CONNECT_PAGE,
+        "engine_request_end",
+        json!({"call": 1}),
     );
     assert_eq!(ended, Ok(Value::Null));
 }
@@ -42,6 +49,7 @@ fn served_page_test_sees_the_engine_granted_to_the_local_main_window_only() {
         capability["permissions"],
         json!([
             "allow-engine-request",
+            "allow-engine-request-end",
             "allow-engine-stream",
             "allow-engine-stream-end"
         ])

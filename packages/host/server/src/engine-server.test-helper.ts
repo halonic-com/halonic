@@ -61,6 +61,8 @@ export function testEngine(
     /** Whether the address check lets a turn's settings through; it does unless this says otherwise. */
     settingsAllowed?: boolean;
     chatTurnFails?: Error;
+    /** Makes a turn's model call wait until its `signal` aborts, as a slow model would. */
+    chatTurnWaits?: boolean;
   } = {},
 ): { server: Server; calls: EngineCalls } {
   const calls: EngineCalls = {
@@ -76,9 +78,10 @@ export function testEngine(
     if (options.startFails !== undefined) throw options.startFails;
     return { id: "run_1", status: "running" };
   };
-  const chatTurn = async (request: unknown) => {
+  const chatTurn = async (request: { signal?: AbortSignal }) => {
     calls.chatTurns.push(request);
     if (options.chatTurnFails !== undefined) throw options.chatTurnFails;
+    if (options.chatTurnWaits === true) await abortOf(request.signal);
     return { message: { role: "assistant", content: "Hello from acme." } };
   };
   const runs = { start, startAgent: start, chatTurn } as unknown as RunExecutor;
@@ -121,15 +124,32 @@ export function testEngine(
   return { server, calls };
 }
 
-/** Sends one request to the test engine; a POST carries `body` as JSON unless `type` says otherwise. */
+/** Rejects once `signal` aborts, with its reason; never settles without one. */
+function abortOf(signal: AbortSignal | undefined): Promise<never> {
+  return new Promise((_resolve, reject) => {
+    signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+  });
+}
+
+/**
+ * Sends one request to the test engine; a POST carries `body` as JSON unless `type` says otherwise.
+ * `signal` stands for the connection: the Node listener aborts it when the caller hangs up.
+ */
 export function sendTo(
   server: Server,
   method: string,
   path: string,
-  options: { headers?: Record<string, string>; body?: string; type?: string } = {},
+  options: {
+    headers?: Record<string, string>;
+    body?: string;
+    type?: string;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<Response> {
   const headers = new Headers(options.headers ?? passing);
   if (method === "POST") headers.set("content-type", options.type ?? "application/json");
-  const init = method === "POST" ? { method, headers, body: options.body ?? "{}" } : { headers };
+  const init: RequestInit =
+    method === "POST" ? { method, headers, body: options.body ?? "{}" } : { headers };
+  if (options.signal !== undefined) init.signal = options.signal;
   return server.handle(new Request(`http://127.0.0.1:${enginePort}${path}`, init));
 }

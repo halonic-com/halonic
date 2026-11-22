@@ -29,18 +29,21 @@ export class EngineCallRefused extends Error {
 }
 
 /**
- * The shell keys a stream by the page and this number, and refuses a number that is still open
- * (`stream_in_use`). A module runs once per page, so one counter keeps every fetch apart.
+ * The shell keys a call and a stream by the page and these numbers, and refuses a number that is
+ * still open (`call_in_use`, `stream_in_use`). A module runs once per page, so one counter of each
+ * keeps every fetch apart.
  */
+let nextCallId = 1;
 let nextStreamId = 1;
 
 /**
- * The window's engine through the shell's `engine_request`, `engine_stream` and
- * `engine_stream_end` commands (`apps/studio/src-tauri/src/engine.rs`), as a `fetch` for
+ * The window's engine through the shell's `engine_request`, `engine_request_end`, `engine_stream`
+ * and `engine_stream_end` commands (`apps/studio/src-tauri/src/engine.rs`), as a `fetch` for
  * `createRemoteExecutor`. A request names the engine's route by its method and path on
  * {@link engineBaseUrl}; the shell gets the route's name and params, never a URL, and keeps the
  * engine's token. A stream route's answer is a body of server-sent events, rebuilt from the
- * channel's messages. Aborting the request stops waiting, and ends a stream.
+ * channel's messages. Aborting the request stops waiting and tells the shell, which hangs up on the
+ * engine, so the engine stops what it was doing for it, such as a chat turn's model call.
  *
  * @throws EngineCallRefused when the request isn't to a route of the shell's table, or the shell refuses it
  */
@@ -55,11 +58,33 @@ export function tauriEngineFetch(ipc: TauriIpc & TauriCallbacks): EngineFetch {
     if (call.answer === "stream") return openStream(ipc, route, params, request.signal);
     const text = await request.text();
     const body: unknown = text === "" ? undefined : JSON.parse(text);
+    return callJson(ipc, route, params, body, request.signal);
+  };
+}
+
+async function callJson(
+  ipc: TauriIpc,
+  route: string,
+  params: Readonly<Record<string, string | number>>,
+  body: unknown,
+  signal: AbortSignal,
+): Promise<Response> {
+  const call = nextCallId++;
+  // Registered before `invoke` waits on the signal, so the shell hears of an abort first.
+  const endCall = () => {
+    ipc.invoke("engine_request_end", { call }).catch((failure: unknown) => {
+      console.error("Couldn't tell the shell an engine call ended.", failure);
+    });
+  };
+  signal.addEventListener("abort", endCall, { once: true });
+  try {
     return jsonResponse(
       route,
-      await invoke(ipc, "engine_request", { route, params, body }, request.signal),
+      await invoke(ipc, "engine_request", { route, call, params, body }, signal),
     );
-  };
+  } finally {
+    signal.removeEventListener("abort", endCall);
+  }
 }
 
 async function openStream(
