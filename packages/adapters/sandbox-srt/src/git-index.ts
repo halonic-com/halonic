@@ -3,7 +3,7 @@ import { checkEndOfEntries, checkOffsetTable } from "./git-index-offsets.ts";
 /** Mode of an index entry that records a nested repository (a gitlink), not a file. */
 const gitlinkMode = 0o160000;
 const modeMask = 0o170000;
-/** Set in an entry's flags when two more flag bytes follow (index version 3 and up). */
+/** Set in an entry's flags when two more flag bytes follow; git honours it in every index version. */
 const extendedFlag = 0x4000;
 
 /** The low 12 bits of an entry's flags: its name's length, or 0xFFF for a name that long or longer. */
@@ -70,7 +70,7 @@ function readEntries(
     offset = start + 40 + hashLength;
     const flags = view.getUint16(offset);
     offset += 2;
-    if (version >= 3 && (flags & extendedFlag) !== 0) offset += 2;
+    if ((flags & extendedFlag) !== 0) offset += 2;
     let copied = 0;
     if (version === 4) {
       const prefix = readPrefix(index, offset, entry === 0 ? null : previous);

@@ -92,6 +92,12 @@ verifies("sandbox-srt.session", () => {
       },
     );
 
+    it("skips the extra flag bytes of an extended entry in index version 2, as git does", async () => {
+      const bytes = index([{ path: "a", mode: gitlinkMode, extended: true }], 2);
+      expect(await gitlinksOfGit(bytes)).toEqual(["a"]);
+      expect(gitlinkPaths(parseIndex(bytes, 20), null)).toEqual(["a"]);
+    });
+
     it("refuses an index whose name has a NUL before the length its flags give", async () => {
       const bytes = nameWithNuls();
       expect(await gitlinksOfGit(bytes)).toEqual(["sub"]);
