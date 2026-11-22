@@ -1,12 +1,5 @@
-import { sandboxStartCheckKey, startRunCommand } from "@halonicjs/app";
-import { stepsToSelect } from "@halonicjs/studio-feature-agents/api";
-import { InboxService } from "@halonicjs/studio-feature-inbox/api";
-import {
-  openModelsOf,
-  RunsListService,
-  RunsSourceService,
-  SandboxCantRunCallout,
-} from "@halonicjs/studio-feature-runs/api";
+import { startRunCommand } from "@halonicjs/app";
+import { SandboxCantRunCallout } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
   LetterTile,
@@ -15,10 +8,9 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { engineWordsOf, FilesWithErrorsService, type ItemViewProps } from "@halonicjs/studio-shell";
+import { engineWordsOf } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { WorkflowGuideService, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
@@ -30,11 +22,12 @@ import { useSaveAsTest } from "../runs/use-save-as-test.ts";
 import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
-import { blockingFileOf, openFileAtLine, useFilesWithErrors } from "./blocking-file.ts";
+import { blockingFileOf, useFilesWithErrors } from "./blocking-file.ts";
 import { StepEditDock } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { insteadOfPage } from "./gone-state.tsx";
 import { GuideSlot } from "./guide-card.tsx";
+import { pageOrGuideScreen, useGuideScreen } from "./guide-screen.tsx";
 import { firstTestsPick, firstView, hasDockedCard, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
@@ -59,56 +52,6 @@ import type { CanvasFocus } from "./workflow-canvas.tsx";
 import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
-
-/** The command that opens the workspace page at its Budget block (`features/workspace`). */
-const openBudgetCommand = "workspace.open-budget";
-
-/** The workflow's page in its tab: `item` names the workflow, the host gives its steps. */
-export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
-  const { openItem, openPlace } = context;
-  const outline = stepsToSelect(step);
-  const runsList = context.services.get(RunsListService);
-  const openModels = openModelsOf(context);
-  return (
-    <WorkflowScreen
-      host={context.services.get(WorkflowsHostService)}
-      runs={context.services.get(RunsSourceService)}
-      hubId={item.hub}
-      id={item.id}
-      {...(step === "tests" && { startOnTests: true, testsAsked: asked ?? 0 })}
-      {...(outline && { outline, outlineAsked: asked ?? 0 })}
-      notAnswering={engineWordsOf(context).notAnswering}
-      announceState={(key, text) => context.announcer.announceState(key, text)}
-      announce={(line) => context.announcer.announce(line)}
-      {...(openModels && { openModels })}
-      saving={context.saving}
-      sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
-      guide={context.services.find(WorkflowGuideService)}
-      {...(context.runCommand && {
-        openBudget: () => void context.runCommand?.(openBudgetCommand),
-      })}
-      shownRuns={context.services.find(InboxService)?.shownRuns}
-      filesWithErrors={context.services.find(FilesWithErrorsService)}
-      {...(openItem && {
-        openRun: (runId: string, step?: string) =>
-          openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
-        openAgent: (agentId: string) => openItem({ kind: "agent", hub: item.hub, id: agentId }),
-        openFileAt: openFileAtLine(openItem),
-      })}
-      {...(openPlace && {
-        goToWorkflows: () => openPlace("workflows"),
-        reviewInInbox: (runId: string) => {
-          runsList.reviewInInbox(runId);
-          openPlace("inbox");
-        },
-        seeAllRuns: () => {
-          runsList.showWorkflow({ hubId: item.hub, id: item.id });
-          openPlace("runs");
-        },
-      })}
-    />
-  );
-}
 
 /**
  * The workflow page's frame (`workflows.page`): full width, with no ⤢, no ✕ and no chat column
@@ -256,6 +199,15 @@ export function WorkflowScreen({
   };
   const guideSlot = { guide, workflow: { hubId, id }, view, docked, phone, button: guideButton };
   const guidePage = { openRunForm: () => openStart("guide") };
+  const guideScreen = useGuideScreen(guide, { hubId, id });
+  // A run the guide's screen started shows here as one started from the Run form does.
+  const showRun = (runId: string) => {
+    setShownId(runId);
+    setPickedStep(undefined);
+    setRowCard(undefined);
+    showView("flow");
+    setDock({ runId });
+  };
   const trash = useWorkflowTrash(
     host,
     { hubId, id },
@@ -264,7 +216,7 @@ export function WorkflowScreen({
   );
   const instead = insteadOfPage(trash.strip, load, goToWorkflows);
   if (instead !== undefined) return instead;
-  return (
+  const page = (
     <div className="flex size-full min-h-0 flex-col">
       <header
         className={
@@ -476,4 +428,10 @@ export function WorkflowScreen({
       </div>
     </div>
   );
+  return pageOrGuideScreen(page, guideScreen, {
+    workflow: { hubId, id },
+    phone,
+    showRun,
+    announce,
+  });
 }

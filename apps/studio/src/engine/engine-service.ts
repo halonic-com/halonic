@@ -48,8 +48,8 @@ import {
   type LocalExecutor,
   noListedToolApproval,
 } from "@halonicjs/engine";
-import type { RunSummary, RunVersion } from "@halonicjs/events";
-import type { RunExecutor, SendOptions } from "@halonicjs/ports";
+import type { RunSummary } from "@halonicjs/events";
+import type { SendOptions } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import {
   filesOf,
@@ -61,6 +61,7 @@ import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import { openEngineHarnessHost } from "./engine-harness-host.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
+import { savedFiles, startRoutineOn } from "./engine-routine-start.ts";
 import { pageRoutines, routineSkipsOf, SkipListeners } from "./engine-routines.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
 import { withKeyOriginPrompt } from "./key-origin-prompt.ts";
@@ -94,9 +95,6 @@ export const engineServiceKey: ServiceKey<EngineService> =
   serviceKey<EngineService>("studio.engine");
 
 export type { EngineServiceOptions, StudioRunConnectors } from "./engine-service-options.ts";
-
-/** The page runs the workspace's files as they are saved: it makes no copy at a commit. */
-const savedFiles: RunVersion = { reads: "saved-files" };
 
 /** An open engine and the workspace it was built on. */
 interface OpenEngine {
@@ -235,41 +233,12 @@ export class EngineService {
     return { id };
   }
 
-  /**
-   * Starts what a routine runs, for its Run now: a workflow is checked as {@link EngineService.startRun}
-   * checks it, an agent as {@link EngineService.checkAgent} checks it, both before the engine opens. The run records a manual trigger that names the routine, so the routine finds its own
-   * runs again.
-   *
-   * @param trigger the routine's key and the time the person asked for the run
-   * @returns the new run's id
-   * @throws WindowCantStart when the target is an agent, because agent runs aren't built yet
-   *   ({@link agentStartRefusalOf}), or what {@link EngineService.startRun} throws
-   */
-  async startRoutine(
+  /** Starts what a routine runs, for its Run now ({@link startRoutineOn}). */
+  startRoutine(
     start: RoutineRunStart,
     trigger: { readonly routineKey: string; readonly at: string },
   ): Promise<{ readonly id: string }> {
-    const runTrigger = { type: "manual" as const, routineId: trigger.routineKey, at: trigger.at };
-    if ("workflow" in start) {
-      const { hubId, workflowId } = start.workflow;
-      await this.check({ hubId, workflowId });
-      const { executor } = await this.openForStart();
-      const { id } = await executor.start({
-        ...start.workflow,
-        trigger: runTrigger,
-        version: savedFiles,
-      });
-      return { id };
-    }
-    await this.checkAgent(start.agent);
-    // As the port: the local executor's own `startAgent` takes no request until agent runs are built.
-    const executor: RunExecutor = (await this.openForStart()).executor;
-    try {
-      const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
-      return { id };
-    } catch (error) {
-      throw agentStartRefusalOf(error);
-    }
+    return startRoutineOn(this, start, trigger);
   }
 
   /**
@@ -297,6 +266,19 @@ export class EngineService {
       options,
     );
     return engine.executor.send(runId, event, payload, options);
+  }
+
+  /**
+   * Cancels a run, as the run page's **Cancel run** asks: opens the engine with the checks of an
+   * answer ({@link EngineService.send}), then ends the run and the child runs it waits on as
+   * cancelled. The run's record stays.
+   * @returns the run as it ended
+   * @throws what {@link EngineService.send} throws before it sends, or the executor's refusal of a
+   *   run it doesn't know
+   */
+  async cancel(runId: string): Promise<RunSummary> {
+    const { engine } = await this.#forAnswer();
+    return engine.executor.cancel(runId);
   }
 
   /** The open engine, for an answer: as for a start, with the lock's `conflict` as `unavailable`. */

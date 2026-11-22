@@ -11,7 +11,8 @@ import { WorkflowsHostService, type WorkflowView } from "../api.ts";
 import { workflowsFeature } from "../feature.ts";
 import { memoryHost, memoryRuns, show, unmount } from "../test-support.tsx";
 import { settings } from "./page-fixtures.ts";
-import { WorkflowPage, WorkflowScreen } from "./workflow-page.tsx";
+import { WorkflowPage } from "./workflow-item.tsx";
+import { WorkflowScreen } from "./workflow-page.tsx";
 
 afterEach(() => unmount());
 

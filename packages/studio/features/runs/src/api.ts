@@ -196,8 +196,9 @@ export const InstructionTrustHostService: ServiceKey<InstructionTrustHost> =
   serviceKey<InstructionTrustHost>("runs.instruction-trust-host");
 
 /**
- * The way to start a run of a workflow, for **Run again** on the run page. The app provides it
- * where it has an engine; a served page has none, and the page then shows no **Run again**.
+ * The way to start a run of a workflow, for **Run again** on the run page, and to cancel one. The
+ * app provides it where it has an engine; a served page has none, and the page then shows no
+ * **Run again**.
  */
 export interface RunStartHost {
   /**
@@ -220,6 +221,12 @@ export interface RunStartHost {
    * there is no folder to trust.
    */
   readonly onTrusted?: (listener: () => void) => () => void;
+  /**
+   * Cancels a run that is going or waiting for a person: it ends as cancelled, with its child runs,
+   * and its record stays. Resolves once it has ended; rejects with the reason it couldn't. Absent
+   * where the engine can't cancel a run.
+   */
+  readonly cancelRun?: (runId: string) => Promise<void>;
 }
 
 /** The open workspace's way to start a run. Absent where there is no engine to start it. */

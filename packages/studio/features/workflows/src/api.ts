@@ -13,6 +13,16 @@ import type { WorkflowTests } from "./tests-api.ts";
  * error, which every page words for where Studio runs.
  */
 export { EngineNotAnswering } from "@halonicjs/studio-shell";
+export {
+  type WorkflowGuide,
+  type WorkflowGuideCard,
+  type WorkflowGuideLine,
+  type WorkflowGuidePage,
+  type WorkflowGuideRun,
+  type WorkflowGuideScreen,
+  type WorkflowGuideScreenProps,
+  WorkflowGuideService,
+} from "./guide-api.ts";
 
 import type {
   RemovedStep,
@@ -410,11 +420,3 @@ export interface WorkflowsHost {
 /** The open workspace's workflows, provided by the app (`workflows.host`). */
 export const WorkflowsHostService: ServiceKey<WorkflowsHost> =
   serviceKey<WorkflowsHost>("workflows.host");
-
-export {
-  type WorkflowGuide,
-  type WorkflowGuideCard,
-  type WorkflowGuideLine,
-  type WorkflowGuidePage,
-  WorkflowGuideService,
-} from "./guide-api.ts";

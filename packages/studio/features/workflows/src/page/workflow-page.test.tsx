@@ -19,7 +19,8 @@ import {
   unmount,
 } from "../test-support.tsx";
 import { reply, settings } from "./page-fixtures.ts";
-import { WorkflowPage, WorkflowScreen } from "./workflow-page.tsx";
+import { WorkflowPage } from "./workflow-item.tsx";
+import { WorkflowScreen } from "./workflow-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -455,9 +456,8 @@ verifies("workflows.runs.runs-view", () => {
     const { source } = memoryRuns([runSummary({ id: "run_a_01done1", status: "completed" })]);
     const calls: string[] = [];
     const list = {
-      showWorkflow: (workflow: { hubId: string; id: string }) => {
-        calls.push(`show ${workflow.hubId}/${workflow.id}`);
-      },
+      showWorkflow: (workflow: { hubId: string; id: string }) =>
+        void calls.push(`show ${workflow.hubId}/${workflow.id}`),
     };
     const services = new Map<unknown, unknown>([
       [WorkflowsHostService, host],
