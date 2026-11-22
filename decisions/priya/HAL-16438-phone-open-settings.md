@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16438 (requested by Elena for the HAL-15985 switch-on); Julian, then Liam, review this PR as a security PR
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ygEaQwbZQ1PjAGlYXe74ZYUFNrL+wPu88LHYaWSKs0u5AwoUIr5ukBKnzNaWvK/nU3rNCuZyxwC+e6cShEKcAA==
 
 The phone's own page gets two new commands, on Android only, from a local capability for the
 `main` window (`capabilities/phone-screens.json`): `phone_open_settings` opens Android's settings
