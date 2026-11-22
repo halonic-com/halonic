@@ -82,9 +82,17 @@ fn owner_check_passes_only_on_the_exact_confirmed_answer() {
 #[test]
 fn owner_check_prompt_names_the_decision_in_fixed_words() {
     let approve = PromptWords::for_decision(Decision::Approve);
-    let deny = PromptWords::for_decision(Decision::Deny);
-    assert!(approve.description.starts_with("Approve "));
-    assert!(deny.description.starts_with("Deny "));
-    assert_eq!(approve.title, deny.title);
+    let reject = PromptWords::for_decision(Decision::Deny);
+    assert_eq!(
+        approve.description,
+        "Approve this request for Halonic on your computer."
+    );
+    assert_eq!(
+        reject.description,
+        "Reject this request for Halonic on your computer."
+    );
+    assert_eq!(approve.title, "Confirm it's you");
+    assert_eq!(approve.title, reject.title);
     assert_eq!(approve.cancel, "Cancel");
+    assert_eq!(approve.cancel, reject.cancel);
 }

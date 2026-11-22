@@ -7,7 +7,8 @@ pub enum Decision {
 
 /// The words Android's prompt shows. They are fixed here, one set per
 /// [`Decision`], so neither the page nor the host can make the prompt say
-/// something other than what is being answered.
+/// something other than what is being answered. The verb is the one on the
+/// approval card's button the person just pressed: Approve or Reject.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PromptWords {
     pub title: &'static str,
@@ -18,8 +19,8 @@ pub struct PromptWords {
 impl PromptWords {
     pub fn for_decision(decision: Decision) -> Self {
         let description = match decision {
-            Decision::Approve => "Approve this request on your computer from this phone.",
-            Decision::Deny => "Deny this request on your computer from this phone.",
+            Decision::Approve => "Approve this request for Halonic on your computer.",
+            Decision::Deny => "Reject this request for Halonic on your computer.",
         };
         Self {
             title: "Confirm it's you",
