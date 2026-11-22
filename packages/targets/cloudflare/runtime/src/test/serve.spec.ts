@@ -153,7 +153,7 @@ describe("the API in workerd", () => {
       const bucket = (await deployment()).DEFINITIONS as unknown as Parameters<
         typeof writeDefinitionSnapshot
       >[0];
-      await writeDefinitionSnapshot(bucket, {}, [routine], scopedKeyPrefix(scope));
+      await writeDefinitionSnapshot(bucket, {}, { routines: [routine] }, scopedKeyPrefix(scope));
       const started: unknown[] = [];
       const start = async (request: unknown) => {
         started.push(request);

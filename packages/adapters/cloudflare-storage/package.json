@@ -16,7 +16,8 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
-    "@halonicjs/std": "workspace:*"
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",

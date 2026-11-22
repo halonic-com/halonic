@@ -29,8 +29,18 @@ function memoryBucket() {
 /** A bucket holding snapshot A, then snapshot B, so `current` names B. */
 async function bucketWithTwoSnapshots(keyPrefix?: string) {
   const bucket = memoryBucket();
-  const first = await writeDefinitionSnapshot(bucket, { [notePath]: "A" }, [], keyPrefix);
-  const second = await writeDefinitionSnapshot(bucket, { [notePath]: "B" }, [], keyPrefix);
+  const first = await writeDefinitionSnapshot(
+    bucket,
+    { [notePath]: "A" },
+    { routines: [] },
+    keyPrefix,
+  );
+  const second = await writeDefinitionSnapshot(
+    bucket,
+    { [notePath]: "B" },
+    { routines: [] },
+    keyPrefix,
+  );
   return { bucket, first, second };
 }
 

@@ -42,17 +42,16 @@ describe("the routine index", () => {
   verifies("cloudflare-storage.routine-index", () => {
     it("reads back the routines the snapshot was written with", async () => {
       const bucket = new MapBucket();
-      await writeDefinitionSnapshot(bucket, files, [
-        orders,
-        { hub: null, routine: orders.routine },
-      ]);
+      await writeDefinitionSnapshot(bucket, files, {
+        routines: [orders, { hub: null, routine: orders.routine }],
+      });
       const routines = await readRoutineIndex(new R2DefinitionSource(bucket));
       expect(routines).toEqual([orders, { hub: null, routine: orders.routine }]);
     });
 
     it("lists the index in the manifest, and not among the workspace files", async () => {
       const bucket = new MapBucket();
-      await writeDefinitionSnapshot(bucket, files, [orders]);
+      await writeDefinitionSnapshot(bucket, files, { routines: [orders] });
       const source = new R2DefinitionSource(bucket);
       expect(await source.list()).toEqual(Object.keys(files));
       const manifest = [...bucket.objects.entries()].find(([key]) => key.endsWith("manifest.json"));
@@ -62,7 +61,13 @@ describe("the routine index", () => {
     it("keeps nothing in the bucket the routine files didn't hold: secrets stay names", async () => {
       const bucket = new MapBucket();
       const value = "a-secret-value-made-up-for-this-test";
-      await writeDefinitionSnapshot(bucket, { ...files, ".env": `ACME_HOOK=${value}` }, [orders]);
+      await writeDefinitionSnapshot(
+        bucket,
+        { ...files, ".env": `ACME_HOOK=${value}` },
+        {
+          routines: [orders],
+        },
+      );
       const text = [...bucket.objects.values()].join("\n");
       expect(text).not.toContain(value);
       const index = [...bucket.objects.entries()].find(([key]) =>
@@ -74,7 +79,7 @@ describe("the routine index", () => {
 
     it("refuses a snapshot in format 1 and tells the user to deploy again", async () => {
       const bucket = new MapBucket();
-      const version = await writeDefinitionSnapshot(bucket, files, [orders]);
+      const version = await writeDefinitionSnapshot(bucket, files, { routines: [orders] });
       const key = [...bucket.objects.keys()].find((name) => name.endsWith("manifest.json")) ?? "";
       const manifest = JSON.parse(bucket.objects.get(key) ?? "{}");
       await bucket.put(key, JSON.stringify({ ...manifest, formatVersion: 1 }));
@@ -84,7 +89,7 @@ describe("the routine index", () => {
 
     it("refuses a workspace file at the index's own path", async () => {
       await expect(
-        writeDefinitionSnapshot(new MapBucket(), { "routines.index.json": "[]" }, []),
+        writeDefinitionSnapshot(new MapBucket(), { "routines.index.json": "[]" }, { routines: [] }),
       ).rejects.toThrow(RangeError);
     });
 

@@ -38,7 +38,8 @@ function snapshotArea(): {
     keyPrefix,
     keys: snapshotKeys(keyPrefix),
     reads,
-    write: (written) => writeDefinitionSnapshot(env.DEFINITIONS, written, [], keyPrefix),
+    write: (written) =>
+      writeDefinitionSnapshot(env.DEFINITIONS, written, { routines: [] }, keyPrefix),
     source: (options) => new R2DefinitionSource(counting, { keyPrefix, ...options }),
   };
 }
