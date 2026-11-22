@@ -14,7 +14,7 @@ import type { LaunchFolders } from "../pinned/launch-folders.ts";
 import { checkPinnedLaunch, pinnedLaunch } from "../pinned/pinned-launch.ts";
 import { McpError, McpStoppedError } from "../protocol/errors.ts";
 import { type ClientInfo, McpSession } from "../protocol/session.ts";
-import { cleanErrorOutput, type PersonalDetails } from "./error-output.ts";
+import { cleanErrorOutput, type ErrorOutputLine, type PersonalDetails } from "./error-output.ts";
 import { inheritedSecrets } from "./inherited-secrets.ts";
 import type { AgentWorkingFolders, ProgramLaunch, ProgramStarter } from "./program.ts";
 import { defaultRestartLimits, RestartLimit, type RestartLimits } from "./restart-limit.ts";
@@ -229,7 +229,10 @@ class McpStdioConnector implements ConnectorClient {
     } catch (error) {
       // The next call starts a new program, so this one must not keep running.
       await transport.close();
-      if (transport.endedByProgram) throw new ProgramStoppedAtStartError(this.#stdio.command);
+      if (transport.endedByProgram) {
+        const errorOutput = this.#cleaned(await transport.errorOutputOnceRead());
+        throw new ProgramStoppedAtStartError(this.#stdio.command, errorOutput);
+      }
       throw error;
     }
     return { session, transport };
@@ -249,12 +252,17 @@ class McpStdioConnector implements ConnectorClient {
 
   /** The last program's error output, with every secret it was given and personal data removed. */
   #lastErrorOutput(): string[] {
+    return this.#cleaned(this.#transport?.errorOutput() ?? []);
+  }
+
+  /** Error output with every secret the program was given and personal data removed. */
+  #cleaned(lines: readonly ErrorOutputLine[]): string[] {
     const env = this.#options.inheritedEnv;
     const personal: PersonalDetails = {
       homeFolder: env["HOME"] ?? env["USERPROFILE"],
       userName: env["USER"] ?? env["USERNAME"] ?? env["LOGNAME"],
     };
-    return cleanErrorOutput(this.#transport?.errorOutput() ?? [], this.#scrubber, personal);
+    return cleanErrorOutput(lines, this.#scrubber, personal);
   }
 
   /**

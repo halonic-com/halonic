@@ -71,6 +71,16 @@ export const connectorStartMessages = defineMessages("connectorStart", {
     file === undefined
       ? phrase`To see why, run the command and args from the ${connector} connector file yourself.`
       : phrase`To see why, run the command and args from ${file} yourself.`,
+  /**
+   * HAL-15620: the lead-in, under `cantListProgramStopped`, to the program's last lines on standard
+   * error, in the terminal only, as `--debug`'s "The engine said:" (Sofia).
+   */
+  programSaid: () => phrase`The program said:`,
+  /** HAL-15620: `cantListProgramStoppedFix` once the program's last lines are shown: those are at most 3, cut short. */
+  cantListProgramStoppedSaidFix: (connector: string, file: string | undefined) =>
+    file === undefined
+      ? phrase`To see all of it, run the command and args from the ${connector} connector file yourself.`
+      : phrase`To see all of it, run the command and args from ${file} yourself.`,
   /** HAL-13829: line 1 of `tools review | approve` for a connector that needs a secret that isn't set. */
   cantListSecretMissing: (connector: string, secret: string) =>
     phrase`Couldn't list the tools from ${connector}: it needs the secret ${secret}, which isn't set.`,

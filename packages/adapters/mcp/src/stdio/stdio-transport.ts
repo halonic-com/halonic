@@ -1,7 +1,7 @@
 import { McpError, McpStoppedError, unexpectedResponse } from "../protocol/errors.ts";
 import { errorCodes, type OutgoingMessage } from "../protocol/json-rpc.ts";
 import type { AbortSignalLike, McpTransport } from "../protocol/transport.ts";
-import { ErrorOutputTail } from "./error-output.ts";
+import { type ErrorOutputLine, ErrorOutputTail } from "./error-output.ts";
 import { readLines } from "./lines.ts";
 import { MessageQueue } from "./message-queue.ts";
 import type { RunningProgram } from "./program.ts";
@@ -78,8 +78,17 @@ export class StdioTransport implements McpTransport {
    * them. They can hold anything, keys and personal data too, so clean
    * them before they leave the connector.
    */
-  errorOutput(): string[] {
+  errorOutput(): ErrorOutputLine[] {
     return this.#errorOutput.lines();
+  }
+
+  /**
+   * {@link errorOutput} once the program has closed its standard error, or
+   * after `stopGraceMs` when it keeps it open: for a program that ended,
+   * with the lines it wrote just before it did.
+   */
+  errorOutputOnceRead(): Promise<ErrorOutputLine[]> {
+    return this.#errorOutput.linesOnceRead(this.#limits.stopGraceMs);
   }
 
   async *send(message: OutgoingMessage, signal?: AbortSignalLike): AsyncGenerator<unknown> {

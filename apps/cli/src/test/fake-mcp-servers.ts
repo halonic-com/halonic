@@ -40,6 +40,8 @@ export class FakeMcpServers implements ProgramStarter {
   stopsWithoutAnswering = false;
   /** When true, a program reads every message and answers none, so each request runs out of time. */
   answersNothing = false;
+  /** What each program writes to its standard error as it starts (HAL-15620). */
+  errorOutput = "";
 
   constructor(tools: ListedMcpTool[]) {
     this.tools = tools;
@@ -81,7 +83,7 @@ export class FakeMcpServers implements ProgramStarter {
       endInput: end,
       signal: end,
       stdout,
-      stderr: new PassThrough({ emitClose: true }).end(),
+      stderr: new PassThrough({ emitClose: true }).end(this.errorOutput),
       exited,
     };
   }

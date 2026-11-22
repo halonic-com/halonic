@@ -142,6 +142,8 @@ interface ErrorReport {
   readonly code: string | undefined;
   /** The mark on line 1; ✕ when left out. */
   readonly mark?: "failed" | "needsYou";
+  /** What only the terminal shows: lines under line 1, and the fix in place of `fix` (`TerminalDetails`). */
+  readonly terminal?: { readonly lines: readonly Phrase[]; readonly fix: Phrase };
 }
 
 function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
@@ -196,14 +198,36 @@ function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
     fix: fix === undefined ? undefined : phrase`${fix}`,
     docs: field("docs"),
     code: field("code"),
+    ...terminalOf(error, scrub),
   };
 }
 
-/** The ✕ line, then the fix line and the docs line when the error has them. */
+/** An {@link OwnLineError}'s `terminalDetails`, scrubbed, as the report's `terminal`. */
+function terminalOf(error: unknown, scrub: Scrub): Pick<ErrorReport, "terminal"> {
+  const details = error instanceof OwnLineError ? error.terminalDetails : undefined;
+  if (details === undefined) {
+    return {};
+  }
+  return {
+    terminal: {
+      lines: details.lines.map((line) => scrubPhrase(line, scrub)),
+      fix: scrubPhrase(details.fix.phrase, scrub),
+    },
+  };
+}
+
+/**
+ * The ✕ line, then the lines only the terminal shows, then the fix line and
+ * the docs line when the error has them.
+ */
 function errorLines(report: ErrorReport): Phrase[] {
   const lines = [phrase`${markPart(report.mark ?? "failed")} ${report.firstLine}`];
-  if (report.fix !== undefined) {
-    lines.push(phrase`  ${report.fix}`);
+  for (const line of report.terminal?.lines ?? []) {
+    lines.push(phrase`  ${line}`);
+  }
+  const fix = report.terminal?.fix ?? report.fix;
+  if (fix !== undefined) {
+    lines.push(phrase`  ${fix}`);
   }
   if (report.docs !== undefined) {
     lines.push(phrase`  ${errorMessages.more(report.docs, report.code).phrase}`);

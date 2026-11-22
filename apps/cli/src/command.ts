@@ -322,6 +322,18 @@ export class UsageError extends Error {
 }
 
 /**
+ * Lines an {@link OwnLineError} shows only in the terminal, under line 1,
+ * and the fix that goes with them, in place of the error's own. `--json`
+ * keeps line 1 and the error's own fix, so a script, or a log made from it,
+ * never holds these lines (Sofia and Liam, HAL-15620).
+ */
+export interface TerminalDetails {
+  /** Each line as the terminal shows it, indented under line 1. */
+  readonly lines: readonly Phrase[];
+  readonly fix: Message;
+}
+
+/**
  * An error whose message is a whole line 1, never put after the command's
  * "Couldn't *action*:", such as "There's no workflow called "suport-reply"
  * in acme." (cli-output 3.4). Its message and fix come from the catalogue.
@@ -329,14 +341,18 @@ export class UsageError extends Error {
 export class OwnLineError extends KindedError {
   /** Fields `--json` adds to the error, for what a script needs to know besides the reason. */
   readonly jsonFields: Readonly<Record<string, unknown>>;
+  /** What only the terminal shows, when there is anything. */
+  readonly terminalDetails: TerminalDetails | undefined;
 
   constructor(
     kind: ErrorKind,
     line: Message,
     fix?: Message,
     jsonFields: Readonly<Record<string, unknown>> = {},
+    terminalDetails?: TerminalDetails,
   ) {
     super(kind, plainText(line.phrase), fix === undefined ? {} : { fix: plainText(fix.phrase) });
     this.jsonFields = jsonFields;
+    this.terminalDetails = terminalDetails;
   }
 }

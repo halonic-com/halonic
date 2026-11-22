@@ -84,12 +84,16 @@ a model key or token in the person's shell stays out; a program that needs a key
   tool may already have done its work. The next call starts the program again, through the same
   trust, pin and runner checks and in a new folder. After 3 restarts within 10 minutes
   (`defaultRestartLimits`) the connector stays stopped and throws `ConnectorStoppedError`, with the
-  program's last error output in `errorOutput`, its secrets, key-shaped lines, e-mail addresses,
-  home folder and user name removed. Its secrets include what it inherited from the app's
+  program's last error output in `errorOutput`, its secrets, key-shaped lines, lines longer than
+  300 characters, e-mail addresses, home folder and user name removed. Its secrets include what it inherited from the app's
   environment: the value of each variable named like a secret (`API_KEY`, `NODE_AUTH_TOKEN`) and
   the password in a URL value, and the user name of an `http(s)` URL with no password when it is at least 16
   characters long, as in a Sentry DSN (`https://<key>@host/1`), whatever their shape
   (`mcp.stdio-inherited-secrets`). Shorter user names such as `x-access-token` and other schemes stay.
+- **A program that stops right after it starts**, before it answers `initialize`, makes the start
+  throw `ProgramStoppedAtStartError`, with the program's last error output in `errorOutput`, read
+  once the program closed its standard error (or after 2 seconds) and cleaned the same way. Its
+  message never holds that output; `halonic tools review` shows the lines in the person's terminal.
 - **Stopping** closes the program's input, waits 2 seconds, sends SIGTERM to its process group,
   waits again, then SIGKILL. On Windows, `taskkill /T` ends the process tree.
 - **Process starts** happen in one file, `src/stdio/node-program-starter.ts`, listed in

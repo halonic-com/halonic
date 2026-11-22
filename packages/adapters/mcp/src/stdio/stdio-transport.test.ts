@@ -93,7 +93,7 @@ verifies("mcp.stdio-transport", () => {
       program.sendRaw('{"jsonrpc":"2.0",');
       program.sendRaw('"id":1,"result":{"t":"é"}}\r\n');
       expect(await answer).toEqual([{ jsonrpc: "2.0", id: 1, result: { t: "é" } }]);
-      expect(transport.errorOutput()).toEqual(["x".repeat(300)]);
+      expect(transport.errorOutput()).toEqual([{ text: "x".repeat(300), cut: true }]);
       await transport.close();
     });
 
@@ -105,7 +105,9 @@ verifies("mcp.stdio-transport", () => {
       program.exit(1);
       await waitUntil("transport.ended to be true", () => transport.ended === true);
       expect(transport.ended).toBe(true);
-      expect(transport.errorOutput()).toEqual(lines.slice(-10));
+      expect(transport.errorOutput()).toEqual(
+        lines.slice(-10).map((text) => ({ text, cut: false })),
+      );
       await transport.close();
     });
   });
