@@ -18,8 +18,9 @@ export type ShownPart =
  *
  * `halonic tools review | approve` stop with `cantListProgramMissing`,
  * `cantListProgramStopped` (HAL-13731) or `cantListSecretMissing` and their
- * fix (decided on HAL-13829). `halonic
- * run` warns with `notStarted` (or `notListed` when it can't say why), then
+ * fix (decided on HAL-13829). `halonic run` warns with `notStarted` (or
+ * `notListed` when it can't say why, with `notListedFix`, or
+ * `integrationNotListedFix` for an integration's connector), then
  * `programMissing`, `secretMissing`, `pluginNotTrusted` or `pluginChanged`
  * and their fix, and goes on: the run had none of the connector's tools.
  * Its line 1 already says the connector didn't start, so its cause line
@@ -88,6 +89,13 @@ export const connectorStartMessages = defineMessages("connectorStart", {
     phrase`It reaches the network, and the Windows 11 sandbox can't limit a program to single sites yet.`,
   partOffSettingsNotSet: () => phrase`A setting it needs has no value.`,
   partOffNotTrusted: () => phrase`Your trust doesn't cover it as it is now.`,
+  /**
+   * HAL-15250: the fix under `notListed` for an integration's connector,
+   * which `tools review` doesn't start (HAL-14784). `doctor` checks what its
+   * runner needs to start. `dir` is the user's own `--dir`.
+   */
+  integrationNotListedFix: (dir: string | undefined) =>
+    phrase`Its integration needs the sandbox and a trusted workspace to start. To check both, run ${suggestedCommand("doctor", dir)}`,
   /** HAL-13714: an `http` connector where nothing answers at its address. Mateo, decided by the team. */
   nothingAnswered: (address: string) => phrase`Nothing answered at ${address}.`,
   nothingAnsweredFix: (connector: string, file: string | undefined) =>

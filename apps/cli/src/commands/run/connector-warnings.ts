@@ -13,6 +13,17 @@ import { printable } from "../../output/printable.ts";
 
 type ListingFailed = Extract<RunEvent, { type: "connector.listing-failed" }>;
 
+/** What the warning reads about a run's connectors in the workspace. */
+export interface WarnedConnectors {
+  /**
+   * The path of the connector's file in the workspace, or `undefined` when
+   * it has none, as for a connector from the hub.
+   */
+  fileOf(connector: string): string | undefined;
+  /** Whether the connector is a local integration's, which starts in the integration runner. */
+  isIntegration(connector: string): boolean;
+}
+
 /**
  * Warns once for each connector a run's log says couldn't list its tools:
  * what happened, then the cause and its fix, indented under it: a missing
@@ -23,11 +34,18 @@ type ListingFailed = Extract<RunEvent, { type: "connector.listing-failed" }>;
  * before the listing's failure) gets no warning here: the run already
  * warned for each part, with why.
  *
+ * When the log doesn't say why, the fix line points to `halonic tools
+ * review`, which starts the connector and says why it couldn't list its
+ * tools. An integration's connector has nothing for `tools review` to show
+ * (HAL-14784), so its fix line points to `halonic doctor`, which checks the
+ * sandbox and the workspace's trust its runner needs (HAL-15250).
+ *
  * @param dir - the user's own `--dir`, for the command it suggests
- * @param fileOf - the path of a connector's file in the workspace, or
- *   `undefined` when it has none, as for a connector from the hub
  * @example
- * const warnConnectors = connectorWarnings(context, typedDir, (id) => connectorFileOf(workspace, id));
+ * const warnConnectors = connectorWarnings(context, typedDir, {
+ *   fileOf: (id) => connectorFileOf(workspace, id),
+ *   isIntegration: (id) => isIntegrationConnector(workspace, id),
+ * });
  * // ! handbook-files didn't start, so its tools are off in this run.
  * //   The program npx-nope isn't on this computer.
  * //   Install npx-nope, or change the command in library/connectors/handbook-files.connector.yaml.
@@ -35,14 +53,14 @@ type ListingFailed = Extract<RunEvent, { type: "connector.listing-failed" }>;
 export function connectorWarnings(
   context: Pick<CommandContext, "warn">,
   dir: string | undefined,
-  fileOf: (connector: string) => string | undefined,
+  connectors: WarnedConnectors,
 ): (event: RunEvent) => void {
   const warned = new Set<string>();
   return (event) => {
     if (event.type === "connector.part-off") warned.add(event.connector);
     if (event.type !== "connector.listing-failed" || warned.has(event.connector)) return;
     warned.add(event.connector);
-    for (const line of warningLines(event, dir, fileOf(event.connector))) {
+    for (const line of warningLines(event, dir, connectors)) {
       context.warn(line.phrase);
     }
   };
@@ -52,20 +70,31 @@ export function connectorWarnings(
 function warningLines(
   event: ListingFailed,
   dir: string | undefined,
-  file: string | undefined,
+  connectors: WarnedConnectors,
 ): Message[] {
   const connector = printable(event.connector);
-  const causeAndFix = causeLines(event.cause, connector, file);
+  const causeAndFix = causeLines(event.cause, connector, connectors.fileOf(event.connector));
   if (causeAndFix === undefined) {
     return [
       connectorStartMessages.notListed(connector),
-      indented(connectorStartMessages.notListedFix(event.connector, dir)),
+      indented(unknownCauseFix(event, dir, connectors)),
     ];
   }
   return [connectorStartMessages.notStarted(connector), ...causeAndFix.map(indented)];
 }
 
-/** The cause and its fix, or `undefined` when the log doesn't say why, so `tools review` has to. */
+/** The command that shows more when the log doesn't say why: `tools review`, or `doctor` for an integration. */
+function unknownCauseFix(
+  event: ListingFailed,
+  dir: string | undefined,
+  connectors: WarnedConnectors,
+): Message {
+  return connectors.isIntegration(event.connector)
+    ? connectorStartMessages.integrationNotListedFix(dir)
+    : connectorStartMessages.notListedFix(event.connector, dir);
+}
+
+/** The cause and its fix, or `undefined` when the log doesn't say why. */
 function causeLines(
   cause: ListingFailed["cause"],
   connector: string,

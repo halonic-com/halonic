@@ -15,6 +15,23 @@ import { printable } from "./output/printable.ts";
  * connectorFileOf(workspace, "mail"); // "library/connectors/mail.connector.yaml"
  */
 export function connectorFileOf(workspace: LoadedWorkspace, id: string): string | undefined {
-  const file = filesOf(workspace, "connector").find((candidate) => candidate.value.id === id);
+  const file = connectorFile(workspace, id);
   return file === undefined ? undefined : printable(file.path);
+}
+
+/**
+ * Whether connector `id` is a local integration's (`transport: { integration }`),
+ * whose tools come from the integration's runner rather than a program or
+ * a server of its own (HAL-15250).
+ *
+ * @example
+ * isIntegrationConnector(workspace, "issues"); // true for `transport: { integration: { folder: issues } }`
+ */
+export function isIntegrationConnector(workspace: LoadedWorkspace, id: string): boolean {
+  const file = connectorFile(workspace, id);
+  return file !== undefined && "integration" in file.value.transport;
+}
+
+function connectorFile(workspace: LoadedWorkspace, id: string) {
+  return filesOf(workspace, "connector").find((candidate) => candidate.value.id === id);
 }

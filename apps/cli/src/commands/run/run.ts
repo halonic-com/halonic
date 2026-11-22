@@ -26,7 +26,7 @@ import {
   type StoppedResult,
   UsageError,
 } from "../../command.ts";
-import { connectorFileOf } from "../../connector-file.ts";
+import { connectorFileOf, isIntegrationConnector } from "../../connector-file.ts";
 import { followUntilStopped } from "../../follow-run.ts";
 import { type HarnessProgram, nodeHarnessPrograms } from "../../harness-programs.ts";
 import type { LocalEngine } from "../../local-engine-host.ts";
@@ -171,9 +171,10 @@ export async function followWorkflow(
   const streaming = input.options["follow"] === true;
   let followed: FollowedRun | StoppedResult;
   const printEvent = streaming ? eventLines(context) : live.onEvent;
-  const warnConnectors = connectorWarnings(context, typedDir, (id) =>
-    connectorFileOf(workspace, id),
-  );
+  const warnConnectors = connectorWarnings(context, typedDir, {
+    fileOf: (id) => connectorFileOf(workspace, id),
+    isIntegration: (id) => isIntegrationConnector(workspace, id),
+  });
   try {
     const events = eventsOf(input);
     const place = { workspace, name: workspaceName, dir: typedDir };

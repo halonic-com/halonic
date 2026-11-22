@@ -18,7 +18,7 @@ import {
   OwnLineError,
   UsageError,
 } from "../../command.ts";
-import { connectorFileOf } from "../../connector-file.ts";
+import { connectorFileOf, isIntegrationConnector } from "../../connector-file.ts";
 import { providerAddress } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import type { Phrase } from "../../messages/phrase.ts";
@@ -94,7 +94,10 @@ export async function showRun(
         lines: [
           heading(run, title, workspaceName, clock),
           ...(steps.length === 0 ? [] : [[], ...steps]),
-          ...connectorNotStartedLines(run.events, dir, (id) => connectorFileOf(loaded, id)),
+          ...connectorNotStartedLines(run.events, dir, {
+            fileOf: (id) => connectorFileOf(loaded, id),
+            isIntegration: (id) => isIntegrationConnector(loaded, id),
+          }),
           ...providerNoteLines(run.events),
           ...showEnding(
             run,
