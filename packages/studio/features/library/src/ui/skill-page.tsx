@@ -11,12 +11,12 @@ import {
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { savingFor } from "../saving.ts";
+import { sharedHubKey } from "../shared-hub-key.ts";
 import { takeSkillInstructionsFocus } from "../skill-focus-request.ts";
 import { SkillHostService, type SkillRef } from "../skill-host.ts";
 import { type SkillField, SkillModel } from "../skill-model.ts";
 import { skillWords } from "../skill-words.ts";
 import { useItemTrash } from "./item-trash.tsx";
-import { sharedHubKey } from "../shared-hub-key.ts";
 import { LoadFailed } from "./load-failed.tsx";
 import { UsedByField } from "./used-by-field.tsx";
 
