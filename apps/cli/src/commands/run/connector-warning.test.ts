@@ -264,9 +264,7 @@ verifies("cli.run-plugin-connector-warning", () => {
     expect(
       warningFor(listingFailed(4, { why: "plugin-changed", name: "acme-orders" }), changed),
     ).toEqual(
-      warningFor(listingFailed(4, { why: "plugin-changed", name: "acme-orders" }), {
-        file: undefined,
-      }),
+      warningFor(listingFailed(4, { why: "plugin-changed", name: "acme-orders" }), noFiles),
     );
     expect(warningFor(listingFailed(4, { why: "other" }), changed)[0]).toBe(
       "! handbook couldn't list its tools, so they are off in this run.",
