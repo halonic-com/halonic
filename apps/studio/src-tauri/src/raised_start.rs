@@ -15,9 +15,10 @@
 const TITLE: &str = "Open Halonic without administrator rights";
 
 /// The message's text: what happened, and what to do.
-const MESSAGE: &str = "Halonic was opened with \"Run as administrator\", so it didn't start. \
-With those rights, the agents it starts could change anything on this computer.\n\n\
-Open Halonic again the usual way, from the Start menu or its shortcut.";
+const MESSAGE: &str = "Halonic was opened with administrator rights (for example with \"Run as administrator\"), so it didn't start. \
+With those rights, its agents could change anything on this computer.\n\n\
+Open Halonic again the usual way, from the Start menu or its shortcut. \
+If this keeps happening, check that the shortcut isn't set to \"Run as administrator\".";
 
 /// `true` when Studio was started raised: the message has then been shown,
 /// and the shell must quit without starting anything.
