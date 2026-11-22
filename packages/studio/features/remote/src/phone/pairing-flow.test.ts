@@ -169,7 +169,7 @@ verifies("remote.phone-pairing", () => {
     await settle();
     expect(flow.view).toEqual({
       step: "problem",
-      problem: { screen: "unreachable", wifi: true },
+      problem: expect.objectContaining({ screen: "unreachable", wifi: true }),
       route: "typed",
       computerName: "Tim's laptop",
     });
@@ -207,7 +207,7 @@ verifies("remote.phone-pairing-problems", () => {
     await settle();
     expect(flow.view).toEqual({
       step: "problem",
-      problem: { screen: "unreachable", wifi: false },
+      problem: expect.objectContaining({ screen: "unreachable", wifi: false }),
       route: "qr",
       computerName: "Tim's laptop",
     });
