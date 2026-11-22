@@ -63,6 +63,9 @@ export function memoryHost(
   const host = {
     hubs: () => hubs,
     list: async () => listings,
+    // As the Studio's host, which keeps the name of every routine it listed.
+    nameOf: (ref: RoutineRef) =>
+      listings.find((each) => each.hubId === ref.hubId && each.id === ref.id)?.name,
     trash: async (ref: RoutineRef) => {
       const removed = listings.find((each) => each.hubId === ref.hubId && each.id === ref.id);
       listings = listings.filter((each) => each !== removed);

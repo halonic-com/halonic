@@ -18,7 +18,12 @@ import {
 } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, NameField, RenameSheet } from "@halonicjs/studio-shell";
 import { type RefObject, useCallback, useRef, useState } from "react";
-import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
+import {
+  type RoutineRef,
+  type RoutinesHost,
+  RoutinesHostService,
+  type RoutineView,
+} from "../api.ts";
 import { RulesSection } from "../rules/rules-section.tsx";
 import { RunsView } from "../runs/runs-view.tsx";
 import { runsWords } from "../runs/runs-words.ts";
@@ -31,7 +36,7 @@ import { RunDialog, runDialogReason } from "./run-dialog.tsx";
 import { runRoutineNow } from "./run-now.ts";
 import { type RunNowGate, useRunNowGate } from "./run-now-gate.ts";
 import { TRIGGER_STEP } from "./trigger-step.ts";
-import { useRoutine } from "./use-routine.ts";
+import { type RoutineLoad, useRoutine } from "./use-routine.ts";
 import { useRoutineTrash } from "./use-routine-trash.tsx";
 import { useTriggerFocus } from "./use-trigger-focus.ts";
 
@@ -125,7 +130,7 @@ export function RoutineScreen({
   if (load.kind === "failed" && load.gone && goToRoutines !== undefined) {
     return <ItemGone kindName="routine" place="Routines" onGoTo={goToRoutines} />;
   }
-  const name = load.kind === "ready" ? load.routine.name : id;
+  const name = headerName(host, { hubId, id }, load);
   return (
     <div className="flex size-full min-h-0 flex-col">
       <RoutineHeader
@@ -203,6 +208,17 @@ export function RoutineScreen({
       )}
     </div>
   );
+}
+
+/**
+ * The name the header shows: the routine's once it is read. When a read fails, the name the host
+ * last read from the saved file, as the Routines row shows it, since often only the live version
+ * couldn't be read; the id while it loads, or when the host never read the file.
+ */
+function headerName(host: RoutinesHost, ref: RoutineRef, load: RoutineLoad): string {
+  if (load.kind === "ready") return load.routine.name;
+  if (load.kind === "failed") return host.nameOf(ref) ?? ref.id;
+  return ref.id;
 }
 
 /** The Schedule view: the summary and the not-live line, then the When card, the Starts card and the Rules. */
@@ -327,7 +343,7 @@ function RoutineHeader({
   gate,
 }: {
   readonly host: RoutinesHost;
-  /** The routine, once it is read; before that the header shows the id and has no menu. */
+  /** The routine, once it is read; before that the header has no menu. */
   readonly routine: RoutineView | undefined;
   readonly name: string;
   readonly title: RefObject<HTMLHeadingElement | null>;

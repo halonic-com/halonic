@@ -15,6 +15,8 @@ The `routine` item shall open in its own tab with a page that shows the routine'
 - Given the window is a phone, then the heading is for screen readers only and the header stacks.
 - Given the read takes over 300 ms, then screen readers hear "Loading daily"; after 10 s the page adds "Still loading" and **Try again**.
 - Given the read fails, then the page shows "Couldn't load this routine", the reason and **Try again**, which reads again and gives the heading the focus.
+- Given the saved file "Weekly report" was read but its live version can't be, then the heading still says "Weekly report", as its row in Routines does, with the reason and **Try again**.
+- Given the read fails with an error that has no reason of its own, then the reason is "Halonic ran into a problem it can't explain yet."; only an engine that can't be reached gets "The engine isn't answering. It may still be starting." (microcopy 22 F13).
 - Given the routine isn't in the workspace, then the page says it isn't there any more with **Go to Routines**.
 - Given the host says the routine changed, then the page reads it again without showing a skeleton.
 - Given Ctrl K is searched for "daily", then the routine is offered with its hub and its summary, and choosing it opens its tab.
