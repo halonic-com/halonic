@@ -161,6 +161,32 @@ open, so it would need `issue.relations.write` to clear it first; and
 monitor rule changes only once the board has installed the plugin and
 turned dry run off.
 
+## The AI seats plugin
+
+`src/seats/` is the `seats` plugin (HAL-16008): it reads each AI seat's
+usage limits, keeps the history the seat forecast needs and proposes moves.
+It is its own plugin, `halonic.seats`, so the board installs, stops and
+trusts it apart from Agent tools. So far it has its settings and its
+tables; the board-only routes, reading the seats and the page come next.
+
+- **Settings** (board-only, empty by default): the seats in reading order,
+  each with an id, a role (`pool`, `reserve` or `paid-api`), its Claude
+  folder on the server, the account it should be signed in with and its
+  manual reset group. The folder and account are sign-in details: nothing
+  the plugin logs, stores or shows carries them. **Move agents** is off:
+  the plugin then only proposes moves.
+- **Tables** in the schema Paperclip gives the plugin
+  (`plugin_seats_2a33967373`): `seat`, `reading`, `placement`, `event`,
+  `agent_usage` and `agent_activity`, as `src/seats/records.ts` describes
+  them. Paperclip runs `src/seats/plugin/migrations/` before the worker
+  starts and refuses `DROP` and `DELETE` there, so a change adds a file.
+
+Build it with `pnpm --filter @halonicjs/tooling-paperclip run
+build:seats-plugin`. That writes `dist/seats/`: the bundles, the migrations
+and the folder's own `package.json`, which the board installs from
+(Settings → Plugins). It isn't installed, and no seat's sign-in moves into
+it, until HAL-16015 is done.
+
 ## Reviewer path list
 
 `reviewerFor({ files, changedLines, sensitive })` answers `julian` or `liam`

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run",
-    "build:plugin": "esbuild src/plugin/worker.ts src/plugin/manifest.ts --bundle --platform=node --format=esm --target=node24 --outdir=dist"
+    "build:plugin": "esbuild src/plugin/worker.ts src/plugin/manifest.ts --bundle --platform=node --format=esm --target=node24 --outdir=dist",
+    "build:seats-plugin": "node src/seats/plugin/build.ts"
   },
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
