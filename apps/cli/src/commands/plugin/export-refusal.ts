@@ -5,7 +5,7 @@
 
 import { GitHardeningIgnoredError } from "@halonicjs/adapter-git";
 import { KindedError } from "@halonicjs/std";
-import { OwnLineError } from "../../command.ts";
+import { DetailedError } from "../../command.ts";
 import type { Message } from "../../messages/define.ts";
 import { type Phrase, phrase, plainText } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
@@ -30,7 +30,7 @@ export function refusal(
  * A message of more than one line, such as git's "Host key verification
  * failed." and "fatal: Could not read from remote repository.", shows its
  * first line on line 1 and the others under it in the terminal. `--json`
- * keeps line 1 and gets every line in `gitSaid`.
+ * keeps the first line as `message` and gets every line in `gitSaid`.
  */
 export function exportRefusal(error: unknown): KindedError {
   if (error instanceof GitHardeningIgnoredError) {
@@ -47,7 +47,7 @@ export function exportRefusal(error: unknown): KindedError {
   const [first = "", ...rest] = linesOf(reason);
   if (rest.length === 0) return refusal(phrase`${printable(first)}`);
   const fix = pluginMessages.refusedSourceFix();
-  return new OwnLineError(
+  return new DetailedError(
     "invalid_input",
     pluginMessages.gitFailed(printable(first)),
     fix,

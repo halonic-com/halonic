@@ -322,7 +322,7 @@ export class UsageError extends Error {
 }
 
 /**
- * Lines an {@link OwnLineError} shows only in the terminal, under line 1,
+ * Lines a {@link DetailedError} shows only in the terminal, under line 1,
  * and the fix that goes with them, in place of the error's own. `--json`
  * keeps line 1 and the error's own fix, so a script, or a log made from it,
  * never holds these lines (Sofia and Liam, HAL-15620).
@@ -334,11 +334,12 @@ export interface TerminalDetails {
 }
 
 /**
- * An error whose message is a whole line 1, never put after the command's
- * "Couldn't *action*:", such as "There's no workflow called "suport-reply"
- * in acme." (cli-output 3.4). Its message and fix come from the catalogue.
+ * An error put after the command's "Couldn't *action*:" like any other, that
+ * also has fields `--json` adds or lines only the terminal shows, such as
+ * each further line of git's message (HAL-16503). Its message and fix come
+ * from the catalogue.
  */
-export class OwnLineError extends KindedError {
+export class DetailedError extends KindedError {
   /** Fields `--json` adds to the error, for what a script needs to know besides the reason. */
   readonly jsonFields: Readonly<Record<string, unknown>>;
   /** What only the terminal shows, when there is anything. */
@@ -346,13 +347,20 @@ export class OwnLineError extends KindedError {
 
   constructor(
     kind: ErrorKind,
-    line: Message,
+    reason: Message,
     fix?: Message,
     jsonFields: Readonly<Record<string, unknown>> = {},
     terminalDetails?: TerminalDetails,
   ) {
-    super(kind, plainText(line.phrase), fix === undefined ? {} : { fix: plainText(fix.phrase) });
+    super(kind, plainText(reason.phrase), fix === undefined ? {} : { fix: plainText(fix.phrase) });
     this.jsonFields = jsonFields;
     this.terminalDetails = terminalDetails;
   }
 }
+
+/**
+ * An error whose message is a whole line 1, never put after the command's
+ * "Couldn't *action*:", such as "There's no workflow called "suport-reply"
+ * in acme." (cli-output 3.4).
+ */
+export class OwnLineError extends DetailedError {}

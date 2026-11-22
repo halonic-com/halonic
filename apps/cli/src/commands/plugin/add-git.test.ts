@@ -255,6 +255,7 @@ verifies("cli.commands.plugin.add-git", () => {
       const document = JSON.parse(io.stdout.join("\n"));
       expect(document.error).toMatchObject({
         kind: "invalid_input",
+        message: "Couldn't reach the repository: Host key verification failed.",
         fix: "Check the folder or git address.",
         gitSaid: [
           "Couldn't reach the repository: Host key verification failed.",
