@@ -136,16 +136,15 @@ export const trustMessages = defineMessages("trust", {
   withoutAsking: () => phrase`Without asking`,
   /**
    * What an agent with `asks: in-sandbox` will do without asking, under
-   * {@link withoutAsking}. Said as what will happen: nothing answers its
-   * calls in this version yet (HAL-15117), and the trust check never states
-   * behaviour that doesn't exist.
+   * {@link withoutAsking}. A fenced CLI run answers those calls (HAL-14992),
+   * so the row no longer says this version still asks first (HAL-15661).
    */
   inSandboxCalls: () =>
-    phrase`will edit and run commands in its working folder, inside the sandbox; this version of Halonic still asks first`,
+    phrase`will edit and run commands in its working folder, inside the sandbox`,
   /** A changed agent's `asks`: it turned `in-sandbox` on, or off again. */
   asksChanged: (inSandbox: boolean) =>
     inSandbox
-      ? phrase`will edit and run commands in its working folder without asking, inside the sandbox; this version of Halonic still asks first`
+      ? phrase`will edit and run commands in its working folder without asking, inside the sandbox`
       : phrase`asks again before it edits or runs a command`,
   /** After a wildcard site, `*.example.com`. */
   everySiteUnder: (domain: string) => phrase`every site under ${domain}`,
