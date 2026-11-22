@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-`halonic run` and `halonic runs show` name the model alias of the agent step a step calls, the one the run used, instead of the agent's own.
+`halonic run` and `halonic runs show` now name the model alias a step really ran on: the one its agent step sets, instead of the agent's own.
