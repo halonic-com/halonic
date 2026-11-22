@@ -1,6 +1,4 @@
-use super::{
-    named_filter, open_without_waiting, passes_content, read_attribute_file, target_revisions,
-};
+use super::{named_filter, passes_content, read_attribute_file, target_revisions};
 use crate::check_args::{CheckedCall, check_args};
 use crate::error::GitError;
 
@@ -151,7 +149,7 @@ fn filter_writes_opens_an_attribute_file_without_waiting_for_a_fifo() {
     let (sender, receiver) = std::sync::mpsc::channel();
     let opening = fifo.clone();
     std::thread::spawn(move || {
-        let opened = open_without_waiting(&opening)
+        let opened = super::open_without_waiting(&opening)
             .map(|file| file.metadata().is_ok_and(|metadata| metadata.is_file()));
         let _ = sender.send(opened.ok());
     });
