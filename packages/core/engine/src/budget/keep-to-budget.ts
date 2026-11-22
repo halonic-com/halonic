@@ -1,13 +1,17 @@
-// Where the kernel stops a run for its budget: in `step`, before it stores a
-// decision that asks for a paid call. The stop is a `run.failed` with the
-// reason `budget` that the kernel writes itself, never an error that
-// `runFailureReasonOf` would have to recognise (HAL-1728).
+// Where the kernel stops a run for its budget or its customer's plan: in
+// `step`, before it stores a decision that asks for a paid call. The stop is
+// a `run.failed` with the reason `budget` that the kernel writes itself, never
+// an error that `runFailureReasonOf` would have to recognise (HAL-1728).
+// Limits are checked from inner to outer: the run budget, then the meter
+// (requirement `engine.meter-checks`), then the monthly budget.
 
 import type { RunEvent } from "@halonicjs/events";
 import { tellParent } from "../kernel/decide.ts";
 import type { DecidedEvent, Decision, Effect } from "../kernel/decide-types.ts";
 import { foldRun, type RunState } from "../kernel/run-state.ts";
 import { foldableEvent } from "../kernel/saved-artifacts.ts";
+import type { MeterCheckKind } from "../meter/meter.ts";
+import type { StepMeter } from "../meter/run-meter.ts";
 import { type Budget, type BudgetStop, budgetStopOf, type Spend } from "./budget.ts";
 
 /** What `step` reads to keep a run to its budget. */
@@ -28,31 +32,65 @@ export interface BudgetCheck {
 /** The effects that start a call someone pays for: a model call, or a run of a harness. */
 const paidCalls: ReadonlySet<Effect["type"]> = new Set(["call-model", "run-harness"]);
 
+/** What `step` keeps a run to; without either, nothing stops it. */
+export interface RunLimits {
+  readonly budget?: BudgetCheck;
+  readonly meter?: StepMeter;
+}
+
 /**
- * The decision, or, when it asks for a paid call and a budget is reached,
+ * The decision, or, when it asks for a paid call and a limit is reached,
  * its events followed by the run's `run.failed` with the reason `budget`.
  * The stopped run asks for no call and tells its parent, if it has one.
  *
  * @param run - the run before the decision, `null` for a run that starts
  * @param at - the input's time, which the decided events will carry
+ * @throws when the meter can't be asked; nothing is stored and no call is made
  */
-export async function keepToBudget(
-  check: BudgetCheck,
+export async function keepToLimits(
+  limits: RunLimits,
   runId: string,
   run: RunState | null,
   decision: Decision,
   at: string,
 ): Promise<Decision> {
-  if (!decision.effects.some((effect) => paidCalls.has(effect.type))) {
-    return decision;
-  }
-  const budget = await check.budget();
-  if (budget === undefined) {
+  const kind = paidCallKindOf(decision);
+  if (kind === null || (limits.budget === undefined && limits.meter === undefined)) {
     return decision;
   }
   const after = foldDecided(runId, run, decision.events, at);
-  const stop = budgetStopOf(budget, await check.spend(after, at));
+  const stop = await firstStop(limits, after, kind, at);
   return stop === null ? decision : stoppedByBudget(decision, after, stop);
+}
+
+/** The first limit reached, from inner to outer: the run budget, the meter, the monthly budget. */
+async function firstStop(
+  limits: RunLimits,
+  after: RunState,
+  kind: MeterCheckKind,
+  at: string,
+): Promise<BudgetStop | null> {
+  const budgetStop = await budgetStopFor(limits.budget, after, at);
+  if (budgetStop?.cause.code === "budget.run") return budgetStop;
+  const planStop = (await limits.meter?.stopOf(after, kind)) ?? null;
+  return planStop ?? budgetStop;
+}
+
+async function budgetStopFor(
+  check: BudgetCheck | undefined,
+  after: RunState,
+  at: string,
+): Promise<BudgetStop | null> {
+  const budget = await check?.budget();
+  if (check === undefined || budget === undefined) return null;
+  return budgetStopOf(budget, await check.spend(after, at));
+}
+
+/** What the decision's paid calls are to the meter: a harness run when one is among them. */
+function paidCallKindOf(decision: Decision): MeterCheckKind | null {
+  const types = decision.effects.map((effect) => effect.type).filter((type) => paidCalls.has(type));
+  if (types.length === 0) return null;
+  return types.includes("run-harness") ? "harness-run" : "model-call";
 }
 
 /** The decision's events and the stop after them, with no effect but telling the parent. */
