@@ -6,11 +6,11 @@ import type {
 } from "@halonicjs/adapter-remote-gateway";
 
 /**
- * The gateway's host key and phones until the pairing service and the phone
- * store exist (tunnel B2): no pairing is ever open and no phone is paired, so
- * every phone is refused, and the host key is a fresh one for this launch,
- * kept in memory only. The gateway is off in every launch the executable
- * makes until then (requirement `agent-host.remote-gateway`).
+ * A gateway's host key and phones with no pairing desk and no phone store:
+ * no pairing is ever open and no phone is paired, so every phone is refused,
+ * and the host key is a fresh one, kept in memory only. Tests start a
+ * gateway on it; the host itself always starts its gateway on its desk and
+ * store (requirement `agent-host.remote-gateway-access`).
  */
 export class NobodyPaired implements GatewayPhones, GatewayPairing {
   readonly #hostKey = new Uint8Array(randomBytes(32));

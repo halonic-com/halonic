@@ -12,17 +12,16 @@ import {
   setupAfterHelper,
   WSL_SHARED_FOLDERS,
 } from "@halonicjs/adapter-sandbox-srt";
+import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
 import type { SandboxChoiceService } from "@halonicjs/app";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
-import type { Harness } from "@halonicjs/ports";
-import type { ProfileFolder } from "@halonicjs/profile";
+import type { Harness, SecretStore } from "@halonicjs/ports";
+import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeProviderFetches } from "./bridge/provider-fetches.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
-import { type GatewaySettings, gatewayFor, gatewayOff } from "./gateway/gateway-settings.ts";
-import { RemoteGateway } from "./gateway/remote-gateway.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { harnessFolders } from "./harness/harness-folders.ts";
@@ -34,9 +33,13 @@ import { modelRoutes } from "./model/model-routes.ts";
 import { hostPluginRoutes, hostPlugins } from "./plugin/host-plugins.ts";
 import { optionalProfileOf, profileGoogleSetup, profileTrustStore } from "./profile-folder.ts";
 import { proxySetting } from "./proxy-setting.ts";
-import { RemoteNotOffered } from "./remote/remote-not-offered.ts";
+import {
+  openHostRemote,
+  type RemoteOffer,
+  remoteHomeFor,
+  type ServedRemoteHome,
+} from "./remote/host-remote.ts";
 import { remoteRoutes } from "./remote/remote-routes.ts";
-import { systemTime } from "./remote/remote-time.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
 import { removeThroughShellRoutes } from "./sandbox/remove-through-shell-routes.ts";
@@ -46,7 +49,7 @@ import { SessionTable } from "./sandbox/session-table.ts";
 import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
 import { sweepRoots, takeHostLock } from "./sandbox/sweep-lock.ts";
 import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
-import { hostKeychainOf } from "./secrets/host-keychain.ts";
+import { type HostKeychain, hostKeychainOf } from "./secrets/host-keychain.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostServices, relayPortOf, serveHost } from "./serving-modes.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
@@ -118,7 +121,7 @@ export type FramedHandshake = Pick<Handshake, "token">;
  * crashed host left in the profile (see {@link sweepLeftOverBridges}).
  *
  * @param makeSandbox - makes the sandbox on this machine with the sweep roots it may sweep and the shared folders its sessions deny; tests make one on a fake machine
- * @param gateway - whether the remote gateway listens; only tests turn it on, because it takes no pairing yet (requirement `agent-host.remote-gateway`). The executable's `main.ts` never passes it.
+ * @param remote - the tunnel provider that lets the host offer remote, and run the remote gateway while remote is on (requirement `agent-host.remote-gateway`). The executable's `main.ts` passes none until phase C brings the real providers, so it offers no remote.
  * @returns the exit code
  */
 export async function run(
@@ -135,7 +138,7 @@ export async function run(
       sharedFolders,
       ...inProfile,
     }),
-  gateway: GatewaySettings = gatewayOff,
+  remote?: RemoteOffer,
 ): Promise<number> {
   if (args.includes("--version")) {
     io.write(`halonic-agent-host ${version}\n`);
@@ -172,7 +175,9 @@ export async function run(
   const places = connectorPlaces(given.roots, profileFolder);
   const profile = optionalProfileOf(profileFolder);
   const keychain = hostKeychainOf(args, profile, (text) => io.writeError(text));
-  const host = hostServices(
+  const serving = { overStdio: args.includes("--stdio"), profile, holdsLock: lock !== null };
+  const home = remoteHomeFor(remote, serving, (text) => io.writeError(text));
+  const host = await hostServices(
     version,
     sandbox,
     socketFolder,
@@ -187,7 +192,13 @@ export async function run(
           profileFolder,
         ),
     wslRemoverOf(profileFolder, sharedFolders),
-    gatewayFor(gateway, args.includes("--stdio"), (text) => io.writeError(text)),
+    home === undefined
+      ? undefined
+      : {
+          ...home,
+          secrets: hostSecretsOf(keychain, home.profile),
+          log: (text) => io.writeError(text),
+        },
   );
   // Waits for the frame stream to run; a move that fails has said why, and is tried again on use.
   keychain?.secrets.moveOutOfFile().catch(() => undefined);
@@ -247,9 +258,9 @@ function argumentAfter(args: readonly string[], name: string): string | undefine
  * @param relayPort - the relay's port in `--stdio` mode, which the redirect of a Google or an integration's sign-in names; `undefined` when the host listens on its own port
  * @param choice - the choice service of this host's backend, `undefined` without a profile folder (no choice route is served)
  * @param wslRemover - removes Halonic's WSL distro, `undefined` without a profile folder (no `remove-wsl` route is served)
- * @param gateway - whether and where the remote gateway listens (requirement `agent-host.remote-gateway`)
+ * @param remote - where the host offers remote, with the store of its host key; `undefined` when it offers none
  */
-function hostServices(
+async function hostServices(
   version: string,
   sandbox: SrtSandbox,
   socketFolder: string | undefined,
@@ -259,8 +270,8 @@ function hostServices(
   relayPort: number | undefined,
   choice: SandboxChoiceService | undefined,
   wslRemover: WslRemover | undefined,
-  gateway: GatewaySettings,
-): HostServices {
+  remote: ServedRemoteHome | undefined,
+): Promise<HostServices> {
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
   const bridges = new BridgeTable();
@@ -268,9 +279,13 @@ function hostServices(
   const ownPorts = () => [...listeningPorts, ...bridges.ports()];
   const providerFetches = bridgeProviderFetches(ownPorts, proxySetting);
   // Runs are recorded only when the gateway can show them to someone.
-  const ledger = gateway.enabled ? new RunLedger() : undefined;
+  const ledger = remote === undefined ? undefined : new RunLedger();
   const runs = new RunTable(ledger);
-  const remoteGateway = new RemoteGateway(gateway, ledger, runs);
+  const hostRemote = await openHostRemote(
+    remote === undefined || ledger === undefined
+      ? undefined
+      : { ...remote, ledger, runs, ownPorts: listeningPorts },
+  );
   const harnesses = hostHarnesses(version);
   const connectorDeps = hostConnectorRoutes(
     { sandbox, version, deniedPaths: connectors.deniedPaths, env: process.env },
@@ -356,12 +371,11 @@ function hostServices(
     ...hostPluginRoutes(plugins, logToError),
     ...signIns.routes,
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
-    // Remote isn't offered until the gateway takes pairings (B3) and passes its attacks (B8).
-    ...remoteRoutes(new RemoteNotOffered(systemTime)),
+    ...remoteRoutes(hostRemote.control),
   ];
   const stop = async () => {
     // Close the gateway first, so nothing remote reaches a run that is being stopped.
-    await remoteGateway.close();
+    await hostRemote.close();
     // Stop the runs, then their sandboxed programs, so none outlives the host;
     // their bridges then have no caller.
     await runs.cancelAll();
@@ -373,11 +387,12 @@ function hostServices(
     // No program runs any more, so what the runs left can go.
     await folders.stop();
   };
-  const startGateway = async (log: (text: string) => void) => {
-    const port = await remoteGateway.start(log);
-    if (port !== undefined) listeningPorts.add(port);
-  };
-  return { routes, stop, startGateway, listeningOn: (port) => listeningPorts.add(port) };
+  return { routes, stop, listeningOn: (port) => listeningPorts.add(port) };
+}
+
+/** Where the host's own secrets are kept: the keychain when Studio answers for them, the profile's secrets file otherwise. */
+function hostSecretsOf(keychain: HostKeychain | undefined, profile: ProfileFolder): SecretStore {
+  return keychain?.secrets ?? new FileSecretStore(secretsFile(profile));
 }
 
 function logToError(text: string): void {
