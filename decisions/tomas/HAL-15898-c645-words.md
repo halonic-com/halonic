@@ -2,7 +2,6 @@
 
 - Approval: the task HAL-15898 asks for this change, from words check C645 (HAL-15886). The team decides it under the HAL-2282 rule, since it rewords messages that are already there. Liam signs this note in review.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xUO2TCKPvFrlhx7Uj4LKhxGRjvHl0UnZe43vz+Du5/XWYB41Stuhv79EdioJ3FovtutAKyUF0tEcOGpAtO0nCw==
 
 ## What changes
 
