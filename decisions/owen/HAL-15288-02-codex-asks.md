@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-15288 (plan approved by Liam, 21 Nov: the default change with `untrusted`, failing closed on `not-fenced` and `stopped`, `HarnessTask.asks`)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:alC13R7gHTuf/O91y1X8CWG5Fw8K1J0zpxxQe2EcmN/o3zYu/CIAsY94Hjb9g96tEGjpq3ecTyCmdQZlHssSAg==
 
 A fenced Codex run had `danger-full-access` and no approval policy, so it never asked, whatever the agent's file said. The format refused `asks` on Codex for that reason. Codex now follows `asks`, as Claude Code does:
 
