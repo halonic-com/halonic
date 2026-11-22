@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-4844, HAL-187 item 7; the list `halonic routines` shows; files that don't load, HAL-12607; each routine's errors and its schedule's time zone, HAL-14299
+- Source: HAL-4844, HAL-187 item 7; the list `halonic routines` shows; files that don't load, HAL-12607; each routine's errors and its schedule's time zone, HAL-14299; whether it starts an agent, HAL-15607 (C600 #2)
 
-The routine list shall return every routine file of a workspace, in the order of the files' paths, each with its key, hub, id, name and whether it is on, its trigger in the words of `describeTrigger`, the time it next runs on its own after the time given, and the newest real run it started. A schedule without a time zone shall be read in the zone given. A routine that is off, or whose trigger isn't a clock, shall have no next run. A routine whose schedule doesn't parse shall have no next run and still be listed, without failing the list. A routine file that doesn't load shall still be listed, never hidden: under the routine id its file's name gives, as its name too, off, with no next run, and with `Invalid file, line <line>: <its first error>` in place of the trigger. Each routine shall give how many errors its file has, as the workspace's checks find them, and the time zone its schedule names, if any. Test runs shall never count as a routine's last run.
+The routine list shall return every routine file of a workspace, in the order of the files' paths, each with its key, hub, id, name and whether it is on, its trigger in the words of `describeTrigger`, the time it next runs on its own after the time given, and the newest real run it started. A schedule without a time zone shall be read in the zone given. A routine that is off, or whose trigger isn't a clock, shall have no next run. A routine whose schedule doesn't parse shall have no next run and still be listed, without failing the list. A routine file that doesn't load shall still be listed, never hidden: under the routine id its file's name gives, as its name too, off, with no next run, and with `Invalid file, line <line>: <its first error>` in place of the trigger. Each routine shall give how many errors its file has, as the workspace's checks find them, and the time zone its schedule names, if any, and whether it starts an agent on its own rather than a workflow (false for a file that doesn't load). Test runs shall never count as a routine's last run.
 
 ## Examples
 
@@ -29,3 +29,6 @@ The routine list shall return every routine file of a workspace, in the order of
 - Given a routine file whose trigger is `every: 0m`, and a routine with the schedule `0 9 * * 1` and `timezone: America/New_York` that runs a workflow its hub doesn't have,
   when the routines are listed,
   then each has one error, the first has no time zone and the second's is `America/New_York`.
+- Given a routine that runs `{ agent: reporter, prompt: Write the digest. }` and one that runs `{ workflow: report }`,
+  when the routines are listed,
+  then the first starts an agent and the second doesn't.

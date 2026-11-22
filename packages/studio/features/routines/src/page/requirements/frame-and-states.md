@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1306 (T12 PR 5); flow-routines 3.1, 3.2 and 3.10; microcopy 12.3; states RT
+- Source: HAL-1306 (T12 PR 5); the reason for a failed read, HAL-15607 (C600 #3, F13); flow-routines 3.1, 3.2 and 3.10; microcopy 12.3; states RT
 
-The `routine` item shall open in its own tab with a page that shows the routine's letter avatar, "ROUTINE" and its name, then the routine as one line (muted, with "Off · " in front, when it is off), then the quiet line "Changes not live yet" while saved changes aren't in a version, or, for a routine that is on but has never been live, the notice "This routine isn't live yet, so it doesn't run." and nothing else; and shall show a skeleton after 300 ms, why the routine couldn't be read with **Try again**, and the item-gone state with **Go to Routines** for a routine that isn't in the workspace.
+The `routine` item shall open in its own tab with a page that shows the routine's letter avatar, "ROUTINE" and its name, then the routine as one line (muted, with "Off · " in front, when it is off), then the quiet line "Changes not live yet" while saved changes aren't in a version, or, for a routine that is on but has never been live, the notice "This routine isn't live yet, so it doesn't run." and nothing else; and shall show a skeleton after 300 ms, why the routine couldn't be read with **Try again** (that the engine isn't answering only when it can't be reached), and the item-gone state with **Go to Routines** for a routine that isn't in the workspace.
 
 ## Examples
 

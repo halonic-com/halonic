@@ -1,4 +1,9 @@
-import type { RoutineListing, RoutineTarget, RoutineView } from "./api.ts";
+import {
+  agentCantRunWords,
+  type RoutineListing,
+  type RoutineTarget,
+  type RoutineView,
+} from "./api.ts";
 
 /**
  * The words for a routine that can't start (HAL-15082). Its row, its Starts card and Run now's toast
@@ -21,12 +26,14 @@ export type StartFacts = Pick<
 
 /**
  * Why the routine can't start, or `undefined` when it can. A missing workflow or agent comes first,
- * because picking another one is the fix; otherwise the first error the workspace's checks found in
- * its file, as `halonic validate` gives it, since `halonic routines` counts any of them as can't
- * start.
+ * because picking another one is the fix; then an agent on its own, which Halonic can't run yet,
+ * in the words its Starts card gives (HAL-15607); otherwise the first error the workspace's checks
+ * found in its file, as `halonic validate` gives it, since `halonic routines` counts any of them as
+ * can't start.
  */
 export function cantStartReason(facts: StartFacts): string | undefined {
   if (!facts.targetFound) return cantStartWords.targetMissing(facts.targetName, facts.targetKind);
+  if (facts.targetKind === "agent") return agentCantRunWords.line;
   return facts.problems[0];
 }
 

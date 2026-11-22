@@ -175,6 +175,8 @@ function TargetState({
   readonly shownByField: string | undefined;
 }) {
   const cantStart = cantStartReason(pageStartFacts(routine));
+  // An agent's can't-run sentence is already the picker's hint, so it isn't said twice (HAL-15607).
+  if (cantStart === agentCantRunWords.line) return null;
   if (cantStart !== undefined && cantStart !== shownByField) {
     return <p className="text-small text-danger">{cantStart}</p>;
   }
