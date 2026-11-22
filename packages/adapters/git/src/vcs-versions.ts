@@ -23,6 +23,7 @@ export async function snapshotCommit(
   try {
     // Without an index yet, git starts the copy empty.
     await copyFile(join(repository.gitDir, "index"), indexFile).catch(ignoreMissing);
+    repository.changed();
     const onCopy = (args: readonly string[]): Promise<Buffer> =>
       repository.output({ args, indexFile });
     await onCopy(["add", "--all", "--", "."]);

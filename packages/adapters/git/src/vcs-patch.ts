@@ -37,6 +37,7 @@ export async function applyToWorkingTree(
   // In git's own folder, never in the working tree; the name is new each time.
   const patchFile = join(repository.gitDir, `halonic-patch-${randomUUID()}.diff`);
   await writeFile(patchFile, patch, "utf8");
+  repository.changed();
   try {
     const read = await repository.run({
       args: ["apply", "--numstat", "-z", "--", patchFile],

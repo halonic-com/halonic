@@ -95,8 +95,8 @@ export class GitVcs implements Vcs {
 
   async diff(path: string, staged: boolean): Promise<string> {
     await checkVcsPaths(await realpath(this.#folder), [path]);
-    // A read: checked once, where a `Repository` checks on opening and again before the call.
-    const repository = await this.#reader();
+    // A read, checked once; a staged diff never looks at the files.
+    const repository = await this.#reader(!staged);
     const which = staged ? ["--cached"] : [];
     // `Repository.run` adds `--no-ext-diff --no-textconv`.
     const args = ["diff", "--no-color", ...which, "--", path];
@@ -158,13 +158,13 @@ export class GitVcs implements Vcs {
     if (!Number.isInteger(limit) || limit < 1) {
       throw new RangeError(`The log limit must be a whole number of at least 1, not ${limit}.`);
     }
-    const repository = await this.#reader();
+    const repository = await this.#reader(false);
     if (!(await hasCommit(repository))) return [];
     return parseLog(await repository.output({ args: logArgs(limit) }));
   }
 
   async branches(): Promise<string[]> {
-    const repository = await this.#reader();
+    const repository = await this.#reader(false);
     const args = ["for-each-ref", "--format=%(refname:strip=2)", "refs/heads/"];
     return outputLines(await repository.output({ args }));
   }
@@ -186,15 +186,17 @@ export class GitVcs implements Vcs {
   }
 
   async snapshot(): Promise<string> {
-    return snapshotCommit(await this.#repository(), this.#authorConfig());
+    // It copies `.git/index` before its first git command.
+    const repository = await this.#repository({ checkAtOpen: true });
+    return snapshotCommit(repository, this.#authorConfig());
   }
 
   async readAt(version: string, path: string): Promise<string | null> {
-    return readAtCommit(() => this.#reader(), version, path);
+    return readAtCommit(() => this.#reader(false), version, path);
   }
 
   async listAt(version: string, dir?: string): Promise<string[] | null> {
-    return listAtCommit(() => this.#reader(), version, dir);
+    return listAtCommit(() => this.#reader(false), version, dir);
   }
 
   async rename(from: string, to: string): Promise<void> {
@@ -206,6 +208,7 @@ export class GitVcs implements Vcs {
     if (!(await exists(source))) throw new Error(`Can't rename: there is no ${from}.`);
     if (await exists(target)) throw new Error(`Can't rename ${from}: ${to} already exists.`);
     await mkdir(dirname(target), { recursive: true });
+    repository.changed();
     const tracked = await repository.output({ args: ["ls-files", "-z", "--", from] });
     // `git mv` moves the index entries with the files, so the history follows them.
     if (tracked.length > 0) await repository.output({ args: ["mv", "--", from, to] });
@@ -216,12 +219,13 @@ export class GitVcs implements Vcs {
     return this.#worktrees.add(await this.#repository(), version);
   }
 
+  // Both read git's record of the worktrees, and run no git.
   async removeWorktree(id: string): Promise<void> {
-    await this.#worktrees.remove(await this.#repository(), id);
+    await this.#worktrees.remove(await this.#repository({ checkAtOpen: true }), id);
   }
 
   async listWorktrees(): Promise<VcsWorktree[]> {
-    return this.#worktrees.list(await this.#repository());
+    return this.#worktrees.list(await this.#repository({ checkAtOpen: true }));
   }
 
   async diffBetween(version: string, worktreeId: string): Promise<VcsFileDiff[]> {
@@ -230,7 +234,9 @@ export class GitVcs implements Vcs {
 
   async applyPatch(patch: string, options?: VcsApplyOptions): Promise<void> {
     const folder = await realpath(this.#folder);
-    await applyToWorkingTree(folder, () => this.#repository(), patch, options?.reverse === true);
+    // It writes the patch into `.git` before its first git command.
+    const open = () => this.#repository({ checkAtOpen: true });
+    await applyToWorkingTree(folder, open, patch, options?.reverse === true);
   }
 
   async commitVersion(options: VcsCommitVersionOptions): Promise<string> {
@@ -286,10 +292,13 @@ export class GitVcs implements Vcs {
     await pushToUpstream(await this.#repository());
   }
 
-  /** The repository, after checking `paths` the way the port says. */
+  /**
+   * The repository, after checking `paths` the way the port says. Both
+   * callers look at the files before their first git command.
+   */
   async #checkedRepository(paths: readonly string[]): Promise<Repository> {
     await checkVcsPaths(await realpath(this.#folder), paths);
-    return this.#repository();
+    return this.#repository({ checkAtOpen: true });
   }
 
   /** Like {@link #checkedRepository}, and refuses a folder, which git would take as every file inside it. */
@@ -300,24 +309,34 @@ export class GitVcs implements Vcs {
     return this.#repository();
   }
 
-  /** The repository checked once for reads, or `null` when the folder is no repository. */
-  async #openReader(): Promise<RepositoryReader | null> {
-    return Repository.openReader(this.#runner, this.#folder);
+  /**
+   * The repository checked once for reads, or `null` when the folder is no
+   * repository. Without `readsFiles`, the reads can't look at the files.
+   */
+  async #openReader(readsFiles = true): Promise<RepositoryReader | null> {
+    return Repository.openReader(this.#runner, this.#folder, readsFiles);
   }
 
-  async #reader(): Promise<RepositoryReader> {
-    const reader = await this.#openReader();
-    if (reader === null)
-      throw new Error(`${this.#folder} isn't a git repository. Initialize it first.`);
+  async #reader(readsFiles: boolean): Promise<RepositoryReader> {
+    const reader = await this.#openReader(readsFiles);
+    if (reader === null) throw this.#notARepository();
     return reader;
   }
 
-  async #repository(): Promise<Repository> {
-    const repository = await Repository.open(this.#runner, this.#folder);
-    if (repository === null) {
-      throw new Error(`${this.#folder} isn't a git repository. Initialize it first.`);
-    }
-    return repository;
+  /**
+   * The repository for this port call (see {@link Repository.forCall}).
+   * `checkAtOpen` for a call that reads or writes a file in the repository
+   * before its first git command.
+   */
+  async #repository(options = { checkAtOpen: false }): Promise<Repository> {
+    return Repository.forCall(this.#runner, this.#folder, {
+      checkAtOpen: options.checkAtOpen,
+      notARepository: () => this.#notARepository(),
+    });
+  }
+
+  #notARepository(): Error {
+    return new Error(`${this.#folder} isn't a git repository. Initialize it first.`);
   }
 
   /** Refuses what git would read as something else, then asks git whether the rest is a branch name. */
