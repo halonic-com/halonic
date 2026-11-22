@@ -13,6 +13,7 @@ import { runAgentTurn } from "../agent/run-model-turn.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import type { TurnLog } from "../agent/turn-log.ts";
 import type { HalonicTool } from "../agent/turn-tools.ts";
+import { BudgetReachedError, BudgetStopError } from "../budget/call-budget.ts";
 import type { ModelCallResult } from "../kernel/decide-types.ts";
 import { branchOfCall } from "../kernel/run-branches.ts";
 import type { PendingCall } from "../kernel/run-state.ts";
@@ -137,11 +138,12 @@ export async function runModelCall(input: RunModelCall): Promise<ModelCallResult
       checkCall: runToolCheckOf(connectorTools),
       autoKnowledge: input.knowledge.auto,
       log: input.log,
+      ...(turn.budget === undefined ? {} : { budget: turn.budget }),
       ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
       localOnly: input.localOnly,
       ...(signal === undefined ? {} : { signal }),
     });
-  const outcome = await (input.abortOnStop?.(stop, agentTurn) ?? agentTurn());
+  const outcome = await stoppedByBudget(() => input.abortOnStop?.(stop, agentTurn) ?? agentTurn());
   // A call stopped while it ran gives nothing, even when it ran to its end.
   stop.throwIfStopped();
   if (outcome.kind === "stopped") return outcome.stop;
@@ -150,6 +152,23 @@ export async function runModelCall(input: RunModelCall): Promise<ModelCallResult
     throw turnLimitError(call.agent, maxRounds);
   }
   return { type: "model", output: outcome.result.content };
+}
+
+/**
+ * Runs the call's turn. A model call the run's budget refused
+ * (`BudgetStopError`) ends the call as a harness call's does, with
+ * `BudgetReachedError`, so the run fails with the reason `budget` and the
+ * stop's cause.
+ */
+async function stoppedByBudget<T>(turn: () => Promise<T>): Promise<T> {
+  try {
+    return await turn();
+  } catch (error) {
+    if (error instanceof BudgetStopError) {
+      throw new BudgetReachedError(error.message, error.stop.cause);
+    }
+    throw error;
+  }
 }
 
 /**

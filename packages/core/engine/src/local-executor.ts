@@ -18,6 +18,8 @@ import {
 import type { StopSignal } from "@halonicjs/std";
 import type { TurnLog } from "./agent/turn-log.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
+import { RunCallBudget } from "./budget/call-budget.ts";
+import type { BudgetCheck } from "./budget/keep-to-budget.ts";
 import { ChatHarnessTurns } from "./harness/chat-harness-turns.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn, definitionsOf } from "./kernel/kept-definitions.ts";
@@ -34,7 +36,7 @@ import {
 } from "./run/bridge-approvals.ts";
 import { effectBoundary, makeRunConnectorCall } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
-import { runsOptionsOf } from "./run/local-runs-options.ts";
+import { budgetCheckOf, runsOptionsOf } from "./run/local-runs-options.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
 import { RunsConnectors } from "./run/run-connectors.ts";
 import { runModelCall } from "./run/run-model-call.ts";
@@ -60,6 +62,8 @@ export class LocalExecutor implements RunExecutor {
   private readonly options: LocalExecutorOptions;
   private readonly maxRounds: number;
   private readonly runs: LocalRuns | undefined;
+  /** The budget each model call of a run's turn keeps to; none when the runs keep no budget. */
+  private readonly budget: BudgetCheck | undefined;
   /** The connectors runs call: their own with `runs.runConnectors`, else `connectors`. */
   private readonly runConnectors: RunsConnectors | undefined;
   private readonly chatHarnesses: ChatHarnessTurns | undefined;
@@ -78,6 +82,7 @@ export class LocalExecutor implements RunExecutor {
     this.maxRounds = maxRounds;
     const runs = runsOptionsOf(options.runs, options.localOnly === true);
     const connectorCalls = runs?.connectorCalls;
+    this.budget = runs === undefined ? undefined : budgetCheckOf(runs);
     this.runConnectors =
       runs === undefined
         ? undefined
@@ -345,6 +350,9 @@ export class LocalExecutor implements RunExecutor {
       definitions: await this.keptDefinitions(run),
       alongsideOthers: await callAlongsideOthers(this.options.runs?.store, run, call.callId),
       log: this.turnLogOf(run, call),
+      ...(this.budget === undefined
+        ? {}
+        : { budget: new RunCallBudget(this.budget, run, this.options.clock) }),
     };
     const connectorCalls = this.options.runs?.connectorCalls;
     const knowledge = this.runKnowledgeOf(turn, call.agent);

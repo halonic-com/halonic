@@ -19,6 +19,7 @@ import type {
   ToolCall,
   ToolDefinition,
 } from "@halonicjs/ports";
+import type { CallBudget } from "../budget/call-budget.ts";
 import { withKnowledgeFirst } from "../knowledge/knowledge-first.ts";
 import { callCost } from "./call-cost.ts";
 import type { CallChecker } from "./check-call-before-run.ts";
@@ -98,6 +99,14 @@ export interface ModelTurnInput {
    * until it ends.
    */
   readonly signal?: AbortSignal;
+  /**
+   * The run's budget, kept to before each model call of the turn after its
+   * first, which the run's step checked: a turn of many rounds can't spend
+   * past it between two steps of its run.
+   *
+   * @throws from `keep` when the budget is reached, which ends the turn
+   */
+  readonly budget?: CallBudget;
 }
 
 /**
@@ -205,6 +214,7 @@ async function turnLoop(
   const { history, turn } = start;
   let usage: Usage = { inputTokens: 0, outputTokens: 0 };
   for (let round = start.round; ; round++) {
+    await keepToBudget(input, round, start.round);
     const { response, answeredBy } = await askModel(input, models, tools, [...history, ...turn]);
     usage = addUsage(usage, response.usage);
     const ended = {
@@ -233,6 +243,17 @@ async function turnLoop(
       return answered({ ...ended, toolCalls: step.callerCalls, finishReason: "tool_calls" });
     }
   }
+}
+
+/**
+ * Keeps to the run's budget before the model call of `round`, unless it is
+ * the turn's first (`firstRound`), which the run's step kept to.
+ *
+ * @throws from `CallBudget.keep` when the budget is reached
+ */
+async function keepToBudget(input: ModelTurnInput, round: number, firstRound: number) {
+  if (round === firstRound || input.budget === undefined) return;
+  await input.budget.keep();
 }
 
 /** The messages of a new turn, with the passages of the `auto` knowledge sources. */
