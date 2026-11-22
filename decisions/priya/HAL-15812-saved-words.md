@@ -3,6 +3,7 @@
 - Task: HAL-15812, HAL-15816
 - Approval: flow check C631, P1 (https://paperclip.halonic.com/HAL/issues/HAL-15800), routed to the platform adapters' owner in https://paperclip.halonic.com/HAL/issues/HAL-15812; words check C633, point 1, in https://paperclip.halonic.com/HAL/issues/HAL-15816. A team decision on a command's wording, with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mK2WErZ0uQejuWWyLpM+uvUL2AsgZgGD9H/Qmc8QrBuq0OoTt2dE1G+f/gNA8BsIgeKnuGPbhagnG5L3LsBWAQ==
 
 ## What changes
 
