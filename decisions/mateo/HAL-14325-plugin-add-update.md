@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-14325 (Nina's words check C340, row C45, on HAL-14271; parked by Liam on HAL-14295 until after 0.1.0). The team decides it under the HAL-2282 rule: it gives the CLI the update Studio's approved plugin page already has a place for ("Update from folder"), in that page's terms.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/WfmnFDU+RtJI/Rzz6QOxwEyU0Nyfd8S3ieuwjwsUIlMyG+tX7gsHbjV+VYcQLIlCTgnWGhmwI//DYmcFGIZBQ==
 - Task: HAL-14325
 
 ## What changes
