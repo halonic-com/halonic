@@ -9,7 +9,6 @@
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
-import { GitHardeningIgnoredError } from "@halonicjs/adapter-git";
 import type {
   PluginAddRefusal,
   PluginEntry,
@@ -29,7 +28,6 @@ import { exitCode } from "../../exit-code.ts";
 import type { Message } from "../../messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
-import { runMessages } from "../../messages/run.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { offHereLines } from "../../output/plugin-off-here.ts";
 import { shownPluginSource } from "../../output/plugin-source.ts";
@@ -42,6 +40,7 @@ import {
 } from "../../plugin-host.ts";
 import { askToTrustPlugin, type PluginTrustAnswer } from "../../plugin-trust-question.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
+import { exportRefusal, refusal } from "./export-refusal.ts";
 import {
   checkGitSource,
   exportToTemporaryFolder,
@@ -268,26 +267,6 @@ async function exportGitSource(
   };
 }
 
-/**
- * A refused or failed export as the refusal `plugin add` ends with. A git
- * that drops Halonic's git settings isn't the address's fault, so it gets
- * run's fix instead of "Check the folder or git address.".
- */
-function exportRefusal(error: unknown): KindedError {
-  if (error instanceof GitHardeningIgnoredError) {
-    return new KindedError(
-      "unavailable",
-      plainOf(pluginMessages.gitNotItself(printable(error.git))),
-      {
-        fix: plainOf(runMessages.gitNotItselfFix()),
-        cause: error,
-      },
-    );
-  }
-  const reason = error instanceof Error ? error.message : String(error);
-  return refusal(phrase`${printable(reason)}`);
-}
-
 /** The last part of a git address without `.git`, such as `weather`, for the live line. */
 function repositoryName(address: string): string {
   const last = address.split(/[/:]/u).findLast((part) => part !== "") ?? address;
@@ -412,16 +391,6 @@ function firstProblem(problems: readonly PluginProblem[]): Phrase {
   const reason =
     problem.path.length === 0 ? problem.message : `${formatPath(problem.path)}: ${problem.message}`;
   return phrase`${printable(reason)}`;
-}
-
-/** "Couldn't add the plugin: <reason>", then the fix: "Check the folder or git address." unless another is given, none for `null`. */
-function refusal(
-  reason: Phrase,
-  fix: Message | null = pluginMessages.refusedSourceFix(),
-): KindedError {
-  return new KindedError("invalid_input", plainText(reason), {
-    ...(fix === null ? {} : { fix: plainOf(fix) }),
-  });
 }
 
 /** The two manifest names a plugin folder may have, as `readPluginFolder` reads them. */

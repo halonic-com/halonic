@@ -224,6 +224,48 @@ verifies("cli.commands.plugin.add-git", () => {
     );
   });
 
+  describe("when git can't reach the repository", () => {
+    const hostKeyFailed: GitExporter = () =>
+      Promise.reject(
+        new Error(
+          "Couldn't reach the repository: Host key verification failed.\r\n" +
+            "fatal: Could not read from remote repository.\n\n" +
+            "Please make sure you have the correct access rights\nand the repository exists.",
+        ),
+      );
+    const address = "ssh://git@github.com/acme/weather";
+
+    it("shows each of git's lines as a line, with no escape codes, and exits 2 (HAL-16503)", async () => {
+      const { code, io } = await plugin(["add", address], setupWith(hostKeyFailed));
+
+      expect(code).toBe(exitCode.usage);
+      expect(io.stderr).toEqual([
+        "✕ Couldn't add the plugin: Couldn't reach the repository: Host key verification failed.",
+        "  fatal: Could not read from remote repository.",
+        "  Please make sure you have the correct access rights",
+        "  and the repository exists.",
+        "  Check the folder or git address.",
+      ]);
+    });
+
+    it("gives every line of git's in --json", async () => {
+      const { code, io } = await plugin(["add", address, "--json"], setupWith(hostKeyFailed));
+
+      expect(code).toBe(exitCode.usage);
+      const document = JSON.parse(io.stdout.join("\n"));
+      expect(document.error).toMatchObject({
+        kind: "invalid_input",
+        fix: "Check the folder or git address.",
+        gitSaid: [
+          "Couldn't reach the repository: Host key verification failed.",
+          "fatal: Could not read from remote repository.",
+          "Please make sure you have the correct access rights",
+          "and the repository exists.",
+        ],
+      });
+    });
+  });
+
   it("names a git that drops Halonic's git settings, and says to put git itself first on the PATH", async () => {
     const wrapper: GitExporter = () =>
       Promise.reject(new GitHardeningIgnoredError("/opt/shims/git"));
