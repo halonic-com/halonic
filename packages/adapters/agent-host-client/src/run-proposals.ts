@@ -109,6 +109,18 @@ export class AgentHostRunProposals {
   }
 
   /**
+   * The proposals settled in the last 30 days, the one settled last first, for the Inbox's Done
+   * heading.
+   *
+   * @throws {@link AgentHostError} with the host's kind, or `answer_invalid` when a record isn't one
+   */
+  async done(): Promise<readonly ProposedRecord[]> {
+    const route = "POST /v1/proposals/done";
+    const answer = await this.#transport.request(route, { workspace: this.#workspace });
+    return readAnswer(route, answer, listAnswer).proposals.map(recordOf);
+  }
+
+  /**
    * Accepts one file of run `runId`'s proposal, or every undecided one: the host writes the run's
    * text and keeps the undo step, and answers its id.
    *

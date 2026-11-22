@@ -21,11 +21,33 @@ export function hostProposalsOf(
   location: string,
   trusted: () => boolean,
 ): () => Promise<readonly ProposedRecord[]> {
+  return hostRecordsOf(transport, location, trusted, (proposals) => proposals.list());
+}
+
+/**
+ * The workspace's run proposals settled in the last 30 days, for `WorkspaceRuns`'
+ * `doneProposals` and the Inbox's Done heading (`studio.workspace-done-proposals`), read the way
+ * {@link hostProposalsOf} reads the open ones.
+ */
+export function hostDoneProposalsOf(
+  transport: AgentHostTransport,
+  location: string,
+  trusted: () => boolean,
+): () => Promise<readonly ProposedRecord[]> {
+  return hostRecordsOf(transport, location, trusted, (proposals) => proposals.done());
+}
+
+function hostRecordsOf(
+  transport: AgentHostTransport,
+  location: string,
+  trusted: () => boolean,
+  read: (proposals: AgentHostRunProposals) => Promise<readonly ProposedRecord[]>,
+): () => Promise<readonly ProposedRecord[]> {
   const proposals = new AgentHostRunProposals(transport, location);
   return async () => {
     if (!trusted()) return [];
     try {
-      return await proposals.list();
+      return await read(proposals);
     } catch (error) {
       if (error instanceof AgentHostError && servesNone.has(error.kind)) return [];
       throw error;

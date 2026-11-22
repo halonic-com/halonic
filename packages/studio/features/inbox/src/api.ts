@@ -13,7 +13,7 @@ import type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-sou
 export { AnswerElsewhere } from "./answer-elsewhere.ts";
 export type { AnsweredViewProps, InboxAnsweredView } from "./answered-view.ts";
 export { type AfterAnswer, type InboxDecisions, inboxDecisions } from "./decide.ts";
-export type { Inbox, InboxRuns, InboxState, RunProposalEntry } from "./inbox.ts";
+export type { Inbox, InboxRuns, InboxState } from "./inbox.ts";
 export { inboxSignal } from "./inbox-count.ts";
 export {
   type ApprovalItem,
@@ -46,7 +46,12 @@ export {
   ProposalGoneError,
   type ProposalUndone,
 } from "./proposal-decisions.ts";
-export type { ProposalEnding, ProposalFile, ProposalItem } from "./proposal-items.ts";
+export type {
+  ProposalEnding,
+  ProposalFile,
+  ProposalItem,
+  RunProposalEntry,
+} from "./proposal-items.ts";
 export {
   BudgetUsedUp,
   type InboxRequests,

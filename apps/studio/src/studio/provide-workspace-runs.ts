@@ -21,7 +21,11 @@ import { engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
 import { WorkspaceSandboxRefusals } from "../inbox/workspace-sandbox-refusals.ts";
-import { hostProposalDecisionsOf, hostProposalsOf } from "../runs/host-proposals.ts";
+import {
+  hostDoneProposalsOf,
+  hostProposalDecisionsOf,
+  hostProposalsOf,
+} from "../runs/host-proposals.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { focusOf, storageOf } from "./page-window.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -69,7 +73,10 @@ export function provideWorkspaceRuns(
     // and an untrusted folder asks the host nothing.
     ...(transport === undefined
       ? {}
-      : { proposals: hostProposalsOf(transport, location, trusted) }),
+      : {
+          proposals: hostProposalsOf(transport, location, trusted),
+          doneProposals: hostDoneProposalsOf(transport, location, trusted),
+        }),
   });
   if (transport !== undefined) {
     services.provide(

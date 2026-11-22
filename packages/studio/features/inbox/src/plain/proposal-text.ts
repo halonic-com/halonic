@@ -131,6 +131,20 @@ export function decidedSummary(files: readonly ProposalFile[]): string {
 }
 
 /**
+ * What a done proposal came to (Q10), in place of its row's meta: "Accepted 2 of 3 changes",
+ * "Rejected", or "Not reviewed" when nothing was accepted and something was left undecided, as
+ * when it expired or was removed.
+ */
+export function doneOutcome(files: readonly ProposalFile[]): string {
+  const accepted = files.some((file) => file.decision === "accepted");
+  if (!accepted && files.some((file) => file.decision === "undecided")) return notReviewed;
+  return decidedSummary(files) || notReviewed;
+}
+
+/** A done proposal's file, or the whole proposal, that nobody decided (Q10). */
+export const notReviewed = "Not reviewed";
+
+/**
  * Under "Couldn't undo this." when the host left files of a decision as they were: "notes/a.md
  * changed after it was accepted, so it stays accepted." Paths come from the workspace.
  */
