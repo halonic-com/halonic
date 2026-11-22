@@ -1,6 +1,14 @@
 import { Button, useToastStore } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { type LoadFailureLine, loadFailureLine } from "../listed-tools-load-failure.ts";
 import type { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
 import { listedToolsWords } from "../listed-tools-words.ts";
@@ -34,39 +42,94 @@ function noticeOf(fallback: ReviewFallback): string | undefined {
   return undefined;
 }
 
-/** One line of text with its button at the right, wrapping under it on a narrow page. */
+/**
+ * One line of text with its button at the right, wrapping under it on a narrow page. Its text can
+ * take focus (`tabIndex=-1`), so a **Try again** that this line replaces hands focus to it.
+ */
 function WaitingLine({
   text,
+  textRef,
   children,
 }: {
   readonly text: ReactNode;
+  readonly textRef: Ref<HTMLParagraphElement>;
   readonly children: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-      <p className="min-w-0 text-body [overflow-wrap:anywhere]">{text}</p>
+      <p
+        ref={textRef}
+        tabIndex={-1}
+        className="min-w-0 rounded-sm text-body [overflow-wrap:anywhere] focus-visible:focus-ring"
+      >
+        {text}
+      </p>
       {children}
     </div>
   );
 }
 
-/** The "Couldn't list the tools" line with its buttons, and a command to run under it. */
+/**
+ * The "Couldn't list the tools" line with its buttons. While its **Try again** lists the tools,
+ * the button stays where it is, busy.
+ */
 function LoadFailed({
   line,
+  textRef,
+  retrying,
   ...handlers
-}: LoadFailedHandlers & { readonly line: LoadFailureLine }) {
+}: LoadFailedHandlers & {
+  readonly line: LoadFailureLine;
+  readonly textRef: Ref<HTMLParagraphElement>;
+  readonly retrying: boolean;
+}) {
   const actions = useLoadFailedActions(line, handlers);
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <WaitingLine text={<LoadFailedText line={line} />}>
+      <WaitingLine text={<LoadFailedText line={line} />} textRef={textRef}>
         {actions.map((action) => (
-          <Button key={action.label} variant="secondary" onClick={() => void action.onClick()}>
+          <Button
+            key={action.label}
+            variant="secondary"
+            busy={retrying && action.label === listedToolsWords.tryAgain}
+            onClick={() => void action.onClick()}
+          >
             {action.label}
           </Button>
         ))}
       </WaitingLine>
     </div>
   );
+}
+
+/** The failed reading a **Try again** started from, kept on screen until the new one answers. */
+type LoadFailedFallback = Extract<ReviewFallback, { readonly kind: "load-failed" }>;
+
+/**
+ * **Try again** for the "Couldn't list the tools" line, as on the run page (C533-1): while the
+ * tools are listed again the line and its busy button stay, and then focus goes to the line that
+ * replaced it ("N tools are waiting for your approval", or the new failure), so it's read out and
+ * Tab goes on to its button (C551 S2). `lineRef` goes on whichever line shows.
+ */
+function useTryAgain(model: ListedToolsReviewModel) {
+  const [retrying, setRetrying] = useState<LoadFailedFallback | null>(null);
+  const lineRef = useRef<HTMLParagraphElement>(null);
+  const focusLine = useRef(false);
+
+  useEffect(() => {
+    if (!focusLine.current || retrying !== null) return;
+    focusLine.current = false;
+    lineRef.current?.focus();
+  }, [retrying]);
+
+  const tryAgain = (failed: LoadFailedFallback) => {
+    setRetrying(failed);
+    void model.refresh().finally(() => {
+      focusLine.current = true;
+      setRetrying(null);
+    });
+  };
+  return { retrying, tryAgain, lineRef };
 }
 
 /**
@@ -77,8 +140,9 @@ function LoadFailed({
  * one line with **Try again** or **Review tools**, since the dialog's screens for those can't
  * be reached otherwise. When the workspace isn't trusted, trying again can't help, so the line
  * offers **Review**, which opens the trust check, instead. When the agent host says why the
- * program couldn't list its tools, the line says it too (`loadFailureLine`). The dialog shares
- * this model, so an approval updates the line behind it.
+ * program couldn't list its tools, the line says it too (`loadFailureLine`). **Try again** stays,
+ * busy, while it lists, then hands focus to the line that replaced it (`useTryAgain`). The dialog
+ * shares this model, so an approval updates the line behind it.
  */
 export function ListedToolsWaiting({
   model,
@@ -94,8 +158,11 @@ export function ListedToolsWaiting({
   const fallback = reviewFallback(state);
   const toasts = useToastStore();
   const [open, setOpen] = useState(false);
+  const { retrying, tryAgain, lineRef } = useTryAgain(model);
   const waiting =
     snapshot === undefined ? 0 : snapshot.toReview.length + snapshot.keepsChanging.length;
+  // While its Try again runs, the failure it started from stays, so the button keeps its place.
+  const failed = retrying ?? (fallback?.kind === "load-failed" ? fallback : null);
 
   const close = (toast: string | null) => {
     setOpen(false);
@@ -104,7 +171,7 @@ export function ListedToolsWaiting({
   return (
     <>
       {waiting > 0 ? (
-        <WaitingLine text={listedToolsWords.waitingBadge(waiting)}>
+        <WaitingLine text={listedToolsWords.waitingBadge(waiting)} textRef={lineRef}>
           {viewOnly ? (
             <p className="min-w-0 text-small text-fg-muted [overflow-wrap:anywhere]">
               {listedToolsWords.reviewToolsViewOnly}
@@ -116,16 +183,18 @@ export function ListedToolsWaiting({
           )}
         </WaitingLine>
       ) : null}
-      {waiting === 0 && fallback?.kind === "load-failed" ? (
+      {waiting === 0 && failed !== null ? (
         <LoadFailed
-          line={loadFailureLine(fallback.error, sourceName, engine, secretsOnPage)}
-          error={fallback.error}
-          onTryAgain={() => void model.refresh()}
+          line={loadFailureLine(failed.error, sourceName, engine, secretsOnPage)}
+          textRef={lineRef}
+          retrying={retrying !== null}
+          error={failed.error}
+          onTryAgain={() => tryAgain(failed)}
           onReviewTrust={onReviewTrust}
         />
       ) : null}
       {waiting === 0 && fallback !== null && noticeOf(fallback) !== undefined ? (
-        <WaitingLine text={noticeOf(fallback) ?? ""}>
+        <WaitingLine text={noticeOf(fallback) ?? ""} textRef={lineRef}>
           <Button variant="secondary" onClick={() => setOpen(true)}>
             {listedToolsWords.reviewTools}
           </Button>
