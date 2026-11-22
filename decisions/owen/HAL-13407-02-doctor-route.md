@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-13407 (Liam's decision of 21 Nov: a security PR, with its rules); first-run-progress task 4 on HAL-7986; Julian signs this note, Liam reviews
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:lcS4rltt0ennhDT7SghxkDC6E5hmWQtgY9ux+NJ2bYgYJua8qaARBzkQP8htqTizO/f2tEgfhbnGZqPwM9U/CA==
 
 Studio's "Check this computer" needs checks its page can't run: the sandbox, the harness programs, the trust records and the model servers on this computer. The agent host gets `POST /v1/doctor`, through `startHostServer` like every route, which runs `halonic doctor`'s own service (`adapters/doctor-node`, moved there from the CLI by the PR below this one) on the host's parts, and answers facts and ids. The page gets `AgentHostDoctor.doctor()` and the shell's route table names the route. Nothing shows it to a person until HAL-13411.
 
