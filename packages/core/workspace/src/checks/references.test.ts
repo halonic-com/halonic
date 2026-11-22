@@ -262,7 +262,7 @@ verifies("workspace.references", () => {
           'name: Sort\ntrigger:\n  schedule: "0 9 * * 1"\nrun:\n  agent: sortr\n  prompt: Sort.\n',
       });
       expect(errors).toEqual([
-        'workflows/routines/sort.routine.yaml: Routine "sort": unknown agent "sortr". Did you mean "sorter"?',
+        "workflows/routines/sort.routine.yaml: Sort: sortr isn't in this workspace. Pick another agent for run.agent. Did you mean sorter?",
       ]);
     });
   });

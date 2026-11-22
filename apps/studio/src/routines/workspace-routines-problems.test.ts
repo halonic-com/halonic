@@ -23,7 +23,9 @@ verifies("studio.workspace-routines", () => {
 
     const [listed] = await host.list();
 
-    expect(listed?.problems).toEqual(['Unknown agent "nobody".']);
+    expect(listed?.problems).toEqual([
+      "Weekly report: nobody isn't in this workspace. Pick another agent for run.agent.",
+    ]);
   });
 
   it("names the mailbox to pick when a mail trigger's connector is gone (C591)", async () => {
