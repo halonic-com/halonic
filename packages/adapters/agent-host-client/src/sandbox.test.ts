@@ -94,6 +94,15 @@ verifies("agent-host-client.sandbox", () => {
       await expect(sandbox.check()).rejects.toMatchObject({ kind: "answer_invalid" });
     });
 
+    it("answers access a removal with administrator rights left as the host does (port version 11)", async () => {
+      const check = { ok: false, reason: "setup-needed", missing: ["gone"], accessKept: true };
+      const host = hostWithSession().answer("GET /v1/sandbox/check", ok(check));
+      const sandbox = await AgentHostSandbox.connect(host);
+      expect(await sandbox.check()).toEqual(check);
+      host.answer("GET /v1/sandbox/check", ok({ ...check, accessKept: false }));
+      await expect(sandbox.check()).rejects.toMatchObject({ kind: "answer_invalid" });
+    });
+
     it("answers a distro without its runtime as the host does (port version 10)", async () => {
       const check = {
         ok: false,

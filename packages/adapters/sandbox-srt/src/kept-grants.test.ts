@@ -193,3 +193,23 @@ verifies("sandbox-srt.kept-grants", () => {
     });
   });
 });
+
+verifies("sandbox-srt.windows-access-kept", () => {
+  describe("KeptGrants.keptState", () => {
+    const status = (body: object | null, status = 0) =>
+      fakeSrtWin(() => ({ status, stdout: body === null ? "not json" : JSON.stringify(body) }))
+        .grants;
+    const kept = { user: { exists: true }, persistent_grants: { state: "present" } };
+
+    it("reads kept grants with the sandbox account there as kept, in either mode", async () => {
+      expect(await status(kept).keptState()).toBe("kept");
+      expect(await status(kept).keptState({ unreadable: "none" })).toBe("kept");
+    });
+
+    it("reads a status it can't read as kept, or as none for a caller that asks so", async () => {
+      expect(await status(kept, 1).keptState()).toBe("kept");
+      expect(await status(kept, 1).keptState({ unreadable: "none" })).toBe("none");
+      expect(await status(null).keptState({ unreadable: "none" })).toBe("none");
+    });
+  });
+});

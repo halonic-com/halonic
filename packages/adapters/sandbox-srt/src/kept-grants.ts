@@ -422,13 +422,19 @@ export class KeptGrants {
    * grants while its sandbox account is gone, see {@link orphaned}), `none`,
    * or `kept` (kept grants with the account there, or a status that can't be
    * read, so some may be kept). A state other than `none` counts as grants, as
-   * srt's own library reads it. Never rejects.
+   * srt's own library reads it. With `unreadable: "none"`, a status that can't
+   * be read gives `none` instead, for a caller that acts only on grants srt
+   * lists. Never rejects.
    */
-  async keptState(): Promise<"orphaned" | "kept" | "none"> {
+  async keptState({
+    unreadable = "kept",
+  }: {
+    unreadable?: "kept" | "none";
+  } = {}): Promise<"orphaned" | "kept" | "none"> {
     try {
       this.assertSupported();
       const run = await this.#run(["user", "status"]);
-      if (run.status !== 0) return "kept";
+      if (run.status !== 0) return unreadable;
       const parsed = JSON.parse(run.stdout) as {
         user?: { exists?: unknown };
         persistent_grants?: { state?: unknown };
@@ -437,7 +443,7 @@ export class KeptGrants {
       if (state === undefined || state === "none") return "none";
       return parsed.user?.exists === false ? "orphaned" : "kept";
     } catch {
-      return "kept";
+      return unreadable;
     }
   }
 

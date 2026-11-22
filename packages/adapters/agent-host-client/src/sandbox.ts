@@ -59,6 +59,7 @@ const checkSchema = s.discriminatedUnion("ok", [
       missing: s.array(s.string()),
       fix: fixSchema.optional(),
       setupAgain: s.literal(true).optional(),
+      accessKept: s.literal(true).optional(),
     })
     .strict(),
 ]) as Schema<SandboxCheck>; // `as`: an optional key reads as `| undefined` to the compiler.

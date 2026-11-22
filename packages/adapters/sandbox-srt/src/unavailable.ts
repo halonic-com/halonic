@@ -11,6 +11,8 @@ export interface Unavailable {
   fix?: SandboxFix;
   /** Only with `setup-needed`: the setup is there, but for an older srt. */
   setupAgain?: true;
+  /** Only with `setup-needed`: srt still keeps access a removal with administrator rights left. */
+  accessKept?: true;
 }
 
 /**
@@ -28,18 +30,34 @@ export async function firstWindowsUnavailable(machine: Machine): Promise<Unavail
         "srt's Windows install was set up with loopback open, which Halonic doesn't change; remove that setup first",
     };
   }
+  const kept = (await windowsAccessKept(machine)) ? { accessKept: true as const } : {};
   if (await windowsSetupOutdated(machine)) {
     return {
       reason: "setup-needed",
       missing:
         "srt's Windows install is for an older srt; run `srt windows-install` again as an administrator",
       setupAgain: true,
+      ...kept,
     };
   }
   return {
     reason: "setup-needed",
     missing: "srt's Windows install is missing; run `srt windows-install` once as an administrator",
+    ...kept,
   };
+}
+
+/**
+ * Whether srt still keeps access a removal with administrator rights left
+ * (HAL-15851), so Studio offers to remove the sandbox again. False when the
+ * machine can't say: the flag only adds that offer.
+ */
+async function windowsAccessKept(machine: Machine): Promise<boolean> {
+  try {
+    return (await machine.windowsAccessKept?.()) ?? false;
+  } catch {
+    return false;
+  }
 }
 
 /**

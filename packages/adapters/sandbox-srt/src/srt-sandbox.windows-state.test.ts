@@ -92,3 +92,35 @@ verifies("sandbox-srt.windows-setup-again", () => {
     });
   });
 });
+
+verifies("sandbox-srt.windows-access-kept", () => {
+  describe("SrtSandbox.check on Windows after a removal that kept access", () => {
+    it("says setup-needed with accessKept while srt keeps access with its account there", async () => {
+      const machine = { ...windows("setup-needed"), windowsAccessKept: async () => true };
+      expect(await new SrtSandbox(machine).check()).toMatchObject({
+        ok: false,
+        reason: "setup-needed",
+        accessKept: true,
+      });
+      const older = { ...machine, windowsSetupOutdated: async () => true };
+      expect(await new SrtSandbox(older).check()).toMatchObject({
+        setupAgain: true,
+        accessKept: true,
+      });
+    });
+
+    it("leaves accessKept out without kept access, or when the machine can't say", async () => {
+      const none = { ...windows("setup-needed"), windowsAccessKept: async () => false };
+      expect(await new SrtSandbox(none).check()).not.toHaveProperty("accessKept");
+      const failing = {
+        ...windows("setup-needed"),
+        windowsAccessKept: async () => {
+          throw new Error("srt-win did not answer");
+        },
+      };
+      const check = await new SrtSandbox(failing).check();
+      expect(check).toMatchObject({ ok: false, reason: "setup-needed" });
+      expect(check).not.toHaveProperty("accessKept");
+    });
+  });
+});

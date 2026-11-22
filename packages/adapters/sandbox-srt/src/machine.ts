@@ -86,6 +86,14 @@ export interface Machine {
    */
   windowsSetupOutdated?(): Promise<boolean>;
   /**
+   * Whether srt lists access it kept on the user's folders while its sandbox
+   * account is still there, as a removal with administrator rights leaves it
+   * (`keptAccess: "manual"`, HAL-15836): only a removal without them takes it
+   * back (HAL-15851). False when srt lists none, when its status can't be
+   * read, and on other systems. A machine without it counts as false.
+   */
+  windowsAccessKept?(): Promise<boolean>;
+  /**
    * Whether srt's profile read grant is on this machine, which lets every
    * sandboxed session read the user's profile (another program installed srt
    * without `--skip-profile-grant`). Also true when the grant can't be read:
@@ -328,6 +336,10 @@ export const systemMachine: Machine = {
     return (
       markerVersion !== undefined && setupVersion !== undefined && markerVersion < setupVersion
     );
+  },
+  async windowsAccessKept() {
+    if (process.platform !== "win32") return false;
+    return (await new KeptGrants().keptState({ unreadable: "none" })) === "kept";
   },
   dockerDesktopVisible: () => dockerDesktopShows(dockerSocket, sharedWslFolder),
   elevated: systemRemovalSteps.elevated,

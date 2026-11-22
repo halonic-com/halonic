@@ -24,6 +24,16 @@ verifies("settings.agent-sandbox-state", () => {
     expect(v.chip).toEqual({ label: "Needs setting up", tone: "warning" });
     expect(v.primary).toEqual({ action: "set-up", label: "Set up the sandbox", busy: false });
     expect(v.hint).toBe("Windows asks for administrator rights once.");
+    expect(v.secondary).toEqual(["check-again"]);
+  });
+
+  it("offers Remove under Needs setting up while a removal kept some access (HAL-15851)", () => {
+    const check = { state: "needs-setup", accessKept: true } as const;
+    const v = view({ check });
+    expect(v.chip).toEqual({ label: "Needs setting up", tone: "warning" });
+    expect(v.primary).toEqual({ action: "set-up", label: "Set up the sandbox", busy: false });
+    expect(v.secondary).toEqual(["check-again", "remove"]);
+    expect(view({ check, place: "served" }).secondary).toEqual(["check-again"]);
   });
 
   it("shows Ready with Check again and Remove", () => {
