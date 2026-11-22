@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-16342); Liam approves and signs this note in its security review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nS6Zxubtu7pHyLKzF1ANdFqopecjXZ8Dt1os1ys519/3UpuavHemFFySWtfnAIGYq+Q9hXLVEXspMe07Kh+qAw==
 
 `studio.installer-take-back` now applies when the installer runs without
 administrator rights. With those rights the installer starts nothing from the
