@@ -1,5 +1,5 @@
 name: gitleaks
-description: Scans the checked-out history with the gitleaks image pinned in the Dockerfile next to this file, lockfiles included. Fails on a leak, and also when no commits were scanned.
+description: Scans the checked-out history with the gitleaks image pinned in the Dockerfile next to this file, lockfiles included. Fails on a leak, and also when no commits were scanned although some commit adds or changes a file.
 inputs:
   log-opts:
     description: git log options, for example BASE..HEAD. Empty scans the whole history.
@@ -47,6 +47,18 @@ runs:
         rm -f "$RUNNER_TEMP/gitleaks.json"
         scanned=$(grep -oE '[0-9]+ commits scanned' "$log" | grep -oE '^[0-9]+' || true)
         if ! [[ "$scanned" =~ ^[1-9][0-9]*$ ]]; then
+          # gitleaks reads git log --diff-filter=tuxdb, which leaves out
+          # deletions and type changes. A range whose commits only do those
+          # adds no content, so 0 commits scanned is right for it. The same
+          # filter, run here outside the container, tells the two apart. The
+          # assignment stops the step if git log fails, so an error never
+          # reads as an empty range.
+          read -ra range <<< "${LOG_OPTS:---all}"
+          content=$(git log --format=%H --full-history --diff-filter=ACMR "${range[@]}")
+          if [ -z "$content" ]; then
+            echo "::notice title=gitleaks::No commit adds or changes a file, so there is nothing to scan."
+            exit "$status"
+          fi
           echo "::error title=gitleaks::No commits were scanned, so the scan proves nothing. See the log above."
           exit 1
         fi
