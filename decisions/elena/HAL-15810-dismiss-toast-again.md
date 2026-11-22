@@ -2,6 +2,7 @@
 
 - Approval: HAL-15810 (flow check C634 #6 on HAL-15803; the toast names the Help item the board already approved as **Show the guide again** in C520-9, HAL-14977); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BJCjeQzAybpVDkojt1FxoxjE0jqk1iVWUAT3EQsJbZkQ+tZj1HZ3rnljLLqaus2BFpz3V8g7JeYtfi4ESLrGCA==
 
 ## What changes
 
