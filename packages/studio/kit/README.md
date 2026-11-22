@@ -1576,6 +1576,11 @@ Its text is the whole folder, so a row named by something else can be described 
 `aria-describedby` on its `id`, as the workspace switcher is. `textClassName` sets the line's type
 and colour, `text-caption` `fg-subtle` by default. `middleCutAt(text)` says where the cut falls.
 
+A path shown whole on a line that wraps, such as a proposal's change, follows the same rule with
+`breakableAtSeparators(text)`: it allows a break before each "/" or "\", so the line wraps between
+folder names before it wraps inside one. Keep `wrap-break-word` on the line for a single name that
+is still too long.
+
 ## LongText and TextSheet
 
 A long text field: Description, Instructions, an agent step's text. Put it in a `Field` like any
