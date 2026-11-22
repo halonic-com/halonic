@@ -2,6 +2,7 @@
 
 - Approval: HAL-15482 (Paperclip task), from words check C584 row 13 on HAL-15471; a small addition to the approved R15 screen, decided by the team under HAL-2282; the reviewer signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:roGDm9XCdnCsZgcdwVq5Fu4J/dA6ECeP2Z8D1mygURhhFgTwi8311cuPaIsIRHyBaHDck8yqPikVDXfKz5weBQ==
 - Task: HAL-15482
 
 ## What changes
