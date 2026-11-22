@@ -3,6 +3,7 @@
 - Task: HAL-15986
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15986 (a team decision with no board card, HAL-2282 rule: wording on the approved Inbox and proposal page; finding 2 of flow check C661 on HAL-15978)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EJf3zgbBpqzEb/bxa5Shs4GdPp80SBT8wjo3rts7qp6z+gBQtsymfMnU6ZaRbMhJ7J5BCRXP8zFGhUl6LcZLBg==
 
 ## What changes
 
