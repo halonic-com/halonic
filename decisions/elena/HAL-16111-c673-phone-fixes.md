@@ -3,6 +3,7 @@
 - Task: HAL-16111
 - Approval: a team decision under HAL-2282: visual check C673 (HAL-16092), rows 1 to 3, bringing the build back to the phone screens the board approved on HAL-12206. No new screen or flow. Liam signs at review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SErRTWfrPSlQ3cB6DDhgT/AYC6jAT5oID7ycNL6xmHJsSrp6wG//uT+4rYsQF2hbVLl37rFJqOS+y8Dfz7MVBw==
 
 ## What changes
 
