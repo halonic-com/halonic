@@ -25,6 +25,7 @@ import { studioWatchedFileLimit } from "../../studio-watch-limit.ts";
 import { halonicVersion } from "../../version.ts";
 import {
   dirOption,
+  holdsWorkspaceFile,
   NoWorkspaceError,
   type WorkspaceDir,
   workspaceDir,
@@ -59,8 +60,9 @@ export function createDoctorCommand(
       const dir = workspaceDir(input, context.cwd);
       // Every other command refuses a workspace that overlaps the profile;
       // `doctor` shows it on the Profile line and leaves the workspace unread,
-      // since its files are fenced off from the profile (HAL-15201).
-      const profile = await profileProblem(dir.root);
+      // since its files are fenced off from the profile (HAL-15201). A folder
+      // without `workspace.yaml` is no workspace, so there's nothing to overlap.
+      const profile = (await holdsWorkspaceFile(dir.root)) ? await profileProblem(dir.root) : null;
       const read =
         profile === null
           ? await readWorkspace(dir, given !== undefined, watchedFileLimit, computer, secrets)

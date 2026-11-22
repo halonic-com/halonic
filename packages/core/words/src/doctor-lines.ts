@@ -375,7 +375,7 @@ function nodeItems(line: NodeLine): DoctorLineItem[] {
       ];
 }
 
-/** What is wrong with the proxy setting; the setting's own reason under it when it isn't the scheme. */
+/** Why the workspace and the profile overlap, and the fix under it. */
 function profileItems(line: ProfileLine): DoctorLineItem[] {
   // The variable is one of the names the profile is read from; the path comes from the environment.
   return line.problem === "profile-in-workspace"
@@ -389,6 +389,7 @@ function profileItems(line: ProfileLine): DoctorLineItem[] {
       ];
 }
 
+/** What is wrong with the proxy setting; the setting's own reason under it when it isn't the scheme. */
 function networkItems(line: NetworkLine): DoctorLineItem[] {
   // The variable's name comes from the environment, but only as one of the names Halonic reads.
   return line.problem === "proxy-not-http"

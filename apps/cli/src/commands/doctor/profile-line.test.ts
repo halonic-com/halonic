@@ -108,6 +108,30 @@ verifies("cli.commands.doctor.profile-line", () => {
       expect(report.problems).toBe(1);
     });
 
+    it("isn't there, and doctor passes, in a folder without workspace.yaml that holds HALONIC_HOME", async () => {
+      vi.stubEnv("HALONIC_HOME", join(folder, ".halonic"));
+
+      const { code, io } = await doctorIn(folder, join(folder, ".halonic"));
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout.some((line) => line.includes("Profile"))).toBe(false);
+    });
+
+    it("isn't there for a --dir without workspace.yaml, which is still no workspace", async () => {
+      mkdirSync(join(folder, "acme"));
+      vi.stubEnv("HALONIC_HOME", join(folder, "acme", ".profile"));
+
+      const { code, io } = await doctorIn(
+        folder,
+        join(folder, "acme", ".profile"),
+        "--dir",
+        "acme",
+      );
+
+      expect(code).toBe(exitCode.notFound);
+      expect(io.stderr[0]).toContain("there's no workspace.yaml here.");
+    });
+
     it("isn't there for a sibling folder whose name starts the same", async () => {
       const acme = join(folder, "acme");
       writeWorkspace(acme);

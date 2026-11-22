@@ -81,6 +81,17 @@ verifies("cli.profile-outside-workspace", () => {
       },
     );
 
+    it("isn't checked in a folder without workspace.yaml, which gets no workspace", async () => {
+      const plain = join(folder, "plain");
+      mkdirSync(plain);
+      vi.stubEnv("HALONIC_HOME", join(plain, ".halonic"));
+
+      const { code, io } = await validateIn(plain);
+
+      expect(code).toBe(exitCode.notFound);
+      expect(io.stderr[0]).toContain("there's no workspace.yaml here.");
+    });
+
     it("leaves a sibling folder whose name starts the same alone", async () => {
       vi.stubEnv("HALONIC_HOME", join(folder, "acme-profile"));
 
