@@ -2,6 +2,7 @@
 
 - Approval: HAL-16025 (Liam, CTO), the export Cloud needs, asked for in the review of cloud#5 on HAL-13532
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:t43CK8M0X639L4Lm6W0/nk3uI0ey2dCiSspJKoe7/wG60LgYLQhqwtFvimD0kxBiCmiscfMbrpAL0yUdclmqAQ==
 
 Halonic Cloud's control plane runs its D1 migrations with halonic's
 `runMigrations`, and its requirement `control-plane.database` says
