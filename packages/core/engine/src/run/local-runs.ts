@@ -15,17 +15,12 @@ import type {
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
 import type { WaitedOnCall } from "../harness/serial-run-log.ts";
 import { checkStartTimeouts } from "../harness/start-limits.ts";
-import type {
-  AnswerHarnessEffect,
-  DecideInput,
-  Effect,
-  StartChildEffect,
-} from "../kernel/decide-types.ts";
+import type { AnswerHarnessEffect, DecideInput, Effect } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
 import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { appendFailed, type Failure } from "./append-failed.ts";
-import { childNow, childStart, endChildrenOf, parentEnded, receiverOf } from "./child-runs.ts";
+import { childNow, endChildrenOf, parentEnded, receiverOf } from "./child-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { type CallModel, LocalModelCalls } from "./local-model-calls.ts";
@@ -42,6 +37,7 @@ import { cancelledError, harnessGoneError } from "./run-errors.ts";
 import { RunFeed } from "./run-feed.ts";
 import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
 import { sendNames } from "./send-names.ts";
+import { type ChildStartPorts, startChild } from "./start-child.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
 import { checkStartRequest } from "./start-request.ts";
 import { sweepLostRuns } from "./sweep-lost-runs.ts";
@@ -191,14 +187,14 @@ export class LocalRuns {
     await this.ready();
     if ((await this.store.get(runId)) === null)
       throw new InputRefused("engine.run-unknown", `There's no run "${runId}".`);
-    await this.#cancelDown(runId);
+    await this.#cancelDown(runId, { error: cancelledError });
     return this.#summary(runId);
   }
 
-  /** Ends the run as cancelled and, as for any run that ends, its child runs still going. */
-  async #cancelDown(runId: string): Promise<void> {
-    await this.#cancelOne(runId, { error: cancelledError });
-    await this.#ended(runId, { error: cancelledError });
+  /** Ends the run as cancelled, as `failure` says, and so its child runs still going. */
+  async #cancelDown(runId: string, failure: Failure): Promise<void> {
+    await this.#cancelOne(runId, failure);
+    await this.#ended(runId, failure);
   }
 
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
@@ -413,42 +409,15 @@ export class LocalRuns {
     } else if (effect.type === "set-timer") {
       await scheduler.schedule(run.runId, `${stateTimer}${effect.key}`, effect.at);
     } else if (effect.type === "start-child") {
-      await this.#startChild(run, effect);
+      await startChild(this.#childStartPorts(), run, effect);
     } else if (effect.type === "tell-parent") {
       const timerId = `${childTimer}${effect.childRunId}`;
       await scheduler.schedule(effect.parentRunId, timerId, this.#now());
       await this.#hearFromChild(effect.parentRunId, effect.childRunId);
       await scheduler.cancel(effect.parentRunId, timerId);
     } else if (effect.type === "cancel-child") {
-      await this.#cancelDown(effect.childRunId);
-    }
-  }
-
-  /**
-   * Starts a child run; one that can't start fails its parent with the
-   * reason. An error after the child's start is recorded goes to the caller.
-   * A parent that ended while its earlier children started, as when one of
-   * them waits in a `foreach` state, starts none: no one would end it.
-   */
-  async #startChild(parent: RunState, effect: StartChildEffect): Promise<void> {
-    const parentNow = await this.store.get(parent.runId);
-    if (parentNow !== null && hasEnded(parentNow.status)) return;
-    try {
-      const start = await childStart(this.#options.blobs, parent, effect, this.#now());
-      await this.#record(effect.childRunId, start);
-    } catch (error) {
-      // The child was already started, by a start asked for twice.
-      if (error instanceof InputRefused && error.code === "engine.run-exists") return;
-      // A child whose start is recorded runs: the error came after its start.
-      if ((await this.store.get(effect.childRunId)) !== null) throw error;
-      const message = error instanceof Error ? error.message : String(error);
-      await this.#recordIfTaken(parent.runId, {
-        type: "child",
-        at: this.#now(),
-        childRunId: effect.childRunId,
-        status: "failed",
-        error: `The child run couldn't start: ${message}`,
-      });
+      // Only a run that is about to fail cancels its child: nobody cancelled the child.
+      await this.#cancelDown(effect.childRunId, parentEnded);
     }
   }
 
@@ -485,6 +454,13 @@ export class LocalRuns {
       folders: this.#folders,
       record: (runId, input) => this.#record(runId, input),
       now: () => this.#now(),
+    };
+  }
+
+  #childStartPorts(): ChildStartPorts {
+    return {
+      ...this.#startPorts(),
+      recordIfTaken: (runId, input) => this.#recordIfTaken(runId, input),
     };
   }
 

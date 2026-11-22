@@ -336,8 +336,9 @@ export interface TellParentEffect {
 
 /**
  * Cancel a child run the run no longer waits for, and the child run it
- * waits on, all the way down, as a cancel of the child would. A child that
- * has ended, or hasn't started, stays as it is.
+ * waits on, all the way down, as the end of the run that started it would:
+ * with the parent-ended cause, since nobody cancelled it. A child that has
+ * ended, or hasn't started, stays as it is.
  */
 export interface CancelChildEffect {
   readonly type: "cancel-child";
