@@ -28,7 +28,12 @@ an entry is a change, and it asks.
 lists, in this order (requirement `cli.trust-check`):
 
 - **Programs:** every stdio connector's command, with the path it resolves to
-  on this computer, its arguments and its environment. A program started by
+  on this computer, its arguments, the folder it starts in when it isn't the
+  workspace's own (`cli.trust-check-working-folder`) and its environment.
+  Studio's trust check shows the same fields from the same builder
+  (`app.program-trust-fields`, `studio.trust-review-program-fields`), with
+  control and bidi characters shown as their codes, as the CLI shows them
+  (`workspace.trust-check-escaped`). A program started by
   `npx`, `uvx` or `pipx run` without a pinned version gets a `!` line, because
   it fetches code from npm or PyPI each time it starts. For those, the prompt
   asks a second question. Where the sandbox works on your computer, a program

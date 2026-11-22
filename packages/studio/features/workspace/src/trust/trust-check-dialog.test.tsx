@@ -170,3 +170,49 @@ verifies("workspace.trust-check-unlabelled-lines", () => {
     expect(shown("The reason.")?.classList.contains("text-attention")).toBe(false);
   });
 });
+
+verifies("workspace.trust-check-escaped", () => {
+  it("shows control and bidi characters in a row as their visible codes", () => {
+    const outside: TrustReview = {
+      ...review,
+      title: "Trust Ac\u202eme?",
+      sections: [
+        {
+          heading: "Programs (1)",
+          open: true,
+          rows: [
+            {
+              id: "fi\u0007les",
+              detail: "node \u202esj.elif",
+              lines: [["Environment", "NOTE=a\u001bb"]],
+              warning: "Can download new code from npm\u2066 when it starts: version not pinned.",
+            },
+          ],
+        },
+      ],
+    };
+    act(() =>
+      root.render(
+        <TrustCheckDialog
+          review={outside}
+          shown={outside.fingerprint}
+          busy={false}
+          error={undefined}
+          onNotNow={() => {}}
+          onTrust={() => {}}
+          returnFocus={() => null}
+        />,
+      ),
+    );
+
+    expect(shown("fi\\u0007les")).toBeDefined();
+    expect(shown("node \\u202esj.elif")).toBeDefined();
+    expect(shown("NOTE=a\\u001bb")).toBeDefined();
+    const text = document.querySelector("dialog[open]")?.textContent ?? "";
+    expect(text).toContain("Trust Ac\\u202eme?");
+    expect(text).toContain("npm\\u2066 when");
+    for (const unsafe of ["\u0007", "\u001b", "\u202e", "\u2066"]) {
+      expect(text).not.toContain(unsafe);
+    }
+  });
+});

@@ -6,7 +6,7 @@
 // rows for what changed. `trust-check.ts` puts them in sections.
 
 import { keyDestination } from "@halonicjs/adapter-workspace-models";
-import { programName } from "@halonicjs/app";
+import { type ProgramTrustFields, programTrustFields } from "@halonicjs/app";
 import { defaultWorkingFolder } from "@halonicjs/format";
 import type {
   AgentTrustContent,
@@ -27,7 +27,7 @@ import {
   visibleLength,
 } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
-import { type PackageRegistry, type SecretPick, trustMessages } from "../messages/trust.ts";
+import { type SecretPick, trustMessages } from "../messages/trust.ts";
 import type { PluginHosts } from "../sheet-hosts.ts";
 import { printable } from "./printable.ts";
 import { shellWord } from "./shell-word.ts";
@@ -58,42 +58,50 @@ export function programRow(
   unpinned: ReadonlySet<string>,
   sandboxWorks: boolean,
 ): Phrase[] {
-  const command = [text(connector.settings["command"]), ...strings(connector.settings["args"])];
+  const fields = programTrustFields(connector);
   const withNames = withInherited(
-    withSecrets(phrase`${printable(command.join(" "))}`, secretNames(connector)),
-    strings(connector.settings["inheritEnv"]).map(printable),
+    withSecrets(phrase`${printable(fields.command)}`, secretNames(connector)),
+    fields.inherited.map(printable),
   );
   const lines = [row(printable(connector.id), withNames)];
   if (unpinned.has(connector.id)) {
-    const warning = trustMessages.notPinned(
-      registryOf(text(connector.settings["command"]), command),
-    );
+    const warning = trustMessages.notPinned(fields.registry);
     lines.push(phrase`${underRow}${markPart("needsYou")} ${warning.phrase}`);
   }
-  const sites = sandboxWorks ? siteLines(programSites(connector)) : [];
-  const details = [...pathLines(connector), ...environmentLines(connector), ...sites];
-  return [...lines, ...labelledLines(details)];
+  const sites = sandboxWorks ? siteLines(fields.sites) : [];
+  return [...lines, ...labelledLines([...programLines(fields), ...sites])];
 }
 
-/** "Resolved path" and where the command is on this computer, when it was found. */
-function pathLines(connector: ConnectorTrustContent): LabelledLine[] {
-  const path = text(connector.settings["path"]);
-  return path === "" ? [] : [[trustMessages.resolvedPath().phrase, phrase`${printable(path)}`]];
-}
-
-/** "Environment" and the program's own `env` entries as written, one `NAME=value` per line, by name. */
-function environmentLines(connector: ConnectorTrustContent): LabelledLine[] {
-  return Object.entries(record(connector.settings["env"]))
-    .sort(([first], [second]) => first.localeCompare(second, "en"))
-    .map(([name, value], index) => [
-      index === 0 ? trustMessages.programEnvironment().phrase : phrase``,
-      phrase`${printable(`${name}=${text(value)}`)}`,
-    ]);
+/**
+ * "Resolved path" when the command was found, "Working folder" when it isn't the workspace's
+ * own, then "Environment" and its own `env` entries, one `NAME=value` per line, by name.
+ */
+function programLines(fields: ProgramTrustFields): LabelledLine[] {
+  return [
+    ...(fields.path === undefined
+      ? []
+      : [[trustMessages.resolvedPath().phrase, phrase`${printable(fields.path)}`] as const]),
+    ...(fields.workingFolder === undefined
+      ? []
+      : [
+          [
+            trustMessages.workingFolder().phrase,
+            phrase`${printable(fields.workingFolder)}`,
+          ] as const,
+        ]),
+    ...fields.environment.map(
+      (entry, index) =>
+        [
+          index === 0 ? trustMessages.programEnvironment().phrase : phrase``,
+          phrase`${printable(entry)}`,
+        ] as const,
+    ),
+  ];
 }
 
 /** The sites a program connector may reach in a sandbox, in their stored form, or none. */
-export function programSites(connector: ConnectorTrustContent): string[] {
-  return strings(connector.settings["sites"]);
+export function programSites(connector: ConnectorTrustContent): readonly string[] {
+  return programTrustFields(connector).sites;
 }
 
 /**
@@ -453,20 +461,8 @@ function namesOf(references: readonly unknown[]): string[] {
   return [...new Set(names.filter((name) => name !== undefined))].sort();
 }
 
-/** PyPI for `uvx`, `uv tool run` and `pipx run`; npm for every other package runner. */
-function registryOf(command: string, words: readonly string[]): PackageRegistry {
-  const python = new Set(["uvx", "uv", "pipx"]);
-  return python.has(programName(command)) || words.some((word) => python.has(programName(word)))
-    ? "PyPI"
-    : "npm";
-}
-
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
-}
-
-function strings(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
 }
 
 function record(value: unknown): Record<string, unknown> {

@@ -1,5 +1,5 @@
 import { keyDestination } from "@halonicjs/adapter-workspace-models";
-import { programName, type TrustCheck } from "@halonicjs/app";
+import { programTrustFields, type TrustCheck } from "@halonicjs/app";
 import type {
   TrustReview,
   TrustRowView,
@@ -10,7 +10,7 @@ import type {
   ProviderTrustContent,
   TrustChanges,
 } from "@halonicjs/workspace";
-import { agentChangeRows, agentRow, withoutAsking } from "./agent-trust-rows.ts";
+import { agentChangeRows, agentRow, siteLines, withoutAsking } from "./agent-trust-rows.ts";
 import { secretNames, secretPicks } from "./connector-secrets.ts";
 import {
   type IntegrationRuns,
@@ -98,9 +98,9 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
     ...common,
     title: `Trust ${facts.name}?`,
     changed: false,
-    summary: startSummary(check.content),
+    summary: startSummary(check.content, facts.runs),
     sections: sectionsOf(
-      [...programs(connectors).map((row) => programRow(row, unpinned))],
+      programs(connectors).map((row) => programRow(row, unpinned, facts.runs)),
       integrations.map((row) => integrationRow(row, facts.runs)),
       agents.map(agentRow),
       [
@@ -166,11 +166,11 @@ function changesView(
     sections: sectionsOf(
       [
         ...tagged(
-          pick(changes.added, isProgram).map((row) => programRow(row, unpinned)),
+          pick(changes.added, isProgram).map((row) => programRow(row, unpinned, runs)),
           "New",
         ),
         ...tagged(
-          pick(changedConnectors, isProgram).map((row) => programRow(row, unpinned)),
+          pick(changedConnectors, isProgram).map((row) => programRow(row, unpinned, runs)),
           "Changed",
         ),
       ],
@@ -247,22 +247,38 @@ function sectionsOf(
   return sections.filter((section) => section.rows.length > 0);
 }
 
-function programRow(connector: ConnectorTrustContent, unpinned: ReadonlySet<string>): TrustRowView {
-  const command = text(connector.settings["command"]);
-  const words = [command, ...strings(connector.settings["args"])];
+/**
+ * A program's row, with the fields the CLI's row shows (HAL-16323): its command, the secrets it
+ * gets and the names it takes from the environment, then its resolved path, its working folder,
+ * its own environment, one `NAME=value` per line, and, where it runs in the sandbox, its sites.
+ * Without the sandbox no site is shown, so the check suggests no fence that isn't there.
+ */
+function programRow(
+  connector: ConnectorTrustContent,
+  unpinned: ReadonlySet<string>,
+  runs: IntegrationRuns,
+): TrustRowView {
+  const fields = programTrustFields(connector);
   const secrets = secretNames(connector);
-  const inherited = strings(connector.settings["inheritEnv"]);
   return {
     id: connector.id,
-    detail: words.join(" "),
+    detail: fields.command,
     lines: [
       ...(secrets.length === 0 ? [] : [["Gets secrets", secrets.join(", ")] as const]),
-      ...(inherited.length === 0
+      ...(fields.inherited.length === 0
         ? []
-        : [["Takes from your environment", inherited.join(", ")] as const]),
+        : [["Takes from your environment", fields.inherited.join(", ")] as const]),
+      ...(fields.path === undefined ? [] : [["Resolved path", fields.path] as const]),
+      ...(fields.workingFolder === undefined
+        ? []
+        : [["Working folder", fields.workingFolder] as const]),
+      ...fields.environment.map(
+        (entry, index) => [index === 0 ? "Environment" : "", entry] as const,
+      ),
+      ...(runs?.state === "fenced" ? siteLines(fields.sites) : []),
     ],
     warning: unpinned.has(connector.id)
-      ? `Can download new code from ${registryOf(command, words)} when it starts: version not pinned.`
+      ? `Can download new code from ${fields.registry} when it starts: version not pinned.`
       : undefined,
   };
 }
@@ -324,7 +340,7 @@ function providerRow(provider: ProviderTrustContent): TrustRowView {
  * HAL-15146). An integration counts as run also where it isn't in the sandbox, since **Trust**
  * there waits for the person's yes to run it without (R12).
  */
-function startSummary(content: TrustCheck["content"]): string[] {
+function startSummary(content: TrustCheck["content"], runs: IntegrationRuns): string[] {
   const agents = content.agents ?? [];
   const providers = content.providers ?? [];
   const started = [
@@ -344,7 +360,13 @@ function startSummary(content: TrustCheck["content"]): string[] {
     addresses(content.connectors).length +
     integrations.reduce((sum, integration) => sum + Object.keys(integration.hosts).length, 0) +
     providers.length;
-  const sites = new Set(agents.flatMap((agent) => agent.allowedSites)).size;
+  const sites = new Set([
+    ...agents.flatMap((agent) => agent.allowedSites),
+    // A program's sites count where they're shown: in the sandbox, as the CLI counts them.
+    ...(runs?.state === "fenced"
+      ? programs(content.connectors).flatMap((row) => programTrustFields(row).sites)
+      : []),
+  ]).size;
   const clauses = [
     started.length > 0 ? `start ${started.join(" and ")}` : undefined,
     integrations.length > 0 ? `run ${counted(integrations.length, "integration")}` : undefined,
@@ -379,18 +401,6 @@ function addresses(connectors: readonly ConnectorTrustContent[]): ConnectorTrust
   return connectors.filter(isAddress);
 }
 
-/** PyPI for `uvx`, `uv tool run` and `pipx run`; npm for every other package runner. */
-function registryOf(command: string, words: readonly string[]): "npm" | "PyPI" {
-  const python = new Set(["uvx", "uv", "pipx"]);
-  return python.has(programName(command)) || words.some((word) => python.has(programName(word)))
-    ? "PyPI"
-    : "npm";
-}
-
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
-}
-
-function strings(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
 }

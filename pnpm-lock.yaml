@@ -3709,6 +3709,9 @@ importers:
       '@halonicjs/studio-shell':
         specifier: workspace:*
         version: link:../../shell
+      '@halonicjs/words':
+        specifier: workspace:*
+        version: link:../../../core/words
       react:
         specifier: 'catalog:'
         version: 19.3.1
