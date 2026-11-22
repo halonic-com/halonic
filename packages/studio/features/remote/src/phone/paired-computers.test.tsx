@@ -135,7 +135,7 @@ verifies("remote.phone-paired-computers", () => {
     expect(rows[0]?.className).not.toContain("opacity");
     expect(rows[1]?.className).toContain("opacity-60");
     expect(screen.textContent).toContain(
-      "Forget only removes a computer from this phone. To cut this phone off for good, revoke it in Halonic on the computer.",
+      "Forget only removes a computer from this phone. To cut this phone off for good, use Revoke in Settings › Remote on the computer.",
     );
     expect(named("Forget Tim's laptop")).toBeDefined();
     expect(named("Forget Studio PC")).toBeDefined();

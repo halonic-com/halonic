@@ -105,14 +105,13 @@ export const ADDRESS_PLACEHOLDER = "https://gateway.example.com";
 export const ADD_ANOTHER_ADDRESS = "Add another address";
 export const NOT_BOUND_YET = "Not bound yet";
 export const NOT_BOUND_NOTICE =
-  "This key was saved before Halonic recorded addresses, so it has none yet. Enter the address and save to bind it. It keeps working as it does now until you do.";
+  "This key has no address yet. Enter the address and save to bind it. It keeps working as it does now until you do.";
 export const ADDRESSES_UNREADABLE =
   "Can't read the addresses saved for this key. Halonic won't use this key until that is fixed.";
 export const ADDRESSES_RECOVERY = "Check that your system keychain is unlocked, then try again.";
 export const ADDRESS_UNENCRYPTED =
   "This address isn't encrypted. Keys sent to it can be read on the way.";
-export const KEY_LEFT_WITHOUT_ADDRESS =
-  "The key is still stored, with no address yet. Enter the address and save again.";
+export const KEY_LEFT_WITHOUT_ADDRESS = "The key is still stored, with no address yet.";
 export const ADDRESSES_FULL =
   "This key can't take more addresses. To start again, remove the key and save it with one address.";
 

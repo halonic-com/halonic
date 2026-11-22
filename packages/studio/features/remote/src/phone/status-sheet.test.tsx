@@ -55,7 +55,7 @@ function show(sheet: StatusSheetOf, more: Partial<StatusSheetProps> = {}) {
 
 verifies("remote.phone-status-sheet", () => {
   it("shows the two halves when the computer doesn't answer, and Try again connects", () => {
-    const { dialog, button, cards, actions } = show({ kind: "unreachable" });
+    const { dialog, button, cards, actions } = show({ kind: "unreachable", route: "tailscale" });
     expect(dialog.querySelector("h2")?.textContent).toBe("Your computer isn't answering");
     expect(cards).toEqual([
       {
@@ -72,6 +72,14 @@ verifies("remote.phone-status-sheet", () => {
     );
     act(() => button("Try again").click());
     expect(actions.onTryAgain).toHaveBeenCalledOnce();
+    unmountAll();
+
+    // Through this Wi-Fi there's no Tailscale to check (C660-35).
+    const wifi = show({ kind: "unreachable", route: "wifi" });
+    expect(wifi.dialog.textContent).toContain(
+      "Check that Tim's laptop is on and awake, Halonic is open, and both are on the same Wi-Fi.",
+    );
+    expect(wifi.dialog.textContent).not.toContain("Tailscale");
   });
 
   it("asks about the phone, never the computer, when the phone is offline", () => {
@@ -138,7 +146,7 @@ verifies("remote.phone-status-sheet", () => {
   });
 
   it("says no last update and shows no agents card before anything has arrived", () => {
-    const trouble = show({ kind: "unreachable" }, { asOf: undefined });
+    const trouble = show({ kind: "unreachable", route: "tailscale" }, { asOf: undefined });
     expect(trouble.cards.map((c) => c.name)).toEqual(["Your phone"]);
     unmountAll();
 
