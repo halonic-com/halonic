@@ -337,7 +337,7 @@ verifies("cli.trust-check", () => {
 
       expect(shown).not.toContain("                Sends its key to https://other.example.com.");
       expect(shown).toContain(
-        '                ! https://other.example.com isn\'t allowed for key "gw-key", so a run that uses this provider fails. To allow it, open Models in Halonic Studio, or run: halonic models allow-address gw-key https://other.example.com',
+        '                ! https://other.example.com isn\'t allowed for key "gw-key", so a run that uses this provider fails. To allow it, run: halonic models allow-address gw-key https://other.example.com',
       );
     });
 

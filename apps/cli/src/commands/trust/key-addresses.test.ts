@@ -53,7 +53,7 @@ verifies("cli.workspace-provider-key-trust", () => {
     expect(asked).toEqual(["gw-key"]);
     expect(io.stderr).not.toContain("Sends its key to");
     expect(io.stderr).toContain(
-      '                ! https://other.example.com isn\'t allowed for key "gw-key", so a run that uses this provider fails. To allow it, open Models in Halonic Studio, or run: halonic models allow-address gw-key https://other.example.com',
+      '                ! https://other.example.com isn\'t allowed for key "gw-key", so a run that uses this provider fails. To allow it, run: halonic models allow-address gw-key https://other.example.com',
     );
   });
 });
