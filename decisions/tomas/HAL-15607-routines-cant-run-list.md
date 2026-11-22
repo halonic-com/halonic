@@ -3,6 +3,7 @@
 - Task: HAL-15607
 - Approval: HAL-15607 (flow check C600 findings 2 and 3 on HAL-15594; wording built on the approved Routines list and routine page, decided by the team under the HAL-2282 rule). Liam signs this note at code review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/CCSoVnb9TNxTli3sMM8ylCVYyGI8BCcxBeGnkaUUaB3dJYylnWHlyPYEDcplWM+lAMkF44coBoCcZTdQRwnAQ==
 
 ## What changes
 
