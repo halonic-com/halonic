@@ -18,6 +18,12 @@ function homeIsAcme(runs: AcmeRuns): AcmeRuns {
   return { ...runs, profile };
 }
 
+/** A path in the profile folder, as the workspace sees it. */
+function profilePath(inside: string): string {
+  const profile = profileFolder(acmeRuns.profile).root;
+  return [...relative(acmeRuns.acme, profile).split(sep), inside].join("/");
+}
+
 beforeEach(async () => {
   acmeRuns = homeIsAcme(await makeAcmeRuns("proposals-accept-profile"));
 });
@@ -27,11 +33,23 @@ afterEach(async () => {
 });
 
 verifies("cli.commands.proposals.accept-profile", () => {
+  it("shows a file the run added in the profile as one it can't write (HAL-15764)", async () => {
+    const inProfile = profilePath("unfenced-runs/x");
+    await proposeIn(acmeRuns, runId, { [inProfile]: "yes\n", "notes/new.md": "New.\n" });
+
+    const io = captureIo(acmeRuns.acme);
+    const command = proposalsCommandWith(acmeProposalsSetup(acmeRuns));
+    const code = await runCli(["proposals", "show", "01jd8q"], io, [command]);
+
+    expect(code).toBe(0);
+    expect(io.stdout).toContain(`added  ${inProfile}  (can't be written)`);
+    expect(io.stdout).toContain("added  notes/new.md");
+    expect(io.stdout).toContain("  +New.");
+  });
+
   it("doesn't write a file the run added in the profile, and names it", async () => {
     const profile = profileFolder(acmeRuns.profile).root;
-    const inProfile = [...relative(acmeRuns.acme, profile).split(sep), "unfenced-runs", "x"].join(
-      "/",
-    );
+    const inProfile = profilePath("unfenced-runs/x");
     await proposeIn(acmeRuns, runId, { [inProfile]: "yes\n", "notes/new.md": "New.\n" });
 
     const io = captureIo(acmeRuns.acme);

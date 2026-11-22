@@ -26,6 +26,8 @@ interface ShownFile {
   readonly path: string;
   readonly change: ProposedFile["change"];
   readonly decision: Decision;
+  /** Whether Accept would refuse the file, as one in `.git`, `.halonic` or Halonic's own data folder; it has no diff. */
+  readonly cantWrite: boolean;
   /** Whether the saved file changed since the run started; Accept won't write it. */
   readonly changedSince: boolean;
   /** The unified diff from the saved file to the run's text; empty for a decided file. */
@@ -72,10 +74,14 @@ async function shownFile(
 ): Promise<ShownFile> {
   const decision = record.decisions[file.path] ?? "undecided";
   const shown = { path: file.path, change: file.change, decision };
-  if (decision !== "undecided") return { ...shown, changedSince: false, diff: [] };
+  if (decision !== "undecided")
+    return { ...shown, cantWrite: false, changedSince: false, diff: [] };
   const texts = await proposals.compare(record.proposal.runId, file.path);
+  if (texts.refused !== undefined)
+    return { ...shown, cantWrite: true, changedSince: false, diff: [] };
   return {
     ...shown,
+    cantWrite: false,
     changedSince: texts.saved !== texts.base,
     diff: unifiedDiff(texts.saved, texts.run),
   };
@@ -86,9 +92,9 @@ function fileLines(file: ShownFile): Phrase[] {
   const heading = proposalsMessages.fileHeading(
     file.change,
     printable(file.path),
-    shownDecision(file.decision),
+    file.cantWrite ? "cantWrite" : shownDecision(file.decision),
   ).phrase;
-  if (file.decision !== "undecided") return [[], heading];
+  if (file.decision !== "undecided" || file.cantWrite) return [[], heading];
   const diff: Phrase[] =
     file.diff.length === 0
       ? [proposalsMessages.noDifference().phrase]

@@ -110,6 +110,8 @@ export interface CompareTexts {
   readonly base: string | null;
   readonly saved: string | null;
   readonly run: string | null;
+  /** Why Accept would refuse the file, as `AcceptResult.refused` says; `saved` is then `null`, unread. */
+  readonly refused?: RefusalReason;
 }
 
 /** What one Accept or Reject covers: one file, or every undecided file. */

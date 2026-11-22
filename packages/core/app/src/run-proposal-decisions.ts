@@ -2,6 +2,7 @@
 // Reject, Compare, and Undo and Redo of those decisions. Internal to
 // `core/app`; `RunProposals` hands its calls here.
 
+import { refused, storeRefusing } from "./review-gate.ts";
 import {
   acceptFiles,
   type DecideContext,
@@ -80,11 +81,15 @@ export class ProposalDecisions {
     if (!proposal.files.some((file) => file.path === path)) {
       throw new Error(`Run ${runId} proposes no change to ${path}.`);
     }
-    return {
-      base: await reader.read("base", path),
-      saved: await this.context.store.read(path),
-      run: record.partly?.[path]?.run ?? (await reader.read("run", path)),
-    };
+    const base = await reader.read("base", path);
+    const run = record.partly?.[path]?.run ?? (await reader.read("run", path));
+    // Trust rule A as for Accept: a file it never writes isn't read either.
+    const why = refusalOf(path);
+    const saved = why === null ? await storeRefusing(() => this.context.store.read(path)) : refused;
+    if (saved === refused) {
+      return { base, saved: null, run, refused: why ?? "outside-workspace" };
+    }
+    return { base, saved, run };
   }
 
   /** See `RunProposals.restore`. */
