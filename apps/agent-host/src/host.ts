@@ -56,6 +56,7 @@ import { type HostServices, relayPortOf, serveHost } from "./serving-modes.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
 import { takeStandardOutput } from "./stdio/standard-output.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
+import { UnfencedSessions } from "./this-computer/unfenced-sessions.ts";
 
 /** What a serving host's sandbox gets from the profile: the kept-grant record, and whether it takes back what a removal with administrator rights left (HAL-5404 S2). */
 export interface ProfileSandbox {
@@ -277,6 +278,8 @@ async function hostServices(
   onWsl: boolean,
 ): Promise<HostServices> {
   const sessions = new SessionTable();
+  // The sessions opened without the sandbox, whose runs start only with the host's environment.
+  const unfenced = new UnfencedSessions(sessions);
   const listeningPorts = new Set<number>();
   const bridges = new BridgeTable();
   // The ports the host and its bridges listen on, which no outbound call may reach.
@@ -352,7 +355,7 @@ async function hostServices(
       // An agent with `asks: in-sandbox` runs its calls in its working folder without asking, fenced (HAL-15287).
       { resolve: resolveRealPath, windows: process.platform === "win32" },
     ),
-    ...harnessRoutes({ harnesses, sessions, bridges, runs }),
+    ...harnessRoutes({ harnesses, sessions, bridges, runs, unfenced }),
     ...folders.routes,
     ...connectorRoutes(connectorDeps),
     ...modelRoutes(

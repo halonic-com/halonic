@@ -116,7 +116,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/integrations/sign-in/status` with `{"integration"}` | `{"signIns":[{"signIn","state","lastOutcome"?,"outcomeCount"?}]}`; `state` is `signedIn`, `signedOut`, `approvalChanged` or `cannotSignIn` |
 | `POST /v1/integrations/sign-in/cancel` with `{"integration","signIn"}` | `204` |
 | `POST /v1/integrations/sign-in/sign-out` with `{"integration","signIn"}` | `{"result"}`: `{"kind":"notSignedIn"}` or `{"kind":"signedOut","revoke"}` |
-| `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below), or `409 bridge_in_use` when a run already started the bridge in another session |
+| `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below), or `409 bridge_in_use` when a run already started the bridge in another session, or `403 environment_not_host` in a session without the sandbox whose environment isn't the host's own (`agent-host.unfenced-start`) |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |
 | `GET /v1/remote/state` | an NDJSON stream of the `RemoteState`, the current one first, then each change. A host offers remote only with a tunnel provider, which no launch of the executable has until phase C, so every launch answers `"available":false` and never changes it |

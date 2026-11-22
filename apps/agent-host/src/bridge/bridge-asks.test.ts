@@ -16,6 +16,7 @@ import { SessionTable } from "../sandbox/session-table.ts";
 import type { ChannelCallLine } from "../server/call-channel.ts";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
+import { UnfencedSessions } from "../this-computer/unfenced-sessions.ts";
 import { BridgeTable, bridgeRoutes } from "./bridge-routes.ts";
 import type { OpenBridgeBody } from "./bridge-schemas.ts";
 
@@ -96,7 +97,13 @@ async function startedWith(fence: SandboxFence) {
   };
   server = await startHostServer(token, [
     ...bridgeRoutes(serverFor, bridges, undefined, paths),
-    ...harnessRoutes({ harnesses: [harness], sessions, bridges, runs }),
+    ...harnessRoutes({
+      harnesses: [harness],
+      sessions,
+      bridges,
+      runs,
+      unfenced: new UnfencedSessions(sessions),
+    }),
   ]);
   const addSession = async (sessionFence: SandboxFence) => {
     const profile = { workingFolder, timeLimitMs: 60_000 };
