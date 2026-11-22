@@ -219,4 +219,22 @@ verifies("kit.button-unavailable-tooltip", () => {
     expect(firstLineOf("later band")).toBe("Sandbox isn't ready.");
     expect(firstLineOf("nowhere")).toBeUndefined();
   });
+
+  // C591 row 6: Google setup's Check again said "…sign in again in a terminal:", without the command.
+  it("leaves out the sentence that leads into a command, so the tooltip doesn't end on a colon", () => {
+    const { container } = render(
+      <>
+        <Button unavailable={{ reason: "google" }}>Check again</Button>
+        <p id="google">
+          Studio can't check these again yet. To check them, sign in again in a terminal:
+        </p>
+        <pre>halonic google sign-in gaccount_1</pre>
+        <p id="one-sentence">Run this in a terminal:</p>
+        <p id="file">Studio can't edit it yet. Open acme/halonic.yaml:</p>
+      </>,
+    );
+    expect(parts(container).tooltip?.textContent).toBe("Studio can't check these again yet.");
+    expect(firstLineOf("one-sentence")).toBe("Run this in a terminal:");
+    expect(firstLineOf("file")).toBe("Studio can't edit it yet.");
+  });
 });

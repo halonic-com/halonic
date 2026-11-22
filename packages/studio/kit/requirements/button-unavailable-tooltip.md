@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-15253, Noah's decision on HAL-15139 (option 2, kit-wide; a team decision under HAL-2282, from Iris's flow check C544); base component specs 1 (Button) and 14 (Tooltip)
+- Source: HAL-15253, Noah's decision on HAL-15139 (option 2, kit-wide; a team decision under HAL-2282, from Iris's flow check C544); base component specs 1 (Button) and 14 (Tooltip); a line ending in a colon: HAL-15548 (C591 row 6 on HAL-15531)
 
-While a `Button` is given `unavailable={{ reason }}` and the first element its `reason` names has text, the kit shall give the button a tooltip with that text's first line, as laid out on the page, which shows, hides and looks as `kit.tooltip` says: after 500ms of mouse or pen hover or at once on keyboard focus, never on touch, hidden on leave, blur, a press or Escape, and that Escape shall go no further. The tooltip shall be hidden from screen readers and shall not describe the button, so the reason is read once, through `aria-describedby` (`kit.button-unavailable`). The button shall keep its unavailable look on hover. While the button has that tooltip, a `Tooltip` round it shall not show.
+While a `Button` is given `unavailable={{ reason }}` and the first element its `reason` names has text, the kit shall give the button a tooltip with that text's first line, as laid out on the page, without its last sentence when the line ends in ":" and has more than one sentence (that sentence leads into a command the tooltip doesn't show), which shows, hides and looks as `kit.tooltip` says: after 500ms of mouse or pen hover or at once on keyboard focus, never on touch, hidden on leave, blur, a press or Escape, and that Escape shall go no further. The tooltip shall be hidden from screen readers and shall not describe the button, so the reason is read once, through `aria-describedby` (`kit.button-unavailable`). The button shall keep its unavailable look on hover. While the button has that tooltip, a `Tooltip` round it shall not show.
 
 ## Examples
 
@@ -17,6 +17,9 @@ While a `Button` is given `unavailable={{ reason }}` and the first element its `
 - Given Run, unavailable with the band "Broken flow can't run: it has 1 problem." over "Fix it before it can run.",
   when the user hovers Run,
   then the tooltip says "Broken flow can't run: it has 1 problem." only.
+- Given Google setup's Check again, unavailable with the reason "Studio can't check these again yet. To check them, sign in again in a terminal:" over the command `halonic google sign-in gaccount_1`,
+  when the user hovers Check again,
+  then the tooltip says "Studio can't check these again yet." only, and doesn't end on a colon.
 - Given an answer button with the Tooltip of its full label, unavailable,
   when the user hovers it,
   then only the reason's tooltip shows; once it's available again, the label's Tooltip shows.

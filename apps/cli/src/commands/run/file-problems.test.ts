@@ -74,7 +74,7 @@ verifies("cli.workspace-file-problems", () => {
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
       "✕ Couldn't run support-reply: Acme has 1 problem in providers/anthropic.yaml. Nothing ran.",
-      "  See them with: halonic validate",
+      "  See it with: halonic validate",
     ]);
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
@@ -87,7 +87,7 @@ verifies("cli.workspace-file-problems", () => {
 
     await runCli(["run", "support-reply", "--dir", "acme"], io, [runCommand()]);
 
-    expect(io.stderr[1]).toBe(`  See them with: halonic validate --dir .${sep}acme`);
+    expect(io.stderr[1]).toBe(`  See it with: halonic validate --dir .${sep}acme`);
   });
 
   // HAL-14260: `validate` said "No problems" for these, and the run then
@@ -121,7 +121,7 @@ verifies("cli.workspace-file-problems", () => {
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
       `✕ Couldn't run support-reply: Acme has ${found}. Nothing ran.`,
-      "  See them with: halonic validate",
+      "  See it with: halonic validate",
     ]);
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
     expect(listed.total).toBe(0);
@@ -137,7 +137,7 @@ verifies("cli.workspace-file-problems", () => {
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
       "✕ Couldn't run support-reply: Acme has 1 problem in hubs/support/workflows/support-reply.workflow.yaml. Nothing ran.",
-      "  See them with: halonic validate",
+      "  See it with: halonic validate",
     ]);
   });
 
@@ -200,6 +200,8 @@ verifies("cli.workspace-file-problems", () => {
     expect(io.stderr[0]).toMatch(
       /^✕ Couldn't run support-reply: Acme has 3 problems in \S+ and 2 other files\. Nothing ran\.$/,
     );
+    // "See it with" is for one problem only (C591 row 17).
+    expect(io.stderr[1]).toBe("  See them with: halonic validate");
     expect(io.stderr.join("\n")).not.toContain(pastedKey);
   });
 
