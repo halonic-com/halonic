@@ -225,6 +225,7 @@ verifies("parity.allowed-differences-checked", () => {
       "format.id-from-place",
       "workspace.routines",
       "workflow.unknown-name-hints",
+      "workspace.routines",
     ]);
   });
 

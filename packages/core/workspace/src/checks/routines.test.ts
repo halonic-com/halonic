@@ -12,8 +12,6 @@ import {
 // Each case breaks one thing a routine names; the issue sits where its case file says.
 const routineCases = [
   "routine/unknown-hub",
-  "routine/unknown-workflow",
-  "routine/unknown-agent",
   "routine/other-hub",
   "routine/mail-unknown-connector",
   "routine/mail-not-google",
@@ -28,6 +26,42 @@ verifies("workspace.routines", () => {
     },
     parityLoadLimitMs,
   );
+
+  // C626 #5 (HAL-15758): the words of Studio's routine page, the routine's name and the key to change.
+  it.each([
+    [
+      "routine/unknown-workflow",
+      "Hourly check: payroll isn't in this workspace. Pick another workflow for run.workflow.",
+    ],
+    [
+      "routine/unknown-agent",
+      "Month end: accountant isn't in this workspace. Pick another agent for run.agent.",
+    ],
+  ])(
+    "says for %s what Studio's page says, with the routine's name and the key to change",
+    async (caseId, message) => {
+      expect(await errorsOf(caseId)).toEqual([{ ...expectedError(caseId), message }]);
+    },
+    parityLoadLimitMs,
+  );
+
+  it("guesses the workflow a routine meant", async () => {
+    const workspace = await loadWorkspace(
+      new MemorySource({
+        "workspace.yaml": "id: acme\nname: Acme\n",
+        "workflows/weekly-report.workflow.yaml":
+          "name: Weekly report\ninitial: done\nstates:\n  done: { type: final }\n",
+        "workflows/routines/weekly-report.routine.yaml":
+          "name: Weekly report\ntrigger:\n  every: 1h\nrun:\n  workflow: weekly-reprot\n",
+      }),
+    );
+    const messages = workspace.issues
+      .filter((issue) => issue.code === "unknown-workflow")
+      .map((issue) => issue.message);
+    expect(messages).toEqual([
+      "Weekly report: weekly-reprot isn't in this workspace. Pick another workflow for run.workflow. Did you mean weekly-report?",
+    ]);
+  });
 
   it(
     "reports a cron that doesn't parse with the routines package's message",

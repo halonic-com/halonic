@@ -7,7 +7,7 @@ import {
   triggerValueProblems,
 } from "@halonicjs/routines";
 import { nearMatch } from "@halonicjs/std";
-import { didYouMean, inputReads, missingStartFields, readsWholeInput } from "@halonicjs/workflow";
+import { inputReads, likelyName, missingStartFields, readsWholeInput } from "@halonicjs/workflow";
 import type { LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
 
@@ -18,14 +18,18 @@ interface RoutineProblem {
   readonly path: FileProblem["path"];
   readonly code: string;
   readonly message: string;
+  /** The message names the routine itself, so it doesn't get `Routine "<id>": `. */
+  readonly namesRoutine?: true;
 }
 
 /**
  * What a routine names and when it starts: the hub, workflow or agent it
  * runs, the connector whose mailbox it watches, and its cron, time zone and
- * intervals. Each message follows `Routine "<id>": `. The target and mailbox
- * messages are the old loader's; a trigger's message is the one the routines
- * package's parser gives.
+ * intervals. Each message follows `Routine "<id>": `, except a missing
+ * workflow or agent's, which says Studio's sentence after the routine's name
+ * ({@link targetMissing}). The other target messages and the mailbox ones are
+ * the old loader's; a trigger's message is the one the routines package's
+ * parser gives.
  *
  * A routine in a hub runs that hub's workflows and agents. One at the root
  * names its hub in `run.hub`, unless the root has agents or workflows of its
@@ -81,7 +85,7 @@ function triggerProblems(routine: Routine): (RoutineProblem | null)[] {
   ];
 }
 
-/** Each problem as an error on the routine's file, after `Routine "<id>": `. */
+/** Each problem as an error on the routine's file, after `Routine "<id>": ` unless it names the routine. */
 function problemIssues(
   context: CheckContext,
   routine: Routine,
@@ -90,7 +94,9 @@ function problemIssues(
   return problems
     .filter((problem) => problem !== null)
     .map((problem) => {
-      const message = `Routine "${routine.value.id}": ${problem.message}`;
+      const message = problem.namesRoutine
+        ? problem.message
+        : `Routine "${routine.value.id}": ${problem.message}`;
       return context.error(routine.path, problem.path, problem.code, message);
     });
 }
@@ -210,21 +216,29 @@ function targetProblem(context: CheckContext, routine: Routine): RoutineProblem 
     return { path: ["run", "hub"], code: "unknown-hub", message: `unknown hub "${hub}"` };
   }
   // A file that is there but failed has its own errors; "unknown" would blame the routine.
-  if ("workflow" in run) {
-    return context.nameableIds("workflow", hub).has(run.workflow)
-      ? null
-      : {
-          path: ["run", "workflow"],
-          code: "unknown-workflow",
-          message: `unknown workflow "${run.workflow}"`,
-        };
-  }
-  const agents = context.nameableIds("agent", hub);
-  if (agents.has(run.agent)) {
-    return null;
-  }
-  const message = `unknown agent "${run.agent}"${didYouMean(run.agent, [...agents])}`;
-  return { path: ["run", "agent"], code: "unknown-agent", message };
+  const kind = "workflow" in run ? "workflow" : "agent";
+  const target = "workflow" in run ? run.workflow : run.agent;
+  const ids = context.nameableIds(kind, hub);
+  return ids.has(target) ? null : targetMissing(routine.value.name, kind, target, [...ids]);
+}
+
+/**
+ * A workflow or agent the routine's hub doesn't have, in the words Studio's
+ * routine page uses (`cantStartWords.targetMissing`), after the routine's
+ * name as `halonic routines` lists it, and with the key to change (C626,
+ * HAL-15758): "Weekly report: weekly-reprot isn't in this workspace. Pick
+ * another workflow for run.workflow. Did you mean weekly-report?"
+ */
+function targetMissing(
+  name: string,
+  kind: "workflow" | "agent",
+  target: string,
+  ids: readonly string[],
+): RoutineProblem {
+  const likely = likelyName(target, ids);
+  const hint = likely === undefined ? "" : ` Did you mean ${likely}?`;
+  const message = `${name}: ${target} isn't in this workspace. Pick another ${kind} for run.${kind}.${hint}`;
+  return { path: ["run", kind], code: `unknown-${kind}`, message, namesRoutine: true };
 }
 
 /**

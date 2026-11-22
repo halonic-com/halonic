@@ -2737,5 +2737,48 @@
         ]
       }
     ]
+  },
+  {
+    "id": "routine-target-missing-says-the-fix",
+    "requirement": "workspace.routines",
+    "area": "routines: a workflow or agent the routine's hub doesn't have",
+    "old": "A routine whose run.workflow or run.agent named a workflow or agent its hub doesn't have gave Routine \"hourly-check\": unknown workflow \"payroll\", by id, with quotes and no fix.",
+    "new": "The message is the routine's name and the sentence Studio's routine page says, with the key to change: Hourly check: payroll isn't in this workspace. Pick another workflow for run.workflow. (or agent and run.agent). When an id is near, Did you mean <id>? follows. The codes stay unknown-workflow and unknown-agent.",
+    "why": "halonic routines lists the routine by name and says it can't start, and sends the user to halonic validate; there the line named it by id and gave no fix, while Studio's page already says what to do (C626 #5, HAL-15758).",
+    "status": "proposed",
+    "checks": [
+      {
+        "case": "routine/unknown-agent",
+        "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": unknown agent \"accountant\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "Month end: accountant isn't in this workspace. Pick another agent for run.agent."
+          }
+        ]
+      },
+      {
+        "case": "routine/unknown-workflow",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown workflow \"payroll\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "Hourly check: payroll isn't in this workspace. Pick another workflow for run.workflow."
+          }
+        ]
+      }
+    ]
   }
 ]
