@@ -80,14 +80,14 @@ export const googleMessages = defineMessages("google", {
   signInNeedsMore: () => phrase`halonic google sign-in needs an account.`,
   signInUsage: () => phrase`halonic google sign-in <account> [--connection <id>] [--dir <folder>]`,
   signInConnectionOption: () =>
-    phrase`Check that the account is set up for this connection; it signs in the address of the account's own connection either way.`,
+    phrase`Check that the account is set up for this connector; it signs in the address of the account's own connector either way.`,
   signInOtherWorkspace: () => phrase`This account was set up for another workspace.`,
   signInOtherWorkspaceFix: () =>
     phrase`Run the command in the workspace the account was set up for, or use --dir.`,
   signInOtherConnection: (connection: string) =>
-    phrase`This account isn't set up for the connection "${connection}".`,
+    phrase`This account isn't set up for the connector "${connection}".`,
   signInOtherConnectionFix: () =>
-    phrase`Leave out --connection, or name the connection the account was set up for.`,
+    phrase`Leave out --connection, or name the connector the account was set up for.`,
   signInNoClientId: () => phrase`This account has no client ID yet.`,
   signInNoClientIdFix: () => phrase`Finish the client step of the setup in Studio first.`,
   signInNoSecret: () => phrase`This account has no client secret yet.`,
@@ -122,7 +122,7 @@ export const googleMessages = defineMessages("google", {
   signInBlocked: () => phrase`Google didn't let this account sign in to the app.`,
   signInBlockedFix: () => phrase`Ask the administrator of the account, or use a personal account.`,
   signInWrongAccount: () => phrase`Another Google account signed in. Nothing was saved.`,
-  signInWrongAccountFix: () => phrase`Sign in with the address of the connection.`,
+  signInWrongAccountFix: () => phrase`Sign in with the address of the connector.`,
   signInSecretRefused: () => phrase`Google refused the client secret. Nothing was saved.`,
   signInSecretRefusedFix: () => phrase`Run halonic google secret <account> with the right secret.`,
   signInCodeRefused: () => phrase`Google refused the sign-in. Nothing was saved.`,
@@ -132,7 +132,8 @@ export const googleMessages = defineMessages("google", {
     phrase`Remove Halonic from your Google account's third-party access, then sign in again.`,
   signInGoogleError: (code: string) => phrase`Google answered with the error "${code}".`,
   signInUnreachable: () => phrase`Google couldn't be reached. Nothing was saved.`,
-  signInUnreachableFix: () => phrase`Check the connection and run halonic google sign-in again.`,
+  signInUnreachableFix: () =>
+    phrase`Check your internet connection, then run halonic google sign-in again.`,
   signInBadCallback: () =>
     phrase`The browser's answer wasn't a complete sign-in. Nothing was saved.`,
   signInBadCallbackFix: () => phrase`Run halonic google sign-in again and use the new address.`,

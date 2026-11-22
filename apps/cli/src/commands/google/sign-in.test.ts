@@ -256,6 +256,7 @@ verifies("cli.commands.google.sign-in", () => {
     const host = openGoogleHost(setup);
     expect(code).toBe(exitCode.denied);
     expect(printed).toContain("Another Google account signed in");
+    expect(printed).toContain("Sign in with the address of the connector.");
     expect(printed).not.toContain("someone.else@example.com");
     expect(await host.tokens.get(`google-account-${accountRef}`)).toBeNull();
     expect((await host.setups.read(accountRef))?.signInStartedAt).toBeNull();
@@ -331,7 +332,8 @@ verifies("cli.commands.google.sign-in", () => {
     const accountRef = await readyAccount();
     const wrongConnection = await signIn([accountRef, "--connection", "bank"], machine);
     expect(wrongConnection.code).toBe(exitCode.usage);
-    expect(wrongConnection.printed).toContain("isn't set up for the connection");
+    expect(wrongConnection.printed).toContain("isn't set up for the connector");
+    expect(wrongConnection.printed).toContain("name the connector the account was set up for");
   });
 
   it("accepts --connection when it is the record's connector", async () => {
