@@ -40,6 +40,7 @@ import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
 import { connectorNotStartedLines } from "./show-connectors.ts";
 import { failedRunDebugText, outputHintLines, showEnding } from "./show-ending.ts";
+import { sendingOffLines } from "./show-refused.ts";
 
 /**
  * Shows one run, real or test: its heading, then its steps. Exits 0 for any
@@ -99,6 +100,7 @@ export async function showRun(
             fileOf: (id) => connectorFileOf(loaded, id),
             isIntegration: (id) => isIntegrationConnector(loaded, id),
           }),
+          ...sendingOffLines(run.events),
           ...providerNoteLines(run.events),
           ...showEnding(
             run,

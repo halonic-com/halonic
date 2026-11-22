@@ -38,6 +38,16 @@ const sendingOff: SendingCheck = {
   reason: 'sending is off for the connector "mail"',
 };
 
+/** The `tool.refused` a refused `send_mail` writes (HAL-15772). */
+const refusedSend = {
+  type: "tool.refused",
+  agent: "writer",
+  tool: "send_mail",
+  toolCallId: "m-1",
+  reason: "sending-off",
+  connector: "mail",
+};
+
 /** The reply workflow's writer, whose file lists `mail`. */
 const mailWriter = agentsUsing(["mail"], "writer");
 
@@ -136,6 +146,7 @@ verifies("engine.run-connector-calls", () => {
     const types = typesOf(runs.logs.get("run_1"));
     expect(types).not.toContain("approval.requested");
     expect(types).not.toContain("effect.requested");
+    expect(eventsOf(runs.logs.get("run_1"), "tool.refused")).toMatchObject([refusedSend]);
     expect(lastResult(model)).toBe('Refused: sending is off for the connector "mail"');
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
@@ -149,6 +160,7 @@ verifies("engine.run-connector-calls", () => {
 
     expect(mail.calls).toEqual([]);
     expect(eventsOf(runs.logs.get("run_1"), "effect.requested")).toEqual([]);
+    expect(eventsOf(runs.logs.get("run_1"), "tool.refused")).toMatchObject([refusedSend]);
     expect(lastResult(model)).toBe('Refused: sending is off for the connector "mail"');
   });
 
