@@ -31,6 +31,8 @@ export type {
   DeploySource,
 } from "./deploy.ts";
 export { deploy } from "./deploy.ts";
+export type { CloudflareDeployTargetOptions } from "./deploy-target-entry.ts";
+export { createCloudflareDeployTarget, deployTarget, tokenName } from "./deploy-target-entry.ts";
 export type { DestroyOptions, DestroyResult, DestroyStep } from "./destroy.ts";
 export { destroy } from "./destroy.ts";
 export type { DeployErrorCode } from "./errors.ts";
