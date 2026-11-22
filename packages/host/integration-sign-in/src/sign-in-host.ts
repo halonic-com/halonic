@@ -64,6 +64,12 @@ export interface SignInStatus {
   readonly state: SignInState;
   /** How the last sign-in of this one ended since the host started, if one did. */
   readonly lastOutcome?: SignInOutcome;
+  /**
+   * How many sign-ins of this one have ended since the host started, set with `lastOutcome`. It
+   * changes with every outcome, so a sign-in that ends the same way twice in a row still reads as
+   * new.
+   */
+  readonly outcomeCount?: number;
 }
 
 /** One integration's parts of the host. */
@@ -208,13 +214,19 @@ async function signOutWithoutParts(
   });
 }
 
+/** How one sign-in last ended, and how many of its sign-ins have ended since the host started. */
+interface LastOutcome {
+  readonly outcome: SignInOutcome;
+  readonly count: number;
+}
+
 function buildParts(
   name: string,
   registered: SignInIntegration,
   settings: SignInHostSettings,
 ): IntegrationSignInParts {
   const { secrets } = registered;
-  const lastOutcomes = new Map<string, SignInOutcome>();
+  const lastOutcomes = new Map<string, LastOutcome>();
   const signIns = createIntegrationSignIns({
     integration: name,
     current: async () => await registered.read(),
@@ -235,7 +247,8 @@ function buildParts(
     randomBytes: settings.randomBytes,
     requestSignal: settings.requestSignal,
     onOutcome: (outcome) => {
-      lastOutcomes.set(outcome.signIn, outcome);
+      const count = (lastOutcomes.get(outcome.signIn)?.count ?? 0) + 1;
+      lastOutcomes.set(outcome.signIn, { outcome, count });
       settings.onOutcome?.(name, outcome);
     },
   });
@@ -251,7 +264,7 @@ async function statusOf(
   registered: SignInIntegration,
   signIns: IntegrationSignIns,
   grants: SignInGrants,
-  lastOutcomes: ReadonlyMap<string, SignInOutcome>,
+  lastOutcomes: ReadonlyMap<string, LastOutcome>,
 ): Promise<SignInStatus[]> {
   const { sheet } = await registered.read();
   return await Promise.all(
@@ -260,7 +273,9 @@ async function statusOf(
       return {
         signIn,
         state: await stateOf(name, signIn, signIns, grants),
-        ...(lastOutcome === undefined ? {} : { lastOutcome }),
+        ...(lastOutcome === undefined
+          ? {}
+          : { lastOutcome: lastOutcome.outcome, outcomeCount: lastOutcome.count }),
       };
     }),
   );

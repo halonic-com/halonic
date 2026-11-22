@@ -44,16 +44,20 @@ export const SETTINGS_NEEDED =
 
 /**
  * After **Sign out**, **Remove trust** or **Remove plugin**, when the provider
- * didn't confirm the revoke, or there was no address to revoke at. Several
- * tokens read as the CLI says them (HAL-15083).
+ * didn't confirm the revoke, or there was no address to revoke at. The token
+ * may still work at the provider, so the line says how to end it there:
+ * after **Remove trust** or **Remove plugin** Studio has no button left for
+ * it. The toasts name the sign-ins, as the CLI does; the sign-in's own block
+ * needs no name. Several tokens read as the CLI says them (HAL-15083,
+ * HAL-15807).
  *
- * @param service - the plugin's name
- * @param tokens - how many sign-ins weren't confirmed
+ * @param signIns - the sign-ins that weren't confirmed; none in the sign-in's own block
  */
-export function signedOutNotConfirmed(service: string, tokens = 1): string {
-  return tokens === 1
-    ? `You're signed out here. ${service} didn't confirm, so the token may still work there until it expires.`
-    : `You're signed out here. ${service} didn't confirm, so the tokens may still work there until they expire.`;
+export function signedOutNotConfirmed(signIns: readonly string[] = []): string {
+  const where = signIns.length === 0 ? "" : ` of ${list.format(signIns)}`;
+  return signIns.length > 1
+    ? `You're signed out${where} here. The provider didn't confirm the sign-out, so the tokens may still work there until they expire. To end them now, remove the access you gave in your account settings at the provider.`
+    : `You're signed out${where} here. The provider didn't confirm the sign-out, so the token may still work there until it expires. To end it now, remove the access you gave in your account settings at the provider.`;
 }
 
 /** The client secret a sign-in needs isn't set, in the shape of the approved refused line (team wording). */

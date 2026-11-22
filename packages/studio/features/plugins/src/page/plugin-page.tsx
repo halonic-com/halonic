@@ -129,8 +129,7 @@ export function PluginPage({
       ...(canUpdate && update.kind === "idle"
         ? { checkForUpdate: () => void checkForUpdate(), fromFolder }
         : {}),
-      revoke: () =>
-        run("revoke", async () => toastSignedOut(plugin.name, await actions.revoke(plugin.plugin))),
+      revoke: () => run("revoke", async () => toastSignedOut(await actions.revoke(plugin.plugin))),
       remove: () => setRemoving(true),
     },
     viewOnly,

@@ -231,7 +231,7 @@ In Studio, the plugin's page has a **Sign-ins** section with a block for each
 one: **Sign in** opens the sign-in page in the browser, and the block shows
 "Waiting for *service*… Finish in your browser." with **Cancel** until you
 finish there. **Cancel** drops the pending sign-in. After 10 minutes without an
-answer the block says "The sign-in didn't finish. Try again." Signed in, it
+answer the block says "The sign-in didn't finish. Nothing was saved." Signed in, it
 shows **Sign out**. A sign-in whose manifest entry changed asks you to
 **Sign in again**.
 
@@ -421,8 +421,10 @@ needs `--yes`), then removes the plugin with its trust, settings and the API
 key you entered. Both, and **Remove trust** in Studio, also sign you out of
 the plugin's sign-ins on this computer: each token is revoked at the provider
 where the sign-in has a revoke address, and forgotten here either way. When the
-provider doesn't confirm, the command (or Studio) says so, because the token
-may still work there until it expires.
+provider doesn't confirm the sign-out, the command (or Studio) names the sign-ins and says
+the token may still work there until it expires: "To end it now, remove the
+access you gave in your account settings at the provider." By then the trust or
+the plugin is gone, so Halonic has nothing left to retry.
 
 In a script, `plugin add` and `trust --plugin` take
 `--yes --fingerprint <fingerprint>`; the fingerprint must match what the check

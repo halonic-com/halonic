@@ -213,9 +213,7 @@ export function PluginsList({
           openInNewTab: () => onOpenInNewTab(installed.plugin),
           openFolder: () => void run("openFolder", () => actions.openFolder(installed.plugin)),
           revoke: () =>
-            void run("revoke", async () =>
-              toastSignedOut(installed.name, await actions.revoke(installed.plugin)),
-            ),
+            void run("revoke", async () => toastSignedOut(await actions.revoke(installed.plugin))),
           remove: () => setRemoving(installed),
         });
 

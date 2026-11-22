@@ -80,6 +80,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
             signIn: rig.signInName,
             state: "signedIn",
             lastOutcome: expect.objectContaining({ kind: "signedIn" }),
+            outcomeCount: 1,
           },
         ],
       });
