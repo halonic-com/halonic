@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: run page notes for a run that ended on a rejection (HAL-14586), a team decision under HAL-2282 (HAL-14592)
 
-Directly under the receipt's summary line, the run page shall name the ending a completed run reached, "Ending: _ending_", where _ending_ is the first line of the description of the final state the run ended in, else that state's id. It shall show only for a completed run of a workflow with more than one final state: a workflow with one ending keeps "Finished" alone (HAL-11699), and a failed, stopped or cancelled run already says where it stopped. The run's badge stays "Done" whatever the ending.
+When a completed run of a workflow with more than one final state is shown, the run page shall name the ending it reached directly under the receipt's summary line, "Ending: _ending_", where _ending_ is the first line of the description of the final state the run ended in, else that state's id. A workflow with one ending keeps "Finished" alone (HAL-11699), and a failed, stopped or cancelled run has no Ending line because it already says where it stopped. The run's badge stays "Done" whatever the ending.
 
 ## Examples
 
