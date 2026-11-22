@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-15550 (words check C591 on HAL-15116, row 48; team decision on the approved Trusted sources screen, HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:K88FnG92VxBqLjqLTM+j6Ugryx69XLhHoUwrfgTUkLP06aaAFjq6ZkBhc9o9raAcmWtK/lT6F6HvWAyT17wdDw==
 
 When **Remove trust** removed a plugin's record but couldn't sign it out, the dialog ended with
 "Remove trust again to try the sign-out again." The words check found that "try the sign-out
