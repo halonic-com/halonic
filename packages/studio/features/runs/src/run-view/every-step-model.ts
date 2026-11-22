@@ -9,11 +9,19 @@ import type { RunWorkflow } from "../api.ts";
 import { everyStepWords, stepName } from "../run-words.ts";
 import { clockTime, dueWords, tookWords } from "../time-words.ts";
 import { keyOriginWait, waitsForKeyOriginAnswer } from "./key-origin-wait.ts";
+import { rejecterOf } from "./run-ending.ts";
 import { slowStepLine } from "./slow-step.ts";
 import { type StepGroup, stepGroups } from "./step-groups.ts";
 
 /** The 16px dot's mark (component specs 23.5); the run page has no "not reached" entries yet. */
 export type StepMark = "done" | "failed" | "needs-you" | "running" | "stopped";
+
+/** An entry's mark, the state word a screen reader hears first, and its line. */
+interface HowItWent {
+  readonly mark: StepMark;
+  readonly state: string;
+  readonly line: string;
+}
 
 /** One step on the timeline. */
 export interface StepEntry {
@@ -64,7 +72,8 @@ export function everyStep(
     const name = stepName(step.stateId, workflow?.stepDescription(step.stateId));
     const time = clockTime(new Date(step.startedAt));
     const current = step.end.kind === "running" && index === steps.length - 1;
-    const ended = asking && current ? keyOriginWait : howItWent(step, summary, now);
+    const ended =
+      asking && current ? keyOriginWait : stepEnded(step, eventsOfSteps[index], summary, now);
     const { mark, state } = ended;
     const line = slow !== undefined && current && !asking ? slow : ended.line;
     const id = `step-${index}`;
@@ -104,12 +113,26 @@ export function entryIdOfStep(
   return index === -1 ? undefined : `step-${index}`;
 }
 
-/** The step's mark, the state word a screen reader hears first, and its line. */
-function howItWent(
+/**
+ * How a step went, from its events. A step that ended with an answer of reject, a wait step's or
+ * a tool approval's, gets the grey mark of a stopped step and the state word "rejected", not the
+ * green check of "approved" (HAL-14586). A step that failed or still runs keeps its own mark.
+ */
+function stepEnded(
   step: RunStep,
+  events: readonly RunEvent[] = [],
   summary: RunSummary,
   now: Date,
-): { readonly mark: StepMark; readonly state: string; readonly line: string } {
+): HowItWent {
+  const ended = howItWent(step, summary, now);
+  if (ended.mark !== "done" || !events.some((event) => rejecterOf(event) !== undefined)) {
+    return ended;
+  }
+  return { ...ended, mark: "stopped", state: everyStepWords.state.rejected };
+}
+
+/** The step's mark, the state word a screen reader hears first, and its line. */
+function howItWent(step: RunStep, summary: RunSummary, now: Date): HowItWent {
   const end: StepEnd = step.end;
   const words = everyStepWords;
   switch (end.kind) {

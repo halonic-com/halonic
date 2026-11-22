@@ -1,10 +1,13 @@
 import type { ApprovalLine } from "./receipt-model.ts";
 import { receiptWords } from "./receipt-words.ts";
+import type { Rejecter } from "./run-ending.ts";
 
 /** The props of `Receipt`. */
 export interface ReceiptProps {
   /** The summary line from `summaryLine`. */
   readonly summary: string;
+  /** The ending from `runEnding`, a line under the summary; `undefined` has none. */
+  readonly ending?: string | undefined;
   /** The Approvals section's lines from `approvalLines`; none hides the section. */
   readonly approvals: readonly ApprovalLine[];
   /** The Items section's lines from `itemLines`; none hides the section. */
@@ -27,6 +30,7 @@ export interface ReceiptProps {
  */
 export function Receipt({
   summary,
+  ending,
   approvals,
   items = [],
   messages = [],
@@ -39,6 +43,7 @@ export function Receipt({
         {receiptWords.heading}
       </h2>
       <p className="text-section">{summary}</p>
+      {ending === undefined ? null : <p className="text-small">{receiptWords.ending(ending)}</p>}
       <TextSection id="receipt-items" heading={receiptWords.itemsHeading} lines={items} />
       <TextSection id="receipt-messages" heading={receiptWords.messagesHeading} lines={messages} />
       <TextSection id="receipt-read" heading={receiptWords.readHeading} lines={reads} />
@@ -64,23 +69,37 @@ export function Receipt({
 /**
  * What the agent says it did, after the receipt (RCPT-3.4; checklist part 1, 1.9): its own
  * words in a dashed frame, a named region, so they can't be taken for the receipt. Plain text
- * with its line breaks: a Markdown link or image in it shows as text and loads nothing.
+ * with its line breaks: a Markdown link or image in it shows as text and loads nothing. Words
+ * that a person or a rule rejected say so in the heading (HAL-14586).
  *
  * @example
  * <AgentSays text="This week: 12 emails." />
  */
-export function AgentSays({ text }: { readonly text: string }) {
+export function AgentSays({
+  text,
+  rejectedBy,
+}: {
+  readonly text: string;
+  readonly rejectedBy?: Rejecter | undefined;
+}) {
   return (
     <section
       aria-labelledby="run-agent-says"
       className="flex flex-col gap-1 rounded-sm border border-dashed border-border p-3"
     >
       <h2 id="run-agent-says" className="text-label uppercase text-fg-muted">
-        {receiptWords.agentSaysHeading}
+        {agentSaysHeading(rejectedBy)}
       </h2>
       <p className="whitespace-pre-wrap break-words text-small">{text}</p>
     </section>
   );
+}
+
+function agentSaysHeading(rejectedBy: Rejecter | undefined): string {
+  if (rejectedBy === undefined) return receiptWords.agentSaysHeading;
+  return rejectedBy === "rule"
+    ? receiptWords.agentRuleRejectedHeading
+    : receiptWords.agentRejectedHeading;
 }
 
 /** A section of plain lines under its own small heading; no lines, no section. */

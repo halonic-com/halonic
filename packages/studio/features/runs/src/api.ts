@@ -84,6 +84,8 @@ export interface RunWorkflow {
   readonly name: string;
   /** The step's description as written in the workflow file; `undefined` when it has none. */
   readonly stepDescription: (stateId: string) => string | undefined;
+  /** The ids of its final states, the endings it can reach; left out when not known. */
+  readonly finalStates?: readonly string[];
 }
 
 /** What the routine that started a run says about it: its name, and when it runs. */

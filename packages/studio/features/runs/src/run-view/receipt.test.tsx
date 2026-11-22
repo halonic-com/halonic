@@ -96,6 +96,29 @@ verifies("runs.run-view.agent-says", () => {
     expect(root.querySelector("p")?.textContent).toBe(text);
     expect(root.querySelector("img, a")).toBeNull();
   });
+
+  it("names words a person or a rule rejected as rejected, in the same frame (HAL-14586)", () => {
+    const heading = (rejectedBy: "you" | "rule") =>
+      render(<AgentSays text="Sorry, Sam." rejectedBy={rejectedBy} />).querySelector("h2")
+        ?.textContent;
+    expect(heading("you")).toBe("What you rejected (the agent's own words, not used)");
+    expect(heading("rule")).toBe("What a rule rejected (the agent's own words, not used)");
+  });
+});
+
+verifies("runs.run-view.receipt-ending", () => {
+  it("draws the ending under the summary line, and nothing without one", () => {
+    const root = render(
+      <Receipt summary="Finished in 8 s" ending="Finished without the reply" approvals={[]} />,
+    );
+    expect([...root.querySelectorAll("p")].map((line) => line.textContent)).toEqual([
+      "Finished in 8 s",
+      "Ending: Finished without the reply",
+    ]);
+    expect(
+      render(<Receipt summary="Finished" approvals={[]} />).querySelectorAll("p"),
+    ).toHaveLength(1);
+  });
 });
 
 verifies("runs.run-view.receipt-models-cost", () => {

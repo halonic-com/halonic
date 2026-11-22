@@ -35,6 +35,7 @@ import {
   summaryLine,
 } from "./receipt-model.ts";
 import { useRunAgain } from "./run-again.ts";
+import { rejectedAfterAgentSaid, runEnding } from "./run-ending.ts";
 import { LogUnread, RunLayout } from "./run-layout.tsx";
 import { RunNotShown, useRunGone } from "./run-not-shown.tsx";
 import type { RunPageContext } from "./run-page-model.ts";
@@ -351,13 +352,16 @@ function ReceiptAndSteps({
     <>
       <Receipt
         summary={summaryLine(run, log, context)}
+        ending={runEnding(run.summary, context.workflow)}
         approvals={approvalLines(log)}
         items={itemLines(log)}
         messages={messageLines(log)}
         reads={readLines(log)}
         models={modelLines(log, run.summary, context.currency)}
       />
-      {said === undefined ? null : <AgentSays text={said} />}
+      {said === undefined ? null : (
+        <AgentSays text={said} rejectedBy={rejectedAfterAgentSaid(log)} />
+      )}
       <EveryStep log={log} entries={entries} openEntry={openEntry} onOpenEntry={onOpenEntry} />
     </>
   );

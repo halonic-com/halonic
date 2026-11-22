@@ -184,6 +184,9 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     return {
       name: workflow.name,
       stepDescription: (stateId) => workflow.states[stateId]?.description,
+      finalStates: Object.keys(workflow.states).filter(
+        (stateId) => workflow.states[stateId]?.type === "final",
+      ),
     };
   }
 

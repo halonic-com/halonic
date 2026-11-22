@@ -79,6 +79,7 @@ verifies("studio.workspace-runs", () => {
     expect(runs.workflow("acme", "reply")?.stepDescription("review")).toBe(
       "A person reads the reply",
     );
+    expect(runs.workflow("acme", "reply")?.finalStates).toEqual(["draft", "review"]);
     expect(runs.workflow("acme", "gone")).toBeUndefined();
     expect(runs.currency()).toBe("USD");
   });

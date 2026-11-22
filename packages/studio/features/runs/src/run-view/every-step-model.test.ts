@@ -126,4 +126,36 @@ verifies("runs.every-step", () => {
     expect(answeredWith("escalate")).toBe("You answered Send to a manager at 10:42");
     expect(answeredWith("constructor")).toBe("You answered constructor at 10:42");
   });
+
+  it("gives a rejected answer the grey mark of a stopped step, read as rejected (HAL-14586)", () => {
+    const [review] = stepsOf([
+      [0, entered("review")],
+      [0, { type: "run.waiting", state: "review", events: ["approve", "reject"] }],
+      [2, { type: "event.received", event: "reject" }],
+      [2, entered("not-replied")],
+    ]);
+    expect(review).toMatchObject({
+      mark: "stopped",
+      line: "You rejected at 10:42",
+      label: "Approve this reply?, rejected, 10:40, You rejected at 10:42",
+    });
+    const rejectedCall = (approved: boolean) =>
+      stepsOf([
+        [0, entered("draft")],
+        [
+          1,
+          {
+            type: "approval.resolved",
+            state: "draft",
+            agent: "drafter",
+            tool: "gmail_send",
+            callId: "c1",
+            approved,
+          },
+        ],
+        [2, entered("review")],
+      ])[0]?.mark;
+    expect(rejectedCall(false)).toBe("stopped");
+    expect(rejectedCall(true)).toBe("done");
+  });
 });

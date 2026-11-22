@@ -54,6 +54,11 @@ export const receiptWords = {
     `Created ${names.length === 1 ? "1 file" : `${names.length} files`}: ${namesInWords(names)}`,
   /** The heading of the agent's own words after the receipt (RCPT-3.4). */
   agentSaysHeading: "What the agent says it did (its own words, not checked)",
+  /** The same frame when its words came before a rejection and no agent answered after it (HAL-14586). */
+  agentRejectedHeading: "What you rejected (the agent's own words, not used)",
+  agentRuleRejectedHeading: "What a rule rejected (the agent's own words, not used)",
+  /** The line under the summary that names the final state a run reached (HAL-14586). */
+  ending: (ending: string) => `Ending: ${ending}`,
 };
 
 /** "a.md", or "a.md and b.md", or "a.md, b.md and c.md". */
