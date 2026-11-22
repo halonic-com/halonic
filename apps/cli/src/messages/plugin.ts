@@ -204,9 +204,9 @@ export const pluginMessages = defineMessages("plugin", {
   /** With a !: the plugin is off, so an agent gets none of its tools yet. */
   pluginOff: (state: Exclude<PluginState, "on">, id: string) =>
     phrase`${id} is off: ${stateWords[state]} ${markPart("separator")} halonic trust --plugin ${id}`,
-  /** With a !: the plugin's folder can't be read or checked, so it's off. */
+  /** With a !: the plugin's folder can't be read or checked, so it's off, and what to do (C609, HAL-15656). */
   pluginBroken: (id: string) =>
-    phrase`${id} can't be read or checked, so it's off. See halonic plugin list.`,
+    phrase`${id} can't be read or checked, so it's off. Remove it with halonic plugin remove ${id}, then add a version that works.`,
 
   /**
    * `remove`'s question, framed with [y/N]. The API key is named only when one

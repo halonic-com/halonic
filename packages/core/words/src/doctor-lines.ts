@@ -249,8 +249,9 @@ function secretsItems(line: SecretsLine, face: DoctorFace): DoctorLineItem[] {
 }
 
 /**
- * Each plugin problem: one that isn't added with the near id or the fix
- * under it, then one sentence for each plugin that is off or can't be read.
+ * Each plugin problem: one that isn't added with the near id and the fix
+ * under it, then one sentence for each plugin that is off, and one with its
+ * fix for each that can't be read.
  */
 function pluginsItems(line: PluginsLine, face: DoctorFace): DoctorLineItem[] {
   return line.problems.flatMap((problem) => pluginProblem(problem, face));
@@ -265,9 +266,11 @@ function pluginProblem(problem: DoctorPluginProblem, face: DoctorFace): DoctorLi
       if (problem.near === undefined) {
         return [{ sentence }, { fix: doctorMessages.addPlugin().phrase }];
       }
+      const near = printable(problem.near);
       return [
         { sentence },
-        { sentence: doctorMessages.pluginNear(printable(problem.near)).phrase },
+        { sentence: doctorMessages.pluginNear(near).phrase },
+        { fix: doctorMessages.fixPluginId(printable(problem.connector), plugin, near).phrase },
       ];
     }
     case "off":
@@ -278,7 +281,10 @@ function pluginProblem(problem: DoctorPluginProblem, face: DoctorFace): DoctorLi
         },
       ];
     case "broken":
-      return [{ sentence: doctorMessages.pluginBroken(plugin).phrase }];
+      return [
+        { sentence: doctorMessages.pluginBroken(plugin).phrase },
+        { fix: doctorMessages.removeBrokenPlugin(face.shellWord(problem.plugin)).phrase },
+      ];
   }
 }
 

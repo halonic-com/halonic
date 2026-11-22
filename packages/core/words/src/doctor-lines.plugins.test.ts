@@ -24,7 +24,7 @@ function worded(...problems: DoctorPluginProblem[]): { label: string; items: str
 }
 
 verifies("words.doctor-plugins", () => {
-  it("names a connector's plugin that isn't added, with the near id or the fix under it", () => {
+  it("names a connector's plugin that isn't added, with the near id and a fix, or the fix", () => {
     expect(
       worded({
         problem: "not-added",
@@ -34,17 +34,21 @@ verifies("words.doctor-plugins", () => {
       }),
     ).toEqual({
       label: "Plugins",
-      items: ["orders uses the plugin acme-order, which isn't added.", "Did you mean acme-orders?"],
+      items: [
+        "orders uses the plugin acme-order, which isn't added, so orders has no tools yet.",
+        "Did you mean acme-orders?",
+        "fix: Fix: change the plugin id in orders.connector.yaml to acme-orders, or add acme-order with halonic plugin add <folder or git address>, then run halonic doctor again.",
+      ],
     });
     expect(
       worded({ problem: "not-added", connector: "orders", plugin: "tides", near: undefined }).items,
     ).toEqual([
-      "orders uses the plugin tides, which isn't added.",
+      "orders uses the plugin tides, which isn't added, so orders has no tools yet.",
       "fix: Fix: add it with halonic plugin add <folder or git address>, then run halonic doctor again.",
     ]);
   });
 
-  it("says why a plugin is off, with the command that trusts it, and one that can't be read", () => {
+  it("says why a plugin is off, with the command that trusts it, and how to fix one that can't be read", () => {
     expect(
       worded(
         { problem: "off", plugin: "acme-orders", why: "changed" },
@@ -54,7 +58,8 @@ verifies("words.doctor-plugins", () => {
     ).toEqual([
       "acme-orders is off: changed since you trusted it · halonic trust --plugin acme-orders",
       "tides is off: not trusted yet · halonic trust --plugin tides",
-      "maps can't be read or checked, so it's off. See halonic plugin list.",
+      "maps can't be read or checked, so it's off.",
+      "fix: Fix: remove it with halonic plugin remove maps, then add a version that works.",
     ]);
   });
 
@@ -67,5 +72,7 @@ verifies("words.doctor-plugins", () => {
     // The id is shown printable; the command's word is the face's to make safe, as it is the CLI's.
     expect(sentence).toMatch(/^my plugin\\u001b\[31m is off: /u);
     expect(sentence).toContain("halonic trust --plugin 'my plugin");
+    const [, fix] = worded({ problem: "broken", plugin: "my plugin" }).items;
+    expect(fix).toContain("halonic plugin remove 'my plugin'");
   });
 });
