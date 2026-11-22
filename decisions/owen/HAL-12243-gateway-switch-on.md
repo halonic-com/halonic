@@ -2,6 +2,7 @@
 
 - Approval: HAL-12243 (tunnel phase B build plan, decision 19, after the B7 sign-off on HAL-12242); Liam approves it in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bBlsrxP65Ra3EPPjrWzk8M/cFE1WckxKE1x+s1K4DBxlKBUSQBvfF/i//Y+7dGMklSU56aPJUunLZCIPPh0kDQ==
 
 ## What changes
 
