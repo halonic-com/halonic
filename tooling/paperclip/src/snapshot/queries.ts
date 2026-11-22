@@ -47,7 +47,19 @@ export const openPullsQuery = `query OpenPulls($owner: String!, $name: String!, 
         timelineItems(itemTypes: [LABELED_EVENT], last: 20) {
           nodes { ... on LabeledEvent { createdAt label { name } actor { login } } }
         }
-        commits(last: 1) { nodes { commit { statusCheckRollup { ${checkRuns} } } } }
+        baseChanges: timelineItems(itemTypes: [BASE_REF_CHANGED_EVENT, AUTOMATIC_BASE_CHANGE_SUCCEEDED_EVENT], last: 1) {
+          nodes {
+            ... on BaseRefChangedEvent { createdAt }
+            ... on AutomaticBaseChangeSucceededEvent { createdAt }
+          }
+        }
+        reopens: timelineItems(itemTypes: [REOPENED_EVENT, HEAD_REF_FORCE_PUSHED_EVENT], last: 1) {
+          nodes {
+            ... on ReopenedEvent { createdAt }
+            ... on HeadRefForcePushedEvent { createdAt }
+          }
+        }
+        commits(last: 1) { nodes { commit { committedDate statusCheckRollup { ${checkRuns} } } } }
         reviews(last: 50) {
           nodes {
             databaseId state body submittedAt authorAssociation commit { oid }

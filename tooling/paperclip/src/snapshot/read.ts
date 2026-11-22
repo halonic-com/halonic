@@ -74,8 +74,17 @@ interface OpenNode extends PullNode {
       readonly actor?: { readonly login: string } | null;
     }[];
   };
+  /** The newest base change, by hand or by GitHub when the base branch was deleted. Absent in recordings made before the field. */
+  readonly baseChanges?: { readonly nodes: readonly { readonly createdAt?: string }[] };
+  /** The newest reopen or force push. Absent in recordings made before the field. */
+  readonly reopens?: { readonly nodes: readonly { readonly createdAt?: string }[] };
   readonly commits: {
-    readonly nodes: readonly { readonly commit: { readonly statusCheckRollup: Rollup | null } }[];
+    readonly nodes: readonly {
+      readonly commit: {
+        readonly committedDate?: string;
+        readonly statusCheckRollup: Rollup | null;
+      };
+    }[];
   };
   readonly reviews: {
     readonly nodes: readonly (Comment & {
@@ -148,9 +157,33 @@ function labelsOf(node: OpenNode): SnapshotLabel[] {
   });
 }
 
+/**
+ * Its base became the default branch, or changed on it, after it was last
+ * reopened or pushed to. GitHub runs a ruleset's required workflow only on
+ * opened, synchronize and reopened, never on a base change, so such a pull
+ * request stays blocked with its checks green until it is reopened or pushed
+ * to (HAL-16394). It compares with the reopen or push, not with the note
+ * check: the repository's own copy of that workflow also runs on `edited`,
+ * under the same name, and that run doesn't clear the block. A push is read
+ * from the head commit's date, so pushing an older commit wakes the author
+ * once too often, never once too few.
+ */
+function baseChangedSincePush(node: OpenNode, defaultBranch: string): boolean {
+  const changedAt = node.baseChanges?.nodes.at(-1)?.createdAt;
+  if (changedAt === undefined || node.baseRefName !== defaultBranch) {
+    return false;
+  }
+  const touches = [
+    node.reopens?.nodes.at(-1)?.createdAt,
+    node.commits.nodes[0]?.commit.committedDate,
+  ].flatMap((at) => (at === undefined ? [] : [Date.parse(at)]));
+  return touches.every((at) => at < Date.parse(changedAt));
+}
+
 async function openFacts(
   node: OpenNode,
   repo: string,
+  defaultBranch: string,
   fallback: CheckFallback,
 ): Promise<OpenFacts> {
   const rollup = node.commits.nodes[0]?.commit.statusCheckRollup ?? null;
@@ -179,6 +212,7 @@ async function openFacts(
         node.headRefOid,
       ) ?? null,
     approvals: signedApprovals(conversation),
+    baseChangedSincePush: baseChangedSincePush(node, defaultBranch),
   };
 }
 
@@ -255,7 +289,7 @@ async function readRepo(
       queue = await queueOf(page, repo, fallback);
     }
     for (const node of page.repository.pullRequests.nodes) {
-      pulls.push(pullOf(node, await openFacts(node, repo, fallback)));
+      pulls.push(pullOf(node, await openFacts(node, repo, defaultBranch, fallback)));
     }
     const { hasNextPage, endCursor } = page.repository.pullRequests.pageInfo;
     after = hasNextPage ? endCursor : null;
