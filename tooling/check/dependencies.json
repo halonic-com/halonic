@@ -154,6 +154,16 @@
       "reason": "scrypt password hashing: independently audited, no dependencies, runs on every runtime. Approved by the user on 8 Nov 2026 (HAL-10). Only the package that implements the PasswordHasher port uses it.",
       "useInstead": "the PasswordHasher port; for SHA-256 use the hashing port (WebCrypto)"
     },
+    "@paperclipai/plugin-sdk": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/tooling-paperclip"
+      ],
+      "layers": [
+        "tooling"
+      ],
+      "reason": "Paperclip's plugin SDK, for the Agent tools plugin that runs the PR watcher inside Paperclip (board decision on HAL-15359, 22 Nov; Liam approved the dependency there). MIT. Pinned to 2026.1117.0, the version Halonic Server runs. Brings zod and @paperclipai/shared (MIT, which brings zod and three); no install scripts. esbuild bundles it into the plugin's worker, so nothing here imports it at run time and nothing we ship includes it."
+    },
     "@playwright/test": {
       "category": "dev-tooling",
       "allowedIn": [
@@ -284,14 +294,15 @@
       "allowedIn": [
         "@halonicjs/adapter-integration-runner",
         "@halonicjs/tooling-publish",
-        "@halonicjs/target-cloudflare-testing"
+        "@halonicjs/target-cloudflare-testing",
+        "@halonicjs/tooling-paperclip"
       ],
       "layers": [
         "adapters",
         "tooling",
         "testing"
       ],
-      "reason": "Bundles a sample integration against the packed integration kit, so check:bundle can prove the kit brings nothing into a cloud bundle (HAL-1216). Its metafile is what check:bundle reads. In the integration runner it builds the runner into the one file Node may read inside the fence (design HAL-958, HAL-983); that file imports only Node's own modules, and esbuild never ships. No dependencies beyond its own platform binaries. Build and tests only. In target-cloudflare-testing it bundles a port contract suite into the test Worker that runs it inside workerd, with vitest swapped for our own small shim (HAL-197 part 1)."
+      "reason": "Bundles a sample integration against the packed integration kit, so check:bundle can prove the kit brings nothing into a cloud bundle (HAL-1216). Its metafile is what check:bundle reads. In the integration runner it builds the runner into the one file Node may read inside the fence (design HAL-958, HAL-983); that file imports only Node's own modules, and esbuild never ships. No dependencies beyond its own platform binaries. Build and tests only. In target-cloudflare-testing it bundles a port contract suite into the test Worker that runs it inside workerd, with vitest swapped for our own small shim (HAL-197 part 1). In tooling-paperclip it bundles the Agent tools plugin's worker and manifest for Paperclip (HAL-15359)."
     },
     "fast-check": {
       "category": "dev-tooling",
