@@ -89,3 +89,29 @@ verifies("secrets-file.unreadable", () => {
     expect(isPermissionDenied(null)).toBe(false);
   });
 });
+
+verifies("secrets-file.unreadable-cause", () => {
+  describe.skipIf(!deniable)("[platform:win32] needs POSIX modes: the cause a run logs", () => {
+    it("names the file and the chmod fix for a file the person owns (HAL-15693)", async () => {
+      const file = await freshFile();
+      const store = new FileSecretStore(file);
+      await store.set("openai-key", "sk-kept");
+      await chmod(file, 0o000);
+      await expect(store.get("openai-key")).rejects.toMatchObject({
+        failureCause: { code: "secrets.file-unreadable", detail: { file, fix: "chmod" } },
+      });
+      await chmod(file, 0o600);
+    });
+  });
+
+  it("gives chown for a file another user owns, and properties on Windows", () => {
+    const file = "/srv/acme/secrets/secrets.json";
+    const another = unreadableSecretsFileError({ file, ownerId: 0, userId: 501 }, undefined);
+    const windows = unreadableSecretsFileError({ file, ownerId: 0, userId: undefined }, undefined);
+    expect(another.failureCause).toEqual({
+      code: "secrets.file-unreadable",
+      detail: { file, fix: "chown" },
+    });
+    expect(windows.failureCause.detail.fix).toBe("properties");
+  });
+});

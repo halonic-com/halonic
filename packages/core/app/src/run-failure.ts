@@ -21,4 +21,8 @@ export {
   type ProxyProblem,
   proxyFailureOf,
 } from "./run-failure-proxy.ts";
+export type {
+  SecretsFileUnreadableFailure,
+  UnreadableSecretsFileFix,
+} from "./run-failure-secrets-file.ts";
 export { isSetupCause, setupFailureOf } from "./run-failure-setup.ts";

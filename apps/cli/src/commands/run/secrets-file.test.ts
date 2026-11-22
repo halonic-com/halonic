@@ -22,6 +22,7 @@ import { runCommandWith } from "./command.ts";
 // A secrets file other users can read stops a run that reads a key from it.
 // `halonic run` says so with the fix and exit 7, as `halonic secret list`
 // does for the same file, rather than asking for a bug report (HAL-12569).
+// So does a secrets file the person's own user account can't read (HAL-15693).
 
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 const samsEmail = ["--input", "examples/refund-question.json"];
@@ -72,6 +73,12 @@ async function saveKeyInReadableFile(): Promise<void> {
   await chmod(secrets, 0o644);
 }
 
+/** Saves the key in the profile's secrets file, then takes every permission away from it. */
+async function saveKeyInUnreadableFile(): Promise<void> {
+  await new FileSecretStore(secrets).set("anthropic", "not-a-real-key");
+  await chmod(secrets, 0o000);
+}
+
 async function run(...args: string[]): Promise<{ code: number; io: CapturedIo }> {
   const io = captureIo(acme);
   const code = await runCli(["run", ...args], io, [runCommandWith(testRunSetup(folder, profile))]);
@@ -80,6 +87,9 @@ async function run(...args: string[]): Promise<{ code: number; io: CapturedIo }>
 
 // Windows has no permission check on the file; the profile folder protects it there.
 const onWindows = process.platform === "win32";
+
+// Mode 000 stops every user but root.
+const deniable = !onWindows && process.getuid?.() !== 0;
 
 describe("a secrets file other users can read", () => {
   verifies("cli.run", () => {
@@ -117,6 +127,53 @@ describe("a secrets file other users can read", () => {
           run: {
             status: "failed",
             cause: { kind: "denied", code: "secrets.file-readable", detail: { file: secrets } },
+          },
+        });
+      },
+    );
+  });
+});
+
+describe("a secrets file the person's user account can't read", () => {
+  verifies("cli.run-secrets-unreadable", () => {
+    it.skipIf(!deniable)(
+      "[platform:win32] needs POSIX modes: says the cause and chmod 600, with no report link, and exits 7 (HAL-15693)",
+      async () => {
+        await useAnthropicForWriter();
+        await saveKeyInUnreadableFile();
+
+        const { code, io } = await run("support-reply", ...samsEmail);
+        await chmod(secrets, 0o600);
+
+        expect(code).toBe(exitCode.denied);
+        const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
+        expect(io.stdout.slice(failed, failed + 2)).toEqual([
+          `✕ Support reply failed in the step Read the email: the secrets file ${secrets} can't be read by your user account.`,
+          `  Run chmod 600 ${secrets}, then run again.`,
+        ]);
+        expect(io.stdout.join("\n")).not.toContain("report it");
+      },
+    );
+
+    it.skipIf(!deniable)(
+      "[platform:win32] needs POSIX modes: carries the cause, the file and the fix in --json",
+      async () => {
+        await useAnthropicForWriter();
+        await saveKeyInUnreadableFile();
+
+        const { code, io } = await run("support-reply", ...samsEmail, "--json");
+        await chmod(secrets, 0o600);
+
+        expect(code).toBe(exitCode.denied);
+        expect(JSON.parse(io.stdout.join("\n"))).toMatchObject({
+          ok: false,
+          run: {
+            status: "failed",
+            cause: {
+              kind: "denied",
+              code: "secrets.file-unreadable",
+              detail: { file: secrets, fix: "chmod" },
+            },
           },
         });
       },

@@ -11,6 +11,7 @@ import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
 import type { ConfigFailure } from "./run-failure-config.ts";
 import type { KeyAddressFailure } from "./run-failure-key-address.ts";
 import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
+import type { SecretsFileUnreadableFailure } from "./run-failure-secrets-file.ts";
 import { setupFailureOf } from "./run-failure-setup.ts";
 import { type StartFailure, startFailureOf } from "./run-failure-start.ts";
 
@@ -159,6 +160,7 @@ export type RunFailure =
   | ConfigFailure
   | KeyAddressFailure
   | StartFailure
+  | SecretsFileUnreadableFailure
   | {
       readonly reason: "secrets-file-readable";
       /** The secrets file group or others can read, as the run log names it. */
