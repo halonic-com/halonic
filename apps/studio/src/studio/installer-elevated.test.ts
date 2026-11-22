@@ -122,7 +122,9 @@ verifies("studio.installer-elevated", () => {
     expect(outcome).toContain('StrCpy $SandboxOutcome "unchecked"');
     expect(outcome).toContain('"○ Checking the agent sandbox, skipped"');
     const finish = between(installer, '${ElseIf} $SandboxOutcome == "unchecked"\n', "${ElseIf}");
-    expect(finish).toContain('"✓ The agent sandbox is set up."');
+    expect(finish).toContain(
+      '"✓ The agent sandbox is set up. To check it, open Settings › Agent sandbox."',
+    );
   });
 
   it("doesn't check the installed sandbox for the run-again page", () => {
