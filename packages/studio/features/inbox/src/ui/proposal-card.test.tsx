@@ -260,7 +260,7 @@ verifies("inbox.proposal-page", () => {
       expect(buttons(root, "Accept")).toHaveLength(2);
     });
 
-    it("leaves a file changed after the run started undecided, says so, and keeps its Reject", async () => {
+    it("leaves a file changed after the run started undecided, says so, opens Compare, and keeps its Reject", async () => {
       const decisions = fakeDecisions({
         accept: vi.fn(async () => ({
           undo: null,
@@ -274,12 +274,10 @@ verifies("inbox.proposal-page", () => {
 
       const [changed] = root.querySelectorAll("li");
       expect(changed?.textContent).toContain(
-        "This file changed after run 01JD8Q started, so it wasn't accepted. To keep it as it is now, reject it.",
+        "This file changed after run 01JD8Q started. Accept opens Compare.",
       );
       expect(toasts.list()).toEqual([]);
-      // Only a Reject can decide it now, so its Reject takes focus in place of an Accept.
-      expect(changed?.querySelectorAll("button")).toHaveLength(1);
-      expect(document.activeElement).toBe(buttons(root, "Reject")[0]);
+      expect(changed?.querySelector('section[aria-label="Compare notes/a.md"]')).not.toBeNull();
       expect(buttons(root, "Accept all")).toHaveLength(1);
 
       await press(buttons(root, "Reject")[0]);
@@ -288,9 +286,10 @@ verifies("inbox.proposal-page", () => {
         file: "notes/a.md",
       });
       expect(changed?.textContent).toContain("Rejected");
+      expect(changed?.querySelector("section")).toBeNull();
     });
 
-    it("offers only Reject all once every open file changed after the run started", async () => {
+    it("keeps Accept all and each Accept once every open file changed after the run started", async () => {
       const decisions = fakeDecisions({
         accept: vi.fn(async () => ({
           undo: null,
@@ -302,9 +301,11 @@ verifies("inbox.proposal-page", () => {
 
       await press(buttons(root, "Accept all")[0]);
 
-      expect(buttons(root, "Accept all")).toEqual([]);
+      expect(buttons(root, "Accept all")).toHaveLength(1);
       expect(buttons(root, "Reject all")).toHaveLength(1);
       expect(buttons(root, "Reject")).toHaveLength(2);
+      expect(buttons(root, "Accept")).toHaveLength(2);
+      expect(root.querySelector('section[aria-label="Compare notes/a.md"]')).not.toBeNull();
     });
   });
 

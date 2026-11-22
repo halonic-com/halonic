@@ -25,29 +25,23 @@ export type CardState = ProposalDecisionState & {
 };
 
 /**
- * The files still to decide here: the undecided ones. A file changed since the run is one of them:
- * until Compare ships only a Reject decides it, and the proposal stays in Needs you until it does
- * (C665 26).
+ * The files still to decide here: the undecided ones. A file changed since the run is one of them,
+ * decided by its **Reject** or in Compare (C665 26, Q9).
  */
 export function openFiles(state: ProposalDecisionState): readonly ProposalFile[] {
   return state.files.filter((file) => file.decision === "undecided");
 }
 
-/** Whether **Accept** can still decide one of the open files: not every one changed since the run. */
-export function canAccept(state: ProposalDecisionState): boolean {
-  return openFiles(state).some((file) => !state.changedSinceRun.has(file.path));
-}
-
 /**
  * **Reject all** and **Accept all** (Q3): one undo step each, for what is still undecided. Accept
- * all is the page's one primary button; a change's own buttons are plain words (C667 #1). Once
- * every open file changed since the run, only **Reject all** is left.
+ * all is the page's one primary button; a change's own buttons are plain words (C667 #1). An
+ * **Accept all** that leaves files alone because they changed since the run opens Compare (Q9).
  */
 export function AllButtons({ state }: { readonly state: CardState }) {
   return (
     <div className="ml-auto flex flex-wrap gap-2">
       <RejectAll state={state} />
-      {canAccept(state) ? <AcceptAll state={state} /> : null}
+      <AcceptAll state={state} />
     </div>
   );
 }
@@ -60,7 +54,7 @@ export function AllButtons({ state }: { readonly state: CardState }) {
 export function PhoneAllBar({ state }: { readonly state: CardState }) {
   return (
     <div className="flex flex-col gap-2 border-t border-border p-4">
-      {canAccept(state) ? <AcceptAll state={state} block /> : null}
+      <AcceptAll state={state} block />
       <RejectAll state={state} block />
     </div>
   );
@@ -111,7 +105,7 @@ function RejectAll({
  * unavailable (`aria-disabled`, so it stays focusable) and points at the busy one, as a Dialog's
  * Cancel points at its busy confirming button (C667 #4). Like that button, the busy one says what
  * is under way ("Accepting…"), so the reason the others point at isn't just "Accept" (C678 #1); the
- * kit keeps its width.
+ * kit keeps its width. `onPress` does something else in its place, such as opening Compare.
  */
 export function DecideButton({
   state,
@@ -121,6 +115,7 @@ export function DecideButton({
   busyLabel,
   variant,
   buttonRef,
+  onPress,
   block = false,
 }: {
   readonly state: CardState;
@@ -130,6 +125,7 @@ export function DecideButton({
   readonly busyLabel: string;
   readonly variant: ButtonVariant;
   readonly buttonRef?: (button: HTMLButtonElement | null) => void;
+  readonly onPress?: (() => void) | undefined;
   /** Across the whole width at touch size, for a phone's bar (Q12). */
   readonly block?: boolean;
 }) {
@@ -146,7 +142,7 @@ export function DecideButton({
       busy={busy}
       busyLabel={busyLabel}
       unavailable={waiting ? { reason: busyId } : offline}
-      onClick={() => state.decide(verb, target)}
+      onClick={onPress ?? (() => state.decide(verb, target))}
     >
       {label}
     </Button>

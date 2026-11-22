@@ -24,7 +24,12 @@ function fakeDecisions() {
     undo: vi.fn(async () => ({ leftAlone: [] as readonly string[], decidedAfter: false })),
     settle: vi.fn(async () => {}),
     remove: vi.fn(async () => {}),
-    compare: vi.fn(),
+    compare: vi.fn(async () => ({
+      saved: "mine\n",
+      run: "the run's\n",
+      canCombine: false,
+      seen: "absent",
+    })),
     choose: vi.fn(),
   } satisfies ProposalDecisions;
 }
@@ -139,14 +144,14 @@ verifies("inbox.proposal-phone", () => {
       expect(decisions.accept).toHaveBeenCalledWith("run_mfx3k2a1_0001JD8Q", "all");
     });
 
-    it("leaves Accept all out once every open change changed after the run", async () => {
+    it("keeps Accept all once every open change changed after the run, since it opens Compare", async () => {
       const decisions = fakeDecisions();
       decisions.accept.mockResolvedValueOnce({ ...wrote("u1"), changedSinceRun: ["notes/a.md"] });
       const root = openOnPhone(decisions, true);
       await press(buttons(root, "Accept all")[0]);
 
       const names = [...(footBar(root)?.querySelectorAll("button") ?? [])].map((b) => shownText(b));
-      expect(names).toEqual(["Reject all"]);
+      expect(names).toEqual(["Accept all", "Reject all"]);
     });
 
     it("makes See run, Reject and Accept 48 px high", () => {

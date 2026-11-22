@@ -100,8 +100,9 @@ to see each file the run added, changed or deleted, with **Accept** and
 **Undo** shows for a moment, until its message goes.
 
 Studio doesn't show the diff yet. A file that changed after the run started
-says "This file changed after run 01JD8Q started, so it wasn't accepted. To
-keep it as it is now, reject it." and has only **Reject**: use
-`halonic proposals show` to see the run's text, copy what you want by hand,
-then reject the file. The served Studio and the
+says "This file changed after run 01JD8Q started. Accept opens Compare." Its
+**Accept** opens Compare under it, with your text and the run's side by side:
+**Keep mine** rejects the run's change, **Use the run's** writes the run's
+text, and **Combine both** keeps both edits when they don't touch the same
+lines. **Cancel** leaves the file undecided. The served Studio and the
 phone list no proposals; see them with `halonic proposals` on the computer.
