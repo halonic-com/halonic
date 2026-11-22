@@ -28,6 +28,12 @@ Two more things always win:
   so they refuse every `send` call, and so does a CLI run for a connector
   that isn't a Google one. `halonic runs show` says "The call to <tool> was
   refused: sending is off for <connector>, so nothing was sent."
+  - Studio has no Allow sending switch yet. To send through a Google
+    connector, start the run with `halonic run` instead.
+  - A connector that isn't a Google one can't have sending switched on
+    anywhere yet: Studio has no switch, and the CLI has no command for it.
+    To keep agents from trying, leave its `send` tools out of the connector
+    file's `tools.allow`, and do the sending yourself outside the run.
 - A tool its server lists as `read` still asks, until `tools.read` names it.
   A server, a plugin's manifest or an integration's permission sheet can make
   a tool ask, never stop it from asking.

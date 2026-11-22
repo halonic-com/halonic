@@ -44,7 +44,8 @@ export interface ConnectionSettingsOptions {
 
 /**
  * Reads and changes the settings of each connector. Only a person changes
- * them, through the Library's "Allow sending" switch or `halonic google`.
+ * them, today only through `halonic google allow-sending`: Studio has no
+ * "Allow sending" switch yet.
  * Hand the engine and every tool call's path only the
  * {@link SendingSettings} side.
  *
