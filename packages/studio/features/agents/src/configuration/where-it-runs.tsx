@@ -38,18 +38,27 @@ function shownChoice(placement: AgentPlacementState): RunsOn {
 }
 
 /**
- * The two options. While this Studio can't start an agent outside its sandbox, On this computer
- * also says where such an agent does run, as its host reports it (HAL-13194).
+ * The line under On this computer's note, if any: on hold, that it is (HAL-15640); otherwise,
+ * while this Studio can't start an agent outside its sandbox, where such an agent does run, as its
+ * host reports it (HAL-13194).
  */
+function thisComputerHint(placement: AgentPlacementState): string | null {
+  if (placement.runsOn === "on-hold") return words.onHoldNote;
+  return placement.studioStartsUnfenced ? null : words.studioCantStart;
+}
+
+/** The two options. */
 function optionsFor(placement: AgentPlacementState): RadioOption<RunsOn>[] {
-  const thisComputerNote = placement.studioStartsUnfenced ? (
-    words.onThisComputerNote
-  ) : (
-    <>
-      {words.onThisComputerNote}
-      <span className="block">{words.studioCantStart}</span>
-    </>
-  );
+  const hint = thisComputerHint(placement);
+  const thisComputerNote =
+    hint === null ? (
+      words.onThisComputerNote
+    ) : (
+      <>
+        {words.onThisComputerNote}
+        <span className="block">{hint}</span>
+      </>
+    );
   return [
     { value: "sandbox", label: words.inSandbox, note: words.inSandboxNote },
     { value: "this-computer", label: words.onThisComputer, note: thisComputerNote },
@@ -60,10 +69,11 @@ function optionsFor(placement: AgentPlacementState): RadioOption<RunsOn>[] {
  * Harness › Where it runs (`agents.configuration.where-it-runs`; checklist 3.8). The sandbox
  * saves at once. On this computer saves only after the warning, for the file the person was
  * warned about: Cancel is focused and **Run on this computer** is the danger button. When the
- * agent's file changed since, the choice is on hold: a Callout with **Review and confirm** opens
- * the same warning. While the agent's file has unsaved changes, the warning says to confirm once
- * they're saved: the choice is for the saved file, which may hold what they already took out. Where
- * Studio can't choose (the browser), only a line pointing to the desktop app is drawn.
+ * agent's file changed since, the choice is on hold: On this computer says so, and a Callout under
+ * it with **Review and confirm** opens the same warning. While the agent's file has unsaved
+ * changes, the warning says to confirm once they're saved: the choice is for the saved file, which
+ * may hold what they already took out. Where Studio can't choose (the browser), only a line
+ * pointing to the desktop app is drawn.
  */
 export function WhereItRuns({ host, settings }: WhereItRunsProps) {
   const ref = { hubId: settings.hubId, id: settings.id };
@@ -129,6 +139,11 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
     <>
       <Field label={words.label} error={error}>
         <div className="flex flex-col gap-3">
+          <RadioGroup
+            options={optionsFor(placement)}
+            value={shownChoice(placement)}
+            onChange={(next) => void pick(next)}
+          />
           {/* Attention, not warning: both Callouts ask the person to act before the agent runs (C569). */}
           {placement.runsOn === "on-hold" && (
             <Callout
@@ -141,11 +156,6 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
               {words.onHold(settings.name)}
             </Callout>
           )}
-          <RadioGroup
-            options={optionsFor(placement)}
-            value={shownChoice(placement)}
-            onChange={(next) => void pick(next)}
-          />
         </div>
       </Field>
       {warning !== null && (

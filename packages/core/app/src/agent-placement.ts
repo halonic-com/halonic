@@ -94,8 +94,8 @@ export async function agentFingerprint(file: Uint8Array, digest: Digest): Promis
 
 /**
  * Reads and changes where each agent's harness runs. Only a person changes
- * it, from the agent's settings or `halonic` on the command line. Hand the
- * engine only the {@link PlacementReader} side.
+ * it, from the agent's settings in the desktop app; the command line only
+ * reads it. Hand the engine only the {@link PlacementReader} side.
  *
  * @example
  * const placement = new AgentPlacement({ store, digest, clock });

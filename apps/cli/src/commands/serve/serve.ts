@@ -41,7 +41,7 @@ import type { RoutineEngine } from "../../local-engine-host.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { serveMessages } from "../../messages/serve.ts";
 import { printable } from "../../output/printable.ts";
-import { unsandboxedWarning } from "../../sandbox-gate.ts";
+import { placedWarning } from "../../sandbox-gate.ts";
 import { workspaceTrustGate } from "../../serve-trust-gate.ts";
 import { halonicVersion } from "../../version.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
@@ -161,9 +161,11 @@ async function serveVersions(
         ending: serveMessages.runNotStarted(),
       });
       for (const agent of agents) {
-        if (warned.has(agent.name)) continue;
-        warned.add(agent.name);
-        context.printAhead(unsandboxedWarning(agent));
+        // By its place too: an agent confirmed again after its ! line on hold gets its new line.
+        const key = `${agent.kind} ${agent.name}`;
+        if (warned.has(key)) continue;
+        warned.add(key);
+        context.printAhead(placedWarning(agent));
       }
     },
   } satisfies VersionChecks);
