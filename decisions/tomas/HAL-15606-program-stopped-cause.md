@@ -2,15 +2,14 @@
 
 - Approval: Liam approves this change on HAL-15606 (https://paperclip.halonic.com/HAL/issues/HAL-15606), from flow check C600 (#1a and #8) on HAL-15594. The words are `halonic tools review`'s own, approved on HAL-13731 and HAL-13732; a team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UggKG1Njnl1nAsqo5CKbIYdNsg0SSfzZbVbJdqxD8OgZoC/rti173sxqOVKBACLduBNtBX8+K+oc2PI/d5KaBw==
 
 ## What changes
 
 A connector whose program stops by itself right after it starts (`sh -c "…; exit 3"`) made
 `halonic run` warn "! boom couldn't list its tools, so they are off in this run." and send the
 person to `halonic tools review boom`, which then said the program stopped and how to see why. The
-run log had `why: "other"`, because the engine's reader only knew a missing program, a missing secret
-and the plugin reasons.
+run log had `why: "other"`, because the engine's reader only knew a missing program, a missing secret,
+the plugin reasons and a plugin's sandbox that isn't ready (`sandbox-not-ready`, HAL-14296).
 
 - `ProgramStoppedAtStartError` (`@halonicjs/adapter-mcp`) gets its own `name`, so the ports reader,
   which reads errors by name and field, can tell it apart. `McpError`'s `name` is typed `string` for
