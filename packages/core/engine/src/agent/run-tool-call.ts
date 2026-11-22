@@ -114,7 +114,10 @@ export async function makeOrHandOver(
 
 /**
  * In a run, the refusal of a call to a connector's tool labelled `send`
- * when the connector may not send, or `null` when the call may go on.
+ * when the connector may not send, or `null` when the call may go on. The
+ * log records the refusal as `tool.refused` with the reason `sending-off`
+ * and the connector, so the run can later say why nothing was sent
+ * (HAL-15772).
  */
 async function refuseUnsent(
   context: ToolCallContext,
@@ -124,7 +127,16 @@ async function refuseUnsent(
   const boundary = context.effects;
   if (boundary === undefined || tool.kind !== "server" || tool.risk !== "send") return null;
   const sending = await boundary.checkSending(tool.source);
-  return sending.allowed ? null : answered(refuseCall(context, tool.source, call, sending.reason));
+  if (sending.allowed) return null;
+  await context.log?.append({
+    type: "tool.refused",
+    agent: context.agent,
+    tool: call.name,
+    toolCallId: call.id,
+    reason: "sending-off",
+    connector: tool.source,
+  });
+  return answered(refuseCall(context, tool.source, call, sending.reason));
 }
 
 /** What became of the calls of one answer. */

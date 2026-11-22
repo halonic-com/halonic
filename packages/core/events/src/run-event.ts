@@ -22,7 +22,6 @@ import type {
   ToolFailureCause,
   ToolNoun,
   ToolOutcome,
-  ToolRefusalReason,
   ToolRisk,
   ToolUnaskedReason,
   ToolVerb,
@@ -30,6 +29,7 @@ import type {
 } from "./run-basics.ts";
 import type { SandboxBlockedEvent } from "./sandbox-blocked.ts";
 import type { SandboxOpenedView } from "./sandbox-opened.ts";
+import type { ToolRefusedEvent } from "./tool-refused.ts";
 
 // Every event name and field here is part of the run log, which users keep on
 // disk and read with their own tools. Rename or remove nothing; new fields are
@@ -192,20 +192,7 @@ export type RunEventBody =
   | BridgeFailedEvent
   | HarnessAllowedEvent
   | { type: "tool.called"; agent: string; tool: string; args: unknown }
-  /**
-   * A model's tool call was refused before it ran, so it reached nothing
-   * (requirement `events.tool-refused`). `tool`: the name exactly as the
-   * model wrote it, which may hold look-alike or control characters.
-   * `toolCallId`: the model's id for the call. A refused call has no
-   * `tool.called` or `tool.result`.
-   */
-  | {
-      type: "tool.refused";
-      agent: string;
-      tool: string;
-      toolCallId: string;
-      reason: ToolRefusalReason;
-    }
+  | ToolRefusedEvent
   /**
    * A connector's tool call is about to run without asking a person,
    * because the `read` list of the connector's file names the tool

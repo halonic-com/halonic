@@ -186,12 +186,6 @@ export type ToolFailureCause =
     };
 
 /**
- * Why a model's tool call was refused before it ran (requirement
- * `events.tool-refused`): `not-offered`, the step offered no tool of that name.
- */
-export type ToolRefusalReason = "not-offered";
-
-/**
  * Why a connector's tool call ran without asking a person (requirement
  * `events.tool-unasked`): `read-list`, the `read` list of the connector's
  * file names the tool.
