@@ -160,7 +160,7 @@ $done = Must-Find $h '✓ The agent sandbox is removed.' 'Static'
 # the grant kept above, which the agent host takes back at its next start
 # (HAL-5404 S2): the page says when it goes, lined up under the first line's
 # text, past its ✓.
-$kept = Must-Find $h 'Its access to your project folders is removed the next time you start Halonic.' 'Static'
+$kept = Must-Find $h 'Its access to your project folders ends the next time you start Halonic.' 'Static'
 $first = New-Object U+RECT
 $second = New-Object U+RECT
 [U]::GetWindowRect($done, [ref]$first) | Out-Null

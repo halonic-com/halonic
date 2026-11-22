@@ -10,6 +10,7 @@ import type {
   AgentSandboxHost,
   SandboxCheckFacts,
   SandboxOutcome,
+  SandboxRemoved,
   SecurityUpdatesFacts,
   WslRemoveRequest,
   WslRemoveResult,
@@ -122,7 +123,9 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     return outcomeOf("setup", (await this.#setup.ended("setup", options))?.result);
   }
 
-  async remove(options: { readonly signal?: AbortSignal } = {}): Promise<SandboxOutcome | null> {
+  async remove(
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<SandboxOutcome | SandboxRemoved | null> {
     if (this.#elevate !== undefined) return this.#removeThroughShell(this.#elevate);
     const started = await this.#setup.startRemove();
     if ("inUse" in started) return { kind: "remove", how: "in-use", runs: started.inUse };
@@ -165,7 +168,9 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
    * the person's folders. Only then does the shell start the helper, and only its exit code goes
    * back to the host, which says how the removal ended.
    */
-  async #removeThroughShell(elevate: ElevateHelper): Promise<SandboxOutcome | null> {
+  async #removeThroughShell(
+    elevate: ElevateHelper,
+  ): Promise<SandboxOutcome | SandboxRemoved | null> {
     const before = await this.#setup.beforeRemoveHelper();
     if ("inUse" in before) return { kind: "remove", how: "in-use", runs: before.inUse };
     if (!before.ok) return outcomeOf("remove", before);
@@ -212,22 +217,34 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   async follow(
     verb: "setup" | "remove",
     options: { readonly signal?: AbortSignal } = {},
-  ): Promise<SandboxOutcome | null | undefined> {
+  ): Promise<SandboxOutcome | SandboxRemoved | null | undefined> {
     const ended = await this.#setup.ended(verb, options);
     if (options.signal?.aborted && ended === undefined) return undefined;
     return outcomeOf(verb, ended?.result);
   }
 }
 
-/** What a finished setup or removal leaves for the section: nothing when it worked. */
+/**
+ * What a finished setup or removal leaves for the section: nothing when it worked, except a
+ * removal that kept some access until Halonic next starts (`sandbox-srt.removal-kept-access`).
+ */
+function outcomeOf(kind: "setup", result: SandboxSetupResult | undefined): SandboxOutcome | null;
 function outcomeOf(
   kind: "setup" | "remove",
   result: SandboxSetupResult | undefined,
-): SandboxOutcome | null {
+): SandboxOutcome | SandboxRemoved | null;
+function outcomeOf(
+  kind: "setup" | "remove",
+  result: SandboxSetupResult | undefined,
+): SandboxOutcome | SandboxRemoved | null {
   if (result === undefined) {
     return { kind, how: "failed", reason: "the host stopped before it said how it ended." };
   }
-  if (result.ok) return null;
+  if (result.ok) {
+    return kind === "remove" && result.keptAccess === "until_next_start"
+      ? { kind, how: "removed", keptAccess: true }
+      : null;
+  }
   const reason = result.reason.replace(/\.+$/, "");
   const sentence = `${reason}.`;
   if (kind === "remove") {
