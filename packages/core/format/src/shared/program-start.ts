@@ -8,6 +8,8 @@
  * as a path only makes a guard stricter.
  */
 
+import { KindedError } from "@halonicjs/std";
+
 /** What a start would run: the program, its arguments, the folder it starts in and its environment. */
 export interface ProgramStart {
   readonly cwd: string;
@@ -40,6 +42,7 @@ export interface NamedPath {
  * //  { path: "tools/mail.json", shown: "--config=tools/mail.json" }]
  */
 export function pathsNamedBy({ program, args, env = {} }: ProgramStart): NamedPath[] {
+  refuseTooMuchToRead(startReadingSize({ args, env }));
   const named = (shown: string, paths: readonly string[]): NamedPath[] =>
     paths.map((path) => ({ path, shown }));
   return [
@@ -61,6 +64,7 @@ export function pathsNamedBy({ program, args, env = {} }: ProgramStart): NamedPa
  * `-ctools/mail.json`.
  */
 export function pathsIn(text: string): string[] {
+  refuseTooMuchToRead(readingSize(text));
   const pieces = [
     text,
     ...text.split(/[;\s]+/),
@@ -74,6 +78,55 @@ export function pathsIn(text: string): string[] {
   );
   return [...new Set(withoutFlags.filter((piece) => piece !== ""))];
 }
+
+/**
+ * How many characters the whole texts after each `=`, `:` and `@` of one
+ * start may hold together (`format.program-start-limit`). Reading them takes
+ * time in proportion to that, which grows with the square of a text's length,
+ * so past this a guard refuses the start rather than read less of it.
+ */
+export const startReadingLimit = 4_000_000;
+
+/**
+ * How many characters the whole texts after each `=`, `:` and `@` of a
+ * start's arguments and `env` values hold together, counted without
+ * building them; the program and `cwd` aren't split that way.
+ *
+ * @example
+ * startReadingSize({ args: ["a=b:c"] }); // 4: "b:c" and "c"
+ */
+export function startReadingSize({
+  args,
+  env = {},
+}: {
+  readonly args: readonly string[];
+  readonly env?: Readonly<Record<string, string>> | undefined;
+}): number {
+  let size = 0;
+  for (const text of [...args, ...Object.values(env)]) size += readingSize(text);
+  return size;
+}
+
+/** The length of the whole texts after each `=`, `:` and `@` of `text`, together. */
+function readingSize(text: string): number {
+  let size = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === "=" || char === ":" || char === "@") size += text.length - index - 1;
+  }
+  return size;
+}
+
+/** Throws when a start holds more than {@link startReadingLimit} to read, so a guard fails closed. */
+function refuseTooMuchToRead(size: number): void {
+  if (size > startReadingLimit) {
+    throw new KindedError("invalid_input", tooMuchToReadMessage);
+  }
+}
+
+/** Why a start that holds too much to read is refused, for a guard and the connector check alike. */
+export const tooMuchToReadMessage =
+  "This program start is too long to check for the paths it names: its arguments and env values hold too much text after '=', ':' and '@'. Shorten them, or put a long value in a file the program reads.";
 
 /** The whole text after each match of `separator`: `a=b:c` gives `b:c` and `c` for `/[=:]/g`. */
 function textsAfter(separator: RegExp, text: string): string[] {

@@ -82,7 +82,7 @@ function problemWith(node: Node, depth: number, maxDepth: number): UnsupportedNo
 }
 
 /** The keys and values inside a list or map, in document order. */
-function childrenOf(node: Node): unknown[] {
+export function childrenOf(node: Node): unknown[] {
   if (!isMap(node) && !isSeq(node)) {
     return [];
   }

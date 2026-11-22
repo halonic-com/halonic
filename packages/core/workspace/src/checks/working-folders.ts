@@ -36,7 +36,10 @@ const CODE = "working-folder-runs-program";
  * reads, such as its settings.
  */
 export function checkWorkingFolders(context: CheckContext): WorkspaceIssue[] {
-  const connectors = context.filesOf("connector");
+  // Each connector's start is read once, not once per harness agent.
+  const connectors = context
+    .filesOf("connector")
+    .map((connector) => ({ connector: connector.value, parts: startParts(connector.value) }));
   const issues: WorkspaceIssue[] = [];
   for (const agent of context.filesOf("agent").filter(runsInHarness)) {
     const folder = agent.value.workingFolder ?? defaultWorkingFolder(agent.value.id);
@@ -52,9 +55,9 @@ export function checkWorkingFolders(context: CheckContext): WorkspaceIssue[] {
     if (hasNodeModulesPart(folder)) {
       refuse("programs load the packages in a node_modules folder without naming them");
     }
-    for (const connector of connectors) {
-      const reason = connectorReach(connector.value, folder);
-      if (reason !== undefined) refuse(`connector "${connector.value.id}" ${reason}`);
+    for (const { connector, parts } of connectors) {
+      const reason = connectorReach(connector, parts, folder);
+      if (reason !== undefined) refuse(`connector "${connector.id}" ${reason}`);
     }
   }
   return issues;
@@ -77,17 +80,20 @@ function hasNodeModulesPart(folder: string): boolean {
 
 /**
  * How a local connector would load files from `folder`, worded for the
- * message, or `undefined` when it wouldn't. A program reads its packages,
+ * message, or `undefined` when it wouldn't. `parts` are its {@link startParts}. A program reads its packages,
  * `package.json`, `pyproject.toml` and virtual environments from the folder
  * it starts in, so a working folder inside that folder counts too. The
  * workspace root is the exception, as every working folder is inside it:
  * there, `node_modules` is refused on its own, and a file a program loads
  * from the root without naming it is left to the step that starts programs.
  */
-function connectorReach(connector: Connector, folder: string): string | undefined {
+function connectorReach(
+  connector: Connector,
+  parts: readonly StartPart[],
+  folder: string,
+): string | undefined {
   if (!("stdio" in connector.transport)) return undefined;
   const { cwd = "." } = connector.transport.stdio;
-  const parts = startParts(connector);
   const part = parts.find((start) => isInWorkingFolder(start.path, folder));
   if (part !== undefined) return `uses '${part.shown}' from there`;
   if (!isWorkspaceRoot(cwd) && isInWorkingFolder(folder, cwd)) {

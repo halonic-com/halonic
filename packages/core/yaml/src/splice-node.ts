@@ -50,7 +50,9 @@ export interface Parsed {
 }
 
 export function parse(text: string): Parsed {
-  const document = parseDocument(text, { keepSourceTokens: true });
+  // The text was read with `readYaml`, which found no key twice in a map, and
+  // the result is read back; the library's own check is quadratic.
+  const document = parseDocument(text, { keepSourceTokens: true, uniqueKeys: false });
   return { text, document, style: indentStyleOf(text, document.contents) };
 }
 

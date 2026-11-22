@@ -10,6 +10,7 @@ import {
   type YAMLError,
 } from "yaml";
 import { findDepthOffset } from "./depth.ts";
+import { duplicateKeyMessage, findDuplicateKey } from "./duplicate-keys.ts";
 import type { SourcePosition, YamlProblem } from "./problem.ts";
 import { findUnsupported, tooDeepMessage, unsupportedMessages } from "./unsupported.ts";
 
@@ -89,9 +90,15 @@ export function readYaml(
       ...positionAtOffset(text, tooDeepAt),
     });
   }
-  // The same options as the old app (784f78d, packages/core/config/src/workspace.ts).
+  // The same options as the old app (784f78d, packages/core/config/src/workspace.ts),
+  // except that `findDuplicateKey` checks for keys twice in a map: the
+  // library's own check takes quadratic time in a map's size.
   const lines = new LineCounter();
-  const document = parseDocument(text, { lineCounter: lines, prettyErrors: false });
+  const document = parseDocument(text, {
+    lineCounter: lines,
+    prettyErrors: false,
+    uniqueKeys: false,
+  });
 
   const parseError = document.errors[0];
   if (parseError !== undefined) {
@@ -99,6 +106,11 @@ export function readYaml(
       ...describeParseError(parseError, text, limits),
       ...parseErrorPosition(document, parseError, lines),
     });
+  }
+
+  const duplicate = findDuplicateKey(document.contents);
+  if (duplicate !== undefined) {
+    return err({ kind: "syntax", message: duplicateKeyMessage, ...startOf(duplicate, lines) });
   }
 
   const unsupported = findUnsupported(document.contents, limits.maxDepth);
