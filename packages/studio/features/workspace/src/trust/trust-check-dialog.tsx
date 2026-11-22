@@ -216,7 +216,8 @@ function TrustSection({ section }: { readonly section: TrustSectionView }) {
 
 function TrustRow({ row }: { readonly row: TrustRowView }) {
   return (
-    <div className="flex flex-col gap-1">
+    // A container, so a phone-narrow row can stack the flag under the name (C678).
+    <div className="@container flex flex-col gap-1">
       <p className="m-0 flex flex-wrap items-baseline gap-2">
         {row.tag === undefined ? null : (
           <span className="text-caption text-fg-muted">{row.tag}</span>
@@ -228,8 +229,10 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
         )}
         {row.flag === undefined ? null : (
           // The dot, then the amber words starting with the triangle, as R12's Runs line does.
-          <span className="text-small">
-            {"· "}
+          // Where the flag wouldn't fit beside the name, it takes its own line without the dot:
+          // a separator never starts a line (C678).
+          <span className="text-small @max-[24rem]:basis-full">
+            <span className="@max-[24rem]:hidden">{"· "}</span>
             <span className="inline-flex items-baseline gap-1 text-attention">
               <Triangle />
               <span>{row.flag}</span>
