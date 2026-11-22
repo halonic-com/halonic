@@ -5,5 +5,5 @@ import { vi } from "vitest";
 // when that file loaded the api first, so this setup file mocks it before every test file instead.
 vi.mock("@halonicjs/studio-feature-files/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@halonicjs/studio-feature-files/api")>()),
-  requestFilesReveal: (await import("./files-reveal.ts")).requestFilesReveal,
+  requestFilesReveal: (await import("./files-reveal.spec.ts")).requestFilesReveal,
 }));
