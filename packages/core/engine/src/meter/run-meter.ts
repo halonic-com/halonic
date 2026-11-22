@@ -1,6 +1,6 @@
 // Where the engine asks the meter about its runs (requirement
 // `engine.meter-checks`): before a run starts, before a step that asks for a
-// paid call, and once a top-level run has ended. A child run counts against
+// paid call, and once a top-level run has ended, whichever way it ended. A child run counts against
 // its top-level run's principal, as it spends from that run's budget.
 
 import type { RunFailureCause } from "@halonicjs/events";
@@ -77,7 +77,7 @@ export class RunsMeter implements StepMeter {
     if (stop !== null) throw new PlanRefusedError(stop);
   }
 
-  /** Counts the end of a run a step has just ended, when it is a top-level run. */
+  /** Counts the end of a run that has just ended, however it ended, when it is a top-level run. */
   async ended(run: RunState): Promise<void> {
     if (run.parent !== null || !hasEnded(run.status)) return;
     const principal = await this.#meter.principalOf(run.runId);

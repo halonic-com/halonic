@@ -19,7 +19,7 @@ import type { StopSignal } from "@halonicjs/std";
 import type { TurnLog } from "./agent/turn-log.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import { RunCallBudget } from "./budget/call-budget.ts";
-import type { BudgetCheck } from "./budget/keep-to-budget.ts";
+import type { BudgetCheck } from "./budget/keep-to-limits.ts";
 import { ChatHarnessTurns } from "./harness/chat-harness-turns.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn, definitionsOf } from "./kernel/kept-definitions.ts";

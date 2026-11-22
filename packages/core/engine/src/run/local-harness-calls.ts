@@ -6,7 +6,7 @@ import type { RunEvent } from "@halonicjs/events";
 import type { BlobStore, BridgeApprovals, Clock, RunStore, SendOptions } from "@halonicjs/ports";
 import { KindedError, type StopSignal } from "@halonicjs/std";
 import { RunCallBudget } from "../budget/call-budget.ts";
-import type { BudgetCheck } from "../budget/keep-to-budget.ts";
+import type { BudgetCheck } from "../budget/keep-to-limits.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { type HarnessApprovals, runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog, type WaitedOnCall } from "../harness/serial-run-log.ts";

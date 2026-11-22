@@ -4,7 +4,7 @@
 import type { RunFailureReason, RunVersion } from "@halonicjs/events";
 import type { BlobStore, IdGenerator, RunStore, Scheduler } from "@halonicjs/ports";
 import type { Budget } from "../budget/budget.ts";
-import type { BudgetCheck } from "../budget/keep-to-budget.ts";
+import type { BudgetCheck } from "../budget/keep-to-limits.ts";
 import { spendOf } from "../budget/spend.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import type { Effect, RunDefinitions } from "../kernel/decide-types.ts";

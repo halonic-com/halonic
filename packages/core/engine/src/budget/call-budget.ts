@@ -8,7 +8,7 @@ import type { Clock } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { RunState } from "../kernel/run-state.ts";
 import { type BudgetStop, budgetStopOf } from "./budget.ts";
-import type { BudgetCheck } from "./keep-to-budget.ts";
+import type { BudgetCheck } from "./keep-to-limits.ts";
 
 /**
  * The engine's own error for a harness call the run's budget stopped. The

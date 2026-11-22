@@ -77,7 +77,19 @@ function refusing(kind: MeterCheckKind, stop: PlanStop): NotingMeter {
 
 function meteredRuns(meter?: RunMeter, budget?: Budget, workflow: Workflow = replyWorkflow) {
   const runs = new KernelRuns();
-  putSpentRun(runs, "run_0", { startedAt: "2026-01-02T08:00:00.000Z", cost: 0.6 });
+  const startedAt = "2026-01-02T08:00:00.000Z";
+  putSpentRun(runs, "run_0", { startedAt, cost: 0.6 });
+  // Ended, so the sweep of lost runs leaves it and the meter hears only of the runs a test starts.
+  runs.logs
+    .get("run_0")
+    ?.push({
+      runId: "run_0",
+      seq: 3,
+      at: startedAt,
+      type: "run.completed",
+      state: "done",
+      context: {},
+    });
   return runsOn([textAnswer("Dear support")], runs, {
     workflow,
     workflows: { reply: replyWorkflow },
@@ -208,5 +220,29 @@ verifies("engine.meter-checks", () => {
     expect(new Set(meter.principalsAsked)).toEqual(new Set(["run_1"]));
     expect(meter.checks.map(({ kind }) => kind)).toEqual(["run-start", "model-call"]);
     expect(meter.records).toEqual([{ kind: "run", runId: "run_1", status: "completed" }]);
+  });
+
+  describe("records a top-level run's end once, however it ended", () => {
+    const failedRun = { kind: "run", runId: "run_1", status: "failed" };
+
+    it("records a cancelled run once, though it is cancelled twice", async () => {
+      const meter = new NotingMeter();
+      const { executor, runs } = meteredRuns(meter.forAda());
+      await executor.start(replyStart);
+      await executor.cancel("run_1");
+      await executor.cancel("run_1");
+      expect(await runs.get("run_1")).toMatchObject({ status: "failed", reason: "cancelled" });
+      expect(meter.records).toEqual([failedRun]);
+    });
+
+    it("records a run the engine lost once, when the next engine ends it as interrupted", async () => {
+      const before = meteredRuns(new NotingMeter().forAda());
+      await before.executor.start(replyStart);
+      const meter = new NotingMeter();
+      const after = runsOn([], before.runs, { workflow: replyWorkflow, meter: meter.forAda() });
+      await after.executor.cancel("run_1");
+      expect(await before.runs.get("run_1")).toMatchObject({ reason: "interrupted" });
+      expect(meter.records).toEqual([failedRun]);
+    });
   });
 });

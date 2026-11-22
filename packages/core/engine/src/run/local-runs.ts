@@ -2,7 +2,7 @@
 // then carries out the effects through the scheduler, so a run moves on one
 // step per timer, and a timer that is late or repeated changes nothing.
 
-import type { RunEvent, RunFailureReason, RunSummary } from "@halonicjs/events";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type {
   Clock,
   RunEventListener,
@@ -18,8 +18,7 @@ import type { AnswerHarnessEffect, DecideInput, Effect } from "../kernel/decide-
 import { InputRefused } from "../kernel/input-refused.ts";
 import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
-import { appendFailed, type Failure } from "./append-failed.ts";
-import { childNow, endChildrenOf, parentEnded, receiverOf } from "./child-runs.ts";
+import { childNow, parentEnded, receiverOf } from "./child-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { type CallModel, LocalModelCalls } from "./local-model-calls.ts";
@@ -38,6 +37,7 @@ import {
   RunConnectorCallRunner,
 } from "./run-connector-call-runner.ts";
 import type { RunsConnectors } from "./run-connectors.ts";
+import { RunEnds } from "./run-ends.ts";
 import { cancelledError, harnessGoneError } from "./run-errors.ts";
 import { RunFeed } from "./run-feed.ts";
 import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
@@ -72,6 +72,7 @@ export class LocalRuns {
   readonly #modelCalls: LocalModelCalls;
   readonly #folders: RunsProposalFolders;
   readonly #connectors: Pick<RunsConnectors, "ended" | "notStarted"> | undefined;
+  readonly #ends: RunEnds;
   #started: Promise<number> | undefined;
   /** Set by {@link LocalRuns.close}: timers change nothing and calls record nothing from then on. */
   #closed = false;
@@ -112,11 +113,21 @@ export class LocalRuns {
       record: (runId, input) => this.#record(runId, input),
       send: (runId, event, options) => this.send(runId, event, undefined, options),
     });
+    this.#ends = new RunEnds({
+      store: this.store,
+      folders: this.#folders,
+      modelCalls: this.#modelCalls,
+      harnessCalls: this.#harnessCalls,
+      connectors,
+      meter: this.#limits.meter,
+      tellParentOf: (runId) => this.#tellParentOf(runId),
+      now: () => this.#now(),
+    });
     this.#effects = new UnfinishedEffects({
       store: this.store,
       scheduler: options.scheduler,
       carryOut: (run, effect) => this.#carryOut(run, effect),
-      ended: (runId) => this.#ended(runId),
+      ended: (runId) => this.#ends.ended(runId),
       now: () => this.#now(),
     });
     this.#connectorCalls = new RunConnectorCallRunner({
@@ -192,14 +203,8 @@ export class LocalRuns {
     await this.ready();
     if ((await this.store.get(runId)) === null)
       throw new InputRefused("engine.run-unknown", `There's no run "${runId}".`);
-    await this.#cancelDown(runId, { error: cancelledError });
+    await this.#ends.cancelDown(runId, { error: cancelledError });
     return this.#summary(runId);
-  }
-
-  /** Ends the run as cancelled, as `failure` says, and so its child runs still going. */
-  async #cancelDown(runId: string, failure: Failure): Promise<void> {
-    await this.#cancelOne(runId, failure);
-    await this.#ended(runId, failure);
   }
 
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
@@ -276,7 +281,7 @@ export class LocalRuns {
     if (this.#options.sweepsLostRuns === false) return 0;
     await this.#connectorCalls.markCutShort();
     return sweepLostRuns(this.store, this.#clock, this.#options.scheduler, (runId) =>
-      this.#ended(runId),
+      this.#ends.ended(runId),
     );
   }
 
@@ -361,33 +366,14 @@ export class LocalRuns {
       // The events are stored, so throwing would leave the run going with no
       // timer to move it on. Until the agent loop (4a) carries these out,
       // the run fails and none of its effects are scheduled.
-      await this.#fail(runId, unbuilt.failure, unbuilt.reason);
-      await this.#ended(runId);
+      await this.#ends.fail(runId, unbuilt.failure, unbuilt.reason);
+      await this.#ends.ended(runId);
       return events;
     }
     await this.#effects.carryOut(run, effects);
     if (events.length === 0 || !hasEnded(run.status)) return events;
-    await this.#ended(runId);
-    await this.#limits.meter.ended(run);
+    await this.#ends.ended(runId);
     return events;
-  }
-
-  /**
-   * A run has just ended: the child runs it started that are still going are
-   * cancelled as `child` says, all the way down. Then, when it is a
-   * top-level run, its harness calls and its child runs' stop, and its
-   * proposal folder and its connectors end. It waits on those calls, so no
-   * input recorded inside a harness call may end its run or any run above it
-   * (today that is only `harness-asked`, which never does).
-   */
-  async #ended(runId: string, child: Failure = parentEnded): Promise<void> {
-    const end = (childRunId: string) => this.#cancelOne(childRunId, child);
-    await endChildrenOf(this.store, runId, end);
-    await this.#folders.ended(runId, async (topLevelRunId) => {
-      this.#modelCalls.stopUnder(topLevelRunId);
-      await this.#harnessCalls.stopUnder(topLevelRunId);
-    });
-    await this.#connectors?.ended(runId);
   }
 
   /**
@@ -417,7 +403,7 @@ export class LocalRuns {
       await scheduler.cancel(effect.parentRunId, timerId);
     } else if (effect.type === "cancel-child") {
       // Only a run that is about to fail cancels its child: nobody cancelled the child.
-      await this.#cancelDown(effect.childRunId, parentEnded);
+      await this.#ends.cancelDown(effect.childRunId, parentEnded);
     }
   }
 
@@ -432,19 +418,6 @@ export class LocalRuns {
   async #tellParentOf(runId: string): Promise<void> {
     const parent = (await readRun(this.store, runId))?.parent;
     if (parent != null) await this.#hearFromChild(parent.runId, runId);
-  }
-
-  /** Ends a run as cancelled, as `failure` says, and stops its harness and model calls. */
-  async #cancelOne(runId: string, failure: Failure): Promise<void> {
-    await this.#fail(runId, failure, "cancelled");
-    this.#modelCalls.stop(runId);
-    await this.#harnessCalls.stop(runId);
-  }
-
-  /** Ends a run that hasn't ended with `run.failed`, and tells its parent. */
-  async #fail(runId: string, failure: Failure, reason: RunFailureReason = "error"): Promise<void> {
-    if (!(await appendFailed(this.store, runId, failure, reason, () => this.#now()))) return;
-    await this.#tellParentOf(runId);
   }
 
   #startPorts(): RecordStartPorts {
