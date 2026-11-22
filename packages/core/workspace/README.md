@@ -71,7 +71,7 @@ export async function runExample(): Promise<{
   a provider in `models.yaml`; a test's workflow), agents that delegate in a loop, two files with
   one id, a missing `workspace.yaml`, a workflow's own rules and the agents, workflows and methods
   it names, workflows that run each other in a loop, a for-each step whose workflow has a wait
-  step, and a routine whose hub, workflow, agent, mail
+  step or runs one, and a routine whose hub, workflow, agent, mail
   connector, cron, time zone or interval is wrong. Each issue has the file, key path and line of the
   name. A file that failed its own checks counts as missing, so whatever names it is unknown.
   `src/parity.test.ts` compares these messages, file by file, with the old loader's on every
