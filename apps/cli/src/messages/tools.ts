@@ -13,7 +13,8 @@ import { bold, dim, phrase } from "./phrase.ts";
 export const toolsMessages = defineMessages("tools", {
   summary: () => phrase`Review and approve the tools your connectors list`,
   reviewSummary: () => phrase`Review a connector's listed tools and turn on the ones you expect`,
-  approveSummary: () => phrase`Turn on listed tools for agents by name, or every waiting one with --all`,
+  approveSummary: () =>
+    phrase`Turn on listed tools for agents by name, or every waiting one with --all`,
   revokeSummary: () => phrase`Turn listed tools off again`,
   /** What the three were doing, for "✕ Couldn't list the tools from notes-mcp: …". */
   action: (source?: string) =>
