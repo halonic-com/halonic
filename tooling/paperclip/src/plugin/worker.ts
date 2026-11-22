@@ -1,5 +1,6 @@
 import { definePlugin, runWorker } from "@paperclipai/plugin-sdk";
 import { boardCheck } from "./board-check.ts";
+import { registerBoardTools } from "./board-tools.ts";
 import { runWatcher } from "./job.ts";
 import { registerTools } from "./tools.ts";
 
@@ -7,7 +8,7 @@ import { registerTools } from "./tools.ts";
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch` and
  * `board-check` jobs on their schedules, looks at each new comment for a
- * board ask, and answers the `pr_status`, `my_prs` and `queue_state` tools.
+ * board ask, keeps each failed run, and answers the agent tools.
  */
 export const plugin = definePlugin({
   async setup(ctx) {
@@ -21,7 +22,11 @@ export const plugin = definePlugin({
     ctx.events.on("issue.comment.created", async (event) => {
       await board.onCommentCreated(event, new Date());
     });
+    ctx.events.on("agent.run.failed", async (event) => {
+      await board.onRunFailed(event, new Date());
+    });
     registerTools(ctx);
+    registerBoardTools(ctx);
   },
 });
 

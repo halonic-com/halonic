@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`
 
 ## PR watcher
 
@@ -149,8 +149,8 @@ token as the watcher, and give up after 25 s.
 ## Board check
 
 The Board Checker's checks as the `board-check` job, without a model
-(phase 1b, HAL-16194; the Board Checker addendum on HAL-15997). This first
-part spots board asks; failed runs, the tasks waiting on the board, team
+(phase 1b, HAL-16194; the Board Checker addendum on HAL-15997). It spots
+board asks and keeps failed runs; the tasks waiting on the board, team
 load, approvals and merge speed follow.
 
 **Board asks.** An agent's comment from the last 12 minutes that matches
@@ -165,6 +165,22 @@ twice. New asks update the `board-asks` document on the Board Checker's
 task (task, comment id, author, time, link; never the comment's text) and
 wake the Board Checker once per batch. Asks are remembered by comment id
 for 7 days in plugin state, so a repeated event wakes nobody.
+
+**Failed runs (part a).** Each `agent.run.failed` event is kept for 48
+hours as ids, a time and a cause code: `no_identity`, `spend_limit`,
+`timeout`, `adapter_error` or `other`. The error text is read once to pick
+the code and dropped. The SDK can't list runs and events sent while the
+plugin is down are lost, so the record says since when it counts. Each pass
+wakes the task of a run without a GitHub identity, once per task, with the
+wakes the ceiling leaves after a board ask's; the rest wait for the next
+pass. New spend-limit failures get one line on the Seat Supervisor's task
+(setting `seatSupervisorTask`).
+
+**Tools.** `board_asks(since?)` lists the asks since an ISO time (24 hours
+by default) with their links and whether the board or the Board Checker has
+commented on the task since. `failed_runs(since?)` gives each agent's
+failed runs with tasks and cause codes, and since when it counts. Neither
+carries comment or error text, and neither costs a GitHub request.
 
 **What it may write** (Liam's conditions, HAL-16192). Every write goes
 through `src/board-check/writes.ts`, which only knows three calls:

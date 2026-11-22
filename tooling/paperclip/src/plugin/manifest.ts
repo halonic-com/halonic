@@ -87,6 +87,12 @@ export const manifest: PaperclipPluginManifestV1 = {
         description:
           "The id of the Board Checker's task. The board check keeps its two documents there and wakes the Board Checker there for a new board ask. Empty: the board check doesn't run.",
       },
+      seatSupervisorTask: {
+        type: "string",
+        title: "Seat Supervisor's setup task",
+        description:
+          "The id of the Seat Supervisor's setup task. The board check adds one line there for new spend-limit failures. Empty: it doesn't.",
+      },
       boardCheckWritesForVersion: {
         type: "string",
         title: "Board check writes for version",
@@ -145,6 +151,30 @@ export const manifest: PaperclipPluginManifestV1 = {
       description:
         "The merge queue from the PR watcher's last snapshot (at most about 10 minutes old, and it says when it's older): each entry's position, state, group ci-ok, time in the queue and who queued it; merge-group jobs waiting for a runner and the longest wait; open pull requests labelled fast-track with who added the label (unknown never counts as allowed). Sends no GitHub request.",
       parametersSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "board_asks",
+      displayName: "Board asks",
+      description:
+        "Agents' comments that asked the board, as the board check found them: task, comment id, author, time, link and whether the board or the Board Checker has commented since. No comment text: open the link to read an ask.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          since: { type: "string", description: "An ISO time; 24 hours back by default." },
+        },
+      },
+    },
+    {
+      name: "failed_runs",
+      displayName: "Failed runs",
+      description:
+        "Runs that failed or timed out, per agent, with their tasks and cause codes (no_identity, spend_limit, timeout, adapter_error, other), never the error text. Counts only what the plugin saw while it ran.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          since: { type: "string", description: "An ISO time; 24 hours back by default." },
+        },
+      },
     },
   ],
 };

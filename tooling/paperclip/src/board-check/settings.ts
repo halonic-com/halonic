@@ -7,6 +7,8 @@
 export interface BoardCheckSettings {
   /** The Board Checker's task: its two documents live there, and an ask wakes it there. */
   readonly boardCheckerTaskId: string | undefined;
+  /** The Seat Supervisor's setup task, where spend-limit failures get one line. */
+  readonly seatSupervisorTaskId: string | undefined;
   /**
    * The plugin version the board allowed to write, or undefined. Writes are on
    * only while this equals the running version, so every install and upgrade
@@ -25,6 +27,7 @@ export function readBoardCheckSettings(
 ): BoardCheckSettings {
   return {
     boardCheckerTaskId: text(config["boardCheckerTask"]),
+    seatSupervisorTaskId: text(config["seatSupervisorTask"]),
     writesForVersion: text(config["boardCheckWritesForVersion"]),
   };
 }
