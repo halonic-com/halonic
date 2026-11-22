@@ -3,6 +3,7 @@
 - Task: HAL-15970
 - Approval: Liam approves this note in review on HAL-15970
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:X4/iGGVITB+9JcuXoYhEUW676obRk1uU2OQC3819zkDgEe1UxK37vNuzOPE/z7b7Jn/QAgeH4S8s6FU9Fwk2Dw==
 
 ## What changes
 
