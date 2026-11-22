@@ -1,4 +1,4 @@
-import { tauriIpc } from "@halonicjs/studio-services";
+import { tauriIpc } from "@halonicjs/studio-services/tauri-ipc";
 import { type ConnectBridge, localAddressStore } from "./bridge.ts";
 import { startConnectPage } from "./connect-page.ts";
 import { tauriBridge } from "./tauri-bridge.ts";

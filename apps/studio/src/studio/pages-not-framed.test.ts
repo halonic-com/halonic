@@ -35,8 +35,9 @@ verifies("studio.pages-not-framed", () => {
     expect(directives(csp).get("frame-ancestors")).toBe("'none'");
   });
 
-  it("keeps that policy on Android, which merges its config over the desktop one", () => {
-    // A merged config that sets a policy of its own replaces the desktop one.
-    expect(tauriConfig("tauri.android.conf.json").app?.security?.csp).toBeUndefined();
+  it("keeps that rule on Android, whose config sets the connect page's own policy", () => {
+    // A merged config that sets a policy of its own replaces the desktop one (studio.connect.no-network).
+    const csp = tauriConfig("tauri.android.conf.json").app?.security?.csp ?? "";
+    expect(directives(csp).get("frame-ancestors")).toBe("'none'");
   });
 });

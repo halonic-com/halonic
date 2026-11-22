@@ -51,7 +51,7 @@ async function pressConnect(address: string): Promise<void> {
 // first keeps a loaded machine from spending a test's time on the first load.
 beforeAll(async () => {
   await Promise.all([
-    import("@halonicjs/studio-services"),
+    import("@halonicjs/studio-services/tauri-ipc"),
     import("./connect-page.ts"),
     import("./tauri-bridge.ts"),
   ]);

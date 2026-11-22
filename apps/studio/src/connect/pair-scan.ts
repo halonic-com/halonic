@@ -1,6 +1,6 @@
 import { decodePairingQr, type PairingQrPayload } from "@halonicjs/ports";
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
-import type { TauriIpc } from "@halonicjs/studio-services";
+import type { TauriIpc } from "@halonicjs/studio-services/tauri-ipc";
 
 /**
  * What the shell's `pair_scan` command answers (`halonic_connect::ScanAnswer`
