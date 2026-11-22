@@ -240,7 +240,7 @@ verifies("plugins.plugin-actions", () => {
     expect(shownToasts()).toEqual([
       {
         tone: "warning",
-        title: "Weather removed",
+        title: "Weather removed.",
         text: "You're signed out here. Weather didn't confirm, so the tokens may still work there until they expire.",
       },
     ]);

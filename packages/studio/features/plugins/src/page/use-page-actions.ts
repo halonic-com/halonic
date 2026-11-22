@@ -16,7 +16,7 @@ import {
 /**
  * Runs a page action, and says in a toast when it fails: "Couldn't remove trust: *reason*."
  * `fail` says the same for an action that needs its result, so it can't go through `run`.
- * `toastRemoved` is the Remove dialog's success: "*name* removed". `toastSignedOut` follows a
+ * `toastRemoved` is the Remove dialog's success: "*name* removed" ("*name* removed." over a warning). `toastSignedOut` follows a
  * **Remove trust** that worked, and says something only when a sign-out wasn't confirmed. Both then
  * warn with **Sign out**'s words, as the CLI does (`app.plugin-sign-out`). `toastOn` is a trust that
  * was saved: "*name* is on". `toastAddedOff` is **Not now** on a plugin that was just added:
@@ -57,7 +57,7 @@ export function usePageActions() {
       toasts?.show(
         warning === undefined
           ? { tone: "success", title: removedToast(name) }
-          : { tone: "warning", title: removedToast(name), text: warning },
+          : { tone: "warning", title: removedToast(name, { withWarning: true }), text: warning },
       );
     },
   };
