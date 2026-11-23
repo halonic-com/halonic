@@ -152,6 +152,7 @@ export class FakeAgentHost implements AgentHostTransport {
     "GET /v1/harnesses": () => [{ id: "claude-code", name: "Claude Code" }],
     "GET /v1/sandbox/capabilities": () => ({ files: "shared", strength: "os" }),
     "GET /v1/sandbox/check": () => ({ ok: true, reason: null, missing: [] }),
+    "GET /v1/sandbox/this-computer": () => ({ offered: false }),
     "POST /v1/sandbox/sessions/open": () => ({ session: "s1", fence: { state: "fenced" } }),
     "POST /v1/sandbox/sessions/close": () => ({}),
     "POST /v1/harnesses/detect": () => ({ status: "ready", version: "2.0.0" }),

@@ -60,6 +60,17 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/sandbox/sessions/close",
         route(Method::Post, "/v1/sandbox/sessions/close", Answer::Json),
     ),
+    // A session without the sandbox, for an agent the person set to "On
+    // this computer" (HAL-13195). The host checks the trust record, the
+    // choice and its own built profile before it opens one.
+    (
+        "GET /v1/sandbox/this-computer",
+        route(Method::Get, "/v1/sandbox/this-computer", Answer::Json),
+    ),
+    (
+        "POST /v1/sandbox/this-computer/open",
+        route(Method::Post, "/v1/sandbox/this-computer/open", Answer::Json),
+    ),
     // Which sandbox runs, as the engine's choice (HAL-10796). The page only
     // asks; the shell saves the person's setting itself, never the page.
     (

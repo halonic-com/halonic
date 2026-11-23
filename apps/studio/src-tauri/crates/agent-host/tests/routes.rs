@@ -12,6 +12,18 @@ fn routes_finds_each_route_by_its_name_and_answer() {
 }
 
 #[test]
+fn routes_lets_a_page_open_a_session_on_this_computer_with_json_only() {
+    let offered = find_route("GET /v1/sandbox/this-computer", Answer::Json).expect("a route");
+    assert_eq!(offered.method, Method::Get);
+    let open = find_route("POST /v1/sandbox/this-computer/open", Answer::Json).expect("a route");
+    assert_eq!(open.path, "/v1/sandbox/this-computer/open");
+    assert_eq!(
+        find_route("POST /v1/sandbox/this-computer/open", Answer::Stream),
+        None
+    );
+}
+
+#[test]
 fn routes_refuses_any_other_name() {
     for name in [
         "",

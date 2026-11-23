@@ -13,7 +13,6 @@ import type {
   WslRemoveRequest,
   WslRemoveResult,
 } from "@halonicjs/studio-feature-settings";
-import { studioStartsUnfenced } from "../engine/studio-harness-host.ts";
 import type { ElevateHelper, ShellElevation } from "./sandbox-elevate-shell.ts";
 
 /**
@@ -47,8 +46,11 @@ const HELPER_DIDNT_START = "Windows couldn't start Halonic's sandbox helper.";
  */
 export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly available = true;
-  /** Whether the Studio's runs start an agent outside its sandbox: the Harness page's answer too. */
-  readonly studioStartsUnfenced = studioStartsUnfenced;
+  /**
+   * Whether the Studio's runs start an agent outside its sandbox, as the agent host says
+   * (`GET /v1/sandbox/this-computer`): the Harness page's answer too.
+   */
+  readonly studioStartsUnfenced: boolean;
   readonly #transport: AgentHostTransport;
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;
@@ -62,7 +64,8 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
    * `wslBackup` is given only where the shell offers the removal of the WSL setup (HAL-10974);
    * without it the section has no **Remove sandbox setup**. `elevate` is given only where the
    * shell starts the helper itself, from Studio's window (HAL-14841); without it the host runs the
-   * setup and the removal.
+   * setup and the removal. `studioStartsUnfenced` is the host's answer, read before the section
+   * opens; false when left out.
    */
   constructor(
     transport: AgentHostTransport,
@@ -71,7 +74,9 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     securityUpdates?: () => Promise<SecurityUpdatesFacts | null>,
     wslBackup?: WslBackupShell,
     elevate?: ElevateHelper,
+    studioStartsUnfenced = false,
   ) {
+    this.studioStartsUnfenced = studioStartsUnfenced;
     if (securityUpdates !== undefined) this.securityUpdates = securityUpdates;
     if (wslBackup !== undefined) {
       this.removeWslSetup = (request, options) => this.#removeWsl(request, options);

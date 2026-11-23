@@ -68,6 +68,7 @@ function fakeHost(
       status: 200,
       body: { files: "shared", strength: "os" },
     }),
+    "GET /v1/sandbox/this-computer": () => ({ status: 200, body: { offered: false } }),
     "POST /v1/proposals/start": () => ({ status: 200, body: {} }),
     "POST /v1/bridge/answer": (body) => {
       answers.push(body);
@@ -146,13 +147,26 @@ verifies("studio.engine-service", () => {
       });
     });
 
-    it("refuses an agent set to run on this computer, before its program starts", async () => {
-      const built = await openStudioHarnessHost(inputOn(fakeHost()));
+    it("refuses an agent set to run on this computer where the host offers no session there", async () => {
+      const host = fakeHost();
+      const built = await openStudioHarnessHost(inputOn(host));
       const unfenced = built.harnesses.sandboxes["this-computer"];
       expect(await unfenced.check()).toMatchObject({ ok: false, reason: "not-offered" });
-      await expect(unfenced.open({} as SandboxProfile)).rejects.toThrow(
-        /Studio can't start Claude Code or Codex agents outside the sandbox/,
+    });
+
+    it("runs an agent set to run on this computer in the host's session where it offers one", async () => {
+      const host = fakeHost({
+        "GET /v1/sandbox/this-computer": () => ({ status: 200, body: { offered: true } }),
+      });
+      const built = await openStudioHarnessHost(inputOn(host));
+      const unfenced = built.harnesses.sandboxes["this-computer"];
+      expect(await unfenced.check()).toEqual({ ok: true, reason: null, missing: [] });
+      expect(unfenced.capabilities()).toEqual({ files: "shared", strength: "none" });
+      // A profile the host didn't build for one of this engine's agents never reaches the host.
+      await expect(unfenced.open({ tempFolder: "/elsewhere" } as SandboxProfile)).rejects.toThrow(
+        /didn't build this one/,
       );
+      expect(host.asked).not.toContain("POST /v1/sandbox/this-computer/open");
     });
 
     it("asks the run's own approvals for a bridge's approval", async () => {

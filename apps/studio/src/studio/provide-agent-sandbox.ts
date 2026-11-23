@@ -2,7 +2,12 @@
 // page and the Inbox read, the sandbox choice, and Settings › Agent sandbox
 // when this build offers it. Split from start-studio.ts (HAL-15319).
 
-import { AgentHostSandbox, AgentHostSandboxChoice } from "@halonicjs/adapter-agent-host-client";
+import {
+  AgentHostSandbox,
+  AgentHostSandboxChoice,
+  type AgentHostTransport,
+  thisComputerOffered,
+} from "@halonicjs/adapter-agent-host-client";
 import { type ServiceRegistry, sandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
 import { SandboxPassesService } from "@halonicjs/studio-feature-inbox/api";
 import {
@@ -54,6 +59,21 @@ export async function provideAgentSandbox(
         () => transport.securityUpdates(),
         ipc === undefined ? undefined : await wslBackupOf(ipc),
         ipc === undefined ? undefined : await elevateHelperOf(ipc),
+        await studioStartsUnfencedOn(transport),
       ),
     );
+}
+
+/**
+ * Whether the agent host opens sessions on this computer. A host that can't say counts as one
+ * that doesn't: the section then keeps its hint that Studio can't start such an agent, the
+ * cautious answer, and the error goes to the console.
+ */
+async function studioStartsUnfencedOn(transport: AgentHostTransport): Promise<boolean> {
+  try {
+    return await thisComputerOffered(transport);
+  } catch (error) {
+    console.error("Asking the agent host about sessions on this computer", error);
+    return false;
+  }
 }
