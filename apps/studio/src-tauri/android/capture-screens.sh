@@ -261,6 +261,21 @@ wait_for_text() { # text seconds
   shows_within "$1" "$2" || fail "the screen never showed \"$1\"."
 }
 
+# Taps the middle of the first control on screen whose text or description is
+# exactly `text`, from the bounds in the window's accessibility tree.
+tap_text() { # text
+  local window node x1 y1 x2 y2
+  adb_ shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || fail "can't read the screen to tap \"$1\"."
+  window=$(adb_ exec-out cat /sdcard/window.xml)
+  # The dump is one line, so every match is read and only the first kept.
+  node=$(grep -o "<node [^>]*\(text\|content-desc\)=\"$1\"[^>]*>" <<<"$window" || true)
+  node=${node%%$'\n'*}
+  [[ $node =~ bounds=\"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]\" ]] ||
+    fail "no \"$1\" on the screen to tap."
+  x1=${BASH_REMATCH[1]} y1=${BASH_REMATCH[2]} x2=${BASH_REMATCH[3]} y2=${BASH_REMATCH[4]}
+  adb_ shell input tap $(((x1 + x2) / 2)) $(((y1 + y2) / 2))
+}
+
 capture() { # name
   set_status_bar
   sleep 1
@@ -296,11 +311,17 @@ older_computer=0.0.9
 
 route_to_fake_computer
 
-# 1. The connect screen with the address typed. A fresh install remembers no
-#    address, so the app opens on it.
+# 1. The connect screen with the address typed. A fresh install has no paired
+#    computer and remembers no address, so the app opens on Pair with a
+#    computer (HAL-15985); the typed route's "Not listed? Enter its address"
+#    opens the connect screen.
 keyboard_off
 launch_app
-wait_for_text "Connect to Halonic" 60
+wait_for_text "Type a code instead" 60
+tap_text "Type a code instead"
+wait_for_text "Not listed? Enter its address" 15
+tap_text "Not listed? Enter its address"
+wait_for_text "Connect to Halonic" 15
 type_address
 if keyboard_shown; then
   fail "the on-screen keyboard is open over the connect screen. Keyboards on: $(adb_ shell ime list -s | tr -d '\r')"
