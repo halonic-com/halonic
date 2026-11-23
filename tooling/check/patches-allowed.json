@@ -13,6 +13,13 @@
       "sha256": "21dc06947411909ed9f92f895278221e717d5caeca25628e1eea1821604c9173",
       "reason": "Runs at most 8 `git log --follow` processes at a time in getCommitsThatAddFiles, keeping the input order. Unpatched, `changeset version` starts one per pending changeset, all at once: with 591 changesets on main that peaked at 5.6 GB locally and 8.5 to 9.4 GB in Fast gates' `pnpm version-packages`, which our CI server killed at its 10 GB ceiling (HAL-15966). Patched, it peaks at 2.2 GB whatever the number of changesets, and writes the same changelogs.",
       "remove-when": "@changesets/git limits how many git processes getCommitsThatAddFiles runs at once, or finds the commits with a single git call"
+    },
+    {
+      "package": "@paperclipai/plugin-sdk@2026.1117.0",
+      "file": "patches/@paperclipai__plugin-sdk@2026.1117.0.patch",
+      "sha256": "3f70d2c10eab6ef1500a896e7b02b43eb6a77d771b3351d034decd052dd6d0da",
+      "reason": "Adds ctx.issues.monitors.postpone to the plugin worker: one method that calls the host method issues.monitors.postpone, and its type. The host method comes from our local Paperclip server patch (halonic-com/server, paperclip/patches/1117, HAL-16413): with the capability of the same name, a plugin may move a task's existing monitor later, at most 24 hours out. The Agent tools plugin's PR watcher uses it to keep a watched task's fallback monitor from firing a model run while the watcher runs (HAL-16401 part 3). The SDK's private callHost is the only way to reach a host method, so the plugin can't add the call itself. Dev dependency only: the SDK is bundled into the plugin's worker.js, nothing in Halonic's packages loads it.",
+      "remove-when": "Paperclip ships a plugin call to postpone (or hold) an issue monitor, or the PR watcher stops moving monitors"
     }
   ]
 }
