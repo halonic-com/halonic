@@ -19,7 +19,7 @@ export function outsideFolder(top: string, ownFolder?: string): RepositoryRefuse
   return new RepositoryRefusedError(
     `The repository at ${top} keeps its git files outside the folder, which Halonic doesn't allow.`,
     ownFolder === undefined
-      ? `Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule, or clone the repository again into a folder of its own. ${stillWorks}`
+      ? `Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule. Or clone the repository again into a folder of its own. ${stillWorks}`
       : `Use the repository's own folder, ${ownFolder}, or clone the repository again into a folder of its own. ${stillWorks}`,
   );
 }
@@ -29,25 +29,32 @@ export function outsideFolder(top: string, ownFolder?: string): RepositoryRefuse
  * from its `.git` file (`gitdir: <main>/.git/worktrees/<name>`), for the
  * refusal's words only: nothing is run or opened there. `undefined` when
  * `.git` isn't such a file, or that folder has no `.git` folder of its own,
- * as for a submodule.
+ * as for a submodule. Also `undefined` when either can't be read: the
+ * refusal is what the person needs, so a read error must not replace it.
  */
 export async function linkedWorktreeMain(top: string): Promise<string | undefined> {
-  const dotGit = join(top, ".git");
-  const stats = await lstat(dotGit);
-  if (!stats.isFile()) return undefined;
-  const line = (await readFile(dotGit, "utf8")).split("\n")[0]?.trimEnd() ?? "";
-  if (!line.startsWith("gitdir: ")) return undefined;
+  const line = await gitdirLine(join(top, ".git"));
+  if (line === undefined || !line.startsWith("gitdir: ")) return undefined;
   const worktreeGitDir = resolve(top, line.slice("gitdir: ".length));
   const worktrees = dirname(worktreeGitDir);
   const mainGitDir = dirname(worktrees);
   if (basename(worktrees) !== "worktrees" || basename(mainGitDir) !== ".git") return undefined;
+  const isFolder = await lstat(mainGitDir).then(
+    (stats) => stats.isDirectory(),
+    () => false,
+  );
+  return isFolder ? dirname(mainGitDir) : undefined;
+}
+
+/** The first line of the `.git` file at `dotGit`; `undefined` when it isn't a file or can't be read. */
+async function gitdirLine(dotGit: string): Promise<string | undefined> {
   try {
-    if (!(await lstat(mainGitDir)).isDirectory()) return undefined;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-    throw error;
+    if (!(await lstat(dotGit)).isFile()) return undefined;
+    return (await readFile(dotGit, "utf8")).split("\n")[0]?.trimEnd() ?? "";
+  } catch {
+    // Any read error: the caller then shows the refusal without the main folder.
+    return undefined;
   }
-  return dirname(mainGitDir);
 }
 
 /** The folder must be the top, with its own `.git` folder as both git folders, not a linked worktree or a `gitdir:` file. */
