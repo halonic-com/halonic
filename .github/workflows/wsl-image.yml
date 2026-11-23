@@ -58,21 +58,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends shellcheck
-          shellcheck infra/wsl-image/build.sh infra/wsl-image/customize.sh infra/wsl-image/check.sh infra/wsl-image/runtime-archive.sh
+          shellcheck infra/wsl-image/build.sh infra/wsl-image/customize.sh infra/wsl-image/check.sh infra/wsl-image/runtime-archive.sh infra/wsl-image/build-in-docker.sh
       # The build container is infra/wsl-image/Dockerfile: Debian pinned by
-      # digest, which Dependabot keeps fresh (HAL-6181). Built without a
-      # context, so it can't copy anything in.
+      # digest, which Dependabot keeps fresh (HAL-6181).
       - name: Build and check
-        run: |
-          mkdir -p "$RUNNER_TEMP/wsl-image"
-          docker build -t halonic-wsl-build - < infra/wsl-image/Dockerfile
-          docker run --rm --privileged \
-            -v "$GITHUB_WORKSPACE/infra/wsl-image:/src:ro" \
-            -v "$RUNNER_TEMP/wsl-image:/out" \
-            halonic-wsl-build bash -euxc '
-              /src/build.sh /out
-              /src/check.sh /out/halonic-wsl.tar.gz
-            '
+        run: infra/wsl-image/build-in-docker.sh "$RUNNER_TEMP/wsl-image"
       - name: Sizes
         run: |
           {

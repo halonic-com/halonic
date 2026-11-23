@@ -1,8 +1,10 @@
 # Halonic WSL image
 
 Halonic's own minimal Debian image for the `srt-wsl` sandbox on Windows
-(design: HAL-3779, section 5.2). **Build only.** Publishing the image is a
-release and needs the board's yes.
+(design: HAL-3779, section 5.2). It reaches users only inside the Windows
+installer (board, option A on HAL-16772): `build-installer.ps1 -Image` puts
+`halonic-wsl.tar.gz` next to the app, where the shell's WSL setup imports it
+(HAL-16773). Nothing publishes it on its own.
 
 - `snapshot.conf`: the pinned Debian suite and snapshot date.
 - `build.sh <dir>`: builds `halonic-wsl.tar.gz` with `mmdebstrap --variant=minbase`,
@@ -10,6 +12,8 @@ release and needs the board's yes.
 - `customize.sh`: the step inside the build that adds our files, the user and the
   notices, and removes every setuid and setgid bit (kept off on upgrades with
   `dpkg-statoverride`): root in this distro can mount the Windows drive.
+- `build-in-docker.sh <dir>`: runs `build.sh` and `check.sh` in the container
+  from `Dockerfile`, as the WSL image workflow, CI's installer and the release do.
 - `check.sh <image>`: checks config, packages, licence notice, that no setuid or
   setgid file and no file capability is left, that the tools start, and the
   runtime updater (below).
@@ -141,10 +145,13 @@ deletes what is kept in it.
 
 CI: `.github/workflows/wsl-image.yml` builds in the container from `Dockerfile`,
 runs on changes here and by hand, prints the sizes in the job summary, and keeps the image as a 7-day build artifact.
+CI's `wsl-image` job builds it the same way whenever the Windows installer job
+runs, which ships it; the release builds it from the tag's commit. Both check
+the SHA-256 in `sizes.json` against the image before it goes into the installer.
 The image is imported on Windows with
 `wsl --import halonic %LOCALAPPDATA%\Halonic\wsl halonic-wsl.tar.gz --version 2`.
 
 Licences: the image carries Debian's per-package `copyright` files plus
 `/usr/share/doc/halonic-image/NOTICE`, `SNAPSHOT.txt` and `packages.txt` (the
 source pointer). Whoever owns licence compliance checks this before the first
-release.
+release that ships the image in the installer.
