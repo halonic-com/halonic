@@ -1,12 +1,14 @@
 import { gatewayMaxPromptLength } from "@halonicjs/ports";
 import { Button, TextArea } from "@halonicjs/studio-kit";
 import { useId, useRef, useState } from "react";
+import { hostLine, hostPlaceholderTitleMax } from "./host-text.ts";
 import type { RemoteSendOutcome, RemoteView } from "./remote-view.ts";
 import { promptWords, sendOutcomeLine } from "./send-words.ts";
 
 /** The agent a prompt goes to: the session in view. */
 export interface PromptTarget {
   readonly sessionId: string;
+  /** The session's title as the computer sent it; the placeholder cuts and marks it. */
   readonly title: string;
 }
 
@@ -89,7 +91,7 @@ export function PromptBox({
         <div className="min-w-0 flex-1">
           <TextArea
             aria-label={promptWords.label}
-            placeholder={promptWords.placeholder(agent.title)}
+            placeholder={promptWords.placeholder(hostLine(agent.title, hostPlaceholderTitleMax))}
             value={text}
             onChange={(event) => setText(event.target.value)}
           />

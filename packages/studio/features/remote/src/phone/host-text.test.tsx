@@ -16,6 +16,13 @@ import { RunDetail } from "./run-detail.tsx";
 
 afterEach(unmountAll);
 
+/** The codes of the hidden-character chips on screen, in order. */
+function chipsIn(screen: HTMLElement): string[] {
+  return [...screen.querySelectorAll("span.font-mono")].map((chip) =>
+    (chip.textContent ?? "").replace("hidden character ", ""),
+  );
+}
+
 const rightToLeft = String.fromCodePoint(0x202e);
 const isolate = String.fromCodePoint(0x2066);
 const zeroWidth = String.fromCodePoint(0x200b);
@@ -68,9 +75,13 @@ verifies("remote.phone-host-text", () => {
       />,
     );
     const shown = screen.textContent ?? "";
-    expect(shown).toContain("Sorter⟦U+2066⟧");
-    expect(shown).toContain('send_refund: {"to":"Sam⟦U+202E⟧"}');
+    expect(shown).toContain("Sorterhidden character U+2066");
+    expect(shown).toContain('send_refund: {"to":"Samhidden character U+202E"}');
     expect(shown).toContain("!…");
+    expect(chipsIn(screen)).toEqual(["U+2066", "U+202E"]);
+    expect(screen.querySelector(".sr-only")?.textContent).toContain(
+      "Sorter hidden character U+2066, send_refund",
+    );
     expect(shown).not.toContain(rightToLeft);
     expect(shown).not.toContain(isolate);
   });
@@ -102,10 +113,48 @@ verifies("remote.phone-host-text", () => {
       />,
     );
     const shown = screen.textContent ?? "";
-    expect(shown).toContain("Sending to Sam⟦U+202E⟧");
-    expect(shown).toContain("send⟦U+200B⟧: {}");
+    expect(shown).toContain("Sending to Samhidden character U+202E");
+    expect(shown).toContain("sendhidden character U+200B: {}");
+    expect(chipsIn(screen)).toEqual(["U+202E", "U+200B"]);
     expect(shown).not.toContain(rightToLeft);
     expect(shown).not.toContain(zeroWidth);
+  });
+
+  it("draws each marker as a chip, and keeps a marker the host typed as plain text", () => {
+    const typed = "Refund⟦U+202E⟧gnp.exe";
+    const screen = render(
+      <RunDetail
+        view={remoteView({
+          sessions: [remoteSession({ title: typed, events: [agentSays(1, typed)] })],
+        })}
+        sessionId="session-1"
+        label={null}
+        onBack={vi.fn()}
+        onSend={vi.fn()}
+        now={now}
+      />,
+    );
+    expect(screen.querySelector("h1")?.textContent).toBe(typed);
+    expect(screen.textContent).toContain(`said${typed}`);
+    expect(chipsIn(screen)).toEqual([]);
+
+    unmountAll();
+    const real = render(
+      <RunDetail
+        view={remoteView({ sessions: [remoteSession({ title: `Refund${rightToLeft}gnp.exe` })] })}
+        sessionId="session-1"
+        label={null}
+        onBack={vi.fn()}
+        onSend={vi.fn()}
+        now={now}
+      />,
+    );
+    const chip = real.querySelector("h1 > span");
+    expect(chip?.textContent).toBe("hidden character U+202E");
+    expect(chip?.className.split(" ")).toEqual(
+      expect.arrayContaining(["font-mono", "text-caption", "bg-surface-muted", "border-border"]),
+    );
+    expect(chip?.querySelector(".sr-only")?.textContent).toBe("hidden character ");
   });
 
   it("renders links in agent text as plain text that opens nothing", () => {

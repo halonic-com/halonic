@@ -61,6 +61,7 @@ export function PhoneStatusHeader({
         tone={label.tone}
         action="Details"
         name={label.name}
+        shrinking={computer}
         onClick={() => onOpen(shown)}
       >
         {label.text}

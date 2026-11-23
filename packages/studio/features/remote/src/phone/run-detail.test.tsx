@@ -168,6 +168,26 @@ verifies("remote.phone-run-detail", () => {
     expect(show(live).screen.querySelector('section[aria-label="banner"]')).toBeNull();
   });
 
+  it("keeps the title's room next to the label, and a long title on one line in the box", () => {
+    const long = `Reporter for ${"the quarterly numbers ".repeat(5)}and then some`;
+    const screen = render(
+      <RunDetail
+        view={remoteView({ sessions: [remoteSession({ title: long, state: "running" })] })}
+        sessionId="session-1"
+        label={<span>label</span>}
+        onBack={vi.fn()}
+        onSend={vi.fn()}
+        now={() => now}
+      />,
+    );
+    const heading = screen.querySelector("h1");
+    expect(heading?.className.split(" ")).toEqual(expect.arrayContaining(["min-w-24", "flex-1"]));
+    expect(heading?.nextElementSibling?.className).toBe("min-w-0");
+    const placeholder = screen.querySelector("textarea")?.placeholder ?? "";
+    expect(placeholder).toBe(`Message ${[...long].slice(0, 40).join("")}…`);
+    expect(placeholder.endsWith("……")).toBe(false);
+  });
+
   it("sends a prompt to this agent", async () => {
     const { screen, onSend } = show(live);
     const box = screen.querySelector("textarea");

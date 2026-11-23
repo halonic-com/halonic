@@ -6,7 +6,14 @@
  */
 
 import { agentLine } from "./agent-line.ts";
-import { hostLine, hostLineMax, hostMessage, hostTitle } from "./host-text.ts";
+import {
+  type HostText,
+  hostLineMax,
+  hostLineParts,
+  hostMessageParts,
+  hostShown,
+  hostTitle,
+} from "./host-text.ts";
 import { asOfText } from "./phone-forms.ts";
 import type { RemoteApproval, RemoteEvent, RemoteSession, RemoteView } from "./remote-view.ts";
 import { runWords } from "./run-words.ts";
@@ -21,14 +28,14 @@ export type RunItem =
       readonly kind: "message";
       readonly key: string;
       readonly from: "you" | "agent";
-      readonly text: string;
+      readonly text: HostText;
       readonly time: string | undefined;
     }
   /** An approval that still waits; the phone shows it and never answers it from here. */
   | {
       readonly kind: "waiting";
       readonly key: string;
-      readonly summary: string;
+      readonly summary: HostText;
       readonly time: string | undefined;
     }
   /** One quiet line: "Approved 13:53 · {summary}", or without the summary once it was dropped. */
@@ -109,7 +116,7 @@ function eventItem(
         kind: "message",
         key: `event-${event.seq}`,
         from: body.role === "user" ? "you" : "agent",
-        text: hostMessage(body.text),
+        text: hostMessageParts(body.text),
         time: timeOf(event.at, now),
       };
     case "approval-requested": {
@@ -135,11 +142,12 @@ function waitingItem(open: RemoteApproval, now: Date): RunItem {
 }
 
 /** An approval's `tool: {args}` summary as shown: hidden characters marked, cut with "…". */
-function summaryOf(summary: string): string {
-  return hostLine(summary, hostLineMax);
+function summaryOf(summary: string): HostText {
+  return hostLineParts(summary, hostLineMax);
 }
 
-function answered(settled: RemoteEvent, summary: string | undefined, now: Date): RunItem {
+/** The quiet line is a kit component's words, so its summary's markers are written out. */
+function answered(settled: RemoteEvent, summary: HostText | undefined, now: Date): RunItem {
   const decision = settled.body.type === "approval-settled" ? settled.body.decision : "approve";
   const time = timeOf(settled.at, now) ?? "";
   const said = (decision === "approve" ? runWords.approved : runWords.denied)(time).trimEnd();
@@ -147,7 +155,7 @@ function answered(settled: RemoteEvent, summary: string | undefined, now: Date):
     kind: "answered",
     key: `event-${settled.seq}`,
     decision,
-    text: summary === undefined ? said : `${said} · ${summary}`,
+    text: summary === undefined ? said : `${said} · ${hostShown(summary)}`,
   };
 }
 
@@ -168,9 +176,9 @@ function endOf(view: RemoteView, session: RemoteSession, now: Date): RunItem | u
         text: runWords.workingAsOf(asOfText(view.asOf, now)),
       };
     case "done":
-      return { kind: "ended", key, tone: "plain", text: agentLine(session, undefined, now) ?? "" };
+      return { kind: "ended", key, tone: "plain", text: endedLine(session, now) };
     case "failed": {
-      const failed = agentLine(session, undefined, now) ?? "";
+      const failed = endedLine(session, now);
       return {
         kind: "ended",
         key,
@@ -179,6 +187,12 @@ function endOf(view: RemoteView, session: RemoteSession, now: Date): RunItem | u
       };
     }
   }
+}
+
+/** When an agent that ended did so: "Finished 13:40" (`agentLine`). */
+function endedLine(session: RemoteSession, now: Date): string {
+  const line = agentLine(session, undefined, now);
+  return line === undefined ? "" : hostShown(line);
 }
 
 /** The computer's time of an event, as "as of" writes it; none when it isn't a time. */

@@ -13,10 +13,13 @@ import {
 import { render, unmountAll } from "../test-support/render.tsx";
 import { agentLine, agentRowLine } from "./agent-line.ts";
 import { AgentsList } from "./agents-list.tsx";
+import { type HostText, hostShown } from "./host-text.ts";
 import type { RemoteEvent, RemoteView } from "./remote-view.ts";
 import { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";
 
 afterEach(unmountAll);
+
+const shown = (line: HostText | undefined) => (line === undefined ? undefined : hostShown(line));
 
 const now = new Date(2026, 10, 21, 14, 5);
 
@@ -74,9 +77,9 @@ verifies("remote.phone-agents", () => {
 
   it("reads the line from the end, the oldest open approval, then the agent's newest message", () => {
     expect(
-      agentLine(remoteSession({ state: "failed", updatedAt: "not a date" }), undefined, now),
+      shown(agentLine(remoteSession({ state: "failed", updatedAt: "not a date" }), undefined, now)),
     ).toBe("Failed");
-    expect(agentLine(sorter, sorterAsks, now)).toBe("Send 4 replies");
+    expect(shown(agentLine(sorter, sorterAsks, now))).toBe("Send 4 replies");
     expect(
       agentLine(remoteSession({ events: [said(1, "  \n  ")] }), undefined, now),
     ).toBeUndefined();
@@ -93,8 +96,8 @@ verifies("remote.phone-agents", () => {
     expect(screen.textContent).toContain("You can answer once your phone reconnects.");
     // An agent that ended keeps its end time alone: no second time beside it (C672).
     expect(rows[2]?.querySelector(".sr-only")?.textContent).toBe("Writer, Finished 13:40, Done");
-    expect(agentRowLine(stale, remoteSession(), undefined, now)).toBe("as of 14:02");
-    expect(agentRowLine({ ...stale, asOf: undefined }, reporter, undefined, now)).toBe(
+    expect(shown(agentRowLine(stale, remoteSession(), undefined, now))).toBe("as of 14:02");
+    expect(shown(agentRowLine({ ...stale, asOf: undefined }, reporter, undefined, now))).toBe(
       "Writing the weekly report",
     );
   });

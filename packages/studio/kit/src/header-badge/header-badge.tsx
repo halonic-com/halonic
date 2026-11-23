@@ -70,6 +70,13 @@ export interface HeaderBadgeStatus {
    * `name`), which say the state in a sentence instead of reading its middle dot or ellipsis.
    */
   readonly name?: string | undefined;
+  /**
+   * The part of the words that gives way first when the top bar is narrow, such as the computer's
+   * name in "Connected · Tim's laptop": it is cut with "…" on one line, while the dot, the other
+   * words and the chevron stay, so the screen's title keeps its room (HAL-16957). Without it the
+   * words wrap at large text.
+   */
+  readonly shrinking?: string | undefined;
   readonly onClick: () => void;
 }
 
@@ -220,11 +227,35 @@ function StatusBadge({ props }: { readonly props: HeaderBadgeStatus }) {
         aria-hidden="true"
         className={`size-2 shrink-0 rounded-full ${look.dot} forced-color-adjust-none forced-colors:bg-[CanvasText]`}
       />
-      <span className="min-w-0">{props.children}</span>
+      <StatusWords text={props.children} shrinking={props.shrinking} />
       <Icon>
         <ChevronRightIcon />
       </Icon>
     </button>
+  );
+}
+
+/**
+ * The connection label's words. With a `shrinking` part they stay on one line and only that part
+ * is cut with "…"; the words round it keep their full width.
+ */
+function StatusWords({
+  text,
+  shrinking,
+}: {
+  readonly text: string;
+  readonly shrinking?: string | undefined;
+}) {
+  const at = shrinking === undefined || shrinking === "" ? -1 : text.indexOf(shrinking);
+  if (shrinking === undefined || at < 0) return <span className="min-w-0">{text}</span>;
+  const before = text.slice(0, at);
+  const after = text.slice(at + shrinking.length);
+  return (
+    <span className="flex min-w-0 whitespace-pre">
+      {before === "" ? null : <span className="shrink-0">{before}</span>}
+      <span className="min-w-0 truncate">{shrinking}</span>
+      {after === "" ? null : <span className="shrink-0">{after}</span>}
+    </span>
   );
 }
 
