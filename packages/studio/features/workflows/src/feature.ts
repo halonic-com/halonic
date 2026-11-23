@@ -1,5 +1,6 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
+import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature, FilesWithErrorsService } from "@halonicjs/studio-shell";
@@ -20,6 +21,7 @@ export const workflowsFeature = defineFeature({
   // Run is unavailable while the sandbox can't start, for a workflow whose steps need it.
   // A guide, such as the first run's, shows its card on a workflow's page.
   // The problems band names another file that stops a run from the shared list of files with errors.
+  // A workflow file that didn't load keeps its row, which opens and deletes the file itself (C348).
   wants: [
     InboxService,
     sandboxStartCheckKey,
@@ -27,6 +29,7 @@ export const workflowsFeature = defineFeature({
     FilesWithErrorsService,
     // For the confirm-again Callout of an agent on hold (agents.confirm-again.run-controls).
     AgentsHostService,
+    FilesHostService,
   ],
   register(studio) {
     studio.places.add({
