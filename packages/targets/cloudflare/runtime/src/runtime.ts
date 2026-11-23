@@ -140,7 +140,10 @@ export async function createRuntime(
   const records = new D1RecordStore(env.DB);
   const runs = new D1RunList(env.DB);
   const definitions = definitionsOf(env, scope);
-  const scheduler = new DurableScheduler({ namespace: env.RUN, namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope) });
+  const scheduler = new DurableScheduler({
+    namespace: env.RUN,
+    namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope),
+  });
   return {
     clock,
     secrets,
@@ -151,7 +154,10 @@ export async function createRuntime(
       runList: runs,
       namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope),
     }),
-    runEvents: new DurableRunEvents({ namespace: env.RUN, namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope) }),
+    runEvents: new DurableRunEvents({
+      namespace: env.RUN,
+      namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope),
+    }),
     blobs: new R2BlobStore(env.BLOBS, scope === undefined ? undefined : scopedKeyPrefix(scope)),
     definitions,
     coordination: new DurableCoordination({
