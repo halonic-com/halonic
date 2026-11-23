@@ -1,5 +1,5 @@
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
-import { Button, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
+import { EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
 import {
   type EngineWords,
   engineWords,
@@ -23,7 +23,7 @@ import { mergeNotices } from "../notices/merge-notices.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
-import { ListHeader, listPaneClass, nextItem } from "./inbox-page-parts.tsx";
+import { ItemPageBar, ListHeader, listPaneClass, nextItem } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
 import { needsYouListed } from "./needs-you-listed.ts";
@@ -138,8 +138,9 @@ export interface InboxViewProps {
  * focus back on its row.
  *
  * On a phone (HAL-8778, phone layout 5) the list is the whole page, and an open item replaces it
- * as a page with **Back to Inbox**; the top bar already says "Inbox", so the page's own heading is
- * for screen readers only.
+ * as a page with **Back to Inbox** and, for an item that waits, where it is among them ("1 of 4",
+ * HAL-11945 Q12); the top bar already says "Inbox", so the page's own heading is for screen
+ * readers only.
  *
  * With no card open, the right pane is the request form when the workspace has a workflow with a
  * `start:` block (`InboxRequests`), and **New request** in the header brings it back.
@@ -280,13 +281,7 @@ export function InboxView({
         className={`${phone && open === null ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`}
       >
         <div className="flex w-full max-w-190 flex-col">
-          {itemPage ? (
-            <div className="px-2 pt-2">
-              <Button variant="ghost" size="touch" onClick={close}>
-                Back to Inbox
-              </Button>
-            </div>
-          ) : null}
+          {itemPage ? <ItemPageBar open={open} items={state.items} close={close} /> : null}
           {open === null ? (
             <NothingOpen loaded={state.loaded} waiting={state.items.length}>
               {request.form}

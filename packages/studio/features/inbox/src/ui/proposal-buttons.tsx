@@ -1,4 +1,4 @@
-// A proposal page's decision buttons (HAL-11945 Q3, Q5, Q6 and Q11): **Reject all** and
+// A proposal page's decision buttons (HAL-11945 Q3, Q5, Q6, Q11 and Q12): **Reject all** and
 // **Accept all**, a change's **Reject** and **Accept**, and the line with **Try again** when a
 // decision didn't go through. Kept apart from `ProposalCard`, which lays them out.
 
@@ -39,25 +39,63 @@ export function canAccept(state: ProposalDecisionState): boolean {
 export function AllButtons({ state }: { readonly state: CardState }) {
   return (
     <div className="ml-auto flex flex-wrap gap-2">
-      <DecideButton
-        state={state}
-        verb="reject"
-        target="all"
-        label="Reject all"
-        busyLabel="Rejecting all…"
-        variant="secondary"
-      />
-      {canAccept(state) ? (
-        <DecideButton
-          state={state}
-          verb="accept"
-          target="all"
-          label="Accept all"
-          busyLabel="Accepting all…"
-          variant="primary"
-        />
-      ) : null}
+      <RejectAll state={state} />
+      {canAccept(state) ? <AcceptAll state={state} /> : null}
     </div>
+  );
+}
+
+/**
+ * A phone's bar at the foot of the page (Q12): **Accept all** across the whole width, **Reject
+ * all** under it, both 48 px high. It stays in sight under the scrolling changes, as a request's
+ * bar of answers does.
+ */
+export function PhoneAllBar({ state }: { readonly state: CardState }) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-border p-4">
+      {canAccept(state) ? <AcceptAll state={state} block /> : null}
+      <RejectAll state={state} block />
+    </div>
+  );
+}
+
+function AcceptAll({
+  state,
+  block = false,
+}: {
+  readonly state: CardState;
+  readonly block?: boolean;
+}) {
+  return (
+    <DecideButton
+      state={state}
+      verb="accept"
+      target="all"
+      label="Accept all"
+      busyLabel="Accepting all…"
+      variant="primary"
+      block={block}
+    />
+  );
+}
+
+function RejectAll({
+  state,
+  block = false,
+}: {
+  readonly state: CardState;
+  readonly block?: boolean;
+}) {
+  return (
+    <DecideButton
+      state={state}
+      verb="reject"
+      target="all"
+      label="Reject all"
+      busyLabel="Rejecting all…"
+      variant="secondary"
+      block={block}
+    />
   );
 }
 
@@ -76,6 +114,7 @@ export function DecideButton({
   busyLabel,
   variant,
   buttonRef,
+  block = false,
 }: {
   readonly state: CardState;
   readonly verb: ProposalVerb;
@@ -84,6 +123,8 @@ export function DecideButton({
   readonly busyLabel: string;
   readonly variant: ButtonVariant;
   readonly buttonRef?: (button: HTMLButtonElement | null) => void;
+  /** Across the whole width at touch size, for a phone's bar (Q12). */
+  readonly block?: boolean;
 }) {
   const { pending, busyId, offline } = state;
   const busy = pending !== null && pending.verb === verb && sameTarget(pending.target, target);
@@ -92,7 +133,8 @@ export function DecideButton({
     <Button
       {...(buttonRef === undefined ? {} : { ref: buttonRef })}
       {...(busy ? { id: busyId } : {})}
-      size="sm"
+      size={block ? "touch" : "sm"}
+      block={block}
       variant={variant}
       busy={busy}
       busyLabel={busyLabel}

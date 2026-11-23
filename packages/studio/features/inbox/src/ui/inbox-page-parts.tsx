@@ -1,6 +1,7 @@
-// The Inbox page's layout parts: the list's title and column, and the item the decided card's
-// **Next** opens. Kept apart from `InboxView`, which puts them together.
+// The Inbox page's layout parts: the list's title and column, a phone's bar over the open item,
+// and the item the decided card's **Next** opens. Kept apart from `InboxView`, which puts them together.
 
+import { Button } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { InboxItem } from "../inbox-items.ts";
 import type { NextItem } from "./card-parts.tsx";
@@ -23,6 +24,33 @@ export function ListHeader({ phone, newRequest }: { phone: boolean; newRequest: 
 export function listPaneClass(phone: boolean, itemOpen: boolean): string {
   if (!phone) return "flex w-90 shrink-0 flex-col border-e border-border";
   return `${itemOpen ? "hidden" : "flex"} w-full flex-col`;
+}
+
+/**
+ * A phone's bar over the open item, which is pushed like a page (HAL-11945 Q12): **Back to Inbox**
+ * and, while the item waits, where it is among what waits ("1 of 4"). A decided or done item
+ * isn't counted, so it shows no place.
+ */
+export function ItemPageBar({
+  open,
+  items,
+  close,
+}: {
+  readonly open: InboxItem;
+  readonly items: readonly InboxItem[];
+  readonly close: () => void;
+}) {
+  const index = items.findIndex((item) => item.key === open.key);
+  return (
+    <div className="flex items-center justify-between gap-3 px-2 pt-2">
+      <Button variant="ghost" size="touch" onClick={close}>
+        Back to Inbox
+      </Button>
+      {index === -1 ? null : (
+        <p className="pe-2 text-small text-fg-muted">{`${index + 1} of ${items.length}`}</p>
+      )}
+    </div>
+  );
 }
 
 /**

@@ -190,6 +190,17 @@ export function undoLeftAloneLine(verb: "accepted" | "rejected", paths: readonly
 }
 
 /**
+ * Why an **Undo** pressed while the engine isn't answering sent nothing (C735 row 22): its toast
+ * stays, so the line says to press it again rather than what the page shows meanwhile.
+ *
+ * @param reason the host's sentence alone, such as "The engine isn't answering."
+ * @example undoHeldLine("The engine isn't answering."); // "The engine isn't answering. Press Undo again once it answers."
+ */
+export function undoHeldLine(reason: string): string {
+  return `${reason} Press Undo again once it answers.`;
+}
+
+/**
  * On a proposal the window can't decide (no Accept or Reject here), the line before the command
  * that shows it, {@link decideCommand}. Only a served Studio or a phone gets it, so it says where
  * to go, "in a terminal on your computer", not a terminal on the device in hand (C671 22), in the

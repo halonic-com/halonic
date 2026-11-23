@@ -1,4 +1,9 @@
-import { breakableAtSeparators, CommandBox, inlineLinkClasses } from "@halonicjs/studio-kit";
+import {
+  breakableAtSeparators,
+  CommandBox,
+  inlineLinkClasses,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { engineWords } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useId, useRef } from "react";
 import {
@@ -11,6 +16,7 @@ import {
   decideElsewhereLine,
   proposalFacts,
   seeRunText,
+  undoHeldLine,
 } from "../plain/proposal-text.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { ProposalFile, ProposalItem } from "../proposal-items.ts";
@@ -29,6 +35,7 @@ import {
   DecideButton,
   FailedLine,
   openFiles,
+  PhoneAllBar,
 } from "./proposal-buttons.tsx";
 import { GoneLine } from "./proposal-gone.tsx";
 import type { RunFacts } from "./run-facts.ts";
@@ -64,10 +71,14 @@ export interface ProposalCardProps extends EngineState {
  * When it then finds them there again, the changes come back under a line that says so (C711 4).
  * While the engine isn't answering, the host's line sits above the header, and every button that
  * would reach the host stays but doesn't act, pointing at that line (Q11), as on a request's card;
- * a decision toast's **Undo** sends nothing then either, and says that line.
+ * a decision toast's **Undo** sends nothing then either, and says to press it again once it answers.
  *
- * Not here yet: a change's settings before and after, the diff, Compare and the phone's bar (Q5,
- * Q9, Q12).
+ * On a phone (Q12) **Accept all** and **Reject all** leave the header for a bar at the page's foot,
+ * and **See run 01JD8Q ›**, **Reject** and **Accept** are 48 px high, as the kit makes every
+ * button and link there.
+ *
+ * Not here yet: a change's settings before and after, the diff and its **Advanced** sheet, and
+ * Compare, with the phone's line that sends it to your computer (Q5, Q9, Q12).
  */
 export function ProposalCard({
   item,
@@ -83,15 +94,17 @@ export function ProposalCard({
 }: ProposalCardProps) {
   const titleId = useId();
   const reasonId = useId();
-  // The line above the header while the engine isn't answering, which an Undo meanwhile says too.
-  const notAnswering = signedOut
+  // What an Undo pressed while the engine isn't answering says: its toast stays to press again.
+  const undoHeld = signedOut
     ? signedOutText
-    : (words ?? engineWords["desktop-app"]).showingLast;
+    : undoHeldLine((words ?? engineWords["desktop-app"]).reason);
   const state: CardState = {
-    ...useProposalDecisions(item, decisions, onDecided, answering ? undefined : notAnswering),
+    ...useProposalDecisions(item, decisions, onDecided, answering ? undefined : undoHeld),
     offline: unavailableWhile(answering, reasonId),
   };
   const open = openFiles(state).length > 0;
+  const allButtons = decisions !== undefined && open && !state.gone;
+  const phone = usePresentation() === "phone";
   return (
     <section aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
@@ -105,7 +118,7 @@ export function ProposalCard({
           item={item}
           titleId={titleId}
           facts={proposalFacts(item, now, facts)}
-          state={decisions !== undefined && open && !state.gone ? state : null}
+          state={allButtons && !phone ? state : null}
         />
         {decisions !== undefined && state.gone ? (
           <GoneLine
@@ -128,6 +141,7 @@ export function ProposalCard({
           {state.announcement}
         </p>
       </div>
+      {allButtons && phone ? <PhoneAllBar state={state} /> : null}
     </section>
   );
 }
