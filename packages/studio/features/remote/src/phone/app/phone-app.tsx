@@ -53,6 +53,7 @@ export function PhoneApp(props: PhoneAppProps) {
           computer={computer}
           status={view.statuses.get(computer.id)}
           sheet={screen.sheet}
+          run={screen.run}
           outside={props}
         />
       );

@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
+import { FakePhoneRemote } from "../../test-support/fake-phone-remote.ts";
 import { FakePhoneTunnel } from "../../test-support/phone-tunnel.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
 import type { ComputerId, PairedComputer } from "../phone-tunnel.ts";
@@ -32,7 +33,10 @@ function setUp(...computers: PairedComputer[]) {
     tunnel,
     scanner,
     report: () => undefined,
-    hold: (computer) => ({ dispose: () => events.push(`dropped ${computer.id}`) }),
+    hold: (computer) =>
+      Object.assign(new FakePhoneRemote(), {
+        dispose: () => events.push(`dropped ${computer.id}`),
+      }),
   });
   router.subscribe(() => {
     const { screen } = router.view;
@@ -86,6 +90,36 @@ verifies("remote.phone-app", () => {
     events.length = 0;
     tunnel.push(laptop, { state: "removed" });
     expect(events).toEqual([`dropped ${laptop}`, `shows ${laptop} removed`]);
+  });
+
+  it("a tapped agent's run detail shows on the computer's screen, and Back leaves it", async () => {
+    const { router } = setUp(paired(laptop, "Tim's laptop"));
+    await router.start();
+    expect(router.remoteOf(laptop)).toBeInstanceOf(FakePhoneRemote);
+    router.openRun("s-1");
+    expect(router.view.screen).toEqual({
+      screen: "computer",
+      computer: laptop,
+      sheet: "none",
+      run: "s-1",
+    });
+    expect(router.view.canGoBack).toBe(true);
+    router.openSheet();
+    expect(router.back()).toBe(true);
+    expect(router.view.screen).toMatchObject({ sheet: "none", run: "s-1" });
+    expect(router.back()).toBe(true);
+    expect(router.view.screen).toEqual({ screen: "computer", computer: laptop, sheet: "none" });
+    expect(router.back()).toBe(false);
+  });
+
+  it("Removed closes the run detail and drops the computer's agents", async () => {
+    const { tunnel, router } = setUp(paired(laptop, "Tim's laptop"));
+    await router.start();
+    tunnel.push(laptop, { state: "connected" });
+    router.openRun("s-1");
+    tunnel.push(laptop, { state: "removed" });
+    expect(router.view.screen).toEqual({ screen: "computer", computer: laptop, sheet: "none" });
+    expect(router.remoteOf(laptop)).toBeUndefined();
   });
 
   it("Can't confirm drops nothing", async () => {

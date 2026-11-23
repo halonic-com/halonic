@@ -1,4 +1,8 @@
-import type { mountPhoneApp, PhoneTunnel } from "@halonicjs/studio-feature-remote/phone";
+import type {
+  ComputerTunnelOf,
+  mountPhoneApp,
+  PhoneTunnel,
+} from "@halonicjs/studio-feature-remote/phone";
 import { type ConnectPageOptions, startConnectPage } from "./connect-page.ts";
 import type { PairingScanner } from "./pair-scan.ts";
 
@@ -8,6 +12,8 @@ export type PhoneAppModule = { readonly mountPhoneApp: typeof mountPhoneApp };
 export interface PageOptions extends ConnectPageOptions {
   /** The shell's phone tunnel; without one the page is the 0.1 connect page. */
   readonly tunnel: PhoneTunnel | undefined;
+  /** The shell's tunnel to one paired computer, which its agents come through. */
+  readonly computerTunnel?: ComputerTunnelOf;
   readonly scanner: PairingScanner;
   readonly window: Window;
   /** Android's settings for Halonic. */
@@ -52,6 +58,7 @@ export async function startPage(options: PageOptions): Promise<void> {
   let connectStarted = false;
   phoneApp.mountPhoneApp(section, {
     tunnel,
+    ...(options.computerTunnel === undefined ? {} : { computerTunnel: options.computerTunnel }),
     scanner: options.scanner,
     window: options.window,
     report: options.report,

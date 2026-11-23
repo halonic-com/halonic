@@ -1,10 +1,21 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { AgentsList } from "../agents-list.tsx";
 import { routeOf } from "../computers-words.ts";
 import type { ReachRoute } from "../connection-check.ts";
 import { ConnectionCheckSheet } from "../connection-check-sheet.tsx";
 import { CantReachPanel, ReachingLine } from "../first-reach.tsx";
 import type { PhoneState } from "../phone-status.ts";
 import type { PairedComputer, PhoneStatus } from "../phone-tunnel.ts";
+import { PromptBox } from "../prompt-box.tsx";
+import type { PhoneRemote, RemoteView } from "../remote-view.ts";
+import { RunDetail } from "../run-detail.tsx";
 import { StaleBanner } from "../stale-banner.tsx";
 import { StandingScreen } from "../standing-screen.tsx";
 import { PhoneStatusHeader } from "../status-header.tsx";
@@ -21,14 +32,16 @@ export interface PhoneOutside {
  * One paired computer (`s-m1` to `s-m9`): the header label, the stale banner while the phone
  * can't reach it, the status sheet the label opens, and Removed or Can't confirm in place of the
  * body. Until the computer first answers, the body is the first reach's waiting line or its
- * give-up, which open Check this connection (first-run-progress 6). The agents list joins the
- * body with the gateway client.
+ * give-up, which open Check this connection (first-run-progress 6). After that it is the
+ * computer's agents from its gateway client, with the prompt box docked under them; a tapped
+ * agent's run detail shows in place of the whole screen.
  */
 export function ComputerScreen({
   router,
   computer,
   status,
   sheet,
+  run,
   outside,
 }: {
   readonly router: PhoneAppRouter;
@@ -36,13 +49,18 @@ export function ComputerScreen({
   readonly status: PhoneStatus | undefined;
   /** The sheet open over the screen, if any. */
   readonly sheet: ComputerSheet;
+  /** The agent whose run detail shows, if any. */
+  readonly run: string | undefined;
   readonly outside: PhoneOutside;
 }) {
   const state = router.stateOf(computer);
+  const remote = router.remoteOf(computer.id);
+  const view = useRemoteView(remote);
   const body = useRef<HTMLDivElement>(null);
   const sheetOf = sheet === "status" ? statusSheetOf(state, status, computer) : undefined;
   const now = useNow(sheetOf?.kind === "reconnecting");
   const tryAgain = () => router.tryAgain(computer.id);
+  const closeRun = useCallback(() => router.closeRun(), [router]);
   const onOpen = (shown: PhoneState) => {
     if (shown !== "removed" && shown !== "cantConfirm") return router.openSheet();
     // Removed and Can't confirm have no sheet: the label moves focus to the screen's heading.
@@ -50,23 +68,64 @@ export function ComputerScreen({
     heading?.setAttribute("tabindex", "-1");
     heading?.focus();
   };
+  const banner =
+    state === "unreachable" || state === "phoneOffline" ? (
+      <StaleBanner
+        kind={state}
+        computer={computer.name}
+        asOf={view?.asOf}
+        now={now}
+        onDetails={() => router.openSheet()}
+        onTryAgain={tryAgain}
+      />
+    ) : undefined;
+  const label =
+    state === undefined ? null : (
+      <PhoneStatusHeader state={state} computer={computer.name} onOpen={onOpen} />
+    );
+  const showsRun =
+    run !== undefined && remote !== undefined && view !== undefined && !isStanding(state);
   return (
     <div className="flex min-h-full flex-col">
-      <header className="flex min-h-14 items-center gap-2 border-b border-border px-4">
-        {state === undefined ? (
-          <h1 className="text-body-strong text-fg">{computer.name}</h1>
-        ) : (
-          <PhoneStatusHeader state={state} computer={computer.name} onOpen={onOpen} />
-        )}
-      </header>
-      <div ref={body} className="flex flex-1 flex-col gap-4 p-4">
-        <ComputerBody router={router} computer={computer} state={state} now={now} />
-      </div>
+      {showsRun ? (
+        <RunDetail
+          view={view}
+          sessionId={run}
+          label={label}
+          banner={banner}
+          onBack={closeRun}
+          onSend={(sessionId, text) => remote.prompt(sessionId, text)}
+        />
+      ) : (
+        <>
+          <header className="flex min-h-14 items-center gap-2 border-b border-border px-4">
+            {label ?? <h1 className="text-body-strong text-fg">{computer.name}</h1>}
+          </header>
+          <div ref={body} className="flex flex-1 flex-col gap-4 p-4">
+            <ComputerBody
+              router={router}
+              computer={computer}
+              state={state}
+              banner={banner}
+              remote={remote}
+              view={view}
+            />
+          </div>
+          <DockedPrompt
+            router={router}
+            computer={computer}
+            state={state}
+            remote={remote}
+            view={view}
+          />
+        </>
+      )}
       {sheetOf === undefined ? null : (
         <StatusSheet
           sheet={sheetOf}
           computer={computer.name}
-          asOf={undefined}
+          asOf={view?.asOf}
+          agents={view === undefined ? undefined : agentCounts(view)}
           now={now}
           onTryAgain={tryAgain}
           onOpenSettings={outside.onOpenSettings}
@@ -108,18 +167,22 @@ function CheckSheet({
 
 /**
  * Removed or Can't confirm in place of the body; until the first answer, the waiting line or
- * its give-up; else the stale banner over it.
+ * its give-up; else the agents, under the stale banner while the phone can't reach the computer.
  */
 function ComputerBody({
   router,
   computer,
   state,
-  now,
+  banner,
+  remote,
+  view,
 }: {
   readonly router: PhoneAppRouter;
   readonly computer: PairedComputer;
   readonly state: PhoneState | undefined;
-  readonly now: Date;
+  readonly banner: ReactNode;
+  readonly remote: PhoneRemote | undefined;
+  readonly view: RemoteView | undefined;
 }) {
   if (state === "removed" || state === "cantConfirm") {
     return (
@@ -134,7 +197,7 @@ function ComputerBody({
     );
   }
   const reach = router.reachOf(computer.id);
-  if (reach !== undefined && state !== "phoneOffline") {
+  if (reach !== undefined && shownFirstReach(router, computer, state)) {
     return (
       <div className="grid flex-1 place-items-center">
         {state === "unreachable" ? (
@@ -155,17 +218,77 @@ function ComputerBody({
       </div>
     );
   }
-  if (state !== "unreachable" && state !== "phoneOffline") return null;
   return (
-    <StaleBanner
-      kind={state}
-      computer={computer.name}
-      asOf={undefined}
-      now={now}
-      onDetails={() => router.openSheet()}
-      onTryAgain={() => router.tryAgain(computer.id)}
+    <>
+      {banner}
+      {remote === undefined || view === undefined ? null : (
+        <AgentsList
+          view={view}
+          onOpen={(sessionId) => router.openRun(sessionId)}
+          onAnswer={(sessionId, approvalId, decision) =>
+            remote.answer(sessionId, approvalId, decision)
+          }
+        />
+      )}
+    </>
+  );
+}
+
+/** The prompt box docked under the Agents list, once the agents show. */
+function DockedPrompt({
+  router,
+  computer,
+  state,
+  remote,
+  view,
+}: {
+  readonly router: PhoneAppRouter;
+  readonly computer: PairedComputer;
+  readonly state: PhoneState | undefined;
+  readonly remote: PhoneRemote | undefined;
+  readonly view: RemoteView | undefined;
+}) {
+  if (remote === undefined || view === undefined) return null;
+  if (shownFirstReach(router, computer, state)) return null;
+  return (
+    <PromptBox
+      view={view}
+      agent={undefined}
+      onSend={(sessionId, text) => remote.prompt(sessionId, text)}
     />
   );
+}
+
+/** Removed and Can't confirm: the computer's standing shows in place of everything else. */
+function isStanding(state: PhoneState | undefined): boolean {
+  return state === "removed" || state === "cantConfirm";
+}
+
+/** Whether the body is the first reach's waiting line or its give-up, not the agents. */
+function shownFirstReach(
+  router: PhoneAppRouter,
+  computer: PairedComputer,
+  state: PhoneState | undefined,
+): boolean {
+  if (isStanding(state)) return true;
+  return router.reachOf(computer.id) !== undefined && state !== "phoneOffline";
+}
+
+/** Running and waiting agents, for the trouble sheets' Your agents card. */
+function agentCounts(view: RemoteView): { readonly running: number; readonly waiting: number } {
+  const count = (state: string) => view.sessions.filter((each) => each.state === state).length;
+  return { running: count("running"), waiting: count("waiting") };
+}
+
+const noRemote = (): (() => void) => () => undefined;
+
+/** The newest view of `remote`, drawn again on each new one; `undefined` without a remote. */
+function useRemoteView(remote: PhoneRemote | undefined): RemoteView | undefined {
+  const subscribe = useCallback(
+    (onChange: () => void) => (remote === undefined ? noRemote() : remote.subscribe(onChange)),
+    [remote],
+  );
+  return useSyncExternalStore(subscribe, () => remote?.view());
 }
 
 /** The sheet the label opens for a state; none for Removed, Can't confirm or no state. */
