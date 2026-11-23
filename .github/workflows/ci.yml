@@ -428,8 +428,17 @@ jobs:
       # changeset it refuses (for example one that names a private package
       # together with the app) fails here, not after the merge (HAL-10984).
       # Last step of the job: it edits the checkout, which is thrown away.
+      # With no changeset waiting there is nothing to version, and
+      # `changeset version` fails, as on the Version packages pull request,
+      # which has used them all up (HAL-16929).
       - name: Changesets can be versioned
-        run: pnpm version-packages && pnpm check versions
+        run: |
+          pending=$(find .changeset -maxdepth 1 -name '*.md' ! -name README.md | wc -l)
+          if [ "$pending" = 0 ]; then
+            echo "No changeset is waiting; nothing to version."
+            exit 0
+          fi
+          pnpm version-packages && pnpm check versions
       # Peak memory and CPU time on our own CI server (HAL-14831).
       - if: always() && runner.environment == 'self-hosted'
         uses: $/.github/actions/runner-usage

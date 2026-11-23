@@ -154,6 +154,8 @@ jobs:
             echo "## Changelog"
             echo
             sed -n '/^## /,$p' apps/studio/CHANGELOG.md | awk 'NR > 1 && /^## /{exit} {print}'
+            echo
+            echo "Built-on: paperclip"
           } > "$RUNNER_TEMP/body.md"
       - name: Push and open or update the Version packages pull request
         if: steps.plan.outputs.waiting == 'true'
@@ -183,8 +185,10 @@ jobs:
           number=$(gh pr list --repo "$REPO" --head "$branch" --base main --state open --json number --jq '.[0].number')
           if [ -n "$number" ]; then
             gh api -X PATCH "repos/$REPO/pulls/$number" -f title="$title" -F body=@"$RUNNER_TEMP/body.md" > /dev/null
+            gh api "repos/$REPO/issues/$number/labels" -f "labels[]=built-on:paperclip" > /dev/null
           else
-            gh pr create --repo "$REPO" --base main --head "$branch" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+            # The built-on-label check fails a pull request without it (HAL-3101).
+            gh pr create --repo "$REPO" --base main --head "$branch" --title "$title" --body-file "$RUNNER_TEMP/body.md" --label built-on:paperclip
           fi
       - name: Close a Version packages pull request with nothing to release
         if: steps.plan.outputs.waiting == 'false'
