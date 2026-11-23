@@ -3,6 +3,7 @@
 - Task: HAL-16260
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16260 (Liam approved the plan with changes, PR 2 as written; his review of PR 1 on HAL-16830 asked for the open and start race fix here)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VBrLX1WbHZftVWYkrCSAX7tU30pJYc29jEijhKSeZowN2PtNlA3/4KEc+hPSSUgkkkmCMURjeMF12exVPWOpDQ==
 
 ## What changes
 
