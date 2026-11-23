@@ -2,6 +2,7 @@
   "name": "@halonicjs/format",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "The workspace file format: one folder per file kind with its schema, defaults, cross-checks and JSON Schema.",
   "exports": {
     ".": "./src/index.ts",

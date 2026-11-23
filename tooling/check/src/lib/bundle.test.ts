@@ -100,6 +100,71 @@ describe("checkCloudBundle", () => {
   });
 });
 
+describe("checkCloudBundle on what ships (HAL-16761)", () => {
+  const ownCode = "packages/core/format/src/index.ts";
+  const yamlInput = "node_modules/.pnpm/yaml@2.8.1/node_modules/yaml/dist/index.js";
+
+  /** A metafile whose one output says how many bytes each input put in the script. */
+  function shipped(bytesByInput: Readonly<Record<string, number>>): Metafile {
+    return {
+      inputs: { [ownCode]: {}, [yamlInput]: {} },
+      outputs: {
+        "dist/worker.js": {
+          imports: [],
+          inputs: Object.fromEntries(
+            Object.entries(bytesByInput).map(([input, bytes]) => [input, { bytesInOutput: bytes }]),
+          ),
+        },
+      },
+    };
+  }
+
+  it("passes a library esbuild parsed but put 0 bytes of in the script", () => {
+    expect(messages(shipped({ [ownCode]: 120, [yamlInput]: 0 }))).toEqual([]);
+  });
+
+  it("passes a library esbuild parsed but left out of every output", () => {
+    expect(messages(shipped({ [ownCode]: 120 }))).toEqual([]);
+  });
+
+  it("reports the same library once it has bytes in the script", () => {
+    const found = messages(shipped({ [ownCode]: 120, [yamlInput]: 1 }));
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain('contains "yaml"');
+  });
+
+  it("reports a library with bytes in any one of several outputs", () => {
+    const meta: Metafile = {
+      inputs: { [yamlInput]: {} },
+      outputs: {
+        "dist/worker.js": { inputs: { [yamlInput]: { bytesInOutput: 0 } } },
+        "dist/chunk.js": { inputs: { [yamlInput]: { bytesInOutput: 40 } } },
+      },
+    };
+    expect(messages(meta)).toHaveLength(1);
+  });
+
+  it("reports a library whose byte count is missing, never reading it as 0", () => {
+    const meta: Metafile = {
+      inputs: { [yamlInput]: {} },
+      outputs: { "dist/worker.js": { inputs: { [yamlInput]: {} } } },
+    };
+    expect(messages(meta)).toHaveLength(1);
+  });
+
+  it("checks every parsed input when an output doesn't list its inputs", () => {
+    const meta: Metafile = {
+      inputs: { [yamlInput]: {} },
+      outputs: {
+        "dist/worker.js": { inputs: { [yamlInput]: { bytesInOutput: 0 } } },
+        "dist/other.js": {},
+      },
+    };
+    expect(messages(meta)).toHaveLength(1);
+    expect(messages(metafile([yamlInput]))).toHaveLength(1);
+  });
+});
+
 describe("the cloud runtime list", () => {
   it("holds only zod, the user's one exception", () => {
     const listed = Object.entries(dependencyList.dependencies)
