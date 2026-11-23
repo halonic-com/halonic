@@ -187,7 +187,8 @@ folder's remote, as `gh` picks it):
 
 `gh` still runs for what no tool answers: `pr view --comments`, `--json`
 with a field `pr_status` doesn't give (body, files, comments, reviews,
-labels), `run view --log` or `--log-failed`, `run list --workflow`, a list
+labels), `run view --log` or `--log-failed`, a run's jobs and steps
+(`run view --json`, `--job` or `--verbose`), `run list --workflow`, a list
 that is filtered (`--search`, `--head`, `--label`, `--base`, `--assignee`,
 `--app`) or not of open pull requests, `--web`, `--help`, every other
 command and every other repository. The message names the call, how to load
@@ -220,7 +221,16 @@ next to the compose file and mount it over the runner's `PATH`:
 Recreate the container. Check it in an agent run: `which -a gh` lists the
 launcher, `/usr/local/bin/gh`, then `/usr/bin/gh`, and `gh pr checks <n>` on
 `halonic` still runs while the setting is off; the plugin page's metrics
-show `tools.gh_redirected` with `mode: dry-run`. Then turn the setting on.
+show `tools.gh_redirected` with `mode: dry-run`.
+
+**Before you turn the setting on**, check that the tools the guard points
+to answer: in an agent run, call `my_prs()` and `pr_status` for an open pull
+request on `halonic`. Each must return its status, not an error. If either
+fails (for example an MCP schema error such as "structuredContent: expected
+record, received null", seen on 22 Nov), leave the setting off and fix the
+Agent tools first: while it is on, the guard would stop `gh` and point
+agents to a tool that doesn't answer. Then turn the setting on, and if the
+tools stop answering later, turn it off again.
 To roll back, remove the volume line and recreate the container.
 
 ## Board check

@@ -199,7 +199,8 @@ function isStatusRead(command: GuardedCommand, { flags }: ParsedArgs): boolean {
       return (state === undefined || state === "open") && !filtered && asksOnlyStatus(flags);
     }
     case "run view":
-      return !flags.has("log") && !flags.has("log-failed");
+      // `pr_status` gives `ci-ok` on the head, not a run's jobs, steps or `--json` fields.
+      return !["log", "log-failed", "json", "job", "verbose"].some((name) => flags.has(name));
     case "run list":
       return !flags.has("workflow");
   }
