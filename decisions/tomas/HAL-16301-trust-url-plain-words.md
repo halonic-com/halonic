@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-16301 asks for this change, from Liam's review of #5165 (HAL-16276); wording decided by the team under the HAL-2282 rule; Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:h9U91cVgS46Jar4HqjZ0lJeYwbW9flouHFdCq+xDiCHaYfuMxpGviAN0okUCnNQqrogsEdkFkA5wF+JjDwvVBg==
 
 ## What changes
 
