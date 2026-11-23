@@ -2,7 +2,7 @@
 
 - Approval: the plan for this change is approved on HAL-14229 (Liam's comment of 22 Nov, Q1 to Q3 and conditions); Liam approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:X0vcY7Ao0qTCYtLUS4MXDsTZ4N1mR8gjpfQD11PX0eiKY++osLrzU3wDkuJNfM3bcs5PNTefWnppeVqe08Q8Cw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:R6BQZEBqfiV0WimcIJSaAJ6vpextRTDzD+WAYwa2jW8+iCpwIgjLxhAkm0kFadIwZF/0xiIckZd0LlJIORQiDw==
 - Task: HAL-14229
 
 ## What changes
