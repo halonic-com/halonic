@@ -2,6 +2,7 @@
 
 - Approval: HAL-16909, Liam approves this note in review (he owns `ports` and the connector rules)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:++lhQD9XMgP3WQwV2sd7AHAWcDssxGLbTvF4v2FQ7PqRplyCbGB+CrDf/Ky4QCm1l/QSEBH5L/FSMaZsf6T4DQ==
 - Task: HAL-16909
 
 ## What changes
