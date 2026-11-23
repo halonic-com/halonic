@@ -121,11 +121,12 @@ export interface LocalHarnessInput {
    */
   readonly versions?: Pick<WorkspaceVersions, "agentFileOf" | "skillTextOf">;
   /**
-   * The agents' files of the version a run read, for `run` and `runs send`,
-   * whose definitions come from the live version: the placement check
-   * hashes the agent's file from there, never from disk. `versions` wins.
+   * The agents' and skills' files of the version a run read, for `run` and
+   * `runs send`, whose definitions come from the live version: the placement
+   * check hashes the agent's file from there, and the instructions pin its
+   * skills' text from there, never from disk (HAL-16386). `versions` wins.
    */
-  readonly agentFiles?: Pick<WorkspaceVersions, "agentFileOf">;
+  readonly runFiles?: Pick<WorkspaceVersions, "agentFileOf" | "skillTextOf">;
   /** The workspace's files, which Accept writes and a proposal's base is read from. */
   readonly store: DefinitionStore;
   readonly digest: Digest;
@@ -342,11 +343,11 @@ async function bridgeServersOf(input: LocalHarnessInput, secrets: Secrets): Prom
  * on disk now.
  */
 export function agentFilesOf(
-  input: Pick<LocalHarnessInput, "versions" | "agentFiles" | "workspace" | "location">,
+  input: Pick<LocalHarnessInput, "versions" | "runFiles" | "workspace" | "location">,
 ): AgentFiles {
   return {
     bytesOf: async (hubId, agentId, run) => {
-      const ofVersion = input.versions ?? input.agentFiles;
+      const ofVersion = input.versions ?? input.runFiles;
       if (ofVersion !== undefined) {
         return await ofVersion.agentFileOf(run, hubId, agentId);
       }
@@ -362,16 +363,17 @@ export function agentFilesOf(
 }
 
 /**
- * A skill's `SKILL.md` as the run's version has it when runs start from
- * versions, else as it is on disk now, so the agent's file and its skills in
- * one pin are from one version.
+ * A skill's `SKILL.md` as the run's version has it when the command gave its
+ * files, else as it is on disk now, so the agent's file and its skills in
+ * one pin are from one version: the one `halonic trust instructions` reviews.
  */
-function skillTextOf(
-  input: LocalHarnessInput,
+export function skillTextOf(
+  input: Pick<LocalHarnessInput, "versions" | "runFiles" | "workspace" | "location">,
 ): (agent: HarnessAgent, id: string) => Promise<string> {
   return async (agent, id) => {
-    if (input.versions !== undefined) {
-      return await input.versions.skillTextOf(agent, agent.hubId, id);
+    const ofVersion = input.versions ?? input.runFiles;
+    if (ofVersion !== undefined) {
+      return await ofVersion.skillTextOf(agent, agent.hubId, id);
     }
     const file = skillFileOf(input.workspace(), agent.hubId, id);
     if (file === undefined) throw new Error(`The workspace has no skill "${id}".`);

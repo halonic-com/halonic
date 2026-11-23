@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { instructionFilesOf, pinInstructions } from "@halonicjs/adapter-harness-kit";
 import type { InstructionPin } from "@halonicjs/ports";
 import {
@@ -14,6 +12,7 @@ import { phrase } from "./messages/phrase.ts";
 import { trustInstructionsMessages } from "./messages/trust-instructions.ts";
 import type { InstructionSource, InstructionsAbout } from "./output/instruction-trust-lines.ts";
 import { printable } from "./output/printable.ts";
+import { type LoadedVersion, skillTextIn } from "./version-files.ts";
 
 /** An agent's file in the workspace, as `halonic trust instructions` names it. */
 export type AgentFile = LoadedFileOf<"agent">;
@@ -51,25 +50,34 @@ export function agentNamed(workspace: LoadedWorkspace, typed: string): AgentFile
 
 /**
  * The pin of the agent's instructions as a harness run of it would start
- * with them from the saved files: the same files the run's trust check pins
- * (`instructionFilesOf`), so trusting this pin is trusting what the run checks.
+ * with them from `loaded`, the version the run reads (HAL-16386): the same
+ * files the run's trust check pins (`instructionFilesOf`), each skill found
+ * as the run finds it, so trusting this pin is trusting what the run checks.
  *
- * @param location - the workspace's folder, which a skill's file is read from
  * @returns `null` when the agent has no instructions and no skills, as a run then checks nothing
- * @throws when a selected skill has no file in the workspace, or can't be read
+ * @throws when a selected skill has no file in that version
  */
-export async function savedInstructionsPin(
-  workspace: LoadedWorkspace,
-  location: string,
+export async function instructionsPinIn(
+  loaded: LoadedVersion,
   agent: AgentFile,
 ): Promise<InstructionPin | null> {
   const hubId = agent.hub ?? "";
-  const files = await instructionFilesOf(agent.value, async (skillId) => {
-    const file = skillFileOf(workspace, hubId, skillId);
-    if (file === undefined) throw new Error(`The workspace has no skill "${skillId}".`);
-    return await readFile(join(location, file.path), "utf8");
-  });
+  const files = await instructionFilesOf(agent.value, async (skillId) =>
+    skillTextIn(loaded, hubId, skillId),
+  );
   return files.length === 0 ? null : await pinInstructions(files);
+}
+
+/**
+ * The workspace files the agent's pin is read from: its own file, for its
+ * `instructions`, and each selected skill's `SKILL.md` it has, sorted.
+ */
+export function instructionPathsOf(workspace: LoadedWorkspace, agent: AgentFile): string[] {
+  const hubId = agent.hub ?? "";
+  const skills = agent.value.skills.flatMap(
+    (skillId) => skillFileOf(workspace, hubId, skillId)?.path ?? [],
+  );
+  return [agent.path, ...skills].sort();
 }
 
 /** A skill's file in a pin, as `instructionFilesOf` names it: `skills/<id>/SKILL.md`. */

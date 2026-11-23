@@ -89,15 +89,20 @@ export function skillTextIn(loaded: LoadedVersion, hubId: string, skillId: strin
   return text;
 }
 
-/** The agents' files of a run's version, which the harness host checks "On this computer" against. */
-export type RunFiles = Pick<WorkspaceVersions, "agentFileOf">;
+/**
+ * The agents' and skills' files of a run's version: the harness host checks
+ * "On this computer" against the agent's file and pins the skills' text the
+ * run starts with (HAL-16386).
+ */
+export type RunFiles = Pick<WorkspaceVersions, "agentFileOf" | "skillTextOf">;
 
 /**
- * The agents' files of the version a command's run reads, for `halonic run`
- * and `halonic runs send`: the load the command started from. A run that
- * recorded another version, such as a waiting run started before the last
- * commit, has its own version loaded once, so its agents' files are the
- * ones its steps run with. A run that names no version reads the command's.
+ * The agents' and skills' files of the version a command's run reads, for
+ * `halonic run` and `halonic runs send`: the load the command started from.
+ * A run that recorded another version, such as a waiting run started before
+ * the last commit, has its own version loaded once, so its agents' and
+ * skills' files are the ones its steps run with. A run that names no version
+ * reads the command's.
  *
  * @example
  * const files = new CommandRunFiles(dir, { version, loaded }, openGitHistory);
@@ -145,6 +150,15 @@ export class CommandRunFiles implements RunFiles {
     agentId: string,
   ): Promise<Uint8Array> {
     return agentFileIn(await this.#loadedAt(run.version), hubId, agentId);
+  }
+
+  /** @throws when the run's version can't be read or has no such skill */
+  async skillTextOf(
+    run: { readonly runId: string; readonly version: RunVersion | null },
+    hubId: string,
+    skillId: string,
+  ): Promise<string> {
+    return skillTextIn(await this.#loadedAt(run.version), hubId, skillId);
   }
 
   async #loadedAt(version: RunVersion | null): Promise<LoadedVersion> {

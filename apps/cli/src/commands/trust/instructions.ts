@@ -9,8 +9,13 @@ import {
 } from "@halonicjs/ports";
 import { profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { loadWorkspace } from "@halonicjs/workspace";
-import { agentNamed, instructionsAbout, savedInstructionsPin } from "../../agent-instructions.ts";
+import {
+  type AgentFile,
+  agentNamed,
+  instructionPathsOf,
+  instructionsAbout,
+  instructionsPinIn,
+} from "../../agent-instructions.ts";
 import {
   type CliCommand,
   type CommandContext,
@@ -31,14 +36,18 @@ import {
   whyAsked,
 } from "../../output/instruction-trust-lines.ts";
 import { printable } from "../../output/printable.ts";
+import { type OpenWorkspaceHistory, openGitHistory } from "../../run-workspace.ts";
 import { dirOption, openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
+import { type ReviewedFiles, reviewedFiles } from "./reviewed-version.ts";
 
 /** What `trust instructions` keeps the trusted instructions in, so tests can hand it their own. */
 export interface InstructionTrustMachine {
   /** The trusted pins in the user's profile, which a harness run's check reads too. */
   readonly store: InstructionTrustStore;
   readonly clock: Clock;
+  /** Opens the workspace's history, for the version a run would start; git on the `PATH` when left out. */
+  readonly history?: OpenWorkspaceHistory;
 }
 
 /**
@@ -90,9 +99,11 @@ export const trustInstructionsCommand: CliCommand = createTrustInstructionsComma
 );
 
 /**
- * Pins the agent's instructions as a run would and, unless they're trusted
- * already, shows them and asks. Before saving it pins them again: only what
- * the person saw is trusted, never a file that changed while they answered.
+ * Pins the agent's instructions as a run would, from the version `halonic
+ * run` would start (HAL-16386), and, unless they're trusted already, shows
+ * them and asks. Before saving it reads that version and pins them again:
+ * only what the person saw is trusted, never a file or a commit that changed
+ * while they answered.
  *
  * @throws UsageError for no agent or several, or `--yes` without `--fingerprint`
  * @throws NotTrustedError when the fingerprint isn't the current one, or nobody can answer
@@ -104,15 +115,15 @@ async function reviewAndTrust(
 ): Promise<CommandResult> {
   const { typed, agent, dir, fingerprint, yes } = trustOptions(input);
   const opened = await openWorkspaceDir(input, context);
-  const workspace = await loadWorkspace(opened.store);
-  const file = agentNamed(workspace, typed);
+  const history = machine.history ?? openGitHistory;
+  const reviewed = await reviewedFiles(opened, history);
+  const file = agentNamed(reviewed.workspace, typed);
   const facts = { agent: typed, folder: opened.shown };
   if (file.value.harness === undefined) {
     return done(words.ownLoop(agent).phrase, { ...facts, status: "not-needed" });
   }
   const location = await realpath(opened.root);
-  const pinNow = () => savedInstructionsPin(workspace, location, file);
-  const pin = await pinNow();
+  const pin = await instructionsPinIn(reviewed, file);
   if (pin === null) {
     return done(words.noInstructions(agent).phrase, { ...facts, status: "not-needed" });
   }
@@ -121,17 +132,15 @@ async function reviewAndTrust(
   const key = instructionTrustKey(location, file.hub ?? "", file.value.id);
   const service = new InstructionTrustService({ store: machine.store, clock: machine.clock });
   const check = await service.check(key, pin);
-  const about = instructionsAbout(workspace, file);
+  const notCommitted = notCommittedLine(reviewed, file, agent, dir);
+  const about = { ...instructionsAbout(reviewed.workspace, file), notCommitted };
   const refusal = { agent, dir, pin, about };
   if (fingerprint !== undefined && fingerprint !== pin.digest) {
     throw fingerprintNotCurrent(refusal, check.kind === "ask" ? check : undefined);
   }
   if (check.kind === "trusted") {
-    return done(words.alreadyTrusted(agent).phrase, {
-      ...facts,
-      status: "already-trusted",
-      fingerprint: pin.digest,
-    });
+    const json = { ...facts, status: "already-trusted", fingerprint: pin.digest };
+    return done(words.alreadyTrusted(agent).phrase, json, notCommitted);
   }
 
   const lines = instructionTrustLines(agent, check, pin, about);
@@ -144,8 +153,9 @@ async function reviewAndTrust(
   if (!trusted) {
     return { exitCode: exitCode.notTrusted, lines: [words.notTrusted().phrase], json: {} };
   }
-  // Pinned again: a file that changed while the person answered isn't what they saw.
-  const answered = await pinNow();
+  // Read and pinned again: a file or commit that changed while the person answered isn't what they saw.
+  const again = await reviewedFiles(opened, history);
+  const answered = await instructionsPinIn(again, agentNamed(again.workspace, typed));
   if (answered?.digest !== pin.digest) {
     throw fingerprintNotCurrent({ ...refusal, pin: answered ?? pin }, undefined);
   }
@@ -227,8 +237,30 @@ function noTerminal(
   });
 }
 
-function done(line: Phrase, json: Readonly<Record<string, unknown>>): CommandResult {
-  return { exitCode: exitCode.ok, lines: [phrase`${markPart("done")} ${line}`], json };
+/**
+ * The dimmed line naming the agent's listed files with saved changes that
+ * aren't committed, so aren't what this reviews; `undefined` when there are none.
+ */
+function notCommittedLine(
+  reviewed: ReviewedFiles,
+  file: AgentFile,
+  agent: string,
+  dir: string | undefined,
+): Phrase | undefined {
+  const listed = new Set(instructionPathsOf(reviewed.workspace, file));
+  const files = reviewed.notCommitted.filter((path) => listed.has(path));
+  if (files.length === 0) return undefined;
+  return words.notCommitted(agent, files.map(printable), dir).phrase;
+}
+
+/** The ✓ line, then `after` when there is one, such as the line naming files not committed. */
+function done(
+  line: Phrase,
+  json: Readonly<Record<string, unknown>>,
+  after?: Phrase,
+): CommandResult {
+  const lines = [phrase`${markPart("done")} ${line}`, ...(after === undefined ? [] : [after])];
+  return { exitCode: exitCode.ok, lines, json };
 }
 
 /** The agent as typed, made safe to print, for "✕ Couldn't trust coder's instructions: …". */

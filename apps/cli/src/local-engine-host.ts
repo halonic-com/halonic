@@ -136,9 +136,10 @@ export interface LocalEngineInput {
    */
   readonly versions?: WorkspaceVersions;
   /**
-   * For `halonic run` and `halonic runs send`: the agents' files of the
-   * version each run read, which the harness checks "On this computer"
-   * against. Left out, they come from `versions`, else from disk.
+   * For `halonic run` and `halonic runs send`: the agents' and skills'
+   * files of the version each run read, which the harness checks "On this
+   * computer" against and pins the instructions from. Left out, they come
+   * from `versions`, else from disk.
    */
   readonly runFiles?: RunFiles;
   /** The workspace folder, as `openWorkspaceDir` found it. */
@@ -305,7 +306,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       environment,
       workspace: () => input.versions?.latest() ?? input.workspace,
       ...(input.versions === undefined ? {} : { versions: input.versions }),
-      ...(input.runFiles === undefined ? {} : { agentFiles: input.runFiles }),
+      ...(input.runFiles === undefined ? {} : { runFiles: input.runFiles }),
       store: workspaceStore(location, location, profile),
       digest: webCryptoDigest,
       clock: input.clock ?? systemClock,
