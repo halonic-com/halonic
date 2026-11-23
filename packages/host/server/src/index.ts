@@ -31,6 +31,13 @@ export type {
   WorkspaceFacts,
   WorkspaceInfo,
 } from "./api.ts";
+export {
+  type CloudKey,
+  type CloudKeySet,
+  CloudSessionVerifier,
+  type CloudSessionVerifierOptions,
+  type RevokedSessions,
+} from "./cloud-session-verifier.ts";
 export { createServer } from "./create-server.ts";
 export type {
   EngineHelloBody,

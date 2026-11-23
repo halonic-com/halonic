@@ -1,0 +1,244 @@
+import { encodeBase64url } from "@halonicjs/std";
+import { verifies } from "@halonicjs/testing-spec";
+import { beforeAll, describe, expect, it } from "vitest";
+import {
+  type CloudKey,
+  type CloudKeySet,
+  CloudSessionVerifier,
+  type RevokedSessions,
+} from "./cloud-session-verifier.ts";
+import { checkClaims } from "./principal.ts";
+import { ids } from "./stub-session-verifier.test-helper.ts";
+
+const signInOrigin = "https://sign-in.acme.example";
+const product = "prod_acmeAAAAAAAAAAAAAAAA";
+const nowSeconds = 1_800_000_000;
+
+/** A generated key pair; the test libraries don't name WebCrypto's type. */
+interface KeyPair {
+  readonly publicKey: CryptoKey;
+  readonly privateKey: CryptoKey;
+}
+
+interface TestKeys {
+  readonly session: KeyPair;
+  readonly command: KeyPair;
+  readonly outsider: KeyPair;
+}
+
+let keys: TestKeys;
+
+beforeAll(async () => {
+  const generate = () =>
+    crypto.subtle.generateKey("Ed25519", false, ["sign", "verify"]) as Promise<KeyPair>;
+  keys = { session: await generate(), command: await generate(), outsider: await generate() };
+});
+
+function keySet(): CloudKeySet {
+  const byId = new Map<string, CloudKey>([
+    ["s1", { id: "s1", job: "session", publicKey: keys.session.publicKey }],
+    ["c1", { id: "c1", job: "command", publicKey: keys.command.publicKey }],
+  ]);
+  return { key: async (id) => byId.get(id) ?? null };
+}
+
+function revokedList(revoked: readonly string[] = []): RevokedSessions {
+  return { isRevoked: async (sessionId) => revoked.includes(sessionId) };
+}
+
+function verifier(
+  changes: { keySet?: CloudKeySet; revokedSessions?: RevokedSessions } = {},
+): CloudSessionVerifier {
+  return new CloudSessionVerifier({
+    signInOrigin,
+    product,
+    keySet: changes.keySet ?? keySet(),
+    revokedSessions: changes.revokedSessions ?? revokedList(),
+    now: () => nowSeconds * 1000,
+  });
+}
+
+function goodPayload(): Record<string, unknown> {
+  return {
+    iss: signInOrigin,
+    sub: ids.alice,
+    aud: product,
+    sid: "ses_one",
+    session_audience: "app",
+    token_use: "access",
+    iat: nowSeconds - 10,
+    nbf: nowSeconds - 10,
+    exp: nowSeconds + 900,
+  };
+}
+
+function encodeJson(value: unknown): string {
+  return encodeBase64url(new TextEncoder().encode(JSON.stringify(value)));
+}
+
+/** Signs a compact token with `privateKey`, with any header or payload field replaced. */
+async function token(
+  options: {
+    header?: Record<string, unknown>;
+    payload?: Record<string, unknown>;
+    privateKey?: CryptoKey;
+  } = {},
+): Promise<string> {
+  const header = { alg: "EdDSA", typ: "JWT", kid: "s1", ...options.header };
+  const signedText = `${encodeJson(header)}.${encodeJson({ ...goodPayload(), ...options.payload })}`;
+  const privateKey = options.privateKey ?? keys.session.privateKey;
+  const signature = await crypto.subtle.sign(
+    "Ed25519",
+    privateKey,
+    new TextEncoder().encode(signedText),
+  );
+  return `${signedText}.${encodeBase64url(new Uint8Array(signature))}`;
+}
+
+async function verifyToken(text: string, onto = verifier()) {
+  return onto.verify({ kind: "cookie", token: text });
+}
+
+describe("cloud session verifier", () => {
+  verifies("server.cloud-session", () => {
+    it("accepts a token Cloud signed for this product and maps it to the user's own scope", async () => {
+      const claims = await verifyToken(await token());
+      expect(claims).toEqual({
+        aud: "app",
+        sub: ids.alice,
+        scope: `u/${ids.alice}`,
+        role: undefined,
+        sid: "ses_one",
+      });
+      expect(checkClaims(claims)?.principal.actor).toBe(ids.alice);
+    });
+
+    it("refuses a token signed by a command key even when its key id is in the set", async () => {
+      const signedByCommandKey = await token({
+        header: { kid: "c1" },
+        privateKey: keys.command.privateKey,
+      });
+      expect(await verifyToken(signedByCommandKey)).toBeNull();
+    });
+
+    it("refuses a key id that isn't in the set and a signature by another key", async () => {
+      expect(await verifyToken(await token({ header: { kid: "s2" } }))).toBeNull();
+      const forged = await token({ privateKey: keys.outsider.privateKey });
+      expect(await verifyToken(forged)).toBeNull();
+    });
+
+    it("fixes the algorithm and type, and refuses a critical extension", async () => {
+      const seenKeyIds: string[] = [];
+      const watchedKeySet: CloudKeySet = {
+        key: async (id) => {
+          seenKeyIds.push(id);
+          return keySet().key(id);
+        },
+      };
+      for (const header of [{ alg: "none" }, { alg: "ES256" }, { typ: "jwt" }, { crit: ["x"] }]) {
+        const refused = await verifyToken(
+          await token({ header }),
+          verifier({ keySet: watchedKeySet }),
+        );
+        expect(refused).toBeNull();
+      }
+      expect(seenKeyIds).toEqual([]);
+    });
+
+    it("refuses another issuer, another product, and account or seller sessions", async () => {
+      for (const payload of [
+        { iss: "https://evil.example" },
+        { aud: "prod_otherAAAAAAAAAAAAAAA" },
+        { aud: [product] },
+        { session_audience: "account" },
+        { session_audience: "seller" },
+        { token_use: "refresh" },
+      ]) {
+        expect(await verifyToken(await token({ payload }))).toBeNull();
+      }
+    });
+
+    it("allows 60 seconds of clock skew on the end, the start and the issue time", async () => {
+      const accepted = [
+        { exp: nowSeconds - 59 },
+        { nbf: nowSeconds + 59 },
+        { iat: nowSeconds + 59 },
+      ];
+      for (const payload of accepted) {
+        expect(await verifyToken(await token({ payload }))).not.toBeNull();
+      }
+      const refused = [
+        { exp: nowSeconds - 61 },
+        { nbf: nowSeconds + 61 },
+        { iat: nowSeconds + 61 },
+        { exp: undefined },
+        { nbf: "0" },
+      ];
+      for (const payload of refused) {
+        expect(await verifyToken(await token({ payload }))).toBeNull();
+      }
+    });
+
+    it("refuses a revoked session and a missing session id, and fails when the list can't answer", async () => {
+      expect(
+        await verifyToken(await token(), verifier({ revokedSessions: revokedList(["ses_one"]) })),
+      ).toBeNull();
+      expect(await verifyToken(await token({ payload: { sid: undefined } }))).toBeNull();
+      const broken: RevokedSessions = {
+        isRevoked: async () => {
+          throw new Error("list unavailable");
+        },
+      };
+      await expect(
+        verifyToken(await token(), verifier({ revokedSessions: broken })),
+      ).rejects.toThrow("list unavailable");
+    });
+
+    it("fails, never refuses quietly, when the key set can't answer", async () => {
+      const broken: CloudKeySet = {
+        key: async () => {
+          throw new Error("key set unavailable");
+        },
+      };
+      await expect(verifyToken(await token(), verifier({ keySet: broken }))).rejects.toThrow(
+        "key set unavailable",
+      );
+    });
+
+    it("refuses malformed and oversized tokens", async () => {
+      const good = await token();
+      const [header, payload, signature] = good.split(".");
+      for (const text of [
+        "",
+        `${header}.${payload}`,
+        `${good}.extra`,
+        `${header}=.${payload}.${signature}`,
+        `${encodeBase64url(new Uint8Array([0xff]))}.${payload}.${signature}`,
+        `${encodeJson([1])}.${payload}.${signature}`,
+        `${good}${"A".repeat(8192)}`,
+      ]) {
+        expect(await verifyToken(text)).toBeNull();
+      }
+    });
+
+    it("leaves the end-user pattern to the shared checks, which refuse a bad id", async () => {
+      const claims = await verifyToken(await token({ payload: { sub: "eu_short" } }));
+      expect(claims).not.toBeNull();
+      expect(checkClaims(claims)).toBeNull();
+    });
+
+    it("can only be built with an https sign-in origin and a product", () => {
+      const build = (origin: string, productId = product) =>
+        new CloudSessionVerifier({
+          signInOrigin: origin,
+          product: productId,
+          keySet: keySet(),
+          revokedSessions: revokedList(),
+        });
+      for (const origin of ["http://sign-in.acme.example", "https://sign-in.acme.example/", "x"]) {
+        expect(() => build(origin)).toThrow("https origin");
+      }
+      expect(() => build(signInOrigin, "")).toThrow("product");
+    });
+  });
+});
