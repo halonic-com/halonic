@@ -419,7 +419,7 @@ text or the key.
 Writes the difficulty labels the task effort handler reads (HAL-16901). When
 a task is created, or its title or description changes, it sends the title
 and the first 4,000 characters of the description to `claude-haiku-5-5`
-(thinking off, `max_tokens` 400) with the board's tagger prompt (the
+(low effort, `max_tokens` 400) with the board's tagger prompt (the
 `difficulty-labels` document on HAL-16876, kept in
 `src/difficulty-tagger/prompt.ts`). The answer is JSON with `kind`,
 `difficulty` and `opus_only`.
@@ -441,8 +441,8 @@ task effort handler's `paperclipApiUrl` and `paperclipApiKey` (the plugin
 SDK has no label reads) and writes the labels through the SDK.
 
 **Spend guard.** It adds up each call's cost from the answer's token counts
-(at $1 and $5 per million input and output tokens, Haiku 4.5's list price,
-above what the board measured for Haiku 5.5) per calendar month (UTC). Once
+(at $0.10 and $0.50 per million input and output tokens, Haiku 5.5's list
+price) per calendar month (UTC). Once
 the month passes $5 it makes no more calls; it logs one error on the plugin
 page ("Difficulty tagger: stopped for 2026-11 …") and saves
 `difficulty_tagger.stopped`. It starts again on the 1st.

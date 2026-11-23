@@ -26,7 +26,7 @@ verifies("paperclip.difficulty-tagger", () => {
           body: {
             model: "claude-haiku-5-5",
             max_tokens: 400,
-            thinking: { type: "disabled" },
+            output_config: { effort: "low" },
             system: taggerPrompt,
             messages: [{ role: "user", content: taggerInput(task.title, task.description) }],
           },
@@ -149,6 +149,19 @@ verifies("paperclip.difficulty-tagger", () => {
       expect(logs[0]?.line).toBe("Difficulty tagger: couldn't label HAL-1, no company label D2.");
       listedLabels.push(missing as (typeof listedLabels)[number]);
       await tagger.onIssueEvent(tagEvent());
+      expect(labels()).toEqual(["D2"]);
+    });
+
+    test("asks again after a refused call, without the task's text changing", async () => {
+      const task = taggedTask([]);
+      const { tagger, labels, asked } = taggerHarness(task, [
+        { status: 500 },
+        answer("code", "D2", false),
+      ]);
+      await tagger.onIssueEvent(tagEvent("issue.created"));
+      expect(labels()).toEqual([]);
+      await tagger.onIssueEvent(tagEvent());
+      expect(asked).toHaveLength(2);
       expect(labels()).toEqual(["D2"]);
     });
 

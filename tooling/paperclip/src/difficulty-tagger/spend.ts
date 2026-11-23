@@ -8,13 +8,12 @@
 export const monthlyLimitMicroUsd = 5_000_000;
 
 /**
- * The price the guard counts with, in micro-dollars per token. These are
- * Haiku 4.5's list prices ($1 and $5 per million tokens); the board measured
- * the Haiku 5.5 tagger at about $0.00014 a task, well under that, so the
- * guard stops early rather than late.
+ * The price the guard counts with, in micro-dollars per million tokens:
+ * Haiku 5.5's list prices ($0.10 and $0.50 per million input and output
+ * tokens). Per million, so whole token counts multiply without rounding.
  */
-const inputMicroUsdPerToken = 1;
-const outputMicroUsdPerToken = 5;
+const inputMicroUsdPerMillionTokens = 100_000;
+const outputMicroUsdPerMillionTokens = 500_000;
 
 /** The token counts of one Messages API answer. */
 export interface TaggerUsage {
@@ -28,10 +27,10 @@ function tokens(value: unknown): number {
 
 /** What one call cost, in micro-dollars, from the answer's token counts. */
 export function callCostMicroUsd(usage: TaggerUsage | undefined): number {
-  return (
-    tokens(usage?.input_tokens) * inputMicroUsdPerToken +
-    tokens(usage?.output_tokens) * outputMicroUsdPerToken
-  );
+  const perMillion =
+    tokens(usage?.input_tokens) * inputMicroUsdPerMillionTokens +
+    tokens(usage?.output_tokens) * outputMicroUsdPerMillionTokens;
+  return perMillion / 1_000_000;
 }
 
 /** The month a call counts towards, such as `2026-11`, in UTC. */

@@ -34,12 +34,15 @@ export function taggerInput(title: string, description: string | null): string {
   return `Title: ${title}\n\nDescription:\n${start}`;
 }
 
-/** The Messages API request body. Thinking is off: the answer is a lookup, not a plan. */
+/**
+ * The Messages API request body. The answer is a lookup, not a plan, so it asks
+ * for low effort: Haiku 5.5 sets its thinking through effort, not a `thinking` switch.
+ */
 export function taggerRequest(input: string): Record<string, unknown> {
   return {
     model: taggerModel,
     max_tokens: taggerMaxTokens,
-    thinking: { type: "disabled" },
+    output_config: { effort: "low" },
     system: taggerPrompt,
     messages: [{ role: "user", content: input }],
   };

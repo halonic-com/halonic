@@ -140,18 +140,23 @@ async function spendBeforeCall(ctx: TaggerApi, deps: TaggerDeps, companyId: stri
   return undefined;
 }
 
-/** Asks Haiku and counts what it cost. Returns the readable answer, or undefined after reporting why not. */
+/** What asking Haiku came to: no answer (the call was stopped or failed), or its answer, unreadable as undefined. */
+type Asked =
+  | { readonly answered: false }
+  | { readonly answered: true; readonly answer: TaggerAnswer | undefined };
+
+/** Asks Haiku and counts what it cost. Reports why when there is no readable answer. */
 async function askAndCount(
   ctx: TaggerApi,
   deps: TaggerDeps,
   settings: ActiveTaggerSettings,
   issue: Issue,
   input: string,
-): Promise<TaggerAnswer | undefined> {
+): Promise<Asked> {
   const companyId = issue.companyId;
   const spend = await spendBeforeCall(ctx, deps, companyId);
   if (spend === undefined) {
-    return undefined;
+    return { answered: false };
   }
   const asked = await askTagger(ctx, deps, settings, companyId, input);
   const name = issue.identifier ?? issue.id;
@@ -162,7 +167,7 @@ async function askAndCount(
       `couldn't ask about ${name} (${asked.failure}).`,
       asked.failure,
     );
-    return undefined;
+    return { answered: false };
   }
   await ctx.state.set(spendKey(companyId), { ...spend, microUsd: spend.microUsd + asked.cost });
   await writeMetrics(ctx, { "difficulty_tagger.spend_micro_usd": asked.cost }, { companyId });
@@ -170,7 +175,7 @@ async function askAndCount(
     const line = `the answer about ${name} wasn't the JSON the prompt asks for.`;
     await reportFailure(ctx, companyId, line, "unreadable_answer");
   }
-  return asked.answer;
+  return { answered: true, answer: asked.answer };
 }
 
 /** The tagger's settings when the board turned it on for this version, or undefined. */
@@ -202,9 +207,13 @@ async function handle(
   if (record?.inputHash === inputHash) {
     return;
   }
-  const answer = await askAndCount(ctx, deps, settings, issue, input);
-  // Unreadable: keep the labels and don't ask again until the text changes. A refused call asks again.
-  const wanted = answer === undefined ? undefined : labelsFor(answer);
+  const asked = await askAndCount(ctx, deps, settings, issue, input);
+  // No answer (a failed or stopped call): save nothing, so the next event asks again.
+  if (!asked.answered) {
+    return;
+  }
+  // Unreadable: keep the labels and don't ask again until the text changes.
+  const wanted = asked.answer === undefined ? undefined : labelsFor(asked.answer);
   if (wanted !== undefined) {
     const task = { id: issue.id, companyId: issue.companyId, written: record?.written };
     if (!(await writeLabels(ctx, deps, settings, task, wanted))) {

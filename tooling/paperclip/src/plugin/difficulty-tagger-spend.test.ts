@@ -20,7 +20,7 @@ verifies("paperclip.difficulty-tagger-spend", () => {
     expect(labels()).toEqual(["D2"]);
     expect(saved.get(spendKey)).toEqual({
       month: "2026-11",
-      microUsd: 5_001_100,
+      microUsd: 5_000_020,
       stopReported: false,
     });
   });
@@ -53,7 +53,7 @@ verifies("paperclip.difficulty-tagger-spend", () => {
     clock.now = new Date("2026-12-01T00:05:00Z");
     await tagger.onIssueEvent(tagEvent("issue.created"));
     expect(asked).toHaveLength(1);
-    expect(saved.get(spendKey)).toEqual({ month: "2026-12", microUsd: 1100, stopReported: false });
+    expect(saved.get(spendKey)).toEqual({ month: "2026-12", microUsd: 110, stopReported: false });
   });
 
   test("counts two tasks tagged at once from each other's total", async () => {
@@ -69,7 +69,7 @@ verifies("paperclip.difficulty-tagger-spend", () => {
     expect(asked).toHaveLength(2);
     expect(saved.get(spendKey)).toEqual({
       month: "2026-11",
-      microUsd: 2 * 1100,
+      microUsd: 2 * 110,
       stopReported: false,
     });
   });
