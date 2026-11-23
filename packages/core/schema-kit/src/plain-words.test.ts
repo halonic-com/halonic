@@ -158,13 +158,15 @@ verifies("schema-kit.plain-words", () => {
     it("repeats a value where a list goes only when it's short and not empty", () => {
       const schema = s.object({ gets: s.array(s.string()) });
       const forty = "input.".padEnd(40, "x");
-      const messages = [true, "  input.mail ", forty, "", {}].map((gets) =>
+      const messages = [true, 5, "  input.mail ", forty, "", null, {}].map((gets) =>
         messagesOf(schema, { gets }),
       );
       expect(messages).toEqual([
         ["gets is a list: write [true]."],
+        ["gets is a list: write [5]."],
         ["gets is a list: write [input.mail]."],
         [`gets is a list: write [${forty}].`],
+        ['gets is a list: write [one, two], or each item on its own line after "- ".'],
         ['gets is a list: write [one, two], or each item on its own line after "- ".'],
         ['gets is a list: start each item with "- ".'],
       ]);
