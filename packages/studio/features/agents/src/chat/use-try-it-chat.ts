@@ -18,6 +18,7 @@ import {
   toolsRanInLastTurn,
   withMessage,
   withoutLastTurn,
+  withText,
   withToolCall,
 } from "./transcript.ts";
 import { tryItWords } from "./try-it-words.ts";
@@ -74,8 +75,9 @@ export interface TryItChat {
 /**
  * Drives one Try it chat on the agents host (flow-agents 4.4). Each message is answered with the
  * agent as it's saved, outside any run (v0.1), and the reply builds step by step from what the
- * host's listener hears. A reply that ends is announced once: "Sorter replied.", "Stopped by
- * you.", and a failure assertively. Nothing is announced while it streams in (a11y A6).
+ * host's listener hears, its text as the model writes it, drawn at most once a frame. A reply that
+ * ends is announced once: "Sorter replied.", "Stopped by you.", and a failure assertively. Nothing
+ * is announced while it streams in (a11y A6).
  *
  * The chat lives as long as the page: closing the agent's tab ends it, and stops a reply.
  */
@@ -90,10 +92,22 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
   const said = useRef({ name, announce });
   said.current = { name, announce };
 
-  const update = useCallback((change: (transcript: Transcript) => Transcript) => {
-    current.current = change(current.current);
-    setShown(current.current);
-  }, []);
+  // Text the model writes is drawn on the next frame, with whatever else came before it.
+  const frame = useRef<number | undefined>(undefined);
+  const update = useCallback(
+    (change: (transcript: Transcript) => Transcript, { nextFrame = false } = {}) => {
+      current.current = change(current.current);
+      if (!nextFrame) {
+        setShown(current.current);
+        return;
+      }
+      frame.current ??= requestAnimationFrame(() => {
+        frame.current = undefined;
+        setShown(current.current);
+      });
+    },
+    [],
+  );
 
   // A page that closes stops the reply it was writing, and says nothing about it: the person
   // didn't press Stop, and there's no chat left to read.
@@ -103,6 +117,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
     return () => {
       open.current = false;
       running.current?.abort();
+      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
     };
   }, []);
 
@@ -125,6 +140,8 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
           messages: current.current.conversation,
           signal: stopper.signal,
           listener: {
+            onText: (text) =>
+              update((transcript) => withText(transcript, text), { nextFrame: true }),
             onToolCall: (call) => update((transcript) => withToolCall(transcript, call)),
             onMessage: (added) => update((transcript) => withMessage(transcript, added)),
           },

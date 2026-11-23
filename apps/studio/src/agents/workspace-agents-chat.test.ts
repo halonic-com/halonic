@@ -105,3 +105,35 @@ verifies("studio.workspace-agents-chat", () => {
     });
   });
 });
+
+verifies("agents.chat.streaming", () => {
+  it("passes the text a model turn writes on to the chat, and asks for it only when the chat shows it", async () => {
+    const engine = serviceOn(fakeShell());
+    const { executor } = await engine.open();
+    const asked: boolean[] = [];
+    vi.spyOn(executor, "chatTurn").mockImplementation(async (request) => {
+      asked.push(request.onText !== undefined);
+      request.onText?.({ kind: "delta", text: "Do" });
+      request.onText?.({ kind: "delta", text: "ne." });
+      return {
+        model: "fake",
+        content: "Done.",
+        toolCalls: [],
+        usage: { inputTokens: 1, outputTokens: 1 },
+        finishReason: "stop",
+      };
+    });
+    const { host } = setup({ answerChat: answerChatOn(chatExecutorOf(engine)) });
+    const ref = { hubId: "acme", id: "writer" };
+    const messages = [{ role: "user", content: "Sort this mail" }] as const;
+    const heard: string[] = [];
+    await host.answer(ref, {
+      messages,
+      listener: { onText: (text) => heard.push(text.kind === "delta" ? text.text : "restart") },
+    });
+    await host.answer(ref, { messages, listener: {} });
+    expect(heard).toEqual(["Do", "ne."]);
+    expect(asked).toEqual([true, false]);
+    await engine.close();
+  });
+});

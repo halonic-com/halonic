@@ -43,6 +43,8 @@ export function answerChatOn(
     const own = request.listener;
     const listener: ChatAnswerListener = {
       onTurn: (turn) => own?.onTurn?.(turn),
+      // Only a chat that shows the text as it is written asks the model to stream it.
+      ...(own?.onText !== undefined && { onText: (text) => own.onText?.(text) }),
       onToolCall: (toolCall) => own?.onToolCall?.(toolCall),
       onMessage: (message) => own?.onMessage?.(message),
       onRefusals: (refused) => {

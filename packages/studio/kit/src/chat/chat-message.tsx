@@ -17,6 +17,8 @@ interface ReplyMessage {
   readonly heading: string;
   /** The heading's level under the chat's own heading. Default 3. */
   readonly headingLevel?: 2 | 3 | 4;
+  /** The reply is still being written: `aria-busy` until it ends (`kit.chat-reply-busy`). */
+  readonly busy?: boolean | undefined;
   /** Its steps in order: `ChatText`, `ChatToolLine`, and a `ChatEndLine` last when it has one. */
   readonly children: ReactNode;
 }
@@ -48,7 +50,11 @@ export function ChatMessage(props: ChatMessageProps) {
   }
   const Heading = `h${props.headingLevel ?? 3}` as const;
   return (
-    <div className="flex flex-col gap-2" data-chat-message="reply">
+    <div
+      className="flex flex-col gap-2"
+      data-chat-message="reply"
+      aria-busy={props.busy === true ? true : undefined}
+    >
       <Heading className="sr-only">{props.heading}</Heading>
       {props.children}
     </div>
