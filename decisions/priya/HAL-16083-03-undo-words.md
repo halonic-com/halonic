@@ -4,6 +4,7 @@
 - Task: HAL-16083, from Sofia's words check C665 row 31 on HAL-16066
 - Approval: Liam approved row 31 and Sofia's toast on HAL-16083; he approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:rrJXT3g3Rr0SjUwoL1v7dDq1L64mxywoAgH9tj9RiQw0rsZig0gWKmES8nCcwFOdbU9cMOtD1EA5MqFsJY9vCA==
 
 ## What changes
 
