@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,15 +7,16 @@ import { testGit } from "@halonicjs/adapter-git/testing";
 import type { DefinitionStore } from "@halonicjs/ports";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { openGitHistory } from "../../run-workspace.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { WatchedVersions } from "./watch-versions.ts";
 
-// The version a run's connectors start from in `routines watch` (HAL-7500):
-// the one the run read, checked for trust, with the grant of that check.
+// The refusals of the versions a run reads in `routines watch`, in the CLI's
+// words. What each version passes, and when, is tested with the code in
+// the workspace engine (HAL-17054).
 
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 
@@ -54,44 +55,7 @@ const slowTest = { timeout: 60_000 };
 /** A run that read the saved files. */
 const savedRun = { runId: "run-1", version: { reads: "saved-files" } } as const;
 
-/** The ids of the workspace's provider files. */
-function providersOf(workspace: LoadedWorkspace): string[] {
-  return filesOf(workspace, "provider").map((file) => file.value.id);
-}
-
 verifies("cli.local-engine", () => {
-  it("gives a run's version with the grant of its own trust check, not the one read last", async () => {
-    const watched = await watchAcme();
-    const checked: string[][] = [];
-    watched.checkWith({
-      trust: async ({ workspace }) => {
-        checked.push(providersOf(workspace));
-        return contractGrant;
-      },
-      sandbox: async () => {},
-    });
-    await writeFile(
-      join(acme, "providers", "ollama.yaml"),
-      "id: ollama\ntype: ollama\nlocal: true\n",
-    );
-
-    const read = await watched.trustedVersionOf(savedRun);
-
-    expect(checked).toEqual([["mock", "ollama"]]);
-    expect(read.trust).toBe(contractGrant);
-    expect(providersOf(read.workspace)).toEqual(["mock", "ollama"]);
-    // Reading a run's version for its connectors starts no run from it.
-    expect(providersOf(watched.latest())).toEqual(["mock"]);
-  });
-
-  it("gives no grant until the watch sets its checks", async () => {
-    const watched = await watchAcme();
-
-    const read = await watched.trustedVersionOf(savedRun);
-
-    expect(read.trust).toBeNull();
-  });
-
   it("refuses a run's version that turns local only off, before its trust check", async () => {
     const watched = await watchAcme();
     let checks = 0;
@@ -112,120 +76,12 @@ verifies("cli.local-engine", () => {
     expect(checks).toBe(0);
   });
 
-  it("gives the live version only while it passes the trust check a run's version passes", async () => {
+  it("words a skill the version doesn't have", async () => {
     const watched = await watchAcme();
-    let trusted = true;
-    watched.checkWith({
-      trust: async () => {
-        if (!trusted) throw new Error("not trusted here");
-        return contractGrant;
-      },
-      sandbox: async () => {},
-    });
-    await writeFile(
-      join(acme, "providers", "ollama.yaml"),
-      "id: ollama\ntype: ollama\nlocal: true\n",
-    );
-
-    const live = await watched.trustedLive();
-    expect(live === null ? null : providersOf(live)).toEqual(["mock", "ollama"]);
-
-    trusted = false;
-    expect(await watched.trustedLive()).toBeNull();
-  });
-
-  it("gives no live version that turns local only off, before its trust check", async () => {
-    const watched = await watchAcme();
-    let checks = 0;
-    watched.checkWith({
-      trust: async () => {
-        checks += 1;
-        return contractGrant;
-      },
-      sandbox: async () => {},
-    });
-    const file = join(acme, "workspace.yaml");
-    await writeFile(
-      file,
-      (await readFile(file, "utf8")).replace("localOnly: true", "localOnly: false"),
-    );
-
-    expect(await watched.trustedLive()).toBeNull();
-    expect(checks).toBe(0);
-  });
-
-  it("gives a run's connectors the load its definitions came from, not an edit made since", async () => {
-    const watched = await watchAcme();
-    const checked: string[][] = [];
-    watched.checkWith({
-      trust: async ({ workspace }) => {
-        checked.push(providersOf(workspace));
-        return contractGrant;
-      },
-      sandbox: async () => {},
-    });
-    await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
-    await writeFile(
-      join(acme, "providers", "ollama.yaml"),
-      "id: ollama\ntype: ollama\nlocal: true\n",
-    );
-
-    const read = await watched.trustedVersionOf(savedRun);
-
-    expect(providersOf(read.workspace)).toEqual(["mock"]);
-    // Trust is checked again, on the kept load, not on the edited files.
-    expect(checked).toEqual([["mock"], ["mock"]]);
-  });
-
-  it("reads the saved files as they are now for a run it didn't start, or one that ended", async () => {
-    const watched = await watchAcme();
-    await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
-    await writeFile(
-      join(acme, "providers", "ollama.yaml"),
-      "id: ollama\ntype: ollama\nlocal: true\n",
-    );
-
-    const older = await watched.trustedVersionOf({ ...savedRun, runId: "older" });
-    watched.forget(savedRun.runId);
-    const ended = await watched.trustedVersionOf(savedRun);
-
-    expect(providersOf(older.workspace)).toEqual(["mock", "ollama"]);
-    expect(providersOf(ended.workspace)).toEqual(["mock", "ollama"]);
-  });
-
-  it("gives a run's agent file as its version had it, not as an edit made since", async () => {
-    const watched = await watchAcme();
-    const agent = filesOf(watched.latest(), "agent")[0];
-    if (agent === undefined) throw new Error("Acme has no agent.");
-    const before = await readFile(join(acme, agent.path), "utf8");
-    await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
-    await writeFile(join(acme, agent.path), `${before}# edited since\n`);
-
-    const bytes = await watched.agentFileOf(savedRun, agent.hub ?? "", agent.value.id);
-
-    expect(new TextDecoder().decode(bytes)).toBe(before);
-  });
-
-  it("gives a run's skill as its version had it, the hub's own before the shared one", async () => {
-    const skill = (hub: string | null, text: string) => ({
-      path: join(acme, ...(hub === null ? [] : ["hubs", hub]), "library", "skills", "tone"),
-      text: `---\nname: Tone\ndescription: Kind and short.\n---\n${text}\n`,
-    });
-    for (const { path, text } of [skill(null, "Shared."), skill("support", "Support's own.")]) {
-      await mkdir(path, { recursive: true });
-      await writeFile(join(path, "SKILL.md"), text);
-    }
-    const watched = await watchAcme();
-    await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
-    await writeFile(join(skill(null, "").path, "SKILL.md"), "Edited since.\n");
-
-    expect(await watched.skillTextOf(savedRun, "support", "tone")).toContain("Support's own.");
-    expect(await watched.skillTextOf(savedRun, "reports", "tone")).toContain("Shared.");
     await expect(watched.skillTextOf(savedRun, "support", "missing")).rejects.toThrow(
       "has no skill missing",
     );
   });
-
   it(
     "gives a child run's agent file from its own version, after a newer one was read",
     slowTest,
