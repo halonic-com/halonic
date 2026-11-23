@@ -2,6 +2,7 @@
 
 - Approval: flow check C755 findings 1 and 2 (HAL-16720), a team decision on an approved flow under HAL-2282; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:u65TRla6QqkR8yYZYU2jKRSQnFpGhao3l3muWJY5VMwzJz+N7c8w0UAgiXhAo4xaqsYa3iIZqnY3BQs+xsegDg==
 - Task: HAL-16723
 
 ## What changes
