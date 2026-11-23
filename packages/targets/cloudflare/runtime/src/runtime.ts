@@ -56,6 +56,12 @@ export interface RuntimeOptions {
    * run objects are named `scope/` and the run id; the coordination and routines objects `scope`.
    */
   scope?: string;
+  /**
+   * Reads the deployment's own snapshot even under a scope. A scope's runtime (`scopedRuntime`)
+   * and the run object set it, because every scope runs the workspace the deployer uploaded; a
+   * test's scope leaves it out to keep a snapshot of its own.
+   */
+  sharedDefinitions?: boolean;
 }
 
 /** Where in R2 a scope's keys go. */
@@ -82,15 +88,34 @@ function definitionsVersionOf(env: object): string | undefined {
   return value.trim();
 }
 
+/**
+ * The scope a run object's name prefix stands for: the prefix without its last `/`, or none for
+ * the empty prefix. An object written before prefixes were noted has `null`, and was unscoped.
+ */
+export function scopeOfNamePrefix(namePrefix: string | null): string | undefined {
+  if (namePrefix === null || namePrefix === "") return undefined;
+  return namePrefix.slice(0, -1);
+}
+
+/**
+ * The options of the runtime a run object works with: the scope its name prefix stands for, with
+ * the deployment's definitions, or the deployment's own runtime for an unscoped object.
+ */
+export function runtimeOptionsOfNamePrefix(namePrefix: string | null): RuntimeOptions {
+  const scope = scopeOfNamePrefix(namePrefix);
+  return scope === undefined ? {} : { scope, sharedDefinitions: true };
+}
+
 /** The definitions of this Worker version: its pinned snapshot, under the scope when a test sets one. */
-function definitionsOf(env: RuntimeEnv, scope: string | undefined): R2DefinitionSource {
+function definitionsOf(env: RuntimeEnv, options: RuntimeOptions): R2DefinitionSource {
+  const { scope, sharedDefinitions = false } = options;
   const version = definitionsVersionOf(env);
-  const options: R2DefinitionSourceOptions = {
-    ...(scope === undefined ? {} : { keyPrefix: scopedKeyPrefix(scope) }),
+  const sourceOptions: R2DefinitionSourceOptions = {
+    ...(scope === undefined || sharedDefinitions ? {} : { keyPrefix: scopedKeyPrefix(scope) }),
     ...(version === undefined ? {} : { version }),
   };
   try {
-    return new R2DefinitionSource(env.DEFINITIONS, options);
+    return new R2DefinitionSource(env.DEFINITIONS, sourceOptions);
   } catch (error) {
     if (error instanceof DefinitionSnapshotError) {
       throw new ConfigurationError([definitionsVersionVariable]);
@@ -132,16 +157,26 @@ export async function createRuntime(
   env: RuntimeEnv,
   options: RuntimeOptions = {},
 ): Promise<Runtime> {
-  const { scope } = options;
   const missing = await missingConfiguration(env);
   if (missing.length > 0) {
     throw new ConfigurationError(missing);
   }
+  return buildRuntime(env, options);
+}
+
+/**
+ * Wires the adapters like {@link createRuntime}, without checking the configuration again, so a
+ * runtime can be built for each request once the deployment was checked.
+ *
+ * @throws ConfigurationError when `HALONIC_DEFINITIONS_VERSION` is set but malformed
+ */
+export function buildRuntime(env: RuntimeEnv, options: RuntimeOptions = {}): Runtime {
+  const { scope } = options;
   const clock: Clock = { now: () => new Date() };
   const secrets = workerSecrets(env);
   const records = new D1RecordStore(env.DB, { scope: scope ?? "" });
   const runs = new D1RunList(env.DB, { scope: scope ?? "" });
-  const definitions = definitionsOf(env, scope);
+  const definitions = definitionsOf(env, options);
   // Every run object of the scope is named under this prefix; empty when unscoped.
   const namePrefix = scope === undefined ? "" : scopedKeyPrefix(scope);
   const scheduler = new DurableScheduler({
