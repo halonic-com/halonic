@@ -1,6 +1,7 @@
 import type { DeployFailure, DeployTargetContext } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { createCloudflareClient } from "./client.ts";
 import { createCloudflareDeployTarget, tokenName } from "./deploy-target-entry.ts";
 import { DeployError } from "./errors.ts";
 import { type FakeCloudflareState, fakeCloudflareApi } from "./fake-api.ts";
@@ -12,7 +13,11 @@ const accounts = [
 const refused = new DeployError(
   "cloudflare-request-failed",
   "GET /accounts was refused (HTTP 403)",
+  { status: 403 },
 );
+const down = new DeployError("cloudflare-request-failed", "GET /accounts was refused (HTTP 503)", {
+  status: 503,
+});
 
 function setup(state: Partial<FakeCloudflareState> = {}, saved: string | null = "saved-token") {
   const api = fakeCloudflareApi({ accounts, ...state });
@@ -50,6 +55,21 @@ async function failureOf(promise: Promise<unknown>): Promise<DeployFailure> {
 }
 
 verifies("deploy.target-accounts", () => {
+  it("keeps the HTTP status of a refused request, so a refusal is told from an outage", async () => {
+    for (const status of [403, 503]) {
+      const client = createCloudflareClient({
+        token: "test-token",
+        fetch: async () => Response.json({ success: false, errors: [] }, { status }),
+      });
+      const error = await client.listAccounts().then(
+        () => undefined,
+        (e: unknown) => e,
+      );
+      expect(error).toBeInstanceOf(DeployError);
+      expect(error).toMatchObject({ code: "cloudflare-request-failed", status });
+    }
+  });
+
   it("lists every account the token reaches, by id and name, and changes nothing", async () => {
     const { api, make } = setup({ failOnWrite: true });
     expect(await make().accounts()).toEqual(accounts);
@@ -83,12 +103,19 @@ verifies("deploy.target-accounts", () => {
     expect(failure.fix).toContain("Account Settings Read");
   });
 
-  it("keeps the list's own failure when the token can't be verified", async () => {
+  it("keeps the list's own failure when Cloudflare is down, or the token can't be verified", async () => {
     const unverified = setup({ listAccountsFails: refused, userToken: new Error("offline") });
     expect(await failureOf(unverified.make().accounts())).toMatchObject({
       code: "host-request-failed",
       kind: "unavailable",
     });
+
+    const unavailable = setup({ listAccountsFails: down });
+    expect(await failureOf(unavailable.make().accounts())).toMatchObject({
+      code: "host-request-failed",
+      kind: "unavailable",
+    });
+    expect(unavailable.api.calls).toEqual(["listAccounts"]);
 
     const accountToken = setup({ listAccountsFails: refused }, "cfat_saved");
     expect(await failureOf(accountToken.make().accounts())).toMatchObject({

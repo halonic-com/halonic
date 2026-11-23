@@ -6,11 +6,12 @@ import { tokenKind } from "./token.ts";
 
 /**
  * The accounts a token reaches, from `GET /accounts` (requirement
- * `deploy.target-accounts`). When Cloudflare refuses the list, the token is
- * verified to say why: an inactive token is `token-inactive`, an active one
- * lacks the permission to list accounts. An account token (`cfat_`) can only
- * be verified at an account, which isn't known yet, and a token Cloudflare
- * can't verify either keeps the list's own failure.
+ * `deploy.target-accounts`). When Cloudflare refuses the list with 401 or
+ * 403, the token is verified to say why: an inactive token is
+ * `token-inactive`, an active one lacks the permission to list accounts. Any
+ * other failure, such as a 5xx or 429 while Cloudflare is down, keeps its
+ * own, and so do an account token (`cfat_`), which can only be verified at an
+ * account that isn't known yet, and a token Cloudflare can't verify.
  */
 export async function reachableAccounts(
   api: CloudflareApi,
@@ -20,7 +21,8 @@ export async function reachableAccounts(
     const accounts = await api.listAccounts();
     return accounts.map(({ id, name }) => ({ id, name }));
   } catch (error) {
-    if (!(error instanceof DeployError) || tokenKind(token) === "account") throw error;
+    const refused = error instanceof DeployError && (error.status === 401 || error.status === 403);
+    if (!refused || tokenKind(token) === "account") throw error;
     const active = await api.verifyUserToken().then(
       (status) => status.active,
       () => undefined,
