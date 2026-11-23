@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16788 (Liam approved the T14 pull request plan; PR 5 "updates `shell.title-bar` with a decision note")
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WdULOhkE4wrmNPLJ2vLrstAVoBnNX9xANZIZb9wkkMb6ENeVjxT4+Gx4x664fd1ADdYW9KT36PdFvtZuY9HyAA==
 
 `shell.title-bar` said "There shall be no Assistant button until the Assistant feature exists." T14 builds
 the Assistant, so that sentence is replaced by what the button is: while a feature adds a panel window
