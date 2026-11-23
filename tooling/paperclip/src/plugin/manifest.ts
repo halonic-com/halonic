@@ -18,7 +18,7 @@ const monitorPostpone = "issues.monitors.postpone" as PluginCapability;
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.agent-tools",
   apiVersion: 1,
-  version: "0.3.0",
+  version: "0.4.0",
   displayName: "Agent tools",
   description:
     "Halonic's tools beside Paperclip. The PR watcher marks a task done once its pull requests merged with a green ci-ok, and wakes the author for a red ci-ok, a conflict or a new review finding.",
@@ -30,13 +30,16 @@ export const manifest: PaperclipPluginManifestV1 = {
     "agents.read",
     "issues.read",
     // Only `done`: src/plugin/host.ts is the one place that writes a status, through doneOnly.
+    // A task's effort goes through Paperclip's own API instead (src/plugin/task-effort.ts),
+    // because the SDK's update leaves that field out.
     "issues.update",
     "issues.wakeup",
     "issue.comments.read",
     "issue.comments.create",
     // Only GET requests to api.github.com and GraphQL queries to its /graphql (both readers'
     // guards); the manifest can't list hosts. ready_for_review also calls the precheck service
-    // at the address in the settings (src/plugin/ready-for-review.ts).
+    // at the address in the settings (src/plugin/ready-for-review.ts), and the task effort
+    // handler sends one task change to Paperclip's API at the address in the settings.
     "http.outbound",
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
@@ -46,6 +49,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // Board check (HAL-16194). Its writes are comments, wakes and the two documents below,
     // through the gate in src/board-check/writes.ts.
     // A new comment is looked at for a board ask at once; runs that failed (part a).
+    // Task effort (HAL-16876): a created or changed task's tags and effort.
     "events.subscribe",
     // Only `board-waiting` and `board-asks` on the Board Checker's task.
     "issue.documents.write",
@@ -146,6 +150,33 @@ export const manifest: PaperclipPluginManifestV1 = {
         title: "Board check writes for version",
         description:
           "Empty: the board check only logs what it would write. Enter the plugin's version (shown on the plugin page) to let it write; after an upgrade it stops writing until you enter the new version.",
+      },
+      taskEffortWritesForVersion: {
+        type: "string",
+        title: "Task effort writes for version",
+        description:
+          "Empty: the task effort handler only logs the effort it would set on a task from its tags (D1–D3 low; opus-only, D4 and harder, and a send-back high). Enter the plugin's version to let it set them; after an upgrade it stops until you enter the new version. It reports effort changes it didn't make either way.",
+      },
+      paperclipApiUrl: {
+        type: "string",
+        title: "Paperclip API",
+        description:
+          "The address of Paperclip's API as the plugin reaches it, scheme, host and port only, for example http://127.0.0.1:3100. The task effort handler sends its task changes there.",
+      },
+      paperclipApiKey: {
+        type: "string",
+        title: "Paperclip API key",
+        description:
+          "The secret with the API key the task effort handler sends its task changes with. It sends only a task's assigneeAdapterOverrides, with the effort changed.",
+        format: "secret-ref",
+      },
+      effortReviewers: {
+        type: "array",
+        title: "Reviewers for the send-back rule",
+        description:
+          "Url keys of the reviewers whose hand-back without a signed approval sets the task's effort to high.",
+        items: { type: "string" },
+        default: ["liam", "julian"],
       },
     },
   },
