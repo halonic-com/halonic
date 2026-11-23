@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16946
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iyP95oG56F5jGjqb5T2URLDaZQTQWcv5TD4AT1OTtalTNcZfMtTTmw47ZajFKtvzDSr8At454QOfyfydRDRhCQ==
 
 Follow-ups from Julian's guard check on HAL-16876. Both requirements gain
 behaviour; no example is removed or weakened.
