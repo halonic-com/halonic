@@ -6,13 +6,15 @@ import type { MenuItem } from "@halonicjs/studio-kit";
 import {
   FilesWithErrorsService,
   type FileWithErrors,
-  useFilesWithErrors,
+  useFilesWithErrorsReading,
   type WorkspaceContext,
 } from "@halonicjs/studio-shell";
 import { useEffect, useRef } from "react";
 import { fileItem } from "../file-item.ts";
 import { requestOpenAtLine } from "../open-at-line.ts";
 import { problemsWords } from "./problems-words.ts";
+
+const noFiles: readonly FileWithErrors[] = [];
 
 /** The key of the count's announcement, so a burst of changes is said once, after it settles. */
 const ANNOUNCE_KEY = "files.problems";
@@ -26,19 +28,18 @@ export function useProblemFiles(
   context: WorkspaceContext,
   announce: boolean,
 ): readonly FileWithErrors[] {
-  const files = useFilesWithErrors(context.services.find(FilesWithErrorsService));
-  const first = useRef<readonly FileWithErrors[] | undefined>(files);
+  const files = useFilesWithErrorsReading(context.services.find(FilesWithErrorsService));
   const said = useRef<number | undefined>(undefined);
   useEffect(() => {
-    // The hook's own empty list, before the first read, isn't a count yet.
-    if (files === first.current) return;
+    // Before the first read there is no count yet.
+    if (files === undefined) return;
     const before = said.current;
     said.current = files.length;
     if (!announce || before === undefined || before === files.length) return;
     const text = files.length === 0 ? problemsWords.none : problemsWords.count(files.length);
     context.announcer.announceState(ANNOUNCE_KEY, text);
   }, [files, announce, context.announcer]);
-  return files;
+  return files ?? noFiles;
 }
 
 /**

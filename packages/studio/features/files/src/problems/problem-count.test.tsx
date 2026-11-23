@@ -1,20 +1,14 @@
 // @vitest-environment jsdom
-import { PresentationProvider } from "@halonicjs/studio-kit";
-import {
-  type FilesWithErrorsSource,
-  type FileWithErrors,
-  limitedLookup,
-  type WorkspaceContext,
-} from "@halonicjs/studio-shell";
+import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
-import { act, type ReactNode } from "react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { filesFeature } from "../feature.ts";
+import { act } from "react";
+import { afterEach, beforeEach, expect, it } from "vitest";
 import { fileItem } from "../file-item.ts";
 import { takeOpenAtLineRequests } from "../open-at-line.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { installFakePopover } from "../test-support/popover.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
+import { listOf, show, sorter, weekly } from "../test-support/problem-files.tsx";
+import { unmountAll } from "../test-support/render.tsx";
 import { ProblemsStatusItem } from "./problems-status-item.tsx";
 import { ProblemsStrip } from "./problems-strip.tsx";
 
@@ -28,74 +22,6 @@ afterEach(() => {
   restorePopover();
   restoreModal();
 });
-
-const sorter: FileWithErrors = {
-  path: "hubs/support/agents/sorter.agent.yaml",
-  kind: "agent",
-  hub: "support",
-  id: "sorter",
-  name: "Sorter",
-  loaded: false,
-  firstError: { line: 2, col: 7, reason: 'A value has ": " in it. Put the value in quotes.' },
-  errors: 1,
-};
-
-const weekly: FileWithErrors = {
-  path: "hubs/reports/workflows/weekly-report.workflow.yaml",
-  kind: "workflow",
-  hub: "reports",
-  id: "weekly-report",
-  name: "weekly-report.workflow.yaml",
-  loaded: false,
-  firstError: { line: 11, col: 3, reason: "options needs at least one choice." },
-  errors: 3,
-};
-
-/** A shared list whose files a test sets, telling its listeners as a save would. */
-function listOf(start: readonly FileWithErrors[]) {
-  let files = start;
-  const listeners = new Set<() => void>();
-  const source: FilesWithErrorsSource = {
-    list: async () => files,
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-  const save = async (next: readonly FileWithErrors[]) => {
-    files = next;
-    for (const listener of listeners) listener();
-    await settled();
-  };
-  return { source, save };
-}
-
-async function settled(): Promise<void> {
-  for (let turn = 0; turn < 3; turn++) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-  }
-}
-
-async function show(
-  source: FilesWithErrorsSource,
-  view: (context: WorkspaceContext) => ReactNode,
-  presentation: "desktop" | "phone" = "desktop",
-) {
-  const openItem = vi.fn();
-  const announceState = vi.fn();
-  const context = {
-    services: limitedLookup(filesFeature, { get: () => source }),
-    announcer: { announce: () => {}, announceState },
-    openItem,
-  } as unknown as WorkspaceContext;
-  const page = render(
-    <PresentationProvider presentation={presentation}>{view(context)}</PresentationProvider>,
-  );
-  await settled();
-  return { page, openItem, announceState };
-}
 
 const statusItem = (context: WorkspaceContext) => <ProblemsStatusItem context={context} />;
 const strip = (context: WorkspaceContext) => <ProblemsStrip context={context} />;

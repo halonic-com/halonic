@@ -3,11 +3,19 @@ import type { WorkspaceContext } from "../workspace-context.ts";
 import type { PlaceSignal } from "./frame.ts";
 
 /**
- * Home's sections, in the only order they are shown (design direction 3, UX checklist 1.9): Get
- * set up while setup isn't done, Needs you, Recent runs, Spend, then the plugins' Cards (plugins D3,
- * HAL-1801). A section whose feature hasn't added its card isn't shown.
+ * Home's sections, in the only order they are shown (design direction 3, UX checklist 1.9):
+ * Problems while a file has an error (C348 A6), Get set up while setup isn't done, Needs you,
+ * Recent runs, Spend, then the plugins' Cards (plugins D3, HAL-1801). A section whose feature
+ * hasn't added its card isn't shown.
  */
-export const homeSections = ["setup", "needs-you", "recent-runs", "spend", "cards"] as const;
+export const homeSections = [
+  "problems",
+  "setup",
+  "needs-you",
+  "recent-runs",
+  "spend",
+  "cards",
+] as const;
 
 /** One of Home's sections. */
 export type HomeSection = (typeof homeSections)[number];
@@ -17,6 +25,7 @@ export type HomeSection = (typeof homeSections)[number];
  * owns the places' names, so a section is called the same whichever feature adds its card.
  */
 export const homeSectionTitles: Readonly<Record<HomeSection, string>> = {
+  problems: "Problems",
   setup: "Get set up",
   "needs-you": "Needs you",
   "recent-runs": "Recent runs",

@@ -45,6 +45,7 @@ let lastAttempt = 0;
 
 /** The heading of each section's error when its card can't load (microcopy 3.3). */
 export const homeSectionErrors: Readonly<Record<HomeSection, string>> = {
+  problems: "Couldn't load problems",
   setup: "Couldn't load setup",
   "needs-you": "Couldn't load what needs you",
   "recent-runs": "Couldn't load recent runs",
@@ -52,8 +53,11 @@ export const homeSectionErrors: Readonly<Record<HomeSection, string>> = {
   cards: "Couldn't load cards",
 };
 
-/** Get set up shows no skeleton: it appears only once it knows setup isn't done (PH 2.6). */
-const withoutSkeleton: ReadonlySet<HomeSection> = new Set<HomeSection>(["setup"]);
+/**
+ * Get set up shows no skeleton: it appears only once it knows setup isn't done (PH 2.6). Problems
+ * neither: it appears only while a file has an error (C348).
+ */
+const withoutSkeleton: ReadonlySet<HomeSection> = new Set<HomeSection>(["problems", "setup"]);
 
 /** Tells the section whether its card has nothing to show; see {@link HomeSectionEmpty}. */
 const HomeSectionEmptyReport = createContext<(empty: boolean) => void>(() => {});
