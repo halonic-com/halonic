@@ -14,7 +14,6 @@ import type {
   GoogleSetupPorts,
   GoogleSetupReadPorts,
   ModelSettingsGate,
-  ProviderKeyStore,
   RequestCountStore,
   RequestLog,
   Server,
@@ -26,6 +25,8 @@ import type {
   WorkspaceInfo,
 } from "./api.ts";
 import { createServer } from "./create-server.ts";
+import type { ModelChoicePort } from "./model-choice-api.ts";
+import type { ProviderKeyStore } from "./provider-key-store.ts";
 
 /** A port the test doesn't expect the server to touch: any call fails the test loudly. */
 function unusedPort<Port extends object>(name: string): Port {
@@ -114,18 +115,20 @@ function optionalPorts(
     | "google"
     | "googleRead"
     | "providerKeys"
+    | "modelChoice"
     | "connectors"
     | "workspace"
     | "studioPage"
     | "requestLog"
   >,
 ): Partial<ServerPorts> {
-  const { google, googleRead, providerKeys, connectors, workspace, studioPage, requestLog } =
-    options;
+  const { google, googleRead, providerKeys, modelChoice, connectors } = options;
+  const { workspace, studioPage, requestLog } = options;
   return {
     ...(google === undefined ? {} : { google }),
     ...(googleRead === undefined ? {} : { googleRead }),
     ...(providerKeys === undefined ? {} : { providerKeys }),
+    ...(modelChoice === undefined ? {} : { modelChoice }),
     ...(connectors === undefined ? {} : { connectors }),
     ...(workspace === undefined ? {} : { workspace }),
     ...(studioPage === undefined ? {} : { studioPage }),
@@ -151,6 +154,7 @@ export function testServer(options: {
   google?: GoogleSetupPorts;
   googleRead?: GoogleSetupReadPorts;
   providerKeys?: ProviderKeyStore;
+  modelChoice?: ModelChoicePort;
   connectors?: ConnectorCallPorts;
   requestLog?: RequestLog;
   workspace?: WorkspaceInfo;

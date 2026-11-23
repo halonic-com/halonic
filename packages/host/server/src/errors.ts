@@ -204,6 +204,26 @@ export const serverErrors = {
     message:
       "This server's provider keys are set when it is deployed, so they can't be changed here.",
   },
+  modelChoiceNotSupported: {
+    status: 404,
+    code: "model_choice_not_supported",
+    message: "This server can't test or save a model choice.",
+  },
+  fromOtherSite: {
+    status: 403,
+    code: "from_other_site",
+    message: "This address only answers this server's own pages.",
+  },
+  keyNeedsSecureConnection: {
+    status: 403,
+    code: "secure_connection_required",
+    message: "Send the key over HTTPS or from this computer.",
+  },
+  tooManyTests: {
+    status: 429,
+    code: "too_many_tests",
+    message: "Too many model tests. Try again later.",
+  },
   secretNameRefused: {
     status: 400,
     code: "secret_name_refused",

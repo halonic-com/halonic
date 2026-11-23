@@ -19,6 +19,8 @@ import type {
   TokenStore,
 } from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
+import type { ModelChoicePort } from "./model-choice-api.ts";
+import type { ProviderKeyStore } from "./provider-key-store.ts";
 
 /**
  * The `Request → Response` handler behind `halonic serve` and a cloud Worker.
@@ -399,23 +401,6 @@ export interface StudioPage {
   read(path: string): Promise<Uint8Array | null>;
 }
 
-/**
- * The three things the write-only key routes do with a provider key. It has no
- * way to read a value back, so a route can't leak one even by mistake. A host
- * with a `SecretStore` makes one with `providerKeysOf`.
- */
-export interface ProviderKeyStore {
-  /** Whether a key is stored under the name. */
-  has(name: string): Promise<boolean>;
-  /**
-   * Saves a key, replacing the one under the same name. A store whose keys can't change throws
-   * `ProviderKeysReadOnlyError`, which the routes answer with 409 `keys_read_only`.
-   */
-  set(name: string, value: string): Promise<void>;
-  /** Removes a key. Removing one that isn't stored succeeds. A read-only store throws as `set` does. */
-  remove(name: string): Promise<void>;
-}
-
 /** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
 export interface ServerPorts {
   /** Runs workflows; the server only forwards start, send, cancel and subscribe calls to it. */
@@ -432,6 +417,8 @@ export interface ServerPorts {
    * routes. Without it those routes answer 404 `keys_not_supported`.
    */
   readonly providerKeys?: ProviderKeyStore;
+  /** The first run's model choice, for `/api/model-choice/…`. Without it those routes answer 404. */
+  readonly modelChoice?: ModelChoicePort;
   /** Hashes and checks the sign-in password. The target picks the format. */
   readonly passwordHasher: PasswordHasher;
   /** Shared login limits and session records, so every instance of a deployment agrees. */

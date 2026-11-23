@@ -1,8 +1,9 @@
 import type { Coordination } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { ProviderKeyStore, RequestLogEntry, Server } from "./api.ts";
+import type { RequestLogEntry, Server } from "./api.ts";
 import { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
+import type { ProviderKeyStore } from "./provider-key-store.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const canaryValue = "sk-canary-value-1234";

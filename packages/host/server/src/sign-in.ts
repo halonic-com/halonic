@@ -33,6 +33,9 @@ const loginWindowMs = 15 * 60 * 1000;
 const loginAttemptsPerWindow = 10;
 const loginAttemptsPerWindowForServer = 100;
 
+/** The session of every request on a server with no password, which answers only on loopback. */
+export const thisComputerSession = "this-computer";
+
 /** More than any real password; it keeps the work of one check bounded. */
 const maxPasswordLength = 1024;
 
@@ -48,6 +51,12 @@ export interface SignIn {
    * check has already refused everything else.
    */
   isSignedIn(request: Request, context: RequestContext): Promise<boolean>;
+  /**
+   * The id of the session the request is signed in with, or `null` when it isn't signed in: the
+   * SHA-256 of the session token, never the token, or {@link thisComputerSession} on a server
+   * with no password.
+   */
+  session(request: Request, context: RequestContext): Promise<string | null>;
 }
 
 type SignInPorts = Pick<ServerPorts, "secrets" | "passwordHasher" | "coordination" | "clock">;
@@ -60,7 +69,33 @@ export function createSignIn(ports: SignInPorts): SignIn {
    * be used to sign in. The token is 32 random bytes, so a fast hash is enough.
    */
   async function sessionKey(token: string): Promise<string> {
-    return `session:${await sha256Hex(token)}`;
+    return sessionKeyOf(await sha256Hex(token));
+  }
+
+  function sessionKeyOf(sessionId: string): string {
+    return `session:${sessionId}`;
+  }
+
+  async function session(request: Request, context: RequestContext): Promise<string | null> {
+    const hash = await secrets.get(passwordSecretName);
+    if (hash === null) {
+      return thisComputerSession;
+    }
+    const token = readSessionToken(request, context);
+    if (token === null) {
+      return null;
+    }
+    const sessionId = await sha256Hex(token);
+    const key = sessionKeyOf(sessionId);
+    const stored = await coordination.read(key);
+    if (stored === null) {
+      return null;
+    }
+    if (!(await isLive(stored, hash))) {
+      await coordination.compareAndSet(key, stored, null);
+      return null;
+    }
+    return sessionId;
   }
 
   async function startSession(
@@ -158,25 +193,10 @@ export function createSignIn(ports: SignInPorts): SignIn {
     },
 
     async isSignedIn(request, context) {
-      const hash = await secrets.get(passwordSecretName);
-      if (hash === null) {
-        return true;
-      }
-      const token = readSessionToken(request, context);
-      if (token === null) {
-        return false;
-      }
-      const key = await sessionKey(token);
-      const stored = await coordination.read(key);
-      if (stored === null) {
-        return false;
-      }
-      if (!(await isLive(stored, hash))) {
-        await coordination.compareAndSet(key, stored, null);
-        return false;
-      }
-      return true;
+      return (await session(request, context)) !== null;
     },
+
+    session,
   };
 }
 

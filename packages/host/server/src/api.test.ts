@@ -27,6 +27,7 @@ verifies("server.api", () => {
       | "webhooks"
       | "secrets"
       | "providerKeys"
+      | "modelChoice"
       | "passwordHasher"
       | "coordination"
       | "requestCounts"
