@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-14808 (Liam's D3); HAL-16248 (the refusal's wording)
+- Source: HAL-14808 (Liam's D3); HAL-16248 (the refusal's wording); HAL-16722 (the commit message, C754)
 
-When Continue saves a model choice in a served window and the workspace has history, the `halonic serve` command shall write only the choice files it changes (`models.yaml`, `workspace.yaml`, the one `providers/<name>.yaml`) and commit only those, in one commit with the message "Save the model picked in a served window", leaving every other file, staged or not, as it was.
+When Continue saves a model choice in a served window and the workspace has history, the `halonic serve` command shall write only the choice files it changes (`models.yaml`, `workspace.yaml`, the one `providers/<name>.yaml`) and commit only those, in one commit with the message "Save the model picked through halonic serve", leaving every other file, staged or not, as it was.
 
 If one of those files already has changes that aren't committed, staged or not, then the command shall write and commit nothing and refuse with "Couldn't save: <files> has changes that aren't committed. Commit or undo them, then try again.", naming each such file, "a and b" for two and "a, b and c" for more, with "have" for more than one.
 

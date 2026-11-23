@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-`halonic serve` lets a signed-in browser save a provider key on this computer and test and save a model choice, committing only the files the choice changes; it refuses when one of them has changes that aren't committed, and trust stays a step on the computer.
+`halonic serve` lets you save a provider key and pick a model from a signed-in browser; it commits only the files the choice changes, refuses when one of them has changes that aren't committed, and a new provider is still trusted on the computer that serves the workspace.
