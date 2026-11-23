@@ -18,7 +18,7 @@ const monitorPostpone = "issues.monitors.postpone" as PluginCapability;
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.agent-tools",
   apiVersion: 1,
-  version: "0.4.0",
+  version: "0.5.0",
   displayName: "Agent tools",
   description:
     "Halonic's tools beside Paperclip. The PR watcher marks a task done once its pull requests merged with a green ci-ok, and wakes the author for a red ci-ok, a conflict or a new review finding.",
@@ -31,7 +31,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "issues.read",
     // Only `done`: src/plugin/host.ts is the one place that writes a status, through doneOnly.
     // A task's effort goes through Paperclip's own API instead (src/plugin/task-effort.ts),
-    // because the SDK's update leaves that field out.
+    // because the SDK's update leaves that field out. The difficulty tagger sends only a task's
+    // labelIds, through setTaskLabels in the same file, changing only its D1–D4 and opus-only labels.
     "issues.update",
     "issues.wakeup",
     "issue.comments.read",
@@ -39,7 +40,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // Only GET requests to api.github.com and GraphQL queries to its /graphql (both readers'
     // guards); the manifest can't list hosts. ready_for_review also calls the precheck service
     // at the address in the settings (src/plugin/ready-for-review.ts), and the task effort
-    // handler sends one task change to Paperclip's API at the address in the settings.
+    // handler sends one task change to Paperclip's API at the address in the settings. The
+    // difficulty tagger sends one POST to api.anthropic.com/v1/messages per new task text, and
+    // reads the company's labels from Paperclip's API.
     "http.outbound",
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
@@ -50,6 +53,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // through the gate in src/board-check/writes.ts.
     // A new comment is looked at for a board ask at once; runs that failed (part a).
     // Task effort (HAL-16876): a created or changed task's tags and effort.
+    // Difficulty tagger (HAL-16901): a created task, or one whose title or description changed.
     "events.subscribe",
     // Each job emits only its own `pr-watch` or `board-check` event, once per company, so its
     // pass runs in a call the host scopes to that company (HAL-16941, src/plugin/scheduled.ts).
@@ -177,6 +181,19 @@ export const manifest: PaperclipPluginManifestV1 = {
         title: "Paperclip API key",
         description:
           "The secret with the API key the task effort handler sends its task changes with. It sends only a task's assigneeAdapterOverrides, with the effort changed.",
+        format: "secret-ref",
+      },
+      difficultyTaggerForVersion: {
+        type: "string",
+        title: "Difficulty tagger for version",
+        description:
+          "Empty: the difficulty tagger is off and calls nothing. Enter the plugin's version to turn it on: a new task, or one whose title or description changes, gets D1–D4 and opus-only labels from Haiku (code tasks only), unless a person or Chief set its difficulty labels. It also needs the Tagger Anthropic key and the Paperclip API and key. After an upgrade it stops until you enter the new version. It stops for the month once spend passes $5.",
+      },
+      taggerAnthropicKey: {
+        type: "string",
+        title: "Tagger Anthropic key",
+        description:
+          "The secret with the difficulty tagger's Anthropic API key (TAGGER_ANTHROPIC_API_KEY). Used only for the tagger's call to claude-haiku-5-5; never logged.",
         format: "secret-ref",
       },
       effortReviewers: {
