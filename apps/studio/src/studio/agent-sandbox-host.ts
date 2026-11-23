@@ -137,7 +137,8 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   #refusedCheck(reason: string): SandboxCheckFacts {
     if (this.#wslSetup !== undefined) {
       if (this.#restartNeeded) return { state: "restart-needed" };
-      if (reason === "distro-missing") return { state: "needs-setup" };
+      // Importing the distro asks for no administrator rights (HAL-16780).
+      if (reason === "distro-missing") return { state: "needs-setup", withoutAdmin: true };
     }
     return { state: "unavailable", code: reason };
   }

@@ -44,7 +44,7 @@ pub fn wsl_setup_command(
         .arg(profile_folder)
         .arg("--wsl-image")
         .arg(image)
-        .arg("--resume-command")
+        .arg("--wsl-resume")
         .arg(resume_command)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -59,10 +59,10 @@ pub fn resume_command(program: &Path) -> String {
     format!("\"{}\"", program.display())
 }
 
-/// How the setup said it ended: `WslSetupResult` of
-/// `packages/adapters/sandbox-srt`. `reason` is a code from the sandbox
-/// port's list, `code` the setup's own; `detail` is for the log and
-/// support only. Fields the shell doesn't use are ignored.
+/// How the setup said it ended: `WslSetupCommandResult` of `apps/agent-host`,
+/// the setup's own `WslSetupResult` or why it didn't run. `reason` is a code
+/// from the sandbox port's list, `code` the setup's own; `detail` is for the
+/// log and support only. Fields the shell doesn't use are ignored.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(tag = "outcome", rename_all = "kebab-case")]
 pub enum WslSetupEnd {
@@ -77,6 +77,19 @@ pub enum WslSetupEnd {
     Failed {
         reason: String,
         code: String,
+        #[serde(default)]
+        detail: String,
+    },
+    /// It didn't start: a flag the shell passed isn't valid, or the host
+    /// isn't on Windows. A bug, never the person's to fix.
+    Refused {
+        code: String,
+        #[serde(default)]
+        detail: String,
+    },
+    /// Anything the setup threw, such as a `wsl.exe` that can't be started
+    /// or a state it can't read or save.
+    Error {
         #[serde(default)]
         detail: String,
     },

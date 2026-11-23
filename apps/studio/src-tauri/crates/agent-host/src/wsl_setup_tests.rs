@@ -32,7 +32,7 @@ fn sandbox_wsl_setup_command_passes_only_the_shells_own_arguments() {
             "profile",
             "--wsl-image",
             "app/halonic-wsl.tar.gz",
-            "--resume-command",
+            "--wsl-resume",
             "\"app/Halonic.exe\"",
         ]
         .map(OsStr::new)
@@ -51,7 +51,7 @@ fn sandbox_wsl_setup_command_resumes_with_the_app_quoted() {
 fn sandbox_wsl_setup_command_reads_each_ending_from_the_last_line() {
     let cases = [
         (
-            "{\"outcome\":\"done\",\"residuals\":[\"default-distro\"],\"runtime\":\"shell\"}\n",
+            "{\"outcome\":\"done\",\"residuals\":[\"default-distro\"],\"runtime\":\"left-to-shell\"}\n",
             WslSetupEnd::Done,
         ),
         (
@@ -74,6 +74,19 @@ fn sandbox_wsl_setup_command_reads_each_ending_from_the_last_line() {
                 detail: "d".to_owned(),
             },
         ),
+        (
+            "{\"outcome\":\"refused\",\"code\":\"bad-flags\",\"detail\":\"d\"}",
+            WslSetupEnd::Refused {
+                code: "bad-flags".to_owned(),
+                detail: "d".to_owned(),
+            },
+        ),
+        (
+            "{\"outcome\":\"error\",\"detail\":\"wsl.exe didn't start\"}",
+            WslSetupEnd::Error {
+                detail: "wsl.exe didn't start".to_owned(),
+            },
+        ),
     ];
     for (output, expected) in cases {
         assert_eq!(
@@ -92,6 +105,7 @@ fn sandbox_wsl_setup_command_reads_no_answer_from_anything_else() {
         "not JSON",
         "{\"outcome\":\"installed\"}",
         "{\"outcome\":\"failed\",\"reason\":\"other\"}",
+        "{\"outcome\":\"refused\",\"detail\":\"d\"}",
         "{\"outcome\":\"done\"}\nnot JSON",
         "[]",
     ] {

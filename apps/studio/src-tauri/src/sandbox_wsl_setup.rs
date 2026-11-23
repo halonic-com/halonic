@@ -168,6 +168,17 @@ fn answer_of_end(end: WslSetupEnd) -> WslSetupAnswer {
             code: Some(code),
             details: detail,
         },
+        // Neither is the person's to fix: the page offers Copy details.
+        WslSetupEnd::Refused { code, detail } => WslSetupAnswer::Failed {
+            reason: "other".to_owned(),
+            code: Some(code),
+            details: detail,
+        },
+        WslSetupEnd::Error { detail } => WslSetupAnswer::Failed {
+            reason: "other".to_owned(),
+            code: Some("error".to_owned()),
+            details: detail,
+        },
     }
 }
 
@@ -212,6 +223,19 @@ mod tests {
                     detail: "d".to_owned(),
                 },
                 json!({"outcome": "failed", "reason": "other", "code": "distro-not-ours", "details": "d"}),
+            ),
+            (
+                WslSetupEnd::Refused {
+                    code: "bad-flags".to_owned(),
+                    detail: "d".to_owned(),
+                },
+                json!({"outcome": "failed", "reason": "other", "code": "bad-flags", "details": "d"}),
+            ),
+            (
+                WslSetupEnd::Error {
+                    detail: "d".to_owned(),
+                },
+                json!({"outcome": "failed", "reason": "other", "code": "error", "details": "d"}),
             ),
         ];
         for (end, expected) in cases {

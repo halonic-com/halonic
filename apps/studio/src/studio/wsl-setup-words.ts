@@ -4,19 +4,30 @@ import type { ShellWslSetup } from "./sandbox-wsl-setup-shell.ts";
 
 /**
  * Why the WSL setup failed, where the sandbox-start catalogue's words for the port's reason would
- * be wrong: those reasons are `other`, which says Halonic can't tell (HAL-16780). Each goes after
- * "The sandbox isn't set up: ".
+ * be wrong: those reasons are `other`, which says Halonic can't tell (Noah, HAL-16780). Each goes
+ * after "The sandbox isn't set up: ".
  */
 const setupCodeWords: Readonly<Record<string, string>> = {
   "distro-not-ours":
-    "a WSL distro called halonic is already on this computer, and Halonic didn't install it, so it isn't replaced. Remove or rename that distro, then try again.",
+    "a WSL distribution called halonic is already on this computer, and Halonic didn't set it up, so Halonic leaves it alone. If you no longer need it or anything in it, remove it with wsl --unregister halonic, then try again.",
   "kernel-too-old": "WSL needs an update first. Run wsl --update in PowerShell, then try again.",
   "kernel-unreadable": "WSL needs an update first. Run wsl --update in PowerShell, then try again.",
 };
 
+/**
+ * Codes of a setup that broke rather than failed: it couldn't read or save its state, or refused
+ * the shell's own flags (HAL-16770). Trying again would hit them again, so they get **Copy details**.
+ */
+const internalCodes: ReadonlySet<string> = new Set([
+  "error",
+  "bad-flags",
+  "not-windows",
+  "in-distro",
+]);
+
 /** The image of Halonic's distro isn't beside the app (until the installer ships it, HAL-16780). */
 const IMAGE_MISSING =
-  "this copy of Halonic doesn't include the Linux system the sandbox runs in. Reinstall the Halonic desktop app.";
+  "this copy of Halonic is missing the files the sandbox is built from. Install the latest Halonic desktop app, then try again.";
 
 /** The shell couldn't start the host beside the app (C525-7, HAL-15013). */
 const HOST_DIDNT_START = "Windows couldn't start Halonic's sandbox helper.";
@@ -43,8 +54,7 @@ export function wslSetupOutcome(answer: ShellWslSetup): SandboxOutcome | null {
     case "still_running":
       return { kind: "setup", how: "still-running", repairing: false };
     case "failed":
-      console.error("The WSL setup failed", answer.code ?? answer.reason, answer.details);
-      return { kind: "setup", how: "failed", reason: failedReason(answer.reason, answer.code) };
+      return failedOutcome(answer);
     case "image_missing":
       return { kind: "setup", how: "failed", reason: IMAGE_MISSING };
     case "not_started":
@@ -58,6 +68,15 @@ export function wslSetupOutcome(answer: ShellWslSetup): SandboxOutcome | null {
           answer.exitCode === undefined ? NO_ANSWER : `${NO_ANSWER} Exit code ${answer.exitCode}.`,
       };
   }
+}
+
+function failedOutcome(answer: Extract<ShellWslSetup, { outcome: "failed" }>): SandboxOutcome {
+  const reason = failedReason(answer.reason, answer.code);
+  if (answer.code !== undefined && internalCodes.has(answer.code)) {
+    return { kind: "setup", how: "failed", reason, details: `${answer.code}: ${answer.details}` };
+  }
+  console.error("The WSL setup failed", answer.code ?? answer.reason, answer.details);
+  return { kind: "setup", how: "failed", reason };
 }
 
 /** The setup's own words for its code where it has them, else the catalogue's for the reason. */

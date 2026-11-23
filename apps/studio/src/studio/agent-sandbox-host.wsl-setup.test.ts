@@ -63,7 +63,7 @@ verifies("studio.agent-sandbox-host", () => {
 
   it("reads a missing distro as Needs setting up where the shell runs the WSL setup", async () => {
     const { facts } = withWslSetup(refusing("distro-missing").transport, { outcome: "done" });
-    expect(await facts.check()).toEqual({ state: "needs-setup" });
+    expect(await facts.check()).toEqual({ state: "needs-setup", withoutAdmin: true });
     const other = withWslSetup(refusing("runtime-missing").transport, { outcome: "done" });
     expect(await other.facts.check()).toEqual({ state: "unavailable", code: "runtime-missing" });
   });
@@ -120,7 +120,7 @@ verifies("studio.sandbox-wsl-setup-through-shell", () => {
   });
 
   it.each([
-    ["distro-not-ours", "a WSL distro called halonic is already on this computer"],
+    ["distro-not-ours", "a WSL distribution called halonic is already on this computer"],
     ["kernel-too-old", "WSL needs an update first"],
     ["kernel-unreadable", "WSL needs an update first"],
   ])(
@@ -149,7 +149,7 @@ verifies("studio.sandbox-wsl-setup-through-shell", () => {
       kind: "setup",
       how: "failed",
       reason:
-        "this copy of Halonic doesn't include the Linux system the sandbox runs in. Reinstall the Halonic desktop app.",
+        "this copy of Halonic is missing the files the sandbox is built from. Install the latest Halonic desktop app, then try again.",
     });
   });
 
@@ -173,6 +173,24 @@ verifies("studio.sandbox-wsl-setup-through-shell", () => {
       how: "failed",
       reason: "the host stopped before it said how it ended.",
       details: "the host stopped before it said how it ended. Exit code 3.",
+    });
+  });
+
+  it.each([
+    ["error", "wsl.exe didn't start"],
+    ["bad-flags", "--wsl-image must be an absolute path on a drive"],
+  ])("offers Copy details for a setup that broke with %s", async (code, details) => {
+    const { facts } = withWslSetup(refusing("distro-missing").transport, {
+      outcome: "failed",
+      reason: "other",
+      code,
+      details,
+    });
+    expect(await facts.setUp()).toEqual({
+      kind: "setup",
+      how: "failed",
+      reason: sandboxStartWords("other").reason,
+      details: `${code}: ${details}`,
     });
   });
 });

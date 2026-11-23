@@ -37,6 +37,8 @@ export type SandboxCheckFacts =
        * them takes back (`keptAccess: "manual"`), so **Remove the sandbox…** shows too (HAL-15851).
        */
       readonly accessKept?: true;
+      /** The setup asks for no administrator rights: Halonic's WSL distro is missing (HAL-16780). */
+      readonly withoutAdmin?: true;
     }
   | { readonly state: "needs-repair"; readonly reason: string }
   /**
@@ -290,10 +292,15 @@ function needsSetupView(
     lead: check.setupAgain === true ? text.NEEDS_SETUP_AGAIN : text.NEEDS_SETUP,
     leadNote: accessKept ? text.ACCESS_KEPT : null,
     callout,
-    hint: viewOnly ? text.VIEW_ONLY : text.ADMIN_ONCE,
+    hint: viewOnly ? text.VIEW_ONLY : adminHint(check),
     primary: viewOnly ? null : { action: "set-up", label: text.SET_UP, busy: false },
     secondary: accessKept ? ["check-again", "remove"] : ["check-again"],
   };
+}
+
+/** No line about administrator rights where the setup never asks for them. */
+function adminHint(check: SandboxCheckFacts): string | null {
+  return check.state === "needs-setup" && check.withoutAdmin === true ? null : text.ADMIN_ONCE;
 }
 
 /**
@@ -340,7 +347,8 @@ function busyView(running: SandboxRunning, check: SandboxCheckFacts): SandboxVie
   const steps: SandboxStep[] =
     running.step !== "checking"
       ? [
-          running.step === "elevating"
+          // No prompt to look for where the setup never asks for administrator rights.
+          running.step === "elevating" && adminHint(check) !== null
             ? { mark: "doing", label: doing, note: text.UAC_WAITING }
             : { mark: "doing", label: doing },
           ...(removing ? [] : [{ mark: "waiting", label: text.STEP_CHECKING } as const]),
