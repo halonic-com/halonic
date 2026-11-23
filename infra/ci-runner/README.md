@@ -148,7 +148,7 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
 
 - **App key:** the slot script refuses to start unless `/etc/halonic-ci/app.pem` is a root-owned
   `0400` file, and unless `/etc/subuid` has the `dockremap` range (userns-remap on).
-- **Weekly audit (Timothy):** check the org audit log for any change to the `halonic-ci` runner
+- **Weekly audit (the board):** check the org audit log for any change to the `halonic-ci` runner
   group (repositories, workflows, public repos) and to the `halonic-ci-runners` App (C6).
 - **Pause:** while `/etc/halonic-ci/paused` exists, a slot registers no runner: each cycle sees
   the file, waits 30 s and ends. A job already running finishes. Remove the file and the slots

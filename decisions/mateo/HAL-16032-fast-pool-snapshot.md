@@ -1,7 +1,7 @@
 # Decision: the fast pool's overlays read a snapshot of the shared caches, not the live folder
 
 - Task: HAL-16032 (Julian's N1 in his C1–C8 review on HAL-15972)
-- Approval: follow-up to the board's approval of the fast pool (HAL-15972, Timothy, 22 Nov); Liam signs this note in review, Julian re-checks C2 on the task
+- Approval: follow-up to the board's approval of the fast pool (HAL-15972, 22 Nov); Liam signs this note in review, Julian re-checks C2 on the task
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OypibRVBz6B5274N2UjsV2ydMxU8QP4g1C+uCk8FzYHIXFpzCaeArHiFIaz7SaJA1lFPoSHPhUHLczC2OhWBBw==
 

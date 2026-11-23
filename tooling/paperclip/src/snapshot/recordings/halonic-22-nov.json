@@ -15,7 +15,7 @@
                 "estimatedTimeToMerge": 0,
                 "solo": false,
                 "enqueuer": {
-                  "login": "timothy-halonic"
+                  "login": "board-member"
                 },
                 "headCommit": {
                   "oid": "43d9fdc2d02b2a6b172260afe61197f287f661ec"
@@ -31,7 +31,7 @@
                 "estimatedTimeToMerge": 0,
                 "solo": false,
                 "enqueuer": {
-                  "login": "timothy-halonic"
+                  "login": "board-member"
                 },
                 "headCommit": {
                   "oid": "32a8f66715bf06d0498b24ccba5a221dedb4380b"
@@ -47,7 +47,7 @@
                 "estimatedTimeToMerge": 0,
                 "solo": false,
                 "enqueuer": {
-                  "login": "timothy-halonic"
+                  "login": "board-member"
                 },
                 "headCommit": {
                   "oid": "ba5a7e079e79cf11cff8d255e1c232e3e457f0e8"
@@ -63,7 +63,7 @@
                 "estimatedTimeToMerge": 0,
                 "solo": false,
                 "enqueuer": {
-                  "login": "timothy-halonic"
+                  "login": "board-member"
                 },
                 "headCommit": {
                   "oid": "f54ca514872054ad934c0409bfa57a156cf5903e"

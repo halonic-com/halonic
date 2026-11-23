@@ -7,9 +7,9 @@ import { signature } from "./writes.ts";
  * logs or posts it. An ask is remembered by its comment id.
  */
 
-/** The `sv.cjs` pattern, word for word. */
+/** The `sv.cjs` pattern, but by role only: an ask names "the board", never a person. */
 export const askPattern =
-  /(for the board|board.s (yes|answer|decision|verdict|card)|timothy|waiting on the board|needs the board|card (is )?(up|posted)|board card)/i;
+  /(for the board|board.s (yes|answer|decision|verdict|card)|waiting on the board|needs the board|card (is )?(up|posted)|board card)/i;
 
 /** How far back an ask counts, as in `sv.cjs`: two passes of 10 minutes overlap. */
 export const askWindowMs = 12 * 60_000;

@@ -10,7 +10,13 @@ export function ago(minutes: number): string {
 
 export const head = "abc1234def5678900000000000000000000000000";
 
-/** An open, ready, green `fast-track` pull request labelled by Timothy an hour ago, with changes. */
+/** The board's GitHub login in these tests, a placeholder for the real one. */
+export const boardLogin = "board-member";
+
+/** The pass's settings, with the board's placeholder login and nothing that unblocks. */
+export const settings = { unblocks: new Set<number>(), labelAdder: boardLogin };
+
+/** An open, ready, green `fast-track` pull request labelled by the board an hour ago, with changes. */
 export function pull(
   number: number,
   open: Partial<OpenFacts> = {},
@@ -33,7 +39,7 @@ export function pull(
       ciOk: "success",
       draftCiOk: "missing",
       inQueue: false,
-      labels: [{ name: "fast-track", addedBy: "timothy-halonic", addedAt: ago(60) }],
+      labels: [{ name: "fast-track", addedBy: boardLogin, addedAt: ago(60) }],
       finding: null,
       approvals: [],
       failingChecks: [],
@@ -61,7 +67,7 @@ export function entry(
     position,
     state: "AWAITING_CHECKS",
     enqueuedAt: ago(5),
-    enqueuedBy: "timothy-halonic",
+    enqueuedBy: boardLogin,
     groupHead: `group${number}`,
     estimatedSeconds: null,
     solo: false,

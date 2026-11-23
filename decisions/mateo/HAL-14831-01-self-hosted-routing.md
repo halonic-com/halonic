@@ -1,7 +1,7 @@
 # Decision: ci.yml can send merge groups and pushes to main to our own CI server, switched off until the variables are set
 
 - Task: HAL-14831 (plan revision 2, Julian's security verdict "approved with changes", the board's note of 21 Nov that the runners are built)
-- Approval: the board decided to run our own CI on the new server (Timothy, 21 Nov, HAL-14831); Liam signs this note in review
+- Approval: the board decided to run our own CI on the new server (21 Nov, HAL-14831); Liam signs this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MUABUECCeo8q8XleI06HIMFHDEAOiTjzA1H7YDmPIP5FbKBKvS3U64H8388CuJ9o2tnAsGAil1D3D21nQPdiAw==
 

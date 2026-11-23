@@ -14,9 +14,9 @@ When an agent calls the Agent tools plugin's `queue_state` tool, the plugin shal
 - Given that snapshot taken at 15:00 and two entries that share one group commit with 2 jobs waiting,
   when an agent calls `queue_state` at 15:05,
   then it lists both entries in queue order and counts 2 waiting jobs, the longest 7 minutes.
-- Given an open pull request labelled `fast-track` by `timothy-halonic` and another whose label event GitHub no longer returns,
+- Given an open pull request labelled `fast-track` by `board-member` and another whose label event GitHub no longer returns,
   when an agent calls `queue_state`,
-  then the first names `timothy-halonic` and the second says unknown, never counts as allowed.
+  then the first names `board-member` and the second says unknown, never counts as allowed.
 - Given a snapshot taken 45 minutes ago,
   when an agent calls `queue_state`,
   then the answer says the snapshot is stale.

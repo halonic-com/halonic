@@ -1,7 +1,7 @@
 # Decision: pushes to main don't wait for each other
 
 - Task: HAL-15187
-- Approval: the board's speed-up decision on HAL-14831 (Timothy, 21 Nov), split out to HAL-15187; Liam reviews it and signs this note as the CTO
+- Approval: the board's speed-up decision on HAL-14831 (21 Nov), split out to HAL-15187; Liam reviews it and signs this note as the CTO
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wrKJrqoWZysLRTldi+r/uv2Sky8hFO8J0zR7nYX3OP5PutExAYxjHPTvLjHhwCf0kTzMQCJhIULoVCV3Ot8LBQ==
 

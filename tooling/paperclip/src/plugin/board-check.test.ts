@@ -166,7 +166,7 @@ verifies("paperclip.board-check-writes", () => {
       "hunter2-made-up-password",
     ];
     const leaky = (id: string, secret: string) =>
-      ask(id, { body: `For the board: the key is ${secret}. Timothy, please rotate it.` });
+      ask(id, { body: `For the board: the key is ${secret}. Board, please rotate it.` });
     const comments = {
       "task-16003": [leaky("comment-1", secrets[0] ?? "")],
       "task-16004": [leaky("comment-2", secrets[1] ?? "")],
