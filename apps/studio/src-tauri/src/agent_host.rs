@@ -39,6 +39,9 @@ pub use updates::DistroStartChecks;
 #[path = "agent_host_choice_save.rs"]
 pub mod choice_save;
 
+#[path = "agent_host_unfenced_allow.rs"]
+mod unfenced_allow;
+
 #[path = "agent_host_life.rs"]
 mod life;
 pub use life::{end_page_streams, host_answers, stop_host};
@@ -188,6 +191,7 @@ pub async fn agent_host_request<R: Runtime>(
     body: Option<Value>,
 ) -> Result<HostAnswer, HostRefusal> {
     let route = named_route(&route, Answer::Json)?;
+    unfenced_allow::ask_before_allow(&app, route).await?;
     let response = send(&app, route, body).await?;
     read_answer(response).await
 }
