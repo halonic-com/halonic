@@ -1,6 +1,7 @@
 import type { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { HostIo } from "../host.ts";
 import { copySandboxSetting, removeSandboxSettingCopy } from "./setting-copy.ts";
+import { wslSetupCommand } from "./wsl-setup-command.ts";
 
 /** Runs the `--sandbox-*` command in the arguments, or returns `undefined` when there is none. */
 export function sandboxCommand(
@@ -25,6 +26,8 @@ export function sandboxCommand(
     return sandbox()
       .takeBack()
       .then((result) => answer(io, result));
+  // Prints its own result, which isn't `ok`: Studio's shell reads the setup's outcome.
+  if (args.includes("--wsl-setup")) return wslSetupCommand(args, profileFolder, io);
   const profileCommand = profileCommandOf(args);
   if (profileCommand === undefined) return undefined;
   if (profileFolder === undefined) {
