@@ -44,6 +44,9 @@
     "@halonicjs/adapter-git": [
       "./testing"
     ],
+    "@halonicjs/adapter-harness-bridge": [
+      "./web"
+    ],
     "@halonicjs/adapter-harness-claude-code": [
       "./environment"
     ],
