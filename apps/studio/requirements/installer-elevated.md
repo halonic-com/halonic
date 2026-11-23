@@ -14,7 +14,7 @@ This requirement doesn't cover `uninstall.exe` itself, or the earlier version's 
 
 - Given the installer template,
   when its sandbox step runs with administrator rights,
-  then it skips `--sandbox-take-back` and the check script, starts the helper with `setup`, and a helper exit code of 0 gives the outcome `unchecked`, shown as "✓ The agent sandbox is set up.".
+  then it skips `--sandbox-take-back` and the check script, starts the helper with `setup`, and a helper exit code of 0 gives the outcome `unchecked`, shown as "✓ The agent sandbox is set up. To check it, open Settings › Agent sandbox.".
 - Given the installer template,
   when the uninstaller removes the sandbox with administrator rights,
   then it runs neither `--sandbox-cleanup` nor `sandbox-remove.ps1`, and starts the helper with `remove`.

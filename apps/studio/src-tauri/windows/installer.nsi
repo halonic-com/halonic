@@ -2140,7 +2140,8 @@ Function PageFinish
     Pop $0
   ${ElseIf} $SandboxOutcome == "unchecked"
     ; Set up by an installer with administrator rights, which runs no check.
-    ${NSD_CreateLabel} 0 0 100% 10u "✓ The agent sandbox is set up."
+    ; Two lines, so the way to check it isn't cut.
+    ${NSD_CreateLabel} 0 0 100% 20u "✓ The agent sandbox is set up. To check it, open Settings › Agent sandbox."
     Pop $0
   ${ElseIf} $SandboxOutcome != ""
     ; The D44 fallback: the cause, then the same three sentences for every cause.
@@ -2326,7 +2327,7 @@ Function un.RemoveThroughHelper
     ${EndIf}
     StrCpy $2 "11"
   ${ElseIf} $2 == "timeout"
-    StrCpy $SandboxReason "it didn't finish within 300 seconds"
+    StrCpy $SandboxReason "Windows didn't finish removing it within 5 minutes"
     StrCpy $2 "11"
   ${Else}
     StrCpy $SandboxReason "the sandbox helper stopped with code $2"

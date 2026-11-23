@@ -79,12 +79,12 @@ held by another process, an approval, a timer.
   installer keeps a copy of itself in the profile's `updates\installers`
   folder until the next version has started once, and `updates\updates.log`
   says how to go back. It doesn't go back across a raise of srt's Windows
-  setup version (`setup-guard.ps1`, HAL-5404), nor when Windows raised the
-  update to administrator rights from an account whose other programs run
-  without them, as those programs can change the kept installer (HAL-16523):
-  the new version stays, and the log says why. Unless the update is silent,
-  the installer also shows that reason in a message, with the log's path
-  (HAL-16570).
+  setup version (`setup-guard.ps1`, HAL-5404). It doesn't go back either when
+  Windows raised the update to administrator rights from an account whose
+  other programs run without them, because those programs can change the kept
+  installer (HAL-16523). In both cases the new version stays, and the log says
+  why. Unless the update is silent, the installer also shows that reason in a
+  message, with the log's path (HAL-16570).
 - **Studio doesn't run raised.** On Windows, a Studio opened with "Run as
   administrator" from an account whose other programs run without those
   rights shows one message telling the person to open it normally, and
