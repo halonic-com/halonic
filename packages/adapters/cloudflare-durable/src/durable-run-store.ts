@@ -7,6 +7,7 @@ import type {
   RunStore,
 } from "@halonicjs/ports";
 import type { RunObjectNamespace } from "./durable-scheduler.ts";
+import { checkedNamePrefix, runObjectName } from "./object-names.ts";
 import type { RunObjectApi } from "./run-object-api.ts";
 
 /** Where {@link DurableRunStore} reads the run list from. `D1RunList` fits. */
@@ -20,7 +21,7 @@ export interface DurableRunStoreOptions<Id> {
   namespace: RunObjectNamespace<Id>;
   /** The run list the objects fill from their outbox. */
   runList: RunListReader;
-  /** Put before every run id to make the object's name; leave it out to use the run id itself. */
+  /** Put before every run id to make the object's name: empty or ending in `/`; leave it out to use the run id itself. */
   namePrefix?: string;
 }
 
@@ -41,10 +42,10 @@ export class DurableRunStore<Id = unknown> implements RunStore {
   constructor(options: DurableRunStoreOptions<Id>) {
     this.#namespace = options.namespace;
     this.#runList = options.runList;
-    this.#namePrefix = options.namePrefix ?? "";
+    this.#namePrefix = checkedNamePrefix(options.namePrefix);
   }
 
-  append(
+  async append(
     runId: string,
     expectedSeq: number,
     events: readonly RunEvent[],
@@ -53,15 +54,15 @@ export class DurableRunStore<Id = unknown> implements RunStore {
     return this.#object(runId).append(runId, expectedSeq, events, options);
   }
 
-  events(runId: string, afterSeq?: number): Promise<RunEvent[]> {
+  async events(runId: string, afterSeq?: number): Promise<RunEvent[]> {
     return this.#object(runId).events(afterSeq);
   }
 
-  snapshot(runId: string): Promise<RunSnapshot | null> {
+  async snapshot(runId: string): Promise<RunSnapshot | null> {
     return this.#object(runId).snapshot();
   }
 
-  get(runId: string): Promise<RunSummary | null> {
+  async get(runId: string): Promise<RunSummary | null> {
     return this.#object(runId).summary();
   }
 
@@ -70,6 +71,6 @@ export class DurableRunStore<Id = unknown> implements RunStore {
   }
 
   #object(runId: string): RunObjectApi {
-    return this.#namespace.get(this.#namespace.idFromName(`${this.#namePrefix}${runId}`));
+    return this.#namespace.get(this.#namespace.idFromName(runObjectName(this.#namePrefix, runId)));
   }
 }

@@ -34,7 +34,7 @@ runStoreContract(
     const runList = new D1RunList(DB, { scope: caseId });
     const suiteCase = new SuiteCase({ runList });
     const namespace = suiteCase.namespace(RUNS);
-    const store = new DurableRunStore({ namespace, runList, namePrefix: caseId });
+    const store = new DurableRunStore({ namespace, runList, namePrefix: `${caseId}/` });
     caseOfStore.set(store, suiteCase);
     return store;
   },

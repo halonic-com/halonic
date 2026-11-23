@@ -50,8 +50,8 @@ export interface Runtime {
 export interface RuntimeOptions {
   /**
    * Puts the blobs, the snapshots and every Durable Object name under this scope, so a test gets
-   * storage of its own from the bindings it shares. A deployment never sets it. The Durable
-   * Objects are named `scope` itself (the scheduler's, `scope` and the key).
+   * storage of its own from the bindings it shares. A deployment never sets it. The run objects
+   * are named `scope/` and the run id; the coordination and routines objects `scope` itself.
    */
   scope?: string;
 }
@@ -140,7 +140,10 @@ export async function createRuntime(
   const records = new D1RecordStore(env.DB);
   const runs = new D1RunList(env.DB);
   const definitions = definitionsOf(env, scope);
-  const scheduler = new DurableScheduler({ namespace: env.RUN, namePrefix: scope ?? "" });
+  const scheduler = new DurableScheduler({
+    namespace: env.RUN,
+    namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope),
+  });
   return {
     clock,
     secrets,
@@ -149,9 +152,12 @@ export async function createRuntime(
     runStore: new DurableRunStore({
       namespace: env.RUN,
       runList: runs,
-      namePrefix: scope ?? "",
+      namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope),
     }),
-    runEvents: new DurableRunEvents({ namespace: env.RUN, namePrefix: scope ?? "" }),
+    runEvents: new DurableRunEvents({
+      namespace: env.RUN,
+      namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope),
+    }),
     blobs: new R2BlobStore(env.BLOBS, scope === undefined ? undefined : scopedKeyPrefix(scope)),
     definitions,
     coordination: new DurableCoordination({

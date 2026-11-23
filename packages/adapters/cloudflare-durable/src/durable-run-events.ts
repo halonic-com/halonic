@@ -1,13 +1,14 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { RunEventListener, RunSubscription } from "@halonicjs/ports";
 import type { RunObjectNamespace } from "./durable-scheduler.ts";
+import { checkedNamePrefix, runObjectName } from "./object-names.ts";
 import type { RunObjectApi } from "./run-object-api.ts";
 
 /** What {@link DurableRunEvents} needs. */
 export interface DurableRunEventsOptions<Id> {
   /** The Durable Object namespace bound to `RunObject`. */
   namespace: RunObjectNamespace<Id>;
-  /** Put before every run id to make the object's name; must match the one of `DurableRunStore`. */
+  /** Put before every run id to make the object's name: empty or ending in `/`, and the one of `DurableRunStore`. */
   namePrefix?: string;
 }
 
@@ -41,7 +42,7 @@ export class DurableRunEvents<Id = unknown> {
 
   constructor(options: DurableRunEventsOptions<Id>) {
     this.#namespace = options.namespace;
-    this.#namePrefix = options.namePrefix ?? "";
+    this.#namePrefix = checkedNamePrefix(options.namePrefix);
   }
 
   /**
@@ -56,7 +57,7 @@ export class DurableRunEvents<Id = unknown> {
   }
 
   #object(runId: string): RunObjectApi {
-    return this.#namespace.get(this.#namespace.idFromName(`${this.#namePrefix}${runId}`));
+    return this.#namespace.get(this.#namespace.idFromName(runObjectName(this.#namePrefix, runId)));
   }
 }
 

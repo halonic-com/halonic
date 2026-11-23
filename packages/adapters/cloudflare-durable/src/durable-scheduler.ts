@@ -1,4 +1,5 @@
 import type { ScheduledTimer, Scheduler } from "@halonicjs/ports";
+import { checkedNamePrefix, timerObjectName } from "./object-names.ts";
 import type { RunHealth, RunObjectApi } from "./run-object-api.ts";
 
 /**
@@ -15,8 +16,9 @@ export interface DurableSchedulerOptions<Id> {
   /** The Durable Object namespace bound to `RunObject`. */
   namespace: RunObjectNamespace<Id>;
   /**
-   * Put before every key to make the object's name, so several deployments
-   * can share one namespace. Leave it out to use the key itself.
+   * Put before every key to make the object's name, so several scopes can
+   * share one namespace: empty or ending in `/`. Leave it out to use the key
+   * itself. A key is checked where the name is built.
    */
   namePrefix?: string;
 }
@@ -36,27 +38,27 @@ export class DurableScheduler<Id = unknown> implements Scheduler {
 
   constructor(options: DurableSchedulerOptions<Id>) {
     this.#namespace = options.namespace;
-    this.#namePrefix = options.namePrefix ?? "";
+    this.#namePrefix = checkedNamePrefix(options.namePrefix);
   }
 
-  schedule(key: string, timerId: string, at: string): Promise<void> {
+  async schedule(key: string, timerId: string, at: string): Promise<void> {
     return this.#object(key).schedule(key, timerId, at);
   }
 
-  cancel(key: string, timerId: string): Promise<void> {
+  async cancel(key: string, timerId: string): Promise<void> {
     return this.#object(key).cancel(key, timerId);
   }
 
-  pending(key: string): Promise<ScheduledTimer[]> {
+  async pending(key: string): Promise<ScheduledTimer[]> {
     return this.#object(key).pending(key);
   }
 
   /** How the run of `key` is moving, from its run object, for the watchdog. */
-  health(key: string): Promise<RunHealth> {
+  async health(key: string): Promise<RunHealth> {
     return this.#object(key).health();
   }
 
   #object(key: string): RunObjectApi {
-    return this.#namespace.get(this.#namespace.idFromName(`${this.#namePrefix}${key}`));
+    return this.#namespace.get(this.#namespace.idFromName(timerObjectName(this.#namePrefix, key)));
   }
 }
