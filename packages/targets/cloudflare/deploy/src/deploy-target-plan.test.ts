@@ -34,6 +34,11 @@ const request: DeployRequest = {
   reaches: [{ address: "api.anthropic.com", secret: "ANTHROPIC_API_KEY" }],
 };
 
+/** A version's record as the deploy writes it (`deploy.record`). */
+function record(fields: Record<string, unknown> = {}): string {
+  return JSON.stringify({ commit, halonicVersion: "0.2.0", reaches: [], ...fields });
+}
+
 function setup(state: Partial<FakeCloudflareState>, wrap = (api: CloudflareApi) => api) {
   const api = fakeCloudflareApi({ accounts, failOnWrite: true, ...state });
   const target = createCloudflareDeployTarget(
@@ -65,6 +70,7 @@ verifies("deploy.plan", () => {
         { kind: "bucket", name: "acme-defs" },
         { kind: "service", name: "acme" },
       ],
+      adopts: [],
       databaseChanges: migrations.map((migration) => migration.id),
       deletesData: false,
       live: undefined,
@@ -93,6 +99,31 @@ verifies("deploy.plan", () => {
     expect(plan.unchanged).toBe(false);
   });
 
+  it("is unchanged when the live version's record has the snapshot's commit and Halonic version", async () => {
+    const reaches = [{ address: "api.anthropic.com", secret: "ANTHROPIC_API_KEY" }];
+    const { target } = setup({
+      resources: existing,
+      applied: migrations.map((migration) => migration.id),
+      deployment: [{ id: "B", percentage: 100 }],
+      versionMessages: { B: versionNote({ commit, bundleHash: "f".repeat(64) }) },
+      stored: { "acme-defs/deploys/B.json": record({ reaches }) },
+    });
+    const plan = await target.plan(request);
+    expect(plan.live).toMatchObject({ id: "B", commit, halonicVersion: "0.2.0" });
+    expect(plan.liveReaches).toEqual(reaches);
+    expect(plan.unchanged).toBe(true);
+  });
+
+  it("lists what it would take over, not create, when the request sets adopt", async () => {
+    const { target } = setup({
+      resources: { ...existing, "bucket acme-blobs": { marked: false } },
+      deployment: [{ id: "B", percentage: 100 }],
+    });
+    const plan = await target.plan({ ...request, adopt: true });
+    expect(plan.adopts).toEqual([{ kind: "bucket", name: "acme-blobs" }]);
+    expect(plan.creates).toEqual([]);
+  });
+
   it("names who holds the lock without taking it", async () => {
     const until = Date.UTC(2100, 0, 1);
     const { target, api } = setup({
@@ -116,5 +147,33 @@ verifies("deploy.plan", () => {
       },
     }));
     await expect(target.plan(request)).rejects.toMatchObject({ name: "DeployFailure" });
+  });
+});
+
+verifies("deploy.record", () => {
+  const live = {
+    resources: existing,
+    applied: migrations.map((migration) => migration.id),
+    deployment: [{ id: "B", percentage: 100 }],
+    versionMessages: { B: versionNote({ commit, bundleHash: "f".repeat(64) }) },
+  };
+
+  it("gives the live version's Halonic version and full commit in status", async () => {
+    const { target } = setup({ ...live, stored: { "acme-defs/deploys/B.json": record() } });
+    expect((await target.status(web)).live).toMatchObject({
+      id: "B",
+      commit,
+      halonicVersion: "0.2.0",
+    });
+  });
+
+  it("counts a record that doesn't fit as none", async () => {
+    for (const text of ["not json", record({ halonicVersion: 2 }), record({ reaches: [{}] })]) {
+      const { target } = setup({ ...live, stored: { "acme-defs/deploys/B.json": text } });
+      const plan = await target.plan(request);
+      expect(plan.live?.halonicVersion).toBeUndefined();
+      expect(plan.liveReaches).toBeUndefined();
+      expect(plan.unchanged).toBe(false);
+    }
   });
 });

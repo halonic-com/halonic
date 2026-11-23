@@ -9,6 +9,8 @@ export interface DeployNews {
   /** Nothing is live yet. */
   readonly first: boolean;
   readonly creates: readonly DeployResource[];
+  /** Resources with Halonic's names that the deploy would take over. */
+  readonly adopts: readonly DeployResource[];
   /** A database change deletes data. */
   readonly deletesData: boolean;
   /** Addresses the live version doesn't reach, or reaches with another secret. */
@@ -17,8 +19,8 @@ export interface DeployNews {
 
 /**
  * Compares a plan with what the workspace now reaches. A new commit alone is
- * no news: only something to create, a change that deletes data, a new
- * address or a secret sent to another address is.
+ * no news: only something to create or take over, a change that deletes
+ * data, a new address or a secret sent to another address is.
  *
  * @example
  * const news = deployNews(plan, request.reaches);
@@ -31,6 +33,7 @@ export function deployNews(plan: DeployPlan, reaches: readonly DeployReach[]): D
   return {
     first: plan.live === undefined,
     creates: plan.creates,
+    adopts: plan.adopts,
     deletesData: plan.deletesData,
     reaches: plan.live === undefined ? [] : reaches.filter((reach) => !isLive(reach)),
   };
@@ -38,5 +41,11 @@ export function deployNews(plan: DeployPlan, reaches: readonly DeployReach[]): D
 
 /** Whether the deploy has to ask `Deploy? [y/N]` (or be given `--yes`). */
 export function hasNews(news: DeployNews): boolean {
-  return news.first || news.creates.length > 0 || news.deletesData || news.reaches.length > 0;
+  return (
+    news.first ||
+    news.creates.length > 0 ||
+    news.adopts.length > 0 ||
+    news.deletesData ||
+    news.reaches.length > 0
+  );
 }

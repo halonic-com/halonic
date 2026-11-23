@@ -107,6 +107,12 @@ export interface DeployPlan {
   readonly url: string | undefined;
   /** What the deploy would create, in order. Empty when it all exists. */
   readonly creates: readonly DeployResource[];
+  /**
+   * What exists with Halonic's names but wasn't made by Halonic, which the
+   * deploy would take over because the request sets `adopt`. Empty without it:
+   * such a resource then stops the deploy.
+   */
+  readonly adopts: readonly DeployResource[];
   /** Ids of the database changes it would apply, in order. */
   readonly databaseChanges: readonly string[];
   /** `true` when one of those changes deletes data. */

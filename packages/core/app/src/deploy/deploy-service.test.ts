@@ -25,6 +25,7 @@ const livePlan: DeployPlan = {
   account: { id: "acc", name: "sam@example.com's Account" },
   url: "https://acme.sam-example.workers.dev",
   creates: [],
+  adopts: [],
   databaseChanges: [],
   deletesData: false,
   live: v1,
@@ -275,9 +276,10 @@ verifies("app.deploy-service", () => {
       }
     });
 
-    it("asks when there's something to create or a change deletes data", async () => {
+    it("asks when there's something to create or take over, or a change deletes data", async () => {
       for (const plan of [
         { ...livePlan, creates: [{ kind: "bucket" as const, name: "acme-blobs" }] },
+        { ...livePlan, adopts: [{ kind: "bucket" as const, name: "acme-blobs" }] },
         { ...livePlan, deletesData: true },
       ]) {
         const { deploys } = service(plan);

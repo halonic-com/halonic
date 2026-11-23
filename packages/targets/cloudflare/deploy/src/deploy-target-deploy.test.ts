@@ -204,3 +204,53 @@ verifies("deploy.target-deploy", () => {
     expect(api.calls).toEqual([]);
   });
 });
+
+verifies("deploy.record", () => {
+  const reaching: DeployRequest = {
+    ...request,
+    reaches: [
+      { address: "api.anthropic.com", secret: "anthropic-key" },
+      { address: "*", secret: undefined },
+    ],
+  };
+
+  it("keeps the version's commit, Halonic version and reaches once it serves", async () => {
+    const { api, target, show } = setup({});
+    await target.deploy(reaching, show);
+    expect(JSON.parse(api.written["acme-defs/deploys/v1.json"] ?? "")).toEqual({
+      commit,
+      halonicVersion: "0.2.0",
+      reaches: [
+        { address: "api.anthropic.com", secret: "anthropic-key" },
+        { address: "*", secret: null },
+      ],
+    });
+  });
+
+  it("still ends as deployed when the record can't be written", async () => {
+    const api = fakeCloudflareApi({ accounts: [{ id: "a1", name: "Acme" }] });
+    const target = createCloudflareDeployTarget(
+      {
+        http: { fetch: async () => new Response(passing) },
+        tokens: { get: async () => "saved-token", set: async () => {}, remove: async () => {} },
+        environmentToken: undefined,
+        who: "sam@example.com",
+      },
+      {
+        api: () => ({
+          ...api,
+          putObject: async (accountId, bucket, key, value) => {
+            if (key.startsWith("deploys/")) throw new Error("R2 is down");
+            await api.putObject(accountId, bucket, key, value);
+          },
+        }),
+        worker: async () => worker,
+        upload: { sleep: async () => {}, attempts: 1 },
+      },
+    );
+    await expect(target.deploy(reaching, () => {})).resolves.toMatchObject({
+      outcome: "deployed",
+    });
+    expect(api.written["acme-defs/deploys/v1.json"]).toBeUndefined();
+  });
+});

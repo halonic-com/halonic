@@ -1,10 +1,12 @@
 import { migrations } from "@halonicjs/adapter-cloudflare-storage";
 import type {
   DeployAccount,
+  DeployedVersion,
   DeployLockHolder,
   DeploymentRef,
   DeployPlan,
   DeployRequest,
+  DeployResource,
   DeployTarget,
   DeployTargetContext,
   DeployTargetEntry,
@@ -20,15 +22,21 @@ import { resolveCredentials } from "./credentials.ts";
 import { deployThroughPort, resourceKinds, type WorkerScript } from "./deploy-target-deploy.ts";
 import {
   describe,
-  liveVersion,
+  liveWithReaches,
   mainOf,
+  recordOf,
   version,
   versionNumbers,
 } from "./deploy-target-versions.ts";
 import { destroy } from "./destroy.ts";
 import { migrate } from "./migrate.ts";
 import { lockHolderOf, portFailure, toDeployFailure } from "./port-failure.ts";
-import { databaseNameFor, provision } from "./provision.ts";
+import {
+  databaseNameFor,
+  type ProvisionAction,
+  type ProvisionStep,
+  provision,
+} from "./provision.ts";
 import { rollback } from "./rollback.ts";
 import { status } from "./status.ts";
 import type { UploadAndSwitchOptions } from "./upload.ts";
@@ -54,8 +62,8 @@ export interface CloudflareDeployTargetOptions {
 /**
  * The Cloudflare target as the {@link DeployTarget} port (requirement
  * `deploy.target-entry`): each method wraps this package's own function and
- * rejects with the port's failure. `revokeSessions` comes in the next part
- * and rejects with `unexpected` until then.
+ * rejects with the port's failure. `revokeSessions` rejects with
+ * `unexpected` until it has a way to end every session (HAL-16732).
  */
 export function createCloudflareDeployTarget(
   context: DeployTargetContext,
@@ -142,7 +150,7 @@ export function createCloudflareDeployTarget(
         return {
           account,
           url: found.url,
-          live: main ? version(numbers.ids, main.id, main.commit) : undefined,
+          live: await servingVersion(cloudflare, deployment, numbers.ids, main),
           previous:
             previousId === undefined
               ? undefined
@@ -251,7 +259,7 @@ export function createCloudflareDeployTarget(
         ...(request.adopt ? { adopt: true } : {}),
       }),
       migrate(cloudflare, { accountId, worker, migrations, plan: true }),
-      liveVersion(cloudflare, deployment),
+      liveWithReaches(cloudflare, deployment),
       cloudflare.workersDevUrl(accountId, worker),
       lockedByOf(cloudflare, deployment),
       snapshot.files.list(),
@@ -259,22 +267,21 @@ export function createCloudflareDeployTarget(
     return {
       account,
       url,
-      creates: steps
-        .filter((step) => step.action === "create")
-        .map((step) => ({ kind: resourceKinds[step.kind], name: step.name })),
+      creates: resourcesDoing(steps, "create"),
+      adopts: resourcesDoing(steps, "adopt"),
       databaseChanges,
       // Halonic's own database changes only add tables and columns (deploy flow 3.7).
       deletesData: false,
-      live,
-      // The live version's reaches and Halonic version come with its `deploy.json` (next part).
-      // Until then a plan says everything is new and never "unchanged": the safe side.
-      liveReaches: undefined,
+      live: live?.version,
+      // A live version without a record reaches nothing as far as the plan knows, so
+      // everything counts as new and the plan is never "unchanged": the safe side.
+      liveReaches: live?.reaches,
       lockedBy,
       unchanged:
-        live?.commit !== undefined &&
+        live?.version.commit !== undefined &&
         // The version note keeps a short commit.
-        startsLike(snapshot.commit, live.commit) &&
-        live.halonicVersion === snapshot.halonicVersion,
+        startsLike(snapshot.commit, live.version.commit) &&
+        live.version.halonicVersion === snapshot.halonicVersion,
       files,
     };
   }
@@ -347,6 +354,27 @@ async function guard<T>(run: () => Promise<T>): Promise<T> {
 
 function isPortFailure(error: unknown): boolean {
   return error instanceof Error && error.name === "DeployFailure";
+}
+
+/** The version `status` found serving, with its record; `undefined` when none serves. */
+async function servingVersion(
+  cloudflare: CloudflareApi,
+  deployment: DeploymentRef,
+  ids: readonly string[],
+  main: { readonly id: string; readonly commit?: string | undefined } | undefined,
+): Promise<DeployedVersion | undefined> {
+  if (main === undefined) return undefined;
+  return version(ids, main.id, main.commit, await recordOf(cloudflare, deployment, main.id));
+}
+
+/** The resources provisioning would `create` or `adopt`, as the port names them. */
+function resourcesDoing(
+  steps: readonly ProvisionStep[],
+  action: ProvisionAction,
+): DeployResource[] {
+  return steps
+    .filter((step) => step.action === action)
+    .map((step) => ({ kind: resourceKinds[step.kind], name: step.name }));
 }
 
 async function accountOf(api: CloudflareApi, id: string): Promise<DeployAccount> {
