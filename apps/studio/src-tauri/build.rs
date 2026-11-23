@@ -107,6 +107,7 @@ fn main() {
         "tunnel_end_session",
         "phone_open_settings",
         "phone_open_tailscale",
+        "owner_check_available",
         "update_status",
         "update_watch",
         "update_check",
