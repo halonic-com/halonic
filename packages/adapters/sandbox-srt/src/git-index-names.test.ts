@@ -239,7 +239,11 @@ verifies("sandbox-srt.session", () => {
     it("refuses an EOIE extension inside the entries that points elsewhere, as git may read it", async () => {
       const { bytes, gitlink } = endOfEntriesInsideAnEntry();
       // Git copies the byte after a name too, where a well-formed index has its NUL.
-      expect(await gitlinksOfGit(bytes, ["index.threads=3"])).toEqual([`${gitlink}/`]);
+      // Here that byte is "/", so git prints on until a NUL in memory it never set
+      // (the padding of its entry): only the name and that byte are certain.
+      expect(await gitlinksOfGit(bytes, ["index.threads=3"])).toEqual([
+        expect.stringMatching(new RegExp(`^${gitlink}/`)),
+      ]);
       expect(() => parseIndex(bytes, 20)).toThrow(
         "git index EOIE extension doesn't match its entries",
       );
