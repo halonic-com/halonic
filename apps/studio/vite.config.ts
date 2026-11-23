@@ -32,7 +32,8 @@ export default defineConfig(({ mode }) => {
   }
   return {
     base: "./",
-    plugins: [connectPageGuard()],
+    // Tailwind builds only phone-app.css, which loads with the phone app (HAL-15985).
+    plugins: [tailwindcss(), connectPageGuard()],
     build: {
       outDir: "dist/connect",
       emptyOutDir: true,

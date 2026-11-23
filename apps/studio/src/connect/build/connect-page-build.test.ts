@@ -13,7 +13,8 @@ const appFolder = process.cwd();
 let folder = "";
 
 // The connect page as `tauri android build` builds it, with the app's own Vite config (and so its
-// guard), into a folder of its own so `dist/connect` stays as it is.
+// guard), into a folder of its own so `dist/connect` stays as it is. Vitest sets NODE_ENV to
+// `test`, which Vite keeps, so the define puts React's production build in, as the app ships it.
 beforeAll(async () => {
   folder = mkdtempSync(join(tmpdir(), "halonic-connect-page-"));
   await build({
@@ -21,6 +22,7 @@ beforeAll(async () => {
     configFile: join(appFolder, "vite.config.ts"),
     mode: "production",
     logLevel: "silent",
+    define: { "process.env.NODE_ENV": JSON.stringify("production") },
     build: { outDir: folder, emptyOutDir: true },
   });
 }, 60_000);

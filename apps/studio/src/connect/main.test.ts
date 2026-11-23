@@ -8,11 +8,30 @@ import { recordScrolls, settled } from "./test/connect-page-harness.ts";
 const pageFile = join(process.cwd(), "connect.html");
 const addressKey = "halonic.connect.address";
 
-/** Records each call into the shell and answers it from `answer`. */
-function installShell(answer: (command: string) => Promise<unknown>): ReturnType<typeof vi.fn> {
-  const invoke = vi.fn((command: string) => answer(command));
-  Reflect.set(window, "__TAURI_INTERNALS__", { invoke });
+/**
+ * Records each call into the shell and answers it from `answer`. The phone's paired list answers
+ * `computers` (none by default), for the launch rule (HAL-16439).
+ */
+function installShell(
+  answer: (command: string) => Promise<unknown>,
+  computers: readonly unknown[] = [],
+): ReturnType<typeof vi.fn> {
+  const invoke = vi.fn((command: string) =>
+    command === "phone_computers"
+      ? Promise.resolve({ kind: "computers", computers })
+      : answer(command),
+  );
+  Reflect.set(window, "__TAURI_INTERNALS__", {
+    invoke,
+    transformCallback: () => 1,
+    unregisterCallback: () => undefined,
+  });
   return invoke;
+}
+
+/** The calls to the shell's `connect` command, without the phone tunnel's. */
+function connectCalls(invoke: ReturnType<typeof vi.fn>): unknown[][] {
+  return invoke.mock.calls.filter(([command]) => command === "connect");
 }
 
 /**
@@ -100,18 +119,20 @@ verifies("studio.connect.shell-bridge", () => {
   });
 
   it("in the app, asks the shell's connect command about the typed address", async () => {
+    location.hash = "#change-address";
     const invoke = installShell(() => Promise.resolve({ kind: "notHomeNetwork" }));
     await runMain();
 
     await pressConnect("8.8.8.8:4280");
 
-    expect(invoke).toHaveBeenCalledExactlyOnceWith("connect", { address: "8.8.8.8:4280" });
+    expect(connectCalls(invoke)).toEqual([["connect", { address: "8.8.8.8:4280" }]]);
     expect(shownScreen()).toBe("connect");
     expect(document.querySelector<HTMLElement>("#address-error")?.hidden).toBe(false);
   });
 
   it("in the app, on success remembers the address and marks the history entry", async () => {
     // jsdom can only navigate within the page, so the shell confirms a hash.
+    location.hash = "#change-address";
     installShell(() => Promise.resolve({ kind: "connected", url: "#studio" }));
     const replaceState = vi.spyOn(history, "replaceState");
     await runMain();
@@ -125,6 +146,7 @@ verifies("studio.connect.shell-bridge", () => {
   });
 
   it("in the app, on failure reads a refused call as Can't reach and remembers nothing", async () => {
+    location.hash = "#change-address";
     installShell(() => Promise.reject(new Error("The shell refused.")));
     await runMain();
 
@@ -158,7 +180,7 @@ verifies("studio.connect.remembered-address", () => {
 
     await runMain();
 
-    expect(invoke).toHaveBeenCalledExactlyOnceWith("connect", { address: "192.168.1.20:4280" });
+    expect(connectCalls(invoke)).toEqual([["connect", { address: "192.168.1.20:4280" }]]);
     expect(shownScreen()).toBe("not-answering");
   });
 
@@ -181,5 +203,17 @@ verifies("studio.connect.remembered-address", () => {
     expect(shownScreen()).toBe("connect");
     expect(location.hash).not.toBe("#studio");
     expect(localStorage.getItem(addressKey)).toBe("192.168.1.20:4280");
+  });
+});
+
+verifies("studio.connect.phone-tunnel-screens", () => {
+  it("in the app with nothing paired and nothing remembered, opens Pair with a computer", async () => {
+    const invoke = installShell(() => Promise.reject(new Error("Not this command.")));
+
+    await runMain();
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Pair with a computer"));
+
+    expect(shownScreen()).toBe("tunnel");
+    expect(connectCalls(invoke)).toEqual([]);
   });
 });

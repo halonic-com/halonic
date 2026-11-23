@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { PhoneAppMount, PhoneTunnel } from "@halonicjs/studio-feature-remote/phone";
+import type {
+  ListedComputer,
+  PhoneAppMount,
+  PhoneTunnel,
+} from "@halonicjs/studio-feature-remote/phone";
 import { verifies } from "@halonicjs/testing-spec";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { PairingScanner } from "./pair-scan.ts";
@@ -19,6 +23,16 @@ const scanner: PairingScanner = {
   scan: () => Promise.resolve({ kind: "closed" }),
   close: () => Promise.resolve(),
 };
+
+const laptop = { id: "computer-1", name: "Tim's laptop" } as unknown as ListedComputer;
+
+/** A tunnel that lists `computers` (or throws it), all the launch rule asks of it. */
+function tunnelListing(computers: readonly ListedComputer[] | Error): PhoneTunnel {
+  return {
+    pairedComputers: () =>
+      computers instanceof Error ? Promise.reject(computers) : Promise.resolve(computers),
+  } as PhoneTunnel;
+}
 
 /** The page's options; `tunnel` decides which page it is. */
 function options(shell: FakeShell, tunnel: PhoneTunnel | undefined): PageOptions {
@@ -65,10 +79,10 @@ verifies("studio.connect.phone-tunnel-screens", () => {
     expect(phoneApp.load).not.toHaveBeenCalled();
   });
 
-  it("shows only the tunnel screen with a tunnel, and doesn't connect", async () => {
+  it("shows only the tunnel screen with a paired computer, and doesn't connect", async () => {
     const shell = new FakeShell();
     const phoneApp = fakePhoneApp();
-    await startPage({ ...options(shell, {} as PhoneTunnel), loadPhoneApp: phoneApp.load });
+    await startPage({ ...options(shell, tunnelListing([laptop])), loadPhoneApp: phoneApp.load });
     expect(shownScreens()).toEqual(["tunnel"]);
     expect(phoneApp.mounted[0]?.container.dataset["screen"]).toBe("tunnel");
     expect(shell.asked).toEqual([]);
@@ -77,7 +91,7 @@ verifies("studio.connect.phone-tunnel-screens", () => {
   it("shows the connect screen, filled in, when the phone app asks for the address", async () => {
     const phoneApp = fakePhoneApp();
     await startPage({
-      ...options(new FakeShell(), {} as PhoneTunnel),
+      ...options(new FakeShell(), tunnelListing([laptop])),
       loadPhoneApp: phoneApp.load,
     });
     const mount = phoneApp.mounted[0]?.mount;
@@ -90,4 +104,81 @@ verifies("studio.connect.phone-tunnel-screens", () => {
     mount?.onAddress(true);
     expect(shownScreens()).toEqual(["connect"]);
   });
+});
+
+/** Starts the page with a tunnel listing `computers`; returns the shell and the phone app. */
+async function launch(
+  computers: readonly ListedComputer[] | Error,
+  remembered: string | undefined,
+  hash: { changeAddress?: boolean; pageNotShown?: boolean } = {},
+) {
+  const shell = new FakeShell().answer({ kind: "notAnswering", address: "192.168.1.20:4280" });
+  const phoneApp = fakePhoneApp();
+  await startPage({
+    ...options(shell, tunnelListing(computers)),
+    store: new MemoryStore(remembered),
+    ...hash,
+    loadPhoneApp: phoneApp.load,
+  });
+  return { shell, phoneApp };
+}
+
+// The launch rule decided on HAL-16439, one test per row and hash.
+verifies("studio.connect.phone-tunnel-screens", () => {
+  it("opens the phone app with nothing paired and no remembered address", async () => {
+    const { shell, phoneApp } = await launch([], undefined);
+    expect(shownScreens()).toEqual(["tunnel"]);
+    expect(phoneApp.mounted).toHaveLength(1);
+    expect(shell.asked).toEqual([]);
+  });
+
+  it("keeps the 0.1 launch with nothing paired and a remembered address", async () => {
+    const { shell, phoneApp } = await launch([], "192.168.1.20:4280");
+    expect(shell.asked).toEqual(["192.168.1.20:4280"]);
+    expect(shownScreens()).toEqual(["not-answering"]);
+    expect(phoneApp.load).not.toHaveBeenCalled();
+  });
+
+  it("opens the phone app with a paired computer and no remembered address", async () => {
+    const { shell, phoneApp } = await launch([laptop], undefined);
+    expect(shownScreens()).toEqual(["tunnel"]);
+    expect(phoneApp.mounted).toHaveLength(1);
+    expect(shell.asked).toEqual([]);
+  });
+
+  it("opens the phone app with a paired computer and a remembered address", async () => {
+    const { shell, phoneApp } = await launch([laptop], "192.168.1.20:4280");
+    expect(shownScreens()).toEqual(["tunnel"]);
+    expect(phoneApp.mounted).toHaveLength(1);
+    expect(shell.asked).toEqual([]);
+  });
+
+  it("checks again at every launch: after the last computer is gone, the address connects", async () => {
+    await launch([laptop], "192.168.1.20:4280");
+    expect(shownScreens()).toEqual(["tunnel"]);
+    document.querySelector('[data-screen="tunnel"]')?.remove();
+
+    const { shell, phoneApp } = await launch([], "192.168.1.20:4280");
+
+    expect(shell.asked).toEqual(["192.168.1.20:4280"]);
+    expect(phoneApp.load).not.toHaveBeenCalled();
+  });
+
+  it("keeps the 0.1 launch when the paired list can't be read and an address is remembered", async () => {
+    const { shell } = await launch(new Error("The shell refused."), "192.168.1.20:4280");
+    expect(shell.asked).toEqual(["192.168.1.20:4280"]);
+  });
+
+  for (const hash of [{ changeAddress: true }, { changeAddress: true, pageNotShown: true }]) {
+    it(`opens the connect screen, filled in, for ${hash.pageNotShown ? "#page-not-shown" : "#change-address"} even when paired`, async () => {
+      const { shell, phoneApp } = await launch([laptop], "192.168.1.20:4280", hash);
+      expect(shownScreens()).toEqual(["connect"]);
+      expect(document.querySelector<HTMLInputElement>("#address")?.value).toBe("192.168.1.20:4280");
+      expect(document.querySelector<HTMLElement>("#page-not-shown")?.hidden).toBe(
+        hash.pageNotShown !== true,
+      );
+      expect(phoneApp.load).not.toHaveBeenCalled();
+      expect(shell.asked).toEqual([]);
+    });
+  }
 });

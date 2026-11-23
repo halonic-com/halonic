@@ -19,17 +19,29 @@ export interface PageOptions extends ConnectPageOptions {
   readonly loadPhoneApp?: () => Promise<PhoneAppModule>;
 }
 
-const loadPhoneApp = (): Promise<PhoneAppModule> =>
-  import("@halonicjs/studio-feature-remote/phone");
+const loadPhoneApp = async (): Promise<PhoneAppModule> => {
+  const [phoneApp] = await Promise.all([
+    import("@halonicjs/studio-feature-remote/phone"),
+    import("./phone-app.css"),
+  ]);
+  return phoneApp;
+};
 
 /**
  * Starts the Android app's own page (HAL-15985). Without a tunnel it's the 0.1 connect page and
- * nothing else loads. With one, the phone app's screens take a new `tunnel` screen, and the
- * connect screen shows only after the typed route's "Enter its address", already filled in.
+ * nothing else loads. With one, the launch rule decided on HAL-16439 picks the page, checked on
+ * every launch and never saved:
+ * - `#change-address` and `#page-not-shown` open the connect screen, as the 0.1 page does;
+ * - a remembered address and no paired computer keep the 0.1 launch, which connects to it;
+ * - anything else opens the phone app: Pair with a computer, or the paired computer's screen.
+ * In the phone app the connect screen shows only after "Connect with an address", filled in.
  */
 export async function startPage(options: PageOptions): Promise<void> {
   const { document, tunnel } = options;
-  if (tunnel === undefined) return startConnectPage(options);
+  if (tunnel === undefined || options.changeAddress) return startConnectPage(options);
+  if (options.store.load() !== undefined && !(await anyPaired(tunnel, options.report))) {
+    return startConnectPage(options);
+  }
   const section = document.createElement("section");
   section.dataset["screen"] = "tunnel";
   const main = document.querySelector("main");
@@ -54,6 +66,20 @@ export async function startPage(options: PageOptions): Promise<void> {
       void startConnectPage({ ...options, changeAddress: true, pageNotShown: false });
     },
   });
+}
+
+/**
+ * Whether the phone has a paired computer. When the list can't be read (the phone's key storage
+ * doesn't work, or the shell refused), the answer is no: the remembered address needs no keys.
+ */
+async function anyPaired(tunnel: PhoneTunnel, report: (problem: string) => void): Promise<boolean> {
+  try {
+    const listed = await tunnel.pairedComputers();
+    return "length" in listed && listed.length > 0;
+  } catch (error) {
+    report(`The paired computers couldn't be read at launch: ${String(error)}`);
+    return false;
+  }
 }
 
 /** Shows one of connect.html's screens and hides the others. */

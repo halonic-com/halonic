@@ -85,9 +85,11 @@
   // Approved libraries per package stay in tooling/check/dependencies.json, checked by `pnpm check`.
   "overrides": [
     {
-      // Studio CSS entries set Tailwind up (@source, @custom-variant), like the shell's e2e pages.
+      // Studio CSS entries set Tailwind up (@source, @custom-variant), like the shell's e2e pages,
+      // and so does the Android page's phone app (HAL-15985).
       "includes": [
-        "**/packages/studio/**/*.css"
+        "**/packages/studio/**/*.css",
+        "**/apps/studio/src/connect/phone-app.css"
       ],
       "css": {
         "parser": {
