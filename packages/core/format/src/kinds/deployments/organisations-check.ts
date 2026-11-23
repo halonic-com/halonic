@@ -1,4 +1,5 @@
 import type { KindCheckProblem } from "../../kind.ts";
+import { checkRepeatedLimits } from "./limits-check.ts";
 import type { DeploymentUsers, Organisation, OrganisationMember, UsageLimit } from "./users.ts";
 
 /** Where a problem sits in the file. */
@@ -6,8 +7,9 @@ type Path = KindCheckProblem["path"];
 
 /**
  * Checks the organisations of one deployment's `users.config`: each id is
- * listed once, each organisation has an owner and lists a person once, and a
- * member's limits and concurrency fit inside the organisation's.
+ * listed once, each organisation has an owner and lists a person once, no
+ * pool or member limit is given twice, and a member's limits and concurrency
+ * fit inside the organisation's.
  */
 export function checkOrganisations(id: string, users: DeploymentUsers): KindCheckProblem[] {
   const organisations = users.config?.organisations ?? [];
@@ -48,7 +50,17 @@ function checkOrganisation(organisation: Organisation, path: Path): KindCheckPro
   return [
     ...checkOwner(organisation, path),
     ...checkRepeatedMembers(organisation, path),
+    ...checkRepeatedLimits(
+      organisation.limits,
+      [...path, "limits"],
+      `Organisation "${organisation.id}"`,
+    ),
     ...organisation.members.flatMap((member, index) => [
+      ...checkRepeatedLimits(
+        member.limits ?? [],
+        [...path, "members", index, "limits"],
+        `Member "${member.actor}"`,
+      ),
       ...checkMemberLimits(organisation, member, [...path, "members", index]),
       ...checkMemberConcurrency(organisation, member, [...path, "members", index]),
     ]),

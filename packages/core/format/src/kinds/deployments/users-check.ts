@@ -1,4 +1,5 @@
 import type { KindCheckProblem } from "../../kind.ts";
+import { checkRepeatedLimits } from "./limits-check.ts";
 import { checkOrganisations } from "./organisations-check.ts";
 import type { Deployments } from "./schema.ts";
 import type { DeploymentUsers } from "./users.ts";
@@ -15,7 +16,11 @@ export function checkUsers(file: Deployments): KindCheckProblem[] {
       ? []
       : [
           ...checkCloudProduct(id, deployment.users),
-          ...checkRepeatedLimits(id, deployment.users),
+          ...checkRepeatedLimits(
+            deployment.users.config?.limits ?? [],
+            ["deployments", id, "users", "config", "limits"],
+            `Deployment "${id}"`,
+          ),
           ...checkOrganisations(id, deployment.users),
           ...checkConfigCountsNothing(id, deployment.users),
           ...checkUnusedMeterSettings(id, deployment.users),
@@ -66,29 +71,6 @@ function checkCloudProduct(id: string, users: DeploymentUsers): KindCheckProblem
       message: `Deployment "${id}" uses meter "cloud", so it needs users.cloud.product`,
     },
   ];
-}
-
-/**
- * Two limits on the same unit and period would leave it unclear which one
- * holds, so the second one is refused.
- */
-function checkRepeatedLimits(id: string, users: DeploymentUsers): KindCheckProblem[] {
-  const seen = new Set<string>();
-  return (users.config?.limits ?? []).flatMap((limit, index) => {
-    const key = `${limit.unit} per ${limit.period}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      return [];
-    }
-    return [
-      {
-        severity: "error" as const,
-        code: "users-limit-repeated",
-        path: ["deployments", id, "users", "config", "limits", index],
-        message: `Deployment "${id}" already has a limit on ${key}`,
-      },
-    ];
-  });
 }
 
 /**

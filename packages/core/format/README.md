@@ -234,6 +234,8 @@ shape of an organisation in Halonic Cloud.
 
 - Each organisation needs an `owner` (`users-organisation-owner-missing`), lists a person once
   (`users-member-repeated`) and has its own `id` (`users-organisation-repeated`).
+- As in `config.limits`, a pool's or a member's `limits` hold one limit per `unit` and `period`
+  (`users-limit-repeated`).
 - A member's `limits` are a share of the pool: each needs a pool limit on the same `unit` and
   `period` (`users-member-limit-outside-pool`) and can't be above its `amount`
   (`users-member-limit-above-pool`). A member's `concurrency` can't be above the organisation's
