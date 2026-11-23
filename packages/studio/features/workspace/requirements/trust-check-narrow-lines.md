@@ -11,5 +11,5 @@ When a trust check row is narrower than 24rem, the check shall show each line's 
 - Given a program row with **Takes from your environment** `PATH` and **Runs** `/usr/local/bin/node`,
   and a window 390 px wide,
   when the person opens the check,
-  then "Runs:" stands on its own line with `/usr/local/bin/node` under it,
-  4 px below the label and 8 px above the next label.
+  then "Runs:" stands on its own line with `/usr/local/bin/node` directly under it,
+  and 8 px above the next label.
