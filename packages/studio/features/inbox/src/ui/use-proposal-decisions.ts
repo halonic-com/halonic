@@ -1,4 +1,4 @@
-import { type ToastStore, useToastStore } from "@halonicjs/studio-kit";
+import { type ToastMessage, type ToastStore, useToastStore } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { changeLine, decidedToast, undoLeftAloneLine } from "../plain/proposal-text.ts";
 import {
@@ -54,7 +54,7 @@ const pastTense = { accept: "Accepted", reject: "Rejected" } as const;
  * @param onDecided after each decision or Undo, and once the proposal settles, so the Inbox reads
  *   its items again and the proposal moves to Done (Q10)
  * @param holdBack while the engine isn't answering, what an **Undo** pressed meanwhile says: it
- *   sends nothing, and its toast stays so it can be pressed again
+ *   sends nothing, and a toast that says this and keeps **Undo** replaces its toast
  */
 export function useProposalDecisions(
   item: ProposalItem,
@@ -195,8 +195,9 @@ const decidedWords = { accept: "accepted", reject: "rejected" } as const;
  * so an older **Undo** couldn't work after a newer decision. Leaving the page settles the proposal
  * once a decision on its way and any Undo pressed are done and the last toast has gone, so every
  * **Undo** keeps working while it shows; the host leaves a proposal still undecided open. While
- * the engine isn't answering, as the page shows it, an **Undo** sends nothing: its toast stays, and
- * another says to press it again once the engine answers. Once the page has gone, an **Undo** is sent, and a failure says so.
+ * the engine isn't answering, as the page shows it, an **Undo** sends nothing: a toast that says why
+ * and keeps **Undo** takes its toast's place. Once the page has gone, an **Undo** is sent, and a
+ * failure says so.
  *
  * @param settled once the proposal has settled
  * @param holdBack while the engine isn't answering, what an **Undo** pressed meanwhile says
@@ -267,23 +268,27 @@ function useUndoSteps(
     track,
     /** Shows the decision's toast, whose **Undo** takes back step `id`. */
     offer: (title: string, id: string, step: UndoStep) => {
-      // The toast stays when its Undo is pressed, so one held back can be pressed again.
-      const onClick = () => {
+      let toast: string | undefined;
+      // Shows `message` with this step's Undo in place of the toast showing it until now.
+      const showWithUndo = (message: Omit<ToastMessage, "action">) => {
+        if (toast !== undefined) toasts?.close(toast);
+        toast = toasts?.show({ ...message, action: { label: "Undo", onClick, keepOpen: true } });
+        if (toast === undefined) return;
+        shown.current.add(toast);
+        newest.current = toast;
+      };
+      // A phone shows one toast at a time (C741), so a held-back Undo replaces its toast with one
+      // that says why and keeps Undo, rather than showing the reason behind it. A danger toast
+      // stays until it's closed, so Undo is still there once the engine answers.
+      function onClick() {
         if (held.current !== undefined) {
-          toasts?.show({ tone: "danger", title: "Couldn't undo this.", text: held.current });
+          showWithUndo({ tone: "danger", title: "Couldn't undo this.", text: held.current });
           return;
         }
         if (toast !== undefined) toasts?.close(toast);
         undo(id, step);
-      };
-      const toast = toasts?.show({
-        tone: "success",
-        title,
-        action: { label: "Undo", onClick, keepOpen: true },
-      });
-      if (toast === undefined) return;
-      shown.current.add(toast);
-      newest.current = toast;
+      }
+      showWithUndo({ tone: "success", title });
     },
   };
 }

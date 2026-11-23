@@ -72,9 +72,14 @@ async function pressUndo(toasts: ReturnType<typeof createToastStore>, title: str
 
 const accepted = "Accepted 1 change from run 01JD8Q";
 
+/** Each toast in the store as its tone, title, line and action's label. */
+function toastsShown(toasts: ReturnType<typeof createToastStore>) {
+  return toasts.list().map((toast) => [toast.tone, toast.title, toast.text, toast.action?.label]);
+}
+
 verifies("inbox.proposal-undo-held", () => {
   describe("a decision toast's Undo while the engine isn't answering", () => {
-    it("sends nothing, keeps the toast and says the page's line; once it answers, Undo works", async () => {
+    it("sends nothing and puts a toast that says the page's line, with Undo, in its toast's place; once it answers, that Undo works", async () => {
       const decisions = fakeDecisions();
       const { root, toasts, answering } = openCard(decisions);
       await press(buttons(root, "Accept")[0]);
@@ -83,17 +88,40 @@ verifies("inbox.proposal-undo-held", () => {
       await pressUndo(toasts, accepted);
 
       expect(decisions.undo).not.toHaveBeenCalled();
-      expect(toasts.list().map((toast) => [toast.title, toast.text])).toEqual([
-        [accepted, undefined],
-        ["Couldn't undo this.", pressAgain],
-      ]);
+      expect(toastsShown(toasts)).toEqual([["danger", "Couldn't undo this.", pressAgain, "Undo"]]);
 
       answering(true);
-      await pressUndo(toasts, accepted);
+      await pressUndo(toasts, "Couldn't undo this.");
 
       expect(decisions.undo).toHaveBeenCalledWith("u1");
-      expect(toasts.list().map((toast) => toast.title)).toEqual(["Couldn't undo this."]);
+      expect(toasts.list()).toEqual([]);
       expect(buttons(root, "Accept")).toHaveLength(2);
+    });
+
+    it("keeps one toast for the decision when Undo is pressed again while the engine still isn't answering", async () => {
+      const decisions = fakeDecisions();
+      const { root, toasts, answering } = openCard(decisions);
+      await press(buttons(root, "Accept")[0]);
+      answering(false);
+
+      await pressUndo(toasts, accepted);
+      await pressUndo(toasts, "Couldn't undo this.");
+
+      expect(decisions.undo).not.toHaveBeenCalled();
+      expect(toastsShown(toasts)).toEqual([["danger", "Couldn't undo this.", pressAgain, "Undo"]]);
+    });
+
+    it("closes the held-back toast with its Undo once a newer decision is made", async () => {
+      const decisions = fakeDecisions();
+      const { root, toasts, answering } = openCard(decisions);
+      await press(buttons(root, "Accept")[0]);
+      answering(false);
+      await pressUndo(toasts, accepted);
+      answering(true);
+
+      await press(buttons(root, "Accept")[0]);
+
+      expect(toastsShown(toasts)).toEqual([["success", accepted, undefined, "Undo"]]);
     });
 
     it("says to sign in again when the served Studio's sign-in ended", async () => {
