@@ -37,8 +37,8 @@ export interface GuardCase {
   readonly checks?: readonly GuardCheck[];
   /** The package folders whose tests ran, when not every package's (HAL-12539). */
   readonly affected?: ReadonlySet<string>;
-  /** The workflow package's `version`, in both checkouts; none when left out. */
-  readonly version?: string;
+  /** The workflow package's `version` on the merge base and in the pull request; none when left out. */
+  readonly version?: { readonly base?: string; readonly head?: string };
 }
 
 /** What the guard reported, as `file: message` lines. */
@@ -49,7 +49,11 @@ export interface GuardOutcome {
 
 /** Builds both checkouts, runs the guard and removes them again. */
 export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
-  const repo = (files: Readonly<Record<string, string>>, extra: Record<string, string>): string =>
+  const repo = (
+    files: Readonly<Record<string, string>>,
+    extra: Record<string, string>,
+    version?: string,
+  ): string =>
     writeFixtureRepo(
       [
         {
@@ -57,18 +61,22 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
           manifest: manifestFor(
             "@halonicjs/workflow",
             "core",
-            guardCase.version === undefined ? {} : { version: guardCase.version },
+            version === undefined ? {} : { version },
           ),
           files: { "src/index.ts": "export const x = 1;\n", ...files },
         },
       ],
       { coreOrder: ["@halonicjs/workflow"], extraFiles: { ...guardCase.shared, ...extra } },
     );
-  const baseRoot = repo(guardCase.base, { ...guardCase.baseOutside });
-  const headRoot = repo(guardCase.head, {
-    ...guardCase.headOutside,
-    ...(guardCase.note === undefined ? {} : { [noteFile]: guardCase.note }),
-  });
+  const baseRoot = repo(guardCase.base, { ...guardCase.baseOutside }, guardCase.version?.base);
+  const headRoot = repo(
+    guardCase.head,
+    {
+      ...guardCase.headOutside,
+      ...(guardCase.note === undefined ? {} : { [noteFile]: guardCase.note }),
+    },
+    guardCase.version?.head,
+  );
   const testedRoot = guardCase.tested === undefined ? undefined : repo(guardCase.tested, {});
   const approvals: ApprovalLookup = guardCase.approvals ?? {
     check: () =>
