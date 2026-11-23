@@ -9,6 +9,14 @@ other board tools. The `paperclip.pr-tools` test compares the whole list of
 declared tools, so it now lists `merge_speed` too. Nothing else it checks
 changes.
 
+It also carries the non-blocking fix from the #5316 review: part (d) saves
+the approvals it has seen only when its comment went out, or when there was
+none. So an approval that turns pending while writes are off is listed on
+the first pass after the board turns writes on. The requirement
+`paperclip.board-check-approvals` says this now and has an example for it;
+what it already promised stays as it was.
+
 ## Covers
 
 - tooling/paperclip/src/plugin/tools.test.ts
+- paperclip.board-check-approvals
