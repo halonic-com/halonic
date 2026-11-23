@@ -245,6 +245,41 @@ export const pluginMessages = defineMessages("plugin", {
     }
     return phrase`Run chmod 700 ${folderWord}, then run again.`;
   },
+  /** The refusal when a file in the plugin records, or their folder, can't be opened by the person (HAL-15893). */
+  recordUnreadable: (place: "file" | "folder", path: string) =>
+    place === "folder"
+      ? phrase`The plugin records folder ${path} can't be read by you.`
+      : phrase`The plugin record file ${path} can't be read by you.`,
+  /** Under {@link recordUnreadable}, as {@link folderUnreadableFix}; a file gets mode 600. */
+  recordUnreadableFix: (place: "file" | "folder", access: PluginsFolderAccess, word: string) => {
+    const mode = place === "folder" ? "700" : "600";
+    if (access === "windows") {
+      return phrase`Give your user account access to it in the ${place}'s Properties, under Security, then run again.`;
+    }
+    if (access === "another-user") {
+      return phrase`It belongs to another user: run sudo chown "$(id -un)" ${word}, then chmod ${mode} ${word}, then run again.`;
+    }
+    return phrase`Run chmod ${mode} ${word}, then run again.`;
+  },
+  /** The refusal when a plugin record file holds something other than records, such as a line edited by hand. */
+  recordDamaged: (file: string, why: string, line: number | undefined) =>
+    line === undefined
+      ? phrase`The plugin record file ${file} is damaged: ${why}`
+      : phrase`The plugin record file ${file} is damaged at line ${line}: ${why}`,
+  /** Under {@link recordDamaged}: what deleting the file forgets, for every plugin; the plugins stay. */
+  recordDamagedFix: (holds: "sources" | "settings" | "other", line: number | undefined) => {
+    const remove =
+      line === undefined
+        ? phrase`Delete the file, then run again.`
+        : phrase`Delete line ${line} from it, or delete the file, then run again.`;
+    if (holds === "sources") {
+      return phrase`${remove} Deleting the file forgets where each plugin was added from; the plugins stay.`;
+    }
+    if (holds === "settings") {
+      return phrase`${remove} Deleting the file sets every plugin's settings back to their defaults; the plugins stay.`;
+    }
+    return remove;
+  },
 
   // HAL-14296 (C41 on HAL-14271): a plugin connector's plugin that is added
   // but off, as `tools review` and `tools approve` warn about it.

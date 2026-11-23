@@ -1,4 +1,4 @@
-import { parseRecordLines, type RecordChange } from "@halonicjs/ports";
+import { BrokenRecordLogError, parseRecordLines, type RecordChange } from "@halonicjs/ports";
 
 /** A collection's log as read from disk: its changes, and how many of its bytes hold them. */
 export interface RecordLog {
@@ -19,7 +19,7 @@ const lineBreak = 0x0a;
  * @param bytes - the log file's contents
  * @param collection - the collection the log belongs to
  * @param file - the log's path, for the error message
- * @throws Error naming the file and line when a complete line is broken
+ * @throws BrokenRecordLogError naming the file and line when a complete line is broken
  */
 export function parseRecordLog(bytes: Uint8Array, collection: string, file: string): RecordLog {
   const intactBytes = bytes.lastIndexOf(lineBreak) + 1;
@@ -31,6 +31,6 @@ function decodeLines(bytes: Uint8Array, file: string): string {
   try {
     return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
-    throw new Error(`Broken record log ${JSON.stringify(file)}: it is not valid UTF-8 text.`);
+    throw new BrokenRecordLogError(file, "it is not valid UTF-8 text.");
   }
 }

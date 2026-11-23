@@ -109,7 +109,7 @@ export function formatRecordLines(changes: readonly RecordChange[]): string {
  * @param file - the log's name or path, for the error message
  * @returns the changes, oldest first
  * @throws RangeError when the text doesn't end in a line break
- * @throws Error naming the file and line when a line is broken
+ * @throws BrokenRecordLogError naming the file and line when a line is broken
  */
 export function parseRecordLines(lines: string, collection: string, file: string): RecordChange[] {
   if (lines === "") {
@@ -130,8 +130,7 @@ function parseRecordLine(
   collection: string,
   file: string,
 ): RecordChange {
-  const broken = (why: string): Error =>
-    new Error(`Broken record log ${JSON.stringify(file)}, line ${number}: ${why}`);
+  const broken = (why: string): Error => new BrokenRecordLogError(file, why, number);
   let parsed: unknown;
   try {
     parsed = JSON.parse(line);
@@ -145,6 +144,29 @@ function parseRecordLine(
     throw broken(`it holds a change to another collection, ${JSON.stringify(parsed.collection)}.`);
   }
   return parsed;
+}
+
+/**
+ * A record log that holds something other than whole record changes, such
+ * as a line edited by hand, so the host can name the file and the line
+ * instead of reporting a bug.
+ */
+export class BrokenRecordLogError extends Error {
+  /** The log's name or path, as the store gave it. */
+  readonly file: string;
+  /** Why it is broken, such as "it is not JSON." */
+  readonly why: string;
+  /** The broken line, counted from 1, or `undefined` when the whole log is broken. */
+  readonly line: number | undefined;
+
+  constructor(file: string, why: string, line?: number) {
+    const where = line === undefined ? "" : `, line ${line}`;
+    super(`Broken record log ${JSON.stringify(file)}${where}: ${why}`);
+    this.name = "BrokenRecordLogError";
+    this.file = file;
+    this.why = why;
+    this.line = line;
+  }
 }
 
 /** Whether a parsed line has the fields of a {@link RecordChange}, with the types the port gives them. */

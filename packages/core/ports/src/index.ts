@@ -250,6 +250,7 @@ export {
 } from "./program-probe.ts";
 export { defaultBaseUrl } from "./provider-default-base-url.ts";
 export {
+  BrokenRecordLogError,
   type CurrentRecord,
   compactedChanges,
   foldRecords,

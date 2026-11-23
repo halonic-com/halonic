@@ -30,6 +30,7 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { GitExporter } from "./commands/plugin/git-source.ts";
+import { PluginRecordStore } from "./plugin-record-store.ts";
 import { cliPluginSignOut } from "./plugin-sign-out.ts";
 import { PluginsFolderReader } from "./plugins-folder-reader.ts";
 import { nodeLocalToolState, nodePluginCodeFence } from "./sandbox-works.ts";
@@ -97,7 +98,9 @@ export async function offHereFor(
  * data: the profile folder and, when `cwd` is given and holds one, its
  * workspace's `.studio` data, each as written and with links resolved.
  * A plugins folder the person may not list is refused with
- * `UnreadablePluginsFolderError`, which names the folder and the fix.
+ * `UnreadablePluginsFolderError`, and a plugin record file the person may
+ * not open, or a damaged one, with `UnreadablePluginRecordError` or
+ * `DamagedPluginRecordError`; each names the file or folder and the fix.
  *
  * @param cwd - the folder the command runs in, for `plugin add`
  * @throws when `HALONIC_HOME` or the home folder isn't an absolute folder
@@ -111,12 +114,13 @@ export function openPluginService(setup: PluginSetup, cwd?: string): PluginServi
   const clock = setup.clock ?? systemClock;
   const folder = setupPluginsFolder(setup);
   const read = setup.readFolder ?? ((at: string) => new FileSystemFolderReader(at));
+  const records = pluginRecordsFolder(profile);
   return new PluginService({
     plugins: new PluginsFolderReader(read(folder), folder),
     writer: new FileSystemPluginFolder(folder, { clock }),
     digest: webCryptoDigest,
     trust: cliTrustService(new FileTrustStore(trustFolder(profile)), clock),
-    records: new FileRecordStore(pluginRecordsFolder(profile)),
+    records: new PluginRecordStore(new FileRecordStore(records), records),
     clock,
     signOut: cliPluginSignOut({
       profile,
