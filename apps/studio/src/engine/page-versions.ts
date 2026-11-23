@@ -233,10 +233,17 @@ function noGit(): GitMissingError {
   return new GitMissingError();
 }
 
-/** The folder has its own `.git`, and the shell won't open the repository it leads to. */
+/**
+ * The folder has its own `.git`, and the shell won't open the repository it leads to. The fix names
+ * both ways on: the repository's own folder, which the shell opens, and the CLI, which reads the
+ * live version there (HAL-16683).
+ */
 function historyOutside(): KindedError {
   return new KindedError(
     "unavailable",
     "This folder's history lies outside the folder you opened, so it can't be read.",
+    {
+      fix: "Open the folder that holds the repository instead, or run it with halonic in a terminal.",
+    },
   );
 }

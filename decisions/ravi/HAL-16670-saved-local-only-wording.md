@@ -2,7 +2,7 @@
 
 - Approval: Liam asked for it in his review of #5246 (HAL-16400, `[minor]`), as follow-up HAL-16670; Liam approves this note in review
 - Kind: internal
-- Task: HAL-16670
+- Task: HAL-16670, with HAL-16683 bundled (flow check 80, finding c745)
 
 ## What changes
 
@@ -27,7 +27,18 @@ Words check C739 (HAL-16658) dropped "Nothing ran." from Studio's start refusals
 screen's lead already says the run didn't start. The same holds here, and the sentence also reads oddly
 on a cancel or an answer, which open the engine the same way and start nothing.
 
+## Also: a next step for a folder whose history lies outside (HAL-16683)
+
+`studio.page-versions` refused a folder with its own `.git` that the shell won't open, such as a git
+worktree, with only "This folder's history lies outside the folder you opened, so it can't be read.",
+which leaves the person no way on. The refusal keeps that sentence and now gives the next step
+"Open the folder that holds the repository instead, or run it with halonic in a terminal." The
+requirement names both, with a new example, and `page-versions.test.ts` checks the step too. Nothing
+is weakened: the refusal, its kind and that the saved files are never read stay as they were.
+
 ## Covers
 
 - studio.engine-service
 - apps/studio/src/engine/engine-service-saved-local-only.test.ts
+- studio.page-versions
+- apps/studio/src/engine/page-versions.test.ts

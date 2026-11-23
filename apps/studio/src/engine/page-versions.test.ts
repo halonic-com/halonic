@@ -199,6 +199,8 @@ verifies("studio.page-versions", () => {
       await expect(liveVersionOf(worktree)).rejects.toMatchObject({
         kind: "unavailable",
         message: "This folder's history lies outside the folder you opened, so it can't be read.",
+        // HAL-16683: the refusal gives a way on.
+        fix: "Open the folder that holds the repository instead, or run it with halonic in a terminal.",
       });
     });
 
