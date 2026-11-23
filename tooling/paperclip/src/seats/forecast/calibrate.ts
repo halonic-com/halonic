@@ -7,6 +7,7 @@
  * skipped.
  */
 
+import { sameWindow } from "../projection.ts";
 import { robustFit } from "./robust-fit.ts";
 import { groupBy, Timeline } from "./timeline.ts";
 import {
@@ -19,6 +20,7 @@ import {
   planOf,
   type Seat,
   type TokenCounts,
+  tokensOf,
   totalTokens,
   type WindowKey,
   type WindowReading,
@@ -80,8 +82,6 @@ export const calibrationDays = 7;
 export const fewestSteps = 24;
 /** A fit that moved this much within a week is flagged: a plan or price may have changed. */
 export const shiftLimit = 0.25;
-/** Resets this close together are the same window: `/usage` prints them to the minute. */
-const sameResetMs = 3_600_000;
 const million = 1_000_000;
 
 export function keyOf(key: CalibrationKey): string {
@@ -101,15 +101,9 @@ function ratePerMillion(rate: Readonly<Record<TokenKind, number>>, mix: TokenCou
   return mix.input * rate.input + mix.cached * rate.cached + mix.output * rate.output;
 }
 
-// The same rule as the plugin's projection (#5002); import it from there once it is exported.
+/** The plugin's projection rule: a new reset time, or a drop in percent (a reset the reads missed). */
 function resetBetween(earlier: WindowReading, later: WindowReading): boolean {
-  if (later.usedPercent < earlier.usedPercent) {
-    return true;
-  }
-  if (earlier.resetsAt === undefined || later.resetsAt === undefined) {
-    return earlier.resetsAt !== later.resetsAt;
-  }
-  return Math.abs(Date.parse(later.resetsAt) - Date.parse(earlier.resetsAt)) >= sameResetMs;
+  return later.usedPercent < earlier.usedPercent || !sameWindow(earlier, later);
 }
 
 /** The time `/usage` shows a bucket's points: its middle. */
@@ -157,7 +151,9 @@ function indexSteps(input: CalibrationInput): StepIndex {
       ),
     );
   }
-  const unplaced = input.usage.filter((u) => u.seatId === undefined && totalTokens(u.tokens) > 0);
+  const unplaced = input.usage.filter(
+    (u) => u.seatId === undefined && totalTokens(tokensOf(u)) > 0,
+  );
   return { usageBySeat, movesBySeat, unattributed: new Timeline(unplaced, usageTime) };
 }
 
@@ -197,7 +193,7 @@ function stepBetween(
     window: earlier.reading.window,
     from: used[0]?.bucketStart ?? earlier.reading.at,
     to: used.at(-1)?.bucketStart ?? earlier.reading.at,
-    tokens: used.reduce((sum, u) => addTokens(sum, u.tokens), noTokens),
+    tokens: used.reduce((sum, u) => addTokens(sum, tokensOf(u)), noTokens),
     points: later.reading.usedPercent - earlier.reading.usedPercent,
   };
 }
