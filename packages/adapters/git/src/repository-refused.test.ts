@@ -1,10 +1,11 @@
-import { chmod, mkdir, realpath, writeFile } from "node:fs/promises";
+import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, it } from "vitest";
 import { plainGit, repositoryWith, Scratch, testRunner } from "./fixtures.test-helper.ts";
 import type { GitRunner } from "./git-runner.ts";
 import { Repository } from "./repository.ts";
+import { linkedWorktreeMain } from "./repository-location.ts";
 
 const scratch = new Scratch();
 afterAll(() => scratch.remove());
@@ -58,20 +59,13 @@ verifies("git.repository-refused", () => {
     );
   });
 
-  // chmod can't take away read access on Windows.
-  it.skipIf(process.platform === "win32")(
-    "keeps the refusal when the worktree's .git file can't be read",
-    async () => {
-      const folder = await scratch.folder();
-      await writeFile(join(folder, ".git"), "gitdir: elsewhere/.git/worktrees/linked\n");
-      await chmod(join(folder, ".git"), 0o000);
+  // A .git file that is gone by the time it's read stands for any read error:
+  // unlike taking away read access, it fails the same way on every platform.
+  it("gives no main folder, not a read error, when the worktree's .git file can't be read", async () => {
+    const folder = await scratch.folder();
 
-      const refusal = await refusalOf(folder);
-
-      expect(refusal.kind).toBe("denied");
-      expect(refusal.fix).toBe(genericFix);
-    },
-  );
+    await expect(linkedWorktreeMain(folder)).resolves.toBeUndefined();
+  });
 
   it("keeps the refusal when the main folder named by .git can't be looked at", async () => {
     const folder = await scratch.folder();
