@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13218; the selling layer's design (HAL-12483), sections 1, 4.2, 4.3 and 13.6; builds on `engine.meter-port`, `engine.plan-stops` and `format.deployments-users`
 
-`ConfigMeter` shall be a `Meter` that holds each principal to the `stop` limits of a deployment's `users.config`, per UTC day or month, and shall keep its counts in `Coordination`, so every instance of a deployment counts the same. A `notify` limit shall refuse nothing.
+The engine's `ConfigMeter` shall be a `Meter` that holds each principal to the `stop` limits of a deployment's `users.config`, per UTC day or month, and shall keep its counts in `Coordination`, so every instance of a deployment counts the same. A `notify` limit shall refuse nothing.
 
 - In a personal scope (`u/…`), the limits shall be `users.config.limits`.
 - In an organisation's scope (`o/<id>`), the limits shall be the organisation's pool and the member's own share, checked share first. A member past their share shall be refused with `plan.member.<unit>` and `canUpgrade: "false"` while the pool has room. An `actor` the organisation doesn't list shall be refused with `plan.member-removed`, and a scope that names no organisation in the file, or that is neither `u/` nor `o/`, with `plan.none`.
