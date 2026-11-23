@@ -1,4 +1,5 @@
 import type { ServerPorts } from "./api.ts";
+import type { CloudSignInPorts } from "./cloud-sign-in-api.ts";
 import type { Principal } from "./principal.ts";
 import type { SessionVerifier } from "./session-verifier.ts";
 
@@ -26,4 +27,9 @@ export interface ManyUserPorts {
    * route of a many-user server gets run ports.
    */
   scopedRuns(principal: Principal): ScopedRunPorts;
+  /**
+   * Sign-in through Halonic Cloud: `GET /api/sign-in` and its return route. Without it those
+   * routes answer 404, and sessions come from elsewhere.
+   */
+  readonly cloudSignIn?: CloudSignInPorts;
 }

@@ -6,6 +6,7 @@ import type {
   ServerPorts,
 } from "./api.ts";
 import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
+import { isCloudSignInReturnPath } from "./cloud-sign-in-routes.ts";
 import { connectorCallPath, createConnectorRoutes } from "./connector-routes.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
@@ -315,7 +316,12 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
 
   /** Whether a path belongs to a route that can take a secret or a key, which the request log leaves out. */
   function takesSecret(pathname: string): boolean {
-    return isSecretPath(pathname) || isProviderKeyPath(pathname) || isModelChoiceKeyPath(pathname);
+    return (
+      isSecretPath(pathname) ||
+      isProviderKeyPath(pathname) ||
+      isModelChoiceKeyPath(pathname) ||
+      isCloudSignInReturnPath(pathname)
+    );
   }
 
   /** Logs method, path and status. A route that takes a secret is left out, and no query string is ever logged. */

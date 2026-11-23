@@ -90,7 +90,7 @@ export async function verifySession(
 }
 
 /** Every value of the cookie named `name` in a `Cookie` header, in order. */
-function cookieValues(header: string | null, name: string): string[] {
+export function cookieValues(header: string | null, name: string): string[] {
   const values: string[] = [];
   for (const part of (header ?? "").split(";")) {
     const separator = part.indexOf("=");
