@@ -103,6 +103,8 @@ fn main() {
         "phone_tunnel_watch",
         "tunnel_send",
         "tunnel_end_session",
+        "phone_open_settings",
+        "phone_open_tailscale",
         "update_status",
         "update_watch",
         "update_check",

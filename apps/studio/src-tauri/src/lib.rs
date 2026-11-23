@@ -27,7 +27,8 @@
 //! pairing scanner's `pair_scan` and `pair_scan_cancel`
 //! (capabilities/phone-pair-scan.json) and the phone tunnel's `phone_*`
 //! commands with `phone_tunnel_watch`, `tunnel_send` and `tunnel_end_session`
-//! (capabilities/phone-tunnel.json); the Studio it then opens is
+//! (capabilities/phone-tunnel.json) and `phone_open_settings` and
+//! `phone_open_tailscale` (capabilities/phone-screens.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
@@ -61,6 +62,7 @@ mod owner_check;
 mod page_calls;
 mod page_streams;
 mod pair_scan;
+mod phone_screens;
 mod phone_tunnel;
 mod phone_tunnel_events;
 mod plugin_folder;
@@ -158,6 +160,11 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     // grants its commands, so no page can call it or pick its words.
     #[cfg(target_os = "android")]
     let builder = builder.plugin(owner_check::plugin());
+    // Android's settings page for the app and the Tailscale app, which the
+    // connect page opens only through `phone_open_settings` and
+    // `phone_open_tailscale`: no capability grants the plugin's commands.
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(phone_screens::plugin());
     // The phone tunnel, over the key store above, so registered after it.
     #[cfg(target_os = "android")]
     let builder = builder.plugin(phone_tunnel::plugin());
@@ -309,6 +316,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             phone_tunnel::phone_tunnel_watch,
             phone_tunnel::tunnel_send,
             phone_tunnel::tunnel_end_session,
+            phone_screens::phone_open_settings,
+            phone_screens::phone_open_tailscale,
             #[cfg(desktop)]
             updates::update_status,
             #[cfg(desktop)]
