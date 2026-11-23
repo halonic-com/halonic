@@ -211,6 +211,33 @@ deployments:
   default, or `notify`). Two limits on the same unit and period fail (`users-limit-repeated`).
 - A `config` or `cloud` block for a meter the deployment doesn't use only warns
   (`users-meter-settings-unused`), so switching meters changes only `meter:`.
+- `meter: config` with no limits at all counts nothing, like `meter: none`, so it warns
+  (`users-config-limits-missing`).
+
+`config` may also list `organisations`: groups of people who share one pool of limits, in the
+shape of an organisation in Halonic Cloud.
+
+```yaml
+      config:
+        organisations:
+          - id: org_acme0000000000001       # org_ and 16 to 40 letters or digits
+            limits:                          # the pool all members share
+              - { unit: cost, amount: 100, period: month }
+            concurrency: 4                   # runs at once, all members together
+            members:
+              - { actor: eu_anna000000000001, role: owner }
+              - actor: eu_ben0000000000001   # eu_ and 16 to 40 letters or digits
+                role: member                 # owner, admin or member
+                limits: [{ unit: cost, amount: 20, period: month }]
+                concurrency: 1
+```
+
+- Each organisation needs an `owner` (`users-organisation-owner-missing`), lists a person once
+  (`users-member-repeated`) and has its own `id` (`users-organisation-repeated`).
+- A member's `limits` are a share of the pool: each needs a pool limit on the same `unit` and
+  `period` (`users-member-limit-outside-pool`) and can't be above its `amount`
+  (`users-member-limit-above-pool`). A member's `concurrency` can't be above the organisation's
+  (`users-member-concurrency-above-organisation`).
 
 ## Model call limit
 

@@ -47,6 +47,8 @@ export type {
   CloudMeterSettings,
   ConfigMeterSettings,
   DeploymentUsers,
+  Organisation,
+  OrganisationMember,
   UsageLimit,
 } from "./kinds/deployments/users.ts";
 export type { Hub, HubUses } from "./kinds/hub/schema.ts";
