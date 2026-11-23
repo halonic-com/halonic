@@ -2,6 +2,7 @@
 
 - Approval: HAL-17139
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5EVIi6ncHwdgtlNP+avBbxmvAGJC9Iu1qj9sR7QFSTWQWR3y3vVe6LkULuZNs758i3ZMlIR+n0yWzYHxbAV9Cg==
 
 The deploy command (HAL-6702) needs to know which Cloudflare account a
 deployment lives in, and the approved deploy flow (HAL-6687 rev 4, 2.2 and 4)
