@@ -170,9 +170,19 @@ function kindOf(error: unknown): unknown {
 }
 
 /**
+ * Whether the person pressed Cancel in the desktop shell's own window before the yes was saved
+ * (its `declined`, `studio.src-tauri.unfenced-allow-asks`). Nothing was saved, and nothing went
+ * wrong: the dialog stays as it was, with no error line (HAL-17065).
+ */
+export function yesDeclined(error: unknown): boolean {
+  return kindOf(error) === "declined";
+}
+
+/**
  * **Trust** with the person's yes (design section 7): saves the yes first, through the host, and
  * trusts only once it's saved. When the reason changed in between, nothing is trusted: the check
- * reads the status again and shows the reason that holds now, with the box to tick again.
+ * reads the status again and shows the reason that holds now, with the box to tick again. When the
+ * person cancels the shell's own window, nothing is trusted and the check stays as it was.
  *
  * @throws {@link YesNotSaved} when the host couldn't save the yes
  *
@@ -185,9 +195,13 @@ export async function trustWithYes(
   trust: () => Promise<void>,
 ): Promise<boolean> {
   if (allow !== undefined && unfencedRuns !== undefined) {
-    const yes = await unfencedRuns.allow(allow).catch((error: unknown) => {
+    let yes: Awaited<ReturnType<PluginUnfencedRuns["allow"]>>;
+    try {
+      yes = await unfencedRuns.allow(allow);
+    } catch (error) {
+      if (yesDeclined(error)) return false;
       throw kindOf(error) === "allow_failed" ? new YesNotSaved() : error;
-    });
+    }
     if (yes === null) {
       status.read();
       return false;

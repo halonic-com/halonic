@@ -1,5 +1,9 @@
 import { type RunnerUnfencedReason, runnerUnfencedWords } from "@halonicjs/app";
-import { UNFENCED_CHECKBOX, YES_NOT_SAVED } from "@halonicjs/studio-feature-plugins/api";
+import {
+  UNFENCED_CHECKBOX,
+  YES_NOT_SAVED,
+  yesDeclined,
+} from "@halonicjs/studio-feature-plugins/api";
 import { Button, Checkbox, Dialog, ExternalLink, useModalPolite } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
@@ -85,6 +89,7 @@ function allowFailureOf(error: unknown): string {
  * saves the yes through the window's one yes object, the one a plugin's Review saves through, so
  * it waits for a Take back under way. When the host saved nothing, the box is unticked, takes the
  * focus, and the dialog's polite region reads the reason once, as the trust checks do (C681).
+ * A Cancel in the shell's own window leaves the dialog as it was, the box ticked, with no error.
  */
 export function UnfencedAllowDialog(props: UnfencedAllowDialogProps) {
   const { host, reason, onAllowed, onNotSaved } = props;
@@ -113,6 +118,8 @@ export function UnfencedAllowDialog(props: UnfencedAllowDialogProps) {
       },
       (failure: unknown) => {
         setBusy(false);
+        // A Cancel in the shell's own window is the person's choice: the dialog stays as it was.
+        if (yesDeclined(failure)) return;
         setError(allowFailureOf(failure));
       },
     );

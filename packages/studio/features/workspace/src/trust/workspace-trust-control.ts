@@ -112,6 +112,12 @@ export type TrustGrantResult =
        * it again and shows the reason that holds now, with the box to tick again. Nothing to say.
        */
       readonly checkAgain?: boolean;
+      /**
+       * The person pressed Cancel in the desktop shell's own window before the yes was saved, so
+       * nothing was saved: the check stays as it was, with no error line. `reason` is the shell's
+       * own sentence, for Copy details and logs only.
+       */
+      readonly cancelled?: boolean;
     };
 
 /**

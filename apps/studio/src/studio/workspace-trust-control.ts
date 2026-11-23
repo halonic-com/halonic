@@ -6,6 +6,7 @@ import {
   UNFENCED_CHECKBOX,
   type UnfencedRunStatus,
   YES_NOT_SAVED,
+  yesDeclined,
 } from "@halonicjs/studio-feature-plugins/api";
 import {
   TrustAsks,
@@ -195,8 +196,9 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
 
   /**
    * Saves the yes, the same way the plugin check does (design section 7): when the reason changed
-   * in between, nothing is saved, and the check reads the status again; answers `undefined` once
-   * the yes is saved, else why trust wasn't.
+   * in between, nothing is saved, and the check reads the status again; when the person cancels
+   * the shell's own window, nothing is saved either. Answers `undefined` once the yes is saved,
+   * else why trust wasn't.
    */
   async #allow(
     unfencedRuns: PluginUnfencedRuns,
@@ -213,6 +215,9 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
       this.checkRuns();
       return { ok: false, reason: "the sandbox status changed", checkAgain: true };
     } catch (error) {
+      // The person pressed Cancel in the shell's own window: nothing to say (HAL-17065).
+      if (yesDeclined(error))
+        return { ok: false, reason: errorReasonFor(error), error, cancelled: true };
       if (kindOf(error) === "allow_failed") return { ok: false, reason: YES_NOT_SAVED, error };
       // A host refusal's raw message names the agent host, a route and a code (C665-53).
       return { ok: false, reason: errorReasonFor(error), error };

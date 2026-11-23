@@ -75,6 +75,9 @@ export function useTrustCheck(
       setYesNotSaved((count) => count + 1);
       return;
     }
+    // A Cancel in the shell's own window is the person's choice, not a failure (HAL-17065): the
+    // check stays open as it was, the box still ticked, with nothing to say.
+    if (result.cancelled === true) return;
     setError(`Couldn't save trust: ${result.reason}. Nothing was started.`);
   };
   const open = () => {

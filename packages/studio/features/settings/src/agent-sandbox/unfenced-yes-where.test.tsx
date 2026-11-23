@@ -195,6 +195,26 @@ verifies("settings.unfenced-yes-where", () => {
     expect(button("Take back")).toBeUndefined();
   });
 
+  it("stays open with no error and the box ticked when the person cancels the shell's window (HAL-17065)", async () => {
+    const { host } = fakeHost(needsYes, async () => {
+      throw hostError(
+        "declined",
+        "Nothing was saved because the confirmation window was cancelled.",
+      );
+    });
+    await show(host);
+    await openAllow();
+    await tickAndAllow();
+    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+
+    expect(dialog()).not.toBeNull();
+    expect(dialog()?.querySelector('[role="alert"]')?.textContent ?? "").toBe("");
+    expect(dialog()?.textContent).not.toContain("cancelled");
+    expect(box()?.checked).toBe(true);
+    expect(allowButton()?.getAttribute("aria-disabled")).not.toBe("true");
+    expect(button("Take back")).toBeUndefined();
+  });
+
   it("offers no Allow… while a yes is saved, the host can't say, or for a reason it has no words for", async () => {
     await show(fakeHost({ run: "allowed", ...saved }).host);
     expect(button("Allow…")).toBeUndefined();
