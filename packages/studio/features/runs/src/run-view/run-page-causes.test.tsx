@@ -294,7 +294,7 @@ verifies("runs.run-view.failure-banners", () => {
     expect(opened).toEqual(["fast"]);
   });
 
-  it("opens the failed step with See the step, after Run again, for an answer that isn't a choice (R7)", async () => {
+  it("opens the failed step with See the step, after Run again and before the how-to, for an answer that isn't a choice (R7)", async () => {
     const cause = answerNotAnOptionCause({ agent: "sorter", options: ["refund", "spam"] });
     const runId = "run_e_7r7r7r";
     const log = logOf(runId, [
@@ -332,7 +332,11 @@ verifies("runs.run-view.failure-banners", () => {
       />,
     );
     await settled();
-    expect(names(root)).toEqual(["Run again", "See the step"]);
+    expect(names(root)).toEqual([
+      "Run again",
+      "See the step",
+      "Handle an answer a step can't use ↗. Opens GitHub",
+    ]);
     expect(root.querySelector("aside")).toBeNull();
     await act(async () =>
       [...root.querySelectorAll("button")]

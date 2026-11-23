@@ -141,7 +141,7 @@ verifies("remote.phone-paired-computers", () => {
     expect(rows[1]?.querySelectorAll(".opacity-60")).toHaveLength(1);
     expect(screen.querySelectorAll("li[class*=opacity]")).toHaveLength(0);
     expect(screen.textContent).toContain(
-      "Forget only removes a computer from this phone. To cut this phone off for good, use Revoke in Settings › Remote on the computer.",
+      "Forget only removes a computer from this phone. To cut this phone off for good, use Revoke in Settings › Remote on the computer. Once no computer is paired, this phone connects by address again when it opens.",
     );
     expect(named("Forget Tim's laptop")).toBeDefined();
     expect(named("Forget Studio PC")).toBeDefined();

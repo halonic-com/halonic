@@ -146,15 +146,23 @@ function answerNotAnOption(
     const agent = agentNameOf(choices.agent, context);
     // The sentence ends "then run again", so Run again comes first and See the step after it.
     return danger([failureWords.answerNotAChoice(workflow, step, agent, choices.options)], {
-      links: [{ kind: "see-step" }],
+      links: [{ kind: "see-step" }, answerHowTo],
     });
   }
   // An older log: its cause doesn't give the choices, so the agent comes from the log.
   const agent = facts.offOptionAgent ?? facts.agent;
   return agent === undefined
     ? undefined
-    : danger([failureWords.answerNotAnOption(workflow, step, agent)]);
+    : danger([failureWords.answerNotAnOption(workflow, step, agent)], { links: [answerHowTo] });
 }
+
+/** The how-to for `answerRetries` and an `unusable` transition, after the step's own links. */
+const answerHowTo: BannerFix = {
+  kind: "open-external",
+  label: failureWords.answerHowTo,
+  address: failureWords.answerHowToAddress,
+  opens: failureWords.opensGitHub,
+};
 
 /** The cause code the harness bridge gives a socket path longer than the system takes (HAL-13862). */
 const socketPathTooLongCode = "harness-bridge.socket-path-too-long";
