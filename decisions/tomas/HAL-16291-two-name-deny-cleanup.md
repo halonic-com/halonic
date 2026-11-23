@@ -22,7 +22,10 @@ and the rest) stay, as before. A removal that fails is logged and doesn't
 fail the close.
 
 `RootFilePlaceholders` in `windows-root-files.ts` becomes `DenyPlaceholders`
-in `windows-deny-placeholders.ts`, and its two test files move with it.
+in `windows-deny-placeholders.ts`, and its two test files move with it:
+`windows-root-files.test.ts` becomes `windows-deny-placeholders.test.ts` and
+`srt-session-root-files.test.ts` becomes
+`srt-session-deny-placeholders.test.ts`, with every case kept.
 
 The requirement changes only in this:
 
@@ -36,3 +39,5 @@ No test is removed or skipped.
 ## Covers
 
 - sandbox-srt.windows-tool-folders
+- packages/adapters/sandbox-srt/src/srt-session-root-files.test.ts
+- packages/adapters/sandbox-srt/src/windows-root-files.test.ts
