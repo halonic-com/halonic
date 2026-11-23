@@ -5,7 +5,7 @@ options or with JSON. When it answers something else, such as "Refund" for
 the option `refund` or JSON cut off halfway, the run fails at that step:
 
 ```text
-The agent sorter answered "Refund", which isn't one of its options (refund, question, spam). Tighten the agent's instructions or use a larger model.
+The agent Sorter answered "Refund", which isn't one of its options (refund, question, spam). Tighten the agent's instructions or use a larger model.
 ```
 
 Clearer instructions or a larger model fix the cause. Two settings make a
