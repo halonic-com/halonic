@@ -43,7 +43,7 @@ export const checkWords = {
     online: { tailscale: "Online, through Tailscale", wifi: "Online, through this Wi-Fi" },
     offline: "Offline: it has no internet.",
     offlineFix: sheetWords.phoneOffline.check,
-    notKnown: "Not known yet: no try has finished.",
+    notKnown: "Not known yet: nothing has come back so far.",
   },
   computer: {
     label: "Your computer",
