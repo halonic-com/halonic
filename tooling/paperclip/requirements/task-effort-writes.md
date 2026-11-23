@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16876; the effort decision note on HAL-16866, steps 2 and 3
 
-When a task assigned to an agent is created or changes and the task effort table's answer differs from the task's effort, which is unset or the plugin's own, the Agent tools plugin shall send one `PATCH` of that task's `assigneeAdapterOverrides` to Paperclip's API at the address in its settings, with the settings' key, that sets `adapterConfig.effort` to the answer (or takes the plugin's own effort off when the table answers nothing) and keeps every other override, such as the task's model; it shall send it only while the board's switch allows the running version to write and both the address and the key are set, and otherwise log "would set" with the task and the effort; it shall count a task as sent back when it moves from a reviewer in its settings to another agent and that reviewer's newest comment on the task isn't a signed approval ("approved on head"); it shall treat the table as answering nothing while the task is assigned to a reviewer in its settings, so the reviewer's run takes the reviewer's own effort and the task's effort comes back when it returns to another agent; and it shall handle the events of one task one after another.
+When a task assigned to an agent is created or changes and the task effort table's answer differs from the task's effort, which is unset or the plugin's own, the Agent tools plugin shall send one `PATCH` of that task's `assigneeAdapterOverrides` to Paperclip's API at the address in its settings, with the settings' key, that sets `adapterConfig.effort` to the answer (or takes the plugin's own effort off when the table answers nothing) and keeps every other override, such as the task's model; it shall read the overrides again right before the `PATCH` and send nothing, log "left … alone" and save `task_effort.skipped` when they changed since it read the task; it shall send it only while the board's switch allows the running version to write and both the address and the key are set, and otherwise log "would set" with the task and the effort; it shall count a task as sent back when it moves from a reviewer in its settings to another agent and that reviewer's newest comment on the task isn't a signed approval ("approved on head"); it shall treat the table as answering nothing while the task is assigned to a reviewer in its settings, so the reviewer's run takes the reviewer's own effort and the task's effort comes back when it returns to another agent; and it shall handle the events of one task one after another.
 
 ## Examples
 
@@ -29,3 +29,6 @@ When a task assigned to an agent is created or changes and the task effort table
 - Given Paperclip's API answers 403,
   when the plugin sends a task change,
   then it logs an error with `http_403`, saves `task_effort.failed`, and tries again on the task's next change.
+- Given a task tagged `D2` whose model override a person changes after the plugin read the task,
+  when the plugin is about to send its `PATCH`,
+  then it sends nothing, saves `task_effort.skipped`, and handles the person's change on its own event.

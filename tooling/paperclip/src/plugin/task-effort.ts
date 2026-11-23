@@ -68,9 +68,33 @@ function shown(effort: string | null): string {
   return isPaperclipEffort(effort) ? effort : "other";
 }
 
-function effortOf(issue: Issue): string | null {
-  const effort = issue.assigneeAdapterOverrides?.adapterConfig?.["effort"];
+function effortIn(overrides: Issue["assigneeAdapterOverrides"] | undefined): string | null {
+  const effort = overrides?.adapterConfig?.["effort"];
   return typeof effort === "string" ? effort : null;
+}
+
+/**
+ * The task's effort as the event saw it: from the event's payload when it
+ * carries the overrides, so a change undone before the handler gets to it is
+ * still reported, and otherwise from the task as it is now.
+ */
+function effortAtEvent(event: PluginEvent, issue: Issue): string | null {
+  const payload = (event.payload ?? {}) as Record<string, unknown>;
+  if (!("assigneeAdapterOverrides" in payload)) {
+    return effortIn(issue.assigneeAdapterOverrides);
+  }
+  const overrides = payload["assigneeAdapterOverrides"];
+  return typeof overrides === "object"
+    ? effortIn(overrides as Issue["assigneeAdapterOverrides"])
+    : null;
+}
+
+/** Whether two override values are the same, field for field. */
+function sameOverrides(
+  a: Issue["assigneeAdapterOverrides"],
+  b: Issue["assigneeAdapterOverrides"],
+): boolean {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
 /** The task's overrides with the effort replaced, or taken off when `effort` is null. */
@@ -85,13 +109,16 @@ export function withTaskEffort(
   return Object.keys(next).length > 0 ? next : null;
 }
 
-/** Raised, lowered, set or removed, for the metric's tag. */
+/** Raised, lowered, set, removed, or changed when either side isn't one of Paperclip's words, for the metric's tag. */
 function direction(change: ForeignChange): string {
   if (change.from === null) {
     return "set";
   }
   if (change.to === null) {
     return "removed";
+  }
+  if (!(isPaperclipEffort(change.from) && isPaperclipEffort(change.to))) {
+    return "changed";
   }
   const rank = (effort: string) => paperclipEfforts.indexOf(effort as never);
   return rank(change.to) > rank(change.from) ? "raised" : "lowered";
@@ -154,18 +181,36 @@ async function reportForeign(
   );
 }
 
-/** Sends the task change through Paperclip's own API. Returns an error code, or undefined when it went through. */
+/** Why a write didn't go out: Paperclip refused it, or someone changed the overrides since the handler read them. */
+type WriteFailure =
+  | { readonly kind: "failed"; readonly code: string }
+  | { readonly kind: "changed" };
+
+/**
+ * Sends the task change through Paperclip's own API. Core has no version
+ * check on a task, so it reads the overrides again right before the PATCH
+ * and sends nothing when they changed since `issue` was read: the PATCH
+ * replaces all of them, and would undo a person's effort or model change.
+ * That change's own `issue.updated` reports it.
+ */
 async function patchEffort(
   ctx: TaskEffortApi,
   deps: TaskEffortDeps,
   settings: TaskEffortSettings,
   issue: Issue,
   effort: string | null,
-): Promise<string | undefined> {
+): Promise<WriteFailure | undefined> {
   if (settings.apiUrl === undefined || settings.apiKey === undefined) {
-    return "not_configured";
+    return { kind: "failed", code: "not_configured" };
   }
   try {
+    const fresh = await ctx.issues.get(issue.id, issue.companyId);
+    if (
+      fresh === null ||
+      !sameOverrides(fresh.assigneeAdapterOverrides, issue.assigneeAdapterOverrides)
+    ) {
+      return { kind: "changed" };
+    }
     // Read at run time and never logged or kept (the SDK's secrets rule).
     const key = await ctx.secrets.resolve(settings.apiKey, { companyId: issue.companyId });
     const response = await deps.fetch(
@@ -179,9 +224,9 @@ async function patchEffort(
         signal: AbortSignal.timeout(requestTimeoutMs),
       },
     );
-    return response.ok ? undefined : `http_${response.status}`;
+    return response.ok ? undefined : { kind: "failed", code: `http_${response.status}` };
   } catch (error) {
-    return errorCode(error);
+    return { kind: "failed", code: errorCode(error) };
   }
 }
 
@@ -201,9 +246,15 @@ async function applyEffort(
     return false;
   }
   const failure = await patchEffort(ctx, deps, settings, issue, effort);
+  if (failure?.kind === "changed") {
+    ctx.logger.info(`Task effort: left ${name} alone, its overrides changed meanwhile.`, meta);
+    await writeMetrics(ctx, { "task_effort.skipped": 1 }, meta);
+    return false;
+  }
   if (failure !== undefined) {
-    ctx.logger.error(`Task effort: couldn't set ${name} to ${shown(effort)} (${failure}).`, meta);
-    await writeMetrics(ctx, { "task_effort.failed": 1 }, { ...meta, reason: failure });
+    const code = failure.code;
+    ctx.logger.error(`Task effort: couldn't set ${name} to ${shown(effort)} (${code}).`, meta);
+    await writeMetrics(ctx, { "task_effort.failed": 1 }, { ...meta, reason: code });
     return false;
   }
   ctx.logger.info(`Task effort: set ${name} to ${shown(effort)}.`, meta);
@@ -226,7 +277,7 @@ async function handle(
   const stored = (await ctx.state.get(recordKey(taskId))) as EffortRecord | null;
   const before = stored ?? undefined;
   const task: TaskNow = {
-    effort: effortOf(issue),
+    effort: effortAtEvent(event, issue),
     labelNames: (issue.labels ?? []).map((label) => label.name),
     assigneeAgentId: issue.assigneeAgentId,
   };

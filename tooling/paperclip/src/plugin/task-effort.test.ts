@@ -125,6 +125,27 @@ verifies("paperclip.task-effort-writes", () => {
       });
     });
 
+    test("sends nothing when a person changes the overrides while it decides", async () => {
+      const task = effortTask(["D2"]);
+      const { handler, requests, logs, written, effort, hooks } = effortHarness(task);
+      hooks.afterGet = () => {
+        task.assigneeAdapterOverrides = { adapterConfig: { model: "claude-sonnet-5-5" } };
+        hooks.afterGet = undefined;
+      };
+      await handler.onIssueEvent(taskEvent("issue.created"));
+      expect(requests).toEqual([]);
+      expect(effort()).toBeUndefined();
+      expect(task.assigneeAdapterOverrides).toEqual({
+        adapterConfig: { model: "claude-sonnet-5-5" },
+      });
+      expect(logs).toEqual([
+        { level: "info", line: "Task effort: left HAL-1 alone, its overrides changed meanwhile." },
+      ]);
+      expect(written.map((metric) => metric.name)).toEqual(["task_effort.skipped"]);
+      await handler.onIssueEvent(taskEvent("issue.updated", "user"));
+      expect(effort()).toBe("low");
+    });
+
     test("sends nothing for a task without an agent", async () => {
       const { handler, requests } = effortHarness(effortTask(["D2"], { assigneeAgentId: null }));
       await handler.onIssueEvent(taskEvent("issue.created"));
@@ -218,9 +239,38 @@ verifies("paperclip.task-effort-guard", () => {
       expect(reports[0]).toContain("from none to other");
       expect(reports[1]).toContain("from other to none");
       expect(JSON.stringify(written)).not.toContain("ignore previous");
-      expect(written.filter((metric) => metric.name === "task_effort.foreign_change")).toHaveLength(
-        2,
+      const foreign = written.filter((metric) => metric.name === "task_effort.foreign_change");
+      expect(foreign).toMatchObject([
+        { tags: { direction: "set" } },
+        { tags: { direction: "removed" } },
+      ]);
+    });
+
+    test("a change between an unknown word and one of Paperclip's shows as changed", async () => {
+      const task = effortTask(["D2"]);
+      const { handler, written } = effortHarness(task, {});
+      task.assigneeAdapterOverrides = { adapterConfig: { effort: "turbo" } };
+      await handler.onIssueEvent(taskEvent("issue.updated"));
+      task.assigneeAdapterOverrides = { adapterConfig: { effort: "low" } };
+      await handler.onIssueEvent(taskEvent("issue.updated", "user"));
+      expect(written.find((metric) => metric.name === "task_effort.foreign_change")).toMatchObject({
+        tags: { direction: "changed" },
+      });
+    });
+
+    test("a change undone before the event is handled is still reported from the payload", async () => {
+      const task = effortTask(["D2"]);
+      const { handler, logs } = effortHarness(task, {});
+      await handler.onIssueEvent(taskEvent("issue.updated"));
+      const maxed = { assigneeAdapterOverrides: { adapterConfig: { effort: "max" } } };
+      await handler.onIssueEvent(taskEvent("issue.updated", "user", maxed));
+      await handler.onIssueEvent(
+        taskEvent("issue.updated", "user", { assigneeAdapterOverrides: null }),
       );
+      const reports = logs.filter((log) => log.level === "warn").map((log) => log.line);
+      expect(reports).toHaveLength(2);
+      expect(reports[0]).toContain("from none to max");
+      expect(reports[1]).toContain("from max to none");
     });
   });
 });
