@@ -50,6 +50,7 @@ export function effortTask(
 export function taskEvent(
   eventType: "issue.created" | "issue.updated",
   actorType: PluginEvent["actorType"] = "agent",
+  payload: Record<string, unknown> = {},
 ): PluginEvent {
   return {
     eventId: `event-${Math.random()}`,
@@ -59,7 +60,7 @@ export function taskEvent(
     entityId: "task-1",
     entityType: "issue",
     companyId: "acme",
-    payload: {},
+    payload,
   };
 }
 
@@ -77,9 +78,15 @@ export function effortHarness(
   const { state, saved } = fakeState();
   const logs: { level: string; line: string }[] = [];
   const requests: { url: string; method: string; headers: unknown; body: unknown }[] = [];
+  /** Runs after every read of the task, so a test can change it between the handler's reads. */
+  const hooks: { afterGet?: () => void } = {};
   const ctx = {
     issues: {
-      get: async (id: string) => (id === task.id ? structuredClone(task) : null),
+      get: async (id: string) => {
+        const found = id === task.id ? structuredClone(task) : null;
+        hooks.afterGet?.();
+        return found;
+      },
       listComments: async () => comments,
     },
     agents: {
@@ -114,5 +121,5 @@ export function effortHarness(
   };
   const handler = taskEffort(ctx, { fetch: fetch as typeof globalThis.fetch });
   const effort = () => task.assigneeAdapterOverrides?.adapterConfig?.["effort"];
-  return { handler, requests, logs, written, saved, effort };
+  return { handler, requests, logs, written, saved, effort, hooks };
 }
