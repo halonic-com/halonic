@@ -8,8 +8,9 @@ Two findings from flow check C750, fixed together.
 1. `studio.connect.tunnel-stays-home` said the connect screen shows only after "Connect with an
    address", a label the phone app doesn't have. It now names the real one, "Not listed? Enter its
    address" in Pair with a computer. The behaviour doesn't change. The Paired computers note (draft
-   `remote.phone-paired-computers`) also says that once no computer is paired, the phone connects by
-   address again when it opens, as the launch rule decided on HAL-16439 does.
+   `remote.phone-paired-computers`) also says that once no computer is paired, the phone connects to
+   its saved address again when it opens, if it has one, as the launch rule decided on HAL-16439
+   does. A phone that has only ever paired opens Pair with a computer instead.
 2. `runs.run-view.failure-banners`: both `answer-not-an-option` banners get **Handle an answer a step
    can't use ↗**, which opens `docs/how-to/handle-an-answer-a-step-cant-use.md` (`answerRetries` and an
    `unusable` transition), after the step's own links, as the proxy banner links its how-to. The
