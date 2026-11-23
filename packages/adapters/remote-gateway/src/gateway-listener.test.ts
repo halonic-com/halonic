@@ -133,7 +133,7 @@ verifies("remote-gateway.listener", () => {
             const frame = new Uint8Array(event.data as ArrayBuffer);
             if (frame[0] === gatewayFrameKinds.resume2) {
               phone.readResume2(frame);
-              socket.send(phone.say({ type: "hello", id: "h1", version: 2 }));
+              socket.send(phone.say({ type: "hello", id: "h1", version: 3 }));
             } else {
               resolve(phone.read(frame));
             }
@@ -152,7 +152,7 @@ verifies("remote-gateway.listener", () => {
       try {
         t.source.addSession("s1");
         const client = await t.pairedClient();
-        await client.sendJson({ type: "hello", id: "h1", version: 2 });
+        await client.sendJson({ type: "hello", id: "h1", version: 3 });
         await client.sendJson({ type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 });
         await client.frames(2);
         t.source.emit("s1", { type: "state", state: "done" });
@@ -261,12 +261,12 @@ verifies("remote-gateway.listener", () => {
           throw new Error("the phone store failed");
         };
         const failing = await t.pairedClient();
-        await failing.sendJson({ type: "hello", id: "h1", version: 2 });
+        await failing.sendJson({ type: "hello", id: "h1", version: 3 });
         await failing.ended;
         expect(t.errors).toEqual([new Error("the phone store failed")]);
         t.phones.connected = connect;
         const next = await t.pairedClient();
-        await next.sendJson({ type: "hello", id: "h1", version: 2 });
+        await next.sendJson({ type: "hello", id: "h1", version: 3 });
         expect(await next.frames(1)).toMatchObject([{ type: "welcome" }]);
       } finally {
         await t.stop();
@@ -278,7 +278,7 @@ verifies("remote-gateway.listener", () => {
       try {
         t.source.addSession("s1");
         const client = await t.pairedClient();
-        await client.sendJson({ type: "hello", id: "h1", version: 2 });
+        await client.sendJson({ type: "hello", id: "h1", version: 3 });
         await client.sendJson({ type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 });
         await client.frames(2);
         expect(t.source.watcherCount("s1")).toBe(1);
@@ -328,7 +328,7 @@ verifies("remote-gateway.listener", () => {
         await client.ended;
         expect(t.errors).toEqual([new Error("the pairing service failed")]);
         const next = await t.pairedClient();
-        await next.sendJson({ type: "hello", id: "h1", version: 2 });
+        await next.sendJson({ type: "hello", id: "h1", version: 3 });
         expect(await next.frames(1)).toMatchObject([{ type: "welcome" }]);
       } finally {
         await t.stop();
@@ -354,7 +354,7 @@ verifies("remote-gateway.listener", () => {
       const t = await openListener({ helloTimeoutMs: 1_000, handshakeTimeoutMs: 1_000 });
       try {
         const client = await t.pairedClient();
-        await client.sendJson({ type: "hello", id: "h1", version: 2 });
+        await client.sendJson({ type: "hello", id: "h1", version: 3 });
         expect(await client.frames(1)).toHaveLength(1);
         await new Promise((resolve) => setTimeout(resolve, 1_500));
         expect(client.socket.destroyed).toBe(false);

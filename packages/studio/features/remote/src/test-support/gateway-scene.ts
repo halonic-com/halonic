@@ -28,9 +28,15 @@ export class GatewayHost {
     });
   }
 
-  /** The host answers the newest `list-sessions` with `sessions`. */
-  list(sessions: readonly GatewaySession[]): void {
-    this.host({ type: "sessions", replyTo: this.tunnel.lastOf("list-sessions").id, sessions });
+  /** The host answers the newest `list-sessions` with `sessions`, and whether risky answers are on. */
+  list(sessions: readonly GatewaySession[], answersRisky = false): void {
+    const replyTo = this.tunnel.lastOf("list-sessions").id;
+    this.host({ type: "sessions", replyTo, sessions, answersRisky });
+  }
+
+  /** The host pushes the full list unasked, as after its risky switch changed. */
+  push(sessions: readonly GatewaySession[], answersRisky: boolean): void {
+    this.host({ type: "sessions", sessions, answersRisky });
   }
 
   /** {@link connect}, then {@link list}: the view is live. */

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: tunnel phase B build plan, decisions 1–9 (HAL-12232); task HAL-12235; ADR "Pairing and the end-to-end session"
 
-The end-to-end session shall open with a Noise handshake and carry every gateway message inside a Noise transport message, so no gateway message is ever sent in cleartext. Pairing shall use `Noise_XXpsk3_25519_ChaChaPoly_SHA256`, on the QR and the typed route alike, with the psk taken from the code and never sent; reconnecting shall use `Noise_IK_25519_ChaChaPoly_SHA256` to the host key the phone pinned. Both handshakes shall use the prologue `halonic-gateway/2`.
+The end-to-end session shall open with a Noise handshake and carry every gateway message inside a Noise transport message, so no gateway message is ever sent in cleartext. Pairing shall use `Noise_XXpsk3_25519_ChaChaPoly_SHA256`, on the QR and the typed route alike, with the psk taken from the code and never sent; reconnecting shall use `Noise_IK_25519_ChaChaPoly_SHA256` to the host key the phone pinned. Both handshakes shall use the prologue `halonic-gateway/2`, which names the session version: it shall change only with the handshakes or the framing, never with the gateway messages' version (`ports.remote-gateway-protocol`).
 
 **Commitment.** Pairing message 1 shall carry the phone's commitment to message 3: the SHA-256 of `halonic pair commit v1`, the phone's 32-byte static public key and the exact bytes of its message 3 payload, which shall hold a fresh 16-byte nonce. The host shall recompute it once message 3 decrypts, so that an attacker who knows the code can't search for a message 3 that makes the two check codes match.
 
@@ -20,7 +20,7 @@ The end-to-end session shall open with a Noise handshake and carry every gateway
 
 - Given the session,
   when its handshakes are read,
-  then pairing is `Noise_XXpsk3_25519_ChaChaPoly_SHA256`, reconnecting is `Noise_IK_25519_ChaChaPoly_SHA256` and the prologue names version 2.
+  then pairing is `Noise_XXpsk3_25519_ChaChaPoly_SHA256`, reconnecting is `Noise_IK_25519_ChaChaPoly_SHA256` and the prologue names session version 2, whatever the message version.
 - Given the frame kinds,
   when their bytes are listed,
   then each is different and only `handshake-failed` and `pair-refused` are cleartext.

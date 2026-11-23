@@ -41,6 +41,12 @@ export interface GatewaySwitch {
   /** Starts the listener, or keeps the one running; `undefined` when it couldn't start. */
   start(): Promise<number | undefined>;
   stop(): Promise<void>;
+  /**
+   * Sends every connected phone the session list again, with the risky
+   * switch as it is now. A hint for what the phones show; the gateway still
+   * checks the switch for every answer.
+   */
+  listAgain(): void;
 }
 
 /** What a {@link HostRemoteControl} puts together. */
@@ -185,6 +191,8 @@ export class HostRemoteControl implements RemoteControl {
 
   async setAllowRiskyRemotely(allow: boolean): Promise<void> {
     const changed = this.#options.settings.change({ allowRiskyRemotely: allow });
+    // The switch holds from here even if the write fails, so phones learn it now.
+    this.#options.gateway.listAgain();
     this.#publish();
     await changed;
   }

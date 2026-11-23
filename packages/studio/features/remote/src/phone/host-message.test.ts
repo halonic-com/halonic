@@ -24,8 +24,9 @@ function event(body: object): object {
 
 const valid: readonly GatewayHostMessage[] = [
   { type: "welcome", replyTo: "p-1", version: gatewayProtocolVersion, maxMessageBytes: 65_519 },
-  { type: "sessions", replyTo: "p-2", sessions: [session] },
-  { type: "sessions", replyTo: "p-2", sessions: [] },
+  { type: "sessions", replyTo: "p-2", sessions: [session], answersRisky: false },
+  { type: "sessions", replyTo: "p-2", sessions: [], answersRisky: true },
+  { type: "sessions", sessions: [session], answersRisky: true },
   event({
     type: "message",
     role: "agent",
@@ -109,11 +110,34 @@ verifies("remote.phone-host-messages", () => {
       { type: "ok", replyTo: "has space" },
       { type: "ok", replyTo: "x".repeat(129) },
       { type: "paired", replyTo: "p-1" },
-      { type: "sessions", replyTo: "p-1", sessions: {} },
-      { type: "sessions", replyTo: "p-1", sessions: [{ ...session, title: undefined }] },
-      { type: "sessions", replyTo: "p-1", sessions: [{ ...session, state: "paused" }] },
-      { type: "sessions", replyTo: "p-1", sessions: [{ ...session, lastSeq: -1 }] },
-      { type: "sessions", replyTo: "p-1", sessions: [{ ...session, lastSeq: 1.5 }] },
+      { type: "sessions", replyTo: "p-1", sessions: {}, answersRisky: false },
+      { type: "sessions", replyTo: "p-1", sessions: [] },
+      { type: "sessions", sessions: [], answersRisky: "yes" },
+      { type: "sessions", replyTo: null, sessions: [], answersRisky: false },
+      {
+        type: "sessions",
+        replyTo: "p-1",
+        sessions: [{ ...session, title: undefined }],
+        answersRisky: false,
+      },
+      {
+        type: "sessions",
+        replyTo: "p-1",
+        sessions: [{ ...session, state: "paused" }],
+        answersRisky: false,
+      },
+      {
+        type: "sessions",
+        replyTo: "p-1",
+        sessions: [{ ...session, lastSeq: -1 }],
+        answersRisky: false,
+      },
+      {
+        type: "sessions",
+        replyTo: "p-1",
+        sessions: [{ ...session, lastSeq: 1.5 }],
+        answersRisky: false,
+      },
       { ...event({ type: "state", state: "done" }), extra: 1 },
       { ...event({ type: "state", state: "done" }), seq: 0 },
       { ...event({ type: "state", state: "done" }), seq: "5" },
@@ -146,7 +170,7 @@ verifies("remote.phone-host-messages", () => {
   });
 
   it("refuses a welcome of another version, whatever else it holds", () => {
-    expect(problemOf(JSON.stringify({ type: "welcome", version: 3, features: [] }))).toBe(
+    expect(problemOf(JSON.stringify({ type: "welcome", version: 2, features: [] }))).toBe(
       "other-version",
     );
     expect(problemOf(JSON.stringify({ type: "welcome", replyTo: "p-1", version: "2" }))).toBe(

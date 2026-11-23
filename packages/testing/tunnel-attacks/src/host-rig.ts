@@ -147,7 +147,11 @@ async function openHost(folder: string, time: ManualTime, source: RecordingSourc
     hostKey: loadKey,
     tunnel: new FakeTunnelProvider(),
     // The rig's gateway listens from start to stop, so the attacks can reach it with remote off too.
-    gateway: { start: async () => gateway.port, stop: async () => undefined },
+    gateway: {
+      start: async () => gateway.port,
+      stop: async () => undefined,
+      listAgain: () => gateway.listAgain(),
+    },
     lanEndpoint: {
       lan: { address: "192.168.1.20", netmask: "255.255.255.0" },
       port: 4200,

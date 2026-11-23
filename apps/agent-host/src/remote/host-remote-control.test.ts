@@ -53,7 +53,7 @@ function recordedAdvert(time: ManualTime) {
 
 /** The gateway's listener as a switch that records its starts and stops; it listens on 4100, or can't start. */
 class RecordedGateway implements GatewaySwitch {
-  readonly calls: ("start" | "stop")[] = [];
+  readonly calls: ("start" | "stop" | "list-again")[] = [];
   listening = false;
   readonly #fails: boolean;
 
@@ -71,6 +71,10 @@ class RecordedGateway implements GatewaySwitch {
   async stop(): Promise<void> {
     this.calls.push("stop");
     this.listening = false;
+  }
+
+  listAgain(): void {
+    this.calls.push("list-again");
   }
 }
 
@@ -333,5 +337,21 @@ verifies("agent-host.remote-control", () => {
       await expect(control.setRemote(true)).rejects.toThrow("doesn't offer remote");
       await expect(control.startPairing()).rejects.toThrow("doesn't offer remote");
     });
+  });
+});
+
+verifies("agent-host.risky-switch-list", () => {
+  it("has the gateway list again on every change of the risky switch, both ways", async () => {
+    const { control, gateway } = await host();
+    await control.setAllowRiskyRemotely(true);
+    await control.setAllowRiskyRemotely(false);
+    expect(gateway.calls.filter((call) => call === "list-again")).toHaveLength(2);
+  });
+
+  it("lists again even when the switch's write fails, as the change still holds", async () => {
+    const { control, gateway, settingsFile } = await host();
+    settingsFile.failing = true;
+    await expect(control.setAllowRiskyRemotely(true)).rejects.toThrow("disk is full");
+    expect(gateway.calls).toContain("list-again");
   });
 });

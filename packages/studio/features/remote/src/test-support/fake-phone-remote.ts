@@ -48,6 +48,8 @@ export function remoteView(overrides: Partial<RemoteView> = {}): RemoteView {
     openApprovals: [],
     canAnswer: true,
     offReason: undefined,
+    answersRisky: false,
+    updateNeeded: false,
     ...overrides,
   };
 }

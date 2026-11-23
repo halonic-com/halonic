@@ -11,7 +11,9 @@ import type { RunLedger } from "./run-ledger.ts";
 
 /**
  * The person's "Let phones answer risky approvals" switch, read again for
- * every answer a phone sends, so turning it off takes effect at once.
+ * every answer a phone sends, so turning it off takes effect at once. The
+ * `answersRisky` in the phones' session list only tells them what to show;
+ * this check is the gate.
  */
 export interface RiskySwitch {
   allowRiskyRemotely(): boolean;
@@ -73,6 +75,11 @@ export class RemoteGateway implements GatewaySwitch {
       if (this.#listener !== undefined) this.#options.ownPorts.add(this.#listener.port);
       return this.#listener?.port;
     });
+  }
+
+  /** Sends every connected phone the session list again, as after the risky switch changed. */
+  listAgain(): void {
+    this.#listener?.listAgain();
   }
 
   /** Closes the listener, if one runs. */

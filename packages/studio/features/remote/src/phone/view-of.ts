@@ -10,6 +10,7 @@ import {
   type RemoteApproval,
   type RemoteSession,
   type RemoteView,
+  UPDATE_TO_ANSWER,
 } from "./remote-view.ts";
 import type { SentAnswers } from "./sent-answers.ts";
 import type { SessionMemory } from "./session-memory.ts";
@@ -33,18 +34,25 @@ export interface ClientHolding {
   readonly sessions: readonly GatewaySession[];
   readonly memories: ReadonlyMap<string, SessionMemory>;
   readonly sentAnswers: SentAnswers;
+  /** What the last session list said of the risky switch. */
+  readonly answersRisky: boolean;
+  /** The last connection found the two sides on different message versions. */
+  readonly updateNeeded: boolean;
 }
 
 /** The view of `holding`: live only while connected and listed since the last `welcome`. */
 export function viewOf(holding: ClientHolding): RemoteView {
   const live = holding.state === "connected" && holding.listed;
+  const notLiveReason = holding.updateNeeded ? UPDATE_TO_ANSWER : RECONNECT_TO_ANSWER;
   return {
     label: phoneStatusLabel(holding.state, holding.computer),
     asOf: holding.asOf,
     sessions: holding.sessions.map((session) => sessionOf(session, holding.memories)),
-    openApprovals: openApprovalsOf(holding, live),
+    openApprovals: openApprovalsOf(holding, live, notLiveReason),
     canAnswer: live,
-    offReason: live ? undefined : RECONNECT_TO_ANSWER,
+    offReason: live ? undefined : notLiveReason,
+    answersRisky: holding.answersRisky,
+    updateNeeded: holding.updateNeeded,
   };
 }
 
@@ -64,12 +72,16 @@ function sessionOf(
 }
 
 /** Every open approval of the listed sessions, oldest request first. */
-function openApprovalsOf(holding: ClientHolding, live: boolean): RemoteApproval[] {
+function openApprovalsOf(
+  holding: ClientHolding,
+  live: boolean,
+  notLiveReason: string,
+): RemoteApproval[] {
   const approvals = holding.sessions.flatMap((session) =>
     (holding.memories.get(session.id)?.openApprovals ?? []).map(
       ({ approval, requestedAt }): RemoteApproval => {
         const sent = holding.sentAnswers.decisionFor(approval.id);
-        const offReason = approvalOffReason(live, approval.risk);
+        const offReason = live ? riskOffReason(approval.risk) : notLiveReason;
         return {
           sessionId: session.id,
           approval,
@@ -85,8 +97,6 @@ function openApprovalsOf(holding: ClientHolding, live: boolean): RemoteApproval[
   return approvals.sort((a, b) => a.requestedAt.localeCompare(b.requestedAt));
 }
 
-function approvalOffReason(live: boolean, risk: "normal" | "risky"): string | undefined {
-  if (!live) return RECONNECT_TO_ANSWER;
-  if (risk === "risky") return ANSWER_RISKY_ON_COMPUTER;
-  return undefined;
+function riskOffReason(risk: "normal" | "risky"): string | undefined {
+  return risk === "risky" ? ANSWER_RISKY_ON_COMPUTER : undefined;
 }

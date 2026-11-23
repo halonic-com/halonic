@@ -37,6 +37,7 @@ type Check = (value: unknown) => boolean;
 const idPattern = new RegExp(`^[A-Za-z0-9_-]{1,${gatewayMaxIdLength}}$`);
 const isId: Check = (value) => typeof value === "string" && idPattern.test(value);
 const isText: Check = (value) => typeof value === "string";
+const isBoolean: Check = (value) => typeof value === "boolean";
 const isWhole: Check = (value) => Number.isSafeInteger(value) && (value as number) >= 0;
 const isPositive: Check = (value) => isWhole(value) && (value as number) >= 1;
 const oneOf =
@@ -114,7 +115,11 @@ const isEventBody: Check = (value) => {
  */
 const hostMessages: Readonly<Record<GatewayHostMessage["type"], readonly Check[]>> = {
   welcome: [message("welcome", { replyTo: isId, version: isWhole, maxMessageBytes: isPositive })],
-  sessions: [message("sessions", { replyTo: isId, sessions: listOf(isSession) })],
+  // `replyTo` is absent when the host pushes the list after its risky switch changed.
+  sessions: [
+    message("sessions", { replyTo: isId, sessions: listOf(isSession), answersRisky: isBoolean }),
+    message("sessions", { sessions: listOf(isSession), answersRisky: isBoolean }),
+  ],
   event: [message("event", { sessionId: isId, seq: isPositive, at: isText, body: isEventBody })],
   ok: [message("ok", { replyTo: isId })],
   paired: [message("paired")],

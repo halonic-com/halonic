@@ -1,4 +1,4 @@
-import type { GatewayHostMessage } from "@halonicjs/ports";
+import { type GatewayHostMessage, gatewayProtocolVersion } from "@halonicjs/ports";
 import { FakeSource } from "./fake-source.test-helper.ts";
 import { GatewayConnection } from "./gateway-connection.ts";
 
@@ -9,9 +9,11 @@ export function openConnection(options: { allowRisky?: boolean } = {}) {
   const source = new FakeSource();
   const sent: GatewayHostMessage[] = [];
   const transport = { closed: false, buffered: 0, failSends: false };
+  /** The person's risky switch on the desktop, which a test may flip. */
+  const risky = { allowed: options.allowRisky === true };
   const connection = new GatewayConnection({
     source,
-    policy: { allowRiskyRemotely: () => options.allowRisky === true },
+    policy: { allowRiskyRemotely: () => risky.allowed },
     transport: {
       send: (json) => {
         if (transport.failSends) throw new Error("socket gone");
@@ -27,6 +29,7 @@ export function openConnection(options: { allowRisky?: boolean } = {}) {
     source,
     sent,
     transport,
+    risky,
     connection,
     /** Sends a message as a text frame and waits until it is handled. */
     async say(message: unknown): Promise<void> {
@@ -34,7 +37,7 @@ export function openConnection(options: { allowRisky?: boolean } = {}) {
       await settle();
     },
     async hello(): Promise<void> {
-      await this.say({ type: "hello", id: "h1", version: 2 });
+      await this.say({ type: "hello", id: "h1", version: gatewayProtocolVersion });
     },
   };
 }

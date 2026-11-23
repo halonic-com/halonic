@@ -42,6 +42,10 @@ export class GatewayClient implements PhoneRemote {
   private nextId = 1;
   private asOf: Date | undefined;
   private sessions: readonly GatewaySession[] = [];
+  /** What the last session list said of the risky switch: only a hint for the view. */
+  private answersRisky = false;
+  /** The last connection found the computer on another message version. */
+  private updateNeeded = false;
   private readonly memories = new Map<string, SessionMemory>();
   private readonly sentAnswers = new SentAnswers();
   private readonly watches = new Watches(this.memories);
@@ -136,6 +140,7 @@ export class GatewayClient implements PhoneRemote {
 
   private read(text: string): void {
     const result = parseHostMessage(text);
+    if (!result.ok && result.problem === "other-version") this.updateNeeded = true;
     if (!result.ok || !this.handle(result.message)) this.disconnect();
   }
 
@@ -145,15 +150,18 @@ export class GatewayClient implements PhoneRemote {
       case "welcome":
         return this.welcomed(message.replyTo);
       case "sessions":
-        return this.listed(message.replyTo, message.sessions);
+        return this.listed(message);
       case "event":
         return this.eventArrived(message);
       case "ok":
         return this.answered(message.replyTo, { kind: "done" });
       case "error":
-        return "replyTo" in message
-          ? this.answered(message.replyTo, { kind: "refused", code: message.code })
-          : true;
+        if ("replyTo" in message) {
+          return this.answered(message.replyTo, { kind: "refused", code: message.code });
+        }
+        // The host closes after any error without `replyTo`; this one says why.
+        if (message.code === "unsupported-version") this.updateNeeded = true;
+        return true;
       default:
         // Pairing messages come only while pairing, which isn't this client's.
         return false;
@@ -163,16 +171,29 @@ export class GatewayClient implements PhoneRemote {
   private welcomed(replyTo: string): boolean {
     if (this.session?.take(replyTo)?.kind !== "hello") return false;
     this.session.welcomed = true;
+    this.updateNeeded = false;
     this.listSessions();
     this.planListing();
     return true;
   }
 
-  private listed(replyTo: string, sessions: readonly GatewaySession[]): boolean {
-    if (this.session?.take(replyTo)?.kind !== "list") return false;
+  /**
+   * Takes a session list: one that answers the phone's `list-sessions`, or one
+   * the host pushed after its risky switch changed, which counts only after
+   * `welcome`. Either replaces the whole list.
+   */
+  private listed(message: Extract<GatewayHostMessage, { type: "sessions" }>): boolean {
+    const { replyTo, sessions } = message;
+    if (this.session === undefined) return false;
+    if (replyTo === undefined) {
+      if (!this.session.welcomed) return false;
+    } else if (this.session.take(replyTo)?.kind !== "list") {
+      return false;
+    }
     const firstSinceWelcome = !this.session.listed;
     this.session.listed = true;
     this.sessions = sessions;
+    this.answersRisky = message.answersRisky;
     if (firstSinceWelcome) {
       this.sentAnswers.listed((id) => sessions.find((session) => session.id === id)?.lastSeq);
     }
@@ -300,6 +321,7 @@ export class GatewayClient implements PhoneRemote {
   /** Forgets the computer's sessions, as when it is removed. */
   private forget(): void {
     this.sessions = [];
+    this.answersRisky = false;
     this.memories.clear();
     this.sentAnswers.clear();
     this.asOf = undefined;
@@ -320,6 +342,8 @@ export class GatewayClient implements PhoneRemote {
       sessions: this.sessions,
       memories: this.memories,
       sentAnswers: this.sentAnswers,
+      answersRisky: this.answersRisky,
+      updateNeeded: this.updateNeeded,
     });
   }
 

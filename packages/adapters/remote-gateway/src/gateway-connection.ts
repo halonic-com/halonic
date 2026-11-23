@@ -72,6 +72,20 @@ export class GatewayConnection {
     this.enqueue(() => this.closeWith("too-large"));
   }
 
+  /**
+   * Sends the phone the full session list again, without `replyTo`, as when
+   * the person turned "Let phones answer risky approvals" on or off. It waits
+   * behind the frames already being handled, and does nothing before `hello`.
+   */
+  listAgain(): void {
+    if (this.closed) return;
+    this.chain = this.chain
+      .then(() => {
+        if (this.greeted) this.reply(this.sessionList());
+      })
+      .catch(() => this.close());
+  }
+
   /** Whether the phone has said hello yet. */
   hasGreeted(): boolean {
     return this.greeted;
@@ -117,11 +131,7 @@ export class GatewayConnection {
     }
     switch (message.type) {
       case "list-sessions":
-        return this.reply({
-          type: "sessions",
-          replyTo: message.id,
-          sessions: this.deps.source.list(),
-        });
+        return this.reply({ ...this.sessionList(), replyTo: message.id });
       case "watch":
         return this.watch(message);
       case "unwatch":
@@ -131,6 +141,19 @@ export class GatewayConnection {
       case "prompt":
         return this.prompt(message);
     }
+  }
+
+  /**
+   * The sessions and the risky switch as they are now. `answersRisky` only
+   * tells the phone what to show: {@link answer} reads the switch again for
+   * every answer, and that check is the gate.
+   */
+  private sessionList(): Extract<GatewayHostMessage, { type: "sessions" }> {
+    return {
+      type: "sessions",
+      sessions: this.deps.source.list(),
+      answersRisky: this.deps.policy.allowRiskyRemotely(),
+    };
   }
 
   private hello(message: Extract<GatewayClientMessage, { type: "hello" }>): void {

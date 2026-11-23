@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15179 (tunnel D7, design on HAL-15159, section 5 item 10, Julian's finding L2 on HAL-15181)
 
-The phone shall read each message from the computer's remote gateway strictly, with one function, before it acts on it. It shall check the size first, before it parses anything, and refuse a message over 65,519 bytes of UTF-8 as `too-large`. It shall refuse as `malformed` text that isn't exactly one JSON object (a byte order mark included), a `type` the protocol doesn't list for the version the phone speaks (a property every object has included), and a missing, extra or wrongly typed field, in the message, in each listed session, and in an event's body and its approval. Ids shall follow the protocol's id rule, an event's `seq` shall be a whole number from 1, and an `error` shall be either a closing one without `replyTo` or a refusal with one, never a mix. It shall refuse a `welcome` from a host of another protocol version as `other-version`, whatever else it holds. Any refusal ends the session.
+The phone shall read each message from the computer's remote gateway strictly, with one function, before it acts on it. It shall check the size first, before it parses anything, and refuse a message over 65,519 bytes of UTF-8 as `too-large`. It shall refuse as `malformed` text that isn't exactly one JSON object (a byte order mark included), a `type` the protocol doesn't list for the version the phone speaks (a property every object has included), and a missing, extra or wrongly typed field, in the message, in each listed session, and in an event's body and its approval. Ids shall follow the protocol's id rule, an event's `seq` shall be a whole number from 1, and an `error` shall be either a closing one without `replyTo` or a refusal with one, never a mix. A `sessions` shall carry `answersRisky` as a boolean, and may leave out `replyTo` when the host pushes the list. It shall refuse a `welcome` from a host of another protocol version as `other-version`, whatever else it holds. Any refusal ends the session.
 
 ## Examples
 
@@ -26,6 +26,9 @@ The phone shall read each message from the computer's remote gateway strictly, w
 - Given a closing `error` with a `replyTo`, or a refusal without one,
   when the phone reads it,
   then it is `malformed`.
-- Given a `welcome` of version 3,
+- Given a `sessions` without `answersRisky`, or with a `replyTo` of `null`,
+  when the phone reads it,
+  then it is `malformed`; one without `replyTo` is read.
+- Given a `welcome` of version 2, from an older host,
   when the phone reads it,
   then it is `other-version`.

@@ -29,6 +29,10 @@ end-to-end" to attack. The only cleartext messages left are the two refusals
 below, which carry no data and change nothing on the phone. As before, a new
 message type is a new version, and there is no negotiation: the Noise prologue
 is `halonic-gateway/2`, so a peer of another version fails the handshake.
+(Amended 23 Nov, HAL-16973: the prologue names the *session* version, which
+changes only with the handshake or the framing. The messages have their own
+version in `hello` and `welcome`, now 3, so a phone and a host of different
+message versions still connect and the phone can say an update is needed.)
 
 **Pairing: `Noise_XXpsk3_25519_ChaChaPoly_SHA256`, on both routes.**
 
