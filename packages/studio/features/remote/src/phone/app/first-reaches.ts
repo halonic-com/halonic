@@ -106,14 +106,19 @@ export class FirstReaches {
   /**
    * Counts a held wait on from where it stopped: `since` moves forward by the time held, so the
    * waiting line's seconds and the time left both leave out the seconds no answer could come.
+   * `since` and `heldAt` are clock readings, so a phone clock set back between them would make
+   * the time waited negative and the give-up later than 30 seconds: it counts as 0 then, and
+   * never as more than the limit.
    */
   #carryOn(computer: ComputerId): void {
     const reach = this.#reaches.get(computer);
     if (reach === undefined || reach.heldAt === undefined) return;
-    const waitedMs = reach.heldAt.getTime() - reach.since.getTime();
-    const heldMs = this.#clock().getTime() - reach.heldAt.getTime();
-    const since = new Date(reach.since.getTime() + heldMs);
-    const timer = this.#timer(computer, Math.max(0, FIRST_REACH_LIMIT_MS - waitedMs));
+    const waitedMs = Math.min(
+      FIRST_REACH_LIMIT_MS,
+      Math.max(0, reach.heldAt.getTime() - reach.since.getTime()),
+    );
+    const since = new Date(this.#clock().getTime() - waitedMs);
+    const timer = this.#timer(computer, FIRST_REACH_LIMIT_MS - waitedMs);
     this.#reaches.set(computer, { since, gaveUp: false, timer });
   }
 }

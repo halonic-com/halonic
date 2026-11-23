@@ -128,6 +128,46 @@ verifies("remote.phone-first-reach", () => {
     expect(router.stateOf(computer)).toBe("unreachable");
   });
 
+  it("gives up 30 seconds after the wait goes on, also when the phone's clock was set back", async () => {
+    const { tunnel, router } = await opened();
+    tunnel.push(laptop, { state: "connecting" });
+    vi.advanceTimersByTime(5_000);
+    vi.setSystemTime(Date.now() - 60 * 60_000);
+    tunnel.push(laptop, { state: "closed" });
+    vi.advanceTimersByTime(60_000);
+    tunnel.push(laptop, { state: "connecting" });
+    expect(router.reachOf(laptop)).toEqual({ since: new Date(), gaveUp: false });
+    vi.advanceTimersByTime(FIRST_REACH_LIMIT_MS - 1);
+    expect(router.reachOf(laptop)?.gaveUp).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(router.stateOf(computer)).toBe("unreachable");
+  });
+
+  it("ends when the computer answers after a hold, and doesn't give up later", async () => {
+    const { tunnel, router } = await opened();
+    tunnel.push(laptop, { state: "connecting" });
+    vi.advanceTimersByTime(10_000);
+    tunnel.push(laptop, { state: "closed" });
+    vi.advanceTimersByTime(60_000);
+    tunnel.push(laptop, { state: "connected" });
+    expect(router.reachOf(laptop)).toBeUndefined();
+    vi.advanceTimersByTime(FIRST_REACH_LIMIT_MS);
+    expect(router.stateOf(computer)).toBe("connected");
+  });
+
+  it("gives up at once when a try fails after a hold, and stays given up", async () => {
+    const { tunnel, router } = await opened();
+    tunnel.push(laptop, { state: "connecting" });
+    vi.advanceTimersByTime(10_000);
+    tunnel.push(laptop, { state: "closed" });
+    vi.advanceTimersByTime(60_000);
+    tunnel.push(laptop, { state: "reconnecting", lastTry: "refused" });
+    expect(router.reachOf(laptop)).toEqual({ since: expect.any(Date), gaveUp: true });
+    tunnel.push(laptop, { state: "reconnecting" });
+    vi.advanceTimersByTime(FIRST_REACH_LIMIT_MS);
+    expect(router.stateOf(computer)).toBe("unreachable");
+  });
+
   it("opens Check this connection as the screen's sheet, and Back closes it", async () => {
     const { router } = await opened();
     router.openCheck();
