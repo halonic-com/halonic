@@ -142,6 +142,8 @@ export function messageText(message: PickMessage, provider: FirstRunKeyProvider)
       return "What Continue allows has changed. Check the line below, then press Continue.";
     case "not-saved":
       return notSavedText(message.failed, message.keySaved);
+    case "not-committed":
+      return notCommittedText(message.files);
     case "broke":
       return message.step === "save"
         ? "Studio couldn't save this choice. Try again."
@@ -181,3 +183,17 @@ function notSavedText(
   const kept = keySaved ? " The key is kept on this computer." : "";
   return `Studio couldn't save the change to the workspace's files.${kept} Try again.`;
 }
+
+/**
+ * "Couldn't save: models.yaml and workspace.yaml have changes that aren't committed. …", naming
+ * each file: "a and b" for two, "a, b and c" for more, and "have" for more than one (HAL-16248).
+ */
+export function notCommittedText(files: readonly string[]): string {
+  const last = files.at(-1) ?? "";
+  const named = files.length < 2 ? last : `${files.slice(0, -1).join(", ")} and ${last}`;
+  const verb = files.length === 1 ? "has" : "have";
+  return `Couldn't save: ${named} ${verb} changes that aren't committed. Commit or undo them, then try again.`;
+}
+
+/** The line after Continue in a served window, when the workspace isn't trusted on the computer (HAL-16248). */
+export const trustOnComputer = "Saved. Trust this workspace on your computer before your next run.";

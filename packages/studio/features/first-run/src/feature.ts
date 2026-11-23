@@ -20,6 +20,7 @@ import { firstRunHelpItems } from "./first-run-help.ts";
 import { firstRunSetupSource } from "./first-run-setup.ts";
 import { FirstRunStart, FirstRunStartService } from "./first-run-start.ts";
 import { helpWords } from "./first-run-words.ts";
+import { servedModelsWords } from "./served-models/served-models-words.ts";
 import { youDidItSource, youDidItView } from "./you-did-it.ts";
 
 /**
@@ -98,6 +99,28 @@ export const firstRunFeature = defineFeature({
       items: (context) =>
         firstRunHelpItems(context.services.get(FirstRunService), context.openItem),
       subscribe: (context, listener) => context.services.get(FirstRunService).subscribe(listener),
+    });
+  },
+});
+
+/**
+ * The First Run feature of a served window (`first-run.served-models`): only Settings › Models,
+ * whose Model row opens Pick a model (HAL-16248, option A), since a served window has no runs to
+ * start the first run from. Register it in place of {@link firstRunFeature}, never with it.
+ */
+export const servedFirstRunFeature = defineFeature({
+  id: "first-run",
+  title: "First Run",
+  needs: [ModelChoiceHostService],
+  register(studio) {
+    studio.settings.add({
+      id: "models",
+      icon: "models",
+      title: servedModelsWords.title,
+      scope: "workspace",
+      order: 10,
+      view: "ServedModelsSection",
+      load: () => import("./ui/served-models-section.tsx"),
     });
   },
 });

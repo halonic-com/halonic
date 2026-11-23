@@ -1,5 +1,7 @@
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import { HostSettings, ServiceRegistry } from "@halonicjs/app";
+import { servedFirstRunFeature } from "@halonicjs/studio-feature-first-run";
+import { ModelChoiceHostService } from "@halonicjs/studio-feature-first-run/api";
 import { servedGoogleSetupFeature } from "@halonicjs/studio-feature-google-setup";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
@@ -27,6 +29,7 @@ import {
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
 import { ServedGoogleSetupAccounts } from "../google/served-google-setup-accounts.ts";
+import { ServedModelChoice } from "../models/served-model-choice.ts";
 import { type PageFetch, ServedInboxRuns } from "../runs/served-inbox-runs.ts";
 import { halonicVersion } from "./open-trusts.ts";
 import { loadServedWorkspace } from "./served-workspace.ts";
@@ -45,8 +48,10 @@ interface ServedStudioOptions {
  * The served Studio (`studio.served-workspace`): asks the computer which workspace it serves, then
  * draws its window named after it. Until the answer comes the page keeps its "Starting Halonic…"
  * text; with no answer the window opens anyway, with no workspace name and no workspace row on More.
- * Its Settings has only the sections this browser keeps, Appearance and Formats
- * (`studio.served-settings`), until the page has the computer's host settings.
+ * Its Settings has the sections this browser keeps, Appearance and Formats, and no host section
+ * (`studio.served-settings`) until the page has the computer's host settings, plus the
+ * workspace's Models, whose Model row opens Pick a model on the computer's model choice
+ * (`studio.served-model-choice`).
  */
 export function startServedStudio(
   page: StudioPage,
@@ -54,12 +59,13 @@ export function startServedStudio(
 ): StartedStudio {
   const pageFetch: PageFetch = page.fetch ?? ((path, init) => fetch(path, init));
   const shell = createShell({
-    features: [inboxFeature, settingsFeature, servedGoogleSetupFeature],
+    features: [inboxFeature, settingsFeature, servedGoogleSetupFeature, servedFirstRunFeature],
     hostServices: [
       InboxRunsService,
       DisplaySettingsService,
       HostSettingsService,
       GoogleSetupAccountsService,
+      ModelChoiceHostService,
     ],
     host,
     platform,
@@ -110,7 +116,8 @@ export function startServedStudio(
  * them yet: the window leaves out the host sections of Settings until then. It shows the version
  * of Halonic that serves it, for now `halonicVersion`. The Inbox reads and answers the served
  * workspace's runs through `fetch`, the page's own (`studio.served-inbox-runs`), and lists the
- * Google setups the computer lets it read (`studio.served-google-setup-accounts`).
+ * Google setups the computer lets it read (`studio.served-google-setup-accounts`). Pick a model
+ * tests and saves through the computer's model choice (`studio.served-model-choice`).
  */
 export function servedServices(
   fetch: PageFetch = (path, init) => globalThis.fetch(path, init),
@@ -126,6 +133,7 @@ export function servedServices(
     new ServedInboxRuns({ fetch, ...(onFocus === undefined ? {} : { onFocus }) }),
   );
   services.provide(GoogleSetupAccountsService, new ServedGoogleSetupAccounts(fetch, onFocus));
+  services.provide(ModelChoiceHostService, new ServedModelChoice(fetch));
   return services;
 }
 
