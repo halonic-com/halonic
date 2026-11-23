@@ -32,7 +32,7 @@ first, as for `needs`, but nobody providing it is no error.
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs`, `wants` and `provides` | `shell.feature-services` |
 | `TabSet` | a workspace's window tabs, each with Back and Forward | `shell.tab-set` |
 | `WindowTabStrip` | the window tabs in the title bar, one Tab stop | `shell.window-tab-strip` |
-| `hintKeys` | the Kbd keys of a shortcut, Ctrl or ⌘ for the platform | `shell.key-hints` |
+| `hintKeys` | the Kbd keys of a shortcut, Ctrl or ⌘ for the platform, ⌃ ⌥ ⇧ on macOS | `shell.key-hints` |
 | `TabPages` | the last 5 tabs' pages kept mounted, focus given back | `shell.tab-pages` |
 | `ShellFrame` | the window's frame: layers, live regions, Esc, toasts | `shell.frame` |
 | `StatusBarItems` | the status bar's items, state only | `shell.status-bar` |
@@ -124,12 +124,13 @@ item, or with a right-click at the pointer, without making that tab active. It's
 only tab) and **Reopen closed tab** (unusable until a tab has closed). After Close the focus goes to
 the tab that took its place; after Reopen, to the reopened tab. Give the strip `windowKeys`, the same
 `host` and `platform` as `useWindowKeys`: in the desktop app Close then shows Ctrl W and Reopen
-closed tab Ctrl Shift T (⌘ on macOS). Served Studio shows no keys, since the browser owns them. The
+closed tab Ctrl Shift T (⌘ W and ⌘ ⇧ T on macOS). Served Studio shows no keys, since the browser owns them. The
 tooltips come in a later pull request.
 
 **Key hints** come from one helper, `hintKeys(keys, platform)`, so every hint reads the same. It
 takes the keys as a keybinding writes them and returns one Kbd box per key: `Mod` is ⌘ on macOS and
-Ctrl elsewhere, the modifiers come first, `Mod` always leading (⌘ Shift T, Ctrl Shift T), and Escape and the arrows
+Ctrl elsewhere, on macOS Ctrl, Alt and Shift are ⌃, ⌥ and ⇧, the modifiers come first, `Mod` always
+leading (⌘ ⇧ T, Ctrl Shift T), and Escape and the arrows
 are drawn short (Esc, ↑). Name the same keys in `aria-keyshortcuts` with the kit's
 `keyShortcutsLabel` (`shell.key-hints`).
 
