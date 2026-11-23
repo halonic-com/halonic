@@ -2,6 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
+import { ChatMessage } from "./chat-message.tsx";
 import { ChatText } from "./chat-text.tsx";
 
 afterEach(() => {
@@ -106,5 +107,19 @@ verifies("kit.chat-message", () => {
       "One\nTwo",
       "Three",
     ]);
+  });
+});
+
+verifies("kit.chat-reply-busy", () => {
+  it("marks a reply busy only while it is being written", () => {
+    const reply = (busy?: boolean) =>
+      render(
+        <ChatMessage from="reply" heading="Sorter said" busy={busy}>
+          <ChatText>It's about</ChatText>
+        </ChatMessage>,
+      ).container.firstElementChild as HTMLElement;
+    expect(reply(true).getAttribute("aria-busy")).toBe("true");
+    expect(reply(false).hasAttribute("aria-busy")).toBe(false);
+    expect(reply().hasAttribute("aria-busy")).toBe(false);
   });
 });

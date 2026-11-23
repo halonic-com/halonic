@@ -20,7 +20,7 @@ import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from "re
 import type { AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { type BoxLineActions, boxProblem, makesSendWait, TryItBoxLine } from "./box-line.tsx";
-import type { ChatTurn, ReplyEnd, ReplyStep } from "./transcript.ts";
+import { type ChatTurn, type ReplyEnd, type ReplyStep, shownSteps } from "./transcript.ts";
 import { toolInWords, tryItWords } from "./try-it-words.ts";
 import type { TryItChat } from "./use-try-it-chat.ts";
 
@@ -203,8 +203,8 @@ function Reply({
   readonly tryAgain: (() => void) | undefined;
 }) {
   return (
-    <ChatMessage from="reply" heading={tryItWords.said(name)}>
-      {turn.steps.map((step, index) => (
+    <ChatMessage from="reply" heading={tryItWords.said(name)} busy={turn.end === undefined}>
+      {shownSteps(turn).map((step, index) => (
         // Steps are only added at the end, so their place is their key.
         <Step key={index} step={step} />
       ))}

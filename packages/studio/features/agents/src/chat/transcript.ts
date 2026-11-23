@@ -1,4 +1,4 @@
-import type { ChatMessage, ToolCall } from "@halonicjs/ports";
+import type { ChatMessage, ChatTurnText, ToolCall } from "@halonicjs/ports";
 import type { ChatToolState } from "@halonicjs/studio-kit";
 
 /** One step of a reply as the transcript shows it: some text, or one tool call. */
@@ -38,6 +38,11 @@ export type ReplyEnd =
 export interface ChatTurn {
   readonly message: string;
   readonly steps: readonly ReplyStep[];
+  /**
+   * The text the model is writing now, shown after the steps: the turn's message replaces it once
+   * it arrives, and a reply that ends first keeps it as a step.
+   */
+  readonly writing?: string;
   /** Absent while the reply is being written. */
   readonly end?: ReplyEnd;
 }
@@ -72,21 +77,42 @@ export function withToolCall(transcript: Transcript, call: ToolCall): Transcript
 }
 
 /**
- * A message the answer added: the model's text becomes a text step; a tool's result marks its
+ * A message the answer added: the model's text becomes a text step, in place of the text that was
+ * being written; a tool's result marks its
  * call done, or failed when the result is the chat service's "Error: …". Every message joins the
  * conversation.
  */
 export function withMessage(transcript: Transcript, message: ChatMessage): Transcript {
   const conversation = [...transcript.conversation, message];
-  const shown = withLastSteps(transcript, (steps) => stepsWith(steps, message));
+  const shown = withLastTurn(transcript, (turn) => withMessageOf(turn, message));
   return { ...shown, conversation };
 }
 
-/** The reply ended. */
+/**
+ * The model writes its text: a `delta` adds to the text being written, a `restart` empties it. It
+ * is for the transcript only and never joins the conversation.
+ */
+export function withText(transcript: Transcript, text: ChatTurnText): Transcript {
+  return withLastTurn(transcript, ({ writing, ...turn }) =>
+    text.kind === "delta" ? { ...turn, writing: (writing ?? "") + text.text } : turn,
+  );
+}
+
+/**
+ * The reply ended. Text still being written, as when the person stopped it or it failed part way,
+ * stays as its last text step.
+ */
 export function endTurn(transcript: Transcript, end: ReplyEnd): Transcript {
-  const last = transcript.turns.at(-1);
-  if (last === undefined) return transcript;
-  return { ...transcript, turns: [...transcript.turns.slice(0, -1), { ...last, end }] };
+  return withLastTurn(transcript, ({ writing, ...turn }) => ({
+    ...turn,
+    steps: writing === undefined ? turn.steps : textStepsWith(turn.steps, writing),
+    end,
+  }));
+}
+
+/** The steps a turn shows: its steps, then the text being written. */
+export function shownSteps(turn: ChatTurn): readonly ReplyStep[] {
+  return turn.writing === undefined ? turn.steps : textStepsWith(turn.steps, turn.writing);
 }
 
 /**
@@ -120,22 +146,31 @@ export function withoutLastTurn(transcript: Transcript): {
   };
 }
 
+function withLastTurn(transcript: Transcript, change: (turn: ChatTurn) => ChatTurn): Transcript {
+  const last = transcript.turns.at(-1);
+  if (last === undefined) return transcript;
+  return { ...transcript, turns: [...transcript.turns.slice(0, -1), change(last)] };
+}
+
 function withLastSteps(
   transcript: Transcript,
   change: (steps: readonly ReplyStep[]) => readonly ReplyStep[],
 ): Transcript {
-  const last = transcript.turns.at(-1);
-  if (last === undefined) return transcript;
-  const turn = { ...last, steps: change(last.steps) };
-  return { ...transcript, turns: [...transcript.turns.slice(0, -1), turn] };
+  return withLastTurn(transcript, (turn) => ({ ...turn, steps: change(turn.steps) }));
+}
+
+/** The turn's assistant message replaces the text that was being written. */
+function withMessageOf(turn: ChatTurn, message: ChatMessage): ChatTurn {
+  if (message.role !== "assistant") return { ...turn, steps: stepsWith(turn.steps, message) };
+  const { writing: _replaced, ...rest } = turn;
+  return { ...rest, steps: textStepsWith(turn.steps, message.content) };
+}
+
+function textStepsWith(steps: readonly ReplyStep[], text: string): readonly ReplyStep[] {
+  return text.trim() === "" ? steps : [...steps, { kind: "text", text }];
 }
 
 function stepsWith(steps: readonly ReplyStep[], message: ChatMessage): readonly ReplyStep[] {
-  if (message.role === "assistant") {
-    return message.content.trim() === ""
-      ? steps
-      : [...steps, { kind: "text", text: message.content }];
-  }
   if (message.role === "tool") {
     const state: ChatToolState = message.content.startsWith("Error:") ? "failed" : "done";
     return steps.map((step) =>
