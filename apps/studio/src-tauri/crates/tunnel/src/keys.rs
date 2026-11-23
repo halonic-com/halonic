@@ -66,7 +66,7 @@ impl fmt::Debug for PhoneKeys {
 }
 
 /// Fills `bytes` from the system's secure random source, through `snow`.
-pub(crate) fn fill_random(bytes: &mut [u8]) -> Result<(), SessionError> {
+pub fn fill_random(bytes: &mut [u8]) -> Result<(), SessionError> {
     DefaultResolver
         .resolve_rng()
         .ok_or(SessionError::Crypto)?

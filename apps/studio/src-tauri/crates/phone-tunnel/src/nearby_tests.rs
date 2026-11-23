@@ -21,43 +21,68 @@ fn names(list: &NearbyComputers) -> Vec<String> {
     list.view().into_iter().map(|view| view.name).collect()
 }
 
+/// The id the page sees for the computer called `name`.
+fn id_of(list: &NearbyComputers, name: &str) -> String {
+    list.view()
+        .into_iter()
+        .find(|view| view.name == name)
+        .map(|view| view.id)
+        .expect("a listed computer")
+}
+
 #[test]
 fn phone_nearby_lists_names_and_ids_only_and_keeps_the_endpoint() {
     let mut list = NearbyComputers::new();
     assert!(list.found(hit("halonic-aa", "Tim's laptop", "192.168.1.20", 4100)));
     assert!(list.found(hit("halonic-bb", "Desk", "10.0.0.5", 4200)));
+    let laptop = id_of(&list, "Tim's laptop");
+    let desk = id_of(&list, "Desk");
     assert_eq!(
         list.view(),
         vec![
             NearbyView {
-                id: "nearby-2".to_owned(),
+                id: desk.clone(),
                 name: "Desk".to_owned()
             },
             NearbyView {
-                id: "nearby-1".to_owned(),
+                id: laptop.clone(),
                 name: "Tim's laptop".to_owned()
             },
         ]
     );
     assert_eq!(
         serde_json::to_value(list.view()).unwrap(),
-        json!([{ "id": "nearby-2", "name": "Desk" }, { "id": "nearby-1", "name": "Tim's laptop" }])
+        json!([{ "id": desk, "name": "Desk" }, { "id": laptop, "name": "Tim's laptop" }])
     );
     assert_eq!(
-        list.endpoint("nearby-1").as_deref(),
+        list.endpoint(&laptop).as_deref(),
         Some("tcp://192.168.1.20:4100")
     );
-    assert_eq!(list.endpoint("nearby-9"), None);
+    assert_eq!(list.endpoint("nearby-1"), None);
+}
+
+#[test]
+fn phone_nearby_ids_are_random_and_say_nothing_about_the_computer() {
+    let mut list = NearbyComputers::new();
+    list.found(hit("halonic-aa", "Desk", "192.168.1.20", 4100));
+    list.found(hit("halonic-bb", "Den", "192.168.1.20", 4100));
+    let desk = id_of(&list, "Desk");
+    // `nearby-` and 16 random bytes in base64url without padding.
+    assert!(desk.starts_with("nearby-"), "{desk}");
+    assert_eq!(desk.len(), "nearby-".len() + 22, "{desk}");
+    assert!(!desk.contains("halonic-aa") && !desk.contains("192.168"));
+    assert_ne!(desk, id_of(&list, "Den"));
 }
 
 #[test]
 fn phone_nearby_updates_a_hit_in_place_and_drops_a_lost_one() {
     let mut list = NearbyComputers::new();
     assert!(list.found(hit("halonic-aa", "Desk", "192.168.1.20", 4100)));
+    let desk = id_of(&list, "Desk");
     // The same computer on a new port: the page sees no change.
     assert!(!list.found(hit("halonic-aa", "Desk", "192.168.1.21", 4101)));
     assert_eq!(
-        list.endpoint("nearby-1").as_deref(),
+        list.endpoint(&desk).as_deref(),
         Some("tcp://192.168.1.21:4101")
     );
     assert!(list.found(hit("halonic-aa", "Desk upstairs", "192.168.1.21", 4101)));
@@ -66,18 +91,45 @@ fn phone_nearby_updates_a_hit_in_place_and_drops_a_lost_one() {
     assert!(list.lost("halonic-aa"));
     assert!(!list.lost("halonic-aa"));
     assert!(list.view().is_empty());
-    assert_eq!(list.endpoint("nearby-1"), None);
+    assert_eq!(list.endpoint(&desk), None);
 }
 
 #[test]
-fn phone_nearby_never_hands_out_an_id_again() {
+fn phone_nearby_keeps_an_adverts_id_across_browses() {
     let mut list = NearbyComputers::new();
     list.found(hit("halonic-aa", "Desk", "192.168.1.20", 4100));
+    let desk = id_of(&list, "Desk");
     assert!(list.clear());
     assert!(!list.clear());
-    list.found(hit("halonic-aa", "Desk", "192.168.1.20", 4100));
-    assert_eq!(list.endpoint("nearby-1"), None);
-    assert_eq!(list.view()[0].id, "nearby-2");
+    // Until the advert is found again, its id names nothing.
+    assert_eq!(list.endpoint(&desk), None);
+    list.found(hit("halonic-aa", "Desk", "192.168.1.21", 4100));
+    assert_eq!(id_of(&list, "Desk"), desk);
+    assert_eq!(
+        list.endpoint(&desk).as_deref(),
+        Some("tcp://192.168.1.21:4100")
+    );
+}
+
+#[test]
+fn phone_nearby_remembers_a_bounded_number_of_ids() {
+    let mut list = NearbyComputers::new();
+    list.found(hit("halonic-kept", "Kept", "192.168.1.20", 4100));
+    let kept = id_of(&list, "Kept");
+    list.found(hit("halonic-first", "First", "192.168.1.20", 4100));
+    let first = id_of(&list, "First");
+    list.lost("halonic-first");
+    // A flood of made-up adverts, each found and lost again.
+    for number in 0..300 {
+        let key = format!("halonic-flood-{number}");
+        list.found(hit(&key, "Flood", "192.168.1.20", 4100));
+        list.lost(&key);
+    }
+    // The listed computer keeps its id; the oldest unlisted one got a new
+    // one when it came back.
+    list.found(hit("halonic-first", "First", "192.168.1.20", 4100));
+    assert_eq!(id_of(&list, "Kept"), kept);
+    assert_ne!(id_of(&list, "First"), first);
 }
 
 #[test]
@@ -105,7 +157,7 @@ fn phone_nearby_drops_hits_whose_address_is_not_on_the_home_network() {
     // An IPv4 address written in IPv6 form is judged as the IPv4 one.
     assert!(list.found(hit("halonic-aa", "Desk", "::ffff:192.168.1.20", 4100)));
     assert_eq!(
-        list.endpoint("nearby-1").as_deref(),
+        list.endpoint(&id_of(&list, "Desk")).as_deref(),
         Some("tcp://192.168.1.20:4100")
     );
 }
@@ -158,15 +210,17 @@ fn phone_nearby_drops_hits_with_no_port_or_an_odd_key() {
 fn phone_nearby_forgets_a_hit_that_turns_bad() {
     let mut list = NearbyComputers::new();
     list.found(hit("halonic-aa", "Desk", "192.168.1.20", 4100));
+    let desk = id_of(&list, "Desk");
     // The same key now points at the phone itself: the earlier address no
     // longer says where the computer is.
     assert!(list.found(hit("halonic-aa", "Desk", "127.0.0.1", 4100)));
     assert!(list.view().is_empty());
-    assert_eq!(list.endpoint("nearby-1"), None);
+    assert_eq!(list.endpoint(&desk), None);
 }
 
 #[test]
-fn phone_nearby_keeps_at_most_sixteen_computers() {
+fn phone_nearby_keeps_at_most_twenty_computers() {
+    assert_eq!(MAX_NEARBY, 20);
     let mut list = NearbyComputers::new();
     for number in 0..MAX_NEARBY + 4 {
         list.found(hit(
@@ -195,8 +249,9 @@ fn phone_nearby_start_pairs_at_the_endpoint_of_its_id() {
     };
     let mut list = NearbyComputers::new();
     list.found(hit("halonic-aa", "Desk", "192.168.1.20", 4100));
+    let desk = id_of(&list, "Desk");
 
-    let checked = start("nearby-1")
+    let checked = start(&desk)
         .find_nearby(|id| list.endpoint(id))
         .check()
         .expect("a typed start at the computer's endpoint");
@@ -214,5 +269,5 @@ fn phone_nearby_start_pairs_at_the_endpoint_of_its_id() {
     });
     let unknown = start("nearby-7").find_nearby(|id| list.endpoint(id));
     assert_eq!(unknown.check().err(), cant_reach);
-    assert_eq!(start("nearby-1").check().err(), cant_reach);
+    assert_eq!(start(&desk).check().err(), cant_reach);
 }

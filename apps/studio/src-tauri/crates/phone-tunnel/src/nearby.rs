@@ -10,15 +10,30 @@
 //! after pairing ([`is_plain_name`], at most [`MAX_NAME_BYTES`]), its
 //! address is an IPv4 address on the home network that isn't this phone,
 //! and its port isn't 0. At most [`MAX_NEARBY`] computers are kept.
+//!
+//! Each advert (its service name) keeps one random id for as long as the
+//! app runs, across browses, as agreed with the picker on HAL-16829: the
+//! picker can keep a row in place when a browse starts again. An id the
+//! list no longer holds names nothing, so pairing with it can't reach.
 
+use std::collections::VecDeque;
 use std::net::{IpAddr, Ipv4Addr};
 
+use halonic_blob_store::base64url;
 use halonic_connect::{Reach, reach};
-use halonic_tunnel::{MAX_NAME_BYTES, is_plain_name};
+use halonic_tunnel::{MAX_NAME_BYTES, fill_random, is_plain_name};
 use serde::{Deserialize, Serialize};
 
 /// The most computers the picker lists; later hits are dropped.
-pub const MAX_NEARBY: usize = 16;
+pub const MAX_NEARBY: usize = 20;
+
+/// The most adverts whose ids are remembered. Any device on the Wi-Fi can
+/// make up adverts, so the memory is bounded: past this, the oldest advert
+/// not listed now forgets its id and gets a new one if it comes back.
+const MAX_REMEMBERED_IDS: usize = 256;
+
+/// Random bytes in an id: enough that no two adverts share one.
+const ID_RANDOM_BYTES: usize = 16;
 
 /// The longest service name kept as a hit's key. A DNS-SD instance name is
 /// one label, at most 63 bytes; Android may add a suffix such as ` (2)`.
@@ -58,9 +73,9 @@ struct Entry {
 #[derive(Debug, Default)]
 pub struct NearbyComputers {
     entries: Vec<Entry>,
-    /// Numbers the ids, and never goes back, so an id from an earlier
-    /// browse never names a computer of a later one.
-    handed_out: u64,
+    /// Each advert's id by its key, oldest first. Kept when the list is
+    /// cleared, so an advert found again gets the id it had.
+    ids: VecDeque<(String, String)>,
 }
 
 impl NearbyComputers {
@@ -86,10 +101,14 @@ impl NearbyComputers {
         if self.entries.len() >= MAX_NEARBY {
             return false;
         }
-        self.handed_out += 1;
+        // Without random bytes there is no id the page can't guess, so the
+        // hit isn't listed; the next hit for it tries again.
+        let Some(id) = self.id_for(&hit.key) else {
+            return false;
+        };
         self.entries.push(Entry {
             key: hit.key,
-            id: format!("nearby-{}", self.handed_out),
+            id,
             name,
             address,
             port: hit.port,
@@ -106,8 +125,8 @@ impl NearbyComputers {
     }
 
     /// Drops every hit: a new browse starts, or the app went to the
-    /// background. Their ids name nothing from now on. Answers whether the
-    /// list changed.
+    /// background. Their ids name nothing until their adverts are found
+    /// again. Answers whether the list changed.
     pub fn clear(&mut self) -> bool {
         let changed = !self.entries.is_empty();
         self.entries.clear();
@@ -135,6 +154,40 @@ impl NearbyComputers {
         let entry = self.entries.iter().find(|entry| entry.id == id)?;
         Some(format!("tcp://{}:{}", entry.address, entry.port))
     }
+
+    /// The id of the advert with `key`: the one it had, or a new random
+    /// one, remembered. `None` when the system gives no random bytes.
+    fn id_for(&mut self, key: &str) -> Option<String> {
+        if let Some((_, id)) = self.ids.iter().find(|(known, _)| known == key) {
+            return Some(id.clone());
+        }
+        let id = new_id()?;
+        if self.ids.len() >= MAX_REMEMBERED_IDS {
+            self.forget_oldest_unlisted();
+        }
+        self.ids.push_back((key.to_owned(), id.clone()));
+        Some(id)
+    }
+
+    /// Forgets the id of the oldest advert that isn't listed now. The list
+    /// holds far fewer than [`MAX_REMEMBERED_IDS`], so there always is one.
+    fn forget_oldest_unlisted(&mut self) {
+        let entries = &self.entries;
+        let oldest = self
+            .ids
+            .iter()
+            .position(|(key, _)| entries.iter().all(|entry| &entry.key != key));
+        if let Some(index) = oldest {
+            self.ids.remove(index);
+        }
+    }
+}
+
+/// A new id: `nearby-` and 16 random bytes in base64url.
+fn new_id() -> Option<String> {
+    let mut bytes = [0u8; ID_RANDOM_BYTES];
+    fill_random(&mut bytes).ok()?;
+    Some(format!("nearby-{}", base64url::encode(&bytes)))
 }
 
 /// The hit's name and address, when the hit checks out.

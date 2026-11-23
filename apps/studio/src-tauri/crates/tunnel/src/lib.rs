@@ -38,7 +38,7 @@ pub use handshake::{
     PAIR_COMMIT_NONCE_BYTES, PAIRING_PATTERN, PROLOGUE, Pairing, PairingCheck, PairingRoute,
     PhoneDetails, Platform, RECONNECT_PATTERN, Reconnect, is_plain_name,
 };
-pub use keys::{KEY_BYTES, PhoneKeys};
+pub use keys::{KEY_BYTES, PhoneKeys, fill_random};
 pub use pairing_run::{
     ALLOW_TIMEOUT, Paired, PairingAtCheck, PairingOptions, PairingProblem, PairingRequest,
     start_pairing,
