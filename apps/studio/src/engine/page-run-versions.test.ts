@@ -2,11 +2,13 @@
 // for a run until it ends, and no more than the latest commit and the running runs' ones.
 
 import { MemoryVcs } from "@halonicjs/adapter-memory";
+import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf } from "@halonicjs/workspace";
 import { expect, it } from "vitest";
 import { acmeFiles } from "./engine-service.testing.ts";
 import { PageRunVersions } from "./page-run-versions.ts";
+import { PageVersions } from "./page-versions.ts";
 
 const writerPath = "hubs/support/agents/writer.agent.yaml";
 const reply = { hubId: "support", workflowId: "reply" };
@@ -86,5 +88,40 @@ verifies("studio.engine-service", () => {
     const now = await versions.workspaceAt({ reads: "saved-files" });
     expect(filesOf(now, "agent")[0]?.value.name).toBe("Scribe");
     expect(versions.keptCommits()).toEqual([]);
+  });
+
+  // C746 row 1 (HAL-16688): a git worktree keeps its git files outside the folder, and the terminal
+  // reads it, so the refusal gives that step rather than a Try again that refuses the same way.
+  it("gives the terminal's command when the folder keeps its git files outside it", async () => {
+    const worktree = new PageVersions({
+      git: async () => {
+        throw { kind: "folder_not_opened", message: "The repository's git folder is outside" };
+      },
+      hasGitFolder: async () => true,
+    });
+    const versions = new PageRunVersions({
+      versions: worktree,
+      saved: acmeFiles(),
+      keepsRuns: true,
+    });
+    const reason =
+      "This folder keeps its git files outside it, as a git worktree does, so Studio can't read its versions.";
+
+    const refused = versions.pick(reply);
+    await expect(refused).rejects.toBeInstanceOf(StartRefused);
+    await expect(refused).rejects.toMatchObject({
+      kind: "unavailable",
+      message: reason,
+      fix: "To run it from this folder, run this in a terminal:",
+      command: "halonic run reply",
+    });
+    // An agent's start has no command to give, since `halonic run` starts no single agent.
+    const agentStart = versions.pick();
+    await expect(agentStart).rejects.toMatchObject({
+      kind: "unavailable",
+      message: reason,
+      fix: "Open the repository's own folder, with its .git folder inside it, or clone the repository into a folder of its own.",
+    });
+    await expect(agentStart).rejects.not.toBeInstanceOf(StartRefused);
   });
 });

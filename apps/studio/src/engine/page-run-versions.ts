@@ -7,6 +7,7 @@
 // What it keeps is bounded: the latest commit read, plus the commits of runs still going, each
 // dropped by `forget` once no run uses it.
 
+import type { WorkflowRef } from "@halonicjs/adapter-workspace-models";
 import { liveVersionOf, runSourceFor, runVersionOf } from "@halonicjs/app";
 import { withSavedLocalOnly } from "@halonicjs/app/saved-local-only";
 import type { RunDefinitions } from "@halonicjs/engine";
@@ -19,8 +20,8 @@ import {
   runDefinitionsOf,
   VersionSource,
 } from "@halonicjs/workspace";
-import { historyRefusalOf, nothingLiveRefusal } from "./page-refusal.ts";
-import type { LiveVersions } from "./page-versions.ts";
+import { historyOutsideRefusal, historyRefusalOf, nothingLiveRefusal } from "./page-refusal.ts";
+import { HistoryOutsideError, type LiveVersions } from "./page-versions.ts";
 
 /**
  * A version's workspace, with its agents' and skills' files as the load read them. The saved
@@ -98,12 +99,16 @@ export class PageRunVersions {
    * The version a start from the window reads now (Run, the Inbox form, Run now): the live
    * version, or the saved files with history off.
    *
+   * @param run the workflow it starts, whose command a folder that keeps its git files outside it
+   *   gives as the step (`historyOutsideRefusal`); left out for an agent, which `halonic run`
+   *   doesn't start
    * @throws KindedError `conflict` when the workspace has history but nothing is live yet
-   * @throws KindedError `unavailable` when the workspace has history and git can't read it
+   * @throws KindedError `unavailable` when the workspace has history and git can't read it, a
+   *   `StartRefused` with the command when the folder keeps its git files outside it
    */
-  async pick(): Promise<PickedVersion> {
+  async pick(run?: WorkflowRef): Promise<PickedVersion> {
     const { versions, saved } = this.#parts;
-    const live = await this.#liveVersion();
+    const live = await this.#liveVersionFor(run);
     const picked = runSourceFor("run", { live, vcs: versions ?? noHistory, saved });
     if (picked.reads === "nothing-live") throw nothingLiveRefusal();
     const version = runVersionOf(picked);
@@ -165,6 +170,16 @@ export class PageRunVersions {
       return await liveVersionOf(this.#parts.versions ?? null);
     } catch (error) {
       throw historyRefusalOf(error);
+    }
+  }
+
+  /** The live version, with the step to run `run` in a terminal when the folder keeps its git files outside it. */
+  async #liveVersionFor(run: WorkflowRef | undefined) {
+    try {
+      return await this.#liveVersion();
+    } catch (error) {
+      if (run === undefined || !(error instanceof HistoryOutsideError)) throw error;
+      throw historyOutsideRefusal(error, (await loadVersion(this.#parts.saved)).workspace, run);
     }
   }
 

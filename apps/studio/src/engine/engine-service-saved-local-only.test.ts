@@ -114,7 +114,7 @@ verifies("studio.engine-service", () => {
       await expect(service.startRun(reply, {})).rejects.toMatchObject({
         kind: "invalid_input",
         message:
-          "The saved workspace.yaml has an error on line 4, so Halonic can't tell whether Local only is on. Nothing started.",
+          "The saved workspace.yaml has an error on line 4, so Halonic can't tell whether Local only is on.",
         fix: "Fix the error in workspace.yaml, then try again.",
       });
       expect(server.hosts).toEqual([]);
