@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`
 
 ## PR watcher
 
@@ -349,6 +349,70 @@ or an upgrade therefore starts with writes off.
 
 **Metrics** (tags `companyId`, `trigger`: `event` or `job`):
 `board_check.asks_new`, `.writes`, `.writes_logged`.
+
+## Task effort
+
+Sets the thinking effort of a task's runs from its tags (HAL-16876, steps 2
+and 3 of the effort decision on HAL-16866), on every `issue.created` and
+`issue.updated`.
+
+**The table** (`src/task-effort/rules.ts`, the one place it lives). Tags are
+task labels, in the triage step's words (HAL-16471):
+
+| Tags | Effort |
+| --- | --- |
+| `opus-only`, or an opus-only area: `security`, `trust`, `sandbox`, `schema`, `secrets`, `sign-in`, `oauth`, `keychain` | `high` |
+| `D4` or `D5` | `high` |
+| `D1`–`D3`, and a reviewer sent it back | `high` |
+| `D1`–`D3` | `low` |
+| No difficulty tag and not opus-only | nothing: the agent's own setting applies |
+
+It never sets `medium`, `xhigh` or `max`; security sign-offs and the A0
+release review are set by hand. A task counts as sent back when it moves
+from a reviewer (`effortReviewers`, Liam and Julian by default) to another
+agent and the reviewer's newest comment on it isn't a signed approval
+("approved on head"). It writes only on tasks assigned to an agent.
+
+**How it writes.** The SDK's task update leaves out
+`assigneeAdapterOverrides`, so the handler sends one `PATCH
+/api/issues/<id>` to Paperclip's own API with the settings' key. It changes
+only `adapterConfig.effort` and keeps every other override, such as the
+Sonnet pilot's model. A task's effort is the handler's only while it is the
+value the handler wrote; when the table stops saying anything, it takes its
+own effort off again.
+
+**The guard.** Core doesn't check who may set a task's effort. The handler
+keeps what it wrote per task and reports every other change: a log line with
+the task, the old and new effort and the actor type (an error when an agent
+made it, which the team rule forbids, a warning otherwise) and the metric
+`task_effort.foreign_change` (tags `actorType`, `direction`: `set`, `raised`,
+`lowered` or `removed`). A task whose effort someone else set or changed is
+theirs: the handler never writes on it again, so it never raises or lowers an
+effort a person chose. A task that already had an effort before the handler
+watched it is left alone too. The guard reports whether or not the switch is
+on.
+
+**Switching it on and off.** The board sets these in the plugin's settings:
+
+1. `paperclipApiUrl`: Paperclip's API as the plugin reaches it, scheme, host
+   and port only (for example `http://127.0.0.1:3100`).
+2. `paperclipApiKey`: a secret holding an API key that may change tasks.
+3. `taskEffortWritesForVersion`: the running plugin version, shown on the
+   plugin page. This is the switch.
+
+While the switch is empty or names another version, or the address or key is
+missing, the handler only logs `Task effort: would set HAL-… to low (switch
+off).` and saves `task_effort.logged`. To switch it off, empty
+`taskEffortWritesForVersion`; it takes effect on the next event. An upgrade
+switches it off until the board enters the new version. Switching it off
+leaves the efforts it already set in place; to undo one, clear the task's
+effort in the issue properties (the handler then leaves that task alone).
+
+**Metrics** (tag `companyId`): `task_effort.set` and `task_effort.logged`
+(tag `effort`), `task_effort.failed` (tag `reason`, such as `http_403`),
+`task_effort.foreign_change`. Log lines and metrics carry task identifiers,
+effort words (anything else shows as `other`) and actor types, never task
+text or the key.
 
 ## Metrics
 
