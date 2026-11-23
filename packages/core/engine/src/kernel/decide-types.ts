@@ -174,8 +174,10 @@ export interface EffectFailedInput extends InputBase {
   readonly sandboxReason?: string;
   /** Why the harness program didn't start, for `harness-start-failed`. */
   readonly harnessCause?: HarnessStartCause;
-  /** The agent that didn't start, for `instructions-not-trusted`. */
+  /** The agent that didn't start, for `instructions-not-trusted` and `sandbox-not-ready`. */
   readonly agent?: string;
+  /** For `sandbox-not-ready`: the agent's "this computer" choice is on hold because its file changed. */
+  readonly onHold?: true;
   /** What the trust check saw, for `instructions-not-trusted`. */
   readonly refusal?: InstructionsRefusal;
   /** The model provider's own error text, for `--debug` and Copy details only. */

@@ -100,6 +100,16 @@ verifies("engine.run-failure-reason-of", () => {
     });
   });
 
+  it("says the refused agent's this-computer choice is on hold when the error does", () => {
+    const error = new SandboxNotReadyError("bubblewrap-missing", "writer", { onHold: true });
+    expect(runFailureReasonOf(error)).toEqual({
+      reason: "sandbox-not-ready",
+      sandboxReason: "bubblewrap-missing",
+      agent: "writer",
+      onHold: true,
+    });
+  });
+
   it("gives a start failure with the sandbox's code or the harness cause the engine found", () => {
     const sandbox = new StartFailedError("sandbox-start-failed", "It didn't open.", {
       sandboxReason: "bubblewrap-missing",

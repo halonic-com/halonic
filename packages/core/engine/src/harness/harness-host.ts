@@ -26,10 +26,12 @@ export type Placement = "sandbox" | "this-computer";
 /**
  * Where an agent's harness runs, as the placement policy answers. On this
  * computer, `chosenAt` is when the person chose that, as ISO text, for the
- * run's `sandbox.off` event.
+ * run's `sandbox.off` event. In a sandbox, `onHold` is `true` when a person
+ * chose this computer for an earlier version of the agent's file: the choice
+ * waits for them to confirm it again, so a refused run says so on `run.failed`.
  */
 export type PlacementAnswer =
-  | { readonly runsOn: "sandbox" }
+  | { readonly runsOn: "sandbox"; readonly onHold?: true }
   | { readonly runsOn: "this-computer"; readonly chosenAt: string };
 
 /** The agent a harness question is about. */

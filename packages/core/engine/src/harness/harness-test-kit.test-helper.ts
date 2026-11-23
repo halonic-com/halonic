@@ -282,6 +282,10 @@ export function harnessPorts() {
     placeOnThisComputer: (chosenAt = "2026-11-09T10:00:00.000Z") => {
       placement = { runsOn: "this-computer", chosenAt };
     },
+    /** Answers `sandbox` with the agent's "this computer" choice on hold, as after its file changed. */
+    holdThisComputer: () => {
+      placement = { runsOn: "sandbox", onHold: true };
+    },
   };
 }
 

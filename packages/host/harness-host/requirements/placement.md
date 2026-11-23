@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-6277 (plan approved by Liam in HAL-6487)
+- Source: HAL-6277 (plan approved by Liam in HAL-6487); `onHold` added on HAL-16624
 
-The placement policy shall answer where an agent's harness runs by reading the agent's file, as the version the agent's run uses has it (as it is on disk now, for a host whose runs read the files on disk), from the run, the agent's hub and id, and asking the person's choices with those bytes under the workspace's real path. It shall answer `this-computer`, with when the person chose, only when a person chose that for the file as it is now, and `sandbox` otherwise. It shall pass on nothing else of the choice, and it shall fail, so the harness doesn't start, when the agent's file can't be read.
+The placement policy shall answer where an agent's harness runs by reading the agent's file, as the version the agent's run uses has it (as it is on disk now, for a host whose runs read the files on disk), from the run, the agent's hub and id, and asking the person's choices with those bytes under the workspace's real path. It shall answer `this-computer`, with when the person chose, only when a person chose that for the file as it is now, and `sandbox` otherwise, with `onHold: true` when the person chose this computer for an earlier version of the file. It shall pass on nothing else of the choice, and it shall fail, so the harness doesn't start, when the agent's file can't be read.
 
 ## Examples
 
@@ -13,7 +13,7 @@ The placement policy shall answer where an agent's harness runs by reading the a
   then the agent runs in a sandbox.
 - Given a person chose "this computer" for the agent's file,
   when the file gains a space and the engine asks,
-  then the agent runs in a sandbox.
+  then the agent runs in a sandbox, with the choice on hold.
 - Given a hub without the agent,
   when the engine asks,
   then the answer fails with the files' error.
