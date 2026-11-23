@@ -13,6 +13,7 @@ import {
 import { type ChoiceEdits, type ChoiceProblem, choiceEdits } from "./model-choice-edits.ts";
 import { modelTestRequest, type TestResult, testOutcome } from "./model-choice-reply.ts";
 import {
+  ChoiceFilesNotCommitted,
   type ChoiceKey,
   choiceKey,
   type ModelChoiceFileReads,
@@ -202,19 +203,19 @@ export class FirstRunModelChoice implements ModelChoiceService {
         };
       }
     }
-    const written = await this.#write(files, settle);
-    if (written !== undefined) return { ok: false, failed: "write", keySaved, reason: written };
+    const failed = await this.#write(files, settle);
+    if (failed !== undefined) return writeFailed(failed.error, keySaved);
     return { ok: true, changes, trusted: await this.#trust(fingerprint) };
   }
 
   /**
    * Changes the files as one undo step and saves them. When the save fails, it takes the step back,
-   * so the choice isn't left waiting for autosave. Returns why it failed, or `undefined`.
+   * so the choice isn't left waiting for autosave. Returns the save's error, or `undefined`.
    */
   async #write(
     files: ChoiceEdits["files"],
     settle: () => Promise<void>,
-  ): Promise<string | undefined> {
+  ): Promise<{ readonly error: unknown } | undefined> {
     if (files.length === 0) return undefined;
     const texts = Object.fromEntries(files.map((file) => [file.path, file.text]));
     const undo = this.#parts.change("Updated model alias default", texts);
@@ -223,7 +224,7 @@ export class FirstRunModelChoice implements ModelChoiceService {
       return undefined;
     } catch (error) {
       undo();
-      return reasonOf(error);
+      return { error };
     }
   }
 
@@ -307,6 +308,15 @@ function problemReason(problem: ChoiceProblem): string {
   return problem.kind === "unreadable"
     ? `Halonic couldn't read ${problem.file}.`
     : `${problem.file} is set up for another address or type.`;
+}
+
+/** A failed save of the files: `not-committed` with the files the host named, otherwise `write`. */
+function writeFailed(error: unknown, keySaved: boolean): ModelChoiceSaved {
+  const reason = reasonOf(error);
+  if (error instanceof ChoiceFilesNotCommitted) {
+    return { ok: false, failed: "not-committed", files: [...error.files], keySaved, reason };
+  }
+  return { ok: false, failed: "write", keySaved, reason };
 }
 
 function reasonOf(error: unknown): string {

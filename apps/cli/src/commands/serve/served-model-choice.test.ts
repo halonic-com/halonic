@@ -183,7 +183,8 @@ describe("the model choice `halonic serve` gives a served window", () => {
 
       expect(await service.continue(tested.testId, undefined)).toEqual({
         ok: false,
-        failed: "write",
+        failed: "not-committed",
+        files: ["models.yaml"],
         keySaved: true,
         reason:
           "Couldn't save: models.yaml has changes that aren't committed. Commit or undo them, then try again.",

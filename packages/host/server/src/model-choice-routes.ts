@@ -1,4 +1,9 @@
-import type { ModelChoiceSaved, ModelChoiceService } from "@halonicjs/app";
+import {
+  firstRunLocalProvider,
+  firstRunProviders,
+  type ModelChoiceSaved,
+  type ModelChoiceService,
+} from "@halonicjs/app";
 import type { RequestContext, ServerPorts } from "./api.ts";
 import { errorResponse, type ServerError, serverErrors } from "./errors.ts";
 import {
@@ -85,9 +90,24 @@ function refuseOtherSite(request: Request): ServerError | null {
   return site === null || site === "same-origin" ? null : serverErrors.fromOtherSite;
 }
 
-/** What a failed Continue tells the browser: the step and whether the key was saved, never the reason's words. */
+/** Every file a model choice can write, by workspace path: the only names a refusal passes on. */
+const choiceFilePaths: ReadonlySet<string> = new Set([
+  "models.yaml",
+  "workspace.yaml",
+  ...[...Object.values(firstRunProviders), firstRunLocalProvider].map(
+    (provider) => `providers/${provider.id}.yaml`,
+  ),
+]);
+
+/**
+ * What a failed Continue tells the browser: the step and whether the key was saved, never the
+ * reason's words. For `not-committed` it adds the files, each one a fixed choice file's path.
+ */
 function savedAnswer(saved: ModelChoiceSaved): unknown {
-  return saved.ok ? saved : { ok: false, failed: saved.failed, keySaved: saved.keySaved };
+  if (saved.ok) return saved;
+  const answer = { ok: false, failed: saved.failed, keySaved: saved.keySaved };
+  if (saved.failed !== "not-committed") return answer;
+  return { ...answer, files: saved.files.filter((path) => choiceFilePaths.has(path)) };
 }
 
 export interface ModelChoiceRoutes {

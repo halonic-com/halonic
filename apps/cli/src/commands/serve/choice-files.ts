@@ -7,6 +7,7 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
+import { ChoiceFilesNotCommitted } from "@halonicjs/app";
 import type { DefinitionStore, Vcs } from "@halonicjs/ports";
 import { plainText } from "../../messages/phrase.ts";
 import { serveMessages } from "../../messages/serve.ts";
@@ -25,15 +26,14 @@ export const choiceCommitMessage = plainText(serveMessages.choiceCommit().phrase
 /** The author of that commit: git here never reads the person's own config (`GitRunner`). */
 const choiceAuthor = { name: "Halonic", email: "halonic@localhost" };
 
-/** Continue would commit files that have changes of their own; nothing was written. */
-export class UncommittedChoiceFilesError extends Error {
-  /** The workspace paths with changes that aren't committed, sorted. */
-  readonly files: readonly string[];
-
+/**
+ * Continue would commit files that have changes of their own; nothing was written. It is the
+ * model choice's {@link ChoiceFilesNotCommitted}, so Continue answers `not-committed` with the files.
+ */
+export class UncommittedChoiceFilesError extends ChoiceFilesNotCommitted {
   constructor(files: readonly string[]) {
-    super(plainText(serveMessages.choiceFilesNotCommitted(files).phrase));
+    super(files, plainText(serveMessages.choiceFilesNotCommitted(files).phrase));
     this.name = "UncommittedChoiceFilesError";
-    this.files = files;
   }
 }
 

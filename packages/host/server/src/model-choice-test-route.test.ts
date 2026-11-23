@@ -152,4 +152,25 @@ describe("the model choice and the workspace's trust", () => {
       expect(errors).toEqual([]);
     });
   });
+
+  verifies("server.model-choice-not-committed", () => {
+    it("names the choice files that aren't committed, and nothing else of the reason", async () => {
+      const { server, port, errors } = choiceSetup();
+      port.forSession("this-computer").saved = {
+        ok: false,
+        failed: "not-committed",
+        files: ["models.yaml", "../acme/home/notes.md", "providers/anthropic.yaml"],
+        keySaved: true,
+        reason: "Couldn't save: models.yaml has changes that aren't committed.",
+      };
+      const response = await send(server, "POST", "continue", { body: { testId: "test_1" } });
+      expect(await response.json()).toEqual({
+        ok: false,
+        failed: "not-committed",
+        keySaved: true,
+        files: ["models.yaml", "providers/anthropic.yaml"],
+      });
+      expect(errors).toEqual([]);
+    });
+  });
 });

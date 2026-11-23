@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { acmeFiles, acmeFolder } from "./first-run-model-choice.test-helper.ts";
 import { choiceProvider, type ModelChoice } from "./model-choice.ts";
-import { choiceKey } from "./model-choice-service.ts";
+import { ChoiceFilesNotCommitted, choiceKey } from "./model-choice-service.ts";
 
 const anthropic: ModelChoice = { kind: "key", provider: "anthropic" };
 const llama: ModelChoice = { kind: "local", model: "llama3.2" };
@@ -210,5 +210,24 @@ verifies("studio.first-run-choice-order", () => {
 
     expect(folder.disk.get("models.yaml")).toContain("model: llama3.2");
     expect(folder.stored.size).toBe(0);
+  });
+});
+
+verifies("app.model-choice-not-committed", () => {
+  it("names the files the host found not committed, takes the edits back and trusts nothing", async () => {
+    const folder = acmeFolder();
+    const testId = await passed(folder, anthropic);
+    const preview = await folder.service.preview(testId);
+    folder.state.failSave = new ChoiceFilesNotCommitted(["models.yaml", "workspace.yaml"]);
+
+    expect(await folder.service.continue(testId, preview?.fingerprint)).toEqual({
+      ok: false,
+      failed: "not-committed",
+      files: ["models.yaml", "workspace.yaml"],
+      keySaved: true,
+      reason: "The model choice's files have changes that aren't committed.",
+    });
+    expect(folder.unsaved.size).toBe(0);
+    expect(folder.steps).not.toContain("grant");
   });
 });
