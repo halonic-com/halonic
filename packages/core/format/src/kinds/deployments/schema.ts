@@ -22,11 +22,23 @@ const HOST_NAME_PATTERN =
 
 /**
  * Non-secret settings for a deployment with `host: cloudflare` (ADR HAL-35,
- * 5.7). They carry no account id, token or key, so the file stays safe to
- * commit and the same file deploys from any account.
+ * 5.7). They carry no token or key, so the file stays safe to commit. The
+ * account id isn't a secret: it is kept so CI and other computers deploy to
+ * the same account.
  */
 export const CloudflareSettings = s
   .object({
+    /**
+     * The Cloudflare account the deployment lives in: the 32-character id
+     * Cloudflare shows. `halonic deploy` writes it after the first deploy's yes.
+     */
+    account: s
+      .string()
+      .regex(
+        /^[0-9a-f]{32}$/,
+        "use the 32-character account id Cloudflare shows, not the account's name",
+      )
+      .optional(),
     /** The Worker's name; it serves at `<worker>.<account>.workers.dev`. */
     worker: s
       .string()

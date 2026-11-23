@@ -55,6 +55,10 @@
           "cloudflare": {
             "type": "object",
             "properties": {
+              "account": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              },
               "worker": {
                 "type": "string",
                 "minLength": 1,
