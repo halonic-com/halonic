@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-8792, decided on HAL-6602; `studio.src-tauri.engine-lock-commands`; `holdLock` in `fs-node`; `cli.local-engine-lock`
 
-The Tauri engine lock shall hold the workspace's one engine lock by calling the shell's `engine_lock_hold` with the workspace exactly as it was opened, never a subfolder of it, and an open channel for the loss of the lock, and shall give back a lock whose `release` calls `engine_lock_release` and closes the channel. When the shell sends on the channel, because another process took the lock over, it shall call `onLost` once with an error, so the host closes the engine as `openLocalEngine` does. A refusal shall reject as a `conflict` error with the shell's message when another engine holds the lock, as `denied` for a workspace that isn't open and as `unavailable` for the rest; a rejection that isn't the shell's refusal, such as a page without the capability, shall reject as `unavailable` without the shell's text. A refused hold shall leave no channel open.
+The Tauri engine lock shall hold the workspace's one engine lock by calling the shell's `engine_lock_hold` with the workspace exactly as it was opened, never a subfolder of it, and an open channel for the loss of the lock, and shall give back a lock whose `release` calls `engine_lock_release` and closes the channel. When the shell sends on the channel, because another process took the lock over or the shell couldn't take its own lock back, it shall call `onLost` once with an error and the shell's kind of loss, `taken-over` or `io` (`taken-over` when the message names neither), so the host closes the engine as `openLocalEngine` does and can word the loss. A refusal shall reject as a `conflict` error with the shell's message when another engine holds the lock, as `denied` for a workspace that isn't open and as `unavailable` for the rest; a rejection that isn't the shell's refusal, such as a page without the capability, shall reject as `unavailable` without the shell's text. A refused hold shall leave no channel open.
 
 ## Examples
 
@@ -13,7 +13,10 @@ The Tauri engine lock shall hold the workspace's one engine lock by calling the 
   then the shell holds it for this window and `release` gives it back.
 - Given a held lock and another process that takes it over,
   when the shell tells the page,
-  then `onLost` is called once with an error and the channel is closed.
+  then `onLost` is called once with an error and `taken-over`, and the channel is closed.
+- Given a held lock the shell couldn't take back,
+  when the shell tells the page with the kind `io`,
+  then `onLost` is called once with an error and `io`.
 - Given the CLI's engine holds the lock,
   when the page holds it,
   then it rejects as `conflict` and no channel stays open.

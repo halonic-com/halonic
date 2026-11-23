@@ -140,10 +140,11 @@ export async function openFolder(
         if (!((await saving?.saveNow()) ?? true))
           throw new Error("The workspace is still unsaved.");
       },
-      onEngineLockLost: () =>
+      onEngineLockLost: (kind) =>
         showEngineLockLost({
           toasts: shell.toasts,
           name,
+          kind,
           openRuns: () => workspace.tabs.openHere({ key: "runs", title: placeNames.runs.label }),
         }),
     });

@@ -1,5 +1,6 @@
 import { AgentHostChat } from "@halonicjs/adapter-agent-host-client";
 import {
+  type EngineLockLostKind,
   TauriDefinitionStore,
   type TauriFileShell,
   TauriInstructionTrustStore,
@@ -103,8 +104,8 @@ export interface FolderServiceParts {
    * failure has its toast; rejects when the save fails. Absent: Run starts without waiting.
    */
   readonly settle?: () => Promise<void>;
-  /** Hears when another process took the workspace's engine lock over (`studio.engine-lock-lost-toast`). */
-  readonly onEngineLockLost?: () => void;
+  /** Hears when the workspace's engine lock was lost, and which kind of loss (`studio.engine-lock-lost-toast`). */
+  readonly onEngineLockLost?: (kind: EngineLockLostKind) => void;
   /**
    * The engine that runs the workspace in the background, when the shell reported one as the
    * folder opened. Then the page opens no engine of its own: no engine lock, no routine timers.

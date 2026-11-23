@@ -390,10 +390,10 @@ export class EngineService {
     await this.#ending.catch(() => undefined);
     // When the shell later loses the lock, the engine closes, so the other process's engine is
     // the only one left on the workspace.
-    const lock = await holdEngineLock(this.#options.lock, name, (lost) => {
+    const lock = await holdEngineLock(this.#options.lock, name, (lost, kind) => {
       reportError(lost);
       this.close().catch(reportError);
-      this.#options.onLockLost?.();
+      this.#options.onLockLost?.(kind);
     });
     try {
       const { workspace } = await this.#runVersions.opening();

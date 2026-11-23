@@ -1,7 +1,9 @@
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import {
+  type EngineLockLostKind,
   type EngineLockRefusalKind,
   engineLockCommands,
+  engineLockLostKinds,
   isEngineLockRefusal,
 } from "./engine-lock-commands.ts";
 import type { TauriChannelHandle, TauriFileShell } from "./file-commands.ts";
@@ -40,15 +42,17 @@ export class TauriEngineLock {
   /**
    * Holds the lock until it is released.
    *
-   * @param onLost - called once, if another process takes the lock over; the engine must stop
+   * @param onLost - called once, if the lock is lost, with the shell's {@link EngineLockLostKind}; the engine must stop
    * @throws KindedError `conflict` when another engine holds the lock (its `cause` is the shell's refusal, with the other process's `pid` when known), `denied` for a workspace that isn't open, `unavailable` otherwise
    */
-  async hold(onLost: (error: Error) => void): Promise<TauriHeldEngineLock> {
+  async hold(
+    onLost: (error: Error, kind: EngineLockLostKind) => void,
+  ): Promise<TauriHeldEngineLock> {
     let channel: TauriChannelHandle | undefined;
     const close = () => channel?.close();
     channel = this.#shell.openChannel((message) => {
       close();
-      onLost(lostError(message));
+      onLost(lostError(message), lostKind(message));
     });
     try {
       await this.#shell.invoke(engineLockCommands.hold, {
@@ -95,6 +99,12 @@ function refusalError(reason: unknown): KindedError {
   }
   // The refusal is the cause, so a caller can name the other engine's `pid`.
   return new KindedError(errorKinds[reason.kind], reason.message, { cause: reason });
+}
+
+/** The shell's kind of loss; a message without a known one is read as taken over, the old words. */
+function lostKind(message: unknown): EngineLockLostKind {
+  const kind = (message as { kind?: unknown } | null)?.kind;
+  return engineLockLostKinds.find((known) => known === kind) ?? "taken-over";
 }
 
 function lostError(message: unknown): Error {

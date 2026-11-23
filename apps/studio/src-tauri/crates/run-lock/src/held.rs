@@ -46,8 +46,18 @@ pub enum Renewal {
     /// The lock holds a new record.
     Renewed,
     /// The lock isn't this process's any more; the holder must stop what it
-    /// guards. It says why.
-    Lost(String),
+    /// guards. It says which kind of loss and why.
+    Lost(LostKind, String),
+}
+
+/// Which kind of loss a lost lock is, so the holder can word it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LostKind {
+    /// Another process holds the lock now.
+    TakenOver,
+    /// This process couldn't take its own lock again after missing its
+    /// renewals, and nobody took it over (HAL-16342).
+    Io,
 }
 
 /// Why a renewal finds the lock lost when another process holds it now.
@@ -105,7 +115,7 @@ impl EngineLock {
         let host = computer.host_name();
         let found = busy::HERE.run(|| read_lock(&self.file))?;
         let Some(found) = found.filter(|found| found.text == self.own_text) else {
-            return Ok(Renewal::Lost(TAKEN_OVER.to_owned()));
+            return Ok(taken_over());
         };
         if is_stale(&found, now_ms(), host.as_deref(), |pid| {
             computer.process_alive(pid)
@@ -116,10 +126,13 @@ impl EngineLock {
                     self.own_text = taken_again.own_text;
                     Ok(Renewal::Renewed)
                 }
-                Err(HoldError::Held(_)) => Ok(Renewal::Lost(TAKEN_OVER.to_owned())),
-                Err(HoldError::Io(error)) => Ok(Renewal::Lost(format!(
-                    "wasn't renewed within the stale limit and couldn't be taken again ({error})"
-                ))),
+                Err(HoldError::Held(_)) => Ok(taken_over()),
+                Err(HoldError::Io(error)) => Ok(Renewal::Lost(
+                    LostKind::Io,
+                    format!(
+                        "wasn't renewed within the stale limit and couldn't be taken again ({error})"
+                    ),
+                )),
             };
         }
         let renewed = own_record_text(host.as_deref());
@@ -132,6 +145,11 @@ impl EngineLock {
     pub fn release(self) -> io::Result<()> {
         release_lock(&self.file, &self.own_text)
     }
+}
+
+/// The renewal's answer when another process holds the lock now.
+fn taken_over() -> Renewal {
+    Renewal::Lost(LostKind::TakenOver, TAKEN_OVER.to_owned())
 }
 
 /// This process's record; an unknown host name is written as `""`, which no

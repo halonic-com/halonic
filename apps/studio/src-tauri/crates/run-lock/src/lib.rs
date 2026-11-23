@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-pub use held::{EngineLock, HoldError, RENEW_EVERY, Renewal, hold_lock};
+pub use held::{EngineLock, HoldError, LostKind, RENEW_EVERY, Renewal, hold_lock};
 pub use record::{
     FoundLock, LockRecord, STALE_AFTER_MS, TAKEOVER_STALE_AFTER_MS, is_stale, parse_record,
     record_text,

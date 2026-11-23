@@ -25,7 +25,7 @@ use std::time::Duration;
 
 use halonic_git_guard::OpenedFolders;
 use halonic_profile::ProfileFolder;
-use halonic_run_lock::{EngineLock, HoldError, RENEW_EVERY, Renewal, hold_lock};
+use halonic_run_lock::{EngineLock, HoldError, LostKind, RENEW_EVERY, Renewal, hold_lock};
 use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Window};
@@ -69,10 +69,26 @@ impl EngineLockRefusal {
     }
 }
 
-/// What the page hears when its lock is lost: the engine must stop.
+/// What the page hears when its lock is lost: the engine must stop. `kind`
+/// is `taken-over` when another process holds the lock now, and `io` when
+/// the shell couldn't take its own lock back and nobody took it over, so the
+/// page can word each (HAL-16724).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LockLost {
+    kind: &'static str,
     message: String,
+}
+
+impl LockLost {
+    fn new(kind: LostKind, why: &str) -> Self {
+        Self {
+            kind: match kind {
+                LostKind::TakenOver => "taken-over",
+                LostKind::Io => "io",
+            },
+            message: format!("The engine lock {why}."),
+        }
+    }
 }
 
 /// Tells the page that holds a lock that it lost it. The page that holds it
@@ -205,14 +221,14 @@ fn renew_until_stopped(
         match stopped.recv_timeout(every) {
             Err(RecvTimeoutError::Timeout) => match lock.renew(&OperatingSystem) {
                 Ok(Renewal::Renewed) => {}
-                Ok(Renewal::Lost(why)) => {
+                Ok(Renewal::Lost(kind, why)) => {
                     lost.store(true, Ordering::SeqCst);
                     halonic_shell_log::record(
                         "engine_lock",
                         format!("the lock {} {why}", file.display()),
                     );
-                    let message = format!("The engine lock {why}.");
-                    (notify.lock().unwrap_or_else(PoisonError::into_inner))(LockLost { message });
+                    let lost_lock = LockLost::new(kind, &why);
+                    (notify.lock().unwrap_or_else(PoisonError::into_inner))(lost_lock);
                     return;
                 }
                 // The next renewal is tried as planned.

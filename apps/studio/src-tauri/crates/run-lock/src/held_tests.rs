@@ -1,10 +1,9 @@
-use super::{HoldError, Renewal, hold_lock};
+use super::{HoldError, LostKind, Renewal, hold_lock};
 use crate::ThisComputer;
 use crate::record::{parse_record, record_text};
 use crate::tests::{FakeComputer, THIS_HOST, TemporaryFolder, record};
 use std::cell::Cell;
 use std::fs;
-use std::path::Path;
 use std::thread;
 use std::time::Duration;
 
@@ -97,7 +96,10 @@ fn held_lock_renew_gives_up_a_lock_another_process_took_over() {
     fs::write(&file, &theirs).expect("another process takes it");
     assert_eq!(
         held.renew(&computer).expect("judged"),
-        Renewal::Lost("was taken over by another process".to_owned())
+        Renewal::Lost(
+            LostKind::TakenOver,
+            "was taken over by another process".to_owned()
+        )
     );
     held.release().expect("released");
     assert_eq!(fs::read_to_string(&file).expect("theirs stays"), theirs);
@@ -137,23 +139,47 @@ fn held_lock_renew_after_missing_its_renewals_loses_a_lock_another_process_took_
     // Another live process creates the lock the moment ours is removed.
     let theirs = record_text(7, "another-computer", crate::now_ms());
     let racing = RacingComputer {
-        file: &file,
-        theirs: &theirs,
+        meanwhile: &|| fs::write(&file, &theirs).expect("another process takes it"),
         asked: Cell::new(0),
     };
     assert_eq!(
         held.renew(&racing).expect("judged"),
-        Renewal::Lost("was taken over by another process".to_owned())
+        Renewal::Lost(
+            LostKind::TakenOver,
+            "was taken over by another process".to_owned()
+        )
     );
     assert_eq!(fs::read_to_string(&file).expect("theirs stays"), theirs);
 }
 
-/// This computer, where another process creates the lock `file` when the
-/// renewal asks for the host name the second time: after removing its own
-/// stale lock, right before taking it again.
+#[test]
+fn held_lock_renew_after_missing_its_renewals_loses_a_lock_it_cannot_take_again() {
+    let folder = TemporaryFolder::new();
+    let file = folder.lock(None);
+    let computer = FakeComputer::here();
+    let mut held = hold_lock(&file, &computer).expect("taken");
+    let aged = record(std::process::id(), THIS_HOST, 60_000);
+    fs::write(&file, &aged).expect("aged");
+    held.own_text = aged;
+    // The lock's folder is gone the moment ours is removed, so nobody holds
+    // the lock and it can't be taken again.
+    let parent = file.parent().expect("a folder");
+    let failing = RacingComputer {
+        meanwhile: &|| fs::remove_dir_all(parent).expect("the folder is removed"),
+        asked: Cell::new(0),
+    };
+    let Renewal::Lost(kind, why) = held.renew(&failing).expect("judged") else {
+        panic!("the lock is lost");
+    };
+    assert_eq!(kind, LostKind::Io);
+    assert!(why.contains("couldn't be taken again"), "{why}");
+}
+
+/// This computer, where `meanwhile` happens when the renewal asks for the
+/// host name the second time: after removing its own stale lock, right
+/// before taking it again.
 struct RacingComputer<'a> {
-    file: &'a Path,
-    theirs: &'a str,
+    meanwhile: &'a dyn Fn(),
     asked: Cell<u32>,
 }
 
@@ -161,7 +187,7 @@ impl ThisComputer for RacingComputer<'_> {
     fn host_name(&self) -> Option<String> {
         self.asked.set(self.asked.get() + 1);
         if self.asked.get() == 2 {
-            fs::write(self.file, self.theirs).expect("another process takes it");
+            (self.meanwhile)();
         }
         Some(THIS_HOST.to_owned())
     }

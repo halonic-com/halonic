@@ -2,6 +2,7 @@
 // keychain and the folder's trust, with the agent host's harnesses and connectors where it runs.
 
 import {
+  type EngineLockLostKind,
   TauriDefinitionStore,
   TauriEngineLock,
   type TauriFileShell,
@@ -41,8 +42,8 @@ export interface FolderEngineParts {
   readonly transport: ReturnType<typeof tauriAgentHostTransport>;
   /** The Library's list of what a run's turns left waiting. */
   readonly refusals: RefusalsFeed;
-  /** Hears when another process took the workspace's engine lock over. */
-  readonly onEngineLockLost?: (() => void) | undefined;
+  /** Hears when the workspace's engine lock was lost, and which kind of loss. */
+  readonly onEngineLockLost?: ((kind: EngineLockLostKind) => void) | undefined;
 }
 
 /** The engine of the folder in `location`, run in the page. */

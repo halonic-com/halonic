@@ -14,8 +14,8 @@ export const engineLockCommands = {
   /**
    * `{ workspace, onLost }` → nothing. Holds the lock for the calling window
    * and renews it. `onLost` is a channel that gets one {@link EngineLockLost}
-   * if another process takes the lock over; asking again from the same window
-   * hands the shell its new channel.
+   * if the lock is lost; asking again from the same window hands the shell
+   * its new channel.
    */
   hold: "engine_lock_hold",
   /** `{ workspace }` → nothing; also when the window doesn't hold the lock. */
@@ -45,8 +45,20 @@ export interface EngineLockRefusal {
   readonly pid?: number;
 }
 
+/** Why the shell lost the lock (HAL-16724). */
+export const engineLockLostKinds = [
+  /** Another process holds the lock now. */
+  "taken-over",
+  /** The shell couldn't take its own lock back after missing its renewals, and nobody took it over. */
+  "io",
+] as const;
+
+/** One of {@link engineLockLostKinds}. */
+export type EngineLockLostKind = (typeof engineLockLostKinds)[number];
+
 /** What the shell sends on the `onLost` channel: the lock is gone, so the engine must stop. */
 export interface EngineLockLost {
+  readonly kind: EngineLockLostKind;
   readonly message: string;
 }
 
