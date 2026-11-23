@@ -1,7 +1,9 @@
 //! The shell's native dialogs: the folder picker, the save dialog for the
 //! sandbox backup (HAL-10974), the two trust
 //! questions, about a folder (HAL-2612) and about an agent's instructions,
-//! and the question before Studio runs agents without a sandbox (HAL-16342).
+//! the question before Studio runs agents without a sandbox (HAL-16342), and
+//! the one before it saves the yes to run plugins and integrations without
+//! the sandbox (HAL-16466).
 //! They are shown with `rfd`, the library `tauri-plugin-dialog` uses, called
 //! from Rust only: registering the plugin would put its script in every
 //! page, the served Studio too, replacing `alert` and `confirm`.
@@ -40,6 +42,24 @@ Continue only if you just chose this in Halonic.";
 /// The button that saves the choice `none`, as the page's own button says.
 #[cfg(desktop)]
 const NO_SANDBOX_BUTTON: &str = "Continue without sandbox";
+
+/// The title of the question before the yes to run plugins and integrations
+/// without the sandbox is saved; the page's own Allow dialog has the same
+/// title.
+#[cfg(desktop)]
+const UNFENCED_ALLOW_TITLE: &str = "Allow plugins and integrations to run without the sandbox?";
+
+/// The question's text. As [`NO_SANDBOX_QUESTION`], it says the shell asks
+/// again on purpose.
+#[cfg(desktop)]
+const UNFENCED_ALLOW_QUESTION: &str = "Halonic is about to save your yes to run plugins and \
+integrations without the sandbox on this computer. They then run commands as you, and could look \
+at things outside your project, such as your SSH keys.\n\n\
+Allow only if you just allowed this in Halonic.";
+
+/// The button that saves the yes, as the page's own button says.
+#[cfg(desktop)]
+const UNFENCED_ALLOW_BUTTON: &str = "Allow";
 
 /// The label of the shell's only window. tauri.conf.json gives the window
 /// no label, so Tauri names it `main`, as the capabilities do.
@@ -102,6 +122,19 @@ pub fn ask_to_continue_without_sandbox<R: Runtime>(app: &AppHandle<R>) -> bool {
         NO_SANDBOX_TITLE,
         NO_SANDBOX_QUESTION,
         NO_SANDBOX_BUTTON,
+    )
+}
+
+/// Shows the question before the yes to run plugins and integrations without
+/// the sandbox is saved; `true` only when the person presses Allow, answered
+/// as [`ask_to_trust`] answers.
+#[cfg(desktop)]
+pub fn ask_to_allow_without_sandbox<R: Runtime>(app: &AppHandle<R>) -> bool {
+    ask(
+        app,
+        UNFENCED_ALLOW_TITLE,
+        UNFENCED_ALLOW_QUESTION,
+        UNFENCED_ALLOW_BUTTON,
     )
 }
 
@@ -196,6 +229,11 @@ pub fn ask_to_trust_instructions<R: Runtime>(_app: &AppHandle<R>, _question: &st
 
 #[cfg(mobile)]
 pub fn ask_to_continue_without_sandbox<R: Runtime>(_app: &AppHandle<R>) -> bool {
+    false
+}
+
+#[cfg(mobile)]
+pub fn ask_to_allow_without_sandbox<R: Runtime>(_app: &AppHandle<R>) -> bool {
     false
 }
 
