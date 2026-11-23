@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16771, PR 2 of the scope on HAL-16765 that Liam approved (23 Nov)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LWfqx958NUKzLhp3ap8qOXEp1bbxPGb/YLOGbecCE4nyHZOZq4nI+p6mxmpi7qKN2OiJpjmUYRL/uVgqLQ3xBw==
 
 HAL-16200 made Settings › Agent sandbox show `distro-missing` as Not
 available with only **Check again**, because nothing in Studio could create
