@@ -1,11 +1,11 @@
 // The Build chat's read tools (`assistant.build.authoring-tools`,
 // `assistant.build.validate-with-proposals`). They see the workspace as
 // saved, changes to review included, and keep to the limits of
-// `propose_file` (HAL-16788): never `.git/`, `.halonic/`, a private file, a
-// link or a path outside the workspace, and only Halonic items while the
-// workspace is untrusted.
+// `propose_file` (HAL-16788): never `.git/`, `.halonic/`, a private file,
+// a common credential file (HAL-16869), a link or a path outside the
+// workspace, and only Halonic items while the workspace is untrusted.
 
-import { type ChatTool, isNeverWritten, proposalRefusal } from "@halonicjs/app";
+import { type ChatTool, isCredentialFile, isNeverWritten, proposalRefusal } from "@halonicjs/app";
 import { isKindName, jsonSchemaOf, kindNames } from "@halonicjs/format";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { type BuildChat, textArgument, unlessRefused } from "./build-chat.ts";
@@ -29,9 +29,9 @@ export function listFilesTool(chat: BuildChat): ChatTool {
     async call(toolCall) {
       const under = toolCall.arguments["under"];
       const folder = typeof under === "string" && under !== "" ? under : undefined;
-      // A folder is never an item, so only the never-read rule applies to
+      // A folder is never an item, so only the never-read rules apply to
       // it; the untrusted rule filters the paths listed in it.
-      if (folder !== undefined && isNeverWritten(folder)) {
+      if (folder !== undefined && (isNeverWritten(folder) || isCredentialFile(folder))) {
         return toolTexts.cantRead(folder);
       }
       const trusted = chat.options.isTrusted();

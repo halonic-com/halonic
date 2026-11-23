@@ -1,6 +1,11 @@
 // The review part of the public API of @halonicjs/app, re-exported by
 // `index.ts` to keep that file under the size limit.
-export { isNeverWritten, type ProposalRefusal, proposalRefusal } from "./review-gate.ts";
+export {
+  isCredentialFile,
+  isNeverWritten,
+  type ProposalRefusal,
+  proposalRefusal,
+} from "./review-gate.ts";
 export type { ReviewCard, ReviewRecord } from "./review-record.ts";
 export type { DroppedReviewRecord } from "./review-records.ts";
 export { ReviewService, type ReviewServiceOptions } from "./review-service.ts";
