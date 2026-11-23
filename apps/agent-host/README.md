@@ -146,10 +146,11 @@ The run-update streams follow a feed that reads the engine's runs once a second 
 
 - secrets and key origins come only from Studio's shell, over the control pipe, one read at a time; the engine keeps no value;
 - trust is only read, never granted, through the read-only trust gate, for every start and every new version;
+- whether a stored provider key may go to an address other than its default is read once, when the engine opens; after a trust change the shell restarts the engine;
 - the profile folder is the one `--profile-folder` names, never `HALONIC_HOME`;
 - a run calls no connector and no listed tool yet: those wait for the shell's approvals.
 
-On `stop` it stops the scheduler, gives the steps 10 seconds, gives `engine.lock` up if they take longer, and ends the runs left going as interrupted.
+On `stop` it stops the scheduler and gives the steps 10 seconds. If they take longer, it gives `engine.lock` up, ends the runs left going as interrupted, writes `stopped`, and ends the process at once, so the step still going can't write after another engine took the lock.
 
 ## Serving over standard input and output
 

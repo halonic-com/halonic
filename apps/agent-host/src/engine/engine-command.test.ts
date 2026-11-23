@@ -1,11 +1,12 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { PassThrough } from "node:stream";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { ControlFrameDecoder } from "./control-frames.ts";
 import { engineCommand } from "./engine-command.ts";
+import type { RunningEngine } from "./engine-role.ts";
 
 /** A frame as the shell writes it: the length, then the JSON. */
 function shellFrame(json: string): Buffer {
@@ -100,6 +101,49 @@ verifies("agent-host.engine-role-lifecycle", () => {
       expect(await engine.exit).toBe(0);
       expect(await engine.frame("stopped")).toEqual({ kind: "stopped", interrupted: 0 });
       expect(engine.errors).toEqual([]);
+    });
+  });
+});
+
+verifies("agent-host.engine-role-lifecycle", () => {
+  describe("engineCommand after a stop past the grace time", () => {
+    it("ends the process once `stopped` is written, as a step still runs without the lock", async () => {
+      const input = new PassThrough();
+      const output = new PassThrough();
+      const written: Buffer[] = [];
+      output.on("data", (chunk: Buffer) => written.push(chunk));
+      const exits: number[] = [];
+      const abandoned: RunningEngine = {
+        url: "http://127.0.0.1:49152",
+        token: "a".repeat(43),
+        health: () => ({ scheduling: true, activeRuns: 1, lastTick: null }),
+        useSandboxHost: () => {},
+        followHealth: () => () => {},
+        stopScheduling: () => {},
+        settle: async () => 1,
+        close: async () => {},
+      };
+      const exit = engineCommand(
+        ["--engine", "--profile-folder", resolve("acme-profile"), "--workspace", resolve("acme")],
+        "0.0.0-test",
+        {
+          input,
+          writeError: () => {},
+          takeOutput: () => output,
+          exit: (code) => exits.push(code),
+        },
+        (_args, _version, writeError) => ({
+          open: async () => abandoned,
+          every: () => () => {},
+          writeError,
+          abandoned: () => true,
+        }),
+      );
+      input.write(shellFrame('{"kind":"stop"}'));
+      expect(await exit).toBe(0);
+      expect(exits).toEqual([0]);
+      const frames = new ControlFrameDecoder().push(Buffer.concat(written));
+      expect(frames.at(-1)).toEqual({ kind: "stopped", interrupted: 1 });
     });
   });
 });

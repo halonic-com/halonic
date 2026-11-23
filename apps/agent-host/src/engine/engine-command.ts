@@ -4,7 +4,7 @@
 import type { Readable, Writable } from "node:stream";
 import { engineArgumentsOf } from "./engine-arguments.ts";
 import { runEngineRole } from "./engine-role.ts";
-import { engineRoleParts } from "./open-engine.ts";
+import { type EngineCommandParts, engineRoleParts } from "./open-engine.ts";
 
 /** The host's standard streams, as the engine role uses them. */
 export interface EngineIo {
@@ -12,11 +12,17 @@ export interface EngineIo {
   writeError(text: string): void;
   /** Takes standard output over for the control pipe's frames. */
   takeOutput(): Writable;
+  /** Ends the process with `code`; `process.exit` by default. */
+  exit?(code: number): void;
 }
 
 /**
- * Runs the engine role when `args` ask for it.
+ * Runs the engine role when `args` ask for it. When its stop gave
+ * `engine.lock` up while a step still ran, it ends the process once the
+ * last frame is written, so that step can't write to a run store another
+ * engine may already hold.
  *
+ * @param makeParts - the engine role's parts; this computer's by default, a test's fakes otherwise
  * @returns `undefined` without `--engine`; otherwise the role's exit code,
  *   or 2 when the command line is refused, before anything opens
  */
@@ -24,6 +30,7 @@ export function engineCommand(
   args: readonly string[],
   version: string,
   io: EngineIo,
+  makeParts: typeof engineRoleParts = engineRoleParts,
 ): Promise<number> | undefined {
   if (!args.includes("--engine")) return undefined;
   const given = engineArgumentsOf(args);
@@ -31,6 +38,22 @@ export function engineCommand(
     io.writeError(given.error);
     return Promise.resolve(2);
   }
-  const parts = engineRoleParts(given, version, (text) => io.writeError(text));
-  return runEngineRole(io.input, io.takeOutput(), parts);
+  const parts = makeParts(given, version, (text) => io.writeError(text));
+  const output = io.takeOutput();
+  return runEngineRole(io.input, output, parts).then((code) =>
+    endIfAbandoned(parts, output, io, code),
+  );
+}
+
+async function endIfAbandoned(
+  parts: EngineCommandParts,
+  output: Writable,
+  io: EngineIo,
+  code: number,
+): Promise<number> {
+  if (!parts.abandoned()) return code;
+  // The `stopped` frame goes out first: the shell waits for it.
+  await new Promise<void>((resolve) => output.write("", () => resolve()));
+  (io.exit ?? ((exitCode: number) => process.exit(exitCode)))(code);
+  return code;
 }

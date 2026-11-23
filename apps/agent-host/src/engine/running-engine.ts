@@ -91,8 +91,12 @@ export interface RunningEngineInput {
   readonly schedule: EngineSchedule;
   /** The engine API's listener. */
   readonly listener: { close(): Promise<void> };
-  /** Resolves after `ms` milliseconds. */
-  wait(ms: number): Promise<void>;
+  /** Resolves after `ms` milliseconds, or at once, with its timer cleared, when `cancel` aborts. */
+  wait(ms: number, cancel: AbortSignal): Promise<void>;
+  /** Hears a close that failed after the grace time, when nobody waits for it any more. */
+  reportError(error: unknown): void;
+  /** Hears that the lock was given up while a step still runs, so the caller ends the process. */
+  onAbandoned(): void;
   /** Ends the runs left `running` once the engine closed, with the cause; `endStoppedRuns` by default in use. */
   endStoppedRuns(store: RunStore, clock: Clock, cause: RunFailureCause): Promise<number>;
 }
@@ -100,8 +104,9 @@ export interface RunningEngineInput {
 /**
  * The open engine. `settle` closes the local engine, which waits for the
  * step in progress; when that takes longer than the grace time it gives the
- * lock up instead, as the process exits straight after. Either way it then
- * ends the runs left `running` as interrupted, and counts them.
+ * lock up instead and says so through `onAbandoned`, whose caller ends the
+ * process, and with it the step. Either way it then ends the runs left
+ * `running` as interrupted, and counts them.
  */
 export function runningEngine(input: RunningEngineInput): RunningEngine {
   const { engine, schedule } = input;
@@ -117,15 +122,25 @@ export function runningEngine(input: RunningEngineInput): RunningEngine {
     stopScheduling: () => schedule.stop(),
     async settle(graceMs) {
       const closing = engine.close();
-      // A close that fails after the grace time has nobody left to tell.
-      closing.catch(() => undefined);
-      const outcome = await Promise.race([
-        closing.then(() => "closed" as const),
-        input.wait(graceMs).then(() => "late" as const),
-      ]);
+      closing.catch((error: unknown) => {
+        // Before the grace time the race below throws it; after, only the report hears it.
+        if (abandoned) input.reportError(error);
+      });
+      const grace = new AbortController();
+      let outcome: "closed" | "late";
+      try {
+        outcome = await Promise.race([
+          closing.then(() => "closed" as const),
+          input.wait(graceMs, grace.signal).then(() => "late" as const),
+        ]);
+      } finally {
+        // A clean close leaves no timer behind to keep the process alive.
+        grace.abort();
+      }
       if (outcome === "late") {
         abandoned = true;
         await engine.abandon();
+        input.onAbandoned();
       }
       return await input.endStoppedRuns(engine.runs, engine.clock, engineStoppedCause);
     },

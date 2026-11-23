@@ -59,20 +59,49 @@ interface EngineFolder {
   readonly store: FolderDefinitionStore;
 }
 
+/** The engine role's parts, and whether its stop gave the lock up while a step still ran. */
+export interface EngineCommandParts extends EngineRoleParts {
+  /** `true` once the stop gave `engine.lock` up past the grace time: the process must end then. */
+  abandoned(): boolean;
+}
+
 /** The engine role's parts on this computer, for `runEngineRole`. */
 export function engineRoleParts(
   args: EngineArguments,
   version: string,
   writeError: (text: string) => void,
-): EngineRoleParts {
-  return {
-    open: (pipe) => openEngine(args, version, pipe, writeError),
-    every: (tick, ms) => {
-      const timer = setInterval(tick, ms);
-      return () => clearInterval(timer);
-    },
-    writeError,
+): EngineCommandParts {
+  let abandoned = false;
+  const onAbandoned = () => {
+    abandoned = true;
   };
+  return {
+    open: (pipe) => openEngine(args, version, pipe, { writeError, onAbandoned }),
+    every,
+    writeError,
+    abandoned: () => abandoned,
+  };
+}
+
+/** Runs `tick` every `ms` milliseconds, until the returned function is called. */
+function every(tick: () => void, ms: number): () => void {
+  const timer = setInterval(tick, ms);
+  return () => clearInterval(timer);
+}
+
+/** Resolves after `ms` milliseconds, or at once, with the timer cleared, when `cancel` aborts. */
+function waitUnless(ms: number, cancel: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    cancel.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
 }
 
 /**
@@ -83,8 +112,9 @@ async function openEngine(
   args: EngineArguments,
   version: string,
   pipe: ControlPipe,
-  writeError: (text: string) => void,
+  report: { writeError(text: string): void; onAbandoned(): void },
 ): Promise<RunningEngine> {
+  const { writeError, onAbandoned } = report;
   const profile = profileOf(args.profileFolder);
   // Only the profile folder the shell named: never `HALONIC_HOME` from the environment.
   const environment: ProfileEnvironment = {
@@ -168,10 +198,7 @@ async function openEngine(
       routines: { list: () => versions.routines.list(), timeZone: computerTimeZone() },
       runUpdates: runUpdatesFeed({
         runs: opened.runs,
-        every: (tick, ms) => {
-          const timer = setInterval(tick, ms);
-          return () => clearInterval(timer);
-        },
+        every,
         reportError: (error) => reportError(error, "run-updates"),
       }),
     };
@@ -186,7 +213,9 @@ async function openEngine(
       engine: closingVersionsWith(opened, versions),
       schedule,
       listener,
-      wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      wait: waitUnless,
+      reportError: (error) => reportError(error, "engine-lock"),
+      onAbandoned,
       endStoppedRuns: async (store, clock, cause) =>
         (await endStoppedRuns(store, clock, cause)).interrupted.length,
     });
