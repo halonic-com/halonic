@@ -76,11 +76,32 @@ function addStep(steps: ReplyStep[], message: ChatMessage): void {
 /** The status line while the chat answers: the tool it runs now, else "thinking" (H9). */
 export function runningLine(tool: ToolCall | undefined): string {
   if (tool === undefined) return buildChatWords.thinking;
-  const path = tool.arguments["path"];
-  if (tool.name === "read_file" && typeof path === "string" && path !== "") {
-    return buildChatWords.reading(path.slice(path.lastIndexOf("/") + 1));
+  const file = fileOf(tool);
+  switch (tool.name) {
+    case "list_files":
+      return buildChatWords.listing;
+    case "read_file":
+      return file === undefined ? buildChatWords.using("read file") : buildChatWords.reading(file);
+    case "schema":
+      return buildChatWords.checkingSchema;
+    case "propose_file":
+      return buildChatWords.changing(file);
+    case "propose_delete":
+      return buildChatWords.deleting(file);
+    case "validate":
+      return buildChatWords.checkingWorkspace;
+    case "show":
+      return buildChatWords.showing;
+    default:
+      return buildChatWords.using(toolInWords(tool.name));
   }
-  return buildChatWords.using(toolInWords(tool.name));
+}
+
+/** The file a tool call names in its `path`, without its folders, or `undefined`. */
+function fileOf(tool: ToolCall): string | undefined {
+  const path = tool.arguments["path"];
+  if (typeof path !== "string" || path === "") return undefined;
+  return path.slice(path.lastIndexOf("/") + 1);
 }
 
 /** The whole line a reply ended with, as the transcript shows it and the announcer reads it. */

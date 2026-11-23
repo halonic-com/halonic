@@ -27,6 +27,13 @@ export const buildChatWords = {
   /** The status line while it answers: H9 before the first word, then the tool it runs. */
   thinking: "Running · thinking",
   reading: (file: string) => `Running · reading ${file}`,
+  /** Each Build chat tool in its own words (Sofia, HAL-16933); `using` for any other tool. */
+  listing: "Running · listing files",
+  checkingSchema: "Running · checking the schema",
+  changing: (file: string | undefined) => `Running · changing ${file ?? "a file"}`,
+  deleting: (file: string | undefined) => `Running · deleting ${file ?? "a file"}`,
+  checkingWorkspace: "Running · checking the workspace",
+  showing: "Running · showing an item",
   using: (tool: string) => `Running · using ${tool}`,
   /** The status line after Stop, without the line's full stop (flow-assistant 2.2). */
   stopped: "Stopped by you",
