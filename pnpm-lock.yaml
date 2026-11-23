@@ -4234,6 +4234,9 @@ importers:
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../../adapters/token-store
+      '@halonicjs/adapter-workspace-models':
+        specifier: workspace:*
+        version: link:../../../adapters/workspace-models
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../../core/engine
@@ -4252,6 +4255,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../../core/workspace
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'

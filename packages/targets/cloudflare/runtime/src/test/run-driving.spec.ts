@@ -10,7 +10,7 @@ import type { AssembledEngine } from "@halonicjs/engine";
 import { describe, expect, it } from "vitest";
 import type { RuntimeEnv } from "../env.ts";
 import { RunObject } from "../index.ts";
-import { indexedRunDefinitions } from "../indexed-run-definitions.ts";
+import { cachedRunDefinitionsIndex, indexedRunDefinitions } from "../indexed-run-definitions.ts";
 import { createRuntime, type Runtime } from "../runtime.ts";
 import { workerExecutor } from "../worker-executor.ts";
 import { workerEngine } from "../worker-runs.ts";
@@ -48,7 +48,7 @@ export class AlarmRunObject extends RunObject {
       finishReason: "stop",
     });
     return workerExecutor(runtime, {
-      definitionsOf: indexedRunDefinitions(runtime.definitions),
+      definitionsOf: indexedRunDefinitions(cachedRunDefinitionsIndex(runtime.definitions)),
       resolveModel: async () => ({ provider: model, model: "scripted", local: true }),
     });
   }

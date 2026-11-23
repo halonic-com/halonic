@@ -1,9 +1,11 @@
-// Picks the model of a run's model call, or a chat turn's, from the
-// workspace's files: the alias, its provider file, its fallbacks, the
-// provider's secret and the price. It is a plain function of its inputs (the
-// loaded workspace, the secrets and the HTTP client) and never reads the
+// Picks the model of a run's model call, or a chat turn's, from a hub's
+// definitions: the alias, its provider file, its fallbacks, the provider's
+// secret and the price. It is a plain function of its inputs (the hub
+// definitions, the secrets and the HTTP client) and never reads the
 // CLI's printer, argv or `process` (Liam, HAL-3895), so it can move into a
-// package Studio shares once Studio starts runs.
+// package Studio shares once Studio starts runs. The definitions come from a
+// loaded workspace on a computer, or from the deployer's index on the
+// Cloudflare Worker (HAL-17039), which parses no YAML.
 
 import { layeredParams, type ModelScope, type ResolvedModel } from "@halonicjs/engine";
 import type { Provider } from "@halonicjs/format";
@@ -18,13 +20,12 @@ import type {
 import {
   callModelName,
   definitionsOf,
-  filesOf,
   type HubDefinitions,
   isOnThisMachine,
   type LoadedWorkspace,
   type ModelTarget,
   modelPrice,
-  resolveModel,
+  type ResolvedModelTarget,
 } from "@halonicjs/workspace";
 import { modelTexts } from "./model-texts.ts";
 import { keyDestination, localAddress } from "./provider-origin.ts";
@@ -37,11 +38,17 @@ import {
 /** How many runs' mock providers a resolver keeps; the oldest are dropped first. */
 const MOCK_RUNS_KEPT = 32;
 
-/** What {@link workspaceModelResolver} reads. */
-export interface WorkspaceModelResolverInput {
-  /** The loaded workspace, checked for errors before a run starts. */
-  readonly workspace: LoadedWorkspace;
-  /** The CLI's remembered secrets, never a raw adapter (`apps/cli/AGENTS.md`). */
+/** What {@link hubModelResolver} reads. */
+export interface HubModelResolverInput {
+  /**
+   * Each hub's definitions, as `definitionsOf` of `@halonicjs/workspace` gives
+   * them, asked on every call; cache them here, not in the resolver. Their
+   * `settings` say whether the workspace is local only.
+   *
+   * @throws RunTargetNotFound for a hub the workspace doesn't have
+   */
+  readonly definitionsOf: (hubId: string) => HubDefinitions | Promise<HubDefinitions>;
+  /** The host's secrets: the CLI's remembered secrets, never a raw adapter (`apps/cli/AGENTS.md`). */
   readonly secrets: Secrets;
   readonly http: HttpClient;
   /**
@@ -61,8 +68,43 @@ export interface WorkspaceModelResolverInput {
   readonly keyOrigins: KeyOrigins;
 }
 
+/** What {@link workspaceModelResolver} reads. */
+export interface WorkspaceModelResolverInput extends Omit<HubModelResolverInput, "definitionsOf"> {
+  /** The loaded workspace, checked for errors before a run starts. */
+  readonly workspace: LoadedWorkspace;
+}
+
 /**
- * The engine's `resolveModel` for one workspace. A call's model is, in order:
+ * {@link hubModelResolver} on a loaded workspace's files, each hub's
+ * definitions built once, on its first call.
+ *
+ * @throws what {@link hubModelResolver}'s resolver throws
+ *
+ * @example
+ * const resolve = workspaceModelResolver({ workspace, secrets, http: { fetch }, isTrusted, keyOrigins });
+ * await resolve({ hubId: "support", agentId: "writer", messages, tools: [] });
+ * // { provider, model: "claude-opus-5-5", alias: "smart", secret: "anthropic-key", fallback: [] }
+ */
+export function workspaceModelResolver(
+  input: WorkspaceModelResolverInput,
+): (request: ChatTurnRequest, scope?: ModelScope) => Promise<ResolvedModel> {
+  const { workspace, ...rest } = input;
+  const hubs = new Map<string, HubDefinitions>();
+  return hubModelResolver({
+    ...rest,
+    definitionsOf: (hubId) => {
+      let definitions = hubs.get(hubId);
+      if (definitions === undefined) {
+        definitions = definitionsOf(workspace, hubId);
+        hubs.set(hubId, definitions);
+      }
+      return definitions;
+    },
+  });
+}
+
+/**
+ * The engine's `resolveModel` for one workspace's hubs. A call's model is, in order:
  *
  * 1. the agent's unsaved settings from the agent editor, when the request has them
  *    (in a local-only workspace, only settings whose address is on this computer);
@@ -89,27 +131,15 @@ export interface WorkspaceModelResolverInput {
  * @throws RangeError from the resolver when the workspace has no such hub
  *
  * @example
- * const resolve = workspaceModelResolver({ workspace, secrets, http: { fetch } });
+ * const resolve = hubModelResolver({ definitionsOf, secrets, http: { fetch }, isTrusted, keyOrigins });
  * await resolve({ hubId: "support", agentId: "writer", messages, tools: [] });
- * // { provider, model: "claude-opus-5-5", alias: "smart", secret: "anthropic-key", fallback: [] }
  */
-export function workspaceModelResolver(
-  input: WorkspaceModelResolverInput,
+export function hubModelResolver(
+  input: HubModelResolverInput,
 ): (request: ChatTurnRequest, scope?: ModelScope) => Promise<ResolvedModel> {
-  const hubs = new Map<string, HubDefinitions>();
   const providers = new Map<string, LlmProvider>();
   const mocks = new Map<string, Map<string, LlmProvider>>();
   const context = { secrets: input.secrets, http: input.http };
-  const localOnly = filesOf(input.workspace, "workspace")[0]?.value.privacy.localOnly === true;
-
-  const definitionsFor = (hubId: string): HubDefinitions => {
-    let definitions = hubs.get(hubId);
-    if (definitions === undefined) {
-      definitions = definitionsOf(input.workspace, hubId);
-      hubs.set(hubId, definitions);
-    }
-    return definitions;
-  };
 
   const mockFor = (file: Provider, scope: ModelScope | undefined): LlmProvider => {
     if (scope === undefined) {
@@ -138,7 +168,10 @@ export function workspaceModelResolver(
     scope: ModelScope | undefined,
     trusted: boolean,
   ): Promise<ResolvedModel> => {
-    const file: Provider | undefined = definitions.providers[target.provider];
+    // `hasOwn`, so a provider named "constructor" is never an object's own method.
+    const file: Provider | undefined = Object.hasOwn(definitions.providers, target.provider)
+      ? definitions.providers[target.provider]
+      : undefined;
     if (file === undefined) {
       throw new WorkspaceModelError(
         "no-provider",
@@ -169,17 +202,17 @@ export function workspaceModelResolver(
 
   return async (request, scope) => {
     const trusted = await input.isTrusted();
+    const definitions = await input.definitionsOf(request.hubId);
     if (request.agent !== undefined) {
       return await unsavedModel(request.agent, {
         ...context,
-        localOnly,
+        localOnly: definitions.settings?.privacy.localOnly === true,
         trusted,
         keyOrigins: input.keyOrigins,
       });
     }
-    const definitions = definitionsFor(request.hubId);
     const name = callModelName(definitions, request);
-    const target = resolveModel(input.workspace, request.hubId, name);
+    const target = modelTargetIn(definitions, name);
     if (target === undefined) {
       throw new WorkspaceModelError(
         "unknown-model-alias",
@@ -218,6 +251,24 @@ export function latestModelResolver(
     }
     return await last.resolve(request, scope);
   };
+}
+
+/**
+ * What a model name points to in a hub's definitions, as `resolveModel` of
+ * `@halonicjs/workspace` gives it from the files: `provider/model` directly,
+ * any other name the hub's alias of that name, or `undefined` when it has none.
+ */
+function modelTargetIn(definitions: HubDefinitions, name: string): ResolvedModelTarget | undefined {
+  const slash = name.indexOf("/");
+  if (slash !== -1) {
+    return {
+      provider: name.slice(0, slash),
+      model: name.slice(slash + 1),
+      params: {},
+      fallback: [],
+    };
+  }
+  return Object.hasOwn(definitions.models, name) ? definitions.models[name] : undefined;
 }
 
 /** What {@link requireKeyMayGo} checks a key against. */

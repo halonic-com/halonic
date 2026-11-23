@@ -88,14 +88,21 @@ export class CallTimer {
 
   /** Stops the timer. Call it once the call is over, however it ended. */
   end(): void {
-    clearTimeout(this.#timer);
+    this.#clear();
   }
 
   #arm(limit: "response" | "idle", ms: number): void {
-    clearTimeout(this.#timer);
+    this.#clear();
     this.#timer = setTimeout(() => {
       this.#timedOut = new CallTimeoutError(limit, ms);
       this.#own.abort(this.#timedOut);
     }, ms);
+  }
+
+  /** Clears the armed timer, if any. workerd's `clearTimeout` takes no `undefined` (HAL-17039). */
+  #clear(): void {
+    if (this.#timer !== undefined) {
+      clearTimeout(this.#timer);
+    }
   }
 }
