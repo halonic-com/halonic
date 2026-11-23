@@ -45,6 +45,7 @@ function openCard(decisions: ProposalDecisions, signedOut = false) {
         facts={undefined}
         decisions={decisions}
         onDecided={() => {}}
+        readAgain={async () => {}}
         answering={answering}
         signedOut={signedOut}
       />
