@@ -13,10 +13,18 @@ verifies("shell.key-hints", () => {
 
   it("puts Mod first and the other modifiers in one order", () => {
     expect(hintKeys("shift+mod+t", "windows")).toEqual(["Ctrl", "Shift", "T"]);
-    expect(hintKeys("Mod+Shift+T", "macos")).toEqual(["⌘", "Shift", "T"]);
+    expect(hintKeys("Mod+Shift+T", "macos")).toEqual(["⌘", "⇧", "T"]);
     expect(hintKeys("Alt+Ctrl+A", "windows")).toEqual(["Ctrl", "Alt", "A"]);
-    expect(hintKeys("Ctrl+Tab", "macos")).toEqual(["Ctrl", "Tab"]);
+    expect(hintKeys("Ctrl+Tab", "macos")).toEqual(["⌃", "Tab"]);
     expect(hintKeys("F6", "windows")).toEqual(["F6"]);
+  });
+
+  it("writes every modifier as its symbol on macOS and by name elsewhere", () => {
+    expect(hintKeys("Ctrl+Alt+I", "macos")).toEqual(["⌃", "⌥", "I"]);
+    expect(hintKeys("Ctrl+Alt+I", "windows")).toEqual(["Ctrl", "Alt", "I"]);
+    expect(hintKeys("Ctrl+Mod+Alt+Shift+X", "macos")).toEqual(["⌃", "⌘", "⌥", "⇧", "X"]);
+    expect(hintKeys("Mod+Alt+Shift+X", "linux")).toEqual(["Ctrl", "Alt", "Shift", "X"]);
+    expect(hintKeys("Alt+ArrowUp", "macos")).toEqual(["⌥", "↑"]);
   });
 
   it("draws Escape and the arrows short, as the kit's Kbd does", () => {
@@ -33,6 +41,7 @@ verifies("shell.key-hints", () => {
     expect(keyShortcutsLabel(hintKeys("Mod+Shift+T", "macos"))).toBe("Meta+Shift+T");
     expect(keyShortcutsLabel(hintKeys("Mod+Enter", "windows"))).toBe("Control+Enter");
     expect(keyShortcutsLabel(hintKeys("Escape", "windows"))).toBe("Escape");
+    expect(keyShortcutsLabel(hintKeys("Ctrl+Alt+I", "macos"))).toBe("Control+Alt+I");
   });
 
   it("refuses keys a keybinding couldn't use", () => {

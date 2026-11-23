@@ -132,11 +132,11 @@ verifies("shell.window-tab-menu", () => {
         null,
         reopen,
       ]);
-      const mod = platform === "macos" ? "⌘" : "Ctrl";
+      const [mod, shift] = platform === "macos" ? ["⌘", "⇧"] : ["Ctrl", "Shift"];
       const shown = (index: number) =>
         [...(items[index]?.querySelectorAll("kbd") ?? [])].map((key) => key.textContent);
       expect(shown(0)).toEqual([mod, "W"]);
-      expect(shown(2)).toEqual([mod, "Shift", "T"]);
+      expect(shown(2)).toEqual([mod, shift, "T"]);
       unmountAll();
     }
   });

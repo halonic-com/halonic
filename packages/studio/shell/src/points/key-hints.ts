@@ -1,15 +1,22 @@
 import { type KeyboardPlatform, normalizeKeys } from "./keybindings.ts";
 
 /**
- * How a hint writes a key that its binding spells another way. `Meta` is the ⌘ key on macOS and
- * keeps its name elsewhere, where the Studio binds nothing to it.
+ * How a hint writes a key that its binding spells another way. On macOS the modifiers are the
+ * symbols its menus print; elsewhere they keep their names, and `Meta`, which the Studio binds
+ * nothing to there, does too.
  */
 function hintFor(key: string, platform: KeyboardPlatform): string {
-  if (key === "Meta") {
-    return platform === "macos" ? "⌘" : "Meta";
-  }
-  return hintsByKey[key] ?? key;
+  const macSymbol = platform === "macos" ? macModifiers[key] : undefined;
+  return macSymbol ?? hintsByKey[key] ?? key;
 }
+
+/** The modifiers as macOS writes them; the kit's `keyShortcutsLabel` reads each one back. */
+const macModifiers: Readonly<Record<string, string>> = {
+  Ctrl: "⌃",
+  Meta: "⌘",
+  Alt: "⌥",
+  Shift: "⇧",
+};
 
 /** The named keys a Kbd draws shorter; the kit's `keyShortcutsLabel` reads each one back. */
 const hintsByKey: Readonly<Record<string, string>> = {
@@ -22,9 +29,9 @@ const hintsByKey: Readonly<Record<string, string>> = {
 
 /**
  * The keys a Kbd shows for a binding, one box each, the modifiers first. `Mod` is ⌘ on macOS and
- * Ctrl elsewhere, so every hint in the Studio reads the same: `"Mod+Shift+T"` is
- * `["⌘", "Shift", "T"]` on a Mac and `["Ctrl", "Shift", "T"]` on Windows. Give the control the
- * same keys in `aria-keyshortcuts` with the kit's `keyShortcutsLabel`.
+ * Ctrl elsewhere, and on macOS every modifier is its symbol, so every hint in the Studio reads the
+ * same: `"Mod+Shift+T"` is `["⌘", "⇧", "T"]` on a Mac and `["Ctrl", "Shift", "T"]` on Windows. Give
+ * the control the same keys in `aria-keyshortcuts` with the kit's `keyShortcutsLabel`.
  *
  * @throws ShellError for keys a keybinding couldn't use either, such as `"Ctrl+"`
  *
@@ -46,6 +53,6 @@ export function hintKeys(keys: string, platform: KeyboardPlatform): string[] {
 
 /**
  * The order a hint shows the modifiers in. Meta comes right after Ctrl, so `Mod` is always first:
- * ⌘ Shift T on macOS reads like Ctrl Shift T elsewhere.
+ * ⌘ ⇧ T on macOS reads like Ctrl Shift T elsewhere.
  */
 const hintOrder = ["Ctrl", "Meta", "Alt", "Shift"];
