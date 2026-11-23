@@ -35,25 +35,29 @@ export interface FailedRunCount {
 /** What the page reads from Paperclip's tables, so tests can fake it. */
 export interface WorkerTables {
   tasksInProgress(companyId: string): Promise<TaskInProgress[]>;
-  lastRuns(companyId: string): Promise<LastRun[]>;
+  /** The newest run of each of `agentIds`, the company's agents from the SDK. */
+  lastRuns(companyId: string, agentIds: readonly string[]): Promise<LastRun[]>;
   /** Failed and timed-out runs created at or after `since`, counted per agent and cause. */
   failedRunsSince(companyId: string, since: string): Promise<FailedRunCount[]>;
 }
 
-/** The core tables the read uses; the manifest's `coreReadTables` lists exactly these. */
-export const workerReadTables = ["agents", "heartbeat_runs", "issues"] as const;
+/**
+ * The core tables the read uses; the manifest's `coreReadTables` lists exactly these.
+ * Not `agents`: its rows hold adapter settings that can carry keys, so the agent
+ * ids come from the SDK's `ctx.agents.list` instead.
+ */
+export const workerReadTables = ["heartbeat_runs", "issues"] as const;
 
 const tasksInProgressSql = `SELECT i.assignee_agent_id AS agent_id, i.identifier AS identifier, i.updated_at AS updated_at
 FROM public.issues i
 WHERE i.company_id = $1 AND i.status = 'in_progress' AND i.assignee_agent_id IS NOT NULL AND i.identifier IS NOT NULL
 ORDER BY i.updated_at DESC`;
 
-const lastRunsSql = `SELECT a.id AS agent_id, r.status AS status, r.created_at AS created_at, i.identifier AS identifier
-FROM public.agents a
+const lastRunsSql = `SELECT a.agent_id AS agent_id, r.status AS status, r.created_at AS created_at, i.identifier AS identifier
+FROM unnest($2::uuid[]) AS a(agent_id)
 CROSS JOIN LATERAL (SELECT r.status, r.created_at, r.issue_id FROM public.heartbeat_runs r
-  WHERE r.agent_id = a.id ORDER BY r.created_at DESC LIMIT 1) r
-LEFT JOIN public.issues i ON i.id = r.issue_id
-WHERE a.company_id = $1`;
+  WHERE r.company_id = $1 AND r.agent_id = a.agent_id ORDER BY r.created_at DESC LIMIT 1) r
+LEFT JOIN public.issues i ON i.id = r.issue_id`;
 
 // The patterns go in as parameters from $3 on, in causePatterns' order; the
 // codes are the fixed ones in code. The error text never leaves this expression.
@@ -77,8 +81,8 @@ export function databaseWorkerTables(db: Pick<PluginDatabaseClient, "query">): W
         updatedAt: isoTime(row["updated_at"]),
       }));
     },
-    async lastRuns(companyId) {
-      const rows = await db.query<Record<string, unknown>>(lastRunsSql, [companyId]);
+    async lastRuns(companyId, agentIds) {
+      const rows = await db.query<Record<string, unknown>>(lastRunsSql, [companyId, [...agentIds]]);
       return rows.map((row) => ({
         agentId: String(row["agent_id"]),
         status: String(row["status"]),

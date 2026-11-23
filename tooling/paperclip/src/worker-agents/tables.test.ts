@@ -19,7 +19,7 @@ function recordingDb(rows: Record<string, unknown>[]) {
 async function everyStatement() {
   const { tables, statements } = recordingDb([]);
   await tables.tasksInProgress("acme");
-  await tables.lastRuns("acme");
+  await tables.lastRuns("acme", ["agent-1"]);
   await tables.failedRunsSince("acme", "2026-11-22T14:00:00.000Z");
   return statements;
 }
@@ -38,11 +38,22 @@ verifies("paperclip.worker-agents-read", () => {
     const allowed = (manifest.database?.coreReadTables ?? []).map((table) => `public.${table}`);
     for (const { sql, params } of await everyStatement()) {
       expect(sql.trim()).toMatch(/^SELECT /);
-      const tables = [...sql.matchAll(/\b(?:from|join)\s+([a-z_]+\.[a-z_]+)/gi)].map((m) => m[1]);
+      const tables = [
+        ...sql.matchAll(/\b(?:from|join)\s+(?!lateral\b)([a-z_]+(?:\.[a-z_]+)?)\b(?!\()/gi),
+      ].map((m) => m[1]);
       expect(tables.every((table) => allowed.includes(table ?? ""))).toBe(true);
       expect(params?.[0]).toBe("acme");
       expect(sql).not.toMatch(/SELECT \*|\.\*|\b(insert|update|delete)\b/i);
     }
+  });
+
+  test("never reads the agents table: the newest runs are scoped by the SDK's agent ids", async () => {
+    const statements = await everyStatement();
+    for (const { sql } of statements) {
+      expect(sql).not.toMatch(/\bpublic\.agents\b/);
+    }
+    expect(statements[1]?.sql).toMatch(/unnest\(\$2::uuid\[\]\)/);
+    expect(statements[1]?.params?.[1]).toEqual(["agent-1"]);
   });
 
   test("never reads an error, log, output, title or settings column", async () => {
@@ -73,7 +84,7 @@ verifies("paperclip.worker-agents-read", () => {
     ]);
     const all = [
       ...(await tables.tasksInProgress("acme")),
-      ...(await tables.lastRuns("acme")),
+      ...(await tables.lastRuns("acme", ["agent-1"])),
       ...(await tables.failedRunsSince("acme", "2026-11-22T14:00:00.000Z")),
     ];
     expect(JSON.stringify(all)).not.toContain("sk-acme");

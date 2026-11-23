@@ -70,5 +70,6 @@ verifies("paperclip.worker-agents-page", () => {
     expect(loadErrorCause({ code: "a sentence from a log" })).toBe("unknown");
     expect(taskHref("HAL", "HAL-2")).toBe("/HAL/issues/HAL-2");
     expect(taskHref(null, "HAL-2")).toBeUndefined();
+    expect(taskHref("", "HAL-2")).toBeUndefined();
   });
 });

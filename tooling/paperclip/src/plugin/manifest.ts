@@ -93,7 +93,8 @@ export const manifest: PaperclipPluginManifestV1 = {
   database: {
     namespaceSlug: "agent_tools",
     migrationsDir: "src/plugin/migrations",
-    // agents, heartbeat_runs and issues: who works on what, each agent's newest run, failed runs.
+    // heartbeat_runs and issues: who works on what, each agent's newest run, failed runs.
+    // Never agents: its rows hold adapter settings that can carry keys.
     coreReadTables: [...workerReadTables],
   },
   instanceConfigSchema: {

@@ -10,7 +10,7 @@ When the Worker agents page reads Paperclip's task and run tables, the Agent too
 
 - Given the three reads of the page,
   when they run,
-  then each is a `SELECT` on `agents`, `heartbeat_runs` or `issues` with the company as its first parameter.
+  then each is a `SELECT` on `heartbeat_runs` or `issues` with the company as its first parameter, and none reads `agents`, whose rows hold adapter settings.
 - Given a database row that also carries a made-up error text,
   when the plugin reads it,
   then the result holds only the named fields, and a cause outside the known codes becomes `other`.

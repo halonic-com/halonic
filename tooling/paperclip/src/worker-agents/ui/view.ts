@@ -49,9 +49,11 @@ export function loadErrorCause(error: { readonly code?: unknown }): string {
     : "unknown";
 }
 
-/** A task's page in Paperclip, or undefined when the company's prefix isn't known. */
+/** A task's page in Paperclip, or undefined when the company's prefix isn't known or is empty. */
 export function taskHref(companyPrefix: string | null, identifier: string): string | undefined {
-  return companyPrefix === null ? undefined : `/${companyPrefix}/issues/${identifier}`;
+  return companyPrefix === null || companyPrefix === ""
+    ? undefined
+    : `/${companyPrefix}/issues/${identifier}`;
 }
 
 function listText(names: readonly string[]): string {

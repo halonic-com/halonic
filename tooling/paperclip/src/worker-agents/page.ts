@@ -68,7 +68,10 @@ export async function workerAgentsPage(
   const failedSince = new Date(now.getTime() - dayMs).toISOString();
   const [tasks, runs, failed] = await Promise.all([
     tables.tasksInProgress(companyId),
-    tables.lastRuns(companyId),
+    tables.lastRuns(
+      companyId,
+      agents.map((agent) => agent.id),
+    ),
     tables.failedRunsSince(companyId, failedSince),
   ]);
   const lastRuns = new Map(runs.map((run) => [run.agentId, runView(run)]));

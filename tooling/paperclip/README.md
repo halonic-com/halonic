@@ -135,8 +135,10 @@ open PRs and branch names say "Not available yet" until HAL-16251.
   `auth: "board"` and checked again in `src/plugin/worker-agents-route.ts`, and
   the page's data key, which Paperclip answers only for board users. No agent
   tool, so MCP never sees it. The page's code only reads (a test checks it).
-- **The read:** `src/worker-agents/tables.ts` reads `agents`, `heartbeat_runs`
-  and `issues` (the manifest's `coreReadTables`) with named columns only. A
+- **The read:** `src/worker-agents/tables.ts` reads `heartbeat_runs` and
+  `issues` (the manifest's `coreReadTables`) with named columns only. It never
+  reads `agents`, whose rows hold adapter settings that can carry keys: the
+  agent ids come from the SDK's `ctx.agents.list`. A
   failed run's cause code is worked out in the database with the board check's
   patterns, so a run's error text, logs and output, and a task's title, never
   reach the plugin. Paperclip requires `database.namespace.migrate` and
