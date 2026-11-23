@@ -8,6 +8,7 @@ import type { Inbox, InboxRuns } from "./inbox.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
 import type { ProposalDecisions } from "./proposal-decisions.ts";
 import type { InboxRequests } from "./request/inbox-requests.ts";
+import type { HeldAgents } from "./sandbox/on-hold-setup-source.ts";
 import type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 
 export { AnswerElsewhere } from "./answer-elsewhere.ts";
@@ -60,6 +61,7 @@ export {
   type RequestWorkflow,
   type StartedRun,
 } from "./request/inbox-requests.ts";
+export type { HeldAgent, HeldAgents } from "./sandbox/on-hold-setup-source.ts";
 export type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 export type {
   InboxSetupSource,
@@ -95,6 +97,14 @@ export const InboxNoticesService: ServiceKey<InboxNotices> =
  */
 export const SandboxRefusalsService: ServiceKey<SandboxRefusals> =
   serviceKey<SandboxRefusals>("inbox.sandbox-refusals");
+
+/**
+ * The agents whose On this computer choice is on hold and that a routine ran in the sandbox since,
+ * one Inbox row each (checklist 3.8). The app provides it for each open workspace where Studio can
+ * choose where an agent runs; without it the Inbox has no on-hold rows.
+ */
+export const HeldAgentsService: ServiceKey<HeldAgents> =
+  serviceKey<HeldAgents>("inbox.held-agents");
 
 /**
  * Tells the Inbox when a sandbox check passed on another screen, such as a run page's **Check

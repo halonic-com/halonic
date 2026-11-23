@@ -2,6 +2,7 @@ import { sandboxStartCheckKey } from "@halonicjs/app";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
+  HeldAgentsService,
   InboxNoticesService,
   InboxRequestsService,
   InboxRunsService,
@@ -11,6 +12,9 @@ import {
   SandboxRefusalsService,
 } from "./api.ts";
 import { Inbox } from "./inbox.ts";
+import type { InboxNotices } from "./notices/inbox-notices.ts";
+import { joinInboxNotices } from "./notices/merge-notices.ts";
+import { onHoldSetup } from "./sandbox/on-hold-setup-source.ts";
 import { sandboxSetup } from "./sandbox/sandbox-setup-source.ts";
 
 /**
@@ -30,6 +34,8 @@ export const inboxFeature = defineFeature({
     SandboxRefusalsService,
     sandboxStartCheckKey,
     SandboxPassesService,
+    // The agents on hold, one row each (checklist 3.8).
+    HeldAgentsService,
     // A run proposal's Accept and Reject, from the agent host (HAL-10916).
     ProposalDecisionsService,
     // The page reads each run's workflow and starter from the Runs list for the card and row.
@@ -39,6 +45,7 @@ export const inboxFeature = defineFeature({
   register(studio) {
     studio.services.provide(InboxService, (services) => {
       const inbox = new Inbox(services.get(InboxRunsService));
+      const notices: InboxNotices[] = [];
       // The sandbox row needs both the refused runs and the check; with either missing there is none.
       const refusals = services.find(SandboxRefusalsService);
       const check = services.find(sandboxStartCheckKey);
@@ -50,8 +57,15 @@ export const inboxFeature = defineFeature({
           services.find(SandboxPassesService),
         );
         inbox.addSetupSource(sandbox.source);
-        inbox.extraNotices = sandbox.notices;
+        notices.push(sandbox.notices);
       }
+      const held = services.find(HeldAgentsService);
+      if (held !== undefined) {
+        const onHold = onHoldSetup(held);
+        inbox.addSetupSource(onHold.source);
+        notices.push(onHold.notices);
+      }
+      inbox.extraNotices = joinInboxNotices(notices);
       return inbox;
     });
     studio.places.add({

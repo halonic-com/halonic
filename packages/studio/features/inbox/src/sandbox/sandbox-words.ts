@@ -44,5 +44,22 @@ export const sandboxInboxWords = {
   name: "Sandbox",
 } as const;
 
+/**
+ * The sentences of the Inbox's on-hold rows (checklist 3.8, microcopy 23.4 "File changed, Inbox
+ * setup row"), one per agent whose On this computer choice is on hold. Placeholders until HAL-1784
+ * is approved, like the ones above.
+ */
+export const onHoldInboxWords = {
+  /** `on-hold-inbox.title`: the row's and the card's title. */
+  title: (agent: string): string => `Confirm again: ${agent} runs in the sandbox for now`,
+  /** `on-hold-inbox.line`: the line under the title. */
+  line: (agent: string): string => `${agent}'s file changed since you chose On this computer.`,
+  /** `on-hold-inbox.notice`: the Notices row the Fixed row leaves; the row adds **Fixed**. */
+  notice: (agent: string): string =>
+    `${onHoldInboxWords.title(agent)} · ${onHoldInboxWords.line(agent)}`,
+  /** `on-hold-inbox.name`: the source's name, for "Loading the On this computer setup". */
+  name: "On this computer",
+} as const;
+
 /** Where the guide lives; the catalogue's docs key follows it (P10: the CLI's `docsBase`). */
 export const sandboxDocsBase = "https://docs.halonic.dev";

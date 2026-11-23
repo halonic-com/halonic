@@ -31,6 +31,35 @@ export function mergeNotices(
 }
 
 /**
+ * The Inbox's own notices, kept in memory by its sources (the sandbox row's and the on-hold rows'),
+ * as one: the lists joined newest first, and a dismissal sent to each, since a source ignores a key
+ * it doesn't hold. Every key starts with `sandbox-fixed:`, so {@link mergeNotices} keeps them away
+ * from the app's kept dismissals.
+ *
+ * @example
+ * inbox.extraNotices = joinInboxNotices([sandbox.notices, onHold.notices]);
+ */
+export function joinInboxNotices(sources: readonly InboxNotices[]): InboxNotices | undefined {
+  const [only] = sources;
+  if (sources.length <= 1) return only;
+  return {
+    async list() {
+      const lists = await Promise.all(sources.map((source) => source.list()));
+      return lists.flat().sort(newestFirst);
+    },
+    subscribe(listener) {
+      const stops = sources.map((source) => source.subscribe(listener));
+      return () => {
+        for (const stop of stops) stop();
+      };
+    },
+    dismiss(key) {
+      for (const source of sources) source.dismiss(key);
+    },
+  };
+}
+
+/**
  * Orders notices newest first, after the month's used-up budget, which stops runs from starting
  * and so goes first whatever its time (flow-inbox 4.3).
  */
