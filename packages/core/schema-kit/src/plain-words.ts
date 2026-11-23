@@ -143,6 +143,8 @@ function tooSmall(
         ? `${field} is empty: write a value.`
         : `${field} needs at least ${minimum} characters.`;
     case "number":
+    // Zod checks a whole number's safe range as origin "int", such as 1e16.
+    case "int":
       return inclusive
         ? `${field} is too small: use ${minimum} or more.`
         : `${field} must be more than ${minimum}.`;
@@ -163,6 +165,8 @@ function tooBig(
     case "string":
       return `${field} is too long: use at most ${maximum} characters.`;
     case "number":
+    // Zod checks a whole number's safe range as origin "int", such as 1e16.
+    case "int":
       return inclusive
         ? `${field} is too big: use ${maximum} or less.`
         : `${field} must be less than ${maximum}.`;

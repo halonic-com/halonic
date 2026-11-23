@@ -216,6 +216,15 @@ verifies("schema-kit.plain-words", () => {
       ]);
     });
 
+    it("gives the limits of a whole number too big to count exactly", () => {
+      const schema = s.object({ maxTokens: s.number().int() });
+      const messages = [1e16, -1e16].map((maxTokens) => messagesOf(schema, { maxTokens }));
+      expect(messages).toEqual([
+        ["maxTokens is too big: use 9007199254740991 or less."],
+        ["maxTokens is too small: use -9007199254740991 or more."],
+      ]);
+    });
+
     it("gives the number of items, characters or the limit that isn't allowed", () => {
       const schema = s.object({
         options: s.array(s.string()).min(2),
