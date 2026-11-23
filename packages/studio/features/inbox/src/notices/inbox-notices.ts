@@ -8,9 +8,12 @@ import type { FailedRunNotice } from "./failed-run-notices.ts";
  */
 export interface SandboxFixedNotice {
   readonly kind: "sandbox-fixed";
-  /** `sandbox-fixed:<time>`. Holds nothing but the time of the passing check. */
+  /**
+   * `sandbox-fixed:<time>`, holding nothing but the time of the passing check; for an agent's
+   * on-hold row, `sandbox-fixed:on-hold:<hub>/<agent id>:<time>`.
+   */
   readonly key: string;
-  /** ISO time the check passed. */
+  /** ISO time the check passed, or the agent's row was seen as Fixed. */
   readonly at: string;
   /** The sentence the row shows. */
   readonly title: string;

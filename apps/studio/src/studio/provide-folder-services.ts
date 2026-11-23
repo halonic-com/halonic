@@ -16,7 +16,11 @@ import {
 import { systemClock } from "@halonicjs/std";
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
-import { InboxRequestsService, monthBudgetUse } from "@halonicjs/studio-feature-inbox/api";
+import {
+  HeldAgentsService,
+  InboxRequestsService,
+  monthBudgetUse,
+} from "@halonicjs/studio-feature-inbox/api";
 import {
   CollectionHostService,
   KnowledgeHostService,
@@ -58,6 +62,7 @@ import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { provideFilesServices } from "../files/provide-files-services.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
+import { WorkspaceHeldAgents } from "../inbox/workspace-held-agents.ts";
 import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceCollections } from "../library/workspace-collections.ts";
@@ -188,7 +193,7 @@ export function provideFolderServices(
   // Settings › New agents run and the Harness page share the agent host's choices.
   const placed =
     transport === undefined ? undefined : agentHostPlacement(transport, files, location, changes);
-  services.provide(
+  const agents = services.provide(
     AgentsHostService,
     new WorkspaceAgents({
       files: services.get(workspaceFilesKey),
@@ -214,6 +219,13 @@ export function provideFolderServices(
       trust: { mayStart: () => trust.mayStartNow(), askTrust, workspaceName: name },
     }),
   );
+  // An agent on hold gets its own Inbox row; without the agent host nothing can be on hold.
+  if (placed !== undefined) {
+    services.provide(
+      HeldAgentsService,
+      new WorkspaceHeldAgents(agents, services.get(RunsSourceService)),
+    );
+  }
   // The status bar's Review trusts the workspace too; a refusal on the page then goes (C552, C596).
   const onTrusted = (listener: () => void) =>
     trust.subscribe(() => {
