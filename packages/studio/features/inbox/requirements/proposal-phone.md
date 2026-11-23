@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-10916; flow-inbox 2.2 and 8; HAL-11945 section 3, row Q12; `inbox.proposal-page`
 
-On a phone, an open run proposal shall show **Accept all** across the page's whole width and **Reject all** under it, both 48 px high, in a bar under its changes rather than in its header; **Accept all** shall be left out once every open change changed after the run. Its **See run 01JD8Q ›**, **Reject** and **Accept** shall be 48 px high. The bar over an open item that waits shall show **Back to Inbox** and where the item is among what waits, such as "1 of 4"; a decided or done item shall show no place.
+While the device is a phone, an open run proposal shall show **Accept all** across the page's whole width and **Reject all** under it, both 48 px high, in a bar under its changes rather than in its header; **Accept all** shall be left out once every open change changed after the run. Its **See run 01JD8Q ›**, **Reject** and **Accept** shall be 48 px high. The bar over an open item that waits shall show **Back to Inbox** and where the item is among what waits, such as "1 of 4"; a decided or done item shall show no place.
 
 ## Examples
 
