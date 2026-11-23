@@ -108,6 +108,14 @@ export interface TrustContentInput {
    * can't. A command missing from the map is kept as written only.
    */
   commandPaths?: ReadonlyMap<string, string>;
+  /**
+   * The hash of each workspace file a stdio connector's start names, by
+   * connector id, then by the file's workspace-relative path, such as
+   * `{ "tools/server.js": "sha256:3b1f…" }`. The caller reads and hashes
+   * them; the core can't. A connector missing from the map, or with none,
+   * keeps the content it had before files were covered.
+   */
+  connectorFiles?: ReadonlyMap<string, Readonly<Record<string, string>>>;
   /** The workspace's agents, as parsed from their files. Only harness agents add to the content. */
   agents?: readonly Agent[];
   /** The workspace's local integrations, with its settings for each and the hash of its code. */
@@ -124,7 +132,8 @@ export interface TrustContentInput {
  *   and every environment variable with its value as written: `${HOME}`
  *   stays `${HOME}`. Secret variables show only the secret's name. The
  *   sites it may reach in a sandbox, lowercase, in Punycode and sorted,
- *   only when the file names them.
+ *   only when the file names them. The hash of each workspace file its start
+ *   names, by path, only when it names some (`connectorFiles`).
  * - **http:** the full URL, normalised (see {@link trustUrl}), and every
  *   header. A connector whose URL `trustUrl` refuses goes in `refused`.
  * - **all:** the secret's name, the tool lists and `local`, plus any other
@@ -146,11 +155,14 @@ export interface TrustContentInput {
  * // { connectors: [{ id: "mail", transport: "stdio", settings: { command: "npx", args: [...], cwd: ".", env: {}, secretEnv: {} }, ... }] }
  */
 export function trustContent(input: TrustContentInput): TrustContent {
-  const commandPaths = input.commandPaths ?? new Map<string, string>();
+  const machine: MachineFacts = {
+    commandPaths: input.commandPaths ?? new Map(),
+    connectorFiles: input.connectorFiles ?? new Map(),
+  };
   const connectors: ConnectorTrustContent[] = [];
   const refused: RefusedItem[] = [];
   for (const connector of input.connectors) {
-    const content = connectorContent(connector, commandPaths);
+    const content = connectorContent(connector, machine);
     if ("reason" in content) {
       refused.push(content);
     } else {
@@ -172,11 +184,20 @@ export function trustContent(input: TrustContentInput): TrustContent {
   };
 }
 
+/** What the caller found on this computer for the connectors: where programs are, and file hashes. */
+interface MachineFacts {
+  readonly commandPaths: ReadonlyMap<string, string>;
+  readonly connectorFiles: ReadonlyMap<string, Readonly<Record<string, string>>>;
+}
+
 function connectorContent(
   connector: Connector,
-  commandPaths: ReadonlyMap<string, string>,
+  machine: MachineFacts,
 ): ConnectorTrustContent | RefusedItem {
-  const transport = transportContent(connector.transport, commandPaths);
+  const transport = transportContent(connector.transport, {
+    commandPaths: machine.commandPaths,
+    files: machine.connectorFiles.get(connector.id) ?? {},
+  });
   if ("refused" in transport) {
     return { kind: "connector", id: connector.id, reason: transport.refused };
   }
@@ -195,29 +216,18 @@ function connectorContent(
 
 type TransportContent = { kind: string; settings: Record<string, unknown> } | { refused: string };
 
+/** What the caller found on this computer for one connector. */
+interface ConnectorMachine {
+  readonly commandPaths: ReadonlyMap<string, string>;
+  readonly files: Readonly<Record<string, string>>;
+}
+
 function transportContent(
   transport: Connector["transport"],
-  commandPaths: ReadonlyMap<string, string>,
+  machine: ConnectorMachine,
 ): TransportContent {
   if ("stdio" in transport) {
-    const { stdio } = transport;
-    const path = commandPaths.get(stdio.command);
-    const settings: Record<string, unknown> = {
-      command: stdio.command,
-      args: [...stdio.args],
-      cwd: posixPath.normalize(stdio.cwd ?? "."),
-      env: { ...stdio.env },
-      secretEnv: mapValues(stdio.secretEnv ?? {}, secretReference),
-      // Only when it names one, so a connector without it, or with `[]`, keeps the
-      // content it was trusted with.
-      ...((stdio.inheritEnv ?? []).length === 0
-        ? {}
-        : { inheritEnv: sorted(stdio.inheritEnv ?? []) }),
-      // In the form the sandbox uses, so `API.example.com` and `api.example.com` are one site.
-      ...(stdio.sites === undefined ? {} : { sites: sorted(asciiAllowedSites(stdio.sites)) }),
-      ...(path === undefined ? {} : { path }),
-    };
-    return { kind: "stdio", settings: withUnknown(settings, stdio, stdioFields) };
+    return stdioContent(transport.stdio, machine);
   }
   if ("http" in transport) {
     const { http } = transport;
@@ -234,6 +244,35 @@ function transportContent(
     return { kind: "google", settings: withUnknown(settings, google, googleFields) };
   }
   return runnerTransportContent(transport);
+}
+
+type StdioSettings = Extract<Connector["transport"], { stdio: unknown }>["stdio"];
+
+function stdioContent(
+  stdio: StdioSettings,
+  machine: ConnectorMachine,
+): { kind: string; settings: Record<string, unknown> } {
+  const path = machine.commandPaths.get(stdio.command);
+  const files = Object.entries(machine.files).sort(([left], [right]) => compareText(left, right));
+  const settings: Record<string, unknown> = {
+    command: stdio.command,
+    args: [...stdio.args],
+    cwd: posixPath.normalize(stdio.cwd ?? "."),
+    env: { ...stdio.env },
+    secretEnv: mapValues(stdio.secretEnv ?? {}, secretReference),
+    // Only when it names one, so a connector without it, or with `[]`, keeps the
+    // content it was trusted with.
+    ...((stdio.inheritEnv ?? []).length === 0
+      ? {}
+      : { inheritEnv: sorted(stdio.inheritEnv ?? []) }),
+    // In the form the sandbox uses, so `API.example.com` and `api.example.com` are one site.
+    ...(stdio.sites === undefined ? {} : { sites: sorted(asciiAllowedSites(stdio.sites)) }),
+    ...(path === undefined ? {} : { path }),
+    // Only when its start names a workspace file, so a connector that names none keeps the
+    // content, and the trust, it had before these files were covered.
+    ...(files.length === 0 ? {} : { files: Object.fromEntries(files) }),
+  };
+  return { kind: "stdio", settings: withUnknown(settings, stdio, stdioFields) };
 }
 
 /** The transports that run in the runner, or one the schema doesn't know yet. */
