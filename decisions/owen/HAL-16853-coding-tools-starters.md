@@ -3,6 +3,7 @@
 - Task: HAL-16853 (for the coding tool server plan, HAL-16737)
 - Approval: the coding tool server plan, approved by Liam on HAL-16748; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:h/omTvBJKSNkbLxYvbeDXsTpoLw4tr5c8bMu58ykncuG+iW1/kgl5k8xb29MGVOaO6jNb+SznpksTkb06HeqCg==
 
 ## What changes
 
