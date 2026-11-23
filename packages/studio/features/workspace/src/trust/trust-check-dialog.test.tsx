@@ -225,7 +225,7 @@ const program: TrustReview = {
           lines: [
             ["Takes from your environment", "PATH", "code"],
             ["Runs", "/usr/local/bin/node", "code"],
-            ["Gets secrets", secretName],
+            ["Gets secrets", secretName, "code"],
           ],
         },
       ],
@@ -241,7 +241,9 @@ verifies("workspace.trust-check-narrow-lines", () => {
     // from the second column to the first, under its label.
     const grid = shown("/usr/local/bin/node")?.closest(".grid-cols-\\[auto_1fr\\]");
     expect(grid?.closest(".\\@container")).not.toBeNull();
-    expect(grid?.className.split(" ")).toContain("@max-[24rem]:grid-cols-1");
+    expect(grid?.className.split(" ")).toEqual(
+      expect.arrayContaining(["gap-y-1", "@max-[24rem]:grid-cols-1", "@max-[24rem]:gap-y-2"]),
+    );
     const value = shown("/usr/local/bin/node");
     expect(value?.className.split(" ")).toEqual(
       expect.arrayContaining(["col-start-2", "@max-[24rem]:col-start-1"]),
@@ -253,13 +255,14 @@ verifies("workspace.trust-check-narrow-lines", () => {
 });
 
 verifies("workspace.trust-check-code-lines", () => {
-  it("shows a code value in mono and its label in the text font", () => {
+  it("shows a code value, a program's secret names too, in mono and its label in the text font", () => {
     openWith(program);
 
     expect(shown("/usr/local/bin/node")?.classList.contains("font-mono")).toBe(true);
     expect(shown("PATH")?.classList.contains("font-mono")).toBe(true);
     expect(shown("Runs:")?.closest(".font-mono")).toBeNull();
-    expect(shown(secretName)?.classList.contains("font-mono")).toBe(false);
+    expect(shown(secretName)?.classList.contains("font-mono")).toBe(true);
+    expect(shown("Gets secrets:")?.closest(".font-mono")).toBeNull();
   });
 });
 

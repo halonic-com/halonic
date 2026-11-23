@@ -274,7 +274,7 @@ function programRow(
     id: connector.id,
     detail: fields.command,
     lines: [
-      ...(secrets.length === 0 ? [] : [["Gets secrets", secrets.join(", ")] as const]),
+      ...(secrets.length === 0 ? [] : [["Gets secrets", secrets.join(", "), "code"] as const]),
       ...(fields.inherited.length === 0
         ? []
         : [["Takes from your environment", fields.inherited.join(", "), "code"] as const]),

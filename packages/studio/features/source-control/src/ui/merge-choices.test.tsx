@@ -242,14 +242,13 @@ verifies("source-control.get-updates-per-item", () => {
       const { fake, toasts, opened } = await openPage({
         started: merge([item("a.md", "m\n", "s\n")]),
       });
-      const reason =
-        "updates change .env.example, which Halonic leaves to git. Get these updates with git instead.";
+      const reason = "updates change .env.example, which Halonic leaves to git.";
       fake.failMerge(new KindedError("conflict", reason));
       await press("Get updates");
       const [refused] = toasts.list();
       expect(refused?.title).toBe("Couldn't get versions");
       expect(refused?.text).toBe(
-        `Updates change .env.example, which Halonic leaves to git. Get these updates with git instead. Nothing changed here.`,
+        "Updates change .env.example, which Halonic leaves to git. Nothing changed here.",
       );
       expect(refused?.action?.label).toBe("Show how");
       expect(refused?.action?.keepOpen).toBe(true);
@@ -260,6 +259,27 @@ verifies("source-control.get-updates-per-item", () => {
       fake.failMerge(new KindedError("unavailable", "The shared copy can't be reached."));
       await press("Get updates");
       expect(toasts.list().at(-1)?.action?.label).toBe("Try again");
+    });
+
+    it("shows the git steps under Get updates, the command in a box to copy and the how-to, until it's pressed again", async () => {
+      const { fake, root } = await openPage({ started: merge([item("a.md", "m\n", "s\n")]) });
+      fake.failMerge(
+        new KindedError("conflict", "updates change .env.example, which Halonic leaves to git."),
+      );
+      await press("Get updates");
+      expect(root.textContent).toContain(
+        "Get these updates with git instead: open a terminal in this workspace's folder and run",
+      );
+      expect(root.querySelector("code")?.textContent).toBe("git pull --no-rebase");
+      expect(root.querySelector('[aria-label="Copy command"]')).not.toBeNull();
+      expect(root.textContent).toContain(
+        "If git reports conflicts, settle them and commit, then come back here.",
+      );
+      const howTo = root.querySelector<HTMLAnchorElement>('a[href$="halonic-leaves-to-git.md"]');
+      expect(howTo?.textContent).toContain("Get updates for files Halonic leaves to git");
+      fake.failMerge(new KindedError("unavailable", "The shared copy can't be reached."));
+      await press("Get updates");
+      expect(root.textContent).not.toContain("git pull --no-rebase");
     });
 
     it("makes what waits unavailable, with the reason, while the merge is started", async () => {

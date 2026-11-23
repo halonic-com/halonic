@@ -92,3 +92,22 @@ verifies("studio.trust-review-program-fields", () => {
     });
   });
 });
+
+verifies("studio.trust-review-program-fields", () => {
+  it("marks the names of the secrets a program gets as code (C716)", () => {
+    const withSecret: ConnectorTrustContent = {
+      ...program,
+      settings: { ...program.settings, secretEnv: { ACME_SYNC_TOKEN: "‹secret ACME_SYNC_TOKEN›" } },
+    };
+    const review = trustReviewOf(
+      { status: "new", content: { connectors: [withSecret] }, fingerprint, unpinned: [] },
+      { name: "Acme", folder: "/work/acme" },
+    );
+
+    expect(review?.sections[0]?.rows[0]?.lines[0]).toEqual([
+      "Gets secrets",
+      "ACME_SYNC_TOKEN",
+      "code",
+    ]);
+  });
+});

@@ -320,8 +320,9 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
         // Label and value columns: a line without a label continues the one above, its value
         // under the first value, with no stray colon (C592). Where the row is narrower than the
         // flag's 24rem, each label goes over its value instead, so a value never gets squeezed
-        // beside "Takes from your environment" (C706).
-        <div className="grid grid-cols-[auto_1fr] gap-x-1 gap-y-1 @max-[24rem]:grid-cols-1">
+        // beside "Takes from your environment" (C706), and each pair stands apart from the next,
+        // 8px between a value and the next label against 4px from a label to its value (C716).
+        <div className="grid grid-cols-[auto_1fr] gap-x-1 gap-y-1 @max-[24rem]:grid-cols-1 @max-[24rem]:gap-y-2">
           {row.lines.map((line) => (
             <TrustLineView key={`${line[0]}:${line[1]}`} line={line} />
           ))}

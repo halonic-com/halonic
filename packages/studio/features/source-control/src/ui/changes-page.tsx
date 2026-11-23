@@ -23,6 +23,7 @@ import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
 import { ChangeList, orderItems } from "./change-list.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
+import { LeftToGitCallout } from "./left-to-git-callout.tsx";
 import { MergeChoices, MergeStrip } from "./merge-choices.tsx";
 import {
   type ChangesPhonePages,
@@ -104,6 +105,7 @@ export function ChangesView({
   const page = useRef<HTMLDivElement>(null);
   const focusNewVersion = useFocusNewVersion(list, page);
   const [addingAddress, setAddingAddress] = useState(false);
+  const [leftToGit, setLeftToGit] = useState(false);
   const items = orderItems(state.files);
   const nav = useOpenItem(items, () => heading.current?.focus());
   const opening = usePhoneOpening(pages, items, state.history.versions);
@@ -119,10 +121,11 @@ export function ChangesView({
         </h1>
         {state.hasRemote ? (
           <span className="ml-auto">
-            <GetUpdates list={list} phone={phone} />
+            <GetUpdates list={list} phone={phone} onLeftToGit={setLeftToGit} />
           </span>
         ) : null}
       </header>
+      <LeftToGitCallout shown={state.hasRemote && leftToGit} />
       {state.merge !== undefined && !state.choosing ? <MergeStrip list={list} /> : null}
       {state.merge !== undefined && state.choosing && !phone ? (
         <MergeChoices list={list} phone={false} />
