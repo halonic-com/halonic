@@ -11,13 +11,14 @@ import { databaseForecastStore } from "./forecast-store.ts";
 import { runSeatsHistory } from "./history-job.ts";
 import { databaseHistoryStore } from "./history-store.ts";
 import { databaseTables } from "./paperclip-tables.ts";
+import { runSeatsPlan } from "./plan-job.ts";
 import { runSeatsRead } from "./read-job.ts";
 import { handleSeatsRequest, type SeatsRouteDeps } from "./routes.ts";
 import { registerSeatUsageTool } from "./seat-usage-tool.ts";
 import { seatsNow } from "./seats-now.ts";
 import { SeatsReader } from "./seats-reader.ts";
 import { readSeatsSettings } from "./settings.ts";
-import { databaseStore } from "./store.ts";
+import { databaseStore, type SeatsStore } from "./store.ts";
 import { databaseRecentReadings, databaseStoredReadings } from "./stored-readings.ts";
 
 // The SDK hands route calls no context, so the worker keeps the one `setup` got.
@@ -42,7 +43,7 @@ export function commandEnv(env: NodeJS.ProcessEnv): Record<string, string> {
  * The `seats` plugin's worker. The host starts it as `worker.js` in the
  * folder `pnpm run build:seats-plugin` writes (`dist/seats/`), after it has
  * run the plugin's migrations. It runs `seats.read` every minute,
- * `seats.history`, `seats.check` and `seats.forecast` every 10 minutes,
+ * `seats.history`, `seats.check`, `seats.forecast` and `seats.plan` every 10 minutes,
  * `seats.calibrate` and `seats.accuracy` every night, and answers the
  * board-only route calls, the "AI seats" page and the `seat_usage` tool.
  */
@@ -76,22 +77,13 @@ export const plugin = definePlugin({
       });
     });
     ctx.jobs.register("seats.calibrate", async () => {
-      await runSeatsCalibrate(ctx, {
-        readings: databaseRecentReadings(ctx.db),
-        history: databaseHistoryStore(ctx.db),
-        forecast: databaseForecastStore(ctx.db),
-        store,
-        now,
-      });
+      await runSeatsCalibrate(ctx, forecastDeps(ctx, store, now));
     });
     ctx.jobs.register("seats.forecast", async () => {
-      await runSeatsForecast(ctx, {
-        readings: databaseRecentReadings(ctx.db),
-        history: databaseHistoryStore(ctx.db),
-        forecast: databaseForecastStore(ctx.db),
-        store,
-        now,
-      });
+      await runSeatsForecast(ctx, forecastDeps(ctx, store, now));
+    });
+    ctx.jobs.register("seats.plan", async () => {
+      await runSeatsPlan(ctx, { ...forecastDeps(ctx, store, now), tables: databaseTables(ctx.db) });
     });
     ctx.jobs.register("seats.accuracy", async () => {
       await runSeatsAccuracy(ctx, {
@@ -114,6 +106,17 @@ export const plugin = definePlugin({
     return await handleSeatsRequest(input, routeDeps(context.ctx, context.reader));
   },
 });
+
+/** What the forecast jobs read and write: the plugin's own tables. */
+function forecastDeps(ctx: PluginContext, store: SeatsStore, now: () => Date) {
+  return {
+    readings: databaseRecentReadings(ctx.db),
+    history: databaseHistoryStore(ctx.db),
+    forecast: databaseForecastStore(ctx.db),
+    store,
+    now,
+  };
+}
 
 /** What the board-only routes and the page's bridge read, from the database and `seats.read`'s memory. */
 function routeDeps(ctx: PluginContext, reader: SeatsReader): SeatsRouteDeps {

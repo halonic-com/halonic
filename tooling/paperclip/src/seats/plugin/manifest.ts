@@ -7,7 +7,7 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  *
  * So far: settings, its own database schema, the board-only routes, the
  * `seats.read`, `seats.history`, `seats.check`, `seats.calibrate`,
- * `seats.forecast` and `seats.accuracy` jobs, the read-only `seat_usage`
+ * `seats.forecast`, `seats.plan` and `seats.accuracy` jobs, the read-only `seat_usage`
  * tool and the board's "AI seats" page.
  */
 export const manifest: PaperclipPluginManifestV1 = {
@@ -220,6 +220,13 @@ export const manifest: PaperclipPluginManifestV1 = {
       description:
         "Every 10 minutes: forecasts each agent's tokens, each seat's limits to their reset, the capacity coming free and how long the pool lasts, today and under each scenario in the settings. It changes nothing.",
       schedule: "7-59/10 * * * *",
+    },
+    {
+      jobKey: "seats.plan",
+      displayName: "Price the seat proposals",
+      description:
+        "Every 10 minutes: forecasts what each proposed move and manual reset would do to the seats and the pool, and which caps to lower when the pool runs out before the next big refill. It changes nothing: moves, resets and caps stay the board's decision.",
+      schedule: "9-59/10 * * * *",
     },
     {
       jobKey: "seats.accuracy",
