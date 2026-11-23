@@ -28,12 +28,20 @@
 # missing, so they come in through their own config (tauri.runtime.conf.json)
 # and a build without -Runtime ships no runtime. Both steps need it: the
 # build checks the resources, the pack packs them.
+#
+# -Image names a folder holding Halonic's WSL image as infra/wsl-image's
+# build.sh writes it (halonic-wsl.tar.gz, and sizes.json, whose sha256 pins
+# it). The installer then puts the image next to Halonic.exe, where the
+# shell finds it for the WSL setup (HAL-16773). sizes.json only checks the
+# build: nothing reads it on the PC, so it isn't shipped. Like the runtime,
+# the image has its own config (tauri.image.conf.json), and both steps need it.
 param(
   [ValidateSet('all', 'build', 'pack')]
   [string]$Step = 'all',
   [string]$Config,
   [string]$AgentHost,
-  [string]$Runtime
+  [string]$Runtime,
+  [string]$Image
 )
 $ErrorActionPreference = 'Stop'
 # The release workflow sets HALONIC_SANDBOX_SIGNER to an empty string for an
@@ -66,6 +74,22 @@ if ($Runtime) {
   New-Item -ItemType Directory -Force $bin | Out-Null
   Copy-Item $runtimeArchive, $runtimeManifest $bin -Force
   $configs += @('--config', 'tauri.runtime.conf.json')
+}
+if ($Image) {
+  # wsl --import doesn't check the image, so a truncated or mixed-up
+  # artifact stops the build here rather than fail a setup on the PC.
+  $Image = (Resolve-Path $Image).Path
+  $imageArchive = Join-Path $Image 'halonic-wsl.tar.gz'
+  $imageSizes = Join-Path $Image 'sizes.json'
+  foreach ($f in $imageArchive, $imageSizes) {
+    if (-not (Test-Path $f -PathType Leaf)) { throw "-Image: $f is missing" }
+  }
+  $imagePinned = (Get-Content $imageSizes -Raw | ConvertFrom-Json).sha256
+  $imageActual = (Get-FileHash $imageArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+  if ($imagePinned -ne $imageActual) { throw "-Image: sizes.json pins $imagePinned, the image is $imageActual" }
+  New-Item -ItemType Directory -Force $bin | Out-Null
+  Copy-Item $imageArchive $bin -Force
+  $configs += @('--config', 'tauri.image.conf.json')
 }
 if ($Config) {
   $Config = (Resolve-Path $Config).Path

@@ -95,8 +95,9 @@ Var RollbackMode
 ; uninstaller's sandbox removal go, and nothing else moves.
 !define SANDBOX_STEP
 ; What the installer says it uses. CI fails when the real size is off by a quarter.
-; It counts the WSL runtime a release ships (build-installer.ps1 -Runtime).
-!define SIZE_MB 200
+; It counts the WSL runtime and image a release ships (build-installer.ps1
+; -Runtime and -Image, about 53 and 92 MB).
+!define SIZE_MB 290
 ; Halonic change (HAL-5404 S3): the Windows setup version this installer's srt
 ; needs (packages/adapters/sandbox-srt/windows-setup-version.json), and the
 ; rollback guard that compares it with the computer's. build-installer.ps1

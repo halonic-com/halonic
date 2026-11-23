@@ -100,7 +100,10 @@ libraries and of the Rust crates the app links, which the script writes to
 `src-tauri/legal/` with `pnpm check:sbom --notices --cargo`. With
 `-Runtime <folder>` it also ships the WSL runtime (`halonic-runtime.tar.gz` and
 `halonic-runtime.json`, from `infra/wsl-image/runtime-archive.sh`) next to the
-app, through `tauri.runtime.conf.json`; CI and the release always pass it. Only the "Set up the agent sandbox" step asks Windows for
+app, through `tauri.runtime.conf.json`; with `-Image <folder>`, the WSL image
+the WSL setup imports (`halonic-wsl.tar.gz`, from `infra/wsl-image/build.sh`,
+checked against its `sizes.json`), through `tauri.image.conf.json`. CI and the
+release always pass both. Only the "Set up the agent sandbox" step asks Windows for
 administrator rights, once, and the uninstaller asks again to remove the sandbox.
 
 The release runs the script in two steps, `-Step build` and `-Step pack`, and

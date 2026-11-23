@@ -29,7 +29,7 @@ function field(block: string, key: string): string | undefined {
   return new RegExp(`^ {4}${key}: (.+)$`, "m").exec(block)?.[1];
 }
 
-/** The macOS and Windows set: what skips in merge groups, and the WSL runtime the installer needs. */
+/** The macOS and Windows set: what skips in merge groups, and the WSL runtime and image the installer needs. */
 const desktop = [
   "tauri-windows",
   "tauri-keychain-macos",
@@ -38,6 +38,7 @@ const desktop = [
   "sandbox-os",
   "sandbox-windows",
   "wsl-runtime",
+  "wsl-image",
   "installer-windows",
   "update-windows",
 ];
@@ -78,7 +79,7 @@ verifies("check.ci-desktop-hourly", () => {
           (runsOn.includes("matrix.os") && /macos-|windows-/.test(block))
         );
       });
-      const linuxForWindows = ["wsl-runtime"];
+      const linuxForWindows = ["wsl-runtime", "wsl-image"];
       expect(onDesktop.map(([job]) => job).sort()).toEqual(
         [...desktop.filter((job) => !linuxForWindows.includes(job)), "agent-host"].sort(),
       );
