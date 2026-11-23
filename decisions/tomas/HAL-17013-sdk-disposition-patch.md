@@ -2,6 +2,7 @@
 
 - Approval: HAL-16988 (Liam's decision B, condition 6), HAL-17010, HAL-17013.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:escGzhVwbP3yE382Dh696cu4pZrRw/ggulEDaDvaeNPW5Mve3/9OMpzG3HrzOfG0LmKnE9zdzHTDt+QwAX7EDA==
 
 ## What changes
 
