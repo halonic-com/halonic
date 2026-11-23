@@ -23,7 +23,8 @@
 //! (capabilities/desktop-updates.json) and the page's close request
 //! (capabilities/desktop-window.json) and the `wsl_*` commands of the sandbox
 //! backup (capabilities/desktop-sandbox-backup.json) and, on Windows,
-//! `sandbox_elevate` (capabilities/desktop-sandbox-elevate.json), and on Android the
+//! `sandbox_elevate` (capabilities/desktop-sandbox-elevate.json) and the WSL setup's
+//! `sandbox_wsl_*` commands (capabilities/desktop-sandbox-wsl-setup.json), and on Android the
 //! pairing scanner's `pair_scan` and `pair_scan_cancel`
 //! (capabilities/phone-pair-scan.json) and the phone tunnel's `phone_*`
 //! commands with `phone_tunnel_watch`, `tunnel_send` and `tunnel_end_session`
@@ -79,6 +80,7 @@ mod resource_report;
 mod runs;
 mod sandbox_backup;
 mod sandbox_elevate;
+mod sandbox_wsl_setup;
 mod secrets;
 mod system_region;
 mod trust;
@@ -136,7 +138,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(plugin_git::PluginGitExports::default())
         .manage(phone_tunnel_events::TunnelWatchers::default());
     #[cfg(windows)]
-    let builder = builder.manage(sandbox_elevate::ElevateState::default());
+    let builder = builder
+        .manage(sandbox_elevate::ElevateState::default())
+        .manage(sandbox_wsl_setup::WslSetupState::default());
     #[cfg(desktop)]
     let builder = builder
         .manage(updates::Updates::default())
@@ -295,6 +299,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             sandbox_backup::wsl_backup_choose,
             sandbox_backup::wsl_backup_reveal,
             sandbox_elevate::sandbox_elevate,
+            sandbox_wsl_setup::sandbox_wsl_setup_offered,
+            sandbox_wsl_setup::sandbox_wsl_setup,
             blobs::blob_put,
             blobs::blob_get,
             records::record_append,

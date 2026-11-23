@@ -3,7 +3,9 @@ import {
   AgentHostSandboxSetup,
   type AgentHostTransport,
   type SandboxSetupResult,
+  type SandboxSetupStatus,
 } from "@halonicjs/adapter-agent-host-client";
+import type { SandboxCheck } from "@halonicjs/ports";
 import type {
   AgentSandboxHost,
   SandboxCheckFacts,
@@ -13,16 +15,20 @@ import type {
   WslRemoveRequest,
   WslRemoveResult,
 } from "@halonicjs/studio-feature-settings";
+import { AgentHostNotAnswering } from "@halonicjs/studio-services";
 import type { ElevateHelper, ShellElevation } from "./sandbox-elevate-shell.ts";
+import type { WslSetupHelper } from "./sandbox-wsl-setup-shell.ts";
+import { wslSetupOutcome } from "./wsl-setup-words.ts";
 
 /**
- * Setting up fixes `setup-needed`. Everything else is something the person or an administrator does
- * outside Halonic, so the section gets the reason's code and words it from the catalogue
- * (`sandboxStartWords`, the one the Inbox, the run page and the CLI use), and offers only Check
- * again (`studio.agent-sandbox-host`). That includes `setup-conflict`, `distro-missing` and
- * `runtime-missing`: the repair runs only srt's own setup, which won't replace another program's
- * filters and never touches the WSL distro, so a Repair button would fail (HAL-16200).
- * The check's own sentence (`missing`) is for logs and support: no screen shows it (23.3).
+ * Setting up fixes `setup-needed`, and `distro-missing` where the shell runs the WSL setup
+ * (HAL-16765). Everything else is something the person or an administrator does outside Halonic,
+ * so the section gets the reason's code and words it from the catalogue (`sandboxStartWords`, the
+ * one the Inbox, the run page and the CLI use), and offers only Check again
+ * (`studio.agent-sandbox-host`). That includes `setup-conflict` and `runtime-missing`: srt's own
+ * setup won't replace another program's filters, and the runtime goes in each time the host starts
+ * in the distro, so a Repair button would fail (HAL-16200). The check's own sentence (`missing`)
+ * is for logs and support: no screen shows it (23.3).
  */
 
 /**
@@ -55,6 +61,9 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;
   readonly #elevate: ElevateHelper | undefined;
+  readonly #wslSetup: WslSetupHelper | undefined;
+  /** The last WSL setup said Windows must restart; this Studio hasn't started since. */
+  #restartNeeded = false;
   readonly securityUpdates?: () => Promise<SecurityUpdatesFacts | null>;
   readonly removeWslSetup?: NonNullable<AgentSandboxHost["removeWslSetup"]>;
   readonly chooseBackupFile?: NonNullable<AgentSandboxHost["chooseBackupFile"]>;
@@ -65,7 +74,8 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
    * without it the section has no **Remove sandbox setup**. `elevate` is given only where the
    * shell starts the helper itself, from Studio's window (HAL-14841); without it the host runs the
    * setup and the removal. `studioStartsUnfenced` is the host's answer, read before the section
-   * opens; false when left out.
+   * opens; false when left out. `wslSetup` is given only where the host runs in Halonic's WSL
+   * distro on Windows (HAL-16765): **Set up** then runs the WSL setup through the shell.
    */
   constructor(
     transport: AgentHostTransport,
@@ -75,6 +85,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     wslBackup?: WslBackupShell,
     elevate?: ElevateHelper,
     studioStartsUnfenced = false,
+    wslSetup?: WslSetupHelper,
   ) {
     this.studioStartsUnfenced = studioStartsUnfenced;
     if (securityUpdates !== undefined) this.securityUpdates = securityUpdates;
@@ -87,10 +98,18 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     this.#setup = setup;
     this.#now = now;
     this.#elevate = elevate;
+    this.#wslSetup = wslSetup;
   }
 
   async check(): Promise<SandboxCheckFacts> {
-    const check = await (await AgentHostSandbox.connect(this.#transport)).check();
+    let check: SandboxCheck;
+    try {
+      check = await (await AgentHostSandbox.connect(this.#transport)).check();
+    } catch (error) {
+      const reason = refusedFor(error);
+      if (reason === undefined) throw error;
+      return this.#refusedCheck(reason);
+    }
     if (check.ok) {
       const checkedAt = this.#now().toISOString();
       // W6 (HAL-12445): a warning next to Ready, never a failure.
@@ -110,13 +129,36 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     return { state: "unavailable", code: check.reason };
   }
 
+  /**
+   * What the section reads when the shell couldn't start the host, for a sandbox reason such as
+   * `distro-missing` (HAL-16765): with the WSL setup, a missing distro needs setting up, and after a
+   * setup that asked for a restart, the host can't start until Windows has restarted.
+   */
+  #refusedCheck(reason: string): SandboxCheckFacts {
+    if (this.#wslSetup !== undefined) {
+      if (this.#restartNeeded) return { state: "restart-needed" };
+      if (reason === "distro-missing") return { state: "needs-setup" };
+    }
+    return { state: "unavailable", code: reason };
+  }
+
   async running(): Promise<"setup" | "remove" | null> {
-    const { running } = await this.#setup.status();
+    let status: SandboxSetupStatus;
+    try {
+      status = await this.#setup.status();
+    } catch (error) {
+      // No host to ask, as before the WSL setup: nothing runs in it. The shell's own setup is
+      // joined by a press, which answers that it still runs.
+      if (this.#wslSetup !== undefined && refusedFor(error) !== undefined) return null;
+      throw error;
+    }
+    const { running } = status;
     // The WSL removal is followed by its own dialog, not by the srt section.
     return running === "remove-wsl" ? null : running;
   }
 
   async setUp(options: { readonly signal?: AbortSignal } = {}): Promise<SandboxOutcome | null> {
+    if (this.#wslSetup !== undefined) return this.#setUpWsl(this.#wslSetup);
     if (this.#elevate !== undefined) return this.#setUpThroughShell(await this.#elevate("setup"));
     const started = await this.#setup.startSetUp();
     if (started.running === null) {
@@ -162,6 +204,18 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
           details: elevated.reason,
         };
     }
+  }
+
+  /**
+   * Sets Halonic's WSL distro up through the shell (HAL-16765). When it is done the shell has
+   * started the host in the distro, and the section's check reads it; when Windows must restart,
+   * the check says Restart needed until it has.
+   */
+  async #setUpWsl(wslSetup: WslSetupHelper): Promise<SandboxOutcome | null> {
+    const answer = await wslSetup();
+    if (answer.outcome === "restart_needed") this.#restartNeeded = true;
+    if (answer.outcome === "done") this.#restartNeeded = false;
+    return wslSetupOutcome(answer);
   }
 
   /**
@@ -224,6 +278,14 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     if (options.signal?.aborted && ended === undefined) return undefined;
     return outcomeOf(verb, ended?.result);
   }
+}
+
+/**
+ * The sandbox reason the shell gave for a host it couldn't start, such as `distro-missing`, or
+ * undefined for any other failure.
+ */
+function refusedFor(error: unknown): string | undefined {
+  return error instanceof AgentHostNotAnswering ? error.reason : undefined;
 }
 
 /**

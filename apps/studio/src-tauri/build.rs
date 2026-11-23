@@ -82,6 +82,8 @@ fn main() {
         "wsl_backup_choose",
         "wsl_backup_reveal",
         "sandbox_elevate",
+        "sandbox_wsl_setup_offered",
+        "sandbox_wsl_setup",
         "blob_put",
         "blob_get",
         "record_append",
