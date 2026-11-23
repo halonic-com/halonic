@@ -246,6 +246,9 @@ output can include your home folder.
 - No account.
 - Halonic talks only to the models and services you set up. Local models keep
   your prompts on your computer.
+- A new workspace starts with Local only on, so nothing leaves your computer
+  until you turn it off:
+  [Turn Local only on or off](docs/how-to/turn-local-only-on-or-off.md).
 - One exception, on Android: scanning a pairing code uses Google's ML Kit
   through Google Play services. The camera image stays on your phone, but
   Google may receive usage statistics about the scanner (device and app

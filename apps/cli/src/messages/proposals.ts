@@ -125,12 +125,14 @@ export const proposalsMessages = defineMessages("proposals", {
   /**
    * The proposal's texts are gone (`conflict`: the proposal is still listed, but can't be shown or
    * accepted). The fix says what Studio's Remove from Inbox does, removing the run from the list,
-   * so "reject" isn't read as rejecting changes (C710 2).
+   * so "reject" isn't read as rejecting changes (C710 2). Should the changes come back before the
+   * person runs it, reject rejects them unseen, where Studio shows them again; so the fix names
+   * `show` to look first (C715 6).
    */
   unavailable: (runId: string) =>
     phrase`Run ${runId}'s changes were deleted outside Halonic, so they can't be shown or accepted.`,
   unavailableFix: (runId: string, dir?: string) =>
-    phrase`Remove run ${runId} from the list with ${suggestedCommand("proposals reject", dir, runId)}.`,
+    phrase`Remove run ${runId} from the list with ${suggestedCommand("proposals reject", dir, runId)}. If its changes are back by then, that rejects them, so check first with ${suggestedCommand("proposals show", dir, runId)}.`,
   /** Usage: `show`, `accept` and `reject` take one run id, and a file for the last two. */
   takesOneRunId: () => phrase`Give one run id.`,
   takesRunIdAndFile: () => phrase`Give one run id, and a file if you want to decide only that one.`,
