@@ -6,7 +6,12 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { webCryptoDigest } from "../../workspace-runs.ts";
 import { choiceCommitMessage } from "./choice-files.ts";
-import { maxChoiceSessions, readOnlyTrust, servedModelChoice } from "./served-model-choice.ts";
+import {
+  maxChoiceSessions,
+  readOnlyTrust,
+  servedChoiceKeys,
+  servedModelChoice,
+} from "./served-model-choice.ts";
 
 /** An invented key in Anthropic's shape. */
 const acmeKey = "sk-ant-acme-not-real-7f3a";
@@ -36,11 +41,12 @@ class FakeKeys implements Pick<SecretStore, "get" | "set" | "remove"> {
   }
 }
 
-async function setup() {
+async function setup(files: Readonly<Record<string, string>> = {}) {
   const store = new MemoryDefinitionStore({
     "workspace.yaml": "# Acme is an invented company.\nid: acme\nname: Acme\n",
     "models.yaml": acmeModels,
     "providers/mock.yaml": "id: mock\nname: Test model\ntype: mock\nlocal: true\n",
+    ...files,
   });
   const vcs = new MemoryVcs(store);
   await vcs.init();
@@ -101,6 +107,42 @@ describe("the model choice `halonic serve` gives a served window", () => {
       expect(await trust.grant("sha256:acme")).toMatchObject({ ok: false });
       expect(gate.checks).toBeGreaterThan(0);
     });
+
+    it.each(["token-key", "serve-password", "plugin__weather__acme-key"])(
+      "never saves a key under %s, a name Halonic or a plugin owns",
+      async (name) => {
+        const { port, keys } = await setup({
+          "providers/anthropic.yaml": `id: anthropic\nname: Anthropic\ntype: anthropic\nsecret: ${name}\n`,
+        });
+        keys.values.set(name, "acme-server-value");
+        const service = port.forSession("session-a");
+        const tested = await service.test(anthropic, choiceKey(acmeKey));
+        // The test call already refuses such a name, so Continue has no passed test to save.
+        const testId =
+          tested.kind === "tested" && tested.outcome === "ok" ? tested.testId : "no-passed-test";
+
+        expect(await service.continue(testId, undefined)).toMatchObject({
+          ok: false,
+          keySaved: false,
+        });
+        expect(keys.values.get(name)).toBe("acme-server-value");
+      },
+    );
+
+    it.each(["token-key", "serve-password", "plugin__weather__acme-key"])(
+      "refuses %s where Continue saves the key, before the secrets file is asked",
+      async (name) => {
+        const keys = new FakeKeys();
+        keys.values.set(name, "acme-server-value");
+        const save = servedChoiceKeys({ keys, secrets: keys });
+
+        await expect(save.remove(name)).rejects.toThrow(RangeError);
+        await expect(save.save(name, choiceKey(acmeKey))).rejects.toThrow(RangeError);
+        expect(keys.values.get(name)).toBe("acme-server-value");
+        await save.save("anthropic-api-key", choiceKey(acmeKey));
+        expect(keys.values.get("anthropic-api-key")).toBe(acmeKey);
+      },
+    );
 
     it("keeps one service per session, and forgets the one used longest ago", async () => {
       const { port } = await setup();
