@@ -6,21 +6,38 @@ import type { ProfilePlatform } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { webCryptoDigest } from "../harness/host-profiles.ts";
-import { HostProgramCopies } from "../harness/host-program-copies.ts";
+import { type HeldCopy, HostProgramCopies } from "../harness/host-program-copies.ts";
 import { openBody, post, type Setup, startRoutes } from "./connector-routes.test-helper.ts";
 
 /** Each test runs git itself, which is slow on a busy runner, as in the git adapter's own tests. */
 const gitTimeout = 30_000;
 
+/**
+ * The host's copies, with a step that runs once, right after the next look
+ * for a held copy and before the open that asked goes on: a `start` that
+ * comes in between an open's check and its connector being added.
+ */
+class CopiesWithStep extends HostProgramCopies {
+  afterNextCheck: (() => Promise<void>) | undefined;
+
+  override async heldCopy(path: string): Promise<HeldCopy | undefined> {
+    const held = await super.heldCopy(path);
+    const step = this.afterNextCheck;
+    this.afterNextCheck = undefined;
+    await step?.();
+    return held;
+  }
+}
+
 let setup: Setup;
-let copies: HostProgramCopies;
+let copies: CopiesWithStep;
 let copy: string;
 
 beforeEach(async () => {
   const git = await testGit();
   setup = await startRoutes({
     programCopies: (table, folders) => {
-      copies = new HostProgramCopies({
+      copies = new CopiesWithStep({
         profile: {
           platform: profilePlatformOf(process.platform),
           root: join(folders.base, "data"),
@@ -129,6 +146,20 @@ verifies("agent-host.connector-routes", () => {
       expect(await copies.start(setup.folders.workspace)).toBe(true);
       expect(connector?.closeCount).toBe(1);
       expect((await openInCopy()).status).toBe(403);
+    },
+    gitTimeout,
+  );
+
+  it(
+    "leaves no connector open in a copy that a start swept between the open's check and its add",
+    async () => {
+      copies.afterNextCheck = async () => {
+        expect(await copies.start(setup.folders.workspace)).toBe(true);
+      };
+      const response = await openInCopy();
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ error: { kind: "workspace_not_named" } });
+      expect(setup.made.filter((connector) => connector.closeCount === 0)).toEqual([]);
     },
     gitTimeout,
   );

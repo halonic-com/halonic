@@ -11,7 +11,7 @@ import {
   type TokenStore,
   type TrustStore,
 } from "@halonicjs/ports";
-import type { HeldCopy } from "../harness/host-program-copies.ts";
+import type { HeldCopy, HostProgramCopies } from "../harness/host-program-copies.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
@@ -52,7 +52,7 @@ export interface ConnectorRouteDeps {
    * in instead of a named workspace. `undefined` without a profile folder:
    * then only a named workspace starts one.
    */
-  programCopies?: { heldCopy(path: string): Promise<HeldCopy | undefined> };
+  programCopies?: Pick<HostProgramCopies, "withHeldCopy">;
 }
 
 /** A start the host allows: the factory's context, and the workspace its trust was checked on. */
@@ -180,17 +180,19 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
       return;
     }
     try {
-      const allowed = await allowedStartOf(deps, body, response);
-      if (allowed === undefined) return;
-      const client = deps.factory.create(configOf(body), allowed.context);
-      const id = connectors.add(client, Object.values(body.secrets), allowed.workspace);
-      if (id === undefined) {
-        // The host began stopping while the folders were checked: nothing else will close this one.
-        await client.close();
-        sendHostStopping(response);
-        return;
-      }
-      sendJson(response, 200, { connector: id });
+      await withRootOf(deps, body.workspaceRoot, async (root) => {
+        const allowed = await allowedStartOf(deps, body, root, response);
+        if (allowed === undefined) return;
+        const client = deps.factory.create(configOf(body), allowed.context);
+        const id = connectors.add(client, Object.values(body.secrets), allowed.workspace);
+        if (id === undefined) {
+          // The host began stopping while the folders were checked: nothing else will close this one.
+          await client.close();
+          sendHostStopping(response);
+          return;
+        }
+        sendJson(response, 200, { connector: id });
+      });
     } catch (error) {
       failed(deps, response, error, Object.values(body.secrets));
     } finally {
@@ -209,9 +211,10 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
 async function allowedStartOf(
   deps: ConnectorRouteDeps,
   body: OpenConnectorBody,
+  root: HeldCopy | undefined,
   response: Parameters<typeof sendError>[0],
 ): Promise<AllowedStart | undefined> {
-  const allowed = await startOf(deps, body);
+  const allowed = await startOf(deps, body, root);
   if (allowed === undefined) {
     sendError(
       response,
@@ -256,14 +259,15 @@ async function allowedStartOf(
  * (`HostProgramCopies`): the connector then starts in the copy, its working
  * folders must be inside the copy, and its trust is the workspace's.
  *
+ * @param root - the folder the start is in, from {@link withRootOf}
  * @returns undefined when the folder is neither one of the launcher's folders
  *   nor a copy the host holds, `"folder_outside"` when a working folder isn't inside it
  */
 async function startOf(
   deps: ConnectorRouteDeps,
   body: OpenConnectorBody,
+  root: HeldCopy | undefined,
 ): Promise<AllowedStart | "folder_outside" | undefined> {
-  const root = await rootOf(deps, body.workspaceRoot);
   if (root === undefined) return undefined;
   const workspaceRoot = root.copy;
   const given = await Promise.all(body.workingFolders.map(realPathOrGiven));
@@ -280,15 +284,24 @@ async function startOf(
 }
 
 /**
- * The folder the connector starts in and the workspace it belongs to, both
- * real paths: a named workspace is both, a held copy names the workspace it
- * was made from. `undefined` for any other folder, a released or swept copy
- * included.
+ * Runs `open` with the folder the connector starts in and the workspace it
+ * belongs to, both real paths: a named workspace is both, a held copy names
+ * the workspace it was made from. `undefined` for any other folder, a
+ * released or swept copy included.
+ *
+ * A copy's `open` runs in its workspace's turn (`HostProgramCopies`), so a
+ * `start` that sweeps the copy waits until the connector is in the table,
+ * and stops it first; otherwise it would stay open in a folder that's gone.
  */
-async function rootOf(deps: ConnectorRouteDeps, folder: string): Promise<HeldCopy | undefined> {
+async function withRootOf(
+  deps: ConnectorRouteDeps,
+  folder: string,
+  open: (root: HeldCopy | undefined) => Promise<void>,
+): Promise<void> {
   const named = await namedWorkspace(deps.workspaceRoots, folder);
-  if (named !== undefined) return { copy: named, workspace: named };
-  return await deps.programCopies?.heldCopy(folder);
+  if (named !== undefined) return await open({ copy: named, workspace: named });
+  if (deps.programCopies === undefined) return await open(undefined);
+  await deps.programCopies.withHeldCopy(folder, open);
 }
 
 /**
