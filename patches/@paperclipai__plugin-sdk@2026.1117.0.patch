@@ -1,8 +1,8 @@
 diff --git a/dist/types.d.ts b/dist/types.d.ts
-index ea927339da43b67cd38eb29a4ab33ba9db28ad93..cfa8bfe580d3b5186effc3e765130cdd9b986150 100644
+index ea927339da43b67cd38eb29a4ab33ba9db28ad93..324434616ff677624489793c00ca270e53986e00 100644
 --- a/dist/types.d.ts
 +++ b/dist/types.d.ts
-@@ -1031,6 +1031,12 @@ export interface PluginIssueWakeupBatchResult {
+@@ -1031,6 +1031,33 @@ export interface PluginIssueWakeupBatchResult {
      queued: boolean;
      runId: string | null;
  }
@@ -12,10 +12,31 @@ index ea927339da43b67cd38eb29a4ab33ba9db28ad93..cfa8bfe580d3b5186effc3e765130cdd
 +    previousNextCheckAt?: string;
 +    nextCheckAt: string;
 +}
++/**
++ * Halonic B2 (HAL-17010): what to set on a task. Only these fields; anything else is refused.
++ * `monitor` sets the task's monitor inside its current execution policy, or clears it with null.
++ */
++export interface PluginIssueDispositionPatch {
++    status?: Issue["status"];
++    assigneeAgentId?: string | null;
++    assigneeUserId?: string | null;
++    blockedByIssueIds?: string[];
++    comment?: string;
++    monitor?: import("@paperclipai/shared").IssueExecutionMonitorPolicy | null;
++}
++/**
++ * Halonic B2 (HAL-17010): the answer of `PATCH /api/issues/:id`, as the route gave it: its HTTP
++ * status and JSON body (the task, or an error such as `invalid_issue_disposition`).
++ */
++export interface PluginIssueDispositionResult {
++    ok: boolean;
++    status: number;
++    body: unknown;
++}
  export interface PluginIssueRunSummary {
      id: string;
      issueId: string | null;
-@@ -1234,6 +1240,15 @@ export interface PluginIssuesClient {
+@@ -1234,6 +1261,23 @@ export interface PluginIssuesClient {
          contextSource?: string;
          idempotencyKeyPrefix?: string | null;
      } & PluginIssueMutationActor): Promise<PluginIssueWakeupBatchResult[]>;
@@ -28,14 +49,22 @@ index ea927339da43b67cd38eb29a4ab33ba9db28ad93..cfa8bfe580d3b5186effc3e765130cdd
 +            until: string;
 +        }): Promise<PluginIssueMonitorPostponeResult>;
 +    };
++    /**
++     * Halonic B2 (HAL-17010): set the task's next step as the agent run whose tool call is in
++     * flight, through Paperclip's own `PATCH /api/issues/:id` (same guard, wakes and monitor rules).
++     * Only from inside a tool an agent is running, on the task that run holds. Needs
++     * `issues.disposition.write` and the local server patch (HAL-16989). A reassign to another
++     * agent stops the calling run, so the result may never arrive.
++     */
++    setDisposition(issueId: string, companyId: string, patch: PluginIssueDispositionPatch): Promise<PluginIssueDispositionResult>;
      listComments(issueId: string, companyId: string): Promise<IssueComment[]>;
      /**
       * Post a comment on an issue.
 diff --git a/dist/worker-rpc-host.js b/dist/worker-rpc-host.js
-index 0dd2bd9823a7fa0dfaf8f6b742b508d8da63961e..329d0ef6078a47612ffa7e68d37aa5ba25e41f19 100644
+index 0dd2bd9823a7fa0dfaf8f6b742b508d8da63961e..4da04ab6d79170a41663122c54ea10cda6eb4455 100644
 --- a/dist/worker-rpc-host.js
 +++ b/dist/worker-rpc-host.js
-@@ -653,6 +653,16 @@ export function startWorkerRpcHost(options) {
+@@ -653,6 +653,24 @@ export function startWorkerRpcHost(options) {
                          actorRunId: options?.actorRunId,
                      });
                  },
@@ -48,6 +77,14 @@ index 0dd2bd9823a7fa0dfaf8f6b742b508d8da63961e..329d0ef6078a47612ffa7e68d37aa5ba
 +                            until: options.until,
 +                        });
 +                    },
++                },
++                // Halonic B2 (HAL-17010): the host method from the local server patch (HAL-16989).
++                async setDisposition(issueId, companyId, patch) {
++                    return callHost("issues.setDisposition", {
++                        ...patch,
++                        issueId,
++                        companyId,
++                    });
 +                },
                  async listComments(issueId, companyId) {
                      return callHost("issues.listComments", { issueId, companyId });
