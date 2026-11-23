@@ -1,7 +1,7 @@
 # Decision: macOS and Windows jobs leave the merge queue; the queue tests the full Linux suite only
 
 - Task: HAL-12539
-- Approval: the board decided this on 19 Nov (Timothy, around 20:20 UTC), as a change to HAL-5327; Liam approves this note in review
+- Approval: the board decided this on 19 Nov (around 20:20 UTC), as a change to HAL-5327; Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BfNIZi7fi3NEz/ruaNuqVoTgOY5huaPsNHqszFAA3Lr9pylm9a34bEYMDRHpcZpbasbGISniRK8ghKu2xFvODA==
 

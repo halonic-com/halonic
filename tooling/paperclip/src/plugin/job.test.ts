@@ -172,7 +172,12 @@ describe("the job", () => {
       repos: ["halonic-com/halonic"],
       dryRun: true,
       fastTrackUnblocks: new Set(),
+      fastTrackLabelAdder: "",
     });
+    expect(readSettings({ fastTrackLabelAdder: " board-member " }).fastTrackLabelAdder).toBe(
+      "board-member",
+    );
+    expect(readSettings({ fastTrackLabelAdder: 7 }).fastTrackLabelAdder).toBe("");
     expect([
       ...readSettings({ fastTrackUnblocks: [5101, 0, "5102", 1.5] }).fastTrackUnblocks,
     ]).toEqual([5101]);

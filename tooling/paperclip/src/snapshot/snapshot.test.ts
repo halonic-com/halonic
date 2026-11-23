@@ -103,7 +103,7 @@ verifies("paperclip.github-snapshot", () => {
       [5028, 3],
       [5111, 4],
     ]);
-    expect(repo?.queue[0]?.enqueuedBy).toBe("timothy-halonic");
+    expect(repo?.queue[0]?.enqueuedBy).toBe("board-member");
     const pull = repo?.pulls.find((each) => each.number === 4965);
     expect(pull?.state).toBe("open");
     expect(pull?.open?.ciOk).toBe("success");

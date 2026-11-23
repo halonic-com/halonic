@@ -1,7 +1,13 @@
 import type { PluginStateClient } from "@paperclipai/plugin-sdk";
 import type { Snapshot } from "../snapshot/shape.ts";
 import { type JumpRecord, jumpTotals, updateJumps } from "./jumps.ts";
-import { type Audience, type FastTrackEvent, fastTrackRules, type Tracked } from "./rules.ts";
+import {
+  type Audience,
+  type FastTrackEvent,
+  fastTrackRules,
+  type RuleInput,
+  type Tracked,
+} from "./rules.ts";
 
 /**
  * The fast-track rules' run inside each `pr-watch` pass: it applies the
@@ -66,7 +72,7 @@ function linesOf(events: readonly FastTrackEvent[]): string[] {
 export function fastTrackPass(
   snapshot: Snapshot,
   before: FastTrackState,
-  unblocks: ReadonlySet<number>,
+  settings: Pick<RuleInput, "unblocks" | "labelAdder">,
   now: Date,
 ): FastTrackPass {
   const fresh: FastTrackEvent[] = [];
@@ -79,7 +85,7 @@ export function fastTrackPass(
         .filter(([key]) => key.startsWith(prefix))
         .map(([key, value]) => [Number(key.slice(prefix.length)), value] as const),
     );
-    const output = fastTrackRules({ repo, now, tracked: was, unblocks });
+    const output = fastTrackRules({ ...settings, repo, now, tracked: was });
     fresh.push(...output.events.filter((event) => before.fired[event.key] === undefined));
     for (const [number, value] of output.tracked) {
       tracked[`${prefix}${number}`] = value;

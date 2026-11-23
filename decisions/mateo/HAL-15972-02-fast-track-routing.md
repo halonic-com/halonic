@@ -1,7 +1,7 @@
 # Decision: ci.yml sends fast-track pull requests from our own branches to our CI server's fast pool, switched off until CI_RUNNER_FAST is set
 
-- Task: HAL-15972 (the board's decision on the task: "Yes go ahead", Timothy, 22 Nov; the team rule is on HAL-15971)
-- Approval: the board approved fast-track pull request checks on our CI server (HAL-15972, Timothy, 22 Nov); Liam signs this note in review, Julian checks C1–C8 on the task
+- Task: HAL-15972 (the board's decision on the task: "Yes go ahead", 22 Nov; the team rule is on HAL-15971)
+- Approval: the board approved fast-track pull request checks on our CI server (HAL-15972, 22 Nov); Liam signs this note in review, Julian checks C1–C8 on the task
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wPcfjwIPiTtxtQGswNIM+txYmuAVoFZ8BuFLAKS6bMx6U1mvgsYHy53HaAiOX16II7y2TMQM3su8je3qHIglDA==
 

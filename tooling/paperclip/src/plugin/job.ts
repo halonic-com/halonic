@@ -38,6 +38,8 @@ export interface WatcherSettings {
   readonly dryRun: boolean;
   /** Fast-track pull requests the board or Chief said unblock the queue or CI for everyone (HAL-15971 point 3). */
   readonly fastTrackUnblocks: ReadonlySet<number>;
+  /** The board's GitHub login, whose `fast-track` label counts for a jump; empty: none counts. */
+  readonly fastTrackLabelAdder: string;
 }
 
 const defaultRepos = ["halonic-com/halonic"];
@@ -70,6 +72,8 @@ export function readSettings(config: Readonly<Record<string, unknown>>): Watcher
         (value): value is number => Number.isInteger(value) && value > 0,
       ),
     ),
+    fastTrackLabelAdder:
+      typeof config["fastTrackLabelAdder"] === "string" ? config["fastTrackLabelAdder"].trim() : "",
   };
 }
 
@@ -154,11 +158,16 @@ async function runFastTrack(
   ctx: JobApi,
   companyId: string,
   snapshot: Snapshot,
-  unblocks: ReadonlySet<number>,
+  settings: WatcherSettings,
   now: Date,
 ): Promise<void> {
   try {
-    const pass = fastTrackPass(snapshot, await loadFastTrack(ctx, companyId), unblocks, now);
+    const pass = fastTrackPass(
+      snapshot,
+      await loadFastTrack(ctx, companyId),
+      { unblocks: settings.fastTrackUnblocks, labelAdder: settings.fastTrackLabelAdder },
+      now,
+    );
     for (const line of pass.lines) {
       ctx.logger.info(line, { companyId });
     }
@@ -195,7 +204,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
       companyId,
     });
   });
-  await runFastTrack(ctx, companyId, snapshot, settings.fastTrackUnblocks, now);
+  await runFastTrack(ctx, companyId, snapshot, settings, now);
   const found = discoverPulls(snapshot);
   const paperclip = paperclipHost(ctx, companyId);
   // Kept from the pass, so the monitors are counted without reading the tasks twice.

@@ -9,9 +9,6 @@ import { approvedOnHead, failingToNudge, isBot, isGreen, pendingOf, reviewerOf }
  * here; `pass.ts` keeps the state and logs the events.
  */
 
-/** The only account whose `fast-track` label counts for a jump: the others all act as `halonic-dev`. */
-export const labelAdder = "timothy-halonic";
-
 /** A reviewer has this long after the label before the monitor nudges. */
 export const reviewAfterMinutes = 30;
 
@@ -56,6 +53,12 @@ export interface RuleInput {
   readonly tracked: ReadonlyMap<number, Tracked>;
   /** Pull requests the board or Chief said unblock the queue or CI for everyone. */
   readonly unblocks: ReadonlySet<number>;
+  /**
+   * The board's GitHub login, the only account whose `fast-track` label counts
+   * for a jump (the others all act as `halonic-dev`), from the plugin setting
+   * `fastTrackLabelAdder`. Empty: no label counts.
+   */
+  readonly labelAdder: string;
 }
 
 /** The events of one repository and what to remember for the next pass. */
@@ -104,14 +107,22 @@ function eventOf(
   };
 }
 
-function wrongLabelText(by: string | null): string {
+/** Whether the board added the label; never when the board's login isn't set. */
+function byBoard(subject: Pick<Subject, "input" | "label">): boolean {
+  return subject.input.labelAdder !== "" && subject.label.addedBy === subject.input.labelAdder;
+}
+
+function wrongLabelText(by: string | null, labelAdder: string): string {
   if (by === "halonic-dev") {
     return "fast-track was added as halonic-dev: it counts only if Chief or the board allowed it on the task, so check there. Until then it is queued without a jump.";
   }
   if (by === null) {
     return "GitHub doesn't say who added fast-track, so it never counts as allowed: queued without a jump.";
   }
-  return `fast-track was added by ${by}, not ${labelAdder}: queued without a jump.`;
+  if (labelAdder === "") {
+    return "the board's login isn't set (fastTrackLabelAdder), so no fast-track label counts: queued without a jump.";
+  }
+  return `fast-track was added by ${by}, not by the board: queued without a jump.`;
 }
 
 function labelEvents(subject: Subject): FastTrackEvent[] {
@@ -128,9 +139,15 @@ function labelEvents(subject: Subject): FastTrackEvent[] {
       ),
     );
   }
-  if (by !== labelAdder) {
+  if (!byBoard(subject)) {
     events.push(
-      eventOf(subject, "wrong_label", by ?? "unknown", ["board", "merger"], wrongLabelText(by)),
+      eventOf(
+        subject,
+        "wrong_label",
+        by ?? "unknown",
+        ["board", "merger"],
+        wrongLabelText(by, subject.input.labelAdder),
+      ),
     );
   }
   if (isBot(subject.open.author)) {
@@ -206,7 +223,7 @@ export function readySinceOf(
 
 /** Why it jumps the queue (HAL-15971 point 3), or undefined when it only goes first among those waiting. */
 export function jumpReason(subject: Pick<Subject, "input" | "pull" | "label">): string | undefined {
-  if (subject.label.addedBy !== labelAdder) {
+  if (!byBoard(subject)) {
     return undefined;
   }
   if (subject.input.unblocks.has(subject.pull.number)) {

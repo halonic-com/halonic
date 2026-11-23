@@ -2,7 +2,16 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { checksOf } from "../snapshot/read.ts";
 import type { SnapshotPull, SnapshotRepo } from "../snapshot/shape.ts";
-import { ago, entry, liamApproved, merged, now, pull, repo } from "./fast-track.test-helper.ts";
+import {
+  ago,
+  boardLogin,
+  entry,
+  liamApproved,
+  merged,
+  now,
+  pull,
+  repo,
+} from "./fast-track.test-helper.ts";
 import { fastTrackRules, type Tracked } from "./rules.ts";
 
 const seen: Tracked = { labelledAt: ago(60), readySince: null, queuedAt: null };
@@ -13,8 +22,9 @@ function run(
     snapshot.pulls.map((each) => [each.number, seen] as const),
   ),
   unblocks: ReadonlySet<number> = new Set(),
+  labelAdder = boardLogin,
 ) {
-  return fastTrackRules({ repo: snapshot, now, tracked, unblocks });
+  return fastTrackRules({ repo: snapshot, now, tracked, unblocks, labelAdder });
 }
 
 function stages(snapshot: SnapshotRepo, tracked?: ReadonlyMap<number, Tracked>): string[] {
@@ -47,12 +57,23 @@ verifies("paperclip.fast-track-rules", () => {
     ]);
   });
 
+  test("counts no label while the board's login isn't set", () => {
+    const events = run(
+      repo([pull(120, liamApproved, { base: "x" })]),
+      undefined,
+      new Set(),
+      "",
+    ).events;
+    expect(events.map((event) => event.key)).toEqual(["acme/tools#120 wrong_label:board-member"]);
+    expect(events[0]?.text).toMatch(/^the board's login isn't set/);
+  });
+
   test("asks the reviewer 30 minutes after the label, Julian for Liam's own pull request", () => {
     const events = run(
       repo([
         pull(105),
         pull(106, {}, { branch: "liam/HAL-106-x" }),
-        pull(107, labelBy("timothy-halonic"), {}),
+        pull(107, labelBy(boardLogin), {}),
       ]),
     ).events;
     expect(events.map((event) => event.key)).toContain("acme/tools#105 review_nudge:abc1234def56");
@@ -60,7 +81,7 @@ verifies("paperclip.fast-track-rules", () => {
     const fresh = run(
       repo([
         pull(108, {
-          labels: [{ name: "fast-track", addedBy: "timothy-halonic", addedAt: ago(10) }],
+          labels: [{ name: "fast-track", addedBy: boardLogin, addedAt: ago(10) }],
         }),
       ]),
     );

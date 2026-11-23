@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-16441, Liam's task for HAL-16440 (model-mix trials, Timothy's decision of 22 Nov)
+- Source: HAL-16441, Liam's task for HAL-16440 (model-mix trials, the board's decision of 22 Nov)
 
 When `parseFile` reads an agent file, the format shall accept an optional `answerRetries` field, a whole number from 0 to 1, and leave it out when the file does, so older files read as before. Any other value fails at that field.
 

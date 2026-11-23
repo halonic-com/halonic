@@ -102,6 +102,12 @@ export const manifest: PaperclipPluginManifestV1 = {
         items: { type: "integer", minimum: 1 },
         default: [],
       },
+      fastTrackLabelAdder: {
+        type: "string",
+        title: "The board's GitHub login",
+        description:
+          "The only GitHub account whose fast-track label counts for a jump (HAL-15971). Empty: no label counts.",
+      },
       precheckUrl: {
         type: "string",
         title: "Precheck service",

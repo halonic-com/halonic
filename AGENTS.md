@@ -224,6 +224,8 @@ can be registered by anyone: `gh api repos/{owner}/{repo}/pulls/<n> -q .user.id`
 - Never write personal names, private workspace details or absolute local paths (a home folder,
   a Windows user folder, an agent's workspace or temporary folder) into the repo, issues or pull
   requests. Use paths relative to the repo root. The leak guard blocks them.
+- Never write a board member's name, GitHub login or email in files, commit messages, PR titles or
+  bodies. Write "the board". (Paperclip comments are private and may keep using names.)
 - **Every working copy has the leak guard's git hooks.** `pnpm install` installs them (it prints
   `leak guard: git hooks installed`). Check with `git config --local core.hooksPath`, which must
   print `tooling/check/hooks`. If `pnpm install` says the hooks were NOT installed, fix that before

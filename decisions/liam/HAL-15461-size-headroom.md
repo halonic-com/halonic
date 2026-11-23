@@ -1,7 +1,7 @@
 # Decision: a pull request leaves 20 lines of room under the file-size limit
 
 - Task: HAL-15461
-- Approval: https://paperclip.halonic.com/HAL/issues/HAL-15461 (board decision, Timothy, 21 Nov)
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-15461 (board decision, 21 Nov)
 - Kind: internal
 - Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:m6t5QM35TiM7pGOYmrKU/FxIt9Tn6tPV7K2C9xbquEnUWqUFc52plX3MSq4026Z1DfEFMNuLjKh10rYfSAC5DA==
 

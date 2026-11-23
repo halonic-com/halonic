@@ -44,7 +44,7 @@ export function snapshot(
           position: index + 1,
           state: "QUEUED",
           enqueuedAt,
-          enqueuedBy: "timothy-halonic",
+          enqueuedBy: "board-member",
           groupHead: null,
           estimatedSeconds: null,
           solo: false,

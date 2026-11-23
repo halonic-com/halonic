@@ -15,7 +15,7 @@ function entry(number: number, position: number, extra: Partial<QueueEntry> = {}
     position,
     state: "AWAITING_CHECKS",
     enqueuedAt: "2026-11-22T14:40:00Z",
-    enqueuedBy: "timothy-halonic",
+    enqueuedBy: "board-member",
     groupHead: "a1b2c3d",
     estimatedSeconds: 600,
     solo: false,
@@ -66,7 +66,7 @@ function snapshot(queue: readonly QueueEntry[], takenAt = "2026-11-22T15:00:00Z"
           pull(41, "ada/HAL-41-fuel", { inQueue: true }),
           pull(42, "ada/HAL-42-fins", {
             labels: [
-              { name: "fast-track", addedBy: "timothy-halonic", addedAt: "2026-11-22T14:10:00Z" },
+              { name: "fast-track", addedBy: "board-member", addedAt: "2026-11-22T14:10:00Z" },
             ],
           }),
           pull(43, "bob/HAL-43-nose", {
@@ -97,11 +97,11 @@ verifies("paperclip.queue-state", () => {
     test("names who added fast-track, and an unknown adder never as allowed", () => {
       const state = queueState(snapshot([]), at);
       expect(state.repos[0]?.fastTrack.map((row) => [row.number, row.addedBy])).toEqual([
-        [42, "timothy-halonic"],
+        [42, "board-member"],
         [43, null],
       ]);
       const text = queueStateText(state);
-      expect(text).toContain("fast-track #42 (HAL-42): added by timothy-halonic");
+      expect(text).toContain("fast-track #42 (HAL-42): added by board-member");
       expect(text).toContain("added by unknown (GitHub doesn't say; never counts as allowed)");
       expect(text).toContain("no merge-group job waits for a runner");
     });
