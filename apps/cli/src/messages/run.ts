@@ -66,7 +66,7 @@ export const runMessages = defineMessages("run", {
   changesNotLive: (localOnlySaved = false) => [
     dim(
       localOnlySaved
-        ? "Your uncommitted changes aren't used, except Local only: your saved workspace.yaml turns it on, so this run uses local models only. Commit the changes to run them."
+        ? "Your uncommitted changes aren't used, except that your saved workspace.yaml turns local only on, so this run uses local models only. Commit the rest to run them."
         : "Your uncommitted changes aren't used. Commit them to run them.",
     ),
   ],

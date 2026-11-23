@@ -24,7 +24,7 @@ const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import
 /** Each test starts a real git repository, which can take longer than 5 s on a busy runner. */
 const slowTest = { timeout: 60_000 };
 const refusal =
-  "Your saved workspace.yaml turns local only on. It isn't live yet, but it counts, and a running watch can't change local only. Stop the watch and start it again to run it.";
+  "Your saved workspace.yaml turns local only on, which counts even before it's live, but a running watch can't change local only. Stop the watch and start it again to run the routine.";
 
 let folder: string;
 let acme: string;
@@ -135,7 +135,7 @@ verifies("app.saved-local-only", () => {
       await expect(
         watched.definitionsOf("support", "support-reply", live, "run-1"),
       ).rejects.toThrow(
-        "Your saved workspace.yaml turns local only off again, and a running watch can't change local only.",
+        "Your saved workspace.yaml turns local only back off, and a running watch can't change local only.",
       );
     },
   );

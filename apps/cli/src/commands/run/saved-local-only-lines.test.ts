@@ -108,16 +108,16 @@ verifies("app.saved-local-only", () => {
 
       expect(code).toBe(exitCode.failed);
       expect(stdout[0]).toBe(
-        "Your uncommitted changes aren't used, except Local only: your saved workspace.yaml turns it on, so this run uses local models only. Commit the changes to run them.",
+        "Your uncommitted changes aren't used, except that your saved workspace.yaml turns local only on, so this run uses local models only. Commit the rest to run them.",
       );
       expect(stdout).toContainEqual(
         expect.stringContaining(
-          "Acme is local only in your saved workspace.yaml, which isn't live yet, so Halonic sent nothing to Cloud model.",
+          "Acme is local only because your saved workspace.yaml turns it on, even before it's live, so Halonic sent nothing to Cloud model.",
         ),
       );
       expect(stdout).toContainEqual(
         expect.stringContaining(
-          "or set privacy.localOnly back to false in workspace.yaml: the live version has it off.",
+          "or set privacy.localOnly back to false in workspace.yaml (no commit needed).",
         ),
       );
     },

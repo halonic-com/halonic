@@ -143,7 +143,7 @@ const lineOne = {
     failedIn(
       run,
       run.localOnlySaved === true
-        ? phrase`${failure.workspace} is local only in your saved workspace.yaml, which isn't live yet, so Halonic sent nothing to ${failure.provider}.`
+        ? phrase`${failure.workspace} is local only because your saved workspace.yaml turns it on, even before it's live, so Halonic sent nothing to ${failure.provider}.`
         : phrase`${failure.workspace} is local only, so Halonic sent nothing to ${failure.provider}.`,
     ),
   "site-blocked": (run, failure) =>
@@ -320,7 +320,7 @@ const lineTwo = {
   // Local only on waits for Make live, which the run's "uncommitted changes" line already says.
   "local-only": (run, failure) =>
     run.localOnlySaved === true
-      ? phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly back to false in workspace.yaml: the live version has it off.`
+      ? phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly back to false in workspace.yaml (no commit needed).`
       : phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly: false in workspace.yaml.`,
   "site-blocked": (_run, failure) =>
     phrase`Add ${failure.site} to ${failure.agent}'s allowed sites, if ${failure.agent} should reach it.`,

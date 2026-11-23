@@ -12,21 +12,22 @@
 uncommitted changes aren't used. Commit them to run them." and then refused because of that
 uncommitted change: "Acme is local only, so Halonic sent nothing to Cloud model." The live file
 says `false`, so the person couldn't tell why. Now, when Local only is on only because of the saved
-file, the first line reads "Your uncommitted changes aren't used, except Local only: your saved
-workspace.yaml turns it on, so this run uses local models only. Commit the changes to run them.",
-the refusal reads "Acme is local only in your saved workspace.yaml, which isn't live yet, so
-Halonic sent nothing to Cloud model.", and its fix ends "or set privacy.localOnly back to false in
-workspace.yaml: the live version has it off." With the live version off, setting the saved file
+file, the first line reads "Your uncommitted changes aren't used, except that your saved
+workspace.yaml turns local only on, so this run uses local models only. Commit the rest to run
+them.", the refusal reads "Acme is local only because your saved workspace.yaml turns it on, even
+before it's live, so Halonic sent nothing to Cloud model.", and its fix ends "or set
+privacy.localOnly back to false in workspace.yaml (no commit needed)." With the live version off, setting the saved file
 back to false counts at once, so the fix doesn't ask to make it live. When the live version has
 Local only on, the refusal stays as it was: turning it off then waits for Make live, which the
 run's own "uncommitted changes aren't used" line already says.
 
 **C755 finding 2.** A watch refused a run saved on during the watch with "This version of acme
 turns local only on or off", though the saved file isn't a version. Now it reads "Your saved
-workspace.yaml turns local only on. It isn't live yet, but it counts, and a running watch can't
-change local only. Stop the watch and start it again to run it.", and, for a watch that started
-with it saved on, "Your saved workspace.yaml turns local only off again, and a running watch can't
-change local only. …". A new commit keeps the version line.
+workspace.yaml turns local only on, which counts even before it's live, but a running watch can't
+change local only. Stop the watch and start it again to run the routine.", and, for a watch that
+started with it saved on, "Your saved workspace.yaml turns local only back off, and a running
+watch can't change local only. …". A new commit keeps the version line. The words are Sofia's
+(words check, HAL-16726).
 
 In `app.saved-local-only`, a new paragraph after the one on the commands:
 
@@ -38,7 +39,7 @@ In `app.saved-local-only`, a new paragraph after the one on the commands:
 > turned Local only on, or off again.
 
 The watch example's quoted words change from "turns local only on or off" to "Your saved
-workspace.yaml turns local only on. It isn't live yet, but it counts", and a new example covers
+workspace.yaml turns local only on, which counts even before it's live", and a new example covers
 `halonic run`. The watch test's refusal string changes the same way; no test is removed.
 
 **C755 finding 3, not changed.** The CLI's worktree refusal names the repository's own folder; the

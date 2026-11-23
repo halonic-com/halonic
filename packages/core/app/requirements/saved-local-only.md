@@ -23,7 +23,7 @@ When Local only is on only because of the saved file, `halonic run` shall say so
   then it's refused as `invalid_input`: "The saved workspace.yaml has an error on line 2, so Halonic can't tell whether Local only is on."
 - Given `halonic routines watch` is going on Acme with Local only off,
   when the person saves Local only on,
-  then the next routine run is refused with "Your saved workspace.yaml turns local only on. It isn't live yet, but it counts", and so is a connector start of a run that was already going.
+  then the next routine run is refused with "Your saved workspace.yaml turns local only on, which counts even before it's live", and so is a connector start of a run that was already going.
 - Given Acme's live version has Local only off, its model alias points at a cloud model, and Local only is saved on,
   when the person runs `halonic run`,
-  then it first says "Your uncommitted changes aren't used, except Local only: your saved workspace.yaml turns it on, so this run uses local models only.", and the refusal says "Acme is local only in your saved workspace.yaml, which isn't live yet, so Halonic sent nothing to Cloud model."
+  then it first says "Your uncommitted changes aren't used, except that your saved workspace.yaml turns local only on, so this run uses local models only.", and the refusal says "Acme is local only because your saved workspace.yaml turns it on, even before it's live, so Halonic sent nothing to Cloud model."

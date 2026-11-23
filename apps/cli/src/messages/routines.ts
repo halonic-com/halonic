@@ -301,7 +301,7 @@ export const routinesMessages = defineMessages("routines", {
    * through that file now, and whether it was when the watch started.
    */
   localOnlyChanged: (workspace: string, saved: SavedLocalOnly = notSaved) =>
-    phrase`${localOnlyChangedBy(workspace, saved)} Stop the watch and start it again to run it.`,
+    localOnlyChangedBy(workspace, saved),
   /**
    * Why a routine run that reads a commit didn't start in a workspace whose
    * history the watch didn't open: never expected, since only a watch with
@@ -378,15 +378,15 @@ export interface SavedLocalOnly {
 const notSaved: SavedLocalOnly = { now: false, atStart: false };
 
 /**
- * What turned local only on or off since the watch started, for {@link routinesMessages.localOnlyChanged}:
- * on through the saved file now, or on only through it at the start and so turned off there.
+ * The line {@link routinesMessages.localOnlyChanged} says, by what turned local only on or off since the
+ * watch started: on through the saved file now, or on only through it at the start and so turned off there.
  */
 function localOnlyChangedBy(workspace: string, saved: SavedLocalOnly): Phrase {
   if (saved.now) {
-    return phrase`Your saved workspace.yaml turns local only on. It isn't live yet, but it counts, and a running watch can't change local only.`;
+    return phrase`Your saved workspace.yaml turns local only on, which counts even before it's live, but a running watch can't change local only. Stop the watch and start it again to run the routine.`;
   }
   if (saved.atStart) {
-    return phrase`Your saved workspace.yaml turns local only off again, and a running watch can't change local only.`;
+    return phrase`Your saved workspace.yaml turns local only back off, and a running watch can't change local only. Stop the watch and start it again to run the routine.`;
   }
-  return phrase`This version of ${workspace} turns local only on or off, which a running watch can't change.`;
+  return phrase`This version of ${workspace} turns local only on or off, which a running watch can't change. Stop the watch and start it again to run it.`;
 }

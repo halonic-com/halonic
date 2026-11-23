@@ -343,8 +343,8 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       localOnly,
     );
     expect([plainText(saved.message.phrase), plainText(saved.fix?.phrase ?? [])]).toEqual([
-      "Support reply failed in the step Classify: Acme is local only in your saved workspace.yaml, which isn't live yet, so Halonic sent nothing to OpenAI.",
-      "Point Sorter's model alias smart at a local model in models.yaml, or set privacy.localOnly back to false in workspace.yaml: the live version has it off.",
+      "Support reply failed in the step Classify: Acme is local only because your saved workspace.yaml turns it on, even before it's live, so Halonic sent nothing to OpenAI.",
+      "Point Sorter's model alias smart at a local model in models.yaml, or set privacy.localOnly back to false in workspace.yaml (no commit needed).",
     ]);
     expect(
       lines({ reason: "site-blocked", agent: "Reporter", site: "api.example.net" }, "Build report"),
