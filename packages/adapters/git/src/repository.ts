@@ -20,6 +20,7 @@ import {
   checkNestedInside,
   gitPathArgs,
   gitPaths,
+  linkedWorktreeMain,
   linksInGitFolder,
   locateNestedArgs,
   outsideFolder,
@@ -255,7 +256,7 @@ export class Repository implements GitCalls {
     const kind = await kindOf(this.#gitDir);
     if (kind === "missing") return null;
     // A `.git` file or link names git files elsewhere, which `init` would also reach.
-    if (kind !== "folder") throw outsideFolder(this.#top);
+    if (kind !== "folder") throw outsideFolder(this.#top, await linkedWorktreeMain(this.#top));
     const located = await this.#runner.run({
       cwd: this.#top,
       args: [

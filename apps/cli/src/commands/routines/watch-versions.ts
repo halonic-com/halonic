@@ -6,7 +6,13 @@
 // before any run starts from it. A run's connectors start from the version
 // it read, with the grant of that version's trust check (HAL-7500).
 
-import { LiveRoutines, type LiveVersion, liveVersionOf, runSourceFor } from "@halonicjs/app";
+import {
+  LiveRoutines,
+  type LiveVersion,
+  liveState,
+  liveVersionOf,
+  runSourceFor,
+} from "@halonicjs/app";
 import type { RunDefinitions } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
 import type { TrustGrant } from "@halonicjs/ports";
@@ -206,6 +212,22 @@ export class WatchedVersions implements WorkspaceVersions {
       return null;
     }
     return workspace;
+  }
+
+  /**
+   * The routine files of `saved` whose changes aren't live yet: the live
+   * version has the routine, but not as saved, so the watch runs it as last
+   * committed (C715 #8). None with history off, where the saved files run.
+   */
+  async routinesNotLive(saved: LoadedWorkspace): Promise<LoadedFileOf<"routine">[]> {
+    const vcs = this.#history?.vcs;
+    if (vcs === undefined) return [];
+    const input = { live: await liveVersionOf(vcs), vcs, saved: this.#dir.store };
+    const notLive: LoadedFileOf<"routine">[] = [];
+    for (const file of filesOf(saved, "routine")) {
+      if ((await liveState(input, file.path)).state === "not-live") notLive.push(file);
+    }
+    return notLive;
   }
 
   /** Sets the checks each later run's version passes first; until then, none, and no grant. */
