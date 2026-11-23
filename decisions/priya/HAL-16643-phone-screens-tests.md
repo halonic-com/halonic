@@ -4,6 +4,7 @@
 - Approval: Liam asked for these tests in his review of #5261 and approves this note in his review
   of this pull request on HAL-16643
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:e/pTr4eUf+7qYRqLPp4T39yjFlIxjXQ4jyB7hlMZq7MlpVrbDdtTdfyVahh6sIflZYIXL3DKwd1Kt4BGEIKMDw==
 
 ## What changes
 
