@@ -12,6 +12,7 @@ import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "re
 import { AnswerElsewhere } from "../answer-elsewhere.ts";
 import { wasDecidedElsewhere } from "../decide.ts";
 import { PlainValue } from "./plain-value.tsx";
+import { ReviewTrustButton } from "./review-trust-button.tsx";
 
 export { wasDecidedElsewhere };
 
@@ -392,16 +393,6 @@ function ShownLine({ shown }: { readonly shown: Shown }) {
         </span>
       );
   }
-}
-
-/** **Review**: opens the trust check with itself as the opener, so focus comes back to it. */
-function ReviewTrustButton({ review }: { readonly review: (opener: HTMLElement | null) => void }) {
-  const button = useRef<HTMLButtonElement | null>(null);
-  return (
-    <Button ref={button} variant="ghost" size="sm" onClick={() => review(button.current)}>
-      Review
-    </Button>
-  );
 }
 
 /**

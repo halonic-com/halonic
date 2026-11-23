@@ -65,8 +65,9 @@ const servesNone = new Set(["not_found", "unknown_workspace"]);
  * the Inbox's proposal page (`studio.workspace-proposal-decisions`). The host writes the files and
  * keeps each undo step; Studio holds only its id. A proposal whose texts are gone (the host's
  * `proposal_unavailable`) fails with {@link ProposalGoneError}, and Remove takes it out
- * (`studio.workspace-proposal-remove`); a Remove that fails says why by the host's kind. A folder that isn't trusted yet lists no proposals, so
- * nothing reaches these; should something, it is refused without asking the host.
+ * (`studio.workspace-proposal-remove`). Any other failure is a {@link ProposalFailedError} sorted
+ * by the host's kind, never its text (C665 27). A folder that isn't trusted yet lists no proposals,
+ * so nothing reaches these; should something, it is refused as `untrusted` without asking the host.
  */
 export function hostProposalDecisionsOf(
   transport: AgentHostTransport,
@@ -75,7 +76,9 @@ export function hostProposalDecisionsOf(
 ): ProposalDecisions {
   const proposals = new AgentHostRunProposals(transport, location);
   const whenTrusted = <T>(call: () => Promise<T>): Promise<T> =>
-    trusted() ? call().catch(goneWhenUnavailable) : Promise.reject(new Error(untrusted));
+    trusted()
+      ? call().catch(decisionFailed)
+      : Promise.reject(new ProposalFailedError("untrusted", untrusted));
   return {
     accept: (runId: string, target: ProposalTarget) =>
       whenTrusted(async (): Promise<ProposalDecided> => {
@@ -97,28 +100,38 @@ export function hostProposalDecisionsOf(
   };
 }
 
-/** The host's `proposal_unavailable` as the Inbox knows it; any other failure as it is. */
-function goneWhenUnavailable(error: unknown): never {
+/**
+ * A call that failed, as the Inbox knows it: the host's `proposal_unavailable` as
+ * {@link ProposalGoneError}, one already sorted as it is, and any other sorted by
+ * {@link failureOf}.
+ */
+function decisionFailed(error: unknown): never {
+  if (error instanceof ProposalFailedError) throw error;
   if (error instanceof AgentHostError && error.kind === "proposal_unavailable") {
     throw new ProposalGoneError(error.message);
   }
-  throw error;
+  throw new ProposalFailedError(failureOf(error), detailsOf(error));
 }
 
 /**
- * A Remove that failed, sorted for the Inbox's words by the error's type and the host's kind, never
- * its text (C681 32): the host refuses (`proposal_refused`) a proposal whose changes can be opened
- * again, and the transport's `AgentHostNotAnswering` is a host that isn't running.
+ * A Remove that failed (C681 32): the host refuses (`proposal_refused`) a proposal whose changes
+ * can be opened again; anything else as for a decision.
  */
 function removeFailed(error: unknown): never {
-  const details = error instanceof Error ? error.message : String(error);
-  throw new ProposalFailedError(removeFailureOf(error), details);
+  const refused = error instanceof AgentHostError && error.kind === "proposal_refused";
+  throw new ProposalFailedError(refused ? "changes-back" : failureOf(error), detailsOf(error));
 }
 
-function removeFailureOf(error: unknown): ProposalFailure {
-  if (error instanceof EngineNotAnswering) return "not-answering";
-  if (error instanceof AgentHostError && error.kind === "proposal_refused") return "changes-back";
-  return "unexplained";
+/**
+ * Why a call failed, by the error's type, never its text: the transport's `AgentHostNotAnswering`
+ * is a host that isn't running; every other kind is one Halonic can't explain yet.
+ */
+function failureOf(error: unknown): ProposalFailure {
+  return error instanceof EngineNotAnswering ? "not-answering" : "unexplained";
+}
+
+function detailsOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 const untrusted = "This workspace isn't trusted yet, so Studio can't change its files.";

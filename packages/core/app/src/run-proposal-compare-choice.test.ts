@@ -116,20 +116,20 @@ verifies("app.run-proposal-compare-choice", () => {
   });
 
   describe("a file that isn't for Compare", () => {
-    it("refuses a decided file and writes nothing", async () => {
+    it("refuses a decided file as a conflict and writes nothing", async () => {
       const setup = await setUpChangedSinceRun();
       await setup.proposals.reject("01JD8Q", { file: clerkPath });
       await expect(
         setup.proposals.choose("01JD8Q", clerkPath, "use-run", await seenOf(renamed)),
-      ).rejects.toThrow("already decided");
+      ).rejects.toMatchObject({ kind: "conflict", path: clerkPath });
       expect(setup.store.files.get(clerkPath)).toBe(renamed);
     });
 
-    it("refuses a file the run doesn't propose", async () => {
+    it("refuses a file the run doesn't propose as not found", async () => {
       const setup = await setUpChangedSinceRun();
       await expect(
         setup.proposals.choose("01JD8Q", "README.md", "use-run", await seenOf("# Acme\n")),
-      ).rejects.toThrow("proposes no change");
+      ).rejects.toMatchObject({ kind: "not_found", path: "README.md" });
     });
 
     it("leaves the person's text alone while it is still the run's base for Accept", async () => {

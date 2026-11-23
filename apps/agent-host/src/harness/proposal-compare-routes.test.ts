@@ -160,6 +160,30 @@ verifies("agent-host.proposal-compare-routes", () => {
     expect(await notes()).toBe(edited);
   });
 
+  it("answers 409 already_decided for a choice on a file the person rejected", async () => {
+    await proposeChange();
+    await writeFile(join(workspace, "notes.md"), edited);
+    const { seen } = (await compareNotes()).body;
+    await ask("reject", { workspace, runId: "run_1", target: { file: "notes.md" } });
+    const chosen = await ask("choose", {
+      workspace,
+      runId: "run_1",
+      path: "notes.md",
+      choice: "use-run",
+      seen,
+    });
+    expect(chosen.status).toBe(409);
+    expect(kindOf(chosen)).toBe("already_decided");
+    expect(await notes()).toBe(edited);
+  });
+
+  it("answers 404 unknown_file for a file the run didn't change", async () => {
+    await proposeChange();
+    const compared = await ask("compare", { workspace, runId: "run_1", path: "README.md" });
+    expect(compared.status).toBe(404);
+    expect(kindOf(compared)).toBe("unknown_file");
+  });
+
   it("refuses to remove a proposal whose texts are still there", async () => {
     await proposeChange();
     const removed = await ask("remove", { workspace, runId: "run_1" });

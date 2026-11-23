@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-10916 (Inbox run proposals, rows Q9 to Q11 of HAL-11945); `app.run-proposal-compare-choice`, `app.run-proposal-done-list`, `app.run-proposal-unavailable`
 
-When Studio asks for the texts of a run proposal's file for Compare, the agent host shall answer the run's base, the saved text and the run's text from the run proposal service of a workspace the launcher named, with the two put together when they can be, and `seen`, the digest of the saved text (`absent` for no file). When Studio sends a choice made in Compare, it shall take from the caller only the workspace, the run's id, the file's path, `use-run` or `combine-both`, and `seen`, have the run proposal service write the text, and keep the step's undo itself as for Accept (`agent-host.proposal-decision-routes`). When Studio asks to remove a proposal whose texts are gone, it shall have the service remove it and drop the proposal's steps. When Studio asks what is done, it shall answer the workspace's proposals settled in the last 30 days. It shall answer 409 `cannot_combine` for Combine both of texts that change the same lines, and the other refusals as `agent-host.proposal-decision-routes` does.
+When Studio asks for the texts of a run proposal's file for Compare, the agent host shall answer the run's base, the saved text and the run's text from the run proposal service of a workspace the launcher named, with the two put together when they can be, and `seen`, the digest of the saved text (`absent` for no file). When Studio sends a choice made in Compare, it shall take from the caller only the workspace, the run's id, the file's path, `use-run` or `combine-both`, and `seen`, have the run proposal service write the text, and keep the step's undo itself as for Accept (`agent-host.proposal-decision-routes`). When Studio asks to remove a proposal whose texts are gone, it shall have the service remove it and drop the proposal's steps. When Studio asks what is done, it shall answer the workspace's proposals settled in the last 30 days. It shall answer 404 `unknown_file` for a file the run doesn't propose, 409 `already_decided` for a choice on a file already accepted or rejected, 409 `cannot_combine` for Combine both of texts that change the same lines, and the other refusals as `agent-host.proposal-decision-routes` does.
 
 ## Examples
 
@@ -20,6 +20,12 @@ When Studio asks for the texts of a run proposal's file for Compare, the agent h
 - Given both changed the same line,
   when Studio chooses `combine-both`,
   then the answer is 409 `cannot_combine` and nothing is written.
+- Given the person rejected the file,
+  when Studio chooses `use-run` for it,
+  then the answer is 409 `already_decided` and nothing is written.
+- Given a file the run didn't change,
+  when Studio asks for its texts,
+  then the answer is 404 `unknown_file`.
 - Given a proposal whose texts are still there,
   when Studio asks to remove it,
   then the answer is 422 `proposal_refused` and the proposal stays open.

@@ -25,16 +25,18 @@ import {
 } from "./run-proposal-restore.ts";
 import type { ProposalRecordStore } from "./run-proposal-store.ts";
 import type { ProposalReader } from "./run-proposal-texts.ts";
-import type {
-  AcceptResult,
-  CompareTexts,
-  Decision,
-  ProposalCompareChoice,
-  ProposalTarget,
-  ProposedFile,
-  RejectResult,
-  RestoreResult,
-  UndoStep,
+import {
+  type AcceptResult,
+  type CompareTexts,
+  type Decision,
+  ProposalAlreadyDecidedError,
+  type ProposalCompareChoice,
+  ProposalFileUnknownError,
+  type ProposalTarget,
+  type ProposedFile,
+  type RejectResult,
+  type RestoreResult,
+  type UndoStep,
 } from "./run-proposal-types.ts";
 
 /** The decisions on the proposals of one workspace's runs. */
@@ -85,7 +87,7 @@ export class ProposalDecisions {
     const reader = await this.readerOf(record);
     const { proposal } = record;
     if (!proposal.files.some((file) => file.path === path)) {
-      throw new Error(`Run ${runId} proposes no change to ${path}.`);
+      throw new ProposalFileUnknownError(runId, path);
     }
     const base = await reader.read("base", path);
     const run = record.partly?.[path]?.run ?? (await reader.read("run", path));
@@ -109,10 +111,10 @@ export class ProposalDecisions {
       const record = await this.records.proposed(runId);
       const file = record.proposal.files.find((entry) => entry.path === path);
       if (file === undefined) {
-        throw new Error(`Run ${runId} proposes no change to ${path}.`);
+        throw new ProposalFileUnknownError(runId, path);
       }
       if (record.decisions[path] !== "undecided") {
-        throw new Error(`${path} of run ${runId} is already decided.`);
+        throw new ProposalAlreadyDecidedError(runId, path);
       }
       const reader = await this.readerOf(record);
       const run = record.partly?.[path]?.run ?? (await reader.read("run", path));

@@ -3,7 +3,7 @@
 // Agreed with Elena on HAL-4121.
 
 import type { ExpectedContent } from "@halonicjs/ports";
-import type { LineChange } from "@halonicjs/std";
+import { KindedError, type LineChange } from "@halonicjs/std";
 import type { ItemPath } from "./changes/revert-parts.ts";
 
 /** A proposed file's text at the run's base: its digest, or `"absent"` when the run created it. */
@@ -185,6 +185,33 @@ export class ProposalUnavailableError extends Error {
     super(`The proposal of run ${runId} is unavailable: its texts are gone.`);
     this.name = "ProposalUnavailableError";
     this.runId = runId;
+  }
+}
+
+/**
+ * Thrown when a call names a file the run doesn't propose to change: a
+ * `not_found` the agent host answers as `unknown_file` (C665 40).
+ */
+export class ProposalFileUnknownError extends KindedError {
+  readonly path: string;
+
+  constructor(runId: string, path: string) {
+    super("not_found", `Run ${runId} proposes no change to ${path}.`);
+    this.path = path;
+  }
+}
+
+/**
+ * Thrown by Compare's `choose` for a file someone already accepted or
+ * rejected, maybe in another window: a `conflict` the agent host answers as
+ * `already_decided` (C665 40). Nothing was written.
+ */
+export class ProposalAlreadyDecidedError extends KindedError {
+  readonly path: string;
+
+  constructor(runId: string, path: string) {
+    super("conflict", `${path} of run ${runId} is already decided.`);
+    this.path = path;
   }
 }
 

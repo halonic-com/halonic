@@ -241,7 +241,7 @@ export class RunProposals {
    * @returns `null` when the file has no parts to decide: it is decided,
    *   the run added or deleted it, Accept may never write it, or the person
    *   changed it since (Accept lists it under `changedOnDisk`, for Compare)
-   * @throws when the run has no proposal, or it doesn't propose the file; `ProposalUnavailableError` when its ref is gone
+   * @throws when the run has no proposal; `ProposalFileUnknownError` when it doesn't propose the file; `ProposalUnavailableError` when its ref is gone
    */
   parts(runId: string, path: string): Promise<ProposalFileParts | null> {
     return this.inFile.parts(runId, path);
@@ -279,7 +279,7 @@ export class RunProposals {
    * A file Accept would refuse (`app.run-proposal-trust`) says why in
    * `refused`, and its saved file isn't read.
    *
-   * @throws when the run has no proposal, or it doesn't propose the file; `ProposalUnavailableError` when its ref is gone
+   * @throws when the run has no proposal; `ProposalFileUnknownError` when it doesn't propose the file; `ProposalUnavailableError` when its ref is gone
    */
   compare(runId: string, path: string): Promise<CompareTexts> {
     return this.decisions.compare(runId, path);
@@ -297,9 +297,10 @@ export class RunProposals {
    * @param seen - the digest of the saved text Compare showed, or `absent` for no file
    * @returns as for {@link accept}: the file under `changedOnDisk` when it
    *   no longer holds `seen`, or under `refused` when Accept may never write it
-   * @throws when the run has no proposal, it doesn't propose the file, or the
-   *   file is decided; `CannotCombineError` when the two texts change the
-   *   same lines; `ProposalUnavailableError` when its ref is gone
+   * @throws when the run has no proposal; `ProposalFileUnknownError` when it
+   *   doesn't propose the file; `ProposalAlreadyDecidedError` when the file is
+   *   decided; `CannotCombineError` when the two texts change the same lines;
+   *   `ProposalUnavailableError` when its ref is gone
    */
   choose(
     runId: string,

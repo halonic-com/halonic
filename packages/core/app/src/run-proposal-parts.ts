@@ -10,14 +10,15 @@ import { type DecideContext, expectedOf, refusalOf } from "./run-proposal-decide
 import { type ProposalDecisions, settledOnReject, stepOf } from "./run-proposal-decisions.ts";
 import type { PartlyDecided, ProposedRecord } from "./run-proposal-record.ts";
 import type { ProposalRecordStore } from "./run-proposal-store.ts";
-import type {
-  Decision,
-  InFileProposalTarget,
-  InFileResult,
-  ProposalFileParts,
-  ProposedFile,
-  RefusalReason,
-  UndoFileWrite,
+import {
+  type Decision,
+  type InFileProposalTarget,
+  type InFileResult,
+  type ProposalFileParts,
+  ProposalFileUnknownError,
+  type ProposedFile,
+  type RefusalReason,
+  type UndoFileWrite,
 } from "./run-proposal-types.ts";
 
 /** Where an undecided file the run modified stands, read in the run's turn. */
@@ -173,7 +174,7 @@ export class ProposalParts {
   private async stateOf(record: ProposedRecord, path: string): Promise<OpenFile | ClosedFile> {
     const file = record.proposal.files.find((proposed) => proposed.path === path);
     if (file === undefined) {
-      throw new Error(`Run ${record.proposal.runId} proposes no change to ${path}.`);
+      throw new ProposalFileUnknownError(record.proposal.runId, path);
     }
     if (record.decisions[path] !== "undecided") {
       return { kind: "decided" };
