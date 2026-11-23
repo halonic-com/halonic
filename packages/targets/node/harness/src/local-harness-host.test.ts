@@ -20,14 +20,9 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import {
-  agentFilesOf,
-  instructionTrustFolder,
-  type LocalHarnessInput,
-  openLocalHarnessHost,
-  type RunFileVersions,
-  skillTextOf,
-} from "./local-harness-host.ts";
+import { instructionTrustFolder, openLocalHarnessHost } from "./local-harness-host.ts";
+import type { LocalHarnessInput, RunFileVersions } from "./local-harness-types.ts";
+import { agentFilesOf, skillTextOf } from "./local-run-files.ts";
 
 // The harness host's own wiring, on real folders with fake parts: the CLI's
 // tests run it through the whole engine (`apps/cli/src/local-harness-host.test.ts`).
