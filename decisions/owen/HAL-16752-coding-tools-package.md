@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16752, Liam's security review of the coding tools package (23 Nov)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+KzWkBEeusYamzfzYg1sGEcVDFptXWL+OAPmBOpxfe9Pch8T9NM0jEm2saPX5pVQ1mRV9mPwEJps8UdHLrWbBA==
 
 The new coding tools package has three tests that need something not every
 test computer has. Each one is skipped only there; no existing test is skipped or
