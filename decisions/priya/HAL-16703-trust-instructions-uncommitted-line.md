@@ -3,6 +3,7 @@
 - Task: HAL-16703, from words check C747 on HAL-16694
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16703 (the words are a team decision under the HAL-2282 rule: they repeat the line HAL-16652 decided for `halonic trust`)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yBTQOGlw8IsfIpDy61zB4Opr170L7DN1nSLFrQ2fUBHv0siIN7ErR0anWEGeR1t590bWT88sZxoTKty+n7XjAQ==
 
 ## What changes
 
