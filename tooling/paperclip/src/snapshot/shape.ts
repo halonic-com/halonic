@@ -93,8 +93,15 @@ export interface OpenFacts {
   readonly labels: readonly SnapshotLabel[];
   /** The newest review finding on this head, by the PR watcher's rule (`newestFinding`), or null. */
   readonly finding: { readonly id: string; readonly at: string } | null;
-  /** Signed approvals by our reviewers on any head, oldest first. Whether one counts depends on the head and the paths. */
-  readonly approvals: readonly { readonly by: string; readonly head: string }[];
+  /**
+   * Signed approvals by our reviewers on any head, oldest first. Whether one counts depends on the head and the paths.
+   * `rebaseOf` is the head a re-approval after a rebase-only push names (HAL-14809), added after version 1 shipped.
+   */
+  readonly approvals: readonly {
+    readonly by: string;
+    readonly head: string;
+    readonly rebaseOf?: string;
+  }[];
   /**
    * Its base changed to the default branch after it was last reopened or
    * pushed to, so GitHub keeps it blocked until it is reopened or pushed to
