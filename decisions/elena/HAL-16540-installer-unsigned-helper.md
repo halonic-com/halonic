@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-16540, a follow-up from the security review of #5272); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EEkZTCHnT+Zj7xeoJ+QloEkCHm9KIid6QDUViixIaGq2PmGzf1TBJ2uxzV8VKDM13luKdPypYh1GB01jrRpGBw==
 
 ## What changes
 
