@@ -98,3 +98,24 @@ verifies("format.provider-searches-web", () => {
     expect(problem).toMatchObject({ code: "invalid_type", path: ["searchesWeb"] });
   });
 });
+
+verifies("format.provider-secret-reserved", () => {
+  const anthropic = (secret: string) =>
+    yaml("id: anthropic", "type: anthropic", `secret: ${secret}`);
+
+  it.each(["token-key", "serve-password", "halonic_token_acme", "plugin__weather__acme-key"])(
+    "refuses the secret name %s, on its line",
+    (secret) => {
+      const [problem, ...others] = problemsOf("provider", anthropic(secret));
+      expect(others).toEqual([]);
+      expect(problem).toMatchObject({ code: "secret-name-reserved", path: ["secret"], line: 3 });
+      expect(problem?.message).toBe(
+        "This secret name belongs to Halonic or to a plugin, so a provider can't use it. Store the key under a name of your own, such as anthropic-api-key.",
+      );
+    },
+  );
+
+  it("accepts a name of the workspace's own", () => {
+    expect(parsedValue("provider", anthropic("team-key")).secret).toBe("team-key");
+  });
+});

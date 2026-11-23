@@ -136,7 +136,9 @@ export function choiceEdits(
  * provider's file must have the table's address exactly, none for Anthropic
  * and OpenAI: the pasted key is tested and saved for that address, and must
  * never go to another one. Ollama may sit on another port, but only on this
- * machine, as a Local only run would accept it.
+ * machine, as a Local only run would accept it. A file naming a secret that
+ * belongs to Halonic or a plugin doesn't parse (`secret-name-reserved`), so
+ * it differs too, and no host saves the key under that name (HAL-16691).
  */
 function providerSecretName(
   provider: FirstRunProvider,
