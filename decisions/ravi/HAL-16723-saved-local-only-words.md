@@ -52,3 +52,7 @@ difference in wording. The Studio's fix already says which folder to open.
 The flow check found two lines that contradict each other, and a refusal that doesn't say where
 its setting comes from. Saying "saved, not yet live" where Local only comes from the saved file is
 the fix the check asked for.
+
+## Covers
+
+- app.saved-local-only
