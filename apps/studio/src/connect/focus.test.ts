@@ -21,12 +21,14 @@ function selectorsWithoutRing(css: string): string[] {
 
 describe("the connect page's focus rings", () => {
   const css = readCss();
+  // The message's rule names the 0.1 screens, like every rule inside them (HAL-16709).
+  const message = 'main > section:not([data-screen="tunnel"]) .message:focus';
 
   it("draws none around the message, which only takes the focus to be read (HAL-7122)", () => {
-    expect(selectorsWithoutRing(css)).toContain(".message:focus");
+    expect(selectorsWithoutRing(css)).toContain(message);
   });
 
   it("removes no other ring, so the field and the buttons keep theirs", () => {
-    expect(selectorsWithoutRing(css)).toEqual([".message:focus"]);
+    expect(selectorsWithoutRing(css)).toEqual([message]);
   });
 });

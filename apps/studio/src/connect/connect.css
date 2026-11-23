@@ -65,10 +65,24 @@ main {
   justify-content: center;
 }
 
-section {
+main > section[data-screen] {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+/*
+ * Every rule below that styles an element inside a screen names the 0.1
+ * screens (main > section:not([data-screen="tunnel"])), written out rather
+ * than nested or in @scope, for older WebViews. This sheet is unlayered, so a
+ * bare `button` or `h1` here would beat the phone app's Tailwind classes in
+ * the `tunnel` screen (C751, HAL-16709). page-scope.test.ts fails if one
+ * can match in there. The line height here and the field's box sizing are
+ * written out because the phone app's Tailwind reset, once loaded, changes
+ * them for the whole page.
+ */
+main > section:not([data-screen="tunnel"]) {
+  line-height: normal;
 }
 
 /*
@@ -92,14 +106,10 @@ section[data-screen="connect"] {
     padding-top: 1rem;
     padding-bottom: 1rem;
   }
-
-  section[data-screen="connect"] h1 {
-    margin: 0 0 0.5rem;
-  }
 }
 
 /* `display: flex` above would otherwise show hidden screens. */
-section[hidden] {
+main > section[data-screen][hidden] {
   display: none;
 }
 
@@ -113,7 +123,8 @@ main:has(> section[data-screen="tunnel"]:not([hidden])) {
   justify-content: flex-start;
 }
 
-section[data-screen="tunnel"] {
+/* After `main > section[data-screen]`, with the same weight, so its gap wins. */
+main > section[data-screen="tunnel"] {
   flex: 1;
   gap: 0;
 }
@@ -134,40 +145,49 @@ body.camera section[data-screen="tunnel"] {
   position: absolute;
 }
 
-.logo {
+main > section:not([data-screen="tunnel"]) .logo {
   align-self: center;
   width: 56px;
   height: 56px;
 }
 
-h1 {
+main > section:not([data-screen="tunnel"]) h1 {
   margin: 0.5rem 0 1.5rem;
   text-align: center;
   font-size: 1.25rem;
   font-weight: 600;
 }
 
-h1 .line {
+/* After the rule above, with the same weight, so the short window's margin wins. */
+@media (max-height: 32rem) {
+  main > section[data-screen="connect"] h1 {
+    margin: 0 0 0.5rem;
+  }
+}
+
+main > section:not([data-screen="tunnel"]) h1 .line {
   display: block;
 }
 
-#page-not-shown {
+main > section:not([data-screen="tunnel"]) #page-not-shown {
   margin: -0.75rem 0 1rem;
   text-align: center;
 }
 
-form {
+main > section:not([data-screen="tunnel"]) form {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-label {
+main > section:not([data-screen="tunnel"]) label {
   font-size: 0.875rem;
   color: var(--color-fg-muted);
 }
 
-input {
+/* Border included, so the field is the kit's 48px touch height with or without Tailwind's reset. */
+main > section:not([data-screen="tunnel"]) input {
+  box-sizing: border-box;
   font-size: 16px;
   min-height: 48px;
   padding: 0 0.75rem;
@@ -178,34 +198,34 @@ input {
 }
 
 /* Muted so the example reads as an example, not as a value already typed. */
-input::placeholder {
+main > section:not([data-screen="tunnel"]) input::placeholder {
   color: var(--color-fg-muted);
   opacity: 1;
 }
 
-input:focus-visible {
+main > section:not([data-screen="tunnel"]) input:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
 }
 
-input[aria-invalid="true"] {
+main > section:not([data-screen="tunnel"]) input[aria-invalid="true"] {
   border-color: var(--color-danger);
 }
 
 /* A long typed address in "Can't reach" breaks anywhere rather than run off. */
-.field-error,
-.hint {
+main > section:not([data-screen="tunnel"]) .field-error,
+main > section:not([data-screen="tunnel"]) .hint {
   overflow-wrap: anywhere;
 }
 
-.field-error {
+main > section:not([data-screen="tunnel"]) .field-error {
   margin: 0;
   color: var(--color-danger);
   font-size: 0.875rem;
 }
 
 /* The mark is seen, not read: TalkBack would say "exclamation mark". */
-.field-error::before {
+main > section:not([data-screen="tunnel"]) .field-error::before {
   content: "!" / "";
   display: inline-grid;
   place-items: center;
@@ -218,7 +238,7 @@ input[aria-invalid="true"] {
   font-weight: 700;
 }
 
-.hint {
+main > section:not([data-screen="tunnel"]) .hint {
   margin: 0;
   color: var(--color-fg-muted);
   font-size: 0.875rem;
@@ -228,7 +248,7 @@ input[aria-invalid="true"] {
  * At the largest font the command may break between its words, never inside
  * one (checklist 1.1), so `--network` stays whole. The page wraps each word.
  */
-code {
+main > section:not([data-screen="tunnel"]) code {
   white-space: normal;
   font-family: var(--font-mono);
   background: var(--color-surface-muted);
@@ -236,11 +256,11 @@ code {
   padding: 0 0.25rem;
 }
 
-code .word {
+main > section:not([data-screen="tunnel"]) code .word {
   white-space: nowrap;
 }
 
-button {
+main > section:not([data-screen="tunnel"]) button {
   min-height: 48px;
   width: 100%;
   font: inherit;
@@ -249,7 +269,7 @@ button {
   cursor: pointer;
 }
 
-button.primary {
+main > section:not([data-screen="tunnel"]) button.primary {
   margin-top: 0.5rem;
   border: none;
   background: var(--color-primary);
@@ -257,17 +277,17 @@ button.primary {
 }
 
 /* Scrolling Connect into view leaves this much space between it and the keyboard (HAL-14141). */
-button[data-action="connect"] {
+main > section:not([data-screen="tunnel"]) button[data-action="connect"] {
   scroll-margin-bottom: 1rem;
 }
 
-button[aria-busy="true"] {
+main > section:not([data-screen="tunnel"]) button[aria-busy="true"] {
   opacity: 0.8;
   cursor: progress;
 }
 
 /* The spinner in front of every busy button's words (mockup G2). */
-button[aria-busy="true"]::before {
+main > section:not([data-screen="tunnel"]) button[aria-busy="true"]::before {
   content: "";
   display: inline-block;
   width: 1em;
@@ -287,19 +307,19 @@ button[aria-busy="true"]::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  button[aria-busy="true"]::before {
+  main > section:not([data-screen="tunnel"]) button[aria-busy="true"]::before {
     animation: none;
   }
 }
 
-button.link {
+main > section:not([data-screen="tunnel"]) button.link {
   border: none;
   background: none;
   color: var(--color-accent-text);
 }
 
 /* The icon on the full-screen states sits in a tile (mockup G6, H1, H2). */
-.tile {
+main > section:not([data-screen="tunnel"]) .tile {
   align-self: center;
   width: 48px;
   height: 48px;
@@ -309,11 +329,11 @@ button.link {
   place-items: center;
 }
 
-.tile.warning {
+main > section:not([data-screen="tunnel"]) .tile.warning {
   background: var(--color-warning-soft);
 }
 
-.icon {
+main > section:not([data-screen="tunnel"]) .icon {
   width: 1.5rem;
   height: 1.5rem;
   fill: none;
@@ -323,18 +343,18 @@ button.link {
   stroke-linejoin: round;
 }
 
-.tile.warning .icon {
+main > section:not([data-screen="tunnel"]) .tile.warning .icon {
   stroke: var(--color-warning);
 }
 
-.status {
+main > section:not([data-screen="tunnel"]) .status {
   margin: 0;
   min-height: 1.5em;
   text-align: center;
   color: var(--color-fg-muted);
 }
 
-.message {
+main > section:not([data-screen="tunnel"]) .message {
   margin: 0 0 0.5rem;
   text-align: center;
   line-height: 1.5;
@@ -346,6 +366,6 @@ button.link {
  * WebView would draw its orange one around the text (HAL-7122). The next Tab
  * lands on the button, which keeps its ring.
  */
-.message:focus {
+main > section:not([data-screen="tunnel"]) .message:focus {
   outline: none;
 }
