@@ -118,6 +118,36 @@ describe("tooling/check: process-starts", () => {
     expect(problems([pkg], starters({ [launcher]: validEntry }))).toEqual([]);
   });
 
+  it("flags a listed file that starts a program without windowsHide", () => {
+    const starts = [
+      'import { execFile as run, spawn } from "node:child_process";',
+      'import * as cp from "child_process";',
+      'spawn("git", [], { windowsHide: true });',
+      'spawn("git", []);',
+      'run("git", [], { windowsHide: false }, () => {});',
+      "const options = { windowsHide: true };",
+      'cp.spawnSync("git", [], options);',
+      '/a(b)/.exec("ab");',
+      "",
+    ].join("\n");
+    const pkg = adapter({ "src/launch.ts": starts, "src/launch.test.ts": scriptsTest });
+    const found = problems([pkg], starters({ [launcher]: validEntry }));
+    expect(found).toHaveLength(3);
+    expect(found[0]).toContain(`${launcher}: spawn() without windowsHide: true`);
+    expect(found[1]).toContain(`${launcher}: execFile() without windowsHide: true`);
+    expect(found[2]).toContain(`${launcher}: spawnSync() without windowsHide: true`);
+  });
+
+  it("lets a build or CI script start programs without windowsHide", () => {
+    const script = "packages/adapters/launcher/scripts/build.ts";
+    const pkg = adapter({
+      "scripts/build.ts":
+        'import { spawnSync } from "node:child_process";\nspawnSync("node", []);\n',
+      "src/launch.test.ts": scriptsTest,
+    });
+    expect(problems([pkg], starters({ [script]: validEntry }))).toEqual([]);
+  });
+
   it("exempts test files and testing packages", () => {
     const testing: FixturePackage = {
       directory: "packages/testing/parity",
