@@ -15,6 +15,8 @@ export interface FakeCheckedTask {
   status: string;
   assigneeAgentId: string | null;
   createdByAgentId: string | null;
+  projectId: string | null;
+  goalId: string | null;
   createdAt: string;
   labels: { id: string; name: string }[];
 }
@@ -58,6 +60,8 @@ export function checkedTask(changes: Partial<FakeCheckedTask> = {}): FakeChecked
     status: "todo",
     assigneeAgentId: "agent-mateo",
     createdByAgentId: "agent-chief",
+    projectId: "project-studio",
+    goalId: "goal-1",
     createdAt: "2026-11-23T11:00:00Z",
     labels: [{ id: "label-D2", name: "D2" }],
     ...changes,
@@ -108,7 +112,8 @@ export interface PaperclipRequest {
 
 /**
  * The check on a fake host. `answers` are Haiku's answers in order, as text
- * or an HTTP status; `blockedBy` are the ids the task is already blocked by.
+ * or an HTTP status; `blockedBy` are the ids the task is already blocked by;
+ * `statusOnRead` is the status Paperclip reports when the clarify step reads the task.
  */
 export function checkHarness(
   task: FakeCheckedTask,
@@ -117,6 +122,7 @@ export function checkHarness(
     settings?: Record<string, unknown>;
     model?: ThinSpecModel | undefined;
     blockedBy?: string[];
+    statusOnRead?: string;
   } = {},
 ) {
   const { metrics, written } = fakeMetrics();
@@ -161,6 +167,7 @@ export function checkHarness(
     }
     return Response.json({
       id: task.id,
+      status: options.statusOnRead ?? task.status,
       blockedBy: (options.blockedBy ?? []).map((id) => ({ id })),
     });
   };

@@ -48,6 +48,7 @@ verifies("paperclip.thin-spec-check", () => {
       const { check, sent, logs } = checkHarness(checkedTask(), [vague]);
       await check.onIssueEvent(checkEvent());
       expect(sent).toEqual([
+        { method: "GET", path: "/api/issues/task-1", body: undefined },
         {
           method: "POST",
           path: "/api/companies/acme/issues",
@@ -56,10 +57,11 @@ verifies("paperclip.thin-spec-check", () => {
             title: "Clarify acceptance criteria: HAL-1 Make the export faster",
             description: clarifyDescription({ identifier: "HAL-1" }, 0.8808),
             assigneeAgentId: "agent-chief",
+            projectId: "project-studio",
+            goalId: "goal-1",
             status: "todo",
           },
         },
-        { method: "GET", path: "/api/issues/task-1", body: undefined },
         {
           method: "PATCH",
           path: "/api/issues/task-1",
@@ -83,7 +85,19 @@ verifies("paperclip.thin-spec-check", () => {
     test("goes to the board's clarifier when a person created it", async () => {
       const { check, sent } = checkHarness(checkedTask({ createdByAgentId: null }), [vague]);
       await check.onIssueEvent(checkEvent());
-      expect(sent[0]?.body).toMatchObject({ assigneeAgentId: "agent-pm" });
+      expect(sent[1]?.body).toMatchObject({ assigneeAgentId: "agent-pm" });
+    });
+
+    test("adds nothing when the writer started while Haiku was answering", async () => {
+      const { check, sent, saved, written } = checkHarness(checkedTask(), [vague], {
+        statusOnRead: "in_progress",
+      });
+      await check.onIssueEvent(checkEvent());
+      expect(sent).toEqual([{ method: "GET", path: "/api/issues/task-1", body: undefined }]);
+      expect(dayLog(saved)).toMatchObject([
+        { identifier: "HAL-1", flagged: true, clarifyFailure: "writer_started" },
+      ]);
+      expect(written.some((metric) => metric.name === "thin_spec.failed")).toBe(false);
     });
 
     test("is logged without a clarify task when there is no clarifier", async () => {

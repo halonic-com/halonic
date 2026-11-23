@@ -46,7 +46,7 @@ export interface CheckRecord {
   readonly score: number;
   /** The clarify task, when one was added. */
   readonly clarifyId?: string;
-  /** Why a flagged task got no clarify task. */
+  /** Why a flagged task got no clarify task (`writer_started` when its run had already begun). */
   readonly clarifyFailure?: string;
 }
 
@@ -131,7 +131,13 @@ async function clarify(
           title: clarifyTitle({ identifier: name, title: issue.title }),
           description: clarifyDescription({ identifier: name }, score),
           assigneeAgentId,
+          ...(typeof issue.projectId === "string" ? { projectId: issue.projectId } : {}),
+          ...(typeof issue.goalId === "string" ? { goalId: issue.goalId } : {}),
         });
+  // Not a failure: the writer picked the task up while Haiku was answering.
+  if ("skipped" in added) {
+    return { clarifyFailure: added.skipped };
+  }
   if ("failure" in added) {
     await reportFailure(
       ctx,

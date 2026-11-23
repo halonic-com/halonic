@@ -116,11 +116,20 @@ export interface ClarifyTask {
   readonly title: string;
   readonly description: string;
   readonly assigneeAgentId: string;
+  /** The writer's project and goal, so the clarifier gets the same repo to read. */
+  readonly projectId?: string;
+  readonly goalId?: string;
 }
 
+/** The writer's task statuses before a run starts on it. */
+const waitingStatuses = new Set(["backlog", "todo"]);
+
 /**
- * Creates the clarify task, then blocks the writer's task on it, keeping the
- * blockers it had. Returns the clarify task's id, or why it couldn't.
+ * Reads the writer's task first: if a run already started on it, adds nothing
+ * (`writer_started`), so a check that finishes late never blocks a run in
+ * progress. Otherwise creates the clarify task, then blocks the writer's task
+ * on it, keeping the blockers it had. Returns the clarify task's id, or why it
+ * didn't add one.
  */
 export async function addClarifyStep(
   ctx: ThinSpecApi,
@@ -128,8 +137,16 @@ export async function addClarifyStep(
   settings: ActiveThinSpecSettings,
   companyId: string,
   task: ClarifyTask,
-): Promise<{ clarifyId: string } | Failed> {
+): Promise<{ clarifyId: string } | { skipped: "writer_started" } | Failed> {
   try {
+    const parentPath = `/api/issues/${encodeURIComponent(task.parentId)}`;
+    const parent = (await paperclip(ctx, deps, settings, companyId, {
+      method: "GET",
+      path: parentPath,
+    })) as { status?: unknown; blockedBy?: { id?: unknown }[] };
+    if (typeof parent.status !== "string" || !waitingStatuses.has(parent.status)) {
+      return { skipped: "writer_started" };
+    }
     const company = encodeURIComponent(companyId);
     const created = (await paperclip(ctx, deps, settings, companyId, {
       method: "POST",
@@ -139,11 +156,6 @@ export async function addClarifyStep(
     if (typeof created.id !== "string") {
       return { failure: "no_task_id" };
     }
-    const parentPath = `/api/issues/${encodeURIComponent(task.parentId)}`;
-    const parent = (await paperclip(ctx, deps, settings, companyId, {
-      method: "GET",
-      path: parentPath,
-    })) as { blockedBy?: { id?: unknown }[] };
     const blockers = (parent.blockedBy ?? []).flatMap((issue) =>
       typeof issue.id === "string" ? [issue.id] : [],
     );
