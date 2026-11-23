@@ -141,6 +141,8 @@ export interface SandboxStep {
 export interface SandboxView {
   readonly chip: { readonly label: string; readonly tone: ChipTone } | null;
   readonly lead: string;
+  /** A second line under the lead: why **Remove the sandbox…** shows while access is kept (C728-1). */
+  readonly leadNote: string | null;
   /**
    * The failure Callout, with **Try again** when the same command can run again, or **Copy details**
    * for an internal error, which trying again would only hit again (microcopy 22 F13).
@@ -184,6 +186,7 @@ export interface NotAvailableWords {
 
 const none = {
   chip: null,
+  leadNote: null,
   callout: null,
   steps: [],
   notAvailable: null,
@@ -265,25 +268,32 @@ function checkedView(
     case "unknown":
       return cannotCheckView(check.reason, check.details, callout);
     case "needs-setup":
-      return {
-        ...none,
-        chip: { label: "Needs setting up", tone: "warning" },
-        // A setup from an older release says it is needed again (C633).
-        lead: check.setupAgain === true ? text.NEEDS_SETUP_AGAIN : text.NEEDS_SETUP,
-        callout,
-        hint: hint(text.ADMIN_ONCE),
-        primary: viewOnly ? null : { action: "set-up", label: text.SET_UP, busy: false },
-        secondary: needsSetupActions(check.accessKept === true && !viewOnly),
-      };
+      return needsSetupView(check, viewOnly, callout);
   }
 }
 
 /**
- * **Check again**, and **Remove the sandbox…** while a removal with administrator rights kept some
- * access that only removing it again without them takes back (HAL-15851).
+ * Needs setting up, with **Remove the sandbox…** and the line that says why while a removal with
+ * administrator rights kept some access that only removing it again without them takes back
+ * (HAL-15851, C728-1); both only where the person can press it, so not in served Studio.
  */
-function needsSetupActions(accessKept: boolean): readonly SandboxAction[] {
-  return accessKept ? ["check-again", "remove"] : ["check-again"];
+function needsSetupView(
+  check: Extract<SandboxCheckFacts, { state: "needs-setup" }>,
+  viewOnly: boolean,
+  callout: SandboxView["callout"],
+): SandboxView {
+  const accessKept = check.accessKept === true && !viewOnly;
+  return {
+    ...none,
+    chip: { label: "Needs setting up", tone: "warning" },
+    // A setup from an older release says it is needed again (C633).
+    lead: check.setupAgain === true ? text.NEEDS_SETUP_AGAIN : text.NEEDS_SETUP,
+    leadNote: accessKept ? text.ACCESS_KEPT : null,
+    callout,
+    hint: viewOnly ? text.VIEW_ONLY : text.ADMIN_ONCE,
+    primary: viewOnly ? null : { action: "set-up", label: text.SET_UP, busy: false },
+    secondary: accessKept ? ["check-again", "remove"] : ["check-again"],
+  };
 }
 
 /**
