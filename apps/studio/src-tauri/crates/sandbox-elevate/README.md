@@ -37,6 +37,8 @@ srt-win's pass through unchanged: 0 done, 1 other, 10 cancelled, 12 network filt
 
 The caller turns these into the outcome and the reason sentence; the helper writes no result file, because the user's side would have to trust it.
 
+The Windows installer's own exit code follows these, so it is never mistaken for one of them: a silent install or uninstall (`/S`) of a release with a publisher built in exits with **41** when it refused to start the helper because the helper isn't signed by that publisher (HAL-16947). Halonic is then installed or uninstalled, but the sandbox wasn't set up or removed. Its other codes are NSIS's: 1 cancelled (or Halonic is open), 2 stopped before any page.
+
 ## Updating sandbox-runtime
 
 `SRT_WIN_SHA256` is the hash of the `srt-win.exe` the pinned sandbox-runtime ships. `tests/srt_win_hash.rs` reads the installed package and fails when they differ, so a sandbox-runtime update changes the constant in the same pull request.
