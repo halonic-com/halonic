@@ -4,6 +4,7 @@
 // at that commit too, never the saved files beside them.
 
 import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
+import type { WorkspaceAtVersion } from "@halonicjs/adapter-workspace-engine-node";
 import { readLocalIntegrations } from "@halonicjs/app";
 import {
   type LoadedWorkspace,
@@ -15,12 +16,8 @@ import {
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 
-/** A workspace's definitions and local integrations, both from one version. */
-export interface WorkspaceAtVersion {
-  readonly workspace: LoadedWorkspace;
-  /** Each local integration, hashed as a runner start hashes it. */
-  readonly integrations: readonly LocalIntegrationInput[];
-}
+// The type lives in the workspace engine, which reads trust for it (HAL-17049).
+export type { WorkspaceAtVersion } from "@halonicjs/adapter-workspace-engine-node";
 
 /**
  * The local integrations at `commit`, read through the history only, so

@@ -2221,6 +2221,9 @@ importers:
       '@halonicjs/adapter-coordination-node':
         specifier: workspace:*
         version: link:../coordination-node
+      '@halonicjs/adapter-doctor-node':
+        specifier: workspace:*
+        version: link:../doctor-node
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../fs-node

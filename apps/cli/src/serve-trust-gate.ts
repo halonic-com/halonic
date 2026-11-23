@@ -1,24 +1,34 @@
 // The trust check behind `halonic serve`: the host's read-only gate for the
-// workspace it serves. It reads the version served runs start from and the
-// trust record again for every question, so a workspace that changed after
-// it was trusted starts no run (`server.trust-gate`). It has no way to grant
-// trust: only a person at the computer does, with `halonic trust`, which
-// reviews the same version (HAL-16335).
+// workspace it serves, in the CLI's words. The gate itself lives in the
+// workspace engine, so the agent host's engine role reads trust the same way
+// (HAL-17049). It has no way to grant trust: only a person at the computer
+// does, with `halonic trust`, which reviews the same version (HAL-16335).
 
-import type { TrustDecision, TrustGate, TrustState } from "@halonicjs/host-server";
+import {
+  workspaceTrustGate as engineTrustGate,
+  type TrustGateSentences,
+} from "@halonicjs/adapter-workspace-engine-node";
+import type { TrustGate } from "@halonicjs/host-server";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { serveMessages } from "./messages/serve.ts";
 import type { WorkspaceAtVersion } from "./workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
-import { type WorkspaceTrustMachine, workspaceTrustState } from "./workspace-trust.ts";
+import type { WorkspaceTrustMachine } from "./workspace-trust.ts";
 
-const sentenceOf: Readonly<Record<TrustState, () => Message>> = {
-  trusted: serveMessages.trusted,
-  new: serveMessages.trustNew,
-  changed: serveMessages.trustChanged,
-  unreadable: serveMessages.trustUnreadable,
-  refused: serveMessages.trustRefused,
+/** `message` as the plain text a gate answers with. */
+function plain(message: () => Message): () => string {
+  return () => plainText(message().phrase);
+}
+
+const serveSentences: TrustGateSentences = {
+  trusted: plain(serveMessages.trusted),
+  new: plain(serveMessages.trustNew),
+  changed: plain(serveMessages.trustChanged),
+  unreadable: plain(serveMessages.trustUnreadable),
+  refused: plain(serveMessages.trustRefused),
+  // A workspace that reaches only the test model answers `trusted`, with its own sentence (HAL-12011).
+  "not-needed": plain(serveMessages.trustNotNeeded),
 };
 
 /**
@@ -32,24 +42,5 @@ export function workspaceTrustGate(
   machine: WorkspaceTrustMachine,
   readVersion: () => Promise<WorkspaceAtVersion>,
 ): TrustGate {
-  return {
-    async check(): Promise<TrustDecision> {
-      const { state, sentence } = await trustAnswerOf(dir, machine, readVersion);
-      return { state, message: plainText(sentence.phrase) };
-    },
-  };
-}
-
-async function trustAnswerOf(
-  dir: OpenWorkspaceDir,
-  machine: WorkspaceTrustMachine,
-  readVersion: () => Promise<WorkspaceAtVersion>,
-): Promise<{ readonly state: TrustState; readonly sentence: Message }> {
-  const { state } = await workspaceTrustState(dir, machine, readVersion);
-  // A workspace that reaches only the test model starts nothing that
-  // needs trust, so it answers `trusted` with its own sentence (HAL-12011).
-  if (state === "not-needed") {
-    return { state: "trusted", sentence: serveMessages.trustNotNeeded() };
-  }
-  return { state, sentence: sentenceOf[state]() };
+  return engineTrustGate(dir, machine, readVersion, serveSentences);
 }
