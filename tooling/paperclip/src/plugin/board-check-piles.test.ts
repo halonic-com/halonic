@@ -85,7 +85,9 @@ verifies("paperclip.board-check-piles", () => {
     const handlers = new Map<string, Handler>();
     registerBoardTools({
       ...fake.ctx,
-      tools: { register: (name: string, _declaration: unknown, fn: Handler) => handlers.set(name, fn) },
+      tools: {
+        register: (name: string, _declaration: unknown, fn: Handler) => handlers.set(name, fn),
+      },
     } as unknown as BoardToolsApi);
     const result = await handlers.get("failed_runs")?.(
       {},
