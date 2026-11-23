@@ -17,6 +17,7 @@
 
 mod error;
 mod log_file;
+mod private_file;
 mod run_id;
 mod turns;
 
@@ -32,6 +33,7 @@ pub use run_id::{check_run_id, is_run_id};
 
 use halonic_run_lock::with_run_lock;
 use log_file::{LogFile, append_lines, are_whole_lines, count_lines, cut_back, read_log};
+use private_file::{is_missing, make_private_folder, read_unlinked, write_new_private};
 use turns::Turns;
 
 const LOG_SUFFIX: &str = ".jsonl";
@@ -144,7 +146,7 @@ impl<C: ThisComputer> RunFolder<'_, C> {
         }
         let lock_file = self.file(run_id, LOCK_SUFFIX);
         self.take_turn(&lock_file, || -> Result<AppendOutcome, RunStoreError> {
-            fs::create_dir_all(&self.root)?;
+            make_private_folder(&self.root)?;
             let mut outcome = None;
             let released = with_run_lock(&lock_file, &self.folders.computer, || {
                 outcome = Some(self.append_locked(run_id, expected_seq, lines, snapshot));
@@ -184,8 +186,8 @@ impl<C: ThisComputer> RunFolder<'_, C> {
         self.take_turn(
             &lock_file,
             || -> Result<Option<StoredSnapshot>, RunStoreError> {
-                let Ok(bytes) = fs::read(self.file(run_id, SNAPSHOT_SUFFIX)) else {
-                    // Missing or not readable: either way the cache can't be used.
+                let Ok(Some(bytes)) = read_unlinked(&self.file(run_id, SNAPSHOT_SUFFIX)) else {
+                    // Missing, not readable or a link: the cache can't be used.
                     return Ok(None);
                 };
                 let log = self.read_log(run_id)?;
@@ -287,15 +289,16 @@ impl<C: ThisComputer> RunFolder<'_, C> {
                 last_seq: log.last_seq(),
             });
         }
-        let log_file = self.file(run_id, LOG_SUFFIX);
+        let name = format!("{run_id}{LOG_SUFFIX}");
+        let log_file = self.root.join(&name);
         if log.torn {
             // So the new lines aren't glued onto a line a crash cut off.
-            cut_back(&log_file, log.intact_bytes())?;
+            cut_back(&log_file, &name, log.intact_bytes())?;
         }
         if expected_seq == 0 {
             remove_if_there(&self.file(run_id, SNAPSHOT_SUFFIX))?;
         }
-        append_lines(&log_file, lines, log.intact_bytes())?;
+        append_lines(&log_file, &name, lines, log.intact_bytes())?;
         let snapshot_error = snapshot.and_then(|text| self.write_snapshot(run_id, text).err());
         Ok(AppendOutcome::Appended {
             last_seq: expected_seq + count_lines(lines),
@@ -336,12 +339,17 @@ impl<C: ThisComputer> RunFolder<'_, C> {
         Ok(true)
     }
 
-    /// Replaces the snapshot through a temporary file and a rename, so a
-    /// reader sees the old snapshot or the new one, never half of one.
+    /// Replaces the snapshot through a private temporary file, flushed to
+    /// disk, and a rename, so a reader sees the old snapshot or the new one,
+    /// never half of one.
     fn write_snapshot(&self, run_id: &str, text: &str) -> Result<(), RunStoreError> {
         let file = self.file(run_id, SNAPSHOT_SUFFIX);
         let temporary = self.file(run_id, &format!("{SNAPSHOT_SUFFIX}.tmp"));
-        let written = fs::write(&temporary, text).and_then(|()| fs::rename(&temporary, &file));
+        // One left by a crash, or a link put in its place: the new file is
+        // created afresh, never written through what is there.
+        remove_if_there(&temporary)?;
+        let written =
+            write_new_private(&temporary, text).and_then(|()| fs::rename(&temporary, &file));
         if written.is_err() {
             // A temporary file left behind is replaced by the next snapshot.
             let _ = fs::remove_file(&temporary);
@@ -387,7 +395,7 @@ fn with_release_error(
 
 fn remove_if_there(file: &Path) -> std::io::Result<()> {
     match fs::remove_file(file) {
-        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        Err(error) if is_missing(&error) => Ok(()),
         removed => removed,
     }
 }

@@ -2,11 +2,11 @@
 //! This side only finds the whole lines; the page reads them into events
 //! with `parseLogLines` from the `RunStore` port.
 
-use std::fs::{self, OpenOptions};
-use std::io::{self, ErrorKind, Write};
+use std::io::Write;
 use std::path::Path;
 
 use crate::error::RunStoreError;
+use crate::private_file::{FileRefusal, open_for_append, open_for_cut, read_unlinked};
 
 const LINE_BREAK: u8 = b'\n';
 
@@ -50,15 +50,14 @@ impl LogFile {
     }
 }
 
-/// Reads the log at `file`, empty when it is missing. An event counts only
-/// once its line break is written, so whatever follows the last one is left
-/// out, even when it happens to be valid JSON.
+/// Reads the log at `file`, named `name`, empty when it is missing. An
+/// event counts only once its line break is written, so whatever follows
+/// the last one is left out, even when it happens to be valid JSON. A log
+/// that is a link, a hard link or not a plain file is refused.
 pub(crate) fn read_log(file: &Path, name: &str) -> Result<LogFile, RunStoreError> {
-    let mut bytes = match fs::read(file) {
-        Ok(bytes) => bytes,
-        Err(error) if error.kind() == ErrorKind::NotFound => Vec::new(),
-        Err(error) => return Err(error.into()),
-    };
+    let mut bytes = read_unlinked(file)
+        .map_err(|refusal| refused(refusal, name))?
+        .unwrap_or_default();
     let intact = bytes
         .iter()
         .rposition(|&byte| byte == LINE_BREAK)
@@ -82,26 +81,48 @@ pub(crate) fn count_lines(lines: &str) -> u64 {
 }
 
 /// Cuts the log back to `size` bytes: its torn line before an append, or
-/// a failed append's partial lines.
-pub(crate) fn cut_back(file: &Path, size: u64) -> io::Result<()> {
-    OpenOptions::new().write(true).open(file)?.set_len(size)
+/// a failed append's partial lines. Never through a link.
+pub(crate) fn cut_back(file: &Path, name: &str, size: u64) -> Result<(), RunStoreError> {
+    let log = open_for_cut(file).map_err(|refusal| refused(refusal, name))?;
+    log.set_len(size)?;
+    Ok(())
 }
 
-/// Adds the lines to the log, all of them or none. A write can fail part-way
-/// (a full disk, an I/O error) after some whole lines are out, and those
-/// would count as stored; so on a failure the log is cut back to
-/// `intact_bytes`, its size before this append, and the error is passed on.
-pub(crate) fn append_lines(file: &Path, lines: &str, intact_bytes: u64) -> io::Result<()> {
-    let written = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(file)
-        .and_then(|mut log| log.write_all(lines.as_bytes()));
+/// Adds the lines to the log, all of them or none, and flushes them to disk
+/// before the append reports success. The log is created readable by its
+/// owner only, and one that is a link, a hard link or not a plain file is
+/// refused, so nothing is written through it. A write can fail part-way (a
+/// full disk, an I/O error) after some whole lines are out, and those would
+/// count as stored; so on a failure the log is cut back to `intact_bytes`,
+/// its size before this append, and the error is passed on.
+pub(crate) fn append_lines(
+    file: &Path,
+    name: &str,
+    lines: &str,
+    intact_bytes: u64,
+) -> Result<(), RunStoreError> {
+    let written = open_for_append(file)
+        .map_err(|refusal| refused(refusal, name))
+        .and_then(|mut log| {
+            log.write_all(lines.as_bytes())?;
+            log.sync_data()?;
+            Ok(())
+        });
     if written.is_err() {
         // When cutting back fails too (the write failed before creating the
-        // file, or it isn't writable), the write's own error is the one to
-        // report; lines left behind then count as stored, as after a crash.
-        let _ = cut_back(file, intact_bytes);
+        // file, it isn't writable, or it is a link), the write's own error is
+        // the one to report; lines left behind then count as stored, as
+        // after a crash.
+        let _ = cut_back(file, name, intact_bytes);
     }
     written
+}
+
+fn refused(refusal: FileRefusal, name: &str) -> RunStoreError {
+    match refusal {
+        FileRefusal::Linked => RunStoreError::LinkedLog {
+            file: name.to_owned(),
+        },
+        FileRefusal::Io(error) => error.into(),
+    }
 }
