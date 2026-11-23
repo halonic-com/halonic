@@ -31,7 +31,10 @@ export async function reviewedVersion(
   dir: OpenWorkspaceDir,
   openHistory: OpenWorkspaceHistory,
 ): Promise<ReviewedVersion> {
-  const run = await loadRunWorkspace(dir, openHistory, trustMessages.nothingTrusted());
+  // The review shows the version as committed: Local only saved but not live doesn't change trust.
+  const run = await loadRunWorkspace(dir, openHistory, trustMessages.nothingTrusted(), undefined, {
+    savedLocalOnly: false,
+  });
   if (run.found === "nothing-live") {
     return { version: await savedVersionOf(dir), notCommitted: [] };
   }

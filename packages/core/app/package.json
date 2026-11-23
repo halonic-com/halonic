@@ -11,7 +11,8 @@
     "./model-choice-service": "./src/model-choice-service.ts",
     "./outside-run": "./src/outside-run-gate.ts",
     "./routines": "./src/routines.ts",
-    "./run-failure": "./src/run-failure.ts"
+    "./run-failure": "./src/run-failure.ts",
+    "./saved-local-only": "./src/saved-local-only.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

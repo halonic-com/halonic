@@ -2,10 +2,10 @@
 // and fails closed on a saved file it can't read (HAL-16400).
 
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { withSavedLocalOnly } from "@halonicjs/app/saved-local-only";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { describe, expect, it } from "vitest";
-import { withSavedLocalOnly } from "./saved-local-only.ts";
 
 const localOnlyOff = "id: acme\nname: Acme\n";
 const localOnlyOn = "id: acme\nname: Acme\nprivacy:\n  localOnly: true\n";

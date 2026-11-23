@@ -4,7 +4,10 @@
 // saved files with history off. A version made while the watch runs is
 // checked as the first one was, for trust, the sandbox and local only,
 // before any run starts from it. A run's connectors start from the version
-// it read, with the grant of that version's trust check (HAL-7500).
+// it read, with the grant of that version's trust check (HAL-7500). Local
+// only counts as on once the saved workspace.yaml says on, before it's made
+// live (`app.saved-local-only`): a watch that started without it refuses
+// the next run, and a running run's connectors, as for a new version.
 
 import {
   LiveRoutines,
@@ -13,6 +16,7 @@ import {
   liveVersionOf,
   runSourceFor,
 } from "@halonicjs/app";
+import { withSavedLocalOnly } from "@halonicjs/app/saved-local-only";
 import type { RunDefinitions } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
 import type { DefinitionSource, TrustGrant } from "@halonicjs/ports";
@@ -120,14 +124,15 @@ export class WatchedVersions implements WorkspaceVersions {
     dir: OpenWorkspaceDir,
     history: OpenedHistory | null,
     first: WatchedVersion,
-    firstCommit: string | undefined,
+    atCommit: { readonly commit: string; readonly loaded: WatchedVersion } | undefined,
   ) {
     this.#dir = dir;
     this.#history = history;
     this.#latest = first;
     this.#localOnly = isLocalOnly(first.workspace);
     // The first version is loaded once: the routines and the first run read it from here.
-    const loaded = firstCommit === undefined ? undefined : { commit: firstCommit, ...first };
+    const loaded =
+      atCommit === undefined ? undefined : { commit: atCommit.commit, ...atCommit.loaded };
     this.#atCommit = loaded;
     this.routines = new LiveRoutines({
       vcs: history?.vcs ?? null,
@@ -174,13 +179,12 @@ export class WatchedVersions implements WorkspaceVersions {
         picked.reads === "live-version"
           ? await integrationsAtCommit(vcs, picked.commit, dir.store.location)
           : await savedIntegrations(dir);
-      const first = await loadWatched(picked.source, integrations);
-      return new WatchedVersions(
-        dir,
-        history,
-        first,
-        live.kind === "commit" ? live.commit.hash : undefined,
-      );
+      const loaded = await loadWatched(picked.source, integrations);
+      if (picked.reads === "saved-files") {
+        return new WatchedVersions(dir, history, loaded, undefined);
+      }
+      const first = await withSavedLocalOnlyOf(loaded, dir.store);
+      return new WatchedVersions(dir, history, first, { commit: picked.commit, loaded });
     } catch (error) {
       await history?.close();
       throw error;
@@ -299,7 +303,7 @@ export class WatchedVersions implements WorkspaceVersions {
     readonly runId: string;
     readonly version: RunVersion;
   }): Promise<TrustedVersion> {
-    const loaded = this.#versionOfRun.get(run.runId) ?? (await this.#versionAllowedAt(run.version));
+    const loaded = await this.#versionOfRunNow(run.runId, run.version);
     return { workspace: loaded.workspace, trust: await this.#checks.trust(loaded) };
   }
 
@@ -344,7 +348,18 @@ export class WatchedVersions implements WorkspaceVersions {
     if (kept === undefined && run.version === null) {
       throw new Error(plainText(routinesMessages.noVersionForAgentFile(run.runId).phrase));
     }
-    return kept ?? (await this.#versionAllowedAt(run.version ?? undefined));
+    return await this.#versionOfRunNow(run.runId, run.version ?? undefined);
+  }
+
+  /**
+   * The load kept for a run, else its recorded version, loaded now; either
+   * refused once it no longer keeps local only. Local only saved on since
+   * the run started counts too, so its connectors stop reaching the cloud.
+   */
+  async #versionOfRunNow(runId: string, version: RunVersion | undefined): Promise<WatchedVersion> {
+    const kept = this.#versionOfRun.get(runId);
+    if (kept === undefined) return await this.#versionAllowedAt(version);
+    return this.#keepingLocalOnly(await withSavedLocalOnlyOf(kept, this.#dir.store));
   }
 
   /** Forgets the load kept for a run that has ended. */
@@ -365,14 +380,23 @@ export class WatchedVersions implements WorkspaceVersions {
 
   /** The workspace a run of `version` reads, if it keeps local only. */
   async #versionAllowedAt(version: RunVersion | undefined): Promise<WatchedVersion> {
-    const loaded = await this.#versionAt(version);
+    return this.#keepingLocalOnly(await this.#versionAt(version));
+  }
+
+  /** `loaded`, if it keeps local only as the watch started with it. */
+  #keepingLocalOnly(loaded: WatchedVersion): WatchedVersion {
     if (isLocalOnly(loaded.workspace) !== this.#localOnly) {
       throw new Error(plainText(routinesMessages.localOnlyChanged(this.#dir.name).phrase));
     }
     return loaded;
   }
 
-  /** The workspace a run of `version` reads; the one read last for a start that names none. */
+  /**
+   * The workspace a run of `version` reads; the one read last for a start
+   * that names none. A commit's load is kept as committed, and Local only
+   * saved on is counted on every read, so a save during the watch counts
+   * from the next run.
+   */
   async #versionAt(version: RunVersion | undefined): Promise<WatchedVersion> {
     if (version === undefined) {
       return this.#latest;
@@ -390,7 +414,7 @@ export class WatchedVersions implements WorkspaceVersions {
       const integrations = await integrationsAtCommit(vcs, version.commit, location);
       this.#atCommit = { commit: version.commit, ...(await loadWatched(source, integrations)) };
     }
-    return this.#atCommit;
+    return await withSavedLocalOnlyOf(this.#atCommit, this.#dir.store);
   }
 }
 
@@ -403,6 +427,22 @@ async function loadWatched(
   integrations: readonly LocalIntegrationInput[],
 ): Promise<WatchedVersion> {
   return { ...(await loadVersion(source)), integrations };
+}
+
+/**
+ * `loaded`, with Local only on when the saved `workspace.yaml` says on
+ * (`app.saved-local-only`). Only the flag changes: the trust check reads
+ * the connectors, agents, providers and integrations, which stay as loaded.
+ *
+ * @throws KindedError `invalid_input` when `loaded` has Local only off and
+ *   the saved `workspace.yaml` can't be read or has an error
+ */
+async function withSavedLocalOnlyOf(
+  loaded: WatchedVersion,
+  saved: DefinitionSource,
+): Promise<WatchedVersion> {
+  const workspace = await withSavedLocalOnly(loaded.workspace, saved);
+  return workspace === loaded.workspace ? loaded : { ...loaded, workspace };
 }
 
 /**

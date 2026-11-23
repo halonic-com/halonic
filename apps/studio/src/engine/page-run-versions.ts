@@ -8,6 +8,7 @@
 // dropped by `forget` once no run uses it.
 
 import { liveVersionOf, runSourceFor, runVersionOf } from "@halonicjs/app";
+import { withSavedLocalOnly } from "@halonicjs/app/saved-local-only";
 import type { RunDefinitions } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
@@ -20,7 +21,6 @@ import {
 } from "@halonicjs/workspace";
 import { historyRefusalOf, nothingLiveRefusal } from "./page-refusal.ts";
 import type { LiveVersions } from "./page-versions.ts";
-import { withSavedLocalOnly } from "./saved-local-only.ts";
 
 /**
  * A version's workspace, with its agents' and skills' files as the load read them. The saved

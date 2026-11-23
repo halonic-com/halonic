@@ -21,6 +21,7 @@ import {
   runSourceFor,
   runVersionOf,
 } from "@halonicjs/app";
+import { withSavedLocalOnly } from "@halonicjs/app/saved-local-only";
 import type { RunVersion } from "@halonicjs/events";
 import type { Vcs, VcsStatus } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
@@ -125,21 +126,36 @@ export function historyRefusalOf(
   };
 }
 
+/** How {@link loadRunWorkspace} reads the version. */
+export interface RunWorkspaceOptions {
+  /**
+   * Whether Local only counts as on when only the saved `workspace.yaml`
+   * says on (`app.saved-local-only`); on by default. A trust review turns
+   * it off: it shows the version as committed, and a saved file with an
+   * error mustn't stop it.
+   */
+  readonly savedLocalOnly?: boolean;
+}
+
 /**
  * Loads the workspace `halonic run` starts: the live version, or the saved
  * files with history off (requirement `cli.run-live-version`). The run
  * records the version it read: the live version's commit and date, or the
- * saved files.
+ * saved files. Local only counts as on when the saved `workspace.yaml`
+ * says on, before it's made live (`app.saved-local-only`).
  * `nothingDone` ends line 1 of a refusal: "Nothing ran." by default.
  * `profile` holds the installed plugins, whose hosts `privacy.localOnly` counts.
  *
  * @throws HistoryUnavailableError when the workspace has history but it can't be opened
+ * @throws KindedError `invalid_input` when the live version has Local only
+ *   off and the saved `workspace.yaml` can't be read or has an error
  */
 export async function loadRunWorkspace(
   dir: OpenWorkspaceDir,
   openHistory: OpenWorkspaceHistory = openGitHistory,
   nothingDone: Message = runMessages.nothingRan(),
   profile?: ProfileEnvironment,
+  options: RunWorkspaceOptions = {},
 ): Promise<RunWorkspace> {
   const history = await openOrRefuse(dir.root, openHistory, nothingDone);
   try {
@@ -154,7 +170,12 @@ export async function loadRunWorkspace(
     // With the hosts of the sheets the run uses, so `privacy.localOnly` refuses
     // what `validate` does and what the run's connectors would leave out.
     const sheetHosts = await versionSheetHosts(picked.source, profile);
-    const workspace = await loadWorkspace(picked.source, { sheetHosts });
+    const loaded = await loadWorkspace(picked.source, { sheetHosts });
+    // Only the flag changes, so trust is still checked on the live version's files.
+    const workspace =
+      picked.reads === "live-version" && options.savedLocalOnly !== false
+        ? await withSavedLocalOnly(loaded, dir.store)
+        : loaded;
     const { fileTexts } = await versionWithTexts(workspace, picked.source);
     const integrations = await integrationsOf(picked, vcs, dir);
     const status = vcs !== null && picked.reads === "live-version" ? await vcs.status() : null;

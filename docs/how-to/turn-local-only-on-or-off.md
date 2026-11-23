@@ -17,6 +17,10 @@ privacy:
 Set it to `true` to turn Local only back on. In Studio, choosing a cloud model
 when you set up a workspace turns it off for you, and says so before it does.
 
+In a workspace with history, runs start from the live version, but turning
+Local only on counts as soon as you save it, in Studio and on the command
+line. Turning it off counts only once you make the change live.
+
 ## While a run is going
 
 A run that is already going keeps the setting it started with. What happens
@@ -35,5 +39,7 @@ anything: it starts at its next time, with the new setting.
 **On the command line**, each `halonic run` reads the setting when it starts,
 so the change counts from the next one. A `halonic routines watch` that is
 already running keeps the setting it started with: a routine whose files turn
-Local only on or off doesn't start, and `--debug` says why. Stop the watch
+Local only on or off doesn't start, and `--debug` says why. Saving Local only
+on stops its routines the same way, and a run that is already going can't
+start any more connectors. Stop the watch
 with Ctrl C and start it again to run with the new setting.
