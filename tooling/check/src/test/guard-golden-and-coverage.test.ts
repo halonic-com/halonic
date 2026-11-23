@@ -33,9 +33,26 @@ verifies("check.guard-golden-files", () => {
   test("treats a public API's spec files as golden", async () => {
     const head = {
       "spec/agent.schema.json": "{}\n",
-      "spec/released/0.4.0/agent.schema.json": "{}\n",
+      "spec/released/0.4.0/hub.schema.json": "{}\n",
     };
     expect(await errorsOf({ base: {}, head, checks })).toHaveLength(2);
+  });
+
+  // HAL-16929: `pnpm version:sync` freezes a changed spec in the Version
+  // packages pull request; that copy is the current spec, which is golden itself.
+  test("passes an added released spec that copies the package's current spec", async () => {
+    const current = { "spec/agent.schema.json": '{"a":1}\n' };
+    const head = { ...current, "spec/released/0.4.0/agent.schema.json": '{"a":1}\n' };
+    expect(await errorsOf({ base: current, head, checks })).toEqual([]);
+  });
+
+  test("fails an added released spec that differs from the current spec", async () => {
+    const current = { "spec/agent.schema.json": '{"a":1}\n' };
+    const released = "spec/released/0.4.0/agent.schema.json";
+    const head = { ...current, [released]: "{}\n" };
+    expect(await errorsOf({ base: current, head, checks })).toEqual([
+      `${workflowDirectory}/${released}: The golden file ${workflowDirectory}/${released} was added.`,
+    ]);
   });
 
   test("leaves other files under a spec folder alone", async () => {

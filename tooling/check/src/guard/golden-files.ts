@@ -20,16 +20,35 @@ function isSpecFile(file: string): boolean {
   return /(?:^|\/)spec\/(?:[^/]+\/)*[^/]+\.schema\.json$/.test(file);
 }
 
+const releasedSpecFile =
+  /^(?<folder>(?:.+\/)?spec)\/released\/[^/]+\/(?<name>[^/]+\.schema\.json)$/;
+
+/**
+ * An added released spec that copies its package's current spec in the pull
+ * request, as `pnpm version:sync` writes it (HAL-16929). It adds nothing a
+ * note could judge: the current spec is golden itself, and a released copy
+ * never changes afterwards (`checkReleasedSpecs`).
+ */
+function isFrozenCopy(file: string, change: string, head: CheckContext): boolean {
+  const groups = releasedSpecFile.exec(file)?.groups;
+  if (change !== "added" || groups?.["folder"] === undefined || groups["name"] === undefined) {
+    return false;
+  }
+  const current = `${groups["folder"]}/${groups["name"]}`;
+  return head.files.includes(current) && head.read(current) === head.read(file);
+}
+
 /**
  * Plan 9.3, point 3: a changed, added or deleted golden file or snapshot,
- * inline snapshots included, needs a note that lists the file.
+ * inline snapshots included, needs a note that lists the file. A released
+ * spec added as a copy of the current one doesn't.
  */
 export function checkGoldenFiles({ base, head }: Checkouts): GuardFinding[] {
   const findings: GuardFinding[] = [];
   const golden = new Set([...base.files, ...head.files].filter(isGoldenFile));
   for (const file of [...golden].sort()) {
     const change = changeOf(file, base, head);
-    if (change !== undefined) {
+    if (change !== undefined && !isFrozenCopy(file, change, head)) {
       findings.push({ subject: file, file, message: `The golden file ${file} was ${change}.` });
     }
   }
