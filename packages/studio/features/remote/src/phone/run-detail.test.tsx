@@ -102,6 +102,12 @@ verifies("remote.phone-run-detail", () => {
     expect(waiting?.textContent).toContain("14:02");
     expect(waiting?.textContent).toContain("Answer this on your computer.");
     expect(history()?.querySelector("button")).toBeNull();
+    // Wraps at a space first, and inside a long token only when it must (HAL-16927).
+    const summary = [...(waiting?.querySelectorAll("p") ?? [])].find((each) =>
+      each.textContent?.startsWith("send_replies"),
+    );
+    expect(summary?.className).toContain("wrap-anywhere");
+    expect(summary?.className).not.toContain("break-all");
   });
 
   it("says when the phone dropped older events, and a denial or a lone answer in one line", () => {

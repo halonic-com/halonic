@@ -128,8 +128,9 @@ function RunItemView({ item, agent }: { readonly item: RunItem; readonly agent: 
       return (
         <Callout tone="warning" icon={<HandIcon />} title={runWords.waiting(agent)}>
           <div className="flex flex-col gap-1">
-            {/* The tool and its arguments as the computer sends them: data, so it wraps anywhere. */}
-            <p className="font-mono text-code break-all">{item.summary}</p>
+            {/* The tool and its arguments as the computer sends them: it wraps at a space first,
+                and inside a long token only when it must, so nothing runs off the screen. */}
+            <p className="font-mono text-code wrap-anywhere">{item.summary}</p>
             {item.time === undefined ? null : <p className="text-fg-muted">{item.time}</p>}
             <p>{ANSWER_RISKY_ON_COMPUTER}</p>
           </div>

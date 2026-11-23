@@ -2531,7 +2531,8 @@ The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `HandIcon` (an open raised pal
 drawn like the place icons), `InfoIcon`, `LaptopIcon` (a screen on a base, the phone's paired computers), `MaximiseIcon` (⤢), `RefreshIcon`
 (a circle arrow, the ↻ of a plugin card), `RestoreIcon` (the restore mark), `SettingsIcon` (a gear, the sidebar's Settings row, drawn like
 the place icons), `ShieldIcon` (the sandbox's shield) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
-they sit in gives them their size.
+they sit in gives them their size. `SparkIcon` (a four-point star, the ✦ of the title bar's
+Assistant button) is the same but filled; it replaces the text character, which Inter lacks.
 `useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
 names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined: a
 softer line at rest so a link in a sentence isn't told by colour alone, a full one on hover, and the link colour in high contrast, also on a button), for a button that must look like a link, such as Welcome's **Copy details**. `standaloneLinkClasses` is the same style for a link on a line of its own, such as a row in a list: on a phone its box is 48px high, so a list of them keeps the phone's row height. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
