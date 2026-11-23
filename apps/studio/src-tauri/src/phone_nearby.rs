@@ -125,10 +125,18 @@ pub async fn phone_nearby_browse<R: Runtime>(
         let Some(browse) = begin(&webview, on_event) else {
             return NearbyStart::Unavailable;
         };
-        if android::browse(webview.app_handle(), browse).await {
+        let app = webview.app_handle();
+        if !android::browse(app, browse).await {
+            stop(app);
+            return NearbyStart::Unavailable;
+        }
+        if browsing(app, browse) {
             return NearbyStart::Browsing;
         }
-        stop(webview.app_handle());
+        // A stop came while Android was starting, and its Kotlin `stop` may
+        // have run before the Kotlin `browse`: stop again, now that the
+        // search has started, so Android doesn't keep searching.
+        android::stop(app).await;
     }
     #[cfg(not(target_os = "android"))]
     let _ = on_event;
@@ -158,6 +166,16 @@ pub fn begin<R: Runtime>(webview: &Webview<R>, channel: Channel<NearbyEvent>) ->
     }
     browse.page = Some((webview.label().to_owned(), channel));
     Some(browse.browse)
+}
+
+/// Whether browse `browse` is still in progress, with a page watching: no
+/// stop, page load or newer browse has ended it.
+#[cfg_attr(not(any(target_os = "android", test)), expect(dead_code))]
+pub fn browsing<R: Runtime>(app: &AppHandle<R>, browse: u64) -> bool {
+    app.try_state::<NearbyState>().is_some_and(|state| {
+        let current = state.0.lock().unwrap_or_else(PoisonError::into_inner);
+        current.browse == browse && current.page.is_some()
+    })
 }
 
 /// Applies what the Kotlin side saw, and sends the page the new list when

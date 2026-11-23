@@ -20,6 +20,9 @@ Where the shell runs on Android, it shall let the app's own page list the Haloni
 - Given a picker that closed,
   when a hit of its browse arrives late,
   then nothing changes and nothing is sent, and the computers found stay available for pairing.
+- Given a browse whose search is still starting,
+  when the page calls `phone_nearby_stop` or starts loading,
+  then the shell stops Android's search again once it has started, and the browse answers `unavailable`.
 - Given the guard letting the window go to the confirmed address,
   when a computer resolves,
   then nothing is sent and the list's ids name nothing.

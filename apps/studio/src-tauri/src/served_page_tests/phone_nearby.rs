@@ -13,7 +13,9 @@ use tauri::{AppHandle, Manager, Url, Webview};
 
 use super::{CONNECT_PAGE, SERVED_PAGE, app_window, invoke};
 use crate::navigation::{ConfirmedAddress, on_navigation};
-use crate::phone_nearby::{NearbyEvent, Seen, begin, end_page, endpoint, seen, stop, watching};
+use crate::phone_nearby::{
+    NearbyEvent, Seen, begin, browsing, end_page, endpoint, seen, stop, watching,
+};
 
 const COMMANDS: [&str; 2] = ["phone_nearby_browse", "phone_nearby_stop"];
 
@@ -198,6 +200,31 @@ fn phone_nearby_commands_pair_by_id_after_the_picker_closes() {
     );
     seen(&app, found(browse, "halonic-bb", "Late"));
     assert_eq!(sent.lock().unwrap().len(), 2);
+}
+
+#[test]
+fn phone_nearby_commands_see_a_stop_that_comes_while_android_starts() {
+    // `phone_nearby_browse` asks `browsing` once Android's search has
+    // started, and stops it again when it answers false: a stop or page
+    // load that came in between may have reached Kotlin first.
+    let (app, webview) = on_app_page();
+    let (channel, _) = recording();
+    let browse = begin(&webview, channel).expect("the app's own page browses");
+    assert!(browsing(&app, browse));
+    stop(&app);
+    assert!(!browsing(&app, browse));
+
+    let (channel, _) = recording();
+    let browse = begin(&webview, channel).expect("the app's own page browses");
+    end_page(&app);
+    assert!(!browsing(&app, browse));
+
+    let (first, _) = recording();
+    let earlier = begin(&webview, first).expect("the app's own page browses");
+    let (second, _) = recording();
+    let browse = begin(&webview, second).expect("a new browse replaces it");
+    assert!(!browsing(&app, earlier));
+    assert!(browsing(&app, browse));
 }
 
 #[test]
