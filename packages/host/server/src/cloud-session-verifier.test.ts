@@ -68,7 +68,7 @@ function goodPayload(): Record<string, unknown> {
     token_use: "access",
     iat: nowSeconds - 10,
     nbf: nowSeconds - 10,
-    exp: nowSeconds + 900,
+    exp: nowSeconds + 890,
   };
 }
 
@@ -85,8 +85,17 @@ async function token(
   } = {},
 ): Promise<string> {
   const header = { alg: "EdDSA", typ: "JWT", kid: "s1", ...options.header };
-  const signedText = `${encodeJson(header)}.${encodeJson({ ...goodPayload(), ...options.payload })}`;
-  const privateKey = options.privateKey ?? keys.session.privateKey;
+  const payload = { ...goodPayload(), ...options.payload };
+  return signParts(encodeJson(header), encodeJson(payload), options.privateKey);
+}
+
+/** Signs already encoded parts, so a test can sign bytes `token` would never write. */
+async function signParts(
+  headerText: string,
+  payloadText: string,
+  privateKey = keys.session.privateKey,
+): Promise<string> {
+  const signedText = `${headerText}.${payloadText}`;
   const signature = await crypto.subtle.sign(
     "Ed25519",
     privateKey,
@@ -179,6 +188,14 @@ describe("cloud session verifier", () => {
       }
     });
 
+    it("refuses a token that lives longer than 15 minutes from its issue time", async () => {
+      const issued = nowSeconds - 10;
+      const atLimit = await token({ payload: { iat: issued, exp: issued + 900 } });
+      expect(await verifyToken(atLimit)).not.toBeNull();
+      const overLimit = await token({ payload: { iat: issued, exp: issued + 901 } });
+      expect(await verifyToken(overLimit)).toBeNull();
+    });
+
     it("refuses a revoked session and a missing session id, and fails when the list can't answer", async () => {
       expect(
         await verifyToken(await token(), verifier({ revokedSessions: revokedList(["ses_one"]) })),
@@ -219,6 +236,14 @@ describe("cloud session verifier", () => {
       ]) {
         expect(await verifyToken(text)).toBeNull();
       }
+    });
+
+    it("refuses a header that starts with a byte-order mark, even when correctly signed", async () => {
+      const headerJson = JSON.stringify({ alg: "EdDSA", typ: "JWT", kid: "s1" });
+      const byteOrderMark = String.fromCharCode(0xfeff);
+      const withMark = new TextEncoder().encode(`${byteOrderMark}${headerJson}`);
+      const signed = await signParts(encodeBase64url(withMark), encodeJson(goodPayload()));
+      expect(await verifyToken(signed)).toBeNull();
     });
 
     it("leaves the end-user pattern to the shared checks, which refuse a bad id", async () => {

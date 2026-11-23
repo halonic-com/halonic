@@ -46,6 +46,12 @@ export interface CloudSessionVerifierOptions {
 const maxTokenLength = 8192;
 /** How far the deployment's clock may differ from Cloud's, in seconds. */
 const clockSkewSeconds = 60;
+/**
+ * The longest a token may live, from `iat` to `exp`, in seconds. A revoked session id is kept
+ * only for this long plus the skew, so a token living longer would be accepted again once its
+ * revocation entry is gone: raise this only together with that entry's lifetime.
+ */
+const maxTokenLifetimeSeconds = 15 * 60;
 /** The only header values accepted: the verifier fixes the algorithm, never the token. */
 const signatureAlgorithm = "EdDSA";
 const tokenType = "JWT";
@@ -110,12 +116,18 @@ export class CloudSessionVerifier implements SessionVerifier {
     );
   }
 
-  /** Not yet ended, already started and not issued in the future, each with the allowed skew. */
+  /**
+   * Not yet ended, already started and not issued in the future, each with the allowed skew, and
+   * living no longer than the longest lifetime.
+   */
   #isInTimeWindow(payload: object): boolean {
     const expires = ownNumber(payload, "exp");
     const notBefore = ownNumber(payload, "nbf");
     const issued = ownNumber(payload, "iat");
     if (expires === undefined || notBefore === undefined || issued === undefined) {
+      return false;
+    }
+    if (expires - issued > maxTokenLifetimeSeconds) {
       return false;
     }
     const nowSeconds = this.#now() / 1000;
@@ -195,7 +207,8 @@ function decodeJsonObject(text: string): object | null {
   }
   let value: unknown;
   try {
-    value = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes));
+    // `ignoreBOM: true` keeps a leading byte-order mark in the text, so `JSON.parse` refuses it.
+    value = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes));
   } catch {
     // Not UTF-8 or not JSON: the token is malformed, which is a refusal like any other.
     return null;
