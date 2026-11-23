@@ -186,14 +186,31 @@ verifies("sandbox-srt.windows-tool-folders", () => {
       expect(await readdir(join(work, ".claude"))).toEqual([]);
     });
 
-    it("keeps a link put where a folder was missing, and what it points to", async () => {
+    for (const [folder, file] of [
+      [".yarn", "releases"],
+      [".git", "config"],
+    ] as const) {
+      it(`keeps a link put where ${folder} was missing, and the empty ${file} behind it (HAL-16291)`, async () => {
+        // A program in the session renames the folder srt made and puts a junction to a folder outside there.
+        const outside = await mkdtemp(join(tmpdir(), "deny-placeholders-outside-"));
+        try {
+          await writeFile(join(outside, file), "");
+          await placeholders.hold(work);
+          await symlink(outside, join(work, folder), "junction");
+          expect(await placeholders.release(work)).toEqual([]);
+          expect((await lstat(join(work, folder))).isSymbolicLink()).toBe(true);
+          expect(await readdir(outside)).toEqual([file]);
+        } finally {
+          await rm(outside, { recursive: true, force: true });
+        }
+      });
+    }
+
+    it("removes nothing below a file put where a folder was missing", async () => {
       await placeholders.hold(work);
-      const target = join(work, "target");
-      await mkdir(target);
-      await symlink(target, join(work, ".yarn"));
-      await placeholders.release(work);
-      expect((await lstat(join(work, ".yarn"))).isSymbolicLink()).toBe(true);
-      expect(await exists(target)).toBe(true);
+      await writeFile(join(work, ".yarn"), "");
+      expect(await placeholders.release(work)).toEqual([]);
+      expect((await lstat(join(work, ".yarn"))).isFile()).toBe(true);
     });
 
     it("reports a folder it can't remove instead of failing", async () => {

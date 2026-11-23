@@ -28,9 +28,10 @@ function isToolFolder(segments: PathSegments): boolean {
  */
 interface FolderUse {
   sessions: number;
-  missingFiles: Set<string>;
-  /** Each missing folder on the way to a file, with how many names deep it is. */
-  missingFolders: Map<string, number>;
+  /** Each missing file, by its joined path. */
+  missingFiles: Map<string, PathSegments>;
+  /** Each missing folder on the way to a file, by its joined path. */
+  missingFolders: Map<string, PathSegments>;
 }
 
 async function isMissing(path: string): Promise<boolean> {
@@ -64,7 +65,11 @@ const removeFromDisk: PlaceholderRemoval = { file: unlink, folder: rmdir };
  * file with content, and a folder or link put at the path stay. Then a folder
  * srt made on the way, such as `.yarn` for `.yarn/releases`, is removed when
  * it was missing when a session opened and is now an empty folder, deepest
- * first; one that holds anything else stays. A session still open on the
+ * first; one that holds anything else stays. Nothing is removed below a name
+ * on the way that isn't a real folder by the close: a program in the session
+ * may rename the `.yarn` srt made and put a link or junction to a folder
+ * outside in its place, and the host must not remove the empty `releases`
+ * file it finds there. A session still open on the
  * folder keeps them all, because removing one would lift that session's deny,
  * which Windows stamps only when it opens. A host that crashes leaves them,
  * as before: at the next start an empty file srt made can't be told from one
@@ -96,8 +101,8 @@ export class DenyPlaceholders {
       const key = windowsKey(workingFolder);
       const use = this.#folders.get(key) ?? {
         sessions: 0,
-        missingFiles: new Set<string>(),
-        missingFolders: new Map<string, number>(),
+        missingFiles: new Map<string, PathSegments>(),
+        missingFolders: new Map<string, PathSegments>(),
       };
       use.sessions += 1;
       this.#folders.set(key, use);
@@ -110,7 +115,8 @@ export class DenyPlaceholders {
   /**
    * Counts one session less on `workingFolder`. When it was the last one,
    * removes each noted file that is still an empty regular file, then each
-   * noted folder that is now empty, without following a link. Never rejects.
+   * noted folder that is now empty, without following a link on the way or at
+   * the path. Never rejects.
    *
    * @returns one line for each placeholder it could not remove, for the session to log
    */
@@ -123,13 +129,13 @@ export class DenyPlaceholders {
       if (use.sessions > 0) return [];
       this.#folders.delete(key);
       const failed: string[] = [];
-      for (const file of use.missingFiles) {
-        const failure = await removeIfEmptyFile(join(workingFolder, file), this.#remove.file);
+      for (const file of use.missingFiles.values()) {
+        const failure = await removeIfEmptyFile(workingFolder, file, this.#remove.file);
         if (failure !== null) failed.push(failure);
       }
-      const deepestFirst = [...use.missingFolders].sort(([, a], [, b]) => b - a);
-      for (const [folder] of deepestFirst) {
-        const failure = await removeIfEmptyFolder(join(workingFolder, folder), this.#remove.folder);
+      const deepestFirst = [...use.missingFolders.values()].sort((a, b) => b.length - a.length);
+      for (const folder of deepestFirst) {
+        const failure = await removeIfEmptyFolder(workingFolder, folder, this.#remove.folder);
         if (failure !== null) failed.push(failure);
       }
       return failed;
@@ -157,39 +163,72 @@ async function noteMissing(
     const folder = segments.slice(0, depth);
     if (isToolFolder(folder)) continue;
     const path = join(...folder);
-    if (await isMissing(join(workingFolder, path))) use.missingFolders.set(path, depth);
+    if (await isMissing(join(workingFolder, path))) use.missingFolders.set(path, folder);
   }
   const file = join(...segments);
-  if (await isMissing(join(workingFolder, file))) use.missingFiles.add(file);
+  if (await isMissing(join(workingFolder, file))) use.missingFiles.set(file, segments);
 }
 
-/** Removes `path` if it is an empty regular file; returns why it couldn't, or null. */
+/**
+ * Throws unless each name between `workingFolder` and `segments`' last one is
+ * a real folder: a link or junction there would send the removal outside the
+ * working folder (HAL-16291).
+ *
+ * @throws an `ENOENT` error when a folder on the way is gone, and an `ELINK` error when one is a link, a junction or a file
+ */
+async function assertRealFoldersOnTheWay(
+  workingFolder: string,
+  segments: PathSegments,
+): Promise<void> {
+  for (let depth = 1; depth < segments.length; depth += 1) {
+    const path = join(workingFolder, ...segments.slice(0, depth));
+    const found = await lstat(path);
+    if (!found.isDirectory() || found.isSymbolicLink()) {
+      throw Object.assign(new Error(`${path} isn't a real folder`), { code: "ELINK" });
+    }
+  }
+}
+
+/** Codes for a placeholder that stays without a failure to log: it is gone, its place isn't a real folder, or it was filled after the look. */
+const keptCodes = ["ENOENT", "ELINK", "ENOTEMPTY", "EEXIST"];
+
+/**
+ * Removes the file at `segments` in `workingFolder` if it is an empty regular
+ * file and every name on the way is a real folder; returns why it couldn't, or null.
+ */
 async function removeIfEmptyFile(
-  path: string,
+  workingFolder: string,
+  segments: PathSegments,
   removeFile: (path: string) => Promise<void>,
 ): Promise<string | null> {
+  const path = join(workingFolder, ...segments);
   try {
+    await assertRealFoldersOnTheWay(workingFolder, segments);
     const found = await lstat(path);
     if (found.isFile() && found.size === 0) await removeFile(path);
     return null;
   } catch (error) {
-    return errorCode(error) === "ENOENT" ? null : describeFailure(path, error);
+    return keptCodes.includes(errorCode(error) ?? "") ? null : describeFailure(path, error);
   }
 }
 
-/** Removes `path` if it is a folder with nothing in it; returns why it couldn't, or null. */
+/**
+ * Removes the folder at `segments` in `workingFolder` if it has nothing in it
+ * and every name on the way is a real folder; returns why it couldn't, or null.
+ */
 async function removeIfEmptyFolder(
-  path: string,
+  workingFolder: string,
+  segments: PathSegments,
   removeFolder: (path: string) => Promise<void>,
 ): Promise<string | null> {
+  const path = join(workingFolder, ...segments);
   try {
+    await assertRealFoldersOnTheWay(workingFolder, segments);
     const found = await lstat(path);
     if (found.isDirectory() && (await readdir(path)).length === 0) await removeFolder(path);
     return null;
   } catch (error) {
-    // Something put into it after the look is the person's: the folder stays.
-    const kept = ["ENOENT", "ENOTEMPTY", "EEXIST"].includes(errorCode(error) ?? "");
-    return kept ? null : describeFailure(path, error);
+    return keptCodes.includes(errorCode(error) ?? "") ? null : describeFailure(path, error);
   }
 }
 
