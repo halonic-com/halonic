@@ -1,12 +1,26 @@
 /** How one session is kept in the `Coordination` port. */
 
 /**
- * What the store keeps for one session: its end time and a fingerprint of the password hash
- * it was started under, so setting the password again ends it.
+ * What the store keeps for one session: its end time, a fingerprint of the password hash
+ * it was started under, so setting the password again ends it, and the session generation
+ * it was started in, so a revoke ends it. A session started while no generation was set
+ * has none.
  */
 export interface StoredSession {
   readonly expiresAt: string;
   readonly password: string;
+  readonly generation?: string;
+}
+
+/**
+ * Where the store keeps the session generation: a random value that every revoke replaces.
+ * It is a value, never a counter, because `Coordination` keeps counters apart from values.
+ */
+export const sessionGenerationKey = "sessions:generation";
+
+/** A new session generation: 16 random bytes as hex. The order of generations means nothing. */
+export function newSessionGeneration(): string {
+  return toHex(crypto.getRandomValues(new Uint8Array(16)));
 }
 
 /**
@@ -17,15 +31,23 @@ export async function passwordFingerprint(passwordHash: string): Promise<string>
   return (await sha256Hex(passwordHash)).slice(0, 16);
 }
 
-/** A stored session, or `null` when the stored text is not one: the old form was a plain date. */
+/**
+ * A stored session, or `null` when the stored text is not one: the old form was a plain date,
+ * and a generation that isn't text is not one either.
+ */
 export function readStoredSession(stored: string): StoredSession | null {
   try {
     const parsed: unknown = JSON.parse(stored);
-    const { expiresAt, password } = (parsed ?? {}) as Partial<Record<keyof StoredSession, unknown>>;
+    const { expiresAt, password, generation } = (parsed ?? {}) as Partial<
+      Record<keyof StoredSession, unknown>
+    >;
     if (typeof expiresAt !== "string" || typeof password !== "string") {
       return null;
     }
-    return { expiresAt, password };
+    if (generation === undefined) {
+      return { expiresAt, password };
+    }
+    return typeof generation === "string" ? { expiresAt, password, generation } : null;
   } catch {
     return null;
   }

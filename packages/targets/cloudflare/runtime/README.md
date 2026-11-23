@@ -57,6 +57,7 @@ name, such as a preview address, or with an `Origin`, never reaches a route. A m
 | `GET /admin/export/files/<path>` | `<path>` is one of the manifest's paths (`runs/<run id>.jsonl`, `records/<hash>.jsonl`, `blobs/<xx>/<sha256>`) | 200 the file's bytes as `application/octet-stream`; 404 for a path the manifest doesn't list |
 | `PUT /admin/import/files/<path>` | the file's bytes as the body, `<path>` in the same three shapes | 204; the file is only staged |
 | `POST /admin/import` | the manifest as JSON | 200 `{"imported":{"runs":n,"records":n,"blobs":n}}` once every staged file matches the manifest's size and SHA-256 and is applied; 409 `{"code":"files_missing" or "files_differ","paths":[...]}` and nothing applied otherwise |
+| `POST /admin/sessions/revoke` | none | 204 once every browser signed in to the deployment is signed out (requirement `runtime.session-revoke`); it takes no lock |
 
 The two export routes answer now. `GET /admin/export` reads one file at a time to measure it, so a large
 deployment takes a while. The export holds every run log, every collection's record log except the sign-in

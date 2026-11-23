@@ -187,7 +187,13 @@ verifies("runtime.admin-key", () => {
         );
         expect(wrong.status, `${wrongMethod} ${path}`).toBe(404);
       }
-      expect(adminRoutes.length).toBe(4);
+      expect(adminRoutes.map((route) => `${route.method} ${route.path}`)).toEqual([
+        "GET /admin/export",
+        "GET /admin/export/files",
+        "PUT /admin/import/files",
+        "POST /admin/import",
+        "POST /admin/sessions/revoke",
+      ]);
     });
   });
 });

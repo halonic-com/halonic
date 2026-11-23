@@ -2,9 +2,11 @@ import type { WindowCount } from "@halonicjs/ports";
 import type { RequestContext, ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import {
+  newSessionGeneration,
   passwordFingerprint,
   readStoredSession,
   type StoredSession,
+  sessionGenerationKey,
   sha256Hex,
   toHex,
 } from "./stored-session.ts";
@@ -57,6 +59,12 @@ export interface SignIn {
    * with no password.
    */
   session(request: Request, context: RequestContext): Promise<string | null>;
+  /**
+   * Ends every session: sets a new session generation, so every session started before it
+   * stops counting and is deleted the next time it is shown. Takes no lock, so it works
+   * while a deploy holds one; a revoke that runs at the same time sets a value just as new.
+   */
+  revokeAllSessions(): Promise<void>;
 }
 
 type SignInPorts = Pick<ServerPorts, "secrets" | "passwordHasher" | "coordination" | "clock">;
@@ -87,11 +95,15 @@ export function createSignIn(ports: SignInPorts): SignIn {
     }
     const sessionId = await sha256Hex(token);
     const key = sessionKeyOf(sessionId);
-    const stored = await coordination.read(key);
+    // Read together, so the extra read costs no extra round trip.
+    const [stored, generation] = await Promise.all([
+      coordination.read(key),
+      coordination.read(sessionGenerationKey),
+    ]);
     if (stored === null) {
       return null;
     }
-    if (!(await isLive(stored, hash))) {
+    if (!(await isLive(stored, hash, generation))) {
       await coordination.compareAndSet(key, stored, null);
       return null;
     }
@@ -104,9 +116,11 @@ export function createSignIn(ports: SignInPorts): SignIn {
     passwordHash: string,
   ): Promise<Response> {
     const token = newSessionToken();
+    const generation = await coordination.read(sessionGenerationKey);
     const session: StoredSession = {
       expiresAt: new Date(clock.now().getTime() + sessionLifetimeMs).toISOString(),
       password: await passwordFingerprint(passwordHash),
+      ...(generation === null ? {} : { generation }),
     };
     const stored = await coordination.compareAndSet(
       await sessionKey(token),
@@ -127,12 +141,20 @@ export function createSignIn(ports: SignInPorts): SignIn {
 
   /**
    * A session lives until its end time, and only while the password it was started with is
-   * still the one set. Anything else stored under its key, such as the plain date of the old
-   * form, has ended.
+   * still the one set and the generation it was started in is still the current one. A session
+   * without a generation lives only while none is set. Anything else stored under its key,
+   * such as the plain date of the old form, has ended.
    */
-  async function isLive(stored: string, passwordHash: string): Promise<boolean> {
+  async function isLive(
+    stored: string,
+    passwordHash: string,
+    generation: string | null,
+  ): Promise<boolean> {
     const session = readStoredSession(stored);
     if (session === null || clock.now().getTime() >= Date.parse(session.expiresAt)) {
+      return false;
+    }
+    if ((session.generation ?? null) !== generation) {
       return false;
     }
     return session.password === (await passwordFingerprint(passwordHash));
@@ -197,6 +219,13 @@ export function createSignIn(ports: SignInPorts): SignIn {
     },
 
     session,
+
+    async revokeAllSessions() {
+      const current = await coordination.read(sessionGenerationKey);
+      // A lost race means another revoke set a new value after this one read the old, so the
+      // sessions that were live when this call began have ended all the same.
+      await coordination.compareAndSet(sessionGenerationKey, current, newSessionGeneration());
+    },
   };
 }
 
