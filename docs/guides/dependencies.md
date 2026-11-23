@@ -62,11 +62,19 @@ builds it. The test harness, `packages/targets/cloudflare/testing`, never ships.
   build. Two callers run it: `buildWorkerBundle` (`tooling/publish`) runs
   it on the Cloudflare Worker's metafile on every build, and a test runs
   it on an integration bundle (`tooling/publish/src/pack.test.ts`). It
-  reads the bundler's metafile (`--metafile`), so it sees every file that
-  went in, including whatever an approved library pulls with it. It fails
-  on any package not allowed above, and on any module left external that
-  the provider doesn't supply. The Worker build fails on any finding, so
-  the real Worker can't carry anything else.
+  reads the bundler's metafile (`--metafile`), so it covers every file that
+  ships, meaning every file with bytes in the script, including whatever an
+  approved library pulls with it. A file the bundler parsed but dropped
+  (0 bytes in every output) never runs, so it isn't checked. If any output
+  in the metafile doesn't list its files, the check fails closed and checks
+  every file the bundler parsed. It fails on any package not allowed above,
+  and on any module left external that the provider doesn't supply. The
+  Worker build fails on any finding, so the real Worker can't carry
+  anything else.
+- Core packages the runtime imports say `"sideEffects": false` in their
+  `package.json`, so the bundler can drop the modules the runtime doesn't
+  use. Mark a package that way only if none of its modules does work at
+  import time (a registration, a top-level call with an effect, a polyfill).
 
 ## Adding one
 

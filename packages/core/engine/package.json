@@ -2,6 +2,7 @@
   "name": "@halonicjs/engine",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "Runs workflows and agents: the run kernel, the states and the agent loop. It starts with the loop of one model turn behind the local chat turn.",
   "exports": {
     ".": "./src/index.ts",

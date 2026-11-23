@@ -7,9 +7,15 @@ import { type Problem, Report } from "./problems.ts";
  */
 export interface Metafile {
   readonly inputs: Readonly<Record<string, unknown>>;
-  readonly outputs: Readonly<
-    Record<string, { readonly imports?: readonly MetafileImport[] | undefined }>
-  >;
+  readonly outputs: Readonly<Record<string, MetafileOutput>>;
+}
+
+interface MetafileOutput {
+  readonly imports?: readonly MetafileImport[] | undefined;
+  /** How many bytes each input put in this output; esbuild leaves out inputs it dropped. */
+  readonly inputs?:
+    | Readonly<Record<string, { readonly bytesInOutput?: number | undefined }>>
+    | undefined;
 }
 
 interface MetafileImport {
@@ -41,7 +47,9 @@ const guide = "See docs/guides/dependencies.md.";
  * Checks a built cloud runtime bundle: it may hold
  * only our own code, the provider's own code and the libraries marked
  * `cloudRuntime` in `dependencies.json`. Reading the bundler's inputs also
- * catches whatever an approved library brings in with it.
+ * catches whatever an approved library brings in with it. It judges what
+ * ships: an input esbuild parsed but put no bytes of in the script is never
+ * run, so it isn't checked (HAL-16761).
  *
  * @example
  * checkCloudBundle(metafile, "dist/worker.meta.json", rules);
@@ -54,7 +62,7 @@ export function checkCloudBundle(
 ): Problem[] {
   const report = new Report(rule);
   const reported = new Set<string>();
-  for (const input of Object.keys(metafile.inputs)) {
+  for (const input of shippedInputs(metafile)) {
     const name = packageOfInput(input);
     if (name !== undefined && !reported.has(name) && !isAllowedPackage(name, rules)) {
       reported.add(name);
@@ -97,6 +105,27 @@ export function packageOfInput(input: string): string | undefined {
     return undefined;
   }
   return first.startsWith("@") && second !== undefined ? `${first}/${second}` : first;
+}
+
+/**
+ * The inputs with bytes in the script: those any output gives a
+ * `bytesInOutput` above 0, or one that isn't a number. It fails closed: if
+ * any output doesn't list its inputs, every parsed input counts as shipped.
+ */
+function shippedInputs(metafile: Metafile): string[] {
+  const outputs = Object.values(metafile.outputs);
+  if (outputs.length === 0 || outputs.some((output) => output.inputs === undefined)) {
+    return Object.keys(metafile.inputs);
+  }
+  return Object.keys(metafile.inputs).filter((input) =>
+    outputs.some((output) => {
+      const entry = output.inputs?.[input];
+      if (entry === undefined) {
+        return false;
+      }
+      return typeof entry.bytesInOutput !== "number" || entry.bytesInOutput > 0;
+    }),
+  );
 }
 
 function isAllowedPackage(name: string, rules: BundleRules): boolean {

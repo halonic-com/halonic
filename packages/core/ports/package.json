@@ -2,6 +2,7 @@
   "name": "@halonicjs/ports",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "One file per port: the versioned interfaces that core logic depends on and adapters implement. Web types only.",
   "exports": {
     ".": "./src/index.ts"
