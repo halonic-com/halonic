@@ -34,7 +34,7 @@ import { stateKey } from "./board-check-api.ts";
 const closed = new Set(["done", "cancelled"]);
 
 /** Whether a task in review has a pending board card, for a listing without review attention. */
-async function pendingCard(ctx: BoardCheckApi, task: OpenTask, companyId: string) {
+export async function pendingCard(ctx: BoardCheckApi, task: OpenTask, companyId: string) {
   if (task.status !== "in_review" || task.reviewAttention !== undefined) {
     return false;
   }

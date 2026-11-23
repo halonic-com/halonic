@@ -3,10 +3,13 @@ import type {
   PluginApiRequestInput,
   PluginApiResponse,
   PluginDataClient,
+  PluginStateClient,
 } from "@paperclipai/plugin-sdk";
 import { workerAgentsDataKey } from "../worker-agents/keys.ts";
 import { type AgentEntry, type WorkerAgentsPage, workerAgentsPage } from "../worker-agents/page.ts";
+import { type RuleChecksRecord, readRuleChecks } from "../worker-agents/rule-checks.ts";
 import type { WorkerTables } from "../worker-agents/tables.ts";
+import { stateKey } from "./board-check-api.ts";
 
 /**
  * Where the Worker agents page gets its data (HAL-16249): the board-only
@@ -22,12 +25,17 @@ import type { WorkerTables } from "../worker-agents/tables.ts";
 export interface WorkerAgentsDeps {
   readonly agents: (companyId: string) => Promise<AgentEntry[]>;
   readonly tables: WorkerTables;
+  /** The board check's last rule checks, from plugin state. */
+  readonly ruleChecks: (companyId: string) => Promise<RuleChecksRecord | undefined>;
   readonly now: () => Date;
 }
 
-/** The deps on top of the plugin context: agents through the SDK, the tables through `ctx.db`. */
+/** The deps on top of the plugin context: agents through the SDK, the tables through `ctx.db`, the checks from state. */
 export function workerAgentsDeps(
-  ctx: { readonly agents: Pick<PluginAgentsClient, "list"> },
+  ctx: {
+    readonly agents: Pick<PluginAgentsClient, "list">;
+    readonly state: Pick<PluginStateClient, "get">;
+  },
   tables: WorkerTables,
 ): WorkerAgentsDeps {
   return {
@@ -36,12 +44,15 @@ export function workerAgentsDeps(
       return agents.map(({ id, name, urlKey, status }) => ({ id, name, urlKey, status }));
     },
     tables,
+    ruleChecks: async (companyId) =>
+      readRuleChecks(await ctx.state.get(stateKey(companyId, "rule-checks"))),
     now: () => new Date(),
   };
 }
 
 async function pageData(companyId: string, deps: WorkerAgentsDeps): Promise<WorkerAgentsPage> {
-  return await workerAgentsPage(companyId, await deps.agents(companyId), deps.tables, deps.now());
+  const [agents, checks] = await Promise.all([deps.agents(companyId), deps.ruleChecks(companyId)]);
+  return await workerAgentsPage(companyId, agents, deps.tables, checks, deps.now());
 }
 
 /** Answers the `worker-agents` route: the page's data for a signed-in board user, 403 for anyone else. */

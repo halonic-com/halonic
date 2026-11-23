@@ -17,6 +17,10 @@ export interface FakeTask {
   readonly pendingCards?: number;
   /** The task's queued and running runs; the listing shows the first as its active run. */
   readonly runs?: readonly { id: string; agentId: string; status: string }[];
+  readonly startedAt?: Date | null;
+  readonly monitorNextCheckAt?: Date | null;
+  readonly monitorLastTriggeredAt?: Date | null;
+  readonly monitorNotes?: string | null;
 }
 
 /** A comment as the fake host stores it. */

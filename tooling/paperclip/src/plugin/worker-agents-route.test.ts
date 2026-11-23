@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { verifies } from "@halonicjs/testing-spec";
 import type { PluginApiRequestInput } from "@paperclipai/plugin-sdk";
 import { expect, test } from "vitest";
@@ -28,6 +28,10 @@ function setup() {
   const deps: WorkerAgentsDeps = {
     agents: read("agents", [{ id: "a1", name: "Ravi", urlKey: "ravi", status: "idle" }]),
     tables,
+    ruleChecks: async () => {
+      reads.push("checks");
+      return undefined;
+    },
     now: () => new Date("2026-11-23T14:20:00.000Z"),
   };
   return { deps, reads };
@@ -98,16 +102,16 @@ verifies("paperclip.worker-agents-page", () => {
   });
 
   test("the page's code only reads: no action, request or navigation call", async () => {
-    const source = await readFile(
-      new URL("../worker-agents/ui/index.tsx", import.meta.url),
-      "utf8",
-    );
-    expect(source).not.toMatch(
-      /usePluginAction|ActionBar|fetch\(|XMLHttpRequest|method:|<form|useHostNavigation/,
-    );
-    expect([...source.matchAll(/use[A-Z]\w+/g)].map((match) => match[0])).toEqual([
-      "usePluginData",
-      "usePluginData",
-    ]);
+    const folder = new URL("../worker-agents/ui/", import.meta.url);
+    const files = (await readdir(folder)).filter((name) => name.endsWith(".tsx"));
+    expect(files.sort()).toEqual(["cells.tsx", "index.tsx"]);
+    for (const name of files) {
+      const source = await readFile(new URL(name, folder), "utf8");
+      expect(source).not.toMatch(
+        /usePluginAction|ActionBar|fetch\(|XMLHttpRequest|method:|<form|useHostNavigation/,
+      );
+      const hooks = new Set([...source.matchAll(/use[A-Z]\w+/g)].map((match) => match[0]));
+      expect([...hooks].filter((hook) => hook !== "usePluginData")).toEqual([]);
+    }
   });
 });

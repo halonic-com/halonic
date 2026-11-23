@@ -1,11 +1,13 @@
 import type { CauseCode } from "../board-check/failed-runs.ts";
+import { type AgentChecks, checkCounts, type RuleChecksRecord } from "./rule-checks.ts";
 import type { FailedRunCount, LastRun, TaskInProgress, WorkerTables } from "./tables.ts";
 
 /**
  * The Worker agents page's data (addendum 2 on HAL-15997, section 1): the
  * board agents in the top strip, and one row per worker agent with its task in
  * progress, its newest run and its failed runs of the last 24 hours by cause
- * code. Rule checks come with HAL-16250, open PRs and branch names with HAL-16251.
+ * code, and its 5 rule checks from the board check's last pass (HAL-16250).
+ * Open PRs come with HAL-16251.
  */
 
 /** The board agents shown in the top strip instead of the table, by url key. */
@@ -46,6 +48,8 @@ export interface WorkerRow {
   readonly lastRun: RunView | undefined;
   /** Failed runs by cause code, most first; empty when none failed. */
   readonly failed: readonly { readonly cause: CauseCode; readonly runs: number }[];
+  /** Its rule checks, or undefined before the board check's first pass. */
+  readonly checks: AgentChecks | undefined;
 }
 
 /** Everything the page shows. */
@@ -53,6 +57,9 @@ export interface WorkerAgentsPage {
   readonly at: string;
   /** Failed runs count from here: 24 hours before `at`. */
   readonly failedSince: string;
+  /** When the board check last worked out the rule checks, and the GitHub snapshot it used; null before its first pass. */
+  readonly checkedAt: string | null;
+  readonly prDataAt: string | null;
   readonly boardAgents: readonly BoardAgentTile[];
   readonly agents: readonly WorkerRow[];
   readonly leftOut: readonly string[];
@@ -63,6 +70,7 @@ export async function workerAgentsPage(
   companyId: string,
   agents: readonly AgentEntry[],
   tables: WorkerTables,
+  checks: RuleChecksRecord | undefined,
   now: Date,
 ): Promise<WorkerAgentsPage> {
   const failedSince = new Date(now.getTime() - dayMs).toISOString();
@@ -83,13 +91,18 @@ export async function workerAgentsPage(
   return {
     at: now.toISOString(),
     failedSince,
+    checkedAt: checks?.at ?? null,
+    prDataAt: checks?.prDataAt ?? null,
     boardAgents: byKey(boardAgentKeys).map((agent) => ({
       name: agent.name,
       paused: agent.status === "paused",
       lastRun: lastRuns.get(agent.id),
     })),
     agents: workers
-      .map((agent) => workerRow(agent, tasks, lastRuns.get(agent.id), failed))
+      .map((agent) => ({
+        ...workerRow(agent, tasks, lastRuns.get(agent.id), failed),
+        checks: checks?.agents[agent.id],
+      }))
       .sort(worstFirst),
     leftOut: byKey(leftOutKeys).map((agent) => agent.name),
   };
@@ -104,7 +117,7 @@ function workerRow(
   tasks: readonly TaskInProgress[],
   lastRun: RunView | undefined,
   failed: readonly FailedRunCount[],
-): WorkerRow {
+): Omit<WorkerRow, "checks"> {
   // The tables come newest first, so the first task is the one that changed last.
   const own = tasks.filter((task) => task.agentId === agent.id);
   const first = own[0];
@@ -124,7 +137,13 @@ function failedTotal(row: WorkerRow): number {
   return row.failed.reduce((sum, count) => sum + count.runs, 0);
 }
 
-/** Most failed runs first, then by name; the rule checks sort worst first once they come. */
+/** Worst first: most Problems, then most Checks, then most failed runs, then by name. */
 function worstFirst(a: WorkerRow, b: WorkerRow): number {
-  return failedTotal(b) - failedTotal(a) || a.name.localeCompare(b.name);
+  const [countsA, countsB] = [checkCounts(a.checks), checkCounts(b.checks)];
+  return (
+    countsB.problems - countsA.problems ||
+    countsB.toCheck - countsA.toCheck ||
+    failedTotal(b) - failedTotal(a) ||
+    a.name.localeCompare(b.name)
+  );
 }
