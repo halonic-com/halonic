@@ -58,6 +58,8 @@ export class WorkspaceAgents implements AgentsHost {
   readonly #names = new Map<string, string>();
   /** The last edit asked for, which the next one waits for. */
   #lastUpdate: Promise<void> = Promise.resolve();
+  /** Told when a Where it runs choice is saved: a choice changes no file, so `onChange` misses it. */
+  readonly #choiceListeners = new Set<() => void>();
 
   /** Present only when the app can open Create version; see {@link AgentsHost.makeLive}. */
   makeLive?: NonNullable<AgentsHost["makeLive"]>;
@@ -261,13 +263,23 @@ export class WorkspaceAgents implements AgentsHost {
   /** Saves On this computer for the file the person was warned about. */
   async chooseThisComputer(ref: AgentRef, shownFingerprint: string): Promise<ThisComputerChoice> {
     await this.#find(ref);
-    return choicesHere(this.#parts.placement).chooseThisComputer(ref, shownFingerprint);
+    const chosen = await choicesHere(this.#parts.placement).chooseThisComputer(
+      ref,
+      shownFingerprint,
+    );
+    if (chosen.saved) this.#choiceSaved();
+    return chosen;
   }
 
   /** Puts the agent back in its sandbox on this computer. */
   async chooseSandbox(ref: AgentRef): Promise<void> {
     await this.#find(ref);
     await choicesHere(this.#parts.placement).chooseSandbox(ref);
+    this.#choiceSaved();
+  }
+
+  #choiceSaved(): void {
+    for (const listener of [...this.#choiceListeners]) listener();
   }
 
   /**
@@ -382,8 +394,14 @@ export class WorkspaceAgents implements AgentsHost {
     return agentRoutinesOf(await this.#load(), ref);
   }
 
+  /** Calls `listener` on each change of the workspace's files and each saved Where it runs choice. */
   subscribe(listener: () => void): () => void {
-    return this.#parts.onChange(listener);
+    this.#choiceListeners.add(listener);
+    const stop = this.#parts.onChange(listener);
+    return () => {
+      this.#choiceListeners.delete(listener);
+      stop();
+    };
   }
 
   /**

@@ -155,6 +155,12 @@ export const configurationWords = {
       `${agent}'s file changed since you chose On this computer, so it runs in the sandbox until you confirm again.`,
     reviewAndConfirm: "Review and confirm",
     /**
+     * Microcopy 23.4, "File changed, run controls": the Callout under a run page's header, below
+     * any can't-run Callout, while an agent the page runs is on hold. Run stays enabled.
+     */
+    runControls: (agent: string) =>
+      `${agent} runs in the sandbox until you confirm again: its file changed since you chose On this computer.`,
+    /**
      * Microcopy 23.4, the warning's first line while the choice is on hold, and its link to the
      * agent's file (checklist 3.8): with the day and time it changed, when the host can tell. A
      * choice keeps only the file's fingerprint, so the line says Studio can't show what changed;

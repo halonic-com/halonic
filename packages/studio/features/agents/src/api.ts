@@ -261,7 +261,13 @@ export interface AgentRoutine {
   readonly name: string;
 }
 
+export {
+  ConfirmAgainCallouts,
+  type ConfirmAgainCalloutsProps,
+  type RunAgent,
+} from "./confirm-again/confirm-again-callouts.tsx";
 export { selectStepsStep, stepsToSelect } from "./select-steps.ts";
+export { WHERE_IT_RUNS_STEP } from "./where-it-runs-step.ts";
 
 /**
  * The workspace's agents, as the app reads and changes them. The app saves to the workspace's files
@@ -404,7 +410,9 @@ export interface AgentsHost {
    */
   routinesOf?(ref: AgentRef): Promise<readonly AgentRoutine[]>;
   /**
-   * Calls `listener` each time the list may have changed (a file saved); returns the way to stop.
+   * Calls `listener` each time the list may have changed (a file saved), and each time a Where it
+   * runs choice is saved, so a page that shows whether an agent is on hold follows a confirm made
+   * on the agent's page; returns the way to stop.
    */
   subscribe(listener: () => void): () => void;
   /**

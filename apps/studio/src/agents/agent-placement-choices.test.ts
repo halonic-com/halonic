@@ -221,3 +221,27 @@ verifies("studio.agent-placement-choices", () => {
     });
   });
 });
+
+verifies("studio.agent-choice-saved-signal", () => {
+  it("tells its subscribers when a choice is saved, and not when nothing was", async () => {
+    const files = workspace();
+    const host = computer(files);
+    let told = 0;
+    const stop = host.subscribe(() => {
+      told += 1;
+    });
+    await confirm(host);
+    expect(told).toBe(1);
+    await host.chooseSandbox(writer);
+    expect(told).toBe(2);
+    const shown = await host.placement(writer);
+    files.saved[writerPath] = `${files.saved[writerPath]}# edited\n`;
+    expect(await host.chooseThisComputer(writer, shown?.fingerprint ?? "")).toMatchObject({
+      saved: false,
+    });
+    expect(told).toBe(2);
+    stop();
+    await confirm(host);
+    expect(told).toBe(2);
+  });
+});

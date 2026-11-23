@@ -8,7 +8,8 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AgentsHost } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
-import { AgentScreen, type AgentScreenProps } from "../page/agent-page.tsx";
+import { AgentScreen } from "../page/agent-page.tsx";
+import type { AgentScreenProps } from "../page/agent-screen-props.ts";
 import { buttonNamed, openDialogsInJsdom, show, unmount, viewPanel } from "../test-support.tsx";
 
 beforeEach(openDialogsInJsdom);

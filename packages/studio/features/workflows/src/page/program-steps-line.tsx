@@ -10,6 +10,17 @@ export function programStepsOf(workflow: WorkflowView | undefined): readonly Pro
   return (workflow?.steps ?? []).filter((step): step is ProgramStep => step.program !== undefined);
 }
 
+/** The agents those steps run, each once, in the file's order, for the confirm-again Callouts. */
+export function programAgentsOf(
+  steps: readonly ProgramStep[],
+): readonly { readonly id: string; readonly name: string }[] {
+  const seen = new Map<string, string>();
+  for (const { program } of steps) {
+    if (!seen.has(program.agent)) seen.set(program.agent, program.agentName);
+  }
+  return [...seen].map(([id, name]) => ({ id, name }));
+}
+
 /** A step as the Runs row names it: its own words for itself, else its id with a capital. */
 function stepName(step: WorkflowStep): string {
   return step.title ?? `${step.id.charAt(0).toUpperCase()}${step.id.slice(1)}`;

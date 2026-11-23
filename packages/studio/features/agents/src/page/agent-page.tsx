@@ -1,26 +1,14 @@
-import { type SandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
+import { sandboxStartCheckKey } from "@halonicjs/app";
 import { PlaceIcon, usePresentation } from "@halonicjs/studio-kit";
 import {
-  type CloseStack,
   createCloseStack,
   ItemGone,
   ItemPage,
   type ItemPageHandle,
-  type ItemPageSectionListing,
   type ItemViewProps,
-  type SaveState,
-  type SectionsProps,
   StackedCards,
 } from "@halonicjs/studio-shell";
-import {
-  type ComponentType,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AgentChange,
   type AgentRef,
@@ -42,8 +30,10 @@ import { PlacementProvider } from "../configuration/use-placement.ts";
 import { FlowView } from "../map/flow-view.tsx";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
+import { WHERE_IT_RUNS_STEP } from "../where-it-runs-step.ts";
 import { AgentPhoneFrame } from "./agent-phone-frame.tsx";
 import { AgentRead } from "./agent-read.tsx";
+import type { AgentScreenProps } from "./agent-screen-props.ts";
 import { FullAccessChip } from "./full-access-chip.tsx";
 import { nameProblem } from "./name-check.ts";
 import { NotLiveLine } from "./not-live-line.tsx";
@@ -77,7 +67,8 @@ export const MODEL_STEP = "model";
 
 /**
  * The agent's page in its tab: `item` names the agent, the host reads its row. Opened with the
- * step `model`, it opens at the model picker (`agents.configuration.open-at-model`).
+ * step `model`, it opens at the model picker (`agents.configuration.open-at-model`); with
+ * {@link WHERE_IT_RUNS_STEP}, at Configuration › Harness (`agents.confirm-again.run-controls`).
  */
 export function AgentPage({ item, context, step, asked, Sections, sections }: ItemViewProps) {
   const { openPlace, openItem, openItemInNewTab, runCommand, closeStack, announcer } = context;
@@ -99,6 +90,7 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
         sections={sections}
         Sections={Sections}
         {...(step === MODEL_STEP && { modelRequest: `${item.id}/${asked ?? 0}` })}
+        {...(step === WHERE_IT_RUNS_STEP && { harnessRequest: `${item.id}/${asked ?? 0}` })}
         {...(openPlace && {
           goToAgents: () => openPlace("agents"),
           openRuns: () => openPlace("runs"),
@@ -129,46 +121,6 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
   );
 }
 
-export interface AgentScreenProps extends AgentRef {
-  readonly host: AgentsHost;
-  /** The window's save state, for the toolbar's "1 field not saved"; absent without a window. */
-  readonly saving?: Pick<SaveState, "setFieldsNotSaved"> | undefined;
-  /** Leaves an agent that is gone for the Agents list; absent where the shell can't open a place. */
-  readonly goToAgents?: (() => void) | undefined;
-  /** Opens a workspace file in a tab, for **Open as file**; absent where the app can't, which leaves it out of the menu. */
-  readonly openFile?: ((path: string) => void) | undefined;
-  /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
-  readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
-  /** Opens the Runs page, for **Open the Runs page ›**; absent where the app can't open a place. */
-  readonly openRuns?: (() => void) | undefined;
-  /** Opens where keys are kept, for the Try it chat's **Go to the key field ›** and **Open Models**. */
-  readonly openKeyField?: (() => void) | undefined;
-  /** The window's close stack, so Esc closes the top card; a page of its own without one. */
-  readonly closeStack?: CloseStack | undefined;
-  /** Reads a sentence to screen readers, such as "*Writer* was removed." when its card drops. */
-  readonly announce?: ((text: string, politeness?: "polite" | "assertive") => void) | undefined;
-  /** Opens another agent's page, from a card's team chart; absent where the app can't. */
-  readonly openAgent?: ((agent: AgentRef) => void) | undefined;
-  /**
-   * Opens a workflow's page with the steps that run the agent outlined, from its card on the agent
-   * map; absent where the app can't.
-   */
-  readonly openWorkflow?: ((workflow: AgentUser) => void) | undefined;
-  /** Opens a routine's page, from its card on the agent map; absent where the app can't. */
-  readonly openRoutine?: ((routine: AgentRoutine) => void) | undefined;
-  /** The sections other features add to the page, such as Triggers; Configuration lists them as pages. */
-  readonly sections?: readonly ItemPageSectionListing[] | undefined;
-  /** The shell's component that draws them; absent where there's no window. */
-  readonly Sections?: ComponentType<SectionsProps> | undefined;
-  /**
-   * Set when the page was asked to open at the model, and changed each time it is asked again:
-   * Configuration then shows its Model page with the picker focused.
-   */
-  readonly modelRequest?: string | undefined;
-  /** Checks that the sandbox can start a program, for the Try it chat of an agent that starts one. */
-  readonly sandboxStartCheck?: SandboxStartCheck | undefined;
-}
-
 /**
  * The agent page (`agents.page.frame`): the shell's item page, with "AGENT" and the agent's name in
  * its header, the Try it chat on the left (`agents.chat.first-load`, flow-agents 3.1) and the
@@ -194,6 +146,7 @@ export function AgentScreen({
   sections,
   Sections,
   modelRequest,
+  harnessRequest,
   sandboxStartCheck,
 }: AgentScreenProps) {
   // After a Try again reads, or the not-live line goes, the agent's name takes the focus the button had.
@@ -254,6 +207,16 @@ export function AgentScreen({
       itemPage.current?.show("configuration", () => focusedIn(viewBox.current));
     }
   }, [modelRequest]);
+  // Configuration › Harness, where Where it runs is: the Try it chat's link and each request open it.
+  const openHarness = () => {
+    openView("configuration", () => pickedPageTab(viewBox.current));
+    setConfigurationPage("harness");
+  };
+  const openHarnessNow = useRef(openHarness);
+  openHarnessNow.current = openHarness;
+  useEffect(() => {
+    if (harnessRequest !== undefined) openHarnessNow.current();
+  }, [harnessRequest]);
   const ownCloseStack = useMemo(() => createCloseStack(), []);
   const cardsCloseStack = closeStack ?? ownCloseStack;
   const [saveFailed, setSaveFailed] = useState<string>();
@@ -458,10 +421,7 @@ export function AgentScreen({
             }
             ways={{
               goToKeyField: () => openKeyField?.(),
-              openHarness: () => {
-                openView("configuration", () => pickedPageTab(viewBox.current));
-                setConfigurationPage("harness");
-              },
+              openHarness,
             }}
             sandboxStartCheck={sandboxStartCheck}
             announce={(text, politeness) => announce?.(text, politeness)}

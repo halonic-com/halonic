@@ -1,4 +1,5 @@
 import type { SandboxStartCheck } from "@halonicjs/app";
+import type { AgentsHost } from "@halonicjs/studio-feature-agents/api";
 import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import type { FilesWithErrorsSource, SaveState } from "@halonicjs/studio-shell";
@@ -66,6 +67,10 @@ export interface WorkflowScreenProps {
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
   /** Opens an agent's page, for the can't-run Callout's "*Writer*'s settings ›"; without it there is no link. */
   readonly openAgent?: (agentId: string) => void;
+  /** The workspace's agents, read for the confirm-again Callout of an agent on hold; none without it. */
+  readonly agents?: AgentsHost | undefined;
+  /** Opens an agent's page at Where it runs, for that Callout's **Review and confirm**; without it there is no button. */
+  readonly reviewAndConfirm?: (agentId: string) => void;
   /**
    * Opens a file at a line (1-based), for the problems band's **Open writer.agent.yaml**; without
    * it the band names the file with no link.

@@ -1,5 +1,9 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
-import { stepsToSelect } from "@halonicjs/studio-feature-agents/api";
+import {
+  AgentsHostService,
+  stepsToSelect,
+  WHERE_IT_RUNS_STEP,
+} from "@halonicjs/studio-feature-agents/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   openModelsOf,
@@ -35,6 +39,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       {...(openModels && { openModels })}
       saving={context.saving}
       sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
+      agents={context.services.find(AgentsHostService)}
       guide={context.services.find(WorkflowGuideService)}
       {...(context.runCommand && {
         openBudget: () => void context.runCommand?.(openBudgetCommand),
@@ -45,6 +50,8 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
         openRun: (runId: string, step?: string) =>
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
         openAgent: (agentId: string) => openItem({ kind: "agent", hub: item.hub, id: agentId }),
+        reviewAndConfirm: (agentId: string) =>
+          openItem({ kind: "agent", hub: item.hub, id: agentId }, { step: WHERE_IT_RUNS_STEP }),
         openFileAt: openFileAtLine(openItem),
       })}
       {...(openPlace && {
