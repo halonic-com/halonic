@@ -1,7 +1,8 @@
 /**
  * The PR watcher's view of Paperclip. The plugin's host adapter
  * (`src/plugin/host.ts`) implements it; it reads tasks, comments and agents,
- * and writes only comments, wake-ups and a task's `done` status.
+ * and writes only comments, wake-ups, a task's `done` status and a later
+ * time for a monitor the task already has.
  */
 
 /** An open task, as the watcher reads it. */
@@ -38,6 +39,9 @@ export interface AgentRow {
  */
 export type WriteOutcome = "written" | "closed";
 
+/** What moving a monitor did: `unchanged` when it was already due at that time or later. */
+export type PostponeOutcome = "postponed" | "unchanged";
+
 /** The watcher's view of Paperclip. */
 export interface Paperclip {
   openTasks(): Promise<TaskRow[]>;
@@ -46,4 +50,9 @@ export interface Paperclip {
   /** Comments and wakes the task's assignee. `key` makes a repeated wake-up a no-op. */
   wake(taskId: string, body: string, key: string): Promise<WriteOutcome>;
   markDone(taskId: string, body: string): Promise<WriteOutcome>;
+  /**
+   * Moves the task's existing monitor to `until`. Paperclip refuses (throws)
+   * anything but a later time within 24 hours on an in-progress or in-review task.
+   */
+  postponeMonitor(taskId: string, until: string): Promise<PostponeOutcome>;
 }

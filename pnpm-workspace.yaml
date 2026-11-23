@@ -110,3 +110,4 @@ overrides:
 patchedDependencies:
   "@anthropic-ai/sandbox-runtime@0.0.82": patches/@anthropic-ai__sandbox-runtime@0.0.82.patch
   "@changesets/git@4.0.1": patches/@changesets__git@4.0.1.patch
+  "@paperclipai/plugin-sdk@2026.1117.0": patches/@paperclipai__plugin-sdk@2026.1117.0.patch

@@ -20,6 +20,7 @@ function run(github: ReturnType<typeof fakeGitHub>, paperclip: ReturnType<typeof
     discover: paperclip.discover,
     dryRun: false,
     log: (line) => lines.push(line),
+    now: new Date("2026-11-21T22:00:00Z"),
   });
   return { summary, lines };
 }
@@ -28,7 +29,14 @@ verifies("paperclip.pr-watcher-done", () => {
   test("marks the task done when ci-ok passed on the merge commit", async () => {
     const paperclip = fakePaperclip([task(4485, agents.priya)]);
     const { summary } = run(fakeGitHub(recording("merged-green")), paperclip);
-    expect(await summary).toEqual({ checked: 1, done: 1, woken: 0, failed: [] });
+    expect(await summary).toEqual({
+      checked: 1,
+      done: 1,
+      woken: 0,
+      postponed: 0,
+      postponeRefused: 0,
+      failed: [],
+    });
     expect(paperclip.done).toEqual(["task-4485"]);
     expect(paperclip.comments["task-4485"]?.[0]?.body).toContain(
       "[#4485](https://github.com/halonic-com/halonic/pull/4485) merged",
@@ -39,14 +47,28 @@ verifies("paperclip.pr-watcher-done", () => {
     // #468 merged on 9 Nov; its merge commit has no ci-ok, a later main run is green.
     const paperclip = fakePaperclip([task(468, agents.priya)]);
     const { summary } = run(fakeGitHub(recording("merged-main-green")), paperclip);
-    expect(await summary).toEqual({ checked: 1, done: 1, woken: 0, failed: [] });
+    expect(await summary).toEqual({
+      checked: 1,
+      done: 1,
+      woken: 0,
+      postponed: 0,
+      postponeRefused: 0,
+      failed: [],
+    });
   });
 
   test("waits while no green run includes the merge yet", async () => {
     // #4574's ci-ok on main is still queued, and the newest green run is older.
     const paperclip = fakePaperclip([task(4574, agents.mateo)]);
     const { summary, lines } = run(fakeGitHub(recording("merged-waiting")), paperclip);
-    expect(await summary).toEqual({ checked: 1, done: 0, woken: 0, failed: [] });
+    expect(await summary).toEqual({
+      checked: 1,
+      done: 0,
+      woken: 0,
+      postponed: 0,
+      postponeRefused: 0,
+      failed: [],
+    });
     expect(lines[0]).toContain("waiting for a green ci-ok");
     expect(paperclip.comments).toEqual({});
   });
@@ -60,7 +82,14 @@ verifies("paperclip.pr-watcher-done", () => {
     const paperclip = fakePaperclip([task(4485, agents.priya)], { "task-4485": [hold] });
     const github = fakeGitHub(recording("merged-green"));
     const { summary, lines } = run(github, paperclip);
-    expect(await summary).toEqual({ checked: 1, done: 0, woken: 0, failed: [] });
+    expect(await summary).toEqual({
+      checked: 1,
+      done: 0,
+      woken: 0,
+      postponed: 0,
+      postponeRefused: 0,
+      failed: [],
+    });
     expect(lines[0]).toContain("more pull requests are coming");
     // A newer comment from the author without the line lifts the hold.
     paperclip.comments["task-4485"]?.push(
@@ -85,6 +114,8 @@ verifies("paperclip.pr-watcher-done", () => {
       checked: 1,
       done: 0,
       woken: 0,
+      postponed: 0,
+      postponeRefused: 0,
       failed: [],
     });
   });
@@ -111,7 +142,14 @@ verifies("paperclip.pr-watcher-wake", () => {
       new Set(["task-4614", "task-4485"]),
     );
     const { summary, lines } = run(github, paperclip);
-    expect(await summary).toEqual({ checked: 2, done: 0, woken: 0, failed: [] });
+    expect(await summary).toEqual({
+      checked: 2,
+      done: 0,
+      woken: 0,
+      postponed: 0,
+      postponeRefused: 0,
+      failed: [],
+    });
     expect(lines.filter((line) => line.endsWith("closed during this pass, so left alone"))).toEqual(
       [
         "HAL-4614: closed during this pass, so left alone",
@@ -225,7 +263,14 @@ verifies("paperclip.pr-watcher-wake", () => {
   test("does nothing for a green pull request without findings", async () => {
     const paperclip = fakePaperclip([task(4605, agents.mateo)]);
     const { summary, lines } = run(fakeGitHub(recording("green")), paperclip);
-    expect(await summary).toEqual({ checked: 1, done: 0, woken: 0, failed: [] });
+    expect(await summary).toEqual({
+      checked: 1,
+      done: 0,
+      woken: 0,
+      postponed: 0,
+      postponeRefused: 0,
+      failed: [],
+    });
     expect(lines).toEqual(["HAL-4605: nothing to do (nothing new)"]);
   });
 });

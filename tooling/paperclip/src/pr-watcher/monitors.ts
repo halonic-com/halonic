@@ -43,6 +43,32 @@ export function countMonitors(
   };
 }
 
+const hourMs = 60 * 60_000;
+
+/** How far ahead the watcher keeps the fallback monitor of a task it watches. */
+export const fallbackAheadMs = 6 * hourMs;
+
+/** A monitor due sooner than this is the author's own short check (CI after a push): left alone. */
+export const shortCheckMs = hourMs;
+
+/** The watcher moves a monitor again only once it is due within this, so it writes about once an hour, not every pass. */
+export const renewWithinMs = 5 * hourMs;
+
+/**
+ * The new check time for the fallback monitor of a task the watcher watches,
+ * or undefined when it leaves the monitor alone: there is none, it is the
+ * author's short check, or it is still far enough ahead (HAL-16401 part 3).
+ * While the watcher runs, the monitor stays 5 to 6 hours out and never fires;
+ * if the watcher stops, it fires within 6 hours.
+ */
+export function postponeUntil(nextCheckAt: string | null, now: Date): string | undefined {
+  const dueInMs = time(nextCheckAt) - now.getTime();
+  if (Number.isNaN(dueInMs) || dueInMs < shortCheckMs || dueInMs >= renewWithinMs) {
+    return undefined;
+  }
+  return new Date(now.getTime() + fallbackAheadMs).toISOString();
+}
+
 /** An ISO time in milliseconds; no time compares false with every number. */
 function time(iso: string | null): number {
   return iso === null ? Number.NaN : Date.parse(iso);

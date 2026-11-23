@@ -89,6 +89,16 @@ verifies("paperclip.agent-tools-metrics", () => {
   });
 });
 
+verifies("paperclip.pr-watcher-monitor-postpone", () => {
+  test("saves the monitors it moved and the moves Paperclip refused", async () => {
+    const { ctx, metrics } = setUp();
+    await runWatcher(ctx, now);
+    const names = metrics.map((metric) => metric.name);
+    expect(names).toContain("monitors.postponed");
+    expect(names).toContain("monitors.postpone_refused");
+  });
+});
+
 describe("monitor counts", () => {
   test("counts a monitor as fired only within the last pass, and as set only when it's due later", () => {
     const tasks = [

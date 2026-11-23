@@ -1,0 +1,54 @@
+diff --git a/dist/types.d.ts b/dist/types.d.ts
+index ea927339da43b67cd38eb29a4ab33ba9db28ad93..cfa8bfe580d3b5186effc3e765130cdd9b986150 100644
+--- a/dist/types.d.ts
++++ b/dist/types.d.ts
+@@ -1031,6 +1031,12 @@ export interface PluginIssueWakeupBatchResult {
+     queued: boolean;
+     runId: string | null;
+ }
++/** Halonic L1b (HAL-16401): what postponing a task's monitor did. */
++export interface PluginIssueMonitorPostponeResult {
++    postponed: boolean;
++    previousNextCheckAt?: string;
++    nextCheckAt: string;
++}
+ export interface PluginIssueRunSummary {
+     id: string;
+     issueId: string | null;
+@@ -1234,6 +1240,15 @@ export interface PluginIssuesClient {
+         contextSource?: string;
+         idempotencyKeyPrefix?: string | null;
+     } & PluginIssueMutationActor): Promise<PluginIssueWakeupBatchResult[]>;
++    /**
++     * Halonic L1b (HAL-16401): move the task's existing monitor later, at most 24 hours
++     * from now. Needs `issues.monitors.postpone` and the local server patch (HAL-16413).
++     */
++    monitors: {
++        postpone(issueId: string, companyId: string, options: {
++            until: string;
++        }): Promise<PluginIssueMonitorPostponeResult>;
++    };
+     listComments(issueId: string, companyId: string): Promise<IssueComment[]>;
+     /**
+      * Post a comment on an issue.
+diff --git a/dist/worker-rpc-host.js b/dist/worker-rpc-host.js
+index 0dd2bd9823a7fa0dfaf8f6b742b508d8da63961e..329d0ef6078a47612ffa7e68d37aa5ba25e41f19 100644
+--- a/dist/worker-rpc-host.js
++++ b/dist/worker-rpc-host.js
+@@ -653,6 +653,16 @@ export function startWorkerRpcHost(options) {
+                         actorRunId: options?.actorRunId,
+                     });
+                 },
++                // Halonic L1b (HAL-16401): the host method from the local server patch (HAL-16413).
++                monitors: {
++                    async postpone(issueId, companyId, options) {
++                        return callHost("issues.monitors.postpone", {
++                            issueId,
++                            companyId,
++                            until: options.until,
++                        });
++                    },
++                },
+                 async listComments(issueId, companyId) {
+                     return callHost("issues.listComments", { issueId, companyId });
+                 },

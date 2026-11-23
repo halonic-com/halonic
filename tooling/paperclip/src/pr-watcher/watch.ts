@@ -10,6 +10,7 @@ import {
 } from "./decide.ts";
 import type { FoundPulls, PullRef } from "./discover.ts";
 import { type PullFactsReader, pullKey } from "./facts.ts";
+import { postponeUntil } from "./monitors.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
 
 /**
@@ -23,6 +24,8 @@ export interface TickOptions {
   /** Print what it would do, write nothing. */
   readonly dryRun: boolean;
   readonly log: (line: string) => void;
+  /** When the pass started: monitors are moved relative to it. */
+  readonly now: Date;
 }
 
 /** How a tick went: counts, and the tasks it couldn't check. */
@@ -30,6 +33,10 @@ export interface TickSummary {
   readonly checked: number;
   readonly done: number;
   readonly woken: number;
+  /** Fallback monitors moved later, so they didn't fire a model run. */
+  readonly postponed: number;
+  /** Monitors Paperclip refused to move; the log says why. */
+  readonly postponeRefused: number;
   readonly failed: readonly string[];
 }
 
@@ -234,6 +241,43 @@ async function act(options: TickOptions, task: TaskRow, decision: Decision): Pro
 }
 
 /**
+ * Moves the fallback monitor of a task the watcher watches 6 hours out, so it
+ * doesn't fire a model run while the watcher keeps checking (HAL-16401 part 3).
+ * Only while one of its pull requests is open: once they are all closed, the
+ * task is done or waits on its author. A refusal is logged and counted; it
+ * doesn't fail the task, since its pull requests were still checked.
+ */
+async function keepMonitorBack(
+  options: TickOptions,
+  task: TaskRow,
+  refs: TickRefs,
+  decision: Decision,
+): Promise<"postponed" | "refused" | undefined> {
+  const until = postponeUntil(task.monitorNextCheckAt, options.now);
+  if (decision.kind === "done" || until === undefined) {
+    return undefined;
+  }
+  const pulls = watchedPulls(task, refs.found, refs.owners).map((ref) => factsOf(ref, refs.facts));
+  if (!pulls.some((pull) => pull.state === "open")) {
+    return undefined;
+  }
+  if (options.dryRun) {
+    options.log(`${task.identifier}: would move its monitor to ${until} (dry run)`);
+    return "postponed";
+  }
+  try {
+    if ((await options.paperclip.postponeMonitor(task.id, until)) === "unchanged") {
+      return undefined;
+    }
+    options.log(`${task.identifier}: moved its monitor to ${until}`);
+    return "postponed";
+  } catch (error) {
+    options.log(`${task.identifier}: couldn't move its monitor: ${(error as Error).message}`);
+    return "refused";
+  }
+}
+
+/**
  * One pass over every open task whose identifier a pull request's branch
  * names. A task that fails to read is reported and skipped, so one broken
  * pull request doesn't stop the others.
@@ -248,7 +292,7 @@ export async function tick(options: TickOptions): Promise<TickSummary> {
   // One read for every task; if it fails, each of those tasks reports it below.
   const facts = await options.facts(wanted).catch((error: unknown) => error as Error);
   const refs: TickRefs = { owners, found, facts };
-  const counts = { checked: 0, done: 0, woken: 0 };
+  const counts = { checked: 0, done: 0, woken: 0, postponed: 0, postponeRefused: 0 };
   const failed: string[] = [];
   for (const task of tasks) {
     try {
@@ -257,6 +301,9 @@ export async function tick(options: TickOptions): Promise<TickSummary> {
         continue;
       }
       counts.checked += 1;
+      const monitor = await keepMonitorBack(options, task, refs, decision);
+      counts.postponed += monitor === "postponed" ? 1 : 0;
+      counts.postponeRefused += monitor === "refused" ? 1 : 0;
       if (!(await act(options, task, decision))) {
         continue;
       }
