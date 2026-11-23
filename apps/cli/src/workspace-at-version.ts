@@ -3,35 +3,20 @@
 // starts from the live version's commit, so trust hashes the integrations
 // at that commit too, never the saved files beside them.
 
-import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
-import type { WorkspaceAtVersion } from "@halonicjs/adapter-workspace-engine-node";
-import { readLocalIntegrations } from "@halonicjs/app";
 import {
-  type LoadedWorkspace,
-  type LocalIntegrationInput,
-  loadWorkspace,
-  VersionFolder,
-  type VersionReader,
-} from "@halonicjs/workspace";
+  savedIntegrations,
+  type WorkspaceAtVersion,
+} from "@halonicjs/adapter-workspace-engine-node";
+import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
-import { webCryptoDigest } from "./workspace-runs.ts";
 
-// The type lives in the workspace engine, which reads trust for it (HAL-17049).
-export type { WorkspaceAtVersion } from "@halonicjs/adapter-workspace-engine-node";
-
-/**
- * The local integrations at `commit`, read through the history only, so
- * an integration saved but not committed is as the commit has it.
- *
- * @param location - where the workspace lives, as its saved store says
- */
-export async function integrationsAtCommit(
-  vcs: VersionReader,
-  commit: string,
-  location: string,
-): Promise<LocalIntegrationInput[]> {
-  return await readLocalIntegrations(new VersionFolder(vcs, commit, location), webCryptoDigest);
-}
+// The type lives in the workspace engine, which reads trust for it (HAL-17049),
+// and so do the integrations' reads, for the watch's versions (HAL-17054).
+export {
+  integrationsAtCommit,
+  savedIntegrations,
+  type WorkspaceAtVersion,
+} from "@halonicjs/adapter-workspace-engine-node";
 
 /**
  * The saved files as a version: for history off, and for the commands that
@@ -46,9 +31,4 @@ export async function savedVersionOf(
     workspace: loaded ?? (await loadWorkspace(dir.store)),
     integrations: await savedIntegrations(dir),
   };
-}
-
-/** The local integrations as saved in the workspace folder, read without following links. */
-export async function savedIntegrations(dir: OpenWorkspaceDir): Promise<LocalIntegrationInput[]> {
-  return await workspaceIntegrations(dir.root, dir.shown);
 }

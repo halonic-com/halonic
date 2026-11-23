@@ -1,12 +1,19 @@
 // The engine of one workspace on this computer, shared by the CLI and the
 // agent host's engine role (HAL-14217): its lock, run store, scheduler,
-// program copies and run connectors, and its read-only trust: nothing
-// exported here grants trust or writes a trust record (HAL-17049). The
-// harness host comes in from the caller, because it lives in the host
-// layer, which an adapter can't use.
+// program copies and run connectors, the versions a watch's runs read
+// (HAL-17054), and its read-only trust: nothing exported here grants trust
+// or writes a trust record (HAL-17049). The harness host comes in from the
+// caller, because it lives in the host layer, which an adapter can't use.
 
 export { EngineLockHeldError } from "./engine-lock-held.ts";
 export { type EnginePlace, engineStateFolders } from "./engine-state-folders.ts";
+export {
+  agentFileIn,
+  type LoadedVersion,
+  loadVersion,
+  skillTextIn,
+  versionWithTexts,
+} from "./loaded-version.ts";
 export {
   type EngineErrorSource,
   type EngineHarnessHost,
@@ -17,6 +24,21 @@ export {
   openLocalEngine,
 } from "./local-engine.ts";
 export type { LocalRunConnectorsInput, TrustedVersion } from "./local-run-connectors.ts";
+export {
+  approvedIntegrations,
+  type IntegrationsFolder,
+  integrationsAtCommit,
+  savedIntegrations,
+} from "./version-integrations.ts";
+export { type VersionRefusal, VersionRefusedError } from "./version-refused.ts";
+export {
+  type OpenedHistory,
+  type OpenWorkspaceHistory,
+  type VersionChecks,
+  type WatchedFolder,
+  type WatchedHistory,
+  WatchedVersions,
+} from "./watched-versions.ts";
 export { webCryptoDigest } from "./web-crypto-digest.ts";
 export { realWorkingFolders } from "./working-folders.ts";
 export {
