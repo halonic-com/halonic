@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16338
 
-When the trust content is written for a URL (`trustUrl`) that holds a control character (C0, DEL or C1) anywhere, or whitespace at its start or end, the workspace shall refuse it with "the URL has a hidden character, such as a line break, or a space at its start or end", so it can never be trusted: a URL parser drops such characters, so the URL it reaches could have user info or another host than the text that was checked.
+When the trust content is written for a URL (`trustUrl`) that holds a control character (C0, DEL or C1) anywhere, or whitespace at its start or end, the workspace shall refuse it with "the address has a hidden character, such as a line break, or a space at its start or end", so it can never be trusted: a URL parser drops such characters, so the URL it reaches could have user info or another host than the text that was checked.
 
 ## Examples
 

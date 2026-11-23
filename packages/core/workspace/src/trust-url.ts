@@ -33,15 +33,17 @@ export function trustUrl(url: string): TrustUrl {
   if (hasDroppedCharacters(url)) {
     return {
       refused:
-        "the URL has a hidden character, such as a line break, or a space at its start or end",
+        "the address has a hidden character, such as a line break, or a space at its start or end",
     };
   }
   if (/^[^?#]*\\/s.test(url)) {
-    return { refused: "the URL has a backslash before its query" };
+    return { refused: "the address has a backslash (\\) in it" };
   }
   const match = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]*)(.*)$/is.exec(url);
   if (match === null) {
-    return /^https?:/i.test(url) ? { refused: "the URL has no // after its scheme" } : { url };
+    return /^https?:/i.test(url)
+      ? { refused: "the address is missing the // after http: or https:" }
+      : { url };
   }
   const scheme = (match[1] ?? "").toLowerCase();
   const authority = match[2] ?? "";
