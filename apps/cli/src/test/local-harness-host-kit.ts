@@ -25,7 +25,8 @@ import {
 } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
-import { type LocalEngine, openLocalEngine } from "../local-engine-host.ts";
+import { openLocalEngine } from "../cli-local-engine.ts";
+import type { LocalEngine } from "../local-engine-host.ts";
 import type { LocalHarnessInput, LocalHarnessParts } from "../local-harness-host.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
 import { noSavedSending } from "./no-saved-sending.ts";

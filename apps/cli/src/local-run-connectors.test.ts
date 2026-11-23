@@ -88,7 +88,7 @@ function connectorsOn(
 }
 
 verifies("cli.local-engine", () => {
-  it("asks the saved sending choices for the workspace's real path, off without one", async () => {
+  it("asks the saved sending choices for the workspace's real path, and passes their answer on", async () => {
     const asked: ConnectionKey[] = [];
     const { connectorCalls } = connectorsOn({
       sending: {
@@ -107,7 +107,7 @@ verifies("cli.local-engine", () => {
     expect(asked).toEqual([{ location: folder, connector: "mail" }]);
     expect(check).toEqual({
       allowed: false,
-      reason: `sending is off for the connector "mail". Halonic can't switch it on yet.`,
+      reason: `sending is off for the connector "mail"`,
     });
   });
 

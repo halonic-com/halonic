@@ -32,12 +32,8 @@ import { KindedError, systemClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  engineLockFile,
-  type LocalEngine,
-  type LocalEngineInput,
-  openLocalEngine,
-} from "./local-engine-host.ts";
+import { type LocalEngineInput, openLocalEngine } from "./cli-local-engine.ts";
+import { engineLockFile, type LocalEngine } from "./local-engine-host.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns, webCryptoDigest } from "./workspace-runs.ts";
 

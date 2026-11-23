@@ -10,7 +10,8 @@ import { type Harness, noKeyOrigins, type SandboxSession } from "@halonicjs/port
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type LocalEngine, openLocalEngine } from "../src/local-engine-host.ts";
+import { openLocalEngine } from "../src/cli-local-engine.ts";
+import type { LocalEngine } from "../src/local-engine-host.ts";
 import { removeTestFolder } from "../src/test/remove-folder.ts";
 import { trustInstructions } from "../src/test/trust-instructions.ts";
 import { nodeProfileEnvironment } from "../src/workspace-runs.ts";

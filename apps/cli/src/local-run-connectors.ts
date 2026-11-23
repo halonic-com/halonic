@@ -15,7 +15,6 @@ import {
   workspaceSecrets,
 } from "@halonicjs/ports";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
-import { runSendingSettings } from "./run-sending.ts";
 import { programWorkingFolders } from "./working-folders.ts";
 
 /** What the engine's runs start their connectors with, as the command gives it. */
@@ -40,6 +39,8 @@ export interface LocalRunConnectorsInput {
    * The sending choices a person saved for each connector with `halonic
    * google allow-sending` (`openConnectionSettings`): only the read side,
    * so nothing on a call's path can switch sending on. Off without a choice.
+   * A refusal's reason goes to the model as it is, so it already says how a
+   * person switches sending on (`runSendingSettings` in the CLI).
    */
   readonly sending: SendingSettings;
   /** Frees what the factories made on this computer, such as the runners' temp folders; called once the connectors have closed. */
@@ -123,7 +124,7 @@ export function localRunConnectors(
       connectorCalls: {
         location: engine.location,
         // The saved choice, keyed by `location` as `allow-sending` saves it (HAL-15772).
-        sending: runSendingSettings(given.sending, engine.workspace),
+        sending: given.sending,
         reportSettingsError: (connector, error) => {
           const reason = error instanceof Error ? error.message : String(error);
           engine.reportError(
