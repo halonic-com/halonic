@@ -5,7 +5,7 @@ import { Inbox } from "../inbox.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { joinInboxNotices } from "../notices/merge-notices.ts";
 import { settled } from "./fake-sandbox.test-helper.ts";
-import { type HeldAgent, onHoldSetup } from "./on-hold-setup-source.ts";
+import { type HeldAgent, type HeldAgentRef, onHoldSetup } from "./on-hold-setup-source.ts";
 
 const writer: HeldAgent = {
   hubId: "acme",
@@ -23,10 +23,11 @@ const sorter: HeldAgent = {
 /** An Inbox with the on-hold source, over held agents a test sets. */
 function onHoldInbox(initial: readonly HeldAgent[]) {
   let held = initial;
+  let unread: readonly HeldAgentRef[] = [];
   const listeners = new Set<() => void>();
   const { source, notices } = onHoldSetup(
     {
-      list: async () => held,
+      list: async () => ({ held, unread }),
       subscribe: (listener) => {
         listeners.add(listener);
         return () => listeners.delete(listener);
@@ -39,8 +40,10 @@ function onHoldInbox(initial: readonly HeldAgent[]) {
   return {
     inbox,
     notices,
-    set: async (value: readonly HeldAgent[]) => {
+    source,
+    set: async (value: readonly HeldAgent[], unreadNow: readonly HeldAgentRef[] = []) => {
       held = value;
+      unread = unreadNow;
       for (const listener of [...listeners]) listener();
       await settled();
     },
@@ -105,6 +108,32 @@ verifies("inbox.on-hold-row", () => {
     expect(t.inbox.signal().value).toBe(1);
     t.inbox.releaseSetup({ ...writerItem(), fixed: true });
     expect(await t.notices.list()).toEqual([]);
+  });
+
+  it("keeps a listed agent's item as it was when its choice couldn't be read, and leaves no notice", async () => {
+    const t = onHoldInbox([writer, sorter]);
+    await settled();
+    await t.set([sorter], [{ hubId: "acme", id: "writer" }]);
+    expect(t.inbox.state.items).toMatchObject([
+      { key: "setup:sandbox-on-hold:acme/sorter" },
+      { key: "setup:sandbox-on-hold:acme/writer", changedAt: writer.since },
+    ]);
+    expect(t.inbox.state.items[1]).not.toHaveProperty("fixed");
+    expect(t.inbox.signal().value).toBe(2);
+    t.inbox.releaseSetup(writerItem());
+    expect(await t.notices.list()).toEqual([]);
+
+    // Read again and not on hold any more: now it is fixed.
+    await t.set([sorter]);
+    const item = t.inbox.state.items.find((each) => each.key.endsWith("acme/writer"));
+    expect(item).toMatchObject({ fixed: true });
+  });
+
+  it("gives an unlisted agent whose choice couldn't be read no item", async () => {
+    const t = onHoldInbox([]);
+    await settled();
+    await t.set([], [{ hubId: "acme", id: "writer" }]);
+    expect(t.inbox.state.items).toEqual([]);
   });
 
   it("dismisses only its own notice and keeps nothing after a restart", async () => {

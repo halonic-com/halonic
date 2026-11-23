@@ -115,24 +115,32 @@ verifies("studio.held-agents", () => {
       routines: { writer: [writerRoutine], sorter: [writerRoutine] },
     });
     const held = new WorkspaceHeldAgents(agents, runsOf([daily("a", "2026-11-20T09:00:00.000Z")]));
-    expect(await held.list()).toEqual([
-      { hubId: "acme", id: "writer", name: "Writer", since: "2026-11-20T09:00:00.000Z" },
-    ]);
+    expect(await held.list()).toEqual({
+      held: [{ hubId: "acme", id: "writer", name: "Writer", since: "2026-11-20T09:00:00.000Z" }],
+      unread: [],
+    });
   });
 
-  it("counts an agent whose choice can't be read as not on hold, and keeps the others", async () => {
+  it("names an agent whose choice can't be read apart, and keeps the others", async () => {
     const { agents } = host({
       placements: { writer: onHold(), sorter: new Error("can't read the file") },
       routines: { writer: [writerRoutine], sorter: [writerRoutine] },
     });
     const held = new WorkspaceHeldAgents(agents, runsOf([daily("a", "2026-11-20T09:00:00.000Z")]));
-    expect((await held.list()).map((agent) => agent.id)).toEqual(["writer"]);
+    const read = await held.list();
+    expect(read.held.map((agent) => agent.id)).toEqual(["writer"]);
+    expect(read.unread).toEqual([{ hubId: "acme", id: "sorter" }]);
+  });
+
+  it("opens the card's Review and confirm at the agent's Where it runs", () => {
+    const { agents } = host({ placements: {} });
+    expect(new WorkspaceHeldAgents(agents, runsOf([])).reviewStep).toBe("where-it-runs");
   });
 
   it("reads no agent's choice when no routine has run anything", async () => {
     const { agents, placement } = host({ placements: { writer: onHold() } });
     const held = new WorkspaceHeldAgents(agents, runsOf([run("hand", "2026-11-20T09:00:00.000Z")]));
-    expect(await held.list()).toEqual([]);
+    expect(await held.list()).toEqual({ held: [], unread: [] });
     expect(placement).not.toHaveBeenCalled();
   });
 
