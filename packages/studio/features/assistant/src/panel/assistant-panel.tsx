@@ -11,7 +11,7 @@ import {
   PlusIcon,
   SidePanel,
 } from "@halonicjs/studio-kit";
-import type { PanelWindowViewProps } from "@halonicjs/studio-shell";
+import type { PanelWindowViewProps, WorkspaceContext } from "@halonicjs/studio-shell";
 import {
   Fragment,
   type RefObject,
@@ -41,6 +41,7 @@ import { BuildComposer } from "./build-composer.tsx";
 export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps) {
   const chats = buildChatsOf(context.services.get(AssistantHostService));
   const shown = useSyncExternalStore(chats.subscribe, chats.shown);
+  const lookingAt = useShownTitle(context);
   const box = useRef<HTMLTextAreaElement>(null);
   const announce = useCallback<Announce>(
     (text, politeness) => context.announcer.announce(text, politeness),
@@ -83,7 +84,14 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
     >
       {/* The transcript and the box reach the panel's edges; the transcript scrolls by itself. */}
       <div className="-mx-4 -my-3 flex h-[calc(100%+1.5rem)] flex-col">
-        <PanelBody shown={shown} chats={chats} box={box} announce={announce} onNewChat={newChat} />
+        <PanelBody
+          shown={shown}
+          chats={chats}
+          box={box}
+          announce={announce}
+          onNewChat={newChat}
+          lookingAt={lookingAt}
+        />
       </div>
     </SidePanel>
   );
@@ -95,10 +103,12 @@ interface PanelBodyProps {
   readonly box: RefObject<HTMLTextAreaElement | null>;
   readonly announce: Announce;
   readonly onNewChat: () => void;
+  /** The page the window shows, as its tab names it; none in a window without tabs. */
+  readonly lookingAt: string | undefined;
 }
 
 /** The chat, its first load (H7), a chat that can't load, or no chat (H3). */
-function PanelBody({ shown, chats, box, announce, onNewChat }: PanelBodyProps) {
+function PanelBody({ shown, chats, box, announce, onNewChat, lookingAt }: PanelBodyProps) {
   if (shown.kind === "none") {
     return (
       <EmptyState
@@ -123,7 +133,7 @@ function PanelBody({ shown, chats, box, announce, onNewChat }: PanelBodyProps) {
   const view = shown.kind === "chat" ? shown.view : undefined;
   return (
     <>
-      <p className="px-4 text-caption text-fg-muted">{statusLine(view)}</p>
+      <p className="px-4 text-caption text-fg-muted">{statusLine(view, lookingAt)}</p>
       {view === undefined ? (
         <ChatLoading label={words.loading} onRetry={() => void chats.open()} />
       ) : (
@@ -143,10 +153,22 @@ function PanelBody({ shown, chats, box, announce, onNewChat }: PanelBodyProps) {
   );
 }
 
-/** The status line (flow-assistant 2.2): running with the tool, or "Stopped by you". Not live. */
-function statusLine(view: ChatView | undefined): string {
+/**
+ * The status line (flow-assistant 2.2): running with the tool, "Stopped by you", else the page the
+ * window shows ("Looking at: Home"). Not live.
+ */
+function statusLine(view: ChatView | undefined, lookingAt: string | undefined): string {
   if (view?.answering === true) return runningLine(view.tool);
-  return view?.stoppedByYou === true ? words.stopped : "";
+  if (view?.stoppedByYou === true) return words.stopped;
+  return lookingAt === undefined ? "" : words.lookingAt(lookingAt);
+}
+
+const noTitle = { get: () => undefined, subscribe: () => () => {} };
+
+/** The name of the page the window shows, following its active tab (`shell.shown-title`). */
+function useShownTitle(context: WorkspaceContext): string | undefined {
+  const source = context.shownTitle ?? noTitle;
+  return useSyncExternalStore(source.subscribe, source.get);
 }
 
 function Transcript({

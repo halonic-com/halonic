@@ -39,12 +39,13 @@ import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
 import { HistoryButtons } from "../title-bar/history-buttons.tsx";
 import { TitleBarBrand } from "../title-bar/title-bar-brand.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
-import { activeItemOf, shownPageOf } from "./active-item.ts";
+import { shownPageOf } from "./active-item.ts";
 import { DesktopResourceItem } from "./desktop-resource-item.tsx";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
 import { useOpenPageAcrossLayouts } from "./layout-crossing.ts";
 import { placeStackMoves } from "./place-stack-moves.ts";
 import { useShownPlaces } from "./shown-places.ts";
+import { tabReadersOf } from "./shown-title.ts";
 import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
@@ -206,7 +207,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   openItemInNewTab.current = desktop
     ? (location) => openLocation(tabs, announcer, location, true)
     : (location) => phone.open(location);
-  const activeItem = useMemo(() => activeItemOf(tabs), [tabs]);
+  const tabReaders = useMemo(() => tabReadersOf(tabs), [tabs]);
   // The phone's page, read when a feature asks what shows, so the context stays the same.
   const phonePage = useRef(phone.page);
   phonePage.current = phone.page;
@@ -231,7 +232,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   const contextFor = useCallback(
     (featureId: string): WorkspaceContext => ({
       ...shell.services.contextFor(featureId, workspace.services),
-      ...(onDesktop.current ? { activeItem, showSidebarView } : {}),
+      ...(onDesktop.current ? { ...tabReaders, showSidebarView } : {}),
       host,
       shown: shownPage,
       openPlace: (place) => openPlaceHere.current(place),
@@ -256,7 +257,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       backFromPhone,
       settingsSections,
       contributions,
-      activeItem,
+      tabReaders,
       showSidebarView,
       shownPage,
       panelWindow.control,

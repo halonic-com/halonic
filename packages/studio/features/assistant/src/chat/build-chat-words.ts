@@ -35,6 +35,8 @@ export const buildChatWords = {
   checkingWorkspace: "Running · checking the workspace",
   showing: "Running · showing an item",
   using: (tool: string) => `Running · using ${tool}`,
+  /** The status line while it waits: the page the window shows, as its tab names it. */
+  lookingAt: (page: string) => `Looking at: ${page}`,
   /** The status line after Stop, without the line's full stop (flow-assistant 2.2). */
   stopped: "Stopped by you",
   stoppedByYou: "Stopped by you.",
