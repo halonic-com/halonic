@@ -51,13 +51,18 @@ export function runUpdatesFeed(input: RunUpdatesFeedInput): RunUpdates {
     const at = round;
     const summaries = await input.runs.list();
     if (at !== round) return;
-    const before = known;
-    known = new Map(summaries.map((run) => [run.id, run.status]));
-    if (before === undefined) return;
-    for (const run of summaries.filter((each) => before.get(each.id) !== each.status)) {
+    if (known === undefined) {
+      known = new Map(summaries.map((run) => [run.id, run.status]));
+      return;
+    }
+    const seen = known;
+    for (const run of summaries.filter((each) => seen.get(each.id) !== each.status)) {
       const frame = { runId: run.id, status: run.status, seq: await latestSeq(run.id) };
       if (at !== round) return;
       for (const listener of listeners) listener(frame);
+      // Only once its frame went out: a read that fails before it leaves
+      // the change for the next read to send.
+      seen.set(run.id, run.status);
     }
   };
 

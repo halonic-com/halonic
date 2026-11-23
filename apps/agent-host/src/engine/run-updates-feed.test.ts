@@ -111,5 +111,32 @@ verifies("agent-host.engine-run-updates-feed", () => {
       await timer.tick();
       expect(errors).toEqual([failing, failing]);
     });
+
+    it("sends a change again when reading its seq failed partway", async () => {
+      const runs = new TestRuns();
+      runs.runs.set("run_acme_1", { status: "running", seq: 1 });
+      runs.runs.set("run_acme_2", { status: "running", seq: 1 });
+      const timer = new HandTimer();
+      const frames: RunUpdateFrame[] = [];
+      feedOn(runs, timer).follow((frame) => frames.push(frame));
+      await settled();
+
+      runs.runs.set("run_acme_1", { status: "completed", seq: 3 });
+      runs.runs.set("run_acme_2", { status: "failed", seq: 2 });
+      const events = runs.events.bind(runs);
+      runs.events = async (runId, afterSeq) => {
+        if (runId === "run_acme_2") throw new Error("acme run_acme_2 is unreadable");
+        return events(runId, afterSeq);
+      };
+      await timer.tick();
+      expect(frames).toEqual([{ runId: "run_acme_1", status: "completed", seq: 3 }]);
+
+      runs.events = events;
+      await timer.tick();
+      expect(frames).toEqual([
+        { runId: "run_acme_1", status: "completed", seq: 3 },
+        { runId: "run_acme_2", status: "failed", seq: 2 },
+      ]);
+    });
   });
 });

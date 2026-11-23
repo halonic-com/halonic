@@ -8,7 +8,6 @@ import { launchTokenRefusalContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { defaultHostServerLimits, type HostServerLimits } from "../server/host-server.ts";
-import { maxBodyBytes } from "../server/json-body.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { type EngineListener, listenForEngine, maxRunUpdateStreams } from "./engine-listener.ts";
 
@@ -66,7 +65,7 @@ async function start(
   const token = randomLaunchToken();
   const feed = new TestFeed();
   const listener = await listenForEngine(
-    (port) =>
+    (port, maxBodyBytes) =>
       createEngineServer({ launchToken: token, port, maxBodyBytes, ports: testPorts(feed) }),
     { reportError: () => undefined, ...options },
   );
@@ -79,10 +78,12 @@ function send(
   url: string,
   method: string,
   headers: Record<string, string>,
+  path?: string,
 ): { sent: ClientRequest; response: Promise<IncomingMessage> } {
   let sent: ClientRequest | undefined;
   const response = new Promise<IncomingMessage>((resolve, reject) => {
-    sent = request(url, { method, headers, setHost: false, agent: false }, resolve);
+    const options = { method, headers, setHost: false, agent: false, ...(path ? { path } : {}) };
+    sent = request(url, options, resolve);
     sent.on("error", reject);
     sent.end();
   });
@@ -90,8 +91,13 @@ function send(
   return { sent, response };
 }
 
-async function statusOf(url: string, method: string, headers: Record<string, string>) {
-  const response = await send(url, method, headers).response;
+async function statusOf(
+  url: string,
+  method: string,
+  headers: Record<string, string>,
+  path?: string,
+) {
+  const response = await send(url, method, headers, path).response;
   response.resume();
   await new Promise((resolve) => response.on("end", resolve));
   return response.statusCode ?? 0;
@@ -128,15 +134,54 @@ verifies("agent-host.engine-listener", () => {
       expect(port).toBeGreaterThan(0);
     });
 
-    it("uses the agent host's own limits and body size", () => {
-      // The same object the agent host's server uses, so the two can't drift apart.
-      expect(defaultHostServerLimits).toEqual({
-        headersTimeoutMs: 10_000,
-        requestTimeoutMs: 30_000,
-        checkEveryMs: 1_000,
-        maxConnections: 256,
+    it("refuses a body over 1 MiB with 413", async () => {
+      const started = await start();
+      const body = "x".repeat(1024 * 1024 + 1);
+      const status = await new Promise<number>((resolve, reject) => {
+        const sent = request(
+          `${started.listener.url}/api/runs`,
+          {
+            method: "POST",
+            setHost: false,
+            agent: false,
+            headers: {
+              host: `127.0.0.1:${started.port}`,
+              authorization: `Bearer ${started.token}`,
+              "content-type": "application/json",
+            },
+          },
+          (response) => {
+            response.resume();
+            resolve(response.statusCode ?? 0);
+          },
+        );
+        // The listener may answer and close before the whole body is sent.
+        sent.on("error", reject);
+        sent.end(body);
       });
-      expect(maxBodyBytes).toBe(1024 * 1024);
+      expect(status).toBe(413);
+    });
+
+    it("refuses an absolute-form target with 400", async () => {
+      const started = await start();
+      const status = await statusOf(
+        `${started.listener.url}/api/hello`,
+        "GET",
+        {
+          host: `127.0.0.1:${started.port}`,
+          authorization: `Bearer ${started.token}`,
+        },
+        "http://acme.test/api/hello",
+      );
+      expect(status).toBe(400);
+    });
+
+    it("refuses a method a Web request can't carry with 405, not 500", async () => {
+      const started = await start();
+      const status = await statusOf(`${started.listener.url}/api/hello`, "TRACE", {
+        host: `127.0.0.1:${started.port}`,
+      });
+      expect(status).toBe(405);
     });
 
     it("drops a connection past its connection cap", async () => {
