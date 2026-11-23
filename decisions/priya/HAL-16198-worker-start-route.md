@@ -4,7 +4,6 @@
 - Task: HAL-16198, part b of the plan on HAL-13210
 - Approval: HAL-16198, Liam's review; Liam reviews and signs this note
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kqiMWRCZpNlbd9dsYL31m71IJJhoEQHZC+r9t3jWYkGBJMnKjDVF0S7r81jfQFnIuk+hC/3lFf5Dk2t8owZVBQ==
 
 ## What changes
 
@@ -22,6 +21,8 @@ The Worker's API now starts, sends events to and cancels runs with its own execu
   again. A Worker that answers 501, or that starts a run for a repeated delivery, fails them.
 - `cloudflare-live.fixture` now deploys the workflow the routine starts (`handle-order`, which ends
   at its first state and calls no model), so the live delivery has a run to start.
+- `serve.test.ts` loses the 2 tests that checked `runsNotAvailable`'s refusals (21 tests become 19).
+  `runsNotAvailable` is gone; `worker-runs.test.ts` tests what replaces it under `runtime.worker-runs`.
 
 Nothing is weakened: every check still asserts a status, and the replay check is stricter than before.
 
@@ -36,3 +37,4 @@ part d.
 - `runtime.serve`
 - `cloudflare-live.webhooks`
 - `cloudflare-live.fixture`
+- `packages/targets/cloudflare/runtime/src/serve.test.ts`
