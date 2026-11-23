@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { StatusChip } from "../status-chip/status-chip.tsx";
 import type { AnyListRow, ListColumn, ListColumnKind } from "./list-props.ts";
-import { Leading } from "./row-parts.tsx";
+import { Leading, showsError } from "./row-parts.tsx";
 
 /*
  * The inside of a List row's main cell when the List has columns (spec HAL-6764, sections 2 and 3).
@@ -117,7 +117,11 @@ function WideCell({
             <Tag row={row} />
           </span>
           {meta.text === undefined ? null : (
-            <span className={`truncate text-small ${meta.colour}`}>{meta.text}</span>
+            <span
+              className={`${showsError(row) ? "wrap-break-word" : "truncate"} text-small ${meta.colour}`}
+            >
+              {meta.text}
+            </span>
           )}
         </div>
       </div>
@@ -229,6 +233,9 @@ function Stacked({
   );
   // On a phone the right edge has one job: next to a More button, the chip starts line 2 (kit 6).
   const chipsBelow = phone && row.more !== undefined;
+  // An error's reason wraps in full, so its chip takes a line of its own above it (C348 A8).
+  const error = showsError(row);
+  const chipsInline = chipsBelow && !error;
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <span className="flex min-w-0 items-center gap-2">
@@ -237,9 +244,10 @@ function Stacked({
         {phone ? null : <Tag row={row} />}
         {chipsBelow ? null : <span className="ml-auto flex shrink-0 gap-2 pl-1">{chips}</span>}
       </span>
+      {chipsBelow && error ? <span className="my-1 flex gap-2">{chips}</span> : null}
       {/* Inline, so a second line runs on under the chip rather than beside it. */}
-      <span className={`line-clamp-2 text-small ${meta.colour}`}>
-        {chipsBelow ? <span className="mr-1.5 inline-flex align-middle">{chips}</span> : null}
+      <span className={`${error ? "wrap-break-word" : "line-clamp-2"} text-small ${meta.colour}`}>
+        {chipsInline ? <span className="mr-1.5 inline-flex align-middle">{chips}</span> : null}
         {meta.text}
       </span>
       <StackedFooter row={row} columns={columns} tagFirst={phone} />

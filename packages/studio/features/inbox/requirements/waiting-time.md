@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1218; flow-inbox (HAL-877) 3.2 and 4.1; card requirements (HAL-64) INBOX-CARD-15; microcopy (HAL-751) 10.2; ux-checklists-approvals (HAL-1250) 2.4
+- Source: HAL-1218; flow-inbox (HAL-877) 3.2 and 4.1; card requirements (HAL-64) INBOX-CARD-15; microcopy (HAL-751) 10.2; ux-checklists-approvals (HAL-1250) 2.4; HAL-16895 (C348: no break in "10 min")
 
-The Inbox row shall say how long an item has waited: "Waiting 1 min" (also under a minute), "Waiting 6 h", "Waiting 2 days". The card shall say since when, from the time the approval was asked or the run last started waiting, never the run's start: "Waiting since 10:42 (1 min)", "Waiting since 01:50 (6 h 40 min)". Before today it adds the day, "Waiting since Sat 10:42 (2 days)", and from 6 days on the date, "Waiting since Sat 31 Oct, 10:42 (8 days)". From 24 hours on the item is late: the row shows its waiting time in `warning` text. A tool approval has no timer; only a wait step with a timer says "Moves on by itself on Mon 9 Nov, 14:00." and adds "moves on Mon 14:00" to its row.
+The Inbox row shall say how long an item has waited: "Waiting 1 min" (also under a minute), "Waiting 6 h", "Waiting 2 days". The number and its unit shall be joined by a no-break space, so a row whose meta line wraps never splits them. The card shall say since when, from the time the approval was asked or the run last started waiting, never the run's start: "Waiting since 10:42 (1 min)", "Waiting since 01:50 (6 h 40 min)". Before today it adds the day, "Waiting since Sat 10:42 (2 days)", and from 6 days on the date, "Waiting since Sat 31 Oct, 10:42 (8 days)". From 24 hours on the item is late: the row shows its waiting time in `warning` text. A tool approval has no timer; only a wait step with a timer says "Moves on by itself on Mon 9 Nov, 14:00." and adds "moves on Mon 14:00" to its row.
 
 ## Examples
 

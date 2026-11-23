@@ -50,11 +50,17 @@ verifies("workflows.list.rows-and-states", () => {
       ...workflows,
       listing("beta", "bad", "Bad one", { problems: { errors: 1, warnings: 1 } }),
     ];
-    const text = (await show(<WorkflowsView host={memoryHost(hubs, rows).host} />)).textContent;
+    const page = await show(<WorkflowsView host={memoryHost(hubs, rows).host} />);
+    const text = page.textContent;
 
     expect(text).toContain("1 needs you");
     expect(text).not.toContain("1 running");
-    expect(text).toContain("✕ 2 problems");
+    // The kit's error chip, with its dot and no glyph, as a broken file's row has it (C348).
+    const chip = [...page.querySelectorAll(".bg-danger-soft")].find(
+      (candidate) => candidate.textContent === "2 problems",
+    );
+    expect(chip?.querySelector(".rounded-full")).not.toBeNull();
+    expect(text).not.toContain("✕ 2 problems");
   });
 
   it("shows a row's description under its name, and its last run with the outcome as a glyph", async () => {
@@ -280,13 +286,13 @@ verifies("workflows.list.rows-and-states", () => {
   });
 
   it("hides the chip glyphs from screen readers", async () => {
-    const rows = [listing("acme", "bad", "Bad one", { problems: { errors: 1, warnings: 1 } })];
+    const rows = [listing("acme", "iffy", "Iffy one", { problems: { errors: 0, warnings: 2 } })];
     const page = await show(<WorkflowsView host={memoryHost(hubs, rows).host} />);
 
     const glyphs = [...page.querySelectorAll('[aria-hidden="true"]')].map(
       (each) => each.textContent,
     );
-    expect(glyphs.some((text) => text?.includes("✕"))).toBe(true);
+    expect(glyphs.some((text) => text?.includes("△"))).toBe(true);
   });
 
   it("opens a Ctrl-clicked row in a new tab, else in this one", async () => {

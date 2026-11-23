@@ -130,8 +130,8 @@ verifies("inbox.home", () => {
     await settled();
     expect(root.querySelector('[role="grid"]')?.getAttribute("aria-label")).toBe("Needs you");
     expect(rows(root)).toEqual([
-      "sorter wants to use create_note (notes-mcp)Waiting 1 min",
-      "Approve this reply?Waiting 1 h",
+      "sorter wants to use create_note (notes-mcp)Waiting 1\u00a0min",
+      "Approve this reply?Waiting 1\u00a0h",
     ]);
     expect(root.querySelector('[role="grid"] button')).toBeNull();
   });
@@ -156,8 +156,8 @@ verifies("inbox.home", () => {
     );
     await settled();
     expect(rows(home)).toEqual([
-      "Approve this reply?Support reply · run r2 · a person step · Waiting 1 h",
-      "Approve this reply?Support reply · run r3 · a person step · Waiting 1 h",
+      "Approve this reply?Support reply · run r2 · a person step · Waiting 1\u00a0h",
+      "Approve this reply?Support reply · run r3 · a person step · Waiting 1\u00a0h",
     ]);
     // One line for both, so the run's short id that tells them apart (HAL-12528) shows here too.
     expect(rows(home)).toEqual(rows(page).slice(0, 2));

@@ -50,7 +50,7 @@ verifies("inbox.setup-items", () => {
     const root = render(<InboxView inbox={inbox} now={now} />);
     expect(cells(root).map((cell) => cell.textContent)).toEqual([
       "Set up Google for x@example.comStep 4 of 7 · ScopesSetup",
-      "sorter wants to use create_note (notes-mcp)Waiting 1 min",
+      "sorter wants to use create_note (notes-mcp)Waiting 1\u00a0min",
     ]);
     expect(root.querySelector('[role="grid"] button')).toBeNull();
     expect(root.textContent).not.toMatch(/Approve|Reject|Delete/);

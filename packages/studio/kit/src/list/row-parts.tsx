@@ -12,10 +12,21 @@ export function lineFit(row: AnyListRow): string {
 }
 
 /**
- * How the meta line fits: as the row's other lines, or, with `wrapMeta`, on up to two lines and
- * then cut, so a long line keeps its end.
+ * The meta line holds an error's reason: an unavailable row's reason takes its place. The reason
+ * wraps and is never cut, since it says what to fix (C348 A8).
+ */
+export function showsError(row: AnyListRow): boolean {
+  return row.error !== undefined && row.unavailable === undefined;
+}
+
+/**
+ * How the meta line fits: an error's reason wraps; any other line fits as the row's other lines,
+ * or, with `wrapMeta`, on up to two lines and then cut, so a long line keeps its end.
  */
 function metaFit(row: AnyListRow): string {
+  if (showsError(row)) {
+    return "wrap-break-word";
+  }
   if (row.wrap !== true && row.wrapMeta === true) {
     return "line-clamp-2 wrap-break-word";
   }
@@ -63,23 +74,24 @@ interface MetaLineProps {
   readonly row: AnyListRow;
   readonly text: ReactNode;
   readonly id: string;
-  /** On a phone next to a More button, the chip starts the last line (kit 6). */
+  /**
+   * On a phone next to a More button, the chip starts the last line (kit 6); an error's chip has a
+   * line of its own above the reason instead, so the reason gets the full width (C348 A8).
+   */
   readonly chip: ReactNode;
 }
 
 /**
  * The line under the title: the meta text, an error's reason or why the row is unavailable. With
  * a chip, the chip comes first and only the text is cut; without text, the chip has the line alone.
+ * An error's chip sits on its own line, above its reason.
  */
 export function MetaLine({ row, text, id, chip }: MetaLineProps) {
   if (text === undefined && chip === undefined) {
     return null;
   }
   // An unavailable row's reason stays at full strength, so it can be read (VRK 0.6).
-  let colour = "text-fg-muted";
-  if (row.error !== undefined && row.unavailable === undefined) {
-    colour = "text-danger";
-  }
+  const colour = showsError(row) ? "text-danger" : "text-fg-muted";
   // `relative`, so the cut also clips the text's screen-reader-only words (`sr-only` is absolute):
   // otherwise they sit past the row's end and make the page scroll sideways.
   const line =
@@ -93,6 +105,14 @@ export function MetaLine({ row, text, id, chip }: MetaLineProps) {
     );
   if (chip === undefined) {
     return line;
+  }
+  if (showsError(row)) {
+    return (
+      <span className="flex min-w-0 flex-col items-start gap-1">
+        <span className="flex">{chip}</span>
+        {line}
+      </span>
+    );
   }
   return (
     <span className="flex min-w-0 items-center gap-1.5">
