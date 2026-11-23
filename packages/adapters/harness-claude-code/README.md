@@ -32,12 +32,15 @@ than 16 Mi characters ends the reading with an error.
 ## The environment
 
 `claudeCodeEnvironment(bridge, folders)` (also `harness.environment`) gives
-six variables: `ANTHROPIC_BASE_URL` (the run's bridge), `ANTHROPIC_CUSTOM_HEADERS`
+seven variables: `ANTHROPIC_BASE_URL` (the run's bridge), `ANTHROPIC_CUSTOM_HEADERS`
 (the run token in the bridge's own header, so `Authorization` stays free for
 the person's sign-in), `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_TMPDIR` (the
 session's own temp folder), `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` (`1`, so
 Claude Code sends no telemetry, error reports or update checks, which the
-sandbox would block) and `HALONIC_RUN_TOKEN`. When the bridge serves
+sandbox would block), `ENABLE_TOOL_SEARCH` (`false`, so the MCP servers'
+tools are listed in every model request instead of hidden behind Claude
+Code's `ToolSearch`, which cheaper models rarely use) and
+`HALONIC_RUN_TOKEN`. When the bridge serves
 Anthropic with a key Halonic keeps (its `keyProviders` names `anthropic`), it
 also sets `ANTHROPIC_API_KEY` to `claudeCodeStandInKey`, a fixed stand-in that
 holds no secret: without a key or a sign-in, Claude Code says "Not logged in"
