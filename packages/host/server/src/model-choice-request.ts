@@ -1,10 +1,9 @@
 import {
-  type ChoiceKey,
-  choiceKey,
   type FirstRunKeyProvider,
   firstRunKeyProviders,
   type ModelChoice,
-} from "@halonicjs/app";
+} from "@halonicjs/app/model-choice";
+import { type ChoiceKey, choiceKey } from "@halonicjs/app/model-choice-service";
 import { isPlainObject } from "@halonicjs/std";
 
 /** More than any real provider key; it keeps what a request can make the server hold bounded. */

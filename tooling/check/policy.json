@@ -64,6 +64,8 @@
     "@halonicjs/app": [
       "./failed-call",
       "./listed-tools",
+      "./model-choice",
+      "./model-choice-service",
       "./outside-run",
       "./routines",
       "./run-failure"
