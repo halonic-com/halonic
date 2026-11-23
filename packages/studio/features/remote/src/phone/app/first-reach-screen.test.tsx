@@ -105,6 +105,30 @@ verifies("remote.phone-first-reach", () => {
     await wait(2_000);
     expect(text()).toContain("Reaching Tim's laptop…");
   });
+
+  it("stands the seconds still while the tunnel is closed, and counts on from them", async () => {
+    const tunnel = await openLaptop();
+    await wait(12_000);
+    await act(async () => tunnel.push(laptop, { state: "closed" }));
+    await wait(60_000);
+    expect(text()).toContain("12 s");
+    await act(async () => tunnel.push(laptop, { state: "connecting" }));
+    await wait(3_000);
+    expect(text()).toContain("15 s");
+  });
+
+  it("comes back at the held seconds when the waiting line returns after the phone was offline", async () => {
+    const tunnel = await openLaptop();
+    await wait(12_000);
+    await act(async () => tunnel.push(laptop, { state: "reconnecting", lastTry: "network-down" }));
+    expect(text()).not.toContain("Reaching Tim's laptop…");
+    await wait(60_000);
+    await act(async () => tunnel.push(laptop, { state: "reconnecting" }));
+    expect(text()).toContain("Reaching Tim's laptop…");
+    expect(text()).toContain("12 s");
+    await wait(3_000);
+    expect(text()).toContain("15 s");
+  });
 });
 
 verifies("remote.phone-connection-check", () => {
