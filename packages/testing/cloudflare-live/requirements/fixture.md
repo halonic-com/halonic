@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-9962 (for HAL-9955); build plan 3c (HAL-6706); multi-cloud ADR 5.9
 
-The live suite shall deploy its own Worker with one enabled webhook routine into the live test account, name every resource it makes with the run's `hlt-` prefix, and delete all of it when the suite ends or when a step of the deploy fails. The Worker's workers.dev host shall be the only host the Worker answers to. A fixture whose prefix doesn't start with `hlt-` shall be refused before anything is created.
+The live suite shall deploy its own Worker with one enabled webhook routine, and the workflow it starts, into the live test account, name every resource it makes with the run's `hlt-` prefix, and delete all of it when the suite ends or when a step of the deploy fails. The Worker's workers.dev host shall be the only host the Worker answers to. A fixture whose prefix doesn't start with `hlt-` shall be refused before anything is created.
 
 Rationale: a live suite that needs a hand-made Worker can't run in CI, and a leaked Worker or bucket costs money and hides in the account. Names with the prefix let the sweeper find what a dead run left behind.
 

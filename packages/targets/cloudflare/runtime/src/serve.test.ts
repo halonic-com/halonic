@@ -2,7 +2,7 @@ import { runExecutorVersion } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { ConfigurationError, type RuntimeEnv } from "./env.ts";
-import { runsNotAvailable } from "./runs-not-available.ts";
+import { serverPortsOf } from "./serve.ts";
 import { serverConfigOf } from "./serve-config.ts";
 import { worker } from "./worker.ts";
 
@@ -133,23 +133,10 @@ verifies("runtime.serve", () => {
     });
   });
 
-  describe("what the Worker can't do yet", () => {
-    it("refuses to start a run with 501 and no detail", async () => {
-      const error = await runsNotAvailable
-        .start({ hubId: "h", workflowId: "w", input: {} })
-        .catch((caught: unknown) => caught);
-      expect(error).toMatchObject({ name: "AgentRunsNotAvailable" });
-    });
-
-    it("ends a stream with an error so the client asks again", async () => {
-      const closed = await new Promise<Error | undefined>((resolve) => {
-        runsNotAvailable.subscribe("run-1", 0, { onEvent: () => {}, onClose: resolve });
-      });
-      expect(closed).toBeInstanceOf(Error);
-    });
-
-    it("sends no event for a run it can't start", async () => {
-      await expect(runsNotAvailable.send("run-1", "go")).rejects.toThrow();
+  describe("the runs behind the API", () => {
+    it("are the Worker's own executor unless a test sets another", () => {
+      const runtime = { runEvents: {} } as unknown as Parameters<typeof serverPortsOf>[0];
+      expect(serverPortsOf(runtime).runs.id).toBe("cloudflare-worker");
     });
   });
 });

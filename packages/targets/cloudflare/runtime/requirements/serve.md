@@ -12,13 +12,13 @@ A deployment that lacks a binding, a secret or one of the two required variables
 
 The Worker's provider keys shall be its Workers secrets, set at deploy time. `GET /api/secrets/<name>` shall say whether one is set and never its value. `PUT` and `DELETE` shall pass the same checks as on any host (plain http to a non-loopback name is 403 `secure_connection_required`), then answer 409 `keys_read_only` with a message that names no secret: a Worker can't change its own secrets.
 
-The workspace is trusted, because the deployer uploaded it. A webhook finds its routine in the snapshot the deployer uploaded, read at every delivery, and the checks of `host/server` apply unchanged: the signature, the time window, the replay refusal, and one neutral answer for an unknown address, a routine that is off and a bad signature. No run is started by the Worker yet: starting a run answers 501, so a signed delivery for a routine answers 501 too, and its delivery id is not used up.
+The workspace is trusted, because the deployer uploaded it. A webhook finds its routine in the snapshot the deployer uploaded, read at every delivery, and the checks of `host/server` apply unchanged: the signature, the time window, the replay refusal, and one neutral answer for an unknown address, a routine that is off and a bad signature. A run starts as `runtime.worker-runs` says, so a signed delivery for a routine starts the routine's run and answers 202, and the same delivery again answers 409.
 
 ## Examples
 
 - Given a complete deployment, when `GET /api/hello` has `Host` of a listed name, then it is 200 with the three `hello` keys.
 - Given the same request with the Worker's preview address as `Host`, then it is 421 `host_not_allowed`.
-- Given a routine with a webhook trigger in the snapshot and an executor that starts runs, when a delivery signed with its secret arrives, then it is 202 with the run id; the same delivery again is 409, and one with a wrong signature or for an address with no routine is the same 401.
+- Given a routine with a webhook trigger and its workflow in the snapshot, when a delivery signed with its secret arrives, then it is 202 with the run id; the same delivery again is 409, and one with a wrong signature or for an address with no routine is the same 401.
 - Given `GET /api/unknown`, then it is the same 404 body as `/health/` gets.
 - Given `HALONIC_ALLOWED_HOSTS` is not set, then `GET /api/hello` is 503 with no variable name in the body, and `GET /health` is still 200.
 - Given `HALONIC_DAILY_REQUESTS` of 2, when a third request arrives on the same day, then it is 429 `daily_limit_reached`.

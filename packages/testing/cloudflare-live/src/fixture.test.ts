@@ -105,6 +105,11 @@ verifies("cloudflare-live.fixture", () => {
       "hlt-7-1-w.acme.workers.dev",
     );
     expect([...f.objects.keys()].some((k) => k.endsWith("orders.routine.yaml"))).toBe(true);
+    // The workflow the routine starts parsed, so the Worker can start it from the index.
+    const index = [...f.objects].find(([key]) => key.endsWith("run-definitions.index.json"));
+    expect(JSON.parse(index?.[1] ?? "{}")).toMatchObject({
+      hubs: { acme: { workflows: { "handle-order": { initial: "done" } } } },
+    });
   });
 
   it("deletes the Worker, the snapshot objects, the buckets and the database at the end", async () => {

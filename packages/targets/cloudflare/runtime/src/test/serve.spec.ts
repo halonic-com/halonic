@@ -5,6 +5,7 @@
 
 import { env } from "cloudflare:workers";
 import {
+  type IndexedHubs,
   type IndexedRoutine,
   writeDefinitionSnapshot,
 } from "@halonicjs/adapter-cloudflare-storage";
@@ -32,6 +33,42 @@ async function deployment(): Promise<RuntimeEnv> {
     HALONIC_DEPLOYMENT_ID: "serve-spec",
   } as unknown as RuntimeEnv;
   return configured;
+}
+
+/** The `acme` hub as the deployer's run-definitions index has it: one workflow that ends at once. */
+const acmeDefinitions = {
+  acme: {
+    hubId: "acme",
+    workflows: {
+      "handle-order": {
+        version: 1,
+        id: "handle-order",
+        name: "Handle an order",
+        initial: "done",
+        context: {},
+        states: { done: { type: "final", on: [] } },
+        layout: {},
+      },
+    },
+    agents: {},
+    collections: {},
+    knowledge: {},
+    skills: {},
+    connectors: {},
+  },
+} as unknown as IndexedHubs;
+
+/** Writes the scope's snapshot: the given routines, and the `acme` hub's run definitions. */
+async function writeSnapshot(scope: string, routines: readonly IndexedRoutine[]): Promise<void> {
+  const bucket = (await deployment()).DEFINITIONS as unknown as Parameters<
+    typeof writeDefinitionSnapshot
+  >[0];
+  await writeDefinitionSnapshot(
+    bucket,
+    {},
+    { routines, runDefinitions: acmeDefinitions },
+    scopedKeyPrefix(scope),
+  );
 }
 
 // Each case gets storage of its own, so the counts of one never reach another.
@@ -109,25 +146,31 @@ describe("the API in workerd", () => {
     expect(statuses).toEqual([200, 200, 429]);
   });
 
-  it("refuses a run start with 501 once signed in", async () => {
+  it("starts a run from the snapshot's index once signed in, and answers 404 for a workflow it lacks", async () => {
     const scope = nextScope();
+    await writeSnapshot(scope, []);
     const login = await ask("/api/login", { method: "POST", body: { password }, scope });
     const cookie = (login.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
-    const response = await serveRequest(
-      new Request(`https://${host}/api/runs`, {
-        method: "POST",
-        headers: {
-          host,
-          cookie,
-          "content-type": "application/json",
-          "cf-connecting-ip": "203.0.113.7",
-        },
-        body: JSON.stringify({ hubId: "h", workflowId: "w", input: {} }),
-      }),
-      await deployment(),
-      { scope },
-    );
-    expect(response.status).toBe(501);
+    const configured = await deployment();
+    const start = (workflowId: string) =>
+      serveRequest(
+        new Request(`https://${host}/api/runs`, {
+          method: "POST",
+          headers: {
+            host,
+            cookie,
+            "content-type": "application/json",
+            "cf-connecting-ip": "203.0.113.7",
+          },
+          body: JSON.stringify({ hubId: "acme", workflowId, input: {} }),
+        }),
+        configured,
+        { scope },
+      );
+    const started = await start("handle-order");
+    expect(started.status).toBe(200);
+    expect(await started.json()).toMatchObject({ hubId: "acme", workflowId: "handle-order" });
+    expect((await start("nothing")).status).toBe(404);
   });
 
   describe("webhooks from the routines in the snapshot", () => {
@@ -150,10 +193,7 @@ describe("the API in workerd", () => {
     /** A scope whose snapshot holds one webhook routine, and a executor that records what it is asked to start. */
     async function withRoutine(routine: IndexedRoutine = orders) {
       const scope = nextScope();
-      const bucket = (await deployment()).DEFINITIONS as unknown as Parameters<
-        typeof writeDefinitionSnapshot
-      >[0];
-      await writeDefinitionSnapshot(bucket, {}, { routines: [routine] }, scopedKeyPrefix(scope));
+      await writeSnapshot(scope, [routine]);
       const started: unknown[] = [];
       const start = async (request: unknown) => {
         started.push(request);
@@ -219,13 +259,13 @@ describe("the API in workerd", () => {
       ]);
     });
 
-    it("answers 501 with the Worker's own runs, and keeps the delivery id for a retry", async () => {
-      const setup = await withRoutine();
-      const withoutRuns = await deliver({ scope: setup.scope });
-      expect(withoutRuns.status).toBe(501);
-      const retried = await deliver(setup);
-      expect(retried.status).toBe(202);
-      expect(setup.started).toHaveLength(1);
+    it("starts the routine's run with the Worker's own runs, and refuses the delivery again", async () => {
+      const { scope } = await withRoutine();
+      const first = await deliver({ scope });
+      expect(first.status).toBe(202);
+      const { runId } = (await first.json()) as { runId?: unknown };
+      expect(typeof runId).toBe("string");
+      expect((await deliver({ scope })).status).toBe(409);
     });
 
     it("refuses a bad signature and starts nothing", async () => {

@@ -2,11 +2,11 @@ import { createServer, type Server, type ServerPorts } from "@halonicjs/host-ser
 import type { RunExecutor } from "@halonicjs/ports";
 import { ConfigurationError, type RuntimeEnv } from "./env.ts";
 import { CoordinationRequestCountStore } from "./request-counts.ts";
-import { workerRuns } from "./runs-not-available.ts";
 import { createRuntime, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { serverConfigOf } from "./serve-config.ts";
 import { snapshotWebhooks } from "./snapshot-webhooks.ts";
 import { workerProviderKeys } from "./worker-provider-keys.ts";
+import { workerRuns } from "./worker-runs.ts";
 
 /**
  * The deployer uploaded the workspace this Worker runs, so it is trusted the
@@ -37,11 +37,11 @@ const workerErrorLog: ServerPorts["errorLog"] = {
 /**
  * The ports `host/server` needs, from the adapters of one deployment.
  *
- * @param runs - what starts a run; the Worker starts none yet, so only a test sets it
+ * @param runs - what starts a run; the Worker's own executor unless a test sets another
  */
 export function serverPortsOf(
   runtime: Runtime,
-  runs: RunExecutor = workerRuns(runtime.runEvents),
+  runs: RunExecutor = workerRuns(runtime),
 ): ServerPorts {
   return {
     runs,
@@ -84,7 +84,7 @@ function notConfigured(error: ConfigurationError): Response {
 
 /** How a request is served, beyond its `env`. */
 export interface ServeOptions extends RuntimeOptions {
-  /** What starts a run. The Worker starts none yet, so only a test sets it. */
+  /** What starts a run: the Worker's own executor unless a test sets another. */
   runs?: RunExecutor;
 }
 
