@@ -260,8 +260,24 @@ There's no toolbar row: the panel starts with the page. The title bar holds, fro
 `TitleBarBrand` (the Halonic mark and "Halonic Studio", not a link; under 900px only the mark, named
 "Halonic Studio"), `HistoryButtons` and the window tabs. Back and Forward move focus to the new
 page's `h1`. With nowhere to go, they stay in the Tab order as unavailable, and screen readers hear
-"Nothing to go back to" or "Nothing to go forward to". There's no Assistant button until the
-Assistant (T14) lands; the window-wide Back and Forward keys come in a later pull request.
+"Nothing to go back to" or "Nothing to go forward to". The window-wide Back and Forward keys come
+in a later pull request.
+
+## The side panel
+
+A feature adds the window's one side panel with `panelWindows.add` (`shell.panel-window`), as the
+Assistant does: `title` ("Assistant"), its view and the `keys` it binds ("Ctrl+Alt+I"). The window
+draws the first by `order`. The title bar then ends with its button, `PanelWindowButton`: ✦ and the
+title, a toggle with `aria-expanded`, the title and the keys' Kbd hint as its tooltip, and the keys
+in `aria-keyshortcuts`. With no panel window there's no button.
+
+The panel starts closed in each window and isn't saved. Open, `PanelWindowSlot` draws the view
+360px wide at the right of the content area; under 900px it covers the content area and the page
+is inert; a phone draws none. The view gets `PanelWindowViewProps` (`context`, `title`, `onClose`)
+and draws the kit's `SidePanel`, with its ✕ in `actions` and `label={title}`. Esc closes it only
+while focus is inside it, as the close stack's `side-panel` layer. Closing, however it happens,
+gives focus back to what had it before the panel opened, else to the button. A feature's command or
+shortcut opens and closes it with `context.panelWindow` (`show`, `hide`, `toggle`, `isOpen`).
 
 The status bar starts with the frame's `badges` slot ("Not trusted yet") and ends with its
 `saveNote` slot (see `StatusBarSaveNote`); both take no room when they're empty. On a phone the

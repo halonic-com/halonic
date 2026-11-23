@@ -201,6 +201,7 @@ export {
   PanelWidthProvider,
   type PanelWidthProviderProps,
 } from "./panels/panel-width-context.tsx";
+export type { PanelWindowViewProps } from "./panels/panel-window-slot.tsx";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
 export * from "./phone-exports.ts";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
@@ -395,4 +396,9 @@ export {
   type WindowActions,
 } from "./window/studio-window.tsx";
 export { StudioWorkspace, type StudioWorkspaceOptions } from "./window/studio-workspace.ts";
-export type { SettingsSectionName, ShownPage, WorkspaceContext } from "./workspace-context.ts";
+export type {
+  PanelWindowControl,
+  SettingsSectionName,
+  ShownPage,
+  WorkspaceContext,
+} from "./workspace-context.ts";

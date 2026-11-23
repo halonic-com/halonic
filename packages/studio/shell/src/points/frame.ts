@@ -12,9 +12,19 @@ export interface CardContribution extends Ordered, ViewRef {
   readonly for: string;
 }
 
-/** A panel window people can open (up to three at once; the shell saves which). */
+/**
+ * The window's side panel, such as the Assistant's (`shell.panel-window`): one per window, on the
+ * right of the content area, with a title bar button that opens and closes it. The window draws
+ * the first by `order`. Its view gets `PanelWindowViewProps`.
+ */
 export interface PanelWindowContribution extends Ordered, ViewRef {
+  /** The title bar button's words and the panel's name: "Assistant". */
   readonly title: string;
+  /**
+   * The shortcut the feature binds to open and close it, as a keybinding writes it: "Ctrl+Alt+I".
+   * The button shows it in its tooltip and names it in `aria-keyshortcuts`; the feature binds it.
+   */
+  readonly keys?: string;
 }
 
 /**

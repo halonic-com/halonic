@@ -12,12 +12,11 @@ import { Strips } from "../frame/strips.tsx";
 import { itemLocation } from "../palette/palette-groups.ts";
 import { usePaletteOpening } from "../palette/palette-opening.ts";
 import { runWithToast, ShellPalette } from "../palette/shell-palette.tsx";
+import { usePanelWindow } from "../panels/panel-window.ts";
 import { BottomNavigation } from "../phone/bottom-navigation.tsx";
 import type { MorePageSwitcher } from "../phone/more-page.tsx";
 import { usePhoneBackButton } from "../phone/phone-back.ts";
 import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
-import { settingsLocation } from "../phone/place-stacks.ts";
-import { sectionLocation } from "../phone/settings-list-page.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import type { ItemRef, OpenItemOptions } from "../points/item-kinds.ts";
@@ -26,7 +25,6 @@ import type { ResourceWatch } from "../resources/resource-watch.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import { useAvailableSections } from "../settings/available-sections.ts";
 import { SettingsDialog } from "../settings/settings-dialog.tsx";
-import { listedSections, settingsGroups } from "../settings/settings-groups.ts";
 import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
 import { useHelpMenu } from "../sidebar/help-menu.ts";
@@ -51,6 +49,8 @@ import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
+import { windowPanelParts } from "./window-panel.tsx";
+import { useOpenSettings } from "./window-settings.ts";
 import { useActiveTabPage, useActiveTabTitle, useWindowTitle } from "./window-title.ts";
 import { withActions } from "./with-actions.ts";
 
@@ -162,37 +162,21 @@ function StudioWindowBody(props: StudioWindowProps) {
   // The phone top bar's slot for the page's own buttons; `null` on the desktop, which has none.
   const [topBarSlot, setTopBarSlot] = useState<HTMLElement | null>(null);
   const { open: openPhone, backFrom: backFromPhone } = phone;
+  const panelWindow = usePanelWindow();
   // Settings is a dialog on the desktop and a page on the More stack below 600px (flow-settings 13).
   // Read when it opens, so the context stays the same as the window narrows or widens.
   const onDesktop = useRef(desktop);
   onDesktop.current = desktop;
   const settingsScroll = useRef(0);
-  const openSettings = useCallback(
-    (sectionId?: string) => {
-      if (onDesktop.current) {
-        showSettingsDialog(sectionId);
-        return;
-      }
-      settingsScroll.current = 0;
-      openPhone(settingsLocation, { list: true });
-      // The sections the phone's list shows, so a link can't open one the list leaves out.
-      const section =
-        sectionId === undefined
-          ? undefined
-          : listedSections(
-              settingsGroups({
-                sections,
-                workspaceName: workspace.name,
-                place: host === "desktop-app" ? "app" : "served",
-                phone: true,
-              }),
-            ).find((candidate) => candidate.id === sectionId);
-      if (section !== undefined) {
-        openPhone(sectionLocation(section));
-      }
-    },
-    [showSettingsDialog, openPhone, sections, workspace.name, host],
-  );
+  const openSettings = useOpenSettings({
+    onDesktop,
+    showDialog: showSettingsDialog,
+    openPhone,
+    scroll: settingsScroll,
+    sections,
+    workspaceName: workspace.name,
+    host,
+  });
   const focusNewPage = usePageHeadingFocus();
   // A page opened from a dialog that closes as it opens it, such as Ctrl K's palette or a Settings
   // section: the dialog's focus return mustn't win over the `h1`.
@@ -255,18 +239,13 @@ function StudioWindowBody(props: StudioWindowProps) {
       badges: shell.badges,
       saving: workspace.saving,
       closeStack: shell.closeStack,
+      panelWindow: panelWindow.control,
       openItem: (item, options) => openHere.current(locationOfItem(item, options)),
       openItemInNewTab: (item) => openItemInNewTab.current(locationOfItem(item)),
       openSettings,
       settingsSections,
-      runCommand: (commandId) => {
-        const command = contributions.commands.get(commandId, contextFor);
-        if (command === undefined) {
-          return false;
-        }
-        runWithToast(command, contextFor, shell.toasts);
-        return true;
-      },
+      // Called later, once `runCommand` below is defined; it runs the command with this context.
+      runCommand: (commandId) => runCommand(commandId),
     }),
     [
       shell,
@@ -280,6 +259,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       activeItem,
       showSidebarView,
       shownPage,
+      panelWindow.control,
     ],
   );
   const runCommand = (commandId: string): boolean => {
@@ -340,6 +320,13 @@ function StudioWindowBody(props: StudioWindowProps) {
     </>
   );
   const help = useHelpMenu(contributions.help, contextFor);
+  const panel = windowPanelParts({
+    panels: contributions.panelWindows.list(),
+    state: panelWindow,
+    platform,
+    closeStack: shell.closeStack,
+    contextFor,
+  });
 
   return (
     <ShellFrame
@@ -357,12 +344,14 @@ function StudioWindowBody(props: StudioWindowProps) {
             <HistoryButtons tabs={tabs} />
           </span>
           <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
+          {panel.button}
         </>
       }
       badges={headerBadges}
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
       phoneBadges={<HeaderBadges registry={shell.badges} layout="strip" />}
       dialogs={props.dialogs}
+      panel={panel.slot}
       strips={<Strips strips={contributions.strips.list()} contextFor={contextFor} />}
       sidebar={
         <StudioSidebar
