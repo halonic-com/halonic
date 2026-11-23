@@ -2,6 +2,7 @@
 
 - Approval: part b2 of the plan on HAL-13210 (22 Nov); the reviewer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZLpTd37uWJUnnimQMoaKGNo2rMUFkTtGjNARuDmvFCtxRdI7gEhYZACeQV3G6Wgvf0yOKAPfxBJEvNw5JSYkCQ==
 - Task: HAL-17039
 
 ## What changes
