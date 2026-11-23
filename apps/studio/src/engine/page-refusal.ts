@@ -17,7 +17,7 @@ import { agentCantRunWords } from "@halonicjs/studio-feature-routines/api";
 import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
 import { definitionsOf, filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { harnessName } from "../studio/harness-name.ts";
-import { GitMissingError, type HistoryOutsideError } from "./page-versions.ts";
+import { GitMissingError } from "./page-versions.ts";
 
 /** What the page can start, besides the engine's own steps. */
 export interface PageRuns {
@@ -175,26 +175,6 @@ export const routineWatchStep =
 /** The step in Studio that lets the page start an agent in a harness program. */
 function harnessPageStep(agent: Agent): string {
   return `Set ${agent.name} to Halonic on its Harness page to run it now.`;
-}
-
-/**
- * A start of `run` refused because the folder keeps its git files outside it, such as a git
- * worktree: `halonic run` reads that repository (HAL-16298), so the step is the command that runs it
- * from this folder in a terminal, and no **Try again** that would give the same refusal (design
- * check C746 row 1, HAL-16688).
- *
- * @param workspace the saved files, which name the workflow's hub in the command when needed
- */
-export function historyOutsideRefusal(
-  error: HistoryOutsideError,
-  workspace: LoadedWorkspace,
-  run: WorkflowRef,
-): StartRefused {
-  return new StartRefused({
-    reason: error.message,
-    fix: "To run it from this folder, run this in a terminal:",
-    command: runCommandOf(workspace, run),
-  });
 }
 
 /** `halonic run reply`, or `halonic run acme/reply` when another hub has a `reply` too, as the workflow page writes it. */
