@@ -12,6 +12,7 @@ import type {
 import { secretKey } from "@halonicjs/ports";
 import type { CloudflareApi, DurableObjectMigration, ResourceKind, WorkerBinding } from "./api.ts";
 import { type DeployProgress, deploy } from "./deploy.ts";
+import { writeDeployRecord } from "./deploy-record.ts";
 import { liveVersion } from "./deploy-target-versions.ts";
 import { DeployError, SmokeTestFailedError } from "./errors.ts";
 import { toDeployFailure } from "./port-failure.ts";
@@ -132,6 +133,14 @@ export async function deployThroughPort(
       upload: { fetch: options.fetch, ...options.upload },
     });
     if (done.mode !== "deployed") throw new Error("deploy planned instead of deploying");
+    await writeDeployRecord(cloudflare, accountId, worker, done.versionId, {
+      commit: snapshot.commit,
+      halonicVersion: snapshot.halonicVersion,
+      reaches: request.reaches,
+    }).catch(() => {
+      // The version serves already. Without its record the next plan counts everything
+      // as new and asks again, the safe side, so a failed write doesn't fail the deploy.
+    });
     return {
       outcome: "deployed",
       url: (await cloudflare.workersDevUrl(accountId, worker)) ?? address,

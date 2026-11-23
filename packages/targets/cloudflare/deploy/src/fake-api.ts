@@ -47,6 +47,8 @@ export interface FakeCloudflareState {
   fullBucket?: string;
   /** Object keys held by buckets, by bucket name. `emptyBucket` clears them; deleting a bucket that holds any fails. */
   objects?: Record<string, readonly string[]>;
+  /** Object text held before the test, by `bucket/key`, for `getObject`. */
+  stored?: Record<string, string>;
   /** The workers.dev address `openWorkersDev` returns. */
   workersDev?: string;
   /** Whether workers.dev is on before the deploy. Defaults to on. */
@@ -90,6 +92,7 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
   };
   const held: Record<string, readonly string[]> = { ...state.objects };
   const written: Record<string, string> = {};
+  const stored: Record<string, string> = { ...state.stored };
   const applied = [...(state.applied ?? [])];
   let lock = state.lock;
   const lockWrite = (call: string) => {
@@ -167,8 +170,13 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
       if (state.failOnWrite) throw new Error(`unexpected write: putObject ${bucket} ${key}`);
       calls.push(`putObject ${bucket} ${key}`);
       held[bucket] = [...(held[bucket] ?? []).filter((k) => k !== key), key];
-      written[`${bucket}/${key}`] =
-        typeof value === "string" ? value : new TextDecoder().decode(value);
+      const text = typeof value === "string" ? value : new TextDecoder().decode(value);
+      written[`${bucket}/${key}`] = text;
+      stored[`${bucket}/${key}`] = text;
+    },
+    async getObject(_accountId, bucket, key) {
+      calls.push(`getObject ${bucket} ${key}`);
+      return stored[`${bucket}/${key}`];
     },
     objects: (bucket) => held[bucket] ?? [],
     written,

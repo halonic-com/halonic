@@ -237,4 +237,6 @@ export interface CloudflareApi {
     key: string,
     value: string | Uint8Array,
   ): Promise<void>;
+  /** Reads one object of an R2 bucket as text; `undefined` when the key holds nothing. */
+  getObject(accountId: string, bucket: string, key: string): Promise<string | undefined>;
 }

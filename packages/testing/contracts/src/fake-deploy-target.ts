@@ -118,6 +118,7 @@ export class FakeDeployTarget implements DeployTarget {
       account: this.account,
       url: urlOf(request.deployment),
       creates: state.created.length === 0 ? resourcesOf(request.deployment) : [],
+      adopts: [],
       databaseChanges: [],
       deletesData: false,
       live: live?.version,

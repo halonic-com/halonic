@@ -9,11 +9,11 @@ const token = ["cfut", "abcdef0123456789"].join("_");
 function client(status: number, body: string) {
   const sent: { key: string; bytes: string; type: string | null }[] = [];
   const fetched = (async (input, init) => {
-    const blob = init?.body as Blob;
+    const blob = init?.body as Blob | undefined;
     sent.push({
       key: `${init?.method} ${String(input).replace("https://cf.test", "")}`,
-      bytes: await blob.text(),
-      type: blob.type,
+      bytes: blob === undefined ? "" : await blob.text(),
+      type: blob === undefined ? null : blob.type,
     });
     return new Response(body, { status });
   }) as typeof fetch;
@@ -52,6 +52,25 @@ verifies("deploy.definitions", () => {
     const error = await api.putObject("a1", "w-defs", "k", "v").catch((e: unknown) => e);
     expect(error).toMatchObject({ code: "cloudflare-request-failed" });
     expect(String((error as Error).message)).toContain("HTTP 403");
+    expect(String((error as Error).message)).not.toContain(token);
+  });
+});
+
+verifies("deploy.record", () => {
+  it("reads an object as text, and a missing one as undefined", async () => {
+    const found = client(200, '{"commit":"abc"}');
+    await expect(found.api.getObject("a1", "w-defs", "deploys/v1.json")).resolves.toBe(
+      '{"commit":"abc"}',
+    );
+    expect(found.sent[0]?.key).toBe("GET /accounts/a1/r2/buckets/w-defs/objects/deploys%2Fv1.json");
+    await expect(client(404, "").api.getObject("a1", "w-defs", "k")).resolves.toBeUndefined();
+  });
+
+  it("fails a refused read and names the call, not the token", async () => {
+    const error = await client(403, "")
+      .api.getObject("a1", "w-defs", "k")
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: "cloudflare-request-failed" });
     expect(String((error as Error).message)).not.toContain(token);
   });
 });
