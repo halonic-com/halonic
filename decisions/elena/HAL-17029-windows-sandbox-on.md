@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16772, the board's yes to D44 on Windows (23 Nov, 10:38 UTC); task HAL-17029
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RTFglhyurT4FOEd1K9SV5FMMwLtJ/NWaTjeTrdFVE/6YYlrN8JNE+ZDwzji4JwJUkGgpt9ZH5+izKJTs3TocBw==
 
 The board said yes to D44 on Windows on HAL-16772: Settings › Agent sandbox,
 with its setup, repair and removal, is turned on in Windows builds. The flip
