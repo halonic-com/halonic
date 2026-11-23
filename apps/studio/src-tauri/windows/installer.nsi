@@ -1333,7 +1333,7 @@ Function WaitForStartOrGoBack
   Call RaisedFromLimitedRights
   Pop $4
   ${If} $4 = 1
-    StrCpy $R3 "${PRODUCTNAME} ${VERSION} didn't start within 3 minutes, but it stays: going back to $OldVersion is skipped because this update runs with administrator rights, and the installer kept for $OldVersion is in a folder programs without those rights can change. To go back, install $OldVersion again without administrator rights."
+    StrCpy $R3 "${PRODUCTNAME} ${VERSION} didn't start within 3 minutes, but it stays. The installer didn't go back to $OldVersion, because this update runs with administrator rights and the kept $OldVersion installer is in a folder that programs without those rights can change. To go back, install $OldVersion again without administrator rights."
     Call SayRollbackSkipped
     !ifdef SANDBOX_STEP
       Call LogUpdateLine
@@ -1349,7 +1349,7 @@ Function WaitForStartOrGoBack
     ${If} $R1 <> 0
       ; Not Settings: this version didn't start. An uninstall removes the
       ; sandbox, and the kept installers with it.
-      StrCpy $R3 "${PRODUCTNAME} ${VERSION} didn't start within 3 minutes, but it stays: going back to $OldVersion is refused because $R2. To go back, uninstall ${PRODUCTNAME}, which removes the agent sandbox too, then install $OldVersion again."
+      StrCpy $R3 "${PRODUCTNAME} ${VERSION} didn't start within 3 minutes, but it stays. The installer can't go back to $OldVersion, because $R2. To go back, uninstall ${PRODUCTNAME}, which removes the agent sandbox too, then install $OldVersion again."
       Call SayRollbackSkipped
       Call LogUpdateLine
       Return

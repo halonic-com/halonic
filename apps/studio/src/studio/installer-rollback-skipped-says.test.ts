@@ -35,7 +35,7 @@ verifies("studio.installer-rollback-skipped-says", () => {
     const wait = nsisFunction("WaitForStartOrGoBack");
     const refused = wait.slice(wait.indexOf("${If} $R1 <> 0\n"), wait.indexOf("/ROLLBACK"));
     expect(refused).toMatch(
-      /StrCpy \$R3 "[^"]*is refused because \$R2[^"]*"\n\s+Call SayRollbackSkipped\n\s+Call LogUpdateLine\n\s+Return\n/,
+      /StrCpy \$R3 "[^"]*can't go back to \$OldVersion, because \$R2[^"]*"\n\s+Call SayRollbackSkipped\n\s+Call LogUpdateLine\n\s+Return\n/,
     );
   });
 

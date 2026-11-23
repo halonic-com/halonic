@@ -188,25 +188,24 @@ impl fmt::Display for GitError {
                 trust_runs: true,
             } => write!(
                 formatter,
-                "git {subcommand} would store or write files without their {filter} filter, which the Studio runs only in a workspace you trust; press Review in the header to trust it, then try again"
+                "git {subcommand} would store or write files without their {filter} filter, which Studio runs only in a workspace you trust; press Review in the header to trust it, then try again"
             ),
             GitError::FilterNotRun {
                 subcommand, filter, ..
             } => write!(
                 formatter,
-                "git {subcommand} would store or write files without their {filter} filter, which the repository's own config defines and the Studio never runs; make this change with git in a terminal"
+                "git {subcommand} would store or write files without their {filter} filter, which the repository's own config defines and Studio never runs; make this change with git in a terminal"
             ),
             GitError::HooksFolderNotEmpty => write!(formatter, "the empty hooks folder has files"),
             GitError::HooksFolderUnreadable => {
                 write!(formatter, "the empty hooks folder cannot be read")
             }
-            GitError::GitTooOld => write!(
-                formatter,
-                "git is too old; the Studio needs git 2.31 or later"
-            ),
+            GitError::GitTooOld => {
+                write!(formatter, "git is too old; Studio needs git 2.31 or later")
+            }
             GitError::HardeningIgnored { git } => write!(
                 formatter,
-                "the program at {git} doesn't pass the Studio's git settings on to git, so it can't run safely; it may be a wrapper script or git older than 2.31, so put git 2.31 or later itself first on the PATH"
+                "the program at {git} doesn't pass Studio's git settings on to git, so it can't run safely; it may be a wrapper script or git older than 2.31, so put git 2.31 or later itself first on the PATH"
             ),
             GitError::GitNotFound => write!(formatter, "git was not found"),
             GitError::TimedOut => write!(formatter, "git ran past its time limit"),

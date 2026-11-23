@@ -67,7 +67,7 @@ fn check_in_child(home: &Path) {
     let refused = sandbox.git("add -A").expect_err("add is refused");
     assert_eq!(
         refused.to_string(),
-        "git add would store or write files without their acme filter, which the Studio runs only in a workspace you trust; press Review in the header to trust it, then try again"
+        "git add would store or write files without their acme filter, which Studio runs only in a workspace you trust; press Review in the header to trust it, then try again"
     );
     assert_eq!(
         refused,
@@ -120,7 +120,7 @@ fn check_in_child(home: &Path) {
     );
     assert_eq!(
         refused.to_string(),
-        "git add would store or write files without their crypt filter, which the repository's own config defines and the Studio never runs; make this change with git in a terminal"
+        "git add would store or write files without their crypt filter, which the repository's own config defines and Studio never runs; make this change with git in a terminal"
     );
 
     // The repository's config redefines the user's filter: the user's is

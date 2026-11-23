@@ -31,7 +31,9 @@ verifies("studio.installer-rollback-elevated", () => {
 
     const raised = wait.slice(asked, wait.indexOf("${EndIf}\n  ; Halonic change (HAL-5404 S3)"));
     expect(raised).toContain("${If} $4 = 1\n");
-    expect(raised).toMatch(/is skipped because this update runs with administrator rights/);
+    expect(raised).toMatch(
+      /didn't go back to \$OldVersion, because this update runs with administrator rights/,
+    );
     expect(raised).toMatch(/Call LogUpdateLine\n\s+!endif\n\s+Return\n/);
     expect(raised).not.toContain("Exec");
   });
