@@ -61,7 +61,7 @@ How a key is handled:
 | `include.path`, `includeIf.<condition>.path` | Followed, then neutralised | The listing uses `--includes`, and every entry from an included file counts as the repository's. A file that isn't config makes the listing fail, so the call is refused with `repository_unreadable`. |
 | `core.worktree` | Flag `--work-tree` | The runner gives the checked top folder. |
 | `core.excludesFile`, `core.attributesFile` | Accepted | Read only as ignore or attribute patterns, which the repository's `.gitignore` and `.gitattributes` can set anyway. Nothing of the file is shown or written, and attributes only pick filters and drivers, which are neutralised; the runner reads the attribute files as text only to look for a blanked filter (requirement `filter-writes`). Unlike the git adapter, the runner reads the user's own config (commits need `user.name`, push needs the user's credential helper), so the user's own `git/ignore` and `git/attributes` files under `$XDG_CONFIG_HOME` or `~/.config` are read too. They belong to the user, like `~/.gitconfig`, and a repository can't write them. |
-| `diff.orderFile` | Accepted | Read only to order the diff the Studio shows. |
+| `diff.orderFile` | Accepted | Read only to order the diff Studio shows. |
 | `mailmap.file`, `mailmap.blob` | Accepted | Only changes the names `log` shows. The blob comes from the repository itself. |
 | `fsck.skipList`, `fetch.fsck.skipList` | Accepted | Read only as object names to skip in checks. |
 | `gpg.ssh.allowedSignersFile`, `gpg.ssh.revocationFile` | Accepted | Read only by the user's own or git's default `ssh-keygen`, for a signature check shown on screen. |
