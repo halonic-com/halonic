@@ -19,13 +19,15 @@ import {
   summarizeQueue,
   writeQueue,
 } from "./routine-queue.ts";
+import type { SignalTick } from "./routine-signals.ts";
 import { type SkipRecord, SkipRecords, type TargetUnavailableWhy } from "./routine-skips.ts";
 import { TargetChecks, type UnavailableTime } from "./routine-targets.ts";
 import {
+  asError,
   nothing,
   type RoutineFailure,
   type RoutineTickResult,
-  type RoutineTime,
+  timeOf,
 } from "./routine-tick-result.ts";
 import { type DroppedRange, TickSkips } from "./routine-tick-skips.ts";
 import type { AppEvents } from "./workspace-scope.ts";
@@ -111,6 +113,8 @@ export interface RoutineSchedulerOptions<
    * and not started. Left out, every target counts as available.
    */
   targetUnavailable?: (run: Run) => Promise<TargetUnavailableWhy | null>;
+  /** Starts the routines on a signal, after the due times (`app.scheduler-starts-signal-routines`). */
+  signals?: SignalTick<Routine>;
   /** Receives `routines.ticked` after each tick that got as far as asking what is due. */
   events?: EventBus<AppEvents>;
 }
@@ -284,11 +288,13 @@ export class RoutineScheduler<
       }
       await this.startAndRecord(run, result, refused);
     }
+    const signalsStored =
+      (await this.options.signals?.tick(routineList, lastTick, now, result, refused)) ?? true;
     await refused.record(this.skipRecords, this.lastRuns, now, result);
     // Stored after the starts: a crash in between repeats them, and the run ids make that harmless.
     // The queue goes first, so a crash before the last tick asks for the same times again and
     // they queue once. A lost race means another instance ticked too; its values stay.
-    if (await this.storeQueue(storedQueue, plan.queue)) {
+    if (signalsStored && (await this.storeQueue(storedQueue, plan.queue))) {
       await coordination.compareAndSet(this.lastTickKey, stored, now.toISOString());
     }
     events?.emit("routines.ticked", { at: now.toISOString(), ...result });
@@ -460,18 +466,10 @@ export class RoutineScheduler<
   }
 }
 
-function asError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
-}
-
 function oldestFirst(a: ScheduledRun, b: ScheduledRun): number {
   return a.at.getTime() - b.at.getTime() || compare(a.key, b.key);
 }
 
 function compare(a: string, b: string): number {
   return Number(a > b) - Number(a < b);
-}
-
-function timeOf(run: ScheduledRun): RoutineTime {
-  return { key: run.key, at: run.at.toISOString() };
 }

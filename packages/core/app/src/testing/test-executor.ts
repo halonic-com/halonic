@@ -23,7 +23,7 @@ const waitingSince = "2026-11-10T10:40:00.000Z";
  * `callId` check. For the kernel's own tests. A deliberate fake: core may not use adapters, not
  * even in tests. Running the kernel against real adapters is the targets' job.
  */
-export class TestExecutor implements RunExecutor, Pick<RunStore, "list"> {
+export class TestExecutor implements RunExecutor, Pick<RunStore, "list" | "get"> {
   readonly id = "test";
   /** Every start request, repeated ones included. */
   readonly requests: (StartRunRequest | StartAgentRequest)[] = [];
@@ -51,6 +51,11 @@ export class TestExecutor implements RunExecutor, Pick<RunStore, "list"> {
   async startAgent(request: StartAgentRequest): Promise<RunSummary> {
     await this.hold;
     return this.record(request, `agent:${request.agentId}`);
+  }
+
+  /** As `RunStore.get`: the run, or `null` for an unknown one. */
+  async get(runId: string): Promise<RunSummary | null> {
+    return this.runs.get(runId) ?? null;
   }
 
   /** As `RunStore.list`, filtering by status only. */

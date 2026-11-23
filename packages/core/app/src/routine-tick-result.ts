@@ -54,3 +54,13 @@ export const nothing = (): RoutineTickResult => ({
   skipsSaved: [],
   skipsNotSaved: [],
 });
+
+/** A due run as a {@link RoutineTime}. */
+export function timeOf(run: { key: string; at: Date }): RoutineTime {
+  return { key: run.key, at: run.at.toISOString() };
+}
+
+/** What was thrown, as an `Error`. */
+export function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}

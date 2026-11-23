@@ -95,10 +95,29 @@ verifies("routines.signal-loop", () => {
     });
   });
 
-  it("ends the chain at a run the store no longer has", async () => {
+  it("refuses when a run on the chain is gone", async () => {
     const { read } = store({ "a-1": signalled("b", "gone") });
-    expect(await signalLoop("@workspace/c", "a-1", read)).toBeNull();
-    expect(await signalLoop("@workspace/c", "gone", read)).toBeNull();
+    expect(await signalLoop("@workspace/c", "a-1", read)).toEqual({ kind: "unknown" });
+    expect(await signalLoop("@workspace/c", "gone", read)).toEqual({ kind: "unknown" });
+  });
+
+  it("refuses when the top-level run of a child is gone", async () => {
+    const { read } = store({ "a-1-child": childOf("a-1") });
+    expect(await signalLoop("@workspace/c", "a-1-child", read)).toEqual({ kind: "unknown" });
+  });
+
+  it("refuses a signal start that doesn't name its signal", async () => {
+    const { read } = store({
+      "a-1": { parentRunId: null, trigger: { type: "signal", routineId: "@workspace/b" } },
+    });
+    expect(await signalLoop("@workspace/c", "a-1", read)).toEqual({ kind: "unknown" });
+  });
+
+  it("rejects when the store can't be read", async () => {
+    const read = async () => {
+      throw new Error("EIO: i/o error, read");
+    };
+    await expect(signalLoop("@workspace/c", "a-1", read)).rejects.toThrow("EIO");
   });
 
   it("refuses a chain that comes back to a run it has met", async () => {

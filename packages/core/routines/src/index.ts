@@ -32,6 +32,7 @@ export {
   type RunLinks,
   type SignalLoop,
   signalLoop,
+  signalSender,
 } from "./signal-loop.ts";
 export {
   type RunSignals,

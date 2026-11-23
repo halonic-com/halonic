@@ -14,13 +14,15 @@ import { deleteValue } from "./routine-last-runs.ts";
  * `start-refused`: the scheduler asked for the run and the start was refused,
  * with the refusal's own sentence in `sentence` and its next step in `fix`
  * when it has them, and `toCommand` when that step leads to a command.
+ * `signal-loop`: the loop guard refused a signal start (`routines.signal-loop`).
  */
 export type SkipReason =
   | CatchUpReason
   | "busy"
   | "changed"
   | "target-unavailable"
-  | "start-refused";
+  | "start-refused"
+  | "signal-loop";
 
 /**
  * Why a routine's target can't be started (flow-routines 3.9): it isn't in
@@ -262,6 +264,7 @@ const knownReasons: Record<SkipReason, true> = {
   changed: true,
   "target-unavailable": true,
   "start-refused": true,
+  "signal-loop": true,
 };
 const reasons: ReadonlySet<string> = new Set(Object.keys(knownReasons));
 

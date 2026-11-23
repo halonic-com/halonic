@@ -28,6 +28,30 @@ export function routineRunId(workspaceId: string, key: string, at: Date): string
   return `${routineRunPrefix(workspaceId)}${compactDue}-${shortHash(`${key}@${due}`)}`;
 }
 
+/**
+ * The run id of a routine that a signal starts: the same workspace, routine
+ * and signal always give the same id, so a signal that two ticks or two
+ * hosts see starts the routine once. Of the shape of {@link routineRunId},
+ * with the time the signal was sent, and the signal's id in the hash in
+ * place of the due time.
+ *
+ * @param signalId - `<runId>:<seq>` of the signal's `signal.sent` event
+ */
+export function signalRunId(workspaceId: string, key: string, at: Date, signalId: string): string {
+  const sent = at.toISOString();
+  const wholeSeconds = sent.slice(0, sent.indexOf("."));
+  const compactSent = `${wholeSeconds.replaceAll("-", "").replaceAll(":", "")}Z`;
+  return `${routineRunPrefix(workspaceId)}${compactSent}-${shortHash(`${key}#${signalId}`)}`;
+}
+
+/**
+ * The `Coordination` key that keeps a workspace's signal starts: the signals
+ * already decided, and those queued (`overlap: queue`).
+ */
+export function signalsKey(workspaceId: string): string {
+  return `routines/${shortHash(workspaceId)}/signals`;
+}
+
 /** How the id of every routine run of a workspace starts, so runs of other workspaces can be told apart. */
 export function routineRunPrefix(workspaceId: string): string {
   return `routine-${shortHash(workspaceId)}-`;
