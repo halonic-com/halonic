@@ -1,7 +1,12 @@
 // The public API of @halonicjs/adapter-coding-tools. Internal code imports by relative path.
 
-export { CodingToolSet, type CodingToolsOptions } from "./coding-tool-set.ts";
+export {
+  type CodingToolChoice,
+  CodingToolSet,
+  type CodingToolsOptions,
+} from "./coding-tool-set.ts";
 export type { ToolFolders } from "./folders.ts";
+export { secretValues, testEnvironment } from "./run-tests/run-tests.ts";
 export {
   ChangeableCodeError,
   refuseChangeableCode,

@@ -1,33 +1,63 @@
 import type { McpTool, McpToolCallResult, McpToolSet } from "@halonicjs/adapter-mcp/server";
+import { SecretScrubber } from "@halonicjs/std";
 import { cappedAnswer } from "./answer-cap.ts";
 import type { CodingTool } from "./coding-tool.ts";
 import type { ToolFolders } from "./folders.ts";
 import { ReadCache } from "./read/read-cache.ts";
 import { readRangesTool } from "./read/read-ranges.ts";
 import { repoMapTool } from "./repo-map.ts";
+import { runTestsTool } from "./run-tests/run-tests.ts";
 import { searchTool } from "./search/search.ts";
 import { ToolRefusal } from "./tool-input.ts";
+
+/**
+ * Which tools the server offers. `read-only` leaves out `run_tests`: Codex
+ * gets only the reading tools until it is confirmed to ask before using an
+ * MCP tool (HAL-16748).
+ */
+export type CodingToolChoice = "all" | "read-only";
 
 /** What the coding tools need. */
 export interface CodingToolsOptions {
   readonly folders: ToolFolders;
+  readonly choice: CodingToolChoice;
+  /** The test command's whole environment, from `testEnvironment`. */
+  readonly testEnvironment: Readonly<Record<string, string>>;
+  /** Values removed from every answer, from `secretValues`. */
+  readonly secrets: readonly string[];
+  /** The longest a test run may take, in seconds. */
+  readonly maxTestSeconds?: number;
 }
 
 /**
- * The coding tools of one session as an MCP tool set (requirement
- * `coding-tools.tool-set`): `read_ranges`, `search` and `repo_map`. A call
- * the tool refuses is an error result the model reads; a call to a tool not
- * offered is one too. Every answer is capped at 24,000 characters.
+ * The coding tools of one session as an MCP tool set (requirements
+ * `coding-tools.tool-set` and `coding-tools.read-only-choice`):
+ * `read_ranges`, `search`, `repo_map` and, unless the choice is
+ * `read-only`, `run_tests`. A call the tool refuses is an error result the
+ * model reads; a call to a tool not offered is one too. Every answer has
+ * the secret values removed and is capped at 24,000 characters.
  */
 export class CodingToolSet implements McpToolSet {
   readonly #tools: readonly CodingTool[];
+  readonly #scrubber = new SecretScrubber();
 
   constructor(options: CodingToolsOptions) {
-    this.#tools = [
-      readRangesTool(options.folders, new ReadCache()),
+    for (const secret of options.secrets) this.#scrubber.remember(secret);
+    const scrubLine = (line: string) => this.#scrubber.scrub(line);
+    const tools = [
+      readRangesTool(options.folders, new ReadCache(), scrubLine),
       searchTool(options.folders),
       repoMapTool(options.folders),
+      runTestsTool({
+        folders: options.folders,
+        environment: options.testEnvironment,
+        secrets: options.secrets,
+        ...(options.maxTestSeconds === undefined
+          ? {}
+          : { maxTimeoutSeconds: options.maxTestSeconds }),
+      }),
     ];
+    this.#tools = options.choice === "all" ? tools : tools.filter((tool) => tool.readOnly);
   }
 
   /** The names of the tools that only read: the ones a harness may allow without asking. */
@@ -50,10 +80,12 @@ export class CodingToolSet implements McpToolSet {
       return { text: `There is no tool '${name}' here. The tools are: ${offered}.`, isError: true };
     }
     try {
-      const text = await tool.run(args, signal);
+      const text = this.#scrubber.scrub(await tool.run(args, signal));
       return { text: cappedAnswer(text, "narrow the call"), isError: false };
     } catch (error) {
-      if (error instanceof ToolRefusal) return { text: error.message, isError: true };
+      if (error instanceof ToolRefusal) {
+        return { text: this.#scrubber.scrub(error.message), isError: true };
+      }
       throw error;
     }
   }
