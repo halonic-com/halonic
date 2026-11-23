@@ -177,6 +177,14 @@ normally, not as administrator". "It may still have access to some of your
 project folders" (`manual`, srt still lists its sandbox account, or its status
 can't be read) means a start or installing again may not end it.
 
+An uninstall started as administrator, or a silent one from an elevated
+prompt, can't read srt's status: it starts only Halonic's signed helper, never
+the agent host in the install folder, which anyone could swap. So it can't tell
+whether any access was kept, and its last page always gives the `manual` words
+and steps. Those steps end the access in either case, because installing again
+normally takes back what an earlier removal left before the sandbox is set up
+again.
+
 For `manual` the fix is the same everywhere: remove the sandbox again without
 administrator rights. Only that removal takes the access back; a start
 doesn't, so quitting Halonic and opening it again is not enough on its own.
