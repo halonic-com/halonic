@@ -51,8 +51,9 @@ A plugin's local tools and local
 integration code don't start without the fence unless you said yes to that on
 this computer, and the agent host never starts a plugin's backend without it.
 
-You give that yes in Studio, in the trust check that asks for it, and Studio
-saves it in your profile on this computer, for the reason the sandbox can't
+You give that yes in Studio, in the trust check that asks for it or with
+**Allow…** in Settings › Agent sandbox, and Studio saves it in your profile on
+this computer, for the reason the sandbox can't
 start right then. It's one yes for the whole computer: it covers every
 workspace you trust and every plugin, not only the one whose check asked.
 The `halonic` command reads the same yes, except on Windows with the WSL

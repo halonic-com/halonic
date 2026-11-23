@@ -246,7 +246,7 @@ class LocalIntegrationOpening {
         ? why
         : `the saved yes to run without the sandbox can't be read (${JSON.stringify(unreadable)}), and ${why}`;
     }
-    const allow = " To allow it, trust this workspace in Studio on this computer.";
+    const allow = " To allow it, open Settings › Agent sandbox in Studio on this computer.";
     if (unreadable !== undefined) {
       return `the sandbox isn't available here (${reason}) and the saved yes to run without it can't be read (${JSON.stringify(unreadable)}), so nothing runs.${allow}`;
     }

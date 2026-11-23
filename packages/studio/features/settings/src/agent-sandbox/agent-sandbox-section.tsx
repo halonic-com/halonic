@@ -40,19 +40,12 @@ import { WslRemoveDialog } from "./wsl-remove-dialog.tsx";
 /** Settings › Agent sandbox as the settings container shows it. Without a host it reads Not available. */
 export function AgentSandboxSection({ context, place, surface }: SettingsSectionProps) {
   const host = hostOf(context);
-  const plugins = context.settingsSections?.find(({ id }) => id === "plugins");
-  const { openSettings } = context;
   return (
     <AgentSandboxHostView
       host={host}
       place={place}
       surface={surface}
       unfencedYes={context.services.find(UnfencedYesService)}
-      onOpenPlugins={
-        plugins === undefined || openSettings === undefined
-          ? undefined
-          : () => openSettings(plugins.id)
-      }
       settings={context.services.get(HostSettingsService)}
       announce={(line) => context.announcer.announce(line)}
       startCheck={context.services.find(sandboxStartCheckKey)}
@@ -78,8 +71,6 @@ export interface AgentSandboxHostViewProps {
    * (served Studio, the demo) the section has no "Plugins and integrations".
    */
   readonly unfencedYes?: UnfencedYesHost | undefined;
-  /** Opens Settings › Plugins, from "Plugins and integrations" while it needs a yes. */
-  readonly onOpenPlugins?: (() => void) | undefined;
   readonly surface?: SettingsSectionProps["surface"] | undefined;
 }
 
@@ -91,7 +82,6 @@ export function AgentSandboxHostView({
   announce,
   startCheck,
   unfencedYes,
-  onOpenPlugins,
   surface,
 }: AgentSandboxHostViewProps) {
   const sandbox = useAgentSandbox(host, place, announce);
@@ -165,12 +155,7 @@ export function AgentSandboxHostView({
             {wslRemoval}
             {newAgents}
             {unfencedYes ? (
-              <UnfencedYesBlock
-                host={unfencedYes}
-                surface={surface}
-                onOpenPlugins={onOpenPlugins}
-                announce={announce}
-              />
+              <UnfencedYesBlock host={unfencedYes} surface={surface} announce={announce} />
             ) : null}
           </>
         }
