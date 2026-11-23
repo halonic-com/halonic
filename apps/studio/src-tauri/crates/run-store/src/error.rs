@@ -10,6 +10,9 @@ pub enum RunStoreError {
     InvalidLines,
     /// The log's whole lines are not UTF-8 text. `file` is the log's name.
     BrokenLog { file: String },
+    /// The log is a link, a hard link or not a plain file, so the store
+    /// neither reads nor writes through it. `file` is the log's name.
+    LinkedLog { file: String },
     /// The run folder ignores case, and `<run_id>.jsonl` opens the log of
     /// another run, whose id differs only in case. Run ids are
     /// case-sensitive, so the run can't be stored in this folder.
@@ -24,7 +27,9 @@ impl RunStoreError {
         match self {
             RunStoreError::InvalidRunId { .. } => "invalid_run_id",
             RunStoreError::InvalidLines => "invalid_lines",
-            RunStoreError::BrokenLog { .. } => "broken_log",
+            // The page shows a broken log's message, which names the log,
+            // and knows no kind of its own for a linked one.
+            RunStoreError::BrokenLog { .. } | RunStoreError::LinkedLog { .. } => "broken_log",
             RunStoreError::OtherRunsLog { .. } => "other_runs_log",
             RunStoreError::Io { .. } => "io",
         }
@@ -58,6 +63,10 @@ impl fmt::Display for RunStoreError {
                     "Broken run log {file}: it is not valid UTF-8 text."
                 )
             }
+            RunStoreError::LinkedLog { file } => write!(
+                formatter,
+                "Run log {file} is a link or not a plain file: the run store doesn't follow links."
+            ),
             RunStoreError::OtherRunsLog { run_id } => write!(
                 formatter,
                 "Run {run_id} can't be stored here: the run folder ignores case, and {run_id}.jsonl opens another run's log."
