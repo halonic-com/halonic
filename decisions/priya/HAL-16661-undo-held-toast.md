@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16661 (design check C741 on HAL-16649, row 1); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:F9JIeVlBsppL6ycXOVwYYTAhGGO6sMnCvyNb2LvQkjNnasFJMwOSo2B8L79ogh/WjII4uFVYjdefqtaeCCW7Cg==
 
 While the engine isn't answering, **Undo** on a run proposal's decision toast sends nothing. Until now the decision toast stayed and a second toast, "Couldn't undo this." with its line, said why. On a desktop both show, one above the other. On a phone the kit shows one toast at a time, oldest first, and the decision toast stays until it's closed (its Undo keeps it open, and focus on Undo pauses its timer), so the reason waited behind it: the person pressed **Undo** and saw nothing happen. The signed-out line, "Sign in again to send your answer.", is mostly seen on a phone (the served Studio), so it was hidden the same way.
 
