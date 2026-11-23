@@ -157,21 +157,25 @@ or a silent uninstall from an elevated prompt, can't do that part safely, so it
 leaves it for later and writes nothing in your profile.
 
 Halonic takes that access back later only when it runs on Windows itself, as
-you and without administrator rights: Studio with the Windows sandbox chosen,
-or a `halonic` command installed on Windows, at its next start or before you
-set the sandbox up again. It doesn't when Studio's agents run in WSL (the
-default when nothing is chosen) or when the command line runs inside WSL,
-because neither can reach srt's Windows account. It also doesn't while srt
-still lists its sandbox account, for example after the installer has set the
-sandbox up again, or when Halonic can't read srt's status.
+you and without administrator rights. The installer does it when you install
+Halonic again normally, not as administrator, whichever sandbox is chosen and
+whether or not "Set up the agent sandbox" is ticked: it takes the access back
+first, before its sandbox step sets srt's sandbox account up again. Studio with
+the Windows sandbox chosen, or a `halonic` command installed on Windows, does
+it at its next start or before you set the sandbox up again. Studio's agents in
+WSL (the default when nothing is chosen) and a command line inside WSL don't,
+because neither can reach srt's Windows account. None of them does while srt
+still lists its sandbox account, or when Halonic can't read srt's status.
 
 The words after a removal follow those two cases. "Its access to your project
 folders ends the next time you start Halonic without administrator rights"
 (`keptAccess: until_next_start`, srt's sandbox account is gone) is true when you
 start Halonic on Windows itself, as you, as above; Studio's agents in WSL and a
-command line inside WSL don't end it. "It may still have access to some of your
+command line inside WSL don't end it. The uninstaller, after which Halonic is
+gone, says instead that it has that access "until you install Halonic again
+normally, not as administrator". "It may still have access to some of your
 project folders" (`manual`, srt still lists its sandbox account, or its status
-can't be read) means the next start won't end it.
+can't be read) means a start or installing again may not end it.
 
 For `manual` the fix is the same everywhere: remove the sandbox again without
 administrator rights. Only that removal takes the access back; a start
