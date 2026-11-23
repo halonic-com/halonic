@@ -4,14 +4,14 @@ import {
   Callout,
   ChatEndLine,
   ChatMessage,
-  ChatText,
   ChatToolLine,
   ChatTranscript,
   HandIcon,
   InfoIcon,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useRef } from "react";
-import { hostTitle } from "./host-text.ts";
+import { hostShown, hostTitle, hostTitleParts } from "./host-text.ts";
+import { HostTextView } from "./host-text-view.tsx";
 import { PromptBox } from "./prompt-box.tsx";
 import type { RemoteSendOutcome, RemoteView } from "./remote-view.ts";
 import { type RunItem, runHistory } from "./run-history.ts";
@@ -76,11 +76,13 @@ export function RunDetail({
         <h1
           ref={heading}
           tabIndex={-1}
-          className="min-w-0 flex-1 truncate rounded-sm text-heading text-fg focus-ring"
+          className="min-w-24 flex-1 truncate rounded-sm text-heading text-fg focus-ring"
         >
-          {title}
+          <HostTextView text={hostTitleParts(session.title)} />
         </h1>
-        <div className="shrink-0">{label}</div>
+        {/* The title wins: it keeps at least 96px, and the label shrinks, cutting the computer's
+            name with "…" while its dot, state words and chevron stay (HAL-16957). */}
+        <div className="min-w-0">{label}</div>
       </header>
       {view.canAnswer || banner === undefined ? null : (
         <div className="shrink-0 px-4 pt-3">{banner}</div>
@@ -90,7 +92,12 @@ export function RunDetail({
           <RunItemView key={item.key} item={item} agent={title} />
         ))}
       </ChatTranscript>
-      <PromptBox key={sessionId} view={view} agent={{ sessionId, title }} onSend={onSend} />
+      <PromptBox
+        key={sessionId}
+        view={view}
+        agent={{ sessionId, title: session.title }}
+        onSend={onSend}
+      />
     </div>
   );
 }
@@ -112,10 +119,13 @@ function RunItemView({ item, agent }: { readonly item: RunItem; readonly agent: 
       return (
         <div className="flex flex-col gap-1">
           {item.from === "you" ? (
-            <ChatMessage from="you">{item.text}</ChatMessage>
+            <ChatMessage from="you">{hostShown(item.text)}</ChatMessage>
           ) : (
             <ChatMessage from="reply" heading={runWords.said(agent)} headingLevel={2}>
-              <ChatText>{item.text}</ChatText>
+              {/* `ChatText`'s look, with the hidden characters drawn as chips. */}
+              <p className="text-reading text-fg whitespace-pre-wrap wrap-break-word">
+                <HostTextView text={item.text} />
+              </p>
             </ChatMessage>
           )}
           {item.time === undefined ? null : (
@@ -131,7 +141,9 @@ function RunItemView({ item, agent }: { readonly item: RunItem; readonly agent: 
           <div className="flex flex-col gap-1">
             {/* The tool and its arguments as the computer sends them: it wraps at a space first,
                 and inside a long token only when it must, so nothing runs off the screen. */}
-            <p className="font-mono text-code wrap-anywhere">{item.summary}</p>
+            <p className="font-mono text-code wrap-anywhere">
+              <HostTextView text={item.summary} />
+            </p>
             {item.time === undefined ? null : <p className="text-fg-muted">{item.time}</p>}
             <p>{ANSWER_RISKY_ON_COMPUTER}</p>
           </div>

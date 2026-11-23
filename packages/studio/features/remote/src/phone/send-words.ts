@@ -11,7 +11,8 @@ import { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";
 export const promptWords = {
   /** The box's name for a screen reader (strings table, accessibility). */
   label: "Prompt",
-  placeholder: (agent: string) => `Message ${agent}…`,
+  /** "Message Sorter…"; a title already cut with "…" gets no second one (HAL-16957). */
+  placeholder: (agent: string) => (agent.endsWith("…") ? `Message ${agent}` : `Message ${agent}…`),
   send: "Send",
   /** Under the box, the reason it is off, while the view is stale (`phone.stale.promptReason`). */
   staleReason: "You can send a prompt once your phone reconnects.",

@@ -48,6 +48,35 @@ verifies("kit.header-badge-status", () => {
     expect(dotOf(removed).className).toContain("bg-danger");
   });
 
+  it("cuts only its shrinking part with an ellipsis, so the state words stay (HAL-16957)", () => {
+    const words = (text: string) => {
+      const { container } = render(
+        <HeaderBadge
+          as="status"
+          tone="attention"
+          action="Details"
+          shrinking="Tim's laptop"
+          onClick={vi.fn()}
+        >
+          {text}
+        </HeaderBadge>,
+      );
+      return [...(buttonIn(container).children[1]?.children ?? [])].map((part) => [
+        part.textContent,
+        part.className,
+      ]);
+    };
+    expect(words("Connected · Tim's laptop")).toEqual([
+      ["Connected · ", "shrink-0"],
+      ["Tim's laptop", "min-w-0 truncate"],
+    ]);
+    expect(words("Tim's laptop isn't answering")).toEqual([
+      ["Tim's laptop", "min-w-0 truncate"],
+      [" isn't answering", "shrink-0"],
+    ]);
+    expect(words("Reconnecting…")).toEqual([]);
+  });
+
   it("takes the name it is given instead of its words, so an ellipsis isn't read (HAL-15415)", () => {
     const { container } = render(
       <HeaderBadge
