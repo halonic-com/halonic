@@ -107,6 +107,23 @@ verifies("files.problems.count", () => {
     expect(document.querySelector("dialog[open]")).toBeNull();
   });
 
+  it("draws the count as one danger pill with Show underlined, the strip as a band", async () => {
+    const desktop = await show(vi.fn, listOf([sorter]).source, statusItem);
+    const phone = await show(vi.fn, listOf([sorter]).source, strip, "phone");
+    for (const page of [desktop.page, phone.page]) {
+      const pill = button(page);
+      expect(pill?.className).toContain("bg-over-surface-danger-soft");
+      expect(pill?.className).toContain("text-danger");
+      expect(pill?.className).toContain("contrast-more:border-danger");
+      expect(pill?.className).not.toContain("bg-surface-muted");
+      expect(pill?.querySelector("svg")).not.toBeNull();
+      expect(pill?.querySelector(".underline")?.textContent).toBe("Show");
+    }
+    const band = phone.page.querySelector("button")?.parentElement;
+    expect(band?.className).toContain("bg-surface-subtle");
+    expect(band?.className).toContain("border-b");
+  });
+
   it("leaves the strip out on the desktop and at zero on a phone", async () => {
     const desktop = await show(vi.fn, listOf([sorter]).source, strip);
     expect(desktop.page.textContent).toBe("");
