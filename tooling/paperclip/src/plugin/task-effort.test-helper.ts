@@ -79,7 +79,7 @@ export function effortHarness(
   const logs: { level: string; line: string }[] = [];
   const requests: { url: string; method: string; headers: unknown; body: unknown }[] = [];
   /** Runs after every read of the task, so a test can change it between the handler's reads. */
-  const hooks: { afterGet?: () => void } = {};
+  const hooks: { afterGet?: (() => void) | undefined } = {};
   const ctx = {
     issues: {
       get: async (id: string) => {
