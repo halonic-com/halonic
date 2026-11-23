@@ -17,7 +17,7 @@ import type {
 export interface HostApi {
   readonly issues: Pick<
     PluginIssuesClient,
-    "list" | "get" | "listComments" | "createComment" | "update" | "requestWakeup"
+    "list" | "get" | "listComments" | "createComment" | "update" | "requestWakeup" | "monitors"
   >;
   readonly agents: Pick<PluginAgentsClient, "list">;
 }
@@ -112,6 +112,11 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
       await host.issues.update(taskId, doneOnly({ status: "done" }), companyId);
       await host.issues.createComment(taskId, body, companyId);
       return "written";
+    },
+    async postponeMonitor(taskId, until) {
+      // Paperclip checks the rest: only later, at most 24 hours out, an existing monitor (HAL-16413).
+      const result = await host.issues.monitors.postpone(taskId, companyId, { until });
+      return result.postponed ? "postponed" : "unchanged";
     },
   };
 }

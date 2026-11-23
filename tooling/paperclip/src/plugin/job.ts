@@ -123,6 +123,8 @@ async function recordPass(
       "monitors.fired": monitors.fired,
       "monitors.set_on_pr_tasks": monitors.setOnPrTasks,
       "monitors.fired_on_pr_tasks": monitors.firedOnPrTasks,
+      "monitors.postponed": summary.postponed,
+      "monitors.postpone_refused": summary.postponeRefused,
     },
     { companyId, dryRun: String(dryRun) },
   );
@@ -130,7 +132,7 @@ async function recordPass(
     ctx.logger.error(`PR watcher: couldn't save its metrics: ${failure.message}`, { companyId });
   }
   ctx.logger.info(
-    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks${dryRun ? " (dry run)" : ""}.`,
+    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
     { companyId },
   );
 }
@@ -179,6 +181,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     facts: snapshotFacts({ snapshot, query, fallback, greenSince: baseGreenSince(get) }),
     dryRun: settings.dryRun,
     log: (line) => ctx.logger.info(line, { companyId }),
+    now,
   });
   const prTasks = new Set([...found].filter(([, pulls]) => pulls.length > 0).map(([id]) => id));
   await recordPass(ctx, companyId, settings.dryRun, {

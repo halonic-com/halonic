@@ -1,4 +1,11 @@
-import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
+import type { PaperclipPluginManifestV1, PluginCapability } from "@paperclipai/plugin-sdk";
+
+/**
+ * The capability of our local server patch (HAL-16413). Paperclip's shared
+ * capability list (2026.1117.0) doesn't name it, so the type doesn't either;
+ * the patched host accepts it in a manifest.
+ */
+const monitorPostpone = "issues.monitors.postpone" as PluginCapability;
 
 /**
  * The Agent tools plugin (HAL-15920, phase 1). Its first job is the PR
@@ -57,6 +64,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     "issue.interactions.read",
     // The gh guard's route (HAL-16401): agents' runs only; it counts and answers, nothing else.
     "api.routes.register",
+    // The PR watcher moves the fallback monitor of a task it watches later (HAL-16401 part 3).
+    // Paperclip lets it only move an existing monitor later, at most 24 hours out (HAL-16413).
+    monitorPostpone,
   ],
   entrypoints: { worker: "dist/worker.js" },
   instanceConfigSchema: {

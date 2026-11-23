@@ -59,6 +59,15 @@ verifies("paperclip.pr-watcher-plugin", () => {
   });
 });
 
+verifies("paperclip.pr-watcher-monitor-postpone", () => {
+  test("moves a monitor through the host's postpone call and nothing else", async () => {
+    const { host, writes } = fakeHost([openTask]);
+    const until = "2026-11-23T16:00:00.000Z";
+    expect(await paperclipHost(host, "acme").postponeMonitor("task-1", until)).toBe("postponed");
+    expect(writes).toEqual([{ kind: "postpone", issueId: "task-1", until }]);
+  });
+});
+
 describe("the host adapter", () => {
   test("comments, then wakes the assignee with a key per state", async () => {
     const { host, writes } = fakeHost([openTask]);

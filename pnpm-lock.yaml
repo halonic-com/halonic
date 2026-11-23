@@ -285,6 +285,7 @@ overrides:
 patchedDependencies:
   '@anthropic-ai/sandbox-runtime@0.0.82': dd29d5e45f64f3e38a0efbbbf315e1151cac75153022bdc320d9a3874cce4bff
   '@changesets/git@4.0.1': 21dc06947411909ed9f92f895278221e717d5caeca25628e1eea1821604c9173
+  '@paperclipai/plugin-sdk@2026.1117.0': 3f70d2c10eab6ef1500a896e7b02b43eb6a77d771b3351d034decd052dd6d0da
 
 importers:
 
@@ -4487,7 +4488,7 @@ importers:
         version: link:../config
       '@paperclipai/plugin-sdk':
         specifier: 'catalog:'
-        version: 2026.1117.0(react@19.3.1)
+        version: 2026.1117.0(patch_hash=3f70d2c10eab6ef1500a896e7b02b43eb6a77d771b3351d034decd052dd6d0da)(react@19.3.1)
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
@@ -8138,7 +8139,7 @@ snapshots:
 
   '@oxc-project/types@0.156.0': {}
 
-  '@paperclipai/plugin-sdk@2026.1117.0(react@19.3.1)':
+  '@paperclipai/plugin-sdk@2026.1117.0(patch_hash=3f70d2c10eab6ef1500a896e7b02b43eb6a77d771b3351d034decd052dd6d0da)(react@19.3.1)':
     dependencies:
       '@paperclipai/shared': 2026.1117.0
       zod: 4.6.7

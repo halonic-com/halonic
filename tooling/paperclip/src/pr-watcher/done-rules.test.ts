@@ -24,6 +24,7 @@ function run(github: ReturnType<typeof fakeGitHub>, paperclip: ReturnType<typeof
     discover: paperclip.discover,
     dryRun: false,
     log: (line) => lines.push(line),
+    now: new Date("2026-11-21T22:00:00Z"),
   });
   return { summary, lines };
 }
@@ -58,6 +59,8 @@ verifies("paperclip.pr-watcher-done", () => {
       checked: 1,
       done: 1,
       woken: 0,
+      postponed: 0,
+      postponeRefused: 0,
       failed: [],
     });
     expect(paperclip.comments["task-4485"]?.[0]?.body).not.toContain("#9001");
@@ -107,13 +110,27 @@ verifies("paperclip.pr-watcher-done", () => {
     const later = agentComment(agents.liam, "2026-11-21T21:30:00Z", "Also reword the changeset.");
     const paperclip = fakePaperclip([task(4485, agents.priya)], { "task-4485": [later] });
     const first = run(github, paperclip);
-    expect(await first.summary).toEqual({ checked: 1, done: 0, woken: 1, failed: [] });
+    expect(await first.summary).toEqual({
+      checked: 1,
+      done: 0,
+      woken: 1,
+      postponed: 0,
+      postponeRefused: 0,
+      failed: [],
+    });
     expect(paperclip.wakes).toEqual([
       { taskId: "task-4485", key: "halonic-com/halonic#4485 c0f13fa merged" },
     ]);
     expect(paperclip.comments["task-4485"]?.at(-1)?.body).toContain("Mark it done if nothing");
     const second = run(github, paperclip);
-    expect(await second.summary).toEqual({ checked: 1, done: 0, woken: 0, failed: [] });
+    expect(await second.summary).toEqual({
+      checked: 1,
+      done: 0,
+      woken: 0,
+      postponed: 0,
+      postponeRefused: 0,
+      failed: [],
+    });
     expect(second.lines[0]).toContain("it got comments after its merge");
   });
 

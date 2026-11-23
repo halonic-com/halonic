@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`
 
 ## PR watcher
 
@@ -80,7 +80,9 @@ registering agent tools, writing metrics and keeping plugin state (the
 GitHub snapshot). The board check adds events, the two documents, reading
 approvals, a task's subtree, its blockers and its pending cards (see Board
 check below). The gh guard adds one route that agents' runs call (see gh guard
-below). No webhooks, UI, files or processes.
+below). The watcher also asks for `issues.monitors.postpone`, a capability of
+our local server patch (HAL-16413), to move a watched task's fallback monitor
+later (see Leaving a task the watcher watches). No webhooks, UI, files or processes.
 
 - **Status changes:** the manifest can't narrow `issues.update`, so
   `host.ts` is the only file that changes a task's status, and its
@@ -110,7 +112,9 @@ below). No webhooks, UI, files or processes.
 pnpm --filter @halonicjs/tooling-paperclip run build:plugin
 ```
 
-writes `dist/worker.js` (the SDK bundled in) and `dist/manifest.js`, which
+writes `dist/worker.js` (the SDK bundled in, with our patch
+`patches/@paperclipai__plugin-sdk@2026.1117.0.patch`, which adds
+`ctx.issues.monitors.postpone`) and `dist/manifest.js`, which
 `package.json`'s `paperclipPlugin` block names. The board installs it from
 that folder of a `main` checkout on Halonic Server (Settings → Plugins);
 publishing it to npm would be a release. Run it in dry run first, read the
@@ -360,6 +364,9 @@ front of each name. A metric that doesn't save is logged and changes nothing.
   both again for tasks with a pull request (`*_on_pr_tasks`). Each fired
   monitor is one model run that only checks. A task closed since its monitor
   fired isn't open any more, so `fired` is a lower bound.
+  `monitors.postponed` counts the fallback monitors the watcher moved later
+  (or would move, in a dry run), `monitors.postpone_refused` the moves
+  Paperclip refused.
 - **Each tool call** (tags `companyId`, `tool`, `outcome`): `tools.calls` and
   `tools.github_requests`. `ready_for_review` saves `tools.calls`,
   `tools.duration_ms`, one of `precheck.pass`, `.fail`, `.running`,
@@ -420,6 +427,17 @@ checks. The watcher's wake or done replaces the 20-minute CI checks and the
 60-minute merge checks; the monitor fires only if the watcher missed
 something. Waiting for review doesn't change: the task goes to the reviewer
 with status `todo`.
+
+**The watcher keeps that monitor back** (HAL-16401 part 3). On a task it
+watches with an open pull request, once the monitor is due within 5 hours
+(but not within 1 hour), the watcher moves it to 6 hours out, so it stays 5
+to 6 hours away and fires no model run while the watcher runs. If the
+watcher stops, the monitor fires within 6 hours, as before. A monitor due
+within the hour is the author's own CI check after a push, which the watcher
+doesn't replace (it doesn't wake anyone for a green `ci-ok`), so it is left
+alone. Paperclip's side (only an existing monitor, only later, at most 24 hours
+out, an activity entry for each move) is the server patch in
+`halonic-com/server` `paperclip/patches/1117/` (HAL-16413).
 
 `blocked` doesn't work for this: a blocker must be a task, and a pull
 request isn't one; Paperclip refuses the plugin's wake while a blocker is
