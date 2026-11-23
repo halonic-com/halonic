@@ -18,7 +18,7 @@ verifies("cloudflare-durable.usage-outbox", () => {
         kind: "usage",
         record: {
           id: "res_1",
-          scope: "u_acme",
+          scope: "u/acme",
           ...owner,
           kind: "step",
           units: { cost: 120, harnessMs: 4_000 },
@@ -30,7 +30,7 @@ verifies("cloudflare-durable.usage-outbox", () => {
         kind: "usage",
         record: {
           id: "call_1",
-          scope: "u_acme",
+          scope: "u/acme",
           ...owner,
           kind: "model_call",
           units: { tokens: 900, cost: 30 },

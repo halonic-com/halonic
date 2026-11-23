@@ -15,6 +15,7 @@ import {
   checkIds,
   checkLimits,
   checkRecordKind,
+  checkScope,
   correctionSuffix,
 } from "./usage-input.ts";
 import { firstOver, newThresholds, usageLimitsKey, withDefaults } from "./usage-limits.ts";
@@ -89,7 +90,7 @@ export class UsageAccount {
 
   constructor(storage: UsageStorage, options: UsageAccountOptions) {
     this.#storage = storage;
-    this.#scope = checkId("scope", options.scope);
+    this.#scope = checkScope(options.scope);
     this.#clock = options.clock;
     this.#runLeaseMs = options.runLeaseMs ?? defaultRunLeaseMs;
     checkAmount("runLeaseMs", this.#runLeaseMs);

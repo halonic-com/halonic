@@ -14,6 +14,19 @@ export const correctionSuffix = ":late";
 /** The kinds of use a caller may record; `step` and `correction` come from reserve and settle. */
 const recordKinds: ReadonlySet<string> = new Set(["model_call", "run"]);
 
+/** A scope is a person's (`u/<id>`) or an organisation's (`o/<id>`), as the Meter port names it. */
+const scopePattern = /^[uo]\/[A-Za-z0-9_.:-]{1,126}$/;
+
+/**
+ * @throws RangeError when `scope` isn't `u/` or `o/` followed by a machine id
+ */
+export function checkScope(scope: string): string {
+  if (typeof scope !== "string" || !scopePattern.test(scope)) {
+    throw new RangeError('scope must be "u/" or "o/" followed by 1 to 126 letters, digits or "_.:-".');
+  }
+  return scope;
+}
+
 /**
  * @throws RangeError when `id` isn't a machine id
  */

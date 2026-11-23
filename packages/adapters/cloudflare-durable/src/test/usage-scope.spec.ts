@@ -1,0 +1,155 @@
+// The usage object's scope, limits pull and alarm over a real Durable Object's storage (see
+// `usage-object.test.ts`).
+
+import { describe, expect, it } from "vitest";
+import { defaultRunLeaseMs } from "../run-slots.ts";
+import { reservationMarginMs } from "../usage-account.ts";
+import { UsageScope } from "../usage-scope.ts";
+import { usageStorageOf } from "../usage-storage.ts";
+import type { UsageLimits } from "../usage-types.ts";
+import { inObjectState } from "./state-host.ts";
+import { SuiteClock } from "./suite-case.ts";
+
+export { StateHostObject } from "./state-host.ts";
+
+const acme = { actor: "u_acme", scope: "u/acme" };
+const minute = 60_000;
+
+/** A scope over the object's storage and alarm; Cloud answers its limits or can't be reached. */
+function newScope(storage: DurableObjectStorage, cloudAnswers = false) {
+  const clock = new SuiteClock();
+  const start = clock.now().getTime();
+  const limits: UsageLimits = {
+    version: 1,
+    status: "active",
+    period: { start, end: start + 30 * 24 * 60 * minute },
+    limits: { cost: 1_000 },
+    defaultReserve: { cost: 100 },
+    maxRunning: 2,
+  };
+  const cloud = { pulls: 0, answer: cloudAnswers ? limits : null };
+  const scope = new UsageScope({
+    storage,
+    alarm: { set: (atMs) => storage.setAlarm(atMs), clear: () => storage.deleteAlarm() },
+    clock: () => clock,
+    pullLimits: async () => {
+      cloud.pulls++;
+      return cloud.answer;
+    },
+  });
+  return { scope, clock, limits, cloud, alarmAt: () => storage.getAlarm() };
+}
+
+const step = { id: "res_1", runId: "run_1", max: { cost: 300 }, timeLimitMs: minute };
+
+describe("usage object storage", () => {
+  it("stores a value changed in memory only when it is put", () =>
+    inObjectState(({ storage }) => {
+      const usage = usageStorageOf(storage);
+      usage.transactionSync(() => usage.put("spent", { pool: { cost: 1 } }));
+      const read = usage.get<{ pool: { cost: number } }>("spent");
+      if (read !== undefined) read.pool.cost = 500;
+      expect(usage.get("spent")).toEqual({ pool: { cost: 1 } });
+    }));
+
+  it("stores nothing of a transaction that throws", () =>
+    inObjectState(({ storage }) => {
+      const usage = usageStorageOf(storage);
+      expect(() =>
+        usage.transactionSync(() => {
+          usage.put("spent", 1);
+          throw new Error("the step broke");
+        }),
+      ).toThrow("the step broke");
+      expect(usage.get("spent")).toBeUndefined();
+    }));
+});
+
+describe("usage object scope", () => {
+  it("refuses a call for another scope than its first, storing nothing", () =>
+    inObjectState(async ({ storage }) => {
+      const { scope, limits } = newScope(storage);
+      expect(scope.applyLimits("u/acme", limits)).toBe("applied");
+      const other = { actor: "u_acme", scope: "o/acme" };
+      await expect(scope.reserve(other, step)).rejects.toThrow(RangeError);
+      expect(() => scope.applyLimits("o/acme", { ...limits, version: 2 })).toThrow(RangeError);
+      expect(scope.outboxSize("u/acme")).toBe(0);
+      expect(await scope.reserve(acme, step)).toEqual({ allowed: true });
+    }));
+
+  it("refuses a scope that isn't a person's or an organisation's", () =>
+    inObjectState(({ storage }) => {
+      const { scope, limits } = newScope(storage);
+      expect(() => scope.applyLimits("acme", limits)).toThrow(RangeError);
+      expect(storage.kv.get("scope")).toBeUndefined();
+    }));
+});
+
+describe("usage object limits", () => {
+  it("refuses with no limits when Cloud can't be reached", () =>
+    inObjectState(async ({ storage }) => {
+      const { scope, cloud } = newScope(storage);
+      expect(await scope.check(acme)).toEqual({ allowed: false, refusal: { code: "plan.none" } });
+      expect(await scope.startRun(acme, "run_1")).toMatchObject({ allowed: false });
+      expect(cloud.pulls).toBe(2);
+    }));
+
+  it("pulls limits once for parallel steps, then allows them", () =>
+    inObjectState(async ({ storage }) => {
+      const { scope, cloud } = newScope(storage, true);
+      const answers = await Promise.all([scope.check(acme), scope.check(acme)]);
+      expect(answers).toEqual([{ allowed: true }, { allowed: true }]);
+      expect(cloud.pulls).toBe(1);
+    }));
+
+  it("counts limits past their period's end as none and pulls again", () =>
+    inObjectState(async ({ storage }) => {
+      const { scope, clock, limits, cloud } = newScope(storage);
+      scope.applyLimits("u/acme", limits);
+      expect(await scope.check(acme)).toEqual({ allowed: true });
+      clock.advance(limits.period.end - limits.period.start);
+      expect(await scope.check(acme)).toEqual({ allowed: false, refusal: { code: "plan.none" } });
+      expect(cloud.pulls).toBe(1);
+    }));
+});
+
+describe("usage object alarm", () => {
+  it("is set for the earlier of a lease's end and a reservation's, and again after each", () =>
+    inObjectState(async ({ storage }) => {
+      const { scope, clock, limits, alarmAt } = newScope(storage);
+      scope.applyLimits("u/acme", limits);
+      const now = clock.now().getTime();
+      await scope.reserve(acme, { ...step, timeLimitMs: 10 * minute });
+      const expiry = now + 10 * minute + reservationMarginMs;
+      expect(await alarmAt()).toBe(expiry);
+      await scope.startRun(acme, "run_1");
+      expect(await alarmAt()).toBe(now + defaultRunLeaseMs);
+      clock.advance(defaultRunLeaseMs);
+      await scope.alarm();
+      expect(await alarmAt()).toBe(expiry);
+      clock.advance(expiry - clock.now().getTime());
+      await scope.alarm();
+      expect(await alarmAt()).toBeNull();
+      expect(scope.settle("u/acme", "res_1", { cost: 10 })).toBe("corrected");
+    }));
+
+  it("frees a lost run's slot when it fires, so another run starts at a full cap", () =>
+    inObjectState(async ({ storage }) => {
+      const { scope, clock, limits } = newScope(storage);
+      scope.applyLimits("u/acme", { ...limits, maxRunning: 1 });
+      await scope.startRun(acme, "run_lost");
+      expect(await scope.startRun(acme, "run_2")).toMatchObject({ allowed: false });
+      clock.advance(defaultRunLeaseMs);
+      await scope.alarm();
+      expect(await scope.startRun(acme, "run_2")).toEqual({ allowed: true });
+      expect(await scope.renewRun(acme, "run_lost")).toMatchObject({ allowed: false });
+    }));
+
+  it("clears itself in an object that counts no scope yet", () =>
+    inObjectState(async ({ storage }) => {
+      const { scope, alarmAt } = newScope(storage);
+      await storage.setAlarm(Date.now() + 365 * 24 * 60 * minute);
+      await scope.alarm();
+      expect(await alarmAt()).toBeNull();
+    }));
+});

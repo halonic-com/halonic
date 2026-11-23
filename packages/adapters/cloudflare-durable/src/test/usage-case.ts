@@ -26,7 +26,7 @@ export function openAccount(
 ) {
   const clock = { nowMs: period.start, now: () => new Date(clock.nowMs) };
   const storage = new MemoryUsageStorage();
-  const account = new UsageAccount(storage, { scope: "u_acme", clock, ...options });
+  const account = new UsageAccount(storage, { scope: "u/acme", clock, ...options });
   if (limits !== null) account.applyLimits(limits);
   const outbox = (): OutboxRow[] => new UsageOutbox(storage, 1).rows();
   return { account, storage, clock, outbox };
