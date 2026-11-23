@@ -58,6 +58,8 @@ export interface ThisComputerSetup {
   gateWith(trustStore: TrustStore | undefined): UnfencedGate;
   /** A gate over the same workspace and profiles, but with another instruction trust store. */
   gateWithInstructionTrust(store: InstructionTrustStore | undefined): UnfencedGate;
+  /** A gate over the same workspace and profiles, but with other proposal folders. */
+  gateWithProposals(proposals: UnfencedGateOptions["proposals"]): UnfencedGate;
   /** Saves the person's trust in the coder's instructions as the workspace's files make them now. */
   trustCoderInstructions(): Promise<void>;
   /** Saves a trust record that lists the coder as its file is now. */
@@ -120,6 +122,7 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
     gate,
     gateWith: (trustStore) => new UnfencedGate({ ...options, trustStore }),
     gateWithInstructionTrust: (store) => new UnfencedGate({ ...options, instructionTrust: store }),
+    gateWithProposals: (proposals) => new UnfencedGate({ ...options, proposals }),
     trustCoderInstructions: async () => {
       const service = new InstructionTrustService({ store: instructionTrust, clock });
       const key = instructionTrustKey(root, "lab", "coder");

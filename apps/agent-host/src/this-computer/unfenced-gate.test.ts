@@ -205,6 +205,22 @@ verifies("agent-host.unfenced-gate", () => {
       expect(await setup.gate.check(request())).toBe(inFolder);
     });
 
+    it("refuses a proposal folder when the host's record of the run's folder can't be read", async () => {
+      await chosen();
+      const folder = join(setup.root, ".halonic-test", "proposals", "run_1");
+      setup.unopened.set(setup.built.profile.tempFolder, {
+        ...setup.built,
+        agent: { ...setup.built.agent, filesFolder: folder },
+      });
+      const unreadable = {
+        folderOf: () => Promise.reject(new Error("The proposal record is not valid JSON.")),
+      };
+      expect(await setup.gateWithProposals(unreadable).check(request())).toMatchObject({
+        status: 403,
+        kind: "profile_not_built",
+      });
+    });
+
     it("refuses a profile built with an instructions folder the host didn't make, such as a plugin with hooks", async () => {
       await chosen();
       // A folder holding `hooks/hooks.json` would become Claude Code's `--plugin-dir`.
