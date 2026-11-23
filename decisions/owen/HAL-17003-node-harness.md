@@ -2,6 +2,7 @@
 
 - Approval: HAL-17003 (PR (e) of HAL-14217, Liam's option B); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mw4Z2w+e2z6LcZPlDc3IWOu79ADVpPa+1sS/VbYLORwJ1gda6/72aQmmB5qcLWqItlcLkOi5n9hGBbqw9uIWCA==
 
 The Node harness wiring moves from `apps/cli/src` into `@halonicjs/target-node-harness`, with only its imports changed. The unit tests of the moved files go with them, unchanged apart from their imports, so they keep testing the same code:
 
