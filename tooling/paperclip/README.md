@@ -146,7 +146,8 @@ token as the watcher, and give up after 25 s.
   state, `ci-ok` on its group commit, minutes in the queue and who queued
   it; the merge-group jobs queued for a runner (each group commit counted
   once) and the longest wait; and every open pull request labelled
-  `fast-track` with who added the label. An adder GitHub doesn't give (older
+  `fast-track` with who added the label last (a label removed and added
+  again names the second adder). An adder GitHub doesn't give (older
   than the 20 newest label events) is "unknown", which never counts as
   allowed. It reads the last snapshot from plugin state and sends no
   request; a snapshot older than 30 minutes is marked stale. Moves to the
@@ -414,7 +415,43 @@ version they don't know. Each pass replaces the whole snapshot.
 | `repos[].repo`, `.defaultBranch` | `owner/name`, its default branch |
 | `repos[].queue[]` | `number`, `position`, `state`, `enqueuedAt`, `enqueuedBy`, `groupHead`, `estimatedSeconds`, `solo`; added later, so possibly absent: `groupCiOk` (null before the group forms), `jobsWaiting`, `waitingSince` (when the longest-waiting job was queued) |
 | `repos[].pulls[]` | `number`, `url`, `state` (`open`, `merged`, `closed`), `branch`, `headRepo` (a fork when it isn't `repo`), `base`, `head`, `updatedAt`, `mergedAt`, `mergeCommit` |
-| `repos[].pulls[].open` | null when closed; else `draft`, `mergeable` (`yes`, `no`, `unknown`), `ciOk`, `draftCiOk`, `inQueue`, `labels[]` (`name`, `addedBy`, `addedAt`), `finding` (`id`, `at`), `approvals[]` (`by`, `head`) |
+| `repos[].pulls[].open` | null when closed; else `draft`, `mergeable` (`yes`, `no`, `unknown`), `ciOk`, `draftCiOk`, `inQueue`, `labels[]` (`name`, `addedBy` who added it last, `addedAt`), `finding` (`id`, `at`), `approvals[]` (`by`, `head`); added later, so possibly absent: `baseChangedSincePush`, `author` (login, null when the account is gone), `failingChecks[]` and `pendingChecks[]` (check names on the head, by their newest run, of the first 100) |
+
+## Fast-track rules
+
+`src/fast-track/` is the board's Fast-track monitor session as rules inside
+each `pr-watch` pass (HAL-15997 plan; rule list from the monitor's runbook,
+posted on HAL-16003). It reads only the pass's snapshot and sends no GitHub
+request. **Phase 1 only logs**: one line per task, `Fast-track (dry run)
+HAL-…: …`, with every new reason and who it would go to (the task, the board
+supervisor, the Merger), whatever `dryRun` says. The board supervisor
+compares it with the monitor session for 2 days before it writes anything.
+
+| Stage | When (each once per key) |
+| --- | --- |
+| `new` | a pass sees the `fast-track` label for the first time |
+| `wrong_label:<adder>` | the label's last adder isn't `timothy-halonic` (`halonic-dev` counts only if Chief or the board allowed it on the task; unknown never counts): queued without a jump |
+| `bot_label` | the pull request's author is a `[bot]` (HAL-16033) |
+| `review_nudge:<head>` | ready, no check running, not approved on the head by Liam (Julian on Liam's own) 30 min after the label |
+| `check_fail:<check>:<head>` | ready and the check fails; not `Live cloud suites passed`, not a decision note (nor the requirement guard with it) before approval, not `ci-ok` while it is red only through those or another check still runs |
+| `enqueue_ask:<head>` | approved and green on the same head for 10 min, base the default branch, not queued, and no other `fast-track` pull request in the queue. A jump only when the label is `timothy-halonic`'s and more than 8 are queued, or its number is in the `fastTrackUnblocks` setting (HAL-15971 point 3); otherwise first among those waiting |
+| `queue_slow:<enqueuedAt>` | 30 min in the merge queue |
+| `group_fail:<enqueuedAt>` | its group's `ci-ok` fails or the entry is `UNMERGEABLE` |
+| `group_fail:removed:<enqueuedAt>` | it left the queue without merging |
+| `merged` | it merged: the minutes from the label; then it stops being tracked |
+
+A pull request that closes or loses the label stops being tracked, and its
+keys are forgotten. **Jump log:** each `fast-track` queue entry, as first
+seen: entries queued before it, its position, whether it jumped (position
+at most half of those ahead), merges in the last hour, groups building, the
+wait without a jump (13 min plus the rest of those ahead at the hour's
+merge pace) and, once merged, the minutes from the queue. A line of totals
+is logged once a day. The groups a jump rebuilt aren't counted yet (they
+need the Actions runs). State: plugin state `fast-track`/`rules` per
+company, the newest 200 queue entries.
+
+Not in phase 1: the job log's first error lines in a `check_fail`, reading
+the task before a nudge, the board's watched tasks, and the writes.
 
 ## Leaving a task the watcher watches
 

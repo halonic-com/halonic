@@ -94,6 +94,14 @@ export const manifest: PaperclipPluginManifestV1 = {
         description: "Only log what it would do. Turn off once the first runs look right.",
         default: true,
       },
+      fastTrackUnblocks: {
+        type: "array",
+        title: "Fast-track PRs that unblock everyone",
+        description:
+          "Numbers of fast-track pull requests that unblock the merge queue or CI for everyone, so they jump the queue (HAL-15971 point 3). The fast-track rules only log for now.",
+        items: { type: "integer", minimum: 1 },
+        default: [],
+      },
       precheckUrl: {
         type: "string",
         title: "Precheck service",

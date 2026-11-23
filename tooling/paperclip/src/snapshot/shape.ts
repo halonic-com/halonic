@@ -101,11 +101,21 @@ export interface OpenFacts {
    * again. Added after version 1 shipped: a snapshot saved before it has none.
    */
   readonly baseChangedSincePush?: boolean;
+  /** The GitHub login that opened it, null when the account is gone. Added like `baseChangedSincePush`. */
+  readonly author?: string | null;
+  /**
+   * The checks on the head whose newest run failed, by name, sorted, of the
+   * first 100 checks. Added like `baseChangedSincePush`.
+   */
+  readonly failingChecks?: readonly string[];
+  /** The checks on the head still running, by name, sorted (a cancelled or skipped run counts as still to come). Added like `failingChecks`. */
+  readonly pendingChecks?: readonly string[];
 }
 
 /** A label on an open pull request. */
 export interface SnapshotLabel {
   readonly name: string;
+  /** Who added it last, when it was added more than once. */
   readonly addedBy: string | null;
   readonly addedAt: string | null;
 }

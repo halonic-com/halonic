@@ -65,7 +65,7 @@ function minutesBetween(from: string, to: Date): number {
 }
 
 /** The task a branch names, only for a branch in the repository itself: a fork's name proves nothing. */
-function taskOf(repo: string, pull: SnapshotPull | undefined): string | undefined {
+export function taskOf(repo: string, pull: SnapshotPull | undefined): string | undefined {
   return pull?.headRepo?.toLowerCase() === repo.toLowerCase()
     ? taskOfBranch(pull.branch)
     : undefined;
