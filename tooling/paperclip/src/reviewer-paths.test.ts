@@ -42,6 +42,7 @@ verifies("paperclip.reviewer-paths", () => {
     "packages/adapters/connector-stdio-sandbox/src/sandbox-connector.ts",
     "packages/studio/features/workspace/src/trust/trust-check-dialog.tsx",
     "docs/security/threat-model.md",
+    "packages/host/router/providers.router.yaml",
   ])("%s is on Liam's paths", (path) => {
     expect(isLiamPath(path)).toBe(true);
     expect(reviewerFor({ files: [path], changedLines: 10, sensitive: false })).toBe("liam");

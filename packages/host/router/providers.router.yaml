@@ -1,0 +1,26 @@
+# What only the router needs about each alias in `providers.yaml` (HAL-16998).
+#
+# - dataClass: which data rules apply (HAL-16987). `anthropic` is Anthropic's
+#   own API; `open-pinned` is an open model on one pinned host that keeps no
+#   data for training. The hard rules say which classes may get which tasks.
+# - status: `approved` aliases are routable; `trial` ones run only in the
+#   stage trials; `retired` ones stay listed so old decisions still resolve.
+# - pinnedHost: the one OpenRouter host an `open-pinned` alias may use. The
+#   adapter sets it when the run starts, with fallbacks off and data
+#   collection denied; the agent never sets it.
+aliases:
+  opus:
+    dataClass: anthropic
+    status: approved
+  sonnet:
+    dataClass: anthropic
+    status: approved
+  haiku:
+    dataClass: anthropic
+    status: approved
+  deepseek-flash:
+    dataClass: open-pinned
+    # Trial until the host is on Julian's provider allowlist (HAL-16987 R3)
+    # and the shadow-test audit (HAL-16996) is done.
+    status: trial
+    pinnedHost: deepinfra/fp8
