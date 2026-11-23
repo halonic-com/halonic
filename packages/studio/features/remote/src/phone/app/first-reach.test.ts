@@ -2,7 +2,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { FakePhoneTunnel } from "../../test-support/phone-tunnel.ts";
 import type { ComputerId, PairedComputer } from "../phone-tunnel.ts";
-import { FIRST_REACH_LIMIT_MS, PhoneAppRouter } from "./phone-app-router.ts";
+import { FIRST_REACH_LIMIT_MS } from "./first-reaches.ts";
+import { PhoneAppRouter } from "./phone-app-router.ts";
 
 const laptop = "c-1" as ComputerId;
 

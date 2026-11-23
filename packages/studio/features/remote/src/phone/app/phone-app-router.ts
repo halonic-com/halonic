@@ -1,26 +1,16 @@
 import { computerRowState } from "../paired-computers.tsx";
 import { PhonePairingFlow, type PhoneScanner } from "../pairing-flow.ts";
 import type { PhoneState } from "../phone-status.ts";
-import {
-  type ComputerId,
-  type ForgetOutcome,
-  type KeysUnavailable,
-  type ListedComputer,
-  type PairedComputer,
-  type PhoneStatus,
-  type PhoneTunnel,
-  phoneStatusLabelState,
+import type {
+  ComputerId,
+  ForgetOutcome,
+  KeysUnavailable,
+  ListedComputer,
+  PairedComputer,
+  PhoneStatus,
+  PhoneTunnel,
 } from "../phone-tunnel.ts";
-
-/** How long the first reach of a computer waits for an answer (first-run-progress 6). */
-export const FIRST_REACH_LIMIT_MS = 30_000;
-
-/** A computer the phone opened and hasn't reached yet. */
-export interface FirstReach {
-  readonly since: Date;
-  /** No answer in {@link FIRST_REACH_LIMIT_MS}, or a try failed: the screen shows the give-up. */
-  readonly gaveUp: boolean;
-}
+import { type FirstReach, FirstReaches } from "./first-reaches.ts";
 
 /** The sheet over a computer's screen: the header label's status sheet, or Check this connection. */
 export type ComputerSheet = "none" | "status" | "check";
@@ -76,17 +66,17 @@ export class PhoneAppRouter {
   #computers: readonly ListedComputer[] | KeysUnavailable | undefined;
   readonly #statuses = new Map<ComputerId, PhoneStatus>();
   readonly #held = new Map<ComputerId, HeldComputer>();
-  /** Each first reach under way, with the timer that gives it up; a gave-up one has none. */
-  readonly #reaching = new Map<
-    ComputerId,
-    FirstReach & { readonly timer?: ReturnType<typeof setTimeout> }
-  >();
+  readonly #reaches: FirstReaches;
   readonly #listeners = new Set<() => void>();
   #view: PhoneAppView;
   #unwatch: (() => void) | undefined;
 
   constructor(options: PhoneAppRouterOptions) {
     this.#options = options;
+    this.#reaches = new FirstReaches(
+      () => options.clock?.() ?? new Date(),
+      () => this.#changed(),
+    );
     this.#view = this.#build();
   }
 
@@ -104,7 +94,7 @@ export class PhoneAppRouter {
     this.#unwatch = this.#options.tunnel.onStatus((computer, status) => {
       this.#statuses.set(computer, status);
       if (status.state === "removed") this.#drop(computer);
-      this.#followReach(computer, status);
+      this.#reaches.follow(computer, status);
       this.#changed();
     });
     await this.#list();
@@ -118,14 +108,13 @@ export class PhoneAppRouter {
    */
   stateOf(computer: PairedComputer): PhoneState | undefined {
     const state = computerRowState(computer, this.#statuses.get(computer.id));
-    const gaveUp = this.#reaching.get(computer.id)?.gaveUp === true;
+    const gaveUp = this.#reaches.get(computer.id)?.gaveUp === true;
     return gaveUp && (state === undefined || state === "reconnecting") ? "unreachable" : state;
   }
 
   /** The first reach of a computer the phone hasn't reached since it opened it, if under way. */
   reachOf(computer: ComputerId): FirstReach | undefined {
-    const reach = this.#reaching.get(computer);
-    return reach === undefined ? undefined : { since: reach.since, gaveUp: reach.gaveUp };
+    return this.#reaches.get(computer);
   }
 
   /** The header label or the banner's Details: opens the status sheet. */
@@ -171,7 +160,7 @@ export class PhoneAppRouter {
    * over, and the last try's failure is forgotten until the tunnel says how this one went.
    */
   tryAgain(computer: ComputerId): void {
-    if (this.#reaching.has(computer)) {
+    if (this.#reaches.has(computer)) {
       this.#statuses.delete(computer);
       this.#startReach(computer);
       this.#changed();
@@ -199,7 +188,7 @@ export class PhoneAppRouter {
     const outcome = await this.#options.tunnel.forget(computer.id);
     if (outcome.kind === "forgotten") {
       this.#drop(computer.id);
-      this.#stopReach(computer.id);
+      this.#reaches.stop(computer.id);
       this.#statuses.delete(computer.id);
       await this.#list();
       const kept = this.#stack.filter(
@@ -232,7 +221,7 @@ export class PhoneAppRouter {
   dispose(): void {
     this.#unwatch?.();
     for (const computer of [...this.#held.keys()]) this.#drop(computer);
-    for (const computer of [...this.#reaching.keys()]) this.#stopReach(computer);
+    this.#reaches.stopAll();
   }
 
   #open(computer: PairedComputer): PhoneAppScreen {
@@ -249,35 +238,7 @@ export class PhoneAppRouter {
 
   /** Starts, or starts over, the first reach's wait, unless the computer already answers. */
   #startReach(computer: ComputerId): void {
-    if (this.#statuses.get(computer)?.state === "connected") return;
-    this.#stopReach(computer);
-    const timer = setTimeout(() => this.#giveUp(computer), FIRST_REACH_LIMIT_MS);
-    this.#reaching.set(computer, { since: this.#now(), gaveUp: false, timer });
-  }
-
-  /** An answer ends the first reach; a failed try gives it up before the 30 seconds are over. */
-  #followReach(computer: ComputerId, status: PhoneStatus): void {
-    if (!this.#reaching.has(computer)) return;
-    const state = phoneStatusLabelState(status);
-    if (state === "unreachable") this.#giveUp(computer);
-    else if (state !== "reconnecting" && state !== "phoneOffline") this.#stopReach(computer);
-  }
-
-  #giveUp(computer: ComputerId): void {
-    const reach = this.#reaching.get(computer);
-    if (reach === undefined || reach.gaveUp) return;
-    clearTimeout(reach.timer);
-    this.#reaching.set(computer, { since: reach.since, gaveUp: true });
-    this.#changed();
-  }
-
-  #stopReach(computer: ComputerId): void {
-    clearTimeout(this.#reaching.get(computer)?.timer);
-    this.#reaching.delete(computer);
-  }
-
-  #now(): Date {
-    return this.#options.clock?.() ?? new Date();
+    if (this.#statuses.get(computer)?.state !== "connected") this.#reaches.start(computer);
   }
 
   /** The readable computer connected last, else Pair with a computer. */

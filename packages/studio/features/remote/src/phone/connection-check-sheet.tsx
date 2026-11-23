@@ -18,6 +18,7 @@ import {
   connectionLines,
   connectionReport,
 } from "./connection-check.ts";
+import { linkRowClasses } from "./first-reach.tsx";
 import { checkWords } from "./reach-words.ts";
 
 /** The screen's marks are the report's glyphs (✓ ✕ –), as Check this computer draws them. */
@@ -75,19 +76,21 @@ function ReportParts({ report }: { readonly report: string }) {
   if (copied !== undefined) said = copied ? checkWords.copied : checkWords.notCopied;
   return (
     <>
-      <Button
-        variant="ghost"
-        size="touch"
-        block
-        onClick={async () => setCopied(await writeClipboard(report))}
-      >
-        {checkWords.copyReport}
-      </Button>
-      <p role="status" className="text-center text-small text-fg-muted">
-        {said}
-      </p>
+      <div className="flex flex-col items-center">
+        <button
+          type="button"
+          className={linkRowClasses}
+          onClick={async () => setCopied(await writeClipboard(report))}
+        >
+          {checkWords.copyReport}
+        </button>
+        <p role="status" className="text-center text-small text-fg-muted">
+          {said}
+        </p>
+      </div>
       <Disclosure summary={checkWords.showReport} openSummary={checkWords.hideReport}>
-        <pre className="overflow-auto px-4 pb-3 font-mono text-small whitespace-pre-wrap">
+        {/* Not wrapped: it shows exactly what Copy report copies, columns and all. */}
+        <pre className="overflow-x-auto px-4 pb-3 font-mono text-small whitespace-pre">
           {report}
         </pre>
         <p className="px-4 text-small text-fg-muted">{checkWords.reportNote}</p>

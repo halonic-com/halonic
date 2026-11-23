@@ -76,18 +76,33 @@ export function ComputerScreen({
         />
       )}
       {sheet === "check" ? (
-        <ConnectionCheckSheet
-          facts={{
-            status,
-            gaveUp: router.reachOf(computer.id)?.gaveUp === true,
-            route: reachRoute(computer),
-            computer: computer.name,
-          }}
-          onCheckAgain={tryAgain}
-          onClose={() => router.closeSheet()}
-        />
+        <CheckSheet router={router} computer={computer} status={status} />
       ) : null}
     </div>
+  );
+}
+
+/** Check this connection over the computer's screen, with what the phone knows of the reach. */
+function CheckSheet({
+  router,
+  computer,
+  status,
+}: {
+  readonly router: PhoneAppRouter;
+  readonly computer: PairedComputer;
+  readonly status: PhoneStatus | undefined;
+}) {
+  return (
+    <ConnectionCheckSheet
+      facts={{
+        status,
+        gaveUp: router.reachOf(computer.id)?.gaveUp === true,
+        route: reachRoute(computer),
+        computer: computer.name,
+      }}
+      onCheckAgain={() => router.tryAgain(computer.id)}
+      onClose={() => router.closeSheet()}
+    />
   );
 }
 

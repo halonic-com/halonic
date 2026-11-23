@@ -10,8 +10,8 @@ import { useId } from "react";
 import type { ReachRoute } from "./connection-check.ts";
 import { reachWords } from "./reach-words.ts";
 
-/** A 48px text row, as a link looks: the phone's touch size for a quiet way out. */
-const linkRowClasses = [
+/** A 48px text row, as a link looks: the phone's touch size for a quiet way out or a copy. */
+export const linkRowClasses = [
   "inline-flex min-h-touch items-center rounded-xs px-2 text-body font-medium text-accent-text",
   "hover:underline focus-ring",
 ].join(" ");
