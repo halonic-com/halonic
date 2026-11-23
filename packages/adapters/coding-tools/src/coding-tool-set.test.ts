@@ -1,14 +1,14 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { maxAnswerCharacters } from "./answer-cap.ts";
-import { CodingToolSet } from "./coding-tool-set.ts";
+import { type CodingToolChoice, CodingToolSet } from "./coding-tool-set.ts";
 import { removeTestFolders, testFolders } from "./folders.test-helper.ts";
 
 afterEach(removeTestFolders);
 
-async function toolSet() {
+async function toolSet(choice: CodingToolChoice = "read-only") {
   const folders = await testFolders();
-  const tools = new CodingToolSet({ folders });
+  const tools = new CodingToolSet({ folders, choice, testEnvironment: {}, secrets: [] });
   const call = (name: string, args: Record<string, unknown>) =>
     tools.call(name, args, new AbortController().signal);
   return { folders, tools, call };
@@ -49,5 +49,28 @@ verifies("coding-tools.tool-set", () => {
     const result = await call("repo_map", {});
     expect(result.isError).toBe(false);
     expect(result.text.length).toBeLessThanOrEqual(maxAnswerCharacters);
+  });
+});
+
+verifies("coding-tools.read-only-choice", () => {
+  it("offers run_tests too with the choice all, not named as only reading", async () => {
+    const { tools } = await toolSet("all");
+    const listed = await tools.list();
+    expect(listed.map((tool) => tool.name)).toEqual([
+      "read_ranges",
+      "search",
+      "repo_map",
+      "run_tests",
+    ]);
+    expect(tools.readOnlyToolNames).toEqual(["read_ranges", "search", "repo_map"]);
+  });
+
+  it("answers run_tests as a tool it doesn't offer with the choice read-only", async () => {
+    const { call } = await toolSet("read-only");
+    const result = await call("run_tests", { command: "echo hi" });
+    expect(result).toEqual({
+      text: "There is no tool 'run_tests' here. The tools are: read_ranges, search, repo_map.",
+      isError: true,
+    });
   });
 });

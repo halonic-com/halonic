@@ -64,6 +64,7 @@ verifies("coding-tools.stdio", () => {
         {
           args: ["--temp-folder", folders.outside],
           cwd: folders.workingFolder,
+          env: {},
           codePaths: [],
           reportError: (error) => {
             throw error;
@@ -90,7 +91,14 @@ verifies("coding-tools.stdio", () => {
       expect(initialize).toMatchObject({ id: 1, result: { protocolVersion: "2025-11-25" } });
       expect(list).toMatchObject({
         id: 2,
-        result: { tools: [{ name: "read_ranges" }, { name: "search" }, { name: "repo_map" }] },
+        result: {
+          tools: [
+            { name: "read_ranges" },
+            { name: "search" },
+            { name: "repo_map" },
+            { name: "run_tests" },
+          ],
+        },
       });
       expect(call).toMatchObject({
         id: 3,
@@ -110,6 +118,7 @@ verifies("coding-tools.stdio", () => {
       const start = {
         args: ["--temp-folder", folders.outside],
         cwd: folders.workingFolder,
+        env: {},
         codePaths: [code],
         reportError: () => undefined,
       };
@@ -162,5 +171,49 @@ verifies("coding-tools.stdio", () => {
       await serving;
       expect(replies()).toMatchObject([{ id: null, error: { code: -32700 } }]);
     });
+  });
+});
+
+verifies("coding-tools.read-only-choice", () => {
+  it("reads --read-only and --max-test-seconds", () => {
+    expect(readServerArguments(["--temp-folder", "t"])).toEqual({
+      tempFolder: "t",
+      choice: "all",
+      maxTestSeconds: undefined,
+    });
+    expect(
+      readServerArguments(["--read-only", "--temp-folder", "t", "--max-test-seconds", "60"]),
+    ).toEqual({
+      tempFolder: "t",
+      choice: "read-only",
+      maxTestSeconds: 60,
+    });
+  });
+
+  it.each(["9", "1.5", "soon"])("refuses --max-test-seconds %s", (value) => {
+    expect(() => readServerArguments(["--temp-folder", "t", "--max-test-seconds", value])).toThrow(
+      "--max-test-seconds needs a whole number",
+    );
+  });
+
+  it("serves only the reading tools with --read-only", async () => {
+    const folders = await testFolders();
+    const { channel, send, end, replies } = testChannel();
+    const start = {
+      args: ["--temp-folder", folders.outside, "--read-only"],
+      cwd: folders.workingFolder,
+      env: {},
+      codePaths: [],
+      reportError: () => undefined,
+    };
+    const serving = runCodingToolsServer(start, channel);
+    send(request(1, "tools/list"));
+    await expect.poll(() => replies().length).toBe(1);
+    end();
+    await serving;
+    expect(replies()[0]).toMatchObject({
+      result: { tools: [{ name: "read_ranges" }, { name: "search" }, { name: "repo_map" }] },
+    });
+    expect(JSON.stringify(replies())).not.toContain("run_tests");
   });
 });
