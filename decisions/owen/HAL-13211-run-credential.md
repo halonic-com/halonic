@@ -2,6 +2,7 @@
 
 - Approval: HAL-13211 (the per-run bridge credential, shape agreed on HAL-13221); Liam approves and signs this note in review on HAL-17125
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xb8XPJjE6dYmIg10EiLcIlKjjBjOxjAyOSokxljDsJvffXy/dSZqbyYLpLc0WG6WfEfaILULEZRff2AwO2CfDQ==
 
 `@halonicjs/adapter-harness-bridge` gets a second public entry point, `./web`, next to its `src/index.ts`.
 
