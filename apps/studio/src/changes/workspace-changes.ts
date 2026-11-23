@@ -23,6 +23,7 @@ import type {
 import { wakeOn } from "./changes-wakes.ts";
 import {
   addressReason,
+  filterRefusal,
   gitReason,
   identityReason,
   knownGitProblem,
@@ -382,12 +383,18 @@ export class WorkspaceChanges implements ChangesSource {
     return head.code === 0 ? head.stdout.trim() : null;
   }
 
-  /** Runs git; `"no-git"` when the shell says the git program isn't found. */
+  /**
+   * Runs git; `"no-git"` when the shell says the git program isn't found. A refusal over a git
+   * filter the shell doesn't run becomes a `conflict` that says what to do: trying again is
+   * refused the same way.
+   */
   async #run(args: readonly string[]): Promise<GitAnswer | "no-git"> {
     try {
       return await this.#options.git(args);
     } catch (error) {
       if (isGitNotFound(error)) return "no-git";
+      const filter = filterRefusal(error);
+      if (filter !== null) throw new KindedError("conflict", filter);
       throw error;
     }
   }

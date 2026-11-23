@@ -109,3 +109,20 @@ export function shareReason(answer: GitAnswer): string {
   }
   return knownGitProblem(answer) ?? "Git didn't share the versions.";
 }
+
+/**
+ * Why the shell refused a call that would store or write files without their git filter
+ * (`GitRefusal.kind`), `null` for any other failure: the user's own filter runs once the
+ * workspace is trusted (`filter_needs_trust`), the repository's own never does
+ * (`filter_not_run`, requirement `trusted-filters`).
+ */
+export function filterRefusal(error: unknown): string | null {
+  const kind = typeof error === "object" && error !== null && "kind" in error ? error.kind : null;
+  if (kind === "filter_needs_trust") {
+    return "Halonic runs this workspace's git filter only in a workspace you trust. Press Review in the header to trust it, then try again.";
+  }
+  if (kind === "filter_not_run") {
+    return "This workspace's own git settings name a filter Halonic never runs. Make this change with git in a terminal.";
+  }
+  return null;
+}
