@@ -16,7 +16,16 @@ fn trust_grants_show_hidden_characters_and_shorten_long_paths_in_the_middle() {
         shown_path("/a\u{2028}b\u{2029}c\u{00ad}d\u{180e}e\u{fff9}f\u{fffb}"),
         "/a\\u{2028}b\\u{2029}c\\u{00ad}d\\u{180e}e\\u{fff9}f\\u{fffb}"
     );
+    assert_eq!(
+        shown_path("/a\u{e0041}b\u{fe0f}c\u{e0100}d\u{3164}e\u{115f}f\u{ffa0}g\u{034f}h\u{1d173}"),
+        "/a\\u{e0041}b\\u{fe0f}c\\u{e0100}d\\u{3164}e\\u{115f}f\\u{ffa0}g\\u{034f}h\\u{1d173}"
+    );
+    assert_eq!(
+        shown_path("/a\u{17b4}b\u{180b}c\u{206a}d\u{1bca0}e"),
+        "/a\\u{17b4}b\\u{180b}c\\u{206a}d\\u{1bca0}e"
+    );
     assert_eq!(shown_path("/work/Café"), "/work/Café");
+    assert_eq!(shown_path("/work/안녕/日本"), "/work/안녕/日本");
     let long = format!("/{}/acme-final", "a".repeat(1000));
     let shown = shown_path(&long);
     assert_eq!(shown.chars().count(), 159);

@@ -196,7 +196,6 @@ fn git_hardening_sets_a_safe_environment() {
     let command = command("status");
     for (name, value) in [
         ("GIT_TERMINAL_PROMPT", "0"),
-        ("GIT_CONFIG_NOSYSTEM", "1"),
         ("GIT_PAGER", "cat"),
         ("GIT_EDITOR", "true"),
         ("GIT_SEQUENCE_EDITOR", "true"),
@@ -210,6 +209,17 @@ fn git_hardening_sets_a_safe_environment() {
             "{name}"
         );
     }
+}
+
+#[test]
+fn git_hardening_lets_git_read_the_system_config() {
+    // The credential helper, `core.autocrlf` and the lfs filter of Git for
+    // Windows and Homebrew's git live there.
+    let command = command("status");
+    assert!(
+        !matches!(environment(&command, "GIT_CONFIG_NOSYSTEM"), Some(Some(_))),
+        "the system config is read"
+    );
 }
 
 #[test]
