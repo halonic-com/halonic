@@ -19,6 +19,11 @@ function memoryStore(): RunCredentialStore<RunCredentialBinding> & {
   return {
     records,
     read: async (runId) => records.get(runId),
+    create: async (record) => {
+      if (records.has(record.binding.runId)) return false;
+      records.set(record.binding.runId, record);
+      return true;
+    },
     write: async (record) => {
       records.set(record.binding.runId, record);
     },
@@ -91,6 +96,40 @@ verifies("harness-bridge.run-credential", () => {
     );
   });
 
+  it("gives one of two concurrent requests for a run a credential", async () => {
+    const { credentials } = credentialsAt(fixedClockStart);
+    const results = await Promise.allSettled([
+      credentials.issue({ runId: "run_acme", expiresAt: deadline }),
+      credentials.issue({ runId: "run_acme", expiresAt: deadline }),
+    ]);
+
+    expect(results.map((result) => result.status).sort()).toEqual(["fulfilled", "rejected"]);
+  });
+
+  it("revokes, at the run's end, a credential issued while an earlier revoke found none", async () => {
+    const { credentials } = credentialsAt(fixedClockStart);
+    const [credential] = await Promise.all([
+      credentials.issue({ runId: "run_acme", expiresAt: deadline }),
+      credentials.revoke("run_acme"),
+    ]);
+    await credentials.revoke("run_acme");
+
+    expect(await credentials.check("run_acme", credential)).toEqual({
+      ok: false,
+      reason: "revoked",
+    });
+  });
+
+  it("refuses to issue a credential with no deadline still to come", async () => {
+    const { credentials } = credentialsAt(fixedClockStart);
+
+    for (const expiresAt of [Number.NaN, Number.POSITIVE_INFINITY, fixedClockStart]) {
+      await expect(credentials.issue({ runId: "run_acme", expiresAt })).rejects.toThrow(
+        "needs a deadline still to come",
+      );
+    }
+  });
+
   it("stores only the credential's SHA-256", async () => {
     const { credentials, store } = credentialsAt(fixedClockStart);
     const credential = await credentials.issue({ runId: "run_acme", expiresAt: deadline });
@@ -113,7 +152,11 @@ verifies("harness-bridge.run-credential", () => {
   });
 });
 
-/** Follows the relative imports from a file under `src/` and lists every `node:` import on the way. */
+/**
+ * Follows the relative imports from a file under `src/` and lists every
+ * `node:` import on the way. It stops at workspace packages such as
+ * `@halonicjs/std`; the Worker build in the next PR covers those.
+ */
 async function nodeImportsReachedFrom(entry: string): Promise<string[]> {
   const seen = new Set<string>();
   const found: string[] = [];
@@ -122,7 +165,7 @@ async function nodeImportsReachedFrom(entry: string): Promise<string[]> {
     if (seen.has(file)) continue;
     seen.add(file);
     const source = await readFile(new URL(file, import.meta.url), "utf8");
-    for (const [, specifier] of source.matchAll(/from "([^"]+)"/g)) {
+    for (const [, specifier] of source.matchAll(/(?:from|import)\s*\(?\s*"([^"]+)"/g)) {
       if (specifier === undefined) continue;
       if (specifier.startsWith("node:")) found.push(`${file}: ${specifier}`);
       if (specifier.startsWith("./")) pending.push(specifier.slice(2));

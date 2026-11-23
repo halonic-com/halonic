@@ -44,6 +44,13 @@ export interface StoredRunCredential<Binding extends RunCredentialBinding> {
 export interface RunCredentialStore<Binding extends RunCredentialBinding> {
   /** The run's record, or `undefined` when the run never had a credential. */
   read(runId: string): Promise<StoredRunCredential<Binding> | undefined>;
+  /**
+   * Keeps the record only when its run has none yet, and says whether it did.
+   * The look and the write are one atomic step (a Durable Object does them in
+   * one `transaction`), so two calls for one run never both succeed.
+   */
+  create(record: StoredRunCredential<Binding>): Promise<boolean>;
+  /** Replaces the run's existing record. */
   write(record: StoredRunCredential<Binding>): Promise<void>;
 }
 
@@ -59,7 +66,7 @@ export type RunCredentialCheck<Binding extends RunCredentialBinding> =
 export interface RunCredentialsOptions<Binding extends RunCredentialBinding> {
   store: RunCredentialStore<Binding>;
   clock: Clock;
-  /** Fills an array with cryptographically secure random bytes; WebCrypto by default. */
+  /** Returns a new array of cryptographically secure random bytes; WebCrypto by default. */
   randomBytes?: (byteCount: number) => Uint8Array;
 }
 
@@ -84,16 +91,21 @@ export class RunCredentials<Binding extends RunCredentialBinding> {
    * A new credential for the run the binding names. Only its SHA-256 is
    * stored; the credential itself is returned once and never kept.
    *
+   * @throws Error when the binding's deadline isn't a time still to come
    * @throws Error when the run already had a credential
    */
   async issue(binding: Binding): Promise<string> {
-    if (await this.#store.read(binding.runId)) {
+    // `NaN` would make the deadline check always pass, so the credential would never expire.
+    if (!Number.isFinite(binding.expiresAt) || binding.expiresAt <= this.#clock.now().getTime()) {
+      throw new Error(`Run ${binding.runId} needs a deadline still to come for a bridge credential.`);
+    }
+    const credential = encodeBase64url(this.#randomBytes(runCredentialBytes));
+    const record = { digest: await sha256Hex(credential), binding, revoked: false };
+    if (!(await this.#store.create(record))) {
       throw new Error(
         `Run ${binding.runId} already had a bridge credential; a run gets one only once.`,
       );
     }
-    const credential = encodeBase64url(this.#randomBytes(runCredentialBytes));
-    await this.#store.write({ digest: await sha256Hex(credential), binding, revoked: false });
     return credential;
   }
 
@@ -106,7 +118,9 @@ export class RunCredentials<Binding extends RunCredentialBinding> {
     if (sent === null || sent === "") return { ok: false, reason: "missing" };
     const record = await this.#store.read(runId);
     if (!record) return { ok: false, reason: "unknown-run" };
-    // Hash before looking at the record's state, so every refusal costs the same.
+    // Hash before looking at the record's state, so a revoked, expired or wrong
+    // credential costs the same. An unknown run is refused sooner, but the run
+    // comes from routing, not from the caller.
     const sentDigest = await sha256Hex(sent);
     if (record.revoked) return { ok: false, reason: "revoked" };
     if (this.#clock.now().getTime() >= record.binding.expiresAt)
@@ -120,6 +134,11 @@ export class RunCredentials<Binding extends RunCredentialBinding> {
   /**
    * Revokes the run's credential when the run ends, however it ends. A run
    * with no credential, or one already revoked, is left as it is.
+   *
+   * For one run, inside the run's Durable Object, the caller issues before the
+   * run starts and revokes after it ends. So a revoke that finds no record
+   * leaves the run able to get a credential later, on purpose: that run never
+   * started with one.
    */
   async revoke(runId: string): Promise<void> {
     const record = await this.#store.read(runId);
