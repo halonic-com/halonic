@@ -146,6 +146,24 @@ export class HostProgramCopies {
   }
 
   /**
+   * Runs `step` with the copy `path` names while the host holds it, in its
+   * workspace's turn: a `start` or `release` of that workspace waits until
+   * the step is over, so a `start` then stops a connector the step added
+   * before it sweeps the copy.
+   *
+   * @param step - given `undefined`, at once, when the host doesn't hold the copy, also when it went while the step waited
+   */
+  async withHeldCopy<T>(
+    path: string,
+    step: (held: HeldCopy | undefined) => Promise<T>,
+  ): Promise<T> {
+    const found = await this.heldCopy(path);
+    if (found === undefined) return await step(undefined);
+    // Looked up again in the turn: a `start` or `release` ahead of it may have let the copy go.
+    return await this.#inTurn(found.workspace, async () => await step(await this.heldCopy(path)));
+  }
+
+  /**
    * Removes every copy and stops git. Call it when the host stops, once the
    * connectors and sessions are closed. Safe to call twice.
    */
