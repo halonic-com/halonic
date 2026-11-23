@@ -19,7 +19,7 @@ export function outsideFolder(top: string, ownFolder?: string): RepositoryRefuse
   return new RepositoryRefusedError(
     `The repository at ${top} keeps its git files outside the folder, which Halonic doesn't allow.`,
     ownFolder === undefined
-      ? `Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule, or clone the repository again into a folder of its own. ${stillWorks}`
+      ? `Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule. Or clone the repository again into a folder of its own. ${stillWorks}`
       : `Use the repository's own folder, ${ownFolder}, or clone the repository again into a folder of its own. ${stillWorks}`,
   );
 }

@@ -8,7 +8,7 @@ When the git adapter refuses a repository, because its git files or the objects 
 
 ## Examples
 
-- Given a repository whose `.git` is a `gitdir:` file pointing elsewhere, when it is opened, then it throws `denied` with "keeps its git files outside the folder" and the fix "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule, or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.".
+- Given a repository whose `.git` is a `gitdir:` file pointing elsewhere, when it is opened, then it throws `denied` with "keeps its git files outside the folder" and the fix "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule. Or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.".
 - Given a linked worktree of a repository in another folder, when the worktree is opened, then it throws `denied` with a fix that names that folder: "Use the repository's own folder, <folder>, or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.".
 - Given a repository whose config sets `include.path`, when it is opened, then it throws `denied` with "The repository's config sets include.path, which Halonic doesn't allow." and the fix "Remove it from .git/config and try again.".
 - Given a repository whose alternates name a folder that doesn't exist, when it is opened, then it throws `denied` with the fix "Remove that line from .git/objects/info/alternates and try again.".

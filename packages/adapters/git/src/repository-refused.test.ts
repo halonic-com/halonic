@@ -31,7 +31,7 @@ async function refusalOf(
 
 /** The fix when the main folder of a linked worktree isn't known. */
 const genericFix =
-  "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule, or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.";
+  "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule. Or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.";
 
 verifies("git.repository-refused", () => {
   it("refuses git files outside the folder as denied, with the fix", async () => {
