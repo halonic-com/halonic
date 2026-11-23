@@ -2,6 +2,7 @@
 
 - Approval: Liam decided it on HAL-17007 (23 Nov) and signs it when he reviews HAL-16998
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wBDDW6SSsjC5uDnoMQ4T4eS6Jf7AWKgcOl5hVUBbIkuNyq3SV2gP1qZXaGhAv+8LqBsRxhFrgY4YXyGtwyA1AA==
 
 `paperclip.reviewer-paths` adds one folder to Liam's paths: `packages/host/router/`, the
 variant router's package. A pull request that touches it goes to Liam, never to Julian
