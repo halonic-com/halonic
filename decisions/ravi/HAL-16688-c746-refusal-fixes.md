@@ -44,3 +44,9 @@ The new words:
 
 `engine-service-saved-local-only.test.ts` expects the new words. No test, example or requirement
 goes, and none is skipped.
+
+## Covers
+
+- studio.engine-service
+- apps/studio/src/engine/engine-service-saved-local-only.test.ts
+- apps/studio/src/engine/page-versions.test.ts
