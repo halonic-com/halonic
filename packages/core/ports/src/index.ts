@@ -334,6 +334,7 @@ export {
   type ChatTurnRequest,
   type ChatTurnResponse,
   type ChatTurnSkip,
+  type ChatTurnText,
   type ChatTurnToolFailure,
   type ChatTurnWaiting,
   type EngineConnection,

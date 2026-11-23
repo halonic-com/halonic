@@ -3,6 +3,7 @@ import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
 import type {
   ChatTurnRequest,
+  ChatTurnText,
   Coordination,
   DefinitionSource,
   DefinitionStore,
@@ -216,6 +217,30 @@ verifies("ports.chat-turn-signal", () => {
     // @ts-expect-error: a signal is an AbortSignal, never a flag
     const wrong: ChatTurnRequest = { ...request, signal: true };
     expect(wrong).toBeDefined();
+  });
+});
+
+verifies("ports.chat-turn-text", () => {
+  const request: ChatTurnRequest = { hubId: "hub-1", messages: [], tools: [] };
+
+  it("takes a listener that hears deltas and restarts", () => {
+    const heard: ChatTurnText[] = [];
+    const listening: ChatTurnRequest = { ...request, onText: (text) => heard.push(text) };
+    listening.onText?.({ kind: "delta", text: "Hel" });
+    listening.onText?.({ kind: "restart" });
+    expect(heard).toEqual([{ kind: "delta", text: "Hel" }, { kind: "restart" }]);
+  });
+
+  it("keeps the listener optional", () => {
+    expect(request.onText).toBeUndefined();
+  });
+
+  it("takes only a delta with its text or a restart", () => {
+    // @ts-expect-error: a delta carries its text
+    const noText: ChatTurnText = { kind: "delta" };
+    // @ts-expect-error: there is no other kind
+    const other: ChatTurnText = { kind: "done" };
+    expect([noText, other]).toHaveLength(2);
   });
 });
 

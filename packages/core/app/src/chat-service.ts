@@ -3,6 +3,7 @@ import type {
   ChatTurnRefusal,
   ChatTurnRequest,
   ChatTurnResponse,
+  ChatTurnText,
   ChatTurnToolFailure,
   ChatTurnWaiting,
   RunExecutor,
@@ -38,9 +39,9 @@ export interface ChatTool {
 
 /**
  * The model settings of one answer: everything of a `ChatTurnRequest` but the
- * messages, the tools and the signal, which the answer sets itself.
+ * messages, the tools, the signal and `onText`, which the answer sets itself.
  */
-export type ChatSettings = Omit<ChatTurnRequest, "messages" | "tools" | "signal">;
+export type ChatSettings = Omit<ChatTurnRequest, "messages" | "tools" | "signal" | "onText">;
 
 /** One answer to the person's latest message. */
 export interface ChatAnswerRequest {
@@ -68,6 +69,14 @@ export interface ChatAnswerListener {
   onToolCall?(toolCall: ToolCall): void;
   /** A message was added to the answer. */
   onMessage?(message: ChatMessage): void;
+  /**
+   * The current model turn's text as the model writes it, for display only:
+   * the turn's assistant message still comes through `onMessage` and is the
+   * answer. After a `restart`, the text so far is thrown away; after the last
+   * one, the deltas add up to that message's text. Called only while the
+   * executor streams (`ChatTurnRequest.onText`), and never after Stop.
+   */
+  onText?(text: ChatTurnText): void;
   /**
    * A model turn refused something, such as a tool listing or a tool call.
    * Called once per turn that refused anything, for the person's integration
@@ -172,6 +181,7 @@ export class ChatService {
       }
       answer.startTurn(turn);
       const response = await this.askModel(answer);
+      answer.throwIfListenerFailed();
       // An executor may ignore the signal and answer after Stop anyway, so that answer is dropped.
       if (answer.stopped) {
         return answer.endStopped();

@@ -26,6 +26,7 @@ import {
 import { providerTextOf } from "../run/provider-text-of.ts";
 import { layeredParams } from "./model-params.ts";
 import type { TurnLog } from "./turn-log.ts";
+import type { TurnText } from "./turn-text.ts";
 
 /** The provider and model a turn goes to, with the models it falls back to. */
 export interface ResolvedModel {
@@ -175,8 +176,9 @@ export class ModelChain {
   /**
    * Makes one model call, through `stream()` when the provider can stream, so
    * the provider's limit for the first answer never cuts off a long answer
-   * (HAL-902). Nothing of a stream is passed on before it is whole, so a model
-   * that fails part way moves on like one that fails at once. It moves on to
+   * (HAL-902). The stream's text goes to `text` as it comes, and every call
+   * starts with {@link TurnText.startCall}, so the text of a model that fails
+   * part way is thrown away, and it moves on like one that fails at once. It moves on to
    * the next model when one has no key, is offline, too slow or its provider
    * is busy. It writes an `llm.fallback` for each move.
    * Each model gets its own alias's params under the call's, never the first model's.
@@ -185,11 +187,12 @@ export class ModelChain {
    * @throws {ModelCallError} with the last cause when no model is left
    * @throws whatever the model threw for any other failure; the turn stops there
    */
-  async chat(request: ChainRequest): Promise<ChainAnswer> {
+  async chat(request: ChainRequest, text?: TurnText): Promise<ChainAnswer> {
     for (;;) {
       const model = await this.current();
+      text?.startCall();
       try {
-        const response = await answerOf(model.provider, requestFor(model, request));
+        const response = await answerOf(model.provider, requestFor(model, request), text);
         return { response, answeredBy: model };
       } catch (error) {
         // A stopped call isn't the model's failure: no other model is tried.
@@ -277,12 +280,17 @@ function typedCauseOf(error: ModelCallError): RunFailureCause | undefined {
 /**
  * One model's answer. A provider that can stream is called through `stream()`
  * and the answer is its `done` event, so the provider's limit for the first
- * answer ends only a silent model, never a long answer (HAL-902). Any other
- * provider gets `chat()`.
+ * answer ends only a silent model, never a long answer (HAL-902). Its text
+ * pieces go to `text` as they come. Any other provider gets `chat()`, and
+ * `text` hears nothing.
  *
  * @throws {ModelCallError} `refused` when a stream ends without `done` or goes on after it
  */
-async function answerOf(provider: LlmProvider, request: ChatRequest): Promise<ChatResponse> {
+async function answerOf(
+  provider: LlmProvider,
+  request: ChatRequest,
+  text: TurnText | undefined,
+): Promise<ChatResponse> {
   if (!provider.capabilities.streaming || provider.stream === undefined) {
     return provider.chat(request);
   }
@@ -293,6 +301,8 @@ async function answerOf(provider: LlmProvider, request: ChatRequest): Promise<Ch
     }
     if (event.type === "done") {
       response = event.response;
+    } else if (event.type === "text") {
+      text?.delta(event.delta);
     }
   }
   if (response === undefined) {

@@ -32,7 +32,9 @@ export interface LocalChatTurnContext {
  * `skipped` instead.
  *
  * A turn whose agent's file names a harness program runs in that harness
- * instead, as one harness call ({@link ChatHarnessTurns.turn}).
+ * instead, as one harness call ({@link ChatHarnessTurns.turn}). Only a
+ * model turn passes its text to the request's `onText` as it is written; a
+ * harness turn doesn't stream yet.
  *
  * @throws when no model fits the request
  * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
@@ -75,6 +77,7 @@ export async function localChatTurn(
     clock: options.clock,
     autoKnowledge: knowledge.auto,
     localOnly: options.localOnly === true,
+    ...(request.onText === undefined ? {} : { onText: request.onText }),
   });
 }
 
