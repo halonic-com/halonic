@@ -4,13 +4,21 @@
  * forecast itself does no I/O. Times are ISO strings, as in the rest of the
  * plugin.
  *
- * The input records are copies of the agreed seats data contract (HAL-16035)
- * until the plugin's `seats/records.ts` lands; then these copies go and the
- * imports point there. Keep the names and fields exactly as agreed.
+ * The input records are the plugin's own, from `seats/records.ts`; this file
+ * adds only what the forecast needs on top of them.
  */
 
-export type SeatId = string;
-export type AgentId = string;
+import type { AgentUsage, Seat, SeatId, SeatReading, WindowState } from "../records.ts";
+
+export type {
+  AgentActivity,
+  AgentId,
+  AgentUsage,
+  Placement,
+  Seat,
+  SeatId,
+  SeatRole,
+} from "../records.ts";
 
 /** `session`, `week`, or one per-model weekly window by its Claude Code label. */
 export type WindowKey = "session" | "week" | `week:${string}`;
@@ -22,21 +30,6 @@ export interface TokenCounts {
   readonly output: number;
 }
 
-/** A seat's role in the rules: only `pool` seats take agents; `paid-api` never does. */
-export type SeatRole = "pool" | "reserve" | "paid-api";
-
-/** One subscription seat. */
-export interface Seat {
-  readonly id: SeatId;
-  readonly role: SeatRole;
-  /** The subscription Claude Code names ("max", "pro"), if known. */
-  readonly plan: string | undefined;
-  /** Seats that share a one-time manual reset; undefined when the seat has none. */
-  readonly resetGroup: string | undefined;
-  readonly manualResetUsed: boolean;
-  readonly status: "active" | "paused";
-}
-
 /** The plan key a seat is calibrated under: its plan, or `unknown`. */
 export function planOf(seat: Seat): string {
   return seat.plan ?? "unknown";
@@ -44,7 +37,7 @@ export function planOf(seat: Seat): string {
 
 /**
  * One reading of one window of one seat, in whole percent as `/usage` prints
- * it. The plugin's `windowReadings()` makes these from its whole readings; a
+ * it. `windowReadings()` makes these from the plugin's whole readings; a
  * failed read makes none.
  */
 export interface WindowReading {
@@ -55,41 +48,34 @@ export interface WindowReading {
   readonly resetsAt: string | undefined;
 }
 
-/** An agent on a seat from `from` until `to`; no `to` means it is there now. */
-export interface Placement {
-  readonly agentId: AgentId;
-  readonly seatId: SeatId;
-  readonly from: string;
-  readonly to: string | undefined;
-  /** Who moved it; `observed` when the plugin saw the change in the agent's settings. */
-  readonly source: "supervisor" | "board" | "job" | "observed";
-}
-
-/** One agent's tokens in one 10-minute bucket, on the seat and model its runs used. */
-export interface AgentUsage {
-  readonly agentId: AgentId;
-  /** The seat the agent was on in that bucket; undefined when the plugin can't tell. */
-  readonly seatId: SeatId | undefined;
-  readonly model: string;
-  /** Start of the 10-minute bucket. */
-  readonly bucketStart: string;
-  readonly tokens: TokenCounts;
-  /** Runs in the bucket. The forecast doesn't use it. */
-  readonly runs: number;
-}
-
-/** What an agent has on at one instant; the forecast's idle rule and the cap scenarios read it. */
-export interface AgentActivity {
-  readonly agentId: AgentId;
-  readonly at: string;
-  readonly runningRuns: number;
-  readonly queuedRuns: number;
-  /** Open tasks assigned to the agent (todo, in_progress). */
-  readonly openTasks: number;
-  /** Concurrent run cap from the agent's settings; undefined when it has none. */
-  readonly cap: number | undefined;
-  /** The model in the agent's settings now (the same string as `AgentUsage.model`). */
-  readonly model: string;
+/** Splits whole seat readings into one reading per window; failed reads give none. */
+export function windowReadings(readings: readonly SeatReading[]): WindowReading[] {
+  return readings.flatMap((reading) => {
+    if (reading.error !== undefined) {
+      return [];
+    }
+    const windows: [WindowKey, WindowState | undefined][] = [
+      ["session", reading.session],
+      ["week", reading.week],
+      ...Object.entries(reading.weekByModel).map(([label, state]): [WindowKey, WindowState] => [
+        `week:${label}`,
+        state,
+      ]),
+    ];
+    return windows.flatMap(([window, state]) =>
+      state === undefined
+        ? []
+        : [
+            {
+              seatId: reading.seatId,
+              window,
+              at: reading.at,
+              usedPercent: state.usedPercent,
+              resetsAt: state.resetsAt,
+            },
+          ],
+    );
+  });
 }
 
 /** Length of one usage bucket. Readings may come less often; see `readIntervalMs` inputs. */
@@ -98,6 +84,11 @@ export const hourMs = 3_600_000;
 export const dayMs = 24 * hourMs;
 
 export const noTokens: TokenCounts = { input: 0, cached: 0, output: 0 };
+
+/** A usage row's tokens, split by type. */
+export function tokensOf(usage: AgentUsage): TokenCounts {
+  return { input: usage.inputTokens, cached: usage.cachedInputTokens, output: usage.outputTokens };
+}
 
 export function addTokens(a: TokenCounts, b: TokenCounts): TokenCounts {
   return { input: a.input + b.input, cached: a.cached + b.cached, output: a.output + b.output };

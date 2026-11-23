@@ -28,7 +28,8 @@ export const shortestSpanMs = 30 * 60_000;
 /** Resets this close together are the same window: Claude Code prints them to the minute. */
 const sameWindowMs = hourMs;
 
-function sameWindow(a: WindowSample, b: WindowSample): boolean {
+/** Whether two readings of one window show the same reset time, give or take an hour. */
+export function sameWindow(a: WindowSample, b: WindowSample): boolean {
   if (a.resetsAt === undefined || b.resetsAt === undefined) {
     return a.resetsAt === b.resetsAt;
   }

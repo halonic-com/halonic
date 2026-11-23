@@ -7,7 +7,7 @@ import {
   calibrationSteps,
   pointsFor,
 } from "./calibrate.ts";
-import { type AgentUsage, bucketMs, type WindowReading } from "./types.ts";
+import { type AgentUsage, bucketMs, noTokens, tokensOf, type WindowReading } from "./types.ts";
 
 const now = "2026-11-22T00:00:00.000Z";
 const start = Date.parse(now) - 2 * 86_400_000;
@@ -28,13 +28,14 @@ function history(steps: number, pointsPerStep: (step: number) => number): Calibr
       resetsAt: weekReset,
     });
     if (step < steps) {
-      const tokens = { input: 2_000_000, cached: 20_000_000, output: 500_000 };
       usage.push({
         agentId: "agent-1",
         seatId: "seat-a",
         model: "opus",
         bucketStart: at(step),
-        tokens,
+        inputTokens: 2_000_000,
+        cachedInputTokens: 20_000_000,
+        outputTokens: 500_000,
         runs: 1,
       });
       used += pointsPerStep(step);
@@ -104,7 +105,13 @@ verifies("paperclip.seats-calibrate", () => {
   test("tokens on no known seat skip every step they fall in", () => {
     const base = history(4, () => 1);
     const lost = { ...base.usage[0], agentId: "agent-9", seatId: undefined } as AgentUsage;
-    const idle = { ...lost, bucketStart: at(2), tokens: { input: 0, cached: 0, output: 0 } };
+    const idle = {
+      ...lost,
+      bucketStart: at(2),
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 0,
+    };
     const steps = calibrationSteps({ ...base, usage: [...base.usage, lost, idle] });
     // Step 0 holds the lost tokens; a bucket with no tokens costs nothing and skips nothing.
     expect(steps.map((s) => s.from)).toEqual([at(1), at(2), at(3)]);
@@ -150,7 +157,7 @@ verifies("paperclip.seats-calibrate", () => {
         ? 0
         : pointsFor(
             fit.pointsPerMillion,
-            input.usage[0]?.tokens ?? { input: 0, cached: 0, output: 0 },
+            input.usage[0] === undefined ? noTokens : tokensOf(input.usage[0]),
           );
     expect(perStep).toBeGreaterThan(0.3);
     expect(perStep).toBeLessThan(0.5);
@@ -188,7 +195,9 @@ verifies("paperclip.seats-calibrate", () => {
     const base = history(30, () => 1);
     const usage = base.usage.map((u) => ({
       ...u,
-      tokens: { input: 0, cached: 0, output: 500_000 },
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 500_000,
     }));
     return { ...base, usage };
   };
@@ -240,7 +249,9 @@ verifies("paperclip.seats-calibrate", () => {
           seatId: `seat-${agent % 8}`,
           model: "opus",
           bucketStart: time(step),
-          tokens: { input: 1_000_000, cached: 10_000_000, output: 250_000 },
+          inputTokens: 1_000_000,
+          cachedInputTokens: 10_000_000,
+          outputTokens: 250_000,
           runs: 1,
         });
       }

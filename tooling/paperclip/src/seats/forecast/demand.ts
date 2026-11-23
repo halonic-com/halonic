@@ -18,6 +18,7 @@ import {
   hourMs,
   noTokens,
   type TokenCounts,
+  tokensOf,
   totalTokens,
 } from "./types.ts";
 
@@ -81,7 +82,7 @@ function hourlyTotals(usage: readonly AgentUsage[], nowMs: number): number[] {
   for (const row of usage) {
     const index = Math.floor((Date.parse(row.bucketStart) - startMs) / hourMs);
     if (index >= 0 && index < totals.length) {
-      totals[index] = (totals[index] ?? 0) + totalTokens(row.tokens);
+      totals[index] = (totals[index] ?? 0) + totalTokens(tokensOf(row));
     }
   }
   return totals;
@@ -165,12 +166,12 @@ export function demandProfile(
   const weekProfile = weekProfileOf(totals, firstHourMs);
   const recent = own
     .filter((row) => Date.parse(row.bucketStart) >= nowMs - recentHours * hourMs)
-    .reduce((sum, row) => sum + totalTokens(row.tokens), 0);
+    .reduce((sum, row) => sum + totalTokens(tokensOf(row)), 0);
   const idle = activity.runningRuns + activity.queuedRuns + activity.openTasks === 0;
   return {
     agentId: activity.agentId,
     model: activity.model,
-    mix: shares(own.reduce((sum, row) => addTokens(sum, row.tokens), noTokens)),
+    mix: shares(own.reduce((sum, row) => addTokens(sum, tokensOf(row)), noTokens)),
     idle,
     currentRate: idle ? quantile(totals, idleQuantile) : recent / recentHours,
     weekProfile,

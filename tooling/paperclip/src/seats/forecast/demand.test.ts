@@ -29,7 +29,9 @@ function history(perHour: (hourStartMs: number) => number, agentId = "agent-1"):
         seatId: "seat-a",
         model: "opus",
         bucketStart: new Date(hourStartMs + bucket * bucketMs).toISOString(),
-        tokens: { input: 0, cached: 0, output: perHour(hourStartMs) / 6 },
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        outputTokens: perHour(hourStartMs) / 6,
         runs: 1,
       });
     }
@@ -98,7 +100,9 @@ verifies("paperclip.seats-demand", () => {
         seatId: "seat-a",
         model: "opus",
         bucketStart: new Date(nowMs - hourMs).toISOString(),
-        tokens: { input: 0, cached: 336_000_000, output: 0 },
+        inputTokens: 0,
+        cachedInputTokens: 336_000_000,
+        outputTokens: 0,
         runs: 1,
       },
     ];
