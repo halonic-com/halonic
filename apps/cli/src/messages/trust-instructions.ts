@@ -49,7 +49,7 @@ export const trustInstructionsMessages = defineMessages("trustInstructions", {
    */
   notCommitted: (agent: string, files: readonly string[], dir?: string) =>
     dimmed(
-      phrase`These saved changes aren't committed, so runs don't use them and this check doesn't cover them: ${files.join(", ")}. Commit them, then run ${suggestedCommand(trustWords(agent), dir)} again.`,
+      phrase`Uncommitted changes aren't checked, because runs don't use them: ${files.join(", ")}. Commit them, then run ${suggestedCommand(trustWords(agent), dir)} again.`,
     ),
 
   question: (agent: string) => phrase`Trust ${agent}'s instructions on this computer?`,
