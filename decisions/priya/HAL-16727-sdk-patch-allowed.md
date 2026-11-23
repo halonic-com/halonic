@@ -2,6 +2,7 @@
 
 - Approval: HAL-16727 (HAL-16401 part 3, team decision). Liam approves this note in review of this PR.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QjOrGTkmlWmVJmoEW/l5aljmwtPUA4LicHdGVz2ZV1FIeJhgDKSmOyt7sepZ6bv5Rugts/YRF+9lfwUw6//IAw==
 
 ## What changes
 
