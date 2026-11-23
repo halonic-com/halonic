@@ -98,6 +98,14 @@ export type {
   SavedFilePlacement,
   ThisComputerChoice,
 } from "./placement-api.ts";
+export {
+  type AgentChangeToReview,
+  type AgentReview,
+  type AgentReviewDecision,
+  type AgentReviewHost,
+  AgentReviewService,
+  type AgentReviewTarget,
+} from "./review-api.ts";
 
 /** What the Configuration pages show of an agent. */
 export interface AgentSettings extends AgentListing {
