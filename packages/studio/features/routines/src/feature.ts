@@ -3,6 +3,7 @@ import { defineFeature } from "@halonicjs/studio-shell";
 import { RoutinesHostService } from "./api.ts";
 import { listWords, searchWords } from "./list/list-words.ts";
 import { requestNewRoutine } from "./list/new-request.ts";
+import { RoutineRunAgentsService } from "./run-agents-api.ts";
 import { triggersWords } from "./triggers/triggers-words.ts";
 
 /**
@@ -15,7 +16,8 @@ export const routinesFeature = defineFeature({
   title: "Routines",
   needs: [RoutinesHostService],
   // Run now is unavailable while the sandbox can't start, for a routine whose target needs it.
-  wants: [sandboxStartCheckKey],
+  // The Agents feature notes an agent Run now starts whose On this computer choice is on hold.
+  wants: [sandboxStartCheckKey, RoutineRunAgentsService],
   register(studio) {
     studio.places.add({
       id: "routines",

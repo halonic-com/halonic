@@ -23,7 +23,17 @@ export interface ConfirmAgainCalloutsProps {
    * (`openItem(agent, { step: WHERE_IT_RUNS_STEP })`). Without it the Callout has no button.
    */
   readonly reviewAndConfirm?: ((agentId: string) => void) | undefined;
+  /**
+   * Where the page draws them: a band of their own under its header (the workflow page), or in a
+   * column that already has its margins and gaps (the routine page). A band by default.
+   */
+  readonly placement?: "band" | "column" | undefined;
 }
+
+const placementClass = {
+  band: "flex flex-col gap-2 border-b border-border px-6 py-3 phone:px-4",
+  column: "flex flex-col gap-3",
+} as const;
 
 /**
  * The run controls' confirm-again Callouts (requirement `agents.confirm-again.run-controls`,
@@ -39,6 +49,7 @@ export function ConfirmAgainCallouts({
   hubId,
   agents,
   reviewAndConfirm,
+  placement = "band",
 }: ConfirmAgainCalloutsProps) {
   const onHold = useOnHoldAgents(
     host,
@@ -48,7 +59,7 @@ export function ConfirmAgainCallouts({
   const shown = agents.filter((agent) => onHold.includes(agent.id));
   if (shown.length === 0) return null;
   return (
-    <div className="flex flex-col gap-2 border-b border-border px-6 py-3 phone:px-4">
+    <div className={placementClass[placement]}>
       {shown.map((agent) => (
         // Attention, as on the Harness page: the person is asked to act, nothing failed (C569).
         <Callout
