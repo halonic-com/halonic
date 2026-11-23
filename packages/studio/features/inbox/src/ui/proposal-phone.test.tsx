@@ -24,6 +24,8 @@ function fakeDecisions() {
     undo: vi.fn(async () => ({ leftAlone: [] as readonly string[], decidedAfter: false })),
     settle: vi.fn(async () => {}),
     remove: vi.fn(async () => {}),
+    compare: vi.fn(),
+    choose: vi.fn(),
   } satisfies ProposalDecisions;
 }
 

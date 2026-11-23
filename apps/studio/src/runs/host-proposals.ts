@@ -1,7 +1,8 @@
-import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
+import type { AgentHostTransport, ProposalAccepted } from "@halonicjs/adapter-agent-host-client";
 import { AgentHostError, AgentHostRunProposals } from "@halonicjs/adapter-agent-host-client";
 import type { ProposalTarget, ProposedRecord } from "@halonicjs/app";
 import {
+  type ProposalCompareChoice,
   type ProposalDecided,
   type ProposalDecisions,
   ProposalFailedError,
@@ -61,8 +62,9 @@ function hostRecordsOf(
 const servesNone = new Set(["not_found", "unknown_workspace"]);
 
 /**
- * Accept, Reject, Undo and settle on the workspace's run proposals through the agent host, for
- * the Inbox's proposal page (`studio.workspace-proposal-decisions`). The host writes the files and
+ * Accept, Reject, Compare, Undo and settle on the workspace's run proposals through the agent
+ * host, for the Inbox's proposal page (`studio.workspace-proposal-decisions`,
+ * `studio.workspace-proposal-compare`). The host writes the files and
  * keeps each undo step; Studio holds only its id. A proposal whose texts are gone (the host's
  * `proposal_unavailable`) fails with {@link ProposalGoneError}, and Remove takes it out
  * (`studio.workspace-proposal-remove`). Any other failure is a {@link ProposalFailedError} sorted
@@ -81,10 +83,14 @@ export function hostProposalDecisionsOf(
       : Promise.reject(new ProposalFailedError("untrusted", untrusted));
   return {
     accept: (runId: string, target: ProposalTarget) =>
-      whenTrusted(async (): Promise<ProposalDecided> => {
-        const { undo, changedOnDisk, refused } = await proposals.accept(runId, target);
-        return { undo, changedSinceRun: changedOnDisk, cantBeWritten: refused.map((r) => r.path) };
+      whenTrusted(async () => decidedOf(await proposals.accept(runId, target))),
+    compare: (runId: string, path: string) =>
+      whenTrusted(async () => {
+        const { saved, run, combined, seen } = await proposals.compare(runId, path);
+        return { saved, run, canCombine: combined !== null, seen };
       }),
+    choose: (runId: string, path: string, choice: ProposalCompareChoice, seen: string) =>
+      whenTrusted(async () => decidedOf(await proposals.choose(runId, path, choice, seen))),
     reject: (runId: string, target: ProposalTarget) =>
       whenTrusted(async (): Promise<ProposalDecided> => {
         const { undo } = await proposals.reject(runId, target);
@@ -98,6 +104,11 @@ export function hostProposalDecisionsOf(
     settle: (runId: string) => whenTrusted(async () => void (await proposals.settle(runId))),
     remove: (runId: string) => whenTrusted(() => proposals.remove(runId).catch(removeFailed)),
   };
+}
+
+/** What an Accept or a choice in Compare did, as the Inbox knows it. */
+function decidedOf({ undo, changedOnDisk, refused }: ProposalAccepted): ProposalDecided {
+  return { undo, changedSinceRun: changedOnDisk, cantBeWritten: refused.map((r) => r.path) };
 }
 
 /**

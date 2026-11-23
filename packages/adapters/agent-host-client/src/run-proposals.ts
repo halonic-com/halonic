@@ -1,4 +1,9 @@
-import type { ProposalTarget, ProposedRecord, RefusalReason } from "@halonicjs/app";
+import type {
+  ProposalCompareChoice,
+  ProposalTarget,
+  ProposedRecord,
+  RefusalReason,
+} from "@halonicjs/app";
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { type AgentHostTransport, readAnswer } from "./transport.ts";
 
@@ -37,9 +42,9 @@ const record = s
 
 const listAnswer = s.object({ proposals: s.array(record) }).strict();
 
-const refusal = s
-  .object({ path: text, why: s.enum(["under-git", "under-halonic", "outside-workspace"]) })
-  .strict();
+const refusalWhy = s.enum(["under-git", "under-halonic", "outside-workspace"]);
+
+const refusal = s.object({ path: text, why: refusalWhy }).strict();
 
 const acceptAnswer = s
   .object({
@@ -60,6 +65,17 @@ const settleAnswer = s.object({ result: s.enum(["settled", "open"]) }).strict();
 
 const removeAnswer = s.object({}).strict();
 
+const compareAnswer = s
+  .object({
+    base: s.string().nullable(),
+    saved: s.string().nullable(),
+    run: s.string().nullable(),
+    refused: refusalWhy.optional(),
+    combined: s.string().nullable(),
+    seen: s.union([s.literal("absent"), digest]),
+  })
+  .strict();
+
 /** What an accept did, as the host answers it: `undo` is the id of its step, `null` when nothing was written. */
 export interface ProposalAccepted {
   readonly undo: string | null;
@@ -67,6 +83,21 @@ export interface ProposalAccepted {
   /** Files the person changed since the run started: nothing was written to them. */
   readonly changedOnDisk: readonly string[];
   readonly refused: readonly { readonly path: string; readonly why: RefusalReason }[];
+}
+
+/**
+ * A file's texts for Compare, as the host answers them; `null` means no file. `combined` is the
+ * two put together, `null` when they change the same lines, and `seen` names the saved text, for
+ * {@link AgentHostRunProposals.choose}.
+ */
+export interface ProposalCompared {
+  readonly base: string | null;
+  readonly saved: string | null;
+  readonly run: string | null;
+  /** Why Accept would refuse the file; `saved` is then `null`, unread. */
+  readonly refused?: RefusalReason;
+  readonly combined: string | null;
+  readonly seen: string;
 }
 
 /** What an Undo or a Redo left alone, as the host answers it. */
@@ -179,6 +210,41 @@ export class AgentHostRunProposals {
     const route = "POST /v1/proposals/remove";
     const answer = await this.#transport.request(route, { workspace: this.#workspace, runId });
     readAnswer(route, answer, removeAnswer);
+  }
+
+  /**
+   * The texts of `path` in run `runId`'s proposal, for Compare on a file the person changed since
+   * the run started. Only the ids and the path go to the host.
+   *
+   * @throws {@link AgentHostError} with the host's kind, such as `proposal_unavailable`
+   */
+  async compare(runId: string, path: string): Promise<ProposalCompared> {
+    const route = "POST /v1/proposals/compare";
+    const answer = await this.#transport.request(route, {
+      workspace: this.#workspace,
+      runId,
+      path,
+    });
+    const { refused, ...texts } = readAnswer(route, answer, compareAnswer);
+    return refused === undefined ? texts : { ...texts, refused };
+  }
+
+  /**
+   * Accepts `path` with the choice made in Compare: the host writes it only while the saved file
+   * still holds `seen`, what Compare showed, and answers as {@link accept} does. Keep mine is
+   * {@link reject}. Studio sends the choice and `seen`, never a text.
+   *
+   * @throws {@link AgentHostError} with the host's kind, such as `cannot_combine`
+   */
+  async choose(
+    runId: string,
+    path: string,
+    choice: ProposalCompareChoice,
+    seen: string,
+  ): Promise<ProposalAccepted> {
+    const route = "POST /v1/proposals/choose";
+    const body = { workspace: this.#workspace, runId, path, choice, seen };
+    return readAnswer(route, await this.#transport.request(route, body), acceptAnswer);
   }
 
   #decision(runId: string, target: ProposalTarget) {

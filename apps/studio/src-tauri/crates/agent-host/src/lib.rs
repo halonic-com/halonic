@@ -23,6 +23,7 @@ mod routes;
 mod runtime_status;
 mod security_updates;
 mod stderr_log;
+mod stream_lines;
 mod wsl;
 
 use std::io::{BufRead, BufReader, Read};
@@ -42,10 +43,11 @@ use halonic_secrets::SecretBackend;
 pub use handshake::{Handshake, read_handshake};
 use loopback_secrets::LoopbackSecrets;
 use relay::Relay;
-pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
+pub use routes::{Answer, Method, Route, find_route};
 pub use runtime_status::{current_runtime, runtime_installed};
 pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates};
 use stderr_log::log_stderr;
+pub use stream_lines::{LineSplitter, LineTooLong};
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
     SettingCopy, WslError, copy_sandbox_setting, distro_host_command, distro_installed_within,
