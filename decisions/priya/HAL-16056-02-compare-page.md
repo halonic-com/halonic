@@ -2,7 +2,7 @@
 
 - Approval: /HAL/issues/HAL-16056 (HAL-11945 row Q9; words in HAL-16075)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nZTDwlj6jlFSFWXUS6U0gKR8Ax7VCUIVwQV9EWYpbmp/dvkiBPJzeVuBy2nkOrh7c4ler0u4OGCjZqpQFzkFCg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:N01b7YTUn8sGdapnxbDMMm64pXk05rDM7PObyoLo6bYkchWYjeKSAa923QGhBmLOn48XDSeopNQPoQz9YeGoCw==
 
 Until Compare shipped, a file that changed after the run started kept only
 **Reject**, with a line saying so, and once every open file had changed,
