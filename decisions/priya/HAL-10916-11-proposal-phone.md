@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-16633 (words check C735 row 22 on HAL-16630, team wording under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5CQu1HQVNAR5JLfhW8iUdQDnkkpdTEbkPKEdoiFUsELO6yqmVBFxLjhbs2SoKji9f3LETEbC3u6+B2XLgn2bCQ==
 - Task: HAL-16633
 
 ## What changes
