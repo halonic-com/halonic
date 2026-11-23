@@ -83,6 +83,11 @@ verifies("plugins.plugin-text", () => {
       expect(view.querySelector("pre")?.textContent).toBe("code");
     });
 
+    it("starts a numbered list at the number the answer gives", () => {
+      const view = render(<PluginResult show="markdown" text={"3. third\n4. fourth"} />);
+      expect(view.querySelector("ol")?.getAttribute("start")).toBe("3");
+    });
+
     it("draws a table answer as a table with a column for every key", () => {
       const source = '[{"day":"Mon","high":21},{"day":"Tue","rain":true}]';
       const view = render(<PluginResult show="table" text={source} />);

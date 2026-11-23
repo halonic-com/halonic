@@ -23,4 +23,4 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 ## Local rules
 
 - **Plugin text is untrusted.** Show it as React text only. Never `dangerouslySetInnerHTML`, never a link that isn't the kit's `ExternalLink`, and never let it choose a button's words, a colour, an icon or where something goes (design HAL-1739, section 8.4).
-- **The Markdown reader stays small.** `src/text/markdown.ts` reads a fixed set of elements into data; anything new it reads needs a case in `plugin-result.never-html.test.tsx`.
+- **The Markdown reader stays small.** The kit's `src/text/markdown.ts` (`readMarkdown`, shared with chat replies) reads a fixed set of elements into data; anything new it reads needs a case in `plugin-result.never-html.test.tsx`.

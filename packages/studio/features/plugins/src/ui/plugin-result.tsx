@@ -1,7 +1,11 @@
 import type { PluginUi } from "@halonicjs/format";
-import { ExternalLink } from "@halonicjs/studio-kit";
+import {
+  ExternalLink,
+  type MarkdownBlock,
+  type MarkdownInline,
+  readMarkdown,
+} from "@halonicjs/studio-kit";
 import { useMemo } from "react";
-import { type Block, type Inline, readMarkdown } from "../text/markdown.ts";
 import { readTable, type Table } from "../text/table.ts";
 
 /** How a command or card draws its tool's answer. */
@@ -28,17 +32,17 @@ export function PluginResult({ text, show }: PluginResultProps) {
   return <bdi className="block whitespace-pre-wrap wrap-anywhere text-body text-fg">{text}</bdi>;
 }
 
-function MarkdownBlocks({ blocks }: { readonly blocks: readonly Block[] }) {
+function MarkdownBlocks({ blocks }: { readonly blocks: readonly MarkdownBlock[] }) {
   return (
     <div className="flex min-w-0 flex-col gap-2 text-body text-fg wrap-anywhere">
       {blocks.map((block, index) => (
-        <MarkdownBlock key={index} block={block} />
+        <ResultBlock key={index} block={block} />
       ))}
     </div>
   );
 }
 
-function MarkdownBlock({ block }: { readonly block: Block }) {
+function ResultBlock({ block }: { readonly block: MarkdownBlock }) {
   switch (block.kind) {
     case "heading":
       return (
@@ -64,7 +68,10 @@ function MarkdownBlock({ block }: { readonly block: Block }) {
     case "list": {
       const List = block.ordered ? "ol" : "ul";
       return (
-        <List className={`ps-5 ${block.ordered ? "list-decimal" : "list-disc"}`}>
+        <List
+          start={block.ordered ? block.start : undefined}
+          className={`ps-5 ${block.ordered ? "list-decimal" : "list-disc"}`}
+        >
           {block.items.map((item, index) => (
             <li key={index} dir="auto" className="whitespace-pre-line">
               <Inlines inlines={item} />
@@ -82,11 +89,11 @@ function MarkdownBlock({ block }: { readonly block: Block }) {
   }
 }
 
-function Inlines({ inlines }: { readonly inlines: readonly Inline[] }) {
+function Inlines({ inlines }: { readonly inlines: readonly MarkdownInline[] }) {
   return inlines.map((inline, index) => <InlinePart key={index} inline={inline} />);
 }
 
-function InlinePart({ inline }: { readonly inline: Inline }) {
+function InlinePart({ inline }: { readonly inline: MarkdownInline }) {
   switch (inline.kind) {
     case "text":
       return inline.text;

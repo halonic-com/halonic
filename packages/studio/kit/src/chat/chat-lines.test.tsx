@@ -3,7 +3,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { click, render, unmountAll } from "../test/render.tsx";
 import { ChatEndLine } from "./chat-end-line.tsx";
-import { ChatMessage, ChatText } from "./chat-message.tsx";
+import { ChatMessage } from "./chat-message.tsx";
+import { ChatText } from "./chat-text.tsx";
 import { ChatToolLine, type ChatToolState } from "./chat-tool-line.tsx";
 
 afterEach(() => {
@@ -51,8 +52,9 @@ verifies("kit.chat-message", () => {
     const { container } = render(<ChatText>{"One\nTwo"}</ChatText>);
     const text = container.firstElementChild as HTMLElement;
     expect(text.className).toContain("text-reading");
-    expect(text.className).toContain("whitespace-pre-wrap");
-    expect(text.textContent).toBe("One\nTwo");
+    const paragraph = text.querySelector("p") as HTMLElement;
+    expect(paragraph.className).toContain("whitespace-pre-line");
+    expect(paragraph.textContent).toBe("One\nTwo");
   });
 });
 

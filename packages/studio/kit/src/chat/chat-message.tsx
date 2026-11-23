@@ -54,19 +54,3 @@ export function ChatMessage(props: ChatMessageProps) {
     </div>
   );
 }
-
-/** The props of `ChatText`. */
-export interface ChatTextProps {
-  /** What the model wrote in one step, as plain text. */
-  readonly children: string;
-}
-
-/**
- * A step of a reply that's text: `text-reading` in `fg`, keeping the model's line breaks.
- *
- * @example
- * <ChatText>It's about a refund.</ChatText>
- */
-export function ChatText({ children }: ChatTextProps) {
-  return <p className="text-reading text-fg whitespace-pre-wrap wrap-break-word">{children}</p>;
-}

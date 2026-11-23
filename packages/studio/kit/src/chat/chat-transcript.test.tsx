@@ -3,7 +3,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
-import { ChatMessage, ChatText } from "./chat-message.tsx";
+import { ChatMessage } from "./chat-message.tsx";
+import { ChatText } from "./chat-text.tsx";
 import { ChatTranscript } from "./chat-transcript.tsx";
 
 afterEach(() => {
