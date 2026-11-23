@@ -227,8 +227,8 @@ verifies("cli.commands.runs.show", () => {
 
       expect(io.stdout.slice(-3)).toEqual([
         "",
-        "! Waiting for your approval: Writer wants to use gmail__send",
-        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
+        "! Waiting for your approval: Writer wants to use gmail__send (call call-1)",
+        "  Answer with: halonic runs send 09d9a0 approve --call call-1 (or reject)",
       ]);
     });
 
@@ -265,12 +265,12 @@ verifies("cli.commands.runs.show", () => {
 
       expect(io.stdout.slice(-3)).toEqual([
         "",
-        "! Waiting for your approval: Writer wants to use gmail__send",
-        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
+        "! Waiting for your approval: Writer wants to use gmail__send (call call-1)",
+        "  Answer with: halonic runs send 09d9a0 approve --call call-1 (or reject)",
       ]);
     });
 
-    it("says one answer settles only the first of several tool approvals (HAL-7937)", async () => {
+    it("says how to answer another of several tool approvals (HAL-7937, HAL-16382)", async () => {
       const ask = (time: string, callId: string, tool: string): readonly [string, RunEventBody] => [
         today(time),
         {
@@ -300,10 +300,10 @@ verifies("cli.commands.runs.show", () => {
 
       expect(io.stdout.slice(-5)).toEqual([
         "",
-        "! Waiting for your approval: Writer wants to use gmail__send",
-        "! Waiting for your approval: Writer wants to use gmail__delete",
-        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
-        "  Each answer settles the first one listed.",
+        "! Waiting for your approval: Writer wants to use gmail__send (call call-1)",
+        "! Waiting for your approval: Writer wants to use gmail__delete (call call-2)",
+        "  Answer with: halonic runs send 09d9a0 approve --call call-1 (or reject)",
+        "  To answer another one, put the call from its line after --call.",
       ]);
     });
 

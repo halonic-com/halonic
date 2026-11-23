@@ -110,6 +110,11 @@ export const runsMessages = defineMessages("runs", {
     phrase`See it with ${suggestedCommand("runs show", dir, runId)}.`,
   /** The approval was answered somewhere else after the lookup (`conflict`); {@link notWaitingFix} follows. */
   answeredFirst: () => phrase`someone answered that approval first.`,
+  /** The run never asked about the call `--call` named, after "Couldn't send approve to run 01JD8Q:" (`not_found`); {@link notWaitingFix} follows. */
+  noCall: (callId: string) =>
+    phrase`it never asked for your approval of call ${printable(callId)}.`,
+  /** `--call` in `halonic runs send --help`. */
+  callOption: () => phrase`Answer only the approval of this call, as halonic runs show lists it.`,
   /** No such run, as the reason after "Couldn't send approve:" (`not_found`). */
   noRun: (runId: string, workspace: string) => phrase`there's no run ${runId} in ${workspace}.`,
   /** The list is where a waiting run's id is (revision 31, M12). */

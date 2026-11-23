@@ -375,8 +375,9 @@ function cancelledAt(
  * A run waiting at a wait step ends with `run`'s two waiting lines, word for
  * word (cli-output 3.4): "! Waiting for you: Approve this reply?" and how to
  * answer. A run waiting for tool approvals has one "! Waiting for your
- * approval: Writer wants to use send_email" line for each, oldest first, and
- * the same answer line: one answer takes the oldest, and a line under the answer says so. A run
+ * approval: Writer wants to use send_email (call call-1)" line for each, oldest first, and
+ * the same answer line naming the oldest's call, so the command typed twice can't answer the
+ * next one; a line under it says how to answer another (HAL-16382). A run
  * waiting for a time has no such lines; its step line already says what it waits for. A run
  * waiting for its child run ends with that child's lines instead, its id in the answer line, so
  * the person learns what the child asks and how to answer it (HAL-15951). What the run waits for
@@ -401,12 +402,13 @@ function waitingEnding(
     summary.accepts,
     dir,
     summary.answerLabels,
+    summary.approvals[0]?.callId,
   );
   return [
     [],
     ...waiting.map((line) => phrase`${markPart("needsYou")} ${line}`),
     phrase`  ${answer.phrase}`,
-    ...(waiting.length > 1 ? [phrase`  ${runMessages.oneAnswerTakesTheFirst().phrase}`] : []),
+    ...(waiting.length > 1 ? [phrase`  ${runMessages.answerAnotherCall().phrase}`] : []),
   ];
 }
 
@@ -414,10 +416,11 @@ function waitingEnding(
 function waitingLines(summary: RunSummary, definitions: RunDefinitions): Phrase[] {
   if (summary.approvals.length > 0) {
     return summary.approvals.map(
-      ({ agent, subagent, tool }) =>
+      ({ agent, subagent, tool, callId }) =>
         runMessages.waitingForApproval(
           definitions.agent(subagent ?? agent)?.name ?? subagent ?? agent,
           tool,
+          callId,
         ).phrase,
     );
   }

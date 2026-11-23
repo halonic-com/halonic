@@ -58,17 +58,18 @@ function showCommandWith(setup: RunSetup): CliCommand {
 
 /**
  * `halonic runs send <run-id> <event>`: answers a run that's waiting for
- * you (cli-output 3.4, C224).
+ * you (cli-output 3.4, C224); `--call` names the approval it answers (HAL-16382).
  */
 function sendCommandWith(setup: RunSetup): CliCommand {
   return {
     name: "send",
-    usage: `<run-id> <event> [--payload <${inputValueName}>] [--dir <folder>]`,
+    usage: `<run-id> <event> [--call <id>] [--payload <${inputValueName}>] [--dir <folder>]`,
     takesArguments: true,
     summary: runsMessages.sendSummary(),
     action: (input) =>
       runsMessages.sendAction(input.positionals[1] ?? "", input.positionals[0] ?? ""),
     options: {
+      call: { type: "string", valueName: "id", description: runsMessages.callOption() },
       payload: {
         type: "string",
         valueName: inputValueName,

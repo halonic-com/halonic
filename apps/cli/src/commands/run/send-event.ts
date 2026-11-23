@@ -50,6 +50,9 @@ export async function sendEvent(
         return false;
       case "no-run":
         throw noRun(event, runId, place);
+      // The call comes from the run's own summary, so the run asked about it.
+      case "no-call":
+        throw error;
       case "event-not-taken": {
         const states = runViewDefinitions(place.workspace, run.summary).workflow?.states;
         const step = stepName(refusal.step, states?.[refusal.step]?.description);

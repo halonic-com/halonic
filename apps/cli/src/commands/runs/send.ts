@@ -21,7 +21,7 @@ import {
   workflowIn,
 } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
-import type { RunExecutor } from "@halonicjs/ports";
+import type { RunExecutor, SendOptions } from "@halonicjs/ports";
 import { assertDefined, KindedError } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import {
@@ -58,10 +58,11 @@ import { checkRunTrust } from "../run/trust.ts";
 import { childEndings } from "./child-endings.ts";
 import { listedStatus } from "./listed-run.ts";
 
-/** The run id and the event, as the user typed them. */
+/** The run id and the event, as the user typed them, and the call `--call` named. */
 interface SendArguments {
   readonly typed: string;
   readonly event: string;
+  readonly callId: string | undefined;
 }
 
 /**
@@ -73,8 +74,9 @@ interface SendArguments {
  * @throws UsageError without exactly a run id and an event
  * @throws OwnLineError when no run has that id (`not_found`), or two runs end
  *   in that short id (`invalid_input`)
- * @throws KindedError when the run isn't waiting (`conflict`), or its step
- *   doesn't take the event (`invalid_input`)
+ * @throws KindedError when the run isn't waiting or the approval `--call`
+ *   names was answered first (`conflict`), its step doesn't take the event
+ *   (`invalid_input`), or it never asked about that call (`not_found`)
  * @throws NoWorkspaceError when the folder holds no workspace
  * @throws HistoryUnavailableError when the workspace has history but git
  *   can't start; nothing was sent (exit 9)
@@ -86,7 +88,7 @@ export async function sendToRun(
   context: CommandContext,
   setup: RunSetup,
 ): Promise<CommandResult | StoppedResult> {
-  const { typed, event } = sendArguments(input);
+  const { typed, event, callId } = sendArguments(input);
   // Read first, so a payload that can't be used stops the command before anything is checked or sent.
   const givenPayload = input.options["payload"];
   const payload =
@@ -136,7 +138,10 @@ export async function sendToRun(
   try {
     let run: RunSummary;
     try {
-      run = await new RunEvents(engine, runs).sendEvent(summary.id, event, summary, payload);
+      // The call the user named, else the oldest approval the lookup saw, so a
+      // send typed twice can't answer the approval that waits after it.
+      const sendFor = callId === undefined ? summary : { callId };
+      run = await new RunEvents(engine, runs).sendEvent(summary.id, event, sendFor, payload);
     } catch (error) {
       if (!(error instanceof RunEventRefused)) throw error;
       const refused = { ...named, workflow, clock: facts.clock };
@@ -197,7 +202,12 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
     this.target = target;
   }
 
-  async send(runId: string, event: string, payload?: unknown): Promise<RunSummary> {
+  async send(
+    runId: string,
+    event: string,
+    payload?: unknown,
+    options?: SendOptions,
+  ): Promise<RunSummary> {
     const { dir, workspace, runFiles, run, typedDir } = this.target;
     const nothingSent = sandboxMessages.nothingSent();
     const trust = await checkRunTrust(
@@ -220,7 +230,7 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
     // Before the event goes, so before the run's agents start again, as `halonic run` prints them.
     this.placed = this.engine.placed.map(placedWarning);
     for (const line of this.placed) this.context.printAhead(line);
-    return this.engine.executor.send(runId, event, payload);
+    return this.engine.executor.send(runId, event, payload, options);
   }
 
   /** The ! lines printed once the engine opened, which the result repeats first. */
@@ -238,13 +248,14 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
   }
 }
 
-/** The two arguments; else the usage error with the usage line. */
+/** The two arguments and `--call`; else the usage error with the usage line. */
 function sendArguments(input: CommandInput): SendArguments {
   const [typed, event, ...more] = input.positionals;
   if (typed === undefined || event === undefined || more.length > 0) {
     throw new UsageError(runsMessages.sendTakesRunIdAndEvent(input.positionals));
   }
-  return { typed, event };
+  const call = input.options["call"];
+  return { typed, event, callId: typeof call === "string" ? call : undefined };
 }
 
 /**
@@ -298,6 +309,12 @@ function refusedError(refusal: RunEventRefusal, send: RefusedSend): Error {
         runsMessages.answeredFirst(),
         runsMessages.notWaitingFix(send.typed, send.dir),
       );
+    case "no-call":
+      return new RefusedSendError(
+        "not_found",
+        runsMessages.noCall(refusal.callId),
+        runsMessages.notWaitingFix(send.typed, send.dir),
+      );
     case "event-not-taken": {
       const step = stepName(refusal.step, send.workflow?.states[refusal.step]?.description);
       const near = nearMatch(send.event, refusal.accepts);
@@ -345,12 +362,13 @@ function notWaiting(
 }
 
 /**
- * A send the run didn't take: `conflict` (exit 5) or `invalid_input` (exit
- * 2). Its message is the reason and its fix the next step; the command's
- * own action makes line 1, "✕ Couldn't send approve to run 01JD8Q: …".
+ * A send the run didn't take: `conflict` (exit 5), `invalid_input` (exit
+ * 2) or, for a call it never asked about, `not_found` (exit 4). Its message
+ * is the reason and its fix the next step; the command's own action makes
+ * line 1, "✕ Couldn't send approve to run 01JD8Q: …".
  */
 class RefusedSendError extends KindedError {
-  constructor(kind: "conflict" | "invalid_input", reason: Message, fix: Message) {
+  constructor(kind: "conflict" | "invalid_input" | "not_found", reason: Message, fix: Message) {
     super(kind, plainText(reason.phrase), { fix: plainText(fix.phrase) });
   }
 }

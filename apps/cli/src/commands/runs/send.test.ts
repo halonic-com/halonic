@@ -138,7 +138,7 @@ verifies("cli.commands.runs.send", () => {
       expect(none.code).toBe(exitCode.usage);
       expect(none.io.stderr).toEqual([
         "✕ halonic runs send needs a run id and an event.",
-        "  Usage: halonic runs send <run-id> <event> [--payload <file or JSON>] [--dir <folder>]",
+        "  Usage: halonic runs send <run-id> <event> [--call <id>] [--payload <file or JSON>] [--dir <folder>]",
       ]);
 
       const three = await sendIn(acme, ["09d9a0", "approve", "reject"]);
