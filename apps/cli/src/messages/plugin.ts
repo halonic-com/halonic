@@ -257,8 +257,8 @@ export const pluginMessages = defineMessages("plugin", {
   /** The refusal when a file in the plugin records, or their folder, can't be opened by the person (HAL-15893). */
   recordUnreadable: (place: "file" | "folder", path: string) =>
     place === "folder"
-      ? phrase`The plugin records folder ${path} can't be read by you.`
-      : phrase`The plugin record file ${path} can't be read by you.`,
+      ? phrase`The plugin records folder ${path} can't be read by your user account.`
+      : phrase`The plugin record file ${path} can't be read by your user account.`,
   /** Under {@link recordUnreadable}, as {@link folderUnreadableFix}; a file gets mode 600. */
   recordUnreadableFix: (place: "file" | "folder", access: PluginsFolderAccess, word: string) => {
     const mode = place === "folder" ? "700" : "600";

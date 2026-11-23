@@ -52,7 +52,7 @@ verifies("cli.plugin-record-unreadable", () => {
       kind: "denied",
       code: "plugin-record-unreadable",
       path: file,
-      message: `The plugin record file ${file} can't be read by you.`,
+      message: `The plugin record file ${file} can't be read by your user account.`,
       fix: onWindows
         ? "Give your user account access to it in the file's Properties, under Security, then run again."
         : `Run chmod 600 ${file}, then run again.`,
@@ -75,7 +75,7 @@ verifies("cli.plugin-record-unreadable", () => {
 
     await expect(records.changes(pluginSettingsCollection)).rejects.toMatchObject({
       path: folder,
-      message: `The plugin records folder ${folder} can't be read by you.`,
+      message: `The plugin records folder ${folder} can't be read by your user account.`,
       ...(onWindows ? {} : { fix: `Run chmod 700 ${folder}, then run again.` }),
     });
   });

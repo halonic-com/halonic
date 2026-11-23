@@ -171,7 +171,7 @@ verifies("cli.doctor-plugins", () => {
     if (process.platform === "win32") return;
     const shown = await doctor(machine(refusing));
     expect(check(shown.lines, "Plugins")).toEqual([
-      `! Plugins     The plugin record file ${file} can't be read by you.`,
+      `! Plugins     The plugin record file ${file} can't be read by your user account.`,
       `              Fix: run chmod 600 ${shellWord(file)}, then run halonic doctor again.`,
     ]);
   });

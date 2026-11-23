@@ -187,8 +187,8 @@ export const doctorMessages = defineMessages("doctor", {
    */
   pluginRecordUnreadable: (place: "file" | "folder", path: string) =>
     place === "folder"
-      ? phrase`The plugin records folder ${path} can't be read by you.`
-      : phrase`The plugin record file ${path} can't be read by you.`,
+      ? phrase`The plugin records folder ${path} can't be read by your user account.`
+      : phrase`The plugin record file ${path} can't be read by your user account.`,
   /**
    * Under {@link pluginRecordUnreadable}, the fix `halonic plugin list` gives
    * for it: a file gets mode 600, the folder 700. `pathWord` is the path as

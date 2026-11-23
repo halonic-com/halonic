@@ -79,7 +79,7 @@ verifies("words.doctor-plugins", () => {
     expect(fix).toContain("halonic plugin remove 'my plugin'");
   });
 
-  it("names a plugin record file or folder that can't be read by you, with the fix plugin list gives", () => {
+  it("names a plugin record file or folder that can't be read by your user account, with the fix plugin list gives", () => {
     expect(
       worded(
         { problem: "records-unreadable", place: "file", path: file, access: "yours" },
@@ -92,11 +92,11 @@ verifies("words.doctor-plugins", () => {
         { problem: "records-unreadable", place: "file", path: file, access: "windows" },
       ).items,
     ).toEqual([
-      `The plugin record file ${file} can't be read by you.`,
+      `The plugin record file ${file} can't be read by your user account.`,
       `fix: Fix: run chmod 600 ${file}, then run halonic doctor again.`,
-      "The plugin records folder /profile/plugin-records can't be read by you.",
+      "The plugin records folder /profile/plugin-records can't be read by your user account.",
       `fix: Fix: it belongs to another user, so run sudo chown "$(id -un)" /profile/plugin-records, then chmod 700 /profile/plugin-records, then run halonic doctor again.`,
-      `The plugin record file ${file} can't be read by you.`,
+      `The plugin record file ${file} can't be read by your user account.`,
       "fix: Fix: give your user account access to it in the file's Properties, under Security, then run halonic doctor again.",
     ]);
   });
