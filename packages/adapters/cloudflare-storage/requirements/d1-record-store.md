@@ -2,15 +2,18 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-6793; `RecordStore` port v2; build plan part 3 on HAL-197
+- Source: HAL-6793; `RecordStore` port v2; build plan part 3 on HAL-197; scoped D1 (HAL-13216)
 
-The D1 record store shall keep every collection's change log as rows of one table, `record_changes`, created by migration files that a migration runner applies once each, in order, each in one transaction with the note that it ran. The collection name, ids, values and authors shall reach D1 only as bound parameters, never as part of the SQL. Compacting a collection shall replace its rows with its seeds in one transaction, under the lowest of the same sequence numbers, so a change appended meanwhile stays after the seeds. A compaction shall claim the collection's next compaction version in that transaction, so one that read an out-of-date log fails and changes nothing.
+The D1 record store shall keep every collection's change log as rows of one table, `record_changes`, created by migration files that a migration runner applies once each, in order, each in one transaction with the note that it ran. Every store shall be built with a scope, and every statement it sends shall name that scope and bind it, so stores of different scopes on one database never read, list, compact or change each other's rows, even when one scope is the start of another. Rows written before the scope existed shall belong to the empty scope. The scope, the collection name, ids, values and authors shall reach D1 only as bound parameters, never as part of the SQL. Compacting a collection shall replace its rows with its seeds in one transaction, under the lowest of the same sequence numbers, so a change appended meanwhile stays after the seeds. A compaction shall claim the collection's next compaction version in that transaction, so one that read an out-of-date log fails and changes nothing.
 
 ## Examples
 
 - Given a collection named `x'; DROP TABLE record_changes; --`,
   when a change to it is appended and read,
   then the name is a bound value, no statement's text contains it, and the table is unchanged.
+- Given stores of the scopes `u/eu_a` and `u/eu_ab` on one database,
+  when one appends to `leads` and both compact it,
+  then each reads only its own changes, and neither compaction fails.
 - Given a database the migrations have already run on,
   when the runner runs again,
   then it applies nothing.

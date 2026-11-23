@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-9486; the export of a deployment's data (HAL-197 Cloud part 9)
 
-The D1 record store's `collections` shall name every collection that has at least one change, once each and in byte order, so an export can find what a deployment holds.
+The D1 record store's `collections` shall name every collection of the store's scope that has at least one change, once each and in byte order, so an export can find what a scope holds.
 
 ## Examples
 
