@@ -84,7 +84,7 @@ export async function withDeployLock<T>(
     if (!lease) {
       lost = new DeployError(
         "deploy-lock-lost",
-        "Another deploy took over the lock while this one was running, so this one stopped.",
+        "Another deploy took over while this one was running, so this one stopped.",
       );
       throw lost;
     }
@@ -128,10 +128,7 @@ export async function withDeployLock<T>(
 
 function toLost(error: unknown): DeployError {
   const reason = error instanceof Error ? error.message : "unknown error";
-  return new DeployError(
-    "deploy-lock-lost",
-    `The deploy lock could not be renewed before it ran out: ${reason}`,
-  );
+  return new DeployError("deploy-lock-lost", `This deploy lost its hold, so it stopped: ${reason}`);
 }
 
 function intervalSchedule(run: () => void, ms: number): () => void {
