@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16705 (flow check C750 on HAL-16697, findings 1 and 2; wording on approved screens, a team decision under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:y0DfTxjnmz8B0apJ0n2MHBsunF1C3w8Wyqfzdd0X20DSLpcYQTBLOdVl6YVGey0Tam7bRp4Ij/t49/5uMxuZAw==
 
 Two findings from flow check C750, fixed together.
 
