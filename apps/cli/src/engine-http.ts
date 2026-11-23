@@ -1,6 +1,6 @@
 import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
-import { proxySetting } from "./proxy-setting.ts";
+import { proxySetting } from "@halonicjs/target-node-harness";
 
 /**
  * The `fetch` a workflow step reaches the network with: model providers, MCP

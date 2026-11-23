@@ -31,6 +31,7 @@ import {
 import { createHostSandbox, createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { InstructionTrustService } from "@halonicjs/app";
 import type { HarnessAgent, HarnessRunsOptions } from "@halonicjs/engine";
+import type { RunVersion } from "@halonicjs/events";
 import {
   type AgentFiles,
   type BridgeAgent,
@@ -59,8 +60,6 @@ import { cliProviderKeys } from "./cli-provider-keys.ts";
 import { sweepingUnderHostLock, withoutHostLock } from "./fenced-sandbox.ts";
 import { localBridgeServers } from "./local-bridge-servers.ts";
 import { localProposalParts } from "./local-proposals.ts";
-import { halonicVersion } from "./version.ts";
-import type { WorkspaceVersions } from "./workspace-versions.ts";
 
 /**
  * How long one harness call may last before the sandbox stops its program,
@@ -104,8 +103,35 @@ export interface LocalHarnessParts {
   readonly programEnvironment?: Readonly<Record<string, string>>;
 }
 
+/** The run you read an agent's file or a skill's text for: its id and the version it read. */
+export interface VersionedRun {
+  readonly runId: string;
+  readonly version: RunVersion | null;
+}
+
+/**
+ * Where the agents' files and skills' text of the version a run read come
+ * from: the CLI's `WorkspaceVersions`, which stays in the CLI.
+ */
+export interface RunFileVersions {
+  /**
+   * The agent's `AGENTS.md` as the run's version holds it.
+   *
+   * @throws when the run's version can't be read or may not run here, or has no such agent
+   */
+  agentFileOf(run: VersionedRun, hubId: string, agentId: string): Promise<Uint8Array>;
+  /**
+   * The skill's text as the run's version holds it.
+   *
+   * @throws when the run's version can't be read or may not run here, or has no such skill
+   */
+  skillTextOf(run: VersionedRun, hubId: string, skillId: string): Promise<string>;
+}
+
 /** What {@link openLocalHarnessHost} builds from. */
 export interface LocalHarnessInput {
+  /** This Halonic's version, which Codex is told it runs under. */
+  readonly halonicVersion: string;
   /** The workspace folder's real path: the choices in the profile are keyed by it. */
   readonly location: string;
   /** The workspace's folders in the profile. */
@@ -119,14 +145,14 @@ export interface LocalHarnessInput {
    * files on disk (`routines watch`): the placement check hashes the
    * agent's file from the run's version. Without it, from disk.
    */
-  readonly versions?: Pick<WorkspaceVersions, "agentFileOf" | "skillTextOf">;
+  readonly versions?: RunFileVersions;
   /**
    * The agents' and skills' files of the version a run read, for `run` and
    * `runs send`, whose definitions come from the live version: the placement
    * check hashes the agent's file from there, and the instructions pin its
    * skills' text from there, never from disk (HAL-16386). `versions` wins.
    */
-  readonly runFiles?: Pick<WorkspaceVersions, "agentFileOf" | "skillTextOf">;
+  readonly runFiles?: RunFileVersions;
   /** The workspace's files, which Accept writes and a proposal's base is read from. */
   readonly store: DefinitionStore;
   readonly digest: Digest;
@@ -185,7 +211,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
   await emptyFolder(tempRoot);
   await makePrivateFolder(folders.proposalRecordsFolder());
 
-  const harnesses = parts.harnesses ?? nodeHarnesses();
+  const harnesses = parts.harnesses ?? nodeHarnesses(input.halonicVersion);
   const host = new WorkspaceHarnessHost({
     settingsFolders: folders,
     tempRoot,
@@ -295,7 +321,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
 }
 
 /** Claude Code and Codex, found where the launcher would start them. */
-function nodeHarnesses(): NonNullable<LocalHarnessParts["harnesses"]> {
+function nodeHarnesses(halonicVersion: string): NonNullable<LocalHarnessParts["harnesses"]> {
   const probe = createProgramProbe();
   return {
     "claude-code": claudeCodeHarness({ probe }),

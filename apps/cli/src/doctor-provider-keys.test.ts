@@ -6,10 +6,10 @@ import { doctorWorkspace } from "@halonicjs/adapter-doctor-node";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { PlacementReader } from "@halonicjs/app";
 import type { Secrets } from "@halonicjs/ports";
+import { cliProviderKeys } from "@halonicjs/target-node-harness";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { cliProviderKeys } from "./cli-provider-keys.ts";
 import { agentsWithProviderKey, withHarnessProviderKeys } from "./doctor-provider-keys.ts";
 
 let root: string;

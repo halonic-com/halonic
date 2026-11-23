@@ -15,7 +15,7 @@ import {
 import type { HttpClient, Secrets } from "@halonicjs/ports";
 import { type ProfileFolder, tokenFolders } from "@halonicjs/profile";
 import type { Clock } from "@halonicjs/std";
-import { proxySetting } from "./proxy-setting.ts";
+import { proxySetting } from "@halonicjs/target-node-harness";
 import { webCryptoDigest } from "./workspace-runs.ts";
 
 /** What {@link cliPluginSignOut} reads and talks to. */

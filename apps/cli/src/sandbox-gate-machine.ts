@@ -10,8 +10,8 @@ import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { AgentPlacement } from "@halonicjs/app";
 import { type ProfileEnvironment, placementFolder, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { privateJournalFolder } from "@halonicjs/target-node-harness";
 import type { SandboxGateMachine } from "./sandbox-gate.ts";
-import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { isWslShare } from "./wsl.ts";
 

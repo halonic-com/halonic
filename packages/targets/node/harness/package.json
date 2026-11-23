@@ -1,0 +1,49 @@
+{
+  "name": "@halonicjs/target-node-harness",
+  "private": true,
+  "type": "module",
+  "description": "Wires the harness host on this computer: Claude Code and Codex, the fenced sandbox, the bridge servers and the run proposals.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/adapter-workspace-engine-node": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "targets",
+    "owner": "owen",
+    "coverage": {
+      "lines": 80
+    }
+  },
+  "dependencies": {
+    "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/adapter-git": "workspace:*",
+    "@halonicjs/adapter-harness-bridge": "workspace:*",
+    "@halonicjs/adapter-harness-claude-code": "workspace:*",
+    "@halonicjs/adapter-harness-codex": "workspace:*",
+    "@halonicjs/adapter-harness-kit": "workspace:*",
+    "@halonicjs/adapter-http-kit": "workspace:*",
+    "@halonicjs/adapter-http-node": "workspace:*",
+    "@halonicjs/adapter-sandbox-host": "workspace:*",
+    "@halonicjs/adapter-sandbox-srt": "workspace:*",
+    "@halonicjs/adapter-workspace-models": "workspace:*",
+    "@halonicjs/app": "workspace:*",
+    "@halonicjs/engine": "workspace:*",
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/host-harness-host": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/profile": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
+  }
+}

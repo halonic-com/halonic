@@ -24,6 +24,7 @@ import {
 import type { Clock, HttpClient } from "@halonicjs/ports";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { proxySetting } from "@halonicjs/target-node-harness";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
@@ -38,7 +39,6 @@ import { type CallbackListener, callbackPath, listenForCallback } from "../../lo
 import { googleMessages } from "../../messages/google.ts";
 import type { Phrase } from "../../messages/phrase.ts";
 import { printable } from "../../output/printable.ts";
-import { proxySetting } from "../../proxy-setting.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";

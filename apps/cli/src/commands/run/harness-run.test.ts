@@ -5,10 +5,10 @@ import { AgentPlacement, agentFingerprint } from "@halonicjs/app";
 import type { Harness, HarnessBridgeServer, Sandbox, SandboxCheck } from "@halonicjs/ports";
 import { placementFolder, profileFolder } from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
+import { instructionTrustFolder } from "@halonicjs/target-node-harness";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
-import { instructionTrustFolder } from "../../local-harness-host.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { savedFile } from "../../test/acme-proposals.ts";
 import {

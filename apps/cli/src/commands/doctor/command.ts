@@ -8,8 +8,8 @@ import {
 } from "@halonicjs/adapter-doctor-node";
 import type { DoctorReport, DoctorWorkspace, ProfileProblem } from "@halonicjs/app";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
+import { cliProviderKeys } from "@halonicjs/target-node-harness";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
-import { cliProviderKeys } from "../../cli-provider-keys.ts";
 import type { CliCommand, CommandInput } from "../../command.ts";
 import {
   type DoctorMachine,

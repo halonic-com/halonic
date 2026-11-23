@@ -18,8 +18,8 @@
   "dependencies": {
     "@halonicjs/adapter-connector-stdio-sandbox": "workspace:*",
     "@halonicjs/adapter-coordination-node": "workspace:*",
-    "@halonicjs/adapter-env-secrets": "workspace:*",
     "@halonicjs/adapter-doctor-node": "workspace:*",
+    "@halonicjs/adapter-env-secrets": "workspace:*",
     "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/adapter-git": "workspace:*",
     "@halonicjs/adapter-harness-bridge": "workspace:*",
@@ -58,10 +58,11 @@
     "@halonicjs/routines": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/target-node-harness": "workspace:*",
     "@halonicjs/target-node-runtime": "workspace:*",
     "@halonicjs/test-runner": "workspace:*",
-    "@halonicjs/workflow": "workspace:*",
     "@halonicjs/words": "workspace:*",
+    "@halonicjs/workflow": "workspace:*",
     "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {

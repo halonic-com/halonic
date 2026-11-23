@@ -1,4 +1,5 @@
 import { profileFolder } from "@halonicjs/profile";
+import { recoverSandboxSessions } from "@halonicjs/target-node-harness";
 import { commands } from "./generated/commands.ts";
 import { readGlobalOptions } from "./global-options.ts";
 import { LineReader } from "./output/line-reader.ts";
@@ -6,7 +7,6 @@ import { SecretReader, type TerminalInput } from "./output/secret-reader.ts";
 import { exitOnceWritten, quietOnClosedPipe, stopExitCode } from "./output/stop.ts";
 import { TypeAhead } from "./output/type-ahead.ts";
 import { runCli } from "./run-cli.ts";
-import { recoverSandboxSessions } from "./sandbox-journals.ts";
 import { chainedSecrets } from "./secret-host.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 
