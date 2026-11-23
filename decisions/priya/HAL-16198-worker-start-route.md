@@ -4,6 +4,7 @@
 - Task: HAL-16198, part b of the plan on HAL-13210
 - Approval: HAL-16198, Liam's review; Liam reviews and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GxuzGY7dGKDIN2S2pdtyOrQoM+vZznYg9eRIHifty3p+aQiz+kRrEBf+nrEknzW4ZB6NCKJssFxXM4y5WbOcCw==
 
 ## What changes
 
