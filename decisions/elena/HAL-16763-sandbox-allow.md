@@ -3,6 +3,7 @@
 - Task: HAL-16763, from words check C665 row 56 (HAL-16044, HAL-16069)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16069 (the board's option (a), 23 Nov; the build and Liam's required review are on https://paperclip.halonic.com/HAL/issues/HAL-16763)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2/Umrsk/UCjKHu2yG6JdVmWEU4URiSUNAZUbsaoorQKGuusXZ0AN+XXquG5HNCeUY+F07OiWaXQlr8VLJF5RAQ==
 
 ## What changes
 
