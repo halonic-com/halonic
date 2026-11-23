@@ -2,6 +2,8 @@
 
 - Approval: Liam approved the package on HAL-16788 (T14 pull request plan, Q1: a new core package `packages/core/assistant`, owner Elena, after `app` in `coreOrder`); this step is HAL-16835. It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:4S58m7qwYeT9MaqJroVK6ETsTB8DIMGAaAh/X4jh3Moj7aqyu/OnEKaaWL4RddekYrO31YwIh5GPmyWzorstCA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:X5VKy0nyLzswkaUbx6o9BUWXJ/c4/5+zZ3rwp0Sq4isdwJjnPyNIfNMwRTTE+ieUY5JxNljmC33n5/HYQ4gqAA==
 
 ## What changes
 
