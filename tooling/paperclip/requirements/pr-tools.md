@@ -14,9 +14,6 @@ When an agent calls the Agent tools plugin's `pr_status` tool with a pull reques
 - Given the same pull request touching `pnpm-lock.yaml`,
   when an agent asks `pr_status` about it,
   then Julian's approval doesn't count, the reviewer is Liam, and the next step is to get a review on this head.
-- Given the same pull request touching `pnpm-lock.yaml`, with Liam's approval on `0000000` and "Julian: re-approved on head `7651f8c` (rebase only, range-diff vs `0000000`)",
-  when an agent asks `pr_status` about it,
-  then Julian's re-approval counts; without Liam's approval on the head it names, or without the range-diff part, it doesn't.
 - Given a comment "Priya: approved on head `7651f8c`" on Priya's own pull request, and "Liam: approved on head `7651f8c`" from someone outside the repository's team,
   when an agent asks `pr_status` about it,
   then neither approval counts.

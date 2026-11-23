@@ -80,10 +80,7 @@ export function approvals(comments: readonly PullComment[], pull: ApprovedPull):
 }
 
 /** Whether each signed approval, already read, counts on this pull request's current head. */
-export function judgeApprovals(
-  signed: readonly SignedApproval[],
-  pull: ApprovedPull,
-): Approval[] {
+export function judgeApprovals(signed: readonly SignedApproval[], pull: ApprovedPull): Approval[] {
   return signed.map((approval): Approval => {
     const { by, head } = approval;
     if (!pull.head.startsWith(head)) {
