@@ -81,13 +81,11 @@ verifies("paperclip.board-check-piles", () => {
   test("failed_runs adds the piles as one line", async () => {
     const fake = setUp();
     await fake.board.run(new Date("2026-11-22T14:00:00Z"));
-    const handlers = new Map<
-      string,
-      (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>
-    >();
+    type Handler = (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>;
+    const handlers = new Map<string, Handler>();
     registerBoardTools({
       ...fake.ctx,
-      tools: { register: (name: string, _declaration: unknown, fn) => handlers.set(name, fn) },
+      tools: { register: (name: string, _declaration: unknown, fn: Handler) => handlers.set(name, fn) },
     } as unknown as BoardToolsApi);
     const result = await handlers.get("failed_runs")?.(
       {},
