@@ -26,7 +26,7 @@ use crate::page_streams::{OpenRefusal, PageStreams, StreamKey};
 
 #[path = "agent_host_choice.rs"]
 mod choice;
-pub use choice::host_runs_beside_shell;
+pub use choice::{host_runs_beside_shell, host_runs_in_distro};
 
 #[path = "agent_host_start.rs"]
 mod start;
@@ -42,6 +42,9 @@ pub mod choice_save;
 #[path = "agent_host_life.rs"]
 mod life;
 pub use life::{end_page_streams, host_answers, stop_host};
+// Only Windows has a WSL setup to start the host after.
+#[cfg(windows)]
+pub use life::start_host_after_setup;
 
 #[path = "agent_host_refusal.rs"]
 mod refusal;

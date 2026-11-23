@@ -25,6 +25,7 @@ mod security_updates;
 mod stderr_log;
 mod stream_lines;
 mod wsl;
+mod wsl_setup;
 
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -53,6 +54,10 @@ pub use wsl::{
     SettingCopy, WslError, copy_sandbox_setting, distro_host_command, distro_installed_within,
     file_sha256, install_runtime, install_runtime_within, run_runtime_step,
     run_runtime_step_within, runtime_command, setting_copy_command, wsl_exe,
+};
+pub use wsl_setup::{
+    WSL_IMAGE, WslSetupEnd, WslSetupRun, WslSetupRuns, read_wsl_setup_end, resume_command,
+    wsl_setup_command,
 };
 
 /// The host's executable name, without the `.exe` Windows adds.

@@ -27,6 +27,21 @@ pub fn stop_host<R: Runtime>(app: &AppHandle<R>) {
     drop(host);
 }
 
+/// Starts the host once the WSL setup is done (HAL-16765). It refused to
+/// start while the distro was missing; starting it now installs the runtime
+/// beside the shell into the new distro, as every start in the distro does.
+/// A host that already runs is left as it is, with its sessions. On a
+/// refusal, answers its sandbox reason, if it gave one, and its message.
+#[cfg(windows)]
+pub async fn start_host_after_setup<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<(), (Option<&'static str>, String)> {
+    running_host(app)
+        .await
+        .map(drop)
+        .map_err(|refusal| (refusal.reason, refusal.message))
+}
+
 /// Whether the host starts, or runs, and answers its handshake: part of the
 /// proof that a newly installed version works (HAL-1206). A refusal that
 /// names a sandbox reason (no WSL, no distro yet) counts too: the shell

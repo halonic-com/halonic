@@ -18,6 +18,7 @@ import { type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-servic
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { observedSandboxStartCheck } from "./observed-sandbox-start-check.ts";
 import { elevateHelperOf } from "./sandbox-elevate-shell.ts";
+import { wslSetupOf } from "./sandbox-wsl-setup-shell.ts";
 import { wslBackupOf } from "./wsl-backup-shell.ts";
 
 /**
@@ -29,7 +30,8 @@ export const agentSandboxOffered = false;
 
 /**
  * Gives the section the agent host's sandbox through the shell, when the build offers it and the
- * shell has an agent host. Without it the section reads Not available.
+ * shell has an agent host. Without it the section reads Not available. On Windows with the host in
+ * Halonic's WSL distro, **Set up** runs the WSL setup through the shell (HAL-16765).
  */
 export async function provideAgentSandbox(
   services: ServiceRegistry,
@@ -60,6 +62,7 @@ export async function provideAgentSandbox(
         ipc === undefined ? undefined : await wslBackupOf(ipc),
         ipc === undefined ? undefined : await elevateHelperOf(ipc),
         await studioStartsUnfencedOn(transport),
+        ipc === undefined ? undefined : await wslSetupOf(ipc),
       ),
     );
 }

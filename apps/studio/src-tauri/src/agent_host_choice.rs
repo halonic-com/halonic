@@ -47,6 +47,19 @@ pub fn host_runs_beside_shell<R: Runtime>(app: &AppHandle<R>) -> bool {
     )
 }
 
+/// Whether the host the shell starts runs in Halonic's WSL distro, which is
+/// what the WSL setup sets up (HAL-16765). A choice that can't be read says
+/// no, so the setup never runs over a broken choice.
+pub fn host_runs_in_distro<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let Ok(profile) = crate::profile::cli_profile(app) else {
+        return false;
+    };
+    matches!(
+        saved_backend(&profile).map(|backend| host_for(backend, profile.platform)),
+        Ok(HostKind::Distro)
+    )
+}
+
 /// The backend the person's saved choice names, `None` when none is saved.
 ///
 /// # Errors

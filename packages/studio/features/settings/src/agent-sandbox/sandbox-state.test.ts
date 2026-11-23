@@ -345,3 +345,25 @@ verifies("settings.agent-sandbox-setup-again", () => {
     expect(v.hint).toBe("Windows asks for administrator rights once.");
   });
 });
+
+verifies("settings.agent-sandbox-setup-without-admin", () => {
+  const withoutAdmin = { state: "needs-setup", withoutAdmin: true } as const;
+
+  it("shows no line about administrator rights under the button", () => {
+    const v = view({ check: withoutAdmin });
+    expect(v.chip).toEqual({ label: "Needs setting up", tone: "warning" });
+    expect(v.primary).toEqual({ action: "set-up", label: "Set up the sandbox", busy: false });
+    expect(v.hint).toBeNull();
+  });
+
+  it("sets up without telling the person to look for Windows' prompt", () => {
+    const v = view({ check: withoutAdmin, running: { verb: "setup", step: "elevating" } });
+    expect(v.steps[0]).toEqual({ mark: "doing", label: "Setting up the agent sandbox…" });
+  });
+
+  it("keeps both lines for a setup that asks for administrator rights", () => {
+    expect(view({}).hint).toBe("Windows asks for administrator rights once.");
+    const v = view({ running: { verb: "setup", step: "elevating" } });
+    expect(v.steps[0]?.note).toMatch(/^Windows is asking for administrator rights/);
+  });
+});
