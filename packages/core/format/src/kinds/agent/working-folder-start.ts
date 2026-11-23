@@ -123,7 +123,15 @@ interface Script {
 }
 
 /** The endings Node and Python add to a script or module name that names no file. */
-const SCRIPT_ENDINGS = [".js", ".mjs", ".cjs", ".ts", ".json", ".node", ".py"];
+export const scriptEndings: readonly string[] = [
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".ts",
+  ".json",
+  ".node",
+  ".py",
+];
 
 /** Rule 1 and 2: a path the start names, read from its folder, inside a working folder. */
 async function namedPart(
@@ -235,32 +243,53 @@ function foldersUpTo(folder: string, root: string, lookup: PathLookup): string[]
   return chain;
 }
 
+/** A path a start may run as a script, read from its start folder. */
+export interface ScriptCandidate {
+  /** The program or argument it comes from, for a message. */
+  readonly shown: string;
+  /** The path as written. */
+  readonly path: string;
+  /** Whether Node and Python also run it with one of {@link scriptEndings} added, or as a folder. */
+  readonly filled: boolean;
+}
+
 /**
- * The scripts a start runs (see rule 4): the program and each piece of an
- * argument when it is a file, and each argument and `-m` module also when
- * it is a file once an ending is added, or a folder. Empty inline code
- * (`node -e ""`) is no script. Any other empty argument is read as the start
- * folder, as Python does: `python ""` runs `__main__.py` from there.
+ * The paths a start may run as scripts (see rule 4): the program and each
+ * piece of an argument as they are, and each argument and `-m` module also
+ * with an ending added, or as a folder. Empty inline code (`node -e ""`) is
+ * no script. Any other empty argument is read as the start folder, as Python
+ * does: `python ""` runs `__main__.py` from there. The working folder guard
+ * and the trust content read a start through this one list, so they agree on
+ * what it runs (HAL-4777).
+ *
+ * @example
+ * scriptCandidates({ cwd: ".", program: "node", args: ["tools/server"] });
+ * // [{ shown: "node", path: "node", filled: false },
+ * //  { shown: "tools/server", path: "tools/server", filled: true }]
  */
-async function scriptsRun(start: ConnectorStart, lookup: FolderLookup): Promise<Script[]> {
+export function scriptCandidates(start: ProgramStart): ScriptCandidate[] {
   const exact = [
     start.program,
     ...start.args.flatMap((arg) => pathsIn(arg).filter((piece) => piece !== arg)),
-  ];
+  ].map((shown) => ({ shown, path: shown, filled: false }));
   const named = start.args.flatMap((arg, index) =>
     isEmptyInlineCode(start.args, index) ? [] : [{ arg, index }],
   );
   const filled = named.flatMap(({ arg, index }) => [
-    { shown: arg, path: arg },
-    ...moduleIn(start.args, index).map((path) => ({ shown: arg, path })),
+    { shown: arg, path: arg, filled: true },
+    ...moduleIn(start.args, index).map((path) => ({ shown: arg, path, filled: true })),
   ]);
+  return [...exact, ...filled];
+}
+
+/** The scripts a start runs (see rule 4 and {@link scriptCandidates}), with the real folder of each. */
+async function scriptsRun(start: ConnectorStart, lookup: FolderLookup): Promise<Script[]> {
   const scripts: Script[] = [];
-  for (const shown of exact) {
-    const folder = await fileFolder([lookup.resolve(start.cwd, shown)], lookup);
-    if (folder !== null) scripts.push({ shown, folder });
-  }
-  for (const { shown, path } of filled) {
-    const folder = await loadFolder(lookup.resolve(start.cwd, path), lookup);
+  for (const { shown, path, filled } of scriptCandidates(start)) {
+    const resolved = lookup.resolve(start.cwd, path);
+    const folder = filled
+      ? await loadFolder(resolved, lookup)
+      : await fileFolder([resolved], lookup);
     if (folder !== null) scripts.push({ shown, folder });
   }
   return scripts;
@@ -298,7 +327,7 @@ async function fileFolder(paths: readonly string[], lookup: FolderLookup): Promi
  * folder itself when it names one. `null` when nothing is there.
  */
 async function loadFolder(path: string, lookup: FolderLookup): Promise<string | null> {
-  const file = await fileFolder([path, ...SCRIPT_ENDINGS.map((ending) => path + ending)], lookup);
+  const file = await fileFolder([path, ...scriptEndings.map((ending) => path + ending)], lookup);
   if (file !== null) return file;
   try {
     return await lookup.realpath(path);

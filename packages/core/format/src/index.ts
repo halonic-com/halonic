@@ -16,6 +16,9 @@ export type { Agent, AgentMethod, AgentOutput, MethodField } from "./kinds/agent
 export {
   type ConnectorStart,
   type FolderLookup,
+  type ScriptCandidate,
+  scriptCandidates,
+  scriptEndings,
   touchesWorkingFolder,
   type WorkingFolderReach,
   workingFolderRefusal,
