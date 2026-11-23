@@ -96,7 +96,8 @@ function shellStores(): Record<string, Handler> {
 /**
  * A shell that holds the engine lock for this window, or refuses it when `holder` holds it (with
  * its `pid`, when the shell names one) or with the shell's own `refusal`, and records each call.
- * `loseLock` plays another process taking the lock over.
+ * `loseLock` plays another process taking the lock over, or with `"io"` the shell failing to take
+ * its own lock back.
  */
 export function fakeShell(
   holder?: { pid?: number } | { refusal: { kind: string; message: string } },
@@ -128,8 +129,15 @@ export function fakeShell(
       },
       location,
     ),
-    /** Tells the page holding the lock that another process took it over. */
-    loseLock: () => onLost?.({ message: "The engine lock was taken over by another process." }),
+    /** Tells the page holding the lock that it lost it, by default to another process. */
+    loseLock: (kind: "taken-over" | "io" = "taken-over") =>
+      onLost?.({
+        kind,
+        message:
+          kind === "io"
+            ? "The engine lock couldn't be taken again."
+            : "The engine lock was taken over by another process.",
+      }),
   };
 }
 

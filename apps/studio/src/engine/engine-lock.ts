@@ -3,32 +3,33 @@
 // Studio knows whether the lock is still its own when it ends the runs a removed trust stopped
 // (HAL-13678).
 
-import type { TauriHeldEngineLock } from "@halonicjs/adapter-fs-tauri";
+import type { EngineLockLostKind, TauriHeldEngineLock } from "@halonicjs/adapter-fs-tauri";
 import { KindedError } from "@halonicjs/std";
 import { ErrorWithDetails } from "@halonicjs/studio-shell";
 
 /** The workspace's engine lock, as the shell holds it for the page (`TauriEngineLock`). */
 export interface PageEngineLock {
   /**
-   * Holds the lock until it is released; `onLost` hears once if another process takes it over.
+   * Holds the lock until it is released; `onLost` hears once, with the kind of loss, if the lock
+   * is lost.
    *
    * @throws KindedError `conflict` whose `cause` is the shell's refusal, with the other process's `pid`
    */
-  hold(onLost: (error: Error) => void): Promise<TauriHeldEngineLock>;
+  hold(onLost: (error: Error, kind: EngineLockLostKind) => void): Promise<TauriHeldEngineLock>;
 }
 
 /** The lock as an open engine holds it. */
 export interface EngineLockHold {
   readonly held: TauriHeldEngineLock;
-  /** Whether another process took the lock over, so this page no longer holds it. */
+  /** Whether the lock was lost, so this page no longer holds it. */
   readonly lost: boolean;
   /** Set when the engine's close leaves the lock for its closer to give back. */
   kept: boolean;
 }
 
 /**
- * Takes the lock of the workspace called `name`; `onLost` hears once if another process later
- * takes it over.
+ * Takes the lock of the workspace called `name`; `onLost` hears once, with the kind of loss, if
+ * the lock is later lost.
  *
  * @throws KindedError `conflict` naming the workspace, with the other process for Copy details,
  *   `unavailable` when the lock can't be written, or the lock's other refusals
@@ -36,13 +37,13 @@ export interface EngineLockHold {
 export async function holdEngineLock(
   lock: PageEngineLock,
   name: string,
-  onLost: (error: Error) => void,
+  onLost: (error: Error, kind: EngineLockLostKind) => void,
 ): Promise<EngineLockHold> {
   let lost = false;
   try {
-    const held = await lock.hold((error) => {
+    const held = await lock.hold((error, kind) => {
       lost = true;
-      onLost(error);
+      onLost(error, kind);
     });
     return {
       held,

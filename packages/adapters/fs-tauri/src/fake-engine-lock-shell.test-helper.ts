@@ -56,7 +56,10 @@ export class FakeEngineLockShell implements TauriFileShell {
     const deliver = channel === undefined ? undefined : this.#channels.get(channel);
     // Tauri delivers a channel's messages later, never inside the call that sent them.
     queueMicrotask(() =>
-      deliver?.({ message: "The engine lock was taken over by another process." }),
+      deliver?.({
+        kind: "taken-over",
+        message: "The engine lock was taken over by another process.",
+      }),
     );
   }
 

@@ -1,3 +1,4 @@
+import type { EngineLockLostKind } from "@halonicjs/adapter-fs-tauri";
 import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
 import type { assembleEngine, ListedToolApprovalStore } from "@halonicjs/engine";
 import type {
@@ -82,8 +83,11 @@ export interface EngineServiceOptions {
   readonly newToken: () => string;
   /** Hears each error the engine handles itself, such as a timer that will be retried. */
   reportError(error: unknown): void;
-  /** Hears once when another process took the lock over, so the window can say this one stopped. */
-  onLockLost?(): void;
+  /**
+   * Hears once when the lock was lost, and which kind of loss, so the window can say this one
+   * stopped.
+   */
+  onLockLost?(kind: EngineLockLostKind): void;
   /**
    * Builds the harness host on the agent host, when one runs (`openStudioHarnessHost`).
    * `engine` gives one run's bridge approvals and its phone's decisions,

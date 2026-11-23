@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use halonic_git_guard::OpenedFolders;
 use halonic_profile::{Platform, ProfileFolder};
-use halonic_run_lock::{parse_record, record_text};
+use halonic_run_lock::{LostKind, parse_record, record_text};
 
 use super::{EngineLockState, LockLost, engine_lock_file};
 
@@ -241,6 +241,7 @@ fn engine_lock_commands_tells_the_page_when_another_process_takes_the_lock_over(
         .recv_timeout(Duration::from_secs(5))
         .expect("the page hears that the lock is lost");
     assert!(lost.message.contains("taken over"), "{}", lost.message);
+    assert_eq!(lost.kind, "taken-over");
     assert!(
         heard.recv_timeout(Duration::from_millis(100)).is_err(),
         "it is told once"
@@ -264,6 +265,26 @@ fn engine_lock_commands_tells_the_page_that_reloaded_and_not_the_one_that_left()
         .recv_timeout(Duration::from_secs(5))
         .expect("the page that holds the lock hears");
     assert!(heard_before.try_recv().is_err());
+}
+
+#[test]
+fn engine_lock_commands_tells_the_page_which_kind_of_loss_it_is() {
+    let taken_over = LockLost::new(LostKind::TakenOver, "was taken over by another process");
+    assert_eq!(
+        serde_json::to_value(&taken_over).unwrap(),
+        serde_json::json!({
+            "kind": "taken-over",
+            "message": "The engine lock was taken over by another process.",
+        })
+    );
+    let io = LockLost::new(LostKind::Io, "couldn't be taken again (no such file)");
+    assert_eq!(
+        serde_json::to_value(&io).unwrap(),
+        serde_json::json!({
+            "kind": "io",
+            "message": "The engine lock couldn't be taken again (no such file).",
+        })
+    );
 }
 
 fn host() -> String {

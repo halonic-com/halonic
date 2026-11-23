@@ -11,9 +11,11 @@ export { TauriDefinitionStore, webCryptoDigest } from "./definition-store.ts";
 export { TauriEngineLock, type TauriHeldEngineLock } from "./engine-lock.ts";
 export {
   type EngineLockLost,
+  type EngineLockLostKind,
   type EngineLockRefusal,
   type EngineLockRefusalKind,
   engineLockCommands,
+  engineLockLostKinds,
   engineLockRefusalKinds,
   isEngineLockRefusal,
 } from "./engine-lock-commands.ts";

@@ -41,29 +41,37 @@ verifies("fs-tauri.engine-lock", () => {
 
     it("calls onLost once when the shell says another process took the lock over", async () => {
       const { shell, lock } = setup();
-      const lost: Error[] = [];
-      await lock.hold((error) => lost.push(error));
+      const lost: [string, string][] = [];
+      await lock.hold((error, kind) => lost.push([error.message, kind]));
 
       shell.lose(workspace);
       await flush();
-      expect(lost.map((error) => error.message)).toEqual([
-        "The engine lock was taken over by another process.",
-      ]);
+      expect(lost).toEqual([["The engine lock was taken over by another process.", "taken-over"]]);
       expect(shell.openChannels).toBe(0);
+    });
+
+    it("passes on that the shell couldn't take its own lock back", async () => {
+      const { shell, lock } = setup();
+      const lost: [string, string][] = [];
+      await lock.hold((error, kind) => lost.push([error.message, kind]));
+      const channel = String(shell.calls[0]?.args?.["onLost"]);
+      shell.sendRaw(channel, { kind: "io", message: "The engine lock couldn't be taken again." });
+      await flush();
+      expect(lost).toEqual([["The engine lock couldn't be taken again.", "io"]]);
     });
 
     it("says the lock was lost even when the shell's message has no text", async () => {
       const { shell, lock } = setup();
-      const lost: Error[] = [];
+      const lost: [string, string][] = [];
       const channelsBefore = shell.openChannels;
-      await lock.hold((error) => lost.push(error));
+      await lock.hold((error, kind) => lost.push([error.message, kind]));
       // The shell's own message shape is checked, not trusted.
       const channel = shell.calls[0]?.args?.["onLost"];
       expect(channelsBefore).toBe(0);
       expect(typeof channel).toBe("string");
       shell.sendRaw(String(channel), null);
       await flush();
-      expect(lost.map((error) => error.message)).toEqual(["The engine lock was lost."]);
+      expect(lost).toEqual([["The engine lock was lost.", "taken-over"]]);
     });
 
     it("is refused as conflict while another engine holds the lock, and leaves no channel open", async () => {
