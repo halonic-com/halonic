@@ -1,4 +1,4 @@
-import { mkdir, realpath, writeFile } from "node:fs/promises";
+import { chmod, mkdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, it } from "vitest";
@@ -28,6 +28,10 @@ async function refusalOf(
   return { kind, message: error.message, fix };
 }
 
+/** The fix when the main folder of a linked worktree isn't known. */
+const genericFix =
+  "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule, or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.";
+
 verifies("git.repository-refused", () => {
   it("refuses git files outside the folder as denied, with the fix", async () => {
     const elsewhere = await repositoryWith(scratch);
@@ -38,9 +42,7 @@ verifies("git.repository-refused", () => {
 
     expect(refusal.kind).toBe("denied");
     expect(refusal.message).toContain("keeps its git files outside the folder");
-    expect(refusal.fix).toBe(
-      "Use the repository's own folder, with its .git folder inside it, not a linked worktree or a submodule, or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.",
-    );
+    expect(refusal.fix).toBe(genericFix);
   });
 
   it("names the main folder of a linked worktree in the fix (C715 #2)", async () => {
@@ -54,6 +56,32 @@ verifies("git.repository-refused", () => {
     expect(refusal.fix).toBe(
       `Use the repository's own folder, ${await realpath(main)}, or clone the repository again into a folder of its own. halonic test and halonic validate still work in this folder.`,
     );
+  });
+
+  // chmod can't take away read access on Windows.
+  it.skipIf(process.platform === "win32")(
+    "keeps the refusal when the worktree's .git file can't be read",
+    async () => {
+      const folder = await scratch.folder();
+      await writeFile(join(folder, ".git"), "gitdir: elsewhere/.git/worktrees/linked\n");
+      await chmod(join(folder, ".git"), 0o000);
+
+      const refusal = await refusalOf(folder);
+
+      expect(refusal.kind).toBe("denied");
+      expect(refusal.fix).toBe(genericFix);
+    },
+  );
+
+  it("keeps the refusal when the main folder named by .git can't be looked at", async () => {
+    const folder = await scratch.folder();
+    await writeFile(join(folder, "notes.txt"), "not a folder\n");
+    await writeFile(join(folder, ".git"), "gitdir: notes.txt/.git/worktrees/linked\n");
+
+    const refusal = await refusalOf(folder);
+
+    expect(refusal.kind).toBe("denied");
+    expect(refusal.fix).toBe(genericFix);
   });
 
   it("refuses a config key Halonic doesn't allow as denied, with the fix", async () => {
