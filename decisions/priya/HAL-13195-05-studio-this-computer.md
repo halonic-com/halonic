@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-13195 (the plan Liam OK'd on HAL-16261: parts 1 to 4 merged as #5148, #5154, #5155 and #5318; this is part 5)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PSMt4QhXjNcUKRkuwG8g8ZhTJk12L/9//X5cZ8mQSGLSDB3YHHm51XgGw5y7DdpLPGhZjE0eElFvuUpvUdvJDg==
 - Task: HAL-13195
 
 ## What changes
