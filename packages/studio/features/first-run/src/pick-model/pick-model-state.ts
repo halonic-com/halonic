@@ -35,6 +35,8 @@ export type LocalState =
  * - `line-changed`: the passed test's trust line isn't the one shown, so the
  *   screen shows the new one and Continue must be pressed again.
  * - `not-saved`: Continue failed at that step.
+ * - `not-committed`: Continue in a served window saved nothing, because these
+ *   choice files have changes that aren't committed (HAL-16248).
  * - `broke`: the service failed while testing or while saving, which it never
  *   should; the cause went to the log.
  */
@@ -45,9 +47,10 @@ export type PickMessage =
   | { readonly kind: "line-changed" }
   | {
       readonly kind: "not-saved";
-      readonly failed: Extract<ModelChoiceSaved, { ok: false }>["failed"];
+      readonly failed: Exclude<Extract<ModelChoiceSaved, { ok: false }>["failed"], "not-committed">;
       readonly keySaved: boolean;
     }
+  | { readonly kind: "not-committed"; readonly files: readonly string[] }
   | { readonly kind: "broke"; readonly step: "test" | "save" };
 
 /** What the one button does: test then continue, continue, or ask Ollama again. */

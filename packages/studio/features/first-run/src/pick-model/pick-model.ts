@@ -251,6 +251,8 @@ export class PickModel {
     });
     if (saved === undefined || request !== this.#testRequest) return;
     this.#confirm = undefined;
+    if (!saved.ok && saved.failed === "not-committed")
+      return this.#stop({ kind: "not-committed", files: saved.files });
     if (!saved.ok)
       return this.#stop({ kind: "not-saved", failed: saved.failed, keySaved: saved.keySaved });
     this.#stop(undefined);

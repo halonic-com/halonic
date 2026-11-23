@@ -1,1 +1,1 @@
-export { firstRunFeature } from "./feature.ts";
+export { firstRunFeature, servedFirstRunFeature } from "./feature.ts";
