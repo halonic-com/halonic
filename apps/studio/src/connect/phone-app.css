@@ -2,7 +2,8 @@
  * The phone app's CSS (HAL-15985): Tailwind once, then the kit's tokens, as the Studio page's entry
  * does. start-page.ts loads it with the phone app, only when the shell has a tunnel, so the 0.1
  * connect page without one keeps connect.css alone. connect.css is unlayered and Tailwind's reset
- * sits in a layer, so the connect screen behind "Enter its address" keeps its own look.
+ * sits in a layer, so the connect screen behind "Enter its address" keeps its own look; connect.css
+ * styles only the 0.1 screens, so it leaves the phone app's alone (HAL-16709).
  */
 
 @import "tailwindcss";
