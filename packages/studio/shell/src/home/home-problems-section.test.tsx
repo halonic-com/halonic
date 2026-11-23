@@ -88,7 +88,7 @@ verifies("shell.home-problems-section", () => {
     expect(container.querySelector("section button")?.textContent).toBe("Try again");
   });
 
-  it("shows no skeleton while Problems loads", async () => {
+  it("shows no section, heading and skeleton included, while Problems' data loads", async () => {
     const never = new Promise<never>(() => undefined);
     const container = render(
       <HomePage
@@ -99,6 +99,27 @@ verifies("shell.home-problems-section", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300);
     });
+    expect(regionNames(container)).toEqual([]);
     expect(container.querySelector('section [aria-hidden="true"]')).toBeNull();
+  });
+
+  it("shows no section while Problems' view is still importing", async () => {
+    const container = render(
+      <HomePage
+        cards={[problemsSection(() => new Promise<never>(() => undefined))]}
+        contextFor={() => context}
+      />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    expect(regionNames(container)).toEqual([]);
+  });
+
+  it("shows the section once its card renders rows", async () => {
+    const container = render(<HomePage cards={[problemsSection()]} contextFor={() => context} />);
+    await settle();
+    expect(regionNames(container)).toEqual(["Problems"]);
+    expect(container.querySelector("section p")?.textContent).toBe("Sorter");
   });
 });

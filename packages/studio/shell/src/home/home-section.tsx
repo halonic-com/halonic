@@ -139,12 +139,12 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
           />
         )}
       >
-        <Suspense fallback={skeletonFor(card.id)}>
-          <HomeSectionEmptyReport value={setEmpty}>
+        <HomeSectionEmptyReport value={setEmpty}>
+          <Suspense fallback={skeletonFor(card.id)}>
             <CardView context={context} attempt={attempt} />
-          </HomeSectionEmptyReport>
-          {focusPending ? <FocusOnShow target={headingRef} onFocused={focusMoved} /> : null}
-        </Suspense>
+            {focusPending ? <FocusOnShow target={headingRef} onFocused={focusMoved} /> : null}
+          </Suspense>
+        </HomeSectionEmptyReport>
       </ViewErrorBoundary>
     </section>
   );
@@ -174,10 +174,14 @@ const skeletonShapes: Partial<Record<HomeSection, "cards" | "card">> = {
   cards: "cards",
 };
 
-/** What a section shows while its card loads: none for Get set up, a card or cards, else rows. */
+/**
+ * What a section shows while its card loads: a card or cards, else rows. A section without a
+ * skeleton stays hidden, heading included, until its card renders something, so Home never shows
+ * its heading alone and then drops it (C348).
+ */
 function skeletonFor(section: HomeSection) {
   if (withoutSkeleton.has(section)) {
-    return null;
+    return <HomeSectionEmpty />;
   }
   return <SectionSkeleton shape={skeletonShapes[section] ?? "rows"} />;
 }

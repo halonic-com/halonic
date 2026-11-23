@@ -146,6 +146,7 @@ verifies("shell.home-states", () => {
     await wait(300);
     const section = sectionNamed(container, "Get set up");
     expect(section.children).toHaveLength(1);
+    expect(section.hidden).toBe(true);
     expect(status(container)).toBe("");
   });
 
