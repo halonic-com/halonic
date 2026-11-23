@@ -57,7 +57,7 @@ async function savedWorkspaceValue(saved: DefinitionSource) {
   const line = parsed.error[0]?.line ?? 1;
   throw new KindedError(
     "invalid_input",
-    `The saved workspace.yaml has an error on line ${line}, so Halonic can't tell whether Local only is on. Nothing started.`,
+    `The saved workspace.yaml has an error on line ${line}, so Halonic can't tell whether Local only is on.`,
     { fix: "Fix the error in workspace.yaml, then try again." },
   );
 }
