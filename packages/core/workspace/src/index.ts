@@ -69,6 +69,13 @@ export {
   type SignInAgent,
   signInAgents,
 } from "./many-users-subscription.ts";
+export {
+  manyUsersUnpricedMessage,
+  manyUsersUnpricedModelCode,
+  stopsAtCostWithManyUsers,
+  type UnpricedAgent,
+  unpricedAgents,
+} from "./many-users-unpriced.ts";
 export { misplacedFileCode } from "./misplaced-files.ts";
 export { type PlaceMatch, placeOf, settingsPath } from "./places.ts";
 export {

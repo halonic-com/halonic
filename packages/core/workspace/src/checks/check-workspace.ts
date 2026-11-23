@@ -9,6 +9,7 @@ import { checkDefaultRuntimes, checkInstructionFiles } from "./ignored-settings.
 import { checkIntegrationSettings } from "./integration-settings.ts";
 import { checkLocalOnly } from "./local-only.ts";
 import { checkManyUsersSubscription } from "./many-users.ts";
+import { checkManyUsersUnpriced } from "./many-users-unpriced.ts";
 import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
 import { checkModelProviders } from "./model-providers.ts";
 import { checkRoutines } from "./routines.ts";
@@ -39,6 +40,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkRoutines,
   checkLocalOnly,
   checkManyUsersSubscription,
+  checkManyUsersUnpriced,
   checkIntegrationSettings,
   checkDefaultRuntimes,
   checkInstructionFiles,
