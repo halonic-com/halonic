@@ -37,17 +37,23 @@ import {
   withUse,
 } from "./usage-ledger.ts";
 
+/** The runs going in a scope, and how many of them one actor started. */
+export interface RunCounts {
+  readonly scope: number;
+  readonly actor: number;
+}
+
 /**
  * How many runs are going, as the host that starts them knows.
  *
  * The meter only reads this count and holds nothing, so two runs started at
- * the same moment can both pass a cap with one place left. A host that must
- * keep to the cap exactly makes checking and starting a run one atomic step;
- * otherwise a cap can be passed by the runs started together.
+ * the same moment can both pass a cap or a `runs` limit with one place left.
+ * A host that must keep to them exactly makes checking and starting a run one
+ * atomic step; otherwise they can be passed by the runs started together.
  */
 export interface RunningRuns {
   /** The runs going in `scope`, and how many of them `actor` started. */
-  count(scope: string, actor: string): Promise<{ readonly scope: number; readonly actor: number }>;
+  count(scope: string, actor: string): Promise<RunCounts>;
 }
 
 /** What a `ConfigMeter` needs. */
@@ -67,6 +73,9 @@ export interface ConfigMeterOptions {
  * anything is left, a number whether that much is left.
  */
 type Need = (unit: MeteredUnit) => number | null | undefined;
+
+/** No runs going: what a check counts when it isn't for a run start. */
+const noneRunning: RunCounts = { scope: 0, actor: 0 };
 
 /** The plan a stop names: the file's limits, which no one can upgrade from the app. */
 const configPlan: StopPlan = { id: "config", version: 1, name: "config" };
@@ -108,13 +117,16 @@ export class ConfigMeter implements Meter {
     const limits = limitsOf(this.#settings, principal);
     if (limits.refused !== undefined) return { allowed: false, stop: limits.refused };
     const starting = request.kind === "run-start";
-    const capped = starting ? await this.#concurrencyStop(principal, limits) : null;
+    const running = starting ? await this.#runningFor(principal, limits) : noneRunning;
+    const capped = concurrencyStopOf(running, limits);
     if (capped !== null) return { allowed: false, stop: capped };
     const now = this.#clock.now();
     const ledger = withoutPast(await this.#ledgers.read(principal.scope), now);
-    // Runs count only against starting one: a run going on may finish.
+    // Runs count only against starting one: a run going on may finish. Runs
+    // are counted when they end, so the ones going count as used too, or
+    // runs started in parallel could pass the limit.
     const need: Need = (unit) => (unit === "runs" && !starting ? undefined : null);
-    const stop = reachedStop(ledger, principal, limits, now, need);
+    const stop = reachedStop(ledger, principal, limits, now, need, running);
     return stop === null ? { allowed: true } : { allowed: false, stop };
   }
 
@@ -129,7 +141,7 @@ export class ConfigMeter implements Meter {
     const need: Need = (unit) => (unit === "runs" ? undefined : (amounts[unit] ?? null));
     return this.#ledgers.change<ReserveAnswer>(principal.scope, (stored) => {
       const ledger = withoutPast(stored, now);
-      const stop = reachedStop(ledger, principal, limits, now, need);
+      const stop = reachedStop(ledger, principal, limits, now, need, noneRunning);
       if (stop !== null) return { next: null, answer: { allowed: false, stop } };
       const held = { actor: principal.actor, at: now.getTime(), amounts };
       return {
@@ -177,51 +189,72 @@ export class ConfigMeter implements Meter {
     return { actor: principal.actor, share: limits.share };
   }
 
-  async #concurrencyStop(principal: MeterPrincipal, limits: KnownLimits): Promise<PlanStop | null> {
-    const { memberConcurrency, scopeConcurrency } = limits;
-    if (memberConcurrency === undefined && scopeConcurrency === undefined) return null;
-    const running = await this.#running.count(principal.scope, principal.actor);
-    if (memberConcurrency !== undefined && running.actor >= memberConcurrency) {
-      return concurrencyStop(running.actor, memberConcurrency, "member");
-    }
-    if (scopeConcurrency !== undefined && running.scope >= scopeConcurrency) {
-      return concurrencyStop(running.scope, scopeConcurrency, "scope");
-    }
-    return null;
+  /** The runs going, asked only when a cap or a `runs` limit holds the principal. */
+  async #runningFor(principal: MeterPrincipal, limits: KnownLimits): Promise<RunCounts> {
+    const capped = limits.memberConcurrency !== undefined || limits.scopeConcurrency !== undefined;
+    const limitsRuns = [...limits.share, ...limits.pool].some((limit) => limit.unit === "runs");
+    if (!capped && !limitsRuns) return noneRunning;
+    return this.#running.count(principal.scope, principal.actor);
   }
 }
 
-/** The first limit reached, inner to outer: the member's share, then the scope's pool. */
+/** The cap that as many runs are going as it allows, the member's first; `null` below both. */
+function concurrencyStopOf(running: RunCounts, limits: KnownLimits): PlanStop | null {
+  const { memberConcurrency, scopeConcurrency } = limits;
+  if (memberConcurrency !== undefined && running.actor >= memberConcurrency) {
+    return concurrencyStop(running.actor, memberConcurrency, "member");
+  }
+  if (scopeConcurrency !== undefined && running.scope >= scopeConcurrency) {
+    return concurrencyStop(running.scope, scopeConcurrency, "scope");
+  }
+  return null;
+}
+
+/**
+ * The first limit reached, inner to outer: the member's share, then the
+ * scope's pool. The runs going count as used `runs`: the member's own against
+ * their share, all of the scope's against the pool.
+ */
 function reachedStop(
   ledger: Ledger,
   principal: MeterPrincipal,
   limits: KnownLimits,
   now: Date,
   need: Need,
+  running: RunCounts,
 ): PlanStop | null {
   const member: Holder = { actor: principal.actor };
+  const going = (limit: UsageLimit, count: number) => (limit.unit === "runs" ? count : 0);
   for (const limit of limits.share) {
-    const reached = reachedLimit(ledger, member, limit, now, need(limit.unit));
+    const counted = { needed: need(limit.unit), going: going(limit, running.actor) };
+    const reached = reachedLimit(ledger, member, limit, now, counted);
     if (reached !== null) return memberLimitStop(reached);
   }
   for (const limit of limits.pool) {
-    const reached = reachedLimit(ledger, { pool: true }, limit, now, need(limit.unit));
+    const counted = { needed: need(limit.unit), going: going(limit, running.scope) };
+    const reached = reachedLimit(ledger, { pool: true }, limit, now, counted);
     if (reached !== null) return planLimitStop({ ...reached, canUpgrade: false });
   }
   return null;
 }
 
-/** The limit as a stop names it when `needed` doesn't fit in what is left of it; `null` while it fits. */
+/**
+ * The limit as a stop names it when `needed` doesn't fit in what is left of
+ * it, after what is used, held back and `going` (not counted yet); `null`
+ * while it fits.
+ */
 function reachedLimit(
   ledger: Ledger,
   holder: Holder,
   limit: UsageLimit,
   now: Date,
-  needed: number | null | undefined,
+  counted: { readonly needed: number | null | undefined; readonly going: number },
 ) {
+  const { needed, going } = counted;
   if (needed === undefined || !isCountedPeriod(limit.period)) return null;
   const unit = limit.unit;
-  const used = usedOf(ledger, holder, unit, limit.period, now) + heldOf(ledger, holder, unit);
+  const used =
+    usedOf(ledger, holder, unit, limit.period, now) + heldOf(ledger, holder, unit) + going;
   const left = Math.max(0, toBase(unit, limit.amount) - used);
   const fits = needed === null ? left > 0 : needed <= left;
   if (fits) return null;

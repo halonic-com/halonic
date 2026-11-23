@@ -138,6 +138,19 @@ verifies("engine.config-meter", () => {
       expect(await meter.check(ada, { kind: "model-call" })).toEqual({ allowed: true });
     });
 
+    it("counts the runs going against starting one, so parallel starts can't pass it", async () => {
+      const runsPerDay = { limits: [limit("runs", 2, { period: "day" })] };
+      const oneEnded = meterWith(runsPerDay, { scope: 1, actor: 1 }).meter;
+      await oneEnded.record(ada, runEnd);
+      const refused = await oneEnded.check(ada, { kind: "run-start" });
+      expect(codeOf(refused)).toBe("plan.runs");
+      expect(detailOf(refused)).toMatchObject({ used: "2", limit: "2" });
+      const twoGoing = meterWith(runsPerDay, { scope: 2, actor: 2 }).meter;
+      expect(codeOf(await twoGoing.check(ada, { kind: "run-start" }))).toBe("plan.runs");
+      const oneGoing = meterWith(runsPerDay, { scope: 1, actor: 1 }).meter;
+      expect(await oneGoing.check(ada, { kind: "run-start" })).toEqual({ allowed: true });
+    });
+
     it("counts a call's input and output tokens", async () => {
       const { meter } = meterWith({ limits: [limit("tokens", 1200)] });
       await meter.record(ada, modelCall(0));
@@ -170,6 +183,25 @@ verifies("engine.config-meter", () => {
       expect(codeOf(refused)).toBe("plan.member.cost");
       expect(detailOf(refused)).toMatchObject({ canUpgrade: "false", used: "10" });
       expect(await meter.check(cal, { kind: "model-call" })).toEqual({ allowed: true });
+    });
+
+    it("counts a member's runs going against their share and everyone's against the pool", async () => {
+      const runs = organisation([
+        {
+          id: organisationId,
+          limits: [limit("runs", 5, { period: "day" })],
+          members: [
+            { actor: bea.actor, role: "owner", limits: [limit("runs", 2, { period: "day" })] },
+            { actor: cal.actor, role: "member" },
+          ],
+        },
+      ]);
+      const atShare = meterWith(runs, { scope: 2, actor: 2 }).meter;
+      expect(codeOf(await atShare.check(bea, { kind: "run-start" }))).toBe("plan.member.runs");
+      const atPool = meterWith(runs, { scope: 5, actor: 0 }).meter;
+      expect(codeOf(await atPool.check(cal, { kind: "run-start" }))).toBe("plan.runs");
+      const below = meterWith(runs, { scope: 4, actor: 1 }).meter;
+      expect(await below.check(bea, { kind: "run-start" })).toEqual({ allowed: true });
     });
 
     it("refuses someone the organisation doesn't list, and a scope the file doesn't know", async () => {
@@ -241,11 +273,13 @@ verifies("engine.config-meter", () => {
       expect(detailOf(left)).toMatchObject({ used: "1.5", left: "0.5" });
     });
 
-    it("lets a hold that was never settled lapse after a day", async () => {
+    it("keeps a hold through the longest step and lets it lapse after two days", async () => {
       const { meter, clock } = meterWith({ limits: [limit("cost", 10)] });
       expect((await meter.reserve(ada, { cost: 10 })).allowed).toBe(true);
       expect(codeOf(await meter.check(ada, { kind: "model-call" }))).toBe("plan.cost");
-      clock.at = new Date("2026-11-24T10:00:00.000Z");
+      clock.at = new Date("2026-11-25T09:59:59.999Z");
+      expect(codeOf(await meter.check(ada, { kind: "model-call" }))).toBe("plan.cost");
+      clock.at = new Date("2026-11-25T10:00:00.000Z");
       expect(await meter.check(ada, { kind: "model-call" })).toEqual({ allowed: true });
     });
 

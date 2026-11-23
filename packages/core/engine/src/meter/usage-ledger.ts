@@ -56,10 +56,11 @@ const basePerUnit: Readonly<Record<MeteredUnit, number>> = {
 
 /**
  * How long a hold lasts when its step is never settled, such as when the
- * engine stopped during it: far past the longest harness step, so a lost
- * settle can't keep a scope's use held back for good.
+ * engine stopped during it: twice the longest harness step (1,440 minutes),
+ * so a step still running keeps its hold, and a lost settle can't keep a
+ * scope's use held back for good.
  */
-const heldForMs = 24 * 60 * 60 * 1000;
+const heldForMs = 2 * 24 * 60 * 60 * 1000;
 
 /** How often a change is tried again when another instance changed the ledger first. */
 const maxAttempts = 32;

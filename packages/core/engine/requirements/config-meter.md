@@ -8,8 +8,8 @@ The engine's `ConfigMeter` shall be a `Meter` that holds each principal to the `
 
 - In a personal scope (`u/…`), the limits shall be `users.config.limits`.
 - In an organisation's scope (`o/<id>`), the limits shall be the organisation's pool and the member's own share, checked share first. A member past their share shall be refused with `plan.member.<unit>` and `canUpgrade: "false"` while the pool has room. An `actor` the organisation doesn't list shall be refused with `plan.member-removed`, and a scope that names no organisation in the file, or that is neither `u/` nor `o/`, with `plan.none`.
-- `check` shall refuse once a unit's use and what steps hold back reach its limit. Only a run start shall count against `runs`, and before it, the member's `concurrency` and then the organisation's shall refuse with `plan.concurrency`, naming the cap that was hit, when as many runs are going as the cap allows.
-- `reserve` shall hold back a step's maximum in cost, minutes and model calls, checking the pool and the member's share in the same change, and refuse with `phase: "reserve"`, `needed` and `left` when that much isn't left. A unit the step sets no maximum for shall hold back nothing, and refuse once it is used up. `settle` shall let go of the step's hold and count its harness time. A hold never settled shall lapse after a day.
+- `check` shall refuse once a unit's use and what steps hold back reach its limit. Only a run start shall count against `runs`, with the runs going counted as used (the member's own against their share, all of the scope's against the pool) since a run is counted when it ends, and before it, the member's `concurrency` and then the organisation's shall refuse with `plan.concurrency`, naming the cap that was hit, when as many runs are going as the cap allows.
+- `reserve` shall hold back a step's maximum in cost, minutes and model calls, checking the pool and the member's share in the same change, and refuse with `phase: "reserve"`, `needed` and `left` when that much isn't left. A unit the step sets no maximum for shall hold back nothing, and refuse once it is used up. `settle` shall let go of the step's hold and count its harness time. A hold never settled shall lapse after two days, twice the longest harness step.
 - `record` shall count a model call as one step, its input and output tokens and its cost (0 when a subscription paid), count nothing for an answer from the cache, and count a run's end as one run.
 - A `stop` limit per `run` or per `step` shall make the meter refuse to be created, naming the limit, since the meter is asked by principal and couldn't keep to it.
 - A scope's counts shall stay within what `Coordination` keeps for one value, however many people use the scope: a member's own use shall be counted only for the limits of their share, an organisation whose members' shares couldn't be counted in half that space shall make the meter refuse to be created, and a hold that would grow the counts past it shall throw rather than be counted.
@@ -30,6 +30,9 @@ Rationale: a self-hoster can cap a team without Halonic Cloud (design, section 1
 - Given a limit of 2 runs per day with 2 runs ended today,
   when a run start and a model call are checked,
   then the start is refused with `plan.runs` and the model call is allowed.
+- Given that limit with 1 run ended today and 1 going,
+  when a run start is checked,
+  then it is refused with `plan.runs` and `used: "2"`; with none ended and 1 going, it is allowed.
 - Given an organisation with a pool of 100 cost per month, 40 used, and a member's share of 10 with 10 used,
   when that member's model call is checked,
   then it is refused with `plan.member.cost` and `canUpgrade: "false"`, and another member's is allowed.
