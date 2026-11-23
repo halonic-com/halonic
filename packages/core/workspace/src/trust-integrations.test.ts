@@ -122,7 +122,7 @@ verifies("workspace.trust-integrations", () => {
     it("keeps only the reason for a URL with a password in it", () => {
       const content = contentOf([homeStation({ url: "https://ops:pw@nas.example.com/" })]);
       expect(content.integrations?.[0]?.addresses).toEqual({
-        url: "‹refused: the URL has user info›",
+        url: "‹refused: the address has a user name or password in it›",
       });
       expect(JSON.stringify(content)).not.toContain("pw@");
     });

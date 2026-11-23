@@ -96,7 +96,7 @@ verifies("cli.commands.trust.review-and-trust", () => {
 
     expect([code, jsonCode]).toEqual([exitCode.usage, exitCode.usage]);
     expect(io.stderr).toEqual([
-      "✕ Couldn't trust acme: library/connectors/web.connector.yaml can't be trusted, because the URL has user info.",
+      "✕ Couldn't trust acme: library/connectors/web.connector.yaml can't be trusted, because the address has a user name or password in it.",
       "  Fix the address in that file, then try again.",
     ]);
     expect(JSON.parse(json.stdout.join("\n"))).toMatchObject({
@@ -120,7 +120,7 @@ verifies("cli.commands.trust.review-and-trust", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.join("\n")).toContain(
-      "providers/claude.yaml can't be trusted, because the URL has user info.",
+      "providers/claude.yaml can't be trusted, because the address has a user name or password in it.",
     );
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("pw");
     expect(await store().list()).toEqual([]);

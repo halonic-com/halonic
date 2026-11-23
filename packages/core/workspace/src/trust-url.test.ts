@@ -54,9 +54,11 @@ verifies("workspace.trust-content", () => {
 
   it("refuses user info, so a password never goes into the content", () => {
     expect(trustUrl("https://ops:pw@mcp.acme.test/")).toEqual({
-      refused: "the URL has user info",
+      refused: "the address has a user name or password in it",
     });
-    expect(trustUrl("https://ops@mcp.acme.test/")).toEqual({ refused: "the URL has user info" });
+    expect(trustUrl("https://ops@mcp.acme.test/")).toEqual({
+      refused: "the address has a user name or password in it",
+    });
   });
 
   it("refuses an http or https URL without //", () => {

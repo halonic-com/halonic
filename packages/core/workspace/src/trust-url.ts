@@ -27,7 +27,7 @@ export type TrustUrl = { url: string } | { refused: string };
  *
  * @example
  * trustUrl("HTTPS://MCP.Acme.test:443"); // { url: "https://mcp.acme.test/" }
- * trustUrl("https://ops:pw@mcp.acme.test/"); // { refused: "the URL has user info" }
+ * trustUrl("https://ops:pw@mcp.acme.test/"); // { refused: "the address has a user name or password in it" }
  */
 export function trustUrl(url: string): TrustUrl {
   if (hasDroppedCharacters(url)) {
@@ -47,7 +47,7 @@ export function trustUrl(url: string): TrustUrl {
   const authority = match[2] ?? "";
   const rest = match[3] ?? "";
   if (authority.includes("@")) {
-    return { refused: "the URL has user info" };
+    return { refused: "the address has a user name or password in it" };
   }
   const { host, port } = splitHostAndPort(authority);
   const shownPort = port === "" || port === defaultPorts[scheme] ? "" : `:${port}`;

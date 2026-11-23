@@ -142,14 +142,15 @@ verifies("workspace.trust-badge", () => {
     const trust = control({
       ...review,
       fingerprint: "",
-      refused: "The connector mail can't be trusted, because the URL has user info.",
+      refused:
+        "The connector mail can't be trusted, because the address has a user name or password in it.",
     });
     await show(trust.value);
     act(() => badge()?.click());
 
     await act(async () => button("Trust")?.click());
 
-    expect(dialog()?.textContent).toContain("the URL has user info");
+    expect(dialog()?.textContent).toContain("the address has a user name or password in it");
     expect(trust.granted).toEqual([]);
   });
 

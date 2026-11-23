@@ -25,7 +25,7 @@ The `halonic trust [--dir <folder>]` command shall show the trust check of the w
   then it prints "✕ That fingerprint doesn't match Acme as it is now.", saves nothing and exits with 3.
 - Given Acme with a connector file `library/connectors/mail.connector.yaml` whose URL is `https://ops:pw@mail.example.com/mcp`,
   when `halonic trust --dir acme` runs,
-  then it exits 2 with "✕ Couldn't trust acme: library/connectors/mail.connector.yaml can't be trusted, because the URL has user info.", nothing is saved, and neither the output nor its `--json` holds the password.
+  then it exits 2 with "✕ Couldn't trust acme: library/connectors/mail.connector.yaml can't be trusted, because the address has a user name or password in it.", nothing is saved, and neither the output nor its `--json` holds the password.
 - Given Acme whose name in `workspace.yaml` holds an escape sequence and a carriage return,
   when `halonic trust --dir acme` asks its question, refuses or prints its ✓ line, or `halonic trust --list` lists it,
   then the name appears with `\u001b` and `\u000d` in place of those characters, and the output has no raw control character.

@@ -116,7 +116,7 @@ verifies("cli.commands.routines.list", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
-      "! Acme's routines don't start: library/connectors/web.connector.yaml can't be trusted, because the URL has user info. Fix the address in that file, then trust the workspace with halonic trust.",
+      "! Acme's routines don't start: library/connectors/web.connector.yaml can't be trusted, because the address has a user name or password in it. Fix the address in that file, then trust the workspace with halonic trust.",
       "Morning check   Daily at 08:00   ! Paused until trusted   Never ran",
       hint,
     ]);

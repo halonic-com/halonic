@@ -35,7 +35,7 @@ const crm: IntegrationTrustContent = {
   addresses: {
     CRM_URL: "https://crm.example.com/",
     REPORTS_URL: null,
-    WEBHOOK: "‹refused: the URL has user info›",
+    WEBHOOK: "‹refused: the address has a user name or password in it›",
   },
 };
 const noChanges = { added: [], changed: [], removed: [], unchanged: 0 };
@@ -67,7 +67,7 @@ verifies("cli.trust-check", () => {
       "Addresses",
       "  my-crm        CRM_URL       https://crm.example.com/",
       "                REPORTS_URL   not set",
-      "                WEBHOOK       can't be used: the URL has user info",
+      "                WEBHOOK       can't be used: the address has a user name or password in it",
       "",
       "Fingerprint",
       `  ${fingerprint}`,

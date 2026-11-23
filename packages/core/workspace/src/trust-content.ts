@@ -94,7 +94,7 @@ export type RefusedKind = "connector" | "provider";
 export interface RefusedItem {
   kind: RefusedKind;
   id: string;
-  /** Why, such as "the URL has user info". */
+  /** Why, such as "the address has a user name or password in it". */
   reason: string;
 }
 

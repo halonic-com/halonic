@@ -17,7 +17,7 @@ The workspace package shall add each local integration to the trust content, sor
 - Given its `url` setting isn't set, or is empty,
   then the content lists it with `{ url: null }`.
 - Given its `url` setting holds `https://ops:pw@nas.example.com/`,
-  then the content holds `‹refused: the URL has user info›` and not the password.
+  then the content holds `‹refused: the address has a user name or password in it›` and not the password.
 - Given a workspace without local integrations,
   then the content and fingerprint are the same as before integrations were in the content.
 - Given a trusted workspace with `home-station`,

@@ -209,7 +209,7 @@ export const trustMessages = defineMessages("trust", {
   settingNotSet: () => phrase`not set`,
   /**
    * A local integration's setting whose URL can't be trusted, such as one
-   * with a password in it: "can't be used: the URL has user info".
+   * with a password in it: "can't be used: the address has a user name or password in it".
    */
   settingRefused: (reason: string) => phrase`can't be used: ${reason}`,
   /** Under a program whose version isn't pinned, with a ! (decided from the command alone). */
@@ -330,7 +330,7 @@ export const trustMessages = defineMessages("trust", {
   refusedFix: () => phrase`Fix the address in that file, then try again.`,
 });
 
-/** A file the trust check refused, and why, such as "the URL has user info". */
+/** A file the trust check refused, and why, such as "the address has a user name or password in it". */
 export interface RefusedFile {
   readonly file: string;
   readonly reason: string;

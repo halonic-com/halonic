@@ -11,7 +11,7 @@ const address = {
 } as const;
 
 /** The connector's address, with the user and password before the host. */
-function userInfoUrl(): string {
+export function userInfoUrl(): string {
   const url = new URL("/mcp", `https://${address.host}`);
   url.username = address.user;
   url.password = address.password;

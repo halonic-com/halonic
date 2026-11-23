@@ -41,4 +41,4 @@ With every check, the app shall list the connectors whose program is a package r
   then `crm` and `mail` are listed as not pinned, `files` isn't, and the trust content doesn't mention it.
 - Given a connector whose URL is `https://ops:pw@mail.example.com/mcp`, with or without a trust record,
   when the workspace is checked,
-  then it is refused, with the connector's id and "the URL has user info", and there is no fingerprint, no grant and no password.
+  then it is refused, with the connector's id and "the address has a user name or password in it", and there is no fingerprint, no grant and no password.

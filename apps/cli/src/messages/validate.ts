@@ -35,6 +35,14 @@ export const validateMessages = defineMessages("validate", {
   folderWithoutDir: (folder: string) =>
     phrase`To check the workspace in ${folder}, run ${suggestedCommand("validate", folder)}. For a plugin folder, run halonic plugin add ${folder}.`,
 
+  /**
+   * A connector or provider file the trust check refuses, in its words, such
+   * as "the address has a user name or password in it" (HAL-16276). Never
+   * the address, which may hold a password.
+   */
+  trustRefused: (reason: string) =>
+    phrase`This file can't be trusted, because ${reason}. Fix the address, and keep any password or key as a secret instead.`,
+
   noProblems: (checked: number, workspace: string) =>
     phrase`Checked ${counted(checked, "file", "files")} in ${workspace}. No problems.`,
   /** Warnings alone pass, with a ✓ and exit 0. */
