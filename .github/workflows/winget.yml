@@ -1,0 +1,182 @@
+# winget (HAL-1457): opens the pull request on microsoft/winget-pkgs that adds
+# a published Halonic release as Halonic.Halonic. The manifests are the
+# templates in infra/winget; this fills in the version, the installer's
+# address and its SHA-256, checks them with `winget validate` and submits
+# them with wingetcreate, which forks winget-pkgs as halonic-dev and opens the
+# pull request from there. The first version and every later one go the same
+# way.
+#
+# - A release is published (by hand, from the draft release.yml made):
+#   submits it, unless it is a prerelease or its tag has a "-" in it.
+# - By hand from the Actions tab: a published tag; submits only when
+#   `submit` is on.
+# - A pull request that changes this file or infra/winget: fills in a
+#   placeholder installer and validates. Nothing is submitted and no secret
+#   is read.
+#
+# The token is the repository secret WINGET_TOKEN: a classic token of the
+# shared halonic-dev account with the public_repo scope (user decision on
+# HAL-1456). wingetcreate reads it from its environment, never from the
+# command line, and only the submit step gets it.
+
+name: winget
+
+on:
+  release:
+    types: [published]
+  pull_request:
+    paths:
+      - .github/workflows/winget.yml
+      - infra/winget/**
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "A published release's tag, for example v0.2.0"
+        required: true
+        type: string
+      submit:
+        description: "Open the pull request on microsoft/winget-pkgs"
+        required: true
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: winget-${{ github.event.release.tag_name || github.event.inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+env:
+  # wingetcreate's own release, pinned by its SHA-256 (GitHub's digest).
+  WINGETCREATE_URL: https://github.com/microsoft/winget-create/releases/download/v1.28.1.0/wingetcreate.exe
+  WINGETCREATE_SHA256: 63d980ba79e97042395bd6eb5992c2db9e01e9e7a8a22958a95c288f27310413
+  # winget itself, for runners that don't have it: the release's files,
+  # pinned by their SHA-256 (GitHub's digests). Downloaded by address, not
+  # through GitHub's API, whose anonymous rate limit the runners share.
+  WINGET_RELEASE: https://github.com/microsoft/winget-cli/releases/download/v1.29.380
+  WINGET_BUNDLE_SHA256: 65dea9c01ce08ee7b763366b27c0e651f97db857c11ca9b9c301826c10092f2e
+  WINGET_DEPENDENCIES_SHA256: ba875afe9d190f61218985ac0292a99d1db710bf93e13c68944ca9d89f0d82d1
+  WINGET_LICENSE: e53e159d00e04f729cc2180cffd1c02e_License1.xml
+  WINGET_LICENSE_SHA256: bcb15118ec47df24e3e6013a7006147c3a15b3a8104ed660fe87c8b4ed01f485
+
+jobs:
+  winget:
+    name: Fill in, validate and submit the winget manifests
+    runs-on: windows-2025
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            infra/winget
+            apps/studio/src-tauri/tauri.conf.json
+          sparse-checkout-cone-mode: false
+      - name: Decide the tag, the version and whether to submit
+        env:
+          EVENT: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          INPUT_SUBMIT: ${{ github.event.inputs.submit }}
+        run: |
+          switch ($env:EVENT) {
+            'release' { $tag = $env:RELEASE_TAG; $submit = $env:PRERELEASE -ne 'true' -and -not $tag.Contains('-') }
+            'workflow_dispatch' { $tag = $env:INPUT_TAG; $submit = $env:INPUT_SUBMIT -eq 'true' }
+            default { $tag = 'v' + (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version; $submit = $false }
+          }
+          if ($tag -notmatch '^v[0-9]') { throw "Tag '$tag' must look like v0.2.0" }
+          if ($env:EVENT -eq 'release' -and -not $submit) { "::notice::$tag is a prerelease or test tag: validating only" }
+          $version = $tag.Substring(1)
+          "TAG=$tag", "VERSION=$version", "SUBMIT=$($submit.ToString().ToLower())",
+            "INSTALLER=Halonic-$version-windows-x64-setup.exe" | Add-Content $env:GITHUB_ENV
+      # The installer must match the release's SHA256SUMS, and Defender must
+      # find nothing in it before anyone is pointed at it.
+      - name: Download the installer and hash it
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'release'
+          gh release download $env:TAG --pattern $env:INSTALLER --pattern SHA256SUMS --dir $dir
+          if ($LASTEXITCODE -ne 0) { throw "Could not download $env:INSTALLER from release $env:TAG" }
+          $file = Join-Path $dir $env:INSTALLER
+          $hash = (Get-FileHash $file -Algorithm SHA256).Hash
+          $listed = Select-String -Path (Join-Path $dir 'SHA256SUMS') -Pattern "^([0-9a-f]{64})\s+\*?$([regex]::Escape($env:INSTALLER))$"
+          if (-not $listed) { throw "SHA256SUMS has no line for $env:INSTALLER" }
+          if ($listed.Matches[0].Groups[1].Value -ne $hash.ToLower()) { throw "$env:INSTALLER doesn't match SHA256SUMS" }
+          $defender = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+          & $defender -Scan -ScanType 3 -File $file -DisableRemediation
+          if ($LASTEXITCODE -ne 0) { throw "Defender's scan of $env:INSTALLER exited $LASTEXITCODE" }
+          "INSTALLER_SHA256=$hash" | Add-Content $env:GITHUB_ENV
+          "INSTALLER_URL=https://github.com/$env:GH_REPO/releases/download/$env:TAG/$env:INSTALLER" | Add-Content $env:GITHUB_ENV
+      - name: Fill in the manifests
+        env:
+          REPO: ${{ github.repository }}
+          PUBLISHED_AT: ${{ github.event.release.published_at }}
+        run: |
+          $hash = if ($env:INSTALLER_SHA256) { $env:INSTALLER_SHA256 } else { '0' * 64 }
+          $url = if ($env:INSTALLER_URL) { $env:INSTALLER_URL } else { "https://github.com/$env:REPO/releases/download/$env:TAG/$env:INSTALLER" }
+          $date = if ($env:PUBLISHED_AT) { ([datetime]$env:PUBLISHED_AT).ToString('yyyy-MM-dd') } else { (Get-Date).ToString('yyyy-MM-dd') }
+          $values = @{
+            '{{VERSION}}' = $env:VERSION
+            '{{INSTALLER_URL}}' = $url
+            '{{INSTALLER_SHA256}}' = $hash
+            '{{RELEASE_DATE}}' = $date
+            '{{RELEASE_NOTES_URL}}' = "https://github.com/$env:REPO/releases/tag/$env:TAG"
+          }
+          $out = Join-Path $env:RUNNER_TEMP "manifests/h/Halonic/Halonic/$env:VERSION"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          foreach ($template in Get-ChildItem infra/winget -Filter 'Halonic.Halonic*.yaml') {
+            $text = Get-Content $template.FullName -Raw
+            foreach ($key in $values.Keys) { $text = $text.Replace($key, $values[$key]) }
+            if ($text -match '\{\{[A-Z_]+\}\}') { throw "$($template.Name) still has $($Matches[0])" }
+            Set-Content -Path (Join-Path $out $template.Name) -Value $text -NoNewline
+          }
+          Get-ChildItem $out | ForEach-Object { "--- $($_.Name)"; Get-Content $_.FullName }
+          "MANIFESTS=$out" | Add-Content $env:GITHUB_ENV
+      - name: Install winget and validate the manifests
+        run: |
+          $winget = (Get-Command winget -ErrorAction SilentlyContinue).Source
+          if (-not $winget) {
+            $dir = Join-Path $env:RUNNER_TEMP 'winget'
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            $files = @{
+              'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle' = $env:WINGET_BUNDLE_SHA256
+              'DesktopAppInstaller_Dependencies.zip' = $env:WINGET_DEPENDENCIES_SHA256
+              $env:WINGET_LICENSE = $env:WINGET_LICENSE_SHA256
+            }
+            foreach ($name in $files.Keys) {
+              $path = Join-Path $dir $name
+              Invoke-WebRequest "$env:WINGET_RELEASE/$name" -OutFile $path
+              if ((Get-FileHash $path -Algorithm SHA256).Hash -ne $files[$name]) { throw "$name is not the pinned build" }
+            }
+            Expand-Archive (Join-Path $dir 'DesktopAppInstaller_Dependencies.zip') (Join-Path $dir 'dependencies')
+            $dependencies = Get-ChildItem (Join-Path $dir 'dependencies') -Recurse -Filter '*.appx' |
+              Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -ExpandProperty FullName
+            Add-AppxProvisionedPackage -Online -PackagePath (Join-Path $dir 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle') `
+              -DependencyPackagePath $dependencies -LicensePath (Join-Path $dir $env:WINGET_LICENSE) | Out-Null
+            $winget = Get-ChildItem "$env:ProgramFiles\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\winget.exe" |
+              Sort-Object FullName | Select-Object -Last 1 -ExpandProperty FullName
+          }
+          if (-not $winget) { throw 'winget is not installed' }
+          & $winget --version
+          & $winget validate --manifest $env:MANIFESTS --disable-interactivity
+          if ($LASTEXITCODE -ne 0) { throw "winget validate exited $LASTEXITCODE" }
+      - name: Submit to microsoft/winget-pkgs
+        if: env.SUBMIT == 'true'
+        env:
+          WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if (-not $env:WINGET_CREATE_GITHUB_TOKEN) { throw 'The repository secret WINGET_TOKEN is not set (HAL-1457)' }
+          $exe = Join-Path $env:RUNNER_TEMP 'wingetcreate.exe'
+          Invoke-WebRequest $env:WINGETCREATE_URL -OutFile $exe
+          if ((Get-FileHash $exe -Algorithm SHA256).Hash -ne $env:WINGETCREATE_SHA256) { throw 'wingetcreate.exe is not the pinned build' }
+          & $exe submit --prtitle "New version: Halonic.Halonic version $env:VERSION" --no-open $env:MANIFESTS
+          if ($LASTEXITCODE -ne 0) { throw "wingetcreate submit exited $LASTEXITCODE" }

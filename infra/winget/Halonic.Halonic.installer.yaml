@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
+PackageIdentifier: Halonic.Halonic
+PackageVersion: "{{VERSION}}"
+InstallerLocale: en-US
+InstallerType: nullsoft
+# Per user, as the installer always installs (tauri.installer.conf.json). No
+# InstallerSwitches: /SANDBOX=1 needs an elevated prompt, and winget installs
+# without one. No RequireExplicitUpgrade: `winget upgrade --all` includes it.
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+ReleaseDate: "{{RELEASE_DATE}}"
+# What the installer writes for Installed apps; ci.yml's installer job checks
+# the same values, so winget sees the right version after an install.
+AppsAndFeaturesEntries:
+  - DisplayName: Halonic
+    Publisher: halonic
+    DisplayVersion: "{{VERSION}}"
+    ProductCode: Halonic
+Installers:
+  - Architecture: x64
+    InstallerUrl: "{{INSTALLER_URL}}"
+    InstallerSha256: "{{INSTALLER_SHA256}}"
+ManifestType: installer
+ManifestVersion: 1.10.0
