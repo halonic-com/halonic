@@ -50,7 +50,7 @@ verifies("agent-host.sandbox-take-back", () => {
       }
     });
 
-    it("runs with or without a profile folder, and doesn't serve", async () => {
+    it("runs when a profile folder is given too, and doesn't serve", async () => {
       const { io, lines } = starter();
       const sandbox = sandboxAnswering({ ok: true, outcome: "none" }, { count: 0 });
       const args = ["--profile-folder", "/nowhere", "--sandbox-take-back"];
