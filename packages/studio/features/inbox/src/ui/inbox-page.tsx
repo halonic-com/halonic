@@ -1,9 +1,4 @@
-import {
-  type RunsList,
-  RunsListService,
-  type RunsSource,
-  useRunModelPath,
-} from "@halonicjs/studio-feature-runs/api";
+import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
 import {
   type EngineWords,
@@ -13,7 +8,7 @@ import {
   type OpenItemOptions,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import {
   InboxNoticesService,
@@ -23,32 +18,25 @@ import {
 } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
 import { waitingCount } from "../inbox-count.ts";
-import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
-import { secretTarget } from "../plain/secret-target.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
-import type { SetupFocus } from "../setup-source.ts";
-import { ApprovalCard } from "./approval-card.tsx";
-import type { NextItem } from "./card-parts.tsx";
-import { DoneProposalCard, DoneSection } from "./done-proposals.tsx";
+import { DoneSection } from "./done-proposals.tsx";
 import { ListHeader, listPaneClass, nextItem } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
 import { needsYouListed } from "./needs-you-listed.ts";
 import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
 import { NoticesSection } from "./notices-section.tsx";
-import { ProposalCard } from "./proposal-card.tsx";
+import { OpenCard } from "./open-card.tsx";
 import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
-import { SetupPane } from "./setup-pane.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
 import { useRunReview } from "./use-run-review.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
-import { WaitCard } from "./wait-card.tsx";
 import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
 
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
@@ -327,155 +315,5 @@ export function InboxView({
         </div>
       </div>
     </div>
-  );
-}
-
-function OpenCard({
-  item,
-  inbox,
-  next,
-  now,
-  answering,
-  signedOut,
-  words,
-  close,
-  items,
-  focus,
-  openNewConnector,
-  proposals,
-  openRun,
-  trust,
-  openPage,
-  runFacts,
-  runsSource,
-  announce,
-}: {
-  readonly item: InboxItem;
-  readonly inbox: Inbox;
-  /** Everything waiting, to find the account a pasted secret belongs to. */
-  readonly items: readonly InboxItem[];
-  readonly focus: SetupFocus | undefined;
-  readonly openNewConnector: (() => void) | undefined;
-  readonly proposals: ProposalDecisions | undefined;
-  readonly openRun: ((hubId: string, runId: string) => void) | undefined;
-  readonly trust: TrustReview | undefined;
-  readonly openPage: ((item: ItemRef, options?: OpenItemOptions) => void) | undefined;
-  readonly runFacts: RunFactsOf | undefined;
-  /** The runs' source, to tell a run on Sample answers; without it no card carries that chip. */
-  readonly runsSource: RunsSource | undefined;
-  readonly announce: ((line: string) => void) | undefined;
-  readonly next: NextItem | null;
-  readonly now: () => Date;
-  readonly answering: boolean;
-  readonly signedOut: boolean;
-  readonly words: EngineWords;
-  readonly close: () => void;
-}) {
-  // A note set aside for a secret comes back with the card, once. It is read while rendering and
-  // removed in an effect, so a render React throws away doesn't lose it.
-  const [aside] = useState(() => inbox.peekAside(item.key));
-  useEffect(() => {
-    inbox.takeAside(item.key);
-  }, [inbox, item.key]);
-  const facts = item.kind === "setup" ? undefined : runFacts?.(item.runId);
-  // Read each time the card opens: a waiting run may still call a model once it is answered.
-  const modelPath = useRunModelPath(
-    item.kind === "wait" ? runsSource : undefined,
-    item.kind === "wait" ? item.runId : undefined,
-  );
-  // Open run needs the run's hub, which the Runs list gives; without it the card has no button.
-  const openThisRun =
-    openRun === undefined || facts === undefined
-      ? undefined
-      : (runId: string) => openRun(facts.hubId, runId);
-  const target = secretTarget("google", items);
-  // With no account to set up and no place to open, the button would do nothing, so it isn't offered.
-  const somewhereToGo = target.kind === "setup" || openNewConnector !== undefined;
-  const goToSecret = (note: string) => {
-    inbox.setAside(item.key, note);
-    if (target.kind === "setup") {
-      inbox.openSetup(target.provider, target.account, "secret");
-      return;
-    }
-    // With no account to set up, the secret goes in a connector: Library > **New connector**.
-    openNewConnector?.();
-  };
-  if (item.kind === "setup") {
-    return (
-      <SetupPane
-        item={item}
-        source={inbox.setupSource(item.provider)}
-        answering={answering}
-        signedOut={signedOut}
-        words={words}
-        close={close}
-        focus={focus}
-        openRun={openRun}
-        openItem={openPage}
-        announce={announce}
-      />
-    );
-  }
-  if (item.kind === "proposal" && item.settledAt !== undefined) {
-    return <DoneProposalCard item={item} now={now()} facts={facts} onOpenRun={openThisRun} />;
-  }
-  if (item.kind === "proposal") {
-    return (
-      <ProposalCard
-        item={item}
-        now={now()}
-        facts={facts}
-        decisions={proposals}
-        onDecided={() => void inbox.refresh()}
-        readAgain={async () => {
-          await inbox.refresh();
-          if (inbox.state.error !== undefined) throw inbox.state.error;
-        }}
-        onOpenRun={openThisRun}
-        answering={answering}
-        signedOut={signedOut}
-        words={words}
-      />
-    );
-  }
-  if (item.kind === "approval") {
-    return (
-      <ApprovalCard
-        item={item}
-        agentName={item.agentName}
-        subagentName={item.subagentName}
-        decisions={inbox.decisions}
-        onOpenRun={openThisRun}
-        startedBy={facts?.startedBy}
-        next={next}
-        back={null}
-        now={now}
-        initialNote={aside}
-        answering={answering}
-        signedOut={signedOut}
-        words={words}
-        {...(somewhereToGo ? { onGoToSecret: goToSecret } : {})}
-        secretPlace={target.kind}
-        trust={trust}
-      />
-    );
-  }
-  return (
-    <WaitCard
-      item={item}
-      decisions={inbox.decisions}
-      onOpenRun={openThisRun}
-      startedBy={facts?.startedBy}
-      next={next}
-      back={null}
-      now={now}
-      answering={answering}
-      signedOut={signedOut}
-      words={words}
-      waiting={items.some((waiting) => waiting.key === item.key)}
-      trust={trust}
-      answeredViews={{ inbox, close, openItem: openPage }}
-      sample={modelPath === "sample"}
-    />
   );
 }

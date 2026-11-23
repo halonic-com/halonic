@@ -43,6 +43,7 @@ function openCard(decisions: ProposalDecisions, signedOut = false) {
         facts={undefined}
         decisions={decisions}
         onDecided={() => {}}
+        readAgain={async () => {}}
         answering={answering}
         signedOut={signedOut}
       />
@@ -153,7 +154,9 @@ verifies("inbox.proposal-not-answering", () => {
       await press(buttons(gone.root, "Accept")[0]);
       gone.stop();
       await press(buttons(gone.root, "Remove from Inbox")[0]);
-      expect(pointsAt(gone.root, buttons(gone.root, "Remove from Inbox")[0], showingLast)).toBe(true);
+      expect(pointsAt(gone.root, buttons(gone.root, "Remove from Inbox")[0], showingLast)).toBe(
+        true,
+      );
       expect(decisions.remove).not.toHaveBeenCalled();
     });
   });
