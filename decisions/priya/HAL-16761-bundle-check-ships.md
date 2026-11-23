@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16761 (Liam's decision: option 2)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gSoVL/B/xNXxBStER1zCVWYhVdyuQS5S9kqw7l8Kp4PCNJXI7vSEDgOLCbdLbu76Tv4VfcvX4OsXhHwPm+ZgBQ==
 
 ## What changes
 
