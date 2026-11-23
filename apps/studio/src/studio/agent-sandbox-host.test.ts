@@ -289,8 +289,10 @@ verifies("studio.agent-sandbox-host", () => {
   });
 
   describe("the build", () => {
-    it("doesn't offer the sandbox until the board decides D44 (a)", () => {
-      expect(agentSandboxOffered).toBe(false);
+    it("offers the sandbox on Windows only, as the board decided D44 (HAL-16772)", () => {
+      expect(agentSandboxOffered("windows")).toBe(true);
+      expect(agentSandboxOffered("macos")).toBe(false);
+      expect(agentSandboxOffered("linux")).toBe(false);
     });
   });
 });
