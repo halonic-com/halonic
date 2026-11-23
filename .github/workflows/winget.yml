@@ -50,8 +50,14 @@ env:
   # wingetcreate's own release, pinned by its SHA-256 (GitHub's digest).
   WINGETCREATE_URL: https://github.com/microsoft/winget-create/releases/download/v1.28.1.0/wingetcreate.exe
   WINGETCREATE_SHA256: 63d980ba79e97042395bd6eb5992c2db9e01e9e7a8a22958a95c288f27310413
-  # Brings winget itself: GitHub's Windows runners don't have it.
-  WINGET_CLIENT_VERSION: 1.29.380
+  # winget itself, for runners that don't have it: the release's files,
+  # pinned by their SHA-256 (GitHub's digests). Downloaded by address, not
+  # through GitHub's API, whose anonymous rate limit the runners share.
+  WINGET_RELEASE: https://github.com/microsoft/winget-cli/releases/download/v1.29.380
+  WINGET_BUNDLE_SHA256: 65dea9c01ce08ee7b763366b27c0e651f97db857c11ca9b9c301826c10092f2e
+  WINGET_DEPENDENCIES_SHA256: ba875afe9d190f61218985ac0292a99d1db710bf93e13c68944ca9d89f0d82d1
+  WINGET_LICENSE: e53e159d00e04f729cc2180cffd1c02e_License1.xml
+  WINGET_LICENSE_SHA256: bcb15118ec47df24e3e6013a7006147c3a15b3a8104ed660fe87c8b4ed01f485
 
 jobs:
   winget:
@@ -137,10 +143,25 @@ jobs:
           "MANIFESTS=$out" | Add-Content $env:GITHUB_ENV
       - name: Install winget and validate the manifests
         run: |
-          Install-Module Microsoft.WinGet.Client -RequiredVersion $env:WINGET_CLIENT_VERSION -Force -Scope CurrentUser -Repository PSGallery
-          Repair-WinGetPackageManager -AllUsers -Version "v$env:WINGET_CLIENT_VERSION"
           $winget = (Get-Command winget -ErrorAction SilentlyContinue).Source
           if (-not $winget) {
+            $dir = Join-Path $env:RUNNER_TEMP 'winget'
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            $files = @{
+              'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle' = $env:WINGET_BUNDLE_SHA256
+              'DesktopAppInstaller_Dependencies.zip' = $env:WINGET_DEPENDENCIES_SHA256
+              $env:WINGET_LICENSE = $env:WINGET_LICENSE_SHA256
+            }
+            foreach ($name in $files.Keys) {
+              $path = Join-Path $dir $name
+              Invoke-WebRequest "$env:WINGET_RELEASE/$name" -OutFile $path
+              if ((Get-FileHash $path -Algorithm SHA256).Hash -ne $files[$name]) { throw "$name is not the pinned build" }
+            }
+            Expand-Archive (Join-Path $dir 'DesktopAppInstaller_Dependencies.zip') (Join-Path $dir 'dependencies')
+            $dependencies = Get-ChildItem (Join-Path $dir 'dependencies') -Recurse -Filter '*.appx' |
+              Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -ExpandProperty FullName
+            Add-AppxProvisionedPackage -Online -PackagePath (Join-Path $dir 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle') `
+              -DependencyPackagePath $dependencies -LicensePath (Join-Path $dir $env:WINGET_LICENSE) | Out-Null
             $winget = Get-ChildItem "$env:ProgramFiles\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\winget.exe" |
               Sort-Object FullName | Select-Object -Last 1 -ExpandProperty FullName
           }
