@@ -37,16 +37,14 @@ cost. You can also make the same copy in a terminal with
 `halonic init --example acme` (see [Try it in 5 minutes](#try-it-in-5-minutes)),
 then **Open folder** and pick the `acme` folder.
 
-## Status: what is not in 0.1.0 yet
+## Status: what is not in 0.1.1 yet
 
-0.1.0 is a first release; expect rough edges. The list below is what we
+0.1.1 is an early release; expect rough edges. The list below is what we
 know about today.
 <!-- CHECK (HAL-6394): once the "Known issues in 0.1.0" issue is posted, link it here by its number. The old label-search link found nothing. For now, the link below goes to all open issues. -->
 
 Read or report known problems in the [open issues](https://github.com/halonic-com/halonic/issues).
 
-- Not on npm yet. `npm install -g halonic` installs an empty placeholder, not
-  this release.
 - Studio on macOS and Linux is in progress, with no date. On those, use the
   command line. Approving from your phone is in progress too.
 - Cost estimates only for models with a price set in their file; none for
@@ -54,18 +52,29 @@ Read or report known problems in the [open issues](https://github.com/halonic-co
   `workspace.yaml` counts only those estimates, so set a limit at your
   provider too.
 - Studio doesn't start connectors (MCP servers) yet.
-- Agents can't use your Claude or ChatGPT subscription. They use an API key or
-  a local model. Agents that run Claude Code or Codex are in progress.
+- The command line bundles the Claude Code and Codex harnesses, so an agent can
+  run on your Claude or ChatGPT subscription. Studio doesn't offer them yet.
 - The command line starts connectors in the sandbox when the sandbox works on
   your computer. Otherwise it starts them on your computer, under the trust you
   gave the workspace.
 
-## Install the command line from source
+## Install the command line
 
-Halonic is not on npm yet. Don't install `halonic` from npm: that package is an
-empty placeholder, not this release.
+You need [Node.js](https://nodejs.org/) 26.12 or later. On Windows, run all of
+this inside [WSL 2](https://learn.microsoft.com/windows/wsl/install) (Ubuntu),
+not in PowerShell or Command Prompt. Check your Node.js first with
+`node --version`: it must say v26.12 or later.
 
-The `halonic` command installs from this repository. You need
+```sh
+npm install -g halonic
+halonic --version
+```
+
+The last command prints `Halonic` and the version you installed.
+
+### Install from source
+
+To build the command line yourself, install it from this repository. You need
 [git](https://git-scm.com/), [Node.js](https://nodejs.org/) 26.12 or later and
 [pnpm](https://pnpm.io/installation) 12.18 or later. On Windows, run all of
 this inside [WSL 2](https://learn.microsoft.com/windows/wsl/install) (Ubuntu),
