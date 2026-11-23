@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews the board check's team-load and approvals parts and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zETfzuU/ccBZN0W6i9cNOiGxbz9j4jG+EN8OCjOneulS3EUH+lUOW/acw5Bb1Rh675KSz+Tux6GIThrT97kzAA==
 
 Part (d) of the board check (phase 1b, HAL-16194) lists new pending
 approvals, read directly with `approvals.list` (the `approvals.read`
