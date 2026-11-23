@@ -414,6 +414,58 @@ effort in the issue properties (the handler then leaves that task alone).
 effort words (anything else shows as `other`) and actor types, never task
 text or the key.
 
+## Difficulty tagger
+
+Writes the difficulty labels the task effort handler reads (HAL-16901). When
+a task is created, or its title or description changes, it sends the title
+and the first 4,000 characters of the description to `claude-haiku-5-5`
+(thinking off, `max_tokens` 400) with the board's tagger prompt (the
+`difficulty-labels` document on HAL-16876, kept in
+`src/difficulty-tagger/prompt.ts`). The answer is JSON with `kind`,
+`difficulty` and `opus_only`.
+
+**The labels.** A code task gets `D1`–`D4`, plus `opus-only` when the answer
+says so. Other work (review, docs, research, ops, other) gets none. The
+tagger keeps every other label. It owns a task's difficulty labels only
+while they are exactly the ones it wrote last, or the task has none and it
+never wrote any: a `D1`–`D5` or `opus-only` label a person or Chief added,
+or one of its own that someone took off, makes the task theirs, and the
+tagger never calls Haiku for it or writes its labels again. A change that
+leaves the title and description as they were costs no call.
+
+**The key.** `taggerAnthropicKey` is a secret reference, bound to the
+company secret `TAGGER_ANTHROPIC_API_KEY`. The tagger resolves it at call
+time, sends it only to `api.anthropic.com/v1/messages`, and never logs or
+keeps it. It reads the company's label ids from Paperclip's API with the
+task effort handler's `paperclipApiUrl` and `paperclipApiKey` (the plugin
+SDK has no label reads) and writes the labels through the SDK.
+
+**Spend guard.** It adds up each call's cost from the answer's token counts
+(at $1 and $5 per million input and output tokens, Haiku 4.5's list price,
+above what the board measured for Haiku 5.5) per calendar month (UTC). Once
+the month passes $5 it makes no more calls; it logs one error on the plugin
+page ("Difficulty tagger: stopped for 2026-11 …") and saves
+`difficulty_tagger.stopped`. It starts again on the 1st.
+
+**Switching it on and off.** It is off by default and then calls nothing.
+The board sets, in the plugin's settings:
+
+1. `taggerAnthropicKey`: bind it to `TAGGER_ANTHROPIC_API_KEY`.
+2. `paperclipApiUrl` and `paperclipApiKey`, as for the task effort handler.
+3. `difficultyTaggerForVersion`: the running plugin version, shown on the
+   plugin page. This is the switch.
+
+To switch it off, empty `difficultyTaggerForVersion`; it takes effect on the
+next event. An upgrade switches it off until the board enters the new
+version. Labels it already wrote stay; remove one by hand and the tagger
+leaves that task alone.
+
+**Metrics** (tag `companyId`): `difficulty_tagger.labelled` (tag `labels`),
+`difficulty_tagger.spend_micro_usd`, `difficulty_tagger.failed` (tag
+`reason`, such as `http_401`, `missing_label` or `unreadable_answer`) and
+`difficulty_tagger.stopped` (tag `month`). Log lines and metrics carry task
+identifiers and label names, never task text or the key.
+
 ## Metrics
 
 The numbers for the before/after comparison in the tools plan (HAL-15920).

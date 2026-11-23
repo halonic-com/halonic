@@ -2,6 +2,7 @@ import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin
 import { boardCheck } from "./board-check.ts";
 import { registerBoardTools } from "./board-tools.ts";
 import { companyRoster } from "./companies.ts";
+import { difficultyTagger } from "./difficulty-tagger.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
 import { runWatcher } from "./job.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
@@ -13,8 +14,8 @@ import { registerTools } from "./tools.ts";
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch` and
  * `board-check` jobs on their schedules, looks at each new comment for a
- * board ask, keeps each failed run, sets a created or changed task's effort
- * from its tags, and answers the agent tools and the `gh` wrapper's route.
+ * board ask, keeps each failed run, labels a created or changed task's
+ * difficulty, sets its effort from its tags, and answers the agent tools and the `gh` wrapper's route.
  */
 let context: PluginContext | undefined;
 /** The companies the jobs dispatch to, learnt from scoped calls (see companies.ts). */
@@ -42,14 +43,17 @@ export const plugin = definePlugin({
       await board.onRunFailed(event, new Date());
     });
     const effort = taskEffort(ctx, { fetch: (url, init) => fetch(url, init) });
-    ctx.events.on("issue.created", (event) => {
-      roster.remember(event.companyId);
-      return effort.onIssueEvent(event);
+    const tagger = difficultyTagger(ctx, {
+      anthropicFetch: (url, init) => ctx.http.fetch(String(url), init),
+      paperclipFetch: (url, init) => fetch(url, init),
+      now: () => new Date(),
     });
-    ctx.events.on("issue.updated", (event) => {
-      roster.remember(event.companyId);
-      return effort.onIssueEvent(event);
-    });
+    for (const eventType of ["issue.created", "issue.updated"] as const) {
+      ctx.events.on(eventType, async (event) => {
+        roster.remember(event.companyId);
+        await Promise.all([tagger.onIssueEvent(event), effort.onIssueEvent(event)]);
+      });
+    }
     registerTools(ctx);
     registerReadyForReview(ctx);
     registerBoardTools(ctx);
