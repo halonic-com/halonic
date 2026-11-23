@@ -1,6 +1,6 @@
 # @halonicjs/adapter-executor-remote
 
-The `RunExecutor` port against a Halonic host over HTTP, such as `halonic serve` or a Worker. It signs in with the host's password, starts runs, answers and cancels them, runs chat turns, and follows a run through a server-sent event stream that it resumes after a break. It uses `fetch` only, so it runs wherever `fetch` does.
+The `RunExecutor` port against a Halonic host over HTTP, such as `halonic serve` or a Worker. It signs in with the host's password, starts runs, answers and cancels them, runs chat turns (streaming their text as it is written when the turn has `onText` and the host can), and follows a run through a server-sent event stream that it resumes after a break. It uses `fetch` only, so it runs wherever `fetch` does.
 
 - **Layer:** adapters
 - **Owner:** elena
