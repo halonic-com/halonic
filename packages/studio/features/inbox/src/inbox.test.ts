@@ -68,6 +68,7 @@ verifies("inbox.live", () => {
       items: [],
       done: [],
       decided: [],
+      leftOver: [],
       loaded: false,
       error: undefined,
       doneError: undefined,

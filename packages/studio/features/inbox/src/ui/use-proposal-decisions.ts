@@ -53,11 +53,14 @@ const pastTense = { accept: "Accepted", reject: "Rejected" } as const;
  *
  * @param onDecided after each decision or Undo, and once the proposal settles, so the Inbox reads
  *   its items again and the proposal moves to Done (Q10)
+ * @param holdBack while the engine isn't answering, the line the page shows for it: an **Undo**
+ *   pressed meanwhile sends nothing and says that line, and its toast stays
  */
 export function useProposalDecisions(
   item: ProposalItem,
   decisions: ProposalDecisions | undefined,
   onDecided: () => void,
+  holdBack?: string,
 ): ProposalDecisionState {
   const [files, setFiles] = useState(item.files);
   const [pending, setPending] = useState<ProposalDecisionState["pending"]>(null);
@@ -81,7 +84,7 @@ export function useProposalDecisions(
     );
   }
 
-  const undoSteps = useUndoSteps(decisions, runId, latestOnDecided, (paths) => {
+  const undoSteps = useUndoSteps(decisions, runId, latestOnDecided, holdBack, (paths) => {
     setDecisions(paths, "undecided");
     onDecided();
   });
@@ -191,18 +194,23 @@ const decidedWords = { accept: "accepted", reject: "rejected" } as const;
  * offered: the host takes back a step only while the run's decisions are as that step left them,
  * so an older **Undo** couldn't work after a newer decision. Leaving the page settles the proposal
  * once a decision on its way and any Undo pressed are done and the last toast has gone, so every
- * **Undo** keeps working while it shows; the host leaves a proposal still undecided open.
+ * **Undo** keeps working while it shows; the host leaves a proposal still undecided open. While
+ * the engine isn't answering, as the page shows it, an **Undo** sends nothing: its toast stays, and
+ * another says why. Once the page has gone, an **Undo** is sent, and a failure says so.
  *
  * @param settled once the proposal has settled
+ * @param holdBack the page's line while the engine isn't answering
  * @param undone after an Undo, with the paths the host put back to undecided
  */
 function useUndoSteps(
   decisions: ProposalDecisions | undefined,
   runId: string,
   settled: { readonly current: () => void },
+  holdBack: string | undefined,
   undone: (paths: readonly string[]) => void,
 ) {
   const toasts = useToastStore();
+  const held = useHeldWhile(holdBack);
   const shown = useRef(new Set<string>());
   const newest = useRef<string | null>(null);
   const inFlight = useRef(new Set<Promise<void>>());
@@ -259,16 +267,41 @@ function useUndoSteps(
     track,
     /** Shows the decision's toast, whose **Undo** takes back step `id`. */
     offer: (title: string, id: string, step: UndoStep) => {
+      // The toast stays when its Undo is pressed, so one held back can be pressed again.
+      const onClick = () => {
+        if (held.current !== undefined) {
+          toasts?.show({ tone: "danger", title: "Couldn't undo this.", text: held.current });
+          return;
+        }
+        if (toast !== undefined) toasts?.close(toast);
+        undo(id, step);
+      };
       const toast = toasts?.show({
         tone: "success",
         title,
-        action: { label: "Undo", onClick: () => undo(id, step) },
+        action: { label: "Undo", onClick, keepOpen: true },
       });
       if (toast === undefined) return;
       shown.current.add(toast);
       newest.current = toast;
     },
   };
+}
+
+/**
+ * `holdBack` while the page shows, so a toast's **Undo** reads the page's latest line; `undefined`
+ * once the page has gone, since nothing then says the engine isn't answering.
+ */
+function useHeldWhile(holdBack: string | undefined): { readonly current: string | undefined } {
+  const held = useRef(holdBack);
+  held.current = holdBack;
+  useEffect(
+    () => () => {
+      held.current = undefined;
+    },
+    [],
+  );
+  return held;
 }
 
 /** Runs `settle` once none of the toasts `ids` shows, now when none does. */

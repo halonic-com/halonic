@@ -1,11 +1,5 @@
-import {
-  Button,
-  type ButtonUnavailable,
-  type ButtonVariant,
-  breakableAtSeparators,
-  CommandBox,
-  inlineLinkClasses,
-} from "@halonicjs/studio-kit";
+import { breakableAtSeparators, CommandBox, inlineLinkClasses } from "@halonicjs/studio-kit";
+import { engineWords } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useId, useRef } from "react";
 import {
   beforeAcceptLines,
@@ -15,7 +9,6 @@ import {
   decideCommand,
   decidedSummary,
   decideElsewhereLine,
-  decisionFailedLine,
   proposalFacts,
   seeRunText,
 } from "../plain/proposal-text.ts";
@@ -26,17 +19,20 @@ import {
   cardClasses,
   type EngineState,
   NotAnsweringLine,
+  signedOutText,
   unavailableWhile,
 } from "./card-parts.tsx";
 import { itemTitle } from "./inbox-row.tsx";
+import {
+  AllButtons,
+  type CardState,
+  DecideButton,
+  FailedLine,
+  openFiles,
+} from "./proposal-buttons.tsx";
 import { GoneLine } from "./proposal-gone.tsx";
 import type { RunFacts } from "./run-facts.ts";
-import {
-  type DecisionTarget,
-  type ProposalDecisionState,
-  type ProposalVerb,
-  useProposalDecisions,
-} from "./use-proposal-decisions.ts";
+import { type ProposalDecisionState, useProposalDecisions } from "./use-proposal-decisions.ts";
 
 /** What {@link ProposalCard} shows. */
 export interface ProposalCardProps extends EngineState {
@@ -67,7 +63,8 @@ export interface ProposalCardProps extends EngineState {
  * When the host says the proposal's texts are gone, the page offers only **Remove from Inbox** (Q11).
  * When it then finds them there again, the changes come back under a line that says so (C711 4).
  * While the engine isn't answering, the host's line sits above the header, and every button that
- * would reach the host stays but doesn't act, pointing at that line (Q11), as on a request's card.
+ * would reach the host stays but doesn't act, pointing at that line (Q11), as on a request's card;
+ * a decision toast's **Undo** sends nothing then either, and says that line.
  *
  * Not here yet: a change's settings before and after, the diff, Compare and the phone's bar (Q5,
  * Q9, Q12).
@@ -86,8 +83,12 @@ export function ProposalCard({
 }: ProposalCardProps) {
   const titleId = useId();
   const reasonId = useId();
+  // The line above the header while the engine isn't answering, which an Undo meanwhile says too.
+  const notAnswering = signedOut
+    ? signedOutText
+    : (words ?? engineWords["desktop-app"]).showingLast;
   const state: CardState = {
-    ...useProposalDecisions(item, decisions, onDecided),
+    ...useProposalDecisions(item, decisions, onDecided, answering ? undefined : notAnswering),
     offline: unavailableWhile(answering, reasonId),
   };
   const open = openFiles(state).length > 0;
@@ -132,12 +133,6 @@ export function ProposalCard({
 }
 
 /**
- * The page's decisions, and while the engine isn't answering, what each button that reaches the
- * host gets instead of acting: the reason it points at.
- */
-type CardState = ProposalDecisionState & { readonly offline: ButtonUnavailable | undefined };
-
-/**
  * What accepting does, the changes, each with **Reject** and **Accept** while `buttons`, and what
  * the proposal came to once nothing is left to decide. Without `buttons`, the command that decides.
  */
@@ -179,20 +174,6 @@ function ProposalChanges({
       ) : null}
     </>
   );
-}
-
-/**
- * The files still to decide here: the undecided ones. A file changed since the run is one of them:
- * until Compare ships only a Reject decides it, and the proposal stays in Needs you until it does
- * (C665 26).
- */
-function openFiles(state: ProposalDecisionState): readonly ProposalFile[] {
-  return state.files.filter((file) => file.decision === "undecided");
-}
-
-/** Whether **Accept** can still decide one of the open files: not every one changed since the run. */
-function canAccept(state: ProposalDecisionState): boolean {
-  return openFiles(state).some((file) => !state.changedSinceRun.has(file.path));
 }
 
 /**
@@ -260,36 +241,6 @@ function ProposalHeader({
       </div>
       {state === null ? null : <AllButtons state={state} />}
     </header>
-  );
-}
-
-/**
- * **Reject all** and **Accept all** (Q3): one undo step each, for what is still undecided. Accept
- * all is the page's one primary button; a change's own buttons are plain words (C667 #1). Once
- * every open file changed since the run, only **Reject all** is left.
- */
-function AllButtons({ state }: { readonly state: CardState }) {
-  return (
-    <div className="ml-auto flex flex-wrap gap-2">
-      <DecideButton
-        state={state}
-        verb="reject"
-        target="all"
-        label="Reject all"
-        busyLabel="Rejecting all…"
-        variant="secondary"
-      />
-      {canAccept(state) ? (
-        <DecideButton
-          state={state}
-          verb="accept"
-          target="all"
-          label="Accept all"
-          busyLabel="Accepting all…"
-          variant="primary"
-        />
-      ) : null}
-    </div>
   );
 }
 
@@ -401,79 +352,4 @@ function ChangeRow({
       <FailedLine state={state} target={target} />
     </li>
   );
-}
-
-/**
- * A decision's button (Q6): busy while it is sent, keeping focus; while another is sent it is
- * unavailable (`aria-disabled`, so it stays focusable) and points at the busy one, as a Dialog's
- * Cancel points at its busy confirming button (C667 #4). Like that button, the busy one says what
- * is under way ("Accepting…"), so the reason the others point at isn't just "Accept" (C678 #1); the
- * kit keeps its width.
- */
-function DecideButton({
-  state,
-  verb,
-  target,
-  label,
-  busyLabel,
-  variant,
-  buttonRef,
-}: {
-  readonly state: CardState;
-  readonly verb: ProposalVerb;
-  readonly target: DecisionTarget;
-  readonly label: string;
-  readonly busyLabel: string;
-  readonly variant: ButtonVariant;
-  readonly buttonRef?: (button: HTMLButtonElement | null) => void;
-}) {
-  const { pending, busyId, offline } = state;
-  const busy = pending !== null && pending.verb === verb && sameTarget(pending.target, target);
-  const waiting = pending !== null && !busy;
-  return (
-    <Button
-      {...(buttonRef === undefined ? {} : { ref: buttonRef })}
-      {...(busy ? { id: busyId } : {})}
-      size="sm"
-      variant={variant}
-      busy={busy}
-      busyLabel={busyLabel}
-      unavailable={waiting ? { reason: busyId } : offline}
-      onClick={() => state.decide(verb, target)}
-    >
-      {label}
-    </Button>
-  );
-}
-
-/** A decision that didn't go through (Q11): what and why, with **Try again**; the change stays undecided. */
-function FailedLine({
-  state,
-  target,
-}: {
-  readonly state: CardState;
-  readonly target: DecisionTarget;
-}) {
-  const { failure } = state;
-  if (failure === null || !sameTarget(failure.target, target)) return null;
-  return (
-    <div role="alert" className="flex flex-wrap items-center gap-x-3 text-small text-danger">
-      <span>
-        {decisionFailedLine(failure.verb, target === "all")} {failure.reason}
-      </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        unavailable={state.offline}
-        onClick={() => state.decide(failure.verb, failure.target)}
-      >
-        Try again
-      </Button>
-    </div>
-  );
-}
-
-function sameTarget(a: DecisionTarget, b: DecisionTarget): boolean {
-  if (a === "all" || b === "all") return a === b;
-  return a.file === b.file;
 }
