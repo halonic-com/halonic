@@ -13,7 +13,7 @@ function refusal(value: unknown) {
   throw new Error("The message was read.");
 }
 
-verifies("harness-bridge.mcp", () => {
+verifies("mcp.tool-server", () => {
   it("reads a request, with empty params when it sends none", () => {
     expect(readRpcMessage({ jsonrpc: "2.0", id: 7, method: "tools/list" })).toEqual({
       kind: "request",

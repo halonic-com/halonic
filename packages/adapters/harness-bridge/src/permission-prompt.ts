@@ -1,7 +1,7 @@
+import type { McpTool, McpToolCallResult, McpToolSet } from "@halonicjs/adapter-mcp/server";
 import type { BridgeApprovals } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { askForApproval, refusalReason } from "./approval.ts";
-import type { McpTool, McpToolCallResult, McpToolSet } from "./mcp-tool-set.ts";
 
 /** The one tool Claude Code's `--permission-prompt-tool` names on the bridge. */
 export const approvePermissionTool = "approve_permission";

@@ -3,12 +3,12 @@ import { isPlainObject } from "@halonicjs/std";
 /**
  * JSON-RPC 2.0 messages as an MCP server receives and answers them
  * (https://modelcontextprotocol.io/specification/2025-11-25/basic#messages).
- * Our own small reading of the format: the MCP part of the bridge uses no
- * library (build plan, section 7).
+ * Our own small reading of the format: Halonic's MCP servers use no library
+ * (build plan, section 7). The client's side is `src/protocol/json-rpc.ts`.
  */
 export type RequestId = string | number;
 
-/** The JSON-RPC error codes the bridge answers with. */
+/** The JSON-RPC error codes the server answers with. */
 export const rpcErrorCodes = {
   parseError: -32700,
   invalidRequest: -32600,
@@ -23,7 +23,7 @@ export type RpcMessage =
   | { kind: "request"; id: RequestId; method: string; params: Record<string, unknown> }
   /** Needs no answer, such as `notifications/initialized`. */
   | { kind: "notification"; method: string }
-  /** The client's answer to a request of the server's. The bridge sends none, so it ignores these. */
+  /** The client's answer to a request of the server's. The server sends none, so it ignores these. */
   | { kind: "response" };
 
 /** The server's answer to one request. */

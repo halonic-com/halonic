@@ -1,3 +1,4 @@
+import type { McpTool, McpToolCallResult, McpToolSet } from "@halonicjs/adapter-mcp/server";
 import type {
   BridgeApprovals,
   BridgeRecorder,
@@ -6,7 +7,6 @@ import type {
   ToolDefinition,
 } from "@halonicjs/ports";
 import { askForApproval, refusalReason } from "./approval.ts";
-import type { McpTool, McpToolCallResult, McpToolSet } from "./mcp-tool-set.ts";
 
 /** Halonic's tools for one agent, and where their calls are recorded and approved. */
 export interface HalonicToolsOptions {

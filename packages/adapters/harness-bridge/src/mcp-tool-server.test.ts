@@ -1,3 +1,4 @@
+import { McpToolServer, rpcErrorCodes } from "@halonicjs/adapter-mcp/server";
 import type {
   BridgeApprovalDecision,
   BridgeApprovalRequest,
@@ -11,8 +12,6 @@ import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { HalonicTools } from "./halonic-tools.ts";
-import { rpcErrorCodes } from "./json-rpc.ts";
-import { McpToolServer } from "./mcp-tool-server.ts";
 
 const readIssue: ToolDefinition = {
   name: "read_issue",

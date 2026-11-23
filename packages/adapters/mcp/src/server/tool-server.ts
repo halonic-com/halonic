@@ -9,11 +9,11 @@ import {
   rpcErrorCodes,
   rpcResult,
 } from "./json-rpc.ts";
-import type { McpToolCallResult, McpToolSet } from "./mcp-tool-set.ts";
+import type { McpToolCallResult, McpToolSet } from "./tool-set.ts";
 
 /**
- * The MCP versions the bridge speaks, newest first. They differ in nothing
- * the bridge serves: `initialize`, `ping`, `tools/list` and `tools/call`.
+ * The MCP versions the server speaks, newest first. They differ in nothing
+ * the server serves: `initialize`, `ping`, `tools/list` and `tools/call`.
  */
 export const supportedMcpVersions = ["2025-11-25", "2025-06-18", "2025-03-26"] as const;
 
@@ -35,13 +35,13 @@ export interface McpToolServerOptions {
 
 /**
  * A set of tools as an MCP server, without a transport: it answers one
- * JSON-RPC message at a time (requirement `harness-bridge.mcp`). The tool
+ * JSON-RPC message at a time (requirement `mcp.tool-server`). The tool
  * set decides what the tools are and what a call does; the server speaks
- * the protocol. The bridge serves it over HTTP; a command that serves it
- * over stdio can use it as it is.
+ * the protocol. The harness bridge serves it over HTTP; a command that
+ * serves it over stdio can use it as it is.
  *
  * @example
- * const tools = new HalonicTools({ agent, tools, recorder, approvals });
+ * // `tools` is any McpToolSet, such as the harness bridge's tools for one run.
  * const server = new McpToolServer(tools, { reportError });
  * const reply = await server.answerBytes(body, { signal });
  * if (reply !== null) write(JSON.stringify(reply));
@@ -127,7 +127,7 @@ export class McpToolServer {
 }
 
 /**
- * The answer to `initialize`: the client's MCP version when the bridge speaks
+ * The answer to `initialize`: the client's MCP version when the server speaks
  * it, otherwise the newest one it does, which the client may then refuse.
  */
 function initializeResult(asked: unknown): Record<string, unknown> {

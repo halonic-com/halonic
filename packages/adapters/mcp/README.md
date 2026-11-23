@@ -1,6 +1,7 @@
 # @halonicjs/adapter-mcp
 
-Our own MCP client, for servers over HTTP and programs on the person's computer.
+Our own MCP client, for servers over HTTP and programs on the person's computer, and the small
+MCP tool server Halonic's own servers share.
 
 - `src/protocol/` holds the MCP session: the `initialize` handshake, paged `tools/list` and
   `tools/call`, over any `McpTransport`.
@@ -27,6 +28,12 @@ Our own MCP client, for servers over HTTP and programs on the person's computer.
   and refuses a relative path. The login shell runs without `-i` and for 5 seconds at most, so a
   runner that only `.zshrc` puts on the `PATH` (nvm, fnm) may not be found; the refusal then asks for
   the runner's full path. The launcher starts the runner it finds.
+- `src/server/` holds `McpToolServer`, a set of tools (`McpToolSet`) as an MCP server, without a
+  transport: it answers one JSON-RPC message at a time (`initialize`, `ping`, `tools/list` and
+  `tools/call`), and a failure inside the set reaches the client only as an internal error, its
+  text going to `reportError` (requirement `mcp.tool-server`). The harness bridge serves it over
+  HTTP. It loads none of the client's code, and callers import it as
+  `@halonicjs/adapter-mcp/server`.
 
 ## How a pinned package starts
 
@@ -107,7 +114,8 @@ a model key or token in the person's shell stays out; a program that needs a key
 - **Layer:** adapters
 - **Owner:** tomas
 - **Runtime:** node
-- **Public API:** `@halonicjs/adapter-mcp`, and `@halonicjs/adapter-mcp/protocol` for the protocol alone
+- **Public API:** `@halonicjs/adapter-mcp`, `@halonicjs/adapter-mcp/protocol` for the protocol alone,
+  and `@halonicjs/adapter-mcp/server` for the tool server
 
 ## Where the protocol code comes from
 
