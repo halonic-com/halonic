@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16876; the effort decision note on HAL-16866, steps 2 and 3
 
-When a task assigned to an agent is created or changes and the task effort table's answer differs from the task's effort, which is unset or the plugin's own, the Agent tools plugin shall send one `PATCH` of that task's `assigneeAdapterOverrides` to Paperclip's API at the address in its settings, with the settings' key, that sets `adapterConfig.effort` to the answer (or takes the plugin's own effort off when the table answers nothing) and keeps every other override, such as the task's model; it shall send it only while the board's switch allows the running version to write and both the address and the key are set, and otherwise log "would set" with the task and the effort; it shall count a task as sent back when it moves from a reviewer in its settings to another agent and that reviewer's newest comment on the task isn't a signed approval ("approved on head"); and it shall handle the events of one task one after another.
+When a task assigned to an agent is created or changes and the task effort table's answer differs from the task's effort, which is unset or the plugin's own, the Agent tools plugin shall send one `PATCH` of that task's `assigneeAdapterOverrides` to Paperclip's API at the address in its settings, with the settings' key, that sets `adapterConfig.effort` to the answer (or takes the plugin's own effort off when the table answers nothing) and keeps every other override, such as the task's model; it shall send it only while the board's switch allows the running version to write and both the address and the key are set, and otherwise log "would set" with the task and the effort; it shall count a task as sent back when it moves from a reviewer in its settings to another agent and that reviewer's newest comment on the task isn't a signed approval ("approved on head"); it shall treat the table as answering nothing while the task is assigned to a reviewer in its settings, so the reviewer's run takes the reviewer's own effort and the task's effort comes back when it returns to another agent; and it shall handle the events of one task one after another.
 
 ## Examples
 
@@ -16,7 +16,10 @@ When a task assigned to an agent is created or changes and the task effort table
   then it sends nothing, logs "would set HAL-… to low (switch off)" and saves `task_effort.logged`.
 - Given a task tagged `D3` whose effort the plugin set to `low`, handed back by Liam whose newest comment asks for changes,
   when the plugin handles its `issue.updated`,
-  then it sets the effort to `high`; when Liam's newest comment reads "Liam: approved on head `abc1234`", it leaves `low`.
+  then it takes the effort off while Liam holds the task and sets `high` once it is back; when Liam's newest comment reads "Liam: approved on head `abc1234`", it leaves `low`.
+- Given a task tagged `D2` whose effort the plugin set to `low`, and Liam's newest comment "Approved #5471 on head `abc1234`",
+  when it is assigned to Liam and then back to Mateo,
+  then the plugin takes its effort off while Liam holds it and sets `low` again for Mateo, without counting a send-back.
 - Given a task whose effort the plugin set to `low`,
   when its `D2` tag is taken off,
   then the plugin takes its effort off again.

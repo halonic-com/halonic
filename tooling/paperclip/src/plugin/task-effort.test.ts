@@ -68,7 +68,7 @@ verifies("paperclip.task-effort-writes", () => {
       await handler.onIssueEvent(taskEvent("issue.created"));
       task.assigneeAgentId = "agent-liam";
       await handler.onIssueEvent(taskEvent("issue.updated"));
-      expect(effort()).toBe("low");
+      expect(effort()).toBeUndefined();
       task.assigneeAgentId = "agent-mateo";
       await handler.onIssueEvent(taskEvent("issue.updated"));
       expect(effort()).toBe("high");
@@ -87,6 +87,24 @@ verifies("paperclip.task-effort-writes", () => {
       await handler.onIssueEvent(taskEvent("issue.created"));
       task.assigneeAgentId = "agent-liam";
       await handler.onIssueEvent(taskEvent("issue.updated"));
+      task.assigneeAgentId = "agent-mateo";
+      await handler.onIssueEvent(taskEvent("issue.updated"));
+      expect(effort()).toBe("low");
+    });
+
+    test("leaves a reviewer's run at the reviewer's own effort and restores it for the author", async () => {
+      const task = effortTask(["D2"], {
+        assigneeAdapterOverrides: { adapterConfig: { model: "claude-sonnet-5-5" } },
+      });
+      const comments = [liamSays("Approved #5471 on head `abc1234`")];
+      const { handler, effort, requests } = effortHarness(task, switchOn, comments);
+      await handler.onIssueEvent(taskEvent("issue.created"));
+      task.assigneeAgentId = "agent-liam";
+      await handler.onIssueEvent(taskEvent("issue.updated"));
+      expect(effort()).toBeUndefined();
+      expect(requests[1]?.body).toEqual({
+        assigneeAdapterOverrides: { adapterConfig: { model: "claude-sonnet-5-5" } },
+      });
       task.assigneeAgentId = "agent-mateo";
       await handler.onIssueEvent(taskEvent("issue.updated"));
       expect(effort()).toBe("low");

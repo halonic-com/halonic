@@ -97,6 +97,21 @@ function direction(change: ForeignChange): string {
   return rank(change.to) > rank(change.from) ? "raised" : "lowered";
 }
 
+/** Whether the agent is one of the reviewers in the settings. */
+async function isReviewer(
+  ctx: TaskEffortApi,
+  companyId: string,
+  agentId: string | null,
+  settings: TaskEffortSettings,
+): Promise<boolean> {
+  if (agentId === null) {
+    return false;
+  }
+  const agents = await ctx.agents.list({ companyId, limit: 500 });
+  const agent = agents.find((candidate) => candidate.id === agentId);
+  return agent !== undefined && settings.reviewers.includes(agent.urlKey);
+}
+
 /** Whether a reviewer just handed the task back without a signed approval as their newest comment. */
 async function handedBackUnapproved(
   ctx: TaskEffortApi,
@@ -109,9 +124,7 @@ async function handedBackUnapproved(
   if (from === null || to === null || from === to) {
     return false;
   }
-  const agents = await ctx.agents.list({ companyId: issue.companyId, limit: 500 });
-  const reviewer = agents.find((agent) => agent.id === from);
-  if (reviewer === undefined || !settings.reviewers.includes(reviewer.urlKey)) {
+  if (!(await isReviewer(ctx, issue.companyId, from, settings))) {
     return false;
   }
   const comments = await ctx.issues.listComments(issue.id, issue.companyId);
@@ -219,7 +232,8 @@ async function handle(
   };
   const sentBackNow = await handedBackUnapproved(ctx, issue, before, settings);
   const created = event.eventType === "issue.created";
-  const decision = decideEffort(task, before, { created, sentBackNow });
+  const withReviewer = await isReviewer(ctx, issue.companyId, issue.assigneeAgentId, settings);
+  const decision = decideEffort(task, before, { created, sentBackNow, withReviewer });
   if (decision.foreign !== undefined) {
     await reportForeign(ctx, issue, decision.foreign, event.actorType ?? "unknown");
   }

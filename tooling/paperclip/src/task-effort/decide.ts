@@ -71,7 +71,12 @@ function foreignChange(
 export function decideEffort(
   task: TaskNow,
   before: EffortRecord | undefined,
-  input: { readonly created: boolean; readonly sentBackNow: boolean },
+  input: {
+    readonly created: boolean;
+    readonly sentBackNow: boolean;
+    /** The task sits with a reviewer, whose run takes the reviewer's own effort, not the author's. */
+    readonly withReviewer: boolean;
+  },
 ): EffortDecision {
   const foreign = foreignChange(task, before, input.created);
   const ours = before !== undefined && before.set !== null && task.effort === before.set;
@@ -86,7 +91,11 @@ export function decideEffort(
     sentBack,
     handsOff,
   };
-  const wanted = effortForTask(tagsFromLabels(task.labelNames, sentBack)) ?? null;
+  // A reviewer's run on a D1–D3 task mustn't run at low: the table says nothing while
+  // the reviewer holds it, and the task's effort comes back when it returns to the author.
+  const wanted = input.withReviewer
+    ? null
+    : (effortForTask(tagsFromLabels(task.labelNames, sentBack)) ?? null);
   const write =
     handsOff || task.assigneeAgentId === null || wanted === task.effort ? undefined : wanted;
   if (write === undefined) {
@@ -102,8 +111,10 @@ export function decideEffort(
 
 /**
  * Whether a reviewer's comment is a signed approval (HAL-14809), such as
- * "Julian: approved on head `abc1234`" or "re-approved on head".
+ * "Julian: approved on head `abc1234`", "re-approved on head" or
+ * "Approved #5471 on head `abc1234`".
  */
 export function isApproval(body: string): boolean {
-  return /\bapproved on head\b/i.test(body);
+  // A short gap is allowed, as in "Approved #5471 on head `abc1234`".
+  return /\bapproved\b.{0,40}?\bon head\b/i.test(body);
 }
