@@ -92,8 +92,10 @@ the migration, the bindings or the list differ, and `src/test/worker.spec.ts`
 The Worker's `RunObject` (`src/run-object.ts`) is the adapter's class with the
 run list filled in: its alarm sends each run's summary to the D1 run list that
 `runStore.list()` and the admin export read. `run-list.test.ts` checks it inside
-workerd; the rule is `runtime.run-list`. Like the routines object's tick listener,
-its timer listener still throws until `host/server` is wired to run workflows.
+workerd; the rule is `runtime.run-list`. Its alarm also hands each due timer to the
+Worker's engine, built from `env` on the first timer, so a run the API started moves on
+one step per timer. `run-driving.test.ts` checks a run from its start to `run.completed`
+inside workerd; the rule is `runtime.run-driving`.
 
 ## Configuration and wiring
 
