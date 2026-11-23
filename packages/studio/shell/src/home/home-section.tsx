@@ -45,6 +45,7 @@ let lastAttempt = 0;
 
 /** The heading of each section's error when its card can't load (microcopy 3.3). */
 export const homeSectionErrors: Readonly<Record<HomeSection, string>> = {
+  problems: "Couldn't load problems",
   setup: "Couldn't load setup",
   "needs-you": "Couldn't load what needs you",
   "recent-runs": "Couldn't load recent runs",
@@ -52,8 +53,11 @@ export const homeSectionErrors: Readonly<Record<HomeSection, string>> = {
   cards: "Couldn't load cards",
 };
 
-/** Get set up shows no skeleton: it appears only once it knows setup isn't done (PH 2.6). */
-const withoutSkeleton: ReadonlySet<HomeSection> = new Set<HomeSection>(["setup"]);
+/**
+ * Get set up shows no skeleton: it appears only once it knows setup isn't done (PH 2.6). Problems
+ * neither: it appears only while a file has an error (C348).
+ */
+const withoutSkeleton: ReadonlySet<HomeSection> = new Set<HomeSection>(["problems", "setup"]);
 
 /** Tells the section whether its card has nothing to show; see {@link HomeSectionEmpty}. */
 const HomeSectionEmptyReport = createContext<(empty: boolean) => void>(() => {});
@@ -135,12 +139,12 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
           />
         )}
       >
-        <Suspense fallback={skeletonFor(card.id)}>
-          <HomeSectionEmptyReport value={setEmpty}>
+        <HomeSectionEmptyReport value={setEmpty}>
+          <Suspense fallback={skeletonFor(card.id)}>
             <CardView context={context} attempt={attempt} />
-          </HomeSectionEmptyReport>
-          {focusPending ? <FocusOnShow target={headingRef} onFocused={focusMoved} /> : null}
-        </Suspense>
+            {focusPending ? <FocusOnShow target={headingRef} onFocused={focusMoved} /> : null}
+          </Suspense>
+        </HomeSectionEmptyReport>
       </ViewErrorBoundary>
     </section>
   );
@@ -170,10 +174,14 @@ const skeletonShapes: Partial<Record<HomeSection, "cards" | "card">> = {
   cards: "cards",
 };
 
-/** What a section shows while its card loads: none for Get set up, a card or cards, else rows. */
+/**
+ * What a section shows while its card loads: a card or cards, else rows. A section without a
+ * skeleton stays hidden, heading included, until its card renders something, so Home never shows
+ * its heading alone and then drops it (C348).
+ */
 function skeletonFor(section: HomeSection) {
   if (withoutSkeleton.has(section)) {
-    return null;
+    return <HomeSectionEmpty />;
   }
   return <SectionSkeleton shape={skeletonShapes[section] ?? "rows"} />;
 }

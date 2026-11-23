@@ -2,11 +2,13 @@ import { defineFeature, FilesWithErrorsService } from "@halonicjs/studio-shell";
 import { FILE_KIND, FILES_VIEW, fileName } from "./file-item.ts";
 import { FilesHostService } from "./files-host.ts";
 import { filesWords } from "./files-words.ts";
+import { problemsSignal, subscribeProblems } from "./problems/problems-signal.ts";
 
 /**
  * The Files feature. Its file tree is the view behind the sidebar's Files switch, and a file opens
  * in a tab with the code editor; the dialogs and the strips follow. The workspace's problem count,
- * in the status bar or a phone's strip, opens the files with errors at their first problem.
+ * in the status bar or a phone's strip, and Home's Problems open the files with errors at their
+ * first problem.
  */
 export const filesFeature = defineFeature({
   id: "files",
@@ -25,6 +27,13 @@ export const filesFeature = defineFeature({
       order: 20,
       view: "ProblemsStrip",
       load: () => import("./problems/problems-strip.tsx"),
+    });
+    studio.home.addCard({
+      id: "problems",
+      view: "ProblemsHomeCard",
+      load: () => import("./problems/problems-home-card.tsx"),
+      signal: problemsSignal,
+      subscribeSignal: subscribeProblems,
     });
     studio.sidebarViews.add({
       id: FILES_VIEW,

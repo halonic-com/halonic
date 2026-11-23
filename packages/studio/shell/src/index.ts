@@ -213,7 +213,12 @@ export {
   type FileWithErrorsKind,
   fileWithErrorsKinds,
 } from "./problems/files-with-errors.ts";
-export { useFilesWithErrors } from "./problems/use-files-with-errors.ts";
+export {
+  type FilesWithErrorsReading,
+  filesWithErrorsReading,
+  useFilesWithErrors,
+  useFilesWithErrorsReading,
+} from "./problems/use-files-with-errors.ts";
 export {
   type ChildProcessUsage,
   type EngineResourceReport,
