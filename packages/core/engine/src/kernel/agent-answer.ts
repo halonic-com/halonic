@@ -198,12 +198,17 @@ const advice = "Tighten the agent's instructions or use a larger model.";
 /**
  * The prompt that asks an agent again after an unusable answer: the step's
  * prompt, then the answer's error without the advice meant for a person, and
- * what the JSON parser said, when it said something.
+ * what the JSON parser said, when it said something. JSON.parse's messages
+ * have no full stop, so it gets one before the next sentence.
  */
 export function answerAgainPrompt(prompt: string, error: string, parseError?: string): string {
   const problem = error.endsWith(advice) ? error.slice(0, -advice.length).trim() : error;
-  const parser = parseError === undefined ? "" : ` The JSON parser said: ${parseError}`;
+  const parser = parseError === undefined ? "" : ` The JSON parser said: ${sentence(parseError)}`;
   return `${prompt}\n\nYour answer can't be used: ${problem}${parser} Answer again with only what your output asks for.`;
+}
+
+function sentence(text: string): string {
+  return text.endsWith(".") ? text : `${text}.`;
 }
 
 /** The longest part of an answer `run.failed` quotes, in characters. */
