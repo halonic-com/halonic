@@ -28,6 +28,7 @@ import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
 import { ConnectorTable } from "./connector/connector-table.ts";
 import { hostDoctorRoutes } from "./doctor/host-doctor-routes.ts";
+import { engineCommand } from "./engine/engine-command.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { harnessFolders } from "./harness/harness-folders.ts";
@@ -122,6 +123,7 @@ export type FramedHandshake = Pick<Handshake, "token">;
  * - `--wsl-setup` sets up Halonic's WSL distro from the Windows side, for Studio's shell, with the image (`--wsl-image`) and the `RunOnce` command (`--wsl-resume`) the shell gives, and leaves the runtime to the shell (see `wslSetupCommand` in `sandbox/wsl-setup-command.ts`). It prints the setup's result as JSON and exits with 0 only when it is `done`;
  * - `--wsl-shared-folders` (with serving) is how Studio's launcher says the host runs in Halonic's WSL distro: every session then denies the distro's shared folders (see {@link WSL_SHARED_FOLDERS}, security review W1);
  * - `--keychain-relay` (with serving) is how Studio says it keeps the host's own secrets in the OS keychain and answers for them on connection id 0 (see {@link hostKeychainOf});
+ * - `--engine --profile-folder <folder> --workspace <folder>` runs the workspace's engine for Studio's shell (see {@link engineCommand});
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see `serveOverFrames` in `serving-modes.ts`);
  * - otherwise it serves on loopback (see `serveOnLoopback` in `serving-modes.ts`).
  *
@@ -159,10 +161,8 @@ export async function run(
     io.write(`halonic-agent-host ${version}\n`);
     return 0;
   }
-  const sandboxExit = sandboxCommand(args, argumentAfter(args, "--profile-folder"), io, () =>
-    makeSandbox([], []),
-  );
-  if (sandboxExit !== undefined) return await sandboxExit;
+  const commandExit = roleCommand(args, version, io, () => makeSandbox([], []));
+  if (commandExit !== undefined) return await commandExit;
   const given = sweepRoots(args);
   if ("error" in given) {
     io.writeError(given.error);
@@ -226,6 +226,17 @@ export async function run(
       io.writeError(`The host lock couldn't be released: ${String(error)}\n`);
     });
   }
+}
+
+/** The engine role or a sandbox command, when `args` ask for one; `undefined` when the host serves. */
+function roleCommand(
+  args: readonly string[],
+  version: string,
+  io: HostIo,
+  sandbox: () => SrtSandbox,
+) {
+  const profileFolder = argumentAfter(args, "--profile-folder");
+  return engineCommand(args, version, io) ?? sandboxCommand(args, profileFolder, io, sandbox);
 }
 
 /** Removes the WSL setup; not served without a profile, nor inside the distro, which has no `wsl.exe`. */

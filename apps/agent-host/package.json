@@ -71,6 +71,10 @@
     "@halonicjs/profile": "workspace:*",
     "@halonicjs/workspace": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
-    "@halonicjs/std": "workspace:*"
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/adapter-workspace-engine-node": "workspace:*",
+    "@halonicjs/adapter-workspace-models": "workspace:*",
+    "@halonicjs/routines": "workspace:*",
+    "@halonicjs/target-node-harness": "workspace:*"
   }
 }
