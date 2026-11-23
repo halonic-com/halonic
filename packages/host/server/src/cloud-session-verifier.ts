@@ -151,7 +151,8 @@ function parseToken(token: string): ParsedToken | null {
   if (header === null || payload === null || signature === undefined) {
     return null;
   }
-  const signedBytes = new TextEncoder().encode(`${headerText}.${payloadText}`);
+  // Copied into a plain ArrayBuffer, the only buffer WebCrypto's types accept on every runtime.
+  const signedBytes = new Uint8Array(new TextEncoder().encode(`${headerText}.${payloadText}`));
   return { header, payload, signedBytes, signature };
 }
 
@@ -194,7 +195,7 @@ function decodeJsonObject(text: string): object | null {
   }
   let value: unknown;
   try {
-    value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    value = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes));
   } catch {
     // Not UTF-8 or not JSON: the token is malformed, which is a refusal like any other.
     return null;
