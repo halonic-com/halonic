@@ -3,7 +3,7 @@
 - Task: HAL-16616
 - Approval: HAL-16616 asks for this wording (C731 rows 46, 49 and 50 on HAL-16608); small wording on an approved screen, so the team decides (HAL-2282); Liam reviews the pull request and signs this note as the CTO
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OvmxqmDmojCt2l4R75LCyTaakwLdPDBT5bntR+kJ1tQOhNAxhrE5btdxSD0pqzV91nJp4eQ4xnKM/ziz3nbODw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ViKjYAofDtV0afXDn2X6zcM19OhnQLUnaT88zy7PcIfda3+HI+91MYrvLTAL+b4BJ8k4/r/gvS7QSsOIDbtICQ==
 
 ## What changes
 
