@@ -295,10 +295,13 @@ export const routinesMessages = defineMessages("routines", {
   notStartedWhy: (key: string, reason: string) => phrase`Routine ${key} didn't start: ${reason}`,
   /**
    * Why a routine run of a newer version didn't start, under {@link notStartedWhy}:
-   * the engine keeps the local only it was opened with (HAL-6084).
+   * the engine keeps the local only it was opened with (HAL-6084). When the
+   * saved workspace.yaml turned it on or off, which isn't a version yet, the
+   * line names that file (C755 #2): `saved` says whether Local only is on
+   * through that file now, and whether it was when the watch started.
    */
-  localOnlyChanged: (workspace: string) =>
-    phrase`This version of ${workspace} turns local only on or off, which a running watch can't change. Stop the watch and start it again to run it.`,
+  localOnlyChanged: (workspace: string, saved: SavedLocalOnly = notSaved) =>
+    localOnlyChangedBy(workspace, saved),
   /**
    * Why a routine run that reads a commit didn't start in a workspace whose
    * history the watch didn't open: never expected, since only a watch with
@@ -365,3 +368,25 @@ export const routinesMessages = defineMessages("routines", {
   stuckRoutineUnknown: (runId: string, reason: string) =>
     phrase`Couldn't read which routine started run ${runId}: ${reason}`,
 });
+
+/** Whether Local only is on only through the saved workspace.yaml, now and when the watch started. */
+export interface SavedLocalOnly {
+  readonly now: boolean;
+  readonly atStart: boolean;
+}
+
+const notSaved: SavedLocalOnly = { now: false, atStart: false };
+
+/**
+ * The line {@link routinesMessages.localOnlyChanged} says, by what turned local only on or off since the
+ * watch started: on through the saved file now, or on only through it at the start and so turned off there.
+ */
+function localOnlyChangedBy(workspace: string, saved: SavedLocalOnly): Phrase {
+  if (saved.now) {
+    return phrase`Your saved workspace.yaml turns local only on, which counts even before it's live, but a running watch can't change local only. Stop the watch and start it again to run the routine.`;
+  }
+  if (saved.atStart) {
+    return phrase`Your saved workspace.yaml turns local only back off, and a running watch can't change local only. Stop the watch and start it again to run the routine.`;
+  }
+  return phrase`This version of ${workspace} turns local only on or off, which a running watch can't change. Stop the watch and start it again to run it.`;
+}

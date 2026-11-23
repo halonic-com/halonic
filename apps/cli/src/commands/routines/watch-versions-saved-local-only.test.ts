@@ -23,7 +23,8 @@ import { WatchedVersions } from "./watch-versions.ts";
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 /** Each test starts a real git repository, which can take longer than 5 s on a busy runner. */
 const slowTest = { timeout: 60_000 };
-const refusal = "turns local only on or off";
+const refusal =
+  "Your saved workspace.yaml turns local only on, which counts even before it's live, but a running watch can't change local only. Stop the watch and start it again to run the routine.";
 
 let folder: string;
 let acme: string;
@@ -80,6 +81,13 @@ async function saveLocalOnlyOn(): Promise<void> {
   await writeFile(file, text.replace("localOnly: false", "localOnly: true"));
 }
 
+/** Saves `workspace.yaml` with Local only off again, as the live version has it. */
+async function saveLocalOnlyOff(): Promise<void> {
+  const file = join(acme, "workspace.yaml");
+  const text = await readFile(file, "utf8");
+  await writeFile(file, text.replace("localOnly: true", "localOnly: false"));
+}
+
 /** Whether `workspace` is local only, as the engine reads it. */
 function isLocalOnly(workspace: LoadedWorkspace): boolean {
   return filesOf(workspace, "workspace")[0]?.value.privacy.localOnly === true;
@@ -112,6 +120,23 @@ verifies("app.saved-local-only", () => {
         watched.definitionsOf("support", "support-reply", live, "run-1"),
       ).rejects.toThrow(refusal);
       expect(await watched.trustedLive()).toBeNull();
+    },
+  );
+
+  it(
+    "refuses the next routine run once Local only is saved off again during the watch",
+    slowTest,
+    async () => {
+      const { dir, live } = await committedAcme();
+      await saveLocalOnlyOn();
+      const watched = await watch(dir);
+      await saveLocalOnlyOff();
+
+      await expect(
+        watched.definitionsOf("support", "support-reply", live, "run-1"),
+      ).rejects.toThrow(
+        "Your saved workspace.yaml turns local only back off, and a running watch can't change local only.",
+      );
     },
   );
 

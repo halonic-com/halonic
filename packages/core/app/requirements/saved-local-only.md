@@ -8,6 +8,8 @@ When a workspace with history starts a run from its live version, and the live v
 
 `halonic run`, `halonic runs send`, `halonic routines watch` and `halonic serve` shall read Local only this way. A watch already going shall refuse the next run, and a running run's connectors, when the saved file turns Local only on, as for a new version that turns it on.
 
+When Local only is on only because of the saved file, `halonic run` shall say so (C755): its line about uncommitted changes shall name Local only as the one change it uses, and a run refused for a cloud model shall say Local only comes from the saved `workspace.yaml`, which isn't live yet, and that setting it back to false there counts, since the live version has it off. A watch's refusal shall name the saved `workspace.yaml`, not a version, when the saved file turned Local only on, or off again.
+
 ## Examples
 
 - Given Acme's live version has Local only off,
@@ -21,4 +23,7 @@ When a workspace with history starts a run from its live version, and the live v
   then it's refused as `invalid_input`: "The saved workspace.yaml has an error on line 2, so Halonic can't tell whether Local only is on."
 - Given `halonic routines watch` is going on Acme with Local only off,
   when the person saves Local only on,
-  then the next routine run is refused with "turns local only on or off", and so is a connector start of a run that was already going.
+  then the next routine run is refused with "Your saved workspace.yaml turns local only on, which counts even before it's live", and so is a connector start of a run that was already going.
+- Given Acme's live version has Local only off, its model alias points at a cloud model, and Local only is saved on,
+  when the person runs `halonic run`,
+  then it first says "Your uncommitted changes aren't used, except that your saved workspace.yaml turns local only on, so this run uses local models only.", and the refusal says "Acme is local only because your saved workspace.yaml turns it on, even before it's live, so Halonic sent nothing to Cloud model."

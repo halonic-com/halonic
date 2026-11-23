@@ -39,6 +39,8 @@ import { runEnding, waitDescription } from "./listed-run.ts";
  * @param models - the workspace's models, read only for a failed run
  * @param debugging - `--debug` was given, so a failed run's general lines don't ask for it
  * @param children - the child runs the run failed with or waits on, whose lines it says
+ * @param localOnlySaved - Local only is on only because the saved workspace.yaml says on, so a
+ *   local-only refusal says it isn't live yet; only `halonic run` knows, as it read the version
  */
 export function showEnding(
   run: RunDetail,
@@ -48,6 +50,7 @@ export function showEnding(
   dir: string | undefined,
   debugging = false,
   children: ChildEndings = {},
+  localOnlySaved = false,
 ): Phrase[] {
   switch (run.summary.status) {
     case "completed":
@@ -55,7 +58,7 @@ export function showEnding(
     case "failed":
       return failedEnding(
         { run, title, definitions, models },
-        { dir, debugging, child: children.failed },
+        { dir, debugging, localOnlySaved, child: children.failed },
       );
     case "cant-try":
       return cantTryEnding(run, title, definitions);
@@ -133,6 +136,7 @@ export interface ChildEndings {
 interface FailedEndingOptions {
   readonly dir: string | undefined;
   readonly debugging: boolean;
+  readonly localOnlySaved: boolean;
   readonly child: FailedChildEnding | undefined;
 }
 
@@ -151,7 +155,8 @@ function failedEnding(ended: EndedRun, options: FailedEndingOptions): Phrase[] {
   const failed = runFailedEvent(run);
   const named = stepNamer(ended.definitions);
   const step = named(failed.state ?? run.summary.state ?? "");
-  const own = failureLines(ended, { dir: options.dir, debugging: options.debugging });
+  const { dir, debugging, localOnlySaved } = options;
+  const own = failureLines(ended, { dir, debugging, localOnlySaved });
   const lines =
     own === undefined
       ? [cancelledLine(run.summary, title, cancelledAt(run.events, failed, named))]
@@ -174,7 +179,7 @@ function failedEnding(ended: EndedRun, options: FailedEndingOptions): Phrase[] {
  */
 function failureLines(
   { run, title, definitions, models }: EndedRun,
-  options: Pick<FailedRun, "dir" | "debugging" | "startedBy">,
+  options: Pick<FailedRun, "dir" | "debugging" | "localOnlySaved" | "startedBy">,
 ): { readonly lines: Phrase[]; readonly reason: RunFailure["reason"] } | undefined {
   const failed = runFailedEvent(run);
   const failure = runFailureOf(
@@ -204,7 +209,7 @@ function failureLines(
  * parent's own lines stay.
  */
 function childFailedLines(
-  { child, dir, debugging }: FailedEndingOptions,
+  { child, dir, debugging, localOnlySaved }: FailedEndingOptions,
   parent: { readonly title: string; readonly step: string },
 ): Phrase[] | undefined {
   if (child === undefined) {
@@ -213,6 +218,7 @@ function childFailedLines(
   const lines = failureLines(child, {
     dir,
     debugging,
+    localOnlySaved,
     startedBy: { ...parent, item: child.item },
   });
   if (lines === undefined) {

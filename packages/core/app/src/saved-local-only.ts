@@ -24,6 +24,7 @@ const workspacePath = "workspace.yaml";
  *
  * @param live the live version's workspace; it is never changed, a copy is returned
  * @param saved the saved files
+ * @returns `live` itself when the saved file doesn't turn Local only on, so a caller can tell
  * @throws KindedError `invalid_input` when the saved `workspace.yaml` can't be read or has an
  *   error: it might turn Local only on, so nothing starts until it is fixed
  */
