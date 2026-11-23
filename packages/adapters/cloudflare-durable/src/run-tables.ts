@@ -40,6 +40,10 @@ export function hasRunTables(sql: RunSql): boolean {
  * Notes the name prefix the object was written under, on its first write, and checks it on every
  * later one, so one object never holds the writes of two scopes. Its tables must exist.
  *
+ * This check is a second guard: the object's name already holds the prefix, so a write under
+ * another prefix reaches another object. An object written before `name_prefix` existed takes
+ * the prefix of its next write, which is safe for the same reason.
+ *
  * @throws RangeError when the object was first written under another prefix; the message names neither
  */
 export function recordNamePrefix(sql: RunSql, prefix: string): void {
