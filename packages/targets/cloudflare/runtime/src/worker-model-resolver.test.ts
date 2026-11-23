@@ -116,6 +116,26 @@ verifies("runtime.worker-models", () => {
       ]);
     });
 
+    it("refuses unsaved model settings, so no caller picks a secret's address", async () => {
+      const sent: string[] = [];
+      const resolve = resolverWith({
+        fetch: async (url) => {
+          sent.push(url);
+          throw new TypeError("fetch failed");
+        },
+      });
+      const agent = {
+        type: "openai-compatible",
+        model: "large",
+        local: false,
+        baseUrl: "https://their.host.test/v1",
+        secret: "globex-key",
+      };
+
+      await expect(resolve(callOf({ agent }))).rejects.toThrow("no unsaved model settings");
+      expect(sent).toEqual([]);
+    });
+
     it("names an alias the hub doesn't have, and a hub the index doesn't have", async () => {
       const resolve = resolverWith();
 

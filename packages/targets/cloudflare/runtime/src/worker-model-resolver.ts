@@ -26,13 +26,20 @@ export interface WorkerModelResolverInput {
  * may go to the address that file names, as on a computer the deployer trusts. The Workers
  * secrets record no allowed origins, so no list narrows that (`noKeyOrigins`).
  *
+ * That trust covers only the deployer's files. A call with the agent editor's unsaved settings
+ * (`request.agent`) names its own address and secret, so the Worker refuses it before anything
+ * is resolved: otherwise a caller could send any Workers secret, the token key included, to an
+ * address of their choosing.
+ *
+ * @throws Error from the resolver for a call with unsaved model settings
+ *
  * @example
  * resolveModel: workerModelResolver({ readIndex, secrets: workerSecrets(env) }),
  */
 export function workerModelResolver(
   input: WorkerModelResolverInput,
 ): LocalExecutorOptions["resolveModel"] {
-  return hubModelResolver({
+  const resolve = hubModelResolver({
     definitionsOf: (hubId) => indexedHub(input.readIndex, hubId),
     secrets: input.secrets,
     // Bound, so workerd calls `fetch` with the global object as `this`.
@@ -40,4 +47,10 @@ export function workerModelResolver(
     isTrusted: () => true,
     keyOrigins: noKeyOrigins,
   });
+  return async (request, scope) => {
+    if (request.agent !== undefined) {
+      throw new Error("The Cloudflare Worker takes no unsaved model settings.");
+    }
+    return await resolve(request, scope);
+  };
 }
