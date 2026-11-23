@@ -1,4 +1,4 @@
-import { lstat, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, rm, rmdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
@@ -6,7 +6,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeRunner, makeProfile } from "./srt-session.test-helper.ts";
 import { SrtSession } from "./srt-session.ts";
-import { RootFilePlaceholders } from "./windows-root-files.ts";
+import { DenyPlaceholders } from "./windows-deny-placeholders.ts";
 
 async function exists(path: string): Promise<boolean> {
   return lstat(path).then(
@@ -16,16 +16,16 @@ async function exists(path: string): Promise<boolean> {
 }
 
 verifies("sandbox-srt.windows-tool-folders", () => {
-  describe("SrtSession and the empty root files srt makes on Windows", () => {
+  describe("SrtSession and the empty files and folders srt makes for the denies on Windows", () => {
     let base: string;
     let work: string;
-    let rootFiles: RootFilePlaceholders;
+    let placeholders: DenyPlaceholders;
 
     beforeEach(async () => {
-      base = await mkdtemp(join(tmpdir(), "srt-root-files-"));
+      base = await mkdtemp(join(tmpdir(), "srt-deny-placeholders-"));
       work = join(base, "work");
       await mkdir(work, { recursive: true });
-      rootFiles = new RootFilePlaceholders();
+      placeholders = new DenyPlaceholders();
     });
 
     afterEach(async () => {
@@ -37,14 +37,14 @@ verifies("sandbox-srt.windows-tool-folders", () => {
       await writeFile(join(work, ".npmrc"), "");
     }
 
-    /** Opens a session that removes the root files as on Windows, through this test's own instance or `given`. */
+    /** Opens a session that removes the placeholders as on Windows, through this test's own instance or `given`. */
     const open = (
       profile: SandboxProfile,
       warn?: (message: string) => void,
-      given: RootFilePlaceholders = rootFiles,
+      given: DenyPlaceholders = placeholders,
     ) =>
       SrtSession.open(profile, fakeRunner().runner, {
-        rootFiles: given,
+        placeholders: given,
         ...(warn === undefined ? {} : { warn }),
       });
 
@@ -53,6 +53,14 @@ verifies("sandbox-srt.windows-tool-folders", () => {
       await stampPlaceholder();
       await session.close();
       expect(await exists(join(work, ".npmrc"))).toBe(false);
+    });
+
+    it("removes the folder made on the way to a two-name entry, such as .yarn (HAL-16291)", async () => {
+      const session = await open(makeProfile(base));
+      await mkdir(join(work, ".yarn"));
+      await writeFile(join(work, ".yarn", "releases"), "");
+      await session.close();
+      expect(await exists(join(work, ".yarn"))).toBe(false);
     });
 
     it("removes them by default only on Windows, and leaves them to srt elsewhere", async () => {
@@ -83,15 +91,16 @@ verifies("sandbox-srt.windows-tool-folders", () => {
 
     it("logs a file it can't remove, and the close still succeeds", async () => {
       const warnings: string[] = [];
-      const locked = new RootFilePlaceholders(() =>
-        Promise.reject(new Error("the file is in use")),
-      );
+      const locked = new DenyPlaceholders({
+        file: () => Promise.reject(new Error("the file is in use")),
+        folder: rmdir,
+      });
       const session = await open(makeProfile(base), (message) => warnings.push(message), locked);
       await stampPlaceholder();
       await expect(session.close()).resolves.toBeUndefined();
       expect(warnings).toEqual([
         expect.stringMatching(
-          /^could not remove an empty file the sandbox made: .*\.npmrc: the file is in use$/,
+          /^could not remove an empty file or folder the sandbox made: .*\.npmrc: the file is in use$/,
         ),
       ]);
     });

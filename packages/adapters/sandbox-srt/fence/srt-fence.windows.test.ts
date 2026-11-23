@@ -6,7 +6,7 @@ import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { srtNetworkVariables } from "../src/srt-runner.ts";
 import { SrtSandbox } from "../src/srt-sandbox.ts";
-import { rootDenyFiles } from "../src/windows-root-files.ts";
+import { denyPlaceholderPaths } from "../src/windows-deny-placeholders.ts";
 
 /**
  * The fence on a real Windows machine, through `SandboxSession` (HAL-4347):
@@ -219,16 +219,30 @@ console.log(JSON.stringify(result));
     expect(sizesAtOpen).toEqual({ ".npmrc": 0, ".mcp.json": 0, ".pre-commit-config.yaml": 0 });
   });
 
-  it("removes the empty root files it made when the session closes (HAL-11554)", async () => {
+  it("removes the empty files and folders it made when the session closes (HAL-11554, HAL-16291)", async () => {
     const closing = join(base, "closing");
     await mkdir(closing, { recursive: true });
     const closed = await sandbox.open({ ...profile(), workingFolder: closing });
-    const madeAtOpen = await present(closing, rootDenyFiles);
+    // srt makes each missing folder on the way too, such as `.yarn` for `.yarn/releases`.
+    const placeholders = [
+      ...denyPlaceholderPaths.map((segments) => join(...segments)),
+      ".yarn",
+      ".git",
+    ];
+    const madeAtOpen = await present(closing, placeholders);
     expect(madeAtOpen).toEqual(
-      expect.arrayContaining([".npmrc", ".mcp.json", ".pre-commit-config.yaml"]),
+      expect.arrayContaining([
+        ".npmrc",
+        ".mcp.json",
+        ".pre-commit-config.yaml",
+        ".yarn",
+        join(".yarn", "releases"),
+      ]),
     );
     await closed.close();
-    expect(await present(closing, rootDenyFiles)).toEqual([]);
+    expect(await present(closing, placeholders)).toEqual([]);
+    // The tool folders Halonic made stay.
+    expect(await present(closing, [".claude"])).toEqual([".claude"]);
   });
 
   it("keeps a root file that was there before the session opened (HAL-11554)", async () => {

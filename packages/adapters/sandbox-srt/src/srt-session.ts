@@ -37,8 +37,8 @@ import {
   reachesNoNetwork,
 } from "./srt-session-env.ts";
 import { toolFoldersInProfile } from "./tool-folders.ts";
+import { type DenyPlaceholders, windowsDenyPlaceholders } from "./windows-deny-placeholders.ts";
 import { sessionToolEnv } from "./windows-program-env.ts";
-import { type RootFilePlaceholders, windowsRootFiles } from "./windows-root-files.ts";
 import { prepareToolFolders } from "./windows-tool-folders.ts";
 
 /** One started program: what the session tracks to stop it and to say why it ended. */
@@ -58,10 +58,10 @@ function warnOnStderr(message: string): void {
   process.stderr.write(`${message}\n`);
 }
 
-/** What removes the empty root files when the opener names nothing: the process's one on Windows, where srt makes them. */
-function rootFilesFor(given: RootFilePlaceholders | null | undefined): RootFilePlaceholders | null {
+/** What removes the deny placeholders when the opener names nothing: the process's one on Windows, where srt makes them. */
+function placeholdersFor(given: DenyPlaceholders | null | undefined): DenyPlaceholders | null {
   if (given !== undefined) return given;
-  return process.platform === "win32" ? windowsRootFiles : null;
+  return process.platform === "win32" ? windowsDenyPlaceholders : null;
 }
 
 /** Forgets the grants srt may have kept for an open that failed (Windows), and logs those it can't. */
@@ -76,17 +76,17 @@ async function forgetAfterFailedOpen(
 }
 
 /**
- * Gives up the session's hold on the empty root files srt made (Windows) and
+ * Gives up the session's hold on the deny placeholders srt made (Windows) and
  * logs each one that is left and can't be removed: that doesn't fail the close.
  */
-async function removeRootFiles(
-  rootFiles: RootFilePlaceholders | null,
+async function removePlaceholders(
+  placeholders: DenyPlaceholders | null,
   workingFolder: string,
   warn: (message: string) => void,
 ): Promise<void> {
-  if (rootFiles === null) return;
-  for (const failure of await rootFiles.release(workingFolder)) {
-    warn(`could not remove an empty file the sandbox made: ${failure}`);
+  if (placeholders === null) return;
+  for (const failure of await placeholders.release(workingFolder)) {
+    warn(`could not remove an empty file or folder the sandbox made: ${failure}`);
   }
 }
 
@@ -112,7 +112,7 @@ export class SrtSession implements SandboxSession {
   /** The folder that holds the sessions' `commondir` journals, and this session's journal in it. */
   readonly #journal: { folder: string | null; file: string | null };
   readonly #grants: KeptGrants | null;
-  readonly #rootFiles: RootFilePlaceholders | null;
+  readonly #placeholders: DenyPlaceholders | null;
   /** Where a failure that no caller can get is logged, such as a block listener that throws. */
   readonly #warn: (message: string) => void;
   #fence: SandboxFence;
@@ -130,7 +130,7 @@ export class SrtSession implements SandboxSession {
     signal: AbortSignal | undefined,
     git: { folder: GitFolderSnapshot | null; nested: NestedGitSnapshot | null },
     journal: { folder: string | null; file: string | null },
-    windows: { grants: KeptGrants | null; rootFiles: RootFilePlaceholders | null },
+    windows: { grants: KeptGrants | null; placeholders: DenyPlaceholders | null },
     toolEnv: Record<string, string>,
     warn: (message: string) => void,
   ) {
@@ -144,7 +144,7 @@ export class SrtSession implements SandboxSession {
     this.#nestedGit = git.nested;
     this.#journal = journal;
     this.#grants = windows.grants;
-    this.#rootFiles = windows.rootFiles;
+    this.#placeholders = windows.placeholders;
     this.#warn = warn;
     this.#launcherEnv = launcherEnv(profile, process.env, folder, launcherTemp);
     this.#programEnv = programEnv(profile, process.env, folder, toolEnv);
@@ -173,8 +173,8 @@ export class SrtSession implements SandboxSession {
       journalFolder?: string | null;
       /** On Windows: takes back the grants srt keeps on the session's folders. Without it nothing is forgotten. */
       grants?: KeptGrants | null;
-      /** Removes the empty root files srt made for the denies: the process's one on Windows by default, a test passes its own. */
-      rootFiles?: RootFilePlaceholders | null;
+      /** Removes the empty files and folders srt made for the denies: the process's one on Windows by default, a test passes its own. */
+      placeholders?: DenyPlaceholders | null;
       /** Where a failure is logged when no caller can get it (a failure to forget, or a block listener that throws); stderr by default. */
       warn?: (message: string) => void;
       sharedFolders?: readonly string[];
@@ -182,7 +182,7 @@ export class SrtSession implements SandboxSession {
   ): Promise<SrtSession> {
     const startedAt = Date.now();
     const grants = options.grants ?? null;
-    const rootFiles = rootFilesFor(options.rootFiles);
+    const placeholders = placeholdersFor(options.placeholders);
     const warn = options.warn ?? warnOnStderr;
     grants?.assertSupported();
     assertVariableNames(profile);
@@ -202,7 +202,7 @@ export class SrtSession implements SandboxSession {
     // Held from here, before srt runs anything: the forget in the `catch` below or `close()` gives the hold up.
     grants?.hold([profile.workingFolder, profile.tempFolder]);
     // Noted before srt makes them; the release in the `catch` below or `close()` removes them.
-    await rootFiles?.hold(profile.workingFolder);
+    await placeholders?.hold(profile.workingFolder);
     try {
       launcherTemp = await makeLauncherTemp();
       if (git.folder !== null && journalFolder !== null) {
@@ -254,7 +254,7 @@ export class SrtSession implements SandboxSession {
         options.signal,
         git,
         { folder: journalFolder, file: journal },
-        { grants, rootFiles },
+        { grants, placeholders },
         await sessionToolEnv(profile),
         warn,
       );
@@ -265,7 +265,7 @@ export class SrtSession implements SandboxSession {
       if (journal !== null) await rm(journal, { force: true });
       // The fence proof ran a program on the folders, so srt may have kept grants on them.
       await forgetAfterFailedOpen(grants, [profile.workingFolder, profile.tempFolder], warn);
-      await removeRootFiles(rootFiles, profile.workingFolder, warn);
+      await removePlaceholders(placeholders, profile.workingFolder, warn);
       throw error;
     }
   }
@@ -364,8 +364,8 @@ export class SrtSession implements SandboxSession {
     const notForgotten = await this.#forgetGrants();
     this.#fence = { state: "stopped" };
     this.#listeners.clear();
-    // After the fence is stopped: the files only tidy the person's folder, nothing relies on them now.
-    await removeRootFiles(this.#rootFiles, this.profile.workingFolder, this.#warn);
+    // After the fence is stopped: the placeholders only tidy the person's folder, nothing relies on them now.
+    await removePlaceholders(this.#placeholders, this.profile.workingFolder, this.#warn);
     await removeFolder(this.#folder);
     if (this.#launcherTemp !== null) await removeFolder(this.#launcherTemp);
     // A journal whose undo failed stays, so a later `recoverGitFolders` tries again.

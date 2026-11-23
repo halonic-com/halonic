@@ -40,11 +40,11 @@ async function exists(path: string): Promise<boolean> {
  * the working folder and returns what the Windows session denies, relative to
  * it: those names and `.idea` when it exists. Something that is already there
  * under one of the names, even a file, is denied as it is; making a folder
- * over it would fail and the session wouldn't open. Root files (`.npmrc`,
- * `.mcp.json`) get nothing from here: srt makes each one empty when the
- * session opens and denies it, as it does on Linux, and `RootFilePlaceholders`
- * removes those that are still empty when the last session on the folder
- * closes (HAL-11554).
+ * over it would fail and the session wouldn't open. Files (`.npmrc`,
+ * `.mcp.json`, `.yarn/releases`) get nothing from here: srt makes each one
+ * empty, with any folder on the way, when the session opens and denies it, as
+ * it does on Linux, and `DenyPlaceholders` removes those that are still empty
+ * when the last session on the folder closes (HAL-11554, HAL-16291).
  */
 export async function prepareToolFolders(workingFolder: string): Promise<string[]> {
   for (const folder of toolFoldersToCreate) {
