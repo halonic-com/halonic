@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16851 (approved by the board on 23 Nov; this pull request is HAL-16852)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yGAtoOTPCpaetjkTRxCrZD/K3jZSwdMxXBXASrjI8bwLkhoo0gxB8/9oqZ52Y5R3exsNtnow2/EFSoV0OxuuDw==
 
 The repo is public, and a board member's name and GitHub login were written
 into its files. The board asked for them to go: files say "the board", and
