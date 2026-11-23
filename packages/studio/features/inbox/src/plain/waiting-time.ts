@@ -25,12 +25,16 @@ export function isLate(since: Date, now: Date): boolean {
   return now.getTime() - since.getTime() >= dayInMs;
 }
 
+/** Joins a number to its unit, so a row's meta line that wraps never splits "10 min" (C348). */
+const noBreakSpace = "\u00a0";
+
 /**
  * The row's meta: "Waiting 1 min", "Waiting 6 h", "Waiting 2 days"
- * (flow-inbox 3.2). Under a minute still reads "1 min".
+ * (flow-inbox 3.2). Under a minute still reads "1 min". A no-break space
+ * keeps the number with its unit.
  */
 export function waitingFor(since: Date, now: Date): string {
-  return `Waiting ${elapsed(since, now, "short")}`;
+  return `Waiting ${elapsed(since, now, "short").replace(" ", noBreakSpace)}`;
 }
 
 /**

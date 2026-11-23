@@ -18,7 +18,7 @@ export function brokenRowId(file: FileWithErrors): string {
   return `file:${file.path}`;
 }
 
-/** A chip's drawn symbol and its space: sighted people see "✕ 2 problems", a screen reader hears "2 problems". */
+/** A chip's drawn symbol and its space: sighted people see "△ 2 warnings", a screen reader hears "2 warnings". */
 function Glyph({ children }: { readonly children: string }) {
   return <span aria-hidden="true">{children} </span>;
 }
@@ -61,9 +61,9 @@ function Chips({ listing }: { readonly listing: WorkflowListing }) {
           {listWords.running(running)}
         </StatusChip>
       )}
+      {/* The kit's error chip, with its dot, as a file that didn't load has it (C348). */}
       {errors > 0 && (
-        <StatusChip tone="danger">
-          <Glyph>✕</Glyph>
+        <StatusChip tone="danger" dot>
           {listWords.problems(errors + warnings)}
         </StatusChip>
       )}

@@ -38,7 +38,8 @@ verifies("inbox.row-meta-wraps", () => {
     );
     await settled();
     const meta = [...root.querySelectorAll('[role="grid"] [role="gridcell"] span')].find(
-      (span) => span.textContent === "Support reply · run 891b5a · a person step · Waiting 1 h",
+      (span) =>
+        span.textContent === "Support reply · run 891b5a · a person step · Waiting 1\u00a0h",
     );
     expect(meta?.className).toContain("line-clamp-2");
   });
