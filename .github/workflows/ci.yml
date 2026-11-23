@@ -2564,6 +2564,15 @@ jobs:
           # Per user: the uninstall entry is in HKCU, none in HKLM.
           if (-not (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic')) { throw 'No uninstall entry for the current user' }
           if (Test-Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic') { throw 'The install wrote a machine-wide uninstall entry' }
+          # Installed apps must show the name and exactly the app's version:
+          # winget compares DisplayVersion with the manifest's version and
+          # would offer the update forever (HAL-1457). The winget manifest
+          # (infra/winget) names the same three values.
+          $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic'
+          Write-Output "Installed apps: $($entry.DisplayName) $($entry.DisplayVersion) by $($entry.Publisher)"
+          if ($entry.DisplayName -cne 'Halonic') { throw "Installed apps names it '$($entry.DisplayName)'" }
+          if ($entry.DisplayVersion -cne $version) { throw "Installed apps says version '$($entry.DisplayVersion)', the app is $version" }
+          if ($entry.Publisher -cne 'halonic') { throw "Installed apps names the publisher '$($entry.Publisher)'; change infra/winget to match" }
           # The size line on page 1 says about SIZE_MB MB: it must be within a quarter.
           $said = [int]((Select-String -Path apps/studio/src-tauri/windows/installer.nsi -Pattern '^!define SIZE_MB (\d+)').Matches[0].Groups[1].Value)
           $real = [math]::Round(((Get-ChildItem $dir -Recurse -File | Measure-Object Length -Sum).Sum) / 1MB)
