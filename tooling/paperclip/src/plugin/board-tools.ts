@@ -17,6 +17,7 @@ import {
   staleMinutes,
   trendHours,
 } from "../board-check/merge-speed.ts";
+import { pileLine, readPiles } from "../board-check/piles.ts";
 import { readBoardCheckSettings } from "../board-check/settings.ts";
 import { readWaitingRecord, waitingLine } from "../board-check/waiting.ts";
 import { loadSnapshot } from "../snapshot/store.ts";
@@ -146,13 +147,21 @@ async function failedRuns(ctx: BoardToolsApi, companyId: string, since: Date): P
     return `- ${names.get(agentId) ?? agentId}: ${own.length} (${causes})${tasks.length > 0 ? ` on ${tasks.join(", ")}` : ""}`;
   });
   const counting = record.since ?? "no failed run seen yet";
+  const piles = readPiles(await ctx.state.get(stateKey(companyId, "piles")));
+  const pileText = pileLine(piles.piles, names);
   return {
     content: [
       `Failed and timed-out runs since ${since.toISOString()}: ${runs.length}. Counting since ${counting}; runs that failed while the plugin was down are missing.`,
       ...lines,
+      ...(pileText === undefined
+        ? []
+        : [
+            `Queued piles at ${piles.at}${piles.partial ? " (some tasks not read)" : ""}: ${pileText}.`,
+          ]),
     ].join("\n"),
     data: {
       countingSince: record.since,
+      piles: { at: piles.at, partial: piles.partial, piles: piles.piles },
       runs: runs.map((run) => ({
         ...run,
         task: run.taskId === null ? null : identifiers.get(run.taskId),

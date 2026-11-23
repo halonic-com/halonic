@@ -15,6 +15,8 @@ export interface FakeTask {
   readonly blocks?: readonly string[];
   /** Pending board cards, for a task listed without review attention. */
   readonly pendingCards?: number;
+  /** The task's queued and running runs; the listing shows the first as its active run. */
+  readonly runs?: readonly { id: string; agentId: string; status: string }[];
 }
 
 /** A comment as the fake host stores it. */
@@ -78,8 +80,12 @@ function fakeIssues(
     list: async (input: { status: string; offset: number; limit: number }) =>
       options.tasks
         .filter((task) => task.status === input.status)
-        .slice(input.offset, input.offset + input.limit),
+        .slice(input.offset, input.offset + input.limit)
+        .map((task) => ({ ...task, activeRun: task.runs?.[0] ?? null })),
     get: async (id: string) => options.tasks.find((task) => task.id === id) ?? null,
+    getSubtree: async (id: string) => ({
+      activeRuns: { [id]: options.tasks.find((task) => task.id === id)?.runs ?? [] },
+    }),
     listInteractions: async (id: string) =>
       Array.from(
         { length: options.tasks.find((task) => task.id === id)?.pendingCards ?? 0 },
@@ -133,6 +139,7 @@ export function fakeBoardContext(options: {
       "get",
       "listComments",
       "listInteractions",
+      "getSubtree",
       "relations",
       "createComment",
       "requestWakeup",

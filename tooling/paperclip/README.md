@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`
 
 ## PR watcher
 
@@ -243,9 +243,9 @@ To roll back, remove the volume line and recreate the container.
 The Board Checker's checks as the `board-check` job, without a model
 (phase 1b, HAL-16194; the Board Checker addendum on HAL-15997). It spots
 board asks, keeps failed runs, lists the tasks waiting on the board and
-the team load, lists new approvals and follows merge speed; queued run
-piles follow. Each job pass lists the open
-tasks once and every part reads that one listing.
+the team load, lists new approvals, follows merge speed and spots queued
+run piles. Each job pass lists the open tasks once and every part reads
+that one listing.
 
 **Board asks.** An agent's comment from the last 12 minutes that matches
 the Board Checker's pattern (`sv.cjs`: "for the board", "board's yes",
@@ -311,6 +311,15 @@ wakes the task of a run without a GitHub identity, once per task, with the
 wakes the ceiling leaves after a board ask's; the rest wait for the next
 pass. New spend-limit failures get one line on the Seat Supervisor's task
 (setting `seatSupervisorTask`).
+
+**Queued run piles (part a).** On the first pass of each hour it reads,
+through `issue.subtree.read`, the queued and running runs of each open task
+the listing shows with an active run (at most 60 tasks a pass), and counts
+each agent's queued runs. An agent with 5 or more gets one line on the
+Board Checker's task, naming every pile and its count; it is named again
+only after its queue dropped under 5. A line only logged while writes are
+off doesn't count, so the pile is named once writes are on. `failed_runs`
+adds the last count as one line.
 
 **Tools.** `board_asks(since?)` lists the asks since an ISO time (24 hours
 by default) with their links and whether the board or the Board Checker has
