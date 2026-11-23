@@ -148,6 +148,7 @@ function ComputerBody({
           <ReachingLine
             computer={computer.name}
             since={reach.since}
+            heldAt={reach.heldAt}
             onSomethingWrong={() => router.openCheck()}
           />
         )}

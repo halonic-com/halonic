@@ -21,20 +21,25 @@ export const linkRowClasses = [
  * waiting line, "Reaching Tim's laptop…" with the seconds, why it can take a moment from 10
  * seconds, and then Something wrong? as a 48px row. The row's room is kept from the start, so its
  * coming moves nothing; until then it is hidden, so neither Tab nor a screen reader finds it.
+ * While the wait holds, the seconds stand still at `heldAt`, so they don't jump back when it
+ * goes on.
  */
 export function ReachingLine({
   computer,
   since,
+  heldAt,
   onSomethingWrong,
 }: {
   /** The computer's own name: "Tim's laptop". */
   readonly computer: string;
   /** When this reach started. */
   readonly since: Date;
+  /** When the wait stopped counting, while it holds (the tunnel is closed or the app away). */
+  readonly heldAt?: Date | undefined;
   /** Opens Check this connection. */
   readonly onSomethingWrong: () => void;
 }) {
-  const waitedMs = useWaitedMs(since);
+  const waitedMs = useWaitedMs(since, () => heldAt ?? new Date());
   const late = waitedMs >= WAITING_REASON_AFTER_MS;
   return (
     <div className="flex w-full max-w-empty flex-col items-center gap-2">
