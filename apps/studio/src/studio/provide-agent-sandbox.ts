@@ -15,6 +15,7 @@ import {
   SandboxChoiceHostService,
 } from "@halonicjs/studio-feature-settings/api";
 import { type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
+import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { observedSandboxStartCheck } from "./observed-sandbox-start-check.ts";
 import { elevateHelperOf } from "./sandbox-elevate-shell.ts";
@@ -22,21 +23,25 @@ import { wslSetupOf } from "./sandbox-wsl-setup-shell.ts";
 import { wslBackupOf } from "./wsl-backup-shell.ts";
 
 /**
- * Whether this build offers Settings › Agent sandbox's setup, repair and removal. D44 is still with
- * the board and the answer for 0.1 is (c): no, so the section reads Not available (HAL-1444,
- * 1.1). Set it to `true` when the board says (a); nothing else changes.
+ * Whether Studio on this operating system offers Settings › Agent sandbox's setup, repair and
+ * removal. The board said yes to D44 for Windows only (HAL-16772, 23 Nov), so on macOS and Linux
+ * the section still reads Not available (HAL-1444, 1.1).
  */
-export const agentSandboxOffered = false;
+export function agentSandboxOffered(platform: KeyboardPlatform): boolean {
+  return platform === "windows";
+}
 
 /**
- * Gives the section the agent host's sandbox through the shell, when the build offers it and the
- * shell has an agent host. Without it the section reads Not available. On Windows with the host in
- * Halonic's WSL distro, **Set up** runs the WSL setup through the shell (HAL-16765).
+ * Gives the section the agent host's sandbox through the shell, when Studio offers it on this
+ * `platform` and the shell has an agent host. Without it the section reads Not available. On
+ * Windows with the host in Halonic's WSL distro, **Set up** runs the WSL setup through the shell
+ * (HAL-16765).
  */
 export async function provideAgentSandbox(
   services: ServiceRegistry,
   window: object,
   ipc: TauriIpc | undefined,
+  platform: KeyboardPlatform,
 ): Promise<void> {
   const transport = tauriAgentHostTransport(window);
   if (transport === undefined) return;
@@ -51,7 +56,7 @@ export async function provideAgentSandbox(
   // until the real canary lands (HAL-10552, UX W3); until then every trust check fails closed.
   const saveChoice = transport.saveSandboxChoice.bind(transport);
   services.provide(SandboxChoiceHostService, new AgentHostSandboxChoice(transport, saveChoice));
-  if (agentSandboxOffered)
+  if (agentSandboxOffered(platform))
     services.provide(
       AgentSandboxService,
       new AgentHostSandboxFacts(

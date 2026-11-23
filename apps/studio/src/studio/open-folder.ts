@@ -116,7 +116,7 @@ export async function openFolder(
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
-  await provideAgentSandbox(services, window, ipc);
+  await provideAgentSandbox(services, window, ipc, device.platform ?? "linux");
   provideRemoteControl(services, tauriAgentHostTransport(window));
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
