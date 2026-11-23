@@ -140,9 +140,11 @@ export async function createRuntime(
   const records = new D1RecordStore(env.DB);
   const runs = new D1RunList(env.DB);
   const definitions = definitionsOf(env, scope);
+  // Every run object of the scope is named under this prefix; empty when unscoped.
+  const namePrefix = scope === undefined ? "" : scopedKeyPrefix(scope);
   const scheduler = new DurableScheduler({
     namespace: env.RUN,
-    namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope),
+    namePrefix,
   });
   return {
     clock,
@@ -152,11 +154,11 @@ export async function createRuntime(
     runStore: new DurableRunStore({
       namespace: env.RUN,
       runList: runs,
-      namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope),
+      namePrefix,
     }),
     runEvents: new DurableRunEvents({
       namespace: env.RUN,
-      namePrefix: scope === undefined ? "" : scopedKeyPrefix(scope),
+      namePrefix,
     }),
     blobs: new R2BlobStore(env.BLOBS, scope === undefined ? undefined : scopedKeyPrefix(scope)),
     definitions,
