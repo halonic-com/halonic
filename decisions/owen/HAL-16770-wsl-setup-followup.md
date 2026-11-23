@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16770 (Liam's [minor] in the code review of #5413, Julian's findings in the security review on HAL-16821); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:D9Hx9ZNFrYM7xTPhJhYLNDl0fwS9nMp6hvpPKoSZiD/XeZPl/Dg1AiAUXLbVhBwkVyF5FFXF/sYdhVGQmfKkDA==
 
 The requirement for `--wsl-setup` landed with #5413 and isn't in a release yet. The reviews asked for three changes to it:
 
