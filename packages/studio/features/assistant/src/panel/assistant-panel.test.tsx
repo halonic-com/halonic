@@ -14,9 +14,13 @@ afterEach(() => {
 
 const routine = chatOf("c1", [{ role: "user", content: "Add a routine" }], "Add a routine");
 
-function panel(fake: ReturnType<typeof fakeHost>, announce = vi.fn()) {
+function panel(
+  fake: ReturnType<typeof fakeHost>,
+  announce = vi.fn(),
+  shownTitle?: WorkspaceContext["shownTitle"],
+) {
   const services = { get: () => fake.host, find: () => fake.host };
-  const context = { services, announcer: { announce } } as unknown as WorkspaceContext;
+  const context = { services, announcer: { announce }, shownTitle } as unknown as WorkspaceContext;
   return <AssistantPanel context={context} title="Assistant" onClose={() => {}} />;
 }
 
@@ -170,6 +174,50 @@ verifies("assistant.chat.stop", () => {
   it("ends a chat that was answering as Halonic closed with its line", async () => {
     const page = await show(panel(fakeHost([{ ...routine, stoppedWhenClosed: true }])));
     expect(page.textContent).toContain("Stopped when Halonic closed.");
+  });
+});
+
+/** A window's page name that the test changes, as a tab switch does. */
+function shownTitleOf(first: string) {
+  let title = first;
+  const listeners = new Set<() => void>();
+  const source = {
+    get: () => title,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  const show = (next: string) => {
+    title = next;
+    act(() => {
+      for (const listener of listeners) listener();
+    });
+  };
+  return { source, show };
+}
+
+verifies("assistant.chat.looking-at", () => {
+  it("says which page the window shows while it waits, following the active tab", async () => {
+    const shownTitle = shownTitleOf("Support triage");
+    const page = await show(panel(fakeHost([routine]), vi.fn(), shownTitle.source));
+    expect(status(page)).toBe("Looking at: Support triage");
+    shownTitle.show("Changes");
+    expect(status(page)).toBe("Looking at: Changes");
+  });
+
+  it("gives way to Running while it answers, and comes back when the answer ends", async () => {
+    const fake = fakeHost();
+    const page = await show(panel(fake, vi.fn(), shownTitleOf("Home").source));
+    await sendMessage(page, "Add a routine");
+    expect(status(page)).toBe("Running · thinking");
+    await fake.finish({ messages: [], end: { reason: "answered" } });
+    expect(status(page)).toBe("Looking at: Home");
+  });
+
+  it("says nothing of a page in a window without tabs", async () => {
+    const page = await show(panel(fakeHost([routine])));
+    expect(status(page)).toBe("");
   });
 });
 
