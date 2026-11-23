@@ -1,8 +1,20 @@
 export type { CloudflareRest, CloudflareRestOptions } from "./cloudflare-rest.ts";
 export { createCloudflareRest } from "./cloudflare-rest.ts";
 export type { DeployedFixture, FixtureOptions } from "./fixture.ts";
-export { deployWebhookFixture, fixtureAddress, fixtureWorkerName } from "./fixture.ts";
-export { liveWebhookTarget, targetVariables } from "./live-target.ts";
+export {
+  deployWebhookFixture,
+  fixtureAddress,
+  fixtureRunWorkflow,
+  fixtureWorkerName,
+} from "./fixture.ts";
+export {
+  liveRunTarget,
+  liveWebhookTarget,
+  runTargetVariables,
+  targetVariables,
+} from "./live-target.ts";
+export type { RunStart, RunTarget, StreamedEvent } from "./run-checks.ts";
+export { readRunEvents, runChecks, signIn, startRun } from "./run-checks.ts";
 export type { RoundTripOptions, RoundTripResult } from "./transfer-checks.ts";
 export { readAsNode, roundTrip, workerChecks } from "./transfer-checks.ts";
 export type {

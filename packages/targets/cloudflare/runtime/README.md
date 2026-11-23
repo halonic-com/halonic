@@ -32,7 +32,8 @@ A deployment that lacks a binding, a secret or one of the first two variables, o
 except `/health` with 503 and a fixed body; the names of what is missing go to the Worker's log only.
 The client's address is `CF-Connecting-IP`. The workspace is trusted, since the deployer uploaded it.
 A run starts from the snapshot's run-definitions index (`run-definitions.index.json`, also written by
-`halonic deploy`); the run objects don't move a run past its first step yet, and an agent run answers 501.
+`halonic deploy`), and the run object's alarm moves it on one step per timer until it ends. An agent
+run answers 501, as on `halonic serve`.
 A webhook finds its routine in the
 snapshot's routine index (`routines.index.json`, written by `halonic deploy` from the same workspace
 as the files, so the Worker reads no YAML) at every delivery and gets the same checks as on the Node host, so a signed delivery for a

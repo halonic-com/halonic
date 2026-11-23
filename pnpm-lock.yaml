@@ -4445,6 +4445,9 @@ importers:
       '@halonicjs/adapter-cloudflare-storage':
         specifier: workspace:*
         version: link:../../adapters/cloudflare-storage
+      '@halonicjs/adapter-password-pbkdf2':
+        specifier: workspace:*
+        version: link:../../adapters/password-pbkdf2
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format

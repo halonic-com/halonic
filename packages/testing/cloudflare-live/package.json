@@ -14,6 +14,7 @@
   },
   "devDependencies": {
     "@halonicjs/adapter-cloudflare-storage": "workspace:*",
+    "@halonicjs/adapter-password-pbkdf2": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/target-cloudflare-deploy": "workspace:*",

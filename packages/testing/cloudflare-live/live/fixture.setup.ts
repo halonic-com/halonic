@@ -16,7 +16,7 @@ function required(name: string): string {
 
 /**
  * Deploys the Worker the live suites call and tears it down at the end, in the CI account. A run
- * that already names a Worker (all three `HALONIC_LIVE_*` variables set) calls that one instead.
+ * that already names a Worker (the three webhook `HALONIC_LIVE_*` variables set) calls that one instead.
  */
 // biome-ignore lint/style/noDefaultExport: Vitest reads globalSetup from the default export.
 export default async function setup(): Promise<() => Promise<void>> {
@@ -36,6 +36,7 @@ export default async function setup(): Promise<() => Promise<void>> {
   // GitHub Actions hides a registered value from the log.
   if (process.env["GITHUB_ACTIONS"] === "true") {
     console.log(`::add-mask::${fixture.env.HALONIC_LIVE_WEBHOOK_SECRET}`);
+    console.log(`::add-mask::${fixture.env.HALONIC_LIVE_PASSWORD}`);
   }
   Object.assign(process.env, fixture.env);
   return () => fixture.destroy();
