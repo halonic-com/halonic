@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-A folder whose `.git` file can't be read is now refused with the usual reason and fix, instead of the read error.
+When Halonic refuses a folder that keeps its git files outside it, a `.git` file it can't read no longer replaces that refusal with the read error.
