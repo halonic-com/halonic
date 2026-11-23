@@ -2,6 +2,7 @@
 
 - Approval: words check C744 row 12 (HAL-16686) and finding C757 (HAL-16749), a team decision on an approved screen under HAL-2282; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9VIiHmbw8mY4eC+ozpjDfyNcA9hqVMm7U4BtBoYniyS+AZruMETw4s1HM6gqnltdutYe10ljFtgP+xtVHAwwAg==
 
 ## What changes
 
