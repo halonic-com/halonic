@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-14217, option 1 of Owen's plan, which Liam approved there on 23 Nov; Liam reviews the PR and signs this note there
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:d+a+ukuYSN5AnEcj/alE30Evw9SvCWz7Owt5K1zjZTQcbwJsyTr0oVVZPUoXV5Dm10X+vfNLzPGJc5dnSVtRBA==
 
 The host-free engine of one workspace (`openLocalEngine`, its run connectors and the agents'
 working folders) moves unchanged from `apps/cli/src` to the new package
