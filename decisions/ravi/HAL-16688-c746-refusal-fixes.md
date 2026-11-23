@@ -28,7 +28,7 @@ that can't be found:
 > fix "Open the repository's own folder, with its .git folder inside it, or clone the repository
 > into a folder of its own.", since `halonic run` starts no single agent.
 
-and an example for it. `page-versions.test.ts` keeps #5368's sentence and fix, and still checks
+and an example for it. `page-versions.test.ts` stays as #5368 left it, and still checks
 that the folder is refused, not read as history off. The worktree changeset now names the command.
 
 **C746 row 2.** Every screen's lead already says the run didn't start, and a cancel or an answer
@@ -49,4 +49,3 @@ goes, and none is skipped.
 
 - studio.engine-service
 - apps/studio/src/engine/engine-service-saved-local-only.test.ts
-- apps/studio/src/engine/page-versions.test.ts
