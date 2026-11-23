@@ -85,6 +85,7 @@ export async function withDeployLock<T>(
       lost = new DeployError(
         "deploy-lock-lost",
         "Another deploy took over while this one was running, so this one stopped.",
+        { fix: "Run halonic deploy again once the other deploy has finished." },
       );
       throw lost;
     }
@@ -128,7 +129,13 @@ export async function withDeployLock<T>(
 
 function toLost(error: unknown): DeployError {
   const reason = error instanceof Error ? error.message : "unknown error";
-  return new DeployError("deploy-lock-lost", `This deploy lost its hold, so it stopped: ${reason}`);
+  return new DeployError(
+    "deploy-lock-lost",
+    `This deploy lost its hold, so it stopped: ${reason}`,
+    {
+      fix: "Run halonic deploy again.",
+    },
+  );
 }
 
 function intervalSchedule(run: () => void, ms: number): () => void {

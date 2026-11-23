@@ -273,6 +273,7 @@ const sentenceOpeners = new Set([
   "Its",
   "A",
   "An",
+  "Another",
   "No",
   "Nothing",
 ]);

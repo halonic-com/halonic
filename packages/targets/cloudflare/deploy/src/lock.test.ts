@@ -92,6 +92,9 @@ verifies("deploy.lock", () => {
       await lock.renew();
     }).catch((e: unknown) => e);
     expect((error as DeployError).code).toBe("deploy-lock-lost");
+    expect((error as DeployError).fix).toBe(
+      "Run halonic deploy again once the other deploy has finished.",
+    );
     // Releasing with our id must not free the other deploy's lease.
     const again = await api.takeDeployLock("a1", "halonic-dev-data", {
       ...other,
@@ -163,6 +166,7 @@ verifies("deploy.lock", () => {
       await lock.renew();
     }).catch((e: unknown) => e);
     expect((error as DeployError).code).toBe("deploy-lock-lost");
+    expect((error as DeployError).fix).toBe("Run halonic deploy again.");
   });
 
   it("decides expiry by the database's clock, not the deploying machine's", async () => {

@@ -55,7 +55,7 @@ export function toDeployFailure(error: unknown): DeployFailure {
     );
   }
   const [code, kind] = portCodes[error.code];
-  return failure(code, kind, error.message, error);
+  return Object.assign(failure(code, kind, error.message, error), { fix: error.fix });
 }
 
 /** The holder a second deploy is shown, from the stored lease or the error that names it. */

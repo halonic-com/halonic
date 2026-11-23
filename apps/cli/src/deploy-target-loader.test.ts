@@ -67,6 +67,8 @@ verifies("cli.deploy-target-loader", () => {
         "Deploying to Cloudflare needs the package @halonicjs/target-cloudflare-deploy, and it isn't installed. Nothing changed on Cloudflare.",
       fix: "Install it next to halonic with npm install -g @halonicjs/target-cloudflare-deploy, then run again.",
     });
+    const hyphenated = await failureOf(loadDeployTarget("foo-bar", context, importPackage));
+    expect(hyphenated.message).toMatch(/^Deploying to Foo Bar needs the package /);
   });
 
   it("keeps the error of a package that is installed but can't load what it imports", async () => {

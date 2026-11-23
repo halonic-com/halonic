@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-6702; the `deployTarget` design (section 3, step 6) on HAL-6702; deploy flow C4 (HAL-6687)
 
-When a deploy has uploaded a version and it serves, the target shall keep that version's record in the deployment's definitions bucket, under the version's id: the snapshot's full commit, its Halonic version and every address it reaches, each with the secret it sends there. A record that can't be written shall not fail a deploy whose version serves. `plan`, `status` and `rollback` shall read the commit and the Halonic version of a version from its record; a version without a record, or with one that doesn't fit this shape, shall count as having none, so its Halonic version and what it reaches are unknown.
+When a deploy has uploaded a version and it serves, the target shall keep that version's record in the deployment's definitions bucket, under the version's id: the snapshot's full commit, its Halonic version and every address it reaches, each with the secret it sends there. A record that can't be written shall not fail a deploy whose version serves. `plan`, `status` and `rollback` shall read the commit and the Halonic version of a version from its record; a version without a record, or with one that doesn't fit this shape, shall count as having none, so its Halonic version and what it reaches are unknown. A record that R2 refuses to read, with an answer other than the record or none, shall fail `plan`, `status` and `rollback` rather than count as none, so they never guess.
 
 Rationale: Cloudflare keeps only 100 characters of a version's note, already used by the commit and the bundle hash, so the Halonic version and the reaches need a place of their own; keyed by version, a rollback finds the record of the version it brings back.
 
@@ -14,3 +14,4 @@ Rationale: Cloudflare keeps only 100 characters of a version's note, already use
 - Given the record write is refused, when the deploy's version serves, then the deploy still ends as deployed.
 - Given version B serves with a record of Halonic 0.2.0, when `status` is called, then `live` gives Halonic 0.2.0 and the record's full commit.
 - Given version B's record isn't JSON, when `plan` is called, then B's Halonic version and reaches are unknown.
+- Given R2 refuses to read version B's record, when `status`, `plan` or `rollback` is called, then each fails.

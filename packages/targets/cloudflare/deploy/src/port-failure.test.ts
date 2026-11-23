@@ -36,6 +36,16 @@ verifies("deploy.port-failure", () => {
       expect(failure).toMatchObject({ code, kind, message: "Nothing changed on Cloudflare." });
     });
 
+    it("passes on the fix of the target's own error", () => {
+      const error = new DeployError("deploy-lock-lost", "Another deploy took over.", {
+        fix: "Run halonic deploy again once the other deploy has finished.",
+      });
+      expect(toDeployFailure(error)).toMatchObject({
+        code: "deploy-locked",
+        fix: "Run halonic deploy again once the other deploy has finished.",
+      });
+    });
+
     it("hides the message of an error that isn't the target's own", () => {
       const failure = toDeployFailure(new TypeError('response {"token":"abc"}'));
       expect(failure).toMatchObject({ code: "unexpected", kind: "internal" });

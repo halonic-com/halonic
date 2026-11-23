@@ -11,8 +11,9 @@ import { loadDeployTarget } from "./deploy-target-loader.ts";
 // file is the loader's `scriptsTest` in `tooling/check/process-starters.json`.
 // `deploy-target-loader.ts` loads one module with `import()`: the package
 // `@halonicjs/target-<host>-deploy`, where the host must be lowercase letters
-// and digits, with single hyphens between parts. So the name is always a bare package name, resolved from the CLI's
-// own packages, never a path, and loading a module starts no process.
+// and digits, with single hyphens between parts. So the name is always a bare
+// package name, resolved from the CLI's own packages, never a path, and
+// loading a module starts no process.
 
 const folders: string[] = [];
 afterAll(() => Promise.all(folders.map((folder) => rm(folder, { recursive: true, force: true }))));

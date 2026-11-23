@@ -98,9 +98,15 @@ export async function loadDeployTarget(
   return target as DeployTarget;
 }
 
-/** "Cloudflare" for "cloudflare": the host as its dashboard and bill name it. */
+/**
+ * "Cloudflare" for "cloudflare", "Foo Bar" for "foo-bar": the host as its
+ * dashboard and bill name it, never with the package name's hyphens.
+ */
 function hostName(host: string): string {
-  return host.charAt(0).toUpperCase() + host.slice(1);
+  return host
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function unusable(pkg: string, reason: string): KindedError {
