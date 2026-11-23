@@ -206,6 +206,34 @@ verifies("format.deployments-users", () => {
     ]);
   });
 
+  it("refuses a pool limit and a member's limit given twice on one unit and period", () => {
+    const text = organisation(
+      "limits:",
+      "  - { unit: cost, amount: 100, period: month }",
+      "  - { unit: cost, amount: 10, period: day }",
+      "  - { unit: cost, amount: 80, period: month }",
+      "members:",
+      `  - actor: ${ANNA}`,
+      "    role: owner",
+      "    limits:",
+      "      - { unit: cost, amount: 50, period: month }",
+      "      - { unit: cost, amount: 60, period: month }",
+    );
+    const organisationPath = ["deployments", "web", "users", "config", "organisations", 0];
+    expect(problemsOf("deployments", text)).toEqual([
+      expect.objectContaining({
+        code: "users-limit-repeated",
+        path: [...organisationPath, "limits", 2],
+        message: `Organisation "${ORG}" already has a limit on cost per month`,
+      }),
+      expect.objectContaining({
+        code: "users-limit-repeated",
+        path: [...organisationPath, "members", 0, "limits", 1],
+        message: `Member "${ANNA}" already has a limit on cost per month`,
+      }),
+    ]);
+  });
+
   it("refuses a member's concurrency above the organisation's, and allows it when either is unset", () => {
     const text = (organisationLine: string) =>
       organisation(organisationLine, `members: [{ actor: ${ANNA}, role: owner, concurrency: 5 }]`);
