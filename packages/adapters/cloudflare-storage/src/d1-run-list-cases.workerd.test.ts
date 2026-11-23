@@ -78,6 +78,34 @@ describe("D1RunList", () => {
     expect(await ownList().list()).toEqual([]);
   });
 
+  it("keeps scopes that start with one another apart", async () => {
+    const id = crypto.randomUUID();
+    const shorter = new D1RunList(env.DB, { scope: `u/eu_${id}` });
+    const longer = new D1RunList(env.DB, { scope: `u/eu_${id}b` });
+    await shorter.publish(summaryOf("r1", 1), 2);
+    expect(await longer.list()).toEqual([]);
+    await longer.publish(summaryOf("r1", 3), 4);
+    expect((await shorter.list())[0]?.statesVisited).toHaveLength(1);
+  });
+
+  it("says the user started a run listed under the user's scope, and keeps every run private", async () => {
+    const id = crypto.randomUUID();
+    const scopes = [`u/eu_${id}`, `o/org_${id}`, `case-${id}`];
+    for (const scope of scopes) {
+      await new D1RunList(env.DB, { scope }).publish(summaryOf("r1", 1), 2);
+    }
+    const { results } = await env.DB.prepare(
+      "SELECT scope, started_by, visibility FROM run_list WHERE scope IN (?, ?, ?) ORDER BY scope",
+    )
+      .bind(...scopes)
+      .all();
+    expect(results).toEqual([
+      { scope: `case-${id}`, started_by: "", visibility: "private" },
+      { scope: `o/org_${id}`, started_by: "", visibility: "private" },
+      { scope: `u/eu_${id}`, started_by: `eu_${id}`, visibility: "private" },
+    ]);
+  });
+
   it("takes a hostile filter value as a value, and leaves the table alone", async () => {
     const list = ownList();
     await list.publish(summaryOf("r1", 1), 2);

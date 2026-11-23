@@ -24,7 +24,7 @@ const inCollection = (collection: string, id: string): RecordChange => ({
 
 describe("collections", () => {
   it("names every collection that has a change, in order, once", async () => {
-    const store = new D1RecordStore(env.DB);
+    const store = new D1RecordStore(env.DB, { scope: "" });
     expect(await store.collections()).toEqual([]);
 
     await store.append([

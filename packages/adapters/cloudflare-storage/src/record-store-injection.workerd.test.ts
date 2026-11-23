@@ -42,23 +42,42 @@ const payloads = [
 ];
 
 /** Names of tables the store uses, which a caller might hope to reach through a collection name. */
-const tableNames = ["record_changes", "record_compactions", "sqlite_master", "schema_migrations"];
+const tableNames = [
+  "record_changes",
+  "record_compactions",
+  "record_compactions_scoped",
+  "sqlite_master",
+  "schema_migrations",
+];
 
 const hostile = [...payloads, ...tableNames];
 
-/** Every statement the store (and the migration runner) may send, and no other. */
-const knownStatements = new Set([
+/** The scope the cases' stores work in. */
+const caseScope = "u/eu_acme0000000000000000";
+
+/** What the migration runner sends: the package's own SQL, with no value of the store's in it. */
+const migrationStatements = new Set([
   ...migrations.flatMap((migration) => migration.statements),
   "CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "SELECT id FROM schema_migrations",
   "INSERT INTO schema_migrations (id) VALUES (?)",
-  `INSERT INTO record_changes (collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?)`,
-  `INSERT INTO record_changes (seq, collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?, NULL)`,
-  `SELECT seq, collection, id, at, op, "values", by FROM record_changes WHERE collection = ? ORDER BY seq`,
-  "SELECT COALESCE(MAX(version), 0) AS version FROM record_compactions WHERE collection = ?",
-  "INSERT INTO record_compactions (collection, version) VALUES (?, ?)",
-  "DELETE FROM record_changes WHERE collection = ? AND seq <= ?",
 ]);
+
+/**
+ * Every statement the store itself may send, and no other. Each one names the scope, and binds it
+ * as its first value, so none can read or change another scope's rows.
+ */
+const storeStatements = new Set([
+  `INSERT INTO record_changes (scope, collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  `INSERT INTO record_changes (scope, seq, collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+  `SELECT seq, collection, id, at, op, "values", by FROM record_changes WHERE scope = ? AND collection = ? ORDER BY seq`,
+  "SELECT DISTINCT collection FROM record_changes WHERE scope = ? ORDER BY collection",
+  "SELECT COALESCE(MAX(version), 0) AS version FROM record_compactions_scoped WHERE scope = ? AND collection = ?",
+  "INSERT INTO record_compactions_scoped (scope, collection, version) VALUES (?, ?, ?)",
+  "DELETE FROM record_changes WHERE scope = ? AND collection = ? AND seq <= ?",
+]);
+
+const knownStatements = new Set([...migrationStatements, ...storeStatements]);
 
 /** A statement the store prepared, and the values it bound to it (none, if it never bound any). */
 interface Sent {
@@ -101,19 +120,26 @@ function watching(db: D1Database): { db: SqlDatabase; sent: Sent[] } {
 
 const placeholders = (sql: string): number => sql.split("?").length - 1;
 
-/** What every case checks last: only known statements, and exactly one value per `?`. */
-function expectOnlyKnownStatements(sent: Sent[]): void {
+/**
+ * What every case checks last: only known statements, exactly one value per `?`, and every
+ * statement of the store's own names the scope and binds the store's scope first.
+ */
+function expectOnlyKnownStatements(sent: Sent[], scope = caseScope): void {
   for (const { sql, values } of sent) {
     expect(knownStatements.has(sql), `unknown statement: ${sql.slice(0, 120)}`).toBe(true);
     expect(values.length, sql).toBe(placeholders(sql));
+    if (storeStatements.has(sql)) {
+      expect(/\bscope\b/.test(sql), `unscoped statement: ${sql.slice(0, 120)}`).toBe(true);
+      expect(values[0], sql).toBe(scope);
+    }
   }
 }
 
-/** The values bound to the statements that start with `prefix`. */
+/** The values bound to the statements that start with `prefix`, after the scope. */
 const boundTo = (sent: Sent[], prefix: string): unknown[][] =>
-  sent.filter(({ sql }) => sql.startsWith(prefix)).map(({ values }) => values);
+  sent.filter(({ sql }) => sql.startsWith(prefix)).map(({ values }) => values.slice(1));
 
-const appended = (sent: Sent[]) => boundTo(sent, "INSERT INTO record_changes (collection");
+const appended = (sent: Sent[]) => boundTo(sent, "INSERT INTO record_changes (scope, collection");
 
 /**
  * The text is in no statement, neither as it is nor as a quote-doubling escape would leave it.
@@ -152,7 +178,7 @@ const change = (collection: string, overrides: Partial<RecordChange> = {}): Reco
 /** A store over the real database that records what it sends, with a bystander collection in it. */
 async function setup() {
   const { db, sent } = watching(env.DB);
-  const store = new D1RecordStore(db);
+  const store = new D1RecordStore(db, { scope: caseScope });
   const bystander = change(uniqueCollection("leads"));
   await store.append([bystander]);
   return { store, sent, bystander, schemaBefore: await schema(env.DB) };
@@ -305,11 +331,31 @@ describe("hostile text in the D1 record store", () => {
     expectOnlyKnownStatements(sent);
   });
 
+  it("binds a hostile scope, and reaches no other scope's rows", async () => {
+    const { store, bystander, schemaBefore } = await setup();
+    const before = await rows(env.DB);
+
+    for (const scope of [...payloads.slice(0, 8), "%", "_", "", "u/", caseScope.toUpperCase()]) {
+      const { db, sent } = watching(env.DB);
+      const other = new D1RecordStore(db, { scope });
+      expect(await other.changes(bystander.collection), JSON.stringify(scope)).toEqual([]);
+      expect(await other.collections()).not.toContain(bystander.collection);
+      await other.compact(bystander.collection);
+      expectInNoStatement(sent, scope);
+      expectOnlyKnownStatements(sent, scope);
+    }
+
+    expect(await store.changes(bystander.collection)).toEqual([bystander]);
+    expect(await rows(env.DB)).toEqual(before);
+    expect(await schema(env.DB), "the tables").toEqual(schemaBefore);
+  });
+
   it("sends only the statements it is known to send", async () => {
     const { store, sent } = await setup();
     const collection = uniqueCollection("notes");
     await store.append([change(collection), change(collection, { op: "update" })]);
     await store.changes(collection);
+    await store.collections();
     await store.compact(collection);
 
     const distinct = new Set(sent.map(({ sql }) => sql));

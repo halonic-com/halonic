@@ -3,11 +3,7 @@
 import { env } from "cloudflare:workers";
 import { createTokenStore, tokenKeySecret } from "@halonicjs/adapter-token-store";
 import { encodeBase64url } from "@halonicjs/std";
-import {
-  recordStoreContract,
-  scopedRecordStore,
-  tokenStoreContract,
-} from "@halonicjs/testing-contracts";
+import { recordStoreContract, tokenStoreContract } from "@halonicjs/testing-contracts";
 import { D1RecordStore } from "./d1-record-store.ts";
 
 declare global {
@@ -19,13 +15,17 @@ declare global {
   }
 }
 
-recordStoreContract("D1", async () => scopedRecordStore(new D1RecordStore(env.DB)));
+/** A store of a scope no other case uses: the cases share one database, and each starts empty. */
+const ownStore = (): D1RecordStore =>
+  new D1RecordStore(env.DB, { scope: `case-${crypto.randomUUID()}` });
+
+recordStoreContract("D1", async () => ownStore());
 
 tokenStoreContract("D1 token store", async () => {
   // One key per case: a key that changed on every read would make every sealed token unreadable.
   const key = encodeBase64url(crypto.getRandomValues(new Uint8Array(32)));
   return createTokenStore({
-    records: scopedRecordStore(new D1RecordStore(env.DB)),
+    records: ownStore(),
     secrets: { get: async (name) => (name === tokenKeySecret ? key : null) },
     clock: { now: () => new Date("2026-11-08T12:00:00.000Z") },
   });

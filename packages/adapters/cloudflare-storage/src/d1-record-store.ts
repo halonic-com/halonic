@@ -13,13 +13,33 @@ interface ChangeRow {
   by: string | null;
 }
 
-const insertChange = `INSERT INTO record_changes (collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?)`;
-const insertSeed = `INSERT INTO record_changes (seq, collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?, NULL)`;
-const claimCompaction = "INSERT INTO record_compactions (collection, version) VALUES (?, ?)";
+const insertChange = `INSERT INTO record_changes (scope, collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+const insertSeed = `INSERT INTO record_changes (scope, seq, collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`;
+const claimCompaction =
+  "INSERT INTO record_compactions_scoped (scope, collection, version) VALUES (?, ?, ?)";
+const deleteCompacted =
+  "DELETE FROM record_changes WHERE scope = ? AND collection = ? AND seq <= ?";
+const selectCollections =
+  "SELECT DISTINCT collection FROM record_changes WHERE scope = ? ORDER BY collection";
+const selectVersion =
+  "SELECT COALESCE(MAX(version), 0) AS version FROM record_compactions_scoped WHERE scope = ? AND collection = ?";
+const selectRows = `SELECT seq, collection, id, at, op, "values", by FROM record_changes WHERE scope = ? AND collection = ? ORDER BY seq`;
+
+/** What a {@link D1RecordStore} is built with. */
+export interface D1RecordStoreOptions {
+  /**
+   * Names the rows this store owns: a user's `u/<id>`, an organisation's `o/<id>`, or the empty
+   * scope of a deployment with no principal. Stores of different scopes share one database and
+   * never see or change each other's rows. It is only ever a bound value, compared whole, so one
+   * scope that starts with another reaches none of its rows.
+   */
+  scope: string;
+}
 
 /**
  * A {@link RecordStore} over a D1 database: every collection's log is rows of one table,
- * `record_changes`, in the order they were appended.
+ * `record_changes`, in the order they were appended, under the store's scope. Every statement
+ * names the scope, so there is no way to read or change another scope's rows through it.
  *
  * The collection name, ids and values are only ever bound parameters, never part of the SQL, so a
  * hostile name is just a string that matches no rows. The table is created by the migrations,
@@ -37,16 +57,21 @@ const claimCompaction = "INSERT INTO record_compactions (collection, version) VA
  * finish while a slow one waits.
  *
  * @example
- * const records = new D1RecordStore(env.DB);
+ * const records = new D1RecordStore(env.DB, { scope: "u/eu_0123456789abcdef" });
  * await records.append([{ at, collection: "leads", id: "1", op: "add", values: { name: "Ada" } }]);
  */
 export class D1RecordStore implements RecordStore {
   readonly #db: SqlDatabase;
+  readonly #scope: string;
   #ready: Promise<void> | undefined;
 
-  /** @param db - the D1 binding from the Worker's `env` */
-  constructor(db: SqlDatabase) {
+  /**
+   * @param db - the D1 binding from the Worker's `env`
+   * @param options - the scope, which every caller names, the deployment's empty one included
+   */
+  constructor(db: SqlDatabase, options: D1RecordStoreOptions) {
     this.#db = db;
+    this.#scope = options.scope;
   }
 
   async append(changes: readonly RecordChange[]): Promise<void> {
@@ -59,6 +84,7 @@ export class D1RecordStore implements RecordStore {
         this.#db
           .prepare(insertChange)
           .bind(
+            this.#scope,
             change.collection,
             change.id,
             change.at,
@@ -74,11 +100,12 @@ export class D1RecordStore implements RecordStore {
     return (await this.#rows(collection)).map(toChange);
   }
 
-  /** The name of every collection that has at least one change, in byte order. */
+  /** The name of every collection of this scope that has at least one change, in byte order. */
   async collections(): Promise<string[]> {
     await this.#migrated();
     const { results } = await this.#db
-      .prepare("SELECT DISTINCT collection FROM record_changes ORDER BY collection")
+      .prepare(selectCollections)
+      .bind(this.#scope)
       .all<{ collection: string }>();
     return results.map((row) => row.collection);
   }
@@ -93,14 +120,13 @@ export class D1RecordStore implements RecordStore {
     }
     const seeds = compactedChanges(collection, rows.map(toChange));
     await this.#db.batch([
-      this.#db.prepare(claimCompaction).bind(collection, version + 1),
-      this.#db
-        .prepare("DELETE FROM record_changes WHERE collection = ? AND seq <= ?")
-        .bind(collection, last.seq),
+      this.#db.prepare(claimCompaction).bind(this.#scope, collection, version + 1),
+      this.#db.prepare(deleteCompacted).bind(this.#scope, collection, last.seq),
       ...seeds.map((seed, index) =>
         this.#db
           .prepare(insertSeed)
           .bind(
+            this.#scope,
             (rows[index] as ChangeRow).seq,
             collection,
             seed.id,
@@ -115,10 +141,8 @@ export class D1RecordStore implements RecordStore {
   async #compactionVersion(collection: string): Promise<number> {
     await this.#migrated();
     const { results } = await this.#db
-      .prepare(
-        "SELECT COALESCE(MAX(version), 0) AS version FROM record_compactions WHERE collection = ?",
-      )
-      .bind(collection)
+      .prepare(selectVersion)
+      .bind(this.#scope, collection)
       .all<{ version: number }>();
     return results[0]?.version ?? 0;
   }
@@ -126,10 +150,8 @@ export class D1RecordStore implements RecordStore {
   async #rows(collection: string): Promise<ChangeRow[]> {
     await this.#migrated();
     const { results } = await this.#db
-      .prepare(
-        `SELECT seq, collection, id, at, op, "values", by FROM record_changes WHERE collection = ? ORDER BY seq`,
-      )
-      .bind(collection)
+      .prepare(selectRows)
+      .bind(this.#scope, collection)
       .all<ChangeRow>();
     return results;
   }

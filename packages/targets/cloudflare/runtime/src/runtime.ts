@@ -49,9 +49,11 @@ export interface Runtime {
 /** How a runtime is built, beyond its `env`. */
 export interface RuntimeOptions {
   /**
-   * Puts the blobs, the snapshots and every Durable Object name under this scope, so a test gets
-   * storage of its own from the bindings it shares. A deployment never sets it. The run objects
-   * are named `scope/` and the run id; the coordination and routines objects `scope` itself.
+   * Puts the records, the run list, the blobs, the snapshots and every Durable Object name under
+   * this scope: a user's `u/<id>` or an organisation's `o/<id>` from the request's principal, or a
+   * test's own, so two scopes on the same bindings share nothing. Without it, the runtime is the
+   * deployment's own. The D1 rows carry the scope itself, under the empty scope without one; the
+   * run objects are named `scope/` and the run id; the coordination and routines objects `scope`.
    */
   scope?: string;
 }
@@ -120,7 +122,7 @@ export async function missingConfiguration(env: Partial<RuntimeEnv>): Promise<st
  * @throws ConfigurationError when a binding or a secret is missing, or `HALONIC_DEFINITIONS_VERSION` is set but malformed; the message names them, never a value
  *
  * @param env - the Worker's bindings and secrets
- * @param options - only a test sets any
+ * @param options - the scope of the request's principal, or of a test
  *
  * @example
  * const runtime = await createRuntime(env);
@@ -137,8 +139,8 @@ export async function createRuntime(
   }
   const clock: Clock = { now: () => new Date() };
   const secrets = workerSecrets(env);
-  const records = new D1RecordStore(env.DB);
-  const runs = new D1RunList(env.DB);
+  const records = new D1RecordStore(env.DB, { scope: scope ?? "" });
+  const runs = new D1RunList(env.DB, { scope: scope ?? "" });
   const definitions = definitionsOf(env, scope);
   const scheduler = new DurableScheduler({
     namespace: env.RUN,
