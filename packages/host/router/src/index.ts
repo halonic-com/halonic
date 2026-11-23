@@ -9,7 +9,19 @@ export {
   loadCatalog,
   type ProviderCatalog,
 } from "./catalog.ts";
+export {
+  type HealthRuleHit,
+  type HealthRuleResult,
+  removeUnhealthyWorkflows,
+  type WorkflowAliases,
+} from "./health-rule.ts";
 export { priceVersionOf } from "./price-version.ts";
+export {
+  type CallResult,
+  defaultHealthLimits,
+  type HealthLimits,
+  ProviderHealth,
+} from "./provider-health.ts";
 export {
   type AliasStatus,
   aliasStatuses,
