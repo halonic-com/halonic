@@ -23,6 +23,9 @@ export type PrincipalLimits =
       readonly memberConcurrency?: number;
     };
 
+/** The limits of a principal the meter knows, who isn't refused outright. */
+export type KnownLimits = Exclude<PrincipalLimits, { readonly refused: PlanStop }>;
+
 /** The periods a meter counts over time; `run` and `step` limits belong to one run or step. */
 export type CountedPeriod = "day" | "month";
 

@@ -6,12 +6,7 @@
 
 import type { ConfigMeterSettings, UsageLimit } from "@halonicjs/format";
 import type { Clock, Coordination, IdGenerator } from "@halonicjs/ports";
-import {
-  assertCountable,
-  isCountedPeriod,
-  limitsOf,
-  type PrincipalLimits,
-} from "./config-limits.ts";
+import { assertCountable, isCountedPeriod, type KnownLimits, limitsOf } from "./config-limits.ts";
 import type {
   Meter,
   MeterAnswer,
@@ -26,6 +21,7 @@ import type {
 } from "./meter.ts";
 import { concurrencyStop, memberLimitStop, planLimitStop, type StopPlan } from "./plan-stops.ts";
 import {
+  assertLedgerFits,
   fromBase,
   type Holder,
   heldOf,
@@ -33,6 +29,7 @@ import {
   LedgerStore,
   type MeteredUnit,
   resetsAtOf,
+  type ShareHolder,
   toBase,
   type UnitAmounts,
   usedOf,
@@ -40,7 +37,14 @@ import {
   withUse,
 } from "./usage-ledger.ts";
 
-/** How many runs are going, as the host that starts them knows. */
+/**
+ * How many runs are going, as the host that starts them knows.
+ *
+ * The meter only reads this count and holds nothing, so two runs started at
+ * the same moment can both pass a cap with one place left. A host that must
+ * keep to the cap exactly makes checking and starting a run one atomic step;
+ * otherwise a cap can be passed by the runs started together.
+ */
 export interface RunningRuns {
   /** The runs going in `scope`, and how many of them `actor` started. */
   count(scope: string, actor: string): Promise<{ readonly scope: number; readonly actor: number }>;
@@ -75,9 +79,20 @@ export class ConfigMeter implements Meter {
   readonly #ids: IdGenerator;
   readonly #running: RunningRuns;
 
-  /** @throws RangeError when a limit is per run or per step, which this meter can't keep to */
+  /**
+   * @throws RangeError when a limit is per run or per step, which this meter
+   * can't keep to, or when an organisation gives so many members a share that
+   * their counts couldn't be stored
+   */
   constructor(options: ConfigMeterOptions) {
     assertCountable(options.settings);
+    for (const organisation of options.settings.organisations ?? []) {
+      const holders = organisation.members.map((member) => ({
+        actor: member.actor,
+        share: member.limits ?? [],
+      }));
+      assertLedgerFits(`o/${organisation.id}`, holders);
+    }
     this.#settings = options.settings;
     this.#ledgers = new LedgerStore(options.coordination);
     this.#clock = options.clock;
@@ -126,14 +141,15 @@ export class ConfigMeter implements Meter {
 
   /** Lets go of what the step held back, and counts its harness time. */
   async settle(reservation: Reservation, times: StepTimes): Promise<void> {
-    const { actor, scope } = reservation.principal;
+    const { principal } = reservation;
+    const member = this.#shareHolderOf(principal);
     const now = this.#clock.now();
-    await this.#ledgers.change(scope, (stored) => {
+    await this.#ledgers.change(principal.scope, (stored) => {
       const ledger = withoutPast(stored, now);
       const held = Object.fromEntries(
         Object.entries(ledger.held).filter(([id]) => id !== reservation.id),
       );
-      const next = withUse({ ...ledger, held }, actor, { harnessMinutes: times.harnessMs }, now);
+      const next = withUse({ ...ledger, held }, member, { harnessMinutes: times.harnessMs }, now);
       return { next, answer: undefined };
     });
   }
@@ -142,18 +158,26 @@ export class ConfigMeter implements Meter {
   async record(principal: MeterPrincipal, usage: MeterUsage): Promise<void> {
     const amounts = amountsOf(usage);
     if (amounts === null) return;
+    const member = this.#shareHolderOf(principal);
     const now = this.#clock.now();
     await this.#ledgers.change(principal.scope, (stored) => ({
-      next: withUse(withoutPast(stored, now), principal.actor, amounts, now),
+      next: withUse(withoutPast(stored, now), member, amounts, now),
       answer: undefined,
     }));
   }
 
-  async #concurrencyStop(
-    principal: MeterPrincipal,
-    limits: PrincipalLimits,
-  ): Promise<PlanStop | null> {
-    if (limits.refused !== undefined) return limits.refused;
+  /**
+   * The member whose own use is counted, or `null` when only the pool counts
+   * it: a personal scope, a member without a share, or someone the file no
+   * longer lists, whose use still counts against the pool.
+   */
+  #shareHolderOf(principal: MeterPrincipal): ShareHolder | null {
+    const limits = limitsOf(this.#settings, principal);
+    if (limits.refused !== undefined || limits.share.length === 0) return null;
+    return { actor: principal.actor, share: limits.share };
+  }
+
+  async #concurrencyStop(principal: MeterPrincipal, limits: KnownLimits): Promise<PlanStop | null> {
     const { memberConcurrency, scopeConcurrency } = limits;
     if (memberConcurrency === undefined && scopeConcurrency === undefined) return null;
     const running = await this.#running.count(principal.scope, principal.actor);
@@ -171,11 +195,10 @@ export class ConfigMeter implements Meter {
 function reachedStop(
   ledger: Ledger,
   principal: MeterPrincipal,
-  limits: PrincipalLimits,
+  limits: KnownLimits,
   now: Date,
   need: Need,
 ): PlanStop | null {
-  if (limits.refused !== undefined) return limits.refused;
   const member: Holder = { actor: principal.actor };
   for (const limit of limits.share) {
     const reached = reachedLimit(ledger, member, limit, now, need(limit.unit));

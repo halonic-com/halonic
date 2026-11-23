@@ -284,6 +284,63 @@ verifies("engine.config-meter", () => {
       await expect(meter.check(ada, { kind: "model-call" })).rejects.toThrow(/isn't readable/);
     });
 
+    it("throws rather than counting from 0 when a count isn't a whole number", async () => {
+      const values = new TestValues();
+      const stored = { pool: { "cost/2026-11": "5" }, members: {}, held: {} };
+      values.values.set(`config-meter/${ada.scope}`, JSON.stringify(stored));
+      const { meter } = meterWith({ limits: [limit("cost", 5)] }, undefined, values);
+      await expect(meter.check(ada, { kind: "model-call" })).rejects.toThrow(/isn't readable/);
+    });
+
+    it("keeps a member's own counts only for the limits of their share", async () => {
+      const values = new TestValues();
+      const many = Array.from({ length: 300 }, (_, index) => ({
+        actor: `eu_m${String(index).padStart(16, "0")}`,
+        role: "member" as const,
+      }));
+      const share = { actor: bea.actor, role: "owner" as const, limits: [limit("cost", 10)] };
+      const settings = organisation([
+        { id: organisationId, limits: [limit("cost", 1000)], members: [share, ...many] },
+      ]);
+      const { meter } = meterWith(settings, undefined, values);
+      for (const member of many) await meter.record(inOrganisation(member.actor), modelCall(1));
+      await meter.record(bea, modelCall(2));
+      const stored = JSON.parse(values.values.get(`config-meter/${bea.scope}`) ?? "null");
+      expect(stored.members).toEqual({ [bea.actor]: { "cost/2026-11": 2_000_000 } });
+      expect(stored.pool["cost/2026-11"]).toBe(302_000_000);
+    });
+
+    it("refuses to be created when the members' shares couldn't be stored", () => {
+      const units: UsageLimit["unit"][] = ["runs", "steps", "tokens", "cost", "harnessMinutes"];
+      const everyLimit = units.flatMap((unit) => [
+        limit(unit, 1),
+        limit(unit, 1, { period: "day" }),
+      ]);
+      const members = Array.from({ length: 100 }, (_, index) => ({
+        actor: `eu_m${String(index).padStart(16, "0")}`,
+        role: "member" as const,
+        limits: everyLimit,
+      }));
+      const settings = organisation([{ id: organisationId, limits: [], members }]);
+      expect(() => meterWith(settings)).toThrow(/gives too many members a share/);
+      expect(() =>
+        meterWith(
+          organisation([{ id: organisationId, limits: [], members: members.slice(0, 20) }]),
+        ),
+      ).not.toThrow();
+    });
+
+    it("refuses a hold that would grow them past what can be stored", async () => {
+      const values = new TestValues();
+      const { meter } = meterWith({ limits: [limit("cost", 1_000_000)] }, undefined, values);
+      const reserveUntilRefused = async () => {
+        for (let held = 0; held < 2000; held += 1) await meter.reserve(ada, { cost: 1 });
+      };
+      await expect(reserveUntilRefused()).rejects.toThrow(/can't grow any further/);
+      const stored = values.values.get(`config-meter/${ada.scope}`) ?? "";
+      expect(new TextEncoder().encode(stored).length).toBeLessThanOrEqual(64 * 1024);
+    });
+
     it("throws rather than dropping a use when they keep changing under it", async () => {
       const busy = new TestValues();
       busy.compareAndSet = async () => false;

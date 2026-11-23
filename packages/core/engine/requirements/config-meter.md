@@ -12,6 +12,7 @@ The engine's `ConfigMeter` shall be a `Meter` that holds each principal to the `
 - `reserve` shall hold back a step's maximum in cost, minutes and model calls, checking the pool and the member's share in the same change, and refuse with `phase: "reserve"`, `needed` and `left` when that much isn't left. A unit the step sets no maximum for shall hold back nothing, and refuse once it is used up. `settle` shall let go of the step's hold and count its harness time. A hold never settled shall lapse after a day.
 - `record` shall count a model call as one step, its input and output tokens and its cost (0 when a subscription paid), count nothing for an answer from the cache, and count a run's end as one run.
 - A `stop` limit per `run` or per `step` shall make the meter refuse to be created, naming the limit, since the meter is asked by principal and couldn't keep to it.
+- A scope's counts shall stay within what `Coordination` keeps for one value, however many people use the scope: a member's own use shall be counted only for the limits of their share, an organisation whose members' shares couldn't be counted in half that space shall make the meter refuse to be created, and a hold that would grow the counts past it shall throw rather than be counted.
 
 Rationale: a self-hoster can cap a team without Halonic Cloud (design, section 1). Holding back and settling in one atomic change keeps two parallel steps from passing a check together and going past a limit (4.3). An organisation's members share one pool, and a member's share can't be raised by the member, so their stop can't offer an upgrade (13.6). A scope or person the file doesn't know is refused, since no limits known must never mean no limit.
 
@@ -44,6 +45,9 @@ Rationale: a self-hoster can cap a team without Halonic Cloud (design, section 1
 - Given a held step,
   when it is settled with 90,000 ms of harness time,
   then its hold is gone and 1.5 harness minutes are used.
+- Given an organisation of 300 members where one has a share of cost per month,
+  when each of them makes a model call,
+  then the stored counts hold the pool and that one member's cost per month only.
 - Given a limit on cost per run,
   when the meter is created,
   then it throws, naming that limit.

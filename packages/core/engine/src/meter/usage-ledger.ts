@@ -5,6 +5,11 @@
 // together or not at all, and every instance of a deployment sees the same
 // counts. Amounts are whole numbers in each unit's base, so they add up the
 // same on every store: cost in micro-units, minutes in milliseconds.
+//
+// `Coordination` keeps at most 64 KiB per value, so the ledger must stay
+// small however many people use the scope: it keeps a member's own counters
+// only for the limits of their share, which the file bounds, and refuses a
+// change that would grow past the cap rather than lose the scope's counts.
 
 import type { UsageLimit } from "@halonicjs/format";
 import type { Coordination } from "@halonicjs/ports";
@@ -34,6 +39,12 @@ export interface Ledger {
 /** Whose counters: the whole scope's, or one member's. */
 export type Holder = { readonly pool: true } | { readonly actor: string };
 
+/** A member whose own use is counted, and the limits of their share that it is counted for. */
+export interface ShareHolder {
+  readonly actor: string;
+  readonly share: readonly UsageLimit[];
+}
+
 /** How much of one unit's base makes one of the unit as a limit writes it. */
 const basePerUnit: Readonly<Record<MeteredUnit, number>> = {
   runs: 1,
@@ -54,6 +65,17 @@ const heldForMs = 24 * 60 * 60 * 1000;
 const maxAttempts = 32;
 
 const periods: readonly CountedPeriod[] = ["day", "month"];
+
+const units: readonly MeteredUnit[] = ["runs", "steps", "tokens", "cost", "harnessMinutes"];
+
+/** The most a stored ledger may take, as `Coordination` allows a value. */
+const maxLedgerBytes = 64 * 1024;
+
+/**
+ * The most the counters may take at their largest. The rest is kept for what
+ * steps hold back, about 290 holds at once in one scope.
+ */
+const maxCounterBytes = maxLedgerBytes / 2;
 
 /** `amount` of `unit`, as a limit writes it, in the unit's base. */
 export function toBase(unit: MeteredUnit, amount: number): number {
@@ -99,13 +121,23 @@ export function heldOf(ledger: Ledger, holder: Holder, unit: MeteredUnit): numbe
     .reduce((total, held) => total + (held.amounts[unit] ?? 0), 0);
 }
 
-/** `ledger` with `amounts` added for the pool and for `actor`, in the day and the month of `at`. */
-export function withUse(ledger: Ledger, actor: string, amounts: UnitAmounts, at: Date): Ledger {
-  return {
-    ...ledger,
-    pool: added(ledger.pool, amounts, at),
-    members: { ...ledger.members, [actor]: added(ledger.members[actor] ?? {}, amounts, at) },
-  };
+/**
+ * `ledger` with `amounts` added for the pool, in the day and the month of
+ * `at`, and for the member's share, in the units and periods it limits.
+ * A member without a share, `null`, adds to the pool only.
+ */
+export function withUse(
+  ledger: Ledger,
+  member: ShareHolder | null,
+  amounts: UnitAmounts,
+  at: Date,
+): Ledger {
+  const pool = added(ledger.pool, amounts, at, () => true);
+  if (member === null || member.share.length === 0) return { ...ledger, pool };
+  const limited = (unit: string, period: CountedPeriod) =>
+    member.share.some((limit) => limit.unit === unit && limit.period === period);
+  const counters = added(ledger.members[member.actor] ?? {}, amounts, at, limited);
+  return { ...ledger, pool, members: { ...ledger.members, [member.actor]: counters } };
 }
 
 /** `ledger` without the counters of past periods and the holds that lasted their time. */
@@ -118,12 +150,36 @@ export function withoutPast(ledger: Ledger, at: Date): Ledger {
   return {
     pool: keep(ledger.pool),
     members: Object.fromEntries(
-      Object.entries(ledger.members).map(([actor, counters]) => [actor, keep(counters)]),
+      Object.entries(ledger.members)
+        .map(([actor, counters]) => [actor, keep(counters)] as const)
+        .filter(([, counters]) => Object.keys(counters).length > 0),
     ),
     held: Object.fromEntries(
       Object.entries(ledger.held).filter(([, held]) => at.getTime() - held.at < heldForMs),
     ),
   };
+}
+
+/**
+ * Refuses a scope whose counters could grow past their part of the cap: one
+ * with so many members that have a share that their counters, at their
+ * largest, wouldn't leave room for what steps hold back.
+ *
+ * @throws RangeError naming the scope
+ */
+export function assertLedgerFits(scope: string, members: readonly ShareHolder[]): void {
+  const at = new Date("2026-11-23T00:00:00.000Z");
+  const largest = Object.fromEntries(units.map((unit) => [unit, Number.MAX_SAFE_INTEGER]));
+  const full = members.reduce<Ledger>((ledger, member) => withUse(ledger, member, largest, at), {
+    pool: {},
+    members: {},
+    held: {},
+  });
+  if (byteLengthOf(JSON.stringify(full)) > maxCounterBytes) {
+    throw new RangeError(
+      `The users' organisation "${scope}" gives too many members a share for meter "config" to count: give fewer members their own limits.`,
+    );
+  }
 }
 
 /** Where the ledgers of every scope are kept. */
@@ -145,6 +201,7 @@ export class LedgerStore {
    * when another instance changed it first.
    *
    * @throws Error when it was changed under it every time
+   * @throws RangeError when the change would grow the ledger past what `Coordination` keeps
    */
   async change<Answer>(
     scope: string,
@@ -154,7 +211,13 @@ export class LedgerStore {
       const text = await this.#coordination.read(keyOf(scope));
       const { next, answer } = change(parsedLedger(scope, text));
       if (next === null) return answer;
-      if (await this.#coordination.compareAndSet(keyOf(scope), text, JSON.stringify(next))) {
+      const nextText = JSON.stringify(next);
+      if (byteLengthOf(nextText) > maxLedgerBytes) {
+        throw new RangeError(
+          `The usage of "${scope}" can't grow any further, so it wasn't counted: too many steps are held back at once. Wait for running steps to finish.`,
+        );
+      }
+      if (await this.#coordination.compareAndSet(keyOf(scope), text, nextText)) {
         return answer;
       }
     }
@@ -172,24 +235,59 @@ function keyOf(scope: string): string {
 function parsedLedger(scope: string, text: string | null): Ledger {
   if (text === null) return { pool: {}, members: {}, held: {} };
   const value: unknown = JSON.parse(text);
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    !("pool" in value && "members" in value && "held" in value)
-  ) {
-    throw new Error(`The meter's stored usage of "${scope}" isn't readable.`);
+  if (!isLedger(value)) throw new Error(`The meter's stored usage of "${scope}" isn't readable.`);
+  return value;
+}
+
+function isLedger(value: unknown): value is Ledger {
+  if (!isRecord(value) || !isCounters(value["pool"])) return false;
+  if (!isRecord(value["members"]) || !isRecord(value["held"])) return false;
+  return (
+    Object.values(value["members"]).every(isCounters) && Object.values(value["held"]).every(isHeld)
+  );
+}
+
+function isHeld(value: unknown): value is Held {
+  return (
+    isRecord(value) &&
+    typeof value["actor"] === "string" &&
+    typeof value["at"] === "number" &&
+    isCounters(value["amounts"])
+  );
+}
+
+function isCounters(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every((count) => Number.isSafeInteger(count));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** The code points below which UTF-8 takes 1, 2 and 3 bytes; any above take 4. */
+const utf8Limits = [0x80, 0x800, 0x10000] as const;
+
+/** How many bytes `text` takes in UTF-8, as `Coordination` counts a value. */
+function byteLengthOf(text: string): number {
+  let bytes = 0;
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0;
+    const below = utf8Limits.findIndex((limit) => code < limit);
+    bytes += below === -1 ? 4 : below + 1;
   }
-  return value as Ledger;
+  return bytes;
 }
 
 function added(
   counters: Readonly<Record<string, number>>,
   amounts: UnitAmounts,
   at: Date,
+  counted: (unit: string, period: CountedPeriod) => boolean,
 ): Record<string, number> {
   const next = { ...counters };
   for (const [unit, amount] of Object.entries(amounts)) {
     for (const period of periods) {
+      if (!counted(unit, period)) continue;
       const key = `${unit}/${periodStartOf(period, at)}`;
       next[key] = (next[key] ?? 0) + amount;
     }
