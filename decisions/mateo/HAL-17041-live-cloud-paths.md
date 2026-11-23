@@ -2,7 +2,6 @@
 
 - Approval: /HAL/issues/HAL-17041
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dhTzpXbScKFaVxXYp5nrZEcQTGZAf0NWK+XuLABsxFXp5fMeK1QEn8NWQtbqzmDqxuk6KkYmIFxDa/XmvelBAA==
 
 ## What changes
 
@@ -25,4 +24,5 @@ New tests in `transfer-checks.test.ts`: a 500 then a 200 passes after one wait (
 - check.cloud-affected
 - check.live-cloud-queue
 - cloudflare-live.transfer
+- tooling/check/
 - packages/testing/cloudflare-live/src/transfer-checks.test.ts
