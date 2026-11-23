@@ -7,6 +7,11 @@
 import type { ProgramHarness } from "@halonicjs/engine";
 import type { BridgeProvider } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
+import {
+  addKeyFix,
+  ManyUsersSubscriptionError,
+  manyUsersSubscriptionMessage,
+} from "@halonicjs/workspace";
 
 /** The provider each harness program calls: Claude Code calls Anthropic, Codex calls OpenAI. */
 const providerOfHarness: Record<ProgramHarness, BridgeProvider> = {
@@ -60,6 +65,13 @@ export interface ProviderAccessInput {
    * alias: rule 0 gives the key on this computer too and checks no trust itself.
    */
   readonly aliasProvider?: string;
+  /**
+   * Set when the run is in a deployment with `users.mode: many`, where other
+   * people start the runs: the program's own sign-in, which the owner pays
+   * for, is then never given, wherever the agent runs. Left out, the rules
+   * are those of one owner.
+   */
+  readonly manyUsers?: { readonly deployment: string };
 }
 
 /** The access the bridge gets to the provider the agent's harness calls. */
@@ -99,11 +111,17 @@ export type ProviderAccessChoice =
  * 3. In the sandbox with no such provider, the program's own sign-in, as
  *    before: the host says how to add one.
  *
+ * With `manyUsers` there is no sign-in: rule 1 is skipped, so rule 2 decides
+ * on this computer too, and rule 3 refuses (requirement
+ * `harness-host.many-users-subscription`).
+ *
  * @throws KindedError `invalid_input` when the workspace has several such
  *   providers and the agent's model points to none of them; the message names them
  * @throws KindedError `invalid_input` when the agent's model points to a
  *   provider of that type with no `secret` while another one has one: the
  *   key of a provider the agent isn't tied to is never spent
+ * @throws ManyUsersSubscriptionError with `manyUsers`, when no key is left
+ *   and the agent would run on the program's own sign-in
  *
  * @example
  * providerAccessOf({ harness: "claude-code", runsOn: "sandbox", providers: [{ id: "claude", type: "anthropic", secret: "anthropic-key" }] });
@@ -113,7 +131,7 @@ export function providerAccessOf(input: ProviderAccessInput): ProviderAccessChoi
   const provider = providerOfHarness[input.harness];
   const aliasKey = aliasKeyOf(input, provider);
   if (aliasKey !== undefined) return aliasKey;
-  if (input.runsOn === "this-computer") {
+  if (input.runsOn === "this-computer" && input.manyUsers === undefined) {
     return { kind: "sign-in", provider, reason: "this-computer" };
   }
   const keyed = input.providers.filter(
@@ -144,6 +162,9 @@ export function providerAccessOf(input: ProviderAccessInput): ProviderAccessChoi
     };
   }
   if (keyed.length === 0) {
+    if (input.manyUsers !== undefined) {
+      throw manyUsersRefusal(input.manyUsers.deployment, input.harness, provider);
+    }
     return { kind: "sign-in", provider, reason: "no-keyed-provider" };
   }
   const name = providerNames[provider];
@@ -152,6 +173,22 @@ export function providerAccessOf(input: ProviderAccessInput): ProviderAccessChoi
     "invalid_input",
     `The workspace has several ${name} providers with a key (${ids}), and the agent's model points to none of them, so Halonic doesn't know whose key the sandboxed agent may spend. Set the agent's model to one of them, such as "${keyed[0]?.id}/<model>".`,
   );
+}
+
+/**
+ * The refusal of a sign-in in a deployment with many users. The run log
+ * keeps only an error's message, so the fix ends it.
+ */
+function manyUsersRefusal(
+  deployment: string,
+  harness: ProgramHarness,
+  provider: BridgeProvider,
+): ManyUsersSubscriptionError {
+  const message = manyUsersSubscriptionMessage(deployment, { harness });
+  return new ManyUsersSubscriptionError(`${message} ${addKeyFix(provider)}`, {
+    deployment,
+    harness,
+  });
 }
 
 /**

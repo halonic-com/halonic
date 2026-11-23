@@ -110,7 +110,7 @@ const local = { host: "local", stage: "development", shadow: false } as Deployme
 verifies("app.deploy-service", () => {
   describe("which deployment (2.1)", () => {
     it("deploys the one Cloudflare deployment when none is named", () => {
-      expect(chooseDeployment("Acme", { home: local, web: cloudflare }, undefined)).toEqual({
+      expect(chooseDeployment("Acme", { home: local, web: cloudflare }, undefined, [])).toEqual({
         kind: "chosen",
         id: "web",
         deployment: cloudflare,
@@ -118,18 +118,18 @@ verifies("app.deploy-service", () => {
     });
 
     it("says there's none to deploy yet, so the caller sets one up", () => {
-      expect(chooseDeployment("Acme", { home: local }, undefined)).toEqual({ kind: "none" });
+      expect(chooseDeployment("Acme", { home: local }, undefined, [])).toEqual({ kind: "none" });
     });
 
     it("asks which one when there are several", () => {
       const choose = () =>
-        chooseDeployment("Acme", { web: cloudflare, staging: cloudflare }, undefined);
+        chooseDeployment("Acme", { web: cloudflare, staging: cloudflare }, undefined, []);
       expect(choose).toThrow("Acme has 2 deployments on Cloudflare: web, staging. Say which one.");
       expect(errorKindOf(catchError(choose))).toBe("invalid_input");
     });
 
     it("refuses a local deployment and points at halonic serve", () => {
-      const error = catchError(() => chooseDeployment("Acme", { home: local }, "home"));
+      const error = catchError(() => chooseDeployment("Acme", { home: local }, "home", []));
       expect(error).toMatchObject({
         kind: "invalid_input",
         message: "home runs on your own machine, not on Cloudflare.",
@@ -138,7 +138,9 @@ verifies("app.deploy-service", () => {
     });
 
     it("says when the named deployment doesn't exist", () => {
-      expect(errorKindOf(catchError(() => chooseDeployment("Acme", {}, "web")))).toBe("not_found");
+      expect(errorKindOf(catchError(() => chooseDeployment("Acme", {}, "web", [])))).toBe(
+        "not_found",
+      );
     });
   });
 

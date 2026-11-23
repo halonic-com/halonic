@@ -56,6 +56,11 @@ export interface ProviderKeyServicesInput {
   readonly aliases: ModelAliasRules;
   /** Hears the access each agent's bridge got, by provider and secret name, never a value. */
   reportAccess?(agent: BridgeAgent, choice: ProviderAccessChoice): void;
+  /**
+   * Set when the app serves a deployment with `users.mode: many`: no agent's
+   * bridge then gets the program's own sign-in (`providerAccessOf`).
+   */
+  readonly manyUsers?: { readonly deployment: string };
 }
 
 /**
@@ -143,7 +148,8 @@ export class ProviderKeyServices {
    * its value is saved before the bridge opens, so the program never starts
    * without a way to call its model.
    *
-   * @throws KindedError `invalid_input` from `providerAccessOf`, or when the
+   * @throws KindedError `invalid_input` from `providerAccessOf`, its
+   *   `ManyUsersSubscriptionError` included, before any key is read; or when the
    *   key's secret holds no value; what the app's `requireKeyMayGo` throws,
    *   with its fix added to the message
    * @throws what the app's `aliases.access` throws for an alias, before any key is read
@@ -213,6 +219,7 @@ export class ProviderKeyServices {
       providers: filesOf(workspace, "provider").map((file) => file.value),
       ...(target === undefined ? {} : { modelProvider: target.provider }),
       ...(alias === undefined ? {} : { aliasProvider: alias.providerId }),
+      ...(this.#input.manyUsers === undefined ? {} : { manyUsers: this.#input.manyUsers }),
     });
     return { choice, target, alias };
   }

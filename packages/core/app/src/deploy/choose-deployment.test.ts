@@ -29,7 +29,7 @@ verifies("app.deploy-cloud-meter", () => {
     ["named", "web"],
     ["the only one", undefined],
   ])("refuses a deployment with meter cloud, %s, and says what to use", (_how, name) => {
-    const error = thrownBy(() => chooseDeployment("Acme", { web: metered("cloud") }, name));
+    const error = thrownBy(() => chooseDeployment("Acme", { web: metered("cloud") }, name, []));
     expect(error).toMatchObject({
       kind: "invalid_input",
       message: "web counts usage with meter: cloud, which this version of Halonic can't do yet.",
@@ -39,7 +39,7 @@ verifies("app.deploy-cloud-meter", () => {
 
   it.each(["none", "config"] as const)("chooses a deployment with meter %s", (meter) => {
     const deployment = metered(meter);
-    expect(chooseDeployment("Acme", { web: deployment }, "web")).toEqual({
+    expect(chooseDeployment("Acme", { web: deployment }, "web", [])).toEqual({
       kind: "chosen",
       id: "web",
       deployment,

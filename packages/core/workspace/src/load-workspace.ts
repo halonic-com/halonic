@@ -352,7 +352,7 @@ function byFile(issues: readonly WorkspaceIssue[]): WorkspaceIssue[] {
  * for (const agent of filesOf(workspace, "agent")) console.log(agent.hub, agent.value.name);
  */
 export function filesOf<Name extends KindName>(
-  workspace: LoadedWorkspace,
+  workspace: Pick<LoadedWorkspace, "files">,
   kind: Name,
 ): LoadedFileOf<Name>[] {
   return workspace.files.filter(
