@@ -43,16 +43,42 @@ verifies("check.guard-golden-files", () => {
   test("passes an added released spec that copies the package's current spec", async () => {
     const current = { "spec/agent.schema.json": '{"a":1}\n' };
     const head = { ...current, "spec/released/0.4.0/agent.schema.json": '{"a":1}\n' };
-    expect(await errorsOf({ base: current, head, checks })).toEqual([]);
+    expect(await errorsOf({ base: current, head, checks, version: "0.4.0" })).toEqual([]);
   });
 
   test("fails an added released spec that differs from the current spec", async () => {
     const current = { "spec/agent.schema.json": '{"a":1}\n' };
     const released = "spec/released/0.4.0/agent.schema.json";
     const head = { ...current, [released]: "{}\n" };
-    expect(await errorsOf({ base: current, head, checks })).toEqual([
+    expect(await errorsOf({ base: current, head, checks, version: "0.4.0" })).toEqual([
       `${workflowDirectory}/${released}: The golden file ${workflowDirectory}/${released} was added.`,
     ]);
+  });
+
+  // HAL-16940: a released copy can never be deleted, so one planted under
+  // another version would block the real release of that version for good.
+  test("fails a copy of the current spec under a version other than the package's", async () => {
+    const current = { "spec/agent.schema.json": '{"a":1}\n' };
+    const released = "spec/released/9.9.9/agent.schema.json";
+    const head = { ...current, [released]: '{"a":1}\n' };
+    expect(await errorsOf({ base: current, head, checks, version: "0.4.0" })).toEqual([
+      `${workflowDirectory}/${released}: The golden file ${workflowDirectory}/${released} was added.`,
+    ]);
+  });
+
+  test("takes the app version for a package without its own, as version:sync does", async () => {
+    const current = { "spec/agent.schema.json": '{"a":1}\n' };
+    const app = {
+      "apps/studio/package.json": '{"name":"@halonicjs/app-studio","version":"0.2.0"}',
+    };
+    const copy = (version: string) => ({
+      ...current,
+      [`spec/released/${version}/agent.schema.json`]: '{"a":1}\n',
+    });
+    expect(await errorsOf({ base: current, head: copy("0.2.0"), shared: app, checks })).toEqual([]);
+    expect(
+      await errorsOf({ base: current, head: copy("0.1.0"), shared: app, checks }),
+    ).toHaveLength(1);
   });
 
   test("leaves other files under a spec folder alone", async () => {

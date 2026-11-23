@@ -37,6 +37,8 @@ export interface GuardCase {
   readonly checks?: readonly GuardCheck[];
   /** The package folders whose tests ran, when not every package's (HAL-12539). */
   readonly affected?: ReadonlySet<string>;
+  /** The workflow package's `version`, in both checkouts; none when left out. */
+  readonly version?: string;
 }
 
 /** What the guard reported, as `file: message` lines. */
@@ -52,7 +54,11 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
       [
         {
           directory: workflowDirectory,
-          manifest: manifestFor("@halonicjs/workflow", "core"),
+          manifest: manifestFor(
+            "@halonicjs/workflow",
+            "core",
+            guardCase.version === undefined ? {} : { version: guardCase.version },
+          ),
           files: { "src/index.ts": "export const x = 1;\n", ...files },
         },
       ],

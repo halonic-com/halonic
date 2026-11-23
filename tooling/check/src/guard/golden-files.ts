@@ -1,5 +1,7 @@
+import { appVersionFiles, jsonVersion } from "../lib/app-version.ts";
 import type { CheckContext } from "../lib/context.ts";
 import { isSourceFile, isTestFile } from "../lib/source-files.ts";
+import { owningPackage } from "../lib/workspace.ts";
 import { type Checkouts, changeOf, type GuardFinding } from "./finding.ts";
 import { readTestFileFacts } from "./test-file-facts.ts";
 
@@ -21,21 +23,42 @@ function isSpecFile(file: string): boolean {
 }
 
 const releasedSpecFile =
-  /^(?<folder>(?:.+\/)?spec)\/released\/[^/]+\/(?<name>[^/]+\.schema\.json)$/;
+  /^(?<folder>(?:.+\/)?spec)\/released\/(?<version>[^/]+)\/(?<name>[^/]+\.schema\.json)$/;
 
 /**
  * An added released spec that copies its package's current spec in the pull
- * request, as `pnpm version:sync` writes it (HAL-16929). It adds nothing a
- * note could judge: the current spec is golden itself, and a released copy
- * never changes afterwards (`checkReleasedSpecs`).
+ * request, under the version `pnpm version:sync` writes it to (HAL-16929). It
+ * adds nothing a note could judge: the current spec is golden itself, and a
+ * released copy never changes afterwards (`checkReleasedSpecs`). A copy under
+ * any other version still needs a note: it could never be deleted, and would
+ * block that version's real release (HAL-16940).
  */
 function isFrozenCopy(file: string, change: string, head: CheckContext): boolean {
   const groups = releasedSpecFile.exec(file)?.groups;
-  if (change !== "added" || groups?.["folder"] === undefined || groups["name"] === undefined) {
+  const folder = groups?.["folder"];
+  const name = groups?.["name"];
+  if (change !== "added" || folder === undefined || name === undefined) {
     return false;
   }
-  const current = `${groups["folder"]}/${groups["name"]}`;
-  return head.files.includes(current) && head.read(current) === head.read(file);
+  const current = `${folder}/${name}`;
+  return (
+    groups?.["version"] === releaseVersion(file, head) &&
+    head.files.includes(current) &&
+    head.read(current) === head.read(file)
+  );
+}
+
+/**
+ * The version `pnpm version:sync` releases a spec under: its package's own
+ * version on head, or the app version for a package without one.
+ */
+function releaseVersion(file: string, head: CheckContext): string | undefined {
+  const own = owningPackage(file, head.packages)?.manifest.version;
+  if (own !== undefined) {
+    return own;
+  }
+  const appManifest = appVersionFiles.packageJson;
+  return head.files.includes(appManifest) ? jsonVersion(head.read(appManifest)) : undefined;
 }
 
 /**
