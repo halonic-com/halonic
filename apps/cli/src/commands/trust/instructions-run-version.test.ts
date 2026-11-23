@@ -128,7 +128,7 @@ async function runsPin() {
 }
 
 const notCommittedLine = (files: string) =>
-  `These saved changes aren't committed, so runs don't use them and this check doesn't cover them: ${files}. Commit them, then run halonic trust instructions coder --dir acme again.`;
+  `Uncommitted changes aren't checked, because runs don't use them: ${files}. Commit them, then run halonic trust instructions coder --dir acme again.`;
 
 verifies("cli.commands.trust.instructions-run-version", () => {
   it(
@@ -197,7 +197,7 @@ verifies("cli.commands.trust.instructions-run-version", () => {
 
       const { io } = await trustCoder();
 
-      expect(io.stderr.join("\n")).not.toContain("aren't committed");
+      expect(io.stderr.join("\n")).not.toContain("Uncommitted changes");
     },
     gitTimeout,
   );
