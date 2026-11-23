@@ -19,7 +19,13 @@ import {
   scoreOf,
   summaryTable,
 } from "../score.ts";
-import { hasCode, mutationTargets, sandboxEnv, strykerConfig } from "../targets.ts";
+import {
+  hasCode,
+  mutationTargets,
+  noJobSummaryEnv,
+  sandboxEnv,
+  strykerConfig,
+} from "../targets.ts";
 
 /**
  * node tooling/mutation/src/cli/mutation.ts [<package folder> ...]
@@ -54,7 +60,7 @@ function mutate(root: string, target: string, workFolder: string): PackageResult
   console.log(`mutation: running Stryker on ${target}.`);
   const run = spawnSync(process.execPath, [strykerBin(), "run", config], {
     cwd: packageDirectory,
-    env: { ...process.env, ...sandboxEnv(root) },
+    env: { ...process.env, ...sandboxEnv(root), ...noJobSummaryEnv },
     stdio: "inherit",
   });
   if (run.status !== 0 || !existsSync(report)) {

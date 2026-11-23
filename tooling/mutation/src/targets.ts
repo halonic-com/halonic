@@ -58,6 +58,16 @@ export function sandboxEnv(root: string): Record<string, string> {
   return { [parityFixturesVariable]: join(root, "packages", "testing", "parity", "fixtures") };
 }
 
+/**
+ * What the Stryker run adds to its environment so the tests it runs write
+ * no GitHub job summary. In CI the package's Vitest config adds the
+ * `github-actions` reporter, which appends a summary after every test run,
+ * and Stryker runs the tests once per mutant: that came to over GitHub's
+ * 1024k summary limit (HAL-16841). An empty path turns the summary off;
+ * the runner writes its own score table from outside the Stryker run.
+ */
+export const noJobSummaryEnv: Readonly<Record<string, string>> = { GITHUB_STEP_SUMMARY: "" };
+
 /** Where one Stryker run reads its plugin and writes its files. */
 export interface StrykerPaths {
   /** The absolute path of `@stryker-mutator/vitest-runner`'s entry file. */
