@@ -157,4 +157,26 @@ describe("principal", () => {
       ).toBeNull();
     });
   });
+
+  verifies("server.claim-fields", () => {
+    it("reads each claim once, and only from the claims' own data fields", () => {
+      let roleReads = 0;
+      const shifting = { aud: "app", sub: ids.alice, scope: `o/${ids.acme}` };
+      Object.defineProperty(shifting, "role", {
+        enumerable: true,
+        get: () => {
+          roleReads += 1;
+          return roleReads === 1 ? "member" : "owner";
+        },
+      });
+      expect(checkClaims(shifting)).toBeNull();
+      expect(roleReads).toBe(0);
+      const inherited = Object.assign(Object.create({ role: "owner" }), orgClaims(undefined));
+      delete inherited.role;
+      expect(checkClaims(inherited)).toBeNull();
+      const record = Object.create({ v: 1 });
+      Object.assign(record, { actor: ids.alice, scope: `u/${ids.alice}`, role: "owner" });
+      expect(principalFromRecord(record)).toBeNull();
+    });
+  });
 });

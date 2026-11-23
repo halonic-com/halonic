@@ -53,6 +53,7 @@ export {
   type LaunchRequestHeaders,
   launchRequestRefusal,
 } from "./launch-token-check.ts";
+export type { ManyUserPorts, ScopedRunPorts } from "./many-users-api.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
 export type { ModelChoicePort } from "./model-choice-api.ts";
 export {

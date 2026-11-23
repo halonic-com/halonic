@@ -20,6 +20,18 @@ export interface SessionVerifier {
   verify(credential: SessionCredential): Promise<SessionClaims | null>;
 }
 
+/**
+ * Marks a verifier made for tests, which checks no signature. A many-user server refuses to
+ * start with one, so a test verifier can never guard a real deployment. It is a registered
+ * symbol, so a test verifier in any package can carry the same mark.
+ */
+export const testOnlyVerifierMark: unique symbol = Symbol.for("halonic.test-only-session-verifier");
+
+/** Whether `verifier` says it was made for tests only. */
+export function isTestOnlyVerifier(verifier: SessionVerifier): boolean {
+  return testOnlyVerifierMark in verifier;
+}
+
 /** Why a request has no session: none sent, two kinds or copies sent, or one that was refused. */
 export type SessionRefusal = "none" | "ambiguous" | "refused";
 
