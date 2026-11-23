@@ -2,7 +2,7 @@
 import type { FileWithErrors, WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fileItem } from "../file-item.ts";
 import { takeOpenAtLineRequests } from "../open-at-line.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
@@ -14,7 +14,7 @@ import {
   show,
   sorter,
   weekly,
-} from "../test-support/problem-files.tsx";
+} from "../test-support/problem-files.test-helper.tsx";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ProblemsHomeCard } from "./problems-home-card.tsx";
 import { problemsSignal, subscribeProblems } from "./problems-signal.ts";
@@ -49,7 +49,7 @@ const rows = (page: HTMLElement) => [...page.querySelectorAll<HTMLElement>("tr[d
 
 verifies("files.problems.home", () => {
   it("lists each file with its first problem and its count, read as name, kind and count", async () => {
-    const { page } = await show(listOf([sorter, weekly]).source, card);
+    const { page } = await show(vi.fn, listOf([sorter, weekly]).source, card);
     expect(rows(page).map((row) => row.textContent)).toEqual([
       'SorterLine 2: A value has ": " in it. Put the value in quotes.1 problem',
       "weekly-report.workflow.yamlLine 11: options needs at least one choice.3 problems",
@@ -63,7 +63,7 @@ verifies("files.problems.home", () => {
   });
 
   it("opens a row's file at its first problem", async () => {
-    const { page, openItem } = await show(listOf([sorter, weekly]).source, card);
+    const { page, openItem } = await show(vi.fn, listOf([sorter, weekly]).source, card);
     const lines: number[] = [];
     const stop = takeOpenAtLineRequests(weekly.path, (line) => lines.push(line));
     await act(async () => rows(page)[1]?.querySelector<HTMLElement>("[role=gridcell]")?.click());
@@ -73,7 +73,7 @@ verifies("files.problems.home", () => {
   });
 
   it("shows five files, then Show all, which opens the status bar's list", async () => {
-    const { page } = await show(listOf(agents(6)).source, card);
+    const { page } = await show(vi.fn, listOf(agents(6)).source, card);
     expect(rows(page)).toHaveLength(5);
     const showAll = showAllButton(page);
     expect(showAll?.textContent).toBe("Show all 6 files");
@@ -83,17 +83,17 @@ verifies("files.problems.home", () => {
   });
 
   it("opens the strip's sheet from Show all on a phone", async () => {
-    const { page } = await show(listOf(agents(6)).source, card, "phone");
+    const { page } = await show(vi.fn, listOf(agents(6)).source, card, "phone");
     await act(async () => showAllButton(page)?.click());
     expect(document.querySelector("dialog[open] h2")?.textContent).toBe("6 files with problems");
   });
 
   it("shows nothing at zero, and goes when a save fixes the last file", async () => {
-    const none = await show(listOf([]).source, card);
+    const none = await show(vi.fn, listOf([]).source, card);
     expect(none.page.textContent).toBe("");
 
     const list = listOf([sorter]);
-    const one = await show(list.source, card);
+    const one = await show(vi.fn, list.source, card);
     expect(rows(one.page)).toHaveLength(1);
     await list.save([]);
     expect(one.page.textContent).toBe("");
@@ -101,7 +101,7 @@ verifies("files.problems.home", () => {
 
   it("gives the heading the count of files, and none at zero", async () => {
     const list = listOf([sorter, weekly]);
-    const { context } = contextOf(list.source);
+    const { context } = contextOf(vi.fn, list.source);
     const heard: (string | undefined)[] = [];
     const stop = subscribeProblems(context, () => heard.push(problemsSignal(context)?.spoken));
     await settled();
@@ -115,7 +115,7 @@ verifies("files.problems.home", () => {
 
   it("reads the list once for the status bar, Home and its heading", async () => {
     const list = listOf([sorter]);
-    const { context } = contextOf(list.source);
+    const { context } = contextOf(vi.fn, list.source);
     const stop = subscribeProblems(context, () => {});
     render(
       <>
@@ -124,10 +124,10 @@ verifies("files.problems.home", () => {
       </>,
     );
     await settled();
-    expect(list.list).toHaveBeenCalledTimes(1);
+    expect(list.reads()).toBe(1);
 
     await list.save([sorter, weekly]);
     stop();
-    expect(list.list).toHaveBeenCalledTimes(2);
+    expect(list.reads()).toBe(2);
   });
 });

@@ -1,7 +1,7 @@
 /**
  * The workspace's shared list of files with errors, for the tests of the problem count and Home's
  * Problems: two files, a list a test changes as a save would, and a view rendered with a context
- * that gives it.
+ * that gives it. Shipped code may not import vitest, so a test passes its `vi.fn` in.
  */
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import {
@@ -11,7 +11,6 @@ import {
   type WorkspaceContext,
 } from "@halonicjs/studio-shell";
 import { act, type ReactNode } from "react";
-import { vi } from "vitest";
 import { filesFeature } from "../feature.ts";
 import { render } from "./render.tsx";
 
@@ -43,9 +42,12 @@ export const weekly: FileWithErrors = {
 export function listOf(start: readonly FileWithErrors[]) {
   let files = start;
   const listeners = new Set<() => void>();
-  const list = vi.fn(async () => files);
+  let reads = 0;
   const source: FilesWithErrorsSource = {
-    list,
+    list: async () => {
+      reads++;
+      return files;
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -56,7 +58,7 @@ export function listOf(start: readonly FileWithErrors[]) {
     for (const listener of listeners) listener();
     await settled();
   };
-  return { source, save, list };
+  return { source, save, reads: () => reads };
 }
 
 /** Lets the list's reads and React's updates settle. */
@@ -68,10 +70,13 @@ export async function settled(): Promise<void> {
   }
 }
 
+/** A test's `vi.fn`, which records the calls of `openItem` and `announceState`. */
+type MakeSpy<Spy> = () => Spy;
+
 /** The context the Files feature's views get, giving `source` as the shared list. */
-export function contextOf(source: FilesWithErrorsSource) {
-  const openItem = vi.fn();
-  const announceState = vi.fn();
+export function contextOf<Spy>(spy: MakeSpy<Spy>, source: FilesWithErrorsSource) {
+  const openItem = spy();
+  const announceState = spy();
   const context = {
     services: limitedLookup(filesFeature, { get: () => source }),
     announcer: { announce: () => {}, announceState },
@@ -81,12 +86,13 @@ export function contextOf(source: FilesWithErrorsSource) {
 }
 
 /** Renders `view` with a context that gives `source`, on the desktop or a phone. */
-export async function show(
+export async function show<Spy>(
+  spy: MakeSpy<Spy>,
   source: FilesWithErrorsSource,
   view: (context: WorkspaceContext) => ReactNode,
   presentation: "desktop" | "phone" = "desktop",
 ) {
-  const { context, openItem, announceState } = contextOf(source);
+  const { context, openItem, announceState } = contextOf(spy, source);
   const page = render(
     <PresentationProvider presentation={presentation}>{view(context)}</PresentationProvider>,
   );
