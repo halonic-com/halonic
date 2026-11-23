@@ -133,6 +133,8 @@ verifies("remote.phone-run-detail", () => {
       "nothing",
       "working",
     ]);
+    const { history } = show(view, "reporter");
+    expect(history()?.textContent).toMatch(/^No activity from Reporter on this phone yet\./);
     const done = { ...reporter, state: "done", updatedAt: at(13, 40) } as const;
     expect(ending(view, done)).toMatchObject({ tone: "plain", text: "Finished 13:40" });
     const failed = { ...reporter, state: "failed", updatedAt: at(14, 10) } as const;
