@@ -4,6 +4,7 @@
 // start in, and what a connector call checks at the engine's side-effect
 // boundary.
 
+import type { ProgramFolders } from "@halonicjs/adapter-program-copies-node";
 import type { ConnectorFactories, SendingSettings } from "@halonicjs/app";
 import { FolderRunConnectors, type VersionedRun } from "@halonicjs/engine";
 import type { SheetHosts } from "@halonicjs/format";
@@ -14,7 +15,6 @@ import {
   workspaceSecrets,
 } from "@halonicjs/ports";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
-import type { ProgramFolders } from "./program-folders.ts";
 import { runSendingSettings } from "./run-sending.ts";
 import { programWorkingFolders } from "./working-folders.ts";
 

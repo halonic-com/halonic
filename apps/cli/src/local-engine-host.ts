@@ -35,6 +35,7 @@ import {
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import type { GitRunnerOptions } from "@halonicjs/adapter-git";
+import { openProgramFolders, type ProgramFolders } from "@halonicjs/adapter-program-copies-node";
 import {
   nodeSchedulerFactory,
   type SchedulerErrorSource,
@@ -91,7 +92,6 @@ import {
   openLocalHarnessHost,
 } from "./local-harness-host.ts";
 import { type LocalRunConnectorsInput, localRunConnectors } from "./local-run-connectors.ts";
-import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
 import type { RunFiles } from "./version-files.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { workspaceStore } from "./workspace-store.ts";

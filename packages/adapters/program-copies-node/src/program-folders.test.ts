@@ -1,4 +1,13 @@
-import { mkdir, mkdtemp, readdir, readFile, realpath, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { GitRunner, type GitRunnerOptions, GitVcs } from "@halonicjs/adapter-git";
@@ -8,7 +17,6 @@ import type { RunVersion } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
-import { removeTestFolder } from "./test/remove-folder.ts";
 
 /** Each test runs git itself, which is slow on a busy runner, as in the git adapter's own tests. */
 const gitTimeout = 30_000;
@@ -46,7 +54,8 @@ afterEach(async () => {
   vi.restoreAllMocks();
   await Promise.all(opened.splice(0).map((programs) => programs.close()));
   await runner.close();
-  await removeTestFolder(folder);
+  // Retries: on Windows a file git just deleted can stay "delete pending" for a moment (HAL-9323).
+  await rm(folder, { recursive: true, force: true, maxRetries: 5 });
 });
 
 let reported: unknown[];

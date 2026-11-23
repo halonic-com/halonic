@@ -26,13 +26,17 @@ import {
 } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
+import { ConnectorTable } from "./connector/connector-table.ts";
 import { hostDoctorRoutes } from "./doctor/host-doctor-routes.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { harnessFolders } from "./harness/harness-folders.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
+import { hostProgramCopies } from "./harness/host-program-copies.ts";
+import { programCopyRoutes } from "./harness/program-copy-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
+import { stopHost } from "./host-stop.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
 import { modelRoutes } from "./model/model-routes.ts";
 import { hostPluginRoutes, hostPlugins } from "./plugin/host-plugins.ts";
@@ -303,13 +307,24 @@ async function hostServices(
       : { ...remote, ledger, runs, ownPorts: listeningPorts },
   );
   const harnesses = hostHarnesses(version);
-  const connectorDeps = hostConnectorRoutes(
-    { sandbox, version, deniedPaths: connectors.deniedPaths, env: process.env },
+  const connectorTable = new ConnectorTable();
+  // A workspace's connectors stop before its program copies are swept.
+  const programCopies = hostProgramCopies(
+    profile,
     connectors.workspaceRoots,
-    connectors.trustStore,
-    undefined,
-    (text) => process.stderr.write(text),
+    (workspace) => connectorTable.closeWorkspace(workspace),
+    logToError,
   );
+  const connectorDeps = {
+    ...hostConnectorRoutes(
+      { sandbox, version, deniedPaths: connectors.deniedPaths, env: process.env },
+      connectors.workspaceRoots,
+      connectors.trustStore,
+      connectorTable,
+      logToError,
+    ),
+    ...(programCopies === undefined ? {} : { programCopies }),
+  };
   // A plugin's backend places the tokens of its sign-ins, and the sign-ins read
   // the plugin's sheet: each looks the other up only when it is used.
   const signIns = hostIntegrationSignIns({
@@ -388,6 +403,7 @@ async function hostServices(
     ...harnessRoutes({ harnesses, sessions, bridges, runs, unfenced }),
     ...folders.routes,
     ...connectorRoutes(connectorDeps),
+    ...(programCopies === undefined ? [] : programCopyRoutes(programCopies)),
     ...modelRoutes(
       hostModelRoutes({
         workspaceRoots: connectors.workspaceRoots,
@@ -421,20 +437,17 @@ async function hostServices(
     }),
     ...remoteRoutes(hostRemote.control),
   ];
-  const stop = async () => {
-    // Close the gateway first, so nothing remote reaches a run that is being stopped.
-    await hostRemote.close();
-    // Stop the runs, then their sandboxed programs, so none outlives the host;
-    // their bridges then have no caller.
-    await runs.cancelAll();
-    // A connector closes its own session; then any session left.
-    await connectorDeps.connectors.closeAll();
-    await plugins?.stop();
-    await sessions.closeAll();
-    await bridges.closeAll();
-    // No program runs any more, so what the runs left can go.
-    await folders.stop();
-  };
+  const stop = () =>
+    stopHost({
+      remote: hostRemote,
+      runs,
+      connectors: connectorTable,
+      plugins,
+      sessions,
+      programCopies,
+      bridges,
+      folders,
+    });
   return { routes, stop, listeningOn: (port) => listeningPorts.add(port) };
 }
 

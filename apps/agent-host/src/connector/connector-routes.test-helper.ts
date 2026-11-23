@@ -13,7 +13,7 @@ import type {
 } from "@halonicjs/ports";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
-import { connectorRoutes } from "./connector-routes.ts";
+import { type ConnectorRouteDeps, connectorRoutes } from "./connector-routes.ts";
 import type { OpenConnectorBody } from "./connector-schemas.ts";
 import { ConnectorTable } from "./connector-table.ts";
 
@@ -110,15 +110,21 @@ export interface Setup {
   close(): Promise<void>;
 }
 
-/** Starts the routes with a fake factory, over real folders. */
-export async function startRoutes(
-  options: {
-    maxConnectors?: number;
-    whileCreating?: (table: ConnectorTable) => void;
-    /** Leave the workspace without a trust record. */
-    untrusted?: boolean;
-  } = {},
-): Promise<Setup> {
+/** What {@link startRoutes} changes from the default routes. */
+export interface RouteOptions {
+  maxConnectors?: number;
+  whileCreating?: (table: ConnectorTable) => void;
+  /** Leave the workspace without a trust record. */
+  untrusted?: boolean;
+  /** The program copies a connector may start in; given the table, so they can stop its connectors. */
+  programCopies?: (
+    table: ConnectorTable,
+    folders: Folders,
+  ) => NonNullable<ConnectorRouteDeps["programCopies"]>;
+}
+
+/** Makes the test's folders on disk, in a new temporary folder. */
+async function makeFolders(): Promise<Folders> {
   const base = await realpath(await mkdtemp(join(tmpdir(), "agent-host-connector-")));
   const folders: Folders = {
     base,
@@ -128,6 +134,12 @@ export async function startRoutes(
   };
   await mkdir(folders.agent, { recursive: true });
   await mkdir(folders.other);
+  return folders;
+}
+
+/** Starts the routes with a fake factory, over real folders. */
+export async function startRoutes(options: RouteOptions = {}): Promise<Setup> {
+  const folders = await makeFolders();
   const made: FakeConnector[] = [];
   const logged: string[] = [];
   const factory: ConnectorFactory = {
@@ -150,6 +162,9 @@ export async function startRoutes(
     trustStore: trust,
     log: (text) => logged.push(text),
     tokens: { get: async () => null, set: async () => {}, remove: async () => {} } as never,
+    ...(options.programCopies === undefined
+      ? {}
+      : { programCopies: options.programCopies(table, folders) }),
   });
   const server: HostServer = await startHostServer(token, routes);
   return {
@@ -162,7 +177,7 @@ export async function startRoutes(
     close: async () => {
       await table.closeAll();
       await server.close();
-      await rm(base, { recursive: true, force: true });
+      await rm(folders.base, { recursive: true, force: true });
     },
   };
 }

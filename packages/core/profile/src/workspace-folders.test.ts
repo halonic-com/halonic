@@ -52,6 +52,13 @@ verifies("profile.workspace-folders", () => {
     expect(windows.programCopiesFolder()).toBe(`${windows.folder}\\program-copies`);
   });
 
+  it("keeps the agent host's program copies beside the CLI's, never inside them", async () => {
+    const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
+    expect(folders.hostProgramCopiesFolder()).toBe(`${folders.folder}/agent-host-program-copies`);
+    const windows = await workspaceFolders(windowsProfile, `${drive}\\Work\\Acme`, digest);
+    expect(windows.hostProgramCopiesFolder()).toBe(`${windows.folder}\\agent-host-program-copies`);
+  });
+
   it("keeps a harness run's worktrees and its proposal records beside the workspace's records", async () => {
     const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
     expect(folders.proposalWorktreesFolder()).toBe(`${folders.folder}/proposal-worktrees`);
