@@ -11,12 +11,8 @@ import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import {
-  type EngineHolder,
-  engineLockFile,
-  type LocalEngine,
-  openLocalEngine,
-} from "./local-engine-host.ts";
+import { type EngineHolder, openLocalEngine } from "./cli-local-engine.ts";
+import { engineLockFile, type LocalEngine } from "./local-engine-host.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 

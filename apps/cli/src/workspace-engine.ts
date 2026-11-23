@@ -12,6 +12,7 @@ import type { HttpClient, Secrets, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace, LocalIntegrationInput } from "@halonicjs/workspace";
+import { type EngineHolder, type LocalEngineInput, openLocalEngine } from "./cli-local-engine.ts";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
 import { openConnectionSettings } from "./connection-settings-host.ts";
@@ -24,14 +25,7 @@ import { engineErrorReporter } from "./engine-error-reporter.ts";
 import { accessReporter, waitingReporter } from "./engine-reporters.ts";
 import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
-import {
-  type EngineHolder,
-  type LocalEngine,
-  type LocalEngineInput,
-  openLocalEngine,
-  type RoutineEngine,
-  type RoutineTicks,
-} from "./local-engine-host.ts";
+import type { LocalEngine, RoutineEngine, RoutineTicks } from "./local-engine-host.ts";
 import { computerIntegrationMachine, computerPluginMachine } from "./local-integration-machine.ts";
 import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import type { Message } from "./messages/define.ts";

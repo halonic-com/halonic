@@ -2,7 +2,7 @@
 // names the command that holds it, so another command refused by it can say
 // which one, and how to stop it when it runs until stopped.
 
-import { type HeldLock, holdLock, LockHeldError } from "@halonicjs/adapter-fs-node";
+import type { LockHeldError } from "@halonicjs/adapter-fs-node";
 import { KindedError } from "@halonicjs/std";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
@@ -26,37 +26,30 @@ export type EngineHolder = keyof typeof engineHolders;
 type EngineHolderEntry = (typeof engineHolders)[EngineHolder];
 
 /**
- * Takes the engine's lock, or refuses with a `conflict` the CLI can show:
- * the lock's own error names a path in the profile, so it is only the cause.
- * A lock a CLI command holds is named by that command, and one that runs
- * until it is stopped says how to stop it, since waiting would never end
- * (HAL-14299).
+ * The `conflict` the CLI shows when the engine's lock is held: the lock's
+ * own error names a path in the profile, so it is only the cause. A lock a
+ * CLI command holds is named by that command, and one that runs until it is
+ * stopped says how to stop it, since waiting would never end (HAL-14299).
+ *
+ * @example
+ * engineLockRefusal(new LockHeldError(file, { …, holder: "routines watch" }));
+ * // KindedError "halonic routines watch is running for this workspace (process 4242)."
  */
-export async function holdEngineLock(
-  file: string,
-  options: Parameters<typeof holdLock>[1],
-): Promise<HeldLock> {
-  try {
-    return await holdLock(file, options);
-  } catch (error) {
-    if (!(error instanceof LockHeldError)) {
-      throw error;
-    }
-    const record = error.holder;
-    const holder = engineHolderOf(record?.holder);
-    const message =
-      record === null || holder === undefined
-        ? workspaceMessages.engineOpen(record?.pid)
-        : workspaceMessages.engineOpenBy(holder.command, record.pid);
-    const fix =
-      holder?.runsUntilStopped === true
-        ? workspaceMessages.engineOpenStopFix()
-        : workspaceMessages.engineOpenFix();
-    throw new KindedError("conflict", plainText(message.phrase), {
-      fix: plainText(fix.phrase),
-      cause: error,
-    });
-  }
+export function engineLockRefusal(error: LockHeldError): KindedError {
+  const record = error.holder;
+  const holder = engineHolderOf(record?.holder);
+  const message =
+    record === null || holder === undefined
+      ? workspaceMessages.engineOpen(record?.pid)
+      : workspaceMessages.engineOpenBy(holder.command, record.pid);
+  const fix =
+    holder?.runsUntilStopped === true
+      ? workspaceMessages.engineOpenStopFix()
+      : workspaceMessages.engineOpenFix();
+  return new KindedError("conflict", plainText(message.phrase), {
+    fix: plainText(fix.phrase),
+    cause: error,
+  });
 }
 
 /** The command a lock names, when it is one of the CLI's; any other text names none. */

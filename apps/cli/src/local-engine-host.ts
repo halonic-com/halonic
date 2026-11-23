@@ -1,25 +1,23 @@
-// The engine for one workspace on this computer, as `halonic run` starts it
-// (HAL-3814). Its runs, blobs and timers live in the person's profile folder,
-// in the workspace's own folders, so `halonic runs` and the Studio read the
-// same runs. It is a plain function of its inputs (Liam, HAL-3895) and never
-// reads the CLI's printer, argv or `process`. What doesn't depend on Node (the
-// executor on a scheduler of run timers, the routines, the close order) is
-// `assembleEngine` of `@halonicjs/engine` (HAL-8792), which the desktop Studio
-// shares; this file passes it the Node stores, scheduler and lock.
+// The engine for one workspace on this computer, without anything only the
+// CLI says or starts (HAL-14217): `cli-local-engine.ts` and the agent
+// host's engine role open it with their own parts. Its runs, blobs and timers
+// live in the person's profile folder, in the workspace's own folders, so
+// `halonic runs` and the Studio read the same runs. It is a plain function of
+// its inputs (Liam, HAL-3895) and never reads a printer, argv or `process`.
+// What doesn't depend on Node (the executor on a scheduler of run timers, the
+// routines, the close order) is `assembleEngine` of `@halonicjs/engine`
+// (HAL-8792), which the desktop Studio shares; this file passes it the Node
+// stores, scheduler and lock.
 //
-// In 0.1 it has no Halonic tools. It has the harness host
-// (`openLocalHarnessHost`, HAL-7747): the engine can run an agent in a
-// harness, in a worktree of its own in the profile, and keeps what the run
-// changed as a proposal there, which `halonic proposals` reviews (HAL-6477).
-// `halonic routines watch` still refuses a harness agent. Each top-level
-// run starts its own connectors (`runConnectors`, HAL-6277) in the folder its
-// programs start in: `programFolders`, a copy at the run's commit for a live
-// run (HAL-4975). A chat turn calls the connectors it is given, none by
-// default. Sending is off for every connector: the CLI keeps no connector
-// settings yet.
+// Its caller gives it the harness host (`openHarnessHost`), which runs an
+// agent in a harness and keeps what the run changed as a proposal, and the
+// approvals of listed tools. Each top-level run starts its own connectors
+// (`runConnectors`, HAL-6277) in the folder its programs start in:
+// `programFolders`, a copy at the run's commit for a live run (HAL-4975).
+// A chat turn calls the connectors it is given, none by default.
 //
-// Its runs read `workspace`, or, for `routines watch`, the version each run
-// records (`versions`, HAL-6084).
+// Its runs read `workspace`, or, for an engine over several versions,
+// the version each run records (`versions`, HAL-6084).
 
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -27,11 +25,10 @@ import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { randomLeaseToken } from "@halonicjs/adapter-coordination-node/node";
 import {
   FileRecordStore,
-  FileToolApprovalStore,
-  FileTrustStore,
   FolderBlobStore,
   FolderRunStore,
   type HeldLock,
+  holdLock,
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import type { GitRunnerOptions } from "@halonicjs/adapter-git";
@@ -51,12 +48,16 @@ import {
 } from "@halonicjs/adapter-workspace-models";
 import {
   assembleEngine,
+  type HarnessRunsOptions,
+  type ListedToolApproval,
   type LocalExecutor,
   type RoutineEngine,
   type RoutineTicks,
+  type RunDefinitions,
+  type RunProposalFolders,
 } from "@halonicjs/engine";
+import type { RunVersion } from "@halonicjs/events";
 import type {
-  ChatTurnWaiting,
   Clock,
   ConnectorClient,
   Coordination,
@@ -71,8 +72,6 @@ import {
   type ProfileEnvironment,
   type ProfileFolder,
   profileFolder,
-  toolApprovalFolder,
-  trustFolder,
   type WorkspaceFolders,
   workspaceFolders,
 } from "@halonicjs/profile";
@@ -82,21 +81,14 @@ import {
   type LocalIntegrationInput,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
-import { approvedIntegrations } from "./approved-integrations.ts";
-import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
-import { type EngineHolder, engineHolders, holdEngineLock } from "./engine-lock.ts";
 import {
-  type LocalHarnessHost,
-  type LocalHarnessInput,
-  type LocalHarnessParts,
-  openLocalHarnessHost,
-} from "./local-harness-host.ts";
-import { type LocalRunConnectorsInput, localRunConnectors } from "./local-run-connectors.ts";
-import type { RunFiles } from "./version-files.ts";
-import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
-import { workspaceStore } from "./workspace-store.ts";
-import type { WorkspaceVersions } from "./workspace-versions.ts";
+  type LocalRunConnectorsInput,
+  localRunConnectors,
+  type RunConnectorsEngine,
+} from "./local-run-connectors.ts";
+import { webCryptoDigest } from "./web-crypto-digest.ts";
 
+export type { RoutineEngine, RoutineTicks };
 export { engineLockFile, routineStateCollection, runTimerCollection };
 
 /**
@@ -114,52 +106,95 @@ export type EngineErrorSource =
   | "harness-bridge"
   | "host-lock";
 
-export type { EngineHolder, RoutineEngine, RoutineTicks };
+/** Where the engine's workspace is: its real path, and its folders in the profile. */
+export interface EnginePlace {
+  readonly location: string;
+  readonly folders: WorkspaceFolders;
+  /** The profile folder, where the approvals of listed tools and the trust records are kept. */
+  readonly profile: ProfileFolder;
+  /** Where the profile folder was found from. */
+  readonly environment: ProfileEnvironment;
+}
+
+/** The harness host an engine runs harness agents on, open while the engine is. */
+export interface EngineHarnessHost {
+  readonly harnesses: HarnessRunsOptions;
+  readonly proposalFolders: RunProposalFolders;
+  /**
+   * Clears what runs that ended while no engine was open left. Called once,
+   * under the engine lock, before the engine starts any run.
+   */
+  start(): Promise<void>;
+  /** Called once the executor and the scheduler have closed. Safe to call twice. */
+  close(): Promise<void>;
+}
+
+/**
+ * Opens the harness host of the engine at `place`. Called under the engine
+ * lock, once the program folders are open.
+ */
+export type OpenEngineHarnessHost = (place: EnginePlace) => Promise<EngineHarnessHost>;
+
+/**
+ * The versions of the workspace an engine's runs read, as `halonic routines
+ * watch` gives them: what the engine itself asks of them.
+ */
+export interface EngineVersions extends NonNullable<RunConnectorsEngine["versions"]> {
+  /** The version read last, checked and trusted as `workspace` is. */
+  latest(): LoadedWorkspace;
+  /**
+   * The definitions a new run of the workflow starts with, from `version`.
+   *
+   * @throws when the hub or the workflow isn't in that version, or that
+   *   version may not run on this computer
+   */
+  definitionsOf(
+    hubId: string,
+    workflowId: string,
+    version: RunVersion | undefined,
+    runId: string,
+  ): Promise<RunDefinitions>;
+}
 
 /** What {@link openLocalEngine} builds the engine from. */
-export interface LocalEngineInput {
+export interface OpenLocalEngineInput {
   /** The loaded workspace, checked for errors and trusted before a run starts. */
   readonly workspace: LoadedWorkspace;
   /**
-   * The local integrations of `workspace`, as its trust check read them
-   * from the same version: what a run's definitions take declared tools
-   * from when `versions` is left out. Left out, none: no tool takes a noun
-   * from a sheet, which fails safe.
+   * The local integrations a run's definitions take declared tools from,
+   * when `versions` is left out: those of `workspace` a trust check approved.
+   * Left out, none, and no tool takes a noun from a sheet, which fails safe.
    */
-  readonly integrations?: readonly LocalIntegrationInput[];
+  readonly declaredToolIntegrations?: readonly LocalIntegrationInput[];
   /**
-   * For an engine whose runs read more than one version of the workspace,
-   * as `routines watch`'s: each run starts with the definitions of the
-   * version it records, and models, chat agents and their connectors' tools
-   * come from the version read last. Left out, everything reads `workspace`,
-   * as for `halonic run`.
+   * For an engine whose runs read more than one version of the workspace:
+   * each run starts with the definitions of the version it records, and
+   * models, chat agents and their connectors' tools come from the version
+   * read last. Left out, everything reads `workspace`.
    */
-  readonly versions?: WorkspaceVersions;
-  /**
-   * For `halonic run` and `halonic runs send`: the agents' and skills'
-   * files of the version each run read, which the harness checks "On this
-   * computer" against and pins the instructions from. Left out, they come
-   * from `versions`, else from disk.
-   */
-  readonly runFiles?: RunFiles;
+  readonly versions?: EngineVersions;
   /** The workspace folder, as `openWorkspaceDir` found it. */
   readonly workspaceRoot: string;
-  /** The CLI's remembered secrets, never a raw adapter (`apps/cli/AGENTS.md`). */
+  /** Where the profile folder is. */
+  readonly environment: ProfileEnvironment;
+  /** The secrets the engine's runs read, never a raw adapter. */
   readonly secrets: Secrets;
   /** The origins each stored key may be sent to, from the profile's secrets file. */
   readonly keyOrigins: KeyOrigins;
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   /**
-   * Halonic's other ports on this computer, which a harness run's bridge
-   * never calls a provider on: `serve`'s, where it runs. Read on every call.
-   */
-  readonly ownPorts?: () => Iterable<number>;
-  /**
-   * Whether the command's trust check granted trust, so a provider's stored key may go to a
+   * Whether the trust check granted trust, so a provider's stored key may go to a
    * non-default address (HAL-11342). A run that can only reach the test model has none.
    */
   readonly trusted: boolean;
+  /** Opens the harness host the engine's harness agents run on. */
+  readonly openHarnessHost: OpenEngineHarnessHost;
+  /**
+   * The approvals of listed tools at `place`, read at the start of every
+   * turn, from the version `latest` gives.
+   */
+  listedToolApproval(place: EnginePlace, latest: () => LoadedWorkspace): ListedToolApproval;
   /**
    * Hears every error the engine handles itself: one the scheduler handles,
    * such as a run's step that threw and will be retried, or one with the
@@ -172,21 +207,9 @@ export interface LocalEngineInput {
   onTimerDone?(timer: ScheduledTimer): void;
   /**
    * Whether to leave a timer untried: it fails at once, and the scheduler
-   * keeps it, so the next engine on the workspace tries it again. For a run
-   * `routines watch` gave up on and couldn't cancel (HAL-5294).
+   * keeps it, so the next engine on the workspace tries it again (HAL-5294).
    */
   holdsTimer?(timer: ScheduledTimer): boolean;
-  /**
-   * Hears the listed tools that wait for a person's approval, once for each
-   * turn that leaves some out. A run's turn can't ask, so this is where the
-   * command to approve them is named.
-   */
-  reportWaiting?(connector: string, waiting: readonly ChatTurnWaiting[]): void;
-  /**
-   * Hears the access each harness agent's bridge got (HAL-12784): the
-   * provider and the secret's name, never a value.
-   */
-  readonly reportAccess?: LocalHarnessInput["reportAccess"];
   /** The connected servers a chat turn calls; none by default. */
   readonly connectors?: readonly ConnectorClient[];
   /**
@@ -195,19 +218,11 @@ export interface LocalEngineInput {
    */
   readonly runConnectors?: LocalRunConnectorsInput;
   /**
-   * The Node parts the harness host is built from, which a test replaces:
-   * this computer's srt sandbox, launcher, harnesses and bridge by default.
+   * The words the engine's lock names its holder by, so whoever the lock
+   * refuses can name it (HAL-14299). Left out, the lock names only the process.
    */
-  readonly harnessParts?: LocalHarnessParts;
-  /** Where the profile folder is; this process's by default. */
-  readonly environment?: ProfileEnvironment;
-  /**
-   * The command that opens the engine, written into its lock, so a command
-   * the lock refuses can name it (HAL-14299). Left out, the lock names only
-   * the process.
-   */
-  readonly holder?: EngineHolder;
-  /** Which git makes the copies a live run's programs start in, and the harness runs' worktrees; the one on the `PATH` by default. */
+  readonly holder?: string;
+  /** Which git makes the copies a live run's programs start in; the one on the `PATH` by default. */
   readonly git?: GitRunnerOptions;
   /** The time; the computer's clock by default. */
   readonly clock?: Clock;
@@ -216,9 +231,8 @@ export interface LocalEngineInput {
   /** How the scheduler wakes itself up; Node's own timers by default. */
   readonly setTimer?: SetTimer;
   /**
-   * Starts the workspace's routines on the scheduler's tick, once a minute,
-   * as `halonic routines watch` does. Left out, a tick does nothing, as for
-   * `halonic run`.
+   * Starts the workspace's routines on the scheduler's tick, once a minute.
+   * Left out, a tick does nothing, as for `halonic run`.
    */
   readonly routines?: (engine: RoutineEngine) => RoutineTicks;
 }
@@ -264,33 +278,35 @@ export interface LocalEngine {
  * because this one stalled for longer than the lock's stale limit, the
  * engine reports it and closes.
  *
- * @throws KindedError `conflict` when another engine is open on the workspace
+ * @throws LockHeldError when another engine is open on the workspace; it is
+ *   the only error of that type this throws
  * @throws when the workspace folder doesn't exist, or `HALONIC_HOME` or the
  *   home folder isn't an absolute folder
  *
  * @example
- * const engine = await openLocalEngine({ workspace, workspaceRoot, secrets, http, reportError });
+ * const engine = await openLocalEngine({ workspace, workspaceRoot, environment, secrets, http, openHarnessHost, listedToolApproval, reportError });
  * await new WorkflowRuns(engine.executor).startRun(workspace, "support-reply", input);
  * await engine.close();
  */
-export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEngine> {
+export async function openLocalEngine(input: OpenLocalEngineInput): Promise<LocalEngine> {
   const location = await realpath(input.workspaceRoot);
-  const environment = input.environment ?? nodeProfileEnvironment();
+  const { environment } = input;
   const profile = profileFolder(environment);
   const folders = await workspaceFolders(profile, location, webCryptoDigest);
   // Private like the run files in it, which hold prompts and model output (HAL-5215).
   await makePrivateFolder(folders.folder);
   let engine: LocalEngine | undefined;
-  const lock = await holdEngineLock(join(folders.folder, engineLockFile), {
-    ...(input.holder === undefined ? {} : { holder: engineHolders[input.holder].command }),
+  const lock = await holdLock(join(folders.folder, engineLockFile), {
+    ...(input.holder === undefined ? {} : { holder: input.holder }),
     onLost: (error) => {
       input.reportError(error, "engine-lock");
       void engine?.close().catch((closeError) => input.reportError(closeError, "engine-lock"));
     },
     onRenewError: (error) => input.reportError(error, "engine-lock"),
   });
+  const place: EnginePlace = { location, folders, profile, environment };
   let programFolders: ProgramFolders | undefined;
-  let harnessHost: LocalHarnessHost | undefined;
+  let harnessHost: EngineHarnessHost | undefined;
   try {
     // Under the lock: it removes the copies a stopped engine left behind.
     programFolders = await openProgramFolders({
@@ -299,32 +315,10 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       reportError: (error) => input.reportError(error, "program-copies"),
       ...(input.git === undefined ? {} : { git: input.git }),
     });
-    harnessHost = await openLocalHarnessHost({
-      location,
-      folders,
-      profile,
-      environment,
-      workspace: () => input.versions?.latest() ?? input.workspace,
-      ...(input.versions === undefined ? {} : { versions: input.versions }),
-      ...(input.runFiles === undefined ? {} : { runFiles: input.runFiles }),
-      store: workspaceStore(location, location, profile),
-      digest: webCryptoDigest,
-      clock: input.clock ?? systemClock,
-      openRuns: () => openRunsOf(new FolderRunStore(folders.runsFolder())),
-      reportError: (error) => input.reportError(error, "harness-host"),
-      reportBridgeError: (error) => input.reportError(error, "harness-bridge"),
-      reportHostLock: (error) => input.reportError(error, "host-lock"),
-      secrets: input.secrets,
-      keyOrigins: input.keyOrigins,
-      trusted: input.trusted,
-      ...(input.ownPorts === undefined ? {} : { ownPorts: input.ownPorts }),
-      ...(input.reportAccess === undefined ? {} : { reportAccess: input.reportAccess }),
-      ...(input.git === undefined ? {} : { git: input.git }),
-      ...(input.harnessParts === undefined ? {} : { parts: input.harnessParts }),
-    });
+    harnessHost = await input.openHarnessHost(place);
     // Before the engine can start a run: the folders of runs that ended while no engine was open go.
     await harnessHost.start();
-    engine = engineOn(input, { location, folders, profile }, lock, programFolders, harnessHost);
+    engine = engineOn(input, place, lock, programFolders, harnessHost);
     return engine;
   } catch (error) {
     try {
@@ -340,22 +334,15 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
   }
 }
 
-/** Where the engine's workspace is: its real path, and its folders in the profile. */
-interface EnginePlace {
-  readonly location: string;
-  readonly folders: WorkspaceFolders;
-  /** The profile folder, where the approvals of listed tools and the trust records are kept. */
-  readonly profile: ProfileFolder;
-}
-
 /** The engine on the workspace's folders in the profile, which holds `lock` until it is closed. */
 function engineOn(
-  input: LocalEngineInput,
-  { location, folders, profile }: EnginePlace,
+  input: OpenLocalEngineInput,
+  place: EnginePlace,
   lock: HeldLock,
   programFolders: ProgramFolders,
-  harnessHost: LocalHarnessHost,
+  harnessHost: EngineHarnessHost,
 ): LocalEngine {
+  const { location, folders } = place;
   const clock = input.clock ?? systemClock;
   const runs = new FolderRunStore(folders.runsFolder());
 
@@ -390,16 +377,7 @@ function engineOn(
         clock,
         isTrusted: () => input.trusted,
         keyOrigins: input.keyOrigins,
-        // The approvals a person gave with `halonic tools`, read at the start of every turn.
-        listedToolApproval: cliListedToolApproval({
-          location,
-          workspace: latest,
-          approvals: new FileToolApprovalStore(toolApprovalFolder(profile)),
-          trust: new FileTrustStore(trustFolder(profile)),
-          digest: webCryptoDigest,
-          clock,
-          ...(input.reportWaiting === undefined ? {} : { reportWaiting: input.reportWaiting }),
-        }),
+        listedToolApproval: input.listedToolApproval(place, latest),
         ...(input.connectors === undefined ? {} : { connectors: input.connectors }),
       }),
       runs: {
@@ -411,12 +389,7 @@ function engineOn(
           input.ids ?? randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), clock),
         definitionsOf: async (hubId, workflowId, version, runId) =>
           versions === undefined
-            ? runDefinitionsOf(
-                input.workspace,
-                hubId,
-                workflowId,
-                approvedIntegrations(input.runConnectors?.trust ?? null, input.integrations ?? []),
-              )
+            ? runDefinitionsOf(input.workspace, hubId, workflowId, input.declaredToolIntegrations)
             : await versions.definitionsOf(hubId, workflowId, version, runId),
         ...connectors?.runs,
         budget: workspaceBudget(latest),
@@ -446,14 +419,4 @@ function engineOn(
     release: () => lock.release(),
   });
   return { ...assembled, programFolders };
-}
-
-/**
- * The runs the engine hasn't ended, whose proposal folders stay at the
- * host's start: those waiting for a person, and those it will end as
- * interrupted on its first run.
- */
-async function openRunsOf(runs: RunStore): Promise<ReadonlySet<string>> {
-  const open = await runs.list({ status: ["running", "waiting"] });
-  return new Set(open.map((run) => run.id));
 }

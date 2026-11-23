@@ -3,8 +3,8 @@
 // access to its model.
 
 import type { ChatTurnWaiting } from "@halonicjs/ports";
+import type { LocalEngineInput } from "./cli-local-engine.ts";
 import type { CommandContext } from "./command.ts";
-import type { LocalEngineInput } from "./local-engine-host.ts";
 import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { printable } from "./output/printable.ts";
