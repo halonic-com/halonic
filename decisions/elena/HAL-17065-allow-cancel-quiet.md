@@ -3,6 +3,7 @@
 - Task: HAL-17065, from words check HAL-17061 on #5473 (HAL-16466)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17065 (a team decision that builds on approved screens, HAL-2282; Liam's required review is on the same task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4Oo74eh4vBRyD2v+dY/hrAwWCmzM5pH8pcVjjUhFhiY5wcAquuoELP8Y78dmgnVeIeXkWhchZPC94j6R/wxpCw==
 
 ## What changes
 
