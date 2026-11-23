@@ -1,25 +1,35 @@
-// The Markdown a plugin's result may use (`plugins.plugin-text`). It reads a
-// fixed set of elements into plain data, and everything else stays text:
-// HTML, images, tables, nested lists and links to anything but a web page.
-// The screens draw the data with React, so no string ever becomes markup.
+// The Markdown a plugin's result (`plugins.plugin-text`) and a chat reply
+// (`kit.chat-message`) may use. It reads a fixed set of elements into plain
+// data, and everything else stays text: HTML, images, tables, nested lists and
+// links to anything but a web page. The screens draw the data with React, so
+// no string ever becomes markup.
 
-import { isWebAddress } from "@halonicjs/studio-kit";
+import { isWebAddress } from "../external-link/external-link.tsx";
 
 /** A run of text inside a block. */
-export type Inline =
+export type MarkdownInline =
   | { readonly kind: "text"; readonly text: string }
-  | { readonly kind: "strong"; readonly children: readonly Inline[] }
-  | { readonly kind: "em"; readonly children: readonly Inline[] }
+  | { readonly kind: "strong"; readonly children: readonly MarkdownInline[] }
+  | { readonly kind: "em"; readonly children: readonly MarkdownInline[] }
   | { readonly kind: "code"; readonly text: string }
   /** Only for an `http` or `https` address; its text is plain. */
   | { readonly kind: "link"; readonly href: string; readonly text: string };
 
-/** A block of a result. A heading is a bold line, so a plugin can't add to the page's outline. */
-export type Block =
-  | { readonly kind: "paragraph"; readonly inlines: readonly Inline[] }
-  | { readonly kind: "heading"; readonly inlines: readonly Inline[] }
-  | { readonly kind: "quote"; readonly inlines: readonly Inline[] }
-  | { readonly kind: "list"; readonly ordered: boolean; readonly items: readonly Inline[][] }
+/**
+ * A block of a text. A heading is a bold line, so a plugin or a chat reply can't add to the page's
+ * outline.
+ */
+export type MarkdownBlock =
+  | { readonly kind: "paragraph"; readonly inlines: readonly MarkdownInline[] }
+  | { readonly kind: "heading"; readonly inlines: readonly MarkdownInline[] }
+  | { readonly kind: "quote"; readonly inlines: readonly MarkdownInline[] }
+  | {
+      readonly kind: "list";
+      readonly ordered: boolean;
+      /** The first item's number, so a list the text starts at 3 shows 3 first. 1 for bullets. */
+      readonly start: number;
+      readonly items: readonly MarkdownInline[][];
+    }
   | { readonly kind: "code"; readonly text: string };
 
 const HEADING = /^ {0,3}#{1,6}(?:\s+|$)/;
@@ -31,18 +41,18 @@ const FIRST_NUMBERED = /^ {0,3}1[.)]\s+/;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 
 /**
- * Reads a plugin's Markdown result into blocks. Lines inside a paragraph keep
+ * Reads a plugin's result or a chat reply into blocks. Lines inside a paragraph keep
  * their line breaks.
  *
- * @param source - the tool's answer
+ * @param source - the tool's answer or the model's reply
  * @example
  * readMarkdown("# Today\n**Sunny**, 21 °C");
  * // [{ kind: "heading", inlines: [text "Today"] },
  * //  { kind: "paragraph", inlines: [strong "Sunny", text ", 21 °C"] }]
  */
-export function readMarkdown(source: string): Block[] {
+export function readMarkdown(source: string): MarkdownBlock[] {
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
-  const blocks: Block[] = [];
+  const blocks: MarkdownBlock[] = [];
   let index = 0;
   while (index < lines.length) {
     const { block, next } = blockAt(lines, index);
@@ -53,7 +63,10 @@ export function readMarkdown(source: string): Block[] {
 }
 
 /** The block that starts at line `index`, if any, and the line after it. */
-function blockAt(lines: readonly string[], index: number): { block: Block | null; next: number } {
+function blockAt(
+  lines: readonly string[],
+  index: number,
+): { block: MarkdownBlock | null; next: number } {
   const line = lines[index] ?? "";
   if (line.trim() === "") return { block: null, next: index + 1 };
   const fence = FENCE.exec(line);
@@ -101,7 +114,7 @@ function startsOtherBlock(line: string, kind: RunKind): boolean {
   return quote || BULLET.test(line) || FIRST_NUMBERED.test(line);
 }
 
-function toBlock(kind: RunKind, run: readonly string[]): Block {
+function toBlock(kind: RunKind, run: readonly string[]): MarkdownBlock {
   if (kind === "quote") {
     return { kind, inlines: readInline(run.map((line) => line.replace(QUOTE, "")).join("\n")) };
   }
@@ -110,13 +123,14 @@ function toBlock(kind: RunKind, run: readonly string[]): Block {
   }
   // A line that isn't an item continues the item above it.
   const ordered = NUMBERED.test(run[0] ?? "");
+  const start = ordered ? Number.parseInt((run[0] ?? "").trim(), 10) : 1;
   const items: string[] = [];
   for (const line of run) {
     const marker = BULLET.exec(line) ?? NUMBERED.exec(line);
     if (marker === null) items[items.length - 1] += `\n${line.trim()}`;
     else items.push(line.slice(marker[0].length));
   }
-  return { kind, ordered, items: items.map((item) => readInline(item)) };
+  return { kind, ordered, start, items: items.map((item) => readInline(item)) };
 }
 
 /**
@@ -130,9 +144,9 @@ function toBlock(kind: RunKind, run: readonly string[]): Block {
  *
  * @param source - the block's text
  */
-export function readInline(source: string): Inline[] {
+export function readInline(source: string): MarkdownInline[] {
   const reader = readerOf(source);
-  const parts: Inline[] = [];
+  const parts: MarkdownInline[] = [];
   let text = "";
   let at = 0;
   while (at < source.length) {
@@ -150,7 +164,7 @@ export function readInline(source: string): Inline[] {
   return parts;
 }
 
-type Found = { part: Inline; end: number } | null;
+type Found = { part: MarkdownInline; end: number } | null;
 
 /**
  * What ends each part. For emphasis the match starts at the content's last

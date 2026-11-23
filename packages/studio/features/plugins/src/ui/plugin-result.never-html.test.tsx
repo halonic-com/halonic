@@ -40,6 +40,8 @@ const ALLOWED_ATTRIBUTES = new Set([
   "target",
   "rel",
   "aria-hidden",
+  // An ordered list's first number: the reader writes it from the digits it read, never text.
+  "start",
 ]);
 
 /** Pieces of Markdown, HTML and links an answer is built from. */

@@ -55,6 +55,7 @@ verifies("plugins.plugin-text", () => {
         {
           kind: "list",
           ordered: false,
+          start: 1,
           items: [[text("one")], [text("two\nmore")], [text("first")]],
         },
         { kind: "quote", inlines: [text("said")] },
@@ -64,7 +65,7 @@ verifies("plugins.plugin-text", () => {
 
     it("reads a numbered list and a fence with no end", () => {
       expect(readMarkdown("1) a\r\n2) b\r\n~~~\ncode")).toEqual([
-        { kind: "list", ordered: true, items: [[text("a")], [text("b")]] },
+        { kind: "list", ordered: true, start: 1, items: [[text("a")], [text("b")]] },
         { kind: "code", text: "code" },
       ]);
     });
@@ -81,7 +82,13 @@ verifies("plugins.plugin-text", () => {
     it("ends a paragraph only at a list that starts at 1", () => {
       expect(readMarkdown("In\n2024. Next\n1. one")).toEqual([
         { kind: "paragraph", inlines: [text("In\n2024. Next")] },
-        { kind: "list", ordered: true, items: [[text("one")]] },
+        { kind: "list", ordered: true, start: 1, items: [[text("one")]] },
+      ]);
+    });
+
+    it("keeps the number a list starts at", () => {
+      expect(readMarkdown("3. third\n4. fourth")).toEqual([
+        { kind: "list", ordered: true, start: 3, items: [[text("third")], [text("fourth")]] },
       ]);
     });
 

@@ -45,13 +45,9 @@ export {
   type ChatEndLineTone,
 } from "./chat/chat-end-line.tsx";
 export { ChatLoading, type ChatLoadingProps } from "./chat/chat-loading.tsx";
-export {
-  ChatMessage,
-  type ChatMessageProps,
-  ChatText,
-  type ChatTextProps,
-} from "./chat/chat-message.tsx";
+export { ChatMessage, type ChatMessageProps } from "./chat/chat-message.tsx";
 export { ChatStart, type ChatStartProps } from "./chat/chat-start.tsx";
+export { ChatText, type ChatTextProps } from "./chat/chat-text.tsx";
 export {
   ChatToolLine,
   type ChatToolLineProps,
@@ -331,6 +327,11 @@ export {
   type TabsProps,
   useTabIds,
 } from "./tabs/tabs.tsx";
+export {
+  type MarkdownBlock,
+  type MarkdownInline,
+  readMarkdown,
+} from "./text/markdown.ts";
 export { TextSheet, type TextSheetProps } from "./text-sheet/text-sheet.tsx";
 export {
   TOAST_CLOSES_AFTER_MS,
