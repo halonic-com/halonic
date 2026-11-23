@@ -8,6 +8,7 @@
  *
  * @example
  * throw new SandboxNotReadyError("bubblewrap-missing", "writer");
+ * throw new SandboxNotReadyError("bubblewrap-missing", "writer", { onHold: true });
  */
 export class SandboxNotReadyError extends Error {
   override readonly name = "SandboxNotReadyError";
@@ -15,16 +16,23 @@ export class SandboxNotReadyError extends Error {
   readonly sandboxReason: string;
   /** The id of the agent that didn't start, so `run.failed` names it even when several agents start in parallel. */
   readonly agent: string;
+  /**
+   * Whether the agent's "this computer" choice is on hold because its file
+   * changed since: the person can confirm it again instead of fixing the sandbox.
+   */
+  readonly onHold: boolean;
 
   /**
    * @param sandboxReason - why the sandbox can't start, as `SandboxCheck.reason` gave it
    * @param agent - the id of the agent that didn't start
+   * @param placement.onHold - the placement answered `sandbox` because the agent's file changed since a person chose this computer
    */
-  constructor(sandboxReason: string, agent: string) {
+  constructor(sandboxReason: string, agent: string, placement: { onHold?: boolean } = {}) {
     super(
       `The sandbox can't start on this computer (${sandboxReason}), so agent "${agent}" didn't start. Halonic never runs it without one.`,
     );
     this.sandboxReason = sandboxReason;
     this.agent = agent;
+    this.onHold = placement.onHold === true;
   }
 }

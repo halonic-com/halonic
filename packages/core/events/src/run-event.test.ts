@@ -184,6 +184,8 @@ verifies("events.run-log-contract", () => {
       agent?: string;
       pin?: LoggedInstructionPin;
       changed?: boolean;
+      // Added after the reference by events.run-failed-sandbox-not-ready (HAL-16624).
+      onHold?: boolean;
       // Added after the reference by events.provider-text (HAL-3119).
       providerText?: ProviderText;
       // Added after the reference by events.run-failed-cause (HAL-11593).

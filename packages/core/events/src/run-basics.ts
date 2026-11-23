@@ -256,7 +256,8 @@ export type ToolVerb = "sent" | "saved" | "created" | "updated" | "moved" | "dra
  * - `disk-full`: there was no disk space left to write what the run needed.
  * - `interrupted`: the engine stopped while the run was going, and found it on its next start.
  * - `sandbox-not-ready`: the sandbox check failed, so the step that needs the sandbox didn't
- *   start; `run.failed` gives the check's reason code in `sandboxReason` and the refused agent in `agent`.
+ *   start; `run.failed` gives the check's reason code in `sandboxReason`, the refused agent in `agent`,
+ *   and `onHold: true` when that agent's this-computer choice waits to be confirmed again.
  * - `sandbox-start-failed`: the sandbox check had passed, but the sandbox didn't start for this run.
  * - `this-computer-start-failed`: a person set the step's agent to run on this computer, without a
  *   sandbox, and the launcher that starts it there didn't open; `error` is the launcher's own reason.

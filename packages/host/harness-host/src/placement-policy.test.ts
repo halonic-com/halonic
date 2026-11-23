@@ -65,11 +65,11 @@ verifies("harness-host.placement", () => {
     expect(await policy.where(coder)).toEqual({ runsOn: "sandbox" });
   });
 
-  it("runs the agent in a sandbox again once its file changed", async () => {
+  it("runs the agent in a sandbox again once its file changed, with the choice on hold", async () => {
     const { reader, policy } = setup({ "support/coder": "kind: agent\n " });
     await chooseThisComputer(reader, "kind: agent\n");
 
-    expect(await policy.where(coder)).toEqual({ runsOn: "sandbox" });
+    expect(await policy.where(coder)).toEqual({ runsOn: "sandbox", onHold: true });
   });
 
   it("reads the file of the agent the engine asks about, in its hub, for its run", async () => {

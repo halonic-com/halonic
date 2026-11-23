@@ -177,7 +177,8 @@ export async function runHarnessCall(
   const sandbox = options.sandboxes[placement.runsOn];
   const check = await sandbox.check();
   if (!check.ok) {
-    throw new SandboxNotReadyError(check.reason, effect.agent);
+    const onHold = placement.runsOn === "sandbox" && placement.onHold === true;
+    throw new SandboxNotReadyError(check.reason, effect.agent, { onHold });
   }
   // What stops the call from here on: the engine, the budget once it refused a model call, or a step limit.
   const callStop = new StopSource();

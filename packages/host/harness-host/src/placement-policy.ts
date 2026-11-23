@@ -2,7 +2,8 @@
 // `harness-host.placement`). The engine asks with the agent's run, hub and
 // id; `AgentPlacement` wants the agent's file as it is on disk, because its
 // choice holds for those exact bytes. This reads the file and passes on only
-// what the engine may know: where the harness runs, and since when.
+// what the engine may know: where the harness runs, since when, and whether a
+// choice waits to be confirmed again because the file changed.
 
 import type { PlacementReader } from "@halonicjs/app";
 import type { HarnessAgent, PlacementAnswer, PlacementPolicy } from "@halonicjs/engine";
@@ -30,7 +31,8 @@ export interface AgentFiles {
 /**
  * Where each agent's harness runs, as the person chose for the agent's file
  * as it is now. Without a choice, with one for another version of the file,
- * or with one that can't be read, in a sandbox.
+ * or with one that can't be read, in a sandbox; with one for another version,
+ * the choice is on hold until the person confirms it again.
  *
  * @example
  * const placement = new FilePlacementPolicy({ reader, files, location: "/workspaces/acme" });
@@ -61,6 +63,9 @@ export class FilePlacementPolicy implements PlacementPolicy {
     });
     if (answer.runsOn === "this-computer") {
       return { runsOn: "this-computer", chosenAt: answer.chosenAt };
+    }
+    if (answer.reason === "file-changed") {
+      return { runsOn: "sandbox", onHold: true };
     }
     return { runsOn: "sandbox" };
   }

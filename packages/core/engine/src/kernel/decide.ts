@@ -242,8 +242,8 @@ function failedEffect(run: RunState, input: EffectFailedInput): Decision {
     const ended: DecidedEvent = { type: "run.cant-try", state: run.state, cantTry };
     return { events: [ended], effects: tellParent({ ...run, status: "cant-try" }) };
   }
-  const { error, reason, host, sandboxReason, harnessCause, agent, refusal, providerText, cause } =
-    input;
+  const { error, reason, host, sandboxReason, harnessCause, agent, onHold, refusal } = input;
+  const { providerText, cause } = input;
   const failed: DecidedEvent = {
     type: "run.failed",
     state: run.state,
@@ -253,6 +253,7 @@ function failedEffect(run: RunState, input: EffectFailedInput): Decision {
     ...(sandboxReason === undefined ? {} : { sandboxReason }),
     ...(harnessCause === undefined ? {} : { harnessCause }),
     ...(agent === undefined ? {} : { agent }),
+    ...(onHold === undefined ? {} : { onHold }),
     ...refusal,
     ...(providerText === undefined ? {} : { providerText }),
     ...(cause === undefined ? {} : { cause }),

@@ -36,7 +36,9 @@ optional and come with a requirement.
   `model-no-tools`, `harness-unavailable` or `sandbox-start-failed`.
   `sandbox-not-ready` means the sandbox check failed before the step started;
   `sandboxReason` then gives the `Sandbox` port's reason code, such as
-  `bubblewrap-missing`, and `agent` names the agent that didn't start
+  `bubblewrap-missing`, `agent` names the agent that didn't start, and
+  `onHold: true` says a person set that agent to this computer for an earlier
+  version of its file, so the choice waits to be confirmed again
   (requirement `run-failed-sandbox-not-ready`). A reader
   that doesn't know a code reads it as `other`. `sandbox-start-failed` gives
   `sandboxReason` too when the check fails once the sandbox didn't open, and

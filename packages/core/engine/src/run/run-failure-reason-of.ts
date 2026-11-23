@@ -7,7 +7,8 @@ import { ThisComputerStartFailedError } from "./this-computer-start-failed-error
 
 /**
  * Why a run failed, as `run.failed` records it: the reason, the host for
- * `model-unreachable` and `model-timeout`, the sandbox's reason code and the agent that didn't start for `sandbox-not-ready`, the sandbox's reason code
+ * `model-unreachable` and `model-timeout`, the sandbox's reason code and the agent that didn't start for `sandbox-not-ready`,
+ * with `onHold` when that agent's "this computer" choice waits for the person to confirm it again, the sandbox's reason code
  * for a `sandbox-start-failed` that has one, the harness cause for a
  * `harness-start-failed` that has one, and the agent and what the check saw for `instructions-not-trusted`.
  */
@@ -17,6 +18,7 @@ export interface RunFailure {
   sandboxReason?: string;
   harnessCause?: HarnessStartCause;
   agent?: string;
+  onHold?: true;
   refusal?: InstructionsRefusal;
 }
 
@@ -33,7 +35,8 @@ export interface RunFailure {
  *   sandbox's reason code or the harness cause it found, when it found one;
  * - the engine's own `ThisComputerStartFailedError` is `this-computer-start-failed`;
  * - the engine's own `SandboxNotReadyError` is `sandbox-not-ready`, with
- *   the check's reason code and the agent that didn't start;
+ *   the check's reason code and the agent that didn't start, and `onHold` when
+ *   the agent's "this computer" choice is on hold because its file changed;
  * - the engine's own `InstructionsNotTrustedError` is `instructions-not-trusted`,
  *   with the agent and the pin the check saw;
  * - a Node error with the code `ENOSPC` is `disk-full`, so a store or sandbox
@@ -67,7 +70,7 @@ export function runFailureReasonOf(error: unknown): RunFailure {
     return { reason: error.failure };
   }
   if (error instanceof SandboxNotReadyError) {
-    return { reason: "sandbox-not-ready", sandboxReason: error.sandboxReason, agent: error.agent };
+    return sandboxNotReadyFailure(error);
   }
   if (error instanceof InstructionsNotTrustedError) {
     return { reason: "instructions-not-trusted", agent: error.agent, refusal: error.refusal };
@@ -82,4 +85,14 @@ export function runFailureReasonOf(error: unknown): RunFailure {
     return { reason: "cancelled" };
   }
   return { reason: "error" };
+}
+
+/** The failure for the engine's own sandbox refusal, with `onHold` only when the agent's choice is on hold. */
+function sandboxNotReadyFailure(error: SandboxNotReadyError): RunFailure {
+  const failure: RunFailure = {
+    reason: "sandbox-not-ready",
+    sandboxReason: error.sandboxReason,
+    agent: error.agent,
+  };
+  return error.onHold ? { ...failure, onHold: true } : failure;
 }

@@ -422,6 +422,8 @@ export type RunEventBody =
    * `harnessCause`: with `harness-start-failed` only, why the program didn't start when the engine
    * knows, `not-installed` or `signed-out` (requirement `events.run-failed-harness-cause`).
    * `agent`: with `sandbox-not-ready`, the agent that didn't start (requirement `events.run-failed-sandbox-not-ready`).
+   * `onHold`: with `sandbox-not-ready` only, `true` when a person chose this computer for an earlier
+   * version of that agent's file, so the choice waits for them to confirm it again (same requirement).
    * `agent`, `pin` and `changed`: with `instructions-not-trusted`, the agent that didn't start,
    * the digests of the instructions the check saw (never their text) and whether a person had
    * trusted instructions for it before (requirement `events.run-failed-instructions-not-trusted`);
@@ -440,6 +442,7 @@ export type RunEventBody =
       sandboxReason?: string;
       harnessCause?: HarnessStartCause;
       agent?: string;
+      onHold?: boolean;
       pin?: LoggedInstructionPin;
       changed?: boolean;
       providerText?: ProviderText;

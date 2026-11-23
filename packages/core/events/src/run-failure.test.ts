@@ -116,6 +116,19 @@ verifies("events.run-failed-sandbox-not-ready", () => {
       agent: string;
     }>().toExtend<EventOf<"run.failed">>();
   });
+
+  typeTest("says when the refused agent's this-computer choice is on hold", () => {
+    expectTypeOf<EventOf<"run.failed">["onHold"]>().toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<{
+      type: "run.failed";
+      state: string;
+      error: string;
+      reason: "sandbox-not-ready";
+      sandboxReason: string;
+      agent: string;
+      onHold: true;
+    }>().toExtend<EventOf<"run.failed">>();
+  });
 });
 
 verifies("events.run-failed-interrupted", () => {
