@@ -6,8 +6,8 @@
 // Like the CLI's `GitVcs`, it reads regular files only (`ls-tree` modes `100644` and `100755`), so
 // a link or a submodule named like an agent's file never loads as one. A folder with no `.git` is
 // a workspace with history off, which never needs git, as the CLI's `openGitHistory` says. Where
-// there is a `.git` and git can't be found, it refuses: the saved files are never read instead,
-// since they may hold changes nobody made live.
+// there is a `.git` and git can't be found, or the shell won't open it, it refuses: the saved files
+// are never read instead, since they may hold changes nobody made live.
 
 import {
   checkCommitId,
@@ -76,18 +76,20 @@ export class PageVersions implements LiveVersions {
    * branch and the changes stay empty. A folder inside a larger repository is not one, as the
    * `Vcs` port says.
    *
-   * @throws KindedError `unavailable` when the folder has a `.git` and git can't be found, or git
-   *   refuses to open it
+   * @throws KindedError `unavailable` when the folder has a `.git` and git can't be found, or the
+   *   shell or git refuses to open it
    */
   async status(): Promise<VcsStatus> {
     let inside: GitAnswer;
     try {
       inside = await this.#parts.git(["rev-parse", "--is-inside-work-tree"]);
     } catch (error) {
-      if (refusalKindOf(error) === "folder_not_opened") return notARepository;
-      if (refusalKindOf(error) !== "git_not_found") throw error;
-      if (await this.#parts.hasGitFolder()) throw noGit();
-      return notARepository;
+      const kind = refusalKindOf(error);
+      if (kind !== "git_not_found" && kind !== "folder_not_opened") throw error;
+      // Only a folder without a `.git` has history off. One with its own `.git` whose repository
+      // lies outside, such as a git worktree, is refused, so its saved files never run (HAL-16298).
+      if (!(await this.#parts.hasGitFolder())) return notARepository;
+      throw kind === "git_not_found" ? noGit() : historyOutside();
     }
     // Git refuses a folder owned by someone else with the code of "no repository here".
     const refused = knownGitProblem(inside);
@@ -229,4 +231,12 @@ export class GitMissingError extends KindedError {
 
 function noGit(): GitMissingError {
   return new GitMissingError();
+}
+
+/** The folder has its own `.git`, and the shell won't open the repository it leads to. */
+function historyOutside(): KindedError {
+  return new KindedError(
+    "unavailable",
+    "This folder's history lies outside the folder you opened, so it can't be read.",
+  );
 }
