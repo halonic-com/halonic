@@ -38,6 +38,7 @@ function holding(overrides: Partial<ClientHolding> = {}): ClientHolding {
     ]),
     sentAnswers: new SentAnswers(),
     answersRisky: false,
+    ownerCheckAvailable: false,
     updateNeeded: false,
     ...overrides,
   };
@@ -84,6 +85,48 @@ verifies("remote.phone-remote-answers", () => {
       const [open] = view.openApprovals;
       expect(open?.canAnswer).toBe(false);
       expect(open?.offReason).toBe(ANSWER_RISKY_ON_COMPUTER);
+    });
+
+    it.each<[boolean, boolean, boolean]>([
+      [false, false, true],
+      [true, false, true],
+      [false, true, true],
+      [true, true, false],
+    ])(
+      "with the switch %s and the owner check %s, answers a risky one on the computer: %s",
+      (answersRisky, ownerCheckAvailable, onComputer) => {
+        const memories = new Map([["s1", asking("a-risky", "2026-11-21T14:01:00.000Z", "risky")]]);
+        const view = viewOf(
+          holding({
+            sessions: [listedSession({ id: "s1" })],
+            memories,
+            answersRisky,
+            ownerCheckAvailable,
+          }),
+        );
+        expect(view.openApprovals[0]).toMatchObject({
+          answerOnComputer: onComputer,
+          canAnswer: !onComputer,
+          offReason: onComputer ? ANSWER_RISKY_ON_COMPUTER : undefined,
+        });
+      },
+    );
+
+    it("keeps a risky one off while stale, even with the switch and the owner check on", () => {
+      const memories = new Map([["s1", asking("a-risky", "2026-11-21T14:01:00.000Z", "risky")]]);
+      const view = viewOf(
+        holding({
+          state: "reconnecting",
+          sessions: [listedSession({ id: "s1" })],
+          memories,
+          answersRisky: true,
+          ownerCheckAvailable: true,
+        }),
+      );
+      expect(view.openApprovals[0]).toMatchObject({
+        canAnswer: false,
+        offReason: RECONNECT_TO_ANSWER,
+      });
     });
 
     it("shows an answer on its way as sent, and not to be answered again", () => {

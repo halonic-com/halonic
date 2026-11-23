@@ -75,13 +75,16 @@ export interface RemoteApproval {
   /**
    * Why they are off, in words the screen shows next to them; `undefined`
    * while they are on, or off only because an answer is on its way. A stale view gives {@link RECONNECT_TO_ANSWER}; a
-   * `risky` approval stays off until the phone has biometric unlock.
+   * `risky` approval stays off unless the computer's switch is on and the
+   * phone's owner check can ask.
    */
   readonly offReason: string | undefined;
   /**
-   * The phone never answers this one, connected or not: the screens show it
+   * The phone doesn't answer this one, connected or not: the screens show it
    * with "Answer this on your computer." and no Approve or Reject (board, on
-   * HAL-16169). In 0.1 that's every approval, since every tool is `risky`.
+   * HAL-16169). True for a `risky` approval unless the computer's switch "Let
+   * phones answer risky approvals" is on and the phone's owner check can ask
+   * (HAL-15194).
    */
   readonly answerOnComputer: boolean;
   /**

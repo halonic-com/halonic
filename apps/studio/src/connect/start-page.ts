@@ -1,6 +1,7 @@
 import type {
   ComputerTunnelOf,
   mountPhoneApp,
+  OwnerCheckAvailable,
   PhoneTunnel,
 } from "@halonicjs/studio-feature-remote/phone";
 import { type ConnectPageOptions, startConnectPage } from "./connect-page.ts";
@@ -14,6 +15,8 @@ export interface PageOptions extends ConnectPageOptions {
   readonly tunnel: PhoneTunnel | undefined;
   /** The shell's tunnel to one paired computer, which its agents come through. */
   readonly computerTunnel?: ComputerTunnelOf;
+  /** The shell's `owner_check_available`; without it `risky` approvals stay on the computer. */
+  readonly ownerCheckAvailable?: OwnerCheckAvailable;
   readonly scanner: PairingScanner;
   readonly window: Window;
   /** Android's settings for Halonic. */
@@ -59,6 +62,9 @@ export async function startPage(options: PageOptions): Promise<void> {
   phoneApp.mountPhoneApp(section, {
     tunnel,
     ...(options.computerTunnel === undefined ? {} : { computerTunnel: options.computerTunnel }),
+    ...(options.ownerCheckAvailable === undefined
+      ? {}
+      : { ownerCheckAvailable: options.ownerCheckAvailable }),
     scanner: options.scanner,
     window: options.window,
     report: options.report,

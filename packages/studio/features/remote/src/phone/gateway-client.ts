@@ -44,6 +44,10 @@ export class GatewayClient implements PhoneRemote {
   private sessions: readonly GatewaySession[] = [];
   /** What the last session list said of the risky switch: only a hint for the view. */
   private answersRisky = false;
+  /** Whether the owner check could ask, checked again after every session list. */
+  private ownerCheckAvailable = false;
+  /** Counts the owner checks asked for, so an older answer never overwrites a newer one. */
+  private ownerChecks = 0;
   /** The last connection found the computer on another message version. */
   private updateNeeded = false;
   private readonly memories = new Map<string, SessionMemory>();
@@ -57,10 +61,16 @@ export class GatewayClient implements PhoneRemote {
   private readonly tunnel: ComputerTunnel;
   /** The computer's name, for the header label. */
   private readonly computer: string;
+  private readonly ownerCheck: OwnerCheckAvailable;
 
-  constructor(tunnel: ComputerTunnel, computer: string) {
+  /**
+   * `ownerCheck` asks the shell whether the phone's owner check can ask now;
+   * without one it never can, and every `risky` approval stays on the computer.
+   */
+  constructor(tunnel: ComputerTunnel, computer: string, ownerCheck: OwnerCheckAvailable = never) {
     this.tunnel = tunnel;
     this.computer = computer;
+    this.ownerCheck = ownerCheck;
     this.snapshot = this.build();
     this.unsubscribe = tunnel.subscribe((event) => this.receive(event));
   }
@@ -194,6 +204,7 @@ export class GatewayClient implements PhoneRemote {
     this.session.listed = true;
     this.sessions = sessions;
     this.answersRisky = message.answersRisky;
+    this.checkOwner();
     if (firstSinceWelcome) {
       this.sentAnswers.listed((id) => sessions.find((session) => session.id === id)?.lastSeq);
     }
@@ -246,6 +257,26 @@ export class GatewayClient implements PhoneRemote {
         else pending.settle(outcome);
         return true;
     }
+  }
+
+  /**
+   * Asks again whether the owner check can ask, after every session list: a
+   * fingerprint removed since the last list turns Approve off for `risky`
+   * approvals. Until the answer comes they stay off; any error reads as no.
+   */
+  private checkOwner(): void {
+    this.ownerChecks += 1;
+    const asked = this.ownerChecks;
+    this.ownerCheckAvailable = false;
+    const settle = (available: boolean) => {
+      if (asked !== this.ownerChecks) return;
+      this.ownerCheckAvailable = available;
+      this.changed();
+    };
+    this.ownerCheck().then(
+      (available) => settle(available === true),
+      () => settle(false),
+    );
   }
 
   private watch(sessionId: string): void {
@@ -322,6 +353,8 @@ export class GatewayClient implements PhoneRemote {
   private forget(): void {
     this.sessions = [];
     this.answersRisky = false;
+    this.ownerChecks += 1;
+    this.ownerCheckAvailable = false;
     this.memories.clear();
     this.sentAnswers.clear();
     this.asOf = undefined;
@@ -343,6 +376,7 @@ export class GatewayClient implements PhoneRemote {
       memories: this.memories,
       sentAnswers: this.sentAnswers,
       answersRisky: this.answersRisky,
+      ownerCheckAvailable: this.ownerCheckAvailable,
       updateNeeded: this.updateNeeded,
     });
   }
@@ -352,6 +386,11 @@ export class GatewayClient implements PhoneRemote {
     for (const listener of this.listeners) listener();
   }
 }
+
+/** Whether the phone's owner check can ask now: the shell's `owner_check_available`. */
+export type OwnerCheckAvailable = () => Promise<boolean>;
+
+const never: OwnerCheckAvailable = () => Promise.resolve(false);
 
 function notSent(reason: "off" | "invalid"): Promise<RemoteSendOutcome> {
   return Promise.resolve({ kind: "not-sent", reason });

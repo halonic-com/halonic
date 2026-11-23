@@ -4,6 +4,7 @@ import { type ConnectBridge, localAddressStore } from "./bridge.ts";
 import { type PairingScanner, tauriPairingScanner } from "./pair-scan.ts";
 import { startPage } from "./start-page.ts";
 import { tauriBridge } from "./tauri-bridge.ts";
+import { tauriOwnerCheckAvailable } from "./tauri-owner-check.ts";
 import { type PhoneScreens, tauriPhoneScreens } from "./tauri-phone-screens.ts";
 import { tauriPhoneTunnel } from "./tauri-phone-tunnel.ts";
 
@@ -37,6 +38,9 @@ void startPage({
   ...(tunnel === undefined
     ? {}
     : { computerTunnel: (computer: ComputerId) => tunnel.computerTunnel(computer) }),
+  ...(internals === undefined
+    ? {}
+    : { ownerCheckAvailable: tauriOwnerCheckAvailable(internals, report) }),
   bridge: internals === undefined ? outsideTheApp : tauriBridge(internals, window),
   store: localAddressStore(localStorage),
   changeAddress: location.hash === "#change-address" || location.hash === "#page-not-shown",
