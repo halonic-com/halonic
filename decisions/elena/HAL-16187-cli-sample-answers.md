@@ -2,7 +2,7 @@
 
 - Approval: HAL-16187 (C684 finding 4) asks whether the CLI should say Sample answers as Studio's chip does; the team decided yes on the task, reusing the board-approved chip wording, and the maintainer (Liam) approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iFgCMY1G6pupqP/RMpLAMRWSuQqWy+O/CAhfGoimSyhgvU2TRscsPqIK/DQJNInZzOmyfGR60Yjkdv5AK5XBCw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:27oL7aFhcYG1mKhOLUnsMwYSXp9JHDl/mDRFyFoavR8HFJXdH2zKDdEcxZmO8hNn8AoNQ44gVZfiRYgJBhYcBQ==
 
 ## What changes
 
