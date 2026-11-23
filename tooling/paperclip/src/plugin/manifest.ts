@@ -51,6 +51,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // A new comment is looked at for a board ask at once; runs that failed (part a).
     // Task effort (HAL-16876): a created or changed task's tags and effort.
     "events.subscribe",
+    // Each job emits only its own `pr-watch` or `board-check` event, once per company, so its
+    // pass runs in a call the host scopes to that company (HAL-16941, src/plugin/scheduled.ts).
+    "events.emit",
     // Only `board-waiting` and `board-asks` on the Board Checker's task.
     "issue.documents.write",
     // The pass's GitHub snapshot, one entry per company, for queue_state and merge_speed.
