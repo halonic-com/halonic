@@ -12,7 +12,7 @@ afterEach(() => {
   unmountAll();
 });
 
-const showingLast = "The engine isn't answering. Showing what it said last.";
+const pressAgain = "The engine isn't answering. Press Undo again once it answers.";
 
 function fakeDecisions() {
   return {
@@ -85,7 +85,7 @@ verifies("inbox.proposal-undo-held", () => {
       expect(decisions.undo).not.toHaveBeenCalled();
       expect(toasts.list().map((toast) => [toast.title, toast.text])).toEqual([
         [accepted, undefined],
-        ["Couldn't undo this.", showingLast],
+        ["Couldn't undo this.", pressAgain],
       ]);
 
       answering(true);

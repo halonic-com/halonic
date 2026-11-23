@@ -16,6 +16,7 @@ import {
   decideElsewhereLine,
   proposalFacts,
   seeRunText,
+  undoHeldLine,
 } from "../plain/proposal-text.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { ProposalFile, ProposalItem } from "../proposal-items.ts";
@@ -70,7 +71,7 @@ export interface ProposalCardProps extends EngineState {
  * When it then finds them there again, the changes come back under a line that says so (C711 4).
  * While the engine isn't answering, the host's line sits above the header, and every button that
  * would reach the host stays but doesn't act, pointing at that line (Q11), as on a request's card;
- * a decision toast's **Undo** sends nothing then either, and says that line.
+ * a decision toast's **Undo** sends nothing then either, and says to press it again once it answers.
  *
  * On a phone (Q12) **Accept all** and **Reject all** leave the header for a bar at the page's foot,
  * and **See run 01JD8Q ›**, **Reject** and **Accept** are 48 px high, as the kit makes every
@@ -93,12 +94,12 @@ export function ProposalCard({
 }: ProposalCardProps) {
   const titleId = useId();
   const reasonId = useId();
-  // The line above the header while the engine isn't answering, which an Undo meanwhile says too.
-  const notAnswering = signedOut
+  // What an Undo pressed while the engine isn't answering says: its toast stays to press again.
+  const undoHeld = signedOut
     ? signedOutText
-    : (words ?? engineWords["desktop-app"]).showingLast;
+    : undoHeldLine((words ?? engineWords["desktop-app"]).reason);
   const state: CardState = {
-    ...useProposalDecisions(item, decisions, onDecided, answering ? undefined : notAnswering),
+    ...useProposalDecisions(item, decisions, onDecided, answering ? undefined : undoHeld),
     offline: unavailableWhile(answering, reasonId),
   };
   const open = openFiles(state).length > 0;

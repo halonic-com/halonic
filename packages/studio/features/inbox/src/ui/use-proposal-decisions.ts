@@ -53,8 +53,8 @@ const pastTense = { accept: "Accepted", reject: "Rejected" } as const;
  *
  * @param onDecided after each decision or Undo, and once the proposal settles, so the Inbox reads
  *   its items again and the proposal moves to Done (Q10)
- * @param holdBack while the engine isn't answering, the line the page shows for it: an **Undo**
- *   pressed meanwhile sends nothing and says that line, and its toast stays
+ * @param holdBack while the engine isn't answering, what an **Undo** pressed meanwhile says: it
+ *   sends nothing, and its toast stays so it can be pressed again
  */
 export function useProposalDecisions(
   item: ProposalItem,
@@ -196,10 +196,10 @@ const decidedWords = { accept: "accepted", reject: "rejected" } as const;
  * once a decision on its way and any Undo pressed are done and the last toast has gone, so every
  * **Undo** keeps working while it shows; the host leaves a proposal still undecided open. While
  * the engine isn't answering, as the page shows it, an **Undo** sends nothing: its toast stays, and
- * another says why. Once the page has gone, an **Undo** is sent, and a failure says so.
+ * another says to press it again once the engine answers. Once the page has gone, an **Undo** is sent, and a failure says so.
  *
  * @param settled once the proposal has settled
- * @param holdBack the page's line while the engine isn't answering
+ * @param holdBack while the engine isn't answering, what an **Undo** pressed meanwhile says
  * @param undone after an Undo, with the paths the host put back to undecided
  */
 function useUndoSteps(
