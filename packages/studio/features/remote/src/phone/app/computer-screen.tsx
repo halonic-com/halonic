@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { routeOf } from "../computers-words.ts";
+import type { ReachRoute } from "../connection-check.ts";
+import { ConnectionCheckSheet } from "../connection-check-sheet.tsx";
+import { CantReachPanel, ReachingLine } from "../first-reach.tsx";
 import type { PhoneState } from "../phone-status.ts";
 import type { PairedComputer, PhoneStatus } from "../phone-tunnel.ts";
 import { StaleBanner } from "../stale-banner.tsx";
 import { StandingScreen } from "../standing-screen.tsx";
 import { PhoneStatusHeader } from "../status-header.tsx";
 import { StatusSheet, type StatusSheetOf } from "../status-sheet.tsx";
-import type { PhoneAppRouter } from "./phone-app-router.ts";
+import type { ComputerSheet, PhoneAppRouter } from "./phone-app-router.ts";
 
 /** What the phone does outside the page: Android's settings for Halonic, and Tailscale. */
 export interface PhoneOutside {
@@ -17,7 +20,9 @@ export interface PhoneOutside {
 /**
  * One paired computer (`s-m1` to `s-m9`): the header label, the stale banner while the phone
  * can't reach it, the status sheet the label opens, and Removed or Can't confirm in place of the
- * body. The agents list joins the body with the gateway client.
+ * body. Until the computer first answers, the body is the first reach's waiting line or its
+ * give-up, which open Check this connection (first-run-progress 6). The agents list joins the
+ * body with the gateway client.
  */
 export function ComputerScreen({
   router,
@@ -29,13 +34,13 @@ export function ComputerScreen({
   readonly router: PhoneAppRouter;
   readonly computer: PairedComputer;
   readonly status: PhoneStatus | undefined;
-  /** The status sheet is open. */
-  readonly sheet: boolean;
+  /** The sheet open over the screen, if any. */
+  readonly sheet: ComputerSheet;
   readonly outside: PhoneOutside;
 }) {
   const state = router.stateOf(computer);
   const body = useRef<HTMLDivElement>(null);
-  const sheetOf = sheet ? statusSheetOf(state, status, computer) : undefined;
+  const sheetOf = sheet === "status" ? statusSheetOf(state, status, computer) : undefined;
   const now = useNow(sheetOf?.kind === "reconnecting");
   const tryAgain = () => router.tryAgain(computer.id);
   const onOpen = (shown: PhoneState) => {
@@ -70,11 +75,41 @@ export function ComputerScreen({
           onClose={() => router.closeSheet()}
         />
       )}
+      {sheet === "check" ? (
+        <CheckSheet router={router} computer={computer} status={status} />
+      ) : null}
     </div>
   );
 }
 
-/** Removed or Can't confirm in place of the body, or the stale banner over it. */
+/** Check this connection over the computer's screen, with what the phone knows of the reach. */
+function CheckSheet({
+  router,
+  computer,
+  status,
+}: {
+  readonly router: PhoneAppRouter;
+  readonly computer: PairedComputer;
+  readonly status: PhoneStatus | undefined;
+}) {
+  return (
+    <ConnectionCheckSheet
+      facts={{
+        status,
+        gaveUp: router.reachOf(computer.id)?.gaveUp === true,
+        route: reachRoute(computer),
+        computer: computer.name,
+      }}
+      onCheckAgain={() => router.tryAgain(computer.id)}
+      onClose={() => router.closeSheet()}
+    />
+  );
+}
+
+/**
+ * Removed or Can't confirm in place of the body; until the first answer, the waiting line or
+ * its give-up; else the stale banner over it.
+ */
 function ComputerBody({
   router,
   computer,
@@ -98,6 +133,27 @@ function ComputerBody({
       />
     );
   }
+  const reach = router.reachOf(computer.id);
+  if (reach !== undefined && state !== "phoneOffline") {
+    return (
+      <div className="grid flex-1 place-items-center">
+        {state === "unreachable" ? (
+          <CantReachPanel
+            computer={computer.name}
+            route={reachRoute(computer)}
+            onTryAgain={() => router.tryAgain(computer.id)}
+            onCheck={() => router.openCheck()}
+          />
+        ) : (
+          <ReachingLine
+            computer={computer.name}
+            since={reach.since}
+            onSomethingWrong={() => router.openCheck()}
+          />
+        )}
+      </div>
+    );
+  }
   if (state !== "unreachable" && state !== "phoneOffline") return null;
   return (
     <StaleBanner
@@ -117,12 +173,10 @@ export function statusSheetOf(
   status: PhoneStatus | undefined,
   computer: PairedComputer,
 ): StatusSheetOf | undefined {
-  const [endpoint] = computer.endpoints;
-  const route = endpoint !== undefined && routeOf(endpoint) === "Tailscale" ? "tailscale" : "wifi";
   switch (state) {
     case "connected":
     case "unreachable":
-      return { kind: state, route };
+      return { kind: state, route: reachRoute(computer) };
     case "reconnecting": {
       const nextTryAt = status?.state === "reconnecting" ? status.nextTryAt : undefined;
       return { kind: "reconnecting", nextTryAt: nextTryAt ? new Date(nextTryAt) : undefined };
@@ -132,6 +186,12 @@ export function statusSheetOf(
     default:
       return undefined;
   }
+}
+
+/** How the phone reaches the computer: Tailscale, or this Wi-Fi, from its first endpoint. */
+function reachRoute(computer: PairedComputer): ReachRoute {
+  const [endpoint] = computer.endpoints;
+  return endpoint !== undefined && routeOf(endpoint) === "Tailscale" ? "tailscale" : "wifi";
 }
 
 /** The phone's clock, read again each second while `ticking`: Reconnecting's countdown. */

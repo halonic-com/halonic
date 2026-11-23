@@ -107,9 +107,10 @@ verifies("remote.phone-app", () => {
     expect(document.querySelector("header")?.textContent).toContain("Connected · Tim's laptop");
   });
 
-  it("shows the stale banner while the computer isn't answering", async () => {
+  it("shows the stale banner while a computer it reached isn't answering", async () => {
     const tunnel = withLaptop();
     await mount(tunnel);
+    await act(async () => tunnel.push(laptop, { state: "connected" }));
     await act(async () => tunnel.push(laptop, { state: "reconnecting", lastTry: "timeout" }));
     expect(document.body.textContent).toContain(
       "If your computer is on, your agents there keep running.",

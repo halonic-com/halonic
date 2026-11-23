@@ -10,6 +10,10 @@ import type {
   PhoneStatus,
   PhoneTunnel,
 } from "../phone-tunnel.ts";
+import { type FirstReach, FirstReaches } from "./first-reaches.ts";
+
+/** The sheet over a computer's screen: the header label's status sheet, or Check this connection. */
+export type ComputerSheet = "none" | "status" | "check";
 
 /** What the page holds from one computer while it shows it, such as its agents. */
 export interface HeldComputer {
@@ -25,7 +29,7 @@ export type PhoneAppScreen =
   | { readonly screen: "loading" }
   | { readonly screen: "pair"; readonly flow: PhonePairingFlow }
   | { readonly screen: "address" }
-  | { readonly screen: "computer"; readonly computer: ComputerId; readonly sheet: boolean }
+  | { readonly screen: "computer"; readonly computer: ComputerId; readonly sheet: ComputerSheet }
   | { readonly screen: "computers" };
 
 /** What the phone app shows now. */
@@ -45,6 +49,8 @@ export interface PhoneAppRouterOptions {
   readonly hold?: (computer: PairedComputer) => HeldComputer;
   /** Where a call the shell refused goes, for the log. */
   readonly report: (problem: string) => void;
+  /** The phone's clock; a test sets its own. */
+  readonly clock?: () => Date;
 }
 
 /**
@@ -52,6 +58,7 @@ export interface PhoneAppRouterOptions {
  * decision 14). It takes the tunnel's answers and statuses and never touches the DOM, so the
  * screens over it stay thin. When a computer says this phone is removed, what the page held
  * from it is dropped before any screen hears of it, so the Removed screen never shows over it.
+ * Until a computer first answers, it counts the first reach and gives up after 30 seconds.
  */
 export class PhoneAppRouter {
   readonly #options: PhoneAppRouterOptions;
@@ -59,12 +66,17 @@ export class PhoneAppRouter {
   #computers: readonly ListedComputer[] | KeysUnavailable | undefined;
   readonly #statuses = new Map<ComputerId, PhoneStatus>();
   readonly #held = new Map<ComputerId, HeldComputer>();
+  readonly #reaches: FirstReaches;
   readonly #listeners = new Set<() => void>();
   #view: PhoneAppView;
   #unwatch: (() => void) | undefined;
 
   constructor(options: PhoneAppRouterOptions) {
     this.#options = options;
+    this.#reaches = new FirstReaches(
+      () => options.clock?.() ?? new Date(),
+      () => this.#changed(),
+    );
     this.#view = this.#build();
   }
 
@@ -82,6 +94,7 @@ export class PhoneAppRouter {
     this.#unwatch = this.#options.tunnel.onStatus((computer, status) => {
       this.#statuses.set(computer, status);
       if (status.state === "removed") this.#drop(computer);
+      this.#reaches.follow(computer, status);
       this.#changed();
     });
     await this.#list();
@@ -89,23 +102,38 @@ export class PhoneAppRouter {
     this.#changed();
   }
 
-  /** The computer's standing first, then its connection, as the header label shows it. */
+  /**
+   * The computer's standing first, then its connection, as the header label shows it. A first
+   * reach that gave up reads as not answering, also while the tunnel still tries in the background.
+   */
   stateOf(computer: PairedComputer): PhoneState | undefined {
-    return computerRowState(computer, this.#statuses.get(computer.id));
+    const state = computerRowState(computer, this.#statuses.get(computer.id));
+    const gaveUp = this.#reaches.get(computer.id)?.gaveUp === true;
+    return gaveUp && (state === undefined || state === "reconnecting") ? "unreachable" : state;
+  }
+
+  /** The first reach of a computer the phone hasn't reached since it opened it, if under way. */
+  reachOf(computer: ComputerId): FirstReach | undefined {
+    return this.#reaches.get(computer);
   }
 
   /** The header label or the banner's Details: opens the status sheet. */
   openSheet(): void {
-    this.#setSheet(true);
+    this.#setSheet("status");
+  }
+
+  /** Something wrong? and the give-up's Check this connection. */
+  openCheck(): void {
+    this.#setSheet("check");
   }
 
   closeSheet(): void {
-    this.#setSheet(false);
+    this.#setSheet("none");
   }
 
   /** The Connected sheet's Paired computers row. */
   openComputers(): void {
-    this.#setSheet(false);
+    this.#setSheet("none");
     this.#push({ screen: "computers" });
     void this.#list().then(() => this.#changed());
   }
@@ -127,8 +155,20 @@ export class PhoneAppRouter {
     this.#changed();
   }
 
-  /** Try again and Try now: connect at once. */
+  /**
+   * Try again, Try now and Check again: connect at once. During a first reach it starts the wait
+   * over, and the last try's failure is forgotten until the tunnel says how this one went.
+   */
   tryAgain(computer: ComputerId): void {
+    if (this.#reaches.has(computer)) {
+      this.#statuses.delete(computer);
+      this.#startReach(computer);
+      this.#changed();
+    }
+    this.#connect(computer);
+  }
+
+  #connect(computer: ComputerId): void {
     // A refused call changes nothing here: the shell's statuses say how the connection is.
     this.#options.tunnel.connect(computer).catch(() => this.#options.report("connect was refused"));
   }
@@ -148,6 +188,7 @@ export class PhoneAppRouter {
     const outcome = await this.#options.tunnel.forget(computer.id);
     if (outcome.kind === "forgotten") {
       this.#drop(computer.id);
+      this.#reaches.stop(computer.id);
       this.#statuses.delete(computer.id);
       await this.#list();
       const kept = this.#stack.filter(
@@ -164,8 +205,8 @@ export class PhoneAppRouter {
   /** Android back: closes the sheet, else goes back a screen. False when there's nowhere to go. */
   back(): boolean {
     const top = this.#top();
-    if (top.screen === "computer" && top.sheet) {
-      this.#setSheet(false);
+    if (top.screen === "computer" && top.sheet !== "none") {
+      this.#setSheet("none");
       return true;
     }
     if (this.#stack.length < 2) return false;
@@ -180,6 +221,7 @@ export class PhoneAppRouter {
   dispose(): void {
     this.#unwatch?.();
     for (const computer of [...this.#held.keys()]) this.#drop(computer);
+    this.#reaches.stopAll();
   }
 
   #open(computer: PairedComputer): PhoneAppScreen {
@@ -187,8 +229,16 @@ export class PhoneAppRouter {
       const held = this.#options.hold?.(computer);
       if (held !== undefined) this.#held.set(computer.id, held);
     }
-    if (computer.standing === "paired") this.tryAgain(computer.id);
-    return { screen: "computer", computer: computer.id, sheet: false };
+    if (computer.standing === "paired") {
+      this.#startReach(computer.id);
+      this.#connect(computer.id);
+    }
+    return { screen: "computer", computer: computer.id, sheet: "none" };
+  }
+
+  /** Starts, or starts over, the first reach's wait, unless the computer already answers. */
+  #startReach(computer: ComputerId): void {
+    if (this.#statuses.get(computer)?.state !== "connected") this.#reaches.start(computer);
   }
 
   /** The readable computer connected last, else Pair with a computer. */
@@ -224,7 +274,7 @@ export class PhoneAppRouter {
     this.#changed();
   }
 
-  #setSheet(sheet: boolean): void {
+  #setSheet(sheet: ComputerSheet): void {
     const top = this.#top();
     if (top.screen !== "computer" || top.sheet === sheet) return;
     this.#stack = [...this.#stack.slice(0, -1), { ...top, sheet }];
@@ -242,7 +292,7 @@ export class PhoneAppRouter {
 
   #sheetOpen(): boolean {
     const top = this.#top();
-    return top.screen === "computer" && top.sheet;
+    return top.screen === "computer" && top.sheet !== "none";
   }
 
   #changed(): void {
