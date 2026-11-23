@@ -116,9 +116,55 @@ verifies("cloudflare-live.transfer", () => {
   describe("the smoke check", () => {
     it("passes on 200 and fails with the status otherwise", async () => {
       await expect(workerChecks.smoke(fakeWorker().target)).resolves.toBeUndefined();
-      await expect(workerChecks.smoke(fakeWorker({ health: 503 }).target)).rejects.toThrow(
-        /answered 503, expected 200/,
+      const unhealthy = { ...fakeWorker({ health: 503 }).target, sleep: async () => undefined };
+      await expect(workerChecks.smoke(unhealthy)).rejects.toThrow(/answered 503, expected 200/);
+    });
+    // HAL-17041: a just-deployed Worker's first /health answered 500 from Cloudflare's edge while
+    // the admin routes on the same Worker passed a second later.
+    it("asks again when a fresh Worker answers 500 once, then 200", async () => {
+      let calls = 0;
+      const waits: number[] = [];
+      const target: WorkerTarget = {
+        baseUrl: base,
+        fetch: async () =>
+          ++calls === 1
+            ? new Response("<html>Error 1101</html>", { status: 500 })
+            : new Response("ok"),
+        sleep: async (ms) => void waits.push(ms),
+      };
+      await expect(workerChecks.smoke(target)).resolves.toBeUndefined();
+      expect(calls).toBe(2);
+      expect(waits).toEqual([5_000]);
+    });
+    it("gives up after 4 tries, naming Cloudflare's error number", async () => {
+      let calls = 0;
+      const target: WorkerTarget = {
+        baseUrl: base,
+        fetch: async () => {
+          calls++;
+          return new Response(`<html>Error 1101 ${base}</html>`, { status: 500 });
+        },
+        sleep: async () => undefined,
+      };
+      const error = await workerChecks.smoke(target).catch((caught: unknown) => caught);
+      expect(String(error)).toMatch(
+        /\/health was answered 500 Cloudflare error 1101, expected 200/,
       );
+      expect(String(error)).not.toContain("example.workers.dev");
+      expect(calls).toBe(4);
+    });
+    it("fails at once on a 4xx, which a fresh Worker doesn't explain", async () => {
+      let calls = 0;
+      const target: WorkerTarget = {
+        baseUrl: base,
+        fetch: async () => {
+          calls++;
+          return new Response("no", { status: 403 });
+        },
+        sleep: async () => undefined,
+      };
+      await expect(workerChecks.smoke(target)).rejects.toThrow(/answered 403, expected 200/);
+      expect(calls).toBe(1);
     });
   });
 

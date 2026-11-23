@@ -12,6 +12,7 @@ import {
   importToWorker,
   type WorkerTransferOptions,
 } from "@halonicjs/target-cloudflare-deploy";
+import { eventually } from "./eventually.ts";
 import { caller, type WorkerTarget } from "./worker-call.ts";
 
 /** The four admin routes, with a path that no import or export would find anything at. */
@@ -58,9 +59,20 @@ function expectStatus(what: string, got: StatusAnswer, want: number) {
 
 /** Checks of a deployed Worker that need no key. Each throws an `Error` naming what differed, never a key or a body. */
 export const workerChecks = {
-  /** The Worker answers its health route. */
+  /**
+   * The Worker answers its health route. A just-deployed Worker's first call can get a 5xx from
+   * Cloudflare's edge while its other routes already answer (HAL-17041), so a 5xx is asked again,
+   * a few times; any other status fails at once. Its 15 s of waits and the edge's
+   * `edgeBudgetMs` together stay below the live config's 60 s `testTimeout`.
+   */
   async smoke(target: WorkerTarget): Promise<void> {
-    expectStatus("/health", await caller(target)("/health"), 200);
+    const call = caller(target);
+    await eventually(async () => expectStatus("/health", await call("/health"), 200), {
+      attempts: 4,
+      passesInARow: 1,
+      retryIf: (error) => error instanceof UnexpectedStatus && error.status >= 500,
+      ...(target.sleep ? { sleep: target.sleep } : {}),
+    });
   },
 
   /**
