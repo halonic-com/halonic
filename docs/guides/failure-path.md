@@ -82,7 +82,9 @@ held by another process, an approval, a timer.
   setup version (`setup-guard.ps1`, HAL-5404), nor when Windows raised the
   update to administrator rights from an account whose other programs run
   without them, as those programs can change the kept installer (HAL-16523):
-  the new version stays, and the log says why.
+  the new version stays, and the log says why. Unless the update is silent,
+  the installer also shows that reason in a message, with the log's path
+  (HAL-16570).
 - **Studio doesn't run raised.** On Windows, a Studio opened with "Run as
   administrator" from an account whose other programs run without those
   rights shows one message telling the person to open it normally, and
