@@ -68,7 +68,7 @@ verifies("cli.commands.plugin.list-source-changed", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout[1]).toBe(
-      `  ! The folder changed since this copy. To use your changes, run: halonic plugin add ~${sep}sources${sep}weather --update`,
+      `  ! The folder changed since it was copied. To use your changes, run: halonic plugin add ~${sep}sources${sep}weather --update`,
     );
     const json = await list("--json");
     expect(JSON.parse(json.io.stdout.join("\n")).plugins[0]).toMatchObject({ sourceChanged: true });

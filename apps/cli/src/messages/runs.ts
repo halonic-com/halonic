@@ -104,7 +104,7 @@ export const runsMessages = defineMessages("runs", {
    */
   notWaiting: (why: NotWaiting) =>
     why.status === "address"
-      ? phrase`it's waiting for your answer to "Allow this address?" in the step ${why.step}, and only Studio asks that.`
+      ? phrase`it's waiting for your answer to "Allow this address?" in the step ${why.step}, which only Studio asks. Answer it there.`
       : phrase`it isn't waiting for you. ${notWaitingInWords(why)}`,
   notWaitingFix: (runId: string, dir?: string) =>
     phrase`See it with ${suggestedCommand("runs show", dir, runId)}.`,
