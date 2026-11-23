@@ -1,8 +1,8 @@
 {
-  "name": "@halonicjs/tooling-router",
+  "name": "@halonicjs/host-router",
   "private": true,
   "type": "module",
-  "description": "The variant router's inputs and checks, starting with the provider catalog the router may pick models from.",
+  "description": "The variant router's logic, starting with the provider catalog the router may pick models from.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -25,7 +25,7 @@
     "vitest": "catalog:"
   },
   "halonic": {
-    "layer": "tooling",
+    "layer": "host",
     "owner": "liam",
     "coverage": {
       "lines": 80

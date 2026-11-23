@@ -1,11 +1,12 @@
-# @halonicjs/tooling-router
+# @halonicjs/host-router
 
-The variant router's inputs and checks (goal HAL-16982). It starts with the provider catalog: the
-models the router may pick from, with their price, data class and pinned host.
+The variant router's logic (goal HAL-16982), runtime-neutral so it can ship in Halonic Code. It
+starts with the provider catalog: the models the router may pick from, with their price, data class
+and pinned host. It reads no files itself: the caller passes the catalog's text.
 
-- **Layer:** tooling
+- **Layer:** host
 - **Owner:** liam
-- **Public API:** `@halonicjs/tooling-router`
+- **Public API:** `@halonicjs/host-router`
 
 ## The provider catalog
 
@@ -31,9 +32,9 @@ and model.
 ## Example
 
 ```ts
-import { aliasForRun, loadCatalog } from "@halonicjs/tooling-router";
+import { aliasForRun, loadCatalog } from "@halonicjs/host-router";
 
-const catalog = loadCatalog({ models: providersYaml, router: providersRouterYaml });
+const catalog = await loadCatalog({ models: providersYaml, router: providersRouterYaml });
 if (catalog.ok) {
   const entry = catalog.value.entries.get("deepseek-flash");
   if (entry?.status === "approved") startRun(aliasForRun(entry), catalog.value.priceVersion);

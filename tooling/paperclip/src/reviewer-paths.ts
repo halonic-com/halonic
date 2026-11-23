@@ -31,6 +31,8 @@ export const liamFolders: readonly string[] = [
   "apps/studio/src-tauri/",
   "docs/security/",
   "docs/adr/",
+  // The router's provider catalog and hard rules change what a run may do (HAL-16998).
+  "packages/host/router/",
 ];
 
 /** Words that make a code path Liam's; tests, Markdown and wording files don't count. */

@@ -1,14 +1,3 @@
-import { readFileSync } from "node:fs";
-import type { CatalogTexts } from "./catalog.ts";
-
-/** The catalog's real files in `tooling/router/`, as the router reads them. */
-export function repoCatalogTexts(): CatalogTexts {
-  return {
-    models: readFileSync(new URL("../providers.yaml", import.meta.url), "utf8"),
-    router: readFileSync(new URL("../providers.router.yaml", import.meta.url), "utf8"),
-  };
-}
-
 /** A small catalog for the tests: one Anthropic alias and one pinned open model. */
 export const acmeModels = `
 aliases:

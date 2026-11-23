@@ -58,10 +58,12 @@ export interface CatalogTexts {
  * extension, then the rules across both.
  *
  * @example
- * const catalog = loadCatalog({ models, router });
+ * const catalog = await loadCatalog({ models, router });
  * if (!catalog.ok) for (const problem of catalog.error) report(problem);
  */
-export function loadCatalog(texts: CatalogTexts): Result<ProviderCatalog, CatalogProblem[]> {
+export async function loadCatalog(
+  texts: CatalogTexts,
+): Promise<Result<ProviderCatalog, CatalogProblem[]>> {
   const models = parseFile("models", texts.models);
   const router = readRouterExtension(texts.router);
   const problems: CatalogProblem[] = [
@@ -84,7 +86,7 @@ export function loadCatalog(texts: CatalogTexts): Result<ProviderCatalog, Catalo
       entries.set(name, { name, alias, ...extension });
     }
   }
-  return ok({ entries, priceVersion: priceVersionOf(aliases) });
+  return ok({ entries, priceVersion: await priceVersionOf(aliases) });
 }
 
 function readRouterExtension(text: string): Result<RouterExtension, CatalogProblem[]> {

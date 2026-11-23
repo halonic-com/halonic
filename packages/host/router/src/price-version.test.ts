@@ -1,10 +1,10 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { loadCatalog } from "./catalog.ts";
-import { acmeModels, acmeRouter } from "./test-catalog.ts";
+import { acmeModels, acmeRouter } from "./test/test-catalog.ts";
 
-function versionOf(models: string): string {
-  const loaded = loadCatalog({ models, router: acmeRouter });
+async function versionOf(models: string): Promise<string> {
+  const loaded = await loadCatalog({ models, router: acmeRouter });
   if (!loaded.ok) {
     throw new Error(JSON.stringify(loaded.error));
   }
@@ -12,11 +12,11 @@ function versionOf(models: string): string {
 }
 
 verifies("router.price-version", () => {
-  it("is prefixed and short", () => {
-    expect(versionOf(acmeModels)).toMatch(/^prices-[0-9a-f]{12}$/);
+  it("is prefixed and short", async () => {
+    expect(await versionOf(acmeModels)).toMatch(/^prices-[0-9a-f]{12}$/);
   });
 
-  it("stays the same when only order, comments or descriptions change", () => {
+  it("stays the same when only order, comments or descriptions change", async () => {
     const reordered = `
 # Same prices, written differently.
 aliases:
@@ -30,16 +30,16 @@ aliases:
     model: claude-opus-5-5
     price: { input: 4, output: 20 }
 `;
-    expect(versionOf(reordered)).toBe(versionOf(acmeModels));
+    expect(await versionOf(reordered)).toBe(await versionOf(acmeModels));
   });
 
-  it("changes with a price", () => {
+  it("changes with a price", async () => {
     const dearer = acmeModels.replace("output: 20", "output: 21");
-    expect(versionOf(dearer)).not.toBe(versionOf(acmeModels));
+    expect(await versionOf(dearer)).not.toBe(await versionOf(acmeModels));
   });
 
-  it("changes with the model behind an alias", () => {
+  it("changes with the model behind an alias", async () => {
     const otherModel = acmeModels.replace("claude-opus-5-5", "claude-opus-5");
-    expect(versionOf(otherModel)).not.toBe(versionOf(acmeModels));
+    expect(await versionOf(otherModel)).not.toBe(await versionOf(acmeModels));
   });
 });

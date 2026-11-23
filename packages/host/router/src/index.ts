@@ -1,4 +1,4 @@
-// The public API of @halonicjs/tooling-router. Everything else in src/ is internal.
+// The public API of @halonicjs/host-router. Everything else in src/ is internal.
 
 export {
   type CatalogEntry,

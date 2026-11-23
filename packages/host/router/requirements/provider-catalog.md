@@ -8,9 +8,9 @@ When the router loads its provider catalog, the catalog shall read `providers.ya
 
 ## Examples
 
-- Given the catalog in `tooling/router/`,
+- Given the catalog in `packages/host/router/`,
   when it is loaded,
-  then it loads with `opus`, `sonnet` and `haiku` as `anthropic` and `deepseek-flash` as `open-pinned`, each with a price.
+  then it loads with `opus`, `sonnet` and `haiku` as `anthropic` and `deepseek-flash` as `open-pinned`, each with a price, and `deepseek-flash` pinned to `deepinfra/fp8`.
 - Given `providers.yaml` with an alias `extra` that has no entry in `providers.router.yaml`,
   when it is loaded,
   then it fails at `providers.yaml` `aliases.extra`.

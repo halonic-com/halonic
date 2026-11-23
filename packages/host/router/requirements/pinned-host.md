@@ -8,7 +8,7 @@ When an adapter asks for the alias a run starts with, the catalog shall return t
 
 ## Examples
 
-- Given `deepseek-flash` pinned to `deepinfra/fp8`,
+- Given an alias pinned to `deepinfra/fp8`, such as `deepseek-flash`,
   when the adapter asks for its alias,
   then `params.extra.provider` is `{ order: [deepinfra/fp8], only: [deepinfra/fp8], allow_fallbacks: false, data_collection: deny }`.
 - Given a pinned alias whose `params.extra` also has `top_k: 40`,

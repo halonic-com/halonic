@@ -1,10 +1,10 @@
-# @halonicjs/tooling-router
+# @halonicjs/host-router
 
-Owner: liam · Layer: tooling · Read the root `AGENTS.md` first; this file adds local rules.
+Owner: liam · Layer: host · Read the root `AGENTS.md` first; this file adds local rules.
 
 ## Scope
 
-The variant router's inputs and checks, starting with the provider catalog the router may pick models from.
+The variant router's logic, starting with the provider catalog the router may pick models from.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
@@ -13,7 +13,7 @@ everything else is internal.
 
 | Command | What it does |
 | --- | --- |
-| `pnpm exec turbo run test --filter=@halonicjs/tooling-router -- --maxWorkers=2` | runs this package's tests (and the codegen they need) |
+| `pnpm exec turbo run test --filter=@halonicjs/host-router -- --maxWorkers=2` | runs this package's tests (and the codegen they need) |
 | `pnpm exec turbo run lint --filter=...[origin/main] --concurrency=2` | lints the packages your change touches and the ones that depend on them |
 | `pnpm exec turbo run test --filter=...[origin/main] --concurrency=2 -- --maxWorkers=2` | tests the packages your change touches and the ones that depend on them |
 | `pnpm exec turbo run typecheck --concurrency=2` | typechecks all packages (HAL-2950); unchanged ones come from Turbo's cache |
