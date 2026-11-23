@@ -1,4 +1,5 @@
 import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
+import { fittedModel } from "../thin-spec/model.ts";
 import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { databaseWorkerTables } from "../worker-agents/tables.ts";
 import { boardCheck } from "./board-check.ts";
@@ -11,6 +12,7 @@ import { registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
 import { taskEffort } from "./task-effort.ts";
 import { registerTaskTools } from "./task-tools.ts";
+import { thinSpecCheck } from "./thin-spec-check.ts";
 import { registerTools } from "./tools.ts";
 import {
   handleWorkerAgentsRequest,
@@ -23,7 +25,8 @@ import {
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch` and
  * `board-check` jobs on their schedules, looks at each new comment for a
  * board ask, keeps each failed run, labels a created or changed task's
- * difficulty, sets its effort from its tags, and answers the agent tools, the `gh` wrapper's route
+ * difficulty, sets its effort from its tags, asks for acceptance criteria on a
+ * new code task whose text looks thin, and answers the agent tools, the `gh` wrapper's route
  * and the board's Worker agents page.
  */
 let context: PluginContext | undefined;
@@ -57,10 +60,20 @@ export const plugin = definePlugin({
       paperclipFetch: (url, init) => fetch(url, init),
       now: () => new Date(),
     });
+    const thinSpec = thinSpecCheck(ctx, {
+      anthropicFetch: (url, init) => ctx.http.fetch(String(url), init),
+      paperclipFetch: (url, init) => fetch(url, init),
+      now: () => new Date(),
+      model: fittedModel,
+    });
     for (const eventType of ["issue.created", "issue.updated"] as const) {
       ctx.events.on(eventType, async (event) => {
         roster.remember(event.companyId);
-        await Promise.all([tagger.onIssueEvent(event), effort.onIssueEvent(event)]);
+        await Promise.all([
+          tagger.onIssueEvent(event),
+          effort.onIssueEvent(event),
+          thinSpec.onIssueEvent(event),
+        ]);
       });
     }
     registerTools(ctx);

@@ -46,7 +46,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // at the address in the settings (src/plugin/ready-for-review.ts), and the task effort
     // handler sends one task change to Paperclip's API at the address in the settings. The
     // difficulty tagger sends one POST to api.anthropic.com/v1/messages per new task text, and
-    // reads the company's labels from Paperclip's API.
+    // reads the company's labels from Paperclip's API. The thin-spec check sends one POST to
+    // api.anthropic.com/v1/messages per new code task, and for a flagged one creates the clarify
+    // task and sets the task's blocker through Paperclip's API (src/plugin/thin-spec-calls.ts).
     "http.outbound",
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
@@ -215,6 +217,18 @@ export const manifest: PaperclipPluginManifestV1 = {
         description:
           "The secret with the difficulty tagger's Anthropic API key (TAGGER_ANTHROPIC_API_KEY). Used only for the tagger's call to claude-haiku-5-5; never logged.",
         format: "secret-ref",
+      },
+      thinSpecCheckForVersion: {
+        type: "string",
+        title: "Thin-spec check for version",
+        description:
+          'Empty: the thin-spec check is off and calls nothing. Enter the plugin\'s version to turn it on: when an agent gets a new code task (labelled D1–D4), Haiku reads its text once; if the score says the expected result may be missing, the task gets a "Clarify acceptance criteria" task for its requester and waits for it. It never rewrites or reassigns the task. It shares the Tagger Anthropic key and the Paperclip API and key, and stops for the month once its spend passes $5.',
+      },
+      thinSpecClarifier: {
+        type: "string",
+        title: "Thin-spec clarifier",
+        description:
+          "The url key of the agent that writes acceptance criteria for a flagged task a person created (a PM agent). A task an agent created goes back to that agent. Empty: a flagged task a person created is logged but gets no clarify task.",
       },
       effortReviewers: {
         type: "array",
