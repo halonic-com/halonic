@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-1457, from HAL-1448; package ID and token owner decided by the user on HAL-1456); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7uDFOvdnKOVzvP5gDn9tFFzgHxtvtsj7QFnls3mFmFGtVDb8HfV0hsxlWuqzBhNactwKnqeYjobPJi7t1w19Ag==
 
 ## What changes
 
