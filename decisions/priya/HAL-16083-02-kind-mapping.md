@@ -4,6 +4,7 @@
 - Task: HAL-16083, from Sofia's words check C665 rows 27 and 40 on HAL-16066
 - Approval: Liam approved rows 27 and 40 as planned on HAL-16083; he approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DX9J60Www3lhK1M893qQO7eeJ/Y8OGxy13/aEmEOofJnSZVEVHIfqob7E9bHt9ELmR60Rh8xc95pnWCDNr/qCQ==
 
 ## What changes
 
