@@ -277,7 +277,9 @@ agent's last answer can't be used: no retry is left and the answer isn't the JSO
 options its output asks for, or there is no answer at all. `agent.finished` records the rejection with
 `output: null` and the error, reason and cause the run would have failed with (requirement
 `engine.task-unusable-route`). Such a state looks for the JSON in a text answer, as with
-`answerRetries`, even when the agent has none. Without that transition, nothing changes.
+`answerRetries`, even when the agent has none. Without that transition, nothing changes. For users,
+[Handle an answer a step can't use](../../../docs/how-to/handle-an-answer-a-step-cant-use.md) explains
+both.
 
 A `workflow` state runs another workflow of the hub as a child run, from the `workflows` the run
 kept with its definitions; a run kept without them can't start one. The child's id is the parent's
