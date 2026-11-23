@@ -11,9 +11,10 @@ import { type MetricsApi, writeMetrics } from "./metrics.ts";
  * The agent tool `ready_for_review` (L5b, HAL-16437). It asks the precheck
  * service (L5a, halonic-com/server `precheck/`) to check a pushed branch merged
  * into current `main`, so an agent fixes what would fail CI before it opens or
- * updates the pull request. A check takes 1 to 5 minutes and a tool call at
- * most 30 s, so the tool starts the check, waits about 20 s, and otherwise
- * hands back the check's id for the next call. When the service can't run the
+ * updates the pull request. A check takes 1 to 5 minutes, and the bridge that
+ * carries a tool call to the agent gives up after about 15 s (it cut off the
+ * first real calls, which waited 20 s), so the tool starts the check, waits
+ * about 6 s, and otherwise hands back the check's id for the next call. When the service can't run the
  * check, the answer is "check unavailable", never a block.
  */
 
@@ -37,12 +38,16 @@ export interface ReadyForReviewDeps {
 
 /** Where the service listens when the settings name no other address. */
 export const defaultPrecheckUrl = "http://halonic-precheck:8787";
-/** How long one call waits for the check before it hands back the id. */
-export const waitBudgetMs = 20_000;
+/**
+ * How long one call waits for the check before it hands back the id. With the
+ * last read's request time, a call ends within about 9 s, well below the
+ * bridge's limit.
+ */
+export const waitBudgetMs = 6_000;
 /** The pause between two reads of a running check. */
-export const pollIntervalMs = 4_000;
-/** One request to the service gives up after this long. */
-export const requestTimeoutMs = 5_000;
+export const pollIntervalMs = 2_000;
+/** One request to the service gives up after this long; it answers in milliseconds. */
+export const requestTimeoutMs = 3_000;
 /** The most of the service's summary an answer passes on, so a noisy log can't flood the agent. */
 export const summaryLimit = 4_000;
 

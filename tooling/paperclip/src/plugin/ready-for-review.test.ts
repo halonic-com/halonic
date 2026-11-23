@@ -163,12 +163,12 @@ verifies("paperclip.ready-for-review", () => {
       });
     });
 
-    test("hands back the check's id after about 20 s and reads it on the next call", async () => {
-      const first = fakePrecheck([queued, running, running, running, running]);
+    test("hands back the check's id after about 6 s and reads it on the next call", async () => {
+      const first = fakePrecheck([queued, running, running]);
       const result = await first.call({ branch });
       expect(result.content).toMatch(new RegExp(`^RUNNING: check ${checkId} isn't done yet`));
       expect(result.data).toEqual({ verdict: "running", checkId });
-      expect(first.sent).toHaveLength(5);
+      expect(first.sent).toHaveLength(3);
 
       const second = fakePrecheck([passed]);
       expect((await second.call({ checkId })).content).toMatch(/^PASS/);
@@ -231,7 +231,7 @@ verifies("paperclip.ready-for-review", () => {
       const tags = { companyId: "acme", tool: "ready_for_review", outcome: "ok", result: "pass" };
       expect(metrics).toEqual([
         { name: "tools.calls", value: 1, tags },
-        { name: "tools.duration_ms", value: 8000, tags },
+        { name: "tools.duration_ms", value: 4000, tags },
         { name: "precheck.pass", value: 1, tags },
         { name: "precheck.duration_s", value: 176, tags },
       ]);

@@ -193,8 +193,9 @@ token as the watcher, and give up after 25 s.
   (L5b, HAL-16437): asks the precheck service (L5a, `precheck/` in
   halonic-com/server) to check a pushed branch merged into current `main`
   before the agent opens or updates its pull request. A check takes 1 to 5
-  minutes and a tool call at most 30 s, so the tool starts it with
-  `wait: false`, reads it every 4 s for about 20 s, and otherwise answers
+  minutes and the bridge that carries a tool call gives up after about
+  15 s, so the tool starts it with `wait: false`, reads it every 2 s for
+  about 6 s (each request at most 3 s), and otherwise answers
   `RUNNING` with the check's id for the next call. `PASS` lets the agent go
   on, `FAIL` names the failed steps with the service's short log summary. A
   queue that's full (`429`), a service that's down or answers oddly gives
