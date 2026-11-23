@@ -2233,11 +2233,12 @@ FunctionEnd
 
 ; Removes the agent sandbox (flow 2.7, CHECK I9), and sets $SandboxOutcome to
 ; "removed", "removed_kept" (removed, but the access it kept on the user's
-; folders stays until a removal without administrator rights: Halonic's next
-; start doesn't take it back with WSL chosen, nor once the installer has set
-; the sandbox up again, HAL-16082), "removed_manual" (removed, but some access
-; it kept stays until such a removal, HAL-15836), both ended by installing
-; again with the sandbox step on and uninstalling normally, "none" (nothing was set up, nothing asked), "refused", "failed"
+; folders stays until Halonic is installed again without administrator rights,
+; whose take-back ends it whatever sandbox is chosen, HAL-16084),
+; "removed_manual" (removed, but some access it kept stays until a removal
+; without administrator rights, HAL-15836, ended by installing again with the
+; sandbox step on and uninstalling normally), "none" (nothing was set up,
+; nothing asked), "refused", "failed"
 ; (with $SandboxReason) or "skipped" (a silent uninstall without administrator
 ; rights, which can't ask).
 Function un.RemoveSandbox
@@ -2275,11 +2276,11 @@ Function un.RemoveSandbox
   ${ElseIf} $2 == "2"
     ; With administrator rights the removal leaves the access the sandbox
     ; kept on the user's folders (HAL-5404 S2). A start of Halonic doesn't
-    ; reliably take it back (HAL-16082), so the step given is a removal
-    ; without administrator rights: install again, then uninstall normally.
+    ; reliably take it back (HAL-16082), but installing again without
+    ; administrator rights does, whatever sandbox is chosen (HAL-16084).
     StrCpy $SandboxOutcome "removed_kept"
     DetailPrint "✓ Removed the agent sandbox"
-    DetailPrint "   It still has access to your project folders. To end that, install ${PRODUCTNAME} again with $\"Set up the agent sandbox$\" on, then uninstall it normally, not as administrator."
+    DetailPrint "   It still has access to your project folders until you install ${PRODUCTNAME} again normally, not as administrator."
   ${ElseIf} $2 == "3"
     StrCpy $SandboxOutcome "removed_manual"
     DetailPrint "✓ Removed the agent sandbox"
@@ -2370,12 +2371,13 @@ Function un.PageDone
       System::Call '*$3(i, i, i .r5)'
       System::Free $3
       IntOp $5 $5 - $4
-      ; Halonic is gone now, so the step that ends the access is installing
-      ; it again with the sandbox step on and uninstalling it normally, whose
-      ; removal runs without administrator rights (HAL-16082). Four lines
+      ; Halonic is gone now. Installing it again without administrator rights
+      ; takes the kept access back (HAL-16084). Some access ("removed_manual")
+      ; ends only with a removal without them: installing again with the
+      ; sandbox step on and uninstalling normally (HAL-16082). Four lines
       ; high, so a wrap at a larger scaling isn't cut off.
       ${If} $SandboxOutcome == "removed_kept"
-        ${NSD_CreateLabel} $4 12u $5 40u "It still has access to your project folders. To end that, install ${PRODUCTNAME} again with $\"Set up the agent sandbox$\" on, then uninstall it normally, not as administrator."
+        ${NSD_CreateLabel} $4 12u $5 40u "It still has access to your project folders until you install ${PRODUCTNAME} again normally, not as administrator."
       ${Else}
         ${NSD_CreateLabel} $4 12u $5 40u "It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again with $\"Set up the agent sandbox$\" on, then uninstall it normally, not as administrator."
       ${EndIf}

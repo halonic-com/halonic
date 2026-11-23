@@ -7,8 +7,9 @@
 #
 # It prints one line, the reason, and exits with:
 #   0   removed
-#   2   removed, but the access it kept on the user's folders goes only at
-#       Halonic's next start (a removal with administrator rights, HAL-5404 S2)
+#   2   removed, but the access it kept on the user's folders goes only when
+#       Halonic is installed again or starts on Windows, without administrator
+#       rights (a removal with administrator rights, HAL-5404 S2, HAL-16084)
 #   3   removed, but some access it kept on the user's folders stays until a
 #       removal without administrator rights (HAL-15836)
 #   10  Windows didn't give administrator rights (refused, closed, or no admin password)
