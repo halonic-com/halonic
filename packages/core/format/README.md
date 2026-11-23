@@ -115,6 +115,9 @@ not here.
   a text or a list fails at `run` with "A workflow routine's input needs named fields, such as
   input: { mail: "{{trigger.body}}" }.", and an agent with `input` and no `prompt` with "An agent
   routine takes prompt, not input." (requirement `routine-file`).
+- Providers: a provider file's `secret` names the secret its key is kept under; a name that belongs
+  to Halonic or a plugin fails with `secret-name-reserved`, as a connector's does, so the first run
+  never saves a model key under it (requirement `provider-secret-reserved`).
 - Connectors: besides the local and remote transports, `integration: { folder: <id> }` (a folder
   under `integrations/`) and `plugin: { id: <id> }` run in the integration runner. An `integration`
   transport may also hold `settings` (plain values, such as the `url` a `{ fromSetting }` host

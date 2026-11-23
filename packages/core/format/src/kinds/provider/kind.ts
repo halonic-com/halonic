@@ -1,6 +1,6 @@
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { checkKeysIn } from "../../shared/key-in-value.ts";
-import { checkSecretName } from "../../shared/secret-name.ts";
+import { checkReservedSecretName, checkSecretName } from "../../shared/secret-name.ts";
 import { Provider } from "./schema.ts";
 import { isProviderType, providerTypesInWords } from "./types.ts";
 
@@ -15,23 +15,38 @@ export const providerKind: FileKind<Provider> = {
   check: checkProvider,
 };
 
+/*
+ * The words are the team's, as the connector's and the routine's are: a
+ * small wording on a check already approved (HAL-14566, HAL-16691).
+ */
+const reservedNameMessage =
+  "This secret name belongs to Halonic or to a plugin, so a provider can't use it. Store the key under a name of your own, such as anthropic-api-key.";
+
 /**
- * The secret is named in the file, so a bad name or a pasted key is caught
- * here, not at run time. A key pasted into `options` is caught too, and so
- * is a type Halonic can't call, or a `baseUrl` it can't reach, which would
- * only fail once a run reached the model (HAL-14260), and a model listed
- * twice in `searchesWeb`.
+ * The secret is named in the file, so a bad name, a pasted key or a name
+ * that belongs to Halonic or a plugin is caught here, not at run time, and
+ * the first run never saves a model key under it (HAL-16691). A key pasted
+ * into `options` is caught too, and so is a type Halonic can't call, or a
+ * `baseUrl` it can't reach, which would only fail once a run reached the
+ * model (HAL-14260), and a model listed twice in `searchesWeb`.
  */
 function checkProvider(provider: Provider): KindCheckProblem[] {
-  const problem =
-    provider.secret === undefined ? undefined : checkSecretName(provider.secret, ["secret"]);
   return [
     ...checkType(provider),
     ...checkBaseUrl(provider),
-    ...(problem === undefined ? [] : [problem]),
+    ...checkSecret(provider),
     ...checkKeysIn(provider.options, ["options"], "provider-option"),
     ...checkSearchesWebOnce(provider),
   ];
+}
+
+function checkSecret(provider: Provider): KindCheckProblem[] {
+  const { secret } = provider;
+  if (secret === undefined) return [];
+  const problem =
+    checkSecretName(secret, ["secret"]) ??
+    checkReservedSecretName(secret, ["secret"], reservedNameMessage);
+  return problem === undefined ? [] : [problem];
 }
 
 /**

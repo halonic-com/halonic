@@ -167,6 +167,19 @@ verifies("app.model-choice-provider-file", () => {
   });
 });
 
+verifies("app.model-choice-provider-secret-reserved", () => {
+  it.each(["token-key", "serve-password", "plugin__weather__acme-key"])(
+    "stops at a provider file whose secret name %s belongs to Halonic or a plugin",
+    (secret) => {
+      const provider = `id: anthropic\ntype: anthropic\nsecret: ${secret}\n`;
+      expect(choiceEdits({ kind: "key", provider: "anthropic" }, { ...acme, provider })).toEqual({
+        ok: false,
+        error: { kind: "provider-differs", file: "providers/anthropic.yaml" },
+      });
+    },
+  );
+});
+
 verifies("app.model-choice-local-only", () => {
   it("turns Local only off on the key path, keeping the comments", () => {
     const edits = editsOf({ kind: "key", provider: "anthropic" }, acme);
