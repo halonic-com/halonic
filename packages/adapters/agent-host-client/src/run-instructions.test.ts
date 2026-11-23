@@ -10,6 +10,8 @@ const b = `sha256:${"b".repeat(64)}`;
 const all = `sha256:${"c".repeat(64)}`;
 
 const agent = (file: Partial<InstructionsAgent["file"]> = {}): InstructionsAgent => ({
+  runId: "run_1",
+  version: { reads: "saved-files" },
   hubId: "support",
   file: { instructions: "Be brief.\n", skills: ["review"], ...file },
 });

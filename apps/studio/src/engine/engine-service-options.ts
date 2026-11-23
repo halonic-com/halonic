@@ -98,7 +98,8 @@ export interface EngineServiceOptions {
   openHarnessHost?(engine: EngineParts): Promise<StudioHarnessHost>;
   /**
    * Builds the runs' connectors on the agent host, when one runs (`studioRunConnectors`), and
-   * the approvals their listed tools are checked against, once per engine. `versions` gives the
+   * the approvals their listed tools are checked against, once per engine, while the engine lock
+   * is held and before any run starts, so it may sweep what an earlier engine left. `versions` gives the
    * version each run read, which its connectors' files come from, and forgets it when the run
    * ends. Without it, a workflow with an agent that lists a connector is refused.
    */
