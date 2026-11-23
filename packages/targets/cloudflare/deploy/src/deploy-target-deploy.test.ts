@@ -173,6 +173,31 @@ verifies("deploy.target-deploy", () => {
     });
   });
 
+  it("says what still serves when the lock is lost after the snapshot was written", async () => {
+    const { api, target, show } = setup({
+      resources: existing,
+      applied: migrations.map((migration) => migration.id),
+      deployment: [{ id: "b", percentage: 100 }],
+    });
+    // Another deploy takes the lock over once this one has written the snapshot.
+    const { putObject, renewDeployLock } = api;
+    let snapshotWritten = false;
+    api.putObject = async (...args) => {
+      await putObject(...args);
+      snapshotWritten = true;
+    };
+    api.renewDeployLock = async (...args) =>
+      snapshotWritten ? undefined : renewDeployLock(...args);
+    const error = (await target.deploy(request, show).catch((e: unknown) => e)) as DeployFailure;
+    expect(error).toMatchObject({
+      code: "deploy-locked",
+      kind: "conflict",
+      live: { number: 1, id: "b" },
+    });
+    expect(Object.keys(api.written).length).toBeGreaterThan(0);
+    expect(api.calls.some((call) => call.startsWith("upload"))).toBe(false);
+  });
+
   it("rejects with unexpected while there's no Worker to upload", async () => {
     const { api, target, show } = setup({ resources: existing }, passing, {});
     await expect(target.deploy(request, show)).rejects.toMatchObject({ code: "unexpected" });

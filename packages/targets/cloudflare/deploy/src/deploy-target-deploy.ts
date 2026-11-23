@@ -140,20 +140,21 @@ export async function deployThroughPort(
       warnings: done.warnings ?? [],
     };
   } catch (error) {
-    return failedSelfTest(error, made(events.uploadedId() ?? ""), previous, events.last());
+    return failedSelfTest(error, made(events.uploadedId() ?? ""), previous, events);
   }
 }
 
 /**
  * A failed self-test as the port's result. A stop throws the port's `stopped`
- * with what still serves and the step it stopped after; anything else is
- * thrown as it is.
+ * with what still serves and the step it stopped after, and so does a lock
+ * lost before traffic moved, so the caller can't mistake it for a deploy that
+ * never started; anything else is thrown as it is.
  */
 function failedSelfTest(
   error: unknown,
   version: DeployedVersion,
   previous: DeployedVersion | undefined,
-  last: DeployStep | undefined,
+  events: { last(): DeployStep | undefined; wentLive(): boolean },
 ): DeploySelfTestFailed {
   if (error instanceof SmokeTestFailedError) {
     return {
@@ -164,8 +165,14 @@ function failedSelfTest(
       restoreFailed: error.restoreFailed,
     };
   }
-  if (error instanceof DeployError && error.code === "deploy-aborted") {
-    // A deploy stops only before its upload, so what served before still serves.
+  const last = events.last();
+  // A deploy stops only before its upload, and a lock is lost only before traffic moves, so
+  // what served before still serves. A lost lock was held, so the snapshot or database changes
+  // may be written already: saying what serves keeps it apart from a deploy that never started.
+  const stoppedEarly =
+    error instanceof DeployError &&
+    (error.code === "deploy-aborted" || (error.code === "deploy-lock-lost" && !events.wentLive()));
+  if (stoppedEarly) {
     throw Object.assign(toDeployFailure(error), {
       live: previous ?? "none",
       ...(last === undefined ? {} : { stoppedAfter: last }),
@@ -263,7 +270,7 @@ function eventsFor(
   };
   const report = (progress: DeployProgress): void =>
     (on[progress.step] as ((progress: DeployProgress) => void) | undefined)?.(progress);
-  return { report, last: () => last, uploadedId: () => uploadedId };
+  return { report, last: () => last, uploadedId: () => uploadedId, wentLive: () => wentLive };
 }
 
 const liveAheadWarning =

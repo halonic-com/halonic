@@ -169,8 +169,11 @@ verifies("app.deploy-service", () => {
       startedAt: "2026-11-19T14:33:00.000Z",
       expiresAt: "2026-11-19T14:43:00.000Z",
     };
-    const race = (lockedBy: typeof holder | undefined, before: readonly DeployEvent[] = []) => {
-      const taken = Object.assign(new Error("taken"), { code: "deploy-locked" });
+    const race = (
+      lockedBy: typeof holder | undefined,
+      before: readonly DeployEvent[] = [],
+      taken: Error = Object.assign(new Error("taken"), { code: "deploy-locked" }),
+    ) => {
       const seen: DeployEvent[] = [];
       const target = {
         plan: async () => livePlan,
@@ -212,6 +215,11 @@ verifies("app.deploy-service", () => {
       const { failure, seen } = race(holder, [done]);
       await expect(failure).rejects.toThrow("taken");
       expect(seen).toEqual([done]);
+    });
+
+    it("keeps a lost lock's failure, which says what still serves: the snapshot may be written", async () => {
+      const lost = Object.assign(new Error("lost"), { code: "deploy-locked", live: "none" });
+      await expect(race(holder, [], lost).failure).rejects.toThrow("lost");
     });
   });
 
