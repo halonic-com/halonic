@@ -35,7 +35,11 @@ export interface PoolForecast {
   readonly tokensPerDayNow: Level;
   /** Tokens a day the pool can keep up, at today's tokens per point; undefined with no priced demand. */
   readonly sustainableTokensPerDay: number | undefined;
-  /** When every seat is full at once; undefined when that doesn't happen within `poolDays`. */
+  /**
+   * When every seat is full at once; undefined when that doesn't happen within
+   * `poolDays`, or when no seat has a weekly reading (`seats` is 0), so a cold
+   * start never reads as a pool that has run out.
+   */
   readonly runOutAtP50: string | undefined;
   readonly runOutAtP90: string | undefined;
   /** Days from now until the run-out; undefined when there is none within `poolDays`. */
@@ -85,13 +89,16 @@ const totalLeft = (seats: readonly SeatAllowance[]) =>
 /**
  * Walks the pool from `nowMs` in steps that end on each whole hour and each
  * seat's reset, spending `pointsPerHour` each step. Returns when the pool is
- * empty, or undefined when it lasts `poolDays`.
+ * empty, or undefined when it lasts `poolDays` or has no seats to walk.
  */
 function runOut(
   start: readonly SeatAllowance[],
   nowMs: number,
   pointsPerHour: (atMs: number) => number,
 ): number | undefined {
+  if (start.length === 0) {
+    return undefined;
+  }
   const seats = start.map((seat) => ({ ...seat }));
   const endMs = nowMs + poolDays * dayMs;
   for (let atMs = nowMs; atMs < endMs; ) {
@@ -123,14 +130,18 @@ const daysFrom = (nowMs: number, ms: number | undefined) =>
 export function forecastPool(input: SeatForecastInput): PoolForecast {
   const nowMs = Date.parse(input.now);
   const pricing = new SeatPricing(input);
-  const seats = input.seats.filter(forecastable);
-  const seatIds = new Set(seats.map((seat) => seat.id));
+  const forecastableIds = new Set(input.seats.filter(forecastable).map((seat) => seat.id));
   const weekReadings = latestBy(
-    input.readings.filter((reading) => reading.window === "week" && seatIds.has(reading.seatId)),
+    input.readings.filter(
+      (reading) => reading.window === "week" && forecastableIds.has(reading.seatId),
+    ),
     (reading) => reading.seatId,
     (reading) => reading.at,
   );
   const start = allowances([...weekReadings.values()], nowMs);
+  // Only the seats in the pool spend from it: an agent on a seat with no
+  // weekly reading must not be charged to the other seats.
+  const seats = input.seats.filter((seat) => weekReadings.has(seat.id));
   const rates = seats.map((seat) => pricing.ratePerHour(seat, "week"));
   const rateAt = (atMs: number): SeatRate =>
     rates.reduce((sum, rate) => addRates(sum, rate(atMs)), noRate);

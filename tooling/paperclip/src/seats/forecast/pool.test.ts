@@ -121,6 +121,25 @@ verifies("paperclip.seats-pool", () => {
     expect(forecast.pointsLeft).toBe(60);
   });
 
+  test("an agent on a seat without a weekly reading isn't spent from the other seats", () => {
+    const forecast = forecastPool({
+      ...pool(3),
+      seats: [seat("seat-a"), seat("seat-b", "reserve"), seat("seat-c")],
+      placements: [placed("agent-1", "seat-a"), placed("agent-2", "seat-c")],
+      profiles: [agent("agent-1", 3), agent("agent-2", 30)],
+    });
+    expect(forecast.pointsPerDayNow.p50).toBe(72);
+    expect(forecast.runOutAtP50).toBe(at(20));
+  });
+
+  test("with no weekly reading on any seat there is no run-out time", () => {
+    const forecast = forecastPool({ ...pool(3), readings: [] });
+    expect(forecast.seats).toBe(0);
+    expect(forecast.runOutAtP50).toBeUndefined();
+    expect(forecast.runOutAtP90).toBeUndefined();
+    expect(forecast.headroomDaysP90).toBeUndefined();
+  });
+
   test("with no priced demand there is no tokens-per-point to give a sustainable token rate", () => {
     const forecast = forecastPool({ ...pool(1), calibrations: [] });
     expect(forecast.sustainableTokensPerDay).toBeUndefined();
