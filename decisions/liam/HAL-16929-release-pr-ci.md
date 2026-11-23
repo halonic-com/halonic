@@ -1,7 +1,7 @@
 # Decision: the Version packages pull request can pass `ci-ok`
 
 - Task: HAL-16929
-- Approval: Liam decided it on HAL-16929 for the 0.1.1 release (HAL-16758); it changes `tooling/check/src/guard/`, a trust root of the guard, so Liam and Julian both sign it as guardians
+- Approval: a trust-root change written by Liam for the 0.1.1 release (HAL-16758); Mateo checks it on HAL-16929, then Julian and Liam sign as the two guardians
 - Kind: user-visible
 
 ## What changes
