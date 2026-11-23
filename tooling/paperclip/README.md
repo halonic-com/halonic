@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`
 
 ## PR watcher
 
@@ -193,6 +193,29 @@ token as the watcher, and give up after 25 s.
   the service with Node's own `fetch`, because the host's guard may refuse a
   private address; setting `precheckUrl` (empty:
   `http://halonic-precheck:8787`) is the only address it calls.
+
+## Task tools
+
+Agent tools (HAL-16403, B2 in the tools plan on HAL-15920) that replace a
+chain of curl requests to Paperclip's API with one call. They go through
+the plugin host, so they need no key and send nothing to GitHub.
+
+- **`task_get(task, comments?, document?)`**: one task by identifier
+  (`HAL-16403`) or id: title, status, priority, holder, parent and blockers
+  with their statuses, the next monitor check, the description, the list of
+  documents and the newest comments (5 by default, 0 to 20), oldest first,
+  each with its author and time. `document` adds one document's text. The
+  description is trimmed to 4,000 characters, each comment to 2,000 and the
+  document to 20,000, each saying how much it left out.
+- **`comment(task, body)`**: posts one comment, at most 20,000 characters,
+  with the calling agent as its author (from the run's context, never from
+  the parameters). A plugin's comment wakes nobody, not even the task's
+  holder, so the answer says to assign the task to hand it on.
+
+Neither changes a task's status, holder or monitor. Status changes
+(`set_next_step`, `finish_run`) come in a later pull request: a plugin's
+task change skips Paperclip's disposition guard, assignment wake and
+monitor rules, so how they write is Liam's call on HAL-16988.
 
 ## gh guard
 
