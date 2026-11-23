@@ -1,7 +1,7 @@
 # Decision: the cloud bundle check judges what ships, not what's parsed
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16761 (Liam's decision: option 2)
-- Kind: internal
+- Kind: user-visible
 
 ## What changes
 
@@ -11,6 +11,10 @@ script: those that any output lists with a `bytesInOutput` above 0. An entry
 whose byte count is missing or isn't a number still counts as shipped, never
 as 0. esbuild leaves an input it dropped out of every output's `inputs`, so
 an input no output lists has no bytes in the script and isn't checked.
+
+`tooling/check/src/lib/bundle.ts` is one of the guard's trust roots (the guard
+commands import it), so this note is `user-visible` and carries two
+guardians' signatures.
 
 It fails closed: when any output doesn't list its inputs at all (an older
 esbuild, a hand-written metafile, a metafile from another bundler), every
