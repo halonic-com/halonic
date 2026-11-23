@@ -1649,6 +1649,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-engine-pipe"
+version = "0.1.0"
+dependencies = [
+ "halonic-agent-host",
+ "halonic-secret-broker",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "halonic-file-identity"
 version = "0.1.0"
 dependencies = [

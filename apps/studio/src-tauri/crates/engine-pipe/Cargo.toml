@@ -1,0 +1,19 @@
+[package]
+name = "halonic-engine-pipe"
+description = "The shell's end of the background engine's control pipe: length-prefixed frames with a hard cap, a closed set of messages parsed strictly, and a fault for anything else."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# Checks the handshake's address and token by the agent host's own rule.
+halonic-agent-host = { path = "../agent-host" }
+# The broker's answer is the body of the shell's `secret_answer` frame.
+halonic-secret-broker = { path = "../secret-broker" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", default-features = false, features = ["std"] }
