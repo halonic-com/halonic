@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.task-tagger`, `paperclip.task-tagger-spend`
 
 ## PR watcher
 
@@ -413,6 +413,59 @@ effort in the issue properties (the handler then leaves that task alone).
 `task_effort.foreign_change`. Log lines and metrics carry task identifiers,
 effort words (anything else shows as `other`) and actor types, never task
 text or the key.
+
+## Difficulty tagger
+
+Tags new tasks for the task effort handler (HAL-16928, HAL-16876 part 3). On
+`issue.created`, and on `issue.updated` when the title or description
+changed, it sends the task's title and the first 4,000 characters of its
+description to Claude Haiku 5.5 (`claude-haiku-5-5`, thinking off,
+`max_tokens` 400) with the board's prompt from the `difficulty-labels`
+document on HAL-16876 (`src/task-tagger/verdict.ts`, word for word). For a
+`code` answer it writes the label `D1`–`D4`, plus `opus-only` when the answer
+says so; other kinds get no label. The effort handler then reads the labels.
+
+- **Labels set by hand win.** A task with a difficulty label (`D1`–`D5`) or
+  `opus-only` the tagger didn't write is left alone from then on, and so is a
+  task whose tagger label someone replaced. The tagger replaces only its own
+  labels and keeps every other one.
+- **When it reads a task again.** It keeps a hash of the text it read per
+  task, so status, assignee and label changes call nothing. A task it first
+  sees on an update (one from before the switch went on) only gets its text
+  kept as the baseline; it is tagged when its title or description changes.
+- **How it writes.** The labels through the SDK's task update (`labelIds`);
+  the label ids from `GET /api/companies/<id>/labels` on Paperclip's API with
+  the effort handler's `paperclipApiUrl` and `paperclipApiKey`. The five
+  company labels must exist; a missing one is logged as
+  `missing_label:<name>`.
+- **The key.** `taggerAnthropicKey` is a secret reference. The tagger
+  resolves it for each Haiku call and sends it only to
+  `https://api.anthropic.com/v1/messages` (a constant, not a setting). It is
+  never logged, kept or written to a task. A failed call is logged by its
+  code (`http_401`, `TimeoutError`), never with the answer's body.
+- **Spend guard.** Each call's cost is added from the tokens the API reports
+  ($0.10 and $0.50 per million input and output tokens) to the company's
+  spend for the calendar month (UTC). At $5 it stops for the rest of the
+  month, logs a warning and saves `task_tagger.limit_reached` once, and
+  starts again on the 1st. The plugin's **health on the plugin page** shows
+  each company's spend this month ("Acme: tagging, $0.42 of $5 in 2026-11
+  (3,000 calls)"), and turns `degraded` while a company's tagger is stopped.
+
+**Switching it on and off.** The board sets, in the plugin's settings:
+
+1. `taggerAnthropicKey`: bind it to the company secret
+   `TAGGER_ANTHROPIC_API_KEY`.
+2. `paperclipApiUrl` and `paperclipApiKey`, as for the task effort handler.
+3. `taskTaggerWritesForVersion`: the running plugin version. This is the
+   switch.
+
+While the switch is empty or names another version, or a setting is
+missing, the tagger calls nothing, resolves no secret and logs nothing. To
+switch it off, empty `taskTaggerWritesForVersion`. An upgrade switches it off
+until the board enters the new version. Labels it already wrote stay.
+
+**Metrics** (tag `companyId`): `task_tagger.tagged` (tag `kind`),
+`task_tagger.failed` (tag `reason`), `task_tagger.limit_reached`.
 
 ## Metrics
 

@@ -10,7 +10,9 @@ import type {
 /**
  * The PR watcher's Paperclip, on top of the plugin host's API. This is the
  * only file that changes a task's status, and `doneOnly` lets it set `done`
- * and nothing else: the manifest can't narrow `issues.update`.
+ * and nothing else: the manifest can't narrow `issues.update`. The one other
+ * task change through the SDK, the difficulty tagger's labels, lives here
+ * too (`setTaskLabels`), so this file stays the only caller of the update.
  */
 
 /** The part of the plugin context the adapter uses, so tests can fake it. */
@@ -34,6 +36,18 @@ export function doneOnly(patch: Readonly<Record<string, unknown>>): { status: "d
     throw new Error(`PR watcher: refusing a task change other than done (${keys.join(", ")}).`);
   }
   return { status: "done" };
+}
+
+/**
+ * The difficulty tagger's task change (HAL-16928): the task's label ids and
+ * nothing else, so no status, assignee or text ever goes out with it.
+ */
+export async function setTaskLabels(
+  issues: Pick<PluginIssuesClient, "update">,
+  task: { readonly id: string; readonly companyId: string },
+  labelIds: readonly string[],
+): Promise<void> {
+  await issues.update(task.id, { labelIds: [...labelIds] }, task.companyId);
 }
 
 /** A host time (a `Date`, or a string over the wire) as ISO, or null when there is none. */

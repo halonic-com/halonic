@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { fakeHost } from "./fake-host.test-helper.ts";
-import { doneOnly, paperclipHost } from "./host.ts";
+import { doneOnly, paperclipHost, setTaskLabels } from "./host.ts";
 
 const srcDir = fileURLToPath(new URL("..", import.meta.url));
 
@@ -45,6 +45,18 @@ verifies("paperclip.pr-watcher-plugin", () => {
       .filter((file) => readFileSync(file, "utf8").includes("issues.update("))
       .map((file) => relative(srcDir, file));
     expect(writers).toEqual(["plugin/host.ts"]);
+  });
+
+  test("sends the tagger's labels and nothing else", async () => {
+    const sent: unknown[] = [];
+    const issues = {
+      update: async (...call: unknown[]) => {
+        sent.push(call);
+        return {} as never;
+      },
+    };
+    await setTaskLabels(issues, { id: "task-1", companyId: "acme" }, ["label-D2"]);
+    expect(sent).toEqual([["task-1", { labelIds: ["label-D2"] }, "acme"]]);
   });
 
   test("marks a task done with exactly the done status, then comments", async () => {

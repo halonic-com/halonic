@@ -31,7 +31,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "issues.read",
     // Only `done`: src/plugin/host.ts is the one place that writes a status, through doneOnly.
     // A task's effort goes through Paperclip's own API instead (src/plugin/task-effort.ts),
-    // because the SDK's update leaves that field out.
+    // because the SDK's update leaves that field out. The difficulty tagger writes only a
+    // task's labels (src/plugin/task-tagger.ts).
     "issues.update",
     "issues.wakeup",
     "issue.comments.read",
@@ -39,7 +40,10 @@ export const manifest: PaperclipPluginManifestV1 = {
     // Only GET requests to api.github.com and GraphQL queries to its /graphql (both readers'
     // guards); the manifest can't list hosts. ready_for_review also calls the precheck service
     // at the address in the settings (src/plugin/ready-for-review.ts), and the task effort
-    // handler sends one task change to Paperclip's API at the address in the settings.
+    // handler sends one task change to Paperclip's API at the address in the settings. The
+    // difficulty tagger posts a task's title and the start of its description to
+    // api.anthropic.com (a constant) and reads the company's labels from Paperclip's API
+    // (src/plugin/task-tagger-calls.ts).
     "http.outbound",
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
@@ -168,6 +172,19 @@ export const manifest: PaperclipPluginManifestV1 = {
         title: "Paperclip API key",
         description:
           "The secret with the API key the task effort handler sends its task changes with. It sends only a task's assigneeAdapterOverrides, with the effort changed.",
+        format: "secret-ref",
+      },
+      taskTaggerWritesForVersion: {
+        type: "string",
+        title: "Task tagger on for version",
+        description:
+          "Empty: the difficulty tagger is off and calls nothing. Enter the plugin's version to let it ask Haiku about each new task, and each task whose title or description changes, and write the labels D1–D4 and opus-only (code tasks only; labels set by hand win). It stops for the month at $5 of Haiku calls. After an upgrade it stays off until you enter the new version. It also needs the Tagger Anthropic key and the Paperclip API settings.",
+      },
+      taggerAnthropicKey: {
+        type: "string",
+        title: "Tagger Anthropic key",
+        description:
+          "The secret with the Anthropic API key the difficulty tagger calls Haiku with (TAGGER_ANTHROPIC_API_KEY). It is read only for that call and sent only to api.anthropic.com.",
         format: "secret-ref",
       },
       effortReviewers: {

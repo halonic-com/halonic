@@ -5,16 +5,19 @@ import { handleGhGuard } from "./gh-guard-route.ts";
 import { runWatcher } from "./job.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
 import { taskEffort } from "./task-effort.ts";
+import { type TaskTagger, taskTagger } from "./task-tagger.ts";
 import { registerTools } from "./tools.ts";
 
 /**
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch` and
  * `board-check` jobs on their schedules, looks at each new comment for a
- * board ask, keeps each failed run, sets a created or changed task's effort
- * from its tags, and answers the agent tools and the `gh` wrapper's route.
+ * board ask, keeps each failed run, tags a created or changed task's
+ * difficulty, sets its effort from its tags, reports the tagger's monthly
+ * spend as its health on the plugin page, and answers the agent tools and the `gh` wrapper's route.
  */
 let context: PluginContext | undefined;
+let tagger: TaskTagger | undefined;
 
 export const plugin = definePlugin({
   async setup(ctx) {
@@ -35,9 +38,19 @@ export const plugin = definePlugin({
     const effort = taskEffort(ctx, { fetch: (url, init) => fetch(url, init) });
     ctx.events.on("issue.created", (event) => effort.onIssueEvent(event));
     ctx.events.on("issue.updated", (event) => effort.onIssueEvent(event));
+    const tags = taskTagger(ctx, { fetch: (url, init) => fetch(url, init), now: () => new Date() });
+    tagger = tags;
+    ctx.events.on("issue.created", (event) => tags.onIssueEvent(event));
+    ctx.events.on("issue.updated", (event) => tags.onIssueEvent(event));
     registerTools(ctx);
     registerReadyForReview(ctx);
     registerBoardTools(ctx);
+  },
+  async onHealth() {
+    if (tagger === undefined) {
+      return { status: "degraded", message: "The Agent tools plugin is still starting." };
+    }
+    return await tagger.health();
   },
   async onApiRequest(input) {
     if (context === undefined) {
