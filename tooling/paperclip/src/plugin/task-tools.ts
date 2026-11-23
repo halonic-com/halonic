@@ -9,6 +9,7 @@ import type {
 import {
   type CommentView,
   limits,
+  shownView,
   type TaskRef,
   type TaskView,
   taskText,
@@ -175,7 +176,8 @@ async function readView(
 async function taskGet(ctx: TaskToolsApi, params: unknown, runCtx: ToolRunContext) {
   const read = readTaskGetParams(params);
   const view = await readView(ctx, runCtx.companyId, read);
-  return { content: taskText(view, read.comments), data: view };
+  const shown = shownView(view, read.comments);
+  return { content: taskText(shown), data: shown };
 }
 
 async function comment(ctx: TaskToolsApi, params: unknown, runCtx: ToolRunContext) {

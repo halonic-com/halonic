@@ -114,6 +114,22 @@ verifies("paperclip.task-tools", () => {
       expect(result.content).not.toContain("x".repeat(2_001));
     });
 
+    test("data carries only what the text shows: the newest comments, trimmed", async () => {
+      const long = (minute: number) => comment(minute, "x".repeat(2_500));
+      const { call } = setUp([1, 2, 3, 4, 5, 6, 7].map(long));
+      const result = await call("task_get", { task: "HAL-16403" });
+      const data = result.data as { comments: { id: string }[]; commentCount: number };
+      expect(data.comments.map((shown) => shown.id)).toEqual([
+        "comment-3",
+        "comment-4",
+        "comment-5",
+        "comment-6",
+        "comment-7",
+      ]);
+      expect(data.commentCount).toBe(7);
+      expect(JSON.stringify(result.data)).not.toContain("x".repeat(2_001));
+    });
+
     test("reads the document asked for, and says when the task hasn't got it", async () => {
       const { call } = setUp();
       const found = await call("task_get", { task: "HAL-16403", document: "plan", comments: 0 });
