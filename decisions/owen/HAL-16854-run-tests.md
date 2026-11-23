@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16752, Liam's security review of #5444 (23 Nov)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vqiz4sLuS4G3tvKut+yongBx+SWMkqtRLPrGl/bvf0JmY9LRL+ICO8PzWOB3Ls9qFFjSLXaQEKQkncK5DumpBw==
 
 Liam's review asked that no tool answer can give back a secret, since
 `read_ranges` can read `run_tests`' raw log. So the requirement
