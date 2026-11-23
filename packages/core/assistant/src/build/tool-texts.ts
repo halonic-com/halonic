@@ -25,7 +25,7 @@ export const toolTexts = {
   untrustedRead: "Not trusted yet: only Halonic items can be read.",
   /** A path the assistant may never write (flow-assistant 3.1). */
   cantWrite: (path: string) => `Couldn't change ${path}: it can't be written to.`,
-  /** A path the assistant may never read: `.git/`, `.halonic/`, a private file or a link. */
+  /** A path the assistant may never read: `.git/`, `.halonic/`, a private or credential file, or a link. */
   cantRead: (path: string) => `Couldn't read ${path}: it can't be read.`,
   /** No file at the path (`assistant.build.proposals-change-nothing`). */
   doesNotExist: (path: string) => `Error: ${path} does not exist`,

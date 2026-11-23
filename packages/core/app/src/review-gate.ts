@@ -7,8 +7,9 @@ import { placeOf } from "@halonicjs/workspace";
 
 /**
  * Why the assistant may not write a file:
- * - `not-allowed`: never, in any mode: an unsafe path, a private one, or one
- *   inside `.git/` or Halonic's own `.halonic/` (rule A);
+ * - `not-allowed`: never, in any mode: an unsafe path, a private one, one
+ *   inside `.git/` or Halonic's own `.halonic/` (rule A), or a common
+ *   credential file;
  * - `untrusted`: not while the workspace is untrusted, because it isn't a
  *   Halonic item file (rule B).
  *
@@ -43,6 +44,62 @@ export function isNeverWritten(path: string): boolean {
   );
 }
 
+/** File names that commonly hold a credential, as {@link segmentAsOpened} gives them. */
+const credentialNames: ReadonlySet<string> = new Set([
+  ".npmrc",
+  ".yarnrc.yml",
+  ".netrc",
+  "_netrc",
+  ".pypirc",
+  ".git-credentials",
+  ".pgpass",
+  "id_rsa",
+  "id_dsa",
+  "id_ecdsa",
+  "id_ed25519",
+  "id_ecdsa_sk",
+  "id_ed25519_sk",
+]);
+
+/** File name endings of keys and certificates with their private key. */
+const credentialEndings: readonly string[] = [".pem", ".key", ".p12", ".pfx"];
+
+/** Folders whose every file may hold a credential. */
+const credentialFolders: ReadonlySet<string> = new Set([".ssh", ".gnupg"]);
+
+/** A folder and the file in it that holds a credential. */
+const credentialFilesIn: ReadonlyMap<string, string> = new Map([
+  [".aws", "credentials"],
+  [".docker", "config.json"],
+  [".kube", "config"],
+]);
+
+/**
+ * Whether a path is a common credential file the assistant never reads or
+ * writes (`assistant.build.no-credential-files`), even in a trusted
+ * workspace, so a planted item can't get the model to send one to its
+ * provider: `.npmrc`, `.netrc`, `.pypirc`, `.git-credentials`, an SSH key
+ * such as `id_ed25519`, a `*.pem` or `*.key`, `.aws/credentials`, or
+ * anything in `.ssh/`. Each segment is compared the way Windows and macOS
+ * open it, so `.NPMRC.` counts as `.npmrc`. A path that is only a folder
+ * counts too when it is `.ssh` or `.gnupg`.
+ *
+ * @example
+ * isCredentialFile("hubs/h/.Npmrc"); // true
+ * isCredentialFile("keys/id_ed25519.pub"); // false
+ */
+export function isCredentialFile(path: string): boolean {
+  const segments = path.split("/").map(segmentAsOpened);
+  const name = segments.at(-1) ?? "";
+  const folder = segments.at(-2);
+  return (
+    credentialNames.has(name) ||
+    credentialEndings.some((ending) => name.endsWith(ending)) ||
+    segments.some((segment) => credentialFolders.has(segment)) ||
+    (folder !== undefined && credentialFilesIn.get(folder) === name)
+  );
+}
+
 /**
  * Why the assistant may not write `path` now, or `null` when it may.
  * While the workspace is untrusted, only a file that `placeOf` gives a kind
@@ -50,7 +107,8 @@ export function isNeverWritten(path: string): boolean {
  * Any other path is `untrusted` then, `.envrc` and `.git/` included, so
  * the model reads the one answer the requirement gives while untrusted.
  * Rule A still refuses an item path that is never written, such as
- * `hubs/GIT~1/agents/a.agent.yaml`, in every mode.
+ * `hubs/GIT~1/agents/a.agent.yaml`, in every mode, and so does the
+ * credential rule ({@link isCredentialFile}).
  *
  * @param trusted - whether the workspace is trusted, read for this call
  */
@@ -58,7 +116,7 @@ export function proposalRefusal(path: string, trusted: boolean): ProposalRefusal
   if (!trusted && placeOf(path) === undefined) {
     return "untrusted";
   }
-  if (isNeverWritten(path)) {
+  if (isNeverWritten(path) || isCredentialFile(path)) {
     return "not-allowed";
   }
   return null;
