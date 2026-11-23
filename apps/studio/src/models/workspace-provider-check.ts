@@ -7,6 +7,8 @@ const CHECK_TIMEOUT_MS = 5_000;
 /** The part of the workspace's trust the check reads. */
 interface CheckTrust {
   isTrusted(): boolean;
+  /** The last check: `refused` when the workspace can't be trusted at all. */
+  readonly check?: { readonly status: string } | undefined;
   subscribe(listener: () => void): () => void;
 }
 
@@ -26,7 +28,8 @@ interface CheckedProvider {
  * Until the person trusts the workspace, the address comes from a file nobody has reviewed, so Check
  * asks only an address on this computer (`localhost` or a loopback address), and leaves out the base
  * URL's query; for any other address there is nothing to check yet, and the page says it waits for
- * trust. Trusting the workspace tells the page to read the address again.
+ * trust, unless the workspace can't be trusted at all (HAL-16534). Trusting the workspace tells the
+ * page to read the address again.
  *
  * @example
  * services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc), trust));
@@ -45,6 +48,8 @@ export class WorkspaceProviderCheck implements ProviderCheck {
   }
 
   waitsForTrust(provider: CheckedProvider): boolean {
+    // Waiting for a trust that can't happen would send the person nowhere (HAL-16534).
+    if (this.#trust.check?.status === "refused") return false;
     return baseOf(provider) !== undefined && this.#checked(provider) === undefined;
   }
 

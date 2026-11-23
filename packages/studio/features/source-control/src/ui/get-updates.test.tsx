@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -92,6 +93,23 @@ verifies("source-control.get-updates", () => {
         await settle();
       });
       expect(fake.updatesAsked()).toBe(2);
+    });
+
+    it("has no Try again when updates would overwrite changes not in a version", async () => {
+      const { fake, toasts } = await openPage({ remote: true });
+      fake.failUpdates(
+        new KindedError(
+          "conflict",
+          "updates would overwrite changes you haven't put in a version. Create a version first.",
+        ),
+      );
+      await press(getUpdatesButton());
+      const [toast] = toasts.list();
+      expect(toast?.title).toBe("Couldn't get versions");
+      expect(toast?.text).toBe(
+        "Updates would overwrite changes you haven't put in a version. Create a version first. Nothing changed here.",
+      );
+      expect(toast?.action).toBeUndefined();
     });
 
     it("reads the changes again after it got versions", async () => {

@@ -7,9 +7,10 @@ import { mergeWords, updatesWords } from "../changes-words.ts";
  * Get updates (checklist part 2, 2.8): brings in the shared copy's newer versions when this
  * workspace has none the shared copy lacks. The result is a toast; a failure's has Try again.
  * When both sides have new versions the choices open instead, so "both-moved" only comes back
- * when one side moved during the get, and trying again can help (HAL-12642). A refusal only git
- * can clear (a file Halonic leaves to git) has no Try again, which would be refused the same way,
- * but Show how, which opens the how-to and leaves the toast standing.
+ * when one side moved during the get, and trying again can help (HAL-12642). A refusal another
+ * step must clear has no Try again, which would be refused the same way: over a file Halonic
+ * leaves to git it has Show how, which opens the how-to and leaves the toast standing; over
+ * changes not in a version it has no action, since its words say what to do (HAL-16534).
  */
 export function GetUpdates({
   list,
@@ -22,6 +23,20 @@ export function GetUpdates({
   const toasts = useToastStore();
   const openExternal = useOpenExternal();
   const reasonId = useId();
+  // A refusal has no Try again: over a file left to git it has Show how, otherwise no action.
+  const failureAction = (refusal: { readonly leftToGit: boolean } | undefined) => {
+    if (refusal === undefined) {
+      return { action: { label: updatesWords.tryAgain, onClick: () => void getUpdates() } };
+    }
+    if (!refusal.leftToGit) return {};
+    return {
+      action: {
+        label: updatesWords.showHow,
+        onClick: () => void openExternal(updatesWords.leftToGitHowTo),
+        keepOpen: true,
+      },
+    };
+  };
   const getUpdates = async (): Promise<void> => {
     const outcome = await list.getUpdates();
     if (outcome.kind === "got") {
@@ -36,14 +51,7 @@ export function GetUpdates({
         tone: "danger",
         title: updatesWords.failed,
         text: `${reason} ${updatesWords.nothingChanged}`,
-        action:
-          outcome.kind === "refused"
-            ? {
-                label: updatesWords.showHow,
-                onClick: () => void openExternal(updatesWords.leftToGitHowTo),
-                keepOpen: true,
-              }
-            : { label: updatesWords.tryAgain, onClick: () => void getUpdates() },
+        ...failureAction(outcome.kind === "refused" ? outcome : undefined),
       });
     }
   };

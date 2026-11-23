@@ -29,6 +29,7 @@ import {
   readableProblem,
   shareReason,
   updatesReason,
+  updatesRefused,
 } from "./git-reasons.ts";
 import { historyArgs, versionsFromLog } from "./history-log.ts";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
@@ -310,7 +311,7 @@ export class WorkspaceChanges implements ChangesSource {
       ) {
         return { kind: "both-moved" };
       }
-      throw new KindedError("unavailable", updatesReason(pull));
+      throw new KindedError(updatesRefused(pull) ? "conflict" : "unavailable", updatesReason(pull));
     }
     const after = await this.#head();
     if (after === before) return { kind: "up-to-date" };

@@ -138,6 +138,7 @@ verifies("source-control.get-updates-per-item", () => {
         diverge(s);
         writeFileSync(join(s.mine, "a.md"), "unsaved\n");
         await expect(s.open().startMerge()).rejects.toThrow("Create a version first");
+        await expect(s.open().startMerge()).rejects.toMatchObject({ kind: "conflict" });
         expect(s.read("a.md")).toBe("unsaved\n");
         expect(() => s.run(s.mine, "rev-parse", "--verify", "--quiet", "MERGE_HEAD")).toThrow();
       } finally {
