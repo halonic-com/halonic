@@ -2,6 +2,7 @@ import { answerNotAnOptionCause } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { answerAgainPrompt } from "../../kernel/agent-answer.ts";
 import type { DecideInput } from "../../kernel/decide-types.ts";
 import { play, startInput, writerAgent } from "../../kernel/kernel-test-kit.test-helper.ts";
 
@@ -135,10 +136,19 @@ verifies("engine.task-answer-retries", () => {
     const retried = decisions[1]?.events[0];
     const parseError = (retried as { rejected?: { parseError?: string } }).rejected?.parseError;
     expect(parseError).toEqual(expect.any(String));
+    expect(parseError).not.toMatch(/\.$/);
     expect(retried).toMatchObject({ type: "agent.answer-retried", rejected: { answer: cutOff } });
     expect(decisions[1]?.effects[0]).toHaveProperty(
       "prompt",
-      expect.stringContaining(`The JSON parser said: ${parseError} Answer again`),
+      expect.stringContaining(`The JSON parser said: ${parseError}. Answer again`),
+    );
+  });
+
+  it("adds no second full stop when what the parser said already ends in one", () => {
+    const prompt = answerAgainPrompt("Sort the message.", "Not JSON.", "Bad input.");
+    expect(prompt).toBe(
+      "Sort the message.\n\nYour answer can't be used: Not JSON. " +
+        "The JSON parser said: Bad input. Answer again with only what your output asks for.",
     );
   });
 
