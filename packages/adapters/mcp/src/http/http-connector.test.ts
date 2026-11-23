@@ -63,6 +63,22 @@ verifies("mcp.http-connector", () => {
       await client.close();
     });
 
+    it("without a grant, refuses to list tools before starting anything", async () => {
+      const server = new FakeMcpHttpServer(contractServer([]));
+      const read: string[] = [];
+      const secrets: Secrets = {
+        get: async (name) => {
+          read.push(name);
+          return "acme-token";
+        },
+      };
+      const client = connect(server, secrets, null);
+      await expect(client.listTools()).rejects.toThrow("once the workspace is trusted");
+      expect(read).toEqual([]);
+      expect(server.requests).toEqual([]);
+      await client.close();
+    });
+
     it("starts a new session after the server forgot the old one", async () => {
       const server = new FakeMcpHttpServer(contractServer([]), "json", "session-1");
       let forgotten = false;

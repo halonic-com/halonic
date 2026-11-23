@@ -316,8 +316,9 @@ export interface ConnectorFactoryContext {
    * Without a grant:
    * - a `stdio` connector never starts its program (`listTools` and
    *   `callTool` throw);
-   * - an `http` connector's `callTool` always throws, because the only
-   *   `risk` it sees is the one the server wrote;
+   * - an `http` connector's `listTools` and `callTool` always throw, like a
+   *   `stdio` connector's, and the only `risk` it sees is the one the
+   *   server wrote;
    * - the built-in `google` connector's `callTool` throws for every tool
    *   whose own `risk` isn't `read`;
    * - the host ignores any `risk` the workspace sets, so every tool an

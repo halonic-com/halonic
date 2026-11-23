@@ -27,10 +27,9 @@ type HttpConfig = Extract<ConnectorConfig["transport"], { kind: "http" }>;
  * through the context's `http`, so the host decides which addresses a
  * connector may reach.
  *
- * Listing tools needs no trust grant: it changes nothing, and a person
- * reviews the listing before trusting it. Calling a tool does: without a
- * grant every call throws before it reaches the server, because the only
- * `risk` it has is the one the server wrote
+ * Listing and calling tools both need a trust grant, as for a `stdio`
+ * connector: without one, every call throws before it starts a session,
+ * and the only `risk` a tool has is the one the server wrote
  * (`ports.connector-trust-enforcement`).
  */
 export class McpHttpConnectorFactory implements ConnectorFactory {
@@ -74,16 +73,14 @@ class McpHttpConnector implements ConnectorClient {
   }
 
   async listTools(): Promise<ConnectorTool[]> {
+    this.#requireTrust("lists");
     const session = await this.#connect();
     const tools = await session.listTools().catch((error: unknown) => this.#forget(error));
     return tools.map(toConnectorTool);
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<string> {
-    // Checked before connecting, so an untrusted workspace's call reaches nothing.
-    if (this.#context.trust === null) {
-      throw new Error(`Connector "${this.id}" calls its tools only once the workspace is trusted.`);
-    }
+    this.#requireTrust("calls");
     const session = await this.#connect();
     const result = await session
       .callTool(name, args)
@@ -99,6 +96,15 @@ class McpHttpConnector implements ConnectorClient {
     // A session that never started has nothing to end on the server.
     const session = await connecting?.catch(() => undefined);
     await session?.close();
+  }
+
+  /** Checked before connecting, so an untrusted workspace's call starts nothing. */
+  #requireTrust(verb: "lists" | "calls"): void {
+    if (this.#context.trust === null) {
+      throw new Error(
+        `Connector "${this.id}" ${verb} its tools only once the workspace is trusted.`,
+      );
+    }
   }
 
   /** Starts the session on the first call. A start that fails is tried again on the next call. */
