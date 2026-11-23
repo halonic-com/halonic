@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { createToastStore, ToastRegion, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -25,8 +25,8 @@ function fakeDecisions() {
 }
 
 /**
- * The proposal page in its toast store, with `answering` to tell it the engine stopped or came
- * back, and `leave` to take it away as leaving the Inbox does.
+ * The proposal page in its toast store, whose toasts show beside it, with `answering` to tell it
+ * the engine stopped or came back, and `leave` to take it away as leaving the Inbox does.
  */
 function openCard(decisions: ProposalDecisions, signedOut = false) {
   const toasts = createToastStore();
@@ -54,6 +54,7 @@ function openCard(decisions: ProposalDecisions, signedOut = false) {
   const root = render(
     <ToastStoreProvider store={toasts}>
       <Page />
+      <ToastRegion store={toasts} />
     </ToastStoreProvider>,
   );
   return {
@@ -109,6 +110,21 @@ verifies("inbox.proposal-undo-held", () => {
 
       expect(decisions.undo).not.toHaveBeenCalled();
       expect(toastsShown(toasts)).toEqual([["danger", "Couldn't undo this.", pressAgain, "Undo"]]);
+    });
+
+    it("moves focus to the new toast's Undo when the Undo pressed had it, so a keyboard needn't press F6", async () => {
+      const decisions = fakeDecisions();
+      const { root, answering } = openCard(decisions);
+      await press(buttons(root, "Accept")[0]);
+      answering(false);
+      const undo = buttons(root, "Undo")[0];
+      act(() => undo?.focus());
+
+      await press(undo);
+
+      const [held] = buttons(root, "Undo");
+      expect(held?.closest("[role=alert]")?.textContent).toContain("Couldn't undo this.");
+      expect(document.activeElement).toBe(held);
     });
 
     it("closes the held-back toast with its Undo once a newer decision is made", async () => {
