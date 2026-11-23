@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { RoutineRunAgentsProps, RoutinesHost, RoutineView } from "../api.ts";
 import { buttonNamed, show, unmount } from "../test-support.tsx";
 import { daily, hostReading, runNowButton } from "./page.test-helper.tsx";
-import { RoutineScreen } from "./routine-page.tsx";
+import { RoutineScreen, type RoutineScreenProps } from "./routine-page.tsx";
 
 afterEach(unmount);
 
@@ -22,14 +22,15 @@ const confirmLine = (name: string) => `${name} runs in the sandbox until you con
 const cantRunLine = "Daily summary can't run: the sandbox can't start on this computer.";
 
 /**
- * Stands in for the Agents feature's view: it says every agent is on hold, with a button that
- * opens the agent at Where it runs, as `ConfirmAgainCallouts` does (tested there).
+ * Stands in for the Agents feature's view: it says every agent is on hold, in the hub it was
+ * given, with a button that opens the agent at Where it runs, as `ConfirmAgainCallouts` does
+ * (tested there).
  */
-function OnHoldEveryone({ agents, openAgent }: RoutineRunAgentsProps) {
+function OnHoldEveryone({ hubId, agents, openAgent }: RoutineRunAgentsProps) {
   return (
     <>
       {agents.map((agent) => (
-        <p key={agent.id}>
+        <p key={agent.id} data-hub={hubId}>
           {confirmLine(agent.name)}
           <button type="button" onClick={() => openAgent?.(agent.id, "where-it-runs")}>
             Review and confirm
@@ -47,7 +48,7 @@ async function open(
     readonly routine?: RoutineView;
     readonly check?: SandboxStartResult;
     readonly withView?: boolean;
-    readonly openAgent?: (agentId: string, step?: string) => void;
+    readonly openAgent?: RoutineScreenProps["openAgent"];
   } = {},
 ) {
   const { host } = hostReading(() => options.routine ?? dailySummary);
@@ -94,7 +95,19 @@ verifies("routines.page.confirm-again", () => {
     const openAgent = vi.fn();
     const page = await open({ openAgent });
     await act(async () => buttonNamed(page, "Review and confirm")?.click());
-    expect(openAgent).toHaveBeenCalledWith("writer", "where-it-runs");
+    expect(openAgent).toHaveBeenCalledWith({ hubId: "acme", id: "writer" }, "where-it-runs");
+  });
+
+  it("looks up and opens the agent in the workflow's hub when the routine's file names another hub", async () => {
+    const openAgent = vi.fn();
+    const crossHub: RoutineView = {
+      ...dailySummary,
+      target: { kind: "workflow", hubId: "globex", id: "briefing", input: "{}" },
+    };
+    const page = await open({ routine: crossHub, openAgent });
+    expect(page.querySelector("[data-hub]")?.getAttribute("data-hub")).toBe("globex");
+    await act(async () => buttonNamed(page, "Review and confirm")?.click());
+    expect(openAgent).toHaveBeenCalledWith({ hubId: "globex", id: "writer" }, "where-it-runs");
   });
 
   it("shows nothing for a routine that runs no agent in a program of its own", async () => {

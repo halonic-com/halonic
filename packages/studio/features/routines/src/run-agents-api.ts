@@ -9,6 +9,10 @@ export interface RoutineProgramAgent {
 
 /** What the routine page gives the view of {@link RoutineRunAgentsService}. */
 export interface RoutineRunAgentsProps {
+  /**
+   * The hub the agents are in: the target's (`target.hubId`), which can differ from the routine's
+   * own when its file names another hub.
+   */
   readonly hubId: string;
   /** The agents **Run now** starts in a program of their own, each once, in the routine's order. */
   readonly agents: readonly RoutineProgramAgent[];

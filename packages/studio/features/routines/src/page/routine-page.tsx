@@ -30,7 +30,7 @@ import { WhenCard } from "../when/when-card.tsx";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { pageWords } from "./page-words.ts";
 import { RoutineHeader, type RoutineViewId } from "./routine-header.tsx";
-import { RunAgentsView } from "./run-agents-view.tsx";
+import { type AgentRef, RunAgentsView } from "./run-agents-view.tsx";
 import { useRunNowGate } from "./run-now-gate.ts";
 import { TRIGGER_STEP } from "./trigger-step.ts";
 import { type RoutineLoad, useRoutine } from "./use-routine.ts";
@@ -60,9 +60,9 @@ export function RoutinePage({ item, context, step, asked }: ItemViewProps) {
         openFile: (path: string) => openItem({ kind: fileKind, hub: fileHub, id: path }),
         openTarget: (target: RoutineTarget) =>
           openItem({ kind: target.kind, hub: target.hubId, id: target.id }),
-        openAgent: (agentId: string, step?: string) =>
+        openAgent: (agent: AgentRef, step?: string) =>
           openItem(
-            { kind: "agent", hub: item.hub, id: agentId },
+            { kind: "agent", hub: agent.hubId, id: agent.id },
             step === undefined ? {} : { step },
           ),
       })}
@@ -101,7 +101,7 @@ export interface RoutineScreenProps {
    */
   readonly runAgentsView?: ViewRef | undefined;
   /** Opens an agent's page, at `step` when given, for that view's **Review and confirm**. */
-  readonly openAgent?: (agentId: string, step?: string) => void;
+  readonly openAgent?: (agent: AgentRef, step?: string) => void;
 }
 
 /**
@@ -177,7 +177,7 @@ export function RoutineScreen({
           {host.runNow !== undefined && (
             <RunAgentsView
               view={runAgentsView}
-              hubId={hubId}
+              target={load.routine.target}
               agents={load.routine.programAgents ?? []}
               openAgent={openAgent}
             />
