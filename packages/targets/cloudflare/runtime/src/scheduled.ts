@@ -1,4 +1,14 @@
+import type { WatchdogReport } from "@halonicjs/adapter-cloudflare-durable";
 import type { Runtime } from "./runtime.ts";
+
+/**
+ * What a sweep reports to the cron run: a single watchdog's `failed` runs, or the named
+ * `failures` of a sweep over every scope (`sweepEveryScope`).
+ */
+export interface SweepOutcome {
+  failed?: WatchdogReport["failed"];
+  failures?: Error[];
+}
 
 /**
  * What one cron run does: the routine tick, then the watchdog's sweep. They
@@ -14,7 +24,7 @@ import type { Runtime } from "./runtime.ts";
  * await runScheduled(runtime, new Date(controller.scheduledTime).toISOString());
  */
 export async function runScheduled(
-  runtime: Pick<Runtime, "routines" | "watchdog">,
+  runtime: Pick<Runtime, "routines"> & { watchdog: { sweep(): Promise<SweepOutcome> } },
   at: string,
 ): Promise<void> {
   const failures: Error[] = [];
@@ -27,9 +37,10 @@ export async function runScheduled(
 
   try {
     const report = await runtime.watchdog.sweep();
-    for (const { runId, error } of report.failed) {
+    for (const { runId, error } of report.failed ?? []) {
       failures.push(new Error(`The watchdog couldn't check run ${runId}.`, { cause: error }));
     }
+    failures.push(...(report.failures ?? []));
   } catch (error) {
     failures.push(new Error("The watchdog's sweep failed.", { cause: error }));
   }
