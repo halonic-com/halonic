@@ -114,6 +114,74 @@ export const manifest: PaperclipPluginManifestV1 = {
         default: [],
         items: { type: "string" },
       },
+      modelWindows: {
+        type: "array",
+        title: "Per-model weekly windows",
+        description:
+          "Which models count against a per-model weekly window that /usage shows, such as one for Sonnet. Every model counts against the 5-hour and the weekly window.",
+        default: [],
+        items: {
+          type: "object",
+          properties: {
+            modelPrefix: {
+              type: "string",
+              title: "Model id starts with",
+              description: "For example claude-sonnet.",
+            },
+            window: {
+              type: "string",
+              title: "Window",
+              description: "The window's name as /usage shows it, for example Sonnet.",
+            },
+          },
+          required: ["modelPrefix", "window"],
+        },
+      },
+      scenarios: {
+        type: "array",
+        title: "Forecast scenarios",
+        description:
+          "What-ifs the forecast works out every 10 minutes next to today's caps, so the board sees what a choice does before making it. They change nothing.",
+        default: [],
+        items: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              title: "Scenario id",
+              description: "A short key, for example caps-minus-one.",
+              pattern: "^[a-z0-9][a-z0-9-]*$",
+            },
+            label: { type: "string", title: "Label" },
+            agents: {
+              type: "array",
+              title: "Agents",
+              description: "The Paperclip ids of the agents whose cap or model changes.",
+              items: { type: "string" },
+            },
+            capDelta: {
+              type: "integer",
+              title: "Cap change",
+              description: "Added to each named agent's concurrent run cap, for example -1.",
+              default: 0,
+            },
+            model: {
+              type: "string",
+              title: "Model",
+              description: "The model each named agent runs on instead.",
+            },
+            demandFactor: {
+              type: "number",
+              title: "Demand factor",
+              description: "Multiplies every agent's tokens, for example 0.82 for 18% fewer.",
+              default: 1,
+              exclusiveMinimum: 0,
+              maximum: 2,
+            },
+          },
+          required: ["id"],
+        },
+      },
     },
   },
   jobs: [
