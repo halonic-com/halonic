@@ -66,7 +66,30 @@ async function linesOf(parts: CheckSourceParts): Promise<CheckFact[]> {
   return facts;
 }
 
+/** The source's lines as the dialog asks for them, one at a time. */
+function linesOneByOne(parts: CheckSourceParts): AsyncIterator<CheckFact> {
+  return new WorkspaceCheckSource(parts)
+    .check(new AbortController().signal)
+    [Symbol.asyncIterator]();
+}
+
+async function takeLines(lines: AsyncIterator<CheckFact>, count: number): Promise<CheckFact[]> {
+  const taken: CheckFact[] = [];
+  while (taken.length < count) {
+    const next = await lines.next();
+    if (next.done === true) break;
+    taken.push(next.value);
+  }
+  return taken;
+}
+
+/** Which lines came, in any order: the dialog puts them in its own (`use-check.ts`). */
+function checksOf(facts: readonly CheckFact[]): string[] {
+  return facts.map((fact) => fact.check).sort();
+}
+
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -74,12 +97,12 @@ verifies("studio.check-computer.source", () => {
   it("gives the demo's lines: the sandbox and harnesses as Not checked, Disk only when low", async () => {
     const facts = await linesOf(demoParts());
 
-    expect(facts.map((fact) => fact.check)).toEqual([
-      "engine",
-      "workspace",
-      "not-checked",
-      "models",
+    expect(checksOf(facts)).toEqual([
       "default-model",
+      "engine",
+      "models",
+      "not-checked",
+      "workspace",
     ]);
     expect(facts.find((fact) => fact.check === "models")).toEqual({
       check: "models",
@@ -96,13 +119,13 @@ verifies("studio.check-computer.source", () => {
   it("shows the host's lines with the sandbox's kind, and no Default model outside the demo", async () => {
     const facts = await linesOf(demoParts({ isDemo: () => false }));
 
-    expect(facts.map((fact) => fact.check)).toEqual([
-      "engine",
-      "workspace",
-      "sandbox",
-      "harnesses",
+    expect(checksOf(facts)).toEqual([
       "disk",
+      "engine",
+      "harnesses",
       "models",
+      "sandbox",
+      "workspace",
     ]);
     expect(facts.find((fact) => fact.check === "workspace")).not.toHaveProperty("actions");
     expect(facts.find((fact) => fact.check === "sandbox")).toMatchObject({
@@ -111,6 +134,7 @@ verifies("studio.check-computer.source", () => {
   });
 
   it("calls a key the key store can't be asked about unreadable", async () => {
+    const said = vi.spyOn(console, "error").mockImplementation(() => {});
     const facts = await linesOf(
       demoParts({ keyStored: () => Promise.reject(new Error("locked")) }),
     );
@@ -118,22 +142,78 @@ verifies("studio.check-computer.source", () => {
     expect(facts.find((fact) => fact.check === "models")).toMatchObject({
       keys: [{ provider: "Anthropic", keyStored: "unreadable" }],
     });
+    expect(said).toHaveBeenCalledWith(
+      "Check this computer couldn't read Anthropic's key.",
+      expect.any(Error),
+    );
   });
 
-  it("leaves out the host's lines when the host fails, and says so on the console", async () => {
+  it("says the host's lines didn't answer when the host fails, and says why on the console", async () => {
     const said = vi.spyOn(console, "error").mockImplementation(() => {});
     const facts = await linesOf(demoParts({ hostDoctor: () => Promise.reject(new Error("busy")) }));
 
-    expect(facts.map((fact) => fact.check)).toEqual([
-      "engine",
-      "not-checked",
-      "models",
+    expect(facts).toEqual(
+      expect.arrayContaining([
+        { check: "workspace", status: "warning", timedOut: true },
+        { check: "disk", status: "warning", timedOut: true },
+        { check: "not-checked", parts: ["sandbox", "harnesses"] },
+      ]),
+    );
+    expect(checksOf(facts)).toEqual([
       "default-model",
+      "disk",
+      "engine",
+      "models",
+      "not-checked",
+      "workspace",
     ]);
     expect(said).toHaveBeenCalledWith(
       "Check this computer couldn't read this computer.",
       expect.any(Error),
     );
+  });
+
+  it("gives the other lines while the Google setups are still being read, and gives up after 5 seconds", async () => {
+    vi.useFakeTimers();
+    const said = vi.spyOn(console, "error").mockImplementation(() => {});
+    const lines = linesOneByOne(demoParts({ googleSetups: () => new Promise(() => {}) }));
+
+    const first = await takeLines(lines, 5);
+    expect(checksOf(first)).toEqual([
+      "default-model",
+      "engine",
+      "models",
+      "not-checked",
+      "workspace",
+    ]);
+
+    const end = lines.next();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(await end).toEqual({ done: true, value: undefined });
+    expect(said).toHaveBeenCalledWith(
+      "Check this computer gave up on the Google setups after 5 seconds.",
+    );
+  });
+
+  it("gives the Engine line while the host hangs, then the host's lines as not answering after 10 seconds", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const lines = linesOneByOne(demoParts({ hostDoctor: () => new Promise(() => {}) }));
+
+    expect(checksOf(await takeLines(lines, 1))).toEqual(["engine"]);
+
+    const rest = takeLines(lines, 5);
+    await vi.advanceTimersByTimeAsync(10_000);
+    const answered = await rest;
+    expect(checksOf(answered)).toEqual([
+      "default-model",
+      "disk",
+      "models",
+      "not-checked",
+      "workspace",
+    ]);
+    expect(answered).toContainEqual({ check: "workspace", status: "warning", timedOut: true });
+    expect(await lines.next()).toEqual({ done: true, value: undefined });
   });
 
   it("points the last failed run at the Models line that shows its cause, with its hub", async () => {
@@ -192,7 +272,7 @@ verifies("studio.check-computer.source", () => {
       controller.abort();
     }
 
-    expect(facts.map((fact) => fact.check)).toEqual(["engine"]);
+    expect(facts).toHaveLength(1);
   });
 
   describe("the Google setups", () => {
