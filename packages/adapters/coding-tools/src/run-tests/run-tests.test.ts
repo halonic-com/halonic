@@ -157,7 +157,7 @@ verifies("coding-tools.run-tests", () => {
       },
     });
     const start = {
-      args: ["--temp-folder", folders.outside],
+      args: ["--temp-folder", folders.outside, "--tools", "all"],
       cwd: folders.workingFolder,
       env: { PATH: process.env["PATH"] },
       codePaths: [],

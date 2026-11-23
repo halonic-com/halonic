@@ -1,14 +1,20 @@
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { secretRemoved } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
-import { maxAnswerCharacters } from "./answer-cap.ts";
+import { maxAnswerCharacters, maxLineCharacters } from "./answer-cap.ts";
 import { type CodingToolChoice, CodingToolSet } from "./coding-tool-set.ts";
 import { removeTestFolders, testFolders } from "./folders.test-helper.ts";
 
 afterEach(removeTestFolders);
 
+/** A made-up value, used as the session's one secret. */
+const secret = "made-up-secret-7f3a9c2e";
+
 async function toolSet(choice: CodingToolChoice = "read-only") {
   const folders = await testFolders();
-  const tools = new CodingToolSet({ folders, choice, testEnvironment: {}, secrets: [] });
+  const tools = new CodingToolSet({ folders, choice, testEnvironment: {}, secrets: [secret] });
   const call = (name: string, args: Record<string, unknown>) =>
     tools.call(name, args, new AbortController().signal);
   return { folders, tools, call };
@@ -49,6 +55,34 @@ verifies("coding-tools.tool-set", () => {
     const result = await call("repo_map", {});
     expect(result.isError).toBe(false);
     expect(result.text.length).toBeLessThanOrEqual(maxAnswerCharacters);
+  });
+});
+
+verifies("coding-tools.tool-set", () => {
+  it("removes the secrets from a test log read with read_ranges", async () => {
+    const { folders, call } = await toolSet();
+    const log = join(folders.testLogFolder, "run-1.log");
+    await writeFile(log, `token=${secret}\nok\n`);
+    const result = await call("read_ranges", { files: [{ path: log }] });
+    expect(result.text).toContain(`1\ttoken=${secretRemoved}`);
+    expect(result.text).not.toContain(secret.slice(0, 12));
+  });
+
+  it("removes a secret that a cut line would have split", async () => {
+    const { folders, call } = await toolSet();
+    const before = "x".repeat(maxLineCharacters - 10);
+    await folders.write("long.txt", `${before}${secret} and more`);
+    const result = await call("read_ranges", { files: [{ path: "long.txt" }] });
+    expect(result.text).toContain(`${before}${secretRemoved.slice(0, 10)}`);
+    expect(result.text).not.toContain(secret.slice(0, 10));
+  });
+
+  it("removes the secrets from every tool's answer", async () => {
+    const { folders, call } = await toolSet();
+    await folders.write("config.txt", `key: ${secret}\n`);
+    const found = await call("search", { pattern: "key" });
+    expect(found.text).toContain(secretRemoved);
+    expect(found.text).not.toContain(secret);
   });
 });
 

@@ -36,9 +36,11 @@ already do with its own shell or `Read`. Its own rules come on top:
   command gets no input and only `programEnvironment`'s variables (never the
   run token), its output goes only to a log file cut at 8 MB, and the whole
   process group is stopped at its time limit, on a cancel and after it exits.
-  Secret values of the server's environment are removed from the answer.
-- **`--read-only`:** leaves `run_tests` out, for Codex until it is confirmed
-  to ask before using an MCP tool.
+- **Secrets:** the secret values of the server's environment are removed
+  from every answer, test logs read with `read_ranges` included.
+- **`--tools all` or `--tools read-only`:** required, so a server started
+  without a choice refuses to start. `read-only` leaves `run_tests` out, for
+  Codex until it is confirmed to ask before using an MCP tool.
 - **Its output:** one JSON-RPC reply per line on standard output, and nothing
   else; a test command's output never reaches it.
 
@@ -51,7 +53,7 @@ import { Readable } from "node:stream";
 // The runtime's `coding-tools` mode; the harness starts it in the agent's working folder.
 await runCodingToolsServer(
   {
-    args: ["--temp-folder", sessionTempFolder],
+    args: ["--temp-folder", sessionTempFolder, "--tools", "all"],
     cwd: process.cwd(),
     env: process.env,
     codePaths: [process.execPath, installFolder],

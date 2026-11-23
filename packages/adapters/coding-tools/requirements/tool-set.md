@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-16752 (plan HAL-16737; Liam's conditions on HAL-16748)
+- Source: HAL-16752 (plan HAL-16737; Liam's conditions on HAL-16748), HAL-16854 (secrets in every answer)
 
-The coding tool set shall offer `read_ranges`, `search` and `repo_map`, each marked as only reading, and shall name the tools that only read, so a harness may allow just those without asking. A call to a tool it doesn't offer shall get an error result that names the tools it does offer, and a call a tool refuses shall get an error result with the refusal's text. Every answer shall hold at most 24,000 characters. A failure that isn't a refusal shall reach the MCP server as a failure, so the model never reads its text.
+The coding tool set shall offer `read_ranges`, `search` and `repo_map`, each marked as only reading, and shall name the tools that only read, so a harness may allow just those without asking. A call to a tool it doesn't offer shall get an error result that names the tools it does offer, and a call a tool refuses shall get an error result with the refusal's text. Every answer, error results included, shall have the secret values of the server's environment removed, and `read_ranges` shall remove them from each line before cutting it, so a test log never gives a secret back. Every answer shall hold at most 24,000 characters. A failure that isn't a refusal shall reach the MCP server as a failure, so the model never reads its text.
 
 ## Examples
 

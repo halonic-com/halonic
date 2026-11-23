@@ -33,30 +33,33 @@ export interface ServerArguments {
 }
 
 /**
- * Reads `--temp-folder <path>` (required), `--read-only` and
- * `--max-test-seconds <n>` (requirement `coding-tools.read-only-choice`).
+ * Reads `--temp-folder <path>` and `--tools <all|read-only>`, both
+ * required, and `--max-test-seconds <n>` (requirement
+ * `coding-tools.read-only-choice`). The tool choice has no default, so a
+ * harness that forgets it gets a server that doesn't start rather than one
+ * that serves `run_tests`.
  *
- * @throws Error for an argument it doesn't know or a missing value
+ * @throws Error for an argument it doesn't know, a missing value or a missing choice
  */
 export function readServerArguments(args: readonly string[]): ServerArguments {
   let tempFolder: string | undefined;
-  let choice: CodingToolChoice = "all";
+  let choice: CodingToolChoice | undefined;
   let maxTestSeconds: number | undefined;
   for (let index = 0; index < args.length; index += 1) {
     const name = args[index];
-    if (name === "--read-only") {
-      choice = "read-only";
-      continue;
-    }
     const value = args[index + 1];
     if (value === undefined)
       throw new Error(`The coding tools server needs a value after ${name}.`);
     index += 1;
     if (name === "--temp-folder") tempFolder = value;
+    else if (name === "--tools") choice = toolChoice(value);
     else if (name === "--max-test-seconds") maxTestSeconds = wholeSeconds(value);
     else throw new Error(`The coding tools server doesn't know the argument ${name}.`);
   }
   if (tempFolder === undefined) throw new Error("The coding tools server needs --temp-folder.");
+  if (choice === undefined) {
+    throw new Error("The coding tools server needs --tools all or --tools read-only.");
+  }
   return { tempFolder, choice, maxTestSeconds };
 }
 
@@ -87,6 +90,11 @@ export async function runCodingToolsServer(
   });
   const server = new McpToolServer(tools, { reportError: start.reportError });
   await serveOverStdio(server, channel, start.reportError);
+}
+
+function toolChoice(value: string): CodingToolChoice {
+  if (value === "all" || value === "read-only") return value;
+  throw new Error(`--tools needs all or read-only, not ${value}.`);
 }
 
 function wholeSeconds(value: string): number {

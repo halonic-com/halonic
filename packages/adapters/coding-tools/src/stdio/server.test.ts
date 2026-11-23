@@ -62,7 +62,7 @@ verifies("coding-tools.stdio", () => {
       const { channel, send, sendText, end, replies, written } = testChannel();
       const serving = runCodingToolsServer(
         {
-          args: ["--temp-folder", folders.outside],
+          args: ["--temp-folder", folders.outside, "--tools", "all"],
           cwd: folders.workingFolder,
           env: {},
           codePaths: [],
@@ -116,7 +116,7 @@ verifies("coding-tools.stdio", () => {
       const { channel, send } = testChannel();
       send(request(1, "initialize"));
       const start = {
-        args: ["--temp-folder", folders.outside],
+        args: ["--temp-folder", folders.outside, "--tools", "all"],
         cwd: folders.workingFolder,
         env: {},
         codePaths: [code],
@@ -129,9 +129,13 @@ verifies("coding-tools.stdio", () => {
     });
 
     it.each([
-      [[], "needs --temp-folder"],
+      [["--tools", "all"], "needs --temp-folder"],
       [["--temp-folder"], "needs a value after --temp-folder"],
-      [["--temp-folder", "x", "--read-write", "y"], "doesn't know the argument --read-write"],
+      [
+        ["--temp-folder", "x", "--tools", "all", "--read-write", "y"],
+        "doesn't know the argument --read-write",
+      ],
+      [["--temp-folder", "x", "--read-only"], "needs a value after --read-only"],
     ])("refuses the arguments %j", (args, message) => {
       expect(() => readServerArguments(args)).toThrow(message);
     });
@@ -175,14 +179,21 @@ verifies("coding-tools.stdio", () => {
 });
 
 verifies("coding-tools.read-only-choice", () => {
-  it("reads --read-only and --max-test-seconds", () => {
-    expect(readServerArguments(["--temp-folder", "t"])).toEqual({
+  it("reads --tools and --max-test-seconds", () => {
+    expect(readServerArguments(["--temp-folder", "t", "--tools", "all"])).toEqual({
       tempFolder: "t",
       choice: "all",
       maxTestSeconds: undefined,
     });
     expect(
-      readServerArguments(["--read-only", "--temp-folder", "t", "--max-test-seconds", "60"]),
+      readServerArguments([
+        "--tools",
+        "read-only",
+        "--temp-folder",
+        "t",
+        "--max-test-seconds",
+        "60",
+      ]),
     ).toEqual({
       tempFolder: "t",
       choice: "read-only",
@@ -190,17 +201,39 @@ verifies("coding-tools.read-only-choice", () => {
     });
   });
 
-  it.each(["9", "1.5", "soon"])("refuses --max-test-seconds %s", (value) => {
-    expect(() => readServerArguments(["--temp-folder", "t", "--max-test-seconds", value])).toThrow(
-      "--max-test-seconds needs a whole number",
+  it("refuses to start without a tool choice, so it never serves run_tests by default", async () => {
+    expect(() => readServerArguments(["--temp-folder", "t"])).toThrow(
+      "needs --tools all or --tools read-only",
+    );
+    const folders = await testFolders();
+    const { channel } = testChannel();
+    const start = {
+      args: ["--temp-folder", folders.outside],
+      cwd: folders.workingFolder,
+      env: {},
+      codePaths: [],
+      reportError: () => undefined,
+    };
+    await expect(runCodingToolsServer(start, channel)).rejects.toThrow("needs --tools");
+    expect(await readdir(folders.outside)).toEqual([]);
+  });
+
+  it.each(["", "ALL", "read-write"])("refuses --tools %j", (value) => {
+    expect(() => readServerArguments(["--temp-folder", "t", "--tools", value])).toThrow(
+      "--tools needs all or read-only",
     );
   });
 
-  it("serves only the reading tools with --read-only", async () => {
+  it.each(["9", "1.5", "soon"])("refuses --max-test-seconds %s", (value) => {
+    const args = ["--temp-folder", "t", "--tools", "all", "--max-test-seconds", value];
+    expect(() => readServerArguments(args)).toThrow("--max-test-seconds needs a whole number");
+  });
+
+  it("serves only the reading tools with --tools read-only", async () => {
     const folders = await testFolders();
     const { channel, send, end, replies } = testChannel();
     const start = {
-      args: ["--temp-folder", folders.outside, "--read-only"],
+      args: ["--temp-folder", folders.outside, "--tools", "read-only"],
       cwd: folders.workingFolder,
       env: {},
       codePaths: [],

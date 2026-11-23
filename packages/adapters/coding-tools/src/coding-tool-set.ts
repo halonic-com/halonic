@@ -1,4 +1,5 @@
 import type { McpTool, McpToolCallResult, McpToolSet } from "@halonicjs/adapter-mcp/server";
+import { SecretScrubber } from "@halonicjs/std";
 import { cappedAnswer } from "./answer-cap.ts";
 import type { CodingTool } from "./coding-tool.ts";
 import type { ToolFolders } from "./folders.ts";
@@ -22,7 +23,7 @@ export interface CodingToolsOptions {
   readonly choice: CodingToolChoice;
   /** The test command's whole environment, from `testEnvironment`. */
   readonly testEnvironment: Readonly<Record<string, string>>;
-  /** Values removed from test output, from `secretValues`. */
+  /** Values removed from every answer, from `secretValues`. */
   readonly secrets: readonly string[];
   /** The longest a test run may take, in seconds. */
   readonly maxTestSeconds?: number;
@@ -33,15 +34,18 @@ export interface CodingToolsOptions {
  * `coding-tools.tool-set` and `coding-tools.read-only-choice`):
  * `read_ranges`, `search`, `repo_map` and, unless the choice is
  * `read-only`, `run_tests`. A call the tool refuses is an error result the
- * model reads; a call to a tool not offered is one too. Every answer is
- * capped at 24,000 characters.
+ * model reads; a call to a tool not offered is one too. Every answer has
+ * the secret values removed and is capped at 24,000 characters.
  */
 export class CodingToolSet implements McpToolSet {
   readonly #tools: readonly CodingTool[];
+  readonly #scrubber = new SecretScrubber();
 
   constructor(options: CodingToolsOptions) {
+    for (const secret of options.secrets) this.#scrubber.remember(secret);
+    const scrubLine = (line: string) => this.#scrubber.scrub(line);
     const tools = [
-      readRangesTool(options.folders, new ReadCache()),
+      readRangesTool(options.folders, new ReadCache(), scrubLine),
       searchTool(options.folders),
       repoMapTool(options.folders),
       runTestsTool({
@@ -76,10 +80,12 @@ export class CodingToolSet implements McpToolSet {
       return { text: `There is no tool '${name}' here. The tools are: ${offered}.`, isError: true };
     }
     try {
-      const text = await tool.run(args, signal);
+      const text = this.#scrubber.scrub(await tool.run(args, signal));
       return { text: cappedAnswer(text, "narrow the call"), isError: false };
     } catch (error) {
-      if (error instanceof ToolRefusal) return { text: error.message, isError: true };
+      if (error instanceof ToolRefusal) {
+        return { text: this.#scrubber.scrub(error.message), isError: true };
+      }
       throw error;
     }
   }

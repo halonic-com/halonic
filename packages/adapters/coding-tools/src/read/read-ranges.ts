@@ -19,6 +19,9 @@ const maxFiles = 20;
 /** The lines a file gives when the call names no end. */
 const defaultLines = 400;
 
+/** Removes secret values from a line of text before it is sent. */
+export type LineScrub = (line: string) => string;
+
 /** The largest file read: a test log can be this big (see `run_tests`). */
 export const maxReadBytes = 8 * 1024 * 1024;
 
@@ -40,11 +43,14 @@ const description =
 /**
  * `read_ranges` (requirement `coding-tools.read-ranges`): up to
  * {@link maxFiles} files or line ranges in one call, numbered, through
- * the read cache.
+ * the read cache. Each line goes through `scrub` before it is cut to fit,
+ * so a cut can't split a secret and leave part of it unrecognised: a test
+ * log holds what the command printed, secrets included.
  */
 export function readRangesTool(
   folders: ToolFolders,
   cache: ReadCache = new ReadCache(),
+  scrub: LineScrub = (line) => line,
 ): CodingTool {
   return {
     definition: {
@@ -81,7 +87,7 @@ export function readRangesTool(
       const fresh = optionalFlag(args, "fresh");
       const answer = new AnswerBudget(maxAnswerCharacters - noteRoom);
       for (const [index, request] of requests.entries()) {
-        const cut = await readOne(request, { folders, cache, fresh, answer });
+        const cut = await readOne(request, { folders, cache, fresh, answer, scrub });
         if (cut !== null) return `${answer.text()}\n${notSentNote(cut, requests.slice(index + 1))}`;
       }
       return answer.text();
@@ -95,6 +101,7 @@ interface ReadContext {
   readonly cache: ReadCache;
   readonly fresh: boolean;
   readonly answer: AnswerBudget;
+  readonly scrub: LineScrub;
 }
 
 /** Where the answer filled up: the file and the lines of it not sent. */
@@ -129,7 +136,7 @@ interface ReadFile {
 function addFileLines(
   { real, shown, text }: ReadFile,
   request: FileRequest,
-  { answer, cache, fresh }: ReadContext,
+  { answer, cache, fresh, scrub }: ReadContext,
 ): AnswerCut | null {
   const total = text.lines.length;
   const start = request.start ?? 1;
@@ -143,7 +150,7 @@ function addFileLines(
   const plan = cache.plan(real, text.digest, { start, end }, fresh);
   if (plan.sentBefore.length > 0) answer.add(sentBeforeNote(plan.sentBefore));
   for (const span of plan.send) {
-    const sentUpTo = addLines(answer, text.lines, span);
+    const sentUpTo = addLines(answer, text.lines, span, scrub);
     if (sentUpTo >= span.start)
       cache.markSent(real, text.digest, { start: span.start, end: sentUpTo });
     if (sentUpTo < span.end) return { shown, from: sentUpTo + 1, to: end };
@@ -153,9 +160,14 @@ function addFileLines(
 }
 
 /** Adds the numbered lines of `span`; the last line number that fit. */
-function addLines(answer: AnswerBudget, lines: readonly string[], span: LineSpan): number {
+function addLines(
+  answer: AnswerBudget,
+  lines: readonly string[],
+  span: LineSpan,
+  scrub: LineScrub,
+): number {
   for (let number = span.start; number <= span.end; number += 1) {
-    if (!answer.add(`${number}\t${cutLine(lines[number - 1] ?? "")}`)) return number - 1;
+    if (!answer.add(`${number}\t${cutLine(scrub(lines[number - 1] ?? ""))}`)) return number - 1;
   }
   return span.end;
 }
