@@ -75,7 +75,10 @@ verifies("paperclip.seats-forecast-settings", () => {
     ]);
     expect(settings.ignoredEntries).toBe(9);
   });
+});
 
+// `seats.forecast` logs this count (`paperclip.seats-forecast-job`).
+verifies("paperclip.seats-forecast-job", () => {
   test("counts a scenario it keeps with a value it couldn't use as corrected", () => {
     const settings = readForecastSettings({
       scenarios: [
