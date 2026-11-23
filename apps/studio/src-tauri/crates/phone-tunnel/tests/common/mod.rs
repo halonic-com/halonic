@@ -16,16 +16,17 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use halonic_device_keys::{ComputerId, FakeWrapper, PairedComputers, WrappedFileStore};
+use halonic_owner_check::{Decision, FakeOwnerCheck};
 use halonic_phone_tunnel::{
-    LocalNetwork, LocalNetworkAnswer, Options, PageStatus, PairingOutcome, PairingStart,
-    PairingStep, PhoneAnswer, PhoneTunnel, TunnelHost,
+    ConnectOutcome, LocalNetwork, LocalNetworkAnswer, Options, OwnerAnswer, PageStatus,
+    PairingOutcome, PairingStart, PairingStep, PhoneAnswer, PhoneTunnel, TunnelHost, confirm_with,
 };
 use halonic_tunnel::{
     Backoff, Dialer, FrameKind, PairingOptions, PhoneDetails, PhoneOptions, Platform, Timeouts,
 };
 use serde_json::json;
 use snow::{HandshakeState, TransportState};
-use support::{FakeHost, read_handshake, write_handshake};
+use support::{FakeHost, open, read_handshake, write_handshake};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio::time::timeout;
@@ -39,6 +40,9 @@ pub const CODE: &str = "XX7A9Q36KFB3";
 pub const OTHER_CODE: &str = "22222222222A";
 pub const WAIT: Duration = Duration::from_secs(5);
 /// The fixed time the service's clock gives in the tests.
+/// A `hello` as the page sends it.
+pub const HELLO: &str = r#"{"type":"hello","id":"h1","version":2}"#;
+
 pub const NOW_MS: u64 = 1_800_000_000_000;
 
 fn now() -> u64 {
@@ -90,6 +94,8 @@ pub struct Recorder {
     /// told, until the test sends on the other end: a page busy with one
     /// message while the next ones wait in the connection's channel.
     pub pause: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
+    /// The phone's owner check; `None` for a phone that has none.
+    pub owner: Option<FakeOwnerCheck>,
 }
 
 impl TunnelHost for Recorder {
@@ -106,6 +112,10 @@ impl TunnelHost for Recorder {
                 platform: Platform::Android,
             }
         })
+    }
+
+    fn confirm_owner(&self, decision: Decision) -> OwnerAnswer<'_> {
+        Box::pin(confirm_with(self.owner.as_ref(), decision))
     }
 
     fn status_changed(&self, computer: &ComputerId, status: &PageStatus) {
@@ -147,6 +157,15 @@ pub struct Phone {
 
 impl Phone {
     pub fn new(name: &str, local_network: LocalNetwork) -> Self {
+        Self::with_owner_check(name, local_network, Some(FakeOwnerCheck::new()))
+    }
+
+    /// A phone whose owner check is `owner`, or that has none.
+    pub fn with_owner_check(
+        name: &str,
+        local_network: LocalNetwork,
+        owner: Option<FakeOwnerCheck>,
+    ) -> Self {
         let folder =
             std::env::temp_dir().join(format!("phone-tunnel-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&folder);
@@ -159,6 +178,7 @@ impl Phone {
             told: telling,
             logs: Mutex::new(Vec::new()),
             pause: Mutex::new(None),
+            owner,
         });
         let tunnel = PhoneTunnel::new(
             list(&folder),
@@ -336,6 +356,28 @@ impl Gateway {
 
 pub fn start(value: serde_json::Value) -> PairingStart {
     serde_json::from_value(value).expect("a start the page sends")
+}
+
+/// A paired computer, connected, with its first session open: the
+/// computer's id, its side of the connection and of the session, and the
+/// session's generation.
+pub async fn connected(
+    phone: &mut Phone,
+    gateway: &Gateway,
+) -> (String, Server, TransportState, u64) {
+    let id = phone.pair(gateway).await;
+    let (outcome, mut server) = tokio::join!(phone.tunnel.connect(&id), gateway.accept());
+    assert_eq!(outcome, ConnectOutcome::Connecting);
+    let session = gateway.reconnect(&mut server).await;
+    let generation = phone.session_opened(&id).await;
+    (id, server, session, generation)
+}
+
+/// The next message the computer reads, decrypted.
+pub async fn next_message(server: &mut Server, session: &mut TransportState) -> String {
+    let (kind, message) = open(session, &binary(server).await);
+    assert_eq!(kind, FrameKind::Message);
+    String::from_utf8(message).expect("text")
 }
 
 pub async fn binary(server: &mut Server) -> Vec<u8> {

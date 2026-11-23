@@ -57,7 +57,8 @@ function promptLine(outcome: Exclude<RemoteSendOutcome, { kind: "done" }>): stri
   if (outcome.kind === "refused") {
     return "Your computer didn't accept this prompt. Send it from your computer instead.";
   }
-  if (outcome.reason === "not-allowed") {
+  // Only an answer is ever `not-confirmed`; a prompt that got it can't be sent from here either.
+  if (outcome.reason === "not-allowed" || outcome.reason === "not-confirmed") {
     return "Your phone can't send this. Send it from your computer.";
   }
   return promptWords.tooLong;

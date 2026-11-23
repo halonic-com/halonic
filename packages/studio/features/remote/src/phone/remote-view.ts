@@ -113,9 +113,15 @@ export type RemoteRefusal = (typeof gatewayRefusalCodes)[number];
  *
  * - `off`: the view or the approval can't be answered now (its `offReason` says why);
  * - `invalid`: an empty prompt, or one longer than the protocol allows;
- * - `not-open`, `too-large`, `not-allowed`: the shell refused to send it.
+ * - `not-open`, `too-large`, `not-allowed`, `not-confirmed`: the shell refused to send it.
  */
-export type RemoteNotSentReason = "off" | "invalid" | "not-open" | "too-large" | "not-allowed";
+export type RemoteNotSentReason =
+  | "off"
+  | "invalid"
+  | "not-open"
+  | "too-large"
+  | "not-allowed"
+  | "not-confirmed";
 
 /** What became of one answer or prompt. Neither is ever sent twice. */
 export type RemoteSendOutcome =

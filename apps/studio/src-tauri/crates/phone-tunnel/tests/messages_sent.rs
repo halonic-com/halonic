@@ -7,33 +7,11 @@
 mod common;
 
 use common::support::{open, seal};
-use common::{Gateway, Phone, Server, binary, closed, send};
+use common::{Gateway, HELLO, Phone, binary, closed, connected, next_message, send};
 use halonic_phone_tunnel::{
-    ConnectOutcome, ForgetOutcome, GATEWAY_MAX_MESSAGE_BYTES, LocalNetwork, PageStatus, SendRefusal,
+    ForgetOutcome, GATEWAY_MAX_MESSAGE_BYTES, LocalNetwork, PageStatus, SendRefusal,
 };
 use halonic_tunnel::FrameKind;
-use snow::TransportState;
-
-const HELLO: &str = r#"{"type":"hello","id":"h1","version":2}"#;
-
-/// A paired computer, connected, with its first session open: the
-/// computer's id, its side of the connection and of the session, and the
-/// session's generation.
-async fn connected(phone: &mut Phone, gateway: &Gateway) -> (String, Server, TransportState, u64) {
-    let id = phone.pair(gateway).await;
-    let (outcome, mut server) = tokio::join!(phone.tunnel.connect(&id), gateway.accept());
-    assert_eq!(outcome, ConnectOutcome::Connecting);
-    let session = gateway.reconnect(&mut server).await;
-    let generation = phone.session_opened(&id).await;
-    (id, server, session, generation)
-}
-
-/// The next message the computer reads, decrypted.
-async fn next_message(server: &mut Server, session: &mut TransportState) -> String {
-    let (kind, message) = open(session, &binary(server).await);
-    assert_eq!(kind, FrameKind::Message);
-    String::from_utf8(message).expect("text")
-}
 
 #[tokio::test]
 async fn phone_tunnel_messages_send_nothing_before_the_session_opens() {

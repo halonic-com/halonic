@@ -33,7 +33,7 @@ verifies("studio.connect.phone-tunnel-messages", () => {
     });
 
     it("passes each refusal on as the port's reason", async () => {
-      for (const reason of ["not-open", "too-large", "not-allowed"]) {
+      for (const reason of ["not-open", "too-large", "not-allowed", "not-confirmed"]) {
         const { tunnel } = tunnelWith({ tunnel_send: { sent: false, reason } });
         expect(await tunnel.send(3, hello)).toEqual({ sent: false, reason });
       }

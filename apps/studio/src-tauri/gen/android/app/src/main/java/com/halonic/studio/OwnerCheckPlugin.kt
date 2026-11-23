@@ -67,6 +67,16 @@ class OwnerCheckPlugin(private val host: Activity) : Plugin(host) {
     prompt(invoke, title, description, cancel)
   }
 
+  /**
+   * Closes the open prompt, if any: the shell's time limit ran out on it.
+   * Its own call then answers `cancelled`, which the shell no longer reads.
+   */
+  @Command
+  fun closeOwnerCheck(invoke: Invoke) {
+    closePrompt()
+    invoke.resolve()
+  }
+
   // A prompt left open when the app leaves the screen or its Activity goes
   // would otherwise answer every later call `busy`. Not on pause: on some
   // phones the prompt itself pauses the Activity.

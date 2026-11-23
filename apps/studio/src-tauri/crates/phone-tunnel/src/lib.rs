@@ -38,7 +38,8 @@ pub use answers::{
     Problem, StandingView,
 };
 pub use host::{
-    LocalNetwork, LocalNetworkAnswer, PhoneAnswer, TunnelHost, needs_local_network, phone_name,
+    LocalNetwork, LocalNetworkAnswer, OwnerAnswer, PhoneAnswer, TunnelHost, confirm_with,
+    needs_local_network, phone_name,
 };
 pub use messages::{GATEWAY_MAX_MESSAGE_BYTES, PHONE_MESSAGE_TYPES, SendAnswer, SendRefusal};
 pub use service::{Options, PhoneTunnel};

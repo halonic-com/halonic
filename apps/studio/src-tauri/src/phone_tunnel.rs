@@ -13,6 +13,12 @@
 //! the channel `phone_tunnel_watch` takes, only while the window is on the
 //! app's own page (`phone_tunnel_events`).
 //!
+//! `tunnel_send` asks the owner check (`owner_check`, HAL-15194) before it
+//! seals an answer to an approval, and sends nothing without a pass, so a
+//! page that skipped its own check still can't answer (board decision 4b).
+//! It awaits the prompt on Tauri's async runtime, whose tokio timer the
+//! check's time limit needs.
+//!
 //! The commands that wait run on async threads, never Android's main
 //! thread, since the key store waits for the Android Keystore. Other
 //! platforms have no tunnel: their commands answer `keys-unavailable`, and
@@ -122,8 +128,10 @@ pub fn phone_disconnect<R: Runtime>(app: AppHandle<R>, computer: String) {
 
 /// Seals one gateway message into the computer's session of `generation`
 /// and sends it, or says why not: `not-open` (no such session is open, or
-/// the window isn't on the app's own page), `too-large` or `not-allowed`.
-/// Nothing is queued or tried again, and a refusal keeps the session open.
+/// the window isn't on the app's own page), `too-large`, `not-allowed` or,
+/// for an answer to an approval whose owner check didn't pass,
+/// `not-confirmed`. Nothing is queued or tried again, and a refusal keeps
+/// the session open.
 #[tauri::command]
 pub async fn tunnel_send<R: Runtime>(
     webview: Webview<R>,
@@ -228,9 +236,10 @@ mod android {
     use std::sync::Arc;
 
     use halonic_device_keys::{ComputerId, PairedComputers};
+    use halonic_owner_check::Decision;
     use halonic_phone_tunnel::{
-        LocalNetwork, LocalNetworkAnswer, Options, PageStatus, PhoneAnswer, PhoneTunnel,
-        TunnelHost, phone_name,
+        LocalNetwork, LocalNetworkAnswer, Options, OwnerAnswer, PageStatus, PhoneAnswer,
+        PhoneTunnel, TunnelHost, confirm_with, phone_name,
     };
     use halonic_tunnel::{Dialer, PhoneDetails, Platform};
     use serde::Deserialize;
@@ -239,6 +248,7 @@ mod android {
 
     use crate::device_keys::{DeviceKeys, key_store};
     use crate::local_network::Answer;
+    use crate::owner_check::AndroidOwnerCheck;
     use crate::phone_tunnel_events::{TunnelEvent, tell};
 
     /// The folder in the app's data that holds the paired computers'
@@ -313,6 +323,15 @@ mod android {
                     name: phone_name(&name, "Android phone"),
                     platform: Platform::Android,
                 }
+            })
+        }
+
+        fn confirm_owner(&self, decision: Decision) -> OwnerAnswer<'_> {
+            Box::pin(async move {
+                // No check kept (its setup failed) reads as unavailable:
+                // the answer isn't sent (Julian's condition 2, HAL-15212).
+                let check = self.app.try_state::<AndroidOwnerCheck<R>>();
+                confirm_with(check.as_deref(), decision).await
             })
         }
 

@@ -2,11 +2,11 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-15177 (D7a); the D7 design on HAL-15159, section 1 and B7 items 1, 2, 6, 7 and 12, with Julian's L1 and M4 from HAL-15181; the `ComputerTunnel` port (HAL-15239)
+- Source: HAL-15177 (D7a); the D7 design on HAL-15159, section 1 and B7 items 1, 2, 6, 7 and 12, with Julian's L1 and M4 from HAL-15181; the `ComputerTunnel` port (HAL-15239); the strict keys for the owner check (HAL-15194, Julian's condition 1 on HAL-15212)
 
 When a session to a paired computer opens, the phone shall tell the page, under a generation that goes up for every session in the process, across all computers, and is never given again. It shall pass each host message of that session on as text, in order. A host message that isn't UTF-8 text shall end its session.
 
-When the page sends a message, the phone shall seal it only into the session of the computer and generation the page names, and only while that session is open. It shall refuse, and send nothing, in this order: when no session of that generation is open on that computer (before the handshake has finished, after a reconnect, for another computer, after a disconnect, Removed or Forget), `not-open`; when the text is more than 65,519 bytes of UTF-8, counted before any parsing, `too-large`; when it isn't exactly one JSON object, with nothing after it and one `type` key, whose `type` is one of the six messages a phone sends, `not-allowed`. It shall read nothing of the message but its `type`. A refusal shall leave the session open. It shall never queue a message or send one again.
+When the page sends a message, the phone shall seal it only into the session of the computer and generation the page names, and only while that session is open. It shall refuse, and send nothing, in this order: when no session of that generation is open on that computer (before the handshake has finished, after a reconnect, for another computer, after a disconnect, Removed or Forget), `not-open`; when the text is more than 65,519 bytes of UTF-8, counted before any parsing, `too-large`; when it isn't exactly one JSON object, with nothing after it and no key twice, whose `type` is one of the six messages a phone sends and whose other keys are exactly that message's, or when it is an `answer-approval` whose `decision` isn't `approve` or `deny`, `not-allowed`; when it is an `answer-approval` and the owner check didn't pass for its decision, `not-confirmed`. Of the values it shall read only the `type` and an `answer-approval`'s `decision`. A refusal shall leave the session open. It shall never queue a message or send one again.
 
 When the page ends the open session of a generation, the phone shall drop that connection and reconnect after its backoff, without the time the session lasted starting the backoff again; for any other generation it shall do nothing. It shall pass on no host message of the ended session, not even one that arrived before the page ended it. No message text shall reach the log.
 
@@ -19,7 +19,7 @@ When the page ends the open session of a generation, the phone shall drop that c
   when the page sends a prompt,
   then no frame the computer reads holds the prompt's text, and the frame decrypts to it.
 - Given an open session of generation 3 on the desk,
-  when the page sends a `run-command`, two objects, a duplicate `type`, a 65,520-byte prompt, or a `hello` for generation 4 or for the laptop,
+  when the page sends a `run-command`, two objects, a duplicate `type` or any other key twice, a `list-sessions` with an extra key, a 65,520-byte prompt, or a `hello` for generation 4 or for the laptop,
   then each is refused, nothing goes out, and the next `hello` for generation 3 does.
 - Given a prompt that went out just before the connection dropped,
   when the phone reconnects and the page sends another,
