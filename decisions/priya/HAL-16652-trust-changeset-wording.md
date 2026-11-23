@@ -3,6 +3,7 @@
 - Task: HAL-16652, with row 7 of words check C739 bundled from HAL-16657
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16657 (the words are a team decision from the words check under the HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0S1uGdZJi1EysvYB2esugQraC5HA1bxVFCEkp1c8BK7VYShtg7al4HpsjXw1qW+n1t/GBi9Lbq5SUODKJACAAQ==
 
 ## What changes
 
