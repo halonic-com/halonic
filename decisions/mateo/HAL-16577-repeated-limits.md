@@ -2,6 +2,7 @@
 
 - Approval: HAL-16577
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:saRhQf24clYxKV8XzZLtN3nPrD9Dba4LcRMAY3A8S74+jHRTzbPUsL7bdVZkDQy3aTiR4lAABLXYyh6V3ff7AQ==
 
 Follow-up to HAL-16550 (#5305), from its review. The requirement
 `format.deployments-users` already refuses two limits on the same unit and
