@@ -1,8 +1,8 @@
-import { Button, HeaderBadgeSheetDialog, usePresentation } from "@halonicjs/studio-kit";
+import { HeaderBadgeSheetDialog, usePresentation } from "@halonicjs/studio-kit";
 import type { StripProps } from "@halonicjs/studio-shell";
 import { useState } from "react";
 import { openAtFirstProblem, problemEntries, useProblemFiles } from "./problem-count.ts";
-import { ProblemCountWords } from "./problems-status-item.tsx";
+import { ProblemCountPill } from "./problems-status-item.tsx";
 import { problemsWords } from "./problems-words.ts";
 
 /**
@@ -26,15 +26,9 @@ function PhoneProblems({ context }: StripProps) {
     openAtFirstProblem(context, file);
   });
   return (
-    <div className="flex min-h-11 items-center border-b border-border px-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        name={`${count}. ${problemsWords.show}`}
-        onClick={() => setSheetOpen(true)}
-      >
-        <ProblemCountWords count={count} />
-      </Button>
+    // A band in the subtle surface, as C348's phone Home shows it, with the hairline under it.
+    <div className="flex min-h-11 items-center border-b border-border bg-surface-subtle px-4">
+      <ProblemCountPill count={count} onClick={() => setSheetOpen(true)} />
       {sheetOpen ? (
         <HeaderBadgeSheetDialog
           title={count}
