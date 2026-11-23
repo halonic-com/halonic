@@ -93,6 +93,7 @@ verifies("cloudflare-live.fixture", () => {
       HALONIC_LIVE_WORKER_URL: "https://hlt-7-1-w.acme.workers.dev",
       HALONIC_LIVE_WEBHOOK_ADDRESS: "acme/orders",
       HALONIC_LIVE_WEBHOOK_SECRET: "r".repeat(64),
+      HALONIC_LIVE_PASSWORD: "r".repeat(64),
     });
     const created = f.calls.filter((c) => c.startsWith("create "));
     expect(created).toEqual([
@@ -109,6 +110,10 @@ verifies("cloudflare-live.fixture", () => {
     const index = [...f.objects].find(([key]) => key.endsWith("run-definitions.index.json"));
     expect(JSON.parse(index?.[1] ?? "{}")).toMatchObject({
       hubs: { acme: { workflows: { "handle-order": { initial: "done" } } } },
+    });
+    // The run check's workflow and its agent parsed too, with the mock as the agent's model.
+    expect(JSON.parse(index?.[1] ?? "{}")).toMatchObject({
+      hubs: { acme: { workflows: { reply: { initial: "draft" } }, agents: { writer: {} } } },
     });
   });
 

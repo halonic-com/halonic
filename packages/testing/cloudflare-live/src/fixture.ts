@@ -1,3 +1,4 @@
+import { createPbkdf2ChainHasher } from "@halonicjs/adapter-password-pbkdf2";
 import {
   type CloudflareApi,
   definitionsBucketFor,
@@ -8,7 +9,7 @@ import {
   writeWorkspaceSnapshot,
 } from "@halonicjs/target-cloudflare-deploy";
 import type { CloudflareRest } from "./cloudflare-rest.ts";
-import type { targetVariables } from "./live-target.ts";
+import type { runTargetVariables, targetVariables } from "./live-target.ts";
 import { teardownFor } from "./teardown.ts";
 import { workersDevUrlFor } from "./workers-dev.ts";
 
@@ -28,6 +29,31 @@ const workflowFile = [
   "name: Handle an order",
   "initial: done",
   "states: { done: { type: final } }",
+].join("\n");
+
+/** The workflow the run check starts: its one step asks the `writer` agent, whose model is the mock. */
+export const fixtureRunWorkflow = { hubId: "acme", workflowId: "reply" } as const;
+
+/** The mock model: it answers the writer from its script, with no network and no key. */
+const mockProviderFile = [
+  "id: mock",
+  "name: Test model",
+  "type: mock",
+  "local: true",
+  "options: { script: { writer: ['Thanks for your order.'] } }",
+].join("\n");
+
+const modelsFile = "aliases: { default: { provider: mock, model: echo } }";
+
+const writerFile = ["id: writer", "name: Writer", "model: default"].join("\n");
+
+const replyWorkflowFile = [
+  "id: reply",
+  "name: Reply",
+  "initial: draft",
+  "states:",
+  "  draft: { agent: writer, input: Reply to the customer, output: reply, on: [{ to: done }] }",
+  "  done: { type: final }",
 ].join("\n");
 
 /** The Durable Object classes of the Worker, as `wrangler.toml` lists them (migration `v1`). */
@@ -54,8 +80,10 @@ export interface FixtureOptions {
 
 /** A Worker deployed for the live suites. */
 export interface DeployedFixture {
-  /** The variables `liveWebhookTarget` reads. */
-  readonly env: Readonly<Record<(typeof targetVariables)[number], string>>;
+  /** The variables `liveWebhookTarget` and `liveRunTarget` read. */
+  readonly env: Readonly<
+    Record<(typeof targetVariables)[number] | (typeof runTargetVariables)[number], string>
+  >;
   /** Deletes everything the fixture made. Safe to call twice. */
   destroy(): Promise<void>;
 }
@@ -71,7 +99,7 @@ function newSecret(): string {
 }
 
 /**
- * Deploys a Worker with one enabled webhook routine into the live test account: database and
+ * Deploys a Worker with one enabled webhook routine and a mock-model workflow into the live test account: database and
  * buckets, the snapshot with the routine, the upload, workers.dev. If any step fails, what was
  * made so far is deleted and the error is thrown.
  *
@@ -119,10 +147,16 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
       {
         "hubs/acme/workflows/routines/orders.routine.yaml": routineFile,
         "hubs/acme/workflows/handle-order.workflow.yaml": workflowFile,
+        "providers/mock.yaml": mockProviderFile,
+        "models.yaml": modelsFile,
+        "hubs/acme/agents/writer.agent.yaml": writerFile,
+        "hubs/acme/workflows/reply.workflow.yaml": replyWorkflowFile,
       },
     );
 
     const webhookSecret = random();
+    // The Worker keeps only the sign-in password's hash; the run check signs in with the password.
+    const password = random();
     await uploadAndSwitch(api, {
       accountId,
       worker,
@@ -138,7 +172,7 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
       ],
       secrets: {
         HALONIC_SECRET_TOKEN_KEY: random(),
-        HALONIC_SECRET_SERVE_PASSWORD: random(),
+        HALONIC_SECRET_SERVE_PASSWORD: await createPbkdf2ChainHasher().hash(password),
         HALONIC_SECRET_LIVE_HOOK: webhookSecret,
       },
       durableObjectMigrations: [
@@ -156,6 +190,7 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
         HALONIC_LIVE_WORKER_URL: url,
         HALONIC_LIVE_WEBHOOK_ADDRESS: fixtureAddress,
         HALONIC_LIVE_WEBHOOK_SECRET: webhookSecret,
+        HALONIC_LIVE_PASSWORD: password,
       },
       destroy,
     };
