@@ -49,8 +49,8 @@ export function workerEngine(ports: WorkerEnginePorts): AssembledEngine {
 
 /**
  * The run executor of the Worker: the executor of {@link workerEngine}. It starts, sends to
- * and cancels runs; a run goes on from the timers its run object keeps (which the run object
- * doesn't deliver yet, HAL-13210 part c). An agent run answers 501, as on `halonic serve`,
+ * and cancels runs; a run goes on from the timers its run object keeps, which the run object's
+ * alarm hands to the same engine (`RunObject`). An agent run answers 501, as on `halonic serve`,
  * because the executor doesn't start one yet. A chat turn is refused: the Worker has no chat.
  * A run's live events stream from its run object, with the same bytes and resume rules as on
  * `serve`.
