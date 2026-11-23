@@ -177,6 +177,16 @@ verifies("source-control.create-version", () => {
       );
     });
 
+    it("says to trust the workspace when the shell won't record without the user's own git filter", async () => {
+      const { changes } = history(async (args) => {
+        if (args[0] === "commit") throw { kind: "filter_needs_trust", message: "for the log" };
+        return answer("");
+      });
+      await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
+        "Halonic runs this workspace's git filter only in a workspace you trust. Press Review in the header to trust it, then try again.",
+      );
+    });
+
     it("commits a staged rename, a staged deletion and a new file in a real repository", async () => {
       const dir = mkdtempSync(join(tmpdir(), "version-"));
       try {

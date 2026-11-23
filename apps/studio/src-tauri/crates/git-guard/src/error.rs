@@ -49,7 +49,8 @@ pub enum GitError {
     /// git would store or write those files without it. `trust_runs` is true
     /// when every such filter is the user's own and the folder isn't
     /// trusted, so trusting it would let them run (requirement
-    /// `trusted-filters`).
+    /// `trusted-filters`); its kind is then `filter_needs_trust`, so the page
+    /// can say so without reading the message.
     FilterNotRun {
         subcommand: String,
         filter: String,
@@ -107,6 +108,9 @@ impl GitError {
             GitError::RepositoryUnreadable => "repository_unreadable",
             GitError::AlternateMissing { .. } => "alternate_missing",
             GitError::ConfigNotAllowed { .. } => "config_not_allowed",
+            GitError::FilterNotRun {
+                trust_runs: true, ..
+            } => "filter_needs_trust",
             GitError::FilterNotRun { .. } => "filter_not_run",
             GitError::HooksFolderNotEmpty => "hooks_folder_not_empty",
             GitError::HooksFolderUnreadable => "hooks_folder_unreadable",

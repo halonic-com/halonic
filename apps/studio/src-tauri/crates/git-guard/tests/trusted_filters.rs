@@ -65,6 +65,7 @@ fn check_in_child(home: &Path) {
     // Not trusted: the user's filter is blanked, so `add` is refused, and
     // the refusal says trusting the workspace would run it.
     let refused = sandbox.git("add -A").expect_err("add is refused");
+    assert_eq!(refused.kind(), "filter_needs_trust");
     assert_eq!(
         refused.to_string(),
         "git add would store or write files without their acme filter, which the Studio runs only in a workspace you trust; press Review in the header to trust it, then try again"

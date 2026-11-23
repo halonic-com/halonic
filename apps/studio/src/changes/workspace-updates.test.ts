@@ -127,6 +127,25 @@ verifies("source-control.get-updates", () => {
       }
     });
 
+    it("says to trust the workspace when the shell won't get updates without the user's own git filter", async () => {
+      const refusing = (kind: string) =>
+        history(async (args) => {
+          if (args[0] === "pull") throw { kind, message: "for the log" };
+          return answer("");
+        }).changes;
+      // Refused the same way until the person trusts the workspace, so no Try again (HAL-16610).
+      await expect(refusing("filter_needs_trust").getUpdates()).rejects.toMatchObject({
+        kind: "conflict",
+        message:
+          "Halonic runs this workspace's git filter only in a workspace you trust. Press Review in the header to trust it, then try again.",
+      });
+      await expect(refusing("filter_not_run").getUpdates()).rejects.toMatchObject({
+        kind: "conflict",
+        message:
+          "This workspace's own git settings name a filter Halonic never runs. Make this change with git in a terminal.",
+      });
+    });
+
     it("gets updates from the shared copy's branch of the same name when the branch tracks none", async () => {
       const { root, mine, run, publish } = shared();
       try {
