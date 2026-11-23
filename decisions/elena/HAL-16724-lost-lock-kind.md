@@ -3,6 +3,7 @@
 - Task: HAL-16724
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16724 (row 11 of the words check C754 on HAL-16719, approved on HAL-16722; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:b9Dg8atVDouj8vFEilr3pXZJ7jxuwNjrr2EjstnSE9N/b6PRks2OHob8w9Huc8SP8TqV+P3EQ4zIba6Tdo6lBQ==
 
 ## What changes
 
