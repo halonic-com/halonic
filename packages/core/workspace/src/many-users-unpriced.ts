@@ -77,14 +77,15 @@ export function unpricedAgents(files: readonly LoadedFile[]): UnpricedAgent[] {
 
 /**
  * Why a deployment refuses an agent: many people sign in and a `cost` limit
- * stops them, and the agent's calls would count no cost.
+ * stops them, but the limit can't count the agent's calls. The sentence
+ * starts with the agent, since the error sits on its file.
  */
 export function manyUsersUnpricedMessage(deployment: string, agent: UnpricedAgent): string {
-  const intro = `Deployment "${deployment}" lets many people sign in and stops them at a cost limit`;
+  const limit = `deployment "${deployment}", where many people sign in, can't count its calls against its cost limit`;
   if (agent.model === undefined) {
-    return `${intro}, and agent "${agent.id}" names no model, so ${agent.harness} picks one without a price and its calls would count no cost. Set model to an alias with a price.`;
+    return `Agent "${agent.id}" names no model, so ${agent.harness} picks one Halonic has no price for, and ${limit}. Set model to an alias with a price.`;
   }
-  return `${intro}, and agent "${agent.id}" calls model "${agent.model}", which has no price or falls back to one without, so its calls would count no cost. Use an alias with a price, and give each of its fallbacks one too.`;
+  return `Agent "${agent.id}" calls model "${agent.model}", which has no price or falls back to a model without one, so ${limit}. Use a model alias with a price, and give each of its fallbacks a price too.`;
 }
 
 /**
