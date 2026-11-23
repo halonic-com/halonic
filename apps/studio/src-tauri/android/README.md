@@ -10,7 +10,7 @@ It writes four raw captures, 1080 × 1920, 24-bit PNG with no transparency:
 
 | File | Screen | How the script gets there |
 | --- | --- | --- |
-| `connect.png` | The connect screen with `192.168.1.20:4280` typed, keyboard closed | A fresh install opens on it |
+| `connect.png` | The connect screen with `192.168.1.20:4280` typed, keyboard closed | A fresh install opens on Pair with a computer; Type a code instead, then Not listed? Enter its address |
 | `computer-too-old.png` | "Halonic on your computer (0.0.9) is too old for this app" | Connect, with a stand-in computer whose hello call answers `0.0.9` |
 | `app-too-old.png` | "This app is too old for Halonic on your computer (0.2.0)" | Open the app again, the stand-in now asking for the next minor version after the app's |
 | `not-answering.png` | "Halonic on your computer isn't answering." | Open the app again with nothing behind the address; the hello call gives up after 5 seconds |
