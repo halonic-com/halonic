@@ -36,9 +36,8 @@ export function plainMessage(issue: z.core.$ZodRawIssue): string | undefined {
       return tooBig(field, issue.origin, Number(issue.maximum), issue.inclusive !== false);
     case "invalid_format":
       return issue.format === "url" ? notAnAddress(field, issue.input) : undefined;
-    default:
-      return undefined;
   }
+  return undefined;
 }
 
 /**
@@ -61,9 +60,8 @@ function wrongType(field: string, expected: string, input: unknown): string | un
     case "number":
       return notANumber(field, input);
     case "int":
-      return typeof input === "number"
-        ? `${field} needs a whole number, such as ${Math.round(input)}.`
-        : notANumber(field, input);
+      // Zod checks for a number first, so only a number with a fraction gets here.
+      return `${field} needs a whole number, such as ${Math.round(Number(input))}.`;
     case "boolean":
       return notTrueOrFalse(field, input);
     case "array":
@@ -72,9 +70,8 @@ function wrongType(field: string, expected: string, input: unknown): string | un
       return notText(field, input);
     case "object":
       return `${field} is a map: write its fields on the lines below it, indented.`;
-    default:
-      return undefined;
   }
+  return undefined;
 }
 
 /**
@@ -99,7 +96,7 @@ function notTrueOrFalse(field: string, input: unknown): string {
   if (input === null) {
     return `${field} is empty: write true or false.`;
   }
-  const text = typeof input === "string" ? input.trim().toLowerCase() : "";
+  const text = typeof input === "string" ? input.trim().toLowerCase() : undefined;
   if (text === "true" || text === "false") {
     return `${field} is true or false: write ${text} without quotes.`;
   }
@@ -123,9 +120,8 @@ function notText(field: string, input: unknown): string {
   if (input === null) {
     return `${field} is empty: write a value.`;
   }
-  const value = echo(input);
-  if (value !== undefined && (typeof input === "number" || typeof input === "boolean")) {
-    return `${field} is text: write "${value}" in quotes.`;
+  if (typeof input === "number" || typeof input === "boolean") {
+    return `${field} is text: write "${input}" in quotes.`;
   }
   return `${field} needs text, not ${kindOf(input)}.`;
 }
@@ -139,7 +135,6 @@ function tooSmall(
 ): string | undefined {
   switch (origin) {
     case "array":
-    case "set":
       return minimum === 1
         ? `${field} needs at least one item.`
         : `${field} needs at least ${minimum} items.`;
@@ -148,13 +143,11 @@ function tooSmall(
         ? `${field} is empty: write a value.`
         : `${field} needs at least ${minimum} characters.`;
     case "number":
-    case "int":
       return inclusive
         ? `${field} is too small: use ${minimum} or more.`
         : `${field} must be more than ${minimum}.`;
-    default:
-      return undefined;
   }
+  return undefined;
 }
 
 /** Too many items, too long a text or too big a number. */
@@ -166,18 +159,15 @@ function tooBig(
 ): string | undefined {
   switch (origin) {
     case "array":
-    case "set":
       return `${field} has too many items: use at most ${maximum}.`;
     case "string":
       return `${field} is too long: use at most ${maximum} characters.`;
     case "number":
-    case "int":
       return inclusive
         ? `${field} is too big: use ${maximum} or less.`
         : `${field} must be less than ${maximum}.`;
-    default:
-      return undefined;
   }
+  return undefined;
 }
 
 /**
@@ -199,10 +189,11 @@ const thisComputer = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /** Whether an address without a scheme, such as `localhost:11434/v1`, names this computer. */
 function isOnThisComputer(address: string): boolean {
-  const [authority = ""] = address.split(/[/?#]/u);
+  // `split` always gives at least one part.
+  const [authority] = address.split(/[/?#]/u) as [string];
   const host = authority.startsWith("[")
     ? authority.slice(0, authority.indexOf("]") + 1)
-    : (authority.split(":")[0] ?? "");
+    : (authority.split(":") as [string])[0];
   return thisComputer.has(host.toLowerCase());
 }
 
@@ -215,9 +206,11 @@ function echo(input: unknown): string | undefined {
   return text === "" || text.length > longestEcho || text.includes("\n") ? undefined : text;
 }
 
-/** What a value is, in the words of a YAML file. */
+/**
+ * What a value is, in the words of a YAML file. An empty value (`null`) never
+ * gets here: its message says it's empty (C571).
+ */
 function kindOf(input: unknown): string {
-  if (input === null) return "nothing";
   if (Array.isArray(input)) return "a list";
   if (isMap(input)) return "a map";
   if (typeof input === "boolean") return "true or false";
