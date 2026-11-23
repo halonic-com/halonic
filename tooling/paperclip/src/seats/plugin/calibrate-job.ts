@@ -45,6 +45,11 @@ export function forecastSeats(
   }));
 }
 
+/** A count for a log line: "1 fit", "2 fits". */
+export function counted(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
 function dayBefore(now: Date, days: number): string {
   return new Date(now.getTime() - days * dayMs).toISOString().slice(0, "2026-11-22".length);
 }
@@ -78,7 +83,7 @@ export async function runSeatsCalibrate(ctx: ReadJobApi, deps: CalibrateJobDeps)
   await deps.forecast.removeCalibrationsBefore(dayBefore(now, keepCalibrationDays));
   const shifted = run.calibrations.filter((fit) => fit.shifted).length;
   ctx.logger.info(
-    `seats.calibrate: ${run.calibrations.length} fits stored (${shifted} moved more than 25% in a week), ${run.tooFewSteps.length} without enough steps, ${run.unplacedSteps} steps skipped because their tokens were on no seat.`,
+    `seats.calibrate: ${counted(run.calibrations.length, "fit")} stored (${shifted} moved more than 25% in a week), ${run.tooFewSteps.length} without enough steps, ${counted(run.unplacedSteps, "step")} skipped because their tokens were on no seat.`,
     { companyId: owner.companyId },
   );
 }

@@ -39,7 +39,13 @@ function usage(step: number, agentId = "agent-1"): AgentUsage {
   };
 }
 
-function setup(options: { settings?: Record<string, unknown>; extraUsage?: AgentUsage[] } = {}) {
+interface SetupOptions {
+  readonly settings?: Record<string, unknown>;
+  readonly extraUsage?: AgentUsage[];
+  readonly history?: Calibration[];
+}
+
+function setup(options: SetupOptions = {}) {
   const logs: string[] = [];
   const saved: Calibration[] = [];
   const removedBefore: string[] = [];
@@ -73,7 +79,7 @@ function setup(options: { settings?: Record<string, unknown>; extraUsage?: Agent
         ...ordinal.slice(0, -1).map((step) => usage(step)),
         ...(options.extraUsage ?? []),
       ],
-      calibrationsSince: async () => [],
+      calibrationsSince: async () => options.history ?? [],
       saveCalibrations: async (fits) => void saved.push(...fits),
       removeCalibrationsBefore: async (day) => void removedBefore.push(day),
     },
@@ -95,7 +101,7 @@ verifies("paperclip.seats-calibrate-job", () => {
     expect(saved[0]?.quality.steps).toBe(steps - 1);
     expect(removedBefore).toEqual(["2026-10-22"]);
     expect(logs).toEqual([
-      "seats.calibrate: 1 fits stored (0 moved more than 25% in a week), 0 without enough steps, 0 steps skipped because their tokens were on no seat.",
+      "seats.calibrate: 1 fit stored (0 moved more than 25% in a week), 0 without enough steps, 0 steps skipped because their tokens were on no seat.",
     ]);
   });
 
@@ -106,8 +112,31 @@ verifies("paperclip.seats-calibrate-job", () => {
     await runSeatsCalibrate(ctx, deps);
 
     expect(saved[0]?.quality.steps).toBe(steps - 2);
-    expect(logs[0]).toContain("1 steps skipped because their tokens were on no seat.");
+    expect(logs[0]).toContain("1 step skipped because their tokens were on no seat.");
     expect(logs.join("\n")).not.toMatch(/\/srv\/|conn-|agent-/);
+  });
+
+  test("measures the week shift against the week before, not a fit made earlier today", async () => {
+    const first = setup();
+    await runSeatsCalibrate(first.ctx, first.deps);
+    const fit = first.saved[0];
+    expect(fit).toBeDefined();
+    if (fit === undefined) {
+      return;
+    }
+    const doubled = {
+      input: fit.pointsPerMillion.input * 2,
+      cached: fit.pointsPerMillion.cached * 2,
+      output: fit.pointsPerMillion.output * 2,
+    };
+    const today = { ...fit, pointsPerMillion: doubled };
+    const lastWeek = { ...fit, day: "2026-11-15" };
+    const { ctx, deps, saved } = setup({ history: [today, lastWeek] });
+
+    await runSeatsCalibrate(ctx, deps);
+
+    expect(saved[0]?.weekShift).toBeCloseTo(0);
+    expect(saved[0]?.shifted).toBe(false);
   });
 
   test("reads and stores nothing when no company lists seats", async () => {
