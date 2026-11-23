@@ -56,6 +56,7 @@ verifies("harness-claude-code.environment", () => {
         CLAUDE_CONFIG_DIR: "/agents/writer/settings",
         CLAUDE_CODE_TMPDIR: "/sessions/one/temp",
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
+        ENABLE_TOOL_SEARCH: "false",
         HALONIC_RUN_TOKEN: bridge.token,
       });
     });
@@ -118,6 +119,21 @@ verifies("harness-claude-code.model-variables", () => {
         for (const name of modelVariables) expect(added).not.toHaveProperty(name);
       }
     });
+  });
+});
+
+verifies("harness-claude-code.mcp-tools-listed", () => {
+  it("turns Claude Code's tool search off, so the MCP tools are listed in every request", async () => {
+    expect(await environmentInSession()).toHaveProperty("ENABLE_TOOL_SEARCH", "false");
+  });
+
+  it("turns it off for every model, the ones for every call included", () => {
+    const everyCall = claudeCodeEnvironment(bridge, engineProfile, {
+      model: "glm-5.3",
+      modelForEveryCall: true,
+    });
+
+    expect(everyCall["ENABLE_TOOL_SEARCH"]).toBe("false");
   });
 });
 
