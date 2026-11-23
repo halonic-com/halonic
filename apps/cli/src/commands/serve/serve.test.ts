@@ -6,6 +6,7 @@ import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { runCli } from "../../run-cli.ts";
 import { openGitHistory } from "../../run-workspace.ts";
+import { openSecretStore } from "../../secret-host.ts";
 import {
   type AcmeRuns,
   acmeRunsSetup,
@@ -279,6 +280,31 @@ verifies("cli.commands.serve.serve", () => {
     } finally {
       await new Promise((resolve) => other.close(resolve));
     }
+  });
+});
+
+/** An invented key in Anthropic's shape. */
+const acmeKey = "sk-ant-acme-not-real-7f3a";
+
+verifies("cli.commands.serve.model-choice", () => {
+  it("gives the server the model choice and the key routes, over this computer's secrets file", async () => {
+    await trustAcme();
+    const { io } = startServe("--port", "0");
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    const put = await fetch(`${address}/api/secrets/anthropic-api-key`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ value: acmeKey }),
+    });
+    expect(put.status).toBe(200);
+    // The file a run reads its keys from, as `halonic secret set` writes it.
+    expect(await openSecretStore(acmeRuns.profile).get("anthropic-api-key")).toBe(acmeKey);
+    const saved = await fetch(`${address}/api/model-choice/key-saved/anthropic`);
+    // The routes answer; a test's commands read fixed secrets, not that file, so none is saved for them.
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toEqual({ saved: false });
   });
 });
 

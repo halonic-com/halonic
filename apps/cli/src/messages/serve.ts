@@ -130,4 +130,22 @@ export const serveMessages = defineMessages("serve", {
   trustUnreadable: () => phrase`The trust record on this computer can't be read.`,
   /** A file names something trust can't cover. */
   trustRefused: () => phrase`A file in this workspace names something that can't be trusted.`,
+  /**
+   * Continue in a served window refused: choice files it would commit have changes of their own
+   * that aren't committed, so it saves nothing (HAL-16248). `files` are the workspace paths.
+   */
+  choiceFilesNotCommitted: (files: readonly string[]) =>
+    phrase`Couldn't save: ${listed(files)} ${files.length === 1 ? "has" : "have"} changes that aren't committed. Commit or undo them, then try again.`,
+  /** The message of the commit Continue makes in a served window, so the history shows where it came from. */
+  choiceCommit: () => phrase`Save the model picked in a served window`,
+  /** For the log: saving the choice files failed, and putting them back failed too. */
+  choiceUndoFailed: () => phrase`Saving the model choice failed, and so did undoing it.`,
+  /** For the log, should anything ask the served model choice to grant trust (HAL-14808, D2). */
+  choiceNoTrust: () => phrase`Trust is given on the computer, not here.`,
 });
+
+/** "a", "a and b", "a, b and c". */
+function listed(items: readonly string[]): string {
+  const last = items.at(-1) ?? "";
+  return items.length < 2 ? last : `${items.slice(0, -1).join(", ")} and ${last}`;
+}

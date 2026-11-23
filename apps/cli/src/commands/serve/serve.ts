@@ -17,7 +17,12 @@ import { fileURLToPath } from "node:url";
 import { makePrivateFolder } from "@halonicjs/adapter-fs-node";
 import { createScryptHasher } from "@halonicjs/adapter-password-scrypt";
 import { workspaceModelSettings } from "@halonicjs/adapter-workspace-models";
-import { createServer, passwordSecretName, type ServerPorts } from "@halonicjs/host-server";
+import {
+  createServer,
+  passwordSecretName,
+  providerKeysOf,
+  type ServerPorts,
+} from "@halonicjs/host-server";
 import type { PasswordHasher, TrustGrant } from "@halonicjs/ports";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { routineKey } from "@halonicjs/routines";
@@ -36,12 +41,14 @@ import {
   type StoppedResult,
   UsageError,
 } from "../../command.ts";
+import { engineHttp } from "../../engine-http.ts";
 import { openGoogleHost } from "../../google-host.ts";
 import type { RoutineEngine } from "../../local-engine-host.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { serveMessages } from "../../messages/serve.ts";
 import { printable } from "../../output/printable.ts";
 import { placedWarning } from "../../sandbox-gate.ts";
+import { openSecretStore } from "../../secret-host.ts";
 import { workspaceTrustGate } from "../../serve-trust-gate.ts";
 import { halonicVersion } from "../../version.ts";
 import type { WorkspaceAtVersion } from "../../workspace-at-version.ts";
@@ -52,8 +59,10 @@ import { needsNoTrust, trustedGrant, workspaceNameOf } from "../../workspace-tru
 import { type VersionChecks, WatchedVersions } from "../routines/watch-versions.ts";
 import type { RunSetup } from "../run/run.ts";
 import { workspaceAgentNames } from "./agent-names.ts";
+import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
+import { servedModelChoice } from "./served-model-choice.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
 import { reportWebhookRefusals } from "./webhook-refusals.ts";
 import { webhookRoutineLines } from "./webhook-routines.ts";
@@ -261,14 +270,26 @@ async function listenOnComputer(
     (await versions.routines.list()).find((placed) => routineKey(placed) === key) ?? null;
   const countFolder = join(folders.folder, "serve-requests");
   await makePrivateFolder(countFolder);
+  // The version served runs start from, as `halonic trust` reviews it.
+  const trust = workspaceTrustGate(dir, setup.trust(), () => versions.liveVersion());
+  const keys = openSecretStore(environment);
   const ports: ServerPorts = {
     runs: startsOnLiveVersion(parts.executor, () => versions.routines.runVersion()),
     runStore: parts.runs,
     secrets: context.secrets,
+    providerKeys: providerKeysOf(keys),
+    // Pick a model in a served window: saves the key and commits the choice, never trust (HAL-14808).
+    modelChoice: servedModelChoice({
+      files: { store: dir.store, root, openHistory: openChoiceHistory },
+      keys,
+      secrets: context.secrets,
+      trust,
+      http: engineHttp(),
+      digest: webCryptoDigest,
+    }),
     passwordHasher: setup.hasher ?? createScryptHasher(),
     coordination: parts.coordination,
-    // The version served runs start from, as `halonic trust` reviews it.
-    trust: workspaceTrustGate(dir, setup.trust(), () => versions.liveVersion()),
+    trust,
     modelSettings: workspaceModelSettings(() => versions.trustedLive()),
     // Read only: a served window shows the Google setups, and its sign-in is finished on this computer (HAL-10697).
     googleRead: workspaceGoogleRead({
