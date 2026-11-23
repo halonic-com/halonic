@@ -60,6 +60,7 @@ mod native_dialogs;
 mod navigation;
 #[cfg(target_os = "android")]
 mod owner_check;
+mod owner_check_page;
 mod page_calls;
 mod page_streams;
 mod pair_scan;
@@ -161,7 +162,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     let builder = builder.plugin(device_keys::plugin());
     // The owner check before the phone answers an approval (HAL-15194):
     // Android's own biometric prompt. Used from Rust only: no capability
-    // grants its commands, so no page can call it or pick its words.
+    // grants its commands, so no page can call it or pick its words. The
+    // phone's own page only asks whether it can ask (`owner_check_available`).
     #[cfg(target_os = "android")]
     let builder = builder.plugin(owner_check::plugin());
     // Android's settings page for the app and the Tailscale app, which the
@@ -324,6 +326,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             phone_tunnel::tunnel_end_session,
             phone_screens::phone_open_settings,
             phone_screens::phone_open_tailscale,
+            owner_check_page::owner_check_available,
             #[cfg(desktop)]
             updates::update_status,
             #[cfg(desktop)]

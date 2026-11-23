@@ -1,0 +1,14 @@
+{
+  "identifier": "phone-owner-check",
+  "description": "On Android, the app's own page may ask through owner_check_available whether a strong biometric is enrolled and can be asked for now (HAL-15194), to decide whether to show Approve and Reject for a risky approval. It takes nothing from the page and answers a plain true or false, nothing about which biometric is enrolled; any error, an older Android, a weak or missing biometric, or a window on another page answers false. It is local only and for the main window on Android only, so the Studio the computer serves and the desktop app get none of it. The prompt itself stays reachable from the shell only.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "android"
+  ],
+  "permissions": [
+    "allow-owner-check-available"
+  ]
+}
