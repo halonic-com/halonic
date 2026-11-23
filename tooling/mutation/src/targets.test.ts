@@ -6,6 +6,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import {
   hasCode,
   mutationTargets,
+  noJobSummaryEnv,
   parityFixturesVariable,
   sandboxEnv,
   strykerConfig,
@@ -108,5 +109,11 @@ verifies("mutation.parity-fixtures-in-sandbox", () => {
   test("the variable names a folder that exists in this repo", () => {
     const root = join(import.meta.dirname, "..", "..", "..");
     expect(existsSync(sandboxEnv(root)[parityFixturesVariable] ?? "")).toBe(true);
+  });
+});
+
+verifies("mutation.no-job-summary-per-mutant", () => {
+  test("the Stryker run gets an empty job summary path", () => {
+    expect(noJobSummaryEnv).toEqual({ GITHUB_STEP_SUMMARY: "" });
   });
 });
