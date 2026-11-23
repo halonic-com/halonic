@@ -18,6 +18,8 @@ halonic-blob-store = { path = "../blob-store" }
 # question, as the connect page's own check decides it.
 halonic-connect = { path = "../connect" }
 halonic-device-keys = { path = "../device-keys" }
+# The owner check before an answer to an approval is sealed (HAL-15194).
+halonic-owner-check = { path = "../owner-check" }
 halonic-tunnel = { path = "../tunnel" }
 serde = { version = "1", features = ["derive"] }
 # Reads only the `type` of a message the page sends, as the tunnel crate
@@ -29,6 +31,8 @@ tokio = { version = "1", default-features = false, features = ["rt", "sync", "ti
 [dev-dependencies]
 # The tunnel crate's fake host (tests/support), which the tests here run
 # the service against, built on the same crates as there.
+# FakeOwnerCheck, which the tests' host confirms with.
+halonic-owner-check = { path = "../owner-check", features = ["fake"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 snow = { version = "=0.10.0", default-features = false, features = [
   "use-curve25519",

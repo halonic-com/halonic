@@ -68,7 +68,25 @@ impl<R: Runtime> OwnerCheck for AndroidOwnerCheck<R> {
         match tokio::time::timeout(CONFIRM_TIMEOUT, asking).await {
             Ok(Ok(answer)) => Confirmation::from_plugin(&answer.answer),
             Ok(Err(_)) => Confirmation::Unavailable(Availability::Unavailable),
-            Err(_elapsed) => Confirmation::Cancelled,
+            Err(_elapsed) => {
+                self.close_prompt().await;
+                Confirmation::Cancelled
+            }
+        }
+    }
+}
+
+impl<R: Runtime> AndroidOwnerCheck<R> {
+    /// Closes a prompt left open past [`CONFIRM_TIMEOUT`], so the next
+    /// answer gets its own prompt instead of `busy` (Liam on #4545). The
+    /// answer to it no longer counts: this one already reads as cancelled.
+    async fn close_prompt(&self) {
+        let closing = self
+            .0
+            .run_mobile_plugin_async::<()>("closeOwnerCheck", ())
+            .await;
+        if closing.is_err() {
+            halonic_shell_log::record("owner-check", "closing a timed-out prompt failed");
         }
     }
 }

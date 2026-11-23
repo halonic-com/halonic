@@ -9,6 +9,8 @@ The phone's owner check before it answers an approval (HAL-15194, board decision
 - `PromptWords`: the prompt's title, description and cancel button, fixed per decision. No page or host text goes into the prompt.
 - `FakeOwnerCheck`: for tests. It passes only when a test queued a pass.
 
-Nothing is remembered between checks: each answer gets its own prompt. The host can't verify any of this (`remote-gateway-protocol.ts` never treats an unlock as proof), so the shell is where board decision 4b is enforced on the phone.
+Nothing is remembered between checks: each answer gets its own prompt. The host can't verify any of this (`remote-gateway-protocol.ts` never treats an unlock as proof), so the shell is where board decision 4b is enforced on the phone: `halonic-phone-tunnel`'s `send` asks the check, through `TunnelHost::confirm_owner`, before it seals any `answer-approval`, takes the decision from the same strict reading it seals, and sends nothing without a pass or without a check.
+
+**Known limit:** a pass proves that the owner is there and which decision they are making, not which approval they answer. The page still picks the `approvalId`, and the prompt deliberately carries no host or page text (D7 M3). Julian accepted this on HAL-15212.
 
 The requirement in `requirements/` is a draft until the trace check reads `cargo test` results. Until then, each test's name starts with `owner_check_`.

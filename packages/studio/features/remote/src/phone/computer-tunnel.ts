@@ -27,9 +27,12 @@ export type ComputerTunnelEvent =
  *
  * - `not-open`: no session is open, or `generation` isn't the open one's;
  * - `too-large`: more than `gatewayMaxMessageBytes` bytes of UTF-8;
- * - `not-allowed`: not one JSON object of a type the phone may send.
+ * - `not-allowed`: not one JSON object, with no key twice, holding exactly
+ *   the keys of a message the phone may send;
+ * - `not-confirmed`: an answer to an approval whose owner check didn't pass,
+ *   or a phone that can't check its owner (board decision 4b, HAL-15194).
  */
-export type ComputerTunnelRefusal = "not-open" | "too-large" | "not-allowed";
+export type ComputerTunnelRefusal = "not-open" | "too-large" | "not-allowed" | "not-confirmed";
 
 /** What became of one {@link ComputerTunnel.send}. The shell never queues or retries. */
 export type ComputerTunnelSendResult =

@@ -225,7 +225,7 @@ verifies("studio.connect.phone-tunnel-messages", () => {
   describe("send answers", () => {
     it("reads sent and each refusal as the port's result", () => {
       expect(readSendAnswer({ sent: true }, reports().report)).toEqual({ sent: true });
-      for (const reason of ["not-open", "too-large", "not-allowed"]) {
+      for (const reason of ["not-open", "too-large", "not-allowed", "not-confirmed"]) {
         const answer = { sent: false, reason };
         expect(readSendAnswer(answer, reports().report)).toEqual(answer);
       }

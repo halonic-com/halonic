@@ -127,7 +127,10 @@ const eventSchema = s.discriminatedUnion("kind", [
 const sendSchema = s.union([
   s.object({ sent: s.literal(true) }).strict(),
   s
-    .object({ sent: s.literal(false), reason: s.enum(["not-open", "too-large", "not-allowed"]) })
+    .object({
+      sent: s.literal(false),
+      reason: s.enum(["not-open", "too-large", "not-allowed", "not-confirmed"]),
+    })
     .strict(),
 ]);
 

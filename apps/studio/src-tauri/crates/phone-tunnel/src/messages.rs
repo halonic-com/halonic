@@ -1,11 +1,19 @@
 //! The gateway messages the page sends through the tunnel (D7a,
 //! HAL-15177; the D7 design on HAL-15159, section 1, and Julian's L1 on
 //! HAL-15181). The shell checks each one before sealing it and sends
-//! nothing when a check fails. It reads only the `type`: the host's own
-//! parser stays the authority on everything else.
+//! nothing when a check fails.
+//!
+//! It reads each message's keys as strictly as the host does, so the two
+//! can't read one message two ways (Julian's condition 1 on HAL-15212): no
+//! key twice, and exactly the keys of one of the phone's six messages. An
+//! `answer-approval` also gives its `decision`, which the owner check asks
+//! the person to confirm (HAL-15194). The host's own parser stays the
+//! authority on every other value.
 
+use std::collections::BTreeSet;
 use std::fmt;
 
+use halonic_owner_check::Decision;
 use halonic_tunnel::MAX_MESSAGE_BYTES;
 use serde::de::{self, Deserializer, IgnoredAny, MapAccess, Visitor};
 use serde::{Deserialize, Serialize};
@@ -21,8 +29,24 @@ pub const PHONE_MESSAGE_TYPES: [&str; 6] = [
     "list-sessions",
     "watch",
     "unwatch",
-    "answer-approval",
+    ANSWER_APPROVAL,
     "prompt",
+];
+
+const ANSWER_APPROVAL: &str = "answer-approval";
+
+/// The keys each phone message has besides `type`, as the host's
+/// `parseGatewayClientMessage` checks them, in [`PHONE_MESSAGE_TYPES`] order.
+const MESSAGE_KEYS: [(&str, &[&str]); 6] = [
+    ("hello", &["id", "version"]),
+    ("list-sessions", &["id"]),
+    ("watch", &["id", "sessionId", "afterSeq"]),
+    ("unwatch", &["id", "sessionId"]),
+    (
+        ANSWER_APPROVAL,
+        &["id", "sessionId", "approvalId", "decision"],
+    ),
+    ("prompt", &["id", "sessionId", "text"]),
 ];
 
 /// Why a message wasn't sent. Nothing was, and the session stays open.
@@ -34,8 +58,12 @@ pub enum SendRefusal {
     NotOpen,
     /// More than [`GATEWAY_MAX_MESSAGE_BYTES`] bytes of UTF-8.
     TooLarge,
-    /// Not exactly one JSON object with one `type` that a phone may send.
+    /// Not exactly one JSON object, with no key twice, holding exactly the
+    /// keys of a message a phone may send.
     NotAllowed,
+    /// An answer to an approval whose owner check didn't pass, or a phone
+    /// that can't check its owner (board decision 4b).
+    NotConfirmed,
 }
 
 /// What became of a send, as the page reads it:
@@ -62,58 +90,102 @@ impl From<Result<(), SendRefusal>> for SendAnswer {
     }
 }
 
+/// A message that passed [`check_message`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CheckedMessage {
+    /// Goes out as it is.
+    Plain,
+    /// An `answer-approval`: goes out only after the owner confirms this
+    /// decision.
+    Answer(Decision),
+}
+
 /// Checks a message before it is sealed: its size first, in UTF-8 bytes,
 /// before any parsing; then that it is one JSON object, with nothing after
-/// it, whose only `type` key is one of the phone's six messages.
-pub(crate) fn check_message(text: &str) -> Result<(), SendRefusal> {
+/// it and no key twice, whose `type` is one of the phone's six messages and
+/// whose other keys are exactly that message's. An `answer-approval`'s
+/// `decision` must be `approve` or `deny`.
+pub(crate) fn check_message(text: &str) -> Result<CheckedMessage, SendRefusal> {
     if text.len() > GATEWAY_MAX_MESSAGE_BYTES {
         return Err(SendRefusal::TooLarge);
     }
-    let MessageType(kind) =
-        serde_json::from_str::<MessageType>(text).map_err(|_| SendRefusal::NotAllowed)?;
-    if PHONE_MESSAGE_TYPES.contains(&kind.as_str()) {
-        Ok(())
-    } else {
-        Err(SendRefusal::NotAllowed)
+    let read = serde_json::from_str::<MessageKeys>(text).map_err(|_| SendRefusal::NotAllowed)?;
+    let (_, expected) = MESSAGE_KEYS
+        .iter()
+        .find(|(kind, _)| *kind == read.kind)
+        .ok_or(SendRefusal::NotAllowed)?;
+    let exact =
+        read.keys.len() == expected.len() && expected.iter().all(|key| read.keys.contains(*key));
+    if !exact {
+        return Err(SendRefusal::NotAllowed);
+    }
+    if read.kind != ANSWER_APPROVAL {
+        return Ok(CheckedMessage::Plain);
+    }
+    match read.decision.as_deref() {
+        Some("approve") => Ok(CheckedMessage::Answer(Decision::Approve)),
+        Some("deny") => Ok(CheckedMessage::Answer(Decision::Deny)),
+        _ => Err(SendRefusal::NotAllowed),
     }
 }
 
-/// The `type` of a JSON object. Reading fails on anything but an object,
-/// on a `type` that isn't a string, on a missing `type`, and on a second
-/// `type` key, which a parser that keeps the last one would read
-/// differently.
-struct MessageType(String);
+/// What [`check_message`] reads of a JSON object: its string `type`, its
+/// other keys, and its `decision` when that is a string. Reading fails on
+/// anything but an object, on a `type` that isn't a string, on a missing
+/// `type`, and on any key that comes twice, which a parser that keeps the
+/// last one (the host's `JSON.parse`) would read differently.
+struct MessageKeys {
+    kind: String,
+    keys: BTreeSet<String>,
+    decision: Option<String>,
+}
 
-impl<'de> Deserialize<'de> for MessageType {
+impl<'de> Deserialize<'de> for MessageKeys {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_map(MessageTypeVisitor)
+        deserializer.deserialize_map(MessageKeysVisitor)
     }
 }
 
-struct MessageTypeVisitor;
+struct MessageKeysVisitor;
 
-impl<'de> Visitor<'de> for MessageTypeVisitor {
-    type Value = MessageType;
+impl<'de> Visitor<'de> for MessageKeysVisitor {
+    type Value = MessageKeys;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a JSON object with one string `type`")
+        formatter.write_str("a JSON object with one string `type` and no key twice")
     }
 
-    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<MessageType, A::Error> {
+    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<MessageKeys, A::Error> {
         let mut kind = None;
+        let mut keys = BTreeSet::new();
+        let mut decision = None;
         // Keys are read unescaped, so `"\u0074ype"` counts as `type`, as it
         // does for the host's parser.
         while let Some(key) = map.next_key::<String>()? {
-            if key != "type" {
-                map.next_value::<IgnoredAny>()?;
+            if key == "type" {
+                if kind.is_some() {
+                    return Err(de::Error::duplicate_field("type"));
+                }
+                kind = Some(map.next_value::<String>()?);
                 continue;
             }
-            if kind.is_some() {
-                return Err(de::Error::duplicate_field("type"));
+            if keys.contains(&key) {
+                return Err(de::Error::custom("a key comes twice"));
             }
-            kind = Some(map.next_value::<String>()?);
+            if key == "decision" {
+                if let serde_json::Value::String(text) = map.next_value::<serde_json::Value>()? {
+                    decision = Some(text);
+                }
+            } else {
+                map.next_value::<IgnoredAny>()?;
+            }
+            keys.insert(key);
         }
-        kind.map(MessageType)
-            .ok_or_else(|| de::Error::missing_field("type"))
+        let kind = kind.ok_or_else(|| de::Error::missing_field("type"))?;
+        Ok(MessageKeys {
+            kind,
+            keys,
+            decision,
+        })
     }
 }

@@ -1,6 +1,6 @@
 //! What the service needs from the app around it: Android's local network
-//! question, a way to tell the page a status and a session's messages, and
-//! the shell's log.
+//! question, the owner check before an answer to an approval, a way to tell
+//! the page a status and a session's messages, and the shell's log.
 
 use std::future::Future;
 use std::net::IpAddr;
@@ -8,6 +8,7 @@ use std::pin::Pin;
 
 use halonic_connect::{Reach, reach};
 use halonic_device_keys::ComputerId;
+use halonic_owner_check::{Availability, Confirmation, Decision, OwnerCheck};
 use halonic_tunnel::{Endpoint, MAX_NAME_BYTES, PhoneDetails};
 
 use crate::status::PageStatus;
@@ -28,6 +29,9 @@ pub type LocalNetworkAnswer<'a> = Pin<Box<dyn Future<Output = LocalNetwork> + Se
 /// The phone's name and platform, still to come.
 pub type PhoneAnswer<'a> = Pin<Box<dyn Future<Output = PhoneDetails> + Send + 'a>>;
 
+/// The owner check's answer, still to come.
+pub type OwnerAnswer<'a> = Pin<Box<dyn Future<Output = Confirmation> + Send + 'a>>;
+
 /// The app around the service: the shell on the phone, a recording fake in
 /// the tests.
 pub trait TunnelHost: Send + Sync + 'static {
@@ -40,6 +44,12 @@ pub trait TunnelHost: Send + Sync + 'static {
     /// 3: its name, as the person named the phone, and its platform. The
     /// computer shows it next to the check code.
     fn phone(&self) -> PhoneAnswer<'_>;
+
+    /// Asks the person to confirm `decision` with the phone's owner check,
+    /// in a new prompt, before the service seals an `answer-approval`
+    /// (board decision 4b). Only [`Confirmation::Confirmed`] lets it out;
+    /// a phone without an owner check answers with [`confirm_with`]`(None, ..)`.
+    fn confirm_owner(&self, decision: Decision) -> OwnerAnswer<'_>;
 
     /// A paired computer's status changed. The shell passes it on to the
     /// app's own page only (H1 on HAL-15181).
@@ -59,6 +69,16 @@ pub trait TunnelHost: Send + Sync + 'static {
     /// connection in the paired-computer list. The line never holds a key,
     /// a code or a message's text.
     fn log(&self, line: &str);
+}
+
+/// Asks `check` to confirm `decision`, or answers unavailable when there
+/// is no check (iOS, or its setup failed), so a missing check never lets an
+/// answer through (Julian's condition 2 on HAL-15212).
+pub async fn confirm_with<O: OwnerCheck>(check: Option<&O>, decision: Decision) -> Confirmation {
+    match check {
+        Some(check) => check.confirm(decision).await,
+        None => Confirmation::Unavailable(Availability::Unavailable),
+    }
 }
 
 /// Whether reaching `endpoint` needs Android's local network permission:

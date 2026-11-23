@@ -16,10 +16,19 @@ When the phone is about to send an answer to an approval, the shell shall first 
   then the prompt says "Confirm it's you" and "Reject this request for Halonic on your computer.", with Cancel.
 - Given a phone with a strong fingerprint enrolled,
   when the person closes the prompt or Android closes it,
-  then nothing is sent.
+  then nothing is sent, and the page hears `not-confirmed`.
+- Given a page that sends an `answer-approval` without asking first,
+  when the shell gets it,
+  then the shell shows the prompt itself, and sends the answer only after a pass.
+- Given a page that sends an `answer-approval` with `decision` twice, or with a second `type`,
+  when the shell gets it,
+  then no prompt shows and nothing is sent (`not-allowed`).
+- Given a phone whose owner check wasn't set up,
+  when the page sends an `answer-approval`,
+  then nothing is sent (`not-confirmed`).
 - Given a prompt that is open,
   when the app leaves the screen, or nobody answers within 2 minutes,
-  then nothing is sent, and the next answer shows a new prompt.
+  then nothing is sent, the prompt closes, and the next answer shows a new prompt.
 - Given a phone whose only biometric is a weak face unlock,
   when the person approves from the phone,
   then no prompt shows and nothing is sent.

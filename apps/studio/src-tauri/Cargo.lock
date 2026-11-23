@@ -1706,6 +1706,7 @@ dependencies = [
  "halonic-blob-store",
  "halonic-connect",
  "halonic-device-keys",
+ "halonic-owner-check",
  "halonic-tunnel",
  "serde",
  "serde_json",
