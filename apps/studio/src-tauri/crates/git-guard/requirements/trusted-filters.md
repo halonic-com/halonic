@@ -1,6 +1,6 @@
 # studio.src-tauri.crates.git-guard.trusted-filters
 
-- Status: active
+- Status: draft
 - Since: unreleased
 - Source: HAL-16434 (the user's own filters run again in trusted folders, decided by Liam on HAL-16363); HAL-16569 (the refusal says when trusting would run the filter, C724 on HAL-16565); requirements `repo-config` and `filter-writes`
 
