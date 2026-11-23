@@ -1,4 +1,4 @@
-import { Tooltip } from "@halonicjs/studio-kit";
+import { SparkIcon, Tooltip } from "@halonicjs/studio-kit";
 import type { RefObject } from "react";
 import { hintKeys } from "../points/key-hints.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
@@ -19,7 +19,7 @@ export interface PanelWindowButtonProps {
 
 /**
  * The side panel's button at the title bar's right end (`shell.title-bar`, component specs 21.1):
- * a 28px ghost toggle with ✦ in `accent` and the panel's title, `aria-expanded` and
+ * a 28px ghost toggle with the kit's `SparkIcon` (✦) in `accent` and the panel's title, `aria-expanded` and
  * `aria-controls`. Open, it has the `accent-soft` fill and `accent-text`. Its tooltip is the
  * title with the shortcut's Kbd hint, Ctrl Alt I or ⌃⌥I on macOS, which it names in
  * `aria-keyshortcuts`.
@@ -41,8 +41,12 @@ export function PanelWindowButton(props: PanelWindowButtonProps) {
           className={`${buttonClasses} ${props.open ? openClasses : closedClasses}`}
           onClick={props.onToggle}
         >
-          <span aria-hidden="true" className="text-accent">
-            ✦
+          {/* An icon, not the ✦ character: Inter lacks it, so each system drew its own (HAL-16927). */}
+          <span
+            aria-hidden="true"
+            className="inline-grid size-icon-sm shrink-0 text-accent *:size-full"
+          >
+            <SparkIcon />
           </span>
           {props.title}
         </button>

@@ -268,8 +268,8 @@ in a later pull request.
 
 A feature adds the window's one side panel with `panelWindows.add` (`shell.panel-window`), as the
 Assistant does: `title` ("Assistant"), its view and the `keys` it binds ("Ctrl+Alt+I"). The window
-draws the first by `order`. The title bar then ends with its button, `PanelWindowButton`: ✦ and the
-title, a toggle with `aria-expanded`, the title and the keys' Kbd hint as its tooltip, and the keys
+draws the first by `order`. The title bar then ends with its button, `PanelWindowButton`: ✦ (the kit's
+`SparkIcon`, not the text character) and the title, a toggle with `aria-expanded`, the title and the keys' Kbd hint as its tooltip, and the keys
 in `aria-keyshortcuts`. With no panel window there's no button.
 
 The panel starts closed in each window and isn't saved. Open, `PanelWindowSlot` draws the view

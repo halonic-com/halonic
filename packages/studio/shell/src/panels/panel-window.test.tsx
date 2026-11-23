@@ -99,10 +99,10 @@ async function renderWindow(features: readonly Feature[] = [assistant]) {
     />,
   );
   await settle();
+  // The panel's button ends the title bar; under 900px the menu button controls the sidebar.
   const button = () =>
-    [...container.querySelectorAll<HTMLButtonElement>("header button")].find((each) =>
-      each.textContent?.startsWith("✦"),
-    ) ?? null;
+    [...container.querySelectorAll<HTMLButtonElement>("header button[aria-controls]")].at(-1) ??
+    null;
   const panel = () => container.querySelector<HTMLElement>("[data-panel-window]");
   return { container, button, panel };
 }
@@ -219,7 +219,7 @@ verifies("shell.panel-window", () => {
       panelFeature("assistant", "Assistant", 10),
     ]);
 
-    expect(button()?.textContent).toBe("✦Assistant");
+    expect(button()?.textContent).toBe("Assistant");
   });
 });
 
@@ -229,7 +229,10 @@ verifies("shell.title-bar", () => {
     const header = container.querySelector("header");
 
     expect(header?.lastElementChild?.contains(button())).toBe(true);
-    expect(button()?.textContent).toBe("✦Assistant");
+    expect(button()?.textContent).toBe("Assistant");
+    // ✦ is an icon, not a character Inter lacks; hidden, so the button's name stays "Assistant".
+    const spark = button()?.querySelector('span[aria-hidden="true"].text-accent > svg');
+    expect(spark?.getAttribute("fill")).toBe("currentColor");
     expect(button()?.getAttribute("aria-expanded")).toBe("false");
     expect(button()?.getAttribute("aria-keyshortcuts")).toBe("Control+Alt+I");
     act(() => button()?.focus());
@@ -251,6 +254,6 @@ verifies("shell.title-bar", () => {
     const { button, container } = await renderWindow([]);
 
     expect(button()).toBeNull();
-    expect(container.querySelector("header")?.textContent).not.toContain("✦");
+    expect(container.querySelector("header .text-accent > svg")).toBeNull();
   });
 });
