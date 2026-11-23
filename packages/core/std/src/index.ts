@@ -49,6 +49,12 @@ export {
 } from "./line-merge.ts";
 export { editDistance, type NearMatchOptions, nearMatch } from "./near-match.ts";
 export { absolutePathsOverlap, insideOrSame } from "./path-overlap.ts";
+export {
+  ignoredByPatterns,
+  type PathPattern,
+  readIgnoreFile,
+  readPathPattern,
+} from "./path-pattern.ts";
 export { describeObject, isPlainObject, keyPath } from "./plain-data.ts";
 export { posixPath } from "./posix-path.ts";
 export { type Err, err, mapResult, type Ok, ok, type Result, unwrap } from "./result.ts";

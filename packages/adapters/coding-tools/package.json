@@ -1,0 +1,36 @@
+{
+  "name": "@halonicjs/adapter-coding-tools",
+  "private": true,
+  "type": "module",
+  "description": "The coding tools server a harness program starts inside its sandbox: read_ranges with a read cache, search without git or ripgrep, run_tests and repo_map, over MCP on stdio.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-harness-kit": "workspace:*",
+    "@halonicjs/adapter-mcp": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "owen",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    },
+    "runtime": "node"
+  }
+}

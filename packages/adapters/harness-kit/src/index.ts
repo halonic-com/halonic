@@ -54,4 +54,8 @@ export {
   type SettingsFolderWriter,
   writeSettingsFiles,
 } from "./settings-folder.ts";
-export { type ProfileDisk, profileDiskOnThisComputer } from "./working-folder.ts";
+export {
+  isInsideOrSame,
+  type ProfileDisk,
+  profileDiskOnThisComputer,
+} from "./working-folder.ts";
