@@ -58,6 +58,7 @@ export interface HostServerLimits {
   maxConnections: number;
 }
 
+/** The host's limits, which the engine role's listener uses too (`agent-host.engine-listener`). */
 export const defaultHostServerLimits: HostServerLimits = {
   headersTimeoutMs: 10_000,
   requestTimeoutMs: 30_000,
@@ -302,7 +303,8 @@ function jsonHeaders(body: string): Record<string, string | number> {
   };
 }
 
-function listenOnLoopback(server: Server): Promise<number> {
+/** Starts `server` on a free port of 127.0.0.1 and answers the port. */
+export function listenOnLoopback(server: Server): Promise<number> {
   return new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, loopbackHost, () => {
@@ -317,7 +319,8 @@ function listenOnLoopback(server: Server): Promise<number> {
   });
 }
 
-function stopServer(server: Server): Promise<void> {
+/** Stops `server` listening and ends every open connection, streams included. */
+export function stopServer(server: Server): Promise<void> {
   return new Promise((resolve) => {
     // A server that never listened reports "not running" here; it is stopped all the same.
     server.close(() => resolve());
