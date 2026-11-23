@@ -3,8 +3,8 @@ import {
   exitWithin,
   type OwnSandboxCheck,
   outputTail,
+  resetSettingsFolder,
   type SettingsFolderWriter,
-  writeSettingsFiles,
 } from "@halonicjs/adapter-harness-kit";
 import type {
   HarnessBridge,
@@ -26,8 +26,11 @@ import {
   codexConfigText,
   codexOwnSandboxArgs,
   codexPinnedInstructionsArgs,
+  codexPinnedSettingsArgs,
+  codexSignInFiles,
 } from "./config.ts";
 import { codexProgram } from "./detect.ts";
+import { refuseProjectConfig } from "./project-config.ts";
 import { RunEvents } from "./run-events.ts";
 
 /** How much of Codex's standard error a failed run keeps, to say why it failed. */
@@ -38,7 +41,7 @@ const methodNotFound = -32_601;
 
 /** What a {@link CodexRun} needs besides the task, the session and the bridge. */
 export interface CodexRunOptions {
-  /** Writes `config.toml` to the agent's settings folder before Codex starts. */
+  /** Resets the agent's settings folder to `config.toml` and the sign-in before Codex starts, and looks for a project's own settings. */
   settings: SettingsFolderWriter;
   /** Who Halonic is, as `initialize` tells Codex. */
   clientInfo: ClientInfo;
@@ -119,7 +122,11 @@ export class CodexRun implements HarnessRun {
     });
   }
 
-  /** Writes `config.toml` and starts `codex app-server` in the session, in its own sandbox wherever the fence isn't proven. */
+  /**
+   * Refuses a project's own Codex settings, resets the settings folder to
+   * `config.toml` and the sign-in, and starts `codex app-server` in the
+   * session, in its own sandbox wherever the fence isn't proven.
+   */
   async #launch(
     session: SandboxSession,
     bridge: HarnessBridge,
@@ -129,7 +136,9 @@ export class CodexRun implements HarnessRun {
     if (folder === null) {
       throw new Error("Codex needs a settings folder, and the sandbox profile has none.");
     }
-    await writeSettingsFiles(folder, { [codexConfigFile]: codexConfigText() }, settings);
+    await refuseProjectConfig(session.profile.workingFolder, settings);
+    const files = { [codexConfigFile]: codexConfigText() };
+    await resetSettingsFolder(folder, { files, signIn: codexSignInFiles }, settings);
     // Wherever the fence isn't proven, Codex's own sandbox is the one around the commands it starts.
     const own = session.fence.state !== "fenced" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
@@ -138,6 +147,7 @@ export class CodexRun implements HarnessRun {
       args: [
         "app-server",
         ...codexConfigArgs(bridge),
+        ...codexPinnedSettingsArgs(),
         ...codexPinnedInstructionsArgs,
         ...(own ? codexOwnSandboxArgs : []),
       ],

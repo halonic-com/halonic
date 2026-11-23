@@ -1,3 +1,4 @@
+import { relative, sep } from "node:path";
 import type { SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
 
 /**
@@ -18,7 +19,10 @@ type FakeCodex = (io: ProgramIo) => Promise<number>;
 export const fakeThreadId = "thread-fake";
 export const fakeTurnId = "turn-fake";
 
-/** A settings folder in memory, by path, for runs whose settings folder isn't on this computer's disk. */
+/**
+ * A settings folder in memory, by path, for runs whose settings folder isn't
+ * on this computer's disk. A folder is there when a file is in it.
+ */
 export class MemorySettingsFolder implements SettingsFolderWriter {
   readonly files = new Map<string, string>();
 
@@ -28,6 +32,25 @@ export class MemorySettingsFolder implements SettingsFolderWriter {
 
   async write(path: string, text: string): Promise<void> {
     this.files.set(path, text);
+  }
+
+  async list(folder: string): Promise<string[]> {
+    const names = new Set<string>();
+    for (const path of this.files.keys()) {
+      const name = relative(folder, path).split(sep)[0];
+      if (name !== undefined && name !== "" && !name.startsWith("..")) names.add(name);
+    }
+    return [...names];
+  }
+
+  async remove(path: string): Promise<void> {
+    for (const file of [...this.files.keys()]) {
+      if (file === path || file.startsWith(`${path}${sep}`)) this.files.delete(file);
+    }
+  }
+
+  async exists(path: string): Promise<boolean> {
+    return [...this.files.keys()].some((file) => file === path || file.startsWith(`${path}${sep}`));
   }
 }
 

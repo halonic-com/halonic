@@ -49,6 +49,8 @@ export {
 } from "./run-instructions.ts";
 export {
   diskSettingsFolder,
+  resetSettingsFolder,
+  type SettingsFolderContents,
   type SettingsFolderWriter,
   writeSettingsFiles,
 } from "./settings-folder.ts";
