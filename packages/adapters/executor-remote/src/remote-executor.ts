@@ -13,6 +13,7 @@ import {
   type StartAgentRequest,
   type StartRunRequest,
 } from "@halonicjs/ports";
+import { chatTurnStreamType, isChatTurnStream, readChatTurnStream } from "./chat-turn-stream.ts";
 import { ConnectionTracker } from "./connection.ts";
 import { RemoteHostError, readChatTurnError, readHostError } from "./errors.ts";
 import { type Fetcher, type HostCall, HostClient } from "./host-client.ts";
@@ -218,12 +219,20 @@ export function createRemoteExecutor(options: RemoteExecutorOptions): RunExecuto
     async chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse> {
       // The signal stays here: it aborts the request, and the host aborts the model call when the request closes.
       // `onText` stays here too: it is a function in this process, and the host refuses a body that names it.
-      // It hears nothing yet: the host answers the turn whole.
-      const { signal, onText: _inProcess, ...body } = request;
-      const call: HostCall = { method: "POST", body, ...(signal === undefined ? {} : { signal }) };
+      // It asks the host for a stream instead; an older host answers the turn whole and `onText` hears nothing.
+      const { signal, onText, ...body } = request;
+      const call: HostCall = {
+        method: "POST",
+        body,
+        ...(signal === undefined ? {} : { signal }),
+        ...(onText === undefined ? {} : { headers: { Accept: chatTurnStreamType } }),
+      };
       const response = await client.call("/api/chat-turn", call);
       if (!response.ok) {
         throw await readChatTurnError(response);
+      }
+      if (onText !== undefined && response.body !== null && isChatTurnStream(response)) {
+        return readChatTurnStream(response.body, onText);
       }
       return (await response.json()) as ChatTurnResponse;
     },

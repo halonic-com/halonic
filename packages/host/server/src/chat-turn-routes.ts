@@ -11,6 +11,7 @@ import {
   type ToolDefinition,
 } from "@halonicjs/ports";
 import type { ModelSettingsGate, ServerErrorBody, ServerPorts } from "./api.ts";
+import { streamChatTurn, wantsChatTurnStream } from "./chat-turn-stream.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { isJsonRequest } from "./run-routes.ts";
 import { refuseUnlessTrusted } from "./trust-routes.ts";
@@ -20,9 +21,10 @@ export const chatTurnPath = "/api/chat-turn";
 
 export interface ChatTurnRoutes {
   /**
-   * Forwards the turn to the executor and answers its response. The request's
-   * own `signal` goes to the executor, so a caller that closes the request
-   * stops the model call.
+   * Forwards the turn to the executor and answers its response, or, when the
+   * caller accepts `application/x-ndjson`, streams the answer's text as it is
+   * written and then the response. The request's own `signal` goes to the
+   * executor, so a caller that closes the request stops the model call.
    */
   chatTurn(request: Request, body: Uint8Array): Promise<Response>;
 }
@@ -175,16 +177,13 @@ interface ModelCallFailedBody extends ServerErrorBody {
 }
 
 /**
- * Answers 502 `model_call_failed` for a turn that failed. Only the reason
+ * The body of `model_call_failed` for a turn that failed. Only the reason
  * travels: the error's message and host stay in the log, because they may
  * name a host or quote the provider.
  */
-function modelCallFailed(error: unknown): Response {
-  const { status, code, message } = serverErrors.modelCallFailed;
-  const body: ModelCallFailedBody = isModelCallError(error)
-    ? { code, message, reason: error.reason }
-    : { code, message };
-  return Response.json(body, { status });
+function modelCallFailedBody(error: unknown): ModelCallFailedBody {
+  const { code, message } = serverErrors.modelCallFailed;
+  return isModelCallError(error) ? { code, message, reason: error.reason } : { code, message };
 }
 
 /** The request the body asks for, built from the listed fields only, or `null` when the body isn't one. */
@@ -223,6 +222,30 @@ function parseChatTurn(body: Uint8Array): ChatTurnRequest | null {
   return request;
 }
 
+/** Runs a turn that passed every check: as one JSON answer, or streamed when the caller accepts that. */
+async function answerTurn(
+  { runs, errorLog }: Pick<ServerPorts, "runs" | "errorLog">,
+  turn: ChatTurnRequest,
+  request: Request,
+): Promise<Response> {
+  const failed = (error: unknown): ModelCallFailedBody => {
+    errorLog.record(error);
+    return modelCallFailedBody(error);
+  };
+  if (wantsChatTurnStream(request)) {
+    return streamChatTurn((streamed) => runs.chatTurn(streamed), turn, request, failed);
+  }
+  try {
+    return Response.json(await runs.chatTurn({ ...turn, signal: request.signal }));
+  } catch (error) {
+    // A caller that closed the request gets no answer, and the abort isn't a fault to log.
+    if (request.signal.aborted) {
+      return errorResponse(serverErrors.requestAborted);
+    }
+    return Response.json(failed(error), { status: serverErrors.modelCallFailed.status });
+  }
+}
+
 export function createChatTurnRoutes({
   runs,
   trust,
@@ -252,16 +275,7 @@ export function createChatTurnRoutes({
       if (!(await mayUseAddress(modelSettings, turn))) {
         return errorResponse(serverErrors.modelAddressNotAllowed);
       }
-      try {
-        return Response.json(await runs.chatTurn({ ...turn, signal: request.signal }));
-      } catch (error) {
-        // A caller that closed the request gets no answer, and the abort isn't a fault to log.
-        if (request.signal.aborted) {
-          return errorResponse(serverErrors.requestAborted);
-        }
-        errorLog.record(error);
-        return modelCallFailed(error);
-      }
+      return answerTurn({ runs, errorLog }, turn, request);
     },
   };
 }

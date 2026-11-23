@@ -65,11 +65,30 @@ export async function readChatTurnError(
 /** The `reason` of a `model_call_failed` body, when it is one a model call can fail with. */
 async function reasonOf(response: Response): Promise<ModelCallErrorReason | undefined> {
   try {
-    const { reason } = (await response.json()) as { reason?: unknown };
-    return modelCallErrorReasons.find((known) => known === reason);
+    return knownReason(await response.json());
   } catch {
     return undefined;
   }
+}
+
+function knownReason(body: unknown): ModelCallErrorReason | undefined {
+  const { reason } = (body ?? {}) as { reason?: unknown };
+  return modelCallErrorReasons.find((known) => known === reason);
+}
+
+/**
+ * The error line of a streamed chat turn, read as {@link readChatTurnError}
+ * reads a refused one, with the status a failed turn has without the stream.
+ * A line that isn't an error body is a protocol error.
+ */
+export function chatTurnLineError(body: unknown): RemoteHostError | ModelCallError {
+  const { code, message } = (body ?? {}) as { code?: unknown; message?: unknown };
+  if (typeof code !== "string" || typeof message !== "string") {
+    throw new RemoteProtocolError("The host sent an error line that isn't an error.");
+  }
+  const refusal = new RemoteHostError(502, code, message);
+  const reason = code === "model_call_failed" ? knownReason(body) : undefined;
+  return reason === undefined ? refusal : new ModelCallError(reason, message, { cause: refusal });
 }
 
 /**
