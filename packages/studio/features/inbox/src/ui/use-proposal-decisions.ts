@@ -282,7 +282,9 @@ function useUndoSteps(
       // stays until it's closed, so Undo is still there once the engine answers.
       function onClick() {
         if (held.current !== undefined) {
+          const focused = document.activeElement;
           showWithUndo({ tone: "danger", title: "Couldn't undo this.", text: held.current });
+          keepFocusInToasts(toasts, focused);
           return;
         }
         if (toast !== undefined) toasts?.close(toast);
@@ -307,6 +309,18 @@ function useHeldWhile(holdBack: string | undefined): { readonly current: string 
     [],
   );
   return held;
+}
+
+/**
+ * Moves focus to the newest toast's first button when `focused`, which had focus before a toast
+ * was replaced, went with the toast it was in: otherwise focus drops to the page, and a keyboard
+ * needs F6 to reach the new toast's **Undo** (HAL-16672). Waits until React has drawn the new toast.
+ */
+function keepFocusInToasts(toasts: ToastStore | null, focused: Element | null): void {
+  if (toasts === null || !(focused instanceof HTMLElement)) return;
+  queueMicrotask(() => {
+    if (!focused.isConnected) toasts.focus();
+  });
 }
 
 /** Runs `settle` once none of the toasts `ids` shows, now when none does. */
