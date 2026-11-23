@@ -62,6 +62,8 @@ export interface SessionClaims {
   readonly role?: unknown;
   /** The app the token was issued to, for display and revocation only. */
   readonly client?: unknown;
+  /** The session's id, for revocation and sign-out; it grants nothing. */
+  readonly sid?: unknown;
 }
 
 /** A session that passed the checks: who is asking, and the client, which grants nothing. */
