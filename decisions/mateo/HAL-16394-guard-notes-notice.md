@@ -2,6 +2,7 @@
 
 - Approval: HAL-16394, asked for on HAL-16326 for #5184; the CTO reviews and signs it
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mmgxNT6uJulcFpDxo4JOWKzH24uVpeaE5H6Mvjh4Y8+rYYA6GZVXHMkQUN9NTW3JzAgH9gIThyRms249CI4hCQ==
 
 ## What changes
 
