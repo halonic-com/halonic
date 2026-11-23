@@ -106,7 +106,7 @@ function RunItemView({ item, agent }: { readonly item: RunItem; readonly agent: 
         </p>
       );
     case "nothing":
-      return <p className="text-small text-fg-muted">{runWords.nothingYet}</p>;
+      return <p className="text-small text-fg-muted">{runWords.nothingYet(agent)}</p>;
     case "message":
       return (
         <div className="flex flex-col gap-1">

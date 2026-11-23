@@ -1,7 +1,7 @@
 /**
  * The words of the phone's run detail, as the board approved them with Noah's drawing on
- * HAL-16169 (wording from HAL-15240). "Nothing from this agent yet." is a team word from the
- * drawing's build notes.
+ * HAL-16169 (wording from HAL-15240). The empty history's line is Sofia's copy check on HAL-16923:
+ * it says the gap is on the phone, not that the agent did nothing.
  */
 
 export const runWords = {
@@ -14,7 +14,7 @@ export const runWords = {
   /** First in the history, once the phone dropped older events to stay within its cap. */
   droppedOlder: "Older activity isn't kept on this phone.",
   /** The phone holds no event of the agent and nothing waits. */
-  nothingYet: "Nothing from this agent yet.",
+  nothingYet: (agent: string) => `No activity from ${agent} on this phone yet.`,
   /** A waiting approval's title; violet means "your turn". */
   waiting: (agent: string) => `${agent} is waiting for your OK`,
   /** An answered approval, in one quiet line: "Approved 13:53 · send_replies: {…}". */
