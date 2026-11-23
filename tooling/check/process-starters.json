@@ -21,6 +21,14 @@
       "reason": "Loads the deploy target for a deployments.yaml host (ADR 5.6, HAL-7114: the CLI never lists or imports a target package). Its one import() takes the bare package name @halonicjs/target-<host>-deploy, where the host must be lowercase letters and digits with single hyphens between parts (^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$), so it never names a file or path; the package resolves from the CLI's own installed packages. Loading a module starts no process, and it never loads a skill.",
       "scriptsTest": "apps/cli/src/deploy-target-loader.starts.test.ts"
     },
+    "packages/adapters/coding-tools/src/run-tests/start-command.ts": {
+      "reason": "Starts the run_tests command of the in-sandbox coding tools server (HAL-16737): the command exactly as the person approved it on the approval card, in the platform's shell, inside the agent's own fence, with no input, programEnvironment's variables only and output only to a log file. runCommand itself refuses a command that names a file under a skill's scripts/ folder, as written or through a symbolic link, before anything starts. It also starts taskkill by its full path on Windows to stop the command's tree.",
+      "scriptsTest": "packages/adapters/coding-tools/src/run-tests/start-command.starts.test.ts"
+    },
+    "packages/adapters/coding-tools/src/search/regex-match.ts": {
+      "reason": "Imports node:vm only to run search's regular expression with a time limit (HAL-16737): one fixed script, in an empty context, that tests the given lines against the expression. The expression and lines are data to it; it loads no module, reads no file and starts no process, so it never runs a skill's scripts/ file.",
+      "scriptsTest": "packages/adapters/coding-tools/src/search/search.test.ts"
+    },
     "packages/adapters/git/src/node/run-process.ts": {
       "reason": "Starts only git, at the absolute path findGit resolved, with array arguments and no shell. Every call runs hardened: hooks point at an empty folder and no user or system config is read.",
       "scriptsTest": "packages/adapters/git/src/skill-scripts.test.ts"
