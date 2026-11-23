@@ -89,9 +89,11 @@ verifies("remote.phone-first-reach", () => {
     vi.advanceTimersByTime(10_000);
     for (const state of ["paused", "closed"] as const) {
       tunnel.push(laptop, { state });
+      const heldAt = new Date();
       vi.advanceTimersByTime(60_000);
-      expect(router.reachOf(laptop)?.gaveUp).toBe(false);
+      expect(router.reachOf(laptop)).toEqual({ since: expect.any(Date), gaveUp: false, heldAt });
       tunnel.push(laptop, { state: "connecting" });
+      expect(router.reachOf(laptop)?.heldAt).toBeUndefined();
       expect(Date.now() - (router.reachOf(laptop)?.since.getTime() ?? 0)).toBe(10_000);
     }
     expect(router.stateOf(computer)).toBe("reconnecting");
@@ -102,7 +104,11 @@ verifies("remote.phone-first-reach", () => {
     tunnel.push(laptop, { state: "reconnecting", lastTry: "network-down" });
     router.tryAgain(laptop);
     expect(router.stateOf(computer)).toBe("phoneOffline");
-    expect(router.reachOf(laptop)).toEqual({ since: new Date(), gaveUp: false });
+    expect(router.reachOf(laptop)).toEqual({
+      since: new Date(),
+      gaveUp: false,
+      heldAt: new Date(),
+    });
     vi.advanceTimersByTime(FIRST_REACH_LIMIT_MS);
     tunnel.push(laptop, { state: "connecting" });
     expect(router.reachOf(laptop)?.gaveUp).toBe(false);

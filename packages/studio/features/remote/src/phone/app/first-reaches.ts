@@ -8,15 +8,16 @@ export interface FirstReach {
   readonly since: Date;
   /** No answer in {@link FIRST_REACH_LIMIT_MS}, or a try failed: the screen shows the give-up. */
   readonly gaveUp: boolean;
+  /**
+   * While the wait holds, when it stopped counting: the waiting line's seconds stand still there
+   * until the wait goes on.
+   */
+  readonly heldAt?: Date;
 }
 
-/**
- * A reach with the timer that gives it up; a reach that gave up has none. A held reach has no
- * timer either, and `heldAt` says when the wait stopped counting.
- */
+/** A reach with the timer that gives it up; a reach that gave up or holds has none. */
 type Timed = FirstReach & {
   readonly timer?: ReturnType<typeof setTimeout>;
-  readonly heldAt?: Date;
 };
 
 /**
@@ -41,7 +42,9 @@ export class FirstReaches {
   /** The computer's reach, if one is under way or gave up. */
   get(computer: ComputerId): FirstReach | undefined {
     const reach = this.#reaches.get(computer);
-    return reach === undefined ? undefined : { since: reach.since, gaveUp: reach.gaveUp };
+    if (reach === undefined) return undefined;
+    const { since, gaveUp, heldAt } = reach;
+    return heldAt === undefined ? { since, gaveUp } : { since, gaveUp, heldAt };
   }
 
   has(computer: ComputerId): boolean {
