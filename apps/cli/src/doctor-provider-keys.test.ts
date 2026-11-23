@@ -103,6 +103,7 @@ function doctorWorkspaceOf(workspace: LoadedWorkspace) {
     location: root,
     fallbackName: "acme",
     commandPaths: new Map(),
+    connectorFiles: new Map(),
   });
 }
 

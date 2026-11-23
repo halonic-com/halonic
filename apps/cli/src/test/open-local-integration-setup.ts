@@ -129,6 +129,7 @@ export async function setupOpener(
     location: root,
     connectors: [],
     commandPaths: new Map(),
+    connectorFiles: new Map(),
     agents: [],
     integrations: trustContentInputOf(loaded, await workspaceIntegrations(folder, root))
       .integrations,

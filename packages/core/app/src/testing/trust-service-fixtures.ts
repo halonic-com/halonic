@@ -54,7 +54,15 @@ export function remote(id: string, url: string): Connector {
 
 /** The acme workspace with `connectors` and nothing else. */
 export function subject(...connectors: Connector[]): TrustSubject {
-  return { location, connectors, commandPaths, agents: [], integrations: [], providers: [] };
+  return {
+    location,
+    connectors,
+    commandPaths,
+    connectorFiles: new Map(),
+    agents: [],
+    integrations: [],
+    providers: [],
+  };
 }
 
 /** A local integration that reads its address from the workspace setting `url`. */

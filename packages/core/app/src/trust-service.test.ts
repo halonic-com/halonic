@@ -279,6 +279,7 @@ verifies("app.trust-service", () => {
       location,
       connectors,
       commandPaths,
+      connectorFiles: new Map(),
       agents: [],
       integrations: [],
       providers: [],
@@ -287,6 +288,7 @@ verifies("app.trust-service", () => {
       location,
       connectors,
       commandPaths: new Map([["node", "/opt/evil/node"]]),
+      connectorFiles: new Map(),
       agents: [],
       integrations: [],
       providers: [],
@@ -322,6 +324,7 @@ verifies("app.trust-service", () => {
       location,
       connectors: [],
       commandPaths,
+      connectorFiles: new Map(),
       integrations: [],
       providers: [],
     };
@@ -349,6 +352,7 @@ verifies("app.trust-service", () => {
       location,
       connectors: [],
       commandPaths,
+      connectorFiles: new Map(),
       agents: [],
       providers: [],
     };
@@ -377,6 +381,7 @@ verifies("app.trust-service", () => {
       location,
       connectors: [],
       commandPaths,
+      connectorFiles: new Map(),
       agents: [],
       integrations: [],
     };
@@ -424,6 +429,7 @@ verifies("app.trust-service", () => {
       location,
       connectors,
       commandPaths,
+      connectorFiles: new Map(),
       agents: [],
       integrations: [],
       providers: [],

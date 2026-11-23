@@ -9,7 +9,7 @@ import { filesOf, type LoadedWorkspace, loadWorkspace, settingsPath } from "@hal
 import { type CommandSearch, commandPaths } from "./command-paths.ts";
 import type { MachineWorkspace } from "./doctor-machine.ts";
 import { doctorWorkspace } from "./doctor-workspace.ts";
-import { workspaceIntegrations } from "./workspace-integrations.ts";
+import { workspaceConnectorFiles, workspaceIntegrations } from "./workspace-integrations.ts";
 
 /** A workspace folder, as the caller names it. */
 export interface DoctorFolder {
@@ -68,6 +68,7 @@ export async function readDoctorWorkspace(
     location,
     fallbackName: folder.name,
     commandPaths: await commandPaths(connectors, options.commandSearch),
+    connectorFiles: await workspaceConnectorFiles(folder.root, folder.shown, connectors),
   });
   const tooManyToWatch = await store.hasMoreFilesThan(options.watchedFileLimit);
   const providerFiles = new Map(

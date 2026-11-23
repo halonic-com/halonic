@@ -122,6 +122,7 @@ async function setup(
       location,
       connectors: [],
       commandPaths: new Map(),
+      connectorFiles: new Map(),
       agents: [],
       integrations: [radar],
       providers: [],

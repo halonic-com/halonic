@@ -22,6 +22,11 @@ export interface TrustSubjectInput {
   readonly location: string;
   /** The absolute path each connector's command resolves to on this computer. */
   readonly commandPaths: ReadonlyMap<string, string>;
+  /**
+   * The hash of each workspace file each stdio connector's start names, from
+   * `connectorFiles`, read from the folder the programs run in.
+   */
+  readonly connectorFiles: ReadonlyMap<string, Readonly<Record<string, string>>>;
 }
 
 /**
@@ -34,6 +39,7 @@ export function trustSubjectOf(input: TrustSubjectInput): TrustSubject {
     location: input.location,
     ...trustContentInputOf(input.workspace, input.integrations),
     commandPaths: input.commandPaths,
+    connectorFiles: input.connectorFiles,
   };
 }
 

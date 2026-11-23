@@ -59,6 +59,7 @@ verifies("cli.doctor-workspace", () => {
       location: "/work/acme",
       fallbackName: "acme",
       commandPaths,
+      connectorFiles: new Map(),
     });
 
     expect(doctor.name).toBe("Acme");
@@ -84,6 +85,7 @@ verifies("cli.doctor-workspace", () => {
         location: root,
         fallbackName: "acme",
         commandPaths: new Map(),
+        connectorFiles: new Map(),
       });
 
     expect(doctorOf(onTheTestModel).testModelOnly).toBe(true);
@@ -99,6 +101,7 @@ verifies("cli.doctor-workspace", () => {
       location: root,
       fallbackName: "acme",
       commandPaths: new Map(),
+      connectorFiles: new Map(),
     });
     expect(doctor.name).toBe("acme");
   });
@@ -119,6 +122,7 @@ verifies("cli.doctor-workspace", () => {
       location: root,
       fallbackName: "acme",
       commandPaths: new Map(),
+      connectorFiles: new Map(),
     });
     expect(doctor.fileProblems).toBe(2);
     expect(doctor.testModelOnly).toBe(false);
@@ -149,6 +153,7 @@ verifies("cli.doctor-workspace", () => {
       location: root,
       fallbackName: "acme",
       commandPaths: new Map(),
+      connectorFiles: new Map(),
     });
 
     expect(doctor.aliases).toEqual([
@@ -180,6 +185,7 @@ verifies("cli.doctor-workspace", () => {
       location: root,
       fallbackName: "acme",
       commandPaths: new Map(),
+      connectorFiles: new Map(),
     });
 
     expect(doctor.aliases).toEqual([{ alias: "smart", provider: "anthropic" }]);
@@ -206,6 +212,7 @@ verifies("cli.doctor-workspace", () => {
       location: root,
       fallbackName: "acme",
       commandPaths: new Map(),
+      connectorFiles: new Map(),
     });
 
     expect(doctor.aliases).toEqual([
@@ -309,6 +316,7 @@ verifies("cli.doctor-secrets", () => {
       location: "/work/acme",
       fallbackName: "acme",
       commandPaths: new Map(),
+      connectorFiles: new Map(),
     });
 
     // Anthropic's key stays on the Models line, and no agent uses `unused`.
@@ -338,6 +346,7 @@ verifies("cli.doctor-secrets", () => {
       location: "/work/acme",
       fallbackName: "acme",
       commandPaths: new Map(),
+      connectorFiles: new Map(),
     }).secrets;
   }
 
@@ -435,6 +444,7 @@ verifies("app.doctor-harness-web-search", () => {
         location: root,
         fallbackName: "acme",
         commandPaths: new Map(),
+        connectorFiles: new Map(),
       });
 
     const harness = await doctorOf("id: writer\nname: Writer\nharness: codex\nmodel: research\n");

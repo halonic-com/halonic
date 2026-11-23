@@ -45,6 +45,12 @@ export interface TrustSubject {
    */
   readonly commandPaths: ReadonlyMap<string, string>;
   /**
+   * The hash of each workspace file each stdio connector's start names, by
+   * connector id, from `connectorFiles`. Required, so a change to a file the
+   * program runs asks for trust again (`workspace.trust-connector-files`).
+   */
+  readonly connectorFiles: ReadonlyMap<string, Readonly<Record<string, string>>>;
+  /**
    * The workspace's agents, as parsed from their files. Required, so the
    * program, sites and folder of each harness agent are always in the
    * fingerprint (HAL-189 stack 3c).
@@ -153,7 +159,7 @@ export type TrustCheck =
  *
  * @example
  * const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
- * const check = await trust.check({ location, connectors, commandPaths, agents, integrations, providers });
+ * const check = await trust.check({ location, connectors, commandPaths, connectorFiles, agents, integrations, providers });
  * if (check.status === "refused") return fixFiles(check.refused); // exit code 2
  * if (check.status !== "trusted") return refuse(check.fingerprint); // exit code 3
  */
@@ -322,6 +328,7 @@ function contentOf(subject: TrustSubject): TrustContent {
   return trustContent({
     connectors: subject.connectors,
     commandPaths: subject.commandPaths,
+    connectorFiles: subject.connectorFiles,
     agents: subject.agents,
     integrations: subject.integrations,
     providers: subject.providers,

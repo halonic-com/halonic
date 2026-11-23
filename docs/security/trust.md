@@ -254,10 +254,14 @@ see [the sandbox](sandbox.md#no-sandbox-no-run).
   workflows, skills and knowledge aren't in the fingerprint. They can't start a
   program, but they can steer a model. The threat model covers that under
   [model output](threat-model.md#42-model-output-and-content-b2).
-- **It doesn't read a program's code.** The fingerprint covers the command, its
-  resolved path and its arguments. A pinned program that someone replaces on
-  disk keeps its path. An unpinned one is a new download every start, and
-  the `!` line is the only warning.
+- **It reads only the workspace files a program's start names.** The
+  fingerprint covers the command, its resolved path, its arguments and the
+  bytes of each file in the workspace that they or its environment name, such
+  as `tools/server.js` in `node tools/server.js`
+  (`workspace.trust-connector-files`). Files that script loads by itself,
+  packages in `node_modules` and programs outside the workspace aren't read: a
+  pinned program that someone replaces on disk keeps its path. An unpinned one
+  is a new download every start, and the `!` line is the only warning.
 - **A yes is per workspace, not per program.** You can't trust one connector and
   not another.
 - **It doesn't confine an agent.** An agent in Claude Code or Codex runs in the

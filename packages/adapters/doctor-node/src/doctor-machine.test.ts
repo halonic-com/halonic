@@ -177,6 +177,7 @@ function studioWorkspace(baseUrl?: string): MachineWorkspace {
       location: "/work/acme",
       connectors: [],
       commandPaths: new Map(),
+      connectorFiles: new Map(),
       agents: [],
       integrations: [],
       providers: [lmStudio],

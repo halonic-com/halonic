@@ -3,7 +3,11 @@
 // they all compute one fingerprint for the same files on the same computer.
 
 import { realpath } from "node:fs/promises";
-import { type CommandSearch, commandPaths } from "@halonicjs/adapter-doctor-node";
+import {
+  type CommandSearch,
+  commandPaths,
+  workspaceConnectorFiles,
+} from "@halonicjs/adapter-doctor-node";
 import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 import {
   type TrustCheck,
@@ -115,6 +119,8 @@ export async function readWorkspaceTrust(
     integrations: version.integrations,
     location: await realpath(dir.root),
     commandPaths: await commandPaths(connectors, search),
+    // From the folder, even for a version in the history: the programs run the files there.
+    connectorFiles: await workspaceConnectorFiles(dir.root, dir.shown, connectors),
   });
   const files = new Map([
     ...connectorFiles.map(
