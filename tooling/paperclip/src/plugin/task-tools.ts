@@ -6,6 +6,7 @@ import type {
   ToolResult,
   ToolRunContext,
 } from "@paperclipai/plugin-sdk";
+import { readTask, ToolInputError } from "../task-tools/input.ts";
 import {
   type CommentView,
   limits,
@@ -22,7 +23,7 @@ import { type MetricsApi, writeMetrics } from "./metrics.ts";
  * on HAL-15920): one call each instead of a chain of curl requests to
  * Paperclip's API. `task_get` only reads; `comment` posts one comment with
  * the calling agent as its author. Neither changes a task's status, holder or
- * monitor.
+ * monitor: `set_next_step` and `finish_run` do, in next-step-tools.ts.
  */
 
 /** The part of the plugin context the task tools use, so tests can fake it. */
@@ -37,22 +38,6 @@ export interface TaskToolsApi extends MetricsApi {
 
 /** The longest comment `comment` posts; a longer one belongs in a document. */
 export const maxCommentLength = 20_000;
-
-/** A mistake in the agent's parameters: its message goes back to the agent as it is. */
-class ToolInputError extends Error {}
-
-const taskPattern = /^[A-Z][A-Z0-9]*-\d+$/;
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** `task` as an identifier such as HAL-16403 or a task id; throws for anything else. */
-export function readTask(params: unknown): string {
-  const { task } = (params ?? {}) as { task?: unknown };
-  const value = typeof task === "string" ? task.trim() : "";
-  if (!(taskPattern.test(value) || uuidPattern.test(value))) {
-    throw new ToolInputError("task must be a task identifier, such as HAL-16403, or its id.");
-  }
-  return value;
-}
 
 /** `task_get`'s parameters: the task, how many comments, and an optional document key. */
 export function readTaskGetParams(params: unknown): {
@@ -99,7 +84,12 @@ function iso(value: Date | string | null | undefined): string | null {
   return value == null ? null : new Date(value).toISOString();
 }
 
-async function findTask(ctx: TaskToolsApi, task: string, companyId: string): Promise<Issue> {
+/** The task by identifier or id; throws a `ToolInputError` when the plugin can't find it. */
+export async function findTask(
+  ctx: { readonly issues: Pick<PluginIssuesClient, "get"> },
+  task: string,
+  companyId: string,
+): Promise<Issue> {
   const issue = await ctx.issues.get(task, companyId);
   if (issue === null) {
     throw new ToolInputError(`no task ${task} in this company, or the plugin may not read it.`);
@@ -193,10 +183,18 @@ async function comment(ctx: TaskToolsApi, params: unknown, runCtx: ToolRunContex
   };
 }
 
-const handlers = { task_get: taskGet, comment } as const;
+/** A task tool's handler: a thrown `ToolInputError` goes back to the agent as it is. */
+export type TaskToolHandler<Api> = (
+  ctx: Api,
+  params: unknown,
+  runCtx: ToolRunContext,
+) => Promise<ToolResult>;
 
-/** Registers `task_get` and `comment` as the manifest declares them, each call counted. */
-export function registerTaskTools(ctx: TaskToolsApi): void {
+/** Registers each handler as the manifest declares it, each call counted by tool and outcome. */
+export function registerCounted<Api extends MetricsApi & { readonly tools: TaskToolsApi["tools"] }>(
+  ctx: Api,
+  handlers: Readonly<Record<string, TaskToolHandler<Api>>>,
+): void {
   for (const [name, handler] of Object.entries(handlers)) {
     const declaration = manifest.tools?.find((tool) => tool.name === name);
     if (declaration === undefined) {
@@ -225,4 +223,9 @@ export function registerTaskTools(ctx: TaskToolsApi): void {
       return result;
     });
   }
+}
+
+/** Registers `task_get` and `comment` as the manifest declares them, each call counted. */
+export function registerTaskTools(ctx: TaskToolsApi): void {
+  registerCounted(ctx, { task_get: taskGet, comment });
 }

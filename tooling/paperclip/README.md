@@ -223,10 +223,27 @@ the plugin host, so they need no key and send nothing to GitHub.
   the parameters). A plugin's comment wakes nobody, not even the task's
   holder, so the answer says to assign the task to hand it on.
 
-Neither changes a task's status, holder or monitor. Status changes
-(`set_next_step`, `finish_run`) come in a later pull request: a plugin's
-task change skips Paperclip's disposition guard, assignment wake and
-monitor rules, so how they write is Liam's call on HAL-16988.
+Neither changes a task's status, holder or monitor. These two do, each with
+a comment in the same change:
+
+- **`set_next_step(task, status, comment, monitor?, blockedBy?)`**: keeps
+  the task with the calling agent: `in_progress` with a monitor
+  (`{ inMinutes, ref, service?, maxChecks? }`, 15 to 1,440 minutes, 1 to 8
+  checks, 4 by default), or `blocked` by 1 to 10 tasks. It refuses any
+  handoff.
+- **`finish_run(task, outcome, comment, to?, blockedBy?)`**: `done`,
+  `handoff` to another agent by name or url key (status `todo`, which wakes
+  them), or `blocked`. A handoff or a block clears the task's monitor.
+  Paperclip stops the calling run as the task changes hands, so it is the
+  run's last call.
+
+Both send the change through the host method `issues.setDisposition`
+(capability `issues.disposition.write`, the local server patch from
+halonic-com/server#31 and #32). It makes the change through Paperclip's
+own `PATCH /api/issues/:id` as the calling agent's run, on the task that
+run holds, so the disposition guard, the wakes, the monitor rules and the
+answers are the route's own (Liam's decision B on HAL-16988). A refusal
+comes back with the route's status, code and message.
 
 ## gh guard
 
