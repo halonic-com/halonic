@@ -23,6 +23,9 @@ When a task is created or changes and its title or the first 4,000 characters of
 - Given a task the plugin labelled `D1`,
   when someone changes it to `D4`, or takes `D1` off, and then its title changes,
   then the plugin makes no call and writes nothing.
+- Given a new task,
+  when someone labels it `D3` while Haiku answers `D1`,
+  then the plugin reads the task again before writing and leaves `D3`.
 - Given a task the plugin labelled `D2`,
   when its description grows into a bigger change and Haiku answers `D4`,
   then the plugin changes `D2` to `D4`.

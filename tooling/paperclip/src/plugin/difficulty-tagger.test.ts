@@ -83,6 +83,19 @@ verifies("paperclip.difficulty-tagger", () => {
       }
     });
 
+    test("stops at a hand label set while Haiku answered", async () => {
+      const task = taggedTask([]);
+      const handLabel = () => {
+        task.labels = [{ id: "label-D3", name: "D3" }];
+      };
+      const { tagger, labels, logs } = taggerHarness(task, [
+        { ...answer("code", "D1", false), meanwhile: handLabel },
+      ]);
+      await tagger.onIssueEvent(tagEvent("issue.created"));
+      expect(labels()).toEqual(["D3"]);
+      expect(logs).toEqual([]);
+    });
+
     test("relabels its own label when the description changes", async () => {
       const task = taggedTask([]);
       const { tagger, labels } = taggerHarness(task, [

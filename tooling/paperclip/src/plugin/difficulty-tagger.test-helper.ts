@@ -65,9 +65,12 @@ export function tagEvent(
   };
 }
 
-/** What Haiku answers next: a JSON answer as text, or an HTTP status. */
+/**
+ * What Haiku answers next: a JSON answer as text, or an HTTP status.
+ * `meanwhile` runs while Haiku answers, as a person changing the task would.
+ */
 export type HaikuAnswer =
-  | { text: string; inputTokens?: number; outputTokens?: number }
+  | { text: string; inputTokens?: number; outputTokens?: number; meanwhile?: () => void }
   | { status: number };
 
 /** A JSON answer the way the prompt asks for it. */
@@ -131,6 +134,7 @@ export function taggerHarness(
     if ("status" in next) {
       return new Response("{}", { status: next.status });
     }
+    next.meanwhile?.();
     const usage = { input_tokens: next.inputTokens ?? 900, output_tokens: next.outputTokens ?? 40 };
     return Response.json({ content: [{ type: "text", text: next.text }], usage });
   };

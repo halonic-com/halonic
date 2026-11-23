@@ -80,14 +80,30 @@ async function reportStop(ctx: TaggerApi, companyId: string, spend: MonthSpend):
   await ctx.state.set(spendKey(companyId), { ...spend, stopReported: true });
 }
 
-/** Writes the wanted difficulty labels, keeping every other label. Returns whether it did. */
+/**
+ * Writes the wanted difficulty labels, keeping every other label. Returns
+ * whether it did. It reads the task again first, because a person may have
+ * set a label while Haiku answered, and theirs wins.
+ */
 async function writeLabels(
   ctx: TaggerApi,
   deps: TaggerDeps,
   settings: ActiveTaggerSettings,
-  issue: Issue,
+  task: {
+    readonly id: string;
+    readonly companyId: string;
+    readonly written: readonly string[] | undefined;
+  },
   wanted: readonly string[],
 ): Promise<boolean> {
+  const issue = await ctx.issues.get(task.id, task.companyId);
+  const labelNames = (issue?.labels ?? []).map((label) => label.name);
+  if (issue === null || !taggerOwnsLabels(labelNames, task.written)) {
+    return false;
+  }
+  if (sameLabels(wanted, labelNames.filter(isDifficultyLabel))) {
+    return true;
+  }
   const name = issue.identifier ?? issue.id;
   const meta = { companyId: issue.companyId };
   const next = nextLabelIds(
@@ -189,9 +205,9 @@ async function handle(
   const answer = await askAndCount(ctx, deps, settings, issue, input);
   // Unreadable: keep the labels and don't ask again until the text changes. A refused call asks again.
   const wanted = answer === undefined ? undefined : labelsFor(answer);
-  const current = labelNames.filter(isDifficultyLabel);
-  if (wanted !== undefined && !sameLabels(wanted, current)) {
-    if (!(await writeLabels(ctx, deps, settings, issue, wanted))) {
+  if (wanted !== undefined) {
+    const task = { id: issue.id, companyId: issue.companyId, written: record?.written };
+    if (!(await writeLabels(ctx, deps, settings, task, wanted))) {
       return;
     }
   }
