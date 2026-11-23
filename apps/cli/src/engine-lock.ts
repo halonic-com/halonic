@@ -2,7 +2,7 @@
 // names the command that holds it, so another command refused by it can say
 // which one, and how to stop it when it runs until stopped.
 
-import type { LockHeldError } from "@halonicjs/adapter-fs-node";
+import type { EngineLockHeldError } from "@halonicjs/adapter-workspace-engine-node";
 import { KindedError } from "@halonicjs/std";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
@@ -32,10 +32,10 @@ type EngineHolderEntry = (typeof engineHolders)[EngineHolder];
  * stopped says how to stop it, since waiting would never end (HAL-14299).
  *
  * @example
- * engineLockRefusal(new LockHeldError(file, { …, holder: "routines watch" }));
+ * engineLockRefusal(new EngineLockHeldError(new LockHeldError(file, { …, holder: "routines watch" })));
  * // KindedError "halonic routines watch is running for this workspace (process 4242)."
  */
-export function engineLockRefusal(error: LockHeldError): KindedError {
+export function engineLockRefusal(error: EngineLockHeldError): KindedError {
   const record = error.holder;
   const holder = engineHolderOf(record?.holder);
   const message =

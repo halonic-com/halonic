@@ -1,9 +1,10 @@
 // The engine for one workspace on this computer, without anything only the
 // CLI says or starts (HAL-14217): the CLI's `cli-local-engine.ts` and the
-// agent host's engine role open it with their own parts. Its runs, blobs and timers
-// live in the person's profile folder, in the workspace's own folders, so
-// `halonic runs` and the Studio read the same runs. It is a plain function of
-// its inputs (Liam, HAL-3895) and never reads a printer, argv or `process`.
+// agent host's engine role open it with their own parts. Its runs, blobs
+// and timers live in the person's profile folder, in the folders
+// `engineStateFolders` finds, so `halonic runs` and the Studio read the
+// same runs. It is a plain function of its inputs (Liam, HAL-3895) and
+// never reads a printer, argv or `process`.
 // What doesn't depend on Node (the executor on a scheduler of run timers, the
 // routines, the close order) is `assembleEngine` of `@halonicjs/engine`
 // (HAL-8792), which the desktop Studio shares; this file passes it the Node
@@ -19,7 +20,6 @@
 // Its runs read `workspace`, or, for an engine over several versions,
 // the version each run records (`versions`, HAL-6084).
 
-import { realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { randomLeaseToken } from "@halonicjs/adapter-coordination-node/node";
@@ -29,6 +29,7 @@ import {
   FolderRunStore,
   type HeldLock,
   holdLock,
+  LockHeldError,
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import type { GitRunnerOptions } from "@halonicjs/adapter-git";
@@ -68,25 +69,20 @@ import type {
   ScheduledTimer,
   Secrets,
 } from "@halonicjs/ports";
-import {
-  type ProfileEnvironment,
-  type ProfileFolder,
-  profileFolder,
-  type WorkspaceFolders,
-  workspaceFolders,
-} from "@halonicjs/profile";
+import type { ProfileEnvironment } from "@halonicjs/profile";
 import { randomIds, systemClock } from "@halonicjs/std";
 import {
   type LoadedWorkspace,
   type LocalIntegrationInput,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
+import { EngineLockHeldError } from "./engine-lock-held.ts";
+import { type EnginePlace, engineStateFolders } from "./engine-state-folders.ts";
 import {
   type LocalRunConnectorsInput,
   localRunConnectors,
   type RunConnectorsEngine,
 } from "./local-run-connectors.ts";
-import { webCryptoDigest } from "./web-crypto-digest.ts";
 
 /**
  * What an error the engine handles itself came from: the scheduler, the
@@ -102,16 +98,6 @@ export type EngineErrorSource =
   | "harness-host"
   | "harness-bridge"
   | "host-lock";
-
-/** Where the engine's workspace is: its real path, and its folders in the profile. */
-export interface EnginePlace {
-  readonly location: string;
-  readonly folders: WorkspaceFolders;
-  /** The profile folder, where the approvals of listed tools and the trust records are kept. */
-  readonly profile: ProfileFolder;
-  /** Where the profile folder was found from. */
-  readonly environment: ProfileEnvironment;
-}
 
 /** The harness host an engine runs harness agents on, open while the engine is. */
 export interface EngineHarnessHost {
@@ -275,8 +261,7 @@ export interface LocalEngine {
  * because this one stalled for longer than the lock's stale limit, the
  * engine reports it and closes.
  *
- * @throws LockHeldError when another engine is open on the workspace; it is
- *   the only error of that type this throws
+ * @throws EngineLockHeldError when another engine is open on the workspace
  * @throws when the workspace folder doesn't exist, or `HALONIC_HOME` or the
  *   home folder isn't an absolute folder
  *
@@ -286,14 +271,12 @@ export interface LocalEngine {
  * await engine.close();
  */
 export async function openLocalEngine(input: OpenLocalEngineInput): Promise<LocalEngine> {
-  const location = await realpath(input.workspaceRoot);
-  const { environment } = input;
-  const profile = profileFolder(environment);
-  const folders = await workspaceFolders(profile, location, webCryptoDigest);
+  const place = await engineStateFolders(input.workspaceRoot, input.environment);
+  const { folders } = place;
   // Private like the run files in it, which hold prompts and model output (HAL-5215).
   await makePrivateFolder(folders.folder);
   let engine: LocalEngine | undefined;
-  const lock = await holdLock(join(folders.folder, engineLockFile), {
+  const lock = await holdEngineLock(join(folders.folder, engineLockFile), {
     ...(input.holder === undefined ? {} : { holder: input.holder }),
     onLost: (error) => {
       input.reportError(error, "engine-lock");
@@ -301,7 +284,6 @@ export async function openLocalEngine(input: OpenLocalEngineInput): Promise<Loca
     },
     onRenewError: (error) => input.reportError(error, "engine-lock"),
   });
-  const place: EnginePlace = { location, folders, profile, environment };
   let programFolders: ProgramFolders | undefined;
   let harnessHost: EngineHarnessHost | undefined;
   try {
@@ -327,6 +309,19 @@ export async function openLocalEngine(input: OpenLocalEngineInput): Promise<Loca
         await lock.release();
       }
     }
+    throw error;
+  }
+}
+
+/** {@link holdLock} on the engine's lock, refusing with {@link EngineLockHeldError} when another engine holds it. */
+async function holdEngineLock(
+  file: string,
+  options: Parameters<typeof holdLock>[1],
+): Promise<HeldLock> {
+  try {
+    return await holdLock(file, options);
+  } catch (error) {
+    if (error instanceof LockHeldError) throw new EngineLockHeldError(error);
     throw error;
   }
 }

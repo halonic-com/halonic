@@ -3,21 +3,17 @@
 // with the CLI's own parts (HAL-14217). Those are what only the CLI says or
 // starts: the lock's refusal in the CLI's words, the next step a refused
 // send names, the profile check of `HALONIC_HOME`, the listed tools'
-// approvals given with `halonic tools`,
-// and the harness host (`openLocalHarnessHost`, HAL-7747), which runs an
-// agent in a harness, in a worktree of its own in the profile, and keeps
-// what the run changed as a proposal there, which `halonic proposals`
-// reviews (HAL-6477). `halonic routines watch` still refuses a harness
-// agent. Sending is off for every connector unless a person switched it on
-// with `halonic google allow-sending`.
+// approvals given with `halonic tools`, and the harness host
+// (`openLocalHarnessHost`, HAL-7747), which runs an agent in a harness, in
+// a worktree of its own in the profile, and keeps what the run changed as a
+// proposal there, which `halonic proposals` reviews (HAL-6477).
+// `halonic routines watch` still refuses a harness agent. Sending is off
+// for every connector unless a person switched it on with
+// `halonic google allow-sending`.
 
+import { FileToolApprovalStore, FileTrustStore, FolderRunStore } from "@halonicjs/adapter-fs-node";
 import {
-  FileToolApprovalStore,
-  FileTrustStore,
-  FolderRunStore,
-  LockHeldError,
-} from "@halonicjs/adapter-fs-node";
-import {
+  EngineLockHeldError,
   type EnginePlace,
   type LocalEngine,
   type LocalRunConnectorsInput,
@@ -168,8 +164,8 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
         }),
     });
   } catch (error) {
-    // The shared engine throws this only for its own lock: another engine is open.
-    if (error instanceof LockHeldError) throw engineLockRefusal(error);
+    // Another engine is open on the workspace.
+    if (error instanceof EngineLockHeldError) throw engineLockRefusal(error);
     throw error;
   }
 }

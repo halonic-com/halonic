@@ -4,18 +4,12 @@
 // finds the same folder from Rust, so a run started in one shows in the
 // other. `halonic runs` reads this store, and `halonic run` will write it.
 
-import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { FolderRunStore } from "@halonicjs/adapter-fs-node";
+import { engineStateFolders } from "@halonicjs/adapter-workspace-engine-node";
 import type { RunStore } from "@halonicjs/ports";
-import {
-  type ProfileEnvironment,
-  type ProfilePlatform,
-  profileFolder,
-  workspaceFolders,
-} from "@halonicjs/profile";
+import type { ProfileEnvironment, ProfilePlatform } from "@halonicjs/profile";
 import { checkProfileHome } from "./profile-home.ts";
-import { webCryptoDigest } from "./web-crypto-digest.ts";
 
 /**
  * The profile's system name for a Node `process.platform`: `win32` is
@@ -47,7 +41,8 @@ export function nodeProfileEnvironment(): ProfileEnvironment {
 }
 
 // The CLI's commands take the digest from here, with the profile environment.
-export { webCryptoDigest } from "./web-crypto-digest.ts";
+// It is the engine's own, so the folders they name are the ones the engine uses.
+export { webCryptoDigest } from "@halonicjs/adapter-workspace-engine-node";
 
 /**
  * The run store of the workspace in `workspaceRoot`: its own runs, not a
@@ -70,7 +65,6 @@ export async function openWorkspaceRuns(
   workspaceRoot: string,
   environment: ProfileEnvironment = nodeProfileEnvironment(),
 ): Promise<RunStore> {
-  const realRoot = await realpath(workspaceRoot);
-  const folders = await workspaceFolders(profileFolder(environment), realRoot, webCryptoDigest);
+  const { folders } = await engineStateFolders(workspaceRoot, environment);
   return new FolderRunStore(folders.runsFolder());
 }

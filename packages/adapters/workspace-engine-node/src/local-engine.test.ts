@@ -2,7 +2,7 @@ import { cp, mkdtemp, readFile, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FolderDefinitionStore, LockHeldError } from "@halonicjs/adapter-fs-node";
+import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { WorkflowRuns } from "@halonicjs/app";
 import type { HarnessRunsOptions, RunProposalFolders } from "@halonicjs/engine";
 import { type HttpClient, noKeyOrigins, type Secrets } from "@halonicjs/ports";
@@ -10,9 +10,10 @@ import type { ProfileEnvironment } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import { EngineLockHeldError } from "./engine-lock-held.ts";
+import type { EnginePlace } from "./engine-state-folders.ts";
 import {
   type EngineHarnessHost,
-  type EnginePlace,
   type LocalEngine,
   type OpenLocalEngineInput,
   openLocalEngine,
@@ -137,10 +138,10 @@ verifies("cli.local-engine", () => {
 });
 
 verifies("cli.local-engine-lock", () => {
-  it("refuses a second engine on the workspace with the lock adapter's own error", async () => {
+  it("refuses a second engine on the workspace with the engine's own lock error", async () => {
     await openEngine();
 
-    await expect(openEngine()).rejects.toBeInstanceOf(LockHeldError);
+    await expect(openEngine()).rejects.toBeInstanceOf(EngineLockHeldError);
   });
 
   it("names its holder in the lock with the words its caller gives", async () => {
