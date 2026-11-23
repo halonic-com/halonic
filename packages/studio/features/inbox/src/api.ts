@@ -63,7 +63,12 @@ export {
   type RequestWorkflow,
   type StartedRun,
 } from "./request/inbox-requests.ts";
-export type { HeldAgent, HeldAgents } from "./sandbox/on-hold-setup-source.ts";
+export type {
+  HeldAgent,
+  HeldAgentRef,
+  HeldAgents,
+  HeldAgentsList,
+} from "./sandbox/on-hold-setup-source.ts";
 export type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 export type {
   InboxSetupSource,

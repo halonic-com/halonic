@@ -1,12 +1,27 @@
 import type { RunSummary } from "@halonicjs/events";
-import type { AgentListing, AgentsHost } from "@halonicjs/studio-feature-agents/api";
-import type { HeldAgent, HeldAgents } from "@halonicjs/studio-feature-inbox/api";
+import {
+  type AgentListing,
+  type AgentsHost,
+  WHERE_IT_RUNS_STEP,
+} from "@halonicjs/studio-feature-agents/api";
+import type {
+  HeldAgent,
+  HeldAgentRef,
+  HeldAgents,
+  HeldAgentsList,
+} from "@halonicjs/studio-feature-inbox/api";
 
 /** What {@link WorkspaceHeldAgents} reads of the workspace's agents. */
 export type HeldAgentsHost = Pick<
   AgentsHost,
   "list" | "placement" | "routinesOf" | "referencesTo" | "subscribe"
 >;
+
+/** What one agent's read came to: held, not held, or its choice couldn't be read. */
+type AgentRead =
+  | { readonly kind: "held"; readonly agent: HeldAgent }
+  | { readonly kind: "not-held" }
+  | { readonly kind: "unread"; readonly agent: HeldAgentRef };
 
 /** What {@link WorkspaceHeldAgents} reads of the workspace's runs. */
 export interface HeldAgentRuns {
@@ -56,7 +71,8 @@ export function newestScheduledRun(
  * this computer choice is on hold, once a routine ran it since its file changed. That run ran in the
  * sandbox, since the engine never lets a held agent out, so the run history says so without the
  * engine recording the hold. It reads the agents host and the run history and nothing else, and
- * tells the rows of a change to either, a saved Where it runs choice included.
+ * tells the rows of a change to either, a saved Where it runs choice included. An agent whose choice
+ * can't be read is named apart, so a row already listed for it keeps its state.
  *
  * @example
  * services.provide(HeldAgentsService, new WorkspaceHeldAgents(agentsHost, runs));
@@ -64,21 +80,26 @@ export function newestScheduledRun(
 export class WorkspaceHeldAgents implements HeldAgents {
   readonly #agents: HeldAgentsHost;
   readonly #runs: HeldAgentRuns;
+  /** The card's **Review and confirm** opens the agent's page at Where it runs. */
+  readonly reviewStep = WHERE_IT_RUNS_STEP;
 
   constructor(agents: HeldAgentsHost, runs: HeldAgentRuns) {
     this.#agents = agents;
     this.#runs = runs;
   }
 
-  async list(): Promise<readonly HeldAgent[]> {
+  async list(): Promise<HeldAgentsList> {
     const scheduled = (await this.#runs.list())
       .map((run) => run.summary)
       .filter((run) => run.kind === "run" && run.trigger?.routineId !== undefined);
     // No routine ran anything: no agent can have a row, so no agent's choice is read.
-    if (scheduled.length === 0) return [];
+    if (scheduled.length === 0) return { held: [], unread: [] };
     const agents = await this.#agents.list();
-    const held = await Promise.all(agents.map((agent) => this.#heldAgent(agent, scheduled)));
-    return held.filter((agent) => agent !== undefined);
+    const reads = await Promise.all(agents.map((agent) => this.#read(agent, scheduled)));
+    return {
+      held: reads.flatMap((read) => (read.kind === "held" ? [read.agent] : [])),
+      unread: reads.flatMap((read) => (read.kind === "unread" ? [read.agent] : [])),
+    };
   }
 
   subscribe(listener: () => void): () => void {
@@ -88,18 +109,24 @@ export class WorkspaceHeldAgents implements HeldAgents {
     };
   }
 
-  async #heldAgent(
-    agent: AgentListing,
-    runs: readonly RunSummary[],
-  ): Promise<HeldAgent | undefined> {
-    // An agent whose choice can't be read isn't on hold here, as on the run controls: it runs in its
-    // sandbox either way, and its Harness page says why the read failed. One broken file then never
-    // hides the other agents' rows behind an error.
-    const placement = await this.#agents.placement(agent).catch(() => undefined);
-    if (placement?.runsOn !== "on-hold") return undefined;
+  async #read(agent: AgentListing, runs: readonly RunSummary[]): Promise<AgentRead> {
+    // An agent whose choice can't be read gets no new row, as on the run controls: it runs in its
+    // sandbox either way, and its Harness page says why the read failed. It is named apart, so a
+    // row already listed for it keeps its state, and one broken file never hides the other agents'
+    // rows behind an error.
+    let placement: Awaited<ReturnType<HeldAgentsHost["placement"]>>;
+    try {
+      placement = await this.#agents.placement(agent);
+    } catch {
+      return { kind: "unread", agent: { hubId: agent.hubId, id: agent.id } };
+    }
+    if (placement?.runsOn !== "on-hold") return { kind: "not-held" };
     const run = newestScheduledRun(runs, await this.#startersOf(agent), placement.changedAt);
-    if (run === undefined) return undefined;
-    return { hubId: agent.hubId, id: agent.id, name: agent.name, since: run.startedAt };
+    if (run === undefined) return { kind: "not-held" };
+    return {
+      kind: "held",
+      agent: { hubId: agent.hubId, id: agent.id, name: agent.name, since: run.startedAt },
+    };
   }
 
   async #startersOf(agent: AgentListing): Promise<AgentStarters> {

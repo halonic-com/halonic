@@ -1,4 +1,4 @@
-import type { EngineWords, ItemRef, ViewRef } from "@halonicjs/studio-shell";
+import type { EngineWords, ItemRef, OpenItemOptions, ViewRef } from "@halonicjs/studio-shell";
 import type { SetupItem } from "./inbox-items.ts";
 
 /** One account's setup, as a setup source gives it. The Inbox makes it a {@link SetupItem}. */
@@ -72,9 +72,10 @@ export interface SetupViewProps {
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
   /**
    * Opens an item's page, such as the first run's **Continue** opening Support reply
-   * (`inbox.setup-item-open`); left out where the page can't open one.
+   * (`inbox.setup-item-open`), at a step of it when asked, such as an agent's Where it runs; left
+   * out where the page can't open one.
    */
-  readonly openItem?: ((item: ItemRef) => void) | undefined;
+  readonly openItem?: ((item: ItemRef, options?: OpenItemOptions) => void) | undefined;
   /** Says a line to a screen reader, for the answer to a press; left out where nothing listens. */
   readonly announce?: ((line: string) => void) | undefined;
 }

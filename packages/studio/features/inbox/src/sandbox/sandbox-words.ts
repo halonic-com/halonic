@@ -57,6 +57,8 @@ export const onHoldInboxWords = {
   /** `on-hold-inbox.notice`: the Notices row the Fixed row leaves; the row adds **Fixed**. */
   notice: (agent: string): string =>
     `${onHoldInboxWords.title(agent)} · ${onHoldInboxWords.line(agent)}`,
+  /** `on-hold-inbox.review`: the card's button, which opens the agent's Where it runs. */
+  review: "Review and confirm",
   /** `on-hold-inbox.name`: the source's name, for "Loading the On this computer setup". */
   name: "On this computer",
 } as const;
