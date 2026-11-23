@@ -6,6 +6,7 @@ import type {
   HarnessReadiness,
   HarnessSignIn,
 } from "@halonicjs/studio-feature-agents/api";
+import type { WatchItemTryItChanges } from "../changes/try-it-changes.ts";
 import type { AgentPlacementChoices } from "./agent-placement-choices.ts";
 import type { NewAgentsParts } from "./new-agent-placing.ts";
 
@@ -78,4 +79,9 @@ export interface WorkspaceAgentsParts {
     readonly askTrust: () => Promise<"trusted" | "declined">;
     readonly workspaceName: string;
   };
+  /**
+   * Watches an item's changes to review for the Try it line (`studio.try-it-changes`). Absent
+   * where the workspace has no review service, so no line shows.
+   */
+  readonly tryItChanges?: WatchItemTryItChanges;
 }

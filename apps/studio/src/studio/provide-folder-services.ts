@@ -9,6 +9,7 @@ import {
 } from "@halonicjs/adapter-fs-tauri";
 import {
   InstructionTrustService,
+  reviewServiceKey,
   type ServiceRegistry,
   type WorkspaceScope,
   workspaceFilesKey,
@@ -56,6 +57,7 @@ import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { agentHostPlacement } from "../agents/agent-host-placement.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { provideChangesServices } from "../changes/provide-changes-services.ts";
+import { type WatchItemTryItChanges, watchTryItChanges } from "../changes/try-it-changes.ts";
 import { provideCheckComputer } from "../check-computer/provide-check-computer.ts";
 import { answerChatOn, chatExecutorOf } from "../engine/answer-chat-on.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
@@ -155,6 +157,17 @@ export function provideFolderServices(
     new WorkspaceProviderCheck(new ShellHttpClient(ipc), trust),
   );
   const transport = tauriAgentHostTransport(window);
+  // Try it and Test read the assistant's changes you haven't accepted yet, and say so (flow-assistant 4.4).
+  const tryItChanges: WatchItemTryItChanges = (itemPath, listener) =>
+    watchTryItChanges(
+      {
+        review: services.get(reviewServiceKey),
+        workspaceName: name,
+        reportError: (error) => console.error("Reading the changes to review for Try it", error),
+      },
+      itemPath,
+      listener,
+    );
   provideWorkspaceRuns(services, { ipc, files, window, remoteEngine, transport, trust }, location);
   // One service for both ends: the run page saves a person's trust, and the engine checks it.
   const instructionTrust = new InstructionTrustService({
@@ -217,6 +230,7 @@ export function provideFolderServices(
         services.get(VersionDialogService).open(paths, { makesLive: options?.name }),
       // Send checks first, so the trust check opens; the engine still refuses with `denied`.
       trust: { mayStart: () => trust.mayStartNow(), askTrust, workspaceName: name },
+      tryItChanges,
     }),
   );
   // An agent on hold gets its own Inbox row; without the agent host nothing can be on hold.
@@ -242,6 +256,7 @@ export function provideFolderServices(
       engine,
       askTrust,
       onTrusted,
+      tryItChanges,
     }),
   );
   services.provide(

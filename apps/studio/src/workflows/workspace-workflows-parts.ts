@@ -1,4 +1,5 @@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
+import type { WatchItemTryItChanges } from "../changes/try-it-changes.ts";
 import type { PageRuns } from "../engine/page-refusal.ts";
 
 /** What `WorkspaceWorkflows` needs of the workspace's files, events and runs. */
@@ -52,4 +53,9 @@ export interface WorkspaceWorkflowsParts {
     /** What it can start: an agent in a harness program, and a run's `stdio` connectors. */
     readonly pageRuns: PageRuns;
   };
+  /**
+   * Watches an item's changes to review for the line above the tests (`studio.try-it-changes`).
+   * Absent where the workspace has no review service, so no line shows.
+   */
+  readonly tryItChanges?: WatchItemTryItChanges;
 }

@@ -22,6 +22,7 @@ import type {
   NewAgentStep,
   ThisComputerChoice,
   TrashedAgent,
+  TryItChanges,
 } from "@halonicjs/studio-feature-agents/api";
 import { loopRefusal } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, loadWorkspace, modelAliases } from "@halonicjs/workspace";
@@ -351,6 +352,13 @@ export class WorkspaceAgents implements AgentsHost {
   async liveState(ref: AgentRef): Promise<AgentLiveState> {
     const { path } = await this.#find(ref);
     return (await this.#parts.liveness?.(path)) ?? "live";
+  }
+
+  /** Watches the agent's changes to review for Try it; nothing to watch without the review service. */
+  watchTryItChanges(ref: AgentRef, listener: (changes: TryItChanges) => void): () => void {
+    const watch = this.#parts.tryItChanges;
+    if (watch === undefined) return () => {};
+    return watch(() => this.filePath(ref), listener);
   }
 
   /** The path of the agent's file; throws `not_found` when the agent isn't there. */
