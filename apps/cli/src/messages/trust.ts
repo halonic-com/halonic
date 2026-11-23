@@ -256,7 +256,7 @@ export const trustMessages = defineMessages("trust", {
    */
   notCommitted: (files: readonly string[]) =>
     dimmed(
-      phrase`These saved changes aren't committed, so runs don't use them and this check doesn't cover them: ${files.join(", ")}. Commit them, then run halonic trust again.`,
+      phrase`Uncommitted changes aren't checked, because runs don't use them: ${files.join(", ")}. Commit them, then run halonic trust again.`,
     ),
   alreadyTrusted: (name: string, trustedOn: string) =>
     phrase`${name} is already trusted on this computer. Nothing changed since ${trustedOn}.`,

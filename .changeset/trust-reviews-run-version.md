@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-`halonic trust` now reviews the version that `halonic run` starts, which is the latest commit. It also names the saved files that aren't committed yet, because trusting doesn't cover them.
+`halonic trust` now checks the version `halonic run` starts, the latest commit. It also names the files with uncommitted changes, which the check doesn't cover.

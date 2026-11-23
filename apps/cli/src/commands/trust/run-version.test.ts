@@ -86,7 +86,7 @@ async function checkOfAcme(opener?: OpenWorkspaceHistory) {
 }
 
 const notCommittedLine = (files: string) =>
-  `These saved changes aren't committed, so runs don't use them and this check doesn't cover them: ${files}. Commit them, then run halonic trust again.`;
+  `Uncommitted changes aren't checked, because runs don't use them: ${files}. Commit them, then run halonic trust again.`;
 
 verifies("cli.commands.trust.run-version", () => {
   it(
@@ -157,14 +157,14 @@ verifies("cli.commands.trust.run-version", () => {
   );
 
   it(
-    "says nothing about saved changes when everything is committed",
+    "says nothing about uncommitted changes when everything is committed",
     async () => {
       writeAcme();
       await commitAcme();
 
       const { io } = await checkOfAcme();
 
-      expect(io.stderr.join("\n")).not.toContain("aren't committed");
+      expect(io.stderr.join("\n")).not.toContain("Uncommitted changes");
     },
     gitTimeout,
   );
