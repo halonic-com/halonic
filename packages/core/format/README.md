@@ -213,6 +213,12 @@ deployments:
   no provider key, which would run on your own sign-in, fails `halonic validate` at its `harness`
   (`users-many-subscription`, requirement `workspace.many-users-subscription`). The deploy and
   the run start refuse it with the same code.
+- With `mode: many`, `meter: config` and a `cost` limit that stops, a model without a `price`
+  would count no cost, so the limit would never stop it. Every agent that could call one (its
+  alias or a fallback has no price, it names `provider/model`, or a harness agent names no model)
+  fails `halonic validate` (`users-many-unpriced-model`, requirement
+  `workspace.many-users-unpriced-model`), and a run that uses it doesn't start. A model that
+  really costs nothing gets `price: { input: 0, output: 0 }`.
 - A limit has a `unit` (`runs`, `steps`, `tokens`, `cost` or `harnessMinutes`), an `amount` above
   zero, a `period` (`day`, `month`, `run` or `step`) and an `action` at the limit (`stop`, the
   default, or `notify`). Two limits on the same unit and period fail (`users-limit-repeated`).
