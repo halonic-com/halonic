@@ -18,6 +18,8 @@ import {
   FolderDefinitionStore,
   heldLockRenewEveryMs,
 } from "@halonicjs/adapter-fs-node";
+import type { LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
+import { engineLockFile } from "@halonicjs/adapter-workspace-models";
 import { RunHistory, WorkflowRuns } from "@halonicjs/app";
 import { approveAllShown, checkConnectorTools } from "@halonicjs/app/listed-tools";
 import {
@@ -33,7 +35,6 @@ import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type LocalEngineInput, openLocalEngine } from "./cli-local-engine.ts";
-import { engineLockFile, type LocalEngine } from "./local-engine-host.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns, webCryptoDigest } from "./workspace-runs.ts";
 

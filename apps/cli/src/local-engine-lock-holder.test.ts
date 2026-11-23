@@ -6,13 +6,14 @@ import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import type { LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
+import { engineLockFile } from "@halonicjs/adapter-workspace-models";
 import { noKeyOrigins, runLockFormat } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { type EngineHolder, openLocalEngine } from "./cli-local-engine.ts";
-import { engineLockFile, type LocalEngine } from "./local-engine-host.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 

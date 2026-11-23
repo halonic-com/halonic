@@ -7,6 +7,7 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
+import type { LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
 import { ConnectorFactories, WorkflowRuns } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
 import {
@@ -26,7 +27,6 @@ import {
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { openLocalEngine } from "../cli-local-engine.ts";
-import type { LocalEngine } from "../local-engine-host.ts";
 import type { LocalHarnessInput, LocalHarnessParts } from "../local-harness-host.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
 import { noSavedSending } from "./no-saved-sending.ts";

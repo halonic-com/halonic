@@ -8,6 +8,11 @@
 // it (Liam, HAL-4349).
 
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
+import type {
+  LocalEngine,
+  LocalRunConnectorsInput,
+} from "@halonicjs/adapter-workspace-engine-node";
+import type { RoutineEngine, RoutineTicks } from "@halonicjs/engine";
 import type { HttpClient, Secrets, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -25,9 +30,7 @@ import { engineErrorReporter } from "./engine-error-reporter.ts";
 import { accessReporter, waitingReporter } from "./engine-reporters.ts";
 import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
-import type { LocalEngine, RoutineEngine, RoutineTicks } from "./local-engine-host.ts";
 import { computerIntegrationMachine, computerPluginMachine } from "./local-integration-machine.ts";
-import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import type { Message } from "./messages/define.ts";
 import { runMessages } from "./messages/run.ts";
 import { openLocalIntegration } from "./open-local-integration.ts";

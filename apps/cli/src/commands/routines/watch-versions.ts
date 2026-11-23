@@ -9,6 +9,7 @@
 // live (`app.saved-local-only`): a watch that started without it refuses
 // the next run, and a running run's connectors, as for a new version.
 
+import type { TrustedVersion } from "@halonicjs/adapter-workspace-engine-node";
 import {
   LiveRoutines,
   type LiveVersion,
@@ -30,7 +31,6 @@ import {
 } from "@halonicjs/workspace";
 import { approvedIntegrations } from "../../approved-integrations.ts";
 import { OwnLineError } from "../../command.ts";
-import type { TrustedVersion } from "../../local-run-connectors.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { runMessages } from "../../messages/run.ts";
