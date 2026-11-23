@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/assistant",
+  "private": true,
+  "type": "module",
+  "description": "The Build chat's tools and rules: what the Assistant may read, check and change in a workspace.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "elena",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
