@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-16617 asks for this change, from words check C731 (HAL-16608), rows 51, 54 and 55. The team decides it under the HAL-2282 rule, since it rewords messages that are already there. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G2CRdja6rfad6/Jyg4j+r+l/YDt+KD5OutjborzyxYUdzneoZUhTv6nqYOPtue/KowvPqk4GeNTmvqMSxUN7Aw==
 
 ## What changes
 
