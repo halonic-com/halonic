@@ -3,6 +3,7 @@
 - Task: HAL-16478
 - Approval: found in the first real-PR run of `ready_for_review` on HAL-16478, which Chief asked for there; the reviewer signs this note
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:u6x2S9NLp16XAThnJQa+9T+0nLhfDFsaTVLuU7/bmidgEBmfyG1e4S9jx5BkqnTZXTeFxMioaJ+oNTM6ovzQBw==
 
 ## What changes
 
