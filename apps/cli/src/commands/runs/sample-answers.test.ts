@@ -109,6 +109,7 @@ verifies("cli.sample-answers", () => {
         "",
         "✓ Support reply finished in 18 s.",
         "  Sent nothing",
+        "  Ending: Draft a reply",
       ]);
       expect(json.sampleAnswers).toBe(true);
     });
