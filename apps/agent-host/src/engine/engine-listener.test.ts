@@ -136,28 +136,13 @@ verifies("agent-host.engine-listener", () => {
 
     it("refuses a body over 1 MiB with 413", async () => {
       const started = await start();
-      const body = "x".repeat(1024 * 1024 + 1);
-      const status = await new Promise<number>((resolve, reject) => {
-        const sent = request(
-          `${started.listener.url}/api/runs`,
-          {
-            method: "POST",
-            setHost: false,
-            agent: false,
-            headers: {
-              host: `127.0.0.1:${started.port}`,
-              authorization: `Bearer ${started.token}`,
-              "content-type": "application/json",
-            },
-          },
-          (response) => {
-            response.resume();
-            resolve(response.statusCode ?? 0);
-          },
-        );
-        // The listener may answer and close before the whole body is sent.
-        sent.on("error", reject);
-        sent.end(body);
+      // Declared, not sent: the server refuses on the length before reading,
+      // and a client still writing a body it closed on gets a reset on Windows.
+      const status = await statusOf(`${started.listener.url}/api/runs`, "POST", {
+        host: `127.0.0.1:${started.port}`,
+        authorization: `Bearer ${started.token}`,
+        "content-type": "application/json",
+        "content-length": String(1024 * 1024 + 1),
       });
       expect(status).toBe(413);
     });
