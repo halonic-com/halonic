@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16610 (from flow check C732 on HAL-16609, a follow-up to C724 and #5311)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1qZaX+wylwHXi8wr5Wsqj1wab+mHoC69fMViEbDNgmXPrezBqMR1PpwgkDeYlxdMSjKDNstPSu/54Bmi7gFLCg==
 
 Since #5311 the git guard's `filter_not_run` refusal says to press Review in the header to trust
 the workspace when that would run the person's own git filter. That sentence is only for the log:
