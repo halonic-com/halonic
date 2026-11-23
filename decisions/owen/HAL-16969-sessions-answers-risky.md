@@ -3,6 +3,7 @@
 - Task: HAL-16969
 - Approval: plan approved by Liam on HAL-16968; the protocol details (session version apart from message version, pushed `sessions`) approved by Liam on HAL-16973
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GPj0p8bbl+eB2IO4bG5g4JT1/tzA/8HMYO0a9hFpcwhLZ4F+h3NiHl7ZIUkwbj8C5iJTk/BMAkCfVzlPUiDBAg==
 
 ## What changes
 
