@@ -13,6 +13,7 @@
 - `release.yml`: a new Linux job, `wsl-image`, builds and checks the image from the tag's commit, as a 7-day artifact, with no cache. `studio` needs it and builds with `-Image`; `sign-test` and `sign-windows` download it and pack with `-Image`; `sign-test` checks the image is installed. It holds no secret, and the image isn't a release file of its own: it reaches users only inside an installer the board has released. No approval gate changes.
 - `installer.nsi`: page 1 says "Uses about 290 MB" instead of 200 (the 92 MB image on top), because CI fails when the size is off by a quarter. The installer download grows from about 95 MB to about 190 MB, as the board was told.
 - New requirement `studio.installer-wsl-image`, with tests.
+- `tooling/check/src/test/ci-desktop-hourly.test.ts`: `wsl-image` joins the hourly macOS and Windows set next to `wsl-runtime`, as a Linux job built for Windows, because the hourly installer run needs the image. The guard's own code and trust roots don't change.
 
 ## Why
 
@@ -24,3 +25,4 @@ Open before the first release that ships it: the image carries Debian's per-pack
 
 - studio.installer-wsl-image
 - .github/
+- tooling/check/
