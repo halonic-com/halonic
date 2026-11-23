@@ -2891,6 +2891,14 @@ jobs:
             fi
           done
           exit 1
+      # The Kotlin plugins' JVM tests (HAL-16643), after the build, which
+      # writes the Tauri Gradle files they compile against. They need no Rust
+      # libraries, so this builds no Rust again.
+      - name: Kotlin unit tests
+        working-directory: apps/studio/src-tauri/gen/android
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          ./gradlew :app:testUniversalDebugUnitTest
       # For trying a pull request's build on a phone or an emulator.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

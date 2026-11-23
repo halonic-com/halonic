@@ -30,7 +30,7 @@ pub async fn phone_open_tailscale<R: Runtime>(webview: Webview<R>) -> bool {
 
 /// Runs one of the Kotlin plugin's commands, only while the window is on
 /// the app's own page. A plugin call that fails reads as not opened.
-pub async fn open<R: Runtime>(webview: &Webview<R>, screen: &'static str) -> bool {
+pub(crate) async fn open<R: Runtime>(webview: &Webview<R>, screen: &'static str) -> bool {
     // The capability keeps the served Studio out; this keeps a page the
     // window has since left out too, as for `tunnel_send`.
     if !on_app_page(webview) {
