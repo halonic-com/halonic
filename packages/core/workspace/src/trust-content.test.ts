@@ -339,7 +339,7 @@ verifies("workspace.trust-content", () => {
           id: "password",
           reason: "the address has a user name or password in it",
         },
-        { kind: "connector", id: "sneaky", reason: "the URL has a backslash before its query" },
+        { kind: "connector", id: "sneaky", reason: "the address has a backslash (\\) in it" },
       ]);
       expect(JSON.stringify(content)).not.toContain("pw");
     });

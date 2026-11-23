@@ -103,7 +103,7 @@ verifies("workspace.trust-providers", () => {
       });
       expect(content.refused).toEqual([
         { kind: "provider", id: "a", reason: "the address has a user name or password in it" },
-        { kind: "provider", id: "b", reason: "the URL has a backslash before its query" },
+        { kind: "provider", id: "b", reason: "the address has a backslash (\\) in it" },
       ]);
       expect(content.providers).toBeUndefined();
       expect(JSON.stringify(content)).not.toContain("pw");

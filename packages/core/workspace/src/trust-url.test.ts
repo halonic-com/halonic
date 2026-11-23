@@ -40,7 +40,7 @@ verifies("workspace.trust-content", () => {
 
   it("refuses a backslash before the query, which some parsers read as another server", () => {
     expect(trustUrl("https://evil.test\\@mcp.acme.test/")).toEqual({
-      refused: "the URL has a backslash before its query",
+      refused: "the address has a backslash (\\) in it",
     });
     expect(trustUrl("https:\\\\evil.test/mcp")).toHaveProperty("refused");
     expect(trustUrl("https://mcp.acme.test/v1\\..\\admin")).toHaveProperty("refused");
@@ -63,7 +63,7 @@ verifies("workspace.trust-content", () => {
 
   it("refuses an http or https URL without //", () => {
     expect(trustUrl("https:ops:pw@mcp.acme.test/")).toEqual({
-      refused: "the URL has no // after its scheme",
+      refused: "the address is missing the // after http: or https:",
     });
   });
 });
@@ -79,7 +79,7 @@ verifies("workspace.trust-url-hidden-characters", () => {
   ])("refuses a URL with %s, which a URL parser drops", (_, url) => {
     expect(trustUrl(url)).toEqual({
       refused:
-        "the URL has a hidden character, such as a line break, or a space at its start or end",
+        "the address has a hidden character, such as a line break, or a space at its start or end",
     });
   });
 });
