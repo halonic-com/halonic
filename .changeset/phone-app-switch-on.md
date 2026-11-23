@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-The Android app now pairs with a computer and shows your paired computers, the connection's state with a warning banner when it's stale, and each agent's larger tile and a prompt box that says why it's off while the phone can't reach the computer; a phone with nothing paired and a remembered address still connects to it as before.
+The Android app can now pair with a computer and list your paired computers. It shows the connection's state, with a warning when what you see may be out of date, and a larger tile for each agent. While the phone can't reach the computer, the prompt box says why you can't send. A phone with nothing paired that remembers an address still connects to it, as before.
