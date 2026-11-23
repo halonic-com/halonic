@@ -3,6 +3,7 @@
 - Approval: Liam chose option B of Owen's plan on HAL-14217 (a target package of its own for the harness wiring); Julian reviews it on HAL-16907, Mateo checks it there because Liam wrote it, and Liam and Julian sign as the two guardians, because `lib/layout.ts` is a trust root
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cGng8G4vjgwnx8Xu1RnTqbCdDZW3mFbOxX1XENtl2sZ33ThtP2wKBjx9EUn2jhuWdwN3WgXwpfplPQJhVGn+BA==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:n1HsA1XMEnHo5ZJvoGLV2eMZhDzTN9Doecv5WsdTZNjztesBwuuVGzASBl9jaRW4hzXu8NyliiT/Pk7YZZ82Dw==
 - Task: HAL-16907
 
 ## What changes
