@@ -1,4 +1,7 @@
-import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
+import {
+  AgentHostProgramCopies,
+  type AgentHostTransport,
+} from "@halonicjs/adapter-agent-host-client";
 import {
   ConnectorFactories,
   ProgramCopyUnavailableError,
@@ -62,8 +65,9 @@ export interface StudioRunConnectorsInput {
  *
  * A run's connectors come from the version it read (`versions`), checked for trust on that
  * read, so the trust covers that version's connector files and their commands. Their programs
- * start in the workspace folder, also for a run of the live version: the page can't make a copy
- * at the run's commit as the CLI does yet (HAL-14229 follows that up). Without a grant
+ * start in the workspace folder for a run of the saved files, and for a run of the live version
+ * in the agent host's copy of the workspace at its commit, as the CLI's do (HAL-16260), released
+ * once the run's connectors have closed. Without a grant
  * the connector is created without one, and the agent host refuses to start its program, as the
  * CLI's `stdio` factory does. A person is never asked here: trust is granted on the workspace's
  * own page.
@@ -75,7 +79,7 @@ export interface StudioRunConnectorsInput {
 export function studioRunConnectors(input: StudioRunConnectorsInput): FolderRunConnectors {
   return new FolderRunConnectors({
     factories: new ConnectorFactories([agentHostConnectorFactory(input.transport)]),
-    programFolders: workspaceFolder(input.folder, { liveRuns: input.versions !== undefined }),
+    programFolders: programFoldersOf(input),
     // A workspace names the secrets its connectors get, so never Halonic's own or a plugin's.
     context: { secrets: workspaceSecrets(input.secrets), tokens: input.tokens, http: input.http },
     // The version the run read; without `versions`, the files as they are now, not as the engine
@@ -87,11 +91,15 @@ export function studioRunConnectors(input: StudioRunConnectorsInput): FolderRunC
           ? await loadWorkspace(input.definitions)
           : (await input.versions.loadedOf(run)).workspace;
       const checked = await input.trust.checkLoaded(workspace);
+      const workingFolders = harnessWorkingFolders(workspace);
       return {
         connectors: Object.values(definitionsOf(workspace, run.hubId).connectors),
         trust: checked.status === "trusted" ? checked.grant : null,
-        workingFoldersOf: (root) =>
-          resolveWorkingFolders(input.folder, root, harnessWorkingFolders(workspace)),
+        // In a copy, under the copy: the shell resolves only the workspace folder's own paths.
+        workingFoldersOf: async (root) =>
+          run.version.reads === "saved-files"
+            ? await resolveWorkingFolders(input.folder, root, workingFolders)
+            : workingFolders.map((each) => joinedUnder(root, each)),
         // The agent host starts only `stdio` connectors, never a plugin's backend or a local
         // integration, so the page lists no sheet hosts: such a connector isn't local here
         // (`workspace.local-only-sheet-hosts`).
@@ -205,12 +213,15 @@ export async function resolveWorkingFolders(
   root: string,
   relative: readonly string[],
 ): Promise<string[]> {
-  const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
   return await Promise.all(
-    relative.map(
-      async (each) => (await folder.locationOf(each)) ?? [root, ...each.split("/")].join(separator),
-    ),
+    relative.map(async (each) => (await folder.locationOf(each)) ?? joinedUnder(root, each)),
   );
+}
+
+/** `relative`, a workspace path, under `root`, with the separator `root` uses. */
+function joinedUnder(root: string, relative: string): string {
+  const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
+  return [root, ...relative.split("/")].join(separator);
 }
 
 /** What a run's connector call checks at the engine's side-effect boundary. */
@@ -247,25 +258,53 @@ const sendingOff: SendingSettings = {
 };
 
 /**
- * The workspace folder as the place programs start in; there is no copy to make or to release.
- * Without `liveRuns`, a run of the live version is refused, never started in the saved files in
- * its place, as the CLI's program folders refuse it.
+ * Where a run's programs start: the workspace folder for a run of the saved files, with nothing to
+ * release, and the agent host's copy of the workspace at its commit for a run of the live version,
+ * never the workspace folder in its place. Without `versions`, a run of the live version is
+ * refused, as the CLI's program folders refuse it.
  */
-function workspaceFolder(
-  folder: Pick<FolderReader, "locationOf">,
-  { liveRuns }: { readonly liveRuns: boolean },
+function programFoldersOf(
+  input: Pick<StudioRunConnectorsInput, "transport" | "folder" | "versions" | "reportError">,
 ): RunProgramFolders {
   return {
     folderFor: async (version) => {
-      if (version.reads !== "saved-files" && !liveRuns) {
+      if (version.reads !== "saved-files" && input.versions === undefined) {
         throw new ProgramCopyUnavailableError(
           version.commit,
           new Error("Studio runs only the saved files, so it makes no copy at a commit."),
         );
       }
-      const path = await folder.locationOf();
-      if (path === null) throw new Error("the workspace folder has no location");
-      return { path, release: async () => undefined };
+      const path = await workspaceLocation(input.folder);
+      if (version.reads === "saved-files") return { path, release: async () => undefined };
+      return await new AgentHostProgramCopies(input.transport, path, input.reportError).open(
+        version.commit,
+      );
     },
   };
+}
+
+/**
+ * Stops the workspace's connectors in the agent host and removes the program copies an engine that
+ * stopped left there, as the CLI's engine does when it opens. Call it once the engine lock is
+ * held, before any run starts. It never throws: an error goes to `reportError`, and the next
+ * engine tries again.
+ *
+ * @example
+ * await startProgramCopies({ transport, folder, reportError });
+ */
+export async function startProgramCopies(
+  input: Pick<StudioRunConnectorsInput, "transport" | "folder" | "reportError">,
+): Promise<void> {
+  try {
+    const path = await workspaceLocation(input.folder);
+    await new AgentHostProgramCopies(input.transport, path, input.reportError).start();
+  } catch (error) {
+    input.reportError(error);
+  }
+}
+
+async function workspaceLocation(folder: Pick<FolderReader, "locationOf">): Promise<string> {
+  const path = await folder.locationOf();
+  if (path === null) throw new Error("the workspace folder has no location");
+  return path;
 }

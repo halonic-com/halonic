@@ -8,8 +8,9 @@ import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { HarnessAgent } from "@halonicjs/engine";
 import type { BridgeApprovals, BridgeRecorder, SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { beforeAll, describe, expect, it } from "vitest";
+import { PageRunVersions, type RunVersionLoads } from "./page-run-versions.ts";
 import { openStudioHarnessHost, type StudioHarnessInput } from "./studio-harness-host.ts";
 
 const location = "/acme";
@@ -126,6 +127,45 @@ function inputOn(
 }
 
 const agent = { runId: "run_1", agentId: "coder", harness: "claude-code" } as HarnessAgent;
+
+/** The hub's own `tone` skill as saved, and as the live version has it. */
+const hubTone = "---\nname: Tone\ndescription: The hub's.\n---\nThe hub's tone.\n";
+const committedTone = "---\nname: Tone\ndescription: The hub's.\n---\nThe committed tone.\n";
+
+/** An agent of the `support` hub whose file selects the `tone` skill. */
+const withTone = {
+  runId: "run_1",
+  hubId: "support",
+  file: { instructions: "Be kind.\n", skills: ["tone"] },
+};
+const agentsFile = { name: "AGENTS.md", text: "Be kind.\n" };
+const toneFile = (text: string) => ({ name: "skills/tone/SKILL.md", text });
+
+/** A host that writes instructions, and records what each request sent. */
+function instructionsHost() {
+  const sent: unknown[] = [];
+  const digest = `sha256:${"a".repeat(64)}`;
+  const host = fakeHost({
+    "POST /v1/harnesses/instructions": (body) => {
+      sent.push(body);
+      return {
+        status: 200,
+        body: { folder: "/data/i-1", pin: { digest, files: { "AGENTS.md": digest } } },
+      };
+    },
+  });
+  return { host, sent };
+}
+
+/** `source` loaded as a run's version is, with its skills' texts. */
+async function loadedWithTexts(source: MemoryDefinitionStore) {
+  const workspace = await loadWorkspace(source);
+  const fileTexts = new Map<string, string>();
+  for (const file of filesOf(workspace, "skill")) {
+    fileTexts.set(file.path, (await source.read(file.path)) ?? "");
+  }
+  return { workspace, fileTexts };
+}
 const recorder: BridgeRecorder = { record: async () => {} };
 
 /** Opens the agent's bridge, waits for its one call to be answered, then closes it. */
@@ -252,6 +292,46 @@ verifies("studio.engine-service", () => {
         },
       ]);
       expect(open?.folder).toBe("/data/i-1");
+    });
+
+    it("pins a live run's skill as the version it read has it, not as saved since", async () => {
+      const { host, sent } = instructionsHost();
+      const atCommit = new MemoryDefinitionStore({
+        "workspace.yaml": "id: acme\nname: Acme\n",
+        "hubs/support/hub.yaml": "id: support\nname: Support\n",
+        "hubs/support/library/skills/tone/SKILL.md": committedTone,
+      });
+      const runVersions: RunVersionLoads = {
+        loadedOf: async (run) => {
+          if (run.version?.reads !== "live-version")
+            throw new Error("Only the live run reads here.");
+          return await loadedWithTexts(atCommit);
+        },
+        forget: () => {},
+      };
+      const built = await openStudioHarnessHost(inputOn(host, { runVersions }));
+      const live = {
+        ...withTone,
+        version: { reads: "live-version", commit: "4f2a9c0", versionDate: "2026-11-18" },
+      } as unknown as HarnessAgent;
+
+      await built.harnesses.instructions?.open(live);
+
+      expect(sent).toEqual([
+        expect.objectContaining({ files: [agentsFile, toneFile(committedTone)] }),
+      ]);
+    });
+
+    it("pins a chat turn's skill as saved, since a chat turn reads no version", async () => {
+      const { host, sent } = instructionsHost();
+      const input = inputOn(host);
+      const runVersions = new PageRunVersions({ saved: input.definitions, keepsRuns: true });
+      const built = await openStudioHarnessHost({ ...input, runVersions });
+      const chatTurn = { ...withTone, runId: "chat_1", version: null } as unknown as HarnessAgent;
+
+      await built.harnesses.instructions?.open(chatTurn);
+
+      expect(sent).toEqual([expect.objectContaining({ files: [agentsFile, toneFile(hubTone)] })]);
     });
 
     it("checks a run's instructions against the person's trust, for this workspace", async () => {

@@ -1,11 +1,17 @@
+import type { RunVersion } from "@halonicjs/events";
 import { s } from "@halonicjs/schema-kit";
 import { type AgentHostTransport, readAnswer } from "./transport.ts";
 
 /**
- * What the instructions come from in the engine's `HarnessAgent`: its hub and
- * the text and skills its file names. The engine's own type has more, and fits.
+ * What the instructions come from in the engine's `HarnessAgent`: its run and
+ * the version that run read, its hub, and the text and skills its file names.
+ * The engine's own type has more, and fits.
  */
 export interface InstructionsAgent {
+  /** The run the agent works in; for a chat turn, the turn's own id. */
+  readonly runId: string;
+  /** The version the run read, which its skills come from; `null` for a chat turn. */
+  readonly version: RunVersion | null;
   readonly hubId: string;
   readonly file: { readonly instructions: string; readonly skills: readonly string[] };
 }

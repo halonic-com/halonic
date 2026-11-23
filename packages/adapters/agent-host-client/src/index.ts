@@ -52,6 +52,7 @@ export { AgentHostPlacementStore } from "./placement-store.ts";
 export { AgentHostPluginRunStates, type PluginRunState } from "./plugin-run-state.ts";
 export { AgentHostPluginSecrets } from "./plugin-secrets.ts";
 export { AgentHostPluginToolCaller, type PluginToolArgs } from "./plugins.ts";
+export { AgentHostProgramCopies } from "./program-copies.ts";
 export { AgentHostProposalFolders, type ProposalFolderRun } from "./proposal-folders.ts";
 export { AgentHostRemoteControl } from "./remote-control.ts";
 export {

@@ -1,6 +1,7 @@
 // The page's engine's run connectors on the agent host (HAL-13344): started as the Library's
 // listing starts them, with the grant the person saved, and their tools offered once approved
-// there.
+// there. A live run's programs start in the agent host's copy at its commit (HAL-16260), and the
+// copies an engine that stopped left are swept as this one opens.
 
 import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import {
@@ -16,6 +17,7 @@ import { shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
 import { noHttpInStudio } from "../connect/agent-host-tool-lister.ts";
 import {
   libraryWaitingReporter,
+  startProgramCopies,
   studioListedToolApproval,
   studioRunConnectors,
 } from "../connect/studio-run-connectors.ts";
@@ -37,7 +39,11 @@ export interface RunConnectorParts {
   readonly versions: RunVersionLoads;
 }
 
-/** The runs' connectors and the Library's approvals of their tools, for one engine. */
+/**
+ * The runs' connectors and the Library's approvals of their tools, for one engine. The engine
+ * builds them once it holds the engine lock and before any run starts, so the program copies an
+ * engine that stopped left are swept here first.
+ */
 export async function openStudioRunConnectors({
   ipc,
   files,
@@ -48,17 +54,20 @@ export async function openStudioRunConnectors({
   onWaiting,
   versions,
 }: RunConnectorParts): Promise<StudioRunConnectors> {
+  const folder = new TauriFolderReader(ipc, location);
+  const reportError = (error: unknown) => console.error("A run's connector", error);
+  await startProgramCopies({ transport, folder, reportError });
   return {
     connectors: studioRunConnectors({
       transport,
       versions,
       definitions: new TauriDefinitionStore(files, location),
-      folder: new TauriFolderReader(ipc, location),
+      folder,
       trust,
       secrets: shellKeychain(ipc),
       tokens,
       http: noHttpInStudio,
-      reportError: (error) => console.error("A run's connector", error),
+      reportError,
     }),
     listedToolApproval: await studioListedToolApproval({
       definitions: new TauriDefinitionStore(files, location),

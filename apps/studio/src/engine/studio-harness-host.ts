@@ -41,7 +41,7 @@ import {
   refusingApprovals,
 } from "@halonicjs/host-harness-host";
 import type { BridgeApprovals, Clock, DefinitionSource, Digest } from "@halonicjs/ports";
-import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import type { RunVersionLoads } from "./page-run-versions.ts";
 import { type StudioKeyParts, studioProviderKeys } from "./studio-provider-keys.ts";
 
@@ -143,7 +143,7 @@ export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<
       profiles,
       instructions: new AgentHostInstructions(transport, {
         workspace: location,
-        skillTextOf: (agent, id) => skillTextOf(input.definitions, agent.hubId, id),
+        skillTextOf: (agent, id) => skillTextOf(input.definitions, input.runVersions, agent, id),
       }),
       instructionTrust: { service: input.instructionTrust, location },
       home: null,
@@ -247,21 +247,36 @@ export async function savedAgentFile(
 }
 
 /**
- * A skill's `SKILL.md` as it is saved now, as the agent's hub sees it: the
- * hub's own, else the workspace's shared one, as the CLI reads it.
+ * A skill's `SKILL.md` as the version the agent's run read has it, or as saved now without
+ * `runVersions`, as the agent's hub sees it: the hub's own, else the workspace's shared one, as
+ * the CLI reads it. So the agent's file and its skills in one pin come from one version; a chat
+ * turn, which reads no version, gets the saved files.
  *
- * @throws when the workspace has no such skill
+ * @throws when that version has no such skill
  */
 async function skillTextOf(
   definitions: DefinitionSource,
-  hubId: HarnessAgent["hubId"],
+  runVersions: RunVersionLoads | undefined,
+  agent: Pick<HarnessAgent, "runId" | "version" | "hubId">,
   skillId: string,
 ): Promise<string> {
-  const named = filesOf(await loadWorkspace(definitions), "skill").filter(
-    (file) => file.value.id === skillId,
-  );
-  const file = named.find((each) => each.hub === hubId) ?? named.find((each) => each.hub === null);
-  const text = file === undefined ? null : await definitions.read(file.path);
-  if (text === null) throw new Error(`The workspace has no skill "${skillId}".`);
+  let text: string | null | undefined;
+  if (runVersions === undefined) {
+    const file = skillFileOf(await loadWorkspace(definitions), agent.hubId, skillId);
+    text = file === undefined ? null : await definitions.read(file.path);
+  } else {
+    const { workspace, fileTexts } = await runVersions.loadedOf(agent);
+    const file = skillFileOf(workspace, agent.hubId, skillId);
+    text = file === undefined ? null : fileTexts.get(file.path);
+  }
+  if (text === null || text === undefined) {
+    throw new Error(`The workspace has no skill "${skillId}".`);
+  }
   return text;
+}
+
+/** The skill file the hub sees: its own, else the workspace's shared one. */
+function skillFileOf(workspace: LoadedWorkspace, hubId: string, skillId: string) {
+  const named = filesOf(workspace, "skill").filter((file) => file.value.id === skillId);
+  return named.find((each) => each.hub === hubId) ?? named.find((each) => each.hub === null);
 }

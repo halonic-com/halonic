@@ -207,6 +207,20 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/proposals/done",
         route(Method::Post, "/v1/proposals/done", Answer::Json),
     ),
+    // A live run's connector programs start in a copy of the workspace at its
+    // commit, which the host makes and removes (HAL-16260).
+    (
+        "POST /v1/program-copies/start",
+        route(Method::Post, "/v1/program-copies/start", Answer::Json),
+    ),
+    (
+        "POST /v1/program-copies/open",
+        route(Method::Post, "/v1/program-copies/open", Answer::Json),
+    ),
+    (
+        "POST /v1/program-copies/release",
+        route(Method::Post, "/v1/program-copies/release", Answer::Json),
+    ),
     (
         "POST /v1/proposals/compare",
         route(Method::Post, "/v1/proposals/compare", Answer::Json),
