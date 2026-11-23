@@ -11,6 +11,7 @@ import {
   type TokenStore,
   type TrustStore,
 } from "@halonicjs/ports";
+import type { HeldCopy } from "../harness/host-program-copies.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
@@ -46,6 +47,19 @@ export interface ConnectorRouteDeps {
   trustStore: TrustStore | undefined;
   /** Where the host writes what it keeps from a failure; the answer never carries it. */
   log?: (text: string) => void;
+  /**
+   * The program copies the host holds right now, which a connector may start
+   * in instead of a named workspace. `undefined` without a profile folder:
+   * then only a named workspace starts one.
+   */
+  programCopies?: { heldCopy(path: string): Promise<HeldCopy | undefined> };
+}
+
+/** A start the host allows: the factory's context, and the workspace its trust was checked on. */
+interface AllowedStart {
+  readonly context: ConnectorFactoryContext & { workspaceRoot: string };
+  /** The named workspace, or the one a program copy was made from, as a real path. */
+  readonly workspace: string;
 }
 
 const connectorFailedMessage =
@@ -65,7 +79,7 @@ const unknownConnectorMessage = "The agent host has no open connector with this 
  *   on the first call. It answers 403 `workspace_not_trusted` when the host's own
  *   trust record doesn't cover the connector as the request describes it (the
  *   grant in the request is only a claim), and starts nothing; 403 `workspace_not_named` when the
- *   workspace isn't one of the launcher's folders, 429 `too_many_connectors`
+ *   workspace isn't one of the launcher's folders or a program copy the host holds, 429 `too_many_connectors`
  *   when the table is full, 503 `host_stopping` once the host stops;
  * - `POST /v1/connectors/tools` with `{ connector }` answers its `ConnectorTool[]`;
  * - `POST /v1/connectors/call` with `{ connector, tool, args, idempotencyKey? }` answers `{ text }`,
@@ -166,10 +180,10 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
       return;
     }
     try {
-      const context = await allowedContextOf(deps, body, response);
-      if (context === undefined) return;
-      const client = deps.factory.create(configOf(body), context);
-      const id = connectors.add(client, Object.values(body.secrets));
+      const allowed = await allowedStartOf(deps, body, response);
+      if (allowed === undefined) return;
+      const client = deps.factory.create(configOf(body), allowed.context);
+      const id = connectors.add(client, Object.values(body.secrets), allowed.workspace);
       if (id === undefined) {
         // The host began stopping while the folders were checked: nothing else will close this one.
         await client.close();
@@ -186,18 +200,19 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
 }
 
 /**
- * The start's context once the host allows it: the workspace is one it was
- * given, every working folder is inside it, and the trust grant covers it.
+ * The start once the host allows it: the folder is a workspace it was given
+ * or a program copy it holds, every working folder is inside that folder, and
+ * the trust grant covers the workspace.
  *
  * @returns undefined after answering 403 when it doesn't
  */
-async function allowedContextOf(
+async function allowedStartOf(
   deps: ConnectorRouteDeps,
   body: OpenConnectorBody,
   response: Parameters<typeof sendError>[0],
-): Promise<(ConnectorFactoryContext & { workspaceRoot: string }) | undefined> {
-  const context = await contextOf(deps, body);
-  if (context === undefined) {
+): Promise<AllowedStart | undefined> {
+  const allowed = await startOf(deps, body);
+  if (allowed === undefined) {
     sendError(
       response,
       403,
@@ -206,7 +221,7 @@ async function allowedContextOf(
     );
     return undefined;
   }
-  if (context === "folder_outside") {
+  if (allowed === "folder_outside") {
     sendError(
       response,
       403,
@@ -215,7 +230,8 @@ async function allowedContextOf(
     );
     return undefined;
   }
-  if ((await checkTrustGrant(deps.trustStore, context.workspaceRoot, body)) !== undefined) {
+  // A copy is trusted as the workspace it was made from: the record names the workspace.
+  if ((await checkTrustGrant(deps.trustStore, allowed.workspace, body)) !== undefined) {
     sendError(
       response,
       403,
@@ -224,7 +240,7 @@ async function allowedContextOf(
     );
     return undefined;
   }
-  return context;
+  return allowed;
 }
 
 /**
@@ -236,18 +252,23 @@ async function allowedContextOf(
  * The host owns part of the list: it always adds the folder of the default
  * agent working folders, and refuses a folder outside the workspace.
  *
- * @returns undefined when the workspace isn't one of the launcher's folders,
- *   `"folder_outside"` when a working folder isn't inside it
+ * The workspace folder may also be a program copy the host holds right now
+ * (`HostProgramCopies`): the connector then starts in the copy, its working
+ * folders must be inside the copy, and its trust is the workspace's.
+ *
+ * @returns undefined when the folder is neither one of the launcher's folders
+ *   nor a copy the host holds, `"folder_outside"` when a working folder isn't inside it
  */
-async function contextOf(
+async function startOf(
   deps: ConnectorRouteDeps,
   body: OpenConnectorBody,
-): Promise<(ConnectorFactoryContext & { workspaceRoot: string }) | "folder_outside" | undefined> {
-  const workspaceRoot = await namedWorkspace(deps.workspaceRoots, body.workspaceRoot);
-  if (workspaceRoot === undefined) return undefined;
+): Promise<AllowedStart | "folder_outside" | undefined> {
+  const root = await rootOf(deps, body.workspaceRoot);
+  if (root === undefined) return undefined;
+  const workspaceRoot = root.copy;
   const given = await Promise.all(body.workingFolders.map(realPathOrGiven));
   if (!given.every((folder) => isInside(workspaceRoot, folder))) return "folder_outside";
-  return {
+  const context = {
     secrets: memorySecrets(body.secrets),
     tokens: deps.tokens,
     http: deps.http,
@@ -255,6 +276,19 @@ async function contextOf(
     workingFolders: [...new Set([defaultAgentsFolder(workspaceRoot), ...given])],
     trust: body.trust,
   };
+  return { context, workspace: root.workspace };
+}
+
+/**
+ * The folder the connector starts in and the workspace it belongs to, both
+ * real paths: a named workspace is both, a held copy names the workspace it
+ * was made from. `undefined` for any other folder, a released or swept copy
+ * included.
+ */
+async function rootOf(deps: ConnectorRouteDeps, folder: string): Promise<HeldCopy | undefined> {
+  const named = await namedWorkspace(deps.workspaceRoots, folder);
+  if (named !== undefined) return { copy: named, workspace: named };
+  return await deps.programCopies?.heldCopy(folder);
 }
 
 /**

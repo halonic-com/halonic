@@ -35,6 +35,7 @@
     "@halonicjs/adapter-model-mock": "workspace:*",
     "@halonicjs/adapter-model-openai": "workspace:*",
     "@halonicjs/adapter-password-scrypt": "workspace:*",
+    "@halonicjs/adapter-program-copies-node": "workspace:*",
     "@halonicjs/adapter-sandbox-host": "workspace:*",
     "@halonicjs/adapter-sandbox-srt": "workspace:*",
     "@halonicjs/adapter-scheduler-node": "workspace:*",

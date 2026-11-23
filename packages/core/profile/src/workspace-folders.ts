@@ -87,6 +87,14 @@ export interface WorkspaceFolders {
    */
   programCopiesFolder(): string;
   /**
+   * The folder for the agent host's own program copies, which Studio's
+   * window starts a live run's programs in (HAL-16260). The host can't tell
+   * whether it holds the engine lock, so it never uses
+   * {@link WorkspaceFolders.programCopiesFolder}: each side sweeps only its
+   * own folder, and neither folder holds the other.
+   */
+  hostProgramCopiesFolder(): string;
+  /**
    * The folder for the worktrees a harness run's agents work in, one per
    * top-level run (HAL-3248). Only the engine holding the workspace's
    * engine lock uses it. The agent's own folders in it are the sandbox's to
@@ -181,6 +189,9 @@ export async function workspaceFolders(
     },
     programCopiesFolder(): string {
       return joinPath(profile.platform, folder, "program-copies");
+    },
+    hostProgramCopiesFolder(): string {
+      return joinPath(profile.platform, folder, "agent-host-program-copies");
     },
     proposalWorktreesFolder(): string {
       return joinPath(profile.platform, folder, "proposal-worktrees");

@@ -19,6 +19,8 @@ export class ConnectorTable {
   private readonly connectors = new Map<string, ConnectorClient>();
   /** Each connector's secret values, which a failure's log line leaves out. Already in memory for its start. */
   private readonly secretValues = new Map<string, readonly string[]>();
+  /** Each connector's workspace, as a real path: the one its trust was checked on, also for a program copy of it. */
+  private readonly workspaces = new Map<string, string>();
   private readonly openLimit: OpenLimit;
   private stopping = false;
 
@@ -41,13 +43,19 @@ export class ConnectorTable {
    * Keeps `client` and returns its new id.
    *
    * @param secretValues - the values of the connector's own secrets, kept until it closes
+   * @param workspace - the workspace it runs for, which {@link ConnectorTable.closeWorkspace} closes it with
    * @returns undefined when the host has started stopping: the caller still owns `client` and closes it
    */
-  add(client: ConnectorClient, secretValues: readonly string[] = []): string | undefined {
+  add(
+    client: ConnectorClient,
+    secretValues: readonly string[] = [],
+    workspace?: string,
+  ): string | undefined {
     if (this.stopping) return undefined;
     const id = randomUUID();
     this.connectors.set(id, client);
     this.secretValues.set(id, secretValues);
+    if (workspace !== undefined) this.workspaces.set(id, workspace);
     return id;
   }
 
@@ -71,8 +79,19 @@ export class ConnectorTable {
     if (client === undefined) return false;
     this.connectors.delete(id);
     this.secretValues.delete(id);
+    this.workspaces.delete(id);
     await client.close();
     return true;
+  }
+
+  /**
+   * Closes every connector of `workspace` (a real path), as the program
+   * copies' `start` does before it sweeps them. One that fails to close
+   * doesn't stop the others; each is forgotten all the same.
+   */
+  async closeWorkspace(workspace: string): Promise<void> {
+    const ids = [...this.workspaces].filter(([, of]) => of === workspace).map(([id]) => id);
+    await Promise.allSettled(ids.map((id) => this.close(id)));
   }
 
   /** Closes every connector, when the host stops. One that fails to close doesn't stop the others. */

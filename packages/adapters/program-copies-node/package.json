@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/adapter-program-copies-node",
+  "private": true,
+  "type": "module",
+  "description": "Program copies of a workspace at a commit, in git worktrees: the folders a live run's programs start in, for the CLI and the agent host.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/adapter-git": "workspace:*",
+    "@halonicjs/app": "workspace:*",
+    "@halonicjs/events": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "elena",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "node"
+  }
+}
