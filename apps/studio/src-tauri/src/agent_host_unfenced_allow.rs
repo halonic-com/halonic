@@ -42,7 +42,7 @@ fn asked(route: Route, ask: impl FnOnce() -> bool) -> Result<(), HostRefusal> {
     }
     Err(HostRefusal::new(
         "declined",
-        "Nothing was saved: you didn't allow it in Halonic's own question.",
+        "Nothing was saved because the confirmation window was cancelled.",
     ))
 }
 
