@@ -95,7 +95,14 @@ verifies("files.problems.count", () => {
     const rows = [...(sheet?.querySelectorAll<HTMLElement>("button, a") ?? [])].filter((row) =>
       row.textContent?.startsWith("weekly-report"),
     );
+    // Taking the request also keeps it from waiting for a later test file: files share this
+    // module's requests in a worker (`isolate: false`).
+    const lines: number[] = [];
+    const stop = takeOpenAtLineRequests(weekly.path, (line) => lines.push(line));
     await act(async () => rows[0]?.click());
+    stop();
+
+    expect(lines).toEqual([11]);
     expect(openItem).toHaveBeenCalledWith(fileItem(weekly.path));
     expect(document.querySelector("dialog[open]")).toBeNull();
   });
