@@ -3,6 +3,7 @@
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16761 (Liam's decision: option 2)
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gSoVL/B/xNXxBStER1zCVWYhVdyuQS5S9kqw7l8Kp4PCNJXI7vSEDgOLCbdLbu76Tv4VfcvX4OsXhHwPm+ZgBQ==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:nJ9ugCx4qQ4UJym1Kdem+DI1S7gATeRpw1t168O+nxgFIfH4j1vhb88tdCO24H3L3ftL21LX1AnakDPOhm+BCQ==
 
 ## What changes
 
