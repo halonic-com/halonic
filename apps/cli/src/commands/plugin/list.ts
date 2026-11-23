@@ -166,7 +166,7 @@ async function folderChanged(install: PluginInstall | null): Promise<boolean | n
 }
 
 /**
- * "  ! The folder changed since this copy. To use your changes, run: halonic
+ * "  ! The folder changed since it was copied. To use your changes, run: halonic
  * plugin add ~/weather --update", the folder as the source column writes it
  * when a shell reads it back as it is, else its full path as one shell word.
  */

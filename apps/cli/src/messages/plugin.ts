@@ -124,7 +124,7 @@ export const pluginMessages = defineMessages("plugin", {
    * edit isn't silently ignored (C696 #3, HAL-16319). `folderWord` is the folder as one shell word.
    */
   listSourceChanged: (folderWord: string) =>
-    phrase`The folder changed since this copy. To use your changes, run: halonic plugin add ${folderWord} --update`,
+    phrase`The folder changed since it was copied. To use your changes, run: halonic plugin add ${folderWord} --update`,
   /** The heading of the list of files the fingerprint covers. */
   filesHeading: () => phrase`${pluginTrustLocationHeadings.files}`,
   /** The last line of the file list when more files follow the ones shown. */

@@ -84,7 +84,7 @@ is the reference.
   copy. Editing the folder you added it from changes nothing until you add it
   again: `halonic plugin list` says so, as "copied from ~/my-plugin on 20 Nov",
   and once you edit the folder, a line under the plugin says "The folder
-  changed since this copy" with the command to run.
+  changed since it was copied" with the command to run.
   To pick up your edits, run `halonic plugin add ./my-plugin --update`. It
   puts the new copy in place and keeps the plugin's settings and the API key
   you entered. It names the files that changed since the copy it replaces. A

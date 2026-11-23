@@ -63,7 +63,7 @@ verifies("cli.commands.runs.send", () => {
 
     expect(code).toBe(exitCode.conflict);
     expect(io.stderr).toEqual([
-      "✕ Couldn't send approve to run 0a0a0a: it's waiting for your answer to \"Allow this address?\" in the step Draft a reply, and only Studio asks that.",
+      "✕ Couldn't send approve to run 0a0a0a: it's waiting for your answer to \"Allow this address?\" in the step Draft a reply, which only Studio asks. Answer it there.",
       "  See it with halonic runs show 0a0a0a.",
     ]);
     expect(await eventsOf(asked.id)).toHaveLength(before.length);
