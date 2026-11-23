@@ -13,7 +13,7 @@ import { queueState, queueStateText } from "../pr-tools/queue-state.ts";
 import { type GitHubGet, gitHubReader } from "../pr-watcher/github.ts";
 import type { Snapshot } from "../snapshot/shape.ts";
 import { loadSnapshot, type StateApi } from "../snapshot/store.ts";
-import { readSettings, requestTimeoutMs } from "./job.ts";
+import { readSettings } from "./job.ts";
 import { manifest } from "./manifest.ts";
 import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
 
@@ -33,8 +33,18 @@ export interface ToolsApi extends MetricsApi, StateApi {
   readonly http: PluginHttpClient;
 }
 
-/** A whole tool call gives up after this long, below the host's 30 s limit. */
-export const toolTimeoutMs = 25_000;
+/**
+ * A whole tool call gives up after this long. Paperclip's tool bridge stops a
+ * call after about 15 s with a bare "Tool execution timed out", so the tool
+ * answers first with its own error (HAL-17111).
+ */
+export const toolTimeoutMs = 10_000;
+
+/**
+ * One GitHub request in a tool call. Shorter than the call, so a request that
+ * hangs fails as itself instead of the watcher's 15 s outliving the call.
+ */
+export const toolRequestTimeoutMs = 8_000;
 
 /** Rejects once `ms` have passed, so a slow GitHub can't hold the agent's run. */
 function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
@@ -84,7 +94,7 @@ async function run(
     const counted = countingGet(
       gitHubReader({
         fetch: (url, init) =>
-          ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
+          ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(toolRequestTimeoutMs) }),
         token,
       }),
     );

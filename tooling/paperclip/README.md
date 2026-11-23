@@ -161,7 +161,8 @@ worst first. Open PRs say "Not available yet" until HAL-16251.
 
 Agent tools (HAL-15920, B1) that replace a handful of `gh` calls with
 one. The first two read GitHub with GET requests only, through the same reader and
-token as the watcher, and give up after 25 s.
+token as the watcher, and give up after 10 s (each request after 8 s),
+inside the about 15 s the tool bridge gives a call.
 
 - **`pr_status(pr, repo?)`**: one pull request by number or URL, on one of
   the plugin's `repos` (the first by default). It answers with the state,
