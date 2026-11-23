@@ -11,6 +11,19 @@ import {
 const anthropic = { kind: "key", provider: "anthropic" };
 
 describe("the model choice routes", () => {
+  verifies("server.model-choice-current", () => {
+    it("answers what the default alias uses, or null, never from a cache", async () => {
+      const { server, port } = choiceSetup();
+      const sample = await send(server, "GET", "current");
+      expect(sample.headers.get("cache-control")).toBe("no-store");
+      expect(await sample.json()).toEqual({ current: { kind: "sample" } });
+      port.only().currentModel = undefined;
+      expect(await (await send(server, "GET", "current")).json()).toEqual({ current: null });
+      const post = await send(server, "POST", "current");
+      expect(post.status).toBe(404);
+    });
+  });
+
   verifies("server.model-choice-routes", () => {
     it("answers each route through the session's own service, never from a cache", async () => {
       const { server, port } = choiceSetup();

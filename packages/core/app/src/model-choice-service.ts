@@ -6,6 +6,7 @@
 
 import type { LocalModels } from "./local-models.ts";
 import type { FirstRunKeyProvider, KeyProblem, ModelChoice } from "./model-choice.ts";
+import type { CurrentModel } from "./model-choice-current.ts";
 import type { ChoiceChange, ChoiceProblem } from "./model-choice-edits.ts";
 import type { TestOutcome } from "./model-choice-reply.ts";
 
@@ -128,7 +129,32 @@ export type ModelChoiceSaved =
       readonly keySaved: boolean;
       /** Why, in plain words for the log; never holds the key. */
       readonly reason: string;
+    }
+  | {
+      readonly ok: false;
+      /** The host saves only files without changes of their own, and some had them: nothing was written. */
+      readonly failed: "not-committed";
+      readonly keySaved: boolean;
+      /** The workspace paths with changes that aren't committed, such as `models.yaml`. */
+      readonly files: readonly string[];
+      readonly reason: string;
     };
+
+/**
+ * What a host's save throws when it saves only files without changes of their own and some of the
+ * choice's files had them, as `halonic serve` does (HAL-14808, D3). Continue then answers
+ * `not-committed` with the files, so the screen can name them.
+ */
+export class ChoiceFilesNotCommitted extends Error {
+  /** The workspace paths with changes that aren't committed, such as `models.yaml`. */
+  readonly files: readonly string[];
+
+  constructor(files: readonly string[], message: string) {
+    super(message);
+    this.name = "ChoiceFilesNotCommitted";
+    this.files = files;
+  }
+}
 
 /**
  * Tests a model choice and saves it, for the first run's Pick a model screen.
@@ -150,6 +176,8 @@ export interface ModelChoiceService {
   preview(testId: string): Promise<ModelChoicePreview | undefined>;
   /** Which models Ollama on this computer has downloaded, for the local option's state line. */
   localModels(): Promise<LocalModels>;
+  /** What the `default` alias uses now, for Settings › Models' Model row (`currentModel`). */
+  current(): Promise<CurrentModel | undefined>;
   /**
    * Saves the tested choice: the key, then the files, then the trust, but the
    * trust only when the files lead to `shownFingerprint`. The test's key is

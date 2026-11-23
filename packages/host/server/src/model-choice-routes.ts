@@ -55,6 +55,7 @@ const endpoints = [
   "POST line-facts",
   "POST continue",
   "GET local-models",
+  "GET current",
   "GET key-saved/",
   "GET preview/",
 ] as const;
@@ -85,9 +86,20 @@ function refuseOtherSite(request: Request): ServerError | null {
   return site === null || site === "same-origin" ? null : serverErrors.fromOtherSite;
 }
 
-/** What a failed Continue tells the browser: the step and whether the key was saved, never the reason's words. */
+/** A choice file as a workspace names it: `models.yaml`, `workspace.yaml` or `providers/<name>.yaml`. */
+const choiceFilePattern =
+  /^(?:models\.yaml|workspace\.yaml|providers\/[a-z0-9][a-z0-9-]{0,62}\.yaml)$/;
+
+/**
+ * What a failed Continue tells the browser: the step and whether the key was saved, never the
+ * reason's words. Files with uncommitted changes are named, so the screen can say which; only a
+ * choice file's own workspace path passes, never a path of the host's.
+ */
 function savedAnswer(saved: ModelChoiceSaved): unknown {
-  return saved.ok ? saved : { ok: false, failed: saved.failed, keySaved: saved.keySaved };
+  if (saved.ok) return saved;
+  const answer = { ok: false, failed: saved.failed, keySaved: saved.keySaved };
+  if (saved.failed !== "not-committed") return answer;
+  return { ...answer, files: saved.files.filter((file) => choiceFilePattern.test(file)) };
 }
 
 export interface ModelChoiceRoutes {
@@ -178,6 +190,7 @@ export function createModelChoiceRoutes({
       const models = await service.localModels();
       return answer(models.kind === "not-found" ? { kind: "not-found" } : models);
     },
+    "GET current": async ({ service }) => answer({ current: (await service.current()) ?? null }),
     "GET key-saved/": async ({ argument, service }) => {
       const provider = readKeyProvider(argument);
       if (provider === null) {

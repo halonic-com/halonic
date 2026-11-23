@@ -10,9 +10,11 @@ import {
   type ModelChoice,
   testTimeLimitMs,
 } from "./model-choice.ts";
+import { type CurrentModel, currentModel } from "./model-choice-current.ts";
 import { type ChoiceEdits, type ChoiceProblem, choiceEdits } from "./model-choice-edits.ts";
 import { modelTestRequest, type TestResult, testOutcome } from "./model-choice-reply.ts";
 import {
+  ChoiceFilesNotCommitted,
   type ChoiceKey,
   choiceKey,
   type ModelChoiceFileReads,
@@ -135,6 +137,10 @@ export class FirstRunModelChoice implements ModelChoiceService {
     return this.#parts.localModels();
   }
 
+  current(): Promise<CurrentModel | undefined> {
+    return currentModel(this.#parts.files);
+  }
+
   async keySaved(provider: FirstRunKeyProvider): Promise<boolean> {
     const edits = await this.#edits({ kind: "key", provider });
     const name = edits.ok ? edits.value.secretName : undefined;
@@ -202,28 +208,28 @@ export class FirstRunModelChoice implements ModelChoiceService {
         };
       }
     }
-    const written = await this.#write(files, settle);
-    if (written !== undefined) return { ok: false, failed: "write", keySaved, reason: written };
+    const failure = await this.#write(files, settle);
+    if (failure !== undefined) return writeFailed(failure.cause, keySaved);
     return { ok: true, changes, trusted: await this.#trust(fingerprint) };
   }
 
   /**
    * Changes the files as one undo step and saves them. When the save fails, it takes the step back,
-   * so the choice isn't left waiting for autosave. Returns why it failed, or `undefined`.
+   * so the choice isn't left waiting for autosave. Returns what the save threw, or `undefined`.
    */
   async #write(
     files: ChoiceEdits["files"],
     settle: () => Promise<void>,
-  ): Promise<string | undefined> {
+  ): Promise<{ readonly cause: unknown } | undefined> {
     if (files.length === 0) return undefined;
     const texts = Object.fromEntries(files.map((file) => [file.path, file.text]));
     const undo = this.#parts.change("Updated model alias default", texts);
     try {
       await settle();
       return undefined;
-    } catch (error) {
+    } catch (cause) {
       undo();
-      return reasonOf(error);
+      return { cause };
     }
   }
 
@@ -307,6 +313,14 @@ function problemReason(problem: ChoiceProblem): string {
   return problem.kind === "unreadable"
     ? `Halonic couldn't read ${problem.file}.`
     : `${problem.file} is set up for another address or type.`;
+}
+
+/** Continue's answer when saving the files threw `cause`: `not-committed` names the files. */
+function writeFailed(cause: unknown, keySaved: boolean): ModelChoiceSaved {
+  const reason = reasonOf(cause);
+  return cause instanceof ChoiceFilesNotCommitted
+    ? { ok: false, failed: "not-committed", keySaved, files: cause.files, reason }
+    : { ok: false, failed: "write", keySaved, reason };
 }
 
 function reasonOf(error: unknown): string {
