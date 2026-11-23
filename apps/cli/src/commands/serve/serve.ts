@@ -44,8 +44,9 @@ import {
 } from "../../command.ts";
 import { engineHttp } from "../../engine-http.ts";
 import { openGoogleHost } from "../../google-host.ts";
-import { plainText } from "../../messages/phrase.ts";
+import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { serveMessages } from "../../messages/serve.ts";
+import { inNpmPackage } from "../../npm-package.ts";
 import { printable } from "../../output/printable.ts";
 import { placedWarning } from "../../sandbox-gate.ts";
 import { openSecretStore } from "../../secret-host.ts";
@@ -72,8 +73,11 @@ import { servedWorkspaceFacts } from "./workspace-facts.ts";
 export interface ServeSetup extends RunSetup {
   /** Hashes and checks the sign-in password; scrypt by default. */
   readonly hasher?: PasswordHasher;
-  /** Where the built Studio page is; `apps/studio/dist/studio` next to this command by default. */
-  readonly studioFolder?: string;
+  /**
+   * Where the built Studio page is, or null for none; by default `apps/studio/dist/studio` next to
+   * this command, and none in the npm package.
+   */
+  readonly studioFolder?: string | null;
   /**
    * The Studio app the page is built from, to tell an outdated page; `apps/studio` next to this
    * command by default, and none when only `studioFolder` is given.
@@ -81,16 +85,29 @@ export interface ServeSetup extends RunSetup {
   readonly studioApp?: string;
 }
 
-/**
- * The Studio page as `pnpm --filter @halonicjs/app-studio build` leaves it.
- * `serve` reads it where it is and keeps no copy, so there is no build step
- * in this package: the page is built where it lives, and `serve` serves what
- * is there.
- */
-const builtStudioFolder = fileURLToPath(new URL("../../../../studio/dist/studio", import.meta.url));
+/** Where the built Studio page is and the app it is built from. */
+export interface StudioPlaces {
+  /** The page as `pnpm --filter @halonicjs/app-studio build` leaves it. */
+  readonly page: string;
+  /** The Studio app that build reads, to tell when the page is older than it. */
+  readonly app: string;
+}
 
-/** The Studio app that build reads, to tell when the page is older than it. */
-const studioAppFolder = fileURLToPath(new URL("../../../../studio", import.meta.url));
+/**
+ * The Studio page and app for code at `codeUrl`, in the repository; none in the npm package,
+ * which doesn't ship the page, so `serve` never looks in the folders around the package.
+ * `serve` reads the page where it is and keeps no copy, so there is no build step in this
+ * package: the page is built where it lives, and `serve` serves what is there.
+ */
+export function studioPlacesFor(npmPackage: boolean, codeUrl: string): StudioPlaces | null {
+  if (npmPackage) return null;
+  return {
+    page: fileURLToPath(new URL("../../../../studio/dist/studio", codeUrl)),
+    app: fileURLToPath(new URL("../../../../studio", codeUrl)),
+  };
+}
+
+const defaultStudioPlaces = studioPlacesFor(inNpmPackage, import.meta.url);
 
 /** The port when `--port` isn't given. */
 export const defaultPort = 4747;
@@ -204,11 +221,8 @@ async function serveVersions(
       const address = `http://localhost:${server.port}`;
       context.printAhead(serveMessages.serving(name, address).phrase);
       if (!(await passwordIsSet(context))) context.printAhead(serveMessages.noPassword().phrase);
-      if (!(await isBuilt(studioFolderOf(setup)))) {
-        context.printAhead(serveMessages.studioNotBuilt().phrase);
-      } else if (await isOutdated(setup)) {
-        context.printAhead(serveMessages.studioOutdated().phrase);
-      }
+      const studioLine = await studioPageLine(setup);
+      if (studioLine !== null) context.printAhead(studioLine);
       // Each webhook routine's address, so a routine that never starts says why (HAL-14299).
       const routines = await versions.routines.listLoaded();
       for (const line of await webhookRoutineLines(routines, context.secrets, address)) {
@@ -225,8 +239,19 @@ async function serveVersions(
   return { stopped: true, json: {} };
 }
 
-function studioFolderOf(setup: ServeSetup): string {
-  return setup.studioFolder ?? builtStudioFolder;
+function studioFolderOf(setup: ServeSetup): string | null {
+  return setup.studioFolder === undefined
+    ? (defaultStudioPlaces?.page ?? null)
+    : setup.studioFolder;
+}
+
+/** The line under the "Serving" line about the Studio page, or null when the page is there and current. */
+async function studioPageLine(setup: ServeSetup): Promise<Phrase | null> {
+  const studioFolder = studioFolderOf(setup);
+  if (studioFolder === null) return serveMessages.studioNotInPackage().phrase;
+  if (!(await isBuilt(studioFolder))) return serveMessages.studioNotBuilt().phrase;
+  if (await isOutdated(setup, studioFolder)) return serveMessages.studioOutdated().phrase;
+  return null;
 }
 
 /** Whether the Studio page's entry is there to serve. */
@@ -238,9 +263,10 @@ async function isBuilt(studioFolder: string): Promise<boolean> {
 }
 
 /** Whether the built page is older than the app it is built from, such as after a `git pull`. */
-async function isOutdated(setup: ServeSetup): Promise<boolean> {
-  const app = setup.studioApp ?? (setup.studioFolder === undefined ? studioAppFolder : undefined);
-  return app !== undefined && (await studioPageIsOutdated(studioFolderOf(setup), app));
+async function isOutdated(setup: ServeSetup, studioFolder: string): Promise<boolean> {
+  const app =
+    setup.studioApp ?? (setup.studioFolder === undefined ? defaultStudioPlaces?.app : undefined);
+  return app !== undefined && (await studioPageIsOutdated(studioFolder, app));
 }
 
 async function passwordIsSet(context: CommandContext): Promise<boolean> {
@@ -273,6 +299,7 @@ async function listenOnComputer(
   // The version served runs start from, as `halonic trust` reviews it.
   const trust = workspaceTrustGate(dir, setup.trust(), () => versions.liveVersion());
   const keys = openSecretStore(environment);
+  const studioFolder = studioFolderOf(setup);
   const ports: ServerPorts = {
     runs: startsOnLiveVersion(parts.executor, () => versions.routines.runVersion()),
     runStore: parts.runs,
@@ -310,7 +337,8 @@ async function listenOnComputer(
       }),
       agentNames: workspaceAgentNames(() => versions.live()),
     },
-    studioPage: openStudioPageFolder(studioFolderOf(setup)),
+    // With no page, `/` answers 404 and the API is served as usual.
+    ...(studioFolder === null ? {} : { studioPage: openStudioPageFolder(studioFolder) }),
     requestCounts: openDiskRequestCountStore(countFolder, parts.clock),
     errorLog: { record: logRequestFailure },
     clock: parts.clock,

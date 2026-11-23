@@ -1,5 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,6 +56,10 @@ beforeAll(async () => {
     .at(-1);
   mkdirSync(consumer);
   writeFileSync(join(consumer, "package.json"), '{ "private": true }\n');
+  // An examples folder around the installed package, where the repository's would be from
+  // `dist/cli`: the package must copy its own example, never this one.
+  cpSync(join(root, "examples/acme"), join(scratch, "examples/acme"), { recursive: true });
+  writeFileSync(join(scratch, "examples/acme/workspace.yaml"), "name: Not the package's\n");
   runOk(
     "npm",
     ["install", join(tarballs, String(tarball)), "--offline", "--no-audit", "--no-fund"],
@@ -129,4 +141,13 @@ verifies("publish.staged-cli", () => {
       stageCli(scratch, version, join(scratch, "THIRD-PARTY-NOTICES.txt"), join(scratch, "never")),
     ).rejects.toThrow("pnpm --filter @halonicjs/adapter-integration-runner build");
   });
+});
+
+verifies("publish.staged-cli-package-folders", () => {
+  it("copies the package's own example when an examples folder is around the package", () => {
+    runOk(process.execPath, [halonic(), "init", "--example", "acme", "own"], consumer);
+    expect(readFileSync(join(consumer, "own/workspace.yaml"), "utf8")).toBe(
+      readFileSync(join(root, "examples/acme/workspace.yaml"), "utf8"),
+    );
+  }, 60_000);
 });

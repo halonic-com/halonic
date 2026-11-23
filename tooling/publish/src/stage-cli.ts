@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join } from "node:path";
-import { build } from "esbuild";
+import { build, type Plugin } from "esbuild";
 
 /** What `stageCli` produced. */
 export type StagedCli = {
@@ -94,7 +94,7 @@ export async function stageCli(
 
 /** Bundles `apps/cli/src/main.ts` into `dist/cli/main.js` of the staged package. */
 async function bundleCli(cliDirectory: string, directory: string, version: string): Promise<void> {
-  const versionFile = join(cliDirectory, "src/version.ts");
+  const facts = packageFacts(cliDirectory, version);
   const result = await build({
     entryPoints: [join(cliDirectory, "src/main.ts")],
     outfile: join(directory, "dist/cli/main.js"),
@@ -107,28 +107,14 @@ async function bundleCli(cliDirectory: string, directory: string, version: strin
     banner: {
       js: 'import { createRequire as __halonicCreateRequire } from "node:module"; const require = __halonicCreateRequire(import.meta.url);',
     },
-    // Our own code, and `--version`, carry the version of this package.
-    plugins: [
-      {
-        name: "halonic-version",
-        setup(pluginBuild) {
-          pluginBuild.onLoad({ filter: /version\.ts$/ }, (args) =>
-            args.path === versionFile
-              ? {
-                  contents: `export const halonicVersion = ${JSON.stringify(version)};`,
-                  loader: "ts",
-                }
-              : undefined,
-          );
-        },
-      },
-    ],
+    plugins: [facts.plugin],
     metafile: true,
     legalComments: "none",
     logLevel: "silent",
   }).catch((error: unknown) => {
     throw new Error(`The CLI didn't build.\n${String(error)}`, { cause: error });
   });
+  facts.checkAllReplaced();
   const outside = new Set<string>();
   for (const output of Object.values(result.metafile.outputs)) {
     for (const entry of output.imports) {
@@ -140,6 +126,46 @@ async function bundleCli(cliDirectory: string, directory: string, version: strin
       `The CLI bundle imports ${[...outside].join(", ")}, which Node doesn't provide. Bundle it or declare it.`,
     );
   }
+}
+
+/**
+ * Replaces the CLI's files that differ in the package: our own code, and `--version`, carry the
+ * version of this package (`version.ts`), and code that looks for a repository folder looks only
+ * inside the package (`npm-package.ts`).
+ */
+function packageFacts(
+  cliDirectory: string,
+  version: string,
+): { plugin: Plugin; checkAllReplaced: () => void } {
+  const replacements = new Map([
+    [
+      join(cliDirectory, "src/version.ts"),
+      `export const halonicVersion = ${JSON.stringify(version)};`,
+    ],
+    [join(cliDirectory, "src/npm-package.ts"), "export const inNpmPackage = true;"],
+  ]);
+  const replaced = new Set<string>();
+  const plugin: Plugin = {
+    name: "halonic-package-facts",
+    setup(pluginBuild) {
+      pluginBuild.onLoad({ filter: /(version|npm-package)\.ts$/ }, (args) => {
+        const contents = replacements.get(args.path);
+        if (contents === undefined) return undefined;
+        replaced.add(args.path);
+        return { contents, loader: "ts" };
+      });
+    },
+  };
+  // A file renamed or no longer imported would leave the repository's value in the bundle.
+  const checkAllReplaced = (): void => {
+    const missed = [...replacements.keys()].filter((file) => !replaced.has(file));
+    if (missed.length > 0) {
+      throw new Error(
+        `The CLI bundle doesn't import ${missed.join(", ")}, so the stager couldn't set it for the package.`,
+      );
+    }
+  };
+  return { plugin, checkAllReplaced };
 }
 
 function isNodeModule(specifier: string): boolean {

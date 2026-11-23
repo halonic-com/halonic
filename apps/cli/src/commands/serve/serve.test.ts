@@ -21,7 +21,10 @@ import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { serveCommandWith } from "./command.ts";
-import type { ServeSetup } from "./serve.ts";
+import { type ServeSetup, studioPlacesFor } from "./serve.ts";
+
+/** The repository's root, from this test in `apps/cli/src/commands/serve`. */
+const repositoryRoot = join(import.meta.dirname, "../../../../..");
 
 /** The first start opens the engine and the listener from cold imports. */
 const slowStart = { timeout: 10_000 };
@@ -350,4 +353,33 @@ verifies("cli.trust-state-run-version", () => {
       state: "trusted",
     });
   }, 30_000);
+});
+
+verifies("cli.commands.serve.npm-package-page", () => {
+  it("has no Studio page or app folder in the npm package", () => {
+    expect(studioPlacesFor(true, import.meta.url)).toBeNull();
+  });
+
+  it("reads the page and the app from apps/studio in the repository", () => {
+    const places = studioPlacesFor(false, import.meta.url);
+    expect(places?.page).toBe(join(repositoryRoot, "apps/studio/dist/studio"));
+    expect(places?.app).toBe(join(repositoryRoot, "apps/studio"));
+  });
+
+  it("starts without a Studio page folder, says the page isn't in the package, and answers 404 at /", async () => {
+    await trustAcme();
+    const { io } = startServeWith(
+      { ...acmeRunsSetup(acmeRuns), studioFolder: null },
+      "--port",
+      "0",
+    );
+    await waitUntil("the server to print three lines", () => io.stdout.length >= 3, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    expect(io.stdout[2]).toBe(
+      "The Studio page doesn't come with the npm package, so the address shows no page.",
+    );
+    expect((await fetch(`${address}/`)).status).toBe(404);
+    expect((await fetch(`${address}/api/hello`)).status).toBe(200);
+  });
 });
