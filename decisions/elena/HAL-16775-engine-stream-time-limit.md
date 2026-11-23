@@ -3,6 +3,7 @@
 - Task: HAL-16775
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16775 (conditions 1 and 2 of the #4178 review on HAL-14852); Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cQ63Gj3gQrQI3sLJLDog9z1iNhFSySiF5rVZDLLv4kRr2qk4fdF476naRPln7iJS83hc0zZCl8VZCnAI4i/cAQ==
 
 ## What changes
 
