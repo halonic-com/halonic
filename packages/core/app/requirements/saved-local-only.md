@@ -18,7 +18,7 @@ When a workspace with history starts a run from its live version, and the live v
   then the run is still local only, until the change is made live.
 - Given Acme's live version has Local only off and the saved `workspace.yaml` has an error on line 2,
   when the person runs `halonic run`,
-  then it's refused as `invalid_input`: "The saved workspace.yaml has an error on line 2, so Halonic can't tell whether Local only is on. Nothing started."
+  then it's refused as `invalid_input`: "The saved workspace.yaml has an error on line 2, so Halonic can't tell whether Local only is on."
 - Given `halonic routines watch` is going on Acme with Local only off,
   when the person saves Local only on,
   then the next routine run is refused with "turns local only on or off", and so is a connector start of a run that was already going.

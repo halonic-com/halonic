@@ -42,10 +42,18 @@ The new words:
 
 > "The saved workspace.yaml has an error on line 4, so Halonic can't tell whether Local only is on."
 
-`engine-service-saved-local-only.test.ts` expects the new words. No test, example or requirement
+The refusal moved to `@halonicjs/app` with #5366 (HAL-16406, merged while this was in review), so
+the CLI gives the same words, after its own lead "✕ Couldn't run …:", which says so too. The
+example of `app.saved-local-only` changes the same way, line 2 in place of line 4.
+
+`engine-service-saved-local-only.test.ts`, the app's `saved-local-only.test.ts` and the CLI's
+`run-workspace-saved-local-only.test.ts` expect the new words. No test, example or requirement
 goes, and none is skipped.
 
 ## Covers
 
 - studio.engine-service
+- app.saved-local-only
 - apps/studio/src/engine/engine-service-saved-local-only.test.ts
+- packages/core/app/src/saved-local-only.test.ts
+- apps/cli/src/run-workspace-saved-local-only.test.ts

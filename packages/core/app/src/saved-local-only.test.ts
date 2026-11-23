@@ -84,7 +84,7 @@ verifies("app.saved-local-only", () => {
       ).rejects.toMatchObject({
         kind: "invalid_input",
         message: expect.stringMatching(
-          /^The saved workspace\.yaml has an error on line \d+, so Halonic can't tell whether Local only is on\. Nothing started\.$/u,
+          /^The saved workspace\.yaml has an error on line \d+, so Halonic can't tell whether Local only is on\.$/u,
         ),
       });
     });
