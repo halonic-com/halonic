@@ -205,6 +205,18 @@ export interface AssistantNavigation {
 export const AssistantWorkspaceService: ServiceKey<AssistantWorkspace> =
   serviceKey<AssistantWorkspace>("settings.assistant-workspace");
 
+/**
+ * The Settings › Assistant settings, for the Assistant feature to read from
+ * {@link HostSettingsService}: its provider, model, model call limit and the rest. Only Settings
+ * changes them.
+ */
+export {
+  assistantPrefs,
+  type ReasoningEffort,
+  turnLimitRange,
+} from "./assistant/assistant-prefs.ts";
+export type { AssistantProvider } from "./assistant/assistant-providers.ts";
+
 export type { UpdaterHost } from "./updater/updater-host.ts";
 export type {
   CheckFailure,
