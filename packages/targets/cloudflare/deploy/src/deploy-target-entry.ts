@@ -378,6 +378,10 @@ function itemsOf(
     .map((step) => ({ resource: { kind: resourceKinds[step.kind], name: step.name } }));
 }
 
+/**
+ * An export's counts from its manifest: one per file, so `records` counts collections, as the
+ * Worker counts what `import` read. Both sides use the same unit.
+ */
 function transferCounts(files: readonly { path: string; bytes: number }[]): DeployTransferCounts {
   const count = (prefix: string) => files.filter((f) => f.path.startsWith(prefix)).length;
   return {

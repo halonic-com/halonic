@@ -108,8 +108,9 @@ function requestOf(input: DeployInput): DeployRequest {
  * The target's deploy. When another deploy took the lock after the plan, its
  * holder is read again, so the message names them as before any question (3.7).
  * That message says nothing changed, so it's used only while no step has
- * finished; after one has (a lock lost mid-deploy, or resources created before
- * the lock was taken), the target's own failure stands.
+ * finished and the target doesn't say what still serves; otherwise (a lock
+ * lost mid-deploy, which may have written the snapshot, or resources created
+ * before the lock was taken) the target's own failure stands.
  */
 async function deployNamingHolder(
   target: DeployTarget,
@@ -124,7 +125,9 @@ async function deployNamingHolder(
       onEvent(event);
     });
   } catch (error) {
-    if (changed || (error as { code?: unknown } | null)?.code !== "deploy-locked") throw error;
+    const failure = error as { code?: unknown; live?: unknown } | null;
+    // A failure that says what still serves comes from a deploy that held the lock: not a race.
+    if (changed || failure?.code !== "deploy-locked" || failure.live !== undefined) throw error;
     const holder = await target.status(request.deployment).then(
       (status) => status.lockedBy,
       () => undefined,
