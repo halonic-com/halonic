@@ -45,6 +45,9 @@ both files, and the repository's own config is neutralised as before. The
 `trace2.*Target` row of `docs/config-keys.md` now gives that reason.
 
 The test that expected `GIT_CONFIG_NOSYSTEM=1` now expects it unset.
+An export (`git-export`) still reads neither file: its command sets
+`GIT_CONFIG_NOSYSTEM=1` itself, next to `GIT_CONFIG_GLOBAL=/dev/null`, and its
+test still expects both.
 
 ## Covers
 
