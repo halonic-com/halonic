@@ -97,7 +97,9 @@ export class RunCredentials<Binding extends RunCredentialBinding> {
   async issue(binding: Binding): Promise<string> {
     // `NaN` would make the deadline check always pass, so the credential would never expire.
     if (!Number.isFinite(binding.expiresAt) || binding.expiresAt <= this.#clock.now().getTime()) {
-      throw new Error(`Run ${binding.runId} needs a deadline still to come for a bridge credential.`);
+      throw new Error(
+        `Run ${binding.runId} needs a deadline still to come for a bridge credential.`,
+      );
     }
     const credential = encodeBase64url(this.#randomBytes(runCredentialBytes));
     const record = { digest: await sha256Hex(credential), binding, revoked: false };
