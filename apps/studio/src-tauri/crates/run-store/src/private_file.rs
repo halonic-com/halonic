@@ -45,7 +45,7 @@ pub(crate) fn read_unlinked(file: &Path) -> Result<Option<Vec<u8>>, FileRefusal>
     let Some(entry) = checked_entry(file)? else {
         return Ok(None);
     };
-    let mut opened = File::open(file)?;
+    let mut opened = open_unfollowed(file, OpenOptions::new().read(true))?;
     refuse_unless_same(&entry, &opened.metadata()?)?;
     let mut bytes = Vec::new();
     opened.read_to_end(&mut bytes)?;
@@ -90,9 +90,7 @@ pub(crate) fn is_missing(error: &io::Error) -> bool {
 
 fn open_checked(file: &Path, options: &mut OpenOptions) -> Result<File, FileRefusal> {
     let checked = checked_entry(file)?;
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(options, 0o600);
-    let opened = options.open(file)?;
+    let opened = open_unfollowed(file, options)?;
     let metadata = opened.metadata()?;
     match &checked {
         Some(entry) => refuse_unless_same(entry, &metadata)?,
@@ -102,6 +100,32 @@ fn open_checked(file: &Path, options: &mut OpenOptions) -> Result<File, FileRefu
         None => {}
     }
     Ok(opened)
+}
+
+/// Opens `file` with mode `600` for a file it creates, never following a
+/// link: a link swapped in after [`checked_entry`] looked, or one put where
+/// a log didn't exist yet, is refused by the open itself (`O_NOFOLLOW`), so
+/// a create can't make the file the link points to. Nor does it wait
+/// (`O_NONBLOCK`), so a named pipe swapped in is refused on the open file
+/// rather than holding the run's lock. A hard link swapped in is caught on
+/// the open file too. On Windows a link is caught on the open file
+/// only; the profile folder's own permissions protect the files there.
+fn open_unfollowed(file: &Path, options: &mut OpenOptions) -> Result<File, FileRefusal> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    options.open(file).map_err(|error| {
+        // `ELOOP`, or `EMLINK` on FreeBSD: the last part of the path is a link.
+        #[cfg(unix)]
+        if matches!(error.raw_os_error(), Some(libc::ELOOP | libc::EMLINK)) {
+            return FileRefusal::Linked;
+        }
+        FileRefusal::Io(error)
+    })
 }
 
 /// The entry as `symlink_metadata` gives it, `None` when there is none,
@@ -148,3 +172,7 @@ fn is_plain_with_one_name(entry: &Metadata) -> bool {
     let one_name = true;
     entry.file_type().is_file() && one_name
 }
+
+#[cfg(all(test, unix))]
+#[path = "private_file_tests.rs"]
+mod tests;

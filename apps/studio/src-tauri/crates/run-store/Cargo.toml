@@ -12,5 +12,11 @@ halonic-run-lock = { path = "../run-lock" }
 # Reads the run id of a log's first line, to tell another run's log.
 serde_json = { version = "1", default-features = false, features = ["std"] }
 
+# Only for `O_NOFOLLOW`, `O_NONBLOCK` and their errors, which the standard
+# library doesn't name: no `unsafe` code. Pinned as in `trust-store`, so it
+# adds no new code to the build.
+[target.'cfg(unix)'.dependencies]
+libc = { version = "=0.2.191", default-features = false }
+
 [lints]
 workspace = true
