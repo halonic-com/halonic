@@ -3,6 +3,7 @@
 - Task: HAL-16834
 - Approval: Liam approved this on HAL-16826 (the OpenCode harness plan, PR 1, with four conditions) and reviews it on HAL-16834, the security review of halonic#5431. A team decision with no board card (HAL-2282 rule): it narrows one key of a file format, no screen or flow.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8+qDW7HnEe/psUDEqZvGaPoNrOIIag1MDgXVkz1vN20QqHtiDqXjViQuwM88ogLWO5UH3htd3dk30cO5w9KxBQ==
 
 ## What changes
 
