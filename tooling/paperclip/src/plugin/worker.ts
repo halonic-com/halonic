@@ -10,6 +10,7 @@ import { runWatcher } from "./job.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
 import { taskEffort } from "./task-effort.ts";
+import { registerTaskTools } from "./task-tools.ts";
 import { registerTools } from "./tools.ts";
 import {
   handleWorkerAgentsRequest,
@@ -65,6 +66,7 @@ export const plugin = definePlugin({
     registerTools(ctx);
     registerReadyForReview(ctx);
     registerBoardTools(ctx);
+    registerTaskTools(ctx);
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
   },
   async onApiRequest(input) {
