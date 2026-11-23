@@ -358,6 +358,20 @@ A new port keeps every other port's version (see "The freeze").
   comes back stopped) are the same for every host, so they are pure
   functions in `core/assistant`, and an adapter can't get them wrong.
 
+## Amended: `DeployTarget` version 2
+
+_2026-11-23, decided by Liam on HAL-17139, built in HAL-17143._
+`DeployTarget` gets `accounts()`: the accounts the token reaches, with
+the token from the environment first, then the saved one, as every other
+method. It changes nothing, and rejects with `token-missing`,
+`token-inactive` or `missing-permission`. Until now only `login` listed
+accounts, so a deploy in CI, or on a second computer, couldn't learn which
+accounts its token reaches before it planned: `deployments.yaml` now keeps
+the account id (ADR 5.7), and `halonic deploy` checks it, or picks the only
+account, with this method. A new method breaks every target built against
+version 1, so the port goes to version 2 and the loader refuses a version 1
+target with its own message.
+
 ## Consequences
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a

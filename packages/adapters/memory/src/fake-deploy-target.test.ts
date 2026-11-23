@@ -1,6 +1,7 @@
 // The fake lives in @halonicjs/testing-contracts, whose code is measured in
 // this package's run (its "measuredIn"), so its tests run here.
 import type { DefinitionSource, DeployEvent, DeploymentRef, DeployRequest } from "@halonicjs/ports";
+import { deployTargetVersion } from "@halonicjs/ports";
 import {
   deployTargetContract,
   FakeDeployTarget,
@@ -171,7 +172,7 @@ verifies("contracts.fake-deploy-target", () => {
       await target.login("t-1");
       expect(target.savedTokens).toEqual(["t-1"]);
       const entry = fakeDeployTargetEntry(target);
-      expect(entry).toMatchObject({ host: "fake", version: 1 });
+      expect(entry).toMatchObject({ host: "fake", version: deployTargetVersion });
       expect(
         entry.create({
           http: { fetch: async () => new Response() } as never,
@@ -180,6 +181,25 @@ verifies("contracts.fake-deploy-target", () => {
           who: "sam@example.com",
         }),
       ).toBe(target);
+    });
+
+    it("lists every account it was given, and fails the next accounts call only", async () => {
+      const accounts = [
+        { id: "a1", name: "Acme" },
+        { id: "a2", name: "Acme" },
+      ];
+      const target = new FakeDeployTarget({ accounts });
+      expect(await target.accounts()).toEqual(accounts);
+      expect(await target.login("fake-deploy-token")).toEqual({ accounts });
+      for (const [code, kind] of [
+        ["token-missing", "unauthenticated"],
+        ["token-inactive", "unauthenticated"],
+        ["missing-permission", "denied"],
+      ] as const) {
+        target.failNextAccounts(code);
+        await expect(target.accounts()).rejects.toMatchObject({ code, kind });
+      }
+      expect(await target.accounts()).toEqual(accounts);
     });
 
     it("answers status for a deployment with nothing live", async () => {

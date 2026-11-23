@@ -2,6 +2,7 @@ import type { RunFailureKind } from "@halonicjs/events";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
 import type {
+  DeployAccount,
   DeployDone,
   DeployEvent,
   DeployedVersion,
@@ -24,6 +25,7 @@ verifies("ports.deploy-target", () => {
   typeTest("has exactly the deploy methods", () => {
     expectTypeOf<keyof DeployTarget>().toEqualTypeOf<
       | "login"
+      | "accounts"
       | "plan"
       | "deploy"
       | "status"
@@ -33,6 +35,9 @@ verifies("ports.deploy-target", () => {
       | "unlock"
       | "revokeSessions"
       | "destroy"
+    >();
+    expectTypeOf<ReturnType<DeployTarget["accounts"]>>().toEqualTypeOf<
+      Promise<readonly DeployAccount[]>
     >();
     expectTypeOf<ReturnType<DeployTarget["deploy"]>>().toEqualTypeOf<Promise<DeployResult>>();
     expectTypeOf<DeployResult["outcome"]>().toEqualTypeOf<

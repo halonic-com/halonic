@@ -16,6 +16,8 @@ import { DeployError, newestVersionNotDeployed } from "./errors.ts";
 /** What a fake Cloudflare knows. */
 export interface FakeCloudflareState {
   accounts: readonly CloudflareAccount[];
+  /** Listing the accounts throws this, as a refused `GET /accounts` would. */
+  listAccountsFails?: Error;
   /** Answers per endpoint; a missing entry means "active". */
   userToken?: TokenStatus | Error;
   accountToken?: TokenStatus | Error;
@@ -243,6 +245,7 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     },
     async listAccounts() {
       calls.push("listAccounts");
+      if (state.listAccountsFails) throw state.listAccountsFails;
       return state.accounts;
     },
     async verifyUserToken() {

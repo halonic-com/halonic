@@ -4,7 +4,7 @@ import type { HttpClient } from "./http-client.ts";
 import type { TokenStore } from "./token-store.ts";
 
 /** Version of the {@link DeployTarget} port. A breaking change bumps it and comes with an ADR. */
-export const deployTargetVersion = 1;
+export const deployTargetVersion = 2;
 
 /** One deployment from `deployments.yaml`, with where it lives on its host. */
 export interface DeploymentRef {
@@ -352,6 +352,16 @@ export interface DeployTarget {
    * Rejects with `token-inactive` or `missing-permission`.
    */
   login(token: string): Promise<{ readonly accounts: readonly DeployAccount[] }>;
+
+  /**
+   * Lists the accounts the token reaches, with the token from the environment
+   * first, then the saved one. Changes nothing. An empty list is a token that
+   * reaches no account; the caller says so. Rejects with `token-missing`,
+   * `token-inactive`, or `missing-permission` when the host refuses the list.
+   * Added in version 2, so `deploy` can pick or check the account before it
+   * plans.
+   */
+  accounts(): Promise<readonly DeployAccount[]>;
 
   /** Measures a deploy against what's live. Changes nothing and takes no lock. */
   plan(request: DeployRequest): Promise<DeployPlan>;

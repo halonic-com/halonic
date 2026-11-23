@@ -92,11 +92,11 @@ verifies("cli.deploy-target-loader", () => {
       [{ deployTarget: { ...entry, host: "other" } }, "its target serves other, not fake"],
       [
         { deployTarget: { ...entry, version: 99 } },
-        "it was built for deploy targets version 99, not 1",
+        "it was built for deploy targets version 99, not 2",
       ],
       [
         { deployTarget: { ...entry, create: () => ({ plan() {}, deploy() {} }) } },
-        "its target has no login, status, rollback, export, import, unlock, revokeSessions, destroy",
+        "its target has no login, accounts, status, rollback, export, import, unlock, revokeSessions, destroy",
       ],
     ];
     for (const [module, reason] of cases) {

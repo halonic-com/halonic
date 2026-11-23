@@ -62,6 +62,7 @@ export {
   type MakeDeployTarget,
 } from "./deploy-target.ts";
 export {
+  type AccountsFailureCode,
   FakeDeployTarget,
   type FakeDeployTargetOptions,
   fakeDeployTargetEntry,

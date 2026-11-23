@@ -15,6 +15,7 @@ export type ImportPackage = (name: string) => Promise<unknown>;
 /** Every method a {@link DeployTarget} has, checked on what a target's `create` gives. */
 const targetMethods = [
   "login",
+  "accounts",
   "plan",
   "deploy",
   "status",
