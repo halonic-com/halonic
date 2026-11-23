@@ -1,6 +1,13 @@
 import type { Usage } from "@halonicjs/events";
-import { type BridgeProvider, bridgeCallCharge, type HarnessBridgeOptions } from "@halonicjs/ports";
+import {
+  type BridgeEffort,
+  type BridgeProvider,
+  type BridgeProviderAccess,
+  bridgeCallCharge,
+  type HarnessBridgeOptions,
+} from "@halonicjs/ports";
 import { isPlainObject, KindedError } from "@halonicjs/std";
+import { effortFor } from "./effort.ts";
 import type { ReplyWatcher } from "./pass-through.ts";
 
 /** What the bridge knows of a model call before it goes out. */
@@ -10,6 +17,8 @@ export interface ModelCall {
   model: string;
   /** How many messages the request sends. */
   messages: number;
+  /** The effort the host set for the model, which the bridge sends in place of the program's. */
+  effort?: BridgeEffort;
 }
 
 /** What a reply reader found in a provider's reply. */
@@ -30,7 +39,8 @@ export interface ReplyReader extends ReplyWatcher {
  * name the model with `model`; the messages are in `messagesField`, such as
  * Anthropic's `messages` or OpenAI's `input`, where a plain text prompt
  * counts as one message. `request` is the body already parsed, as
- * `parseModelRequest` gives it.
+ * `parseModelRequest` gives it. The effort is the one `access` names for
+ * the model, if any (requirement `harness-bridge.effort`).
  *
  * @throws KindedError `invalid_input` when the request names no model
  */
@@ -38,14 +48,18 @@ export function readModelCall(
   provider: BridgeProvider,
   request: unknown,
   messagesField: "messages" | "input",
+  access: BridgeProviderAccess,
 ): ModelCall {
   if (!isPlainObject(request) || typeof request["model"] !== "string") {
     throw new KindedError("invalid_input", "The model request doesn't name a model.");
   }
+  const model = request["model"];
+  const effort = effortFor(access, model);
   return {
     provider,
-    model: request["model"],
+    model,
     messages: countMessages(request[messagesField]),
+    ...(effort === undefined ? {} : { effort }),
   };
 }
 
@@ -76,6 +90,7 @@ export async function recordModelCall(
     agent: run.agentId,
     provider,
     model,
+    ...(call.effort === undefined ? {} : { effort: call.effort }),
     messages: call.messages,
   });
   const started = performance.now();

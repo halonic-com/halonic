@@ -1,5 +1,6 @@
 import type { Placement, ProgramHarness } from "@halonicjs/engine";
 import {
+  type BridgeEffort,
   type BridgeProvider,
   type BridgeProviderAccess,
   type BridgeRecorder,
@@ -50,6 +51,8 @@ export interface BridgeAgent {
    * an alias to choose the provider's access; `undefined` when the file names none.
    */
   readonly model?: string;
+  /** The agent file's `params.reasoningEffort`, which Studio lays over its alias's; `undefined` when unset. */
+  readonly effort?: BridgeEffort;
   /**
    * Where the agent runs for this call, as the engine opens its bridge, so a
    * choice a person changes during the call can't give its bridge another
@@ -68,7 +71,11 @@ export interface OpeningAgent {
    * The agent's file as the call reads it: Studio is told its `model`, and the
    * host its `asks`, which it answers the program's own calls by.
    */
-  readonly file?: { readonly model?: string | undefined; readonly asks?: AgentAsks | undefined };
+  readonly file?: {
+    readonly model?: string | undefined;
+    readonly asks?: AgentAsks | undefined;
+    readonly params?: { readonly reasoningEffort?: BridgeEffort | undefined } | undefined;
+  };
 }
 
 /** An agent file's `asks`: who answers its program's own calls (`format.agent-asks`). */
@@ -427,12 +434,14 @@ function asksOf(agent: OpeningAgent): { asks?: AgentAsks; harness?: ProgramHarne
 /** What `servicesFor` is told of the agent: only the fields it names, so nothing else of the engine's leaks in. */
 function bridgeAgentOf(agent: OpeningAgent, runsOn: Placement): BridgeAgent {
   const model = agent.file?.model;
+  const effort = agent.file?.params?.reasoningEffort;
   return {
     runId: agent.runId,
     agentId: agent.agentId,
     harness: agent.harness,
     ...(agent.hubId === undefined ? {} : { hubId: agent.hubId }),
     ...(model === undefined ? {} : { model }),
+    ...(effort === undefined ? {} : { effort }),
     runsOn,
   };
 }

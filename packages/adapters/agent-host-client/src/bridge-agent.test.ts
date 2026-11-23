@@ -62,3 +62,27 @@ verifies("agent-host-client.bridge-agent-model", () => {
     ]);
   });
 });
+
+verifies("harness-host.bridge-effort", () => {
+  it("tells Studio the agent file's own effort", async () => {
+    const told = await toldFor({
+      runId: "run-1",
+      agentId: "writer",
+      harness: "claude-code",
+      hubId: "acme",
+      file: { model: "cheap", params: { reasoningEffort: "low" } },
+    });
+
+    expect(told).toEqual([
+      {
+        runId: "run-1",
+        agentId: "writer",
+        harness: "claude-code",
+        hubId: "acme",
+        model: "cheap",
+        effort: "low",
+        runsOn: "sandbox",
+      },
+    ]);
+  });
+});

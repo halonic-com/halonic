@@ -13,7 +13,19 @@ export const harnessBridgeServerVersion = 1;
  */
 export type BridgeProvider = "anthropic" | "openai";
 
-/** How the agent reaches one provider through the bridge. */
+/** How hard a model thinks before it replies: an agent file's or model alias's `params.reasoningEffort`. */
+export type BridgeEffort = "low" | "medium" | "high";
+
+/**
+ * How the agent reaches one provider through the bridge.
+ *
+ * Either kind may name `efforts`: the effort the host set for one of the
+ * agent's models, by the model's name at the provider (HAL-16735). The
+ * bridge sets it on a call that names exactly that model, in place of the
+ * program's own (requirement `harness-bridge.effort`), so a cheap model
+ * thinks less whichever program calls it. A call for any other model, such
+ * as Claude Code's own background calls, goes on as the program wrote it.
+ */
 export type BridgeProviderAccess =
   /**
    * With a key Halonic keeps: the bridge puts the value of the secret with
@@ -49,6 +61,7 @@ export type BridgeProviderAccess =
       baseUrl?: string;
       providerId?: string;
       models?: readonly string[];
+      efforts?: Readonly<Record<string, BridgeEffort>>;
     }
   /**
    * With the person's own subscription: the bridge passes the program's own
@@ -58,7 +71,7 @@ export type BridgeProviderAccess =
    * run counts it in `subscriptionCalls`, never as unpriced (which would hide
    * a keyed model that really lacks a price) and never towards a budget.
    */
-  | { kind: "sign-in" };
+  | { kind: "sign-in"; efforts?: Readonly<Record<string, BridgeEffort>> };
 
 /**
  * What is recorded of the bridge: the model calls and Halonic tool calls that

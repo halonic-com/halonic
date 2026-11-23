@@ -126,6 +126,7 @@ export {
   type BridgeApprovalRequest,
   type BridgeApprovals,
   type BridgeCallCharge,
+  type BridgeEffort,
   type BridgeEvent,
   type BridgeProvider,
   type BridgeProviderAccess,

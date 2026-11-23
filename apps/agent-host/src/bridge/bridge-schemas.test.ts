@@ -72,3 +72,28 @@ verifies("studio.harness-provider-key", () => {
     });
   });
 });
+
+verifies("harness-host.bridge-effort", () => {
+  describe("openBridgeBody", () => {
+    const body = (anthropic: unknown) => ({
+      runId: "run_1",
+      agentId: "coder",
+      providers: { anthropic },
+      prices: {},
+    });
+
+    it("takes the efforts of a key and of a sign-in, so Studio's bridge sets them too", () => {
+      for (const access of [
+        { kind: "key", secret: "zai-key", efforts: { "glm-5.3": "low" } },
+        { kind: "sign-in", efforts: { "claude-haiku-5-5": "medium" } },
+      ]) {
+        expect(parse(openBridgeBody, body(access))).toEqual({ ok: true, value: body(access) });
+      }
+    });
+
+    it("refuses an effort the bridge doesn't know", () => {
+      const access = { kind: "sign-in", efforts: { "claude-opus-5-5": "max" } };
+      expect(parse(openBridgeBody, body(access)).ok).toBe(false);
+    });
+  });
+});
