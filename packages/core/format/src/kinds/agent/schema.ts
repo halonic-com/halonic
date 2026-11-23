@@ -109,6 +109,11 @@ export const Agent = s
     output: AgentOutput.default({ type: "text" }),
     /** Most model calls per invocation (tool loops). */
     maxSteps: s.number().int().min(1).max(200).default(6),
+    /**
+     * How often a `task` step asks the agent again after an answer its output
+     * can't use: 0, as when left out, or 1.
+     */
+    answerRetries: s.number().int().min(0).max(1).optional(),
     character: AgentCharacter.optional(),
     /** The program the agent runs in; Halonic's own loop when left out. */
     harness: AgentHarness.optional(),

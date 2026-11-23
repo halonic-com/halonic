@@ -261,6 +261,17 @@ with reason `error` and an error that quotes the answer; the engine never keeps 
 (requirement `engine.task-json-answer`). The engine doesn't check the answer against the output's
 `schema` yet.
 
+An agent with `answerRetries: 1` gets one more try in a `task` state: instead of failing the run, the
+state writes `agent.answer-retried` and asks the same agent again, in a new model or harness call, with
+the step's prompt, the error and what the JSON parser said after it. No answer at all to a `json`
+output counts as unusable then too. A second unusable answer fails the run with the same error, reason
+and cause as before, and `run.failed` carries that answer in full in `rejected`; the retry event
+carries the first one (requirement `engine.task-answer-retries`). Before it asks again, such a `task`
+state looks for the JSON in a text answer that isn't JSON as a whole: its one `json` or untagged code
+fence, or else its one complete top-level `{…}` object. It takes that only when there is exactly one
+and it parses (requirement `engine.task-answer-json-found`). `parallel` branches and `foreach` items
+don't retry or look.
+
 A `workflow` state runs another workflow of the hub as a child run, from the `workflows` the run
 kept with its definitions; a run kept without them can't start one. The child's id is the parent's
 id and the `seq` of the state's `state.entered` (`run_1.2`), so `decide` needs no id generator and a

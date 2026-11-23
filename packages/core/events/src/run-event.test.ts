@@ -7,6 +7,7 @@ import type {
   HarnessStartCause,
   LoggedInstructionPin,
   ProviderText,
+  RejectedAnswer,
   RunFailureCause,
   RunFailureReason,
   RunKind,
@@ -36,6 +37,8 @@ verifies("events.run-log-contract", () => {
       | "run.started"
       | "state.entered"
       | "agent.started"
+      // Added after the reference by events.agent-answer-retried (HAL-16441).
+      | "agent.answer-retried"
       | "llm.request"
       | "llm.response"
       | "llm.fallback"
@@ -190,6 +193,8 @@ verifies("events.run-log-contract", () => {
       providerText?: ProviderText;
       // Added after the reference by events.run-failed-cause (HAL-11593).
       cause?: RunFailureCause;
+      // Added after the reference by events.run-failed-rejected-answer (HAL-16441).
+      rejected?: RejectedAnswer;
     }>();
   });
 

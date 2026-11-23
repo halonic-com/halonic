@@ -1,3 +1,4 @@
+import type { AgentAnswerRetriedEvent } from "./agent-answer-retried.ts";
 import type { AgentResume } from "./agent-resume.ts";
 import type { BridgeFailedEvent, HarnessAllowedEvent } from "./bridge-events.ts";
 import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts";
@@ -13,6 +14,7 @@ import type {
   LoggedInstructionPin,
   ModelSkipReason,
   ProviderText,
+  RejectedAnswer,
   RunFailureCause,
   RunFailureReason,
   RunKind,
@@ -236,6 +238,7 @@ export type RunEventBody =
       sha256: string;
     }
   | HarnessStoppedEvent
+  | AgentAnswerRetriedEvent
   /**
    * A step's sandbox opened (requirement `events.sandbox-opened`). `sandbox`
    * is a display copy of its profile, never its environment variables.
@@ -432,6 +435,8 @@ export type RunEventBody =
    * (requirement `events.provider-text`); absent in older logs and when it gave none.
    * `cause`: the typed cause, from the error the failing call threw, when that error has a
    * kind (requirement `events.run-failed-cause`); absent in older logs. A screen reads it, never `error`.
+   * `rejected`: the unusable answer in full, when an agent whose `answerRetries` opts in fails the
+   * run with it (requirement `events.run-failed-rejected-answer`).
    */
   | {
       type: "run.failed";
@@ -447,6 +452,7 @@ export type RunEventBody =
       changed?: boolean;
       providerText?: ProviderText;
       cause?: RunFailureCause;
+      rejected?: RejectedAnswer;
     }
   /**
    * A Try it or Test run ended at a step it couldn't try, and nothing in it
