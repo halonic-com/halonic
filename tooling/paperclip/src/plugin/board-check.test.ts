@@ -209,7 +209,8 @@ verifies("paperclip.board-check-writes", () => {
       "touched issues.respondInteraction",
     );
     expect(() => reach["issues"]?.["create"]).toThrow("touched issues.create");
-    expect(() => reach["approvals"]).toThrow("touched ctx.approvals");
+    // Part (d) lists pending approvals, so `approvals` offers `list` alone; deciding throws.
+    expect(() => reach["approvals"]?.["decide"]).toThrow("touched approvals.decide");
     expect(() => reach["agents"]?.["pause"]).toThrow("touched agents.pause");
   });
 });

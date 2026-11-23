@@ -1,10 +1,18 @@
 import {
+  type LoadAgent,
+  type LoadTask,
+  loadLines,
+  loadSection,
+  readLoad,
+  sameLoad,
+  teamLoad,
+} from "../board-check/load.ts";
+import {
   chainReadLimit,
   countHeldUp,
   type OpenTask,
   rankWaiting,
   readWaitingRecord,
-  type WaitingRecord,
   type WaitingTask,
   waitingDocument,
   waitingSince,
@@ -15,11 +23,12 @@ import type { BoardCheckApi, PartPlan } from "./board-check-api.ts";
 import { stateKey } from "./board-check-api.ts";
 
 /**
- * The board check's part (b), once an hour: finds the open tasks waiting on
- * the board, counts what each holds up through Paperclip's blocker links,
- * and plans the `board-waiting` document when it would read differently
- * from the last one sent. It saves the list in plugin state for
- * `board_waiting`.
+ * The board check's parts (b) and (c), once an hour: finds the open tasks
+ * waiting on the board, counts what each holds up through Paperclip's
+ * blocker links, adds the team load for Chief, and plans the
+ * `board-waiting` document when it would read differently from the last
+ * one sent, and one comment to Chief when the load differs from the last
+ * one sent. It saves the list in plugin state for `board_waiting`.
  */
 
 const closed = new Set(["done", "cancelled"]);
@@ -33,14 +42,22 @@ async function pendingCard(ctx: BoardCheckApi, task: OpenTask, companyId: string
   return cards.some((card) => card.status === "pending");
 }
 
-/** Plans part (b) from the pass's one listing of open tasks. */
+/** What the hourly parts read: the pass's listing of open tasks and the agents. */
+export interface HourlyInput {
+  readonly openTasks: readonly (OpenTask & LoadTask)[];
+  readonly agents: readonly (LoadAgent & { readonly name: string })[];
+  readonly chiefTaskId: string | undefined;
+}
+
+/** Plans parts (b) and (c) from the pass's one listing of open tasks. */
 export async function planWaiting(
   ctx: BoardCheckApi,
   companyId: string,
-  openTasks: readonly OpenTask[],
-  names: ReadonlyMap<string, string>,
+  input: HourlyInput,
   now: Date,
 ): Promise<PartPlan & { readonly waiting: number }> {
+  const { openTasks, chiefTaskId } = input;
+  const names = new Map(input.agents.map((agent) => [agent.id, agent.name]));
   const budget = { reads: chainReadLimit };
   const dependentsOf = async (taskId: string) =>
     (await ctx.issues.relations.get(taskId, companyId)).blocks
@@ -64,24 +81,36 @@ export async function planWaiting(
     });
   }
   const ranked = rankWaiting(waiting);
+  const load = teamLoad(openTasks, input.agents);
   const key = stateKey(companyId, "waiting");
-  const sentBefore = readWaitingRecord(await ctx.state.get(key))?.sentBody;
-  const body = waitingDocument(ranked, names);
+  const saved = (await ctx.state.get(key)) as { sentLoad?: unknown } | null;
   // Compared with what last went out, not with the last list: while writes
-  // are off the list moves on, but the document doesn't.
-  const changed = sentBefore === undefined ? ranked.length > 0 : sentBefore !== body;
-  const write: BoardWrite = { kind: "document", key: "board-waiting", body };
+  // are off the list moves on, but the document and Chief don't hear of it.
+  const sentBody = readWaitingRecord(saved)?.sentBody;
+  const sentLoad = readLoad(saved?.sentLoad);
+  const body = `${waitingDocument(ranked, names)}\n\n${loadSection(load, names)}`;
+  // The first pass writes the document only when something waits.
+  const changed = sentBody === undefined ? ranked.length > 0 : sentBody !== body;
+  const document: BoardWrite = { kind: "document", key: "board-waiting", body };
+  const chiefComment: BoardWrite | undefined =
+    chiefTaskId !== undefined && (sentLoad === undefined || !sameLoad(sentLoad, load))
+      ? {
+          kind: "comment",
+          taskId: chiefTaskId,
+          body: ["Team load changed (Pip left out):", ...loadLines(load, names)].join("\n"),
+        }
+      : undefined;
+  const writes = [...(changed ? [document] : []), ...(chiefComment ? [chiefComment] : [])];
   return {
-    // The document is updated in place, and only when it would read differently.
-    writes: changed ? [write] : [],
-    save: (sent) => {
-      const sentBody = sent.has(write) ? body : sentBefore;
-      const record: WaitingRecord =
-        sentBody === undefined
-          ? { at: now.toISOString(), tasks: ranked }
-          : { at: now.toISOString(), tasks: ranked, sentBody };
-      return ctx.state.set(key, record);
-    },
+    writes,
+    save: (sent) =>
+      ctx.state.set(key, {
+        at: now.toISOString(),
+        tasks: ranked,
+        // Plugin state is JSON, so a field left undefined is simply not kept.
+        sentBody: sent.has(document) ? body : sentBody,
+        sentLoad: chiefComment !== undefined && sent.has(chiefComment) ? load : sentLoad,
+      }),
     waiting: ranked.length,
   };
 }

@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`
 
 ## PR watcher
 
@@ -227,8 +227,9 @@ To roll back, remove the volume line and recreate the container.
 
 The Board Checker's checks as the `board-check` job, without a model
 (phase 1b, HAL-16194; the Board Checker addendum on HAL-15997). It spots
-board asks, keeps failed runs and lists the tasks waiting on the board;
-team load, approvals and merge speed follow. Each job pass lists the open
+board asks, keeps failed runs, lists the tasks waiting on the board and
+the team load, and lists new approvals; queued run piles and merge speed
+follow. Each job pass lists the open
 tasks once and every part reads that one listing.
 
 **Board asks.** An agent's comment from the last 12 minutes that matches
@@ -256,6 +257,19 @@ counts and times, never titles, and updates the `board-waiting` document
 only when it would read differently from the last one actually sent. Unlike
 asks, it catches up: the first hour after the board turns writes on writes
 the current list.
+
+**Team load (part c).** The same hourly pass adds a section "For Chief" to
+that document: agents with nothing to start (no `todo`, no `in_progress`
+task without open blockers) and agents with more than 10 tasks in progress.
+Pip is left out, as are paused agents and ones waiting for approval. When
+either list differs from the last one sent, Chief's task (setting
+`chiefTask`) gets one comment, so it also catches up once writes are on.
+
+**Approvals (part d).** Each pass reads the pending approvals directly and
+lists the ones that weren't pending at the last pass in one comment on the
+Board Checker's task: id, kind, who asked and when, never the payload. It
+never decides one. The first pass after an install only notes what is
+pending.
 
 **Failed runs (part a).** Each `agent.run.failed` event is kept for 48
 hours as ids, a time and a cause code: `no_identity`, `spend_limit`,
@@ -290,7 +304,9 @@ watches. Writes, log lines, metrics and saved state carry ids, counts,
 times and error codes only, never a comment's or an error's text.
 
 **Settings** (board-only, like all plugin settings): `boardCheckerTask`,
-the Board Checker's task id (empty: the board check doesn't run), and
+the Board Checker's task id (empty: the board check doesn't run),
+`chiefTask` and `seatSupervisorTask` (optional, for their one-line
+comments), and
 `boardCheckWritesForVersion`, the no-writes switch. The board check writes
 only while it equals the running plugin version, read again before each
 write; otherwise it logs each write by kind, target and size. A new install

@@ -6,6 +6,7 @@ import {
 } from "../board-check/settings.ts";
 import { ceilings, commitWrites, type GateRefusal, type WriteGate } from "../board-check/writes.ts";
 import { type BoardCheckApi, errorCode, type PartPlan, type Trigger } from "./board-check-api.ts";
+import { planApprovalsPart } from "./board-check-approvals.ts";
 import { type AskScope, planAsks } from "./board-check-asks.ts";
 import { planRuns, recordFailedRun } from "./board-check-runs.ts";
 import { planWaiting } from "./board-check-waiting.ts";
@@ -28,9 +29,9 @@ function gateFor(ctx: BoardCheckApi, companyId: string, settings: BoardCheckSett
     companyId,
     boardCheckerTaskId: checkerTaskId,
     commentTasks: new Set(
-      settings.seatSupervisorTaskId === undefined
-        ? [checkerTaskId]
-        : [checkerTaskId, settings.seatSupervisorTaskId],
+      [checkerTaskId, settings.seatSupervisorTaskId, settings.chiefTaskId].filter(
+        (taskId): taskId is string => taskId !== undefined,
+      ),
     ),
     // Read again before every write, so the board's switch stops the next write at once.
     writesOn: async () =>
@@ -50,11 +51,11 @@ export function hourlyPass(trigger: Trigger, now: Date): boolean {
   return trigger === "job" && now.getUTCMinutes() < 10;
 }
 
-/** The job's parts after the asks, all planned from the pass's one listing of open tasks. */
+/** The job's parts after the asks; the hourly ones plan from the pass's one listing of open tasks. */
 async function planJobParts(
   ctx: BoardCheckApi,
   companyId: string,
-  settings: BoardCheckSettings,
+  settings: BoardCheckSettings & { boardCheckerTaskId: string },
   openTasks: Awaited<ReturnType<typeof everyIssue>>,
   asks: PartPlan,
   now: Date,
@@ -64,10 +65,12 @@ async function planJobParts(
   const parts = [
     await planRuns(ctx, companyId, settings.seatSupervisorTaskId, ceilings.wake - asksWakes),
   ];
+  const agents = await ctx.agents.list({ companyId, limit: 500 });
+  const names = new Map(agents.map((agent) => [agent.id, agent.name]));
+  parts.push(await planApprovalsPart(ctx, companyId, settings.boardCheckerTaskId, names));
   if (hourlyPass("job", now)) {
-    const agents = await ctx.agents.list({ companyId, limit: 500 });
-    const names = new Map(agents.map((agent) => [agent.id, agent.name]));
-    parts.push(await planWaiting(ctx, companyId, openTasks, names, now));
+    const input = { openTasks, agents, chiefTaskId: settings.chiefTaskId };
+    parts.push(await planWaiting(ctx, companyId, input, now));
   }
   return parts;
 }
