@@ -4,6 +4,7 @@ import { readSeat } from "../read/read-seat.ts";
 import { registerSeatsBridge } from "./bridge.ts";
 import { runSeatsCalibrate } from "./calibrate-job.ts";
 import { runSeatsCheck } from "./check-job.ts";
+import { runSeatsForecast } from "./forecast-job.ts";
 import { databaseForecastStore } from "./forecast-store.ts";
 import { runSeatsHistory } from "./history-job.ts";
 import { databaseHistoryStore } from "./history-store.ts";
@@ -39,8 +40,8 @@ export function commandEnv(env: NodeJS.ProcessEnv): Record<string, string> {
  * The `seats` plugin's worker. The host starts it as `worker.js` in the
  * folder `pnpm run build:seats-plugin` writes (`dist/seats/`), after it has
  * run the plugin's migrations. It runs `seats.read` every minute,
- * `seats.history` and `seats.check` every 10 minutes, `seats.calibrate`
- * every night, and answers the
+ * `seats.history`, `seats.check` and `seats.forecast` every 10 minutes,
+ * `seats.calibrate` every night, and answers the
  * board-only route calls, the "AI seats" page and the `seat_usage` tool.
  */
 export const plugin = definePlugin({
@@ -74,6 +75,15 @@ export const plugin = definePlugin({
     });
     ctx.jobs.register("seats.calibrate", async () => {
       await runSeatsCalibrate(ctx, {
+        readings: databaseRecentReadings(ctx.db),
+        history: databaseHistoryStore(ctx.db),
+        forecast: databaseForecastStore(ctx.db),
+        store,
+        now,
+      });
+    });
+    ctx.jobs.register("seats.forecast", async () => {
+      await runSeatsForecast(ctx, {
         readings: databaseRecentReadings(ctx.db),
         history: databaseHistoryStore(ctx.db),
         forecast: databaseForecastStore(ctx.db),

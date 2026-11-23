@@ -6,8 +6,9 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  * from Agent tools, so the board installs, stops and trusts it on its own.
  *
  * So far: settings, its own database schema, the board-only routes, the
- * `seats.read`, `seats.history`, `seats.check` and `seats.calibrate` jobs, the read-only
- * `seat_usage` tool and the board's "AI seats" page.
+ * `seats.read`, `seats.history`, `seats.check`, `seats.calibrate` and
+ * `seats.forecast` jobs, the read-only `seat_usage` tool and the board's
+ * "AI seats" page.
  */
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.seats",
@@ -212,6 +213,13 @@ export const manifest: PaperclipPluginManifestV1 = {
       description:
         "Every night: fits how many points of each seat's limits a million tokens cost, from the last 7 days of readings, placements and usage, and stores the fits for the forecast.",
       schedule: "20 0 * * *",
+    },
+    {
+      jobKey: "seats.forecast",
+      displayName: "Forecast the seats",
+      description:
+        "Every 10 minutes: forecasts each agent's tokens, each seat's limits to their reset, the capacity coming free and how long the pool lasts, today and under each scenario in the settings. It changes nothing.",
+      schedule: "7-59/10 * * * *",
     },
   ],
   apiRoutes: [

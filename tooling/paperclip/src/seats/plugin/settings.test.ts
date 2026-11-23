@@ -36,7 +36,7 @@ verifies("paperclip.seats-settings", () => {
         },
       ],
       movesEnabled: true,
-      forecast: { modelWindows: {}, scenarios: [] },
+      forecast: { modelWindows: {}, scenarios: [], ignoredEntries: 0 },
     });
   });
 
@@ -62,7 +62,7 @@ verifies("paperclip.seats-settings", () => {
     expect(readSeatsSettings({})).toEqual({
       seats: [],
       movesEnabled: false,
-      forecast: { modelWindows: {}, scenarios: [] },
+      forecast: { modelWindows: {}, scenarios: [], ignoredEntries: 0 },
     });
   });
 });

@@ -6,7 +6,11 @@ import { manifest } from "./manifest.ts";
 // Made-up agents and models only.
 verifies("paperclip.seats-forecast-settings", () => {
   test("has no model windows and no scenarios when nothing is set", () => {
-    expect(readForecastSettings({})).toEqual({ modelWindows: {}, scenarios: [] });
+    expect(readForecastSettings({})).toEqual({
+      modelWindows: {},
+      scenarios: [],
+      ignoredEntries: 0,
+    });
     const properties = manifest.instanceConfigSchema?.["properties"] as Record<
       string,
       { default?: unknown }
@@ -25,6 +29,7 @@ verifies("paperclip.seats-forecast-settings", () => {
       ],
     });
     expect(settings.modelWindows).toEqual({ "claude-small": "Small" });
+    expect(settings.ignoredEntries).toBe(0);
     expect(settings.scenarios).toEqual([
       {
         id: "caps-minus-one",
@@ -68,5 +73,27 @@ verifies("paperclip.seats-forecast-settings", () => {
     expect(settings.scenarios.map((scenario) => [scenario.id, scenario.demandFactor])).toEqual([
       ["a", 0.9],
     ]);
+    expect(settings.ignoredEntries).toBe(9);
+  });
+});
+
+// `seats.forecast` logs this count (`paperclip.seats-forecast-job`).
+verifies("paperclip.seats-forecast-job", () => {
+  test("counts a scenario it keeps with a value it couldn't use as corrected", () => {
+    const settings = readForecastSettings({
+      scenarios: [
+        { id: "fewer", agents: ["agent-1"], capDelta: -1, demandFactor: 3 },
+        { id: "half-step", agents: ["agent-1"], capDelta: -0.5, model: "claude-small-1" },
+        { id: "no-agents", capDelta: -1, demandFactor: 0.9 },
+        { id: "fine", agents: ["agent-1"], capDelta: -1, demandFactor: 0.9 },
+      ],
+    });
+    expect(settings.scenarios.map((scenario) => [scenario.id, scenario.demandFactor])).toEqual([
+      ["fewer", 1],
+      ["half-step", 1],
+      ["no-agents", 0.9],
+      ["fine", 0.9],
+    ]);
+    expect(settings.ignoredEntries).toBe(3);
   });
 });
