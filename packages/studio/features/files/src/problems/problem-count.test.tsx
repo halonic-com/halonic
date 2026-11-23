@@ -108,8 +108,8 @@ verifies("files.problems.count", () => {
   });
 
   it("draws the count as one danger pill with Show underlined, the strip as a band", async () => {
-    const desktop = await show(listOf([sorter]).source, statusItem);
-    const phone = await show(listOf([sorter]).source, strip, "phone");
+    const desktop = await show(vi.fn, listOf([sorter]).source, statusItem);
+    const phone = await show(vi.fn, listOf([sorter]).source, strip, "phone");
     for (const page of [desktop.page, phone.page]) {
       const pill = button(page);
       expect(pill?.className).toContain("bg-over-surface-danger-soft");
