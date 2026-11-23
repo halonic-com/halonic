@@ -61,6 +61,11 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    */
   readonly wrapTitle?: boolean;
   /**
+   * The meta line wraps onto a second line, then is cut with an ellipsis, as the Inbox's "Support
+   * reply · run 891b5a · a person step · Waiting 1 h", whose end is what the row is for (HAL-15126).
+   */
+  readonly wrapMeta?: boolean;
+  /**
    * A click, Enter or Space on the row does nothing, as a done setup step's: no hover or press tint
    * and the default cursor. It still takes focus with the arrows and is read as usual, but Tab
    * enters the List at the first row that isn't inert.
@@ -110,6 +115,7 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   readonly trailing?: never;
   readonly muted?: never;
   readonly wrapTitle?: never;
+  readonly wrapMeta?: never;
   readonly inert?: never;
   readonly wrap?: never;
   readonly metaDescribes?: never;

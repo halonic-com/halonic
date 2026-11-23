@@ -14,7 +14,7 @@ import { Leading, lineFit, MetaLine } from "./row-parts.tsx";
 
 /**
  * The row's height, from the presentation, the density and whether it has a meta line. A row that
- * wraps, or only wraps its title, grows past it, so on a desktop it gets padding too, keeping its
+ * wraps, or only wraps its title or meta line, grows past it, so on a desktop it gets padding too, keeping its
  * text off the lines.
  */
 function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean, wrap: boolean): string {
@@ -140,7 +140,7 @@ export function RowContent({
   // the meta line.
   const trailingBelow = phone && (row.more !== undefined || chevron);
   const showTrailingRight = !trailingBelow && trailing !== undefined;
-  const wrap = row.wrap === true || row.wrapTitle === true;
+  const wrap = row.wrap === true || row.wrapTitle === true || row.wrapMeta === true;
 
   return (
     <div
