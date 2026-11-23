@@ -49,7 +49,7 @@ How a key is handled:
 | `submodule.<name>.update` (`!command`) | Not reachable | `submodule` isn't allowed, and hardening config keeps git out of submodules. |
 | `uploadpack.packObjectsHook`, `receive.procReceiveRefs`, a remote's hooks | Not reachable | The server's git runs them, with its own config. A local remote would run them here, which is why the `file` transport is refused. git reads `uploadpack.packObjectsHook` only from protected config (system, global, command line) anyway. |
 | `trailer.<token>.cmd`, `trailer.<token>.command` | Neutralised | Only `commit --trailer` and `interpret-trailers` run it, and neither is allowed. Blanked anyway, as `interactive.diffFilter` (HAL-3971). |
-| `trace2.normalTarget`, `trace2.perfTarget`, `trace2.eventTarget` | Not reachable | git reads them only from system and global config, and system config is off. |
+| `trace2.normalTarget`, `trace2.perfTarget`, `trace2.eventTarget` | Not reachable | git reads them only from system and global config, which only the person or an administrator can write, never the opened folder. |
 
 ## Keys that read a file or folder
 

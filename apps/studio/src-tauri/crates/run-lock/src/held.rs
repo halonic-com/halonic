@@ -5,7 +5,9 @@
 //! run lock removes it, and renewed by writing the record again with a new
 //! `takenAt`, a third of the stale limit apart, so a lock held for hours
 //! never counts as stale. A holder that crashed leaves a lock the next
-//! process takes over.
+//! process takes over. Unlike `holdLock`, a holder that missed its renewals
+//! (the computer slept) takes its own lock again when nobody took it over,
+//! instead of giving it up.
 
 use crate::record::{LockRecord, STALE_AFTER_MS, is_stale, record_text};
 use crate::{
@@ -45,8 +47,11 @@ pub enum Renewal {
     Renewed,
     /// The lock isn't this process's any more; the holder must stop what it
     /// guards. It says why.
-    Lost(&'static str),
+    Lost(String),
 }
+
+/// Why a renewal finds the lock lost when another process holds it now.
+const TAKEN_OVER: &str = "was taken over by another process";
 
 /// A lock this process holds until [`EngineLock::release`].
 #[derive(Debug)]
@@ -86,22 +91,36 @@ pub fn hold_lock(file: &Path, computer: &impl ThisComputer) -> Result<EngineLock
 impl EngineLock {
     /// Writes this process's record again, with `takenAt` now. The new record
     /// replaces the old one whole, by a rename, so no process reads half of
-    /// it. A lock that isn't ours any more, or is older than the stale limit
-    /// (this process missed its renewals, say while the computer slept, and
-    /// another may be taking it over right now), is given up instead.
+    /// it. A lock that isn't ours any more is lost.
+    ///
+    /// A lock older than the stale limit that still holds our record (this
+    /// process missed its renewals, say while the computer slept) wasn't
+    /// taken over, since taking it over replaces the record. Another process
+    /// may be taking it over right now, so it isn't renewed in place: it is
+    /// removed and taken again with an exclusive create, as any process
+    /// takes a free lock. Whoever creates it first holds it, and another
+    /// process's removal of the old record leaves the new one alone, because
+    /// it removes only the text it read.
     pub fn renew(&mut self, computer: &impl ThisComputer) -> io::Result<Renewal> {
         let host = computer.host_name();
         let found = busy::HERE.run(|| read_lock(&self.file))?;
         let Some(found) = found.filter(|found| found.text == self.own_text) else {
-            return Ok(Renewal::Lost("was taken over by another process"));
+            return Ok(Renewal::Lost(TAKEN_OVER.to_owned()));
         };
         if is_stale(&found, now_ms(), host.as_deref(), |pid| {
             computer.process_alive(pid)
         }) {
             release_lock(&self.file, &self.own_text)?;
-            return Ok(Renewal::Lost(
-                "wasn't renewed within the stale limit, so it was given up",
-            ));
+            return match hold_lock(&self.file, computer) {
+                Ok(taken_again) => {
+                    self.own_text = taken_again.own_text;
+                    Ok(Renewal::Renewed)
+                }
+                Err(HoldError::Held(_)) => Ok(Renewal::Lost(TAKEN_OVER.to_owned())),
+                Err(HoldError::Io(error)) => Ok(Renewal::Lost(format!(
+                    "wasn't renewed within the stale limit and couldn't be taken again ({error})"
+                ))),
+            };
         }
         let renewed = own_record_text(host.as_deref());
         replace_whole(&self.file, &renewed)?;

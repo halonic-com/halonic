@@ -4,8 +4,12 @@
 /// Config the runner gives every call (requirement `git-hardening`), after
 /// `core.hooksPath` and before what neutralises the repository's own config. It is given in the environment (`GIT_CONFIG_COUNT`),
 /// which beats every config file and, unlike `-c`, takes any key as it is.
-/// The user's global config still applies otherwise, because commits need
-/// `user.name` and push needs the user's credential helper.
+/// The system and the user's global config still apply otherwise, because
+/// commits need `user.name`, push needs the credential helper, and the
+/// working tree needs `core.autocrlf`: Git for Windows and Homebrew's git
+/// keep those in the system config. Only the person or an administrator can
+/// write either file, never the opened folder, and every key here beats
+/// both.
 pub(crate) const HARDENING_CONFIG: &[(&str, &str)] = &[
     ("core.fsmonitor", "false"),
     // Signing and checking signatures run the gpg, x509 or ssh signing
@@ -43,7 +47,6 @@ pub(crate) const HARDENING_CONFIG: &[(&str, &str)] = &[
 /// variable, so nothing interactive can start.
 pub(crate) const HARDENING_ENVIRONMENT: &[(&str, &str)] = &[
     ("GIT_TERMINAL_PROMPT", "0"),
-    ("GIT_CONFIG_NOSYSTEM", "1"),
     ("GIT_PAGER", "cat"),
     // An editor that changes nothing, so a call that would open one goes
     // on at once instead of waiting.

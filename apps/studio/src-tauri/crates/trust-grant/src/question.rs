@@ -51,22 +51,35 @@ fn visible(characters: &[char]) -> String {
         .collect()
 }
 
-/// Control characters, and the characters that are invisible or change
-/// how text around them is shown: the soft hyphen, the Mongolian vowel
-/// separator, direction marks, embeddings, overrides, isolates, zero-width
-/// spaces and joiners, the line and paragraph separators, the byte order
-/// mark and the interlinear annotation marks.
+/// Control characters, every character Unicode marks as default-ignorable
+/// (shown as nothing when a font has no glyph for it: the soft hyphen,
+/// the combining grapheme joiner, Hangul fillers, Khmer inherent vowels,
+/// Mongolian variation selectors and vowel separator, direction marks,
+/// embeddings, overrides, isolates, zero-width spaces and joiners,
+/// variation selectors, the byte order mark, shorthand format controls,
+/// musical formatting marks and tag characters), and the line and
+/// paragraph separators and interlinear annotation marks, which change
+/// how the text around them is shown.
 fn is_hidden(character: char) -> bool {
     character.is_control()
         || matches!(
             character,
             '\u{00ad}'
+                | '\u{034f}'
                 | '\u{061c}'
-                | '\u{180e}'
+                | '\u{115f}'..='\u{1160}'
+                | '\u{17b4}'..='\u{17b5}'
+                | '\u{180b}'..='\u{180f}'
                 | '\u{200b}'..='\u{200f}'
                 | '\u{2028}'..='\u{202e}'
-                | '\u{2060}'..='\u{2069}'
+                | '\u{2060}'..='\u{206f}'
+                | '\u{3164}'
+                | '\u{fe00}'..='\u{fe0f}'
                 | '\u{feff}'
-                | '\u{fff9}'..='\u{fffb}'
+                | '\u{ffa0}'
+                | '\u{fff0}'..='\u{fffb}'
+                | '\u{1bca0}'..='\u{1bca3}'
+                | '\u{1d173}'..='\u{1d17a}'
+                | '\u{e0000}'..='\u{e0fff}'
         )
 }

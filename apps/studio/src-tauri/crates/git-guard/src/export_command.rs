@@ -24,7 +24,7 @@ impl GitRunner {
     /// The command for one step of an export (`export.rs`): the base
     /// command with the hardening, in `cwd`, which is a folder of the
     /// export's own, never a repository. Unlike the allow-listed calls, an
-    /// export reads nothing from outside: no user config (so no credential
+    /// export reads nothing from outside: no user or system config (so no credential
     /// helper and no filter driver, whatever the user has set), no
     /// excludes or attributes file, and ssh that never asks a question.
     /// `git_dir`, `work_tree` and `index` are the export's own folders.
@@ -51,6 +51,7 @@ impl GitRunner {
         let mut command = self.base_command(cwd, None, &overrides);
         command
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
             .env("GIT_CEILING_DIRECTORIES", cwd)
             .env("LC_ALL", "C");
         match ssh {
