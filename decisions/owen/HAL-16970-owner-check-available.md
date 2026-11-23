@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16968 (Liam approved PR 3b of HAL-15194); Liam reviews the PR and Julian signs this note
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:5tKesh75XKBPY0mv6KaLKLwf91oj0Nx/ABEd4YArDcPB/LEiAnJX3VI0Y68RIhu85pP4bhmfGrJTy9EeV0Z+DQ==
 
 The phone page needs to know whether the owner check can ask before it shows Approve and Reject for a risky approval (HAL-15194, PR 3c). Until now no command reported it: no capability grants the owner check plugin, on purpose. The shell gets one new command, `owner_check_available`, and nothing else changes.
 
