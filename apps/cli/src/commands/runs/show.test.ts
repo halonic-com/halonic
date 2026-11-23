@@ -303,7 +303,7 @@ verifies("cli.commands.runs.show", () => {
         "! Waiting for your approval: Writer wants to use gmail__send (call call-1)",
         "! Waiting for your approval: Writer wants to use gmail__delete (call call-2)",
         "  Answer with: halonic runs send 09d9a0 approve --call call-1 (or reject)",
-        "  To answer another one, put the call from its line after --call.",
+        "  To answer another one, use --call with the call id from its line.",
       ]);
     });
 

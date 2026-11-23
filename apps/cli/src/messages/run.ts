@@ -226,7 +226,8 @@ export const runMessages = defineMessages("run", {
   waitingForApproval: (agent: string, tool: string, callId: string) =>
     phrase`Waiting for your approval: ${printable(agent)} wants to use ${printable(tool)} ${dim(`(call ${printable(callId)})`)}`,
   /** Under the answer line, when several tool calls wait: the line answers the first, `--call` another. */
-  answerAnotherCall: () => phrase`To answer another one, put the call from its line after --call.`,
+  answerAnotherCall: () =>
+    phrase`To answer another one, use --call with the call id from its line.`,
   /** With a !, for a wait step without a description. */
   waitingInStep: (step: string) => phrase`Waiting for you in the step ${step}.`,
   /**
