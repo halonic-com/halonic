@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import type { TrustGrant } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -31,14 +32,16 @@ afterEach(async () => {
 verifies("workspace.declared-tools", () => {
   describe("approvedIntegrations", () => {
     it("passes no integration list to a run without a trust grant", async () => {
-      // The folder isn't read at all: a path that holds nothing would also give none.
-      expect(await approvedIntegrations(null, "/nowhere/acme")).toBeUndefined();
+      await mkdir(join(folder, "integrations/mail"), { recursive: true });
+      await writeFile(join(folder, "integrations/mail/integration.yaml"), mailSheet);
+      const read = await workspaceIntegrations(folder, folder);
+      expect(approvedIntegrations(null, read)).toBeUndefined();
     });
 
     it("passes the integrations of the workspace to a run with a trust grant", async () => {
       await mkdir(join(folder, "integrations/mail"), { recursive: true });
       await writeFile(join(folder, "integrations/mail/integration.yaml"), mailSheet);
-      const integrations = await approvedIntegrations(grant, folder);
+      const integrations = approvedIntegrations(grant, await workspaceIntegrations(folder, folder));
       expect(integrations?.map((integration) => integration.folder)).toEqual(["integrations/mail"]);
       expect(integrations?.[0]?.sheet.tools?.[0]?.noun).toEqual({ one: "email", many: "emails" });
     });

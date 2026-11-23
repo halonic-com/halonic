@@ -76,7 +76,11 @@ import {
   workspaceFolders,
 } from "@halonicjs/profile";
 import { randomIds, systemClock } from "@halonicjs/std";
-import { type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
+import {
+  type LoadedWorkspace,
+  type LocalIntegrationInput,
+  runDefinitionsOf,
+} from "@halonicjs/workspace";
 import { approvedIntegrations } from "./approved-integrations.ts";
 import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
 import { type EngineHolder, engineHolders, holdEngineLock } from "./engine-lock.ts";
@@ -116,6 +120,13 @@ export type { EngineHolder, RoutineEngine, RoutineTicks };
 export interface LocalEngineInput {
   /** The loaded workspace, checked for errors and trusted before a run starts. */
   readonly workspace: LoadedWorkspace;
+  /**
+   * The local integrations of `workspace`, as its trust check read them
+   * from the same version: what a run's definitions take declared tools
+   * from when `versions` is left out. Left out, none: no tool takes a noun
+   * from a sheet, which fails safe.
+   */
+  readonly integrations?: readonly LocalIntegrationInput[];
   /**
    * For an engine whose runs read more than one version of the workspace,
    * as `routines watch`'s: each run starts with the definitions of the
@@ -403,7 +414,7 @@ function engineOn(
                 input.workspace,
                 hubId,
                 workflowId,
-                await approvedIntegrations(input.runConnectors?.trust ?? null, input.workspaceRoot),
+                approvedIntegrations(input.runConnectors?.trust ?? null, input.integrations ?? []),
               )
             : await versions.definitionsOf(hubId, workflowId, version, runId),
         ...connectors?.runs,

@@ -1,7 +1,7 @@
 import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { harnessNames } from "./harness-names.ts";
-import { dim, type Phrase, phrase } from "./phrase.ts";
+import { dim, dimmed, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** Where an unpinned program downloads its code from: npm for `npx`, PyPI for `uvx` and `pipx run`. */
@@ -247,6 +247,17 @@ export const trustMessages = defineMessages("trust", {
   trusted: (name: string) => phrase`${name} can run now.`,
   /** Answer No, or Enter: exit 3. */
   notTrusted: () => phrase`Not trusted. Nothing was started.`,
+  /** The end of line 1 when the version to review can't be read, as "Nothing ran." ends a run's. */
+  nothingTrusted: () => phrase`Nothing was trusted.`,
+  /**
+   * Dimmed, after the check, when a file it covers has saved changes that
+   * aren't committed: runs start the live version, so the check reviews the
+   * committed files (HAL-16335). The paths are workspace-relative and escaped.
+   */
+  notCommitted: (files: readonly string[]) =>
+    dimmed(
+      phrase`These saved changes aren't committed, so runs don't use them and this check doesn't cover them: ${files.join(", ")}. Commit them, then run halonic trust again.`,
+    ),
   alreadyTrusted: (name: string, trustedOn: string) =>
     phrase`${name} is already trusted on this computer. Nothing changed since ${trustedOn}.`,
   /**

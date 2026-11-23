@@ -173,17 +173,18 @@ export interface WorkspaceTrustAnswer {
 }
 
 /**
- * Where trust stands for `version` in `dir`, by the rule `run` and `routines
- * watch` refuse by, without refusing: `serve`'s gate and the `routines` list
- * ask it (HAL-15525). Anything it can't read counts as `unreadable`, so a
- * failure never reads as trust.
+ * Where trust stands for the version `readVersion` reads in `dir`, by the
+ * rule `run` and `routines watch` refuse by, without refusing: `serve`'s gate
+ * and the `routines` list ask it (HAL-15525). Anything it can't read, the
+ * version included, counts as `unreadable`, so a failure never reads as trust.
  */
 export async function workspaceTrustState(
   dir: OpenWorkspaceDir,
   machine: WorkspaceTrustMachine,
-  version: WorkspaceAtVersion,
+  readVersion: () => Promise<WorkspaceAtVersion>,
 ): Promise<WorkspaceTrustAnswer> {
   try {
+    const version = await readVersion();
     if (needsNoTrust(version)) {
       return { state: "not-needed", refused: [] };
     }

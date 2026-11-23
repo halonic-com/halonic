@@ -15,11 +15,12 @@ import {
 } from "@halonicjs/app";
 import type { RunDefinitions } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
-import type { TrustGrant } from "@halonicjs/ports";
+import type { DefinitionSource, TrustGrant } from "@halonicjs/ports";
 import {
   filesOf,
   type LoadedFileOf,
   type LoadedWorkspace,
+  type LocalIntegrationInput,
   runDefinitionsOf,
   VersionSource,
 } from "@halonicjs/workspace";
@@ -36,6 +37,11 @@ import {
   openGitHistory,
 } from "../../run-workspace.ts";
 import { agentFileIn, type LoadedVersion, loadVersion, skillTextIn } from "../../version-files.ts";
+import {
+  integrationsAtCommit,
+  savedIntegrations,
+  type WorkspaceAtVersion,
+} from "../../workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import type { WorkspaceVersions } from "../../workspace-versions.ts";
 
@@ -45,13 +51,13 @@ import type { WorkspaceVersions } from "../../workspace-versions.ts";
  */
 export interface VersionChecks {
   /**
-   * Checks that the version may run here.
+   * Checks that the version may run here, on its definitions and local integrations.
    *
    * @returns the grant its connectors start with, or `null` for a version
    *   that can only reach the test model, which starts no program
    * @throws why nothing may start from it
    */
-  trust(workspace: LoadedWorkspace): Promise<TrustGrant | null>;
+  trust(version: WorkspaceAtVersion): Promise<TrustGrant | null>;
   /**
    * Refuses an agent in a harness, for a watch that starts no program for
    * one. Left out, none is refused.
@@ -98,22 +104,22 @@ export class WatchedVersions implements WorkspaceVersions {
   readonly #history: OpenedHistory | null;
   /** Whether the version the watch started from is local only: the engine keeps that. */
   readonly #localOnly: boolean;
-  #latest: LoadedVersion;
+  #latest: WatchedVersion;
   /** The last version loaded at a commit, so the routines due at one time load it once. */
-  #atCommit: (LoadedVersion & { readonly commit: string }) | undefined;
+  #atCommit: (WatchedVersion & { readonly commit: string }) | undefined;
   /**
    * The version each running run's definitions were read from, so its
    * connectors start from that same load, and its agents' files are read
    * from that same source, however long after its start they open.
    * Forgotten when the run ends.
    */
-  readonly #versionOfRun = new Map<string, LoadedVersion>();
+  readonly #versionOfRun = new Map<string, WatchedVersion>();
   #checks: VersionChecks = noChecks;
 
   private constructor(
     dir: OpenWorkspaceDir,
     history: OpenedHistory | null,
-    first: LoadedVersion,
+    first: WatchedVersion,
     firstCommit: string | undefined,
   ) {
     this.#dir = dir;
@@ -151,7 +157,8 @@ export class WatchedVersions implements WorkspaceVersions {
     }
     try {
       if (history === null) {
-        return new WatchedVersions(dir, null, await loadVersion(dir.store), undefined);
+        const saved = await loadWatched(dir.store, await savedIntegrations(dir));
+        return new WatchedVersions(dir, null, saved, undefined);
       }
       const { vcs } = history;
       const live = await liveVersionOf(vcs);
@@ -163,7 +170,11 @@ export class WatchedVersions implements WorkspaceVersions {
       if (picked.reads === "nothing-live") {
         throw new OwnLineError("conflict", runMessages.nothingLive(), runMessages.nothingLiveFix());
       }
-      const first = await loadVersion(picked.source);
+      const integrations =
+        picked.reads === "live-version"
+          ? await integrationsAtCommit(vcs, picked.commit, dir.store.location)
+          : await savedIntegrations(dir);
+      const first = await loadWatched(picked.source, integrations);
       return new WatchedVersions(
         dir,
         history,
@@ -181,6 +192,11 @@ export class WatchedVersions implements WorkspaceVersions {
     return this.#latest.workspace;
   }
 
+  /** {@link latest} with its local integrations, for its trust check. */
+  latestVersion(): WorkspaceAtVersion {
+    return this.#latest;
+  }
+
   /**
    * The live version as it is now: the version at the newest commit, or the
    * saved files with history off. Unlike {@link latest}, it follows a new
@@ -189,8 +205,7 @@ export class WatchedVersions implements WorkspaceVersions {
    * {@link latest}.
    */
   async live(): Promise<LoadedWorkspace> {
-    const live = await liveVersionOf(this.#history?.vcs ?? null);
-    return (await this.#versionAt(runVersionOfLive(live))).workspace;
+    return (await this.#liveVersion()).workspace;
   }
 
   /**
@@ -203,15 +218,15 @@ export class WatchedVersions implements WorkspaceVersions {
    * @throws when the live version can't be read
    */
   async trustedLive(): Promise<LoadedWorkspace | null> {
-    const workspace = await this.live();
-    if (isLocalOnly(workspace) !== this.#localOnly) return null;
+    const version = await this.#liveVersion();
+    if (isLocalOnly(version.workspace) !== this.#localOnly) return null;
     try {
-      await this.#checks.trust(workspace);
+      await this.#checks.trust(version);
     } catch {
       // The trust check throws to say why nothing may start; here that is a refusal.
       return null;
     }
-    return workspace;
+    return version.workspace;
   }
 
   /**
@@ -252,13 +267,13 @@ export class WatchedVersions implements WorkspaceVersions {
   ): Promise<RunDefinitions> {
     const loaded = await this.#versionAllowedAt(version);
     const { workspace } = loaded;
-    const grant = await this.#checks.trust(workspace);
+    const grant = await this.#checks.trust(loaded);
     await this.#checks.sandbox(workspace, { hubId, workflowId });
     const definitions = runDefinitionsOf(
       workspace,
       hubId,
       workflowId,
-      await approvedIntegrations(grant, this.#dir.root, this.#dir.shown),
+      approvedIntegrations(grant, loaded.integrations),
     );
     this.#latest = loaded;
     this.#versionOfRun.set(runId, loaded);
@@ -279,9 +294,8 @@ export class WatchedVersions implements WorkspaceVersions {
     readonly runId: string;
     readonly version: RunVersion;
   }): Promise<TrustedVersion> {
-    const { workspace } =
-      this.#versionOfRun.get(run.runId) ?? (await this.#versionAllowedAt(run.version));
-    return { workspace, trust: await this.#checks.trust(workspace) };
+    const loaded = this.#versionOfRun.get(run.runId) ?? (await this.#versionAllowedAt(run.version));
+    return { workspace: loaded.workspace, trust: await this.#checks.trust(loaded) };
   }
 
   /**
@@ -338,8 +352,14 @@ export class WatchedVersions implements WorkspaceVersions {
     await this.#history?.close();
   }
 
+  /** The live version's load, as {@link live} reads it. */
+  async #liveVersion(): Promise<WatchedVersion> {
+    const live = await liveVersionOf(this.#history?.vcs ?? null);
+    return await this.#versionAt(runVersionOfLive(live));
+  }
+
   /** The workspace a run of `version` reads, if it keeps local only. */
-  async #versionAllowedAt(version: RunVersion | undefined): Promise<LoadedVersion> {
+  async #versionAllowedAt(version: RunVersion | undefined): Promise<WatchedVersion> {
     const loaded = await this.#versionAt(version);
     if (isLocalOnly(loaded.workspace) !== this.#localOnly) {
       throw new Error(plainText(routinesMessages.localOnlyChanged(this.#dir.name).phrase));
@@ -348,23 +368,36 @@ export class WatchedVersions implements WorkspaceVersions {
   }
 
   /** The workspace a run of `version` reads; the one read last for a start that names none. */
-  async #versionAt(version: RunVersion | undefined): Promise<LoadedVersion> {
+  async #versionAt(version: RunVersion | undefined): Promise<WatchedVersion> {
     if (version === undefined) {
       return this.#latest;
     }
     if (version.reads === "saved-files") {
-      return await loadVersion(this.#dir.store);
+      return await loadWatched(this.#dir.store, await savedIntegrations(this.#dir));
     }
     const vcs = this.#history?.vcs;
     if (vcs === undefined) {
       throw new Error(plainText(routinesMessages.noHistoryForVersion(version.commit).phrase));
     }
     if (this.#atCommit?.commit !== version.commit) {
-      const source = new VersionSource(vcs, version.commit, this.#dir.store.location);
-      this.#atCommit = { commit: version.commit, ...(await loadVersion(source)) };
+      const { location } = this.#dir.store;
+      const source = new VersionSource(vcs, version.commit, location);
+      const integrations = await integrationsAtCommit(vcs, version.commit, location);
+      this.#atCommit = { commit: version.commit, ...(await loadWatched(source, integrations)) };
     }
     return this.#atCommit;
   }
+}
+
+/** A version's load, with its local integrations read from the same version. */
+interface WatchedVersion extends LoadedVersion, WorkspaceAtVersion {}
+
+/** Loads the workspace from `source`, with `integrations`, read from the same version. */
+async function loadWatched(
+  source: DefinitionSource,
+  integrations: readonly LocalIntegrationInput[],
+): Promise<WatchedVersion> {
+  return { ...(await loadVersion(source)), integrations };
 }
 
 /**

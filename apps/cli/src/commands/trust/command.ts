@@ -26,18 +26,23 @@ import {
   type TrustChangesDocument,
   trustChangesDocument,
 } from "../../output/trust-changes-json.ts";
-import { type FingerprintedCheck, trustCheckLines } from "../../output/trust-check.ts";
+import {
+  type FingerprintedCheck,
+  notCommittedLines,
+  trustCheckLines,
+} from "../../output/trust-check.ts";
 import { type PluginSetup, setupPluginsFolder } from "../../plugin-host.ts";
+import { type OpenWorkspaceHistory, openGitHistory } from "../../run-workspace.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
 import { profileKeyOrigins } from "../../secret-host.ts";
 import { installedPluginHosts, type PluginHosts } from "../../sheet-hosts.ts";
-import { savedVersionOf } from "../../workspace-at-version.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { trustInstructionsCommand } from "./instructions.ts";
 import { isPluginRecord, listTrusted, nameAt } from "./list.ts";
 import { trustPlugin } from "./plugin.ts";
+import { reviewedVersion } from "./reviewed-version.ts";
 import { optionForWord, refuseWords } from "./words.ts";
 
 /** What `trust` uses on this computer, so tests can hand it a memory store and a fixed clock. */
@@ -54,6 +59,8 @@ export interface TrustMachine {
   readonly pluginHosts?: () => Promise<PluginHosts>;
   /** The stored keys' lists of addresses; left out, the check reads no key's list. */
   readonly keyOrigins?: KeyOrigins;
+  /** Opens the workspace's history, for the version a run would start; git on the `PATH` when left out. */
+  readonly history?: OpenWorkspaceHistory;
 }
 
 /**
@@ -157,11 +164,9 @@ async function reviewAndTrust(
     );
   }
   const opened = await openWorkspaceDir(input, context);
-  const workspace = await readWorkspaceTrust(
-    opened,
-    machine.commandSearch,
-    await savedVersionOf(opened),
-  );
+  const history = machine.history ?? openGitHistory;
+  const reviewed = await reviewedVersion(opened, history);
+  const workspace = await readWorkspaceTrust(opened, machine.commandSearch, reviewed.version);
   const facts = { name: workspace.name, folder: opened.shown };
   // The name comes from `workspace.yaml`, so each sentence quotes it escaped:
   // the question and the refusal follow the check on the same screen, and a
@@ -173,7 +178,7 @@ async function reviewAndTrust(
   if (reachesOnlyTheTestModel(workspace.subject)) {
     return {
       exitCode: exitCode.ok,
-      lines: [marked(trustMessages.notNeeded(name))],
+      lines: [marked(trustMessages.notNeeded(name)), ...notCommittedLines(reviewed.notCommitted)],
       json: { ...facts, status: "not-needed" },
     };
   }
@@ -185,6 +190,7 @@ async function reviewAndTrust(
     sandboxWorks: (await machine.sandboxWorks?.()) === true,
     pluginHosts: (await machine.pluginHosts?.()) ?? new Map(),
     keyAddresses: await keyAddressLists(check, machine.keyOrigins),
+    notCommitted: reviewed.notCommitted,
   });
   const changes =
     check.status === "changed" ? trustChangesDocument(check.changes, check.trustedAt) : undefined;
@@ -211,13 +217,10 @@ async function reviewAndTrust(
     return { exitCode: exitCode.notTrusted, lines: [trustMessages.notTrusted().phrase], json: {} };
   }
 
-  // Read the files again: they can change while the person answers, and only
+  // Read the version again: it can change while the person answers, and only
   // what the check showed them is trusted.
-  const answered = await readWorkspaceTrust(
-    opened,
-    machine.commandSearch,
-    await savedVersionOf(opened),
-  );
+  const again = await reviewedVersion(opened, history);
+  const answered = await readWorkspaceTrust(opened, machine.commandSearch, again.version);
   const granted = await trust.grant(answered.subject, check.fingerprint, "cli");
   if (!granted.ok) {
     // The files changed between the check and the answer: the refusal gives

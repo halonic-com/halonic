@@ -16,6 +16,7 @@ import {
   cliTrustService,
   readWorkspaceTrust,
   type WorkspaceTrustMachine,
+  workspaceTrustState,
 } from "./workspace-trust.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
@@ -139,6 +140,17 @@ verifies("cli.serve-trust-gate", () => {
 
     expect(decision.state).toBe("unreadable");
     expect(decision.message).not.toContain("disk gone");
+  });
+
+  it("counts a version it can't read as unreadable, never trusted", async () => {
+    await trust();
+    const { dir } = await gate();
+
+    const answer = await workspaceTrustState(dir, machine, async () => {
+      throw new Error("integration folder gone");
+    });
+
+    expect(answer).toEqual({ state: "unreadable", refused: [] });
   });
 
   it("names no file, path or fingerprint in its sentences", async () => {

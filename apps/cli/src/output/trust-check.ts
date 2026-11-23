@@ -54,6 +54,19 @@ export interface TrustCheckFacts {
    * gets a ! line (HAL-15346). Left out, no key's list is checked.
    */
   readonly keyAddresses?: KeyAddressLists;
+  /**
+   * The files the check covers that have saved changes that aren't
+   * committed, workspace-relative (HAL-16335): named on one dimmed line
+   * after the rows and before the fingerprint, so the last line stays the
+   * fingerprint a script reads. Left out or empty, there is no such line.
+   */
+  readonly notCommitted?: readonly string[];
+}
+
+/** The dimmed line naming `files`, escaped, or none when there are none. */
+export function notCommittedLines(files: readonly string[]): Phrase[] {
+  if (files.length === 0) return [];
+  return [trustMessages.notCommitted(files.map((file) => printable(file))).phrase];
 }
 
 /** A check with a fingerprint: every status but `refused`, which stops before any line is shown. */
@@ -76,12 +89,14 @@ export type FingerprintedCheck = Exclude<TrustCheck, { readonly status: "refused
 export function trustCheckLines(check: FingerprintedCheck, rawFacts: TrustCheckFacts): Phrase[] {
   // The name and the folder come from the workspace, so they are escaped once, here.
   const facts = { ...rawFacts, name: printable(rawFacts.name), folder: printable(rawFacts.folder) };
+  const notCommitted = notCommittedLines(rawFacts.notCommitted ?? []);
   if (check.status === "trusted") {
     const trustedOn = shownDate(check.trustedAt);
-    return [marked("done", trustMessages.alreadyTrusted(facts.name, trustedOn))];
+    return [marked("done", trustMessages.alreadyTrusted(facts.name, trustedOn)), ...notCommitted];
   }
   const unpinned = new Set(check.unpinned);
   const fingerprint = [
+    ...(notCommitted.length === 0 ? [] : [phrase``, ...notCommitted]),
     phrase``,
     trustMessages.fingerprintHeading().phrase,
     phrase`${rowIndent}${check.fingerprint}`,

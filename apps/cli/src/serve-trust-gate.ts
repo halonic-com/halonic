@@ -49,7 +49,7 @@ async function trustAnswerOf(
   } catch {
     return { state: "unreadable", sentence: sentenceOf.unreadable() };
   }
-  const { state } = await workspaceTrustState(dir, machine, await savedVersionOf(dir, loaded));
+  const { state } = await workspaceTrustState(dir, machine, () => savedVersionOf(dir, loaded));
   // A workspace that reaches only the test model starts nothing that
   // needs trust, so it answers `trusted` with its own sentence (HAL-12011).
   if (state === "not-needed") {

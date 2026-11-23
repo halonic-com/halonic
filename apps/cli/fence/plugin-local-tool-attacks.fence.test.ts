@@ -220,6 +220,7 @@ async function runReport(): Promise<RunOutcome> {
       holder: "run",
       dir,
       workspace,
+      integrations: version.integrations,
       trust: grant,
       runs: [{ hubId: "reports", workflowId: "weekly-report" }],
       ending: runMessages.nothingRan(),
