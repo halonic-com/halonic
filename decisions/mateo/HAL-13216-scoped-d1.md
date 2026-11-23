@@ -2,6 +2,7 @@
 
 - Approval: HAL-13216 (plan revision 3), part of the selling layer's S1 on HAL-13207
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:c7N/xy7pDmX8Vg7HQStBTJtt2WwRre6y19FSrpNArOzQ36OiPVLJC3CFiF1tBNdULwFLLcPvRJEd9BdqbqZtCg==
 
 A runtime is now built per request under its principal's scope, a user's
 `u/<id>` or an organisation's `o/<id>`. The blobs and every Durable Object
