@@ -24,6 +24,7 @@
     "@halonicjs/adapter-scheduler-node": "workspace:*",
     "@halonicjs/adapter-workspace-models": "workspace:*",
     "@halonicjs/app": "workspace:*",
+    "@halonicjs/assistant": "workspace:*",
     "@halonicjs/engine": "workspace:*",
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",

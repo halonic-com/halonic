@@ -50,11 +50,16 @@ import {
   type TauriIpc,
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
-import { EngineNotAnswering, type KeyboardPlatform } from "@halonicjs/studio-shell";
+import {
+  EngineNotAnswering,
+  type KeyboardPlatform,
+  type ShellEngine,
+} from "@halonicjs/studio-shell";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { agentHostPlacement } from "../agents/agent-host-placement.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
+import { provideAssistantHost } from "../assistant/provide-assistant-host.ts";
 import { provideChangesServices } from "../changes/provide-changes-services.ts";
 import { provideCheckComputer } from "../check-computer/provide-check-computer.ts";
 import { answerChatOn, chatExecutorOf } from "../engine/answer-chat-on.ts";
@@ -116,6 +121,8 @@ export interface FolderServiceParts {
    * folder opened. Then the page opens no engine of its own: no engine lock, no routine timers.
    */
   readonly remoteEngine?: RemoteEngine | undefined;
+  /** The window's engine connection: an Assistant answer ends when the engine stops answering. */
+  readonly engineConnection?: Pick<ShellEngine, "on"> | undefined;
 }
 
 /** Gives the folder in `location` the services its features read through the shell. */
@@ -134,6 +141,7 @@ export function provideFolderServices(
     settle,
     onEngineLockLost,
     remoteEngine,
+    engineConnection,
   }: FolderServiceParts,
 ): void {
   services.provide(
@@ -219,6 +227,13 @@ export function provideFolderServices(
       trust: { mayStart: () => trust.mayStartNow(), askTrust, workspaceName: name },
     }),
   );
+  provideAssistantHost(services, {
+    files,
+    location,
+    trust,
+    answerChat: answerChatOn(chatExecutorOf(engine), refusals),
+    engine: engineConnection,
+  });
   // An agent on hold gets its own Inbox row; without the agent host nothing can be on hold.
   if (placed !== undefined) {
     services.provide(

@@ -41,6 +41,8 @@ export const buildChatWords = {
   stopped: "Stopped by you",
   stoppedByYou: "Stopped by you.",
   stoppedWhenClosed: "Stopped when Halonic closed.",
+  /** H13 (D4): the engine stopped mid-answer, with Try again unless a tool already ran. */
+  engineStopped: "Stopped when Halonic's engine stopped.",
   /** H28: the limit's line, with **Continue**, and what is announced. */
   modelCallLimit: (calls: number) => `Stopped after ${calls} model calls. Ask it to continue.`,
   continue: "Continue",

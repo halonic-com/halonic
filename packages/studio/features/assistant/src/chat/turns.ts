@@ -16,6 +16,8 @@ export type ReplyStep =
 export type ReplyEnd =
   | { readonly kind: "stopped" }
   | { readonly kind: "stopped-when-closed" }
+  /** The engine stopped mid-answer (states H13); Try again only when no tool ran. */
+  | { readonly kind: "engine-stopped"; readonly toolsRan: boolean }
   | { readonly kind: "model-call-limit"; readonly calls: number }
   | { readonly kind: "failed"; readonly reason: string; readonly toolsRan: boolean };
 
@@ -111,6 +113,10 @@ export function endLine(end: ReplyEnd): string {
       return buildChatWords.stoppedByYou;
     case "stopped-when-closed":
       return buildChatWords.stoppedWhenClosed;
+    case "engine-stopped":
+      return end.toolsRan
+        ? `${buildChatWords.engineStopped} ${buildChatWords.toolsRan}`
+        : buildChatWords.engineStopped;
     case "model-call-limit":
       return buildChatWords.modelCallLimit(end.calls);
     case "failed": {
