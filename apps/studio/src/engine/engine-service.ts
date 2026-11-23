@@ -29,6 +29,9 @@
 // (HAL-13678). A start the shell refuses because Remove trust closed the folder is refused as
 // untrusted too (`engine-trust.ts`). While it is open, it starts the workspace's routines on
 // time, as `halonic routines watch` does (`pageRoutines`, HAL-14205).
+// Run, the Inbox form, Run now and routines start from the live version, as the CLI's do, and
+// each run's definitions, trust check and connector files come from the version it records
+// (`PageRunVersions`, HAL-14229).
 
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
@@ -47,14 +50,9 @@ import {
   noListedToolApproval,
 } from "@halonicjs/engine";
 import type { RunSummary } from "@halonicjs/events";
-import type { SendOptions } from "@halonicjs/ports";
+import type { SendOptions, StartRunRequest } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import {
-  filesOf,
-  type LoadedWorkspace,
-  loadWorkspace,
-  runDefinitionsOf,
-} from "@halonicjs/workspace";
+import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { openEngineHarnessHost } from "./engine-harness-host.ts";
 import { holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
@@ -65,24 +63,20 @@ import {
   reopenOnLocalOnlySave,
   takeForRoutine,
 } from "./engine-reopen.ts";
-import { savedFiles, startRoutineOn } from "./engine-routine-start.ts";
+import { startRoutineOn } from "./engine-routine-start.ts";
 import { pageRoutines, routineSkipsOf, SkipListeners } from "./engine-routines.ts";
 import { engineRunsOptions, openRunsOf } from "./engine-runs-options.ts";
 import { SavedWorkspace } from "./engine-saved-files.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
+import { refuseAgentOn, refuseRoutineWorkflowOn, refuseWorkflowOn } from "./engine-start-checks.ts";
 import {
   closeAndEndStoppedRuns,
   refuseUntrusted,
   untrustedWhenFolderClosed,
 } from "./engine-trust.ts";
 import { withKeyOriginPrompt } from "./key-origin-prompt.ts";
-import {
-  agentRefusalOf,
-  agentStartRefusalOf,
-  type PageRuns,
-  routineRefusalOf,
-  workflowRefusalOf,
-} from "./page-refusal.ts";
+import type { PageRuns } from "./page-refusal.ts";
+import { PageRunVersions } from "./page-run-versions.ts";
 
 export type { PageEngineLock } from "./engine-lock.ts";
 export { trustRemovedCause } from "./engine-trust.ts";
@@ -115,16 +109,24 @@ export class EngineService {
   readonly #skips = new SkipListeners();
   /** Calls `listener` each time a routine's tick adds to its skip records; returns the way to stop. */
   readonly onRoutineSkips = (listener: () => void) => this.#skips.subscribe(listener);
-  /** How a start, an answer and a routine's start take the saved files (`engine-reopen.ts`). */
+  /** How a start, an answer and a routine's start take the version they read (`engine-reopen.ts`). */
   readonly #opener: EngineOpener;
+  /** The versions runs start from; a run's load is kept only where its connectors' end forgets it. */
+  readonly #runVersions: PageRunVersions;
 
   constructor(options: EngineServiceOptions) {
     this.#options = options;
+    this.#runVersions = new PageRunVersions({
+      versions: options.versions,
+      saved: options.definitions,
+      keepsRuns: options.openRunConnectors !== undefined,
+    });
     this.#opener = {
       current: () => this.#opening,
       open: () => this.#open(),
       close: () => this.close(),
-      load: () => loadWorkspace(options.definitions),
+      // The version a start reads now, which the engine's models, budget and trust read from here on.
+      load: async () => (await this.#runVersions.opening()).workspace,
       name: options.name,
       reportError: options.reportError,
     };
@@ -188,19 +190,18 @@ export class EngineService {
   }
 
   /**
-   * Refuses a workflow the page can't run, before the engine opens: one with
-   * an agent that lists a connector, or an agent in a harness when no agent
-   * host runs.
+   * Refuses a workflow the page can't run, before the engine opens, on the version a start reads
+   * now: one with an agent that lists a connector, or an agent in a harness when no agent host
+   * runs.
    *
    * @throws StartRefused naming the agent, with the next step: the Harness page, or the command
    *   that starts the run in a terminal
    * @throws RangeError when the hub or the workflow doesn't exist
+   * @throws KindedError `conflict` when nothing is live yet, or `unavailable` when git can't
+   *   read the live version
    */
   async check(run: WorkflowRef): Promise<void> {
-    const workspace = await loadWorkspace(this.#options.definitions);
-    runDefinitionsOf(workspace, run.hubId, run.workflowId);
-    const refusal = workflowRefusalOf(workspace, run, this.pageRuns);
-    if (refusal !== undefined) throw refusal;
+    refuseWorkflowOn((await this.#runVersions.pick()).loaded.workspace, run, this.pageRuns);
   }
 
   /**
@@ -211,23 +212,15 @@ export class EngineService {
    *   harness
    * @throws RangeError when the hub has no such agent
    */
-  async checkAgent({ hubId, agentId }: AgentRef): Promise<void> {
-    const workspace = await loadWorkspace(this.#options.definitions);
-    const file = filesOf(workspace, "agent").find(
-      (agent) => agent.hub === hubId && agent.value.id === agentId,
-    );
-    if (file === undefined) {
-      throw new RangeError(`The hub "${hubId}" has no agent "${agentId}".`);
-    }
-    const refusal = agentRefusalOf(workspace, hubId, file.value, this.pageRuns);
-    if (refusal !== undefined) throw refusal;
+  async checkAgent(agent: AgentRef): Promise<void> {
+    refuseAgentOn((await this.#runVersions.pick()).loaded.workspace, agent, this.pageRuns);
   }
 
   /**
-   * Starts a run of the workflow with `input`, on the workspace's files as they are saved: refuses
-   * what the page can't run ({@link EngineService.check}), opens the engine, and returns once the
-   * run has started, not when it ends. The run records a manual trigger, or an `inbox` one for a
-   * request from the Inbox's form.
+   * Starts a run of the workflow with `input`, on the live version, or the saved files with
+   * history off: refuses what the page can't run ({@link EngineService.check}), opens the engine,
+   * and returns once the run has started, not when it ends. The run records a manual trigger, or
+   * an `inbox` one for a request from the Inbox's form.
    *
    * @param from where the person started it: with Run (`manual`, the default) or from the Inbox
    * @returns the new run's id
@@ -239,15 +232,30 @@ export class EngineService {
     input: Record<string, unknown>,
     from: "manual" | "inbox" = "manual",
   ): Promise<{ readonly id: string }> {
-    return this.#untrustedWhenFolderClosed(async () => {
-      await this.check(run);
-      const engine = await this.openForStart();
-      // A run started from the window is the person's own, so it names a trigger: with none, the
-      // Runs list says it was started in the terminal.
-      const trigger = { type: from, at: this.#options.clock.now().toISOString() };
-      const { id } = await engine.executor.start({ ...run, input, trigger, version: savedFiles });
-      return { id };
-    });
+    // A run started from the window is the person's own, so it names a trigger: with none, the
+    // Runs list says it was started in the terminal.
+    const trigger = { type: from, at: this.#options.clock.now().toISOString() };
+    return this.#untrustedWhenFolderClosed(() => this.startWorkflow(run, input, trigger));
+  }
+
+  /**
+   * Starts a run of the workflow on the version a start reads now, checked as
+   * {@link EngineService.check} checks it, with `trigger`: for Run, the Inbox form and Run now.
+   *
+   * @returns the new run's id
+   * @throws what {@link EngineService.check} and {@link EngineService.open} throw, or the
+   *   executor's refusal, such as of a version that isn't trusted
+   */
+  async startWorkflow(
+    run: WorkflowRef,
+    input: StartRunRequest["input"],
+    trigger: NonNullable<StartRunRequest["trigger"]>,
+  ): Promise<{ readonly id: string }> {
+    const { version, loaded } = await this.#runVersions.pick();
+    refuseWorkflowOn(loaded.workspace, run, this.pageRuns);
+    const engine = await this.openForStart();
+    const { id } = await engine.executor.start({ ...run, input, trigger, version });
+    return { id };
   }
 
   /** Starts what a routine runs, for its Run now ({@link startRoutineOn}). */
@@ -263,9 +271,8 @@ export class EngineService {
    * `halonic runs send` does, with the executor's `payload` and `options` (the call or wait step it
    * answers): opens the engine, with the checks of a start, and returns once the event is recorded.
    * Another engine holding the workspace, or Local only changed while a run is going, fails as
-   * `unavailable` with its next step in the sentence, a failure to try again, and an
-   * Approve of a connector's tool call the window can't make is refused before anything is
-   * recorded (`engine-refusals`).
+   * `unavailable` with its next step in the sentence, a failure to try again, and an Approve of a
+   * connector's tool call the window can't make is refused before it's recorded (`engine-refusals`).
    * @returns the run as it is after the event
    * @throws KindedError `unavailable` for those, `denied` for a workspace that may start nothing,
    *   what {@link EngineService.open} throws otherwise, or the executor's refusal
@@ -389,13 +396,13 @@ export class EngineService {
       this.#options.onLockLost?.();
     });
     try {
-      const workspace = await loadWorkspace(this.#options.definitions);
+      const { workspace } = await this.#runVersions.opening();
       // Before the scheduler and the harness host start, so an untrusted workspace's
       // routines don't fire and its open harness runs don't resume either.
       await refuseUntrusted(this.#options.mayStart, workspace);
       const saved = new SavedWorkspace(workspace);
       const { latest } = saved;
-      const runConnectors = await this.#options.openRunConnectors?.();
+      const runConnectors = await this.#options.openRunConnectors?.(this.#runVersions);
       const connectors = runConnectors?.connectors;
       const runStore = new TauriRunStore(ipc, location);
       // Set once the engine is built; a bridge opens only during a run, so after that.
@@ -403,17 +410,18 @@ export class EngineService {
       const harnessHost = await openEngineHarnessHost(this.#options, latest, {
         approvalsOf: (runId) => executor?.bridgeApprovals(runId),
         remoteDecisionsOf: (runId) => executor?.bridgeRemoteDecisions(runId),
+        runVersions: this.#runVersions,
       });
       await harnessHost?.start(await openRunsOf(runStore));
       const onSkipsSaved = () => this.#skips.tell();
       const routineOptions = { ...this.#options, onSkipsSaved };
-      const routines = pageRoutines(workspace, routineOptions, async ({ hubId, workflowId }) => {
-        // A routine's step keeps it starting on time, where Run's `halonic run` starts it once.
-        await this.check({ hubId, workflowId }).catch((error: unknown) => {
-          throw routineRefusalOf(error);
-        });
+      const routines = pageRoutines(workspace, routineOptions, async (request) => {
+        // On the version the routine's run records. A routine's step keeps it starting on time,
+        // where Run's `halonic run` starts it once.
+        const atVersion = await this.#runVersions.workspaceAt(request.version);
+        refuseRoutineWorkflowOn(atVersion, request, this.pageRuns);
         await takeForRoutine(this.#opener, saved, executor, runStore);
-        await refuseUntrusted(this.#options.mayStart, latest());
+        await refuseUntrusted(this.#options.mayStart, atVersion);
       });
       const fromWorkspace = workspaceExecutorOptions({
         workspace,
@@ -438,7 +446,13 @@ export class EngineService {
         executor: {
           // "Allow this address?" (HAL-11873), only with the window's prompt.
           ...withKeyOriginPrompt(fromWorkspace, { ...this.#options, runs: runStore }),
-          runs: engineRunsOptions(this.#options, { runStore, latest, connectors, harnessHost }),
+          runs: engineRunsOptions(this.#options, {
+            runStore,
+            latest,
+            runVersions: this.#runVersions,
+            connectors,
+            harnessHost,
+          }),
         },
         coordination: new NodeCoordination({
           store: new TauriRecordStore(ipc, location),

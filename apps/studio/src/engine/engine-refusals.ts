@@ -19,9 +19,8 @@ export interface ConnectorApproveInput {
 
 /**
  * Refuses, before anything is recorded, an Approve of a connector's tool call the window can't
- * make: where no agent host starts connectors, in a run that read a commit (one the CLI
- * started), since the page starts connectors only on the saved files (`studioRunConnectors`),
- * and from a connector that isn't a `stdio` one of the run's hub, the only kind it starts
+ * make: where no agent host starts connectors, in a run that records no version it read, and
+ * from a connector that isn't a `stdio` one of the run's hub, the only kind it starts
  * (HAL-14847), as the page's start refusal tests (`page-refusal.ts`). Its sentence names the connector as the Library does, and its `fix` is the CLI line that sends
  * it. Any other answer passes.
  *
@@ -40,8 +39,10 @@ export async function refuseConnectorApprove(
   if (startsConnectors) {
     // A child run keeps its parent's version, so the run's own is the one its connectors read.
     const state = await readRun(runs, runId);
+    // The saved files or a commit: the page starts either's connectors (`studioRunConnectors`).
     if (
-      state?.version?.reads === "saved-files" &&
+      state?.version !== undefined &&
+      state.version !== null &&
       startsStdio(workspace, run.hubId, call.connector)
     ) {
       return;

@@ -12,6 +12,7 @@ import type { TauriIpc } from "@halonicjs/studio-services";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { PageEngineLock } from "./engine-lock.ts";
 import type { KeyOriginPrompt } from "./key-origin-prompt.ts";
+import type { RunVersionLoads } from "./page-run-versions.ts";
 import type { LiveVersions } from "./page-versions.ts";
 import type { EngineParts, StudioHarnessHost } from "./studio-harness-host.ts";
 
@@ -93,10 +94,11 @@ export interface EngineServiceOptions {
   openHarnessHost?(engine: EngineParts): Promise<StudioHarnessHost>;
   /**
    * Builds the runs' connectors on the agent host, when one runs (`studioRunConnectors`), and
-   * the approvals their listed tools are checked against, once per engine. Without it, a
-   * workflow with an agent that lists a connector is refused.
+   * the approvals their listed tools are checked against, once per engine. `versions` gives the
+   * version each run read, which its connectors' files come from, and forgets it when the run
+   * ends. Without it, a workflow with an agent that lists a connector is refused.
    */
-  openRunConnectors?(): Promise<StudioRunConnectors>;
+  openRunConnectors?(versions: RunVersionLoads): Promise<StudioRunConnectors>;
 }
 
 /** What a run needs to start its connectors and to offer their tools. */

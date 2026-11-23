@@ -40,8 +40,11 @@ async function acmeWithHistory(live: Record<string, string>, saved: Record<strin
   return { files, vcs };
 }
 
-/** The workflows a tick at 11:00:30 starts, on routines read through `vcs` and `files`. */
-async function startsAt1100(files: MemoryDefinitionStore, vcs: MemoryVcs): Promise<string[]> {
+/** What a tick at 11:00:30 starts, on routines read through `vcs` and `files`. */
+async function startsAt1100(
+  files: MemoryDefinitionStore,
+  vcs: MemoryVcs,
+): Promise<StartRunRequest[]> {
   let now = new Date("2026-11-20T10:00:30.000Z");
   const clock: Clock = { now: () => now };
   const starts: StartRunRequest[] = [];
@@ -70,7 +73,7 @@ async function startsAt1100(files: MemoryDefinitionStore, vcs: MemoryVcs): Promi
   await routines.catchUp();
   now = new Date("2026-11-20T11:00:30.000Z");
   await ticks.onTick("2026-11-20T11:00:30.000Z");
-  return starts.map((request) => request.workflowId);
+  return starts;
 }
 
 verifies("studio.engine-routines", () => {
@@ -84,7 +87,11 @@ verifies("studio.engine-routines", () => {
       { [routinePath]: routine("0 * * * *") },
       { [routinePath]: routine("0 3 * * *") },
     );
-    expect(await startsAt1100(files, vcs)).toEqual(["reply"]);
+    const [live] = await vcs.log(1);
+    const starts = await startsAt1100(files, vcs);
+    expect(starts.map((request) => request.workflowId)).toEqual(["reply"]);
+    // Its run records the live version, whose definitions the engine starts it from.
+    expect(starts[0]?.version).toMatchObject({ reads: "live-version", commit: live?.hash });
   });
 
   it("starts nothing once the saved routine is turned off, though the live one is on", async () => {

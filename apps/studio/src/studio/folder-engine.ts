@@ -93,8 +93,9 @@ export function folderEngine(services: ServiceRegistry, parts: FolderEngineParts
               ...decisions,
               reportError: (error) => console.error("The harness host", error),
             }),
-          openRunConnectors: () =>
+          openRunConnectors: (versions) =>
             openStudioRunConnectors({
+              versions,
               ipc,
               files,
               location,

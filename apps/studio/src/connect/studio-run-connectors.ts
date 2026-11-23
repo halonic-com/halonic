@@ -26,6 +26,7 @@ import {
   workspaceSecrets,
 } from "@halonicjs/ports";
 import { definitionsOf, filesOf, harnessWorkingFolders, loadWorkspace } from "@halonicjs/workspace";
+import type { RunVersionLoads } from "../engine/page-run-versions.ts";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { agentHostConnectorFactory } from "./agent-host-tool-lister.ts";
 
@@ -44,6 +45,12 @@ export interface StudioRunConnectorsInput {
   readonly secrets: Secrets;
   readonly tokens: TokenStore;
   readonly http: HttpClient;
+  /**
+   * The version each run read, which its connectors' files come from, forgotten when the run
+   * ends. Left out, every run's connectors come from the files as saved now, and a run of the
+   * live version starts none.
+   */
+  readonly versions?: RunVersionLoads;
   /** Hears what couldn't be closed when a run's connectors end. */
   reportError(error: unknown): void;
 }
@@ -53,9 +60,10 @@ export interface StudioRunConnectorsInput {
  * (`agentHostConnectorFactory`) and the way the CLI's runs do (`FolderRunConnectors`). Hand it to
  * the executor as `runs.runConnectors`, and `closeAll()` it once the executor has closed.
  *
- * A run reads the workspace as saved, and its programs start in the workspace folder: the page
- * can't make a copy at the run's commit as the CLI does, so a run of the live version starts
- * none. The workspace must be trusted as it is when the run needs a connector. Without a grant
+ * A run's connectors come from the version it read (`versions`), checked for trust on that
+ * read, so the trust covers that version's connector files and their commands. Their programs
+ * start in the workspace folder, also for a run of the live version: the page can't make a copy
+ * at the run's commit as the CLI does yet (HAL-14229 follows that up). Without a grant
  * the connector is created without one, and the agent host refuses to start its program, as the
  * CLI's `stdio` factory does. A person is never asked here: trust is granted on the workspace's
  * own page.
@@ -67,14 +75,17 @@ export interface StudioRunConnectorsInput {
 export function studioRunConnectors(input: StudioRunConnectorsInput): FolderRunConnectors {
   return new FolderRunConnectors({
     factories: new ConnectorFactories([agentHostConnectorFactory(input.transport)]),
-    programFolders: workspaceFolder(input.folder),
+    programFolders: workspaceFolder(input.folder, { liveRuns: input.versions !== undefined }),
     // A workspace names the secrets its connectors get, so never Halonic's own or a plugin's.
     context: { secrets: workspaceSecrets(input.secrets), tokens: input.tokens, http: input.http },
-    // The files as they are now, not as the engine opened on, so a connector saved since then
-    // starts under its new file's program but the old file's `tools` lists. Safe, because trust
-    // is checked on this read; the CLI has the same gap for a run of the saved files.
+    // The version the run read; without `versions`, the files as they are now, not as the engine
+    // opened on, so a connector saved since then starts under its new file's program but the old
+    // file's `tools` lists. Safe, because trust is checked on this read.
     versionOf: async (run) => {
-      const workspace = await loadWorkspace(input.definitions);
+      const workspace =
+        input.versions === undefined
+          ? await loadWorkspace(input.definitions)
+          : (await input.versions.loadedOf(run)).workspace;
       const checked = await input.trust.checkLoaded(workspace);
       return {
         connectors: Object.values(definitionsOf(workspace, run.hubId).connectors),
@@ -87,8 +98,7 @@ export function studioRunConnectors(input: StudioRunConnectorsInput): FolderRunC
         sheetHostsOf: async () => NO_SHEET_HOSTS,
       };
     },
-    // The page keeps nothing per run beyond the connectors themselves.
-    runEnded: () => undefined,
+    runEnded: (runId) => input.versions?.forget(runId),
     reportError: input.reportError,
   });
 }
@@ -238,13 +248,16 @@ const sendingOff: SendingSettings = {
 
 /**
  * The workspace folder as the place programs start in; there is no copy to make or to release.
- * A run of the live version is refused, never started in the saved files in its place, as the
- * CLI's program folders refuse it.
+ * Without `liveRuns`, a run of the live version is refused, never started in the saved files in
+ * its place, as the CLI's program folders refuse it.
  */
-function workspaceFolder(folder: Pick<FolderReader, "locationOf">): RunProgramFolders {
+function workspaceFolder(
+  folder: Pick<FolderReader, "locationOf">,
+  { liveRuns }: { readonly liveRuns: boolean },
+): RunProgramFolders {
   return {
     folderFor: async (version) => {
-      if (version.reads !== "saved-files") {
+      if (version.reads !== "saved-files" && !liveRuns) {
         throw new ProgramCopyUnavailableError(
           version.commit,
           new Error("Studio runs only the saved files, so it makes no copy at a commit."),

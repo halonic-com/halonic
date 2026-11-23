@@ -42,6 +42,7 @@ import {
 } from "@halonicjs/host-harness-host";
 import type { BridgeApprovals, Clock, DefinitionSource, Digest } from "@halonicjs/ports";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import type { RunVersionLoads } from "./page-run-versions.ts";
 import { type StudioKeyParts, studioProviderKeys } from "./studio-provider-keys.ts";
 
 /** What {@link openStudioHarnessHost} builds from. */
@@ -66,12 +67,20 @@ export interface StudioHarnessInput extends StudioKeyParts {
    * when it gives none, a phone's decision is refused.
    */
   remoteDecisionsOf(runId: string): RemoteDecisions | undefined;
+  /**
+   * The version each run read, which its agent's file comes from for its placement. Left out,
+   * every agent's file is read as saved now.
+   */
+  readonly runVersions?: RunVersionLoads;
   /** Hears the error of a clean-up at the start that couldn't finish. */
   reportError(error: unknown): void;
 }
 
 /** What the engine gives the harness host once it is built: one run's approvals and its phone's decisions. */
-export type EngineDecisions = Pick<StudioHarnessInput, "approvalsOf" | "remoteDecisionsOf">;
+export type EngineDecisions = Pick<
+  StudioHarnessInput,
+  "approvalsOf" | "remoteDecisionsOf" | "runVersions"
+>;
 
 /** What the engine gives the harness host when it opens: its decisions, and its parts for a sandboxed agent's key. */
 export type EngineParts = EngineDecisions & StudioKeyParts;
@@ -115,7 +124,7 @@ export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<
       digest: input.digest,
       clock: input.clock,
     }),
-    files: agentFilesOf(input.definitions),
+    files: agentFilesOf(input.definitions, input.runVersions),
     location,
   });
   const profiles = new AgentHostProfiles(transport, { workspace: location, bridgeIdOf });
@@ -174,11 +183,29 @@ async function bridgeServicesOf(
 }
 
 /**
- * The agents' files as they are saved now: the Studio starts its runs on the
- * saved files.
+ * The agents' files as the version each run read has them, or as saved now without
+ * `runVersions`: the bytes a run's placement choice is read for.
+ *
+ * @example
+ * const files = agentFilesOf(store, runVersions);
+ * await files.bytesOf("support", "writer", { runId: "run_1", version });
  */
-function agentFilesOf(definitions: DefinitionSource): AgentFiles {
-  return { bytesOf: (hubId, agentId) => savedAgentBytes(definitions, hubId, agentId) };
+export function agentFilesOf(
+  definitions: DefinitionSource,
+  runVersions: RunVersionLoads | undefined,
+): AgentFiles {
+  return {
+    bytesOf: async (hubId, agentId, run) => {
+      if (runVersions === undefined) return savedAgentBytes(definitions, hubId, agentId);
+      const { workspace, fileTexts } = await runVersions.loadedOf(run);
+      const file = filesOf(workspace, "agent").find(
+        (each) => each.hub === hubId && each.value.id === agentId,
+      );
+      const text = file === undefined ? undefined : fileTexts.get(file.path);
+      if (text === undefined) throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
+      return new TextEncoder().encode(text);
+    },
+  };
 }
 
 /**
