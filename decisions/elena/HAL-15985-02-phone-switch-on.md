@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15985 (Liam approved the plan, which keeps the phone app's page free of the Studio shell); the reviewer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BxxDQ0vMbKCW5lFHoySNX0NPoD5UaQ4Sm89UJlNKMU3K9oiZCFZA2JHv2V++wiGqp2ZB0F3/iJxgJeRFh6njBQ==
 - Task: HAL-15985
 
 ## What changes
