@@ -109,16 +109,7 @@ interface PanelBodyProps {
 
 /** The chat, its first load (H7), a chat that can't load, or no chat (H3). */
 function PanelBody({ shown, chats, box, announce, onNewChat, lookingAt }: PanelBodyProps) {
-  if (shown.kind === "none") {
-    return (
-      <EmptyState
-        plain
-        title={words.noChat}
-        description={words.noChatLine}
-        action={{ label: words.newChat, onClick: onNewChat }}
-      />
-    );
-  }
+  if (shown.kind === "none") return <NoChat onNewChat={onNewChat} />;
   if (shown.kind === "failed") {
     return (
       <EmptyState
@@ -135,7 +126,10 @@ function PanelBody({ shown, chats, box, announce, onNewChat, lookingAt }: PanelB
     <>
       <p className="px-4 text-caption text-fg-muted">{statusLine(view, lookingAt)}</p>
       {view === undefined ? (
-        <ChatLoading label={words.loading} onRetry={() => void chats.open()} />
+        // Fills the transcript's place, so the box is at the bottom from the start (H7).
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ChatLoading label={words.loading} onRetry={() => void chats.open()} />
+        </div>
       ) : (
         <Transcript view={view} onContinue={() => void chats.send(undefined, announce)} />
       )}
@@ -150,6 +144,25 @@ function PanelBody({ shown, chats, box, announce, onNewChat, lookingAt }: PanelB
         onStop={() => chats.stop()}
       />
     </>
+  );
+}
+
+/**
+ * No chat open (H3), at the top and left-aligned like the failed and the empty chat: the panel
+ * doesn't centre. The kit's `EmptyState` aligns to the start only for an error, so the panel lays
+ * it out here, with the spacing of that failed state.
+ */
+function NoChat({ onNewChat }: { readonly onNewChat: () => void }) {
+  return (
+    <div className="flex flex-col items-start gap-1.5 px-4 py-3">
+      <p className="text-section text-fg">{words.noChat}</p>
+      <p className="text-body text-fg-muted">{words.noChatLine}</p>
+      <div className="mt-1.5">
+        <Button variant="primary" size="md" onClick={onNewChat}>
+          {words.newChat}
+        </Button>
+      </div>
+    </div>
   );
 }
 

@@ -66,6 +66,9 @@ verifies("assistant.chat.first-load", () => {
     expect(page.querySelector('[aria-busy="true"]')?.children.length).toBe(0);
     await act(async () => vi.advanceTimersByTime(300));
     expect(page.querySelector('[role="status"]')?.textContent).toBe("Loading this chat");
+    // The lines fill the transcript's place, so the box sits at the bottom before the chat comes.
+    const lines = page.querySelector('[aria-busy="true"]')?.parentElement;
+    expect(lines?.parentElement?.className).toContain("flex-1");
     await act(async () => release());
     expect(said(page)).toEqual(["Add a routine"]);
   });
@@ -95,6 +98,12 @@ verifies("assistant.chat.first-load", () => {
     fake.failReads(new KindedError("not_found", "No chat c1"));
     const page = await show(panel(fake));
     expect(page.textContent).toContain("No chat open");
+    // At the top, left-aligned, as the failed chat and the empty chat: the panel doesn't centre.
+    const title = [...page.querySelectorAll("p")].find(
+      (line) => line.textContent === "No chat open",
+    );
+    expect(title?.parentElement?.className).toContain("items-start");
+    expect(title?.closest(".place-items-center")).toBeNull();
     fake.failReads(undefined);
     await act(async () => buttonNamed(page, "New chat")?.click());
     expect(page.querySelector("h3")?.textContent).toBe("What should we build?");
