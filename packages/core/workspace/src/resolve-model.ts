@@ -31,7 +31,7 @@ export interface ResolvedModelTarget extends ModelTarget {
  * are `models.yaml`'s only. A file that didn't parse gives none.
  */
 export function modelAliases(
-  workspace: LoadedWorkspace,
+  workspace: Pick<LoadedWorkspace, "files">,
   hubId: string | null,
 ): Map<string, ModelAlias> {
   const aliases = new Map<string, ModelAlias>();
@@ -66,7 +66,7 @@ export function modelAliases(
  * // { provider: "anthropic", model: "claude-opus-5-5", params: {}, alias: "smart", fallback: [] }
  */
 export function resolveModel(
-  workspace: LoadedWorkspace,
+  workspace: Pick<LoadedWorkspace, "files">,
   hubId: string | null,
   name: string,
 ): ResolvedModelTarget | undefined {

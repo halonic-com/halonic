@@ -1,5 +1,12 @@
 import type { Deployment } from "@halonicjs/format";
 import { KindedError } from "@halonicjs/std";
+import {
+  addKeyFix,
+  type LoadedFile,
+  ManyUsersSubscriptionError,
+  manyUsersSubscriptionMessage,
+  signInAgents,
+} from "@halonicjs/workspace";
 
 /** The deployment `halonic deploy` works on, or `none` when the workspace has no Cloudflare one yet. */
 export type ChosenDeployment =
@@ -13,9 +20,12 @@ export type ChosenDeployment =
  * workspace's one Cloudflare deployment is chosen, `none` when it has none,
  * and several are wrong usage. A deployment with `users.meter: cloud` is
  * refused until Halonic Cloud can take its usage (requirement
- * `app.deploy-cloud-meter`).
+ * `app.deploy-cloud-meter`), and one with `users.mode: many` while a harness
+ * agent of the workspace's `files` has no provider key (requirement
+ * `app.deploy-many-users-subscription`).
  *
  * @throws KindedError `invalid_input` for a `local` deployment, several to choose from, or `meter: cloud`
+ * @throws ManyUsersSubscriptionError for `mode: many` with a harness agent that has no provider key
  * @throws KindedError `not_found` for a name `deployments.yaml` doesn't have
  *
  * @example
@@ -26,6 +36,7 @@ export function chooseDeployment(
   workspace: string,
   deployments: Readonly<Record<string, Deployment>>,
   name: string | undefined,
+  files: readonly LoadedFile[],
 ): ChosenDeployment {
   if (name !== undefined) {
     const deployment = deployments[name];
@@ -43,7 +54,7 @@ export function chooseDeployment(
         },
       );
     }
-    return chosen(name, deployment);
+    return chosen(name, deployment, files);
   }
   const onCloudflare = Object.entries(deployments).filter(([, d]) => d.host === "cloudflare");
   const [only, ...others] = onCloudflare;
@@ -56,7 +67,7 @@ export function chooseDeployment(
       { fix: "Usage: halonic deploy <deployment>" },
     );
   }
-  return chosen(only[0], only[1]);
+  return chosen(only[0], only[1], files);
 }
 
 /**
@@ -67,7 +78,11 @@ export function chooseDeployment(
  * enforced yet either; that is safe only while nothing acts on `mode: many`,
  * so the slice that lets other users in must enforce or refuse them too.
  */
-function chosen(id: string, deployment: Deployment): ChosenDeployment {
+function chosen(
+  id: string,
+  deployment: Deployment,
+  files: readonly LoadedFile[],
+): ChosenDeployment {
   if (deployment.users?.meter === "cloud") {
     throw new KindedError(
       "invalid_input",
@@ -75,5 +90,21 @@ function chosen(id: string, deployment: Deployment): ChosenDeployment {
       { fix: "Use meter: config or meter: none in deployments.yaml." },
     );
   }
+  if (deployment.users?.mode === "many") refuseSignInAgents(id, files);
   return { kind: "chosen", id, deployment };
+}
+
+/**
+ * Other people start a `mode: many` deployment's runs, so a harness agent
+ * with no provider key would run them on the owner's own sign-in: the
+ * deploy stops on the first one, as `halonic validate` reports each.
+ */
+function refuseSignInAgents(id: string, files: readonly LoadedFile[]): void {
+  const [agent] = signInAgents(files);
+  if (agent === undefined) return;
+  throw new ManyUsersSubscriptionError(
+    manyUsersSubscriptionMessage(id, agent),
+    { deployment: id, harness: agent.harness },
+    addKeyFix(agent.providerType),
+  );
 }

@@ -8,6 +8,7 @@ import { checkHubUses } from "./hub-uses.ts";
 import { checkDefaultRuntimes, checkInstructionFiles } from "./ignored-settings.ts";
 import { checkIntegrationSettings } from "./integration-settings.ts";
 import { checkLocalOnly } from "./local-only.ts";
+import { checkManyUsersSubscription } from "./many-users.ts";
 import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
 import { checkModelProviders } from "./model-providers.ts";
 import { checkRoutines } from "./routines.ts";
@@ -37,6 +38,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkForEachWaits,
   checkRoutines,
   checkLocalOnly,
+  checkManyUsersSubscription,
   checkIntegrationSettings,
   checkDefaultRuntimes,
   checkInstructionFiles,

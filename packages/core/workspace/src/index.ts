@@ -61,6 +61,14 @@ export {
   unreadableFolderError,
   type WorkspaceIssue,
 } from "./load-workspace.ts";
+export {
+  addKeyFix,
+  ManyUsersSubscriptionError,
+  manyUsersSubscriptionCode,
+  manyUsersSubscriptionMessage,
+  type SignInAgent,
+  signInAgents,
+} from "./many-users-subscription.ts";
 export { misplacedFileCode } from "./misplaced-files.ts";
 export { type PlaceMatch, placeOf, settingsPath } from "./places.ts";
 export {
