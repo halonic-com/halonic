@@ -10,6 +10,13 @@ The harness host isn't in here: it is in the host layer, which an adapter can't 
 passes in `openHarnessHost`, along with what only it says or decides, such as the approvals of
 listed tools.
 
+Everything that reads or opens a workspace's engine state finds its folders with
+`engineStateFolders(workspaceRoot, environment)`: the engine itself, and the CLI's run store. The
+folders are named after the workspace's real path, the same way the Studio's Rust side names them,
+and the package's `webCryptoDigest` is the one digest that names them. When another engine holds
+the workspace's lock, `openLocalEngine` refuses with `EngineLockHeldError`, so a caller can word
+that refusal for its people.
+
 - **Layer:** adapters
 - **Owner:** priya
 - **Runtime:** node

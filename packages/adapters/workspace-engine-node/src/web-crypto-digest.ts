@@ -1,5 +1,5 @@
 // The `Digest` port over Web Crypto, which names a workspace's folders in the
-// profile (`local-engine.ts`).
+// profile (`engine-state-folders.ts`) and that the CLI's commands share.
 
 import type { Digest } from "@halonicjs/ports";
 
