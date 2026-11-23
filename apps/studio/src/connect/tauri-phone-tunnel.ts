@@ -2,6 +2,7 @@ import { decodePairingQr } from "@halonicjs/ports";
 import { encodeBase64url } from "@halonicjs/std";
 import type {
   ComputerId,
+  ComputerTunnel,
   PairingId,
   PairingOutcome,
   PairingStep,
@@ -9,12 +10,7 @@ import type {
   PhoneTunnel,
   TunnelPairingStart,
 } from "@halonicjs/studio-feature-remote/phone";
-import {
-  type TauriCallbacks,
-  TauriChannel,
-  type TauriIpc,
-  tauriChannelIpc,
-} from "@halonicjs/studio-services";
+import { type TauriCallbacks, type TauriIpc, tauriChannelIpc } from "@halonicjs/studio-services";
 import {
   type Report,
   readComputers,
@@ -22,8 +18,9 @@ import {
   readForget,
   readPairingOutcome,
   readPairingStep,
-  readTunnelEvent,
 } from "./phone-tunnel-answers.ts";
+import { TauriComputerTunnel } from "./tauri-computer-tunnel.ts";
+import { TunnelEvents } from "./tunnel-events.ts";
 
 type StatusListener = (computer: ComputerId, status: PhoneStatus) => void;
 
@@ -37,27 +34,23 @@ type StatusListener = (computer: ComputerId, status: PhoneStatus) => void;
  * - **One pairing:** the shell keeps one pairing, without an id. The adapter names each start,
  *   and a wait or a cancel for a pairing a newer start replaced doesn't reach the shell, so it
  *   can't end the newer one.
- * - **Statuses:** one channel through `phone_tunnel_watch`, opened for the first listener and
- *   kept for the page's life. The shell has no unwatch: it keeps every channel it was handed
- *   until the page loads again, so a channel per listener would send each status once per
- *   listener the page ever had. The shell sends only while the window is on the app's own page
- *   (H1 on HAL-15181) and starts with each computer's current status; a later listener gets the
- *   latest ones from here.
+ * - **Statuses:** from the page's one watch channel (`TunnelEvents`), which the gateway
+ *   clients from {@link TauriPhoneTunnel.computerTunnel} share; a later listener gets the
+ *   latest ones first.
  * - **Answers** are read with `phone-tunnel-answers.ts`; one the page doesn't know goes to
  *   `report`. A call the shell refuses rejects, as the port's callers expect.
  */
 export class TauriPhoneTunnel implements PhoneTunnel {
   readonly #ipc: TauriIpc & TauriCallbacks;
   readonly #report: Report;
-  readonly #listeners = new Set<StatusListener>();
-  readonly #latest = new Map<ComputerId, PhoneStatus>();
-  #watching = false;
+  readonly #events: TunnelEvents;
   #pairings = 0;
   #pairing: PairingId | undefined;
 
   constructor(ipc: TauriIpc & TauriCallbacks, report: Report) {
     this.#ipc = ipc;
     this.#report = report;
+    this.#events = new TunnelEvents(ipc, report);
   }
 
   async startPairing(start: TunnelPairingStart): Promise<PairingStep> {
@@ -101,33 +94,14 @@ export class TauriPhoneTunnel implements PhoneTunnel {
   }
 
   onStatus(listener: StatusListener): () => void {
-    this.#listeners.add(listener);
-    for (const [computer, status] of this.#latest) listener(computer, status);
-    if (!this.#watching) this.#watch();
-    // The channel stays open when the last listener goes, so the next one doesn't open another.
-    return () => {
-      this.#listeners.delete(listener);
-    };
+    return this.#events.listen((event) => {
+      if (event.kind === "status") listener(event.computer, event.status);
+    });
   }
 
-  #watch(): void {
-    // Set before the answer and never cleared: a refused watch isn't asked again. The shell
-    // refuses only off the app's own page, and this adapter runs only on that page.
-    this.#watching = true;
-    const channel = new TauriChannel(this.#ipc, (event) => this.#receive(event));
-    this.#ipc.invoke("phone_tunnel_watch", { onEvent: channel.argument }).then(
-      (watching) => {
-        if (watching !== true) this.#report("phone_tunnel_watch refused the watch");
-      },
-      () => this.#report("phone_tunnel_watch was refused"),
-    );
-  }
-
-  #receive(event: unknown): void {
-    const read = readTunnelEvent(event, this.#report);
-    if (read === undefined) return;
-    this.#latest.set(read.computer, read.status);
-    for (const listener of [...this.#listeners]) listener(read.computer, read.status);
+  /** The gateway client's tunnel to `computer`, on the same watch channel as the statuses. */
+  computerTunnel(computer: ComputerId): ComputerTunnel {
+    return new TauriComputerTunnel(this.#ipc, this.#events, computer, this.#report);
   }
 }
 

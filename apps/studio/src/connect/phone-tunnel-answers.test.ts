@@ -7,6 +7,7 @@ import {
   readForget,
   readPairingOutcome,
   readPairingStep,
+  readSendAnswer,
   readTunnelEvent,
 } from "./phone-tunnel-answers.ts";
 
@@ -170,6 +171,7 @@ verifies("studio.connect.phone-tunnel", () => {
         status: { state: "reconnecting", lastTry: "timeout", nextTryAtMs: 500 },
       };
       expect(readTunnelEvent(event, reports().report)).toEqual({
+        kind: "status",
         computer: "c1",
         status: {
           state: "reconnecting",
@@ -181,13 +183,60 @@ verifies("studio.connect.phone-tunnel", () => {
 
     it("passes the other states on and reports an event it doesn't know", () => {
       const event = { kind: "status", computer: "c1", status: { state: "removed" } };
-      expect(readTunnelEvent(event, reports().report)?.status).toEqual({ state: "removed" });
+      expect(readTunnelEvent(event, reports().report)).toEqual({
+        kind: "status",
+        computer: "c1",
+        status: { state: "removed" },
+      });
       const { lines, report } = reports();
       expect(readTunnelEvent({ ...event, kind: "session" }, report)).toBeUndefined();
       expect(
         readTunnelEvent({ ...event, status: { state: "reconnecting", nextTryAtMs: 9e15 } }, report),
       ).toBeUndefined();
       expect(lines).toHaveLength(2);
+    });
+  });
+});
+
+verifies("studio.connect.phone-tunnel-messages", () => {
+  describe("session events", () => {
+    it("reads a session that opened and its host messages, text untouched", () => {
+      const opened = { kind: "session-opened", computer: "c1", generation: 3 };
+      const message = { kind: "message", computer: "c1", generation: 3, text: '{"type":"x"}' };
+      expect(readTunnelEvent(opened, reports().report)).toEqual(opened);
+      expect(readTunnelEvent(message, reports().report)).toEqual(message);
+    });
+
+    it("reports a session event it doesn't know without its text", () => {
+      const { lines, report } = reports();
+      const secretish = "text the log must not hold";
+      const events = [
+        { kind: "session-opened", computer: "c1", generation: 0 },
+        { kind: "session-opened", computer: "c1", generation: 1.5 },
+        { kind: "message", computer: "c1", generation: 3 },
+        { kind: "message", computer: "c1", generation: 3, text: secretish, key: "k" },
+      ];
+      for (const event of events) expect(readTunnelEvent(event, report)).toBeUndefined();
+      expect(lines).toHaveLength(events.length);
+      expect(lines.join("\n")).not.toContain(secretish);
+    });
+  });
+
+  describe("send answers", () => {
+    it("reads sent and each refusal as the port's result", () => {
+      expect(readSendAnswer({ sent: true }, reports().report)).toEqual({ sent: true });
+      for (const reason of ["not-open", "too-large", "not-allowed"]) {
+        const answer = { sent: false, reason };
+        expect(readSendAnswer(answer, reports().report)).toEqual(answer);
+      }
+    });
+
+    it("reads an answer it doesn't know as not-open, and reports it", () => {
+      const { lines, report } = reports();
+      for (const answer of [null, "sent", { sent: false, reason: "busy" }, { sent: true, x: 1 }]) {
+        expect(readSendAnswer(answer, report)).toEqual({ sent: false, reason: "not-open" });
+      }
+      expect(lines).toEqual(Array(4).fill("tunnel_send gave an answer the page doesn't know"));
     });
   });
 });
