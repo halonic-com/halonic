@@ -172,8 +172,9 @@ names, against the plugins added on this computer, in the same states
 so this line can differ from one computer to the next. A connector no agent
 uses isn't checked, and the plugins are read only when an agent uses a
 plugin's connector. It also checks the files in your profile that keep
-where each plugin was added from and its settings, in any folder, with or
-without a workspace. Shown after Secrets and before Sandbox, only when
+where each plugin was added from and its settings, with or without a
+workspace. Outside a workspace, run `halonic doctor` without `--dir`: a
+`--dir` without a `workspace.yaml` stops with exit 4 before any check. Shown after Secrets and before Sandbox, only when
 there's something to report.
 
 | You see | Means | Fix |
@@ -182,8 +183,8 @@ there's something to report.
 | ! "is off" | The plugin is added but not trusted yet, or changed since you trusted it, such as `! Plugins     acme-orders is off: changed since you trusted it · halonic trust --plugin acme-orders`. Runs go on without its tools. | Run the command at the end of the line. |
 | ! "can't be read or checked" | Halonic couldn't read or check the plugin's folder. The plugin stays off. The other lines still show. | Run the command in the line under it: remove the plugin with `halonic plugin remove <id>`, then add a version that works. |
 | ! "The plugins folder … can't be read" | Your user account can't read the folder that holds every plugin, for example one left with mode `000`, so every plugin your agents use is off. The other lines still show. | Run the command in the line under it, such as `chmod 700 <folder>`, then run `doctor` again. Every `halonic plugin` command, such as `plugin list` and `plugin remove`, refuses with the same fix until then. |
-| ! "The plugin record file … can't be read by your user account" | Your user account can't open one of the files that keep every plugin's source and settings, or the `plugin-records` folder that holds them, such as one left with mode `000`. Shown even outside a workspace. | Run the command in the line under it, such as `chmod 600 <file>` (`chmod 700` for the folder), then run `doctor` again. `plugin list` and `plugin remove` refuse with the same fix until then. |
-| ! "The plugin record file … is damaged" | One of those files holds something that isn't a record, such as a line edited by hand. Shown even outside a workspace. | Delete the line it names, or delete the file, then run `doctor` again. The line under it says what deleting the file forgets: where each plugin was added from, or their settings. The plugins themselves stay. |
+| ! "The plugin record file … can't be read by your user account" | Your user account can't open one of the files that keep every plugin's source and settings, or the `plugin-records` folder that holds them, such as one left with mode `000`. Shown even outside a workspace, when you run `doctor` there without `--dir`. | Run the command in the line under it, such as `chmod 600 <file>` (`chmod 700` for the folder), then run `doctor` again. `plugin list` and `plugin remove` refuse with the same fix until then. |
+| ! "The plugin record file … is damaged" | One of those files holds something that isn't a record, such as a line edited by hand. Shown even outside a workspace, when you run `doctor` there without `--dir`. | Delete the line it names, or delete the file, then run `doctor` again. The line under it says what deleting the file forgets: where each plugin was added from, or their settings. The plugins themselves stay. |
 
 With `--json`, the check is `plugins`, with `problems`: one for each connector
 whose plugin isn't added, and one for each plugin that is off or can't be read,
