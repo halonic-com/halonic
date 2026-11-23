@@ -201,7 +201,7 @@ export function doneOutcome(files: readonly ProposalFile[]): string {
 export const notReviewed = "Not reviewed";
 
 /**
- * Under "Couldn't undo this." when the host left files of a decision as they were: "notes/a.md
+ * Under "Couldn't undo this." when the host put back none of a decision's files: "notes/a.md
  * changed after it was accepted, so it stays accepted." Paths come from the workspace.
  */
 export function undoLeftAloneLine(verb: "accepted" | "rejected", paths: readonly string[]): string {
@@ -210,6 +210,34 @@ export function undoLeftAloneLine(verb: "accepted" | "rejected", paths: readonly
     return `${markHiddenName(only)} changed after it was ${verb}, so it stays ${verb}.`;
   }
   return `${paths.length} files changed after they were ${verb}, so they stay ${verb}.`;
+}
+
+/**
+ * The toast when an **Undo** put back only some of a decision's files (C665 31, microcopy 16's
+ * Partly undone): "Undid part of the changes from run 01JD8Q", above {@link undoPartLine}.
+ */
+export function undidPartToast(runId: string): string {
+  return `Undid part of the changes from run ${shortRunId(runId)}`;
+}
+
+/**
+ * Under {@link undidPartToast}, the files it left, which keep their decision: "Couldn't put back
+ * notes/a.md: it changed after it was accepted." Paths come from the workspace.
+ */
+export function undoPartLine(verb: "accepted" | "rejected", paths: readonly string[]): string {
+  const [only] = paths;
+  if (paths.length === 1 && only !== undefined) {
+    return `Couldn't put back ${markHiddenName(only)}: it changed after it was ${verb}.`;
+  }
+  return `Couldn't put back ${paths.length} files: they changed after they were ${verb}.`;
+}
+
+/**
+ * When a later decision on one of its files kept a whole **Undo** back (C665 31): "Couldn't undo
+ * this: you decided more of run 01JD8Q's changes after it."
+ */
+export function undoDecidedAfterToast(runId: string): string {
+  return `Couldn't undo this: you decided more of run ${shortRunId(runId)}'s changes after it.`;
 }
 
 /**

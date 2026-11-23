@@ -14,13 +14,15 @@ export interface ProposalDecided {
   readonly cantBeWritten: readonly string[];
 }
 
-/** What an Undo left as it was. */
+/** What an Undo left as it was. A file it didn't put back keeps its decision. */
 export interface ProposalUndone {
   /**
-   * Files the host didn't put back: one changed after the decision, can't be written, or a later
-   * decision on the run changed its record, which leaves every file of the step alone.
+   * Files the host didn't put back: one changed after the decision or can't be written, or every
+   * file of the step when {@link decidedAfter}.
    */
   readonly leftAlone: readonly string[];
+  /** Whether a later decision on one of the step's files kept all of it from coming back. */
+  readonly decidedAfter: boolean;
 }
 
 /**

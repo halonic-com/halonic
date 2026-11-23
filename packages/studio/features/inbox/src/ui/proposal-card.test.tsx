@@ -21,7 +21,7 @@ function fakeDecisions(overrides: Partial<ProposalDecisions> = {}) {
   return {
     accept: vi.fn(async () => wrote("u1")),
     reject: vi.fn(async () => wrote("u2")),
-    undo: vi.fn(async () => ({ leftAlone: [] as readonly string[] })),
+    undo: vi.fn(async () => ({ leftAlone: [] as readonly string[], decidedAfter: false })),
     settle: vi.fn(async () => {}),
     remove: vi.fn(async () => {}),
     ...overrides,
@@ -307,14 +307,15 @@ verifies("inbox.proposal-page", () => {
   });
 
   describe("undoing", () => {
-    it("offers only the newest decision's Undo, and keeps a file the host didn't put back", async () => {
-      // The host takes nothing back once a later decision changed the run's record.
+    it("offers only the newest decision's Undo, and says when a later decision kept it back", async () => {
+      // The host takes nothing back once a later decision changed one of the step's files.
       const decisions = fakeDecisions({
         accept: vi.fn(async (_runId: string, target: { file: string } | "all") =>
           wrote(target === "all" ? "u-all" : `u-${target.file}`),
         ),
         undo: vi.fn(async () => ({
           leftAlone: ["notes/a.md", ".halonic/proposals/01JD8Q.json"],
+          decidedAfter: true,
         })),
       });
       const { root, toasts } = open(decisions);
@@ -333,13 +334,30 @@ verifies("inbox.proposal-page", () => {
       expect(decisions.undo).toHaveBeenCalledWith("u-notes/a.md");
       expect(buttons(root, "Accept")).toHaveLength(0);
       const refused = toasts.list().find((toast) => toast.tone === "danger");
+      expect(refused?.title).toBe(
+        "Couldn't undo this: you decided more of run 01JD8Q's changes after it.",
+      );
+      expect(refused?.text).toBeUndefined();
+    });
+
+    it("keeps a file the host didn't put back accepted, and says so", async () => {
+      const decisions = fakeDecisions({
+        undo: vi.fn(async () => ({ leftAlone: ["notes/a.md"], decidedAfter: false })),
+      });
+      const { root, toasts } = open(decisions);
+      await press(buttons(root, "Accept")[0]);
+
+      await act(async () => toasts.list()[0]?.action?.onClick());
+
+      expect(root.querySelector("li")?.textContent).toContain("Accepted");
+      const refused = toasts.list().find((toast) => toast.tone === "danger");
       expect(refused?.title).toBe("Couldn't undo this.");
       expect(refused?.text).toBe("notes/a.md changed after it was accepted, so it stays accepted.");
     });
 
-    it("puts back only the files the host restored", async () => {
+    it("puts back only the files the host restored, and says it undid part", async () => {
       const decisions = fakeDecisions({
-        undo: vi.fn(async () => ({ leftAlone: ["notes/b.md"] })),
+        undo: vi.fn(async () => ({ leftAlone: ["notes/b.md"], decidedAfter: false })),
       });
       const { root, toasts } = open(decisions);
       await press(buttons(root, "Accept all")[0]);
@@ -350,9 +368,9 @@ verifies("inbox.proposal-page", () => {
       expect(lines[0]).toContain("Accept");
       expect(lines[0]).not.toContain("Accepted");
       expect(lines[1]).toContain("Accepted");
-      expect(toasts.list().find((toast) => toast.tone === "danger")?.text).toBe(
-        "notes/b.md changed after it was accepted, so it stays accepted.",
-      );
+      const part = toasts.list().find((toast) => toast.tone === "warning");
+      expect(part?.title).toBe("Undid part of the changes from run 01JD8Q");
+      expect(part?.text).toBe("Couldn't put back notes/b.md: it changed after it was accepted.");
     });
   });
 

@@ -92,8 +92,8 @@ export function hostProposalDecisionsOf(
       }),
     undo: (undo: string) =>
       whenTrusted(async (): Promise<ProposalUndone> => {
-        const { changedOnDisk, refused } = await proposals.restore(undo, "before");
-        return { leftAlone: [...changedOnDisk, ...refused.map((r) => r.path)] };
+        const { changedOnDisk, refused, decidedAfter } = await proposals.restore(undo, "before");
+        return { leftAlone: [...changedOnDisk, ...refused.map((r) => r.path)], decidedAfter };
       }),
     settle: (runId: string) => whenTrusted(async () => void (await proposals.settle(runId))),
     remove: (runId: string) => whenTrusted(() => proposals.remove(runId).catch(removeFailed)),

@@ -52,11 +52,20 @@ verifies("studio.workspace-proposal-decisions", () => {
     });
     expect(await hostProposalDecisionsOf(transport, workspace, () => true).undo("u1")).toEqual({
       leftAlone: [file, ".git/config"],
+      decidedAfter: false,
     });
     expect(request).toHaveBeenCalledWith("POST /v1/proposals/restore", {
       workspace,
       undo: "u1",
       to: "before",
+    });
+  });
+
+  it("says when a later decision kept the whole Undo back", async () => {
+    const { transport } = hostAnswering({ changedOnDisk: [file], refused: [], decidedAfter: true });
+    expect(await hostProposalDecisionsOf(transport, workspace, () => true).undo("u1")).toEqual({
+      leftAlone: [file],
+      decidedAfter: true,
     });
   });
 
