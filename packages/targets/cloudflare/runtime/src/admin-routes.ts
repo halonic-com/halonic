@@ -21,6 +21,7 @@ import {
 } from "./import-data.ts";
 import { createRuntime } from "./runtime.ts";
 import { serverConfigOf } from "./serve-config.ts";
+import { type OpenSessions, sessionRoutes } from "./session-routes.ts";
 
 const exportFilesPath = "/admin/export/files";
 
@@ -202,17 +203,19 @@ function decodePath(raw: string): string | undefined {
 }
 
 /**
- * The export and import routes of the Worker, in the paths the contract names
+ * The export, import and session routes of the Worker, in the paths the contract names
  * (see the package README).
  *
  * @param openExport - opens the stores an export reads; only a test passes its own
  * @param openImport - opens the stores an import writes and its staging area; only a test passes its own
+ * @param openSessions - opens the sign-in a revoke ends the sessions of; only a test passes its own
  */
 export function adminRoutesOf(
   openExport: OpenExportSource = openRuntime,
   openImport: OpenImport = openImportDeps,
+  openSessions?: OpenSessions,
 ): readonly AdminRoute[] {
-  return [...exportRoutes(openExport), ...importRoutes(openImport)];
+  return [...exportRoutes(openExport), ...importRoutes(openImport), ...sessionRoutes(openSessions)];
 }
 
 export const adminRoutes: readonly AdminRoute[] = adminRoutesOf();

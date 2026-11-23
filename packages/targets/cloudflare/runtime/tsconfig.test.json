@@ -17,6 +17,7 @@
     "src/admin.test.ts",
     "src/export-data.test.ts",
     "src/import-data.test.ts",
-    "src/worker-executor.test.ts"
+    "src/worker-executor.test.ts",
+    "src/session-routes.test.ts"
   ]
 }
