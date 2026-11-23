@@ -237,6 +237,9 @@ function noGit(): GitMissingError {
 function historyOutside(): KindedError {
   return new KindedError(
     "unavailable",
-    "This folder's history lies outside the folder you opened, so it can't be read.",
+    "This folder keeps its git files outside it, as a git worktree does, so Studio can't read its versions.",
+    {
+      fix: "Open the repository's own folder, with its .git folder inside it, or clone the repository into a folder of its own.",
+    },
   );
 }
