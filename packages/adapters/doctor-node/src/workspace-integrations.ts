@@ -1,5 +1,6 @@
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
-import { readLocalIntegrations } from "@halonicjs/app";
+import { connectorFiles, readLocalIntegrations } from "@halonicjs/app";
+import type { Connector } from "@halonicjs/format";
 import type { LocalIntegrationInput } from "@halonicjs/workspace";
 import { webCryptoDigest } from "./web-crypto-digest.ts";
 
@@ -16,4 +17,21 @@ export async function workspaceIntegrations(
   shown: string,
 ): Promise<LocalIntegrationInput[]> {
   return await readLocalIntegrations(new FileSystemFolderReader(root, shown), webCryptoDigest);
+}
+
+/**
+ * The hash of each workspace file each stdio connector's start names, read
+ * from the workspace folder `root` without following links. The programs run
+ * from this folder, not from a version in the history, so these are the
+ * files they run. Every command that checks trust reads them this way.
+ *
+ * @param root - the workspace folder
+ * @param shown - the folder as the user typed it, such as `./acme`
+ */
+export async function workspaceConnectorFiles(
+  root: string,
+  shown: string,
+  connectors: readonly Connector[],
+): Promise<Map<string, Record<string, string>>> {
+  return await connectorFiles(connectors, new FileSystemFolderReader(root, shown), webCryptoDigest);
 }

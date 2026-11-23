@@ -58,6 +58,7 @@ export function provideCheckComputer(services: ServiceRegistry, parts: CheckComp
           location,
           fallbackName: name,
           commandPaths: new Map(),
+          connectorFiles: new Map(),
         });
         return {
           aliases: read.aliases,

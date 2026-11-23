@@ -61,6 +61,7 @@ export function workspace(
       location: "/work/acme",
       connectors: [],
       commandPaths: new Map(),
+      connectorFiles: new Map(),
       agents: parts.agents ?? [],
       integrations: [],
       providers: [],

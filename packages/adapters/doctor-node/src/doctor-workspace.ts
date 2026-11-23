@@ -42,6 +42,8 @@ export interface DoctorWorkspaceInput {
   readonly fallbackName: string;
   /** The absolute path each connector's command resolves to on this computer. */
   readonly commandPaths: ReadonlyMap<string, string>;
+  /** The hash of each workspace file each stdio connector's start names, from `workspaceConnectorFiles`. */
+  readonly connectorFiles: ReadonlyMap<string, Readonly<Record<string, string>>>;
 }
 
 /**

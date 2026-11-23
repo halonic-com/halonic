@@ -52,6 +52,7 @@ export {
   type ConnectorKind,
   connectorConfigOf,
 } from "./connector-factories.ts";
+export { connectorFiles, unreadableConnectorFile } from "./connector-files.ts";
 export {
   checkPinVersion,
   checkResolvedVersion,

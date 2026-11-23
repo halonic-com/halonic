@@ -28,12 +28,14 @@ describe("trustSubjectOf", () => {
       integrations,
       location: "/work/acme",
       commandPaths,
+      connectorFiles: new Map(),
     });
 
     expect(subject).toEqual({
       location: "/work/acme",
       ...trustContentInputOf(workspace, integrations),
       commandPaths,
+      connectorFiles: new Map(),
     });
     expect(subject.connectors.map((connector) => connector.id)).toEqual(["mail"]);
     expect(subject.agents.map((agent) => agent.id)).toEqual(["ada"]);

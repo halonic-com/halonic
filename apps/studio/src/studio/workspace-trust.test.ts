@@ -4,10 +4,15 @@ import { join } from "node:path";
 import { FileSystemFolderReader, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { webCryptoDigest } from "@halonicjs/adapter-fs-tauri";
 import { MemoryDefinitionStore, MemoryTrustStore } from "@halonicjs/adapter-memory";
-import { readLocalIntegrations, TrustService, trustSubjectOf } from "@halonicjs/app";
+import {
+  connectorFiles,
+  readLocalIntegrations,
+  TrustService,
+  trustSubjectOf,
+} from "@halonicjs/app";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { WorkspaceTrust, type WorkspaceTrustSources } from "./workspace-trust.ts";
 
@@ -64,6 +69,11 @@ async function cliSubject() {
     integrations: await readLocalIntegrations(reader, webCryptoDigest),
     location: await realpath(folder),
     commandPaths: new Map([["npx", "/usr/bin/npx"]]),
+    connectorFiles: await connectorFiles(
+      filesOf(workspace, "connector").map((file) => file.value),
+      reader,
+      webCryptoDigest,
+    ),
   });
 }
 

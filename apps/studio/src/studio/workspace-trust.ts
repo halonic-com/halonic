@@ -1,5 +1,6 @@
 import {
   commandPaths,
+  connectorFiles,
   readLocalIntegrations,
   type TrustCheck,
   type TrustCheckOptions,
@@ -240,6 +241,7 @@ export class WorkspaceTrust {
         connectors,
         async (command) => (await this.#sources.findCommand(command)) ?? null,
       ),
+      connectorFiles: await connectorFiles(connectors, folder, digest),
     });
     return { check: await trust.check(subject, options), subject };
   }
