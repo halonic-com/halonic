@@ -339,6 +339,25 @@ A new port keeps every other port's version (see "The freeze").
   target is compiled. In `core/ports`, the Cloudflare target implements it
   and its typecheck fails when the two drift.
 
+## Added after the freeze: `ChatSessions`
+
+_2026-11-23, planned on HAL-1307 (T14 PR plan, Q1 and Q2, approved by Liam on HAL-16788), built in HAL-16791._
+A new port keeps every other port's version (see "The freeze").
+
+- **`ChatSessions`, version 1:** `list`, `load`, `save` and `delete` the
+  Assistant's chats of one workspace, by its location
+  (`ports.chat-sessions`). Build chats and agent chats (`build` or
+  `agent:<hub>/<id>`) share one list, so a workspace keeps 40 chats in
+  all (flow-assistant 5.4). Chats live in the user's profile, never in a
+  workspace. A chat that can't be read is left out and costs only its
+  history, unlike the trust stores, which throw: nothing is granted by a
+  chat. The id has a fixed pattern so a profile adapter may use it as a
+  file name.
+- **Why the port only stores:** the rules (drafts never saved, titles, the
+  newest 40, recent first, long tool results cut, a chat that was answering
+  comes back stopped) are the same for every host, so they are pure
+  functions in `core/assistant`, and an adapter can't get them wrong.
+
 ## Consequences
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a

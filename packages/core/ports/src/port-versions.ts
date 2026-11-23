@@ -1,5 +1,6 @@
 import { agentPlacementStoreVersion } from "./agent-placement-store.ts";
 import { blobStoreVersion } from "./blob-store.ts";
+import { chatSessionsVersion } from "./chat-sessions.ts";
 import { clockVersion } from "./clock.ts";
 import { connectionSettingsStoreVersion } from "./connection-settings-store.ts";
 import { connectorClientVersion } from "./connector-client.ts";
@@ -49,6 +50,7 @@ import { vcsVersion } from "./vcs.ts";
 export const portVersions = {
   AgentPlacementStore: agentPlacementStoreVersion,
   BlobStore: blobStoreVersion,
+  ChatSessions: chatSessionsVersion,
   Clock: clockVersion,
   ConnectionSettingsStore: connectionSettingsStoreVersion,
   ConnectorClient: connectorClientVersion,

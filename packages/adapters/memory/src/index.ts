@@ -1,5 +1,6 @@
 export { MemoryAgentPlacementStore } from "./agent-placement-store.ts";
 export { MemoryBlobStore } from "./blob-store.ts";
+export { MemoryChatSessions } from "./chat-sessions.ts";
 export { ManualClock, manualClockStart } from "./clock.ts";
 export { MemoryConnectionSettingsStore } from "./connection-settings-store.ts";
 export {

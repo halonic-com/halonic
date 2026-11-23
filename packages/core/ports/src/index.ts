@@ -24,6 +24,16 @@ export type {
   ToolCall,
   ToolDefinition,
 } from "./chat.ts";
+export {
+  type ChatSessions,
+  chatSessionsVersion,
+  isSavedChat,
+  type SavedChat,
+  type SavedChatKind,
+  type SavedChatModel,
+  type SavedChatSummary,
+  savedChatIdPattern,
+} from "./chat-sessions.ts";
 export { type Clock, clockVersion } from "./clock.ts";
 export {
   type ConnectionKey,

@@ -11,6 +11,7 @@ import {
   blobStoreContract,
   brokenToolName,
   type ConnectorKind,
+  chatSessionsContract,
   clockContract,
   connectionSettingsStoreContract,
   connectorClientContract,
@@ -51,6 +52,7 @@ import {
   ManualClock,
   MemoryAgentPlacementStore,
   MemoryBlobStore,
+  MemoryChatSessions,
   MemoryConnectionSettingsStore,
   MemoryConnectorFactory,
   type MemoryConnectorServer,
@@ -123,6 +125,10 @@ trustServiceAttackContract(
 agentPlacementStoreContract("memory", async () => {
   const store = new MemoryAgentPlacementStore();
   return { store, damage: async (key) => store.damage(key) };
+});
+chatSessionsContract("memory", async () => {
+  const store = new MemoryChatSessions();
+  return { store, damage: async (location, id) => store.damage(location, id) };
 });
 instructionTrustStoreContract("memory", async () => {
   const store = new MemoryInstructionTrustStore();
