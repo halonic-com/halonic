@@ -115,7 +115,7 @@ function CompareBody({
   const { texts } = loaded;
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 wide:grid-cols-2">
         <Side heading={compareWords.yours} text={texts.saved} />
         <Side heading={compareWords.runs(runId)} text={texts.run} />
       </div>
