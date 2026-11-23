@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-17054 (plan approved by Liam on HAL-17049); Liam approves this note in review on HAL-17054
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5H5/eFnwuROHovOF5oI7kxdDZd6SP5uNIljd9iEWoO+nKECpQjB6JXK8Y1JDpasRRby2CuCDXLwos22tj5xOCA==
 
 `WatchedVersions` moves from the CLI into `@halonicjs/adapter-workspace-engine-node` (HAL-17054), and the CLI's `apps/cli/src/commands/routines/watch-versions.ts` becomes a thin wrapper that words the engine's refusals. Tests move with the code they test, as the approved plan says:
 
