@@ -8,6 +8,7 @@ import { ceilings, commitWrites, type GateRefusal, type WriteGate } from "../boa
 import { type BoardCheckApi, errorCode, type PartPlan, type Trigger } from "./board-check-api.ts";
 import { planApprovalsPart } from "./board-check-approvals.ts";
 import { type AskScope, planAsks } from "./board-check-asks.ts";
+import { planMergeSpeed } from "./board-check-merge-speed.ts";
 import { planRuns, recordFailedRun } from "./board-check-runs.ts";
 import { planWaiting } from "./board-check-waiting.ts";
 import { everyIssue } from "./host.ts";
@@ -68,7 +69,9 @@ async function planJobParts(
   const agents = await ctx.agents.list({ companyId, limit: 500 });
   const names = new Map(agents.map((agent) => [agent.id, agent.name]));
   parts.push(await planApprovalsPart(ctx, companyId, settings.boardCheckerTaskId, names));
-  if (hourlyPass("job", now)) {
+  const hourly = hourlyPass("job", now);
+  parts.push(await planMergeSpeed(ctx, companyId, settings.boardCheckerTaskId, hourly, now));
+  if (hourly) {
     const input = { openTasks, agents, chiefTaskId: settings.chiefTaskId };
     parts.push(await planWaiting(ctx, companyId, input, now));
   }

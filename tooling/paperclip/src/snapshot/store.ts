@@ -35,7 +35,7 @@ export async function saveSnapshot(
  * of another shape version is refused, not guessed at.
  */
 export async function loadSnapshot(
-  ctx: StateApi,
+  ctx: { readonly state: Pick<PluginStateClient, "get"> },
   companyId: string,
 ): Promise<Snapshot | undefined> {
   const stored = (await ctx.state.get(key(companyId))) as { version?: unknown } | null;

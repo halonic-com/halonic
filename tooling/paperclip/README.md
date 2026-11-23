@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`
 
 ## PR watcher
 
@@ -228,8 +228,8 @@ To roll back, remove the volume line and recreate the container.
 The Board Checker's checks as the `board-check` job, without a model
 (phase 1b, HAL-16194; the Board Checker addendum on HAL-15997). It spots
 board asks, keeps failed runs, lists the tasks waiting on the board and
-the team load, and lists new approvals; queued run piles and merge speed
-follow. Each job pass lists the open
+the team load, lists new approvals and follows merge speed; queued run
+piles follow. Each job pass lists the open
 tasks once and every part reads that one listing.
 
 **Board asks.** An agent's comment from the last 12 minutes that matches
@@ -271,6 +271,22 @@ Board Checker's task: id, kind, who asked and when, never the payload. It
 never decides one. The first pass after an install only notes what is
 pending.
 
+**Merge speed (part e).** Each pass reads the PR watcher's GitHub snapshot
+from plugin state, so it sends no GitHub request. Merges per hour come from
+the snapshot's merged pull requests. A pull request gone from the queue
+since the last pass is an exit: merged if the snapshot says so, dropped
+otherwise (a failed merge group, a gate dequeue or a close). Exits are kept
+a week, as pull request numbers, outcomes and minutes in the queue; exits
+before the first pass are unknown, so the drop rate and time in queue fill
+up over the first hours. On the first pass of each hour it compares the
+last 6 hours with the figures it last reported and comments on the Board
+Checker's task only when one moved clearly: merges per hour by at least 1
+and by half, the drop rate by 20 points over at least 3 exits, or the
+median time in queue by 15 minutes and by half. The first figures are only
+kept, and a snapshot older than 30 minutes is skipped. A comment only
+logged while writes are off doesn't count as reported, so the first hour
+after writes are turned on catches up.
+
 **Failed runs (part a).** Each `agent.run.failed` event is kept for 48
 hours as ids, a time and a cause code: `no_identity`, `spend_limit`,
 `timeout`, `adapter_error` or `other`. The error text is read once to pick
@@ -285,7 +301,11 @@ pass. New spend-limit failures get one line on the Seat Supervisor's task
 by default) with their links and whether the board or the Board Checker has
 commented on the task since. `board_waiting()` gives the last hourly list
 and its time. `failed_runs(since?)` gives each agent's
-failed runs with tasks and cause codes, and since when it counts. None
+failed runs with tasks and cause codes, and since when it counts.
+`merge_speed(hours?)` gives merges, merges per hour, the drop rate and the
+merged ones' median and longest time in the queue for the last 6 hours or
+the hours asked (1 to 168), marked stale when the snapshot is older than 30
+minutes. None
 carries comment or error text, and none costs a GitHub request.
 
 **What it may write** (Liam's conditions, HAL-16192). Every write goes
