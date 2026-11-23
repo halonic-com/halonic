@@ -1,8 +1,9 @@
-// Local only counts as on when the live version or the saved files say on (HAL-16400,
-// `studio.engine-service`). A workspace with history starts its runs from the live version, so
-// without this, turning Local only on in Settings and saving would leave runs calling models in the
-// cloud until the change is made live. Turning it off still waits for Make live: a run never makes
-// a cloud call the person just turned off.
+// Local only counts as on when the live version or the saved files say on (`app.saved-local-only`,
+// HAL-16400, HAL-16406). A workspace with history starts its runs from the live version, so
+// without this, turning Local only on and saving would leave runs calling models in the cloud
+// until the change is made live. The Studio and the CLI (`run`, `runs send`, `routines watch`,
+// `serve`) both read it here. Turning it off still waits for Make live: a run never makes a cloud
+// call the person just turned off.
 
 import { parseFile } from "@halonicjs/format";
 import type { DefinitionSource } from "@halonicjs/ports";
