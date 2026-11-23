@@ -17,7 +17,7 @@ import {
   workflowIn,
 } from "@halonicjs/app";
 import { monthsSpend } from "@halonicjs/engine";
-import type { RunSummary } from "@halonicjs/events";
+import { type RunSummary, sendsOf } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
@@ -32,6 +32,7 @@ import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
 import { usageMessages } from "../../messages/general.ts";
 import { dimmed, type Phrase, phrase } from "../../messages/phrase.ts";
+import { runsMessages } from "../../messages/runs.ts";
 import {
   type GivenFilters,
   type ListFilters,
@@ -44,10 +45,11 @@ import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
+import { onSampleAnswers } from "../../sample-answers.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
-import { listedRun } from "./listed-run.ts";
+import { listedRun, type RunToList } from "./listed-run.ts";
 
 /** What the list reads besides the command line, passed in so tests can fix both. */
 export interface RunListSetup {
@@ -86,7 +88,8 @@ export async function listRuns(
   const history = new RunHistory(runs);
   const filter = await runFilter(options.filters, workflows, history, workspaceName);
   const list = await history.listRuns(filter, options.limit);
-  const json = { runs: list.runs, total: list.total };
+  const read = await Promise.all(list.runs.map((summary) => readRun(summary, runs, loaded)));
+  const json = { runs: read.map((each) => each.json), total: list.total };
   const dir = givenDir(input, workspace);
   const shown = shownFilters(options.filters);
   if (list.runs.length === 0) {
@@ -94,7 +97,7 @@ export async function listRuns(
     return { exitCode: exitCode.ok, lines, json };
   }
   const clock = setup.clock();
-  const rows = await runRows(list.runs, workflows, history, clock);
+  const rows = runRows(read, workflows, clock);
   const lines = [...columns(rows)];
   if (list.total > list.runs.length) {
     lines.push(runsListMessages.leftOut(list.runs.length, list.total, shown, dir).phrase);
@@ -253,31 +256,46 @@ async function thisMonthLine(
   return runsListMessages.thisMonth(spent, monthly).phrase;
 }
 
-/** One row of five cells per run: status, short id, workflow, What, and When dimmed. */
-async function runRows(
-  runs: readonly RunSummary[],
+/** A listed run with what its log says: what it sent, and whether it ran on Sample answers. */
+interface ReadRun {
+  readonly run: RunToList;
+  readonly sampleAnswers: boolean;
+  /** The run's `--json` entry: its summary and `sampleAnswers` (requirement `cli.sample-answers`). */
+  readonly json: RunSummary & { readonly sampleAnswers: boolean };
+}
+
+/** Reads the run's log once, for its What column and the Sample answers tag. */
+async function readRun(
+  summary: RunSummary,
+  runs: RunStore,
+  workspace: LoadedWorkspace,
+): Promise<ReadRun> {
+  const events = await runs.events(summary.id);
+  const sampleAnswers = onSampleAnswers(events, workspace);
+  // Only a finished run's What column says what it sent.
+  const run = summary.status === "completed" ? { summary, sends: sendsOf(events) } : { summary };
+  return { run, sampleAnswers, json: { ...summary, sampleAnswers } };
+}
+
+/**
+ * One row of five cells per run: status, short id, workflow (with "Sample
+ * answers" after it for a run on the test model), What, and When dimmed.
+ */
+function runRows(
+  runs: readonly ReadRun[],
   workflows: readonly HubWorkflow[],
-  history: RunHistory,
   clock: RunClock,
-): Promise<Phrase[][]> {
+): Phrase[][] {
   const findWorkflow = (hubId: string, workflowId: string) =>
     workflowIn(workflows, hubId, workflowId);
-  return Promise.all(
-    runs.map(async (summary) => {
-      // Only a finished run's What column asks; the others skip reading the log.
-      const sends = summary.status === "completed" ? await history.sends(summary.id) : undefined;
-      const row = listedRun(
-        { summary, ...(sends === undefined ? {} : { sends }) },
-        findWorkflow,
-        clock,
-      );
-      return [
-        runsListMessages.status(row.status).phrase,
-        phrase`${row.runId}`,
-        phrase`${row.workflow}`,
-        row.what,
-        dimmed(row.when),
-      ];
-    }),
-  );
+  return runs.map(({ run, sampleAnswers }) => {
+    const row = listedRun(run, findWorkflow, clock);
+    return [
+      runsListMessages.status(row.status).phrase,
+      phrase`${row.runId}`,
+      sampleAnswers ? runsMessages.sampleAnswersTag(row.workflow).phrase : phrase`${row.workflow}`,
+      row.what,
+      dimmed(row.when),
+    ];
+  });
 }

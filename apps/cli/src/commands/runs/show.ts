@@ -31,6 +31,7 @@ import { startedInWords } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
 import { type RunClock, startedAt } from "../../run-times.ts";
 import { providerNoteLines, runViewDefinitions, stepLinesWithDetails } from "../../run-view.ts";
+import { onSampleAnswers, sampleAnswersLines } from "../../sample-answers.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
@@ -99,6 +100,7 @@ export async function showRun(
           }),
           ...sendingOffLines(run.events, dir, (id) => isGoogleConnector(loaded, id)),
           ...providerNoteLines(run.events),
+          ...sampleAnswersLines(run.events, loaded),
           ...showEnding(
             run,
             title,
@@ -110,7 +112,7 @@ export async function showRun(
           ),
           ...(withOutput ? [] : outputHintLines(run, dir)),
         ],
-        json: { events: run.events },
+        json: { sampleAnswers: onSampleAnswers(run.events, loaded), events: run.events },
         ...(debugText === undefined ? {} : { debugText }),
       };
     }

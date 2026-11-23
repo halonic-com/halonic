@@ -8,6 +8,8 @@ stdout:
   \e[32m✓\e[39m Draft a reply         Writer \e[2m·\e[22m default   1 s
   \e[33m!\e[39m Approve this reply?   you approved at 14:01
   
+  \e[2mOn Sample answers: the built-in test model wrote this run's answers, not a real model.\e[22m
+  
   \e[32m✓\e[39m Support reply finished in 1 s.
     Sent nothing \e[2m·\e[22m asked you once
     Ending: Finished with the reply approved
@@ -24,6 +26,8 @@ stdout:
   ✓ Classify it           Sorter · default   1 s
   ✓ Draft a reply         Writer · default   1 s
   ! Approve this reply?   you approved at 14:01
+  
+  On Sample answers: the built-in test model wrote this run's answers, not a real model.
   
   ✓ Support reply finished in 1 s.
     Sent nothing · asked you once
@@ -81,7 +85,8 @@ stdout:
       "signals": [],
       "cantTry": [],
       "lastSeq": 28,
-      "updatedAt": "2026-11-10T14:01:00.000Z"
+      "updatedAt": "2026-11-10T14:01:00.000Z",
+      "sampleAnswers": true
     },
     "events": [
       {
