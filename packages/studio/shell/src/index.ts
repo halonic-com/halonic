@@ -153,6 +153,20 @@ export {
 export { NameField, type NameFieldProps } from "./item-page/name-field.tsx";
 export { RenameSheet, type RenameSheetProps, renameSheetWords } from "./item-page/rename-sheet.tsx";
 export {
+  ChangeMark,
+  type ChangeMarkBusy,
+  type ChangeMarkKind,
+  type ChangeMarkProps,
+  changeMarkSelector,
+} from "./item-review/change-mark.tsx";
+export {
+  ItemReviewBar,
+  type ItemReviewBarProps,
+  type ItemReviewBusy,
+} from "./item-review/item-review-bar.tsx";
+export { itemReviewWords } from "./item-review/item-review-words.ts";
+export { positionWithin, steppedPosition } from "./item-review/review-position.ts";
+export {
   allFilter,
   type OverviewChip,
   type OverviewHub,
