@@ -29,6 +29,20 @@ and model.
   `params.extra.provider` from the catalog's `pinnedHost` (only that host, fallbacks off, data
   collection denied). The agent never sets it.
 
+## Provider health (hard rule 7)
+
+`ProviderHealth` keeps the health of every alias from the results of its model calls. Five
+provider failures in a row, or more than half of at least 10 calls in 10 minutes, take an alias out
+for 15 minutes (`defaultHealthLimits`). A refused key, an empty account or a budget cap is not a
+provider failure and gets no fallback. The caller owns the instance and passes the time with every
+call, so nothing here runs a timer.
+
+`removeUnhealthyWorkflows` is hard rule 7: it removes every workflow with any step on an alias
+that is out, and names what it removed for the decision's `ruleHits`. It never swaps a step for
+another alias. When nothing is left, the router gives the task the fallback. When a step ends
+because its provider is down, the plugin asks for a new route with the same `attempt` and the
+failure `"provider_down"`, and this rule decides whether the same workflow is still allowed.
+
 ## Example
 
 ```ts
