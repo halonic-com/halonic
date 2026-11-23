@@ -1,4 +1,11 @@
-import { AgentRunsNotAvailable, type ChatTurnRequest } from "@halonicjs/ports";
+import {
+  AgentRunsNotAvailable,
+  type ChatRequest,
+  type ChatResponse,
+  type ChatTurnRequest,
+  type LlmProvider,
+  ModelCallError,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { chatApprovalReason } from "./agent/check-chat-tool-call.ts";
@@ -218,6 +225,48 @@ verifies("engine.local-chat-turn", () => {
     const model = new ScriptedModel([]);
     expect(() => executorOn(model, { maxRounds: 0 })).toThrow(RangeError);
     expect(() => executorOn(model, { maxRounds: 1.5 })).toThrow(RangeError);
+  });
+
+  it("stops the model call when the request's signal aborts, and tries no fallback model", async () => {
+    const called = Promise.withResolvers<void>();
+    const aborted: unknown[] = [];
+    const waiting: LlmProvider = {
+      id: "acme-cloud",
+      type: "test",
+      capabilities: { tools: true, jsonOutput: false, vision: false, streaming: false },
+      chat: (sent: ChatRequest) => {
+        called.resolve();
+        return new Promise<ChatResponse>((_resolve, reject) => {
+          sent.signal?.addEventListener("abort", () => {
+            aborted.push(sent.signal?.reason);
+            // How an offline provider fails, so the chain would move on if it took it for one.
+            reject(new ModelCallError("offline", "fetch failed"));
+          });
+        });
+      },
+    };
+    const fallback = new ScriptedModel([textAnswer("Too late")], "acme-local");
+    const executor = new LocalExecutor({
+      resolveModel: async () => ({
+        provider: waiting,
+        model: "acme-cloud-1",
+        fallback: [{ provider: fallback, model: "acme-local-1" }],
+      }),
+      halonicTools: [],
+      connectors: [],
+      listedToolApproval: noListedToolApproval,
+      secrets: secretsWith(),
+      clock: steppingClock(),
+    });
+    const stop = new AbortController();
+
+    const turn = executor.chatTurn({ ...request, signal: stop.signal });
+    await called.promise;
+    stop.abort(new Error("Stopped"));
+
+    await expect(turn).rejects.toThrow("Stopped");
+    expect(aborted).toEqual([stop.signal.reason]);
+    expect(fallback.requests).toEqual([]);
   });
 
   it("rejects with the resolver's error when no model fits", async () => {

@@ -36,6 +36,9 @@ export interface LocalChatTurnContext {
  * model turn passes its text to the request's `onText` as it is written; a
  * harness turn doesn't stream yet.
  *
+ * The request's `signal` stops the turn's model call: no other model is
+ * tried, and the turn rejects with the signal's reason.
+ *
  * @throws when no model fits the request
  * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
  * @throws when the agent runs in a harness and the executor has no `runs.harnesses`, or the harness call fails
@@ -78,6 +81,7 @@ export async function localChatTurn(
     autoKnowledge: knowledge.auto,
     localOnly: options.localOnly === true,
     ...(request.onText === undefined ? {} : { onText: request.onText }),
+    ...(request.signal === undefined ? {} : { signal: request.signal }),
   });
 }
 
