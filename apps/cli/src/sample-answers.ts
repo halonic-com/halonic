@@ -2,12 +2,13 @@
 // calls Sample answers (requirement `cli.sample-answers`, HAL-16187). The
 // CLI says so where Studio shows its "Sample answers" chip, so a person who
 // starts in a terminal doesn't read the test model's draft as a real reply.
-// Like Studio's `runModelPath`, it reads the run's own log, not the
-// workspace's current model, so the answer stays right after a real model
-// is picked. Only the fact is decided here; the words are the catalogue's.
+// The fact is decided in `@halonicjs/app`, the same check Studio's
+// `runModelPath` uses, so the CLI and the chip never disagree about a run;
+// the words are the catalogue's.
 
+import { ranOnTestModel, testModelsOf } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
-import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { dimmed, type Phrase } from "./messages/phrase.ts";
 import { runsMessages } from "./messages/runs.ts";
 
@@ -21,18 +22,8 @@ import { runsMessages } from "./messages/runs.ts";
  * onSampleAnswers(events, loaded); // true for Acme's run on the provider `mock`
  */
 export function onSampleAnswers(events: readonly RunEvent[], workspace: LoadedWorkspace): boolean {
-  const testModels = new Set(
-    filesOf(workspace, "provider")
-      .filter(({ value }) => value.type === "mock")
-      .map(({ value }) => value.id),
-  );
-  let calledAModel = false;
-  for (const event of events) {
-    if (event.type !== "llm.request") continue;
-    if (!testModels.has(event.provider)) return false;
-    calledAModel = true;
-  }
-  return calledAModel;
+  const testModels = testModelsOf(workspace);
+  return ranOnTestModel(events, (providerId) => testModels.has(providerId));
 }
 
 /**

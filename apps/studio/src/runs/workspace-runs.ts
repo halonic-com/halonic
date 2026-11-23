@@ -7,6 +7,7 @@ import {
   lookUpWorkflow,
   type ProposedRecord,
   shortRunId,
+  testModelsOf,
   workflowIn,
 } from "@halonicjs/app";
 import { type RoutineClock, routineClocks } from "@halonicjs/app/routines";
@@ -342,11 +343,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
           providerIsLocal(value) ? "local" : "cloud",
         ]),
       ),
-      testModels: new Set(
-        filesOf(workspace, "provider").flatMap(({ value }) =>
-          value.type === "mock" ? [value.id] : [],
-        ),
-      ),
+      testModels: testModelsOf(workspace),
       providerNames: new Map(
         filesOf(workspace, "provider").flatMap(({ value }) =>
           value.name === undefined ? [] : [[value.id, value.name] as const],

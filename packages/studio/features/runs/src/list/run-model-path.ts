@@ -3,6 +3,7 @@
 // from it. It reads the run's own log, not the workspace's current model, so a run on Sample
 // answers keeps its chip after a real model is picked, and the other way round.
 
+import { ranOnTestModel } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import { useEffect, useState } from "react";
 import { DamagedRunLog, type RunsSource } from "../api.ts";
@@ -67,26 +68,24 @@ function pathOf(
   source: RunsSource,
   log: readonly RunEvent[],
 ): { readonly path: RunModelPath | undefined; readonly known: boolean } {
-  let known = true;
-  let sawCall = false;
-  let sawReal = false;
-  let sawCloud = false;
-  for (const event of log) {
-    if (event.type !== "llm.request") continue;
-    sawCall = true;
-    const test = source.isTestModel?.(event.provider);
-    const kind = source.providerKind(event.provider);
-    if (kind === undefined || (source.isTestModel !== undefined && test === undefined)) {
-      known = false;
-    }
-    if (test === true) continue;
-    sawReal = true;
-    // Ollama always runs on this computer, as the run page's waiting line counts it.
-    if (event.provider !== "ollama" && kind !== "local") sawCloud = true;
-  }
-  if (!sawCall) return { path: undefined, known };
-  if (!sawReal) return { path: "sample", known };
-  return { path: sawCloud ? "cloud" : "local", known };
+  const isTestModel = (providerId: string) => source.isTestModel?.(providerId) === true;
+  const providers = log.flatMap((event) => (event.type === "llm.request" ? [event.provider] : []));
+  const known = providers.every(
+    (provider) =>
+      source.providerKind(provider) !== undefined &&
+      (source.isTestModel === undefined || source.isTestModel(provider) !== undefined),
+  );
+  if (providers.length === 0) return { path: undefined, known };
+  // The same check as the CLI's line (`cli.sample-answers`), so the two never disagree.
+  if (ranOnTestModel(log, isTestModel)) return { path: "sample", known };
+  const cloud = providers.some(
+    (provider) =>
+      !isTestModel(provider) &&
+      // Ollama always runs on this computer, as the run page's waiting line counts it.
+      provider !== "ollama" &&
+      source.providerKind(provider) !== "local",
+  );
+  return { path: cloud ? "cloud" : "local", known };
 }
 
 /**
