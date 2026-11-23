@@ -130,6 +130,18 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/remote/pairing` with `{}` | an NDJSON stream: `{"type":"opened","pairing"}`, then the pairing's `PairingEvent`s until `paired` or `ended`. Leaving the stream closes the pairing, so closing the dialog ends its code; `409 remote_refused` while remote isn't offered |
 | `POST /v1/remote/pairing/answer` with `{"pairing","allow"}`, `…/new-code` and `…/close` with `{"pairing"}` | `{"ok":true}`; `404 unknown_pairing` once the pairing's stream has ended, `409 remote_refused` when no phone waits for Allow |
 
+## The engine role's listener
+
+The engine role (`halonic-agent-host --engine`, B1) serves the engine server of `host/server` (`createEngineServer`) through its own listener, `src/engine/engine-listener.ts`. The engine server makes the same three checks as above, in the same order, before it looks at the path, and answers errors as `{"code","message"}`. The listener adds what a socket needs:
+
+| Rule | What it does |
+| --- | --- |
+| Loopback only | listens on a free port of `127.0.0.1`, as the host's server does |
+| The host's limits | the same request times, connection cap (`defaultHostServerLimits`) and 1 MiB body size (`maxBodyBytes`) as the host's server |
+| At most 8 open `GET /api/run-updates` streams | a new stream past them gets `503 too_many_streams`, after the token checks, so a caller without the token still gets `401`; an open stream is never dropped to make room, and a stream that closes frees its place |
+
+The run-update streams follow a feed that reads the engine's runs once a second while any stream is open, and sends one `{ runId, status, seq }` frame per run whose status changed (`src/engine/run-updates-feed.ts`). The `--engine` argument that starts all this is a follow-up.
+
 ## Serving over standard input and output
 
 In Halonic's WSL distro the host must not listen on a port: every WSL 2 distro of a person shares one network, so a port in ours would be open to their own Ubuntu too (HAL-5396, condition W9 of HAL-5407). There Studio starts the host with `--stdio --relay-host 127.0.0.1:<port>`. Studio's relay listens on Windows' own loopback, as the host does elsewhere, and passes each connection it accepts to the host as frames over `wsl.exe`'s standard input and output. The host serves the same routes with the same checks and limits; it never calls `listen()`.
