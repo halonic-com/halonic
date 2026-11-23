@@ -52,9 +52,12 @@ export type WslSetupFailureCode =
   | "kernel-unreadable"
   | WslRuntimeFailure["code"];
 
-/** How a run of the setup ended. Words are never in here: `detail` is for logs and support. */
+/**
+ * How a run of the setup ended. Words are never in here: `detail` is for logs and support.
+ * `done` says `runtime: "left-to-shell"` when {@link WslSetupOptions.runtime} left that step to Studio's shell.
+ */
 export type WslSetupResult =
-  | { outcome: "done"; residuals: WslResidual[] }
+  | { outcome: "done"; residuals: WslResidual[]; runtime?: "left-to-shell" }
   | { outcome: "restart-needed" }
   | { outcome: "cancelled" }
   | { outcome: "blocked"; reason: WslProblem; detail: string }
@@ -77,8 +80,13 @@ export interface WslSetupOptions {
   rootfs: string;
   /** What `RunOnce` runs after the restart: Studio's own program with its resume flag. */
   resumeCommand: string;
-  /** The runtime Studio ships, which the `installing-runtime` step puts in the distro. */
-  runtime: WslRuntime;
+  /**
+   * The runtime Studio ships, which the `installing-runtime` step puts in the distro.
+   * `left-to-shell` skips the install: Studio's shell installs the runtime beside it
+   * each time it starts the host in the distro (`install_runtime_beside_shell`), and
+   * a setup run outside the shell has no way to root in the distro (HAL-16770).
+   */
+  runtime: WslRuntime | "left-to-shell";
   /** The distro's name; only a test changes it. */
   distro?: string;
   /** The lowest kernel version the check accepts; defaults to {@link WSL_KERNEL_FLOOR}. */
@@ -322,10 +330,13 @@ export class WslSetup {
    * with an older one kept, the sandbox still starts on it, so it is `other` (HAL-15132).
    */
   async #installRuntime(state: WslSetupState) {
-    const failure = await ensureWslRuntime(this.#host, this.#distro, this.#options.runtime);
-    if (failure !== null) {
-      const reason = failure.kept === null ? "runtime-missing" : "other";
-      return failed(failure.code, reason, failure.detail);
+    const runtime = this.#options.runtime;
+    if (runtime !== "left-to-shell") {
+      const failure = await ensureWslRuntime(this.#host, this.#distro, runtime);
+      if (failure !== null) {
+        const reason = failure.kept === null ? "runtime-missing" : "other";
+        return failed(failure.code, reason, failure.detail);
+      }
     }
     const registered = (await this.#host.distros()).find((entry) => entry.name === this.#distro);
     const residuals: WslResidual[] = [];
@@ -336,7 +347,8 @@ export class WslSetup {
     if (image < (this.#options.minImage ?? WSL_IMAGE_MIN)) residuals.push("image-outdated");
     await this.#host.clearRunOnce();
     await this.#store.save({ ...state, step: "done" });
-    return { result: { outcome: "done", residuals } as const };
+    const leftToShell = runtime === "left-to-shell" ? { runtime } : {};
+    return { result: { outcome: "done", residuals, ...leftToShell } as const };
   }
 
   /** Whether Docker Desktop's socket or its `/mnt/wsl/docker-desktop*` folders can be seen from inside the distro. */
