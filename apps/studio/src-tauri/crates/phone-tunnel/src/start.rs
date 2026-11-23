@@ -37,6 +37,16 @@ pub enum PairingStart {
         #[serde(default)]
         again: Option<String>,
     },
+    /// From a typed code, for a computer the picker found on this Wi-Fi
+    /// (HAL-16824). `nearby` is the id the shell's nearby list gave it; the
+    /// shell turns it into the computer's endpoint with
+    /// [`PairingStart::find_nearby`], so the page never holds the address.
+    Nearby {
+        code: String,
+        nearby: String,
+        #[serde(default)]
+        again: Option<String>,
+    },
 }
 
 /// A start whose parts all read.
@@ -52,6 +62,25 @@ pub struct CheckedStart {
 }
 
 impl PairingStart {
+    /// A `nearby` start as a typed one at the endpoint `find` gives for its
+    /// id. An id `find` doesn't know gives no endpoint, which
+    /// [`PairingStart::check`] answers as "can't reach". Other starts stay
+    /// as they are.
+    pub fn find_nearby(self, find: impl FnOnce(&str) -> Option<String>) -> Self {
+        match self {
+            Self::Nearby {
+                code,
+                nearby,
+                again,
+            } => Self::Typed {
+                code,
+                endpoints: find(&nearby).into_iter().collect(),
+                again,
+            },
+            start => start,
+        }
+    }
+
     /// Reads the code, the QR code's key and the endpoints. An endpoint
     /// that doesn't read is left out, and none left is "can't reach"; a
     /// code or key that doesn't read is a bad start. The page's copy of the
@@ -70,6 +99,8 @@ impl PairingStart {
                 endpoints,
                 again,
             } => (None, code, endpoints, again),
+            // Never turned into an endpoint, so there is nowhere to go.
+            Self::Nearby { code, again, .. } => (None, code, Vec::new(), again),
         };
         let parsed = PairingCode::parse(&code);
         wipe(code);
