@@ -2,7 +2,6 @@
 
 - Approval: part b2 of the plan on HAL-13210 (22 Nov); the reviewer (Liam) approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Z/2E4PhsG/99SreEFLdCoD5Q9849nmIulNKJLPuEaeJ6K21y+Ic2jFeS2k2YU8RTBDDHyBvINYSXx5ceCW0CBw==
 - Task: HAL-17039
 
 ## What changes
@@ -28,5 +27,5 @@ the opposite of what the Worker now does.
 
 ## Covers
 
-- packages/targets/cloudflare/runtime/requirements/worker-runs.md
+- runtime.worker-runs
 - packages/targets/cloudflare/runtime/src/worker-runs.test.ts
