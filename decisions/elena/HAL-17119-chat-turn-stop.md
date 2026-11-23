@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17119 (Elena's engine fix; Liam approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WFpINsKyw6F+EOpQE0gnJJR5Yt9z2NMTC2ntHFfc7D+1fYXDZcknBOOPNuAvJKynD7vH6/uIuIW8i3HeWbkyAA==
 
 `engine.local-chat-turn` gains one sentence and one example: when the request's `signal` aborts,
 the local executor aborts the model call going on, tries no other model, and rejects with the
