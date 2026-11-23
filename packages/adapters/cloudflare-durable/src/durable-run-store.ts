@@ -51,7 +51,7 @@ export class DurableRunStore<Id = unknown> implements RunStore {
     events: readonly RunEvent[],
     options?: AppendOptions,
   ): Promise<AppendResult> {
-    return this.#object(runId).append(runId, expectedSeq, events, options);
+    return this.#object(runId).append(runId, expectedSeq, events, options, this.#namePrefix);
   }
 
   async events(runId: string, afterSeq?: number): Promise<RunEvent[]> {

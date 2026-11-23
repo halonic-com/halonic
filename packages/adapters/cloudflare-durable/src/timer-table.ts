@@ -52,18 +52,13 @@ const columns = "key, timer_id, at, at_ms, due_at_ms, failures, version";
  * A timer that is set again keeps counting `version` upwards, and a
  * delivery's outcome is applied only to the version it delivered, so a timer
  * set (or cancelled) while its call ran is never undone by that call ending.
+ * Its table must exist before it is used (`createRunTables`).
  */
 export class TimerTable {
   readonly #sql: RunSql;
 
   constructor(sql: RunSql) {
     this.#sql = sql;
-    sql.exec(
-      `CREATE TABLE IF NOT EXISTS timers (
-        key TEXT NOT NULL, timer_id TEXT NOT NULL, at TEXT NOT NULL, at_ms INTEGER NOT NULL,
-        due_at_ms INTEGER NOT NULL, failures INTEGER NOT NULL, version INTEGER NOT NULL,
-        PRIMARY KEY (key, timer_id))`,
-    );
   }
 
   /**

@@ -42,7 +42,7 @@ export class DurableScheduler<Id = unknown> implements Scheduler {
   }
 
   async schedule(key: string, timerId: string, at: string): Promise<void> {
-    return this.#object(key).schedule(key, timerId, at);
+    return this.#object(key).schedule(key, timerId, at, this.#namePrefix);
   }
 
   async cancel(key: string, timerId: string): Promise<void> {

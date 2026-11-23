@@ -3,13 +3,18 @@ import { entered, started } from "@halonicjs/testing-contracts";
 import { describe, expect, it } from "vitest";
 import { maxSnapshotBytes, RunLog } from "../run-log.ts";
 import { sqlOfStorage } from "../run-sql.ts";
+import { createRunTables } from "../run-tables.ts";
 import { inObjectState } from "./state-host.ts";
 
 export { StateHostObject } from "./state-host.ts";
 
 /** Runs `body` with a log over the SQLite storage of a Durable Object of its own. */
 function withLog(body: (log: RunLog) => void): Promise<void> {
-  return inObjectState((state) => body(new RunLog(sqlOfStorage(state.storage))));
+  return inObjectState((state) => {
+    const sql = sqlOfStorage(state.storage);
+    createRunTables(sql);
+    body(new RunLog(sql));
+  });
 }
 
 describe("RunLog", () => {
