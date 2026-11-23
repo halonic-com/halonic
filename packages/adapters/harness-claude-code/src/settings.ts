@@ -1,4 +1,4 @@
-import { type SettingsFolderWriter, writeSettingsFiles } from "@halonicjs/adapter-harness-kit";
+import { resetSettingsFolder, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
 import { harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { bridgeServerName, permissionServerName } from "./bridge-tools.ts";
 import { claudeCodeRunTokenVariable } from "./environment.ts";
@@ -110,12 +110,23 @@ function jsonFile(value: object): string {
 }
 
 /**
- * Writes {@link claudeCodeSettingsFiles} into `folder`, leaving a file that
- * already holds the same text alone.
+ * The files in the settings folder that hold the agent's own Claude Code
+ * sign-in: the stored sign-in (on macOS it is in the keychain instead) and
+ * Claude Code's own file, which holds the account and a Console key. They
+ * stay when the folder is reset before a run (`harness-claude-code.settings-reset`).
+ */
+export const claudeCodeSignInFiles: readonly string[] = [".credentials.json", ".claude.json"];
+
+/**
+ * Resets `folder` to {@link claudeCodeSettingsFiles} and
+ * {@link claudeCodeSignInFiles}: everything else in it goes, such as a
+ * user-level `CLAUDE.md`, `skills/`, `agents/` or `commands/` a run left
+ * there. A settings file that already holds the same text is left alone.
  */
 export async function writeClaudeCodeSettings(
   folder: string,
   writer: SettingsFolderWriter,
 ): Promise<void> {
-  await writeSettingsFiles(folder, claudeCodeSettingsFiles(), writer);
+  const contents = { files: claudeCodeSettingsFiles(), signIn: claudeCodeSignInFiles };
+  await resetSettingsFolder(folder, contents, writer);
 }

@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { diskSettingsFolder, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
@@ -29,8 +29,8 @@ async function readJson(name: string): Promise<unknown> {
 function countingWriter(): SettingsFolderWriter & { written: string[] } {
   const written: string[] = [];
   return {
+    ...diskSettingsFolder,
     written,
-    read: (path) => diskSettingsFolder.read(path),
     write: async (path, text) => {
       written.push(path);
       await diskSettingsFolder.write(path, text);
@@ -126,5 +126,30 @@ verifies("harness-claude-code.settings", () => {
         "settings.json",
       ]);
     });
+  });
+});
+
+verifies("harness-claude-code.settings-reset", () => {
+  it("leaves only Halonic's files and the sign-in in the settings folder", async () => {
+    const signIn = '{ "account": "acme" }\n';
+    await writeFile(join(folder, ".credentials.json"), signIn);
+    await writeFile(join(folder, ".claude.json"), signIn);
+    await writeFile(join(folder, "CLAUDE.md"), "notes\n");
+    for (const name of ["skills", "agents", "commands"]) {
+      await mkdir(join(folder, name, "notes"), { recursive: true });
+      await writeFile(join(folder, name, "notes", "notes.md"), "notes\n");
+    }
+
+    await writeClaudeCodeSettings(folder, diskSettingsFolder);
+
+    expect((await readdir(folder)).sort()).toEqual([
+      ".claude.json",
+      ".credentials.json",
+      mcpSettingsFile,
+      unfencedSettingsFile,
+      "settings.json",
+    ]);
+    expect(await readFile(join(folder, ".credentials.json"), "utf8")).toBe(signIn);
+    expect(await readFile(join(folder, ".claude.json"), "utf8")).toBe(signIn);
   });
 });

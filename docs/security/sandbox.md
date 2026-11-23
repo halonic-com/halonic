@@ -108,9 +108,14 @@ up the sandbox in Settings.
   use all the CPU and memory it can get until the run is cancelled or times out.
 - **Inside the working folder, anything goes.** The program can change any file
   there without asking. Keep work you can't lose in git.
-- **An agent's settings folder is writable and kept between runs.** The program
-  can change anything in it, and what it leaves there, such as its own sign-in,
-  is still there at the agent's next run.
+- **An agent's settings folder is writable, and its sign-in is kept between
+  runs.** The program can change anything in it during a run. Before each run,
+  Halonic clears the folder down to its own settings files and the program's
+  sign-in (`harness-kit.settings-folder-reset`), so instructions, skills,
+  agents, commands or command rules a run leaves there don't reach the next
+  run. The sign-in files stay as the last run left them: for Claude Code that
+  includes `.claude.json`, its own file for the account. Within one run, what
+  the program writes there can change how it behaves for the rest of that run.
 - **Allowed sites see what the agent can read.** The fence checks a site's
   name, not what is sent to it.
 - **A connection straight at an address isn't reported.** The sandbox reports

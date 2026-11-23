@@ -5,6 +5,13 @@ import { codexRunTokenVariable } from "./environment.ts";
 /** The file in `CODEX_HOME` that holds Codex's settings. */
 export const codexConfigFile = "config.toml";
 
+/**
+ * The files in `CODEX_HOME` that hold the agent's own Codex sign-in, which
+ * stay when the folder is reset before a run (`harness-codex.settings-reset`).
+ * Everything else there but {@link codexConfigFile} goes.
+ */
+export const codexSignInFiles: readonly string[] = ["auth.json"];
+
 /** The name of the model provider that points Codex at the bridge, in {@link codexConfigFile}. */
 export const bridgeProviderName = "halonic";
 
@@ -84,6 +91,34 @@ export const codexPinnedInstructionsArgs: readonly string[] = [
   "-c",
   "skills.include_instructions=false",
 ];
+
+/**
+ * The arguments that set again, on the command line, what
+ * {@link codexConfigText} decides about what Codex may do and whom it talks
+ * to (requirement `harness-codex.pinned-settings`): the bridge as the model
+ * provider and how Codex calls it, asking on request, web search off, and the
+ * run token's header for the bridge's MCP server. A `-c` setting wins over
+ * every settings file, so a project's own `.codex/config.toml` can't change
+ * these even in a Codex version that reads one. In ask mode the thread's own
+ * `approvalPolicy` still wins over the one here.
+ *
+ * The values hold no space, so each stays one argument wherever it is
+ * passed, and no secret: the header names the variable that holds the token.
+ */
+export function codexPinnedSettingsArgs(): string[] {
+  const tokenHeader = `{${tomlString(harnessBridgeTokenHeader)}=${tomlString(codexRunTokenVariable)}}`;
+  const provider = `model_providers.${bridgeProviderName}`;
+  const settings = [
+    `model_provider=${tomlString(bridgeProviderName)}`,
+    `approval_policy="on-request"`,
+    `web_search="disabled"`,
+    `${provider}.wire_api="responses"`,
+    `${provider}.requires_openai_auth=true`,
+    `${provider}.env_http_headers=${tokenHeader}`,
+    `mcp_servers.${bridgeServerName}.env_http_headers=${tokenHeader}`,
+  ];
+  return settings.flatMap((setting) => ["-c", setting]);
+}
 
 /**
  * The arguments that give `codex app-server` the run's bridge: the model
