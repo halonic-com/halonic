@@ -144,7 +144,25 @@ export function checkOf(rollup: Rollup | null, name: string): CheckState | undef
   return newestOf(runs);
 }
 
-/** The checks whose newest run failed and those still running, by name, of the first 100 on a rollup. */
+/**
+ * Whether a check's newest run finished without a verdict: skipped (a
+ * path-filtered job, many on every `halonic` head) or neutral. Such a check
+ * neither fails nor is still running.
+ */
+function settledWithoutVerdict(runs: readonly RollupNode[]): boolean {
+  const newest = [...runs].sort((a, b) => (b.startedAt ?? "").localeCompare(a.startedAt ?? ""))[0];
+  const conclusion = newest?.conclusion?.toLowerCase();
+  return (
+    newest?.status?.toLowerCase() === "completed" &&
+    (conclusion === "skipped" || conclusion === "neutral")
+  );
+}
+
+/**
+ * The checks whose newest run failed and those still running, by name, of
+ * the first 100 on a rollup. A skipped or neutral check is in neither list;
+ * a cancelled one counts as still running.
+ */
 export function checksOf(rollup: Rollup | null): {
   failingChecks: string[];
   pendingChecks: string[];
@@ -155,7 +173,9 @@ export function checksOf(rollup: Rollup | null): {
       byName.set(node.name, [...(byName.get(node.name) ?? []), node]);
     }
   }
-  const states = [...byName].map(([name, runs]) => [name, newestOf(runs)] as const);
+  const states = [...byName]
+    .filter(([, runs]) => !settledWithoutVerdict(runs))
+    .map(([name, runs]) => [name, newestOf(runs)] as const);
   return {
     failingChecks: states.flatMap(([name, state]) => (state === "failure" ? [name] : [])).sort(),
     pendingChecks: states.flatMap(([name, state]) => (state === "pending" ? [name] : [])).sort(),

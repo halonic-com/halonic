@@ -86,6 +86,14 @@ export function fastTrackPass(
     }
     jumps = updateJumps(repo, now, jumps);
   }
+  // A repository this snapshot didn't read (a failed read, a settings change)
+  // keeps what it tracked, so its pull requests aren't reported as new later.
+  const read = new Set(snapshot.repos.map((repo) => repo.repo));
+  for (const [key, value] of Object.entries(before.tracked)) {
+    if (!read.has(key.slice(0, key.lastIndexOf("#")))) {
+      tracked[key] = value;
+    }
+  }
   // Forget the events of pull requests no longer tracked, so the store stays small.
   const fired = Object.fromEntries(
     [

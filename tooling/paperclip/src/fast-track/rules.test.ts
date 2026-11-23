@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
+import { checksOf } from "../snapshot/read.ts";
 import type { SnapshotPull, SnapshotRepo } from "../snapshot/shape.ts";
 import { ago, entry, liamApproved, merged, now, pull, repo } from "./fast-track.test-helper.ts";
 import { fastTrackRules, type Tracked } from "./rules.ts";
@@ -108,6 +109,31 @@ verifies("paperclip.fast-track-rules", () => {
     expect(ask(repo([ready]))).toMatch(/without a jump \(0 in the queue\)/);
     expect(ask(repo([ready]), new Set([113]))).toMatch(/with a jump: it unblocks/);
     expect(ask(repo([ready], queue))).toMatch(/with a jump: 9 pull requests are ahead/);
+  });
+
+  test("asks the Merger and the reviewer next to skipped path-filtered checks", () => {
+    const run_ = (name: string, conclusion: string) => ({
+      name,
+      status: "COMPLETED",
+      conclusion,
+      startedAt: conclusion === "SKIPPED" ? null : ago(40),
+    });
+    const rollup = {
+      contexts: {
+        pageInfo: { hasNextPage: false, endCursor: null },
+        nodes: [
+          run_("Windows build", "SKIPPED"),
+          run_("Docs site", "SKIPPED"),
+          run_("Lint", "SUCCESS"),
+          run_("ci-ok", "SUCCESS"),
+        ],
+      },
+    };
+    const ready = pull(118, { ...liamApproved, ...checksOf(rollup) });
+    const later = new Map([[118, { ...seen, readySince: { head: ready.head, at: ago(11) } }]]);
+    expect(run(repo([ready]), later).events.map((event) => event.stage)).toEqual(["enqueue_ask"]);
+    const unreviewed = pull(119, checksOf(rollup));
+    expect(stages(repo([unreviewed]))).toEqual(["acme/tools#119 review_nudge:abc1234def56"]);
   });
 
   test("doesn't ask while another fast-track pull request is queued, or for a stacked one", () => {

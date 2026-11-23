@@ -45,6 +45,15 @@ verifies("paperclip.fast-track-rules", () => {
     expect(gone.state.fired).toEqual({});
   });
 
+  test("keeps what it tracked in a repository the snapshot didn't read", () => {
+    const labelled = snapshotOf(repo([pull(205, liamApproved)]));
+    const state = fastTrackPass(labelled, emptyState, new Set(), now).state;
+    const missing = fastTrackPass(snapshotOf(), state, new Set(), now);
+    expect(missing.state.tracked).toEqual(state.tracked);
+    expect(missing.state.fired).toEqual(state.fired);
+    expect(fastTrackPass(labelled, missing.state, new Set(), now).events).toEqual([]);
+  });
+
   test("keeps its state per company in plugin state, and starts over on another version", async () => {
     const store = new Map<string, unknown>();
     const ctx = {

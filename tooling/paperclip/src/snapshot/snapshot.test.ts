@@ -153,6 +153,33 @@ verifies("paperclip.github-snapshot", () => {
     expect(checksOf(null)).toEqual({ failingChecks: [], pendingChecks: [] });
   });
 
+  test("counts a skipped or neutral check as neither failing nor running, a cancelled one as running", () => {
+    const run = (name: string, conclusion: string, startedAt: string | null) => ({
+      name,
+      status: "COMPLETED",
+      conclusion,
+      startedAt,
+    });
+    const rollup = {
+      contexts: {
+        pageInfo: { hasNextPage: false, endCursor: null },
+        nodes: [
+          run("Windows build", "SKIPPED", null),
+          run("Docs site", "SKIPPED", null),
+          run("Advisory", "NEUTRAL", "2026-11-22T11:00:00Z"),
+          run("Retried", "SKIPPED", "2026-11-22T10:00:00Z"),
+          run("Retried", "FAILURE", "2026-11-22T11:00:00Z"),
+          run("Cancelled", "CANCELLED", "2026-11-22T11:00:00Z"),
+          run("ci-ok", "SUCCESS", "2026-11-22T11:00:00Z"),
+        ],
+      },
+    };
+    expect(checksOf(rollup)).toEqual({
+      failingChecks: ["Retried"],
+      pendingChecks: ["Cancelled"],
+    });
+  });
+
   test("reads closed pull requests until one is older than the window", async () => {
     const recent = fakeQuery();
     const all = await takeSnapshot({
