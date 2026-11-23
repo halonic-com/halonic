@@ -111,6 +111,16 @@ Var RollbackMode
 !if "$%HALONIC_HELPER_SIGNED%" == "yes"
   !define SANDBOXSIGNER "$%HALONIC_SANDBOX_SIGNER%"
 !endif
+; Halonic change (HAL-16947): 1 once the installer or uninstaller refused to
+; start the helper because it isn't signed by SANDBOXSIGNER. A silent run then
+; exits with HELPER_REFUSED_EXIT, so a script can tell the sandbox wasn't set
+; up or removed. It follows the helper's own codes, which end at 40
+; (crates/sandbox-elevate/README.md); the installer's other codes are 1
+; (cancelled, or Halonic is open) and 2 (stopped before any page).
+!ifdef SANDBOXSIGNER
+  Var HelperRefused
+  !define HELPER_REFUSED_EXIT 41
+!endif
 ; .onInit unpacks the guard and nsExec. With /SOLID, anything not reserved
 ; here sits behind the app's files, and NSIS shows its "Unpacking data"
 ; window while it gets there, before any page or message.
@@ -777,6 +787,7 @@ Function ${un}ElevateSandboxHelper
     ${If} $2 S!= "${SANDBOXSIGNER}"
       System::Call 'kernel32::CloseHandle(p r4)'
       StrCpy $SandboxReason "the sandbox helper isn't signed by ${SANDBOXSIGNER}"
+      StrCpy $HelperRefused 1
       StrCpy $3 "nostart"
     ${EndIf}
   !endif
@@ -1229,6 +1240,14 @@ Section SandboxStep
     ${ElseIf} $SandboxOutcome == "skipped"
       DetailPrint "○ The agent sandbox isn't set up: a silent install sets it up only from an elevated prompt."
     ${EndIf}
+    !ifdef SANDBOXSIGNER
+      ; Halonic is installed, but a silent install has no page to say why the
+      ; sandbox isn't (HAL-16947).
+      ${If} ${Silent}
+      ${AndIf} $HelperRefused == 1
+        SetErrorLevel ${HELPER_REFUSED_EXIT}
+      ${EndIf}
+    !endif
   !endif
 
   ; Go to the finish page by itself, as nothing on this page needs a click.
@@ -2297,6 +2316,14 @@ Function un.RemoveSandbox
     ${EndIf}
     DetailPrint "! The agent sandbox is still set up: $SandboxReason"
   ${EndIf}
+  !ifdef SANDBOXSIGNER
+    ; As for a silent install (HAL-16947): Halonic is uninstalled, the sandbox
+    ; isn't, and nothing shows why.
+    ${If} ${Silent}
+    ${AndIf} $HelperRefused == 1
+      SetErrorLevel ${HELPER_REFUSED_EXIT}
+    ${EndIf}
+  !endif
 FunctionEnd
 
 ; The removal for an uninstaller with administrator rights: the user can swap

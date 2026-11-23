@@ -6,9 +6,11 @@
 # runner's administrator rights, where Windows shows no prompt:
 #   - the install's pages end on "The setup stopped: the sandbox helper isn't
 #     signed by Halonic", and no srt-sandbox account was made;
-#   - a silent install with /SANDBOX=1 makes none either;
+#   - a silent install with /SANDBOX=1 makes none either, and exits with 41
+#     (HAL-16947);
 #   - with a sandbox set up, the uninstaller's pages end on "The removal
-#     stopped: …" with the same reason, and the sandbox is still there.
+#     stopped: …" with the same reason, and the sandbox is still there;
+#   - a silent uninstall leaves it there too, and exits with 41.
 # Run from the repo root after `build-installer.ps1` (both steps) has run. The
 # last step of the job: it leaves the sandbox set up.
 param(
@@ -132,8 +134,12 @@ if (-not $p.WaitForExit(30000)) { throw 'The installer did not close after Finis
 Assert-NothingStarted 'The install'
 
 # 3. A silent install from an elevated prompt.
+# Halonic is installed, but the sandbox isn't, so it exits with the
+# installer's own code for a refused helper (installer.nsi, HAL-16947).
+$refusedExit = 41
 $p = Start-Process $setup -ArgumentList '/S', '/SANDBOX=1', "/D=$InstallFolder" -Wait -PassThru
-if ($p.ExitCode -ne 0) { throw "The silent install exited with $($p.ExitCode)" }
+if ($p.ExitCode -ne $refusedExit) { throw "The silent install exited with $($p.ExitCode), not $refusedExit" }
+if (-not (Test-Path (Join-Path $InstallFolder 'uninstall.exe'))) { throw 'The silent install left no uninstaller' }
 Assert-NothingStarted 'The silent install with /SANDBOX=1'
 
 # 4. The uninstaller's pages, with a sandbox to remove. The helper the agent
@@ -159,5 +165,19 @@ Must-Find $h "The removal stopped: the sandbox helper isn't signed by Halonic" '
 Click ([S]::GetDlgItem($h, 1))
 Wait-Closed $h 15 'Close'
 if (-not (Sandbox-IsSetUp)) { throw 'The uninstall removed the sandbox, so it started the unsigned helper' }
+
+# 5. A silent uninstall from an elevated prompt, the sandbox still set up.
+# Installed again first, silently and without /SANDBOX, which starts no helper.
+$p = Start-Process $setup -ArgumentList '/S', "/D=$InstallFolder" -Wait -PassThru
+if ($p.ExitCode -ne 0) { throw "The silent install without /SANDBOX exited with $($p.ExitCode)" }
+# `_?=` runs it in place: otherwise it copies itself to a temporary folder,
+# starts that copy and exits with 0 at once, so its exit code says nothing.
+$uninstaller = Join-Path $InstallFolder 'uninstall.exe'
+$p = Start-Process $uninstaller -ArgumentList '/S', "_?=$InstallFolder" -Wait -PassThru
+if ($p.ExitCode -ne $refusedExit) { throw "The silent uninstall exited with $($p.ExitCode), not $refusedExit" }
+if (Test-Path (Join-Path $InstallFolder 'Halonic.exe')) { throw 'The silent uninstall left Halonic installed' }
+if (-not (Sandbox-IsSetUp)) { throw 'The silent uninstall removed the sandbox, so it started the unsigned helper' }
+# Run in place, it can't delete itself or its folder.
+Remove-Item -Recurse -Force $InstallFolder
 $global:LASTEXITCODE = 0
-Write-Output "unsigned helper: the install and the uninstall started nothing and said it isn't signed by Halonic"
+Write-Output "unsigned helper: the installs and uninstalls started nothing, said it isn't signed by Halonic, and the silent ones exited with $refusedExit"
