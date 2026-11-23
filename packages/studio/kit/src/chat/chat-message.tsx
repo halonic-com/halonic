@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 /** A message the person sent, shown on the right in a tinted box. */
 interface YourMessage {
   readonly from: "you";
-  /** The message as it was sent. */
-  readonly children: string;
+  /** The message as it was sent: words, or host text with its hidden characters as chips. */
+  readonly children: ReactNode;
 }
 
 /** A reply from the agent or the assistant, built step by step. */

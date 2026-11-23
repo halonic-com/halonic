@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { Spinner } from "../button/spinner.tsx";
 import { AlertIcon } from "../icons/alert-icon.tsx";
 import { TickIcon } from "../icons/tick-icon.tsx";
@@ -9,8 +9,11 @@ export type ChatToolState = "running" | "done" | "failed";
 /** The props of `ChatToolLine`. */
 export interface ChatToolLineProps {
   readonly state: ChatToolState;
-  /** The feature's words for the call: "Searching pages…", "Searched pages". */
-  readonly children: string;
+  /**
+   * The feature's words for the call: "Searching pages…", "Searched pages". Host text in them is a
+   * node, with its hidden characters drawn as chips.
+   */
+  readonly children: ReactNode;
 }
 
 const marks: Record<ChatToolState, { icon: ComponentType; colour: string }> = {

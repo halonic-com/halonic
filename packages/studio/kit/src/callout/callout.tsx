@@ -51,8 +51,11 @@ export interface CalloutHandle {
 
 interface CalloutBase {
   readonly tone: CalloutTone;
-  /** "Couldn't change 3 files". Optional. */
-  readonly title?: string;
+  /**
+   * "Couldn't change 3 files". Optional. Usually words; host text with its hidden characters drawn
+   * as chips is a node.
+   */
+  readonly title?: ReactNode;
   /** The text, in `text-small` `fg`. Links in it use the normal inline link. */
   readonly children: ReactNode;
   /** File names or paths, listed under the text in mono: three, then "and N more". */
@@ -154,7 +157,7 @@ export function Callout(props: CalloutProps) {
     focus: () => box.current?.focus({ preventScroll: true }),
   }));
 
-  const title = props.title === "" ? undefined : props.title;
+  const title = hasText(props.title) ? props.title : undefined;
   const files = props.files ?? [];
   const focusable = props.announce === "focus";
   // Only a polite Callout is ever empty: it stays on the page as its live region alone.
@@ -227,7 +230,7 @@ function CalloutMessage({
   children,
 }: {
   readonly ids: CalloutIds;
-  readonly title: string | undefined;
+  readonly title: ReactNode;
   readonly files: readonly string[];
   readonly children: ReactNode;
 }) {

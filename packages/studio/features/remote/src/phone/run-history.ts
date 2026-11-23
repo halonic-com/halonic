@@ -8,11 +8,13 @@
 import { agentLine } from "./agent-line.ts";
 import {
   type HostText,
+  hostAppend,
+  hostFill,
   hostLineMax,
   hostLineParts,
   hostMessageParts,
-  hostShown,
-  hostTitle,
+  hostPlain,
+  hostTitleParts,
 } from "./host-text.ts";
 import { asOfText } from "./phone-forms.ts";
 import type { RemoteApproval, RemoteEvent, RemoteSession, RemoteView } from "./remote-view.ts";
@@ -43,15 +45,15 @@ export type RunItem =
       readonly kind: "answered";
       readonly key: string;
       readonly decision: "approve" | "deny";
-      readonly text: string;
+      readonly text: HostText;
     }
   /** Last: the agent runs (`working`, with the spinner, only while live) or how it ended. */
-  | { readonly kind: "working"; readonly key: string; readonly text: string }
+  | { readonly kind: "working"; readonly key: string; readonly text: HostText }
   | {
       readonly kind: "ended";
       readonly key: string;
       readonly tone: "plain" | "danger";
-      readonly text: string;
+      readonly text: HostText;
     };
 
 /**
@@ -146,7 +148,7 @@ function summaryOf(summary: string): HostText {
   return hostLineParts(summary, hostLineMax);
 }
 
-/** The quiet line is a kit component's words, so its summary's markers are written out. */
+/** The quiet line: "Approved 13:53 · {summary}", the summary's markers drawn as chips. */
 function answered(settled: RemoteEvent, summary: HostText | undefined, now: Date): RunItem {
   const decision = settled.body.type === "approval-settled" ? settled.body.decision : "approve";
   const time = timeOf(settled.at, now) ?? "";
@@ -155,7 +157,7 @@ function answered(settled: RemoteEvent, summary: HostText | undefined, now: Date
     kind: "answered",
     key: `event-${settled.seq}`,
     decision,
-    text: summary === undefined ? said : `${said} · ${hostShown(summary)}`,
+    text: summary === undefined ? hostPlain(said) : [...hostPlain(`${said} · `), ...summary],
   };
 }
 
@@ -166,14 +168,18 @@ function endOf(view: RemoteView, session: RemoteSession, now: Date): RunItem | u
       return undefined;
     case "running":
       if (view.canAnswer) {
-        return { kind: "working", key, text: runWords.working(hostTitle(session.title)) };
+        return {
+          kind: "working",
+          key,
+          text: hostFill(runWords.working, hostTitleParts(session.title)),
+        };
       }
       if (view.asOf === undefined) return undefined;
       return {
         kind: "ended",
         key,
         tone: "plain",
-        text: runWords.workingAsOf(asOfText(view.asOf, now)),
+        text: hostPlain(runWords.workingAsOf(asOfText(view.asOf, now))),
       };
     case "done":
       return { kind: "ended", key, tone: "plain", text: endedLine(session, now) };
@@ -183,16 +189,15 @@ function endOf(view: RemoteView, session: RemoteSession, now: Date): RunItem | u
         kind: "ended",
         key,
         tone: "danger",
-        text: `${failed}. ${runWords.failedSeeComputer}`,
+        text: hostAppend(failed, `. ${runWords.failedSeeComputer}`),
       };
     }
   }
 }
 
 /** When an agent that ended did so: "Finished 13:40" (`agentLine`). */
-function endedLine(session: RemoteSession, now: Date): string {
-  const line = agentLine(session, undefined, now);
-  return line === undefined ? "" : hostShown(line);
+function endedLine(session: RemoteSession, now: Date): HostText {
+  return agentLine(session, undefined, now) ?? [];
 }
 
 /** The computer's time of an event, as "as of" writes it; none when it isn't a time. */

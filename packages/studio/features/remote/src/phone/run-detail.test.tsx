@@ -11,6 +11,7 @@ import {
   staleView,
 } from "../test-support/fake-phone-remote.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { hostShown } from "./host-text.ts";
 import type { RemoteEvent, RemoteSession, RemoteView } from "./remote-view.ts";
 import { RunDetail } from "./run-detail.tsx";
 import { runHistory } from "./run-history.ts";
@@ -69,7 +70,11 @@ function show(view: RemoteView, sessionId = "sorter") {
   return { screen, history, onBack, onSend };
 }
 
-const ending = (view: RemoteView, session: RemoteSession) => runHistory(view, session, now).at(-1);
+/** The history's last item, its text as one string. */
+function ending(view: RemoteView, session: RemoteSession) {
+  const last = runHistory(view, session, now).at(-1);
+  return last !== undefined && "text" in last ? { ...last, text: hostShown(last.text) } : last;
+}
 
 verifies("remote.phone-run-detail", () => {
   it("shows Back, the agent's name as the focused heading, and the connection label", () => {
@@ -122,7 +127,7 @@ verifies("remote.phone-run-detail", () => {
       ],
     });
     const items = runHistory(remoteView({ sessions: [writer] }), writer, now);
-    expect(items.map((item) => ("text" in item ? item.text : item.kind))).toEqual([
+    expect(items.map((item) => ("text" in item ? hostShown(item.text) : item.kind))).toEqual([
       "dropped",
       "Approved 13:30",
       "Denied 13:40 · read_inbox: {}",

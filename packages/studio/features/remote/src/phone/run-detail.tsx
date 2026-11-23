@@ -10,7 +10,7 @@ import {
   InfoIcon,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useRef } from "react";
-import { hostShown, hostTitle, hostTitleParts } from "./host-text.ts";
+import { type HostText, hostFill, hostSpoken, hostTitleParts } from "./host-text.ts";
 import { HostTextView } from "./host-text-view.tsx";
 import { PromptBox } from "./prompt-box.tsx";
 import type { RemoteSendOutcome, RemoteView } from "./remote-view.ts";
@@ -62,7 +62,7 @@ export function RunDetail({
   }, [gone, onBack]);
 
   if (session === undefined) return null;
-  const title = hostTitle(session.title);
+  const title = hostTitleParts(session.title);
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-phone-bar shrink-0 items-center gap-1 border-b border-border pr-4 pl-1">
@@ -78,7 +78,7 @@ export function RunDetail({
           tabIndex={-1}
           className="min-w-24 flex-1 truncate rounded-sm text-heading text-fg focus-ring"
         >
-          <HostTextView text={hostTitleParts(session.title)} />
+          <HostTextView text={title} />
         </h1>
         {/* The title wins: it keeps at least 96px, and the label shrinks, cutting the computer's
             name with "…" while its dot, state words and chevron stay (HAL-16957). */}
@@ -87,7 +87,7 @@ export function RunDetail({
       {view.canAnswer || banner === undefined ? null : (
         <div className="shrink-0 px-4 pt-3">{banner}</div>
       )}
-      <ChatTranscript label={runWords.history(title)}>
+      <ChatTranscript label={runWords.history(hostSpoken(title))}>
         {runHistory(view, session, now()).map((item) => (
           <RunItemView key={item.key} item={item} agent={title} />
         ))}
@@ -102,7 +102,8 @@ export function RunDetail({
   );
 }
 
-function RunItemView({ item, agent }: { readonly item: RunItem; readonly agent: string }) {
+/** One item of the history; `agent` is the agent's title, drawn with chips where it shows. */
+function RunItemView({ item, agent }: { readonly item: RunItem; readonly agent: HostText }) {
   switch (item.kind) {
     case "dropped":
       return (
@@ -114,14 +115,20 @@ function RunItemView({ item, agent }: { readonly item: RunItem; readonly agent: 
         </p>
       );
     case "nothing":
-      return <p className="text-small text-fg-muted">{runWords.nothingYet(agent)}</p>;
+      return (
+        <p className="text-small text-fg-muted">
+          <HostTextView text={hostFill(runWords.nothingYet, agent)} />
+        </p>
+      );
     case "message":
       return (
         <div className="flex flex-col gap-1">
           {item.from === "you" ? (
-            <ChatMessage from="you">{hostShown(item.text)}</ChatMessage>
+            <ChatMessage from="you">
+              <HostTextView text={item.text} />
+            </ChatMessage>
           ) : (
-            <ChatMessage from="reply" heading={runWords.said(agent)} headingLevel={2}>
+            <ChatMessage from="reply" heading={runWords.said(hostSpoken(agent))} headingLevel={2}>
               {/* `ChatText`'s look, with the hidden characters drawn as chips. */}
               <p className="text-reading text-fg whitespace-pre-wrap wrap-break-word">
                 <HostTextView text={item.text} />
@@ -137,7 +144,11 @@ function RunItemView({ item, agent }: { readonly item: RunItem; readonly agent: 
       );
     case "waiting":
       return (
-        <Callout tone="warning" icon={<HandIcon />} title={runWords.waiting(agent)}>
+        <Callout
+          tone="warning"
+          icon={<HandIcon />}
+          title={<HostTextView text={hostFill(runWords.waiting, agent)} />}
+        >
           <div className="flex flex-col gap-1">
             {/* The tool and its arguments as the computer sends them: it wraps at a space first,
                 and inside a long token only when it must, so nothing runs off the screen. */}
@@ -151,13 +162,25 @@ function RunItemView({ item, agent }: { readonly item: RunItem; readonly agent: 
       );
     case "answered":
       return item.decision === "approve" ? (
-        <ChatToolLine state="done">{item.text}</ChatToolLine>
+        <ChatToolLine state="done">
+          <HostTextView text={item.text} />
+        </ChatToolLine>
       ) : (
-        <ChatEndLine tone="plain">{item.text}</ChatEndLine>
+        <ChatEndLine tone="plain">
+          <HostTextView text={item.text} />
+        </ChatEndLine>
       );
     case "working":
-      return <ChatToolLine state="running">{item.text}</ChatToolLine>;
+      return (
+        <ChatToolLine state="running">
+          <HostTextView text={item.text} />
+        </ChatToolLine>
+      );
     case "ended":
-      return <ChatEndLine tone={item.tone}>{item.text}</ChatEndLine>;
+      return (
+        <ChatEndLine tone={item.tone}>
+          <HostTextView text={item.text} />
+        </ChatEndLine>
+      );
   }
 }

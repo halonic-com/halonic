@@ -43,7 +43,9 @@ const ellipsis = "…";
 export function hostLineParts(text: string, max: number): HostText {
   const characters = [...text];
   const cut = characters.length > max;
-  const kept = cut ? characters.slice(0, max).join("") : text;
+  // A cut right after a space would leave "summary …", so the "…" goes straight after the last
+  // word. Only spaces go: a tab or newline there is hidden and keeps its marker.
+  const kept = cut ? characters.slice(0, max).join("").replace(/ +$/u, "") : text;
   const parts = segmentHidden(kept, { markWhitespace: true });
   return cut ? hostAppend(parts, ellipsis) : parts;
 }
@@ -60,6 +62,29 @@ export function hostTitleParts(title: string): HostText {
  */
 export function hostMessageParts(text: string): HostText {
   return segmentHidden(text);
+}
+
+/** Words of our own as host text, with no markers: "Working as of 14:02." */
+export function hostPlain(text: string): HostText {
+  return [{ kind: "text", text }];
+}
+
+/** Stands for the host text while {@link hostFill} writes the words around it. */
+const slot = "\u{F0000}";
+
+/**
+ * `words` with host text in it, such as "{agent} is working…" with the agent's title, so its
+ * markers stay chips. `words` puts its argument in at most once.
+ *
+ * @example
+ * hostFill((agent) => `${agent} is working…`, hostTitleParts(title));
+ */
+export function hostFill(words: (name: string) => string, name: HostText): HostText {
+  const [before = "", after] = words(slot).split(slot);
+  if (after === undefined) return hostPlain(before);
+  return [...hostPlain(before), ...name, ...hostPlain(after)].filter(
+    (part) => part.kind !== "text" || part.text !== "",
+  );
 }
 
 /** `parts` with `text` after them, such as " · as of 14:02". */

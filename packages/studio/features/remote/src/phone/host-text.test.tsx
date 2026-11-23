@@ -55,6 +55,8 @@ verifies("remote.phone-host-text", () => {
       expect(hostLine("x".repeat(10), 10)).toBe("x".repeat(10));
       expect(hostLine("x".repeat(11), 10)).toBe(`${"x".repeat(10)}…`);
       expect(hostLine(`${"x".repeat(9)}${rightToLeft}tail`, 10)).toBe(`${"x".repeat(9)}⟦U+202E⟧…`);
+      expect(hostLine("weekly refunds summary and more", 23)).toBe("weekly refunds summary…");
+      expect(hostLine("send\tmore", 5)).toBe("send⟦U+0009⟧…");
       expect(hostTitle("t".repeat(hostTitleMax + 5))).toBe(`${"t".repeat(hostTitleMax)}…`);
     });
   });
@@ -152,9 +154,51 @@ verifies("remote.phone-host-text", () => {
     const chip = real.querySelector("h1 > span");
     expect(chip?.textContent).toBe("hidden character U+202E");
     expect(chip?.className.split(" ")).toEqual(
-      expect.arrayContaining(["font-mono", "text-caption", "bg-surface-muted", "border-border"]),
+      expect.arrayContaining([
+        "font-mono",
+        "text-caption",
+        "bg-surface-muted",
+        "border-border",
+        // Never split at the end of a clamped line (HAL-17067).
+        "inline-block",
+        "whitespace-nowrap",
+      ]),
     );
     expect(chip?.querySelector(".sr-only")?.textContent).toBe("hidden character ");
+  });
+
+  it("draws chips in the waiting title, your own messages and the end line", () => {
+    const yourMessage: RemoteEvent = {
+      seq: 1,
+      at: "2026-11-21T14:03:00.000Z",
+      body: { type: "message", role: "user", text: `Pay Sam${zeroWidth}` },
+    };
+    const sessions = [
+      remoteSession({
+        title: `Refund${rightToLeft}gnp.exe`,
+        state: "waiting",
+        events: [yourMessage],
+      }),
+    ];
+    const screen = render(
+      <RunDetail
+        view={remoteView({
+          sessions,
+          openApprovals: [remoteApproval({ answerOnComputer: true })],
+        })}
+        sessionId="session-1"
+        label={null}
+        onBack={vi.fn()}
+        onSend={vi.fn()}
+        now={now}
+      />,
+    );
+    const shown = screen.textContent ?? "";
+    expect(shown).not.toContain("⟦");
+    expect(shown).toContain("Refundhidden character U+202Egnp.exe is waiting for your OK");
+    expect(shown).toContain("Pay Samhidden character U+200B");
+    // The title, the waiting title and your message, each with its chip.
+    expect(chipsIn(screen)).toEqual(["U+202E", "U+200B", "U+202E"]);
   });
 
   it("renders links in agent text as plain text that opens nothing", () => {

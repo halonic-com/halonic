@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { AlertIcon } from "../icons/alert-icon.tsx";
 import { type ChatAction, ChatActions } from "./chat-actions.tsx";
 
@@ -10,8 +11,8 @@ export type ChatEndLineTone = "danger" | "plain";
 /** The props of `ChatEndLine`. */
 export interface ChatEndLineProps {
   readonly tone: ChatEndLineTone;
-  /** The whole sentence, never shortened: it wraps. */
-  readonly children: string;
+  /** The whole sentence, never shortened: it wraps. Words, or host text drawn with chips. */
+  readonly children: ReactNode;
   /**
    * What the line offers: **Try again** only when no tool ran yet, since sending again could
    * repeat what a tool did. A failure after a tool ran has none.
