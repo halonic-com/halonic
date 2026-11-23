@@ -119,6 +119,11 @@ export {
 } from "./knowledge/knowledge-first.ts";
 export { defaultMaxRounds, LocalExecutor } from "./local-executor.ts";
 export type { LocalExecutorOptions, ModelScope } from "./local-executor-options.ts";
+export {
+  ConfigMeter,
+  type ConfigMeterOptions,
+  type RunningRuns,
+} from "./meter/config-meter.ts";
 export type {
   Meter,
   MeterAnswer,
