@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for it in the PR 11 review on HAL-6702 (the `definitions-written` note); the reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:x+7+WHinbsKh6kPQd6yhHoC7KOFje6qu1y6b9Ul2ykbbtZV38PMBzeC168LYzktCnDpW7EicB693FE21tXWxBg==
 
 ## What changes
 
