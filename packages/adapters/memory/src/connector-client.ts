@@ -51,7 +51,7 @@ export interface MemoryConnectorOptions {
  * Connectors held in memory, for tests and the browser demo. It stands in
  * for one transport kind and keeps that kind's trust-grant rules
  * (`ports.connector-trust-enforcement`): without a grant, a `stdio`
- * connector starts nothing, an `http` connector calls no tool, and the
+ * connector starts nothing, an `http` connector lists and calls no tool, and the
  * built-in `google` connector calls only its `read` tools. A `stdio`
  * connector counts as a started program from its first call until it closes.
  *
@@ -162,6 +162,9 @@ class MemoryConnectorClient implements ConnectorClient {
 
   async listTools(): Promise<ConnectorTool[]> {
     await this.#connect();
+    if (!this.#trusted && this.#server.kind === "http") {
+      throw new Error(`Connector "${this.id}" lists its tools only once the workspace is trusted.`);
+    }
     return this.#server.listed();
   }
 

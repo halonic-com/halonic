@@ -191,9 +191,9 @@ function serverCases(make: MakeConnector): void {
 }
 
 function httpCases(make: MakeConnector): void {
-  it("without a grant, still lists an http connector's tools but calls none, not even read ones", () =>
+  it("without a grant, neither lists an http connector's tools nor calls any, not even read ones", () =>
     withClient(make, null, async ({ harness, client }) => {
-      expect(await client.listTools()).toEqual(contractServerTools);
+      await expect(client.listTools()).rejects.toThrow();
       for (const tool of contractServerTools) {
         await expect(client.callTool(tool.name, { id: "n-1" })).rejects.toThrow();
       }
