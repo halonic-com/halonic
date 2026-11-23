@@ -1,4 +1,5 @@
 import { planApprovals, readSeenApprovals } from "../board-check/approvals.ts";
+import type { BoardWrite } from "../board-check/writes.ts";
 import { type BoardCheckApi, type PartPlan, stateKey } from "./board-check-api.ts";
 
 /**
@@ -14,12 +15,23 @@ export async function planApprovalsPart(
 ): Promise<PartPlan> {
   const key = stateKey(companyId, "approvals");
   const pending = await ctx.approvals.list({ companyId, status: "pending" });
-  const plan = planApprovals(pending, readSeenApprovals(await ctx.state.get(key)), names);
+  const seenBefore = readSeenApprovals(await ctx.state.get(key));
+  const plan = planApprovals(pending, seenBefore, names);
+  const comment: BoardWrite | undefined =
+    plan.comment === undefined
+      ? undefined
+      : { kind: "comment", taskId: checkerTaskId, body: plan.comment };
   return {
-    writes:
-      plan.comment === undefined
-        ? []
-        : [{ kind: "comment", taskId: checkerTaskId, body: plan.comment }],
-    save: () => ctx.state.set(key, plan.seen),
+    writes: comment === undefined ? [] : [comment],
+    // A comment that was only logged (writes off) leaves its approvals
+    // unseen, so they are listed once writes are on. Ids no longer pending
+    // still drop out, so the record never grows.
+    save: (sent) =>
+      ctx.state.set(
+        key,
+        comment === undefined || sent.has(comment)
+          ? plan.seen
+          : (seenBefore ?? []).filter((id) => plan.seen.includes(id)),
+      ),
   };
 }

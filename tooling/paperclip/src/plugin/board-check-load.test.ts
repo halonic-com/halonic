@@ -93,4 +93,32 @@ verifies("paperclip.board-check-approvals", () => {
     ]);
     expect(JSON.stringify(fake.sent)).not.toContain("Payload");
   });
+
+  test("lists an approval that became pending while writes were off once the board turns them on", async () => {
+    let config: Record<string, unknown> = { ...settings, boardCheckWritesForVersion: undefined };
+    const first = {
+      id: "approval-1",
+      type: "hire_agent",
+      requestedByAgentId: "agent-mateo",
+      createdAt: at("13:10"),
+    };
+    const pending = [first];
+    const fake = fakeBoardContext({
+      tasks: [checkerTask],
+      comments: {},
+      config: () => config,
+      approvals: () => pending,
+    });
+    const board = boardCheck(fake.ctx);
+    await board.run(at("14:20"));
+    pending.push({ ...first, id: "approval-2", createdAt: at("14:25") });
+    await board.run(at("14:30"));
+    expect(comments(fake.sent, checkerTask.id)).toEqual([]);
+    config = settings;
+    await board.run(at("14:40"));
+    await board.run(at("14:50"));
+    const listed = comments(fake.sent, checkerTask.id);
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toContain("- approval-2: hire_agent, asked by Mateo");
+  });
 });
