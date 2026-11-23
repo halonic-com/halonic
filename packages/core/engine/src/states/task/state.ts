@@ -30,7 +30,8 @@ import {
  * an answer that isn't one of its options fails the run with
  * `answer-not-an-option`; when it is `json`, the answer is parsed into data,
  * and text that isn't JSON fails the run, unless the agent's `answerRetries`
- * allows asking it again (`askAgain`). When the agent stops at a tool call that needs a
+ * allows asking it again (`askAgain`), or the state has an `unusable`
+ * transition to take instead (`routeUnusable`). When the agent stops at a tool call that needs a
  * person's OK, the state waits for `approve` or `reject`, then the agent goes
  * on with the answer: in a new model call, or in the harness call that
  * asked, which kept running while the run waited. When it stops before a
@@ -144,10 +145,14 @@ function finishAgent(
   const stepOutput = stepOutputOf(agents, pending.agent, state);
   const retries = answerRetriesOf(agents, pending.agent);
   const retriesLeft = retries - (pending.answerRetry?.attempt ?? 0);
-  const checked = checkAnswer(agents, pending.agent, answer, stepOutput, retries > 0);
+  const routed = takesUnusable(state);
+  const checked = checkAnswer(agents, pending.agent, answer, stepOutput, retries > 0 || routed);
   if ("error" in checked) {
-    return retriesLeft > 0
-      ? askAgain(context, pending, checked)
+    if (retriesLeft > 0) {
+      return askAgain(context, pending, checked);
+    }
+    return routed
+      ? routeUnusable(context, pending, checked)
       : { ...nothing, outcome: { type: "fail", ...checked } };
   }
   const output = checked.output;
@@ -173,6 +178,37 @@ function finishAgent(
 /** How often the agent's file lets a step ask it again after an unusable answer; 0 when it doesn't say. */
 function answerRetriesOf(agents: StateContext<"task">["agents"], agent: string): number {
   return Object.hasOwn(agents, agent) ? (agents[agent]?.answerRetries ?? 0) : 0;
+}
+
+/** The event a task state ends with when its agent's last answer can't be used. */
+const UNUSABLE_EVENT = "unusable";
+
+/** Whether the state has a transition for an unusable answer; without one, such an answer fails the run. */
+function takesUnusable(state: StateContext<"task">["state"]): boolean {
+  return state.on.some((transition) => transition.event === UNUSABLE_EVENT);
+}
+
+/**
+ * Ends the step with `unusable` instead of failing the run, once no retry is
+ * left. `agent.finished` records the rejection, with the error, reason and
+ * cause `run.failed` would have given, and no output.
+ */
+function routeUnusable(
+  { stateId }: StateContext<"task">,
+  pending: PendingCall,
+  unusable: Extract<CheckedAnswer, { error: string }>,
+): StateStep {
+  const { error, reason, cause } = unusable;
+  const finished: DecidedEvent = {
+    type: "agent.finished",
+    state: stateId,
+    agent: pending.agent,
+    output: null,
+    error,
+    reason,
+    ...(cause === undefined ? {} : { cause }),
+  };
+  return { events: [finished], effects: [], outcome: { type: "finish", event: UNUSABLE_EVENT } };
 }
 
 /**

@@ -272,6 +272,13 @@ fence, or else its one complete top-level `{…}` object. It takes that only whe
 and it parses (requirement `engine.task-answer-json-found`). `parallel` branches and `foreach` items
 don't retry or look.
 
+A `task` state with a transition on the event `unusable` takes it instead of failing the run when its
+agent's last answer can't be used: no retry is left and the answer isn't the JSON or one of the
+options its output asks for, or there is no answer at all. `agent.finished` records the rejection with
+`output: null` and the error, reason and cause the run would have failed with (requirement
+`engine.task-unusable-route`). Such a state looks for the JSON in a text answer, as with
+`answerRetries`, even when the agent has none. Without that transition, nothing changes.
+
 A `workflow` state runs another workflow of the hub as a child run, from the `workflows` the run
 kept with its definitions; a run kept without them can't start one. The child's id is the parent's
 id and the `seq` of the state's `state.entered` (`run_1.2`), so `decide` needs no id generator and a
