@@ -170,7 +170,7 @@ export function serviceOn(
 }
 
 /** Acme with a provider in the cloud and one on this computer; the writer starts on the cloud one. */
-export function acmeWithTwoProviders() {
+export function acmeWithTwoProviders(more: Record<string, string> = {}) {
   return acmeFiles(
     { writer: "model: cloud\n" },
     {
@@ -184,6 +184,7 @@ export function acmeWithTwoProviders() {
         "  home: { provider: near, model: small }",
         "",
       ].join("\n"),
+      ...more,
     },
   );
 }

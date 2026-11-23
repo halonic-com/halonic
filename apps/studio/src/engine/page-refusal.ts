@@ -187,29 +187,26 @@ function runCommandOf(workspace: LoadedWorkspace, { hubId, workflowId }: Workflo
 
 /**
  * A start from the window while the workspace has history but nothing is live yet: `conflict`,
- * in the CLI's words (`runMessages.nothingLive` and its fix, HAL-4850, HAL-6041), as `halonic
- * run` refuses it.
+ * as `halonic run` refuses it (`runMessages.nothingLive`, HAL-4850, HAL-6041), in Studio's words:
+ * each start screen's lead already says the run didn't start, and Studio makes a commit with
+ * Create version (words check C739 row 11, HAL-16658).
  */
 export function nothingLiveRefusal(): KindedError {
-  return new KindedError(
-    "conflict",
-    "Nothing is live yet, so there is nothing to run. Nothing ran.",
-    {
-      fix: "Make a first commit in git, then run again.",
-    },
-  );
+  return new KindedError("conflict", "Nothing is live yet, so there is nothing to run.", {
+    fix: "Create a first version, then try again.",
+  });
 }
 
 /**
- * A live version git can't read because git isn't on this computer, as `unavailable` in the CLI's
- * words (`runMessages.gitWontStart` and its fix); any other failure passes on as it is. The saved
- * files are never read in its place.
+ * A live version git can't read because git isn't on this computer, as `unavailable` with the CLI's
+ * fix (`runMessages.gitWontStart`), without its "Nothing ran." since the screen's lead says so
+ * (C739 row 12); any other failure passes on as it is. The saved files are never read in its place.
  */
 export function historyRefusalOf(error: unknown): unknown {
   if (!(error instanceof GitMissingError)) return error;
   return new KindedError(
     "unavailable",
-    "git can't start on this computer, so the live version can't be read. Nothing ran.",
+    "git can't start on this computer, so the live version can't be read.",
     { fix: "Install git and make sure it's on your PATH, then try again.", cause: error },
   );
 }

@@ -86,7 +86,7 @@ verifies("studio.engine-service", () => {
     await service.close();
   });
 
-  it("refuses as `conflict` in the CLI's words while nothing is live, before the lock", async () => {
+  it("refuses as `conflict` while nothing is live, before the lock", async () => {
     const files = acmeFiles();
     const vcs = new MemoryVcs(files);
     await vcs.init();
@@ -95,13 +95,13 @@ verifies("studio.engine-service", () => {
 
     await expect(service.startRun(reply, {})).rejects.toMatchObject({
       kind: "conflict",
-      message: "Nothing is live yet, so there is nothing to run. Nothing ran.",
-      fix: "Make a first commit in git, then run again.",
+      message: "Nothing is live yet, so there is nothing to run.",
+      fix: "Create a first version, then try again.",
     });
     expect(lockCalls(shell)).toEqual([]);
   });
 
-  it("refuses as `unavailable` in the CLI's words when git can't read the live version", async () => {
+  it("refuses as `unavailable` with the CLI's fix when git can't read the live version", async () => {
     const files = acmeFiles();
     const noGit: LiveVersions = {
       status: () => Promise.reject(new GitMissingError()),
@@ -113,7 +113,7 @@ verifies("studio.engine-service", () => {
 
     await expect(service.startRun(reply, {})).rejects.toMatchObject({
       kind: "unavailable",
-      message: "git can't start on this computer, so the live version can't be read. Nothing ran.",
+      message: "git can't start on this computer, so the live version can't be read.",
       fix: "Install git and make sure it's on your PATH, then try again.",
     });
   });
