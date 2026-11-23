@@ -5,7 +5,6 @@ import type {
 } from "@halonicjs/adapter-agent-host-client";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { studioStartsUnfenced } from "../engine/studio-harness-host.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { agentSandboxOffered } from "./provide-agent-sandbox.ts";
 import type { ShellElevation } from "./sandbox-elevate-shell.ts";
@@ -34,8 +33,19 @@ const failing = (reason: string, missing: string[] = []) => ({
 verifies("studio.agent-sandbox-host", () => {
   it("reports whether the Studio starts agents outside the sandbox, as the Harness page is told", () => {
     const { transport } = host({});
-    expect(new AgentHostSandboxFacts(transport).studioStartsUnfenced).toBe(studioStartsUnfenced);
-    expect(studioStartsUnfenced).toBe(false);
+    const facts = (startsUnfenced?: boolean) =>
+      new AgentHostSandboxFacts(
+        transport,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        startsUnfenced,
+      );
+    expect(facts().studioStartsUnfenced).toBe(false);
+    expect(facts(false).studioStartsUnfenced).toBe(false);
+    expect(facts(true).studioStartsUnfenced).toBe(true);
   });
 
   it("reads a passing check as Ready", async () => {

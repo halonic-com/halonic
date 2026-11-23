@@ -17,10 +17,10 @@ export interface AgentPlacementParts {
    */
   bytesOf(ref: AgentRef): Promise<Uint8Array>;
   /**
-   * Whether this Studio's runs can start an agent outside its sandbox, as its harness host says
-   * (`studioStartsUnfenced`); it can't when left out.
+   * Whether this Studio's runs can start an agent outside its sandbox, as its agent host says
+   * (`GET /v1/sandbox/this-computer`); it can't when left out.
    */
-  readonly studioStartsUnfenced?: boolean;
+  studioStartsUnfenced?(): Promise<boolean>;
   /**
    * When the agent's saved file changed into what it is now, after `since` (ISO text), as ISO
    * text; `undefined` when that can't be told. Left out, a choice on hold has no time.
@@ -46,8 +46,8 @@ export class AgentPlacementChoices {
   }
 
   /** Whether this Studio can itself start an agent set to On this computer. */
-  get studioStartsUnfenced(): boolean {
-    return this.#parts.studioStartsUnfenced ?? false;
+  async studioStartsUnfenced(): Promise<boolean> {
+    return (await this.#parts.studioStartsUnfenced?.()) ?? false;
   }
 
   /** Where the agent runs; a choice for an earlier version of its file is on hold. */

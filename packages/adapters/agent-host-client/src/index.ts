@@ -37,6 +37,7 @@ export {
   type AgentHostProfilesOptions,
   type BuiltProfile,
   type ProfileAgent,
+  type ProfileOwner,
 } from "./harness-profiles.ts";
 export {
   AgentHostIntegrationSignIns,
@@ -75,6 +76,11 @@ export {
   type WslRemoveChoice,
   type WslRemoveOutcome,
 } from "./sandbox-setup.ts";
+export {
+  AgentHostThisComputer,
+  type AgentHostThisComputerOptions,
+  thisComputerOffered,
+} from "./this-computer.ts";
 export {
   type AgentHostAnswer,
   AgentHostError,

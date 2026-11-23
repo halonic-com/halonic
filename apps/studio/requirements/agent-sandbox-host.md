@@ -23,3 +23,6 @@ The Studio app shall read Settings › Agent sandbox from the agent host's check
 - Given the Studio's runs can't start an agent outside its sandbox,
   when the section asks the host,
   then the host says so, as the Harness page is told.
+- Given an agent host that opens sessions on this computer,
+  when the section asks the host,
+  then the host says the Studio's runs start an agent outside its sandbox, as the Harness page is told.

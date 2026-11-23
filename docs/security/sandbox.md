@@ -225,9 +225,14 @@ What starts such an agent:
   run go on) start it without the sandbox, and print a `!` line for it before
   it starts: "Writer runs on this computer without the sandbox, as chosen on
   9 Nov."
-- Studio doesn't start it yet: its run fails before the agent's program starts.
-  The Harness page says so under **On this computer**: "Studio can't start it
-  this way yet; halonic in a terminal on this computer can."
+- Studio starts it through the agent host (HAL-13195), with the launcher the
+  CLI uses, once the host's own gate passes: the workspace is trusted, the
+  person's choice is for the agent's saved file as it is now, and the profile
+  is one the host built for that agent. Where the host offers no such session
+  (on Windows, or without a profile folder), Studio's run fails before the
+  agent's program starts, and the Harness page says so under **On this
+  computer**: "Studio can't start it this way yet; halonic in a terminal on
+  this computer can."
 - `halonic routines watch` refuses a routine whose agent runs in Claude Code or
   Codex, wherever that agent runs, so it doesn't start this one either (exit 9).
 

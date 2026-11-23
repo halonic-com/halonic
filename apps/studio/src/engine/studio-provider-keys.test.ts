@@ -80,6 +80,8 @@ function fakeHost(calls: unknown[] = []) {
       if (route === "GET /v1/sandbox/capabilities") {
         return { status: 200, body: { files: "shared", strength: "os" } };
       }
+      if (route === "GET /v1/sandbox/this-computer")
+        return { status: 200, body: { offered: false } };
       if (route === "POST /v1/bridge/answer") {
         answers.push(body);
         if (answers.length === calls.length) done.resolve();

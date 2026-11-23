@@ -58,7 +58,9 @@ function computer(
         if (text === undefined) throw new Error("no such agent");
         return new TextEncoder().encode(text);
       },
-      ...(studioStartsUnfenced === undefined ? {} : { studioStartsUnfenced }),
+      ...(studioStartsUnfenced === undefined
+        ? {}
+        : { studioStartsUnfenced: async () => studioStartsUnfenced }),
       ...(changedAt === undefined ? {} : { changedAt }),
     }),
   });

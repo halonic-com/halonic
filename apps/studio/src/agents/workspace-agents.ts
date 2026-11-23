@@ -254,7 +254,7 @@ export class WorkspaceAgents implements AgentsHost {
     return {
       ...(await choices.where(ref)),
       unsaved: Object.hasOwn(this.#parts.files.pending, path),
-      studioStartsUnfenced: choices.studioStartsUnfenced,
+      studioStartsUnfenced: await choices.studioStartsUnfenced(),
     };
   }
 

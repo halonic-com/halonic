@@ -6,9 +6,11 @@
 // A run's instructions are written in the host too, but whether a person
 // trusted them is checked here, against the shell's own records.
 //
-// Only the fenced sandbox runs agents: the host has no unfenced session yet,
-// so an agent the person set to "On this computer" is refused before it
-// starts, never run outside the fence.
+// An agent the person set to "On this computer" runs in the host's session
+// without the sandbox (HAL-13195), which the host opens only once its own
+// gate passes: a trusted workspace, the person's choice for the agent's
+// saved file and a profile the host built. Where the host offers no such
+// session, the run is refused before it starts, never run outside the fence.
 //
 // A sandboxed agent's bridge gets a provider key Halonic keeps, as in the
 // CLI (`studio-provider-keys.ts`). The agent host reads its value from here
@@ -21,6 +23,7 @@ import {
   AgentHostProfiles,
   AgentHostProposalFolders,
   AgentHostSandbox,
+  AgentHostThisComputer,
   type AgentHostTransport,
   agentHostHarnesses,
   type BridgeAgent,
@@ -37,14 +40,7 @@ import {
   type ProviderKeyServices,
   refusingApprovals,
 } from "@halonicjs/host-harness-host";
-import type {
-  BridgeApprovals,
-  Clock,
-  DefinitionSource,
-  Digest,
-  Sandbox,
-  SandboxSession,
-} from "@halonicjs/ports";
+import type { BridgeApprovals, Clock, DefinitionSource, Digest } from "@halonicjs/ports";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { type StudioKeyParts, studioProviderKeys } from "./studio-provider-keys.ts";
 
@@ -122,16 +118,20 @@ export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<
     files: agentFilesOf(input.definitions),
     location,
   });
+  const profiles = new AgentHostProfiles(transport, { workspace: location, bridgeIdOf });
   return {
     harnesses: {
       placement,
       sandboxes: {
         sandbox: await AgentHostSandbox.connect(transport),
-        "this-computer": noUnfencedSandbox,
+        "this-computer": await AgentHostThisComputer.connect(transport, {
+          workspace: location,
+          agentOf: (profile) => profiles.agentOf(profile),
+        }),
       },
       harnesses: Object.fromEntries(listed.map((harness) => [harness.id, harness])),
       bridges,
-      profiles: new AgentHostProfiles(transport, { workspace: location, bridgeIdOf }),
+      profiles,
       instructions: new AgentHostInstructions(transport, {
         workspace: location,
         skillTextOf: (agent, id) => skillTextOf(input.definitions, agent.hubId, id),
@@ -238,28 +238,3 @@ async function skillTextOf(
   if (text === null) throw new Error(`The workspace has no skill "${skillId}".`);
   return text;
 }
-
-/**
- * Whether the Studio's runs start an agent set to "On this computer" outside
- * its sandbox: not while its `this-computer` sandbox is
- * {@link noUnfencedSandbox}. The Harness page reads this to say where such an
- * agent runs instead, so the session that lets Studio start it (HAL-13195)
- * changes both here.
- */
-export const studioStartsUnfenced = false;
-
-/** Why an agent set to "On this computer" doesn't start from the Studio. */
-const noUnfencedReason =
-  "Studio can't start Claude Code or Codex agents outside the sandbox yet; halonic in a terminal on this computer can. Set this agent back to In a sandbox on its Harness page.";
-
-/**
- * The `this-computer` sandbox of the Studio: none. Its check says why, and
- * opening a session throws, so the run fails before the program starts.
- */
-const noUnfencedSandbox: Sandbox = {
-  check: async () => ({ ok: false, reason: "not-offered", missing: [noUnfencedReason] }),
-  capabilities: () => ({ files: "shared", strength: "none" }),
-  open: async (): Promise<SandboxSession> => {
-    throw new Error(noUnfencedReason);
-  },
-};

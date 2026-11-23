@@ -1,6 +1,7 @@
 import {
   AgentHostPlacementStore,
   type AgentHostTransport,
+  thisComputerOffered,
 } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
@@ -9,11 +10,7 @@ import {
 } from "@halonicjs/adapter-fs-tauri";
 import { AgentPlacement } from "@halonicjs/app";
 import { systemClock } from "@halonicjs/std";
-import {
-  savedAgentBytes,
-  savedAgentFile,
-  studioStartsUnfenced,
-} from "../engine/studio-harness-host.ts";
+import { savedAgentBytes, savedAgentFile } from "../engine/studio-harness-host.ts";
 import { fileChangedAt, type VersionsOfFiles } from "./agent-file-changed-at.ts";
 import { AgentPlacementChoices } from "./agent-placement-choices.ts";
 
@@ -52,9 +49,25 @@ export function agentHostPlacement(
     placement,
     location,
     bytesOf: ({ hubId, id }) => savedAgentBytes(definitions, hubId, id),
-    studioStartsUnfenced,
+    studioStartsUnfenced: onceAnswered(() => thisComputerOffered(transport)),
     changedAt: async ({ hubId, id }, since) =>
       fileChangedAt(versions, (await savedAgentFile(definitions, hubId, id)).path, since),
   });
   return { placement, choices };
+}
+
+/**
+ * Asks `ask` until it answers, then keeps that answer: whether the host offers sessions on this
+ * computer doesn't change while it runs. A failed ask throws, as reading the choice itself does
+ * when the host can't be reached, and the next one asks again.
+ */
+function onceAnswered<T>(ask: () => Promise<T>): () => Promise<T> {
+  let answered: Promise<T> | undefined;
+  return () => {
+    answered ??= ask().catch((error: unknown) => {
+      answered = undefined;
+      throw error;
+    });
+    return answered;
+  };
 }

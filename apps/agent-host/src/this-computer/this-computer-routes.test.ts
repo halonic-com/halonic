@@ -61,9 +61,14 @@ const harness = {
   },
 } as unknown as Harness;
 
-/** Starts the routes; `offered: false` serves them as a host without a launcher. */
-async function started(offered = true): Promise<{ url: string; bridges: BridgeTable }> {
-  const sessions = new SessionTable();
+/**
+ * Starts the routes; `offered: false` serves them as a host without a launcher. `sessions` is
+ * the host's table of sessions, for a test that stops the host or fills the table.
+ */
+async function started(
+  offered = true,
+  sessions = new SessionTable(),
+): Promise<{ url: string; bridges: BridgeTable }> {
   const unfenced = new UnfencedSessions(sessions);
   const bridges = new BridgeTable();
   const launcher = offered
@@ -163,6 +168,45 @@ verifies("agent-host.this-computer-sessions", () => {
       expect(again.status).toBe(403);
       expect(await again.json()).toMatchObject({ error: { kind: "profile_not_built" } });
       expect(launched).toHaveLength(1);
+    });
+
+    it("opens one session only when two opens of one profile come at once", async () => {
+      await letCoderOut();
+      const { url } = await started();
+      const answers = await Promise.all([
+        post(url, "/v1/sandbox/this-computer/open", openBody()),
+        post(url, "/v1/sandbox/this-computer/open", openBody()),
+      ]);
+      expect(answers.map((answer) => answer.status).sort()).toEqual([200, 403]);
+      const refused = answers.find((answer) => answer.status === 403);
+      expect(await refused?.json()).toMatchObject({ error: { kind: "profile_not_built" } });
+      expect(launched).toHaveLength(1);
+    });
+
+    it("opens none once the host is stopping, and leaves the profile unopened", async () => {
+      await letCoderOut();
+      const sessions = new SessionTable();
+      const { url } = await started(true, sessions);
+      await sessions.closeAll();
+      const answer = await post(url, "/v1/sandbox/this-computer/open", openBody());
+      expect(answer.status).toBe(503);
+      expect(await answer.json()).toMatchObject({ error: { kind: "host_stopping" } });
+      expect(launched).toEqual([]);
+      expect(setup.unopened.has(setup.built.profile.tempFolder)).toBe(true);
+    });
+
+    it("opens none while the host's sessions are at their limit", async () => {
+      await letCoderOut();
+      const sessions = new SessionTable({ maxSessions: 1 });
+      const { url } = await started(true, sessions);
+      const release = sessions.reserve();
+      const answer = await post(url, "/v1/sandbox/this-computer/open", openBody());
+      expect(answer.status).toBe(429);
+      expect(await answer.json()).toMatchObject({ error: { kind: "too_many_sessions" } });
+      expect(launched).toEqual([]);
+      release?.();
+      const later = await post(url, "/v1/sandbox/this-computer/open", openBody());
+      expect(later.status).toBe(200);
     });
 
     it("starts a run in it with the host's own environment", async () => {

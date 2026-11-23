@@ -11,7 +11,7 @@ When a sandboxed harness agent's bridge opens in the agent host, Studio shall se
 
 The run page words the missing key's cause, with **Add key** (`runs.run-view.failure-banners`), so it doesn't read "Halonic can't tell the cause yet".
 
-The bridge shall name the providers it reaches with a key in its `keyProviders`, so Claude Code gets its stand-in key, and a `bridge.failed` from the host shall lose every key value Studio handed out before the run log records it. As in the CLI (`harness-host.provider-access`), an agent on this computer keeps the program's own sign-in, except one whose `model` is an alias, which gets the alias's key. Studio can't run an agent on this computer yet: its sandbox (`noUnfencedSandbox`) stops the run before the bridge opens, so no key reaches a program outside the sandbox.
+The bridge shall name the providers it reaches with a key in its `keyProviders`, so Claude Code gets its stand-in key, and a `bridge.failed` from the host shall lose every key value Studio handed out before the run log records it. As in the CLI (`harness-host.provider-access`), an agent on this computer keeps the program's own sign-in, except one whose `model` is an alias, which gets the alias's key. Studio runs such an agent in the agent host's session on this computer (`studio.engine-service`), and its bridge is served as above, so the only key that reaches a program outside the sandbox is an alias's, as in the CLI; where the host offers no such session, the run stops before the bridge opens.
 
 ## Examples
 

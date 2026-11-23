@@ -27,6 +27,19 @@ export interface BuiltProfile {
   readonly deniedGroups: readonly DeniedPathGroup[];
 }
 
+/** The agent a built profile is for, as {@link AgentHostProfiles.agentOf} answers it. */
+export interface ProfileOwner {
+  readonly hubId: string;
+  readonly agentId: string;
+}
+
+/**
+ * How many built profiles {@link AgentHostProfiles.agentOf} remembers: the
+ * host's own limit of open sessions. The engine opens a profile right after
+ * building it, so an older one is never asked for.
+ */
+const rememberedProfiles = 64;
+
 /** What the stand-in needs besides the transport. */
 export interface AgentHostProfilesOptions {
   /** The workspace the agents run in; the host serves it only when the launcher named it. */
@@ -88,6 +101,8 @@ const builtSchema = s
 export class AgentHostProfiles {
   readonly #transport: AgentHostTransport;
   readonly #options: AgentHostProfilesOptions;
+  /** The agent of each profile built lately, by its temp folder, which the host makes for each build. */
+  readonly #owners = new Map<string, ProfileOwner>();
 
   constructor(transport: AgentHostTransport, options: AgentHostProfilesOptions) {
     this.#transport = transport;
@@ -123,6 +138,29 @@ export class AgentHostProfiles {
       bridge: bridgeId,
       instructionsFolder,
     });
-    return readAnswer(route, answer, builtSchema) as BuiltProfile;
+    const built = readAnswer(route, answer, builtSchema) as BuiltProfile;
+    this.#remember(built.profile, { hubId: agent.hubId, agentId: agent.agentId });
+    return built;
+  }
+
+  /**
+   * The agent this stand-in built `profile` for, found by its temp folder,
+   * or `undefined` for a profile it didn't build lately. The engine opens a
+   * session with the profile only, so the session on this computer asks here
+   * which agent to name to the host. The host checks that name against its
+   * own records before anything starts, so a wrong answer can only be refused.
+   */
+  agentOf(profile: SandboxProfile): ProfileOwner | undefined {
+    return this.#owners.get(profile.tempFolder);
+  }
+
+  #remember(profile: SandboxProfile, owner: ProfileOwner): void {
+    this.#owners.delete(profile.tempFolder);
+    this.#owners.set(profile.tempFolder, owner);
+    // A Map keeps its order of insertion, so the first key is the oldest.
+    for (const oldest of this.#owners.keys()) {
+      if (this.#owners.size <= rememberedProfiles) break;
+      this.#owners.delete(oldest);
+    }
   }
 }

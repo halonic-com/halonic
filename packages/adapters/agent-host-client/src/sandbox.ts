@@ -71,7 +71,8 @@ const fenceSchema = s.discriminatedUnion("state", [
   s.object({ state: s.literal("stopped") }).strict(),
 ]) satisfies Schema<SandboxFence>;
 
-const openedSchema = s.object({ session: s.string().min(1), fence: fenceSchema }).strict();
+/** The host's answer to opening a session: its id and fence proof. */
+export const openedSchema = s.object({ session: s.string().min(1), fence: fenceSchema }).strict();
 
 const blockSchema = s.discriminatedUnion("kind", [
   s
