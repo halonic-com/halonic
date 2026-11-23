@@ -22,7 +22,14 @@ export interface MeterPrincipal {
   readonly role: "owner" | "admin" | "member";
 }
 
-/** What the engine is about to do when it asks {@link Meter.check}. */
+/**
+ * What the engine is about to do when it asks {@link Meter.check}.
+ *
+ * For `run-start`, the meter counts the runs going on (for a cap such as
+ * `plan.concurrency`) from its own view of the runs, never from these checks:
+ * `check` records nothing, and a start that `check` allowed can still fail
+ * before it is recorded, and then no end of it is ever recorded.
+ */
 export type MeterCheckKind = "run-start" | "model-call" | "harness-run";
 
 /** The most a harness step may use, from its agent's `harnessLimits`; a limit the agent leaves out is absent. */

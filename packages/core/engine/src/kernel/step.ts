@@ -1,7 +1,7 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { BlobStore, RunStore } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
-import { type BudgetCheck, keepToLimits } from "../budget/keep-to-budget.ts";
+import { type BudgetCheck, keepToLimits } from "../budget/keep-to-limits.ts";
 import type { StepMeter } from "../meter/run-meter.ts";
 import { checkRunTakes, decide, tellParent } from "./decide.ts";
 import type { DecideInput, Decision, Effect, LoggedEvent, RunDefinitions } from "./decide-types.ts";
