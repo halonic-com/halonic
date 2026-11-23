@@ -2,7 +2,7 @@ import { ModelCallError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { acmeFiles, acmeFolder, neverAnswers } from "./first-run-model-choice.test-helper.ts";
-import { choiceKey } from "./model-choice-service.ts";
+import { ChoiceFilesNotCommitted, choiceKey } from "./model-choice-service.ts";
 
 const anthropic = { kind: "key", provider: "anthropic" } as const;
 const pasted = "sk-ant-acme-test-1";
@@ -171,6 +171,27 @@ verifies("studio.first-run-key-never-shown", () => {
 
     expect(answers[3]).toMatchObject({ ok: false, failed: "key", keySaved: false });
     for (const answer of answers) expect(JSON.stringify(answer)).not.toContain(pasted);
+  });
+});
+
+verifies("app.model-choice-not-committed", () => {
+  it("names the files a host refused to save over, and takes the change back", async () => {
+    const folder = acmeFolder();
+    const testId = await passedTest(folder);
+    folder.state.failSave = new ChoiceFilesNotCommitted(
+      ["models.yaml", "workspace.yaml"],
+      "Couldn't save: models.yaml and workspace.yaml have changes that aren't committed.",
+    );
+
+    expect(await folder.service.continue(testId, undefined)).toEqual({
+      ok: false,
+      failed: "not-committed",
+      keySaved: true,
+      files: ["models.yaml", "workspace.yaml"],
+      reason: "Couldn't save: models.yaml and workspace.yaml have changes that aren't committed.",
+    });
+    expect(folder.steps.at(-1)).toBe("undo: Updated model alias default");
+    expect(folder.unsaved.size).toBe(0);
   });
 });
 

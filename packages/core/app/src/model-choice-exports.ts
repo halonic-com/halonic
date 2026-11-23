@@ -39,6 +39,7 @@ export {
   testReplyOptions,
 } from "./model-choice-reply.ts";
 export {
+  ChoiceFilesNotCommitted,
   type ChoiceKey,
   choiceKey,
   type ModelChoiceFileReads,

@@ -128,7 +128,32 @@ export type ModelChoiceSaved =
       readonly keySaved: boolean;
       /** Why, in plain words for the log; never holds the key. */
       readonly reason: string;
+    }
+  | {
+      readonly ok: false;
+      /** The host saves only files without changes of their own, and some had them: nothing was written. */
+      readonly failed: "not-committed";
+      readonly keySaved: boolean;
+      /** The workspace paths with changes that aren't committed, such as `models.yaml`. */
+      readonly files: readonly string[];
+      readonly reason: string;
     };
+
+/**
+ * What a host's save throws when it saves only files without changes of their own and some of the
+ * choice's files had them, as `halonic serve` does (HAL-14808, D3). Continue then answers
+ * `not-committed` with the files, so the screen can name them.
+ */
+export class ChoiceFilesNotCommitted extends Error {
+  /** The workspace paths with changes that aren't committed, such as `models.yaml`. */
+  readonly files: readonly string[];
+
+  constructor(files: readonly string[], message: string) {
+    super(message);
+    this.name = "ChoiceFilesNotCommitted";
+    this.files = files;
+  }
+}
 
 /**
  * Tests a model choice and saves it, for the first run's Pick a model screen.
