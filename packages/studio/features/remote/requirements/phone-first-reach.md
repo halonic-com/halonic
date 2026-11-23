@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13413 (first-run-progress section 6 and 9 on HAL-7986, approved by the board on 19 Nov, HAL-7993; "{computer} isn't answering" as the one name for that state, C672 on HAL-16097)
 
-When the phone app opens a paired computer that doesn't answer yet, the computer's screen shall show the kit's waiting line "Reaching {computer}…" with the seconds waited, from 2 seconds, and from 10 seconds the reason "Halonic has to be open there. This can take a moment." and a 48px Something wrong? row, which opens Check this connection. If the computer hasn't answered after 30 seconds, or a try fails before then, the wait shall give up: the header label shall read "{computer} isn't answering", also while the tunnel tries again in the background, and the screen shall show that title with the two likely causes for the way the phone reaches it, Try again as the main button and Check this connection under it. Try again shall start the wait over and connect at once, setting the last try's failure aside until the tunnel says how the new one went. When the computer answers, the wait shall end, and a later loss of the connection shall show the stale banner instead. While the phone is offline, the screen shall show the stale banner's offline state.
+When the phone app opens a paired computer that doesn't answer yet, the computer's screen shall show the kit's waiting line "Reaching {computer}…" with the seconds waited, from 2 seconds, and from 10 seconds the reason "Halonic has to be open there. This can take a moment." and a 48px Something wrong? row, which opens Check this connection. If the computer hasn't answered after 30 seconds, or a try fails before then, the wait shall give up: the header label shall read "{computer} isn't answering", also while the tunnel tries again in the background, and the screen shall show that title with the two likely causes for the way the phone reaches it, Try again as the main button and Check this connection under it. Try again shall start the wait over and connect at once, setting the last try's failure aside until the tunnel says how the new one went. When the computer answers, the wait shall end, and a later loss of the connection shall show the stale banner instead. While the phone is offline, the screen shall show the stale banner's offline state, also after Try again. While the phone is offline, the app is in the background or the connection is closed, the wait shall hold: those seconds shall not count toward the 30, and once the phone tries again the wait shall go on from where it stopped.
 
 ## Examples
 
@@ -24,3 +24,12 @@ When the phone app opens a paired computer that doesn't answer yet, the computer
   then the phone connects again and the waiting line counts from 0.
 - Given Tim's laptop answers,
   then the waiting line goes, and when the connection is lost later the stale banner shows.
+- Given the wait has counted 10 seconds,
+  when the app goes to the background for a minute and comes back,
+  then the screen shows the waiting line again, counting on from 10 seconds.
+- Given the phone is offline during the wait,
+  when the person presses Try again,
+  then the screen still shows the offline state.
+- Given the wait has counted 20 seconds,
+  when the phone is offline for a minute and is then back online,
+  then the waiting line counts on from 20 seconds and gives up 10 seconds later.

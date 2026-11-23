@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-On the phone, a computer that hasn't answered yet shows "Reaching…" with the seconds, gives up after 30 seconds with the likely causes and Try again, and Check this connection lists what the phone can see, with a report you can copy.
+On the phone, while Studio reaches a computer for the first time, it shows "Reaching" with the computer's name and the seconds. After 30 seconds it names the likely causes and offers Try again. Check this connection lists what the phone can see, with a report you can copy.

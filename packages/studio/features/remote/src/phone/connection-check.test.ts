@@ -68,7 +68,10 @@ verifies("remote.phone-connection-check", () => {
     const gaveUp = facts({ status: { state: "connecting" }, gaveUp: true });
     expect(connectionChecking(gaveUp)).toBe(false);
     const [phone, computer] = connectionLines(gaveUp);
-    expect(phone).toMatchObject({ mark: "info", sentence: "Not known yet: no try has finished." });
+    expect(phone).toMatchObject({
+      mark: "info",
+      sentence: "Not known yet: nothing has come back so far.",
+    });
     expect(computer?.report[0]).toBe("isn't answering · no answer in 30 seconds");
   });
 
