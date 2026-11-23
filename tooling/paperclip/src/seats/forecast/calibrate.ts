@@ -158,10 +158,16 @@ function indexSteps(input: CalibrationInput): StepIndex {
 }
 
 /**
+ * Why a step was left out: `unplaced` when tokens on no known seat fell in
+ * it (the job logs how often), `unusable` for every other reason.
+ */
+type SkippedStep = "unplaced" | "unusable";
+
+/**
  * The step between two consecutive readings of one window of one seat, or
- * `undefined` when it is unusable: too long, a reset, a move, tokens on no
- * seat, no tokens, or tokens from two models (whose points can't be split
- * between them). Usage counts where its bucket's middle falls.
+ * why it is unusable: too long, a reset, a move, tokens on no seat, no
+ * tokens, or tokens from two models (whose points can't be split between
+ * them). Usage counts where its bucket's middle falls.
  */
 function stepBetween(
   input: CalibrationInput,
@@ -169,22 +175,24 @@ function stepBetween(
   seat: Seat,
   earlier: TimedReading,
   later: TimedReading,
-): CalibrationStep | undefined {
+): CalibrationStep | SkippedStep {
   const fromMs = earlier.ms;
   const toMs = later.ms;
   // Longer than two read intervals means a read failed in between.
   if (toMs - fromMs > 2 * input.readIntervalMs || resetBetween(earlier.reading, later.reading)) {
-    return undefined;
+    return "unusable";
   }
-  const moved = index.movesBySeat.get(seat.id)?.anyBetween(fromMs, toMs) ?? false;
-  if (moved || index.unattributed.anyBetween(fromMs, toMs)) {
-    return undefined;
+  if (index.movesBySeat.get(seat.id)?.anyBetween(fromMs, toMs) ?? false) {
+    return "unusable";
+  }
+  if (index.unattributed.anyBetween(fromMs, toMs)) {
+    return "unplaced";
   }
   const used = index.usageBySeat.get(seat.id)?.between(fromMs, toMs) ?? [];
   const models = new Set(used.map((u) => u.model));
   const [model] = models;
   if (model === undefined || models.size > 1) {
-    return undefined;
+    return "unusable";
   }
   // `used` is in time order, so its first and last rows hold the first and last bucket.
   return {
@@ -198,8 +206,13 @@ function stepBetween(
   };
 }
 
-/** Every usable step of the last 7 days, for every seat and both windows. */
-export function calibrationSteps(input: CalibrationInput): CalibrationStep[] {
+/** The usable steps, and how many were left out for tokens on no known seat. */
+interface CollectedSteps {
+  readonly steps: CalibrationStep[];
+  readonly unplacedSteps: number;
+}
+
+function collectSteps(input: CalibrationInput): CollectedSteps {
   const nowMs = Date.parse(input.now);
   const sinceMs = nowMs - calibrationDays * dayMs;
   const index = indexSteps(input);
@@ -207,17 +220,24 @@ export function calibrationSteps(input: CalibrationInput): CalibrationStep[] {
     .map((reading) => ({ reading, ms: Date.parse(reading.at) }))
     .filter((timed) => timed.ms >= sinceMs && timed.ms <= nowMs);
   const bySeatWindow = groupBy(recent, (t) => `${t.reading.seatId}|${t.reading.window}`);
-  return input.seats.flatMap((seat) =>
+  const outcomes = input.seats.flatMap((seat) =>
     (["session", "week"] as const).flatMap((window) => {
       const readings = (bySeatWindow.get(`${seat.id}|${window}`) ?? []).sort((a, b) => a.ms - b.ms);
-      return readings.slice(1).flatMap((later, position) => {
+      return readings.slice(1).map((later, position): CalibrationStep | SkippedStep => {
         const earlier = readings[position];
-        const step =
-          earlier === undefined ? undefined : stepBetween(input, index, seat, earlier, later);
-        return step === undefined ? [] : [step];
+        return earlier === undefined ? "unusable" : stepBetween(input, index, seat, earlier, later);
       });
     }),
   );
+  return {
+    steps: outcomes.filter((outcome): outcome is CalibrationStep => typeof outcome !== "string"),
+    unplacedSteps: outcomes.filter((outcome) => outcome === "unplaced").length,
+  };
+}
+
+/** Every usable step of the last 7 days, for every seat and both windows. */
+export function calibrationSteps(input: CalibrationInput): CalibrationStep[] {
+  return collectSteps(input).steps;
 }
 
 function shares(tokens: TokenCounts): TokenCounts {
@@ -304,10 +324,13 @@ export interface CalibrationRun {
   readonly calibrations: readonly Calibration[];
   /** Plans, models and windows with too few usable steps for a fit. */
   readonly tooFewSteps: readonly (CalibrationKey & { readonly steps: number })[];
+  /** Steps left out because tokens on no known seat fell in them. */
+  readonly unplacedSteps: number;
 }
 
 export function calibrate(input: CalibrationInput): CalibrationRun {
-  const groups = groupBy(calibrationSteps(input), keyOf);
+  const { steps: allSteps, unplacedSteps } = collectSteps(input);
+  const groups = groupBy(allSteps, keyOf);
   const calibrations: Calibration[] = [];
   const tooFewSteps: (CalibrationKey & { steps: number })[] = [];
   for (const steps of groups.values()) {
@@ -322,5 +345,5 @@ export function calibrate(input: CalibrationInput): CalibrationRun {
       calibrations.push(fitOne(key, steps, input));
     }
   }
-  return { calibrations, tooFewSteps };
+  return { calibrations, tooFewSteps, unplacedSteps };
 }
