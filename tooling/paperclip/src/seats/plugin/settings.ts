@@ -1,4 +1,5 @@
 import type { SeatId, SeatRole } from "../records.ts";
+import { type ForecastSettings, readForecastSettings } from "./forecast-settings.ts";
 
 /**
  * One seat as the board set it in the plugin's settings. The folder, the
@@ -22,6 +23,8 @@ export interface SeatsSettings {
   readonly movesEnabled: boolean;
   /** The task `seats.check` posts its proposals on; `undefined` until the board sets one. */
   readonly proposalTaskId: string | undefined;
+  /** The model windows and scenarios `seats.forecast` uses; none until the board sets them. */
+  readonly forecast: ForecastSettings;
 }
 
 /** What a route may show about a seat. */
@@ -53,6 +56,7 @@ export function readSeatsSettings(config: Readonly<Record<string, unknown>>): Se
     seats,
     movesEnabled: config["movesEnabled"] === true,
     proposalTaskId: optionalText(config["proposalTaskId"]),
+    forecast: readForecastSettings(config),
   };
 }
 

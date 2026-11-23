@@ -36,6 +36,7 @@ verifies("paperclip.seats-settings", () => {
         },
       ],
       movesEnabled: true,
+      forecast: { modelWindows: {}, scenarios: [] },
     });
   });
 
@@ -58,6 +59,10 @@ verifies("paperclip.seats-settings", () => {
   });
 
   test("has no seats and moving agents off when nothing is set", () => {
-    expect(readSeatsSettings({})).toEqual({ seats: [], movesEnabled: false });
+    expect(readSeatsSettings({})).toEqual({
+      seats: [],
+      movesEnabled: false,
+      forecast: { modelWindows: {}, scenarios: [] },
+    });
   });
 });
