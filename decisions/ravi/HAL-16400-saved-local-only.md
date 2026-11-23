@@ -2,6 +2,7 @@
 
 - Approval: option 1 of the plan is approved on HAL-16400 (Liam's comment of 22 Nov, with four conditions); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AVoeMooG/UxL89YuczA1BY72OAcBRJ3DoOawh1MVM9kE3KaTI6s0E7dflMYMZbjYyQmu/ur0+jfH8BiFdXlZDw==
 - Task: HAL-16400
 
 ## What changes
