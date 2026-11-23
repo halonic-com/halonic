@@ -24,12 +24,13 @@ import type {
   WebhookRoutines,
   WorkspaceInfo,
 } from "./api.ts";
-import { createServer } from "./create-server.ts";
+import { createServerForTests } from "./create-server.ts";
+import type { ManyUserPorts } from "./many-users-api.ts";
 import type { ModelChoicePort } from "./model-choice-api.ts";
 import type { ProviderKeyStore } from "./provider-key-store.ts";
 
 /** A port the test doesn't expect the server to touch: any call fails the test loudly. */
-function unusedPort<Port extends object>(name: string): Port {
+export function unusedPort<Port extends object>(name: string): Port {
   return new Proxy(
     {},
     {
@@ -159,6 +160,8 @@ export function testServer(options: {
   requestLog?: RequestLog;
   workspace?: WorkspaceInfo;
   studioPage?: StudioPage;
+  /** Builds a many-user server; the stub session verifier is allowed here. */
+  manyUsers?: ManyUserPorts;
 }): Server {
   const clock = options.clock ?? new TestClock();
   const ports: ServerPorts = {
@@ -186,5 +189,6 @@ export function testServer(options: {
     maxBodyBytes: 1024,
     ...options.config,
   };
-  return createServer({ config, ports });
+  const { manyUsers } = options;
+  return createServerForTests({ config, ports, ...(manyUsers === undefined ? {} : { manyUsers }) });
 }

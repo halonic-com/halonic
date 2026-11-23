@@ -83,15 +83,17 @@ export interface CheckedSession {
  * @returns the checked session, or `null` when the claims are refused
  */
 export function checkClaims(claims: unknown): CheckedSession | null {
-  if (!isFieldRecord<SessionClaims>(claims) || claims.aud !== SESSION_AUDIENCE) {
+  if (!isFieldRecord(claims) || ownValue(claims, "aud") !== SESSION_AUDIENCE) {
     return null;
   }
-  const client = claims.client;
+  const client = ownValue(claims, "client");
   if (client !== undefined && (typeof client !== "string" || !clientPattern.test(client))) {
     return null;
   }
-  const role = claims.role === undefined ? "owner" : claims.role;
-  const principal = checkPrincipal(claims.sub, claims.scope, role, claims.role !== undefined);
+  const givenRole = ownValue(claims, "role");
+  const role = givenRole === undefined ? "owner" : givenRole;
+  const sub = ownValue(claims, "sub");
+  const principal = checkPrincipal(sub, ownValue(claims, "scope"), role, givenRole !== undefined);
   if (principal === null) {
     return null;
   }
@@ -115,10 +117,11 @@ export function principalToRecord(principal: Principal): PrincipalRecord {
  * @returns the principal, or `null` when the record breaks a rule
  */
 export function principalFromRecord(record: unknown): Principal | null {
-  if (!isFieldRecord<PrincipalRecord>(record) || record.v !== principalRecordVersion) {
+  if (!isFieldRecord(record) || ownValue(record, "v") !== principalRecordVersion) {
     return null;
   }
-  return checkPrincipal(record.actor, record.scope, record.role, true);
+  const actor = ownValue(record, "actor");
+  return checkPrincipal(actor, ownValue(record, "scope"), ownValue(record, "role"), true);
 }
 
 /** A scope as the text a token and a record hold: `u/<id>` or `o/<id>`, with no trailing `/`. */
@@ -182,10 +185,18 @@ function checkPrincipal(
 
 /**
  * Whether `value` is an object of named fields, not `null`, an array or a primitive. Its fields
- * stay unchecked: the caller checks each one it reads.
+ * stay unchecked: the caller reads each one with {@link ownValue} and checks it.
  */
-function isFieldRecord<Fields extends object>(
-  value: unknown,
-): value is { readonly [Field in keyof Fields]?: unknown } {
+function isFieldRecord(value: unknown): value is object {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The value of the object's own data field `name`, read once. An inherited field or one behind a
+ * getter counts as missing, so a claim can't give one value to a check and another to the
+ * principal.
+ */
+function ownValue(record: object, name: string): unknown {
+  const field = Object.getOwnPropertyDescriptor(record, name);
+  return field !== undefined && "value" in field ? field.value : undefined;
 }

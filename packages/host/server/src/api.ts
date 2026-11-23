@@ -19,6 +19,7 @@ import type {
   TokenStore,
 } from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
+import type { ManyUserPorts } from "./many-users-api.ts";
 import type { ModelChoicePort } from "./model-choice-api.ts";
 import type { ProviderKeyStore } from "./provider-key-store.ts";
 
@@ -461,12 +462,15 @@ export interface ServerPorts {
 export interface ServerOptions {
   readonly config: ServerConfig;
   readonly ports: ServerPorts;
+  /** Set for `users.mode: many`, where each person signs in for their own scope; absent for one owner. */
+  readonly manyUsers?: ManyUserPorts;
 }
 
 /**
  * Builds the server from its config and ports.
  *
  * @throws RangeError when the config is unusable, such as an empty
- *   `allowedHosts` or a `dailyRequests` that isn't a whole number above zero
+ *   `allowedHosts` or a `dailyRequests` that isn't a whole number above zero, or when a
+ *   many-user server is given a session verifier made for tests
  */
 export type CreateServer = (options: ServerOptions) => Server;

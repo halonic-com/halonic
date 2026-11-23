@@ -1,10 +1,14 @@
-import { runExecutorVersion } from "@halonicjs/ports";
-import type { CreateServer, RequestContext, ServerConfig, ServerPorts } from "./api.ts";
+import type {
+  CreateServer,
+  RequestContext,
+  ServerConfig,
+  ServerOptions,
+  ServerPorts,
+} from "./api.ts";
 import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
 import { connectorCallPath, createConnectorRoutes } from "./connector-routes.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
-import { streamRunEvents } from "./event-stream.ts";
 import {
   createGoogleReadOnlyRoutes,
   createGoogleRoutes,
@@ -13,6 +17,8 @@ import {
   isSecretPath,
 } from "./google-routes.ts";
 import { googleCallbackPath } from "./google-sign-in-routes.ts";
+import { helloResponse } from "./hello-route.ts";
+import { createManyUserRoutes, type ManyUserRoutes } from "./many-user-routes.ts";
 import {
   createModelChoiceRoutes,
   isModelChoiceKeyPath,
@@ -23,13 +29,8 @@ import {
   isProviderKeyPath,
   providerKeyPathPrefix,
 } from "./provider-key-routes.ts";
-import {
-  createRunRoutes,
-  isJsonRequest,
-  parseRunId,
-  runPathPrefix,
-  waitingRunsPath,
-} from "./run-routes.ts";
+import { parseRunEndpoint, serveRunEndpoint } from "./run-endpoint.ts";
+import { createRunRoutes, isJsonRequest, runPathPrefix, waitingRunsPath } from "./run-routes.ts";
 import {
   checkHost,
   checkOrigin,
@@ -37,6 +38,7 @@ import {
   readBody,
   withSecurityHeaders,
 } from "./security.ts";
+import { isTestOnlyVerifier } from "./session-verifier.ts";
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
 import { createStudioPageRoutes } from "./studio-page-routes.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
@@ -72,8 +74,40 @@ function googleRoutesOf(ports: ServerPorts): GoogleRoutes | null {
   return ports.googleRead === undefined ? null : createGoogleReadOnlyRoutes(ports.googleRead);
 }
 
-export const createServer: CreateServer = ({ config, ports }) => {
+/** Whether {@link buildServer} accepts a verifier made for tests: only the package's own tests do. */
+interface BuildChecks {
+  readonly allowTestOnlyVerifier: boolean;
+}
+
+/** The routes of a many-user server, with only the deployment-wide ports; `null` for one owner. */
+function manyUserRoutesOf(
+  { config, ports, manyUsers }: ServerOptions,
+  checks: BuildChecks,
+): ManyUserRoutes | null {
+  if (manyUsers === undefined) {
+    return null;
+  }
+  if (isTestOnlyVerifier(manyUsers.verifier) && !checks.allowTestOnlyVerifier) {
+    throw new RangeError("a many-user server can't start with a session verifier made for tests");
+  }
+  const { trust, errorLog, workspace, studioPage } = ports;
+  const shown = { ...(workspace === undefined ? {} : { workspace }) };
+  const page = { ...(studioPage === undefined ? {} : { studioPage }) };
+  return createManyUserRoutes(config, { trust, errorLog, ...shown, ...page }, manyUsers);
+}
+
+export const createServer: CreateServer = (options) =>
+  buildServer(options, { allowTestOnlyVerifier: false });
+
+/** {@link createServer} for this package's tests, which may use the stub session verifier. Never exported from the package. */
+export function createServerForTests(options: ServerOptions): ReturnType<CreateServer> {
+  return buildServer(options, { allowTestOnlyVerifier: true });
+}
+
+function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<CreateServer> {
+  const { config, ports } = options;
   checkConfig(config);
+  const manyUserRoutes = manyUserRoutesOf(options, checks);
   const allowedHosts = config.allowedHosts.map((name) => name.toLowerCase());
   const signIn = createSignIn(ports);
   const trustRoutes = createTrustRoutes(ports);
@@ -91,28 +125,14 @@ export const createServer: CreateServer = ({ config, ports }) => {
     body: Uint8Array,
     rest: string,
   ): Promise<Response> {
-    const [segment, action, ...more] = rest.split("/");
-    const runId = parseRunId(segment ?? "");
-    if (runId === null || more.length > 0) {
-      return errorResponse(serverErrors.notFound);
-    }
-    const endpoint = `${request.method} ${action ?? ""}`;
-    if (!["GET ", "GET events", "POST events", "POST cancel"].includes(endpoint)) {
+    const runEndpoint = parseRunEndpoint(request.method, rest);
+    if (runEndpoint === null) {
       return errorResponse(serverErrors.notFound);
     }
     if (!(await signIn.isSignedIn(request, context))) {
       return errorResponse(serverErrors.notSignedIn);
     }
-    switch (endpoint) {
-      case "GET ":
-        return runRoutes.summary(runId);
-      case "GET events":
-        return streamRunEvents(ports, request, runId);
-      case "POST events":
-        return runRoutes.send(request, runId, body);
-      default:
-        return runRoutes.cancel(request, runId);
-    }
+    return serveRunEndpoint(runEndpoint, request, body, { runRoutes, ports });
   }
   const workspaceRoutes =
     ports.workspace === undefined ? null : createWorkspaceRoutes(ports.workspace);
@@ -246,14 +266,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
   ): Promise<Response> {
     switch (endpoint) {
       case "GET /api/hello":
-        // The one route that answers without a sign-in: the Android app calls it before it opens the login.
-        return Response.json({
-          product: "halonic",
-          version: config.version,
-          minAppVersion: config.minAppVersion,
-          // So a remote executor can tell whether this host honors what a version 2 `send` names.
-          runExecutorVersion,
-        });
+        return helloResponse(config);
       case "POST /api/login":
         return signIn.login(request, body, context);
       case "POST /api/logout":
@@ -279,7 +292,9 @@ export const createServer: CreateServer = ({ config, ports }) => {
   }
 
   async function answer(request: Request, context: RequestContext): Promise<Response> {
-    const hasPassword = (await ports.secrets.get(passwordSecretName)) !== null;
+    // A many-user server has no password, and every route but the hello needs a session, so it answers on its own names.
+    const hasPassword =
+      manyUserRoutes !== null || (await ports.secrets.get(passwordSecretName)) !== null;
     const refusal =
       checkHost(request, { allowedHosts, hasPassword }) ?? checkOrigin(request, context);
     if (refusal !== null) {
@@ -293,7 +308,9 @@ export const createServer: CreateServer = ({ config, ports }) => {
     if (!body.ok) {
       return errorResponse(serverErrors.bodyTooLarge);
     }
-    return route(request, context, body.bytes);
+    return manyUserRoutes === null
+      ? route(request, context, body.bytes)
+      : manyUserRoutes.route(request, body.bytes);
   }
 
   /** Whether a path belongs to a route that can take a secret or a key, which the request log leaves out. */
@@ -327,4 +344,4 @@ export const createServer: CreateServer = ({ config, ports }) => {
       return response;
     },
   };
-};
+}

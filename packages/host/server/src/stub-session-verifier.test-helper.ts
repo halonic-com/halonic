@@ -1,5 +1,9 @@
 import type { SessionClaims } from "./principal.ts";
-import type { SessionCredential, SessionVerifier } from "./session-verifier.ts";
+import {
+  type SessionCredential,
+  type SessionVerifier,
+  testOnlyVerifierMark,
+} from "./session-verifier.ts";
 
 /** Ids that match the end-user and organisation patterns, for tests. */
 export const ids = {
@@ -15,9 +19,11 @@ export function personalClaims(actor: string, changes: SessionClaims = {}): Sess
 
 /**
  * A verifier for tests only: it knows a fixed set of tokens and their claims, checks no
- * signature, and records every credential it was given. It is never exported from the package.
+ * signature, and records every credential it was given. It is never exported from the package,
+ * and it carries the test-only mark, so a many-user server refuses it outside tests.
  */
 export class StubSessionVerifier implements SessionVerifier {
+  readonly [testOnlyVerifierMark] = true;
   readonly seen: SessionCredential[] = [];
   readonly #claimsByToken: ReadonlyMap<string, SessionClaims>;
 
