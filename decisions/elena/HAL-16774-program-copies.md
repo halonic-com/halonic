@@ -3,6 +3,7 @@
 - Task: HAL-16774
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16260 (Liam approved the plan with changes on HAL-16260; security PR 1 of it, Julian's security sign-off)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4FxQ2aK3Yg5KXDbUI70YBYNsnuvH+ExEaA6IbQBw9T4n66bOUHrqdeaWyKrKDLgeBt2YS7Aj5Co+HMEQVpEJAg==
 
 ## What changes
 
