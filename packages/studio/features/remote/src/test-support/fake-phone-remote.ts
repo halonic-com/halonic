@@ -33,6 +33,7 @@ export function remoteApproval(overrides: Partial<RemoteApproval> = {}): RemoteA
     requestedAt: "2026-11-21T14:01:00.000Z",
     canAnswer: true,
     offReason: undefined,
+    answerOnComputer: false,
     sent: undefined,
     ...overrides,
   };

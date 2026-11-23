@@ -76,6 +76,7 @@ function openApprovalsOf(holding: ClientHolding, live: boolean): RemoteApproval[
           requestedAt,
           canAnswer: offReason === undefined && sent === undefined,
           offReason,
+          answerOnComputer: approval.risk === "risky",
           sent,
         };
       },

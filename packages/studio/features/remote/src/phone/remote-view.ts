@@ -71,6 +71,12 @@ export interface RemoteApproval {
    */
   readonly offReason: string | undefined;
   /**
+   * The phone never answers this one, connected or not: the screens show it
+   * with "Answer this on your computer." and no Approve or Reject (board, on
+   * HAL-16169). In 0.1 that's every approval, since every tool is `risky`.
+   */
+  readonly answerOnComputer: boolean;
+  /**
    * The answer the phone sent that the host hasn't confirmed yet. The phone
    * never sends it again: after a drop, the reconnect shows whether it
    * landed (the approval settles) or not (it is still open, unanswered).

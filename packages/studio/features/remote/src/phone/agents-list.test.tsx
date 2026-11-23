@@ -47,11 +47,14 @@ const live = remoteView({ sessions: [reporter, sorter, writer], openApprovals: [
 
 function show(view: RemoteView) {
   const onAnswer = vi.fn();
-  const screen = render(<AgentsList view={view} onAnswer={onAnswer} now={() => now} />);
+  const onOpen = vi.fn();
+  const screen = render(
+    <AgentsList view={view} onOpen={onOpen} onAnswer={onAnswer} now={() => now} />,
+  );
   const rows = [...screen.querySelectorAll("li")];
   const button = (label: string) =>
     [...screen.querySelectorAll("button")].find((each) => each.textContent === label);
-  return { screen, rows, button, onAnswer };
+  return { screen, rows, button, onAnswer, onOpen };
 }
 
 verifies("remote.phone-agents", () => {
@@ -106,15 +109,32 @@ verifies("remote.phone-agents", () => {
     expect(onAnswer).not.toHaveBeenCalled();
   });
 
-  it("says to answer a risky approval on the computer", () => {
+  it("says to answer a risky approval on the computer, with no Approve or Reject", () => {
     const risky = remoteApproval({
       ...sorterAsks,
       canAnswer: false,
       offReason: ANSWER_RISKY_ON_COMPUTER,
+      answerOnComputer: true,
     });
-    const { screen, button } = show({ ...live, openApprovals: [risky] });
-    expect(button("Reject")?.getAttribute("aria-disabled")).toBe("true");
-    expect(screen.textContent).toContain("Answer this on your computer.");
+    for (const view of [
+      { ...live, openApprovals: [risky] },
+      staleView({ ...live, openApprovals: [risky] }, "unreachable"),
+    ]) {
+      const { rows, button } = show(view);
+      expect(button("Approve")).toBeUndefined();
+      expect(button("Reject")).toBeUndefined();
+      expect(rows[1]?.textContent).toContain("Answer this on your computer.");
+      expect(rows[1]?.textContent).not.toContain("once your phone reconnects");
+      unmountAll();
+    }
+  });
+
+  it("opens an agent's run detail when its row is tapped", () => {
+    const { rows, onOpen } = show(live);
+    const row = rows[0]?.querySelector("button");
+    expect(row?.textContent).toContain("Reporter");
+    act(() => row?.click());
+    expect(onOpen).toHaveBeenCalledWith("reporter");
   });
 
   it("sends an answer while it can, and not again while it is on its way", () => {
@@ -126,7 +146,10 @@ verifies("remote.phone-agents", () => {
     const sent = remoteApproval({ ...sorterAsks, canAnswer: false, sent: "deny" });
     const again = show({ ...live, openApprovals: [sent] });
     expect(again.button("Approve")).toBeUndefined();
-    act(() => again.screen.querySelector("button")?.click());
+    // The one answer button left, under Sorter's row: busy, and sends nothing.
+    const busy = again.rows[1]?.querySelector<HTMLButtonElement>(":scope > div button");
+    expect(busy?.textContent).toContain("Reject");
+    act(() => busy?.click());
     expect(again.onAnswer).not.toHaveBeenCalled();
   });
 

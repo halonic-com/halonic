@@ -15,7 +15,7 @@ export const promptWords = {
   send: "Send",
   /** Under the box, the reason it is off, while the view is stale (`phone.stale.promptReason`). */
   staleReason: "You can send a prompt once your phone reconnects.",
-  /** `gatewayMaxPromptLength`, written out; `send-words.test.ts` keeps the two in step. */
+  /** `gatewayMaxPromptLength`, written out; `prompt-box.test.tsx` keeps the two in step. */
   tooLong: "A prompt can be at most 10,000 characters.",
   /** Said politely once the host took it; the box empties. */
   sent: "Prompt sent.",

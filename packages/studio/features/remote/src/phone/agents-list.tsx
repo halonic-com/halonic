@@ -9,6 +9,7 @@ import type {
   RemoteView,
 } from "./remote-view.ts";
 import { sendOutcomeLine } from "./send-words.ts";
+import { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";
 
 const stateTone: Record<RemoteSession["state"], StatusChipTone> = {
   running: "running",
@@ -33,17 +34,22 @@ const decisionWords: Record<(typeof decisions)[number], string> = {
 
 /**
  * `s-m2`, `s-m3`: the agents of one computer, each with its name, a line and its state, in the
- * order the host listed them. An agent that needs you shows Approve and Reject for its oldest open
- * approval. While the view is stale, each line ends with "as of 14:02" and both buttons are off
- * with "You can answer once your phone reconnects." under them; a risky approval says to answer it on the computer. The
- * page round it draws the header, the stale banner and the prompt box.
+ * order the host listed them. Tapping a row opens that agent's run detail. An agent that needs you
+ * shows its oldest open approval: one the phone never answers says "Answer this on your computer."
+ * with no buttons, as the run detail does (HAL-16169); any other shows Approve and Reject. While
+ * the view is stale, each line ends with "as of 14:02" and both buttons are off with "You can
+ * answer once your phone reconnects." under them. The page round it draws the header, the stale
+ * banner and the prompt box.
  */
 export function AgentsList({
   view,
+  onOpen,
   onAnswer,
   now = () => new Date(),
 }: {
   readonly view: RemoteView;
+  /** A row was tapped: open that agent's run detail. */
+  readonly onOpen: (sessionId: string) => void;
   /** `PhoneRemote.answer`. Called only while the approval can be answered. */
   readonly onAnswer: OnAnswer;
   readonly now?: () => Date;
@@ -61,6 +67,7 @@ export function AgentsList({
             session={session}
             line={agentRowLine(view, session, approval, today)}
             approval={approval}
+            onOpen={() => onOpen(session.id)}
             onAnswer={onAnswer}
           />
         );
@@ -69,46 +76,64 @@ export function AgentsList({
   );
 }
 
-/** One agent: the letter tile, its name and line, its state, and Approve and Reject when it asks. */
+/**
+ * One agent: a button with the letter tile, its name and line, and its state, which opens its run
+ * detail; under it, what to do about its approval when it asks.
+ */
 function AgentRow({
   session,
   line,
   approval,
+  onOpen,
   onAnswer,
 }: {
   readonly session: RemoteSession;
   readonly line: string | undefined;
   readonly approval: RemoteApproval | undefined;
+  readonly onOpen: () => void;
   readonly onAnswer: OnAnswer;
 }) {
   const state = agentStateWords[session.state];
   const name = [session.title, line, state].filter(Boolean).join(", ");
   return (
-    <li className="flex items-start gap-3 px-4 py-3">
-      <LetterTile name={session.title} size="md" />
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        {/* One line for a screen reader: the visible parts below are read as this. */}
-        <span className="sr-only">{spoken(name)}</span>
-        <span aria-hidden="true" className="truncate text-body text-fg">
-          {session.title}
-        </span>
-        {line === undefined ? null : (
-          <span aria-hidden="true" className="line-clamp-2 text-small text-fg-muted">
-            {line}
+    <li className="flex flex-col">
+      <button
+        type="button"
+        className="flex items-start gap-3 px-4 py-3 text-left hover:bg-surface-muted focus-ring-inset"
+        onClick={onOpen}
+      >
+        <LetterTile name={session.title} size="md" />
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          {/* One line for a screen reader: the visible parts below are read as this. */}
+          <span className="sr-only">{spoken(name)}</span>
+          <span aria-hidden="true" className="truncate text-body text-fg">
+            {session.title}
           </span>
-        )}
-        {approval === undefined ? null : (
-          <ApprovalButtons
-            approval={approval}
-            onAnswer={(decision) => onAnswer(approval.sessionId, approval.approval.id, decision)}
-          />
-        )}
-      </div>
-      <span aria-hidden="true" className="shrink-0">
-        <StatusChip tone={stateTone[session.state]} dot>
-          {state}
-        </StatusChip>
-      </span>
+          {line === undefined ? null : (
+            <span aria-hidden="true" className="line-clamp-2 text-small text-fg-muted">
+              {line}
+            </span>
+          )}
+        </span>
+        <span aria-hidden="true" className="shrink-0">
+          <StatusChip tone={stateTone[session.state]} dot>
+            {state}
+          </StatusChip>
+        </span>
+      </button>
+      {approval === undefined ? null : (
+        // Lined up under the name: the 40px tile and the 12px gap.
+        <div className="pr-4 pb-3 pl-17">
+          {approval.answerOnComputer ? (
+            <p className="text-small text-fg-muted">{ANSWER_RISKY_ON_COMPUTER}</p>
+          ) : (
+            <ApprovalButtons
+              approval={approval}
+              onAnswer={(decision) => onAnswer(approval.sessionId, approval.approval.id, decision)}
+            />
+          )}
+        </div>
+      )}
     </li>
   );
 }
@@ -131,7 +156,7 @@ function ApprovalButtons({
   const { canAnswer, offReason, sent } = approval;
   const unavailable = offReason === undefined ? undefined : { reason: reasonId };
   return (
-    <div className="flex flex-col gap-1 pt-1">
+    <div className="flex flex-col gap-1">
       <div className="flex gap-2">
         {decisions
           .filter((decision) => sent === undefined || sent === decision)
@@ -145,9 +170,10 @@ function ApprovalButtons({
               onClick={() => {
                 if (!canAnswer) return;
                 setOutcomeLine(undefined);
-                void onAnswer(decision)?.then((outcome) =>
-                  setOutcomeLine(sendOutcomeLine("answer", outcome)),
-                );
+                void onAnswer(decision)
+                  // A port that rejects never said what became of the answer: a cut-off one.
+                  ?.catch((): RemoteSendOutcome => ({ kind: "cut-off" }))
+                  .then((outcome) => setOutcomeLine(sendOutcomeLine("answer", outcome)));
               }}
             >
               {decisionWords[decision]}
