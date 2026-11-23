@@ -83,6 +83,45 @@ verifies("remote.phone-first-reach", () => {
     expect(router.stateOf(computer)).toBe("phoneOffline");
   });
 
+  it("holds the wait while the app is away or the tunnel closed, so they don't count as an answer", async () => {
+    const { tunnel, router } = await opened();
+    tunnel.push(laptop, { state: "connecting" });
+    vi.advanceTimersByTime(10_000);
+    for (const state of ["paused", "closed"] as const) {
+      tunnel.push(laptop, { state });
+      vi.advanceTimersByTime(60_000);
+      expect(router.reachOf(laptop)?.gaveUp).toBe(false);
+      tunnel.push(laptop, { state: "connecting" });
+      expect(Date.now() - (router.reachOf(laptop)?.since.getTime() ?? 0)).toBe(10_000);
+    }
+    expect(router.stateOf(computer)).toBe("reconnecting");
+  });
+
+  it("keeps the phone offline on Try again, until the tunnel says otherwise", async () => {
+    const { tunnel, router } = await opened();
+    tunnel.push(laptop, { state: "reconnecting", lastTry: "network-down" });
+    router.tryAgain(laptop);
+    expect(router.stateOf(computer)).toBe("phoneOffline");
+    expect(router.reachOf(laptop)).toEqual({ since: new Date(), gaveUp: false });
+    vi.advanceTimersByTime(FIRST_REACH_LIMIT_MS);
+    tunnel.push(laptop, { state: "connecting" });
+    expect(router.reachOf(laptop)?.gaveUp).toBe(false);
+  });
+
+  it("doesn't count the seconds the phone is offline toward the 30", async () => {
+    const { tunnel, router } = await opened();
+    tunnel.push(laptop, { state: "connecting" });
+    vi.advanceTimersByTime(20_000);
+    tunnel.push(laptop, { state: "reconnecting", lastTry: "network-down" });
+    vi.advanceTimersByTime(60_000);
+    tunnel.push(laptop, { state: "reconnecting" });
+    expect(router.stateOf(computer)).toBe("reconnecting");
+    vi.advanceTimersByTime(FIRST_REACH_LIMIT_MS - 20_001);
+    expect(router.reachOf(laptop)?.gaveUp).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(router.stateOf(computer)).toBe("unreachable");
+  });
+
   it("opens Check this connection as the screen's sheet, and Back closes it", async () => {
     const { router } = await opened();
     router.openCheck();

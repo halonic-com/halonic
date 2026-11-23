@@ -157,11 +157,12 @@ export class PhoneAppRouter {
 
   /**
    * Try again, Try now and Check again: connect at once. During a first reach it starts the wait
-   * over, and the last try's failure is forgotten until the tunnel says how this one went.
+   * over, and the last try's failure is forgotten until the tunnel says how this one went. An
+   * offline phone stays offline: that is the phone's own state, not a try's failure.
    */
   tryAgain(computer: ComputerId): void {
     if (this.#reaches.has(computer)) {
-      this.#statuses.delete(computer);
+      if (!phoneIsOffline(this.#statuses.get(computer))) this.#statuses.delete(computer);
       this.#startReach(computer);
       this.#changed();
     }
@@ -236,9 +237,13 @@ export class PhoneAppRouter {
     return { screen: "computer", computer: computer.id, sheet: "none" };
   }
 
-  /** Starts, or starts over, the first reach's wait, unless the computer already answers. */
+  /**
+   * Starts, or starts over, the first reach's wait, unless the computer already answers. While
+   * the phone is offline or the app away, the wait starts held.
+   */
   #startReach(computer: ComputerId): void {
-    if (this.#statuses.get(computer)?.state !== "connected") this.#reaches.start(computer);
+    const status = this.#statuses.get(computer);
+    if (status?.state !== "connected") this.#reaches.start(computer, status);
   }
 
   /** The readable computer connected last, else Pair with a computer. */
@@ -299,6 +304,11 @@ export class PhoneAppRouter {
     this.#view = this.#build();
     for (const listener of [...this.#listeners]) listener();
   }
+}
+
+/** The tunnel's last try met no network on the phone. */
+function phoneIsOffline(status: PhoneStatus | undefined): boolean {
+  return status?.state === "reconnecting" && status.lastTry === "network-down";
 }
 
 /** The readable computer connected last, else paired last. */
