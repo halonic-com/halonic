@@ -33,6 +33,7 @@ function fakeService(saved: FirstRunKeyProvider[], local: LocalModels, test?: Mo
     test: vi.fn(async () => test ?? { kind: "superseded" as const }),
     preview: async () => undefined,
     continue: async () => ({ ok: true as const, changes: [], trusted: true }),
+    current: async () => undefined,
   };
   return service;
 }

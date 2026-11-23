@@ -21,6 +21,7 @@ export {
   type ModelChoice,
   testTimeLimitMs,
 } from "./model-choice.ts";
+export { type CurrentModel, currentModel } from "./model-choice-current.ts";
 export {
   type ChoiceChange,
   type ChoiceEdits,

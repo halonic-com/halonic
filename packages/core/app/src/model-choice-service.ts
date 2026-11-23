@@ -6,6 +6,7 @@
 
 import type { LocalModels } from "./local-models.ts";
 import type { FirstRunKeyProvider, KeyProblem, ModelChoice } from "./model-choice.ts";
+import type { CurrentModel } from "./model-choice-current.ts";
 import type { ChoiceChange, ChoiceProblem } from "./model-choice-edits.ts";
 import type { TestOutcome } from "./model-choice-reply.ts";
 
@@ -175,6 +176,8 @@ export interface ModelChoiceService {
   preview(testId: string): Promise<ModelChoicePreview | undefined>;
   /** Which models Ollama on this computer has downloaded, for the local option's state line. */
   localModels(): Promise<LocalModels>;
+  /** What the `default` alias uses now, for Settings › Models' Model row (`currentModel`). */
+  current(): Promise<CurrentModel | undefined>;
   /**
    * Saves the tested choice: the key, then the files, then the trust, but the
    * trust only when the files lead to `shownFingerprint`. The test's key is

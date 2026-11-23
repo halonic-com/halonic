@@ -10,6 +10,7 @@ import {
   type ModelChoice,
   testTimeLimitMs,
 } from "./model-choice.ts";
+import { type CurrentModel, currentModel } from "./model-choice-current.ts";
 import { type ChoiceEdits, type ChoiceProblem, choiceEdits } from "./model-choice-edits.ts";
 import { modelTestRequest, type TestResult, testOutcome } from "./model-choice-reply.ts";
 import {
@@ -134,6 +135,10 @@ export class FirstRunModelChoice implements ModelChoiceService {
 
   localModels(): Promise<LocalModels> {
     return this.#parts.localModels();
+  }
+
+  current(): Promise<CurrentModel | undefined> {
+    return currentModel(this.#parts.files);
   }
 
   async keySaved(provider: FirstRunKeyProvider): Promise<boolean> {

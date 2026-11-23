@@ -55,6 +55,7 @@ const endpoints = [
   "POST line-facts",
   "POST continue",
   "GET local-models",
+  "GET current",
   "GET key-saved/",
   "GET preview/",
 ] as const;
@@ -189,6 +190,7 @@ export function createModelChoiceRoutes({
       const models = await service.localModels();
       return answer(models.kind === "not-found" ? { kind: "not-found" } : models);
     },
+    "GET current": async ({ service }) => answer({ current: (await service.current()) ?? null }),
     "GET key-saved/": async ({ argument, service }) => {
       const provider = readKeyProvider(argument);
       if (provider === null) {

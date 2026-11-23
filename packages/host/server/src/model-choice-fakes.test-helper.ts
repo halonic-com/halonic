@@ -1,5 +1,6 @@
 import type {
   ChoiceKey,
+  CurrentModel,
   FirstRunKeyProvider,
   LocalModels,
   ModelChoice,
@@ -29,6 +30,7 @@ export class FakeChoiceService implements ModelChoiceService {
   testOutcome: ModelChoiceTest = { kind: "tested", outcome: "ok", testId: "test_1" };
   models: LocalModels = { kind: "one", model: "llama3.2" };
   saved: ModelChoiceSaved = { ok: true, changes: [], trusted: false };
+  currentModel: CurrentModel | undefined = { kind: "sample" };
   failWith: Error | undefined;
 
   async test(choice: ModelChoice, key?: ChoiceKey): Promise<ModelChoiceTest> {
@@ -51,6 +53,10 @@ export class FakeChoiceService implements ModelChoiceService {
   async localModels(): Promise<LocalModels> {
     this.calls.push(["localModels"]);
     return this.models;
+  }
+  async current(): Promise<CurrentModel | undefined> {
+    this.calls.push(["current"]);
+    return this.currentModel;
   }
   async continue(testId: string, shownFingerprint: string | undefined): Promise<ModelChoiceSaved> {
     this.calls.push(["continue", testId, shownFingerprint]);

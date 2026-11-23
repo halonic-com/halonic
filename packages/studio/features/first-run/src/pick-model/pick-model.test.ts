@@ -53,6 +53,7 @@ function fakeService(
     },
     preview: async () => ({ ...anthropicLine, fingerprint: "trust-1", ...options.preview }),
     continue: vi.fn(async () => ({ ok: true as const, changes: [], trusted: true })),
+    current: async () => undefined,
   };
   return { service, tests };
 }
