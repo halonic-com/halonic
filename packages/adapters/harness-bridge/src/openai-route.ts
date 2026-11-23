@@ -5,6 +5,7 @@ import { openAiEffort, withEffort } from "./effort.ts";
 import { refuseModelsNotGiven } from "./keyed-model.ts";
 import { OpenAiReplyReader } from "./openai-reply.ts";
 import { refuseStoredPrompt, refuseUrlInputs } from "./openai-sources.ts";
+import { withRouting } from "./openrouter-routing.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
 import { type ProviderApi, providerTarget } from "./provider-address.ts";
 import { providerAccess, providerAuthorization } from "./provider-key.ts";
@@ -167,7 +168,8 @@ export interface OpenAiRouteDependencies {
  * An image or file that OpenAI would fetch
  * from a URL, and a stored prompt, are refused. A model the host set an
  * effort for gets it as `reasoning.effort` (requirement
- * `harness-bridge.effort`). Each call is recorded
+ * `harness-bridge.effort`), and a call to OpenRouter gets the alias's host
+ * pin as `provider` (requirement `harness-bridge.openrouter-routing`). Each call is recorded
  * with its usage and cost (requirement `harness-bridge.spend`).
  */
 export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute {
@@ -199,7 +201,7 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
         (key) => ({ authorization: `Bearer ${key}` }),
       );
       const body = withoutProviderReach(
-        withEffort(request, call.effort, openAiEffort),
+        withRouting(withEffort(request, call.effort, openAiEffort), call.routing),
         openAiReach,
       );
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);

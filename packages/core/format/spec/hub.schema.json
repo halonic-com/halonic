@@ -86,8 +86,54 @@
               },
               "extra": {
                 "type": "object",
-                "propertyNames": {
-                  "type": "string"
+                "properties": {
+                  "provider": {
+                    "type": "object",
+                    "properties": {
+                      "order": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "only": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "ignore": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "allow_fallbacks": {
+                        "type": "boolean"
+                      },
+                      "data_collection": {
+                        "type": "string",
+                        "enum": [
+                          "allow",
+                          "deny"
+                        ]
+                      },
+                      "zdr": {
+                        "type": "boolean"
+                      },
+                      "quantizations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
                 },
                 "additionalProperties": {}
               }

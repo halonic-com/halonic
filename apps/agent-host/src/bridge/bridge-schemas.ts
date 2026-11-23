@@ -7,6 +7,21 @@ import { portSchema } from "../server/port-schema.ts";
 // The efforts the bridge sets on the agent's models (HAL-16735), by model name.
 const efforts = s.record(s.string().min(1), s.enum(["low", "medium", "high"])).optional();
 
+// The alias's OpenRouter host pin (HAL-16834): only OpenRouter's routing keys, each of its type.
+const names = s.array(s.string().min(1)).optional();
+const routing = s
+  .object({
+    order: names,
+    only: names,
+    ignore: names,
+    allow_fallbacks: s.boolean().optional(),
+    data_collection: s.enum(["allow", "deny"]).optional(),
+    zdr: s.boolean().optional(),
+    quantizations: names,
+  })
+  .strict()
+  .optional();
+
 const access = portSchema<BridgeProviderAccess>(
   s.discriminatedUnion("kind", [
     s
@@ -20,6 +35,7 @@ const access = portSchema<BridgeProviderAccess>(
         providerId: s.string().min(1).optional(),
         models: s.array(s.string().min(1)).optional(),
         efforts,
+        routing,
       })
       .strict(),
     s.object({ kind: s.literal("sign-in"), efforts }).strict(),

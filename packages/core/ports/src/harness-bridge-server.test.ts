@@ -7,6 +7,7 @@ import {
   type BridgeTools,
   bridgeCallCharge,
   bridgeCallCost,
+  bridgeRouting,
   type HarnessBridgeOptions,
   type HarnessBridgeServer,
   type OpenHarnessBridge,
@@ -174,5 +175,27 @@ verifies("ports.harness-bridge-server", () => {
     const usage = { inputTokens: 1_000, outputTokens: 200 };
     const anthropicKey: BridgeProviderAccess = { kind: "key", secret: "anthropic-key" };
     expect(bridgeCallCost(anthropicKey, { input: 3, output: 15 }, usage)).toBe(0.006);
+  });
+});
+
+verifies("harness-bridge.openrouter-routing", () => {
+  it("keeps only OpenRouter's routing keys that are set", () => {
+    const loose = {
+      order: ["deepinfra/fp8"],
+      only: undefined,
+      allow_fallbacks: false,
+      data_collection: "deny" as const,
+      zdr: true,
+      quantizations: ["fp8"],
+      sort: "price",
+    };
+    expect(bridgeRouting(loose)).toEqual({
+      order: ["deepinfra/fp8"],
+      allow_fallbacks: false,
+      data_collection: "deny",
+      zdr: true,
+      quantizations: ["fp8"],
+    });
+    expect(Object.keys(bridgeRouting({ ignore: ["acme-host"] }))).toEqual(["ignore"]);
   });
 });

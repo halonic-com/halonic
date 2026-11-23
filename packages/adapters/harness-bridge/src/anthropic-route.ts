@@ -5,6 +5,7 @@ import { refuseUrlSources } from "./anthropic-sources.ts";
 import { type KnownRequest, refuseUnknownAtCompatible } from "./compatible-request.ts";
 import { anthropicEffort, withEffort } from "./effort.ts";
 import { refuseModelsNotGiven } from "./keyed-model.ts";
+import { withRouting } from "./openrouter-routing.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
 import { type ProviderApi, providerTarget } from "./provider-address.ts";
 import { providerAccess, providerAuthorization } from "./provider-key.ts";
@@ -143,7 +144,9 @@ export interface AnthropicRouteDependencies {
  * is left, becomes `auto`; image
  * and PDF blocks go on as they are, and one with a URL source is refused.
  * A model the host set an effort for gets it as `output_config.effort`
- * (requirement `harness-bridge.effort`). Each call is recorded with its usage and cost (requirement
+ * (requirement `harness-bridge.effort`), and a call to OpenRouter gets the
+ * alias's host pin as `provider` (requirement
+ * `harness-bridge.openrouter-routing`). Each call is recorded with its usage and cost (requirement
  * `harness-bridge.spend`).
  */
 export function anthropicRoute(dependencies: AnthropicRouteDependencies): BridgeRoute {
@@ -175,7 +178,7 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
         (key) => ({ "x-api-key": key }),
       );
       const body = withoutProviderReach(
-        withEffort(request, call.effort, anthropicEffort),
+        withRouting(withEffort(request, call.effort, anthropicEffort), call.routing),
         anthropicReach,
       );
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);

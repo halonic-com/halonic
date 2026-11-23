@@ -15,12 +15,14 @@
 
 import type { HarnessModelNames } from "@halonicjs/engine";
 import type { Provider } from "@halonicjs/format";
-import type {
-  BridgeEffort,
-  BridgeProvider,
-  BridgeProviderAccess,
-  ModelPrice,
-  Secrets,
+import {
+  type BridgeEffort,
+  type BridgeProvider,
+  type BridgeProviderAccess,
+  bridgeRouting,
+  type ModelPrice,
+  type ProviderRouting,
+  type Secrets,
 } from "@halonicjs/ports";
 import { errorKindOf, KindedError, SecretScrubber } from "@halonicjs/std";
 import {
@@ -170,7 +172,10 @@ export class ProviderKeyServices {
       providers: {
         anthropic: signIn,
         openai: signIn,
-        [choice.provider]: accessOf(choice, models, pinned, effortsOf(agent, target)),
+        [choice.provider]: accessOf(choice, models, pinned, {
+          efforts: effortsOf(agent, target),
+          routing: routingOf(target, pinned),
+        }),
       },
       prices: choice.kind === "key" ? pricesOf(workspace, agent.hubId, choice) : {},
       tools: {
@@ -367,14 +372,19 @@ function aliasKey(hubId: string | undefined, model: string | undefined): string 
  * included, so the key pays only for the model the alias prices. Else, at
  * the type's own host, it names none, so the program's background calls on
  * its other models still go through (`harness-bridge.keyed-model`).
- * Either kind carries the agent's `efforts`, when it has one.
+ * Either kind carries the agent's `efforts`, when it has one; a key also
+ * carries its alias's `routing`, when it has one.
  */
 function accessOf(
   choice: ProviderAccessChoice,
   models: readonly string[],
   pinned: boolean,
-  efforts: Readonly<Record<string, BridgeEffort>> | undefined,
+  settings: {
+    efforts: Readonly<Record<string, BridgeEffort>> | undefined;
+    routing: ProviderRouting | undefined;
+  },
 ): BridgeProviderAccess {
+  const { efforts, routing } = settings;
   const withEfforts = efforts === undefined ? {} : { efforts };
   if (choice.kind === "sign-in") return { ...signIn, ...withEfforts };
   return {
@@ -384,7 +394,24 @@ function accessOf(
     ...(choice.baseUrl === undefined ? {} : { baseUrl: choice.baseUrl }),
     ...(choice.baseUrl === undefined && !pinned ? {} : { models }),
     ...withEfforts,
+    ...(routing === undefined ? {} : { routing }),
   };
+}
+
+/**
+ * The alias's OpenRouter host pin, its `params.extra.provider`, for the
+ * bridge to send (requirement `harness-host.bridge-routing`), and no other
+ * key of `extra`. Only for an alias whose own provider holds the key
+ * (`pinned`), so a pin never goes along with another provider's key. The
+ * models file has already checked its keys and their types; the bridge
+ * sends it only to `openrouter.ai`. `undefined` when the alias sets none.
+ */
+function routingOf(
+  target: ResolvedModelTarget | undefined,
+  pinned: boolean,
+): ProviderRouting | undefined {
+  const routing = pinned && target?.alias !== undefined ? target.params.extra?.provider : undefined;
+  return routing === undefined ? undefined : bridgeRouting(routing);
 }
 
 /**

@@ -97,3 +97,36 @@ verifies("harness-host.bridge-effort", () => {
     });
   });
 });
+
+verifies("harness-host.bridge-routing", () => {
+  describe("openBridgeBody", () => {
+    const body = (anthropic: unknown) => ({
+      runId: "run_1",
+      agentId: "coder",
+      providers: { anthropic },
+      prices: {},
+    });
+    const keyed = { kind: "key", secret: "openrouter-key", baseUrl: "https://openrouter.ai/api" };
+
+    it("takes a key's host pin, so Studio's bridge sends it too", () => {
+      const access = {
+        ...keyed,
+        routing: { order: ["deepinfra/fp8"], allow_fallbacks: false, data_collection: "deny" },
+      };
+      expect(parse(openBridgeBody, body(access))).toEqual({ ok: true, value: body(access) });
+    });
+
+    it.each([
+      ["a key OpenRouter's routing doesn't have", { sort: "price" }],
+      ["a value of the wrong type", { allow_fallbacks: "no" }],
+      ["data collection other than allow or deny", { data_collection: "some" }],
+    ])("refuses %s", (_case, routing) => {
+      expect(parse(openBridgeBody, body({ ...keyed, routing })).ok).toBe(false);
+    });
+
+    it("refuses a pin on the program's own sign-in", () => {
+      const access = { kind: "sign-in", routing: { order: ["deepinfra/fp8"] } };
+      expect(parse(openBridgeBody, body(access)).ok).toBe(false);
+    });
+  });
+});

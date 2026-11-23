@@ -1,6 +1,7 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectTypeOf } from "vitest";
 import type { HarnessSessionStart } from "./harness-started.ts";
+import type { ProviderRouting } from "./provider-routing.ts";
 import type {
   ApprovalResolver,
   ModelSkipReason,
@@ -321,5 +322,27 @@ verifies("events.llm-subagent", () => {
       subagent: "subagent",
       messages: 3,
     } as const).toExtend<RunEventBody>();
+  });
+});
+
+verifies("events.llm-request-routing", () => {
+  typeTest("may say the OpenRouter host pin the bridge sent", () => {
+    expectTypeOf<EventOf<"llm.request">["routing"]>().toEqualTypeOf<ProviderRouting | undefined>();
+    expectTypeOf({
+      type: "llm.request",
+      agent: "writer",
+      provider: "openrouter",
+      model: "deepseek/deepseek-v4.1-flash",
+      routing: { order: ["deepinfra/fp8"], allow_fallbacks: false, data_collection: "deny" },
+      messages: 3,
+    } as const).toExtend<RunEventBody>();
+  });
+
+  typeTest("names only OpenRouter's routing keys, each of its own type", () => {
+    // @ts-expect-error: a key OpenRouter's routing doesn't have
+    const sorted: ProviderRouting = { sort: "price" };
+    // @ts-expect-error: data collection is allowed or denied, nothing else
+    const unknownTerms: ProviderRouting = { data_collection: "some" };
+    expectTypeOf([sorted, unknownTerms]).toBeArray();
   });
 });
