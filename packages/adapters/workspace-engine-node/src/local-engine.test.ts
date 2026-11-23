@@ -137,6 +137,17 @@ verifies("cli.local-engine", () => {
   });
 });
 
+verifies("workspace-engine-node.engine-state-folders", () => {
+  it("refuses a second engine with EngineLockHeldError, naming the first engine's process", async () => {
+    await openEngine();
+
+    const opening = openEngine();
+
+    await expect(opening).rejects.toBeInstanceOf(EngineLockHeldError);
+    await expect(opening).rejects.toMatchObject({ holder: { pid: process.pid } });
+  });
+});
+
 verifies("cli.local-engine-lock", () => {
   it("refuses a second engine on the workspace with the engine's own lock error", async () => {
     await openEngine();
