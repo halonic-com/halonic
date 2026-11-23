@@ -310,6 +310,7 @@ export {
   gatewayReadableName,
   gatewayReconnectPattern,
   gatewaySessionLimits,
+  gatewaySessionVersion,
   noiseMaxMessageBytes,
   type PairCommitPayload,
   type PairHostPayload,

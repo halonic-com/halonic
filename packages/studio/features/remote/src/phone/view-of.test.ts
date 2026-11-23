@@ -37,6 +37,8 @@ function holding(overrides: Partial<ClientHolding> = {}): ClientHolding {
       ["s2", asking("a-early", "2026-11-21T14:01:00.000Z")],
     ]),
     sentAnswers: new SentAnswers(),
+    answersRisky: false,
+    updateNeeded: false,
     ...overrides,
   };
 }

@@ -25,7 +25,12 @@ verifies("remote.phone-gateway-client", () => {
         { generation: 1, message: { type: "hello", id: "p-1", version: gatewayProtocolVersion } },
       ]);
       scene.generation = 1;
-      scene.host({ type: "welcome", replyTo: "p-1", version: 2, maxMessageBytes: 65_519 });
+      scene.host({
+        type: "welcome",
+        replyTo: "p-1",
+        version: gatewayProtocolVersion,
+        maxMessageBytes: 65_519,
+      });
       expect(scene.tunnel.lastOf("list-sessions")).toEqual({ type: "list-sessions", id: "p-2" });
     });
 
@@ -43,7 +48,7 @@ verifies("remote.phone-gateway-client", () => {
     it("ends the session on a welcome of another version", () => {
       const scene = new GatewayScene();
       scene.tunnel.open(1);
-      scene.tunnel.host(1, { type: "welcome", replyTo: "p-1", version: 3, maxMessageBytes: 9 });
+      scene.tunnel.host(1, { type: "welcome", replyTo: "p-1", version: 2, maxMessageBytes: 9 });
       expect(scene.tunnel.ended).toEqual([1]);
       expect(scene.tunnel.sentOf("list-sessions")).toEqual([]);
     });

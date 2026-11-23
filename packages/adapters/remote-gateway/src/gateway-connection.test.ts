@@ -22,7 +22,7 @@ verifies("remote-gateway.connection", () => {
       const t = openConnection();
       await t.hello();
       expect(t.sent).toEqual([
-        { type: "welcome", replyTo: "h1", version: 2, maxMessageBytes: gatewayMaxMessageBytes },
+        { type: "welcome", replyTo: "h1", version: 3, maxMessageBytes: gatewayMaxMessageBytes },
       ]);
     });
 

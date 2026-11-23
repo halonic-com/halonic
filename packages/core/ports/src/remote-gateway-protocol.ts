@@ -9,13 +9,19 @@
  */
 
 /**
- * The protocol version. Both sides send it in `hello` and `welcome`, and the
- * Noise prologue names it too, so a peer of another version fails the
- * handshake. A host speaks exactly one and there is no negotiation. The host
- * answers a `hello` with another version with `unsupported-version` and
- * closes; the phone closes on a `welcome` with another version.
+ * The message version: which messages and fields the two sides exchange.
+ * Both sides send it in `hello` and `welcome`, inside the end-to-end session,
+ * so nobody in the middle can change it. It is not the session version the
+ * Noise prologue names (`gatewaySessionVersion`), which changes only with the
+ * handshake or the framing; so a phone and a host of different message
+ * versions still connect and can say so. A host speaks exactly one and there
+ * is no negotiation. The host answers a `hello` with another version with
+ * `unsupported-version` and closes; the phone closes on a `welcome` with
+ * another version. Either way the phone shows that an update is needed.
+ *
+ * Version 3 added `answersRisky` and the pushed `sessions`.
  */
-export const gatewayProtocolVersion = 2;
+export const gatewayProtocolVersion = 3;
 
 /**
  * The largest message either side accepts, in bytes of its UTF-8 JSON: one
@@ -195,6 +201,12 @@ export type GatewayPairDeniedReason = "denied" | "timed-out";
  * A well-formed message the host won't carry out gets an `error` with a code
  * from {@link gatewayRefusalCodes} and its `replyTo`, and the connection
  * stays open.
+ *
+ * **Pushed list.** When the person turns "Let phones answer risky approvals"
+ * on or off, the host sends `sessions` without `replyTo`, always the full
+ * list, to every connection past `welcome`. The phone replaces its list with
+ * it; it drops a push before `welcome`, and a `sessions` with a `replyTo`
+ * that answers nothing it sent.
  */
 export type GatewayHostMessage =
   | {
@@ -205,8 +217,15 @@ export type GatewayHostMessage =
     }
   | {
       readonly type: "sessions";
-      readonly replyTo: string;
+      /** The `list-sessions` this answers; absent when the host pushes the list. */
+      readonly replyTo?: string;
       readonly sessions: readonly GatewaySession[];
+      /**
+       * Whether "Let phones answer risky approvals" was on when the host made
+       * this list. Only a hint for what the phone shows: the host checks the
+       * switch again for every answer, and that check is the gate.
+       */
+      readonly answersRisky: boolean;
     }
   | {
       readonly type: "event";

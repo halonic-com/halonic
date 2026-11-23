@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { gatewayProtocolVersion } from "./remote-gateway-protocol.ts";
 import {
   decodeCleartextFrame,
   encodeCleartextFrame,
@@ -12,16 +13,23 @@ import {
   gatewayPairingPattern,
   gatewayReconnectPattern,
   gatewaySessionLimits,
+  gatewaySessionVersion,
   pairCommitInput,
   pairCommitNonceBytes,
   pairingRules,
 } from "./remote-gateway-session.ts";
 
 verifies("ports.remote-gateway-session", () => {
-  it("pairs with XXpsk3 and reconnects with IK, with version 2 in the prologue", () => {
+  it("pairs with XXpsk3 and reconnects with IK, with session version 2 in the prologue", () => {
     expect(gatewayPairingPattern).toBe("Noise_XXpsk3_25519_ChaChaPoly_SHA256");
     expect(gatewayReconnectPattern).toBe("Noise_IK_25519_ChaChaPoly_SHA256");
+    expect(gatewaySessionVersion).toBe(2);
     expect(gatewayNoisePrologue).toBe("halonic-gateway/2");
+  });
+
+  it("keeps the session version apart from the message version", () => {
+    expect(gatewayProtocolVersion).not.toBe(gatewaySessionVersion);
+    expect(gatewayNoisePrologue).not.toContain(String(gatewayProtocolVersion));
   });
 
   it("gives each frame kind its own byte", () => {

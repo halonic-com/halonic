@@ -13,10 +13,18 @@ export const gatewayPairingPattern = "Noise_XXpsk3_25519_ChaChaPoly_SHA256";
 export const gatewayReconnectPattern = "Noise_IK_25519_ChaChaPoly_SHA256";
 
 /**
- * The Noise prologue of both handshakes. It names the protocol version, so a
- * peer of another version fails the handshake instead of negotiating.
+ * The session version: the handshakes and the framing. It changes only when
+ * those do, never with the messages inside (`gatewayProtocolVersion`), so a
+ * phone and a host of different message versions still connect and can tell
+ * the person to update.
  */
-export const gatewayNoisePrologue = "halonic-gateway/2";
+export const gatewaySessionVersion = 2;
+
+/**
+ * The Noise prologue of both handshakes. It names the session version, so a
+ * peer of another session version fails the handshake instead of negotiating.
+ */
+export const gatewayNoisePrologue = `halonic-gateway/${gatewaySessionVersion}`;
 
 /**
  * The first byte of every binary WebSocket frame, which says what follows.

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { gatewayNoisePrologue } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { type NoiseHandshake, type NoiseRole, NoiseSession } from "./noise-session.ts";
@@ -43,6 +44,11 @@ const sides: readonly NoiseRole[] = ["initiator", "responder"];
 verifies("e2e-noise.same-as-snow", () => {
   it("has both handshakes", () => {
     expect(transcript.sessions.map((session) => session.name)).toEqual(["pairing", "reconnect"]);
+  });
+
+  it("uses the gateway's own prologue, which a message version bump leaves alone", () => {
+    const prologue = toHex(new TextEncoder().encode(gatewayNoisePrologue));
+    expect(transcript.sessions.map((session) => session.prologue)).toEqual([prologue, prologue]);
   });
 
   for (const session of transcript.sessions) {

@@ -25,6 +25,14 @@ import type { PhoneStatusLabel } from "./phone-status.ts";
  */
 export const RECONNECT_TO_ANSWER = "You can answer once your phone reconnects.";
 
+/**
+ * Why they are off while this phone and the computer speak different
+ * versions of the remote gateway's messages: reconnecting won't help, an
+ * update will. The phone can't tell which side is older, so it names both.
+ */
+export const UPDATE_TO_ANSWER =
+  "Update Halonic on this phone and your computer to answer from here.";
+
 /** One event of a watched session, as the host sent it. */
 export interface RemoteEvent {
   /** The session's sequence number: from 1, one more per event. */
@@ -109,6 +117,18 @@ export interface RemoteView {
   readonly canAnswer: boolean;
   /** Why they are off, while `canAnswer` is false; `undefined` while it is true. */
   readonly offReason: string | undefined;
+  /**
+   * Whether the computer said, with its last session list, that phones may
+   * answer risky approvals. Only a hint for what to show: the computer checks
+   * its switch again for every answer. `false` until a list says otherwise.
+   */
+  readonly answersRisky: boolean;
+  /**
+   * Whether the computer and this phone speak different versions of the
+   * gateway's messages, from the last connection that got that far. While it
+   * is true, `offReason` says to update.
+   */
+  readonly updateNeeded: boolean;
 }
 
 /** Why the host refused an answer or a prompt and kept the connection. */

@@ -50,6 +50,11 @@ export interface GatewayListenerOptions {
 /** A running gateway listener. */
 export interface GatewayListener {
   readonly port: number;
+  /**
+   * Sends every phone past `welcome` the full session list again, for when
+   * the person turned "Let phones answer risky approvals" on or off.
+   */
+  listAgain(): void;
   /** Ends every connection and stops listening. */
   close(): Promise<void>;
 }
@@ -82,6 +87,7 @@ export async function startGatewayListener(
   options: GatewayListenerOptions,
 ): Promise<GatewayListener> {
   const sockets = new Set<Duplex>();
+  const connections = new Set<GatewayConnection>();
   const extraHosts = (options.extraHosts ?? []).map((host) => host.toLowerCase());
   let port = 0;
   const server = createServer((_request, response) => {
@@ -106,11 +112,14 @@ export async function startGatewayListener(
     );
     sockets.add(socket);
     socket.once("close", () => sockets.delete(socket));
-    serveSocket(socket, options, head);
+    serveSocket(socket, options, head, connections);
   });
   port = await listenOnLoopback(server, options.port ?? 0);
   return {
     port,
+    listAgain: () => {
+      for (const connection of connections) connection.listAgain();
+    },
     close: () =>
       new Promise((resolve) => {
         server.close(() => resolve());
@@ -164,7 +173,13 @@ function isHandshakeKey(key: string | undefined): boolean {
  * message or a frame that breaks the format closes the connection: there is
  * no cleartext answer to send.
  */
-function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buffer): void {
+function serveSocket(
+  socket: Duplex,
+  options: GatewayListenerOptions,
+  head: Buffer,
+  connections: Set<GatewayConnection>,
+): void {
+  let connection: GatewayConnection | undefined;
   const reader = new FrameReader(gatewayMaxFrameBytes);
   let closing = false;
   const send = (opcode: number, payload: Uint8Array) => {
@@ -177,8 +192,15 @@ function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buff
     handshakeTimeoutMs: options.handshakeTimeoutMs ?? gatewaySessionLimits.handshakeTimeoutMs,
     // The session has closed its wire by then; the error only needs reporting.
     onError: (error) => options.onError(error),
-    openConnection: (transport) =>
-      new GatewayConnection({ source: options.source, policy: options.policy, transport }),
+    openConnection: (transport) => {
+      connection = new GatewayConnection({
+        source: options.source,
+        policy: options.policy,
+        transport,
+      });
+      connections.add(connection);
+      return connection;
+    },
     wire: {
       send: (frame) => send(frameType.binary, frame),
       bufferedBytes: () => socket.writableLength,
@@ -233,6 +255,7 @@ function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buff
   socket.once("end", closeSession);
   socket.once("close", () => {
     clearInterval(heartbeat);
+    if (connection !== undefined) connections.delete(connection);
     closeSession();
   });
   socket.on("error", () => socket.destroy());

@@ -158,7 +158,7 @@ export async function openTunnelRig(options: TunnelRigOptions = {}): Promise<Tun
       const phone = client();
       await phone.open(forwarder.port, { host: tunnelName });
       await phone.reconnect(phones.pairPhone());
-      phone.sendJson({ type: "hello", id: "h1", version: 2 });
+      phone.sendJson({ type: "hello", id: "h1", version: 3 });
       await phone.frames(1);
       return phone;
     },

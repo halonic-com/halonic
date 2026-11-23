@@ -32,11 +32,24 @@ verifies("ports.remote-gateway-protocol", () => {
     >();
   });
 
-  it("is version 2, with one Noise transport message less its tag per message", () => {
-    expect(gatewayProtocolVersion).toBe(2);
+  it("is message version 3, with one Noise transport message less its tag per message", () => {
+    expect(gatewayProtocolVersion).toBe(3);
     expect(gatewayMaxMessageBytes).toBe(65_519);
     expect(gatewayErrorCodes).toContain("too-large");
     expect(gatewayErrorCodes).toContain("not-allowed-remotely");
+  });
+
+  typeTest("lists sessions with the risky switch, as an answer or as a push", () => {
+    const answer: GatewayHostMessage = {
+      type: "sessions",
+      replyTo: "p-2",
+      sessions: [],
+      answersRisky: false,
+    };
+    const pushed: GatewayHostMessage = { type: "sessions", sessions: [], answersRisky: true };
+    // @ts-expect-error: version 3 always says whether risky answers are on
+    const withoutSwitch: GatewayHostMessage = { type: "sessions", replyTo: "p-2", sessions: [] };
+    expectTypeOf([answer, pushed, withoutSwitch]).toEqualTypeOf<GatewayHostMessage[]>();
   });
 
   it("sets limits the attack suite can test", () => {
