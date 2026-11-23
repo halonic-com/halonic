@@ -22,7 +22,9 @@ const scopePattern = /^[uo]\/[A-Za-z0-9_.:-]{1,126}$/;
  */
 export function checkScope(scope: string): string {
   if (typeof scope !== "string" || !scopePattern.test(scope)) {
-    throw new RangeError('scope must be "u/" or "o/" followed by 1 to 126 letters, digits or "_.:-".');
+    throw new RangeError(
+      'scope must be "u/" or "o/" followed by 1 to 126 letters, digits or "_.:-".',
+    );
   }
   return scope;
 }
