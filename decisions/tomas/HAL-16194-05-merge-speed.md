@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews the board check's merge-speed part and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8ZyojS0VqDlhqpn4N3F4+Ur2h0fD/g6xZwZY1QkR583IBZwf8a6caIjrbJ1nX2nWxsW9LMNe4UnkXSVHVumMCg==
 
 Part (e) of the board check (phase 1b, HAL-16194) adds the read tool
 `merge_speed`, declared in the Agent tools plugin's manifest after the
