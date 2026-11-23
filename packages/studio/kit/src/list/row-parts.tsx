@@ -12,6 +12,17 @@ export function lineFit(row: AnyListRow): string {
 }
 
 /**
+ * How the meta line fits: as the row's other lines, or, with `wrapMeta`, on up to two lines and
+ * then cut, so a long line keeps its end.
+ */
+function metaFit(row: AnyListRow): string {
+  if (row.wrap !== true && row.wrapMeta === true) {
+    return "line-clamp-2 wrap-break-word";
+  }
+  return lineFit(row);
+}
+
+/**
  * The row's icon or avatar. `small` is a 32px `dense` row; a dense row 48px high, on a phone or
  * under a coarse pointer, keeps 20px. In a row that wraps it stays at the top, centred on the
  * title's first 20px line.
@@ -75,7 +86,7 @@ export function MetaLine({ row, text, id, chip }: MetaLineProps) {
     text === undefined ? null : (
       <span
         id={describesRow(row) ? id : undefined}
-        className={`relative ${lineFit(row)} text-small ${colour}`}
+        className={`relative ${metaFit(row)} text-small ${colour}`}
       >
         {text}
       </span>
