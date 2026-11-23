@@ -1,6 +1,7 @@
 import type { ScheduledTimer, SchedulerListener } from "@halonicjs/ports";
 import { describe, expect, it } from "vitest";
 import { type RunSql, sqlOfStorage } from "../run-sql.ts";
+import { createRunTables } from "../run-tables.ts";
 import { TimerDelivery } from "../timer-delivery.ts";
 import { TimerTable } from "../timer-table.ts";
 import { inObjectState } from "./state-host.ts";
@@ -32,6 +33,7 @@ class TestWorld {
   readonly delivery: TimerDelivery;
 
   constructor(sql: RunSql) {
+    createRunTables(sql);
     this.table = new TimerTable(sql);
     this.delivery = new TimerDelivery({
       table: this.table,

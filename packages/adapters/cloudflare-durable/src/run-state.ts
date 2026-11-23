@@ -11,6 +11,7 @@ import { RunLog } from "./run-log.ts";
 import type { RunHealth, RunObjectApi } from "./run-object-api.ts";
 import { RunOutbox } from "./run-outbox.ts";
 import type { RunSql } from "./run-sql.ts";
+import { createRunTables, hasRunTables, recordNamePrefix, storedNamePrefix } from "./run-tables.ts";
 import { isEndingEvent, RunWatchers } from "./run-watchers.ts";
 import { TimerDelivery } from "./timer-delivery.ts";
 import { TimerTable } from "./timer-table.ts";
@@ -69,6 +70,10 @@ export interface RunStateOptions {
  *
  * An append whose alarm can't be set throws although it is stored; the caller's retry then gets
  * `conflict`, and the next alarm sends the update all the same.
+ *
+ * Only a write (`append`, `schedule`) creates the object's tables. A read of an object that was
+ * never written answers as an empty run and stores nothing, so asking about a made-up or foreign
+ * run id leaves no trace. The first write notes the name prefix it came under, its scope.
  */
 export class RunState implements RunObjectApi {
   readonly #log: RunLog;
@@ -80,6 +85,8 @@ export class RunState implements RunObjectApi {
   readonly #options: RunStateOptions;
   /** Wakes the send loop of a running alarm, so an append made during a timer's call is sent. */
   #wakeSendLoop: () => void = () => {};
+  /** Whether the tables are known to exist; once they do, they stay. */
+  #hasTables = false;
 
   constructor(options: RunStateOptions) {
     this.#options = options;
@@ -100,7 +107,9 @@ export class RunState implements RunObjectApi {
     expectedSeq: number,
     events: readonly RunEvent[],
     options?: AppendOptions,
+    namePrefix = "",
   ): Promise<AppendResult> {
+    this.#prepareWrite(namePrefix);
     const result = this.#log.append(runId, expectedSeq, events, options);
     if (result.ok) {
       // Nothing may be awaited between the append and this: it keeps watching gap-free.
@@ -112,7 +121,7 @@ export class RunState implements RunObjectApi {
   }
 
   async events(afterSeq?: number): Promise<RunEvent[]> {
-    return this.#log.events(afterSeq);
+    return this.#tablesExist() ? this.#log.events(afterSeq) : [];
   }
 
   /**
@@ -120,19 +129,24 @@ export class RunState implements RunObjectApi {
    * @throws Error when the log is empty: there is no such run
    */
   async watch(afterSeq = 0): Promise<ReadableStream<Uint8Array>> {
-    if (this.#log.lastSeq() === 0) throw new Error("This run has no events.");
+    if (!this.#tablesExist() || this.#log.lastSeq() === 0) {
+      throw new Error("This run has no events.");
+    }
     return this.#watchers.open(afterSeq, this.#log.events(afterSeq));
   }
 
   async snapshot(): Promise<RunSnapshot | null> {
-    return this.#log.snapshot();
+    return this.#tablesExist() ? this.#log.snapshot() : null;
   }
 
   async summary(): Promise<RunSummary | null> {
-    return summarize(this.#log.events());
+    return this.#tablesExist() ? summarize(this.#log.events()) : null;
   }
 
   async health(): Promise<RunHealth> {
+    if (!this.#tablesExist()) {
+      return { lastEventAt: null, ended: false, overdueMs: 0 };
+    }
     const earliestDueMs = this.#timers.earliestDueMs();
     const lastEvent = this.#log.lastEvent();
     return {
@@ -142,18 +156,32 @@ export class RunState implements RunObjectApi {
     };
   }
 
-  async schedule(key: string, timerId: string, at: string): Promise<void> {
+  async schedule(key: string, timerId: string, at: string, namePrefix = ""): Promise<void> {
+    this.#prepareWrite(namePrefix);
     this.#timers.set(key, timerId, at);
     await this.#setAlarm();
   }
 
+  /** Cancelling a timer of an object that was never written is a no-op, and stores nothing. */
   async cancel(key: string, timerId: string): Promise<void> {
+    if (!this.#tablesExist()) return;
     this.#timers.cancel(key, timerId);
     await this.#setAlarm();
   }
 
   async pending(key: string): Promise<ScheduledTimer[]> {
-    return this.#timers.pending(key);
+    return this.#tablesExist() ? this.#timers.pending(key) : [];
+  }
+
+  /**
+   * The name prefix the object was first written under, so the Worker builds its runtime in that
+   * scope. `null` when nothing was written yet, or only before prefixes were noted.
+   */
+  async namePrefix(): Promise<string | null> {
+    if (!this.#tablesExist()) return null;
+    // An object written before `name_prefix` existed gets the table here; it has storage already.
+    createRunTables(this.#options.sql);
+    return storedNamePrefix(this.#options.sql);
   }
 
   /**
@@ -163,6 +191,10 @@ export class RunState implements RunObjectApi {
    * returns, and a call can take minutes.
    */
   async alarm(): Promise<void> {
+    if (!this.#tablesExist()) {
+      await this.#alarm.clear();
+      return;
+    }
     const delivering = this.#delivery.deliverDueTimers();
     const outcomes = await Promise.allSettled([delivering, this.#sendUntilSettled(delivering)]);
     await this.#setAlarm();
@@ -225,6 +257,26 @@ export class RunState implements RunObjectApi {
       }
     }
     this.#outbox.sent(entry.seq);
+  }
+
+  /** Whether the object was ever written; reading the schema stores nothing. */
+  #tablesExist(): boolean {
+    this.#hasTables ||= hasRunTables(this.#options.sql);
+    return this.#hasTables;
+  }
+
+  /**
+   * Creates the tables on the first write and checks the write's name prefix against the one the
+   * object was first written under.
+   *
+   * @throws RangeError when the prefix differs
+   */
+  #prepareWrite(namePrefix: string): void {
+    this.#options.sql.transactionSync(() => {
+      createRunTables(this.#options.sql);
+      recordNamePrefix(this.#options.sql, namePrefix);
+    });
+    this.#hasTables = true;
   }
 
   #nowMs(): number {

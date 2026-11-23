@@ -19,3 +19,13 @@ await runSuitesInWorkerd([new URL("./test/run-state-health.spec.ts", import.meta
   ...bindings,
   wrap: (register) => verifies("cloudflare-durable.watchdog", register),
 });
+
+await runSuitesInWorkerd([new URL("./test/run-state-reads.spec.ts", import.meta.url)], {
+  ...bindings,
+  wrap: (register) => verifies("cloudflare-durable.no-storage-on-read", register),
+});
+
+await runSuitesInWorkerd([new URL("./test/run-state-scope.spec.ts", import.meta.url)], {
+  ...bindings,
+  wrap: (register) => verifies("cloudflare-durable.run-object-scope", register),
+});

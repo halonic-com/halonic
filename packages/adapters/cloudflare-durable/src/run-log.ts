@@ -30,7 +30,7 @@ interface SnapshotRow extends SqlRow {
  * with the same `expectedSeq` exactly one wins.
  *
  * Events are kept as the JSON text they arrive as, so the store always hands
- * out its own copy.
+ * out its own copy. Its tables must exist before it is used (`createRunTables`).
  */
 export class RunLog {
   readonly #sql: RunSql;
@@ -44,10 +44,6 @@ export class RunLog {
   constructor(sql: RunSql, onAppended: (lastSeq: number) => void = () => {}) {
     this.#sql = sql;
     this.#onAppended = onAppended;
-    sql.exec("CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY, json TEXT NOT NULL)");
-    sql.exec(
-      "CREATE TABLE IF NOT EXISTS snapshot (only_row INTEGER PRIMARY KEY CHECK (only_row = 1), seq INTEGER NOT NULL, json TEXT NOT NULL)",
-    );
   }
 
   /** Appends the events when the log's last event is `expectedSeq`, as `RunStore.append` says. */

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sqlOfStorage } from "../run-sql.ts";
+import { createRunTables } from "../run-tables.ts";
 import { retryWaitMs, TimerTable } from "../timer-table.ts";
 import { inObjectState } from "./state-host.ts";
 
@@ -18,7 +19,11 @@ function only<T>(timer: T | undefined): T {
 
 /** Runs `body` with a timer table over the SQLite storage of a Durable Object of its own. */
 function withTable(body: (table: TimerTable) => void): Promise<void> {
-  return inObjectState((state) => body(new TimerTable(sqlOfStorage(state.storage))));
+  return inObjectState((state) => {
+    const sql = sqlOfStorage(state.storage);
+    createRunTables(sql);
+    return body(new TimerTable(sql));
+  });
 }
 
 describe("TimerTable", () => {

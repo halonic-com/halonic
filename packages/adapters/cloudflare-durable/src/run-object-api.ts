@@ -19,6 +19,10 @@ export interface RunHealth {
 /**
  * What a client can call on a {@link RunObject}: the run's log and the timers
  * of its key. The object is named after the run, so every call is about that run.
+ *
+ * A write (`append`, `schedule`) gives the name prefix the client named the object under, its
+ * scope; empty when unscoped. The first write notes it, and a later write under another prefix is
+ * refused with a `RangeError`.
  */
 export interface RunObjectApi {
   append(
@@ -26,6 +30,7 @@ export interface RunObjectApi {
     expectedSeq: number,
     events: readonly RunEvent[],
     options?: AppendOptions,
+    namePrefix?: string,
   ): Promise<AppendResult>;
   events(afterSeq?: number): Promise<RunEvent[]>;
   /**
@@ -38,7 +43,9 @@ export interface RunObjectApi {
   summary(): Promise<RunSummary | null>;
   /** How the run is moving, for the watchdog. */
   health(): Promise<RunHealth>;
-  schedule(key: string, timerId: string, at: string): Promise<void>;
+  schedule(key: string, timerId: string, at: string, namePrefix?: string): Promise<void>;
   cancel(key: string, timerId: string): Promise<void>;
   pending(key: string): Promise<ScheduledTimer[]>;
+  /** The name prefix of the object's first write, or `null` when nothing was written yet. */
+  namePrefix(): Promise<string | null>;
 }

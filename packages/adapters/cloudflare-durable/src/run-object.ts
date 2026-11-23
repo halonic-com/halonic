@@ -92,8 +92,9 @@ export abstract class RunObject extends DurableObject implements RunObjectApi {
     expectedSeq: number,
     events: readonly RunEvent[],
     options?: AppendOptions,
+    namePrefix?: string,
   ): Promise<AppendResult> {
-    return this.#state.append(runId, expectedSeq, events, options);
+    return this.#state.append(runId, expectedSeq, events, options, namePrefix);
   }
 
   events(afterSeq?: number): Promise<RunEvent[]> {
@@ -116,8 +117,8 @@ export abstract class RunObject extends DurableObject implements RunObjectApi {
     return this.#state.health();
   }
 
-  schedule(key: string, timerId: string, at: string): Promise<void> {
-    return this.#state.schedule(key, timerId, at);
+  schedule(key: string, timerId: string, at: string, namePrefix?: string): Promise<void> {
+    return this.#state.schedule(key, timerId, at, namePrefix);
   }
 
   cancel(key: string, timerId: string): Promise<void> {
@@ -126,6 +127,10 @@ export abstract class RunObject extends DurableObject implements RunObjectApi {
 
   pending(key: string): Promise<ScheduledTimer[]> {
     return this.#state.pending(key);
+  }
+
+  namePrefix(): Promise<string | null> {
+    return this.#state.namePrefix();
   }
 
   /** Cloudflare calls this at the alarm time, and never twice at once. */

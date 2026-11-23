@@ -80,3 +80,22 @@ verifies("cloudflare-durable.object-names", () => {
     });
   });
 });
+
+verifies("cloudflare-durable.name-prefix-parts", () => {
+  describe("run object name prefixes", () => {
+    const { namespace } = namingNamespace();
+
+    it("refuses a prefix with an empty part, a dot or another character", () => {
+      const refused = ["a//", "../", "u/../", "/", "u/a.b/", "u/a b/", `${"p".repeat(65)}/`];
+      for (const namePrefix of refused) {
+        expect(() => new DurableRunEvents({ namespace, namePrefix })).toThrow(RangeError);
+      }
+    });
+
+    it("takes an empty prefix and scope prefixes", () => {
+      for (const namePrefix of ["", "acme/", "u/eu_acme0000000000000/", "o/case-1_a/"]) {
+        expect(() => new DurableRunEvents({ namespace, namePrefix })).not.toThrow();
+      }
+    });
+  });
+});

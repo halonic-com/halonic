@@ -22,16 +22,13 @@ interface OutboxRow extends SqlRow {
  * run's latest summary: a mark replaces the row, and an older mark never matters once a newer one
  * is there. Marking happens in the same transaction as the append, so a log that moved on always
  * has a note, and a crash can't lose it. What is published is worked out from the log when the
- * entry is sent, never kept here.
+ * entry is sent, never kept here. Its table must exist before it is used (`createRunTables`).
  */
 export class RunOutbox {
   readonly #sql: RunSql;
 
   constructor(sql: RunSql) {
     this.#sql = sql;
-    sql.exec(
-      "CREATE TABLE IF NOT EXISTS outbox (only_row INTEGER PRIMARY KEY CHECK (only_row = 1), seq INTEGER NOT NULL, failures INTEGER NOT NULL, due_at_ms INTEGER NOT NULL)",
-    );
   }
 
   /** Notes that the log is at `seq`, to be sent now: a new mark starts again with no failures. */

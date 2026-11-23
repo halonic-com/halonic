@@ -5,16 +5,25 @@ import { utf8Bytes } from "./input-rules.ts";
 const maxTimerKeyBytes = 256;
 
 /**
- * Checks a name prefix when a client is built: empty, or ending in `/`. The trailing `/` means no
+ * A name prefix: empty, or parts of 1 to 64 letters, digits, `_` or `-`, each followed by `/`.
+ * No part is empty or holds a `.`, so `a//` and `../` aren't prefixes.
+ */
+const namePrefixPattern = /^(?:[A-Za-z0-9_-]{1,64}\/)*$/;
+
+/**
+ * Checks a name prefix when a client is built: empty, or parts of 1 to 64 letters, digits, `_` or
+ * `-`, each ending in `/`, as `u/<id>/` does (the scope id rule). The trailing `/` means no
  * scope's names can be the start of another scope's, so `u/a` and `u/ab` never meet.
  *
- * @throws RangeError when the prefix is neither
+ * @throws RangeError when the prefix breaks the rule; the message doesn't repeat it
  * @returns the prefix, unchanged
  */
 export function checkedNamePrefix(prefix: string | undefined): string {
   const checked = prefix ?? "";
-  if (checked !== "" && !checked.endsWith("/")) {
-    throw new RangeError('A Durable Object name prefix must be empty or end in "/".');
+  if (!namePrefixPattern.test(checked)) {
+    throw new RangeError(
+      'A Durable Object name prefix is empty, or parts of 1 to 64 letters, digits, "_" or "-", each ending in "/".',
+    );
   }
   return checked;
 }
