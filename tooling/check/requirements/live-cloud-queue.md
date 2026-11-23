@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15970 (board decision, 22 Nov)
 
-When a change touches a cloud path, the live cloud suites shall run in the merge queue on the merge group's commit, and CI's `live-cloud` gate shall fail the group until they passed there; on a pull request from this repository the gate shall wait for them only when the change touches what they exercise directly (a `cloudflare-*` or `store-s3` adapter, `packages/targets`, the live suites, the deploy command, the `live-cloud` workflow or the code that decides, probes and sweeps for it: `cloud-affected`'s `on-pull-request`). A fork's pull request that touches any cloud path shall still fail the gate; a merge group that changes a cloud path while it holds a fork's pull request shall fail without running the suites, so a fork's code never gets the token; and a merge group that the queue drops shall stop its live run.
+When a change touches a cloud path, the live cloud suites shall run in the merge queue on the merge group's commit, and CI's `live-cloud` gate shall fail the group until they passed there; on a pull request from this repository the gate shall wait for them only when the change touches what they exercise directly (a `cloudflare-*` or `store-s3` adapter, the Cloudflare targets (`packages/targets/cloudflare`), the live suites, the deploy command, the `live-cloud` workflow or the code that decides, probes and sweeps for it: `cloud-affected`'s `on-pull-request`). A fork's pull request that touches any cloud path shall still fail the gate; a merge group that changes a cloud path while it holds a fork's pull request shall fail without running the suites, so a fork's code never gets the token; and a merge group that the queue drops shall stop its live run.
 
 ## Examples
 

@@ -5,12 +5,14 @@ import { dependencyFields, owningPackage, type WorkspacePackage } from "./worksp
  * The cloud paths (ADR 5.9): a change here must pass the live suites against
  * the real Cloudflare test account before it merges. These are the direct
  * paths only. The live workflow and the code that decides and sweeps count
- * too, because nothing else runs them before a merge.
+ * too, because nothing else runs them before a merge. Of the targets, only the
+ * Cloudflare ones count: the live suites deploy nothing else (HAL-17041), and
+ * a new cloud target gets its own pattern when it gets a live suite.
  */
 export const cloudPathPatterns: readonly RegExp[] = [
   /^packages\/adapters\/cloudflare-[^/]+\//,
   /^packages\/adapters\/store-s3\//,
-  /^packages\/targets\//,
+  /^packages\/targets\/cloudflare\//,
   /^packages\/host\//,
   /^packages\/core\/ports\//,
   /^packages\/testing\/contracts\/(src\/)?target\//,
@@ -36,7 +38,7 @@ export function isCloudPath(file: string): boolean {
 export const pullRequestLivePatterns: readonly RegExp[] = [
   /^packages\/adapters\/cloudflare-[^/]+\//,
   /^packages\/adapters\/store-s3\//,
-  /^packages\/targets\//,
+  /^packages\/targets\/cloudflare\//,
   /^packages\/testing\/cloudflare-live\//,
   /^apps\/cli\/src\/commands\/deploy\//,
   /^\.github\/workflows\/live-cloud\.yml$/,

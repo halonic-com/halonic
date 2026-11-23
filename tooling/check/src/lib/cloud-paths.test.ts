@@ -38,6 +38,8 @@ verifies("check.cloud-affected", () => {
     test.each([
       "packages/core/format/src/deployments.ts",
       "packages/adapters/fs-node/src/store.ts",
+      "packages/targets/node/harness/src/harness.ts",
+      "packages/targets/node/runtime/package.json",
       "packages/testing/spec/src/verifies.ts",
       "apps/cli/src/commands/run/run.ts",
       ".github/workflows/ci.yml",
@@ -133,6 +135,7 @@ verifies("check.live-cloud-queue", () => {
         "packages/core/format/src/deployments.ts",
         "tooling/check/src/lib/live-turn.ts",
         ".github/workflows/ci.yml",
+        "packages/targets/node/harness/src/harness.ts",
       ]) {
         expect(isPullRequestLivePath(file), file).toBe(false);
       }
