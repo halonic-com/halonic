@@ -36,10 +36,14 @@ export function moreText(row: WorkerRow): string | undefined {
   return more > 0 ? `and ${more} more in progress` : undefined;
 }
 
+/** " · Pip left out", or nothing when nobody is. */
+export function leftOutText(page: WorkerAgentsPage): string {
+  return page.leftOut.length === 0 ? "" : ` · ${listText(page.leftOut)} left out`;
+}
+
 /** "18 agents · Pip left out". */
 export function summaryText(page: WorkerAgentsPage): string {
-  const leftOut = page.leftOut.length === 0 ? "" : ` · ${listText(page.leftOut)} left out`;
-  return `${page.agents.length} agents${leftOut}`;
+  return `${page.agents.length} agents${leftOutText(page)}`;
 }
 
 /** The cause of a failed read: the bridge's error code in lower case, never its message or details. */

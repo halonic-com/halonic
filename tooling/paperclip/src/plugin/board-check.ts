@@ -10,6 +10,7 @@ import { planApprovalsPart } from "./board-check-approvals.ts";
 import { type AskScope, planAsks } from "./board-check-asks.ts";
 import { planMergeSpeed } from "./board-check-merge-speed.ts";
 import { planPilesPart } from "./board-check-piles.ts";
+import { planRuleChecks } from "./board-check-rule-checks.ts";
 import { planRuns, recordFailedRun } from "./board-check-runs.ts";
 import { planWaiting } from "./board-check-waiting.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
@@ -71,6 +72,7 @@ async function planJobParts(
   const agents = await ctx.agents.list({ companyId, limit: 500 });
   const names = new Map(agents.map((agent) => [agent.id, agent.name]));
   parts.push(await planApprovalsPart(ctx, companyId, settings.boardCheckerTaskId, names));
+  parts.push(await planRuleChecks(ctx, companyId, { openTasks, agents }, now));
   const hourly = hourlyPass("job", now);
   parts.push(await planMergeSpeed(ctx, companyId, settings.boardCheckerTaskId, hourly, now));
   if (hourly) {

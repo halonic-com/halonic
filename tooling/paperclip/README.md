@@ -128,8 +128,8 @@ job log, then turn `dryRun` off.
 The board's read-only "Worker agents" page (HAL-16249, addendum 2 on
 HAL-15997): the board agents with their newest run, then one row per worker
 agent (Pip left out) with its task in progress, its newest run and its failed
-runs of the last 24 hours by cause code. Rule checks follow with HAL-16250;
-open PRs and branch names say "Not available yet" until HAL-16251.
+runs of the last 24 hours by cause code, and its 5 rule checks (HAL-16250),
+worst first. Open PRs say "Not available yet" until HAL-16251.
 
 - **Board-only:** the data comes through the `worker-agents` route, declared
   `auth: "board"` and checked again in `src/plugin/worker-agents-route.ts`, and
@@ -144,6 +144,16 @@ open PRs and branch names say "Not available yet" until HAL-16251.
   reach the plugin. Paperclip requires `database.namespace.migrate` and
   `database.namespace.read` for this read; `src/plugin/migrations/` is empty,
   because the plugin keeps nothing in its own schema.
+- **Rule checks:** every `board-check` job pass works them out in
+  `src/worker-agents/rule-checks.ts` from its listing of open tasks and the
+  PR watcher's snapshot, and saves them in plugin state (`rule-checks`); the
+  page only reads that entry. They are: new work on a red PR (Check at most,
+  a guess from timestamps), task state (nothing set to wake, HAL-15308 R2),
+  monitors (two tasks on one PR, or one firing more often than every
+  15 minutes), workload (nothing to start, or more than 10 in progress) and
+  branch names (`<agent>/HAL-<n>-<words>`). A monitor's notes give only
+  pull request numbers; nothing an agent wrote is kept. The part writes
+  nothing in Paperclip.
 - **Privacy:** task keys can name an open security finding, so the page is
   never exported, linked publicly or pushed out.
 
