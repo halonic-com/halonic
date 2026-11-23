@@ -1,10 +1,12 @@
 /**
  * What the phone's run detail shows of one agent, top to bottom (drawing on HAL-16169): its
  * messages and approvals in the order they happened, each with the computer's time, then how the
- * agent stands. Pure, so the screen only draws it.
+ * agent stands. Pure, so the screen only draws it. The computer's text in it is data: hidden
+ * characters show as markers, and a summary is cut with "…" (`host-text.ts`).
  */
 
 import { agentLine } from "./agent-line.ts";
+import { hostLine, hostLineMax, hostMessage, hostTitle } from "./host-text.ts";
 import { asOfText } from "./phone-forms.ts";
 import type { RemoteApproval, RemoteEvent, RemoteSession, RemoteView } from "./remote-view.ts";
 import { runWords } from "./run-words.ts";
@@ -107,12 +109,12 @@ function eventItem(
         kind: "message",
         key: `event-${event.seq}`,
         from: body.role === "user" ? "you" : "agent",
-        text: body.text,
+        text: hostMessage(body.text),
         time: timeOf(event.at, now),
       };
     case "approval-requested": {
       const answer = held.settled.get(body.approval.id);
-      if (answer !== undefined) return answered(answer, body.approval.summary, now);
+      if (answer !== undefined) return answered(answer, summaryOf(body.approval.summary), now);
       const waiting = open.get(body.approval.id);
       return waiting === undefined ? undefined : waitingItem(waiting, now);
     }
@@ -127,9 +129,14 @@ function waitingItem(open: RemoteApproval, now: Date): RunItem {
   return {
     kind: "waiting",
     key: `approval-${open.approval.id}`,
-    summary: open.approval.summary,
+    summary: summaryOf(open.approval.summary),
     time: timeOf(open.requestedAt, now),
   };
+}
+
+/** An approval's `tool: {args}` summary as shown: hidden characters marked, cut with "…". */
+function summaryOf(summary: string): string {
+  return hostLine(summary, hostLineMax);
 }
 
 function answered(settled: RemoteEvent, summary: string | undefined, now: Date): RunItem {
@@ -150,7 +157,9 @@ function endOf(view: RemoteView, session: RemoteSession, now: Date): RunItem | u
     case "waiting":
       return undefined;
     case "running":
-      if (view.canAnswer) return { kind: "working", key, text: runWords.working(session.title) };
+      if (view.canAnswer) {
+        return { kind: "working", key, text: runWords.working(hostTitle(session.title)) };
+      }
       if (view.asOf === undefined) return undefined;
       return {
         kind: "ended",

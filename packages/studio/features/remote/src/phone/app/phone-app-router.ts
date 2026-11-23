@@ -10,14 +10,18 @@ import type {
   PhoneStatus,
   PhoneTunnel,
 } from "../phone-tunnel.ts";
+import type { PhoneRemote } from "../remote-view.ts";
 import { type FirstReach, FirstReaches } from "./first-reaches.ts";
 
 /** The sheet over a computer's screen: the header label's status sheet, or Check this connection. */
 export type ComputerSheet = "none" | "status" | "check";
 
-/** What the page holds from one computer while it shows it, such as its agents. */
-export interface HeldComputer {
-  /** Drops everything held from the computer. */
+/**
+ * What the page holds from one computer while it shows it: its gateway client, whose view the
+ * Agents list, the run detail and the status sheet show.
+ */
+export interface HeldComputer extends PhoneRemote {
+  /** Drops everything held from the computer, as when it removes this phone. */
   dispose(): void;
 }
 
@@ -29,7 +33,13 @@ export type PhoneAppScreen =
   | { readonly screen: "loading" }
   | { readonly screen: "pair"; readonly flow: PhonePairingFlow }
   | { readonly screen: "address" }
-  | { readonly screen: "computer"; readonly computer: ComputerId; readonly sheet: ComputerSheet }
+  | {
+      readonly screen: "computer";
+      readonly computer: ComputerId;
+      readonly sheet: ComputerSheet;
+      /** The agent whose run detail shows in place of the Agents list, if any. */
+      readonly run?: string;
+    }
   | { readonly screen: "computers" };
 
 /** What the phone app shows now. */
@@ -45,7 +55,7 @@ export interface PhoneAppView {
 export interface PhoneAppRouterOptions {
   readonly tunnel: PhoneTunnel;
   readonly scanner: PhoneScanner;
-  /** Starts holding what the page keeps from a computer; none until the gateway client is mounted. */
+  /** Starts holding what the page keeps from a computer when its screen opens; none in some tests. */
   readonly hold?: (computer: PairedComputer) => HeldComputer;
   /** Where a call the shell refused goes, for the log. */
   readonly report: (problem: string) => void;
@@ -115,6 +125,27 @@ export class PhoneAppRouter {
   /** The first reach of a computer the phone hasn't reached since it opened it, if under way. */
   reachOf(computer: ComputerId): FirstReach | undefined {
     return this.#reaches.get(computer);
+  }
+
+  /** The gateway client of a computer whose screen opened, until it is removed or forgotten. */
+  remoteOf(computer: ComputerId): PhoneRemote | undefined {
+    return this.#held.get(computer);
+  }
+
+  /** An agent's row was tapped: its run detail shows in place of the Agents list. */
+  openRun(sessionId: string): void {
+    const top = this.#top();
+    if (top.screen !== "computer") return;
+    this.#stack = [...this.#stack.slice(0, -1), { ...top, sheet: "none", run: sessionId }];
+    this.#changed();
+  }
+
+  /** The run detail's Back, and an agent that left the list while open: back to Agents. */
+  closeRun(): void {
+    const top = this.#top();
+    if (top.screen !== "computer" || top.run === undefined) return;
+    this.#stack = [...this.#stack.slice(0, -1), withoutRun(top)];
+    this.#changed();
   }
 
   /** The header label or the banner's Details: opens the status sheet. */
@@ -203,11 +234,18 @@ export class PhoneAppRouter {
     return outcome;
   }
 
-  /** Android back: closes the sheet, else goes back a screen. False when there's nowhere to go. */
+  /**
+   * Android back: closes the sheet, else the run detail, else goes back a screen. False when
+   * there's nowhere to go.
+   */
   back(): boolean {
     const top = this.#top();
     if (top.screen === "computer" && top.sheet !== "none") {
       this.#setSheet("none");
+      return true;
+    }
+    if (top.screen === "computer" && top.run !== undefined) {
+      this.closeRun();
       return true;
     }
     if (this.#stack.length < 2) return false;
@@ -260,9 +298,13 @@ export class PhoneAppRouter {
     };
   }
 
+  /** Drops what the page held from `computer`, and closes its run details, which showed it. */
   #drop(computer: ComputerId): void {
     this.#held.get(computer)?.dispose();
     this.#held.delete(computer);
+    this.#stack = this.#stack.map((screen) =>
+      screen.screen === "computer" && screen.computer === computer ? withoutRun(screen) : screen,
+    );
   }
 
   async #list(): Promise<readonly ListedComputer[] | KeysUnavailable> {
@@ -291,19 +333,26 @@ export class PhoneAppRouter {
       screen: this.#top(),
       computers: this.#computers,
       statuses: new Map(this.#statuses),
-      canGoBack: this.#stack.length > 1 || this.#sheetOpen(),
+      canGoBack: this.#stack.length > 1 || this.#sheetOrRunOpen(),
     };
   }
 
-  #sheetOpen(): boolean {
+  #sheetOrRunOpen(): boolean {
     const top = this.#top();
-    return top.screen === "computer" && top.sheet !== "none";
+    return top.screen === "computer" && (top.sheet !== "none" || top.run !== undefined);
   }
 
   #changed(): void {
     this.#view = this.#build();
     for (const listener of [...this.#listeners]) listener();
   }
+}
+
+type ComputerScreen = Extract<PhoneAppScreen, { readonly screen: "computer" }>;
+
+/** A computer's screen with its Agents list, not a run detail. */
+function withoutRun({ run: _run, ...screen }: ComputerScreen): ComputerScreen {
+  return screen;
 }
 
 /** The tunnel's last try met no network on the phone. */

@@ -10,10 +10,9 @@ import { FakeComputerTunnel } from "./fake-computer-tunnel.ts";
 /** The computer the scene's client is paired with. */
 export const SCENE_COMPUTER = "Work laptop";
 
-/** A gateway client over a fake shell, with helpers to play the host. */
-export class GatewayScene {
+/** A fake shell with helpers to play the host behind it, for whatever client listens to it. */
+export class GatewayHost {
   readonly tunnel = new FakeComputerTunnel();
-  readonly client = new GatewayClient(this.tunnel, SCENE_COMPUTER);
   generation = 0;
 
   /** A new session opens and the host welcomes the phone's `hello`. */
@@ -59,4 +58,9 @@ export class GatewayScene {
   drop(): void {
     this.tunnel.status("reconnecting");
   }
+}
+
+/** A gateway client over a fake shell, with helpers to play the host. */
+export class GatewayScene extends GatewayHost {
+  readonly client = new GatewayClient(this.tunnel, SCENE_COMPUTER);
 }

@@ -1,3 +1,4 @@
+import type { ComputerId } from "@halonicjs/studio-feature-remote/phone";
 import { tauriIpc } from "@halonicjs/studio-services/tauri-ipc";
 import { type ConnectBridge, localAddressStore } from "./bridge.ts";
 import { type PairingScanner, tauriPairingScanner } from "./pair-scan.ts";
@@ -33,6 +34,9 @@ const tunnel = internals === undefined ? undefined : tauriPhoneTunnel(window, re
 
 void startPage({
   document,
+  ...(tunnel === undefined
+    ? {}
+    : { computerTunnel: (computer: ComputerId) => tunnel.computerTunnel(computer) }),
   bridge: internals === undefined ? outsideTheApp : tauriBridge(internals, window),
   store: localAddressStore(localStorage),
   changeAddress: location.hash === "#change-address" || location.hash === "#page-not-shown",

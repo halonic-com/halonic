@@ -116,7 +116,7 @@ export class TauriPhoneTunnel implements PhoneTunnel {
  * @param page - the page's global object, usually `window`
  * @param report - where an answer the page doesn't know goes, for the log
  */
-export function tauriPhoneTunnel(page: object, report: Report): PhoneTunnel | undefined {
+export function tauriPhoneTunnel(page: object, report: Report): TauriPhoneTunnel | undefined {
   const ipc = tauriChannelIpc(page);
   return ipc === undefined ? undefined : new TauriPhoneTunnel(ipc, report);
 }

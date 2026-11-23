@@ -1,10 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import type { PhoneScanner } from "../pairing-flow.ts";
-import type { PairedComputer, PhoneTunnel } from "../phone-tunnel.ts";
+import type { PhoneTunnel } from "../phone-tunnel.ts";
 import type { PhoneOutside } from "./computer-screen.tsx";
+import { type ComputerTunnelOf, holdGateway } from "./held-gateway.ts";
 import { PhoneApp } from "./phone-app.tsx";
-import { type HeldComputer, PhoneAppRouter } from "./phone-app-router.ts";
+import { PhoneAppRouter } from "./phone-app-router.ts";
 
 /** What the page hands the phone app. */
 export interface PhoneAppMount extends PhoneOutside {
@@ -18,8 +19,11 @@ export interface PhoneAppMount extends PhoneOutside {
    */
   readonly onAddress: (showing: boolean) => void;
   readonly onCamera: (showing: boolean) => void;
-  /** What the page holds from a computer it shows; dropped when it removes this phone. */
-  readonly hold?: (computer: PairedComputer) => HeldComputer;
+  /**
+   * The shell's tunnel to one paired computer: each computer's screen shows its agents through a
+   * gateway client over it. Without it the screens show the connection only.
+   */
+  readonly computerTunnel?: ComputerTunnelOf;
   /** Where a call the shell refused goes, for the log. */
   readonly report: (problem: string) => void;
 }
@@ -35,7 +39,9 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
     tunnel: mount.tunnel,
     scanner: mount.scanner,
     report: mount.report,
-    ...(mount.hold === undefined ? {} : { hold: mount.hold }),
+    ...(mount.computerTunnel === undefined
+      ? {}
+      : { hold: holdGateway(mount.computerTunnel, mount.window.document) }),
   });
   const history = mount.window.history;
   let standing = false;

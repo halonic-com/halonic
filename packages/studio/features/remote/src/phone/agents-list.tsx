@@ -1,6 +1,7 @@
 import { Button, LetterTile, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
 import { agentRowLine, agentStateWords, oldestApprovalOf } from "./agent-line.ts";
+import { hostTitle } from "./host-text.ts";
 import { spoken } from "./phone-forms.ts";
 import type {
   RemoteApproval,
@@ -94,7 +95,8 @@ function AgentRow({
   readonly onAnswer: OnAnswer;
 }) {
   const state = agentStateWords[session.state];
-  const name = [session.title, line, state].filter(Boolean).join(", ");
+  const title = hostTitle(session.title);
+  const name = [title, line, state].filter(Boolean).join(", ");
   return (
     <li className="flex flex-col">
       <button
@@ -102,12 +104,12 @@ function AgentRow({
         className="flex items-start gap-3 px-4 py-3 text-left hover:bg-surface-muted focus-ring-inset"
         onClick={onOpen}
       >
-        <LetterTile name={session.title} size="md" />
+        <LetterTile name={title} size="md" />
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           {/* One line for a screen reader: the visible parts below are read as this. */}
           <span className="sr-only">{spoken(name)}</span>
           <span aria-hidden="true" className="truncate text-body text-fg">
-            {session.title}
+            {title}
           </span>
           {line === undefined ? null : (
             <span aria-hidden="true" className="line-clamp-2 text-small text-fg-muted">

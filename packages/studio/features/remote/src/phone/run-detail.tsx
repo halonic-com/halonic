@@ -11,6 +11,7 @@ import {
   InfoIcon,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useRef } from "react";
+import { hostTitle } from "./host-text.ts";
 import { PromptBox } from "./prompt-box.tsx";
 import type { RemoteSendOutcome, RemoteView } from "./remote-view.ts";
 import { type RunItem, runHistory } from "./run-history.ts";
@@ -61,7 +62,7 @@ export function RunDetail({
   }, [gone, onBack]);
 
   if (session === undefined) return null;
-  const { title } = session;
+  const title = hostTitle(session.title);
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-phone-bar shrink-0 items-center gap-1 border-b border-border pr-4 pl-1">
