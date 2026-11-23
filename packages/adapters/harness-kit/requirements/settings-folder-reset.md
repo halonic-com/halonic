@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16910
 
-Before each run, the harness kit shall make the agent's settings folder hold only the harness's own settings files and the files its program keeps its sign-in in, which the harness names: every other file, folder or link at the folder's top level shall be removed, a link without what it points at, and then the settings files shall be written as `harness-kit.settings-folder` says. The sign-in files shall stay as they are. A settings folder that doesn't exist yet shall be made, and an entry that can't be removed shall stop the run from starting.
+When a run starts, the harness kit shall first make the agent's settings folder hold only the harness's own settings files and the files its program keeps its sign-in in, which the harness names: every other file, folder or link at the folder's top level shall be removed, a link without what it points at, and then the settings files shall be written as `harness-kit.settings-folder` says. The sign-in files shall stay as they are. A settings folder that doesn't exist yet shall be made, and an entry that can't be removed shall stop the run from starting.
 
 ## Examples
 

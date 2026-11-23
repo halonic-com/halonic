@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16910
 
-Before each run, the Claude Code harness shall reset the agent's settings folder (`CLAUDE_CONFIG_DIR`) as `harness-kit.settings-folder-reset` says, keeping only the files of `harness-claude-code.settings` and the sign-in in `.credentials.json` and `.claude.json`, so that what a run left there, such as a `CLAUDE.md` or a `skills`, `agents` or `commands` folder, doesn't reach a later run.
+When a run starts, the Claude Code harness shall first reset the agent's settings folder (`CLAUDE_CONFIG_DIR`) as `harness-kit.settings-folder-reset` says, keeping only the files of `harness-claude-code.settings` and the sign-in in `.credentials.json` and `.claude.json`, so that what a run left there, such as a `CLAUDE.md` or a `skills`, `agents` or `commands` folder, doesn't reach a later run.
 
 ## Examples
 

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16910
 
-Before each run, the Codex harness shall reset the agent's settings folder (`CODEX_HOME`) as `harness-kit.settings-folder-reset` says, keeping only its `config.toml` and the sign-in in `auth.json`, so that what a run left there, such as an `AGENTS.md`, a `rules` folder or a `skills` folder, doesn't reach a later run.
+When a run starts, the Codex harness shall first reset the agent's settings folder (`CODEX_HOME`) as `harness-kit.settings-folder-reset` says, keeping only its `config.toml` and the sign-in in `auth.json`, so that what a run left there, such as an `AGENTS.md`, a `rules` folder or a `skills` folder, doesn't reach a later run.
 
 ## Examples
 
