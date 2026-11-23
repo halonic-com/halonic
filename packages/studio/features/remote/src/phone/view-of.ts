@@ -16,9 +16,10 @@ import type { SentAnswers } from "./sent-answers.ts";
 import type { SessionMemory } from "./session-memory.ts";
 
 /**
- * Why Approve and Reject are off for a `risky` approval: the phone answers none
- * until it has biometric unlock (board decision 4b). Interim words: the final
- * ones are a wording call with Elena and Sofia.
+ * Why Approve and Reject are off for a `risky` approval: the phone answers one
+ * only while the computer's switch "Let phones answer risky approvals" is on
+ * and the phone's owner check can ask (board decision 4b, HAL-15194). Interim
+ * words: the final ones are a wording call with Elena and Sofia.
  */
 export const ANSWER_RISKY_ON_COMPUTER = "Answer this on your computer.";
 
@@ -36,6 +37,11 @@ export interface ClientHolding {
   readonly sentAnswers: SentAnswers;
   /** What the last session list said of the risky switch. */
   readonly answersRisky: boolean;
+  /**
+   * Whether the phone's owner check could ask, checked again after the last
+   * session list arrived. `false` until that check answers.
+   */
+  readonly ownerCheckAvailable: boolean;
   /** The last connection found the two sides on different message versions. */
   readonly updateNeeded: boolean;
 }
@@ -43,12 +49,13 @@ export interface ClientHolding {
 /** The view of `holding`: live only while connected and listed since the last `welcome`. */
 export function viewOf(holding: ClientHolding): RemoteView {
   const live = holding.state === "connected" && holding.listed;
+  const risky = answersRiskyOnPhone(holding);
   const notLiveReason = holding.updateNeeded ? UPDATE_TO_ANSWER : RECONNECT_TO_ANSWER;
   return {
     label: phoneStatusLabel(holding.state, holding.computer),
     asOf: holding.asOf,
     sessions: holding.sessions.map((session) => sessionOf(session, holding.memories)),
-    openApprovals: openApprovalsOf(holding, live, notLiveReason),
+    openApprovals: openApprovalsOf(holding, live, risky, notLiveReason),
     canAnswer: live,
     offReason: live ? undefined : notLiveReason,
     answersRisky: holding.answersRisky,
@@ -75,20 +82,23 @@ function sessionOf(
 function openApprovalsOf(
   holding: ClientHolding,
   live: boolean,
+  risky: RiskyOnPhone,
   notLiveReason: string,
 ): RemoteApproval[] {
   const approvals = holding.sessions.flatMap((session) =>
     (holding.memories.get(session.id)?.openApprovals ?? []).map(
       ({ approval, requestedAt }): RemoteApproval => {
         const sent = holding.sentAnswers.decisionFor(approval.id);
-        const offReason = live ? riskOffReason(approval.risk) : notLiveReason;
+        const answerOnComputer = approval.risk === "risky" && risky === "on-computer";
+        const onComputerReason = answerOnComputer ? ANSWER_RISKY_ON_COMPUTER : undefined;
+        const offReason = live ? onComputerReason : notLiveReason;
         return {
           sessionId: session.id,
           approval,
           requestedAt,
           canAnswer: offReason === undefined && sent === undefined,
           offReason,
-          answerOnComputer: approval.risk === "risky",
+          answerOnComputer,
           sent,
         };
       },
@@ -97,6 +107,15 @@ function openApprovalsOf(
   return approvals.sort((a, b) => a.requestedAt.localeCompare(b.requestedAt));
 }
 
-function riskOffReason(risk: "normal" | "risky"): string | undefined {
-  return risk === "risky" ? ANSWER_RISKY_ON_COMPUTER : undefined;
+/** Where a `risky` approval is answered: on the phone, or only on the computer. */
+type RiskyOnPhone = "on-phone" | "on-computer";
+
+/**
+ * A `risky` approval gets Approve and Reject on the phone only while both hold:
+ * the computer's last list said its switch is on, and the owner check can ask.
+ * Both are only hints for what to show: the shell asks the owner check and the
+ * computer checks its switch again for every answer.
+ */
+function answersRiskyOnPhone(holding: ClientHolding): RiskyOnPhone {
+  return holding.answersRisky && holding.ownerCheckAvailable ? "on-phone" : "on-computer";
 }

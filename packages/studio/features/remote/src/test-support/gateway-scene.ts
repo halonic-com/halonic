@@ -4,7 +4,7 @@ import {
   gatewayMaxMessageBytes,
   gatewayProtocolVersion,
 } from "@halonicjs/ports";
-import { GatewayClient } from "../phone/gateway-client.ts";
+import { GatewayClient, type OwnerCheckAvailable } from "../phone/gateway-client.ts";
 import { FakeComputerTunnel } from "./fake-computer-tunnel.ts";
 
 /** The computer the scene's client is paired with. */
@@ -68,5 +68,11 @@ export class GatewayHost {
 
 /** A gateway client over a fake shell, with helpers to play the host. */
 export class GatewayScene extends GatewayHost {
-  readonly client = new GatewayClient(this.tunnel, SCENE_COMPUTER);
+  readonly client: GatewayClient;
+
+  /** `ownerCheck` stands for the shell's `owner_check_available`; without one it never can ask. */
+  constructor(ownerCheck?: OwnerCheckAvailable) {
+    super();
+    this.client = new GatewayClient(this.tunnel, SCENE_COMPUTER, ownerCheck);
+  }
 }

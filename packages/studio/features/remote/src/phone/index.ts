@@ -34,6 +34,7 @@ export {
   computersWords,
   routeOf,
 } from "./computers-words.ts";
+export type { OwnerCheckAvailable } from "./gateway-client.ts";
 export { pairWords } from "./pair-words.ts";
 export { computerRowState, PairedComputers } from "./paired-computers.tsx";
 export {

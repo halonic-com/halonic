@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import type { OwnerCheckAvailable } from "../gateway-client.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
 import type { PhoneTunnel } from "../phone-tunnel.ts";
 import type { PhoneOutside } from "./computer-screen.tsx";
@@ -24,6 +25,11 @@ export interface PhoneAppMount extends PhoneOutside {
    * gateway client over it. Without it the screens show the connection only.
    */
   readonly computerTunnel?: ComputerTunnelOf;
+  /**
+   * The shell's `owner_check_available`. Without it, `risky` approvals are
+   * answered on the computer only.
+   */
+  readonly ownerCheckAvailable?: OwnerCheckAvailable;
   /** Where a call the shell refused goes, for the log. */
   readonly report: (problem: string) => void;
 }
@@ -41,7 +47,9 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
     report: mount.report,
     ...(mount.computerTunnel === undefined
       ? {}
-      : { hold: holdGateway(mount.computerTunnel, mount.window.document) }),
+      : {
+          hold: holdGateway(mount.computerTunnel, mount.window.document, mount.ownerCheckAvailable),
+        }),
   });
   const history = mount.window.history;
   let standing = false;

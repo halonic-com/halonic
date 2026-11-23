@@ -1,5 +1,5 @@
 import type { ComputerTunnel } from "../computer-tunnel.ts";
-import { GatewayClient } from "../gateway-client.ts";
+import { GatewayClient, type OwnerCheckAvailable } from "../gateway-client.ts";
 import type { ComputerId, PairedComputer } from "../phone-tunnel.ts";
 import type { HeldComputer } from "./phone-app-router.ts";
 
@@ -15,9 +15,10 @@ export type ComputerTunnelOf = (computer: ComputerId) => ComputerTunnel;
 export function holdGateway(
   tunnelOf: ComputerTunnelOf,
   document: Document,
+  ownerCheck?: OwnerCheckAvailable,
 ): (computer: PairedComputer) => HeldComputer {
   return (computer) => {
-    const client = new GatewayClient(tunnelOf(computer.id), computer.name);
+    const client = new GatewayClient(tunnelOf(computer.id), computer.name, ownerCheck);
     const follow = () => client.setInFront(document.visibilityState === "visible");
     follow();
     document.addEventListener("visibilitychange", follow);
