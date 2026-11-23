@@ -33,6 +33,7 @@ interface EngineLog {
 
 interface FakeEngineOptions {
   interrupted?: number;
+  stopSchedulingFails?: boolean;
   settleFails?: boolean;
 }
 
@@ -50,7 +51,10 @@ function fakeEngine(options: FakeEngineOptions = {}) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    stopScheduling: () => log.steps.push("stopScheduling"),
+    stopScheduling() {
+      log.steps.push("stopScheduling");
+      if (options.stopSchedulingFails) throw new Error("The scheduler's timer is gone.");
+    },
     async settle(graceMs) {
       log.steps.push("settle");
       log.graceMs.push(graceMs);
@@ -190,6 +194,17 @@ verifies("agent-host.engine-role-lifecycle", () => {
       expect(log.steps).toEqual(["stopScheduling", "settle", "close"]);
       expect(await role.written()).toEqual([{ kind: "stopped", interrupted: 0 }]);
       expect(role.errors.join("")).toMatch(/interrupted runs: The run store is read-only/);
+    });
+
+    it("still settles and closes the engine when the scheduler can't stop", async () => {
+      const { engine, log } = fakeEngine({ stopSchedulingFails: true, interrupted: 2 });
+      const role = startRole(async () => engine);
+      await role.written();
+      role.input.write(shellFrame('{"kind":"stop"}'));
+      expect(await role.exit).toBe(1);
+      expect(log.steps).toEqual(["stopScheduling", "settle", "close"]);
+      expect(await role.written()).toEqual([{ kind: "stopped", interrupted: 2 }]);
+      expect(role.errors.join("")).toMatch(/routine scheduler: The scheduler's timer is gone/);
     });
   });
 });

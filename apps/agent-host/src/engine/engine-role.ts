@@ -151,9 +151,14 @@ async function stop(
 ): Promise<number> {
   if (reason.kind === "fault")
     parts.writeError(`The control pipe broke: ${reason.error.message}\n`);
-  engine.stopScheduling();
   let interrupted = 0;
   let failed = reason.kind === "fault";
+  try {
+    engine.stopScheduling();
+  } catch (error) {
+    parts.writeError(`The engine couldn't stop its routine scheduler: ${messageOf(error)}\n`);
+    failed = true;
+  }
   try {
     interrupted = await engine.settle(stopGraceMs);
   } catch (error) {
