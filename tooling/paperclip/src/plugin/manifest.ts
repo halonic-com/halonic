@@ -1,4 +1,6 @@
 import type { PaperclipPluginManifestV1, PluginCapability } from "@paperclipai/plugin-sdk";
+import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
+import { workerReadTables } from "../worker-agents/tables.ts";
 
 /**
  * The capability of our local server patch (HAL-16413). Paperclip's shared
@@ -12,13 +14,14 @@ const monitorPostpone = "issues.monitors.postpone" as PluginCapability;
  * watcher (trigger A1); its tools are `pr_status` and `my_prs` (B1), and
  * `queue_state` from the watcher's snapshot (HAL-16003). The board check
  * (phase 1b, HAL-16194) adds the `board-check` job and the wake on a board
- * ask. Capabilities are the fewest those need: no webhooks, UI, files or
- * processes.
+ * ask. The board's read-only "Worker agents" page (HAL-16249) adds the UI
+ * page and a named-column read of Paperclip's task and run tables.
+ * Capabilities are the fewest those need: no webhooks, files or processes.
  */
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.agent-tools",
   apiVersion: 1,
-  version: "0.5.0",
+  version: "0.6.0",
   displayName: "Agent tools",
   description:
     "Halonic's tools beside Paperclip. The PR watcher marks a task done once its pull requests merged with a green ci-ok, and wakes the author for a red ci-ok, a conflict or a new review finding.",
@@ -78,8 +81,21 @@ export const manifest: PaperclipPluginManifestV1 = {
     // The PR watcher moves the fallback monitor of a task it watches later (HAL-16401 part 3).
     // Paperclip lets it only move an existing monitor later, at most 24 hours out (HAL-16413).
     monitorPostpone,
+    // The "Worker agents" page (HAL-16249): board-only and read-only. Its data comes from the
+    // board-only worker-agents route and the page's data key, never from an agent tool.
+    "ui.page.register",
+    // Paperclip requires both for `coreReadTables`. The migrations folder holds no migration:
+    // the plugin keeps nothing in its own schema. src/worker-agents/tables.ts names every column.
+    "database.namespace.migrate",
+    "database.namespace.read",
   ],
-  entrypoints: { worker: "dist/worker.js" },
+  entrypoints: { worker: "dist/worker.js", ui: "dist/ui" },
+  database: {
+    namespaceSlug: "agent_tools",
+    migrationsDir: "src/plugin/migrations",
+    // agents, heartbeat_runs and issues: who works on what, each agent's newest run, failed runs.
+    coreReadTables: [...workerReadTables],
+  },
   instanceConfigSchema: {
     type: "object",
     properties: {
@@ -232,7 +248,27 @@ export const manifest: PaperclipPluginManifestV1 = {
       capability: "api.routes.register",
       companyResolution: { from: "query", key: "companyId" },
     },
+    {
+      // The Worker agents page's data, for a signed-in board user only (src/plugin/worker-agents-route.ts).
+      routeKey: workerAgentsRouteKey,
+      method: "GET",
+      path: "/worker-agents",
+      auth: "board",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
+    },
   ],
+  ui: {
+    slots: [
+      {
+        type: "page",
+        id: "worker-agents",
+        displayName: "Worker agents",
+        exportName: "WorkerAgentsPage",
+        routePath: "worker-agents",
+      },
+    ],
+  },
   tools: [
     {
       name: "pr_status",

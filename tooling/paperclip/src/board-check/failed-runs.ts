@@ -44,7 +44,8 @@ export const keepRunsMs = 48 * 60 * 60_000;
 
 export const emptyRecord: FailedRunsRecord = { since: null, runs: [], woken: [], reported: [] };
 
-const causePatterns: readonly [CauseCode, RegExp][] = [
+/** The text patterns behind each cause code, first match wins; the Worker agents page matches them in the database. */
+export const causePatterns: readonly [CauseCode, RegExp][] = [
   ["no_identity", /no managed github identity|github identity/i],
   [
     "spend_limit",

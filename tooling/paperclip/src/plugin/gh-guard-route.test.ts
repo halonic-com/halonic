@@ -87,6 +87,7 @@ verifies("paperclip.gh-guard-route", () => {
     test("the manifest declares the route for agents, and the worker answers only it", async () => {
       expect(manifest.apiRoutes?.map((route) => [route.routeKey, route.auth])).toEqual([
         ["gh-guard", "board-or-agent"],
+        ["worker-agents", "board"],
       ]);
       expect(manifest.capabilities).toContain("api.routes.register");
       const onApiRequest = plugin.definition.onApiRequest;
