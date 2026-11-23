@@ -109,6 +109,45 @@ verifies("remote.phone-prompt-box", () => {
     expect(promptWords.tooLong).toContain(gatewayMaxPromptLength.toLocaleString("en-GB"));
   });
 
+  it("says a prompt or an answer whose port rejected was cut off, and sends nothing again", async () => {
+    // A rejection the screens didn't catch would also fail this test run.
+    const onSend = vi.fn(async (): Promise<RemoteSendOutcome> => {
+      throw new Error("port bug");
+    });
+    const prompt = render(<PromptBox view={remoteView()} agent={sorter} onSend={onSend} />);
+    const box = prompt.querySelector("textarea");
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(box, "Hi");
+      box?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => prompt.querySelector("button")?.click());
+    expect(onSend).toHaveBeenCalledOnce();
+    expect(box?.value).toBe("Hi");
+    expect(prompt.querySelector('[role="status"]')?.textContent).toBe(
+      sendOutcomeLine("prompt", { kind: "cut-off" }),
+    );
+
+    const onAnswer = vi.fn(async (): Promise<RemoteSendOutcome> => {
+      throw new Error("port bug");
+    });
+    const agents = render(
+      <AgentsList
+        view={remoteView({
+          sessions: [remoteSession({ id: "sorter", title: "Sorter", state: "waiting" })],
+          openApprovals: [remoteApproval({ sessionId: "sorter" })],
+        })}
+        onOpen={vi.fn()}
+        onAnswer={onAnswer}
+      />,
+    );
+    const approve = [...agents.querySelectorAll("button")].find((b) => b.textContent === "Approve");
+    await act(async () => approve?.click());
+    expect(onAnswer).toHaveBeenCalledOnce();
+    expect(agents.querySelector('[role="status"]')?.textContent).toBe(
+      sendOutcomeLine("answer", { kind: "cut-off" }),
+    );
+  });
+
   it("words what became of an answer or a prompt, and adds nothing when it was done or off", () => {
     expect(sendOutcomeLine("answer", { kind: "done" })).toBeUndefined();
     expect(sendOutcomeLine("prompt", { kind: "not-sent", reason: "off" })).toBeUndefined();
@@ -150,7 +189,7 @@ verifies("remote.phone-prompt-box", () => {
       openApprovals: [remoteApproval({ sessionId: "sorter" })],
     });
     const onAnswer = vi.fn(async (): Promise<RemoteSendOutcome> => ({ kind: "cut-off" }));
-    const screen = render(<AgentsList view={view} onAnswer={onAnswer} />);
+    const screen = render(<AgentsList view={view} onOpen={vi.fn()} onAnswer={onAnswer} />);
     const approve = [...screen.querySelectorAll("button")].find((b) => b.textContent === "Approve");
     await act(async () => approve?.click());
     expect(screen.querySelector('[role="status"]')?.textContent).toBe(

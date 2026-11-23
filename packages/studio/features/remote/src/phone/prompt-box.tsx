@@ -66,8 +66,11 @@ export function PromptBox({
     let outcome: RemoteSendOutcome;
     try {
       outcome = await onSend(target.sessionId, text);
+    } catch {
+      // A port that rejects never said what became of the prompt: say so as a cut-off one, so
+      // the text stays and nothing is sent again by itself.
+      outcome = { kind: "cut-off" };
     } finally {
-      // A port that throws leaves Send usable again; the rejection still reaches the caller.
       setSending(false);
     }
     if (outcome.kind === "done") {

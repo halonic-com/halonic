@@ -100,6 +100,9 @@ export {
   problemWords,
 } from "./problem-screen.tsx";
 export { PromptBox, type PromptTarget } from "./prompt-box.tsx";
+export { RunDetail, type RunDetailProps } from "./run-detail.tsx";
+export { type RunItem, runHistory } from "./run-history.ts";
+export { runWords } from "./run-words.ts";
 export { promptWords, sendOutcomeLine } from "./send-words.ts";
 export { StaleBanner, type StaleBannerOf, type StaleBannerProps } from "./stale-banner.tsx";
 export { type Standing, StandingScreen } from "./standing-screen.tsx";
