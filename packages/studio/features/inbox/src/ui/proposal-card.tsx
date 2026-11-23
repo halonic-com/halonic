@@ -1,5 +1,6 @@
 import {
   Button,
+  type ButtonUnavailable,
   type ButtonVariant,
   breakableAtSeparators,
   CommandBox,
@@ -20,7 +21,13 @@ import {
 } from "../plain/proposal-text.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { ProposalFile, ProposalItem } from "../proposal-items.ts";
-import { cardBodyClasses, cardClasses } from "./card-parts.tsx";
+import {
+  cardBodyClasses,
+  cardClasses,
+  type EngineState,
+  NotAnsweringLine,
+  unavailableWhile,
+} from "./card-parts.tsx";
 import { itemTitle } from "./inbox-row.tsx";
 import { GoneLine } from "./proposal-gone.tsx";
 import type { RunFacts } from "./run-facts.ts";
@@ -32,7 +39,7 @@ import {
 } from "./use-proposal-decisions.ts";
 
 /** What {@link ProposalCard} shows. */
-export interface ProposalCardProps {
+export interface ProposalCardProps extends EngineState {
   readonly item: ProposalItem;
   readonly now: Date;
   /** The run's workflow and starter, from the Runs list; `undefined` while it doesn't have the run. */
@@ -59,6 +66,8 @@ export interface ProposalCardProps {
  *
  * When the host says the proposal's texts are gone, the page offers only **Remove from Inbox** (Q11).
  * When it then finds them there again, the changes come back under a line that says so (C711 4).
+ * While the engine isn't answering, the host's line sits above the header, and every button that
+ * would reach the host stays but doesn't act, pointing at that line (Q11), as on a request's card.
  *
  * Not here yet: a change's settings before and after, the diff, Compare and the phone's bar (Q5,
  * Q9, Q12).
@@ -71,13 +80,26 @@ export function ProposalCard({
   onDecided,
   readAgain,
   onOpenRun,
+  answering = true,
+  signedOut = false,
+  words,
 }: ProposalCardProps) {
   const titleId = useId();
-  const state = useProposalDecisions(item, decisions, onDecided);
+  const reasonId = useId();
+  const state: CardState = {
+    ...useProposalDecisions(item, decisions, onDecided),
+    offline: unavailableWhile(answering, reasonId),
+  };
   const open = openFiles(state).length > 0;
   return (
     <section aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
+        <NotAnsweringLine
+          id={reasonId}
+          answering={answering}
+          signedOut={signedOut}
+          {...(words === undefined ? {} : { words })}
+        />
         <ProposalHeader
           item={item}
           titleId={titleId}
@@ -91,6 +113,7 @@ export function ProposalCard({
             onRemoved={onDecided}
             readAgain={readAgain}
             onChangesBack={state.changesBack}
+            unavailable={state.offline}
           />
         ) : (
           <ProposalChanges
@@ -109,6 +132,12 @@ export function ProposalCard({
 }
 
 /**
+ * The page's decisions, and while the engine isn't answering, what each button that reaches the
+ * host gets instead of acting: the reason it points at.
+ */
+type CardState = ProposalDecisionState & { readonly offline: ButtonUnavailable | undefined };
+
+/**
  * What accepting does, the changes, each with **Reject** and **Accept** while `buttons`, and what
  * the proposal came to once nothing is left to decide. Without `buttons`, the command that decides.
  */
@@ -119,7 +148,7 @@ function ProposalChanges({
   onOpenRun,
 }: {
   readonly item: ProposalItem;
-  readonly state: ProposalDecisionState;
+  readonly state: CardState;
   readonly buttons: boolean;
   readonly onOpenRun: ((runId: string) => void) | undefined;
 }) {
@@ -212,7 +241,7 @@ function ProposalHeader({
   readonly item: ProposalItem;
   readonly titleId: string;
   readonly facts: string;
-  readonly state: ProposalDecisionState | null;
+  readonly state: CardState | null;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
@@ -239,7 +268,7 @@ function ProposalHeader({
  * all is the page's one primary button; a change's own buttons are plain words (C667 #1). Once
  * every open file changed since the run, only **Reject all** is left.
  */
-function AllButtons({ state }: { readonly state: ProposalDecisionState }) {
+function AllButtons({ state }: { readonly state: CardState }) {
   return (
     <div className="ml-auto flex flex-wrap gap-2">
       <DecideButton
@@ -322,7 +351,7 @@ function ChangeRow({
 }: {
   readonly file: ProposalFile;
   readonly runId: string;
-  readonly state: ProposalDecisionState;
+  readonly state: CardState;
   readonly buttons: boolean;
   /** Each open file's button that takes focus when it is next: its Accept, else its Reject. */
   readonly nextButtons: RefObject<Map<string, HTMLButtonElement>>;
@@ -390,7 +419,7 @@ function DecideButton({
   variant,
   buttonRef,
 }: {
-  readonly state: ProposalDecisionState;
+  readonly state: CardState;
   readonly verb: ProposalVerb;
   readonly target: DecisionTarget;
   readonly label: string;
@@ -398,7 +427,7 @@ function DecideButton({
   readonly variant: ButtonVariant;
   readonly buttonRef?: (button: HTMLButtonElement | null) => void;
 }) {
-  const { pending, busyId } = state;
+  const { pending, busyId, offline } = state;
   const busy = pending !== null && pending.verb === verb && sameTarget(pending.target, target);
   const waiting = pending !== null && !busy;
   return (
@@ -409,7 +438,7 @@ function DecideButton({
       variant={variant}
       busy={busy}
       busyLabel={busyLabel}
-      unavailable={waiting ? { reason: busyId } : undefined}
+      unavailable={waiting ? { reason: busyId } : offline}
       onClick={() => state.decide(verb, target)}
     >
       {label}
@@ -422,7 +451,7 @@ function FailedLine({
   state,
   target,
 }: {
-  readonly state: ProposalDecisionState;
+  readonly state: CardState;
   readonly target: DecisionTarget;
 }) {
   const { failure } = state;
@@ -432,7 +461,12 @@ function FailedLine({
       <span>
         {decisionFailedLine(failure.verb, target === "all")} {failure.reason}
       </span>
-      <Button variant="ghost" size="sm" onClick={() => state.decide(failure.verb, failure.target)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        unavailable={state.offline}
+        onClick={() => state.decide(failure.verb, failure.target)}
+      >
         Try again
       </Button>
     </div>

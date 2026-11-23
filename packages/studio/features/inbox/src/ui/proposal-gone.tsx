@@ -1,4 +1,4 @@
-import { Button, useToastStore } from "@halonicjs/studio-kit";
+import { Button, type ButtonUnavailable, useToastStore } from "@halonicjs/studio-kit";
 import { copyDetailsWords, detailsOf, useCopyDetails } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { goneLine, removedToast, removeFailedLine, removeLabel } from "../plain/proposal-text.ts";
@@ -18,6 +18,8 @@ export interface GoneLineProps {
   readonly readAgain: () => Promise<void>;
   /** Once the changes are there again and were read, so the page shows them in place of this line. */
   readonly onChangesBack: () => void;
+  /** While the engine isn't answering: **Remove from Inbox** stays, but doesn't act, and points at the line why. */
+  readonly unavailable?: ButtonUnavailable | undefined;
 }
 
 /** A Remove that didn't go through: why, and the error, whose text goes only to **Copy details**. */
@@ -36,7 +38,14 @@ interface RemoveFailure {
  * When the host refuses because the changes are there again, the page reads the proposal again and
  * shows them (C711 4); only when that read fails does the refusal's line stay, with focus on it.
  */
-export function GoneLine({ runId, decisions, onRemoved, readAgain, onChangesBack }: GoneLineProps) {
+export function GoneLine({
+  runId,
+  decisions,
+  onRemoved,
+  readAgain,
+  onChangesBack,
+  unavailable,
+}: GoneLineProps) {
   const toasts = useToastStore();
   const [removing, setRemoving] = useState(false);
   const [failed, setFailed] = useState<RemoveFailure | null>(null);
@@ -74,7 +83,13 @@ export function GoneLine({ runId, decisions, onRemoved, readAgain, onChangesBack
           {goneLine(runId)}
         </p>
         {failed?.failure === "changes-back" ? null : (
-          <Button size="sm" variant="secondary" busy={removing} onClick={remove}>
+          <Button
+            size="sm"
+            variant="secondary"
+            busy={removing}
+            unavailable={unavailable}
+            onClick={remove}
+          >
             {removeLabel}
           </Button>
         )}

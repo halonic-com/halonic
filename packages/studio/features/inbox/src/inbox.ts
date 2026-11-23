@@ -83,6 +83,11 @@ export interface InboxState {
    * were; when a setup source fails, only its items do, and the rest still update.
    */
   readonly error: unknown;
+  /**
+   * Why the Done list didn't load, until it does. It keeps its last proposals and is the Done
+   * heading's own error: Needs you and its buttons carry on (HAL-10916).
+   */
+  readonly doneError: unknown;
 }
 
 /**
@@ -106,7 +111,14 @@ export class Inbox {
   extraNotices: InboxNotices | undefined;
   /** The runs other pages show and announce, so the Inbox's "Waiting for you" leaves them out. */
   readonly shownRuns = new ShownRuns();
-  #state: InboxState = { items: [], done: [], decided: [], loaded: false, error: undefined };
+  #state: InboxState = {
+    items: [],
+    done: [],
+    decided: [],
+    loaded: false,
+    error: undefined,
+    doneError: undefined,
+  };
   readonly #runs: InboxRuns;
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
@@ -238,7 +250,6 @@ export class Inbox {
       error ??= proposals.reason;
     }
     if (done.status === "fulfilled") this.#doneItems = doneItems(done.value, nameOfItem);
-    else error ??= done.reason;
     const items = inboxItems(runs.value, (id) => this.#runs.agentName?.(id) ?? id);
     const listed = new Set(items.map(answerId));
     for (const id of this.#answered) if (!listed.has(id)) this.#answered.delete(id);
@@ -252,6 +263,7 @@ export class Inbox {
       decided: this.#proposals.decided,
       loaded: true,
       error,
+      doneError: done.status === "rejected" ? done.reason : undefined,
     });
   }
 

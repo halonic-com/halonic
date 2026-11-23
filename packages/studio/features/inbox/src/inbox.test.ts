@@ -70,6 +70,7 @@ verifies("inbox.live", () => {
       decided: [],
       loaded: false,
       error: undefined,
+      doneError: undefined,
     });
 
     await settled();
