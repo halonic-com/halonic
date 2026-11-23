@@ -233,13 +233,23 @@ function noGit(): GitMissingError {
   return new GitMissingError();
 }
 
-/** The folder has its own `.git`, and the shell won't open the repository it leads to. */
-function historyOutside(): KindedError {
-  return new KindedError(
-    "unavailable",
-    "This folder keeps its git files outside it, as a git worktree does, so Studio can't read its versions.",
-    {
-      fix: "Open the repository's own folder, with its .git folder inside it, or clone the repository into a folder of its own.",
-    },
-  );
+/**
+ * The folder has its own `.git`, and the shell won't open the repository it leads to, such as a
+ * git worktree's (words check C744 row 12). A start of a workflow gives the terminal's step
+ * instead, since `halonic run` reads that repository (`historyOutsideRefusal`, C746 row 1).
+ */
+export class HistoryOutsideError extends KindedError {
+  constructor() {
+    super(
+      "unavailable",
+      "This folder keeps its git files outside it, as a git worktree does, so Studio can't read its versions.",
+      {
+        fix: "Open the repository's own folder, with its .git folder inside it, or clone the repository into a folder of its own.",
+      },
+    );
+  }
+}
+
+function historyOutside(): HistoryOutsideError {
+  return new HistoryOutsideError();
 }

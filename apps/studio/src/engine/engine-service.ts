@@ -201,7 +201,7 @@ export class EngineService {
    *   read the live version
    */
   async check(run: WorkflowRef): Promise<void> {
-    refuseWorkflowOn((await this.#runVersions.pick()).loaded.workspace, run, this.pageRuns);
+    refuseWorkflowOn((await this.#runVersions.pick(run)).loaded.workspace, run, this.pageRuns);
   }
 
   /**
@@ -251,7 +251,7 @@ export class EngineService {
     input: StartRunRequest["input"],
     trigger: NonNullable<StartRunRequest["trigger"]>,
   ): Promise<{ readonly id: string }> {
-    const { version, loaded } = await this.#runVersions.pick();
+    const { version, loaded } = await this.#runVersions.pick(run);
     refuseWorkflowOn(loaded.workspace, run, this.pageRuns);
     const engine = await this.openForStart();
     const { id } = await engine.executor.start({ ...run, input, trigger, version });

@@ -48,7 +48,8 @@ export async function withSavedLocalOnly(
 
 /**
  * The saved `workspace.yaml`'s settings, or `undefined` when there is none: then the format's
- * default, not local only, holds, and the live version decides.
+ * default, not local only, holds, and the live version decides. Its refusal doesn't say nothing
+ * started: each screen's lead says so, and a cancel or an answer starts nothing (C746 row 2).
  */
 async function savedWorkspaceValue(saved: DefinitionSource) {
   const text = await readSaved(saved);
@@ -58,7 +59,7 @@ async function savedWorkspaceValue(saved: DefinitionSource) {
   const line = parsed.error[0]?.line ?? 1;
   throw new KindedError(
     "invalid_input",
-    `The saved workspace.yaml has an error on line ${line}, so Halonic can't tell whether Local only is on. Nothing started.`,
+    `The saved workspace.yaml has an error on line ${line}, so Halonic can't tell whether Local only is on.`,
     { fix: "Fix the error in workspace.yaml, then try again." },
   );
 }

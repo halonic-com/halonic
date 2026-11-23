@@ -105,7 +105,7 @@ verifies("app.saved-local-only", () => {
 
     await expect(loadRunWorkspace(dir, openHistory)).rejects.toMatchObject({
       kind: "invalid_input",
-      message: expect.stringContaining("can't tell whether Local only is on. Nothing started."),
+      message: expect.stringContaining("can't tell whether Local only is on."),
     });
   });
 
