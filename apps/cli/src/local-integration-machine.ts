@@ -1,8 +1,8 @@
 // What opening a local integration uses on this computer (HAL-8089): the
 // start gate with the srt sandbox as the fenced one and the launcher's as the
 // confirmed path, Node and the built runner, and a fresh private temp folder
-// for every start. The trust check is read again from the workspace's files at
-// every start.
+// for every start. The trust check is read again at every start, on the
+// integrations in the folder the runner starts from.
 //
 // A local integration runs without the sandbox only with the yes Studio's
 // agent host saved in the profile, for the reason at this start (HAL-15144);
@@ -13,6 +13,7 @@
 import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import { FileSandboxSettingStore, FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import { type AddressCheckingHttpClient, connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient, type Resolve } from "@halonicjs/adapter-http-node";
@@ -49,7 +50,7 @@ import { openPluginService } from "./plugin-host.ts";
 import { type RunConnectorLines, unfencedIntegrationReporter } from "./plugin-part-warnings.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { SavedUnfencedYes, studioYesReaches } from "./saved-unfenced-yes.ts";
-import { savedVersionOf } from "./workspace-at-version.ts";
+import type { WorkspaceAtVersion } from "./workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import {
@@ -136,7 +137,8 @@ export function computerIntegrationMachine(
   const trust = cliTrustService(input.trust.trustStore, input.trust.clock);
   const made: string[] = [];
   return {
-    workspace: new FileSystemFolderReader(input.dir.root, input.dir.shown),
+    // Shown as the workspace, since a copy's own path means nothing to the person.
+    folderAt: (root) => new FileSystemFolderReader(root, input.dir.shown),
     digest: webCryptoDigest,
     gate,
     sandboxes,
@@ -155,11 +157,17 @@ export function computerIntegrationMachine(
     },
     transport: input.transport ?? integrationTransport(),
     // Read again at every start: what was checked when the command began is never reused.
-    // The saved integrations, as the start hashes them in `workspace` above, so the two
-    // agree; one that differs from the trusted version fails closed.
-    trustCheck: async () => {
-      const saved = await savedVersionOf(input.dir, input.workspace);
-      const read = await readWorkspaceTrust(input.dir, input.trust.commandSearch, saved);
+    // The integrations in the folder the runner starts from, as the start hashes them, so
+    // the two agree; one that differs from the trusted version fails closed.
+    trustCheck: async ({ workspaceRoot }) => {
+      if (workspaceRoot === undefined) {
+        throw new Error("there is no workspace folder to run it from");
+      }
+      const version: WorkspaceAtVersion = {
+        workspace: input.workspace,
+        integrations: await workspaceIntegrations(workspaceRoot, input.dir.shown),
+      };
+      const read = await readWorkspaceTrust(input.dir, input.trust.commandSearch, version);
       return await trust.check(read.subject);
     },
     runnerMachine: async (): Promise<RunnerMachine> => {

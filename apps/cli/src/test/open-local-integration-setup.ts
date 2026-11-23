@@ -99,10 +99,12 @@ export async function setupOpener(
     fenceProof?: StartedRunner["fence"];
     /** Whether a yes given in Studio reaches the command; it does unless a test says otherwise. */
     studioYesReaches?: boolean;
+    /** The folder the run starts the runner from, such as a copy of a commit; `root`, the trusted one, unless a test says otherwise. */
+    startFrom?: string;
   } = {},
 ) {
   const { check = passes, runnerBuilt = true, beforeTrustCheck, trustedSettings } = options;
-  const { runSettings = trustedSettings } = options;
+  const { runSettings = trustedSettings, startFrom = root } = options;
   const trust = cliTrustService(new MemoryTrustStore(), clock);
   // The trust check reads the integration's settings from its connector file,
   // as `trustContentInputOf` does for every command.
@@ -122,17 +124,19 @@ export async function setupOpener(
       { kind: "connector", path: "library/connectors/notes.connector.yaml", value: connectorFile },
     ],
   } as unknown as LoadedWorkspace;
-  const subject = async () => ({
+  // The integrations in `folder`, as the machine's trust check reads them from where the runner starts.
+  const subject = async (folder: string) => ({
     location: root,
     connectors: [],
     commandPaths: new Map(),
     agents: [],
-    integrations: trustContentInputOf(loaded, await workspaceIntegrations(root, root)).integrations,
+    integrations: trustContentInputOf(loaded, await workspaceIntegrations(folder, root))
+      .integrations,
     providers: [],
   });
-  const shown = await trust.check(await subject());
+  const shown = await trust.check(await subject(root));
   if (shown.status === "refused") throw new Error("nothing to refuse");
-  await trust.grant(await subject(), shown.fingerprint, "cli");
+  await trust.grant(await subject(root), shown.fingerprint, "cli");
 
   const seen = {
     starts: 0,
@@ -148,7 +152,7 @@ export async function setupOpener(
   }
   const launcher = sandbox(check);
   const machine: LocalIntegrationMachine = {
-    workspace: new FileSystemFolderReader(root, root),
+    folderAt: (folder) => new FileSystemFolderReader(folder, root),
     digest: webCryptoDigest,
     gate: new RunnerStartGate({
       platform: "linux",
@@ -166,10 +170,10 @@ export async function setupOpener(
     startedUnfenced: (reason) => seen.unfenced.push(reason),
     runtime: { node: "/node/bin/node", nodeFolder: "/node", runnerFile: "/runner/runner.mjs" },
     transport: options.transport ?? ({ fetch: async () => new Response("{}") } as never),
-    trustCheck: async (): Promise<TrustCheck> => {
+    trustCheck: async ({ workspaceRoot }): Promise<TrustCheck> => {
       seen.checks += 1;
       await beforeTrustCheck?.();
-      return await trust.check(await subject());
+      return await trust.check(await subject(workspaceRoot ?? root));
     },
     runnerMachine: async () => ({
       homeFolder: "home-folder",
@@ -202,7 +206,7 @@ export async function setupOpener(
   const context = {
     secrets: new MemorySecrets({}),
     tokens: new MemoryTokenStore(),
-    workspaceRoot: root,
+    workspaceRoot: startFrom,
     trust: null,
   } as unknown as ConnectorFactoryContext;
   const factory = new IntegrationConnectorFactory(openLocalIntegration(machine));

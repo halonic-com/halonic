@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
 import { plainText } from "./messages/phrase.ts";
 import { serveMessages } from "./messages/serve.ts";
 import { workspaceTrustGate } from "./serve-trust-gate.ts";
@@ -53,7 +53,7 @@ async function writeConnector(script: string): Promise<void> {
 
 async function gate() {
   const dir = await openWorkspaceDir({ positionals: [], options: { dir: acme } }, { cwd: folder });
-  return { dir, gate: workspaceTrustGate(dir, machine) };
+  return { dir, gate: workspaceTrustGate(dir, machine, () => savedVersionOf(dir)) };
 }
 
 /** Trusts the workspace as `halonic trust` does, for the fingerprint it shows. */

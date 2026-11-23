@@ -208,6 +208,11 @@ export class WatchedVersions implements WorkspaceVersions {
     return (await this.#liveVersion()).workspace;
   }
 
+  /** {@link live} with its local integrations, for a trust check of the version runs start from now. */
+  async liveVersion(): Promise<WorkspaceAtVersion> {
+    return await this.#liveVersion();
+  }
+
   /**
    * The live version as {@link live} reads it, only if a run could start
    * from it: it keeps local only and passes the same trust check a run's
