@@ -21,7 +21,8 @@
     "@halonicjs/test-runner",
     "@halonicjs/words",
     "@halonicjs/assistant",
-    "@halonicjs/openui-lang"
+    "@halonicjs/openui-lang",
+    "@halonicjs/retry-detectors"
   ],
   "apiTypes": [
     "@halonicjs/events",
