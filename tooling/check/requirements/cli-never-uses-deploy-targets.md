@@ -2,15 +2,21 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-7114 (board decision, 12 Nov: each deploy target is its own package, and the CLI core never imports one)
+- Source: HAL-7114 (board decision, 12 Nov: each deploy target is its own package, and the CLI core never imports one); HAL-16907 (the Node harness wiring the CLI shares with the engine host)
 
-If the `halonic` CLI package (`apps/cli`) lists a target package other than `@halonicjs/target-node-runtime` or a target's `testing` package in any dependency field, or imports one, then the `layers` check shall fail and say that the CLI loads a deploy target by name, so users install only the targets they use.
+If the `halonic` CLI package (`apps/cli`) lists a target package other than `@halonicjs/target-node-runtime`, `@halonicjs/target-node-harness` or a target's `testing` package in any dependency field, or imports one, then the `layers` check shall fail and say that the CLI loads a deploy target by name, so users install only the targets they use.
 
 ## Examples
 
 - Given `apps/cli` depending on and importing `@halonicjs/target-node-runtime`,
   when the check runs,
   then it passes.
+- Given `apps/cli` depending on and importing `@halonicjs/target-node-harness`,
+  when the check runs,
+  then it passes.
+- Given `apps/cli` listing `@halonicjs/target-cloudflare-harness` in `dependencies`,
+  when the check runs,
+  then it fails.
 - Given `apps/cli` listing `@halonicjs/target-cloudflare-deploy` and `@halonicjs/target-cloudflare-runtime` in `dependencies`,
   when the check runs,
   then it fails once for each of them.

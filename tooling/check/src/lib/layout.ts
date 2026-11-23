@@ -25,8 +25,12 @@ export const adapterRuntimes = ["node", "web", "workers", "any"] as const;
 /** One of the runtimes an adapter can declare. */
 export type AdapterRuntime = (typeof adapterRuntimes)[number];
 
-/** The packages a deployment target may have. */
-export const targetKinds = ["runtime", "deploy", "testing"] as const;
+/**
+ * The packages a deployment target may have. `harness` holds the harness
+ * wiring for one computer, shared by the CLI and the engine host, so the
+ * runtime behind `halonic serve` stays only the listener (HAL-16907).
+ */
+export const targetKinds = ["runtime", "harness", "deploy", "testing"] as const;
 
 /** One of the packages of a deployment target. */
 export type TargetKind = (typeof targetKinds)[number];
@@ -131,7 +135,7 @@ export function placeOf(directory: string): PackagePlace | undefined {
 }
 
 /**
- * A target's runtime and deploy packages are in the targets layer. Its
+ * A target's runtime, harness and deploy packages are in the targets layer. Its
  * `testing` package (such as `cloudflare/testing`) is dev-only, so it gets
  * the rules of the testing layer.
  */

@@ -7,6 +7,7 @@ describe("placeOf", () => {
     ["packages/adapters/llm-openai", "adapters", "@halonicjs/adapter-llm-openai"],
     ["packages/host/server", "host", "@halonicjs/host-server"],
     ["packages/targets/node/runtime", "targets", "@halonicjs/target-node-runtime"],
+    ["packages/targets/node/harness", "targets", "@halonicjs/target-node-harness"],
     ["packages/targets/cloudflare/deploy", "targets", "@halonicjs/target-cloudflare-deploy"],
     ["packages/targets/cloudflare/testing", "testing", "@halonicjs/target-cloudflare-testing"],
     ["packages/studio/shell", "studio", "@halonicjs/studio-shell"],

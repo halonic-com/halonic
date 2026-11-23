@@ -678,6 +678,7 @@ invent a name:
 | `packages/adapters/<name>` | adapters | `@halonicjs/adapter-<name>` |
 | `packages/host/<name>` | host | `@halonicjs/host-<name>` |
 | `packages/targets/<t>/runtime` | targets | `@halonicjs/target-<t>-runtime` |
+| `packages/targets/<t>/harness` | targets | `@halonicjs/target-<t>-harness` |
 | `packages/targets/<t>/deploy` | targets | `@halonicjs/target-<t>-deploy` |
 | `packages/targets/<t>/testing` | testing | `@halonicjs/target-<t>-testing` |
 | `packages/studio/<name>` | studio | `@halonicjs/studio-<name>` |
@@ -694,14 +695,14 @@ Who may use what:
 | core | core packages listed **before** it in `coreOrder`; its `core-exception` libraries | other third-party code, Node APIs, browser APIs |
 | adapters | core, other adapters' public entry points, its approved libraries; Node APIs only with `"runtime": "node"` | Studio packages |
 | host | core; Web-standard APIs | Node APIs, adapters, third-party code, Studio packages |
-| targets | runtime: core, host, adapters, its platform's APIs. Deploy: core, adapters, Node APIs, the runtime packages it ships | Studio packages; a runtime never uses a deploy package or another target's runtime |
+| targets | runtime and harness: core, host, adapters, its platform's APIs. Deploy: core, adapters, Node APIs, the runtime packages it ships | Studio packages; a runtime or harness never uses a deploy package or another target package |
 | studio | core, other Studio packages, React, Tauri, Vite | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
-| apps | the public entry point of any package | the CLI (`halonic`): any target package other than `target-node-runtime`, even in `devDependencies`. It loads a deploy target by name when the user deploys, so users install only the targets they use |
+| apps | the public entry point of any package | the CLI (`halonic`): any target package other than `target-node-runtime` and `target-node-harness`, even in `devDependencies`. It loads a deploy target by name when the user deploys, so users install only the targets they use |
 | testing | anything | being a runtime dependency |
 | tooling | other tooling packages | being a runtime dependency |
 
 `node:*` is allowed in adapters with `"runtime": "node"`, in
-`targets/node/runtime` and in every deploy package. `cloudflare:*` is allowed only in
+`targets/node/runtime`, `targets/node/harness` and in every deploy package. `cloudflare:*` is allowed only in
 `targets/cloudflare/runtime` and `cloudflare-*` adapters with `"runtime": "workers"` or `"any"`. The API
 types packages, listed under `apiTypes` in `policy.json`, use only each other and no third-party code
 ([decision](../adr/2026-11-09-api-types-stand-alone.md)). A core package
