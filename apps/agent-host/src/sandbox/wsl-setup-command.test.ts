@@ -150,6 +150,18 @@ verifies("agent-host.wsl-setup-command", () => {
         LOCAL_APP_DATA,
       ],
       ["a relative LOCALAPPDATA", setupArgs(), true, "AppData"],
+      [
+        "a resume command whose program isn't quoted",
+        ["--wsl-setup", "--wsl-image", IMAGE, "--wsl-resume", "Halonic.exe --resume"],
+        true,
+        LOCAL_APP_DATA,
+      ],
+      [
+        "a resume command whose quoted program isn't on a drive",
+        ["--wsl-setup", "--wsl-image", IMAGE, "--wsl-resume", '"Halonic.exe" --resume'],
+        true,
+        LOCAL_APP_DATA,
+      ],
     ])(
       "refuses %s as bad-flags and runs no step",
       async (_name, args, withProfile, localAppData) => {
@@ -164,6 +176,42 @@ verifies("agent-host.wsl-setup-command", () => {
         expect(windows.calls).toEqual([]);
       },
     );
+
+    it.each([
+      ["a relative profile folder", "profile"],
+      ["a profile folder with ..", "Z:\\a\\..\\profile"], // leak-guard: allow absolute-path example
+    ])("refuses %s as bad-flags and runs no step", async (_name, profileFolder) => {
+      const windows = fakeWindows({ wslInstalled: true });
+      const { io, lines } = output();
+
+      expect(await wslSetupCommand(setupArgs(), profileFolder, io, windows.machine)).toBe(1);
+
+      expect(JSON.parse(lines[0] ?? "")).toMatchObject({ outcome: "refused", code: "bad-flags" });
+      expect(windows.calls).toEqual([]);
+    });
+
+    it("ends as an error, with RunOnce's failure in the detail, when RunOnce can't be set", async () => {
+      const windows = fakeWindows({ wslInstalled: false });
+      const host = windows.machine.host();
+      const machine: WslSetupMachine = {
+        ...windows.machine,
+        host: () => ({
+          ...host,
+          setRunOnce: async () => {
+            throw new Error("reg add RunOnce: exit 1: Access is denied.");
+          },
+        }),
+      };
+      const { io, lines } = output();
+
+      expect(await wslSetupCommand(setupArgs(), profile, io, machine)).toBe(1);
+
+      expect(JSON.parse(lines[0] ?? "")).toEqual({
+        outcome: "error",
+        detail: "reg add RunOnce: exit 1: Access is denied.",
+      });
+      expect(windows.calls).toEqual([]);
+    });
 
     it("ends as an error, never an empty state, when the saved state isn't valid", async () => {
       await mkdir(join(profile, "sandbox"));

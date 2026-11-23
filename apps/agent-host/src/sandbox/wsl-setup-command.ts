@@ -23,8 +23,10 @@ export type WslSetupRefusal = "in-distro" | "not-windows" | "bad-flags";
 
 /**
  * What `--wsl-setup` prints, as one JSON line: how the setup ended, or why it
- * didn't start (`refused`), or that its saved state couldn't be read or saved
- * (`error`). `detail` is for logs and support, never words for the person.
+ * didn't start (`refused`), or that the setup threw (`error`): its saved state
+ * couldn't be read or saved, a program such as `wsl.exe` couldn't be started,
+ * or `RunOnce` couldn't be set. `detail` is for logs and support, never words
+ * for the person.
  */
 export type WslSetupCommandResult =
   | WslSetupResult
@@ -104,14 +106,16 @@ function setupFlags(
   profileFolder: string | undefined,
   env: NodeJS.ProcessEnv,
 ): SetupFlags | { problem: string } {
-  if (!isFlagValue(profileFolder)) return { problem: "--wsl-setup needs --profile-folder" };
+  if (!isFlagValue(profileFolder) || !isAbsoluteFolder(profileFolder)) {
+    return { problem: "--profile-folder must be an absolute path" };
+  }
   const image = flagValue(args, "--wsl-image");
   if (image === undefined || !isDrivePath(image)) {
     return { problem: "--wsl-image must be an absolute path on a drive" };
   }
   const resume = flagValue(args, "--wsl-resume");
-  if (resume === undefined || resume.trim() === "") {
-    return { problem: "--wsl-setup needs --wsl-resume" };
+  if (resume === undefined || !startsWithQuotedProgram(resume)) {
+    return { problem: "--wsl-resume must start with a quoted absolute path on a drive" };
   }
   const localAppData = env["LOCALAPPDATA"];
   if (localAppData === undefined || !isDrivePath(localAppData)) {
@@ -140,6 +144,25 @@ function isFlagValue(value: string | undefined): value is string {
 function isDrivePath(path: string): boolean {
   if (!/^[A-Za-z]:[\\/]/.test(path)) return false;
   return !path.split(/[\\/]/).includes("..");
+}
+
+/**
+ * Absolute without a `..` part. A rooted path such as `\\server\share` or one
+ * starting with a slash passes too: the state file is only read by this host,
+ * and the tests keep it in a real temporary folder.
+ */
+function isAbsoluteFolder(path: string): boolean {
+  return win32.isAbsolute(path) && !path.split(/[\\/]/).includes("..");
+}
+
+/**
+ * `RunOnce` runs the command line through Windows after a restart, so the
+ * program it names is a quoted drive path: never a bare name found on `PATH`,
+ * and never cut at a space.
+ */
+function startsWithQuotedProgram(commandLine: string): boolean {
+  const program = /^"([^"]+)"/.exec(commandLine)?.[1];
+  return program !== undefined && isDrivePath(program);
 }
 
 function refused(code: WslSetupRefusal, detail: string): WslSetupCommandResult {
