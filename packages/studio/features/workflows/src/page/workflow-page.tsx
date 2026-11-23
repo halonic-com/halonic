@@ -9,7 +9,7 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { engineWordsOf } from "@halonicjs/studio-shell";
+import { engineWordsOf, useFilesWithErrors } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { View } from "../canvas/geometry.ts";
@@ -23,7 +23,7 @@ import { useSaveAsTest } from "../runs/use-save-as-test.ts";
 import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
-import { blockingFileOf, useFilesWithErrors } from "./blocking-file.ts";
+import { blockingFileOf } from "./blocking-file.ts";
 import { StepEditDock } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { insteadOfPage } from "./gone-state.tsx";
