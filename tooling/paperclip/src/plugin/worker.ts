@@ -1,4 +1,6 @@
 import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
+import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
+import { databaseWorkerTables } from "../worker-agents/tables.ts";
 import { boardCheck } from "./board-check.ts";
 import { registerBoardTools } from "./board-tools.ts";
 import { companyRoster } from "./companies.ts";
@@ -9,13 +11,19 @@ import { registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
 import { taskEffort } from "./task-effort.ts";
 import { registerTools } from "./tools.ts";
+import {
+  handleWorkerAgentsRequest,
+  registerWorkerAgentsData,
+  workerAgentsDeps,
+} from "./worker-agents-route.ts";
 
 /**
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch` and
  * `board-check` jobs on their schedules, looks at each new comment for a
  * board ask, keeps each failed run, labels a created or changed task's
- * difficulty, sets its effort from its tags, and answers the agent tools and the `gh` wrapper's route.
+ * difficulty, sets its effort from its tags, and answers the agent tools, the `gh` wrapper's route
+ * and the board's Worker agents page.
  */
 let context: PluginContext | undefined;
 /** The companies the jobs dispatch to, learnt from scoped calls (see companies.ts). */
@@ -57,10 +65,17 @@ export const plugin = definePlugin({
     registerTools(ctx);
     registerReadyForReview(ctx);
     registerBoardTools(ctx);
+    registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
   },
   async onApiRequest(input) {
     if (context === undefined) {
       return { status: 503, body: { error: "The Agent tools plugin is still starting." } };
+    }
+    if (input.routeKey === workerAgentsRouteKey) {
+      return await handleWorkerAgentsRequest(
+        input,
+        workerAgentsDeps(context, databaseWorkerTables(context.db)),
+      );
     }
     if (input.routeKey !== "gh-guard") {
       return { status: 404, body: { error: "No such Agent tools route." } };
