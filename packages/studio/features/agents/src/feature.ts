@@ -1,4 +1,5 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
+import { RoutineRunAgentsService } from "@halonicjs/studio-feature-routines/api";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { AgentsHostService } from "./api.ts";
 import { searchWords } from "./list/list-words.ts";
@@ -15,7 +16,21 @@ export const agentsFeature = defineFeature({
   needs: [AgentsHostService],
   // Try it waits while the sandbox can't start, for an agent whose harness is a program.
   wants: [sandboxStartCheckKey],
+  // The confirm-again Callout of an agent on hold, on the page of a routine that runs it.
+  provides: [RoutineRunAgentsService],
   register(studio) {
+    studio.services.provide(RoutineRunAgentsService, (services) => {
+      const host = services.get(AgentsHostService);
+      return {
+        view: "RoutineConfirmAgain",
+        load: async () => {
+          const { routineConfirmAgainOf } = await import(
+            "./confirm-again/routine-confirm-again.tsx"
+          );
+          return { RoutineConfirmAgain: routineConfirmAgainOf(host) };
+        },
+      };
+    });
     studio.places.add({
       id: "agents",
       view: "AgentsPage",

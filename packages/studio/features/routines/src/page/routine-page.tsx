@@ -11,7 +11,7 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
+import { ItemGone, type ItemViewProps, type ViewRef } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
 import {
   type RoutineRef,
@@ -21,6 +21,7 @@ import {
   type RoutineView,
 } from "../api.ts";
 import { RulesSection } from "../rules/rules-section.tsx";
+import { RoutineRunAgentsService } from "../run-agents-api.ts";
 import { RunsView } from "../runs/runs-view.tsx";
 import { runsWords } from "../runs/runs-words.ts";
 import { type RoutineRunsLoad, useRoutineRuns } from "../runs/use-routine-runs.ts";
@@ -29,6 +30,7 @@ import { WhenCard } from "../when/when-card.tsx";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { pageWords } from "./page-words.ts";
 import { RoutineHeader, type RoutineViewId } from "./routine-header.tsx";
+import { type AgentRef, RunAgentsView } from "./run-agents-view.tsx";
 import { useRunNowGate } from "./run-now-gate.ts";
 import { TRIGGER_STEP } from "./trigger-step.ts";
 import { type RoutineLoad, useRoutine } from "./use-routine.ts";
@@ -50,6 +52,7 @@ export function RoutinePage({ item, context, step, asked }: ItemViewProps) {
       id={item.id}
       announce={(text) => context.announcer.announce(text)}
       sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
+      runAgentsView={context.services.find(RoutineRunAgentsService)}
       {...(step === TRIGGER_STEP && { triggerAsked: asked ?? 0 })}
       {...(openPlace && { goToRoutines: () => openPlace("routines") })}
       {...(openItem && {
@@ -57,6 +60,11 @@ export function RoutinePage({ item, context, step, asked }: ItemViewProps) {
         openFile: (path: string) => openItem({ kind: fileKind, hub: fileHub, id: path }),
         openTarget: (target: RoutineTarget) =>
           openItem({ kind: target.kind, hub: target.hubId, id: target.id }),
+        openAgent: (agent: AgentRef, step?: string) =>
+          openItem(
+            { kind: "agent", hub: agent.hubId, id: agent.id },
+            step === undefined ? {} : { step },
+          ),
       })}
     />
   );
@@ -87,6 +95,13 @@ export interface RoutineScreenProps {
    * absent, Run now is never unavailable for the sandbox (the engine still refuses such a run).
    */
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
+  /**
+   * The view the Agents feature gives about the agents Run now starts, such as the confirm-again
+   * Callout of an agent on hold (`routines.page.confirm-again`); without it there is none.
+   */
+  readonly runAgentsView?: ViewRef | undefined;
+  /** Opens an agent's page, at `step` when given, for that view's **Review and confirm**. */
+  readonly openAgent?: (agent: AgentRef, step?: string) => void;
 }
 
 /**
@@ -106,6 +121,8 @@ export function RoutineScreen({
   openFile,
   triggerAsked,
   sandboxStartCheck,
+  runAgentsView,
+  openAgent,
 }: RoutineScreenProps) {
   // After a Try again reads, the routine's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -156,6 +173,15 @@ export function RoutineScreen({
             announce={announce}
             onReady={() => gate.runNow.current?.focus()}
           />
+          {/* Below the can't-run Callout; it never makes Run now unavailable. */}
+          {host.runNow !== undefined && (
+            <RunAgentsView
+              view={runAgentsView}
+              target={load.routine.target}
+              agents={load.routine.programAgents ?? []}
+              openAgent={openAgent}
+            />
+          )}
           {view === "schedule" && (
             <ScheduleView
               host={host}

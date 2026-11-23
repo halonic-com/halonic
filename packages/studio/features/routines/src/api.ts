@@ -7,6 +7,7 @@
 import type { Guard } from "@halonicjs/format";
 import { KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+import type { RoutineProgramAgent } from "./run-agents-api.ts";
 
 /** Names one routine the way a deep link does: the hub its file is in (`null` at the workspace's root) and its id. */
 export interface RoutineRef {
@@ -145,6 +146,11 @@ export interface RoutineView extends RoutineRef {
    * Halonic can't run one ({@link agentCantRunWords}). Absent where the host can't say.
    */
   readonly startsProgram?: boolean | undefined;
+  /**
+   * The agents of {@link startsProgram}: the ones it runs in Claude Code or Codex, each once, for
+   * the confirm-again Callout of an agent on hold. Absent where the host can't say.
+   */
+  readonly programAgents?: readonly RoutineProgramAgent[] | undefined;
   readonly overlap: RoutineOverlap;
   readonly catchUp: RoutineCatchUp;
   /** The file's path from the workspace folder. */
@@ -442,6 +448,11 @@ export class RoutineInputRefused extends KindedError {
 
 export { agentCantRunWords } from "./agent-cant-run-words.ts";
 export { cantStartWords } from "./cant-start-words.ts";
+export {
+  type RoutineProgramAgent,
+  type RoutineRunAgentsProps,
+  RoutineRunAgentsService,
+} from "./run-agents-api.ts";
 
 /** What {@link RoutinesHost.create} rejects with when the hub has no workflow and no agent to run. */
 export class NothingToRun extends KindedError {

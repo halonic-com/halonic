@@ -20,6 +20,7 @@ function registered() {
     itemKinds: { add: (kind: (typeof kinds)[number]) => kinds.push(kind) },
     search: { addProvider: (provider: SearchProviderContribution) => providers.push(provider) },
     commands: { add: (command: (typeof commands)[number]) => commands.push(command) },
+    services: { provide: () => undefined },
   };
   agentsFeature.register(studio as never);
   return { providers, commands, kinds };

@@ -140,6 +140,11 @@ verifies("studio.workspace-routines", () => {
       "hubs/acme/workflows/routines/weekly-report.routine.yaml": startsReply,
     });
     expect((await workflow.host.read(weekly)).startsProgram).toBe(true);
+    // Named, for the confirm-again Callout of an agent on hold (HAL-16665).
+    expect((await workflow.host.read(weekly)).programAgents).toEqual([
+      { id: "coder", name: "Coder" },
+    ]);
+    expect((await agent.host.read(weekly)).programAgents).toEqual([]);
   });
 
   it("rejects a routine the workspace doesn't have as not found", async () => {

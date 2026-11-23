@@ -56,7 +56,7 @@ import {
   summaryOf,
   targetFound,
   targetName,
-  targetStartsProgram,
+  targetProgramAgents,
   targetsOf,
   targetWithPrompt,
   workflowsWithAgent,
@@ -168,6 +168,7 @@ export class WorkspaceRoutines implements RoutinesHost {
     const { value } = file;
     this.#names.set(nameKey(ref), value.name);
     const target = targetOfFile(value.run, file.hub);
+    const programAgents = targetProgramAgents(workspace, target);
     const [versions, trusted] = await Promise.all([
       this.#versionsOf(file),
       this.#parts.trusted?.() ?? true,
@@ -182,7 +183,8 @@ export class WorkspaceRoutines implements RoutinesHost {
       targetName: targetName(workspace, file),
       target,
       targetState: targetFound(workspace, target) ? "ready" : "not-found",
-      startsProgram: targetStartsProgram(workspace, target),
+      startsProgram: programAgents.length > 0,
+      programAgents,
       overlap: value.overlap,
       catchUp: value.catchUp,
       file: file.path,

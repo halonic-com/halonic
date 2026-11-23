@@ -5,6 +5,7 @@ import { describeTrigger, routineKey } from "@halonicjs/routines";
 import { KindedError } from "@halonicjs/std";
 import type {
   RoutineMailbox,
+  RoutineProgramAgent,
   RoutineRef,
   RoutineRun,
   RoutineSkip,
@@ -280,17 +281,22 @@ function asSentence(message: string): string {
 }
 
 /**
- * Whether what a routine starts runs an agent in a program of its own (Claude Code or Codex), which
- * needs the sandbox: any agent of the workflow and the workflows it starts.
+ * The agents what a routine starts runs in a program of their own (Claude Code or Codex), which
+ * need the sandbox: those of the workflow and the workflows it starts, each once, in their order.
+ * A routine starts a program when there is one.
  *
  * An agent on its own is never counted while agent runs aren't built (HAL-14848): Run now refuses
  * it with `agentCantRunWords` whatever its harness, so asking for the sandbox first would send the
  * person to fix the sandbox for a routine that still can't run.
  */
-export function targetStartsProgram(workspace: LoadedWorkspace, target: RoutineTarget): boolean {
-  if (target.kind === "agent") return false;
-  const agents = workflowAgentsOf(workspace, { hubId: target.hubId, workflowId: target.id });
-  return agents.some((agent) => startsAProgram(agent.value.harness));
+export function targetProgramAgents(
+  workspace: LoadedWorkspace,
+  target: RoutineTarget,
+): RoutineProgramAgent[] {
+  if (target.kind === "agent") return [];
+  return workflowAgentsOf(workspace, { hubId: target.hubId, workflowId: target.id })
+    .filter((agent) => startsAProgram(agent.value.harness))
+    .map(({ value }) => ({ id: value.id, name: value.name ?? value.id }));
 }
 
 /** The name of what a routine starts, for the row's summary; its id when the file is missing. */
