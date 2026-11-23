@@ -137,11 +137,12 @@ export const serveMessages = defineMessages("serve", {
   choiceFilesNotCommitted: (files: readonly string[]) =>
     phrase`Couldn't save: ${listed(files)} ${files.length === 1 ? "has" : "have"} changes that aren't committed. Commit or undo them, then try again.`,
   /** The message of the commit Continue makes in a served window, so the history shows where it came from. */
-  choiceCommit: () => phrase`Save the model picked in a served window`,
+  choiceCommit: () => phrase`Save the model picked through halonic serve`,
   /** For the log: saving the choice files failed, and putting them back failed too. */
   choiceUndoFailed: () => phrase`Saving the model choice failed, and so did undoing it.`,
   /** For the log, should anything ask the served model choice to grant trust (HAL-14808, D2). */
-  choiceNoTrust: () => phrase`Trust is given on the computer, not here.`,
+  choiceNoTrust: () =>
+    phrase`Trust a workspace on the computer that serves it, with halonic trust.`,
 });
 
 /** "a", "a and b", "a, b and c". */

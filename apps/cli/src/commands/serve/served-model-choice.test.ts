@@ -104,7 +104,10 @@ describe("the model choice `halonic serve` gives a served window", () => {
 
       expect((await service.preview(tested.testId))?.fingerprint).toBeUndefined();
       const trust = readOnlyTrust({ check: async () => ({ state: "trusted", message: "" }) });
-      expect(await trust.grant("sha256:acme")).toMatchObject({ ok: false });
+      expect(await trust.grant("sha256:acme")).toEqual({
+        ok: false,
+        reason: "Trust a workspace on the computer that serves it, with halonic trust.",
+      });
       expect(gate.checks).toBeGreaterThan(0);
     });
 

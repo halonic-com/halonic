@@ -3,7 +3,6 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
   type ChoiceHistory,
-  choiceCommitMessage,
   saveChoiceFiles,
   UncommittedChoiceFilesError,
 } from "./choice-files.ts";
@@ -45,7 +44,7 @@ describe("saving a served window's model choice", () => {
       await saveChoiceFiles(input, choice);
 
       const [last] = await vcs.log(1);
-      expect(last?.message).toBe(choiceCommitMessage);
+      expect(last?.message).toBe("Save the model picked through halonic serve");
       expect(await vcs.readAt(last?.hash ?? "", "models.yaml")).toBe(choice["models.yaml"]);
       expect(await vcs.readAt(last?.hash ?? "", "providers/anthropic.yaml")).not.toBeNull();
       expect(await vcs.readAt(last?.hash ?? "", "notes.md")).toBe(committed["notes.md"]);
