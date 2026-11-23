@@ -55,7 +55,7 @@ const UNFENCED_ALLOW_TITLE: &str = "Allow plugins and integrations to run withou
 const UNFENCED_ALLOW_QUESTION: &str = "Halonic is about to save your yes to run plugins and \
 integrations without the sandbox on this computer. They then run commands as you, and could look \
 at things outside your project, such as your SSH keys.\n\n\
-Allow only if you just allowed this in Halonic.";
+Allow only if you just chose this in Halonic.";
 
 /// The button that saves the yes, as the page's own button says.
 #[cfg(desktop)]

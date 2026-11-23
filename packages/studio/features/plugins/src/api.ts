@@ -14,6 +14,7 @@ export {
   trustStatusOf,
   type UnfencedRunStatus,
   YES_NOT_SAVED,
+  yesDeclined,
 } from "./trust/unfenced-status.ts";
 export { PluginResult, type PluginResultProps, type ResultShow } from "./ui/plugin-result.tsx";
 

@@ -281,6 +281,30 @@ verifies("plugins.plugin-trust-yes", () => {
     );
   });
 
+  it("stays open with no error and the box ticked when the person cancels the shell's window (HAL-17065)", async () => {
+    const { unfencedRuns, answerAllow, reads } = host(windows);
+    answerAllow(
+      Object.assign(new Error("Nothing was saved because the confirmation window was cancelled."), {
+        kind: "declined",
+        status: 0,
+      }),
+    );
+    const trusted: string[] = [];
+    const closed = await review(unfencedRuns, trusted);
+
+    await tick();
+    const readsBefore = reads();
+    await press("Trust");
+
+    expect(trusted).toEqual([]);
+    expect(closed).toEqual([]);
+    expect(await alertText()).toBe("");
+    expect(dialog().textContent).not.toContain("cancelled");
+    expect(box()?.checked).toBe(true);
+    expect(button("Trust").getAttribute("aria-busy")).not.toBe("true");
+    expect(reads()).toBe(readsBefore);
+  });
+
   it("shows the saved yes after it was saved, so a second Trust doesn't save it again", async () => {
     const { unfencedRuns, allowed } = host(windows);
     const plugin = weather("not-trusted");

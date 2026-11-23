@@ -370,6 +370,21 @@ verifies("studio.workspace-trust-integrations", () => {
     expect(view.status).toBe("not-trusted");
   });
 
+  it("answers a Cancel in the shell's window as cancelled, trusting nothing (HAL-17065)", async () => {
+    const shell = "Nothing was saved because the confirmation window was cancelled.";
+    const host = hostWith(Object.assign(new Error(shell), { kind: "declined", status: 0 }));
+    const view = await viewWithRuns(host.runs);
+    view.checkRuns();
+    await settled();
+
+    const result = await view.grant(view.review()?.fingerprint ?? "", true);
+
+    expect(result).toMatchObject({ ok: false, cancelled: true });
+    expect(view.status).toBe("not-trusted");
+    // The check still asks for the same yes, so the person can press Trust again.
+    expect(view.review()?.unfencedYes?.reason).toBe("container");
+  });
+
   it("words another failure to save the yes as the shell does, not the host's raw answer", async () => {
     const raw = "agent host: POST /v1/unfenced/allow answered 500";
     const host = hostWith(Object.assign(new Error(raw), { kind: "internal" }));

@@ -268,3 +268,39 @@ verifies("studio.workspace-trust-integrations", () => {
     expect(asked).toBe(2);
   });
 });
+
+verifies("workspace.trust-check-unfenced-yes", () => {
+  it("stays open with no error and the box ticked when the person cancels the shell's window (HAL-17065)", async () => {
+    const asking = {
+      ...review,
+      unfencedYes: {
+        reason: "windows",
+        checkbox: "I understand plugins and integrations run without the sandbox on this computer",
+        reasonLine:
+          "On Windows, integration code can't run in the sandbox in this version of Halonic.",
+      },
+    };
+    const trust = control(asking, async () => ({
+      ok: false,
+      reason: "Nothing was saved because the confirmation window was cancelled.",
+      cancelled: true,
+    }));
+    const shell = await show(trust.value);
+    act(() => badge()?.click());
+    const box = () => dialog()?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    act(() => box()?.click());
+
+    await act(async () => button("Trust")?.click());
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+
+    expect(trust.granted).toEqual(["hfp1:abc"]);
+    expect(dialog()).not.toBeNull();
+    expect(dialog()?.querySelector('[role="alert"]')?.textContent ?? "").toBe("");
+    expect(dialog()?.textContent).not.toContain("Couldn't save trust");
+    expect(box()?.checked).toBe(true);
+    expect(button("Trust")?.getAttribute("aria-busy")).not.toBe("true");
+    expect(shell.toasts.list().map((toast) => toast.title)).not.toContain("Acme can run now");
+  });
+});
