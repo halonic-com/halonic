@@ -76,7 +76,10 @@ the public API of its layer package and needs Liam's review.
 the CLI and all the workspace code and libraries it imports are bundled into `dist/cli/main.js`, which imports
 Node's own modules only. Beside it ship `dist/runner.mjs`, the `examples` folder and the sandbox runtime as a
 bundled dependency: it is the copy the workspace runs, with our patch, and the sandbox starts it as a program.
-`bin/halonic.js` keeps its Node version check. The package's README, which the npm page shows, is
+`bin/halonic.js` keeps its Node version check. The stager replaces `apps/cli/src/version.ts` with the
+package's version and `apps/cli/src/npm-package.ts` with `true`, so code that finds a repository folder by
+its place looks only inside the package (`publish.staged-cli-package-folders`); it fails when the bundle
+doesn't import one of them. The package's README, which the npm page shows, is
 [`cli/README.md`](cli/README.md), written for users; `apps/cli/README.md` is for the people who work on the CLI
 and isn't shipped. The release workflow packs this folder and installs the tarball
 into an empty folder to run `halonic --version` and `halonic doctor` before it uploads anything. The rule is the

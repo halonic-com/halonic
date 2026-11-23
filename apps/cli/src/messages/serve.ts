@@ -113,6 +113,9 @@ export const serveMessages = defineMessages("serve", {
   /** The line under {@link serving} when the Studio page isn't built, so the address shows no page. */
   studioNotBuilt: () =>
     phrase`The Studio page isn't built, so the address shows no page yet. Build it with: pnpm --filter @halonicjs/app-studio build`,
+  /** The line under {@link serving} from the npm package, which doesn't ship the Studio page. */
+  studioNotInPackage: () =>
+    phrase`The Studio page doesn't come with the npm package, so the address shows no page.`,
   /** The line under {@link serving} when the built Studio page is older than its sources, such as after `git pull`. */
   studioOutdated: () =>
     phrase`The Studio page was built before its code last changed, so the address may show an older page. Build it again with: pnpm --filter @halonicjs/app-studio build`,

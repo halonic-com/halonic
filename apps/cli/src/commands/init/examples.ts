@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { inNpmPackage } from "../../npm-package.ts";
 
 /** An example workspace that `halonic init --example <name>` copies. */
 export interface InitExample {
@@ -15,16 +15,19 @@ export interface InitExample {
 }
 
 /**
- * The `examples` folder: the repository's, found next to the sources, or the one the npm package
- * ships beside its `dist` folder (`tooling/publish` stages the CLI there).
+ * The `examples` folder: in the npm package only the one it ships beside its `dist` folder
+ * (`tooling/publish` bundles the CLI into `dist/cli`), never one in the folders around the
+ * package; otherwise the repository's, next to the sources.
  */
-const examplesFolder = findExamplesFolder();
+const examplesFolder = examplesFolderFor(inNpmPackage, import.meta.dirname);
 
-function findExamplesFolder(): string {
-  const inRepository = join(import.meta.dirname, "..", "..", "..", "..", "..", "examples");
-  const inPackage = join(import.meta.dirname, "..", "..", "examples");
-  // With neither folder there, the repository path stays, and the copy error names it.
-  return [inRepository, inPackage].find((folder) => existsSync(folder)) ?? inRepository;
+/**
+ * The `examples` folder for code in `codeFolder`: the bundle's `dist/cli` in the npm package, or
+ * `apps/cli/src/commands/init` in the repository.
+ */
+export function examplesFolderFor(npmPackage: boolean, codeFolder: string): string {
+  if (npmPackage) return join(codeFolder, "..", "..", "examples");
+  return join(codeFolder, "..", "..", "..", "..", "..", "examples");
 }
 
 /**
