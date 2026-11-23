@@ -23,6 +23,8 @@ export const promptWords = {
 
 const goneAgent = "This agent isn't on your computer any more.";
 const notConnected = "Not sent. Try again once your phone reconnects.";
+const notConfirmed =
+  "Not sent. Your phone couldn't confirm it's you. Try again, or answer this on your computer.";
 
 /**
  * The line under Approve and Reject, or under the prompt box, after `outcome`; `undefined` when
@@ -46,6 +48,11 @@ function answerLine(outcome: Exclude<RemoteSendOutcome, { kind: "done" }>): stri
   }
   if (outcome.kind === "refused" && outcome.code === "unknown-approval") {
     return "This was already answered, or the agent stopped asking.";
+  }
+  // A cancelled or timed-out fingerprint or face prompt works again on the phone, so say so
+  // (words check C749, row 16, on HAL-16696).
+  if (outcome.kind === "not-sent" && outcome.reason === "not-confirmed") {
+    return notConfirmed;
   }
   return ANSWER_RISKY_ON_COMPUTER;
 }

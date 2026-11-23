@@ -133,9 +133,8 @@ verifies("remote.phone-prompt-box", () => {
     expect(sendOutcomeLine("answer", { kind: "not-sent", reason: "not-allowed" })).toBe(
       "Answer this on your computer.",
     );
-    // Until Approve is on (HAL-15194 PR 3), an answer the owner check stopped says the same.
     expect(sendOutcomeLine("answer", { kind: "not-sent", reason: "not-confirmed" })).toBe(
-      "Answer this on your computer.",
+      "Not sent. Your phone couldn't confirm it's you. Try again, or answer this on your computer.",
     );
     expect(sendOutcomeLine("answer", { kind: "cut-off" })).toBe(
       "The connection dropped before your computer confirmed your answer. Once your phone reconnects, you'll see whether it arrived.",
