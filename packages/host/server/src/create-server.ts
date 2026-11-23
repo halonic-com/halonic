@@ -14,6 +14,11 @@ import {
 } from "./google-routes.ts";
 import { googleCallbackPath } from "./google-sign-in-routes.ts";
 import {
+  createModelChoiceRoutes,
+  isModelChoiceKeyPath,
+  modelChoicePathPrefix,
+} from "./model-choice-routes.ts";
+import {
   createProviderKeyRoutes,
   isProviderKeyPath,
   providerKeyPathPrefix,
@@ -77,6 +82,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const connectorRoutes = createConnectorRoutes(ports);
   const chatTurnRoutes = createChatTurnRoutes(ports);
   const providerKeyRoutes = createProviderKeyRoutes(ports);
+  const modelChoiceRoutes = createModelChoiceRoutes(ports);
 
   /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
   async function runRoute(
@@ -142,7 +148,22 @@ export const createServer: CreateServer = ({ config, ports }) => {
     return whenSignedIn(request, context, () => routes.handle(request, body, context));
   }
 
-  /** The exact-address routes that need a session: a chat turn, a connector call and the provider keys. `null` when the address is none of them. */
+  /** The model choice routes, which work on the signed-in session's own service. */
+  async function modelChoiceRoute(
+    request: Request,
+    context: RequestContext,
+    body: Uint8Array,
+    pathname: string,
+  ): Promise<Response> {
+    const session = await signIn.session(request, context);
+    if (session === null) {
+      return errorResponse(serverErrors.notSignedIn);
+    }
+    const rest = pathname.slice(modelChoicePathPrefix.length);
+    return modelChoiceRoutes.handle(request, context, body, rest, session);
+  }
+
+  /** The routes that need a session: a chat turn, a connector call, the provider keys and the model choice. `null` when the address is none of them. */
   async function signedInOnlyRoute(
     request: Request,
     context: RequestContext,
@@ -164,6 +185,9 @@ export const createServer: CreateServer = ({ config, ports }) => {
           pathname.slice(providerKeyPathPrefix.length),
         ),
       );
+    }
+    if (pathname.startsWith(modelChoicePathPrefix)) {
+      return modelChoiceRoute(request, context, body, pathname);
     }
     return null;
   }
@@ -272,10 +296,15 @@ export const createServer: CreateServer = ({ config, ports }) => {
     return route(request, context, body.bytes);
   }
 
+  /** Whether a path belongs to a route that can take a secret or a key, which the request log leaves out. */
+  function takesSecret(pathname: string): boolean {
+    return isSecretPath(pathname) || isProviderKeyPath(pathname) || isModelChoiceKeyPath(pathname);
+  }
+
   /** Logs method, path and status. A route that takes a secret is left out, and no query string is ever logged. */
   function logRequest(request: Request, response: Response): void {
     const { pathname } = new URL(request.url);
-    if (ports.requestLog === undefined || isSecretPath(pathname) || isProviderKeyPath(pathname)) {
+    if (ports.requestLog === undefined || takesSecret(pathname)) {
       return;
     }
     ports.requestLog.record({ method: request.method, path: pathname, status: response.status });

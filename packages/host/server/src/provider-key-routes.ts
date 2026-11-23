@@ -5,8 +5,9 @@ import {
   isSecretName,
   type SecretStore,
 } from "@halonicjs/ports";
-import type { ProviderKeyStore, RequestContext, ServerPorts } from "./api.ts";
+import type { RequestContext, ServerPorts } from "./api.ts";
 import { errorResponse, type ServerError, serverErrors } from "./errors.ts";
+import type { ProviderKeyStore } from "./provider-key-store.ts";
 import { refuseNonJson, refuseOtherSite } from "./secret-request.ts";
 import { isLoopbackRequest, isSecureConnection } from "./security.ts";
 

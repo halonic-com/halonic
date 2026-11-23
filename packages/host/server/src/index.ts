@@ -13,7 +13,6 @@ export type {
   GoogleSignInOutcome,
   GoogleSignInStart,
   ModelSettingsGate,
-  ProviderKeyStore,
   RequestContext,
   RequestCountStore,
   RequestLog,
@@ -55,6 +54,7 @@ export {
   launchRequestRefusal,
 } from "./launch-token-check.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
+export type { ModelChoicePort } from "./model-choice-api.ts";
 export {
   type CheckedSession,
   checkClaims,
@@ -71,6 +71,7 @@ export {
   scopePrefix,
 } from "./principal.ts";
 export { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
+export type { ProviderKeyStore } from "./provider-key-store.ts";
 export type { RunUpdates } from "./run-updates.ts";
 export {
   readSessionCredential,

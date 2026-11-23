@@ -7,6 +7,8 @@
     ".": "./src/index.ts",
     "./failed-call": "./src/failed-call.ts",
     "./listed-tools": "./src/listed-tools.ts",
+    "./model-choice": "./src/model-choice.ts",
+    "./model-choice-service": "./src/model-choice-service.ts",
     "./outside-run": "./src/outside-run-gate.ts",
     "./routines": "./src/routines.ts",
     "./run-failure": "./src/run-failure.ts"
