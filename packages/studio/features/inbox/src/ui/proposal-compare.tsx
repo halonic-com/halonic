@@ -40,13 +40,15 @@ export function ProposalCompareView({ runId, comparing, state }: ProposalCompare
       aria-label={compareWords.name(path)}
       className="focus-ring flex flex-col gap-3 rounded-sm border border-border p-3"
     >
-      {failure === null ? null : <ChoiceFailed failure={failure} state={state} />}
+      {/* A file that changed again is about the texts, so it says so above them. */}
+      {failure?.retry === null ? <ChoiceFailed failure={failure} state={state} /> : null}
       {/* A new key reads the texts again: after Try again, or once the file changed again. */}
       <CompareBody
         key={`${round}.${attempt}`}
         runId={runId}
         path={path}
         state={state}
+        choiceFailure={failure?.retry === null ? null : failure}
         onTryAgain={() => setAttempt((count) => count + 1)}
       />
     </section>
@@ -81,19 +83,22 @@ function CompareBody({
   runId,
   path,
   state,
+  choiceFailure,
   onTryAgain,
 }: {
   readonly runId: string;
   readonly path: string;
   readonly state: ProposalDecisionState;
+  /** A choice that failed and can be sent again: it shows right above the buttons. */
+  readonly choiceFailure: CompareFailure | null;
   readonly onTryAgain: () => void;
 }) {
   const loaded = useCompareTexts(path, state.compareTexts);
   if (loaded.kind === "loading") {
     return (
-      <div role="status" aria-label={compareWords.loading} className="grid gap-2">
-        <SkeletonBar kind="title" width="2/3" />
-        <SkeletonBar kind="title" width="1/2" />
+      <div role="status" aria-label={compareWords.loading} className="grid gap-3 wide:grid-cols-2">
+        <SideSkeleton />
+        <SideSkeleton />
       </div>
     );
   }
@@ -119,8 +124,19 @@ function CompareBody({
         <Side heading={compareWords.yours} text={texts.saved} />
         <Side heading={compareWords.runs(runId)} text={texts.run} />
       </div>
+      {choiceFailure === null ? null : <ChoiceFailed failure={choiceFailure} state={state} />}
       <Choices state={state} texts={texts} />
     </>
+  );
+}
+
+/** One side while the texts load, in the shape of {@link Side}: its heading over a block of text. */
+function SideSkeleton() {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <SkeletonBar kind="title" width="1/3" />
+      <div className="h-32 rounded-sm border border-border" />
+    </div>
   );
 }
 
@@ -188,7 +204,7 @@ function Side({ heading, text }: { readonly heading: string; readonly text: stri
       {text === null ? (
         <p className="text-small text-fg-muted">{compareWords.none}</p>
       ) : (
-        <pre className="max-h-80 overflow-auto rounded-sm border border-border p-2 font-mono text-small">
+        <pre className="max-h-80 overflow-auto rounded-sm border border-border bg-surface-subtle px-3 py-2 font-mono text-small">
           {text}
         </pre>
       )}

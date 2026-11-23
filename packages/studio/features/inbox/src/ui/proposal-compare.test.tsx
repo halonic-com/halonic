@@ -172,6 +172,9 @@ verifies("inbox.proposal-compare", () => {
         "Couldn't apply your choice. The engine isn't answering. It may still be starting.",
       );
       expect(buttons(root, "Keep mine")).toHaveLength(1);
+      // The failure sits right above the button that was pressed, not above the texts.
+      const alert = compareView(root)?.querySelector('[role="alert"]');
+      expect(alert?.nextElementSibling?.contains(buttons(root, "Keep mine")[0] ?? null)).toBe(true);
 
       await press(buttons(root, "Try again")[0]);
 
