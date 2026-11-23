@@ -9,11 +9,19 @@ The Assistant feature of the Studio: the Build chat, its sessions and its change
 
 ## What is here
 
-So far only the interface, `src/api.ts`: `AssistantHost`, which the app provides for each open
-workspace as `AssistantHostService`. It covers the chats (the newest 40, drafts, titles, rename,
-delete), one answer in a chat, the model per chat and the Model menu, and Accept, Reject and Undo
-of the changes to review. `onDidChange` says when any of it changed. The panel and the chat tab
-come in later pull requests.
+- `src/api.ts`: `AssistantHost`, which the app provides for each open workspace as
+  `AssistantHostService`. It covers the chats (the newest 40, drafts, titles, rename, delete), one
+  answer in a chat, the model per chat and the Model menu, and Accept, Reject and Undo of the
+  changes to review. `onDidChange` says when any of it changed.
+- `src/panel`: the Assistant's side panel (flow-assistant 2.2): the chat's title, **New chat** and
+  ✕, the status line, the transcript and the box with Send and Stop.
+- `src/chat`: the Build chats of a workspace in this session (`BuildChats`): which chat the panel
+  shows, each chat shown so far (so going back to one shows it at once), the answer being written
+  and how each reply ended, with the words the panel says.
+- `src/feature.ts`: the panel window, Ctrl+Alt+I and Ctrl K's **Assistant** and **New chat**.
+
+The app adds the feature and provides its host in a later pull request (T14 PR 6b); the chat tab,
+the chat menu, proposal cards and the line under the box come after that.
 
 ## Example
 
