@@ -217,7 +217,9 @@ export function createRemoteExecutor(options: RemoteExecutorOptions): RunExecuto
 
     async chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse> {
       // The signal stays here: it aborts the request, and the host aborts the model call when the request closes.
-      const { signal, ...body } = request;
+      // `onText` stays here too: it is a function in this process, and the host refuses a body that names it.
+      // It hears nothing yet: the host answers the turn whole.
+      const { signal, onText: _inProcess, ...body } = request;
       const call: HostCall = { method: "POST", body, ...(signal === undefined ? {} : { signal }) };
       const response = await client.call("/api/chat-turn", call);
       if (!response.ok) {

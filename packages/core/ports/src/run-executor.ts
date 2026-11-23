@@ -140,7 +140,23 @@ export interface ChatTurnRequest {
    * after the abort.
    */
   signal?: AbortSignal;
+  /**
+   * Hears the answer's text as the model writes it, for display only: the
+   * response stays the answer. After the last `restart`, the deltas add up to
+   * the response's `content`. A `restart` means the text so far was thrown
+   * away, because a model call failed part way and another call took over, or
+   * because the executor ran its own tools and asked the model again. Like
+   * `signal`, it lives in this process and is never sent over the wire.
+   * Optional, so an executor that doesn't stream still satisfies the port;
+   * harness turns don't stream yet.
+   */
+  onText?(text: ChatTurnText): void;
 }
+
+/** Text of a chat turn's answer as it is written; see {@link ChatTurnRequest.onText}. */
+export type ChatTurnText =
+  | { readonly kind: "delta"; readonly text: string }
+  | { readonly kind: "restart" };
 
 /**
  * Something a chat turn refused, as data a status view can read. It mirrors

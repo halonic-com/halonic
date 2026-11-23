@@ -1,9 +1,4 @@
-import {
-  type ChatRequest,
-  type ChatResponse,
-  type ChatStreamEvent,
-  ModelCallError,
-} from "@halonicjs/ports";
+import { ModelCallError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
@@ -17,6 +12,7 @@ import {
 import { reviewedTools } from "./listed-tool-approval.test-helper.ts";
 import type { ResolvedModel } from "./model-chain.ts";
 import { runModelTurn } from "./run-model-turn.ts";
+import { StreamingModel, streamed } from "./streaming-model.test-helper.ts";
 import {
   MemoryTurnLog,
   runEveryCall,
@@ -50,45 +46,6 @@ function runTurnOn(
     ...(setup.log === undefined ? {} : { log: setup.log }),
   });
 }
-
-/** A provider that streams: each answer is its pieces, then an error or the end, or the failure at once. */
-class StreamingModel extends ScriptedModel {
-  override readonly capabilities = {
-    tools: true,
-    jsonOutput: false,
-    vision: false,
-    streaming: true,
-  };
-  readonly streamed: ChatRequest[] = [];
-  private readonly streams: (ChatStreamEvent[] | Error)[];
-  private readonly failAfterPieces: Error | undefined;
-
-  constructor(streams: (ChatStreamEvent[] | Error)[], id: string, failAfterPieces?: Error) {
-    super([], id);
-    this.streams = [...streams];
-    this.failAfterPieces = failAfterPieces;
-  }
-
-  async *stream(request: ChatRequest): AsyncIterable<ChatStreamEvent> {
-    this.streamed.push(request);
-    const next = this.streams.shift();
-    if (next instanceof Error) {
-      throw next;
-    }
-    for (const event of next ?? []) {
-      yield event;
-    }
-    if (this.failAfterPieces !== undefined) {
-      throw this.failAfterPieces;
-    }
-  }
-}
-
-const streamed = (response: ChatResponse): ChatStreamEvent[] => [
-  { type: "text", delta: response.content.slice(0, 3) },
-  { type: "text", delta: response.content.slice(3) },
-  { type: "done", response },
-];
 
 verifies("engine.model-calls-stream", () => {
   it("answers with the done response of a stream, never calling chat()", async () => {

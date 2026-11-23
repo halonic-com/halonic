@@ -1,4 +1,10 @@
-import type { ChatMessage, ChatTurnRequest, ChatTurnResponse, ToolCall } from "@halonicjs/ports";
+import type {
+  ChatMessage,
+  ChatTurnRequest,
+  ChatTurnResponse,
+  ChatTurnText,
+  ToolCall,
+} from "@halonicjs/ports";
 import type {
   ChatAnswer,
   ChatAnswerEnd,
@@ -38,6 +44,8 @@ export class AnswerInProgress {
   private readonly request: ChatAnswerRequest;
   private readonly tools: Map<string, ChatTool>;
   private readonly added: ChatMessage[] = [];
+  /** The first error a listener's method threw, kept in case an executor catches it. */
+  private listenerFailure: ListenerFailed | undefined;
 
   constructor(request: ChatAnswerRequest) {
     this.request = request;
@@ -64,7 +72,22 @@ export class AnswerInProgress {
     if (this.request.signal !== undefined) {
       request.signal = this.request.signal;
     }
+    if (this.request.listener?.onText !== undefined) {
+      request.onText = (text) => this.text(text);
+    }
     return request;
+  }
+
+  /**
+   * Ends the answer as failed when a listener's method threw, even one the
+   * executor called and caught, such as `onText` inside a model turn.
+   *
+   * @throws ListenerFailed when a listener's method threw
+   */
+  throwIfListenerFailed(): void {
+    if (this.listenerFailure !== undefined) {
+      throw this.listenerFailure;
+    }
   }
 
   /** Adds the assistant message of a model turn. */
@@ -108,6 +131,12 @@ export class AnswerInProgress {
     return this.end({ reason: "stopped", toolsRan: this.toolsRan });
   }
 
+  /** Passes the model's text on as it is written; nothing once the person stopped the answer. */
+  private text(text: ChatTurnText): void {
+    if (this.stopped) return;
+    this.tell((listener) => listener.onText?.(text));
+  }
+
   private add(message: ChatMessage): void {
     this.added.push(message);
     this.tell((listener) => listener.onMessage?.(message));
@@ -126,7 +155,8 @@ export class AnswerInProgress {
     try {
       call(listener);
     } catch (error) {
-      throw new ListenerFailed(asError(error));
+      this.listenerFailure ??= new ListenerFailed(asError(error));
+      throw this.listenerFailure;
     }
   }
 

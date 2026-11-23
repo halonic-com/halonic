@@ -10,6 +10,7 @@ import type {
   ChatResponse,
   ChatTurnRefusal,
   ChatTurnSkip,
+  ChatTurnText,
   ChatTurnToolFailure,
   ChatTurnWaiting,
   Clock,
@@ -37,6 +38,7 @@ import {
   type TurnStopped,
 } from "./turn-approval.ts";
 import { logListingFailures, logPartsOff, type TurnLog } from "./turn-log.ts";
+import { TurnText } from "./turn-text.ts";
 import {
   collectTurnTools,
   type HalonicTool,
@@ -107,6 +109,12 @@ export interface ModelTurnInput {
    * @throws from `keep` when the budget is reached, which ends the turn
    */
   readonly budget?: CallBudget;
+  /**
+   * Hears the answer's text as the model writes it. A `restart` comes before
+   * each model call that follows text already sent, so after the last one the
+   * deltas add up to the turn's answer.
+   */
+  readonly onText?: (text: ChatTurnText) => void;
 }
 
 /**
@@ -212,10 +220,17 @@ async function turnLoop(
     return start;
   }
   const { history, turn } = start;
+  const text = input.onText === undefined ? undefined : new TurnText(input.onText);
   let usage: Usage = { inputTokens: 0, outputTokens: 0 };
   for (let round = start.round; ; round++) {
     await keepToBudget(input, round, start.round);
-    const { response, answeredBy } = await askModel(input, models, tools, [...history, ...turn]);
+    const { response, answeredBy } = await askModel(
+      input,
+      models,
+      tools,
+      [...history, ...turn],
+      text,
+    );
     usage = addUsage(usage, response.usage);
     const ended = {
       ...response,
@@ -279,6 +294,7 @@ async function askModel(
   models: ModelChain,
   tools: TurnTools,
   messages: ChatMessage[],
+  text: TurnText | undefined,
 ) {
   const { agent, signal } = input;
   signal?.throwIfAborted();
@@ -295,13 +311,16 @@ async function askModel(
     messages: sent.length,
   });
   const started = input.clock.now().getTime();
-  const answer = await models.chat({
-    messages: sent,
-    tools: definitions,
-    ...(input.params === undefined ? {} : { params: input.params }),
-    meta: { agentId: agent },
-    ...(signal === undefined ? {} : { signal }),
-  });
+  const answer = await models.chat(
+    {
+      messages: sent,
+      tools: definitions,
+      ...(input.params === undefined ? {} : { params: input.params }),
+      meta: { agentId: agent },
+      ...(signal === undefined ? {} : { signal }),
+    },
+    text,
+  );
   // A turn stopped while the model answered takes its answer no more.
   signal?.throwIfAborted();
   const { response, answeredBy } = answer;
