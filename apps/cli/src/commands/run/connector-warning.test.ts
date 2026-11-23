@@ -264,7 +264,7 @@ verifies("cli.run-connector-warning", () => {
     expect(lines).toEqual([
       "! handbook didn't start, so its tools are off in this run.",
       "  Halonic is running inside a container, and the sandbox can't start there.",
-      "  Running it without the sandbox isn't allowed yet. To allow it, trust this workspace in Studio on this computer.",
+      "  Running it without the sandbox isn't allowed yet. To allow it, open Settings › Agent sandbox in Studio on this computer.",
     ]);
   });
 

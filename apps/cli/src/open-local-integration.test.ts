@@ -214,7 +214,7 @@ verifies("cli.local-integration-unfenced-yes", () => {
     it("refuses with no yes, and says where to give it", async () => {
       const { seen, client } = await setupOpener(root, { check: onWindows });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
-        "Connector \"notes\" didn't start: the sandbox isn't available here (windows) and running without it isn't allowed yet. To allow it, trust this workspace in Studio on this computer.",
+        "Connector \"notes\" didn't start: the sandbox isn't available here (windows) and running without it isn't allowed yet. To allow it, open Settings › Agent sandbox in Studio on this computer.",
       );
       expect(seen.starts).toBe(0);
       expect(seen.unfenced).toEqual([]);
@@ -235,7 +235,7 @@ verifies("cli.local-integration-unfenced-yes", () => {
       const file = join(root, "profile", "unfenced-runs", "consent.json");
       const { seen, client } = await setupOpener(root, { check: onWindows, unreadableYes: file });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
-        `the saved yes to run without it can't be read (${JSON.stringify(file)}), so nothing runs. To allow it, trust this workspace in Studio on this computer.`,
+        `the saved yes to run without it can't be read (${JSON.stringify(file)}), so nothing runs. To allow it, open Settings › Agent sandbox in Studio on this computer.`,
       );
       expect(seen.starts).toBe(0);
     });

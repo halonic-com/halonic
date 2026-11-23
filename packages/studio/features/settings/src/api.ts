@@ -2,7 +2,7 @@
  * The services and types other features may use. Features import each
  * other only through this file.
  */
-import type { HostSettings } from "@halonicjs/app";
+import type { HostSettings, RunnerUnfencedReason } from "@halonicjs/app";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type {
   SandboxCheckFacts,
@@ -142,7 +142,7 @@ export const AgentSandboxService: ServiceKey<AgentSandboxHost> =
 
 /**
  * The host's yes to run plugin and integration code without the sandbox, as Settings › Agent
- * sandbox shows it and takes it back (R16, HAL-3384). `status` is the engine's
+ * sandbox shows it, gives it and takes it back (R16, HAL-3384). `status` is the engine's
  * `UnfencedRunDecision` as codes; only `allowed` carries the saved yes.
  */
 export interface UnfencedYesHost {
@@ -151,6 +151,14 @@ export interface UnfencedYesHost {
     | { readonly run: "allowed"; readonly reason: string; readonly allowedAt: string }
     | { readonly run: "fenced" | "needs-yes" | "stopped"; readonly reason?: string }
   >;
+  /**
+   * Saves the person's yes for `reason`, the reason **Allow…** showed: the same yes a plugin's
+   * Review gives. It answers `null` when the reason changed since, or a Take back is under way, and
+   * nothing was saved; it throws when the host refuses for another reason.
+   */
+  allow(
+    reason: RunnerUnfencedReason,
+  ): Promise<{ readonly reason: string; readonly allowedAt: string } | null>;
   /** Removes the saved yes and stops every plugin running without the sandbox before it answers. */
   takeBack(): Promise<void>;
 }

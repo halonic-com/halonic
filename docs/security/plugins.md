@@ -107,7 +107,8 @@ cloned workspace can't trust itself.
   whole process. Windows is a preview: there MXC could fence a backend
   worker, on Windows 11, with only its heap limited, but no app uses MXC yet.
   Without MXC it starts only after you allow plugins and integrations to run
-  without the sandbox in Studio's trust check, and the launcher it then runs
+  without the sandbox in Studio's trust check or in Settings › Agent sandbox,
+  and the launcher it then runs
   in doesn't fence it. Without that yes it doesn't start. And
   a program that is allowed a host can send anything there.
 - **Tool results are untrusted content.** A plugin's answer can try to steer a

@@ -22,6 +22,7 @@ function fakeHost(first: Status) {
   let endTakeBack: (error?: Error) => void = () => {};
   const host = {
     status: vi.fn(async () => status),
+    allow: vi.fn(async () => null),
     takeBack: vi.fn(
       () =>
         new Promise<void>((resolve, reject) => {
@@ -131,7 +132,11 @@ verifies("settings.unfenced-yes-take-back", () => {
       .fn<UnfencedYesHost["status"]>()
       .mockRejectedValueOnce(new Error("no host"))
       .mockResolvedValueOnce(allowed);
-    const { view } = await show({ status, takeBack: vi.fn(async () => {}) });
+    const { view } = await show({
+      status,
+      allow: vi.fn(async () => null),
+      takeBack: vi.fn(async () => {}),
+    });
 
     expect(view.querySelector("h4")?.textContent).toBe("Plugins and integrations");
     expect(view.textContent).toContain(

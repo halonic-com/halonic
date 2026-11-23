@@ -59,7 +59,8 @@ named in English and sorted by name.
 - **Agent sandbox** (`settings.agent-sandbox-section`): the sandbox's state and buttons over
   `AgentSandboxService`. Under them, "Plugins and integrations" (`settings.unfenced-yes-take-back`)
   shows the saved yes to run plugin and integration code without the sandbox, with **Take back**,
-  over `UnfencedYesService`: the same object the plugin trust check saves the yes through, so the
+  or, while none is saved, **Allow…**, which gives it (`settings.unfenced-yes-where`), over
+  `UnfencedYesService`: the same object the plugin trust check saves the yes through, so the
   desktop app gives one per window.
 
 ## Example
