@@ -1,6 +1,7 @@
 import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
 import { boardCheck } from "./board-check.ts";
 import { registerBoardTools } from "./board-tools.ts";
+import { difficultyTagger } from "./difficulty-tagger.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
 import { runWatcher } from "./job.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
@@ -11,8 +12,8 @@ import { registerTools } from "./tools.ts";
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch` and
  * `board-check` jobs on their schedules, looks at each new comment for a
- * board ask, keeps each failed run, sets a created or changed task's effort
- * from its tags, and answers the agent tools and the `gh` wrapper's route.
+ * board ask, keeps each failed run, tags a created or changed task's
+ * difficulty, sets its effort from its tags, and answers the agent tools and the `gh` wrapper's route.
  */
 let context: PluginContext | undefined;
 
@@ -35,6 +36,9 @@ export const plugin = definePlugin({
     const effort = taskEffort(ctx, { fetch: (url, init) => fetch(url, init) });
     ctx.events.on("issue.created", (event) => effort.onIssueEvent(event));
     ctx.events.on("issue.updated", (event) => effort.onIssueEvent(event));
+    const tagger = difficultyTagger(ctx, { fetch: (url, init) => fetch(url, init) });
+    ctx.events.on("issue.created", (event) => tagger.onIssueEvent(event));
+    ctx.events.on("issue.updated", (event) => tagger.onIssueEvent(event));
     registerTools(ctx);
     registerReadyForReview(ctx);
     registerBoardTools(ctx);

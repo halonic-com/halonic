@@ -26,8 +26,12 @@ verifies("paperclip.pr-watcher-plugin", () => {
   test("declares each secret setting as a string, the shape the host checks", () => {
     const settings = Object.entries(manifest.instanceConfigSchema?.["properties"] ?? {});
     const secrets = settings.filter(([, schema]) => schema.format === "secret-ref");
-    // Every new secret setting is listed here on purpose, so the guard's reviewer sees it (HAL-16876).
-    expect(secrets.map(([key]) => key)).toEqual(["githubToken", "paperclipApiKey"]);
+    // Every new secret setting is listed here on purpose, so the guard's reviewer sees it (HAL-16876, HAL-16902).
+    expect(secrets.map(([key]) => key)).toEqual([
+      "githubToken",
+      "paperclipApiKey",
+      "anthropicApiKey",
+    ]);
     for (const [, schema] of secrets) {
       expect(schema).toMatchObject({ type: "string" });
       expect(schema).not.toHaveProperty("properties");

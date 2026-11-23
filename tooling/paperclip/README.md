@@ -414,6 +414,51 @@ effort in the issue properties (the handler then leaves that task alone).
 effort words (anything else shows as `other`) and actor types, never task
 text or the key.
 
+## Difficulty tagger
+
+Labels new and changed tasks `D1`–`D4` and `opus-only` (HAL-16902, step 3
+of the effort decision on HAL-16866), so the task effort handler above can set
+their effort. It runs on `issue.created`, and on `issue.updated` when the
+title or the first 4,000 characters of the description changed (it keeps a
+hash of that text per task, never the text). Done and cancelled tasks are
+left alone.
+
+**How it tags.** One request to `https://api.anthropic.com/v1/messages` with
+the board's prompt from HAL-16876's document `difficulty-labels`
+(`src/difficulty-tagger/prompt.ts`), `claude-haiku-5-5`, thinking off, at
+most 400 output tokens, and the task's title and description start. The
+answer counts only when its `kind`, `difficulty` (`D1`–`D4`) and `opus_only`
+have exactly the prompt's values. Code work gets its difficulty, plus
+`opus-only` when the answer says so; other work gets no label, so the
+agent's own effort applies. The board measured about $0.00014 and 0.7 s a task.
+
+**Labels someone set win.** A task with a `D1`–`D5` or `opus-only` label the
+tagger didn't write is never asked about or changed. When it tags a task
+again, it swaps only its own labels and keeps every other label. It reads
+the task again just before writing, so a label set while the model answered
+still wins.
+
+**Switching it on and off.** Besides `paperclipApiUrl` and `paperclipApiKey`
+(it reads the company's label ids there), the board sets:
+
+1. `anthropicApiKey`: a secret holding a scoped Anthropic API key. Without
+   it the tagger doesn't run at all.
+2. `difficultyTaggerWritesForVersion`: the running plugin version. This is
+   the switch.
+3. `difficultyTaggerModel` (optional): another Claude model id.
+
+With the key set and the switch empty or naming another version, it asks the
+model and only logs `Difficulty tagger: would label HAL-… D3 opus-only
+(switch off).`, which gives a dry run. Turning the switch on tags those tasks
+once more, this time for real. Turning it off leaves the labels in place.
+
+**Metrics** (tag `companyId`): `difficulty_tagger.set` and
+`difficulty_tagger.logged` (tag `kind`), `difficulty_tagger.failed` (tag
+`reason`: `http_429`, `refusal`, `max_tokens`, `no_answer`,
+`missing_label`, …). A failure saves nothing, so the task's next change asks
+again. Log lines and metrics carry task identifiers, label names and kinds of
+work, never task text, the model's text or a key.
+
 ## Metrics
 
 The numbers for the before/after comparison in the tools plan (HAL-15920).

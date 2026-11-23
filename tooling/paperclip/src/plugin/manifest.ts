@@ -18,7 +18,7 @@ const monitorPostpone = "issues.monitors.postpone" as PluginCapability;
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.agent-tools",
   apiVersion: 1,
-  version: "0.4.0",
+  version: "0.5.0",
   displayName: "Agent tools",
   description:
     "Halonic's tools beside Paperclip. The PR watcher marks a task done once its pull requests merged with a green ci-ok, and wakes the author for a red ci-ok, a conflict or a new review finding.",
@@ -31,7 +31,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "issues.read",
     // Only `done`: src/plugin/host.ts is the one place that writes a status, through doneOnly.
     // A task's effort goes through Paperclip's own API instead (src/plugin/task-effort.ts),
-    // because the SDK's update leaves that field out.
+    // because the SDK's update leaves that field out. The difficulty tagger sends only
+    // `labelIds` (src/plugin/difficulty-tagger.ts).
     "issues.update",
     "issues.wakeup",
     "issue.comments.read",
@@ -40,6 +41,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // guards); the manifest can't list hosts. ready_for_review also calls the precheck service
     // at the address in the settings (src/plugin/ready-for-review.ts), and the task effort
     // handler sends one task change to Paperclip's API at the address in the settings.
+    // The difficulty tagger sends a task's title and description start to
+    // api.anthropic.com/v1/messages only (src/plugin/difficulty-tagger-calls.ts) and reads
+    // the company's labels from Paperclip's API.
     "http.outbound",
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
@@ -50,6 +54,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // through the gate in src/board-check/writes.ts.
     // A new comment is looked at for a board ask at once; runs that failed (part a).
     // Task effort (HAL-16876): a created or changed task's tags and effort.
+    // Difficulty tagger (HAL-16902): a created or changed task's title and description.
     "events.subscribe",
     // Only `board-waiting` and `board-asks` on the Board Checker's task.
     "issue.documents.write",
@@ -177,6 +182,24 @@ export const manifest: PaperclipPluginManifestV1 = {
           "Url keys of the reviewers whose hand-back without a signed approval sets the task's effort to high.",
         items: { type: "string" },
         default: ["liam", "julian"],
+      },
+      difficultyTaggerWritesForVersion: {
+        type: "string",
+        title: "Difficulty tagger writes for version",
+        description:
+          "Empty: the difficulty tagger only logs the labels it would put on a new or changed task (D1–D4, and opus-only, for code work). Enter the plugin's version to let it write them; after an upgrade it stops until you enter the new version. It never replaces a difficulty or opus-only label someone else set. It needs the Paperclip API settings above to write.",
+      },
+      anthropicApiKey: {
+        type: "string",
+        title: "Anthropic API key",
+        description:
+          "The secret with a scoped Anthropic API key for the difficulty tagger. It sends a task's title and the first 4,000 characters of its description to api.anthropic.com with it. Empty: the tagger doesn't run.",
+        format: "secret-ref",
+      },
+      difficultyTaggerModel: {
+        type: "string",
+        title: "Difficulty tagger model",
+        description: "The Claude model the difficulty tagger asks. Empty: claude-haiku-5-5.",
       },
     },
   },

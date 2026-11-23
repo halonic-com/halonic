@@ -24,6 +24,7 @@ import { errorCode } from "./board-check-api.ts";
 import { companyConfig } from "./job.ts";
 import { manifest } from "./manifest.ts";
 import { type MetricsApi, writeMetrics } from "./metrics.ts";
+import { perTaskQueue, taskIdOf } from "./task-events.ts";
 
 /**
  * The task effort handler (HAL-16876, HAL-16866 steps 2–3): on a task's
@@ -242,15 +243,14 @@ export interface TaskEffort {
  * `issue.updated` its own write causes is read after its record is saved.
  */
 export function taskEffort(ctx: TaskEffortApi, deps: TaskEffortDeps): TaskEffort {
-  const running = new Map<string, Promise<void>>();
+  const queue = perTaskQueue();
   return {
     async onIssueEvent(event) {
-      const payload = (event.payload ?? {}) as { id?: unknown };
-      const taskId = event.entityId ?? (typeof payload.id === "string" ? payload.id : undefined);
+      const taskId = taskIdOf(event);
       if (taskId === undefined) {
         return;
       }
-      const work = async () => {
+      await queue(taskId, async () => {
         try {
           const config = await companyConfig(ctx.config, event.companyId);
           if (config !== undefined) {
@@ -261,13 +261,7 @@ export function taskEffort(ctx: TaskEffortApi, deps: TaskEffortDeps): TaskEffort
             companyId: event.companyId,
           });
         }
-      };
-      const next = (running.get(taskId) ?? Promise.resolve()).then(work);
-      running.set(taskId, next);
-      await next;
-      if (running.get(taskId) === next) {
-        running.delete(taskId);
-      }
+      });
     },
   };
 }

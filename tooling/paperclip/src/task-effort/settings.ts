@@ -39,7 +39,8 @@ function apiUrl(value: unknown): string | undefined {
   return url !== undefined && /^https?:\/\/[\w.-]+(:\d+)?$/.test(url) ? url : undefined;
 }
 
-function secretRef(value: unknown): SecretRef | undefined {
+/** A secret binding from the settings, or undefined when the value isn't one. */
+export function secretRef(value: unknown): SecretRef | undefined {
   const ref = value as { type?: unknown; secretId?: unknown } | undefined;
   return ref?.type === "secret_ref" && typeof ref.secretId === "string"
     ? { type: "secret_ref", secretId: ref.secretId }
