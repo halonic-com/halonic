@@ -10,7 +10,11 @@ import type {
   PhoneTunnel,
   TunnelPairingStart,
 } from "@halonicjs/studio-feature-remote/phone";
-import { type TauriCallbacks, type TauriIpc, tauriChannelIpc } from "@halonicjs/studio-services";
+import {
+  type TauriCallbacks,
+  type TauriIpc,
+  tauriChannelIpc,
+} from "@halonicjs/studio-services/tauri-ipc";
 import {
   type Report,
   readComputers,

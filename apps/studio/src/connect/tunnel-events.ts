@@ -1,5 +1,6 @@
 import type { ComputerId, PhoneStatus } from "@halonicjs/studio-feature-remote/phone";
-import { type TauriCallbacks, TauriChannel, type TauriIpc } from "@halonicjs/studio-services";
+import { TauriChannel } from "@halonicjs/studio-services/tauri-channel";
+import type { TauriCallbacks, TauriIpc } from "@halonicjs/studio-services/tauri-ipc";
 import { type Report, readTunnelEvent, type TunnelEvent } from "./phone-tunnel-answers.ts";
 
 /** Told about every event the shell sends, for every computer. */
