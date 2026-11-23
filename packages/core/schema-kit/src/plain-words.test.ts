@@ -13,6 +13,13 @@ function onlyIssue(schema: Schema, input: unknown) {
   return issue === undefined ? undefined : [issue.code, issue.path, issue.message];
 }
 
+/** Every issue's message, for a schema that fails. */
+function messagesOf(schema: Schema, input: unknown): string[] {
+  const result = parse(schema, input);
+  expect(result.ok).toBe(false);
+  return result.ok ? [] : result.error.map(({ message }) => message);
+}
+
 verifies("schema-kit.plain-words", () => {
   describe("a value of the wrong type", () => {
     const numbers = s.object({ params: s.object({ temperature: s.number() }) });
@@ -115,6 +122,55 @@ verifies("schema-kit.plain-words", () => {
         "params is a map: write its fields on the lines below it, indented.",
       ]);
     });
+
+    it("names what was written instead of a number, true or false, or text", () => {
+      const schema = s.object({ temperature: s.number(), local: s.boolean(), model: s.string() });
+      const messages = [
+        { temperature: " ", local: 1, model: [1] },
+        { temperature: [1], local: "yes", model: { a: 1 } },
+        { temperature: { a: 1 }, local: [true], model: true },
+        { temperature: true, local: " False ", model: 1 },
+      ].map((input) => messagesOf(schema, input));
+      expect(messages).toEqual([
+        [
+          "temperature needs a number, not text.",
+          "local needs true or false, not a number.",
+          "model needs text, not a list.",
+        ],
+        [
+          "temperature needs a number, not a list.",
+          "local needs true or false, not text.",
+          "model needs text, not a map.",
+        ],
+        [
+          "temperature needs a number, not a map.",
+          "local needs true or false, not a list.",
+          'model is text: write "true" in quotes.',
+        ],
+        [
+          "temperature needs a number, not true or false.",
+          "local is true or false: write false without quotes.",
+          'model is text: write "1" in quotes.',
+        ],
+      ]);
+    });
+
+    it("repeats a value where a list goes only when it's short and not empty", () => {
+      const schema = s.object({ gets: s.array(s.string()) });
+      const forty = "input.".padEnd(40, "x");
+      const messages = [true, 5, "  input.mail ", forty, "", null, {}].map((gets) =>
+        messagesOf(schema, { gets }),
+      );
+      expect(messages).toEqual([
+        ["gets is a list: write [true]."],
+        ["gets is a list: write [5]."],
+        ["gets is a list: write [input.mail]."],
+        [`gets is a list: write [${forty}].`],
+        ['gets is a list: write [one, two], or each item on its own line after "- ".'],
+        ['gets is a list: write [one, two], or each item on its own line after "- ".'],
+        ['gets is a list: start each item with "- ".'],
+      ]);
+    });
   });
 
   describe("a value out of range", () => {
@@ -159,6 +215,33 @@ verifies("schema-kit.plain-words", () => {
         "temperature is too big: use 2 or less.",
       ]);
     });
+
+    it("gives the limits of a whole number too big to count exactly", () => {
+      const schema = s.object({ maxTokens: s.number().int() });
+      const messages = [1e16, -1e16].map((maxTokens) => messagesOf(schema, { maxTokens }));
+      expect(messages).toEqual([
+        ["maxTokens is too big: use 9007199254740991 or less."],
+        ["maxTokens is too small: use -9007199254740991 or more."],
+      ]);
+    });
+
+    it("gives the number of items, characters or the limit that isn't allowed", () => {
+      const schema = s.object({
+        options: s.array(s.string()).min(2),
+        tags: s.array(s.string()).max(1),
+        id: s.string().min(2),
+        name: s.string().max(2),
+        temperature: s.number().lt(2),
+      });
+      const input = { options: [], tags: ["a", "b"], id: "a", name: "abc", temperature: 2 };
+      expect(messagesOf(schema, input)).toEqual([
+        "options needs at least 2 items.",
+        "tags has too many items: use at most 1.",
+        "id needs at least 2 characters.",
+        "name is too long: use at most 2 characters.",
+        "temperature must be less than 2.",
+      ]);
+    });
   });
 
   describe("an address", () => {
@@ -182,9 +265,28 @@ verifies("schema-kit.plain-words", () => {
         "url needs http://, such as http://LOCALHOST/v1.",
       ]);
     });
+
+    it("asks for a full address when the address has a scheme", () => {
+      expect(onlyIssue(schema, { http: { url: "https://" } })?.[2]).toBe(
+        "url needs a full address that starts with https://.",
+      );
+    });
   });
 
   describe("what keeps its message", () => {
+    it("keeps Zod's message for a missing key, an e-mail address and a value not in a list", () => {
+      const schema = s.object({
+        temperature: s.number(),
+        mail: s.string().email(),
+        kind: s.enum(["a", "b"]),
+      });
+      expect(messagesOf(schema, { mail: "family", kind: "c" })).toEqual([
+        "Invalid input: expected number, received undefined",
+        "Invalid email address",
+        'Invalid option: expected one of "a"|"b"',
+      ]);
+    });
+
     it("keeps a schema's own message", () => {
       const schema = s.object({ id: s.string().regex(/^[a-z]+$/, "own message") });
       expect(onlyIssue(schema, { id: "X" })).toEqual(["invalid_format", ["id"], "own message"]);

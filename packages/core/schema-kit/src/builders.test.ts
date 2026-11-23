@@ -33,8 +33,28 @@ verifies("schema-kit.builders", () => {
   it("reports unknown keys of a strict object with the keys", () => {
     const schema = s.object({ name: s.string().min(1) }).strict();
     const issues = issuesOf(parse(schema, { name: "a", extra: 1 }));
-    expect(issues).toHaveLength(1);
-    expect(issues[0]).toMatchObject({ code: "unrecognized_keys", path: [], keys: ["extra"] });
+    expect(issues).toStrictEqual([
+      {
+        code: "unrecognized_keys",
+        path: [],
+        message: 'Unrecognized key: "extra"',
+        keys: ["extra"],
+        knownKeys: ["name"],
+      },
+    ]);
+    const nested = s.object({
+      http: s.object({ url: s.string(), headers: s.string().optional() }).strict(),
+    });
+    expect(issuesOf(parse(nested, { http: { url: "a", header: 1 } }))).toMatchObject([
+      { path: ["http"], keys: ["header"], knownKeys: ["url", "headers"] },
+    ]);
+  });
+
+  it("gives no known keys for the unknown keys of a record", () => {
+    const schema = s.record(s.enum(["a"]), s.number());
+    expect(issuesOf(parse(schema, { a: 1, b: 2 }))).toStrictEqual([
+      { code: "unrecognized_keys", path: [], message: 'Unrecognized key: "b"', keys: ["b"] },
+    ]);
   });
 
   it("picks the option of a discriminated union by its key", () => {
