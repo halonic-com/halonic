@@ -242,7 +242,7 @@ verifies("inbox.proposal-page", () => {
       },
     );
 
-    it("says a failed accept with its reason and Try again, and leaves the change undecided", async () => {
+    it("says a failed accept by its kind, not the host's words, and leaves the change undecided", async () => {
       const decisions = fakeDecisions({
         accept: vi.fn(async () => Promise.reject(new Error("The disk is full."))),
       });
@@ -251,9 +251,10 @@ verifies("inbox.proposal-page", () => {
       await press(buttons(root, "Accept")[0]);
 
       expect(root.querySelector('[role="alert"]')?.textContent).toContain(
-        "Couldn't accept this change. The disk is full.",
+        "Couldn't accept this change. Halonic ran into a problem it can't explain yet.",
       );
-      expect(buttons(root, "Try again")).toHaveLength(1);
+      expect(root.textContent).not.toContain("The disk is full.");
+      expect(buttons(root, "Copy details")).toHaveLength(1);
       expect(buttons(root, "Accept")).toHaveLength(2);
     });
 

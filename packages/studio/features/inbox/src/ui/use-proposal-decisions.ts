@@ -1,9 +1,17 @@
 import { type ToastMessage, type ToastStore, useToastStore } from "@halonicjs/studio-kit";
+import { copyDetailsWords, detailsOf, useCopyDetails } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
-import { changeLine, decidedToast, undoLeftAloneLine } from "../plain/proposal-text.ts";
+import {
+  changeLine,
+  decidedToast,
+  decisionFailureReason,
+  undoLeftAloneLine,
+} from "../plain/proposal-text.ts";
 import {
   type ProposalDecided,
   type ProposalDecisions,
+  ProposalFailedError,
+  type ProposalFailure,
   ProposalGoneError,
 } from "../proposal-decisions.ts";
 import type { ProposalFile, ProposalItem } from "../proposal-items.ts";
@@ -14,11 +22,15 @@ export type ProposalVerb = "accept" | "reject";
 /** What a press is on: one file by its path, or every undecided file. */
 export type DecisionTarget = { readonly file: string } | "all";
 
-/** A decision that didn't go through, for its line's **Try again** (Q11). */
+/**
+ * A decision that didn't go through (Q11, C665 27): why, which picks its line's words and button,
+ * and the error, whose text reaches the person only through **Copy details**.
+ */
 export interface DecisionFailure {
   readonly verb: ProposalVerb;
   readonly target: DecisionTarget;
-  readonly reason: string;
+  readonly failure: ProposalFailure;
+  readonly error: unknown;
 }
 
 /** The open proposal's decisions, as its page shows them. */
@@ -41,6 +53,8 @@ export interface ProposalDecisionState {
   /** Goes up after each decision, so the page moves focus on (Q6). */
   readonly decided: number;
   decide(verb: ProposalVerb, target: DecisionTarget): void;
+  /** Drops the failed decision's line, as once the workspace it was refused in is trusted. */
+  clearFailure(): void;
   /** After a Remove found the changes there again and the Inbox read them: they show once more. */
   changesBack(): void;
 }
@@ -118,7 +132,7 @@ export function useProposalDecisions(
         if (error instanceof ProposalGoneError) {
           setGone(true);
           setBack(false);
-        } else setFailure({ verb, target, reason: reasonOf(error) });
+        } else setFailure({ verb, target, failure: failureOf(error), error });
       })
       .finally(() => {
         setPending(null);
@@ -143,6 +157,7 @@ export function useProposalDecisions(
     announcement,
     decided,
     decide,
+    clearFailure: () => setFailure(null),
     changesBack,
   };
 }
@@ -211,6 +226,7 @@ function useUndoSteps(
   undone: (paths: readonly string[]) => void,
 ) {
   const toasts = useToastStore();
+  const copyDetails = useCopyDetails();
   const held = useHeldWhile(holdBack);
   const shown = useRef(new Set<string>());
   const newest = useRef<string | null>(null);
@@ -249,10 +265,20 @@ function useUndoSteps(
         undone(step.paths.filter((path) => !left.has(path)));
         if (kept.length === 0) return;
         const text = undoLeftAloneLine(decidedWords[step.verb], kept);
-        toasts?.show({ tone: "danger", title: "Couldn't undo this.", text });
+        toasts?.show({ tone: "danger", title: undoFailedTitle, text });
       })
       .catch((error: unknown) => {
-        toasts?.show({ tone: "danger", title: "Couldn't undo this.", text: reasonOf(error) });
+        const failure = failureOf(error);
+        const text = decisionFailureReason(failure);
+        // Only a reason Halonic can't explain offers the host's own words, to copy (C665 27).
+        const details = () => void copyDetails(detailsOf(`${undoFailedTitle} ${text}`, error));
+        const action = { label: copyDetailsWords.label, onClick: details };
+        toasts?.show({
+          tone: "danger",
+          title: undoFailedTitle,
+          text,
+          ...(failure === "unexplained" ? { action } : {}),
+        });
       });
     track(restoring);
   }
@@ -283,7 +309,7 @@ function useUndoSteps(
       function onClick() {
         if (held.current !== undefined) {
           const focused = document.activeElement;
-          showWithUndo({ tone: "danger", title: "Couldn't undo this.", text: held.current });
+          showWithUndo({ tone: "danger", title: undoFailedTitle, text: held.current });
           keepFocusInToasts(toasts, focused);
           return;
         }
@@ -345,6 +371,9 @@ function settleWhenToastsClose(
   });
 }
 
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+const undoFailedTitle = "Couldn't undo this.";
+
+/** A failure the app sorted keeps its kind; anything else is one Halonic can't explain. */
+function failureOf(error: unknown): ProposalFailure {
+  return error instanceof ProposalFailedError ? error.failure : "unexplained";
 }

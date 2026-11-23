@@ -104,6 +104,28 @@ export function decisionFailedLine(verb: "accept" | "reject", all: boolean): str
 }
 
 /**
+ * Why an Accept, a Reject or an Undo didn't go through (C665 27), after {@link decisionFailedLine}
+ * or under "Couldn't undo this.", by why, never by the host's own text. Only a Remove finds the
+ * changes there again, so for these that is a reason Halonic can't explain.
+ */
+export function decisionFailureReason(failure: ProposalFailure): string {
+  return decisionFailureReasons[failure];
+}
+
+const unexplainedReason = "Halonic ran into a problem it can't explain yet.";
+
+/** The workspace's trust check refused it: the host was never asked. */
+export const untrustedDecisionLine =
+  "This workspace isn't trusted yet, so Studio can't change its files.";
+
+const decisionFailureReasons: Readonly<Record<ProposalFailure, string>> = {
+  "changes-back": unexplainedReason,
+  "not-answering": "The engine isn't answering. It may still be starting.",
+  untrusted: untrustedDecisionLine,
+  unexplained: unexplainedReason,
+};
+
+/**
  * In place of the buttons once the run's changes are gone (Q11, C681 31), before
  * {@link removeLabel}. The CLI says the same sentence.
  */
@@ -138,6 +160,7 @@ export function removeFailedLine(failure: ProposalFailure, runId: string): strin
 const removeFailureReasons: Readonly<Record<ProposalFailure, (run: string) => string>> = {
   "changes-back": (run) => `run ${run}'s changes are there again. Review them instead.`,
   "not-answering": () => "the engine isn't answering. It may still be starting.",
+  untrusted: () => "this workspace isn't trusted yet.",
   unexplained: () => "Halonic ran into a problem it can't explain yet.",
 };
 

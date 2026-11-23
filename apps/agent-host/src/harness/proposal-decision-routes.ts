@@ -2,6 +2,8 @@ import type { ServerResponse } from "node:http";
 import {
   CannotCombineError,
   compareTexts,
+  ProposalAlreadyDecidedError,
+  ProposalFileUnknownError,
   ProposalUnavailableError,
   type RunProposals,
 } from "@halonicjs/app";
@@ -42,10 +44,12 @@ const unnamed = "The agent host was not told to serve this workspace.";
  * `…/done` answers `{ proposals }` settled in the last 30 days.
  *
  * A workspace the launcher didn't name is 404 `unknown_workspace`, a run
- * with no proposal 404 `unknown_proposal`, an undo id the host doesn't keep
- * for that workspace 404 `unknown_undo`, a proposal whose texts are gone
- * 409 `proposal_unavailable`, a Combine both of texts that change the same
- * lines 409 `cannot_combine`, and anything else the service refuses 422
+ * with no proposal 404 `unknown_proposal`, a file the run doesn't propose
+ * 404 `unknown_file`, an undo id the host doesn't keep for that workspace
+ * 404 `unknown_undo`, a proposal whose texts are gone 409
+ * `proposal_unavailable`, a choice on a file already decided 409
+ * `already_decided`, a Combine both of texts that change the same lines 409
+ * `cannot_combine`, and anything else the service refuses 422
  * `proposal_refused` with the reason.
  */
 export function proposalDecisionRoutes(
@@ -207,6 +211,12 @@ async function withService(
     }
     if (error instanceof CannotCombineError) {
       return sendError(response, 409, "cannot_combine", error.message);
+    }
+    if (error instanceof ProposalAlreadyDecidedError) {
+      return sendError(response, 409, "already_decided", error.message);
+    }
+    if (error instanceof ProposalFileUnknownError) {
+      return sendError(response, 404, "unknown_file", error.message);
     }
     sendError(response, 422, "proposal_refused", reasonOf(error));
   }

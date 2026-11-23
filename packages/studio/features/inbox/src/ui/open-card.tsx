@@ -124,6 +124,7 @@ export function OpenCard({
           if (inbox.state.error !== undefined) throw inbox.state.error;
         }}
         onOpenRun={openThisRun}
+        trust={trust}
         answering={answering}
         signedOut={signedOut}
         words={words}

@@ -3,9 +3,12 @@
 // decision didn't go through. Kept apart from `ProposalCard`, which lays them out.
 
 import { Button, type ButtonUnavailable, type ButtonVariant } from "@halonicjs/studio-kit";
-import { decisionFailedLine } from "../plain/proposal-text.ts";
+import { copyDetailsWords, detailsOf, useCopyDetails } from "@halonicjs/studio-shell";
+import { decisionFailedLine, decisionFailureReason } from "../plain/proposal-text.ts";
 import type { ProposalFile } from "../proposal-items.ts";
+import { ReviewTrustButton } from "./review-trust-button.tsx";
 import type {
+  DecisionFailure,
   DecisionTarget,
   ProposalDecisionState,
   ProposalVerb,
@@ -13,9 +16,13 @@ import type {
 
 /**
  * The page's decisions, and while the engine isn't answering, what each button that reaches the
- * host gets instead of acting: the reason it points at.
+ * host gets instead of acting: the reason it points at. `review` opens the workspace's trust check,
+ * for a decision refused because it isn't trusted; without it that line has no **Review**.
  */
-export type CardState = ProposalDecisionState & { readonly offline: ButtonUnavailable | undefined };
+export type CardState = ProposalDecisionState & {
+  readonly offline: ButtonUnavailable | undefined;
+  readonly review: ((opener: HTMLElement | null) => void) | undefined;
+};
 
 /**
  * The files still to decide here: the undecided ones. A file changed since the run is one of them:
@@ -146,7 +153,12 @@ export function DecideButton({
   );
 }
 
-/** A decision that didn't go through (Q11): what and why, with **Try again**; the change stays undecided. */
+/**
+ * A decision that didn't go through (Q11, C665 27): what and why, by the failure's kind, never the
+ * host's text; the change stays undecided. The engine not answering has **Try again**, a workspace
+ * not trusted yet **Review**, as on an approval's card, and a reason Halonic can't explain
+ * **Copy details**, the only place the host's own words reach the person.
+ */
 export function FailedLine({
   state,
   target,
@@ -156,21 +168,50 @@ export function FailedLine({
 }) {
   const { failure } = state;
   if (failure === null || !sameTarget(failure.target, target)) return null;
+  const line = `${decisionFailedLine(failure.verb, target === "all")} ${decisionFailureReason(failure.failure)}`;
   return (
     <div role="alert" className="flex flex-wrap items-center gap-x-3 text-small text-danger">
-      <span>
-        {decisionFailedLine(failure.verb, target === "all")} {failure.reason}
-      </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        unavailable={state.offline}
-        onClick={() => state.decide(failure.verb, failure.target)}
-      >
-        Try again
-      </Button>
+      <span>{line}</span>
+      <FailedLineButton state={state} failure={failure} line={line} />
     </div>
   );
+}
+
+function FailedLineButton({
+  state,
+  failure,
+  line,
+}: {
+  readonly state: CardState;
+  readonly failure: DecisionFailure;
+  readonly line: string;
+}) {
+  const copyDetails = useCopyDetails();
+  switch (failure.failure) {
+    case "not-answering":
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          unavailable={state.offline}
+          onClick={() => state.decide(failure.verb, failure.target)}
+        >
+          Try again
+        </Button>
+      );
+    case "untrusted":
+      return state.review === undefined ? null : <ReviewTrustButton review={state.review} />;
+    default:
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => void copyDetails(detailsOf(line, failure.error))}
+        >
+          {copyDetailsWords.label}
+        </Button>
+      );
+  }
 }
 
 /** Whether two decisions are for the same change, or both for every change. */

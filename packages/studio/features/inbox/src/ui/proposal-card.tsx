@@ -40,6 +40,7 @@ import {
 import { GoneLine } from "./proposal-gone.tsx";
 import type { RunFacts } from "./run-facts.ts";
 import { type ProposalDecisionState, useProposalDecisions } from "./use-proposal-decisions.ts";
+import { type TrustReview, useClearedWhenTrusted } from "./workspace-trust.ts";
 
 /** What {@link ProposalCard} shows. */
 export interface ProposalCardProps extends EngineState {
@@ -57,6 +58,11 @@ export interface ProposalCardProps extends EngineState {
    */
   readonly readAgain: () => Promise<void>;
   readonly onOpenRun?: ((runId: string) => void) | undefined;
+  /**
+   * The workspace's trust, for a decision refused because the workspace isn't trusted: **Review**,
+   * and when it becomes trusted the line goes. Without it there's no **Review**.
+   */
+  readonly trust?: TrustReview | undefined;
 }
 
 /**
@@ -88,6 +94,7 @@ export function ProposalCard({
   onDecided,
   readAgain,
   onOpenRun,
+  trust,
   answering = true,
   signedOut = false,
   words,
@@ -101,6 +108,7 @@ export function ProposalCard({
   const state: CardState = {
     ...useProposalDecisions(item, decisions, onDecided, answering ? undefined : undoHeld),
     offline: unavailableWhile(answering, reasonId),
+    review: trust?.review,
   };
   const open = openFiles(state).length > 0;
   const allButtons = decisions !== undefined && open && !state.gone;
@@ -135,6 +143,7 @@ export function ProposalCard({
             state={state}
             buttons={decisions !== undefined}
             onOpenRun={onOpenRun}
+            trust={trust}
           />
         )}
         <p role="status" className="sr-only">
@@ -155,14 +164,23 @@ function ProposalChanges({
   state,
   buttons,
   onOpenRun,
+  trust,
 }: {
   readonly item: ProposalItem;
   readonly state: CardState;
   readonly buttons: boolean;
   readonly onOpenRun: ((runId: string) => void) | undefined;
+  readonly trust: TrustReview | undefined;
 }) {
   const open = openFiles(state);
   const { nextButtons, summary } = useFocusAfterDecision(state, open[0]?.path);
+  // Once trusted, the refused decision can go through: its line goes, and the next button takes focus.
+  useClearedWhenTrusted(
+    trust,
+    state.failure?.failure === "untrusted",
+    state.clearFailure,
+    () => nextButtons.current.get(open[0]?.path ?? "") ?? null,
+  );
   return (
     <>
       {state.back ? <ChangesBackLine runId={item.runId} /> : null}

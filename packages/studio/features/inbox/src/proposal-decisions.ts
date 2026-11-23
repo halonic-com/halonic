@@ -32,10 +32,11 @@ export class ProposalGoneError extends Error {
 }
 
 /**
- * Why a call on a proposal failed, as the Inbox words it (C681 32): its changes are there again,
- * the engine isn't answering, or a reason Halonic can't explain yet.
+ * Why a call on a proposal failed, as the Inbox words it (C681 32, C665 27): its changes are there
+ * again (only a Remove), the engine isn't answering, the workspace isn't trusted yet, or a reason
+ * Halonic can't explain yet.
  */
-export type ProposalFailure = "changes-back" | "not-answering" | "unexplained";
+export type ProposalFailure = "changes-back" | "not-answering" | "untrusted" | "unexplained";
 
 /**
  * A failure the app sorted by the host's kind, so the page picks its words from `failure`. The
@@ -52,9 +53,9 @@ export class ProposalFailedError extends Error {
 }
 
 /**
- * Accept, Reject, Undo, settle and Remove on the open workspace's run proposals. Every call fails with
- * the reason when the proposal can't be decided now, and the page shows it; with
- * {@link ProposalGoneError} when its texts are gone, and Remove with {@link ProposalFailedError}.
+ * Accept, Reject, Undo, settle and Remove on the open workspace's run proposals. Every call fails
+ * with {@link ProposalGoneError} when its texts are gone, and otherwise with
+ * {@link ProposalFailedError}, which the page words by its `failure`.
  *
  * @example
  * const { undo } = await decisions.accept("01JD8Q", { file: "hubs/support/agents/triage.yaml" });

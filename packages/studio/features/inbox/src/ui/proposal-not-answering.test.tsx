@@ -6,7 +6,11 @@ import { act, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
-import { type ProposalDecisions, ProposalGoneError } from "../proposal-decisions.ts";
+import {
+  type ProposalDecisions,
+  ProposalFailedError,
+  ProposalGoneError,
+} from "../proposal-decisions.ts";
 import type { RunProposalEntry } from "../proposal-items.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
@@ -140,7 +144,9 @@ verifies("inbox.proposal-not-answering", () => {
     it("keeps Try again and Remove from reaching the host", async () => {
       const failed = openCard(
         fakeDecisions({
-          accept: vi.fn(async () => Promise.reject(new Error("The disk is full."))),
+          accept: vi.fn(async () =>
+            Promise.reject(new ProposalFailedError("not-answering", "The host isn't running.")),
+          ),
         }),
       );
       await press(buttons(failed.root, "Accept")[0]);
