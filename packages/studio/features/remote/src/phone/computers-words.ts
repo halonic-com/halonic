@@ -19,7 +19,11 @@ export const computersWords = {
     cantConfirm: "Can't confirm",
     forget: "Forget",
   } satisfies Record<PhoneState | "forget", string>,
-  note: "Forget only removes a computer from this phone. To cut this phone off for good, use Revoke in Settings › Remote on the computer.",
+  /**
+   * C750 #1 (HAL-16705): the launch rule on HAL-16439 opens the 0.1 connect page again once no
+   * computer is paired and the phone has a saved address, and nothing else said how to get back to it.
+   */
+  note: "Forget only removes a computer from this phone. To cut this phone off for good, use Revoke in Settings › Remote on the computer. Once no computer is paired, this phone connects to its saved address again when it opens, if it has one.",
   pair: "Pair with a computer",
   forget: {
     title: (computer: string) => `Forget ${computer}?`,

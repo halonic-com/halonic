@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15159 (D7 design, B7 items 3 and 5); HAL-15178
 
-When the phone app opens a paired computer, at launch or with Open agents after pairing, the Android app's own page shall stay on the app's origin and reach the computer only through the shell's `phone_*` commands. When the tunnel can't reach the computer, because the shell refuses to connect, the computer isn't answering or the first reach gives up, the page shall show the tunnel's state and shall not open the computer's LAN page, connect to the remembered address or show the connect screen. The connect screen shows only after "Connect with an address", as in `studio.connect.phone-tunnel-screens`.
+When the phone app opens a paired computer, at launch or with Open agents after pairing, the Android app's own page shall stay on the app's origin and reach the computer only through the shell's `phone_*` commands. When the tunnel can't reach the computer, because the shell refuses to connect, the computer isn't answering or the first reach gives up, the page shall show the tunnel's state and shall not open the computer's LAN page, connect to the remembered address or show the connect screen. The connect screen shows only after "Not listed? Enter its address" in Pair with a computer, as in `studio.connect.phone-tunnel-screens`.
 
 ## Examples
 

@@ -34,7 +34,7 @@ const loadPhoneApp = async (): Promise<PhoneAppModule> => {
  * - `#change-address` and `#page-not-shown` open the connect screen, as the 0.1 page does;
  * - a remembered address and no paired computer keep the 0.1 launch, which connects to it;
  * - anything else opens the phone app: Pair with a computer, or the paired computer's screen.
- * In the phone app the connect screen shows only after "Connect with an address", filled in.
+ * In the phone app the connect screen shows only after "Not listed? Enter its address", filled in.
  */
 export async function startPage(options: PageOptions): Promise<void> {
   const { document, tunnel } = options;

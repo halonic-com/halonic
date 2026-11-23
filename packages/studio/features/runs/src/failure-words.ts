@@ -270,6 +270,10 @@ export const failureWords = {
    */
   answerNotAChoice: (workflow: string, step: string, agent: string, options: readonly string[]) =>
     `${workflow} stopped in the step ${step}: ${capitalised(agent)}'s answer wasn't one of the step's choices (${choiceList.format(options)}). Make its instructions stricter, or pick a larger model, then run again.`,
+  /** The how-to for a step's answer it can't use (C750 #2, HAL-16705), until docs.halonic.dev has it. */
+  answerHowTo: "Handle an answer a step can't use",
+  answerHowToAddress:
+    "https://github.com/halonic-com/halonic/blob/main/docs/how-to/handle-an-answer-a-step-cant-use.md",
   /** `answer-not-an-option` in an older log, whose cause doesn't give the choices. */
   answerNotAnOption: (workflow: string, step: string, agent: string) =>
     `${workflow} stopped in the step ${step}: ${capitalised(agent)} answered with something that isn't one of its options. Make its instructions stricter, or pick a larger model, then run again.`,

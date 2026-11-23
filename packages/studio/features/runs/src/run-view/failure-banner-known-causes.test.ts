@@ -35,7 +35,16 @@ verifies("runs.run-view.failure-banners", () => {
         "Support reply stopped in the step Draft: Sorter's answer wasn't one of the step's choices (refund, question or spam). Make its instructions stricter, or pick a larger model, then run again.",
       ]);
       expect(banner?.kind === "callout" && banner.fixes).toBeUndefined();
-      expect(banner?.kind === "callout" && banner.links).toEqual([{ kind: "see-step" }]);
+      expect(banner?.kind === "callout" && banner.links).toEqual([
+        { kind: "see-step" },
+        {
+          kind: "open-external",
+          label: "Handle an answer a step can't use",
+          address:
+            "https://github.com/halonic-com/halonic/blob/main/docs/how-to/handle-an-answer-a-step-cant-use.md",
+          opens: "Opens GitHub",
+        },
+      ]);
     });
 
     it("never quotes the answer", () => {
@@ -70,6 +79,9 @@ verifies("runs.run-view.failure-banners", () => {
         "Support reply stopped in the step Draft: Triage answered with something that isn't one of its options. Make its instructions stricter, or pick a larger model, then run again.",
       ]);
       expect(lines(banner)?.join(" ")).not.toContain("maybe");
+      expect(banner?.kind === "callout" && banner.links?.map((link) => link.kind)).toEqual([
+        "open-external",
+      ]);
     });
 
     it("names the parallel branch whose answer it was", () => {

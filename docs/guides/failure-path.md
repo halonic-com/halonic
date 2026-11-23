@@ -121,6 +121,12 @@ held by another process, an approval, a timer.
 - **The user sees what happened and what to do**, in the words of the approved
   microcopy. Never a stack trace, raw provider JSON, an `errno` code, an
   internal path or an internal name.
+- **Point at the how-to when there is one.** When a guide in `docs/how-to/`
+  explains the fix, the error names it or links to it, as Studio's banners do
+  for [Model calls through a proxy](../how-to/model-calls-through-a-proxy.md)
+  and for an agent's answer a step can't use
+  ([Handle an answer a step can't use](../how-to/handle-an-answer-a-step-cant-use.md):
+  `answerRetries` and an `unusable` transition).
 - **The detail is kept, not shown.** The original error goes to the log or the
   run log, where `halonic doctor` and a "copy details" action can reach it.
   Detail never contains keys or tokens.
