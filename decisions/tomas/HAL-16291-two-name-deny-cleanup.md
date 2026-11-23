@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16291, a follow-up of HAL-11554 under the same rule (Liam's yes to option 1, 22 Nov); Liam signs this note in review on HAL-16291
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:X7RNiUJyf9oI4Akpg9UmEGT7RUOvD0aGbuemWna4gpRe+xIhm/GgbkbgY/gBlVaKs05x/f9R12DG16neezM/CA==
 
 For a deny on a missing path, `srt-win acl stamp` makes every missing folder
 on the way and an empty file at the end. HAL-11554 removed only the empty
