@@ -381,6 +381,12 @@ importers:
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../packages/adapters/token-store
+      '@halonicjs/adapter-workspace-engine-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/workspace-engine-node
+      '@halonicjs/adapter-workspace-models':
+        specifier: workspace:*
+        version: link:../../packages/adapters/workspace-models
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
@@ -417,12 +423,18 @@ importers:
       '@halonicjs/profile':
         specifier: workspace:*
         version: link:../../packages/core/profile
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../../packages/core/routines
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../../packages/core/schema-kit
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
+      '@halonicjs/target-node-harness':
+        specifier: workspace:*
+        version: link:../../packages/targets/node/harness
       '@halonicjs/workspace':
         specifier: workspace:*
         version: link:../../packages/core/workspace

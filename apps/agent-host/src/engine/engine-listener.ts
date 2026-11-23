@@ -56,9 +56,10 @@ export interface EngineListenerOptions {
 /**
  * Serves the server `serverFor` builds on a free port of 127.0.0.1. The
  * server is given the port, which the `Host` header must name, once it is
- * known, and the agent host's own body size, which it must refuse past. Past `maxStreams` open run-update streams, a new one is refused
- * with 503 after the server's own checks, so a caller without the token
- * still gets their refusals; an open stream is never dropped to make room.
+ * known, and the agent host's own body size, which it must refuse past.
+ * Past `maxStreams` open run-update streams, a new one is refused with 503
+ * after the server's own checks, so a caller without the token still gets
+ * their refusals; an open stream is never dropped to make room.
  */
 export async function listenForEngine(
   serverFor: (port: () => number, maxBodyBytes: number) => Server,

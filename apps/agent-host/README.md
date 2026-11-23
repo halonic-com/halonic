@@ -140,7 +140,16 @@ The engine role (`halonic-agent-host --engine`, B1) serves the engine server of 
 | The host's limits | the same request times, connection cap (`defaultHostServerLimits`) and 1 MiB body size (`maxBodyBytes`) as the host's server |
 | At most 8 open `GET /api/run-updates` streams | a new stream past them gets `503 too_many_streams`, after the token checks, so a caller without the token still gets `401`; an open stream is never dropped to make room, and a stream that closes frees its place |
 
-The run-update streams follow a feed that reads the engine's runs once a second while any stream is open, and sends one `{ runId, status, seq }` frame per run whose status changed (`src/engine/run-updates-feed.ts`). The `--engine` argument that starts all this is a follow-up.
+The run-update streams follow a feed that reads the engine's runs once a second while any stream is open, and sends one `{ runId, status, seq }` frame per run whose status changed (`src/engine/run-updates-feed.ts`).
+
+`halonic-agent-host --engine --profile-folder <folder> --workspace <folder>` starts the role (`src/engine/engine-command.ts`); any other argument exits with code 2. It opens the workspace's engine as `halonic routines watch` does, on the versions it watches, with the routine scheduler and the harness host, and takes `engine.lock`. What differs from the CLI:
+
+- secrets and key origins come only from Studio's shell, over the control pipe, one read at a time; the engine keeps no value;
+- trust is only read, never granted, through the read-only trust gate, for every start and every new version;
+- the profile folder is the one `--profile-folder` names, never `HALONIC_HOME`;
+- a run calls no connector and no listed tool yet: those wait for the shell's approvals.
+
+On `stop` it stops the scheduler, gives the steps 10 seconds, gives `engine.lock` up if they take longer, and ends the runs left going as interrupted.
 
 ## Serving over standard input and output
 
