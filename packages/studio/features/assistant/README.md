@@ -20,8 +20,12 @@ The Assistant feature of the Studio: the Build chat, its sessions and its change
   and how each reply ended, with the words the panel says.
 - `src/feature.ts`: the panel window, Ctrl+Alt+I and Ctrl K's **Assistant** and **New chat**.
 
-The app adds the feature and provides its host in a later pull request (T14 PR 6b); the chat tab,
-the chat menu, proposal cards and the line under the box come after that.
+The desktop app provides the host for each open folder (`apps/studio/src/assistant`,
+`studio.workspace-assistant`): answers on the engine's chat service with the Build chat's tools
+from `@halonicjs/assistant`. Until the sessions store lands (T14 PR 2 and 3), its chats last
+while the window is open. When Halonic's engine stops mid-answer, the reply ends with "Stopped
+when Halonic's engine stopped." (`assistant.chat.engine-stopped`). The chat tab, the chat menu,
+proposal cards and the line under the box come later.
 
 ## Example
 
