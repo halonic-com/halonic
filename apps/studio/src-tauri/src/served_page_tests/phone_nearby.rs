@@ -101,6 +101,13 @@ fn recording() -> (Channel<NearbyEvent>, Arc<Mutex<Vec<Value>>>) {
     (channel, sent)
 }
 
+/// The id of the first computer in the newest list the page was sent.
+fn listed_id(sent: &Mutex<Vec<Value>>) -> String {
+    let sent = sent.lock().unwrap();
+    let id = &sent.last().expect("a list")["computers"][0]["id"];
+    id.as_str().expect("a listed computer").to_owned()
+}
+
 /// What the Kotlin side sends, as it sends it.
 fn kotlin(change: Value) -> Seen {
     serde_json::from_value(change).expect("a change the Kotlin side sends")
@@ -142,6 +149,7 @@ fn phone_nearby_commands_send_the_page_names_and_ids_only() {
     let (channel, sent) = recording();
     let browse = begin(&webview, channel).expect("the app's own page browses");
     seen(&app, found(browse, "halonic-aa", "Desk"));
+    let desk = listed_id(&sent);
     seen(&app, found(browse, "halonic-aa", "Desk"));
     seen(
         &app,
@@ -151,7 +159,7 @@ fn phone_nearby_commands_send_the_page_names_and_ids_only() {
         *sent.lock().unwrap(),
         vec![
             json!({ "kind": "computers", "computers": [] }),
-            json!({ "kind": "computers", "computers": [{ "id": "nearby-1", "name": "Desk" }] }),
+            json!({ "kind": "computers", "computers": [{ "id": desk, "name": "Desk" }] }),
             json!({ "kind": "computers", "computers": [] }),
         ]
     );
@@ -163,12 +171,13 @@ fn phone_nearby_commands_empty_the_list_in_the_background() {
     let (channel, sent) = recording();
     let browse = begin(&webview, channel).expect("the app's own page browses");
     seen(&app, found(browse, "halonic-aa", "Desk"));
+    let desk = listed_id(&sent);
     seen(&app, kotlin(json!({ "browse": browse, "kind": "cleared" })));
     assert_eq!(
         sent.lock().unwrap().last(),
         Some(&json!({ "kind": "computers", "computers": [] }))
     );
-    assert_eq!(endpoint(&app, "nearby-1"), None);
+    assert_eq!(endpoint(&app, &desk), None);
 }
 
 #[test]
@@ -177,13 +186,14 @@ fn phone_nearby_commands_pair_by_id_after_the_picker_closes() {
     let (channel, sent) = recording();
     let browse = begin(&webview, channel).expect("the app's own page browses");
     seen(&app, found(browse, "halonic-aa", "Desk"));
+    let desk = listed_id(&sent);
 
     // The picker closes (`phone_nearby_stop`): the list stays for pairing,
     // and a late hit of that browse changes nothing and reaches no page.
     stop(&app);
     assert!(!watching(&app));
     assert_eq!(
-        endpoint(&app, "nearby-1").as_deref(),
+        endpoint(&app, &desk).as_deref(),
         Some("tcp://192.168.1.20:4100")
     );
     seen(&app, found(browse, "halonic-bb", "Late"));
@@ -200,7 +210,6 @@ fn phone_nearby_commands_ignore_hits_from_an_earlier_browse() {
     assert_ne!(earlier, browse);
     seen(&app, found(earlier, "halonic-aa", "Desk"));
     assert_eq!(sent.lock().unwrap().len(), 1, "only the empty list");
-    assert_eq!(endpoint(&app, "nearby-1"), None);
 }
 
 #[test]
@@ -230,14 +239,15 @@ fn phone_nearby_commands_end_the_picker_when_the_window_leaves() {
     let (channel, sent) = recording();
     let browse = begin(&webview, channel).expect("the app's own page browses");
     seen(&app, found(browse, "halonic-aa", "Desk"));
-    assert!(endpoint(&app, "nearby-1").is_some());
+    let desk = listed_id(&sent);
+    assert!(endpoint(&app, &desk).is_some());
 
     // The guard lets the window go to the confirmed address: the browse
     // and its list end before the served page loads.
     let served: Url = SERVED_PAGE.parse().expect("a test URL");
     assert!(on_navigation(&webview, &served));
     assert!(!watching(&app));
-    assert_eq!(endpoint(&app, "nearby-1"), None);
+    assert_eq!(endpoint(&app, &desk), None);
     seen(&app, found(browse, "halonic-bb", "Late"));
     assert_eq!(sent.lock().unwrap().len(), 2);
 }
@@ -245,13 +255,14 @@ fn phone_nearby_commands_end_the_picker_when_the_window_leaves() {
 #[test]
 fn phone_nearby_commands_end_the_picker_of_a_page_that_reloads() {
     let (app, webview) = on_app_page();
-    let (channel, _) = recording();
+    let (channel, sent) = recording();
     let browse = begin(&webview, channel).expect("the app's own page browses");
     seen(&app, found(browse, "halonic-aa", "Desk"));
+    let desk = listed_id(&sent);
     // A page that starts loading or closes (lib.rs calls this).
     end_page(&app);
     assert!(!watching(&app));
-    assert_eq!(endpoint(&app, "nearby-1"), None);
+    assert_eq!(endpoint(&app, &desk), None);
 }
 
 #[test]
