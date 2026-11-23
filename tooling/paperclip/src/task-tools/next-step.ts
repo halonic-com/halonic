@@ -206,8 +206,12 @@ export function readFinishRunParams(params: unknown): {
   }
 }
 
-/** The monitor policy for a request made at `now`; it gives up after its last check. */
-export function monitorPolicy(request: MonitorRequest, now: Date): MonitorPolicy {
+/**
+ * The monitor policy for a request made at `now`; it gives up after its last check.
+ * Paperclip keeps counting the checks a task's earlier monitors used (`checksUsed`) and refuses
+ * a limit at or below that count, so the limit is the asked-for checks on top of them.
+ */
+export function monitorPolicy(request: MonitorRequest, now: Date, checksUsed = 0): MonitorPolicy {
   const minute = 60_000;
   const nextCheckAt = new Date(now.getTime() + request.inMinutes * minute);
   const timeoutAt = new Date(now.getTime() + request.inMinutes * (request.maxChecks + 1) * minute);
@@ -219,6 +223,6 @@ export function monitorPolicy(request: MonitorRequest, now: Date): MonitorPolicy
     serviceName: request.service,
     externalRef: request.ref,
     timeoutAt: timeoutAt.toISOString(),
-    maxAttempts: request.maxChecks,
+    maxAttempts: checksUsed + request.maxChecks,
   };
 }

@@ -23,6 +23,11 @@ verifies("paperclip.task-next-step", () => {
       expect(policy.timeoutAt).toBe("2026-11-24T21:00:00.000Z");
     });
 
+    test("counts its checks on top of those the task's earlier monitors used", () => {
+      const request = readMonitor({ inMinutes: 20, ref: "halonic-com/halonic#5533", maxChecks: 2 });
+      expect(monitorPolicy(request, new Date("2026-11-23T21:40:00Z"), 3).maxAttempts).toBe(5);
+    });
+
     test.each([
       [{ inMinutes: 5, ref: "x#1" }, "monitor.inMinutes must be a whole number from 15 to 1440."],
       [

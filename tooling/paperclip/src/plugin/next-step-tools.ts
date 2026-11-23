@@ -98,7 +98,8 @@ export function nextStepHandlers(now: () => Date) {
     const { task, step, comment } = readSetNextStepParams(params);
     const issue = await findTask(ctx, task, runCtx.companyId);
     if (step.status === "in_progress") {
-      const monitor = monitorPolicy(step.monitor, now());
+      const checksUsed = issue.executionState?.monitor?.attemptCount ?? 0;
+      const monitor = monitorPolicy(step.monitor, now(), checksUsed);
       return send(ctx, issue, runCtx.companyId, { status: "in_progress", monitor, comment });
     }
     const blockedByIssueIds = await blockerIds(ctx, step.blockedBy, runCtx.companyId);
