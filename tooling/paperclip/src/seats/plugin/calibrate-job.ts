@@ -46,8 +46,8 @@ export function forecastSeats(
 }
 
 /** A count for a log line: "1 fit", "2 fits". */
-export function counted(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+export function counted(count: number, noun: string, plural = `${noun}s`): string {
+  return `${count} ${count === 1 ? noun : plural}`;
 }
 
 function dayBefore(now: Date, days: number): string {

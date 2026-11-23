@@ -124,7 +124,7 @@ verifies("paperclip.seats-forecast-job", () => {
     expect(sessionAtReset(runs[0])).toBeGreaterThan(40);
     expect(sessionAtReset(runs[1])).toBeLessThan(sessionAtReset(runs[0]));
     expect(logs).toEqual([
-      "seats.forecast: 2 seat windows, 1 scenario, 6 forecast points stored, 0 agents without a fit for a window; pool run-out (P50) none within 14 days.",
+      "seats.forecast: 2 seat windows, 1 scenario, 6 forecast points stored, 0 agents without a fit for a window, 0 settings entries left out or corrected; pool run-out (P50) none within 14 days.",
     ]);
   });
 
@@ -136,6 +136,25 @@ verifies("paperclip.seats-forecast-job", () => {
     expect(points).toHaveLength(6);
     expect(logs[0]).toContain("1 agent without a fit for a window");
     expect(logs.join("\n")).not.toMatch(/\/srv\/|conn-|agent-/);
+  });
+
+  test("counts the settings entries it left out or corrected", async () => {
+    const { ctx, deps, logs, state } = setup({
+      settings: {
+        ...settings,
+        scenarios: [
+          ...settings.scenarios,
+          { id: "fewer", agents: ["agent-1"], capDelta: -1, demandFactor: 3 },
+          { id: "current", demandFactor: 0.5 },
+        ],
+      },
+    });
+
+    await runSeatsForecast(ctx, deps);
+
+    const runs = state.get("latest") as ForecastRun[];
+    expect(runs.map((run) => run.scenario)).toEqual(["current", "leaner", "fewer"]);
+    expect(logs[0]).toContain("2 settings entries left out or corrected");
   });
 
   test("reads and stores nothing when no company lists seats", async () => {

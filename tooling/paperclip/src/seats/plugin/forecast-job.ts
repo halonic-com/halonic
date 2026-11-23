@@ -115,7 +115,7 @@ export async function runSeatsForecast(ctx: ForecastJobApi, deps: ForecastJobDep
     headroom === undefined ? `none within ${poolDays} days` : `in ${headroom.toFixed(1)} days`;
   const uncalibrated = new Set(current.uncalibrated.map((missing) => missing.agentId)).size;
   ctx.logger.info(
-    `seats.forecast: ${counted(current.seats.length, "seat window")}, ${counted(runs.length - 1, "scenario")}, ${counted(points.length, "forecast point")} stored, ${counted(uncalibrated, "agent")} without a fit for a window; pool run-out (P50) ${runOut}.`,
+    `seats.forecast: ${counted(current.seats.length, "seat window")}, ${counted(runs.length - 1, "scenario")}, ${counted(points.length, "forecast point")} stored, ${counted(uncalibrated, "agent")} without a fit for a window, ${counted(owner.settings.forecast.ignoredEntries, "settings entry", "settings entries")} left out or corrected; pool run-out (P50) ${runOut}.`,
     { companyId: owner.companyId },
   );
 }

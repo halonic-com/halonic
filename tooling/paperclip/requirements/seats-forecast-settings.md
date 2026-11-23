@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16692; the seat usage forecast on HAL-15997 (document `seat-forecast`, sections 4.3 and 9: which agents a scenario names comes from settings, never from code)
 
-When the `seats` plugin reads its settings, it shall start with no per-model weekly windows and no forecast scenarios until the board sets them; it shall keep a model window only with a model id prefix and a window name, and a scenario only with a valid id that is not `current` and not already taken, and that changes something: a cap change in whole runs or a model for the agents it names, or a demand factor above 0 and at most 2 other than 1. A scenario shall give each agent it names its cap change and its model.
+When the `seats` plugin reads its settings, it shall start with no per-model weekly windows and no forecast scenarios until the board sets them; it shall keep a model window only with a model id prefix and a window name, and a scenario only with a valid id that is not `current` and not already taken, and that changes something: a cap change in whole runs or a model for the agents it names, or a demand factor above 0 and at most 2 other than 1. A scenario shall give each agent it names its cap change and its model. It shall count every model window and scenario it leaves out, and every scenario it keeps without a cap change, model or demand factor that was set.
 
 ## Examples
 
