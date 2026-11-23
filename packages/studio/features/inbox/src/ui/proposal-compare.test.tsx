@@ -2,7 +2,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ProposalCompare, ProposalDecided, ProposalDecisions } from "../proposal-decisions.ts";
+import {
+  type ProposalCompare,
+  type ProposalDecided,
+  type ProposalDecisions,
+  ProposalFailedError,
+} from "../proposal-decisions.ts";
 import { unmountAll } from "../test-support/render.tsx";
 import { buttons, press, proposal, renderCard, wrote } from "./proposal-card.test-helper.tsx";
 
@@ -157,14 +162,14 @@ verifies("inbox.proposal-compare", () => {
     it("says why a choice failed, keeps Compare open, and sends it again on Try again", async () => {
       const choose = vi
         .fn<ProposalDecisions["choose"]>()
-        .mockRejectedValueOnce(new Error("The engine isn't answering."))
+        .mockRejectedValueOnce(new ProposalFailedError("not-answering", "connect ECONNREFUSED"))
         .mockResolvedValue(wrote("u3"));
       const { root, toasts } = await openCompare({ choose });
 
       await press(buttons(root, "Use the run's")[0]);
 
       expect(compareView(root)?.textContent).toContain(
-        "Couldn't apply your choice. The engine isn't answering.",
+        "Couldn't apply your choice. The engine isn't answering. It may still be starting.",
       );
       expect(buttons(root, "Keep mine")).toHaveLength(1);
 
