@@ -42,13 +42,12 @@ import {
   unfencedRunsFolder,
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { proxySetting, recordingSrtSandbox } from "@halonicjs/target-node-harness";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
-import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import type { LocalIntegrationMachine } from "./open-local-integration.ts";
 import type { PluginBackendMachine } from "./open-plugin-backend.ts";
 import { openPluginService } from "./plugin-host.ts";
 import { type RunConnectorLines, unfencedIntegrationReporter } from "./plugin-part-warnings.ts";
-import { proxySetting } from "./proxy-setting.ts";
 import { SavedUnfencedYes, studioYesReaches } from "./saved-unfenced-yes.ts";
 import type { WorkspaceAtVersion } from "./workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";

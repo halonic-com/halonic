@@ -10,11 +10,11 @@ import { InstructionTrustService } from "@halonicjs/app";
 import type { HarnessAgent } from "@halonicjs/engine";
 import { instructionTrustKey } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
+import { skillTextOf } from "@halonicjs/target-node-harness";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
-import { skillTextOf } from "../../local-harness-host.ts";
 import { runCli } from "../../run-cli.ts";
 import {
   loadRunWorkspace,

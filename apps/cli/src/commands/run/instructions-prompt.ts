@@ -11,10 +11,10 @@ import { InstructionTrustService } from "@halonicjs/app";
 import type { LoggedInstructionPin, RunEvent } from "@halonicjs/events";
 import { instructionTrustKey } from "@halonicjs/ports";
 import { profileFolder } from "@halonicjs/profile";
+import { instructionTrustFolder } from "@halonicjs/target-node-harness";
 import { filesOf } from "@halonicjs/workspace";
 import { instructionsAbout } from "../../agent-instructions.ts";
 import type { CommandContext, CommandInput, CommandResult, StoppedResult } from "../../command.ts";
-import { instructionTrustFolder } from "../../local-harness-host.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { trustInstructionsMessages as words } from "../../messages/trust-instructions.ts";
 import {

@@ -10,7 +10,7 @@ import {
   runnerFence,
 } from "@halonicjs/app";
 import { profileFolder } from "@halonicjs/profile";
-import { privateJournalFolder } from "./sandbox-journals.ts";
+import { privateJournalFolder } from "@halonicjs/target-node-harness";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 
 /**

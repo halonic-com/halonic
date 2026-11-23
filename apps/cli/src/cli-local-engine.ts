@@ -24,16 +24,17 @@ import {
 import type { ChatTurnWaiting, RunStore } from "@halonicjs/ports";
 import { type ProfileEnvironment, toolApprovalFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import type { LoadedWorkspace, LocalIntegrationInput } from "@halonicjs/workspace";
-import { approvedIntegrations } from "./approved-integrations.ts";
-import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
-import { type EngineHolder, engineHolders, engineLockRefusal } from "./engine-lock.ts";
 import {
   type LocalHarnessInput,
   type LocalHarnessParts,
   openLocalHarnessHost,
-} from "./local-harness-host.ts";
+} from "@halonicjs/target-node-harness";
+import type { LoadedWorkspace, LocalIntegrationInput } from "@halonicjs/workspace";
+import { approvedIntegrations } from "./approved-integrations.ts";
+import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
+import { type EngineHolder, engineHolders, engineLockRefusal } from "./engine-lock.ts";
 import { runSendingSettings } from "./run-sending.ts";
+import { halonicVersion } from "./version.ts";
 import type { RunFiles } from "./version-files.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { workspaceStore } from "./workspace-store.ts";
@@ -190,6 +191,7 @@ export function withSendingNextStep(
 function cliHarnessHost(input: LocalEngineInput): OpenEngineHarnessHost {
   return ({ location, folders, profile, environment }) =>
     openLocalHarnessHost({
+      halonicVersion,
       location,
       folders,
       profile,

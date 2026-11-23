@@ -10,11 +10,11 @@ import {
   type KeyOrigins,
   noKeyOrigins,
 } from "@halonicjs/ports";
+import { type CliProviderKeysInput, cliProviderKeys } from "@halonicjs/target-node-harness";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { type CliProviderKeysInput, cliProviderKeys } from "./cli-provider-keys.ts";
 import {
   acme,
   commitWorkspace,

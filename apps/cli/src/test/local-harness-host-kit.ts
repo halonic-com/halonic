@@ -25,9 +25,9 @@ import {
   type TrustGrant,
 } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
+import type { LocalHarnessInput, LocalHarnessParts } from "@halonicjs/target-node-harness";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { openLocalEngine } from "../cli-local-engine.ts";
-import type { LocalHarnessInput, LocalHarnessParts } from "../local-harness-host.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
 import { noSavedSending } from "./no-saved-sending.ts";
 import { noSheetHosts } from "./no-sheet-hosts.ts";

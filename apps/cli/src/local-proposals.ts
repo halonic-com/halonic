@@ -13,57 +13,15 @@
 // lock (`folderRecordLock`), in the engine as in the command.
 
 import { realpath } from "node:fs/promises";
-import {
-  FolderDefinitionStore,
-  FolderRunCopies,
-  FolderTrash,
-  folderRecordLock,
-} from "@halonicjs/adapter-fs-node";
 import { type GitRunnerOptions, lazyGitVcs } from "@halonicjs/adapter-git";
-import type { ProposalVcs, RunProposals } from "@halonicjs/app";
-import { type RunProposalsParts, runProposalsOf } from "@halonicjs/host-harness-host";
-import type { Clock, DefinitionStore, Digest } from "@halonicjs/ports";
-import {
-  type ProfileEnvironment,
-  profileFolder,
-  type WorkspaceFolders,
-  workspaceFolders,
-} from "@halonicjs/profile";
+import type { RunProposals } from "@halonicjs/app";
+import { runProposalsOf } from "@halonicjs/host-harness-host";
+import type { Clock } from "@halonicjs/ports";
+import { type ProfileEnvironment, profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { localProposalParts } from "@halonicjs/target-node-harness";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { workspaceStore } from "./workspace-store.ts";
-
-/** What the proposal parts are built from. */
-export interface LocalProposalPartsInput {
-  /** The workspace's folders in the profile, where the records, copies and trash are. */
-  readonly folders: WorkspaceFolders;
-  /** The workspace's files, which Accept writes. */
-  readonly store: DefinitionStore;
-  readonly digest: Digest;
-  /** Git with its worktrees in the profile; a proposal made with history on reads its texts from it. */
-  readonly vcs: ProposalVcs;
-  /** Hears the error of a folder's end that couldn't finish. */
-  reportError(error: unknown): void;
-}
-
-/**
- * The parts of the workspace's run proposal service: git, a plain copy of
- * the saved files for a run with history off, the records and the trash, all
- * in the workspace's folders in the profile, never in the workspace.
- */
-export function localProposalParts(input: LocalProposalPartsInput): RunProposalsParts {
-  const { folders, store, digest } = input;
-  return {
-    vcs: input.vcs,
-    // With history off, a run that writes files works in a plain copy of the saved files.
-    copies: new FolderRunCopies(folders.runCopiesFolder()),
-    records: new FolderDefinitionStore(folders.proposalRecordsFolder()),
-    recordLock: folderRecordLock(folders.proposalRecordsFolder()),
-    store,
-    trash: new FolderTrash({ folder: folders.trashFolder(), store, digest }),
-    onEndFailed: (_runId, error) => input.reportError(error),
-  };
-}
 
 /** What {@link openLocalProposals} opens the service with; this computer's by default. */
 export interface LocalProposalsOptions {

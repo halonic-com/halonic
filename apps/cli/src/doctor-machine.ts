@@ -29,13 +29,12 @@ import {
 import type { Secrets } from "@halonicjs/ports";
 import { placementFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { privateJournalFolder, proxySetting } from "@halonicjs/target-node-harness";
 import { type AddedPlugins, addedPluginsOf } from "./connector-plugin.ts";
 import { pluginRecordProblem } from "./doctor-plugin-records.ts";
 import { engineHttp } from "./engine-http.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
 import { openPluginService, pluginRecordStore } from "./plugin-host.ts";
-import { proxySetting } from "./proxy-setting.ts";
-import { privateJournalFolder } from "./sandbox-journals.ts";
 import { profileKeyOrigins } from "./secret-host.ts";
 import { halonicVersion } from "./version.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";

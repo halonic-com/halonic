@@ -5,7 +5,7 @@ import { InstructionTrustService } from "@halonicjs/app";
 import { instructionTrustKey } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { instructionTrustFolder } from "../local-harness-host.ts";
+import { instructionTrustFolder } from "@halonicjs/target-node-harness";
 
 /**
  * Records, as a person's yes, that the instructions of `agent` in `hub` in the

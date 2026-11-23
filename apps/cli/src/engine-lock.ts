@@ -32,7 +32,8 @@ type EngineHolderEntry = (typeof engineHolders)[EngineHolder];
  * stopped says how to stop it, since waiting would never end (HAL-14299).
  *
  * @example
- * engineLockRefusal(new EngineLockHeldError(new LockHeldError(file, { …, holder: "routines watch" })));
+ * // `error` is the EngineLockHeldError `openLocalEngine` threw while `routines watch` held the lock.
+ * engineLockRefusal(error);
  * // KindedError "halonic routines watch is running for this workspace (process 4242)."
  */
 export function engineLockRefusal(error: EngineLockHeldError): KindedError {

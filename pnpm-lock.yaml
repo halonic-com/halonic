@@ -577,6 +577,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
+      '@halonicjs/target-node-harness':
+        specifier: workspace:*
+        version: link:../../packages/targets/node/harness
       '@halonicjs/target-node-runtime':
         specifier: workspace:*
         version: link:../../packages/targets/node/runtime
@@ -4289,6 +4292,82 @@ importers:
       miniflare:
         specifier: 'catalog:'
         version: 4.20260730.0
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/targets/node/harness:
+    dependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../../../adapters/fs-node
+      '@halonicjs/adapter-git':
+        specifier: workspace:*
+        version: link:../../../adapters/git
+      '@halonicjs/adapter-harness-bridge':
+        specifier: workspace:*
+        version: link:../../../adapters/harness-bridge
+      '@halonicjs/adapter-harness-claude-code':
+        specifier: workspace:*
+        version: link:../../../adapters/harness-claude-code
+      '@halonicjs/adapter-harness-codex':
+        specifier: workspace:*
+        version: link:../../../adapters/harness-codex
+      '@halonicjs/adapter-harness-kit':
+        specifier: workspace:*
+        version: link:../../../adapters/harness-kit
+      '@halonicjs/adapter-http-kit':
+        specifier: workspace:*
+        version: link:../../../adapters/http-kit
+      '@halonicjs/adapter-http-node':
+        specifier: workspace:*
+        version: link:../../../adapters/http-node
+      '@halonicjs/adapter-sandbox-host':
+        specifier: workspace:*
+        version: link:../../../adapters/sandbox-host
+      '@halonicjs/adapter-sandbox-srt':
+        specifier: workspace:*
+        version: link:../../../adapters/sandbox-srt
+      '@halonicjs/adapter-workspace-models':
+        specifier: workspace:*
+        version: link:../../../adapters/workspace-models
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../../core/engine
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../../core/events
+      '@halonicjs/host-harness-host':
+        specifier: workspace:*
+        version: link:../../../host/harness-host
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../../core/ports
+      '@halonicjs/profile':
+        specifier: workspace:*
+        version: link:../../../core/profile
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../../core/workspace
+    devDependencies:
+      '@halonicjs/adapter-workspace-engine-node':
+        specifier: workspace:*
+        version: link:../../../adapters/workspace-engine-node
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

@@ -14,11 +14,11 @@ import {
 } from "@halonicjs/ports";
 import { placementFolder, profileFolder } from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
+import { cliProviderKeys } from "@halonicjs/target-node-harness";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { cliProviderKeys } from "./cli-provider-keys.ts";
 import {
   acme,
   commitWorkspace,

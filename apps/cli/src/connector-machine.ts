@@ -25,12 +25,12 @@ import { ConnectorFactories } from "@halonicjs/app";
 import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { proxySetting } from "@halonicjs/target-node-harness";
 import {
   IntegrationConnectorFactory,
   type OpenIntegration,
 } from "./integration-connector-factory.ts";
 import type { PluginConnectorFactory } from "./plugin-connector-factory.ts";
-import { proxySetting } from "./proxy-setting.ts";
 import { nodeSandboxWorks } from "./sandbox-works.ts";
 import { profileKeyOrigins } from "./secret-host.ts";
 import { installedPluginHosts } from "./sheet-hosts.ts";

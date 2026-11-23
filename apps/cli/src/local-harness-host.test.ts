@@ -2,10 +2,10 @@ import { existsSync } from "node:fs";
 import { readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
 import { profileFolder } from "@halonicjs/profile";
+import { instructionTrustFolder } from "@halonicjs/target-node-harness";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { instructionTrustFolder } from "./local-harness-host.ts";
 import {
   acme,
   agentFile,
