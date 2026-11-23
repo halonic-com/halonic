@@ -48,6 +48,8 @@ export interface RunResultFacts {
    * child run a waiting run waits on, whose waiting lines it says (HAL-15951).
    */
   readonly children?: ChildEndings;
+  /** Local only is on only because the saved `workspace.yaml` says on, not yet live (C755 #1). */
+  readonly localOnlySaved?: boolean;
 }
 
 /**
@@ -169,6 +171,7 @@ function ending(
     facts.dir,
     facts.debugging,
     facts.children,
+    facts.localOnlySaved,
   );
   if (run.summary.status !== "completed") {
     return lines;

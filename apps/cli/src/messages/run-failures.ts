@@ -39,6 +39,11 @@ export interface FailedRun {
   /** `--debug` was given: the general lines' fix doesn't ask for it again (HAL-6613). */
   readonly debugging?: boolean;
   /**
+   * Local only is on only because the saved workspace.yaml says on, which isn't live yet
+   * (`app.saved-local-only`): a local-only refusal says so (C755 #1).
+   */
+  readonly localOnlySaved?: boolean | undefined;
+  /**
    * For a child run whose failure is said on its parent's line (HAL-15555):
    * the parent, which then leads line 1.
    */
@@ -137,7 +142,9 @@ const lineOne = {
   "local-only": (run, failure) =>
     failedIn(
       run,
-      phrase`${failure.workspace} is local only, so Halonic sent nothing to ${failure.provider}.`,
+      run.localOnlySaved === true
+        ? phrase`${failure.workspace} is local only in your saved workspace.yaml, which isn't live yet, so Halonic sent nothing to ${failure.provider}.`
+        : phrase`${failure.workspace} is local only, so Halonic sent nothing to ${failure.provider}.`,
     ),
   "site-blocked": (run, failure) =>
     failedIn(
@@ -309,8 +316,12 @@ const lineTwo = {
   "turn-limit": (run, failure) =>
     phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its model call limit (maxSteps) in ${failure.agentFile} if it needs more.`,
   "tool-timeout": () => tryLater(),
-  "local-only": (_run, failure) =>
-    phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly: false in workspace.yaml.`,
+  // Setting the saved file back to false counts at once when the live version has it off; a live
+  // Local only on waits for Make live, which the run's "uncommitted changes" line already says.
+  "local-only": (run, failure) =>
+    run.localOnlySaved === true
+      ? phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly back to false in workspace.yaml: the live version has it off.`
+      : phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly: false in workspace.yaml.`,
   "site-blocked": (_run, failure) =>
     phrase`Add ${failure.site} to ${failure.agent}'s allowed sites, if ${failure.agent} should reach it.`,
   "sandbox-not-ready": (_run, failure) => sandboxMessages.refusedFix(failure.code).phrase,

@@ -108,6 +108,8 @@ export class WatchedVersions implements WorkspaceVersions {
   readonly #history: OpenedHistory | null;
   /** Whether the version the watch started from is local only: the engine keeps that. */
   readonly #localOnly: boolean;
+  /** Whether that is only because the saved workspace.yaml says on, not yet live. */
+  readonly #localOnlySaved: boolean;
   #latest: WatchedVersion;
   /** The last version loaded at a commit, so the routines due at one time load it once. */
   #atCommit: (WatchedVersion & { readonly commit: string }) | undefined;
@@ -130,6 +132,7 @@ export class WatchedVersions implements WorkspaceVersions {
     this.#history = history;
     this.#latest = first;
     this.#localOnly = isLocalOnly(first.workspace);
+    this.#localOnlySaved = first.localOnlySaved === true;
     // The first version is loaded once: the routines and the first run read it from here.
     const loaded =
       atCommit === undefined ? undefined : { commit: atCommit.commit, ...atCommit.loaded };
@@ -386,7 +389,10 @@ export class WatchedVersions implements WorkspaceVersions {
   /** `loaded`, if it keeps local only as the watch started with it. */
   #keepingLocalOnly(loaded: WatchedVersion): WatchedVersion {
     if (isLocalOnly(loaded.workspace) !== this.#localOnly) {
-      throw new Error(plainText(routinesMessages.localOnlyChanged(this.#dir.name).phrase));
+      // The saved file turned it on, or it was on only through that file and is off now (C755 #2).
+      const saved = { now: loaded.localOnlySaved === true, atStart: this.#localOnlySaved };
+      const why = routinesMessages.localOnlyChanged(this.#dir.name, saved);
+      throw new Error(plainText(why.phrase));
     }
     return loaded;
   }
@@ -418,8 +424,13 @@ export class WatchedVersions implements WorkspaceVersions {
   }
 }
 
-/** A version's load, with its local integrations read from the same version. */
-interface WatchedVersion extends LoadedVersion, WorkspaceAtVersion {}
+/**
+ * A version's load, with its local integrations read from the same version;
+ * `localOnlySaved` when the saved workspace.yaml turned its Local only on.
+ */
+interface WatchedVersion extends LoadedVersion, WorkspaceAtVersion {
+  readonly localOnlySaved?: true;
+}
 
 /** Loads the workspace from `source`, with `integrations`, read from the same version. */
 async function loadWatched(
@@ -442,7 +453,7 @@ async function withSavedLocalOnlyOf(
   saved: DefinitionSource,
 ): Promise<WatchedVersion> {
   const workspace = await withSavedLocalOnly(loaded.workspace, saved);
-  return workspace === loaded.workspace ? loaded : { ...loaded, workspace };
+  return workspace === loaded.workspace ? loaded : { ...loaded, workspace, localOnlySaved: true };
 }
 
 /**

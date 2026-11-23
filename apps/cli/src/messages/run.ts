@@ -60,9 +60,16 @@ export const runMessages = defineMessages("run", {
   /**
    * A dimmed line before the run's heading when a definition file has
    * uncommitted changes: the run starts the live version, the latest commit,
-   * without them (HAL-6007).
+   * without them (HAL-6007). Local only saved on is the one change it does
+   * use (`app.saved-local-only`), so then the line says so (C755 #1).
    */
-  changesNotLive: () => [dim("Your uncommitted changes aren't used. Commit them to run them.")],
+  changesNotLive: (localOnlySaved = false) => [
+    dim(
+      localOnlySaved
+        ? "Your uncommitted changes aren't used, except Local only: your saved workspace.yaml turns it on, so this run uses local models only. Commit the changes to run them."
+        : "Your uncommitted changes aren't used. Commit them to run them.",
+    ),
+  ],
   /**
    * The reason after "Couldn't run support-reply:" when the workspace is a
    * git folder but git can't start, so the live version can't be read:

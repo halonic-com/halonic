@@ -127,7 +127,7 @@ export async function followWorkflow(
   const dir = await openWorkspaceDir(input, context);
   const typedDir = givenDir(input, dir);
   const loaded = await liveWorkspace(dir, setup);
-  const { workspace, integrations, version, changesNotLive, fileTexts } = loaded;
+  const { workspace, integrations, version, changesNotLive, localOnlySaved, fileTexts } = loaded;
   const nothingRan = runMessages.nothingRan();
   const workspaceName = printable(workspaceNameOf(workspace, dir));
   // Before the lookup: a file with an error is left out, so its workflow
@@ -171,7 +171,7 @@ export async function followWorkflow(
   });
   // Before the run's heading, and again first in the result, as print-ahead lines are.
   const warnings: Phrase[] = [
-    ...(changesNotLive ? [runMessages.changesNotLive().phrase] : []),
+    ...(changesNotLive ? [runMessages.changesNotLive(localOnlySaved).phrase] : []),
     ...engine.placed.map(placedWarning),
   ];
   for (const line of warnings) context.printAhead(line);
@@ -219,6 +219,7 @@ export async function followWorkflow(
     unusedEvents,
     debugging: context.debugging === true,
     children: await childEndings(history, run, workspace),
+    localOnlySaved,
   });
   const proposal = await waitingProposal(dir, run, setup, typedDir);
   const json = {

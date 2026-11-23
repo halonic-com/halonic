@@ -70,7 +70,9 @@ export interface OpenedHistory {
  *   staged or not. Other files, such as a connector's script, aren't
  *   counted: a live run's programs read them as saved. `fileTexts` are
  *   its agents' and skills' files as the load read them, which the
- *   "On this computer" choice is checked against;
+ *   "On this computer" choice is checked against. `localOnlySaved` says
+ *   Local only is on only because the saved `workspace.yaml` says on, which
+ *   isn't live yet (C755 #1), so the run's lines can say where it comes from;
  * - `nothing-live`: the workspace has history but no version yet, so there
  *   is nothing to run.
  */
@@ -79,6 +81,7 @@ export type RunWorkspace =
       readonly found: "loaded";
       readonly version: RunVersion;
       readonly changesNotLive: boolean;
+      readonly localOnlySaved: boolean;
       readonly notCommitted: readonly string[];
       readonly fileTexts: ReadonlyMap<string, string>;
     })
@@ -185,6 +188,8 @@ export async function loadRunWorkspace(
       integrations,
       version: runVersionOf(picked),
       changesNotLive: status !== null && definitionsChanged(status),
+      // `withSavedLocalOnly` gives back the load itself unless the saved file turned Local only on.
+      localOnlySaved: workspace !== loaded,
       notCommitted: status === null ? [] : trustFilesChanged(status),
       fileTexts,
     };
