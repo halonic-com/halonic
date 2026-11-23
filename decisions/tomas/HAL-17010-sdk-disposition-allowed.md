@@ -2,6 +2,7 @@
 
 - Approval: HAL-16988 (Liam's decision B, condition 6), HAL-17010. Julian signs this note: it lets a plugin call a new write capability (HAL-15971 point 6).
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:8h9xcq+FAgZ2rSCngQGc7AkfwyxDaBEuoccn0Mm/aLBsE3jSFN/shBGa2SKBF3F4VODClaPkySTs9QsMblNZCw==
 
 ## What changes
 
