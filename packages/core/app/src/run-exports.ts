@@ -28,6 +28,7 @@ export {
   runSteps,
   type StepEnd,
 } from "./run-steps.ts";
+export { ranOnTestModel, testModelsOf } from "./sample-answers.ts";
 export {
   type FollowOptions,
   RunFollowStopped,
