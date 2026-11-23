@@ -1257,6 +1257,9 @@ importers:
 
   packages/adapters/harness-bridge:
     dependencies:
+      '@halonicjs/adapter-mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../core/events

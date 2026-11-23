@@ -53,7 +53,8 @@
       "./integration"
     ],
     "@halonicjs/adapter-mcp": [
-      "./protocol"
+      "./protocol",
+      "./server"
     ],
     "@halonicjs/adapter-remote-gateway": [
       "./testing"

@@ -1,8 +1,11 @@
+import {
+  McpToolServer,
+  type McpToolSet,
+  supportedMcpVersions,
+} from "@halonicjs/adapter-mcp/server";
 import type { HarnessBridgeOptions } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { HalonicTools } from "./halonic-tools.ts";
-import { McpToolServer, supportedMcpVersions } from "./mcp-tool-server.ts";
-import type { McpToolSet } from "./mcp-tool-set.ts";
 import { PermissionPromptTool } from "./permission-prompt.ts";
 import type { BridgeRequestContext, BridgeRoute } from "./route.ts";
 

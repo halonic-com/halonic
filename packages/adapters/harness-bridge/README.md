@@ -162,7 +162,8 @@ Its key should be short-lived and for that task alone, and is read from `Secrets
   `authorization`.
 - **MCP.** `POST /mcp` speaks MCP's streamable HTTP transport, one JSON-RPC
   message per request with one JSON reply: `initialize`, `ping`, `tools/list`
-  and `tools/call`, backed by the run's `BridgeTools`. Each call is checked
+  and `tools/call`, backed by the run's `BridgeTools`. The protocol part is the
+  shared `McpToolServer` of `@halonicjs/adapter-mcp/server`. Each call is checked
   first, by the same rules as the built-in loop; a refused call doesn't run
   and the program reads `Refused: <reason>`. A call that runs is recorded as
   `tool.called` and `tool.result`; one that broke off without an answer is
