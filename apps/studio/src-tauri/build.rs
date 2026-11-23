@@ -107,6 +107,8 @@ fn main() {
         "phone_tunnel_watch",
         "tunnel_send",
         "tunnel_end_session",
+        "phone_nearby_browse",
+        "phone_nearby_stop",
         "phone_open_settings",
         "phone_open_tailscale",
         "owner_check_available",

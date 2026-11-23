@@ -33,7 +33,9 @@
 //! pairing scanner's `pair_scan` and `pair_scan_cancel`
 //! (capabilities/phone-pair-scan.json) and the phone tunnel's `phone_*`
 //! commands with `phone_tunnel_watch`, `tunnel_send` and `tunnel_end_session`
-//! (capabilities/phone-tunnel.json) and `phone_open_settings` and
+//! (capabilities/phone-tunnel.json) and the computer picker's
+//! `phone_nearby_browse` and `phone_nearby_stop` (capabilities/phone-nearby.json)
+//! and `phone_open_settings` and
 //! `phone_open_tailscale` (capabilities/phone-screens.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
@@ -73,6 +75,7 @@ mod owner_check_page;
 mod page_calls;
 mod page_streams;
 mod pair_scan;
+mod phone_nearby;
 mod phone_screens;
 mod phone_tunnel;
 mod phone_tunnel_events;
@@ -161,7 +164,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(plugin_source::PluginSources::default())
         .manage(plugin_git::PluginGitExports::default())
         .manage(phone_tunnel_events::TunnelWatchers::default())
-        .manage(server_session::ServerSessionState::default());
+        .manage(server_session::ServerSessionState::default())
+        .manage(phone_nearby::NearbyState::default());
     #[cfg(windows)]
     let builder = builder
         .manage(sandbox_elevate::ElevateState::default())
@@ -201,6 +205,11 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     // The phone tunnel, over the key store above, so registered after it.
     #[cfg(target_os = "android")]
     let builder = builder.plugin(phone_tunnel::plugin());
+    // The typed route's computer picker searches the Wi-Fi with Android's
+    // NsdManager (HAL-16824). Used from Rust only: no capability grants its
+    // commands; the page gets `phone_nearby_browse` and `phone_nearby_stop`.
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(phone_nearby::plugin());
     builder
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in
@@ -242,6 +251,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 files::end_page_watches(webview.app_handle(), webview.label());
                 pair_scan::end_page_scan(webview.app_handle());
                 phone_tunnel::end_page(webview.app_handle(), webview.label());
+                phone_nearby::end_page(webview.app_handle());
                 #[cfg(desktop)]
                 updates::end_page_watches(webview.app_handle(), webview.label());
             }
@@ -258,6 +268,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 files::end_page_watches(window.app_handle(), window.label());
                 pair_scan::end_page_scan(window.app_handle());
                 phone_tunnel::end_page(window.app_handle(), window.label());
+                phone_nearby::end_page(window.app_handle());
                 #[cfg(desktop)]
                 updates::end_page_watches(window.app_handle(), window.label());
             }
@@ -363,6 +374,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             phone_tunnel::phone_tunnel_watch,
             phone_tunnel::tunnel_send,
             phone_tunnel::tunnel_end_session,
+            phone_nearby::phone_nearby_browse,
+            phone_nearby::phone_nearby_stop,
             phone_screens::phone_open_settings,
             phone_screens::phone_open_tailscale,
             owner_check_page::owner_check_available,
