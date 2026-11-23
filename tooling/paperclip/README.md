@@ -82,7 +82,9 @@ approvals, a task's subtree, its blockers and its pending cards (see Board
 check below). The gh guard adds one route that agents' runs call (see gh guard
 below). The watcher also asks for `issues.monitors.postpone`, a capability of
 our local server patch (HAL-16413), to move a watched task's fallback monitor
-later (see Leaving a task the watcher watches). No webhooks, UI, files or processes.
+later (see Leaving a task the watcher watches). The Worker agents page adds a UI
+page and a read of Paperclip's own tables (see Worker agents page below). No
+webhooks, files or processes.
 
 - **Status changes:** the manifest can't narrow `issues.update`, so
   `host.ts` is the only file that changes a task's status, and its
@@ -114,11 +116,34 @@ pnpm --filter @halonicjs/tooling-paperclip run build:plugin
 
 writes `dist/worker.js` (the SDK bundled in, with our patch
 `patches/@paperclipai__plugin-sdk@2026.1117.0.patch`, which adds
-`ctx.issues.monitors.postpone`) and `dist/manifest.js`, which
+`ctx.issues.monitors.postpone`), `dist/manifest.js` and the page's
+`dist/ui/index.js`, which
 `package.json`'s `paperclipPlugin` block names. The board installs it from
 that folder of a `main` checkout on Halonic Server (Settings → Plugins);
 publishing it to npm would be a release. Run it in dry run first, read the
 job log, then turn `dryRun` off.
+
+## Worker agents page
+
+The board's read-only "Worker agents" page (HAL-16249, addendum 2 on
+HAL-15997): the board agents with their newest run, then one row per worker
+agent (Pip left out) with its task in progress, its newest run and its failed
+runs of the last 24 hours by cause code. Rule checks follow with HAL-16250;
+open PRs and branch names say "Not available yet" until HAL-16251.
+
+- **Board-only:** the data comes through the `worker-agents` route, declared
+  `auth: "board"` and checked again in `src/plugin/worker-agents-route.ts`, and
+  the page's data key, which Paperclip answers only for board users. No agent
+  tool, so MCP never sees it. The page's code only reads (a test checks it).
+- **The read:** `src/worker-agents/tables.ts` reads `agents`, `heartbeat_runs`
+  and `issues` (the manifest's `coreReadTables`) with named columns only. A
+  failed run's cause code is worked out in the database with the board check's
+  patterns, so a run's error text, logs and output, and a task's title, never
+  reach the plugin. Paperclip requires `database.namespace.migrate` and
+  `database.namespace.read` for this read; `src/plugin/migrations/` is empty,
+  because the plugin keeps nothing in its own schema.
+- **Privacy:** task keys can name an open security finding, so the page is
+  never exported, linked publicly or pushed out.
 
 ## PR tools
 
