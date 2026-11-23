@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16624 (split from HAL-15500); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:K6GwEanIILai4B5jW8HJxrVQE7QL5kEAWL6ylQ28pO3p9yKPdrO/SYMca5E7E0QWsgNG2uK6Z109dmWXjomhAg==
 
 When a person set an agent to run on this computer and its file changed since, the agent runs in its sandbox until they confirm the choice again. If that sandbox can't start, `run.failed` said `sandbox-not-ready` exactly as for any other agent, so Studio's run controls and the Inbox couldn't tell "confirm again" from "fix the sandbox".
 
