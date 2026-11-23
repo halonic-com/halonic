@@ -31,6 +31,31 @@ verifies("agent-host.engine-step-secrets", () => {
       );
     });
 
+    it("redacts a value's escaped JSON forms", async () => {
+      const value = 'sk-"acme"\\1\nend';
+      const secrets = new StepSecrets(
+        fakeBroker({ "secret_get acme-key": { result: "value", value } }).ask,
+      );
+      await secrets.get("acme-key");
+      const once = JSON.stringify({ key: value });
+      const twice = JSON.stringify({ log: once });
+      expect(secrets.redact(`raw ${value}`)).toBe("raw [redacted]");
+      expect(secrets.redact(once)).toBe('{"key":"[redacted]"}');
+      expect(secrets.redact(twice)).toBe('{"log":"{\\"key\\":\\"[redacted]\\"}"}');
+    });
+
+    it("redacts a value of 1 to 3 characters too", async () => {
+      const secrets = new StepSecrets(
+        fakeBroker({
+          "secret_get one-key": { result: "value", value: "q" },
+          "secret_get pin-key": { result: "value", value: "907" },
+        }).ask,
+      );
+      await secrets.get("one-key");
+      await secrets.get("pin-key");
+      expect(secrets.redact("pin 907, quiet")).toBe("pin [redacted], [redacted]uiet");
+    });
+
     it("forgets values when the step ends and refuses later reads", async () => {
       const broker = fakeBroker({
         "secret_get acme-key": { result: "value", value: "sk-acme-1" },

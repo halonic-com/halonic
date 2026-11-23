@@ -81,13 +81,22 @@ export class StepSecrets implements Secrets, KeyOrigins {
     return [...answer.origins];
   }
 
-  /** `text` with every value this step got replaced by {@link redactedValue}, longest first. */
+  /**
+   * `text` with every value this step got replaced by {@link redactedValue},
+   * as written and as it appears inside a JSON string (escaped once or twice),
+   * longest first. A value of 1 to 3 characters is redacted too: a short
+   * secret is still a secret, and redacting too much is the safer mistake.
+   */
   redact(text: string): string {
-    const values = [...this.#values.values()]
-      .filter((value): value is string => value !== null && value !== "")
-      .sort((a, b) => b.length - a.length);
+    const forms = new Set<string>();
+    for (const value of this.#values.values()) {
+      if (value === null || value === "") continue;
+      for (const form of redactedForms(value)) forms.add(form);
+    }
     let redacted = text;
-    for (const value of values) redacted = redacted.split(value).join(redactedValue);
+    for (const form of [...forms].sort((a, b) => b.length - a.length)) {
+      redacted = redacted.split(form).join(redactedValue);
+    }
     return redacted;
   }
 
@@ -100,6 +109,20 @@ export class StepSecrets implements Secrets, KeyOrigins {
   #checkOpen(): void {
     if (this.#closed) throw failure("The step's secrets were read after the step ended.");
   }
+}
+
+/**
+ * The value, its form inside a JSON string, and that form inside another JSON
+ * string (a tool's JSON arguments logged as a JSON string), so a value holding
+ * a quote, a backslash or a newline is redacted wherever a step writes it.
+ */
+function redactedForms(value: string): readonly string[] {
+  const escapedOnce = escapeForJsonString(value);
+  return [value, escapedOnce, escapeForJsonString(escapedOnce)];
+}
+
+function escapeForJsonString(text: string): string {
+  return JSON.stringify(text).slice(1, -1);
 }
 
 /** `null` for a name the broker won't look up; otherwise the refusal as an error. */
