@@ -61,7 +61,7 @@ verifies("remote.phone-app", () => {
       paired(desktop, "Office desktop", "2026-11-21T09:00:00Z"),
     );
     await router.start();
-    expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: false });
+    expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: "none" });
     expect(tunnel.calls).toEqual([`connect ${desktop}`]);
   });
 
@@ -75,7 +75,7 @@ verifies("remote.phone-app", () => {
     router.pair();
     expect(router.back()).toBe(true);
     expect(router.back()).toBe(true);
-    expect(router.view.screen).toEqual({ screen: "computer", computer: laptop, sheet: false });
+    expect(router.view.screen).toEqual({ screen: "computer", computer: laptop, sheet: "none" });
     expect(router.back()).toBe(false);
   });
 
@@ -105,7 +105,7 @@ verifies("remote.phone-app", () => {
     const shown = tunnel.computers.get(laptop);
     if (shown === undefined) throw new Error("The laptop isn't listed.");
     await router.forget(shown);
-    expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: false });
+    expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: "none" });
     const next = tunnel.computers.get(desktop);
     if (next === undefined) throw new Error("The desktop isn't listed.");
     await router.forget(next);
@@ -125,7 +125,7 @@ verifies("remote.phone-app", () => {
     await router.forget(shown);
     expect(router.view.screen.screen).toBe("computers");
     expect(router.back()).toBe(true);
-    expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: false });
+    expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: "none" });
     expect(router.back()).toBe(false);
   });
 
@@ -156,6 +156,6 @@ verifies("remote.phone-app", () => {
     await vi.waitFor(() => expect(screen.flow.view.step).toBe("check"));
     expect(router.back()).toBe(true);
     expect(tunnel.calls).toContain("cancel pairing-1");
-    expect(router.view.screen).toEqual({ screen: "computer", computer: laptop, sheet: false });
+    expect(router.view.screen).toEqual({ screen: "computer", computer: laptop, sheet: "none" });
   });
 });
