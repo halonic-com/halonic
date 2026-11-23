@@ -3,7 +3,7 @@
 - Task: HAL-16773
 - Approval: the board chose option A (the installer ships the image) on HAL-16772; Liam reviews the workflow change and signs this note
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2dKMkDb/OA2rG5tnyf78t7BaUQ0N/qtJ/IEmC4v2So2iAXJzjS1ypL2pRBxWD5A1wDiv6jgJxUI4+CUGzvrUCQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kLj2sPwR9AtzjLsE12RO8t8avOQCDwofy33jl352vGHyBlBCkXVPeIABiiw8ZifhWFAEu3pleyvJg+vcizwMCQ==
 
 ## What changes
 
