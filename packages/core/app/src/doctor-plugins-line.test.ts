@@ -1,6 +1,10 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type DoctorPluginProblem, pluginsLine } from "./doctor-plugins-line.ts";
+import {
+  type DoctorPluginProblem,
+  type PluginRecordProblem,
+  pluginsLine,
+} from "./doctor-plugins-line.ts";
 import { doctor, workspace } from "./testing/doctor-fixtures.ts";
 
 const notAdded: DoctorPluginProblem = {
@@ -11,6 +15,13 @@ const notAdded: DoctorPluginProblem = {
 };
 const changed: DoctorPluginProblem = { problem: "off", plugin: "tides", why: "changed" };
 const broken: DoctorPluginProblem = { problem: "broken", plugin: "maps" };
+const damaged: PluginRecordProblem = {
+  problem: "records-damaged",
+  file: "/profile/plugin-records/1f0e.jsonl",
+  line: 2,
+  why: "it is not JSON.",
+  holds: "sources",
+};
 
 verifies("app.doctor-plugins", () => {
   it("fails while a plugin a connector uses isn't added", () => {
@@ -44,5 +55,15 @@ verifies("app.doctor-plugins", () => {
     expect(off.summary).toMatchObject({ problems: 0, warnings: 1, needsFixing: false });
     expect((await service.check(workspace())).plugins).toBeUndefined();
     expect((await service.check(null)).plugins).toBeUndefined();
+  });
+
+  it("warns about plugin records that can't be read, with or without a workspace, before the connectors' plugins", async () => {
+    const { service } = doctor({ pluginRecords: damaged });
+    const outside = await service.check(null);
+    const inside = await service.check({ ...workspace(), pluginProblems: [changed] });
+
+    expect(outside.plugins).toEqual({ check: "plugins", status: "warning", problems: [damaged] });
+    expect(outside.summary).toMatchObject({ problems: 0, warnings: 1, needsFixing: false });
+    expect(inside.plugins?.problems).toEqual([damaged, changed]);
   });
 });

@@ -181,6 +181,52 @@ export const doctorMessages = defineMessages("doctor", {
     }
     return phrase`Fix: run chmod 700 ${folderWord}, then run halonic doctor again.`;
   },
+  /**
+   * Plugins !, for a plugin record file or their folder the person may not
+   * open (HAL-15916), as `halonic plugin list` refuses it (HAL-15893).
+   */
+  pluginRecordUnreadable: (place: "file" | "folder", path: string) =>
+    place === "folder"
+      ? phrase`The plugin records folder ${path} can't be read by you.`
+      : phrase`The plugin record file ${path} can't be read by you.`,
+  /**
+   * Under {@link pluginRecordUnreadable}, the fix `halonic plugin list` gives
+   * for it: a file gets mode 600, the folder 700. `pathWord` is the path as
+   * one shell word.
+   */
+  fixPluginRecordAccess: (
+    place: "file" | "folder",
+    access: PluginsFolderAccess,
+    pathWord: string,
+  ) => {
+    const mode = place === "folder" ? "700" : "600";
+    if (access === "windows") {
+      return phrase`Fix: give your user account access to it in the ${place}'s Properties, under Security, then run halonic doctor again.`;
+    }
+    if (access === "another-user") {
+      return phrase`Fix: it belongs to another user, so run sudo chown "$(id -un)" ${pathWord}, then chmod ${mode} ${pathWord}, then run halonic doctor again.`;
+    }
+    return phrase`Fix: run chmod ${mode} ${pathWord}, then run halonic doctor again.`;
+  },
+  /** Plugins !, for a plugin record file that holds something other than records (HAL-15916). */
+  pluginRecordDamaged: (file: string, why: string, line: number | undefined) =>
+    line === undefined
+      ? phrase`The plugin record file ${file} is damaged: ${why}`
+      : phrase`The plugin record file ${file} is damaged at line ${line}: ${why}`,
+  /** Under {@link pluginRecordDamaged}, with what deleting the file forgets for every plugin. */
+  fixDamagedPluginRecord: (holds: "sources" | "settings" | "other", line: number | undefined) => {
+    const remove =
+      line === undefined
+        ? phrase`Fix: delete the file, then run halonic doctor again.`
+        : phrase`Fix: delete line ${line} from it, or delete the file, then run halonic doctor again.`;
+    if (holds === "sources") {
+      return phrase`${remove} Deleting the file forgets where each plugin was added from; the plugins stay.`;
+    }
+    if (holds === "settings") {
+      return phrase`${remove} Deleting the file sets every plugin's settings back to their defaults; the plugins stay.`;
+    }
+    return remove;
+  },
 
   /** Sandbox ✓: "ready · bubblewrap". */
   sandboxReady: (kind: string) => phrase`ready ${markPart("separator")} ${kind}`,

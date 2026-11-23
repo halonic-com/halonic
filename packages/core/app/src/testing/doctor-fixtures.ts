@@ -3,6 +3,7 @@ import type { HarnessDetection, SandboxCheck, Secrets } from "@halonicjs/ports";
 import { ok } from "@halonicjs/std";
 import type { NetworkProblem, NodeProblem } from "../doctor-lines.ts";
 import type { DoctorProvider } from "../doctor-models-line.ts";
+import type { PluginRecordProblem } from "../doctor-plugins-line.ts";
 import type { ProfileProblem } from "../doctor-profile-line.ts";
 import { DoctorService, type DoctorWorkspace } from "../doctor-service.ts";
 import type { DoctorHarness } from "../doctor-sign-ins.ts";
@@ -96,6 +97,8 @@ interface Machine {
   network?: NetworkProblem | null;
   /** How the workspace and the profile folder overlap; nothing when left out. */
   profile?: ProfileProblem | null;
+  /** What the host found wrong with the plugin records; nothing when left out. */
+  pluginRecords?: PluginRecordProblem | null;
   /** The sandbox check as a whole, in place of one that answers `sandbox`. */
   sandboxCheck?: () => Promise<SandboxCheck>;
   /** The resource report's read, in place of one that answers at once. */
@@ -146,6 +149,7 @@ export function doctor(machine: Machine = {}) {
     ...(machine.node === undefined ? {} : { node: async () => machine.node ?? null }),
     ...(machine.network === undefined ? {} : { network: () => machine.network ?? null }),
     ...(machine.profile === undefined ? {} : { profile: machine.profile }),
+    ...(machine.pluginRecords === undefined ? {} : { pluginRecords: machine.pluginRecords }),
     timers,
   });
   return { service, asked, timers };

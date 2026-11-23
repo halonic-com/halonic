@@ -23,6 +23,7 @@ import {
 import type { Clock, FolderReader, HttpClient } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
+  type ProfileFolder,
   pluginRecordsFolder,
   pluginsFolder,
   profileFolder,
@@ -114,13 +115,12 @@ export function openPluginService(setup: PluginSetup, cwd?: string): PluginServi
   const clock = setup.clock ?? systemClock;
   const folder = setupPluginsFolder(setup);
   const read = setup.readFolder ?? ((at: string) => new FileSystemFolderReader(at));
-  const records = pluginRecordsFolder(profile);
   return new PluginService({
     plugins: new PluginsFolderReader(read(folder), folder),
     writer: new FileSystemPluginFolder(folder, { clock }),
     digest: webCryptoDigest,
     trust: cliTrustService(new FileTrustStore(trustFolder(profile)), clock),
-    records: new PluginRecordStore(new FileRecordStore(records), records),
+    records: pluginRecordStore(profile),
     clock,
     signOut: cliPluginSignOut({
       profile,
@@ -140,6 +140,15 @@ export function openPluginService(setup: PluginSetup, cwd?: string): PluginServi
  */
 export function setupPluginsFolder(setup: PluginSetup): string {
   return pluginsFolder(profileFolder(setup.profile ?? nodeProfileEnvironment()));
+}
+
+/**
+ * The profile's plugin records, read so that a record file the person may
+ * not open, or a damaged one, names the file and its fix (HAL-15893).
+ */
+export function pluginRecordStore(profile: ProfileFolder): PluginRecordStore {
+  const records = pluginRecordsFolder(profile);
+  return new PluginRecordStore(new FileRecordStore(records), records);
 }
 
 /** The profile folder and the workspace data in `cwd`, when there is one, in both spellings each. */

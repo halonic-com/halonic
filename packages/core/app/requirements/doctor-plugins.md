@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-14296, from Nina's C340 check on HAL-14271 (rows 20–23, code row C40), decided by the team (Liam)
+- Source: HAL-14296, from Nina's C340 check on HAL-14271 (rows 20–23, code row C40), decided by the team (Liam); the plugin records, from Iris's flow check C646 (HAL-15893, HAL-15916), decided by the team under HAL-2282
 
-When the host finds a problem with a plugin that one of the workspace's connectors uses, `halonic doctor` shall show a Plugins line with each problem as the host found it: a plugin that isn't added, with the connector that names it and the one added plugin whose id is close, if there is one; a plugin that is off, because it isn't trusted yet or changed since it was trusted; or a plugin whose folder can't be read or checked. The line shall be marked as failed, and counted with the problems, while a plugin isn't added, because no run on this computer can get its tools; otherwise it shall be marked as a warning and counted with the warnings. Without a problem, or outside a workspace, there shall be no Plugins line.
+When the host finds a problem with a plugin that one of the workspace's connectors uses, `halonic doctor` shall show a Plugins line with each problem as the host found it: a plugin that isn't added, with the connector that names it and the one added plugin whose id is close, if there is one; a plugin that is off, because it isn't trusted yet or changed since it was trusted; or a plugin whose folder can't be read or checked. When the host finds that a file of the profile's plugin records, or their folder, can't be opened by the person, or that a record file is damaged, the Plugins line shall show that first, with or without a workspace, since those files are the profile's and keep every plugin's source and settings. The line shall be marked as failed, and counted with the problems, while a plugin isn't added, because no run on this computer can get its tools; otherwise it shall be marked as a warning and counted with the warnings. Without a problem there shall be no Plugins line, and outside a workspace only a problem with the plugin records shows one.
 
 ## Examples
 
@@ -14,3 +14,5 @@ When the host finds a problem with a plugin that one of the workspace's connecto
   then the Plugins line is ! with `tides` off because it changed, and the summary counts one warning.
 - Given every plugin the connectors use is on,
   then there is no Plugins line.
+- Given the record file that keeps where each plugin was added from is damaged at line 2, and no workspace,
+  then the report has a Plugins line ! with that file, and the summary counts one warning.

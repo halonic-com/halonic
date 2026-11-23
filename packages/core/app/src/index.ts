@@ -128,6 +128,7 @@ export {
 export { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 export {
   type DoctorPluginProblem,
+  type PluginRecordProblem,
   type PluginsFolderAccess,
   type PluginsLine,
   pluginsLine,

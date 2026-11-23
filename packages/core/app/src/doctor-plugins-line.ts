@@ -1,7 +1,9 @@
 // The Plugins line of `halonic doctor`, without the words: each plugin a
 // workspace's connector uses that isn't added, is off or can't be read
-// (HAL-14296). The host finds them, because only the host knows where the
-// profile's plugins are; this file only decides the mark.
+// (HAL-14296), and a plugin record file of the profile that can't be opened
+// or is damaged, with or without a workspace (HAL-15916). The host finds
+// them, because only the host knows where the profile's plugins are; this
+// file only decides the mark.
 
 import type { DoctorLine } from "./doctor-checks.ts";
 
@@ -39,9 +41,40 @@ export type DoctorPluginProblem =
       access: PluginsFolderAccess;
       /** The plugins the connectors use, each once, such as ["weather"]. Never empty. */
       plugins: string[];
+    }
+  | PluginRecordProblem;
+
+/**
+ * What is wrong with the profile's plugin records, which keep every plugin's
+ * source and settings, so `halonic plugin list` and `plugin remove` refuse
+ * for every plugin until it is fixed (HAL-15916). Each is the refusal
+ * `plugin list` gives (HAL-15893):
+ *
+ * - `records-unreadable`: the person may not open a record `file` or the
+ *   `folder` that holds them; `path` is that file or folder.
+ * - `records-damaged`: a record `file` holds something other than whole
+ *   records, at `line` when one line is to blame; `why` is the store's
+ *   sentence, such as "it is not JSON."; `holds` is what deleting the file
+ *   forgets.
+ */
+export type PluginRecordProblem =
+  | {
+      problem: "records-unreadable";
+      place: "file" | "folder";
+      path: string;
+      access: PluginsFolderAccess;
+    }
+  | {
+      problem: "records-damaged";
+      file: string;
+      /** Counted from 1, or `undefined` when the whole file is damaged. */
+      line: number | undefined;
+      why: string;
+      /** Where each plugin was added from (`sources`), their `settings`, or `other` records. */
+      holds: "sources" | "settings" | "other";
     };
 
-/** The Plugins line: shown only when a plugin a connector uses has a problem. */
+/** The Plugins line: shown only when a plugin a connector uses, or the plugin records, have a problem. */
 export interface PluginsLine extends DoctorLine {
   check: "plugins";
   /** `failed` while a plugin isn't added; a plugin that is only off is a warning. */
@@ -52,10 +85,12 @@ export interface PluginsLine extends DoctorLine {
 
 /**
  * The Plugins line of `halonic doctor` (requirement `app.doctor-plugins`),
- * or `undefined` when every plugin the connectors use is on. A plugin that
- * isn't added fails the line, so `doctor` exits 1: no run here can get its
- * tools. One that is off is a warning, because trusting it is the person's
- * choice.
+ * or `undefined` when every plugin the connectors use is on and the plugin
+ * records can be read. A plugin that isn't added fails the line, so `doctor`
+ * exits 1: no run here can get its tools. One that is off is a warning,
+ * because trusting it is the person's choice, and so are plugin records
+ * that can't be read, as the plugins folder is, since only runs with a
+ * plugin's connector need them.
  *
  * @example
  * pluginsLine([{ problem: "off", plugin: "acme-orders", why: "changed" }]);

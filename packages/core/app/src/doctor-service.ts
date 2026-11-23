@@ -38,7 +38,12 @@ import {
 import type { AliasProvider, DoctorProvider, ModelsLine } from "./doctor-models-line.ts";
 import { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 import { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
-import type { DoctorPluginProblem, PluginsLine } from "./doctor-plugins-line.ts";
+import {
+  type DoctorPluginProblem,
+  type PluginRecordProblem,
+  type PluginsLine,
+  pluginsLine,
+} from "./doctor-plugins-line.ts";
 import { type ProfileLine, type ProfileProblem, profileLine } from "./doctor-profile-line.ts";
 import type { SecretsFound, SecretsLine, UsedSecret } from "./doctor-secrets-line.ts";
 import {
@@ -183,6 +188,11 @@ export interface DoctorServiceOptions {
    */
   profile?: ProfileProblem | null;
   /**
+   * What is wrong with the profile's plugin records, for the Plugins line
+   * with or without a workspace (HAL-15916). Left out, or `null`, none.
+   */
+  pluginRecords?: PluginRecordProblem | null;
+  /**
    * The clock each check's 5-second limit runs on: `setTimeout` and
    * `clearTimeout`, or a test's own.
    */
@@ -202,7 +212,7 @@ export interface DoctorReport {
   models?: ModelsLine | TimedOutLine<"models">;
   /** Only inside a workspace, while a secret it uses isn't set or couldn't be read. */
   secrets?: SecretsLine | TimedOutLine<"secrets">;
-  /** Only inside a workspace, while a plugin one of its connectors uses isn't added, is off or can't be read. */
+  /** While a plugin a workspace's connector uses isn't added, is off or can't be read, or the plugin records can't be. */
   plugins?: PluginsLine;
   sandbox: SandboxLine | TimedOutLine<"sandbox">;
   /** Only where MXC is offered and the sandbox choice has started. */
@@ -295,7 +305,7 @@ export class DoctorService {
       ),
     );
     if (harnessLine !== undefined) report.harnesses = harnessLine;
-    const found = { ...report, ...hostFoundLines(node, this.options) };
+    const found = { ...report, ...hostFoundLines(node, workspace, this.options) };
 
     return { ...found, summary: doctorSummary(linesOf(found)) };
   }
@@ -425,16 +435,22 @@ function firstRunLines(
   return lines;
 }
 
-/** The Profile, Node.js and Network lines, each only when the host found a problem. */
+/** The Profile, Plugins, Node.js and Network lines, each only when the host found a problem. */
 function hostFoundLines(
   node: NodeProblem | null | typeof timedOut,
-  { network, profile }: Pick<DoctorServiceOptions, "network" | "profile">,
-): Pick<DoctorReport, "profile" | "node" | "network"> {
+  workspace: DoctorWorkspace | null,
+  options: Pick<DoctorServiceOptions, "network" | "profile" | "pluginRecords">,
+): Pick<DoctorReport, "profile" | "plugins" | "node" | "network"> {
+  const { network, profile, pluginRecords } = options;
   const nodeFound = lineOf(node, "node", nodeLine);
   const networkFound = networkLine(network?.() ?? null);
   const profileFound = profileLine(profile ?? null);
+  // The plugin records are the profile's, so they show outside a workspace too (HAL-15916).
+  const records = pluginRecords === undefined || pluginRecords === null ? [] : [pluginRecords];
+  const pluginsFound = pluginsLine([...records, ...(workspace?.pluginProblems ?? [])]);
   return {
     ...(profileFound === undefined ? {} : { profile: profileFound }),
+    ...(pluginsFound === undefined ? {} : { plugins: pluginsFound }),
     ...(nodeFound === undefined ? {} : { node: nodeFound }),
     ...(networkFound === undefined ? {} : { network: networkFound }),
   };
