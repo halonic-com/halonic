@@ -90,13 +90,36 @@ export function changeLine(file: ProposalFile): string {
 }
 
 /**
- * Under a change an Accept left alone, because the file changed after the run started (C665 26).
+ * Under a change an Accept left alone, because the file changed after the run started (C665 26, Q9).
  * The host knows only that it changed, not who changed it, as the CLI's "changed since the run".
- * Until Compare ships, only a Reject can decide it, so the line says so.
  */
 export function changedSinceRunLine(runId: string): string {
-  return `This file changed after run ${shortRunId(runId)} started, so it wasn't accepted. To keep it as it is now, reject it.`;
+  return `This file changed after run ${shortRunId(runId)} started. Accept opens Compare.`;
 }
+
+/** The words of Compare (Q9), on a file that changed after the run started. */
+export const compareWords = {
+  /** Its name, read when it opens: "Compare notes.md". */
+  name: (path: string) => `Compare ${markHiddenName(path)}`,
+  loading: "Loading both texts",
+  loadFailed: "Couldn't open Compare.",
+  chooseFailed: "Couldn't apply your choice.",
+  yours: "Yours",
+  runs: (runId: string) => `Run ${shortRunId(runId)}'s`,
+  /** In place of a text when there is no file: the person or the run deleted it. */
+  none: "No file",
+  keepMine: "Keep mine",
+  useRuns: "Use the run's",
+  combineBoth: "Combine both",
+  cancel: "Cancel",
+  /** Closes Compare when it couldn't open; Cancel is the choice that leaves the file undecided. */
+  close: "Close",
+  tryAgain: "Try again",
+} as const;
+
+/** When the file was saved again after Compare showed it, so nothing was written. */
+export const changedAgainLine =
+  "This file changed after Compare opened, so nothing was written. Here it is now.";
 
 /** The line when an Accept or a Reject didn't go through (Q11): "Couldn't accept this change." */
 export function decisionFailedLine(verb: "accept" | "reject", all: boolean): string {

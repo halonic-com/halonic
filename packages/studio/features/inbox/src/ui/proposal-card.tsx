@@ -5,7 +5,7 @@ import {
   usePresentation,
 } from "@halonicjs/studio-kit";
 import { engineWords } from "@halonicjs/studio-shell";
-import { type RefObject, useEffect, useId, useRef } from "react";
+import { type ReactNode, type RefObject, useEffect, useId, useRef } from "react";
 import {
   beforeAcceptLines,
   changedSinceRunLine,
@@ -37,6 +37,7 @@ import {
   openFiles,
   PhoneAllBar,
 } from "./proposal-buttons.tsx";
+import { ProposalCompareView } from "./proposal-compare.tsx";
 import { GoneLine } from "./proposal-gone.tsx";
 import type { RunFacts } from "./run-facts.ts";
 import { type ProposalDecisionState, useProposalDecisions } from "./use-proposal-decisions.ts";
@@ -73,6 +74,7 @@ export interface ProposalCardProps extends EngineState {
  * what the proposal came to. Where the window can't decide, the changes end with the terminal
  * command that does (HAL-15986).
  *
+ * A file changed after the run started says so, and its **Accept** opens Compare under it (Q9).
  * When the host says the proposal's texts are gone, the page offers only **Remove from Inbox** (Q11).
  * When it then finds them there again, the changes come back under a line that says so (C711 4).
  * While the engine isn't answering, the host's line sits above the header, and every button that
@@ -84,7 +86,7 @@ export interface ProposalCardProps extends EngineState {
  * button and link there.
  *
  * Not here yet: a change's settings before and after, the diff and its **Advanced** sheet, and
- * Compare, with the phone's line that sends it to your computer (Q5, Q9, Q12).
+ * the phone's line that sends Compare to your computer (Q5, Q12).
  */
 export function ProposalCard({
   item,
@@ -181,6 +183,7 @@ function ProposalChanges({
     state.clearFailure,
     () => nextButtons.current.get(open[0]?.path ?? "") ?? null,
   );
+  const { comparing } = state;
   return (
     <>
       {state.back ? <ChangesBackLine runId={item.runId} /> : null}
@@ -195,7 +198,16 @@ function ProposalChanges({
             state={state}
             buttons={buttons}
             nextButtons={nextButtons}
-          />
+          >
+            {comparing?.path === file.path ? (
+              <ProposalCompareView
+                key={file.path}
+                runId={item.runId}
+                comparing={comparing}
+                state={state}
+              />
+            ) : null}
+          </ChangeRow>
         ))}
       </ul>
       {!buttons && open.length > 0 ? <DecideElsewhere runId={item.runId} /> : null}
@@ -223,9 +235,9 @@ function ChangesBackLine({ runId }: { readonly runId: string }) {
 }
 
 /**
- * Q6: once a decision is back, focus goes to the next undecided file's **Accept**, or its
- * **Reject** when it changed since the run, else to what the proposal came to. A failed one leaves
- * it on its button, by its **Try again**. Only decisions made while the changes show count: when
+ * Q6: once a decision is back, focus goes to the next undecided file's **Accept**, else to what
+ * the proposal came to. A failed one leaves it on its button, by its **Try again**, and an open
+ * Compare keeps it. Only decisions made while the changes show count: when
  * they come back after the gone line, the line that says so keeps focus (C711 4).
  */
 function useFocusAfterDecision(state: ProposalDecisionState, nextPath: string | undefined) {
@@ -233,11 +245,12 @@ function useFocusAfterDecision(state: ProposalDecisionState, nextPath: string | 
   const summary = useRef<HTMLParagraphElement>(null);
   const { decided, failure } = state;
   const decidedWhenShown = useRef(decided);
+  const comparing = state.comparing !== null;
   useEffect(() => {
-    if (decided === decidedWhenShown.current || failure !== null) return;
+    if (decided === decidedWhenShown.current || failure !== null || comparing) return;
     const next = nextPath === undefined ? summary.current : nextButtons.current.get(nextPath);
     next?.focus();
-  }, [decided, failure, nextPath]);
+  }, [decided, failure, comparing, nextPath]);
   return { nextButtons, summary };
 }
 
@@ -323,7 +336,8 @@ const decidedWords: Partial<Record<ProposalFile["decision"], string>> = {
  * decided, muted. The line keeps at least 16 rem, so in a narrow pane the buttons wrap under it
  * instead of squeezing a path until it breaks mid-word (C667 #2). A path still too long for the
  * line wraps before a "/" first, as MiddleCut's end does, and inside a name only when one name
- * alone is too long (C678 #2). A file changed since the run keeps only **Reject** (C665 26).
+ * alone is too long (C678 #2). On a file changed since the run, **Accept** opens Compare (Q9),
+ * which shows under it as `children`.
  */
 function ChangeRow({
   file,
@@ -331,13 +345,15 @@ function ChangeRow({
   state,
   buttons,
   nextButtons,
+  children,
 }: {
   readonly file: ProposalFile;
   readonly runId: string;
   readonly state: CardState;
   readonly buttons: boolean;
-  /** Each open file's button that takes focus when it is next: its Accept, else its Reject. */
+  /** Each open file's **Accept**, which takes focus when its file is next. */
   readonly nextButtons: RefObject<Map<string, HTMLButtonElement>>;
+  readonly children: ReactNode;
 }) {
   const decided = decidedWords[file.decision];
   const changedSinceRun = state.changedSinceRun.has(file.path);
@@ -361,27 +377,26 @@ function ChangeRow({
               label="Reject"
               busyLabel="Rejecting…"
               variant="ghost"
-              {...(changedSinceRun ? { buttonRef: nextRef } : {})}
             />
-            {changedSinceRun ? null : (
-              <DecideButton
-                state={state}
-                verb="accept"
-                target={target}
-                label="Accept"
-                busyLabel="Accepting…"
-                variant="ghost"
-                buttonRef={nextRef}
-              />
-            )}
+            <DecideButton
+              state={state}
+              verb="accept"
+              target={target}
+              label="Accept"
+              busyLabel="Accepting…"
+              variant="ghost"
+              buttonRef={nextRef}
+              onPress={changedSinceRun ? () => state.compare(file.path) : undefined}
+            />
           </span>
         ) : null}
         {decided === undefined ? null : <span className="text-small text-fg-muted">{decided}</span>}
       </div>
-      {changedSinceRun ? (
+      {changedSinceRun && decided === undefined ? (
         <p className="text-small text-fg-muted">{changedSinceRunLine(runId)}</p>
       ) : null}
       <FailedLine state={state} target={target} />
+      {children}
     </li>
   );
 }

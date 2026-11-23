@@ -57,7 +57,7 @@ export const filesWords = {
   compareNone: "No file",
   compareLoading: "Loading both texts",
   /** What shows when a choice in Compare can't be saved. */
-  compareFailed: (reason: string): string => `Couldn't apply your choice: ${reason}`,
+  compareFailed: (reason: string): string => `Couldn't apply your choice. ${reason}`,
   newFile: "New file",
   newFileTitle: "New file",
   path: "Path",

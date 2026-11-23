@@ -1,23 +1,21 @@
-import { type ToastMessage, type ToastStore, useToastStore } from "@halonicjs/studio-kit";
-import { copyDetailsWords, detailsOf, useCopyDetails } from "@halonicjs/studio-shell";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
+  changedAgainLine,
   changeLine,
+  compareWords,
   decidedToast,
   decisionFailureReason,
-  undidPartToast,
-  undoDecidedAfterToast,
-  undoLeftAloneLine,
-  undoPartLine,
 } from "../plain/proposal-text.ts";
 import {
+  type ProposalCompare,
+  type ProposalCompareChoice,
   type ProposalDecided,
   type ProposalDecisions,
-  ProposalFailedError,
   type ProposalFailure,
   ProposalGoneError,
 } from "../proposal-decisions.ts";
 import type { ProposalFile, ProposalItem } from "../proposal-items.ts";
+import { failureOf, useUndoSteps } from "./use-undo-steps.ts";
 
 /** Accept or Reject. */
 export type ProposalVerb = "accept" | "reject";
@@ -36,6 +34,25 @@ export interface DecisionFailure {
   readonly error: unknown;
 }
 
+/** A choice in Compare (Q9): **Keep mine** is a reject, the others accept. */
+export type CompareChoice = "keep-mine" | ProposalCompareChoice;
+
+/** Why a choice in Compare wrote nothing, and the choice that **Try again** sends again. */
+export interface CompareFailure {
+  readonly line: string;
+  /** `null` once the file changed again: Compare shows it as it is now, to choose anew. */
+  readonly retry: { readonly choice: CompareChoice; readonly seen: string } | null;
+}
+
+/** The file Compare is open on, what went wrong with a choice, and how often its texts were read. */
+export interface Comparing {
+  readonly path: string;
+  /** Why the last choice wrote nothing, else `null`. */
+  readonly failure: CompareFailure | null;
+  /** Goes up when the file changed again after Compare showed it, so Compare reads it again. */
+  readonly round: number;
+}
+
 /** The open proposal's decisions, as its page shows them. */
 export interface ProposalDecisionState {
   /** The proposal's files with what was decided on each since the page opened. */
@@ -51,6 +68,8 @@ export interface ProposalDecisionState {
   readonly back: boolean;
   /** The files an Accept left alone because they changed after the run started; a Reject decides them. */
   readonly changedSinceRun: ReadonlySet<string>;
+  /** Compare, open on one of those, else `null` (Q9). */
+  readonly comparing: Comparing | null;
   /** The last decision said for a screen reader (Q6): "Accepted: notes.md added". */
   readonly announcement: string;
   /** Goes up after each decision, so the page moves focus on (Q6). */
@@ -60,13 +79,22 @@ export interface ProposalDecisionState {
   clearFailure(): void;
   /** After a Remove found the changes there again and the Inbox read them: they show once more. */
   changesBack(): void;
+  /** Opens Compare on a file the person changed after the run started. */
+  compare(path: string): void;
+  /** Closes Compare, and any still to show after it, leaving their files undecided. */
+  closeCompare(): void;
+  /** The texts Compare shows for `path`. */
+  compareTexts(path: string): Promise<ProposalCompare>;
+  /** Decides the file Compare is open on, then Compare moves on to the next one, if any. */
+  choose(choice: CompareChoice, seen: string): void;
 }
 
 const pastTense = { accept: "Accepted", reject: "Rejected" } as const;
 
 /**
  * Accept and Reject on the open proposal (HAL-11945 Q6, Q7): each decision is one undo step, with
- * a toast and its **Undo** (see {@link useUndoSteps}).
+ * a toast and its **Undo** (see {@link useUndoSteps}). An Accept that left a file alone because
+ * the person changed it after the run started opens Compare on it, one file at a time (Q9).
  *
  * @param onDecided after each decision or Undo, and once the proposal settles, so the Inbox reads
  *   its items again and the proposal moves to Done (Q10)
@@ -86,6 +114,9 @@ export function useProposalDecisions(
   const [gone, setGone] = useState(false);
   const [back, setBack] = useState(false);
   const [changedSinceRun, setChangedSinceRun] = useState<ReadonlySet<string>>(new Set());
+  const [toCompare, setToCompare] = useState<readonly string[]>([]);
+  const [compareFailure, setCompareFailure] = useState<CompareFailure | null>(null);
+  const [round, setRound] = useState(0);
   const [announcement, setAnnouncement] = useState("");
   const [decided, setDecided] = useState(0);
   const { runId } = item;
@@ -112,6 +143,8 @@ export function useProposalDecisions(
     setDecisions(result.cantBeWritten, "not-applicable");
     setDecisions(paths, verb === "accept" ? "accepted" : "rejected");
     setChangedSinceRun((current) => new Set([...current, ...result.changedSinceRun]));
+    // A file decided some other way, such as by its own Reject, needs no Compare any more.
+    setToCompare((left) => left.filter((path) => !paths.includes(path)));
     const [only] = done;
     if (only === undefined) return;
     const title = decidedToast(pastTense[verb], done.length, runId);
@@ -119,23 +152,30 @@ export function useProposalDecisions(
     if (result.undo !== null) undoSteps.offer(title, result.undo, { verb, paths });
   }
 
-  function decide(verb: ProposalVerb, target: DecisionTarget) {
-    if (decisions === undefined || pending !== null) return;
+  /**
+   * Sends one decision: its button is busy meanwhile, then `done` has what it did, or `failed`
+   * the error it didn't go through with, unless the proposal turned out to be gone.
+   */
+  function send(
+    verb: ProposalVerb,
+    target: DecisionTarget,
+    sent: Promise<ProposalDecided>,
+    done: (result: ProposalDecided) => void,
+    failed: (error: unknown) => void,
+  ) {
     setPending({ verb, target });
-    setFailure(null);
-    const sent =
-      verb === "accept" ? decisions.accept(runId, target) : decisions.reject(runId, target);
     const deciding = sent
       .then((result) => {
         undoSteps.decided();
         applied(verb, target, result);
+        done(result);
         onDecided();
       })
       .catch((error: unknown) => {
         if (error instanceof ProposalGoneError) {
           setGone(true);
           setBack(false);
-        } else setFailure({ verb, target, failure: failureOf(error), error });
+        } else failed(error);
       })
       .finally(() => {
         setPending(null);
@@ -149,6 +189,64 @@ export function useProposalDecisions(
     setBack(true);
   }
 
+  function openCompare(paths: readonly string[]) {
+    setCompareFailure(null);
+    setToCompare(paths);
+  }
+
+  function decide(verb: ProposalVerb, target: DecisionTarget) {
+    if (decisions === undefined || pending !== null) return;
+    setFailure(null);
+    const sent =
+      verb === "accept" ? decisions.accept(runId, target) : decisions.reject(runId, target);
+    send(
+      verb,
+      target,
+      sent,
+      (result) => openCompare(result.changedSinceRun),
+      (error) => setFailure({ verb, target, failure: failureOf(error), error }),
+    );
+  }
+
+  function choose(choice: CompareChoice, seen: string) {
+    const [path] = toCompare;
+    if (decisions === undefined || pending !== null || path === undefined) return;
+    setCompareFailure(null);
+    const target = { file: path };
+    const keep = choice === "keep-mine";
+    const sent = keep
+      ? decisions.reject(runId, target)
+      : decisions.choose(runId, path, choice, seen);
+    const done = (result: ProposalDecided) => {
+      if (!result.changedSinceRun.includes(path)) return;
+      // Saved again after Compare showed it: nothing was written; show it as it is now.
+      setCompareFailure({ line: changedAgainLine, retry: null });
+      setRound((count) => count + 1);
+    };
+    const failed = (error: unknown) =>
+      setCompareFailure({
+        line: `${compareWords.chooseFailed} ${decisionFailureReason(failureOf(error))}`,
+        retry: { choice, seen },
+      });
+    send(keep ? "reject" : "accept", target, sent, done, failed);
+  }
+
+  // Kept the same across renders, since Compare reads the texts again whenever it changes.
+  const compareTexts = useCallback(
+    (path: string): Promise<ProposalCompare> => {
+      if (decisions === undefined) return Promise.reject(new Error("Nothing can be decided here."));
+      return decisions.compare(runId, path).catch((error: unknown) => {
+        if (error instanceof ProposalGoneError) {
+          setGone(true);
+          setBack(false);
+        }
+        throw error;
+      });
+    },
+    [decisions, runId],
+  );
+
+  const [comparePath] = toCompare;
   return {
     files,
     pending,
@@ -157,11 +255,17 @@ export function useProposalDecisions(
     gone,
     back,
     changedSinceRun,
+    comparing:
+      comparePath === undefined ? null : { path: comparePath, failure: compareFailure, round },
     announcement,
     decided,
     decide,
     clearFailure: () => setFailure(null),
     changesBack,
+    compare: (path) => openCompare([path]),
+    closeCompare: () => openCompare([]),
+    compareTexts,
+    choose,
   };
 }
 
@@ -197,206 +301,4 @@ function decidedFiles(
   const asked = target === "all" ? undecided : undecided.filter((f) => f.path === target.file);
   const leftAlone = new Set([...result.changedSinceRun, ...result.cantBeWritten]);
   return asked.filter((file) => !leftAlone.has(file.path));
-}
-
-/** The decision an **Undo** takes back. */
-interface UndoStep {
-  readonly verb: ProposalVerb;
-  readonly paths: readonly string[];
-}
-
-const decidedWords = { accept: "accepted", reject: "rejected" } as const;
-
-/**
- * The toasts with **Undo** of one proposal's decisions. Only the newest decision's toast is
- * offered: the host takes back a step only while the run's decisions are as that step left them,
- * so an older **Undo** couldn't work after a newer decision. Leaving the page settles the proposal
- * once a decision on its way and any Undo pressed are done and the last toast has gone, so every
- * **Undo** keeps working while it shows; the host leaves a proposal still undecided open. While
- * the engine isn't answering, as the page shows it, an **Undo** sends nothing: a toast that says why
- * and keeps **Undo** takes its toast's place. Once the page has gone, an **Undo** is sent, and a
- * failure says so.
- *
- * @param settled once the proposal has settled
- * @param holdBack while the engine isn't answering, what an **Undo** pressed meanwhile says
- * @param undone after an Undo, with the paths the host put back to undecided
- */
-function useUndoSteps(
-  decisions: ProposalDecisions | undefined,
-  runId: string,
-  settled: { readonly current: () => void },
-  holdBack: string | undefined,
-  undone: (paths: readonly string[]) => void,
-) {
-  const toasts = useToastStore();
-  const copyDetails = useCopyDetails();
-  const held = useHeldWhile(holdBack);
-  const shown = useRef(new Set<string>());
-  const newest = useRef<string | null>(null);
-  const inFlight = useRef(new Set<Promise<void>>());
-  const decidedOnce = useRef(false);
-  useEffect(
-    () => () => {
-      if (decisions === undefined) return;
-      const waiting = [...inFlight.current];
-      if (!decidedOnce.current && waiting.length === 0) return;
-      // A decision still on its way shows its toast first, so settling waits for that toast too.
-      void Promise.allSettled(waiting).then(() => {
-        if (!decidedOnce.current) return;
-        settleWhenToastsClose(toasts, shown.current, async () => {
-          await Promise.allSettled([...inFlight.current]);
-          await decisions.settle(runId);
-          settled.current();
-        });
-      });
-    },
-    [decisions, runId, toasts],
-  );
-
-  function track(work: Promise<void>) {
-    inFlight.current.add(work);
-    void work.finally(() => inFlight.current.delete(work));
-  }
-
-  function undo(id: string, step: UndoStep) {
-    if (decisions === undefined) return;
-    const restoring = decisions
-      .undo(id)
-      .then(({ leftAlone, decidedAfter }) => {
-        const left = new Set(leftAlone);
-        const kept = step.paths.filter((path) => left.has(path));
-        const putBack = step.paths.filter((path) => !left.has(path));
-        undone(putBack);
-        const toast = undoneToast(runId, step.verb, kept, putBack.length, decidedAfter);
-        if (toast !== null) toasts?.show(toast);
-      })
-      .catch((error: unknown) => {
-        const failure = failureOf(error);
-        const text = decisionFailureReason(failure);
-        // Only a reason Halonic can't explain offers the host's own words, to copy (C665 27).
-        const details = () => void copyDetails(detailsOf(`${undoFailedTitle} ${text}`, error));
-        const action = { label: copyDetailsWords.label, onClick: details };
-        toasts?.show({
-          tone: "danger",
-          title: undoFailedTitle,
-          text,
-          ...(failure === "unexplained" ? { action } : {}),
-        });
-      });
-    track(restoring);
-  }
-
-  return {
-    /** Notes that a decision went through, so leaving the page settles the proposal, and closes the older **Undo**. */
-    decided: () => {
-      decidedOnce.current = true;
-      if (newest.current !== null) toasts?.close(newest.current);
-      newest.current = null;
-    },
-    /** Keeps the page from settling the proposal before `work`, a decision on its way, is done. */
-    track,
-    /** Shows the decision's toast, whose **Undo** takes back step `id`. */
-    offer: (title: string, id: string, step: UndoStep) => {
-      let toast: string | undefined;
-      // Shows `message` with this step's Undo in place of the toast showing it until now.
-      const showWithUndo = (message: Omit<ToastMessage, "action">) => {
-        if (toast !== undefined) toasts?.close(toast);
-        toast = toasts?.show({ ...message, action: { label: "Undo", onClick, keepOpen: true } });
-        if (toast === undefined) return;
-        shown.current.add(toast);
-        newest.current = toast;
-      };
-      // A phone shows one toast at a time (C741), so a held-back Undo replaces its toast with one
-      // that says why and keeps Undo, rather than showing the reason behind it. A danger toast
-      // stays until it's closed, so Undo is still there once the engine answers.
-      function onClick() {
-        if (held.current !== undefined) {
-          const focused = document.activeElement;
-          showWithUndo({ tone: "danger", title: undoFailedTitle, text: held.current });
-          keepFocusInToasts(toasts, focused);
-          return;
-        }
-        if (toast !== undefined) toasts?.close(toast);
-        undo(id, step);
-      }
-      showWithUndo({ tone: "success", title });
-    },
-  };
-}
-
-/**
- * `holdBack` while the page shows, so a toast's **Undo** reads the page's latest line; `undefined`
- * once the page has gone, since nothing then says the engine isn't answering.
- */
-function useHeldWhile(holdBack: string | undefined): { readonly current: string | undefined } {
-  const held = useRef(holdBack);
-  held.current = holdBack;
-  useEffect(
-    () => () => {
-      held.current = undefined;
-    },
-    [],
-  );
-  return held;
-}
-
-/**
- * Moves focus to the newest toast's first button when `focused`, which had focus before a toast
- * was replaced, went with the toast it was in: otherwise focus drops to the page, and a keyboard
- * needs F6 to reach the new toast's **Undo** (HAL-16672). Waits until React has drawn the new toast.
- */
-function keepFocusInToasts(toasts: ToastStore | null, focused: Element | null): void {
-  if (toasts === null || !(focused instanceof HTMLElement)) return;
-  queueMicrotask(() => {
-    if (!focused.isConnected) toasts.focus();
-  });
-}
-
-/** Runs `settle` once none of the toasts `ids` shows, now when none does. */
-function settleWhenToastsClose(
-  toasts: ToastStore | null,
-  ids: ReadonlySet<string>,
-  settle: () => Promise<void>,
-): void {
-  const run = () => {
-    settle().catch((error: unknown) => console.error("Couldn't settle the run proposal", error));
-  };
-  const showing = (store: ToastStore) => store.list().some((toast) => ids.has(toast.id));
-  if (toasts === null || !showing(toasts)) {
-    run();
-    return;
-  }
-  const stop = toasts.subscribe(() => {
-    if (showing(toasts)) return;
-    stop();
-    // After the toast's own click, so an Undo pressed on it starts before the proposal settles.
-    queueMicrotask(run);
-  });
-}
-
-const undoFailedTitle = "Couldn't undo this.";
-
-/**
- * The toast after an Undo that left files as they were (C665 31): a later decision kept it back,
- * it put back some files, or none; nothing when it put back every one.
- */
-function undoneToast(
-  runId: string,
-  verb: ProposalVerb,
-  kept: readonly string[],
-  putBack: number,
-  decidedAfter: boolean,
-): ToastMessage | null {
-  if (decidedAfter) return { tone: "danger", title: undoDecidedAfterToast(runId) };
-  if (kept.length === 0) return null;
-  const decided = decidedWords[verb];
-  if (putBack === 0) {
-    return { tone: "danger", title: undoFailedTitle, text: undoLeftAloneLine(decided, kept) };
-  }
-  return { tone: "warning", title: undidPartToast(runId), text: undoPartLine(decided, kept) };
-}
-
-/** A failure the app sorted keeps its kind; anything else is one Halonic can't explain. */
-function failureOf(error: unknown): ProposalFailure {
-  return error instanceof ProposalFailedError ? error.failure : "unexplained";
 }
