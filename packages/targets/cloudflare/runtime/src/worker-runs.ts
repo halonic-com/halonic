@@ -5,8 +5,9 @@ import type {
   RunExecutor,
   RunSubscription,
 } from "@halonicjs/ports";
-import { indexedRunDefinitions } from "./indexed-run-definitions.ts";
+import { cachedRunDefinitionsIndex, indexedRunDefinitions } from "./indexed-run-definitions.ts";
 import { type WorkerExecutorPorts, workerExecutor } from "./worker-executor.ts";
+import { workerModelResolver } from "./worker-model-resolver.ts";
 
 /** Where a run's live events come from: the run objects. */
 export interface RunEventSource {
@@ -25,25 +26,19 @@ export interface WorkerRunsPorts extends WorkerEnginePorts {
 }
 
 /**
- * The model resolver of the Worker's engine, until the Worker reads the deployed workspace's
- * models (S0, HAL-13210). A model call fails the run's step with this error.
- */
-async function noModels(): Promise<never> {
-  throw new Error("The Cloudflare Worker can't call a model yet.");
-}
-
-/**
  * The Worker's engine: {@link workerExecutor}, with each new run's definitions from the
- * snapshot's run-definitions index and no model yet.
+ * snapshot's run-definitions index and each model call resolved from the same index, with the
+ * provider keys from the Workers secrets.
  *
  * @example
  * const engine = workerEngine(await createRuntime(env));
  * await engine.executor.start({ hubId: "acme", workflowId: "reply", input: {} });
  */
 export function workerEngine(ports: WorkerEnginePorts): AssembledEngine {
+  const readIndex = cachedRunDefinitionsIndex(ports.definitions);
   return workerExecutor(ports, {
-    definitionsOf: indexedRunDefinitions(ports.definitions),
-    resolveModel: noModels,
+    definitionsOf: indexedRunDefinitions(readIndex),
+    resolveModel: workerModelResolver({ readIndex, secrets: ports.secrets }),
   });
 }
 

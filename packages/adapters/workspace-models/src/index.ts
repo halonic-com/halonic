@@ -33,6 +33,8 @@ export {
   workspaceExecutorOptions,
 } from "./workspace-executor-options.ts";
 export {
+  type HubModelResolverInput,
+  hubModelResolver,
   type KeyCheckContext,
   latestModelResolver,
   requireKeyMayGo,

@@ -64,6 +64,16 @@ const acmeHub = {
   knowledge: {},
   skills: {},
   connectors: { mail: { tools: { allow: ["search"], approve: [] } } },
+  defaultModel: "fast",
+  models: { fast: { provider: "mock", model: "echo", params: {}, alias: "fast", fallback: [] } },
+  providers: {
+    mock: {
+      id: "mock",
+      type: "mock",
+      local: false,
+      options: { script: { writer: ["Dear support, thank you."] } },
+    },
+  },
 };
 
 /** The deployed snapshot: its run-definitions index, or none. */
@@ -171,7 +181,7 @@ verifies("runtime.worker-runs", () => {
       expect(ports.subscribed).toEqual(["run_1"]);
     });
 
-    it("fails a step that calls a model, because the Worker can't call one yet", async () => {
+    it("calls the model the index names for a step's agent", async () => {
       const ports = workerPorts();
       const engine = workerEngine(ports);
       await engine.executor.start({ ...replyStart, runId: "run_1" });
@@ -179,8 +189,10 @@ verifies("runtime.worker-runs", () => {
       if (timer !== undefined) await engine.executor.onTimer(timer);
 
       const run = await ports.runStore.get("run_1");
-      expect(run).toMatchObject({ status: "failed" });
-      expect(run?.error).toContain("can't call a model yet");
+      expect(run).toMatchObject({
+        status: "completed",
+        context: { reply: "Dear support, thank you." },
+      });
       await engine.close();
     });
   });
