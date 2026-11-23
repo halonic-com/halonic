@@ -68,6 +68,11 @@ tauri-plugin-http = { version = "=2.8.3", default-features = false, features = [
 tauri-plugin-opener = "=2.7.2"
 url = "2"
 
+# The time limits of the owner check and of an engine stream's opening
+# answer. Tauri's async runtime is already tokio, so this adds no crate to
+# the build, only the timer feature.
+tokio = { version = "1", default-features = false, features = ["time"] }
+
 # The native folder picker and the trust question (HAL-2612). rfd is the
 # library tauri-plugin-dialog (plan 7.2) shows its dialogs with; the shell
 # calls it from Rust instead of registering the plugin, whose script would
@@ -122,9 +127,6 @@ halonic-tunnel = { path = "crates/tunnel" }
 # decision 4b): Android's own BiometricPrompt, strong biometrics only,
 # through the shell's `owner_check` module. No plugin from outside.
 halonic-owner-check = { path = "crates/owner-check" }
-# The owner check's time limit. Tauri's async runtime is already tokio, so
-# this adds no crate to the build, only the timer feature.
-tokio = { version = "1", default-features = false, features = ["time"] }
 
 # Tauri's mock runtime, for the test that every command is refused from the
 # served page.
