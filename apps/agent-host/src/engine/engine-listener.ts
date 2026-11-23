@@ -15,6 +15,7 @@ import {
   listenOnLoopback,
   stopServer,
 } from "../server/host-server.ts";
+import { maxBodyBytes } from "../server/json-body.ts";
 import { OpenLimit } from "../server/open-limit.ts";
 
 /**
@@ -27,6 +28,12 @@ import { OpenLimit } from "../server/open-limit.ts";
 export const maxRunUpdateStreams = 8;
 
 const runUpdatesPath = "/api/run-updates";
+
+/**
+ * The methods a Web `Request` can carry. It throws on the others (such as
+ * `TRACE` or `CONNECT`), which would answer 500 before the token check.
+ */
+const requestMethods = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
 
 /** The engine's listener on loopback. */
 export interface EngineListener {
@@ -49,17 +56,17 @@ export interface EngineListenerOptions {
 /**
  * Serves the server `serverFor` builds on a free port of 127.0.0.1. The
  * server is given the port, which the `Host` header must name, once it is
- * known. Past `maxStreams` open run-update streams, a new one is refused
+ * known, and the agent host's own body size, which it must refuse past. Past `maxStreams` open run-update streams, a new one is refused
  * with 503 after the server's own checks, so a caller without the token
  * still gets their refusals; an open stream is never dropped to make room.
  */
 export async function listenForEngine(
-  serverFor: (port: () => number) => Server,
+  serverFor: (port: () => number, maxBodyBytes: number) => Server,
   options: EngineListenerOptions,
 ): Promise<EngineListener> {
   const limits = options.limits ?? defaultHostServerLimits;
   let port = 0;
-  const server = serverFor(() => port);
+  const server = serverFor(() => port, maxBodyBytes);
   const streams = new OpenLimit(options.maxStreams ?? maxRunUpdateStreams, () => 0);
   const http = createServer(
     {
@@ -91,6 +98,10 @@ async function answer(
   if (!path.startsWith("/")) {
     // An absolute-form target would let the caller choose the URL's own host.
     outgoing.writeHead(400).end();
+    return;
+  }
+  if (!requestMethods.has(incoming.method ?? "")) {
+    outgoing.writeHead(405).end();
     return;
   }
   // A caller that hangs up aborts the request, so a stream stops following the feed.
