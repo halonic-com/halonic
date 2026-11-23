@@ -20,6 +20,9 @@ const stateWords: Readonly<Record<PluginState, string>> = {
   changed: "changed since you trusted it",
 };
 
+/** How {@link pluginMessages.updateFiles} names each kind of change. */
+const updateFileWords = { changed: "changed", added: "new", removed: "removed" } as const;
+
 /**
  * The schema's plain words for a value YAML read as a number where text goes,
  * such as `version: 1.0` (schema-kit's plain words, HAL-14277).
@@ -116,6 +119,12 @@ export const pluginMessages = defineMessages("plugin", {
    * (C45, HAL-14325). A git source's commit already says which copy it is.
    */
   listCopiedFrom: (source: string, day: string) => phrase`copied from ${source} on ${day}`,
+  /**
+   * With a !, under a `plugin list` row whose source folder's files differ from the copy, so an
+   * edit isn't silently ignored (C696 #3, HAL-16319). `folderWord` is the folder as one shell word.
+   */
+  listSourceChanged: (folderWord: string) =>
+    phrase`The folder changed since this copy. To use your changes, run: halonic plugin add ${folderWord} --update`,
   /** The heading of the list of files the fingerprint covers. */
   filesHeading: () => phrase`${pluginTrustLocationHeadings.files}`,
   /** The last line of the file list when more files follow the ones shown. */
@@ -358,10 +367,22 @@ export const pluginMessages = defineMessages("plugin", {
   /** In place of {@link updated} when the new copy's files are the ones trusted, so nothing was asked. */
   updatedUnchanged: (name: string, version: string) =>
     phrase`Updated ${name} ${version}. Its files are the ones you trusted, so it's still on.`,
-  updatedButOff: (name: string, id: string) =>
-    phrase`${name} is updated but off. Nothing from it runs until you trust it: halonic trust --plugin ${id}`,
-  updateNoTerminal: (name: string) =>
-    phrase`${name} is updated but off, because there's no terminal to ask you to trust it.`,
+  /** With `plugin list`'s state words, so an edited plugin reads the same in both (C696 #5, HAL-16319). */
+  updatedButOff: (name: string, id: string, state: Exclude<PluginState, "on">) =>
+    phrase`${name} is updated but off: it's ${stateWords[state]}. Nothing from it runs until you trust it: halonic trust --plugin ${id}`,
+  updateNoTerminal: (name: string, state: Exclude<PluginState, "on">) =>
+    phrase`${name} is updated but off: it's ${stateWords[state]}, and there's no terminal to ask you to trust it.`,
+  /**
+   * With a !, ahead of the check, when `--update` changed the plugin's files: which ones,
+   * against the copy it replaced (C696 #4, HAL-16319). `parts` are {@link updateFilesPart}s.
+   */
+  updateFiles: (parts: readonly string[]) =>
+    phrase`Files changed since the copy it replaces: ${parts.join("; ")}.`,
+  /** One kind of change in {@link updateFiles}, its paths already listed: "changed backend/index.js". */
+  updateFilesPart: (kind: "changed" | "added" | "removed", paths: string) =>
+    phrase`${updateFileWords[kind]} ${paths}`,
+  /** After the last path shown when more changed. */
+  updateFilesMore: (count: number) => phrase`and ${count} more`,
   /**
    * With a !, ahead of the check, when the plugin was added from another folder or git
    * address: what it keeps moves to the new copy (HAL-16292).

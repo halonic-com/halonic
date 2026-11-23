@@ -2,15 +2,18 @@
 // 3.6), a folder source as the copy it is, with the day (C45), and under a
 // plugin with programs, whether they run on this computer
 // (cli.plugin-programs-run), and for a plugin that is on but whose backend is
-// off here, why (HAL-15080). A thin command over `PluginService.load`: it
-// lists, and writes nothing, so it needs no trust.
+// off here, why (HAL-15080), and for a folder whose files changed since the
+// copy, the command that updates it (HAL-16319). A thin command over
+// `PluginService.load`: it lists, and writes nothing, so it needs no trust.
 
-import type {
-  LocalToolState,
-  PluginEntry,
-  PluginInstall,
-  PluginService,
-  RunnerUnfencedReason,
+import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
+import {
+  type LocalToolState,
+  type PluginEntry,
+  type PluginInstall,
+  type PluginService,
+  pluginSourceFileChanges,
+  type RunnerUnfencedReason,
 } from "@halonicjs/app";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import type { CommandContext, CommandInput, CommandResult } from "../../command.ts";
@@ -23,6 +26,7 @@ import { type PluginState, pluginMessages } from "../../messages/plugin.ts";
 import { offHereReasonLines } from "../../output/plugin-off-here.ts";
 import { shownPluginSource } from "../../output/plugin-source.ts";
 import { printable } from "../../output/printable.ts";
+import { shellWord } from "../../output/shell-word.ts";
 import { rowIndent } from "../../output/trust-row-lines.ts";
 import {
   offHereFor,
@@ -30,7 +34,7 @@ import {
   type PluginSetup,
   programsRunFor,
 } from "../../plugin-host.ts";
-import { nodeProfileEnvironment } from "../../workspace-runs.ts";
+import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 
 /**
  * Lists every plugin in the profile, lined up: its name, version, where it
@@ -109,6 +113,7 @@ async function pluginRow(
   const state = pluginStateOf(entry);
   const runs = entry.content.localTools.length === 0 ? undefined : programsRun;
   const off = state === "on" && entry.plugin.backend !== undefined ? offHere : undefined;
+  const sourceChanged = await folderChanged(install);
   return {
     cells: [
       phrase`${printable(entry.plugin.name)}`,
@@ -119,6 +124,7 @@ async function pluginRow(
     under: [
       ...(off === undefined ? [] : offHereReasonLines(off, printable(entry.plugin.name))),
       ...(runs === undefined ? [] : [programsRunLine(runs)]),
+      ...(sourceChanged === true ? sourceChangedLines(install, profile) : []),
     ],
     json: {
       id: entry.folder,
@@ -129,6 +135,7 @@ async function pluginRow(
       addedAt: install?.addedAt ?? null,
       programsRun: runs ?? null,
       offOnThisComputer: off ?? null,
+      sourceChanged,
     },
   };
 }
@@ -142,6 +149,36 @@ function sourceCell(install: PluginInstall, profile: ProfileEnvironment): Phrase
   if (install.source.kind === "git") return phrase`${shown}`;
   const day = dayInWords(localDay(new Date(install.addedAt)));
   return pluginMessages.listCopiedFrom(shown, day).phrase;
+}
+
+/**
+ * Whether the files in the folder a plugin was copied from differ from the
+ * copy now; `null` for a git source, or a folder that can't be read or
+ * checked now, which `plugin add --update` would say why.
+ */
+async function folderChanged(install: PluginInstall | null): Promise<boolean | null> {
+  if (install?.source.kind !== "folder") return null;
+  const reader = new FileSystemFolderReader(install.source.path);
+  const changes = await pluginSourceFileChanges(reader, webCryptoDigest, install.files);
+  if (!changes.ok) return null;
+  const { added, changed, removed } = changes.value;
+  return added.length + changed.length + removed.length > 0;
+}
+
+/**
+ * "  ! The folder changed since this copy. To use your changes, run: halonic
+ * plugin add ~/weather --update", the folder as the source column writes it
+ * when a shell reads it back as it is, else its full path as one shell word.
+ */
+function sourceChangedLines(install: PluginInstall | null, profile: ProfileEnvironment): Phrase[] {
+  if (install === null) return [];
+  const shown = printable(shownPluginSource(install.source, profile));
+  const path = install.source.kind === "folder" ? install.source.path : shown;
+  // A shell expands a leading `~` only outside quotes, so the rest decides.
+  const rest = shown.startsWith("~") ? shown.slice(1) : shown;
+  const word = shellWord(rest) === rest ? shown : shellWord(path);
+  const line = pluginMessages.listSourceChanged(word).phrase;
+  return [phrase`${rowIndent}${markPart("needsYou")} ${line}`];
 }
 
 /** "  ! Programs: Doesn't start on this computer: …", with no mark when they run. */

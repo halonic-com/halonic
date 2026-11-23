@@ -14,6 +14,7 @@ import {
   RunEventRefused,
   RunEvents,
   RunHistory,
+  runWait,
   shortRunId,
   type WorkflowDefinition,
   WorkflowRuns,
@@ -332,7 +333,9 @@ function notWaiting(
 ): NotWaiting {
   if (run.status === "running" || run.status === "waiting") {
     const step = run.state ?? "";
-    return { status: "running", step: stepName(step, workflow?.states[step]?.description) };
+    // Only Studio takes the answer to "Allow this address?" (HAL-16221).
+    const status = runWait(run).kind === "address" ? "address" : "running";
+    return { status, step: stepName(step, workflow?.states[step]?.description) };
   }
   const ago = endedInWords(endedAt(new Date(run.endedAt ?? run.updatedAt), clock));
   if (run.status === "completed") {

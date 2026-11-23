@@ -111,7 +111,8 @@ function itemChanges<Item extends object>(
   return changes;
 }
 
-function fileChanges(
+/** The files added, changed and removed from `trusted` to `current`, by path. */
+export function fileChanges(
   trusted: readonly PluginFileHash[],
   current: readonly PluginFileHash[],
 ): PluginFileChanges {

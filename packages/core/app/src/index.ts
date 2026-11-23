@@ -370,6 +370,7 @@ export {
   signInTrustLine,
 } from "./plugin-sign-in-trust.ts";
 export { signInsNotConfirmed, signInsSignedOut } from "./plugin-signed-out.ts";
+export { pluginFileChanges, pluginSourceFileChanges } from "./plugin-source-changes.ts";
 export {
   checkPluginTrustNow,
   type PluginStartTrustOptions,

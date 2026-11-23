@@ -30,7 +30,6 @@ import { markPart, type Phrase, phrase, plainText } from "../../messages/phrase.
 import { pluginMessages } from "../../messages/plugin.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { offHereLines } from "../../output/plugin-off-here.ts";
-import { shownPluginSource } from "../../output/plugin-source.ts";
 import { printable } from "../../output/printable.ts";
 import {
   offHereFor,
@@ -39,7 +38,6 @@ import {
   programsRunFor,
 } from "../../plugin-host.ts";
 import { askToTrustPlugin, type PluginTrustAnswer } from "../../plugin-trust-question.ts";
-import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { exportRefusal, refusal } from "./export-refusal.ts";
 import {
   checkGitSource,
@@ -48,6 +46,7 @@ import {
   type GitSource,
   gitSourceOf,
 } from "./git-source.ts";
+import { updateLines } from "./update-lines.ts";
 
 /** An added plugin that was read and checked. */
 type AddedPlugin = Exclude<PluginEntry, { status: "broken" }>;
@@ -93,7 +92,7 @@ export async function addPlugin(
   const entry = added.value;
   // Only a replace keeps a copy that can't be read back.
   if (entry.status === "broken") throw problemRefusal(entry.problems);
-  const moved = movedLine(replaced, opened.from, context, setup);
+  const fromUpdate = updateLines(replaced, opened.from, entry.content.files, context, setup);
   const leftOut = leftOutLine(entry.leftOut, context);
   const programsRun = await programsRunFor(setup, [entry.content]);
   const offHere = await offHereFor(setup, [entry.plugin]);
@@ -101,7 +100,7 @@ export async function addPlugin(
   const result = await trustAdded(service, entry, answer, updated);
   return {
     ...result,
-    lines: [...opened.printedAhead, ...moved, ...leftOut, ...result.lines],
+    lines: [...opened.printedAhead, ...fromUpdate, ...leftOut, ...result.lines],
     ...(updated && result.json !== undefined ? { json: { ...result.json, updated } } : {}),
   };
 }
@@ -111,8 +110,8 @@ interface AddOutcome {
   readonly added: Awaited<ReturnType<PluginService["add"]>>;
   /** A manifest one folder down, looked for only when the folder has none. */
   readonly nested: NestedManifest | undefined;
-  /** The source the replaced plugin was added from, when `--update` replaced one; `null` with no install record. */
-  readonly replaced: PluginInstall["source"] | null | undefined;
+  /** The replaced plugin's install record, when `--update` replaced one; `null` when it had none. */
+  readonly replaced: PluginInstall | null | undefined;
 }
 
 /**
@@ -134,7 +133,7 @@ async function addFrom(
       // Read before the replace, which records the new source in its place.
       const before = await service.install(added.error.id);
       const again = await addWith(true);
-      const replaced = again.ok ? (before?.source ?? null) : undefined;
+      const replaced = again.ok ? before : undefined;
       return { added: again, nested: undefined, replaced };
     }
     const noManifest = !added.ok && opened.from.kind === "folder" && hasNoManifest(added.error);
@@ -143,35 +142,6 @@ async function addFrom(
   } finally {
     await opened.close();
   }
-}
-
-/**
- * "! Updating from a different source: ~/acme/weather → ~/new/weather. …",
- * printed ahead of the check, when `--update` replaced a plugin added from
- * another folder or git address, since its secrets and sign-ins carry over
- * to the new copy (HAL-16292); nothing otherwise, or for a new commit of the
- * same address.
- */
-function movedLine(
-  replaced: PluginInstall["source"] | null | undefined,
-  from: PluginInstall["source"],
-  context: CommandContext,
-  setup: PluginSetup,
-): Phrase[] {
-  if (replaced === undefined || replaced === null || sameSource(replaced, from)) return [];
-  const profile = setup.profile ?? nodeProfileEnvironment();
-  const before = printable(shownPluginSource(replaced, profile));
-  const after = printable(shownPluginSource(from, profile));
-  const line = phrase`${markPart("needsYou")} ${pluginMessages.updateMoved(before, after).phrase}`;
-  context.printAhead(line);
-  return [line];
-}
-
-/** The same folder, or the same git address at any commit. */
-function sameSource(a: PluginInstall["source"], b: PluginInstall["source"]): boolean {
-  if (a.kind === "folder" && b.kind === "folder") return a.path === b.path;
-  if (a.kind === "git" && b.kind === "git") return a.address === b.address;
-  return false;
 }
 
 /**
@@ -314,11 +284,13 @@ async function trustAdded(
     };
   }
   if (updated) {
+    // In `plugin list`'s words: never trusted, or changed since it was.
+    const state = entry.status === "changed" ? "changed" : "notTrusted";
     return await askToTrustPlugin(service, entry, answer, {
       on: pluginMessages.updated(name, version),
       offHere,
-      off: pluginMessages.updatedButOff(name, entry.folder),
-      noTerminal: pluginMessages.updateNoTerminal(name),
+      off: pluginMessages.updatedButOff(name, entry.folder, state),
+      noTerminal: pluginMessages.updateNoTerminal(name, state),
     });
   }
   return await askToTrustPlugin(service, entry, answer, {
