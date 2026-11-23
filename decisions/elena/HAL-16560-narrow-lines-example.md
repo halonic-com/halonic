@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16560 (Sofia's C716 re-check, HAL-16554)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RSrlTFYfd2J3elJ2mC3gGpXcyLDE0LTcGNxI8I3BhYAv0onuMr4GAXS7oKOA8kD0wu7KAM0cYydWkTWevfTiAw==
 
 The example in `workspace.trust-check-narrow-lines` said a value sits 4 px below its label. The
 screen has no gap there: below 24rem a label sits directly over its value, and 8 px separate the
