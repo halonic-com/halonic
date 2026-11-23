@@ -11,10 +11,13 @@ import { type MetricsApi, writeMetrics } from "./metrics.ts";
  * The agent tool `ready_for_review` (L5b, HAL-16437). It asks the precheck
  * service (L5a, halonic-com/server `precheck/`) to check a pushed branch merged
  * into current `main`, so an agent fixes what would fail CI before it opens or
- * updates the pull request. A check takes 1 to 5 minutes and a tool call at
- * most 30 s, so the tool starts the check, waits about 20 s, and otherwise
- * hands back the check's id for the next call. When the service can't run the
- * check, the answer is "check unavailable", never a block.
+ * updates the pull request. A check takes 1 to 5 minutes, and an agent's tool
+ * call ends after about 10 s (measured on 23 Nov, HAL-16478; the plugin host's
+ * own limit is 30 s, but the agent's tool bridge gives up sooner). So the tool
+ * starts the check, waits about 6 s, and otherwise hands back the check's id
+ * for the next call: an agent that never sees the id would start a new check
+ * on every retry. When the service can't run the check, the answer is "check
+ * unavailable", never a block.
  */
 
 /** The part of the plugin context the tool uses, so tests can fake it. */
@@ -38,11 +41,11 @@ export interface ReadyForReviewDeps {
 /** Where the service listens when the settings name no other address. */
 export const defaultPrecheckUrl = "http://halonic-precheck:8787";
 /** How long one call waits for the check before it hands back the id. */
-export const waitBudgetMs = 20_000;
+export const waitBudgetMs = 6_000;
 /** The pause between two reads of a running check. */
-export const pollIntervalMs = 4_000;
-/** One request to the service gives up after this long. */
-export const requestTimeoutMs = 5_000;
+export const pollIntervalMs = 2_000;
+/** One request to the service gives up after this long; it answers in milliseconds. */
+export const requestTimeoutMs = 2_000;
 /** The most of the service's summary an answer passes on, so a noisy log can't flood the agent. */
 export const summaryLimit = 4_000;
 
