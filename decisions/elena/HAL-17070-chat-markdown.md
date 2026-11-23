@@ -2,6 +2,7 @@
 
 - Approval: HAL-17070 (build task), from Noah's spec on HAL-17068, decided by the team (no board card: it reuses the approved chat reply and plugin Markdown looks)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:shcNfrJTcvjR8XwnaXASy02cXdIFbf5WUl/4jOi2hozTGSPRzyMAx38co7ChNv7fdoZVgwXP8Hh58Aske5/gAw==
 
 ## What changes
 
