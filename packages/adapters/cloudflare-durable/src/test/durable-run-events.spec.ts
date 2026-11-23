@@ -192,13 +192,13 @@ describe("DurableRunEvents", () => {
   it("uses the name prefix to find the run's object", async () => {
     const object = fakeObject();
     const { closed, listener } = noteListener();
-    new DurableRunEvents({ namespace: object.namespace, namePrefix: "case-" }).subscribe(
+    new DurableRunEvents({ namespace: object.namespace, namePrefix: "case/" }).subscribe(
       runId,
       0,
       listener,
     );
     object.end();
     await closed;
-    expect(object.asked[0]?.name).toBe("case-run-1");
+    expect(object.asked[0]?.name).toBe("case/run-1");
   });
 });

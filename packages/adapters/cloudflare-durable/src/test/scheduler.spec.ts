@@ -34,7 +34,7 @@ schedulerContract("durable object", async (listener) => {
   const { RUNS, ROUTINES } = env as TestEnv;
   const scheduler = new DurableScheduler({
     namespace: suiteCase.namespace(RUNS),
-    namePrefix: caseId,
+    namePrefix: `${caseId}/`,
   });
   const routines = suiteCase.namespace(ROUTINES);
   return {

@@ -36,14 +36,14 @@ function countingNamespace() {
 describe("DurableScheduler", () => {
   it("keeps each key's timers in the object named after the key, behind the prefix", async () => {
     const namespace = countingNamespace();
-    const scheduler = new DurableScheduler({ namespace, namePrefix: "acme:" });
+    const scheduler = new DurableScheduler({ namespace, namePrefix: "acme/" });
     const at = new Date(Date.UTC(2026, 0, 2)).toISOString();
     await scheduler.schedule("run_1", "wait", at);
     expect(await scheduler.pending("run_1")).toEqual([{ key: "run_1", timerId: "wait", at }]);
     expect(await scheduler.pending("run_2")).toEqual([]);
     await scheduler.cancel("run_1", "wait");
     expect(await scheduler.pending("run_1")).toEqual([]);
-    expect(new Set(namespace.names)).toEqual(new Set(["acme:run_1", "acme:run_2"]));
+    expect(new Set(namespace.names)).toEqual(new Set(["acme/run_1", "acme/run_2"]));
   });
 
   it("names the object after the key alone without a prefix, with a fresh stub per call", async () => {
