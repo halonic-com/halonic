@@ -1,4 +1,5 @@
 import { startRunCommand } from "@halonicjs/app";
+import { ConfirmAgainCallouts } from "@halonicjs/studio-feature-agents/api";
 import { SandboxCantRunCallout } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
@@ -30,7 +31,7 @@ import { GuideSlot } from "./guide-card.tsx";
 import { pageOrGuideScreen, useGuideRun, useGuideScreen } from "./guide-screen.tsx";
 import { firstTestsPick, firstView, hasDockedCard, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
-import { ProgramStepsLine } from "./program-steps-line.tsx";
+import { ProgramStepsLine, programAgentsOf } from "./program-steps-line.tsx";
 import { type DockOpener, drawingCaption, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { unavailableFor, useRunGate } from "./run-gate.ts";
 import {
@@ -82,6 +83,8 @@ export function WorkflowScreen({
   saving,
   sandboxStartCheck,
   openAgent,
+  agents,
+  reviewAndConfirm,
   openFileAt,
   filesWithErrors,
   guide,
@@ -296,6 +299,13 @@ export function WorkflowScreen({
       >
         <ProgramStepsLine steps={gate.programSteps} phone={phone} openAgent={openAgent} />
       </SandboxCantRunCallout>
+      {/* Below the can't-run Callout; it never disables Run (agents.confirm-again.run-controls). */}
+      <ConfirmAgainCallouts
+        host={agents}
+        hubId={hubId}
+        agents={programAgentsOf(gate.programSteps)}
+        reviewAndConfirm={reviewAndConfirm}
+      />
       {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
       <StartRow
         name={name}

@@ -284,12 +284,14 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       if (shownFingerprint !== fingerprint) return { saved: false, fingerprint };
       const chosenAt = options.now?.() ?? "2026-11-09T14:02:00.000Z";
       choices.set(keyOf(ref), { fingerprint, chosenAt });
+      for (const listener of listeners) listener();
       return { saved: true };
     },
     chooseSandbox: async (ref) => {
       found(ref);
       canChoose();
       choices.delete(keyOf(ref));
+      for (const listener of listeners) listener();
     },
     filePath: async (ref) => {
       found(ref);
