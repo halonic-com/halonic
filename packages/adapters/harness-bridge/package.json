@@ -4,7 +4,8 @@
   "type": "module",
   "description": "The Halonic bridge for harness runs: a loopback server per run that passes model requests to the provider and serves Halonic's tools over MCP.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./web": "./src/web.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
