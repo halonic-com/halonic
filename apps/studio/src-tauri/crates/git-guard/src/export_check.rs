@@ -99,7 +99,7 @@ pub(crate) fn check_address(address: &str) -> Result<(), GitError> {
         }
         if scheme.eq_ignore_ascii_case("https") && !user.is_empty() {
             return Err(refused_address(
-                "a user name in an https:// address can hold a token, and Halonic would save it with the plugin. Leave it out, or use an ssh:// address",
+                "a user name in an https:// address can hold a token, and Halonic would keep it with the plugin. Leave it out, or use an ssh:// address with a key",
             ));
         }
         if user.starts_with('-') {
