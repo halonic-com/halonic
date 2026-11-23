@@ -23,7 +23,7 @@ import { type PluginState, pluginMessages } from "../../messages/plugin.ts";
 import { offHereReasonLines } from "../../output/plugin-off-here.ts";
 import { shownPluginSource } from "../../output/plugin-source.ts";
 import { printable } from "../../output/printable.ts";
-import { rowIndent } from "../../output/trust-check-rows.ts";
+import { rowIndent } from "../../output/trust-row-lines.ts";
 import {
   offHereFor,
   openPluginService,

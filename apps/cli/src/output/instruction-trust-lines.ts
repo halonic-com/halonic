@@ -5,7 +5,7 @@ import { type Phrase, phrase } from "../messages/phrase.ts";
 import { trustMessages } from "../messages/trust.ts";
 import { trustInstructionsMessages as words } from "../messages/trust-instructions.ts";
 import { printable } from "./printable.ts";
-import { rowIndent } from "./trust-check-rows.ts";
+import { rowIndent } from "./trust-row-lines.ts";
 
 /** An instruction check that asks a person: never `trusted`. */
 export type InstructionQuestion = Exclude<InstructionTrustCheck, { kind: "trusted" }>;

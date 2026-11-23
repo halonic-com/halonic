@@ -25,11 +25,11 @@ import {
   providerRow,
   providerSecretNames,
   row,
-  rowIndent,
   secretNames,
   tagged,
   withTag,
 } from "./trust-check-rows.ts";
+import { rowIndent } from "./trust-row-lines.ts";
 
 /** What the check doesn't hold, because only the host knows it. */
 export interface TrustCheckFacts {

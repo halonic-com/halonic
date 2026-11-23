@@ -12,6 +12,7 @@ import type {
 } from "@halonicjs/workspace";
 import { agentChangeRows, agentRow, siteLines, withoutAsking } from "./agent-trust-rows.ts";
 import { secretNames, secretPicks } from "./connector-secrets.ts";
+import { connectorLines } from "./connector-trust-lines.ts";
 import {
   type IntegrationRuns,
   integrationRow,
@@ -258,8 +259,8 @@ function sectionsOf(
 /**
  * A program's row, with the fields the CLI's row shows (HAL-16323): its command, the secrets it
  * gets and the names it takes from the environment, then the path it runs ("Runs", microcopy 4.3),
- * its working folder, its own environment, one `NAME=value` per line, and, where it runs in the
- * sandbox, its sites. Without the sandbox no site is shown, so the check suggests no fence that
+ * its working folder, its own environment, one `NAME=value` per line, its connector lines and,
+ * where it runs in the sandbox, its sites. Without the sandbox no site is shown, so the check suggests no fence that
  * isn't there. Names, paths, entries and sites are code, so they show in mono (C706).
  */
 function programRow(
@@ -284,6 +285,7 @@ function programRow(
       ...fields.environment.map(
         (entry, index) => [index === 0 ? "Environment" : "", entry, "code"] as const,
       ),
+      ...connectorLines(connector),
       ...(runs?.state === "fenced" ? siteLines(fields.sites) : []),
     ],
     warning: unpinned.has(connector.id)
@@ -292,7 +294,16 @@ function programRow(
   };
 }
 
+/** A connector reached by an address, then its connector lines: tools, headers, other settings. */
 function addressRow(
+  connector: ConnectorTrustContent,
+  pluginHosts: PluginHosts | undefined,
+): TrustRowView {
+  const row = addressOnlyRow(connector, pluginHosts);
+  return { ...row, lines: [...row.lines, ...connectorLines(connector)] };
+}
+
+function addressOnlyRow(
   connector: ConnectorTrustContent,
   pluginHosts: PluginHosts | undefined,
 ): TrustRowView {

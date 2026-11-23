@@ -12,7 +12,7 @@ import { errorMessages } from "../messages/general.ts";
 import { markPart, type Phrase, phrase } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
 import { sandboxDocsLink, sandboxMessages } from "../messages/sandbox.ts";
-import { rowIndent } from "./trust-check-rows.ts";
+import { rowIndent } from "./trust-row-lines.ts";
 
 /**
  * The reason and its fix, `doctor`'s dimmed docs line, since some fixes

@@ -136,6 +136,17 @@ export const trustMessages = defineMessages("trust", {
   resolvedPath: () => phrase`Resolved path`,
   /** The label over a program's own `env` entries, one `NAME=value` per line. */
   programEnvironment: () => phrase`Environment`,
+  /**
+   * The labels over a connector's tool lists, its HTTP headers and the fields the schema doesn't
+   * know, one entry per line. The team's words (HAL-16336), a detail of the approved trust check
+   * (HAL-2282); Studio uses the same ones.
+   */
+  offeredTools: () => phrase`Offered tools`,
+  asksFirst: () => phrase`Asks first`,
+  /** What {@link asksFirst} says for `approve: all`. */
+  everyTool: () => phrase`every tool`,
+  headers: () => phrase`Headers`,
+  otherSettings: () => phrase`Other settings`,
   agentsHeading: () => phrase`Agents`,
   /** The line under the Agents heading. The terminal has no count and no collapsing. */
   agentsIntro: () => phrase`Agents in this workspace that run in Claude Code or Codex.`,
