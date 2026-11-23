@@ -1,5 +1,5 @@
 import { defineMessages } from "./define.ts";
-import { phrase } from "./phrase.ts";
+import { dimmed, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** "trust instructions coder", the words after `halonic` in every command these sentences suggest. */
@@ -41,6 +41,16 @@ export const trustInstructionsMessages = defineMessages("trustInstructions", {
   newFile: () => phrase`New`,
   changedFile: () => phrase`Changed`,
   removedFile: () => phrase`Removed`,
+  /**
+   * Dimmed, after the rows, when a file the list covers has saved changes
+   * that aren't committed: runs start the live version, so this reviews the
+   * committed files (HAL-16386), in the words of `halonic trust`'s line. The
+   * paths are workspace-relative and escaped.
+   */
+  notCommitted: (agent: string, files: readonly string[], dir?: string) =>
+    dimmed(
+      phrase`These saved changes aren't committed, so runs don't use them and this check doesn't cover them: ${files.join(", ")}. Commit them, then run ${suggestedCommand(trustWords(agent), dir)} again.`,
+    ),
 
   question: (agent: string) => phrase`Trust ${agent}'s instructions on this computer?`,
   /**

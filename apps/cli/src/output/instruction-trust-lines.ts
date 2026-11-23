@@ -24,6 +24,12 @@ export interface InstructionsAbout {
   readonly harness: string | undefined;
   /** Where to read a file of the pin, by its name in the pin, such as `AGENTS.md`. */
   readonly sourceOf: (name: string) => InstructionSource;
+  /**
+   * The dimmed line naming the listed files with saved changes that aren't
+   * committed (HAL-16386), after the rows and before the fingerprint, so the
+   * last line stays the fingerprint. Left out, there is no such line.
+   */
+  readonly notCommitted?: Phrase | undefined;
 }
 
 /**
@@ -62,6 +68,7 @@ export function instructionTrustLines(
     introOf(agent, check, about.harness),
     phrase``,
     ...fileRows(check, pin, about.sourceOf),
+    ...(about.notCommitted === undefined ? [] : [phrase``, about.notCommitted]),
     phrase``,
     trustMessages.fingerprintHeading().phrase,
     phrase`${rowIndent}${pin.digest}`,

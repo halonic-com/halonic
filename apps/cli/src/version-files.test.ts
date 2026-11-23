@@ -213,7 +213,7 @@ verifies("cli.local-harness-host", () => {
     const placementFiles = agentFilesOf({
       location: acme,
       workspace: () => loaded.workspace,
-      agentFiles: await runFiles(),
+      runFiles: await runFiles(),
     });
     const version: RunVersion = { reads: "live-version", commit, versionDate: "2026-11-09" };
 
