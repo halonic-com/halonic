@@ -11,6 +11,7 @@ import { type AskScope, planAsks } from "./board-check-asks.ts";
 import { planMergeSpeed } from "./board-check-merge-speed.ts";
 import { planRuns, recordFailedRun } from "./board-check-runs.ts";
 import { planWaiting } from "./board-check-waiting.ts";
+import { type CompanySource, listedCompanies } from "./companies.ts";
 import { everyIssue } from "./host.ts";
 import { companyConfig } from "./job.ts";
 import { manifest } from "./manifest.ts";
@@ -159,8 +160,8 @@ async function checkCompany(
 
 /** The board check's two entry points, sharing one queue of passes per company. */
 export interface BoardCheck {
-  /** The `board-check` job: a catch-up pass for every company with a Board Checker task set. */
-  run(now: Date): Promise<void>;
+  /** A catch-up pass for every company in `companies` with a Board Checker task set. */
+  run(now: Date, companies?: CompanySource): Promise<void>;
   /** A new comment: look at its task for an ask right away instead of waiting for the job. */
   onCommentCreated(event: PluginEvent, now: Date): Promise<void>;
   /** A failed run: keep it, as ids and a cause code, for the next pass and `failed_runs`. */
@@ -171,10 +172,10 @@ export interface BoardCheck {
 export function boardCheck(ctx: BoardCheckApi): BoardCheck {
   const serially = serialPerCompany();
   return {
-    async run(now) {
+    async run(now, companies = listedCompanies) {
       let failed = 0;
-      for (const company of await ctx.companies.list()) {
-        failed += (await checkCompany(ctx, serially, company.id, now, "job")) ? 0 : 1;
+      for (const companyId of await companies(ctx)) {
+        failed += (await checkCompany(ctx, serially, companyId, now, "job")) ? 0 : 1;
       }
       if (failed > 0) {
         throw new Error(`Board check: ${failed} companies couldn't be checked; see the log.`);

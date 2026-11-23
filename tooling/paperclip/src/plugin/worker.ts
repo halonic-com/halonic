@@ -1,9 +1,11 @@
 import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
 import { boardCheck } from "./board-check.ts";
 import { registerBoardTools } from "./board-tools.ts";
+import { companyRoster } from "./companies.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
 import { runWatcher } from "./job.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
+import { scheduledPerCompany } from "./scheduled.ts";
 import { taskEffort } from "./task-effort.ts";
 import { registerTools } from "./tools.ts";
 
@@ -15,26 +17,39 @@ import { registerTools } from "./tools.ts";
  * from its tags, and answers the agent tools and the `gh` wrapper's route.
  */
 let context: PluginContext | undefined;
+/** The companies the jobs dispatch to, learnt from scoped calls (see companies.ts). */
+const roster = companyRoster();
 
 export const plugin = definePlugin({
   async setup(ctx) {
     context = ctx;
-    ctx.jobs.register("pr-watch", async () => {
-      await runWatcher(ctx, new Date());
-    });
+    // Each job only dispatches; its pass runs in a call scoped to the company (scheduled.ts).
+    const watcher = scheduledPerCompany(ctx, roster, "pr-watch", (companyId, now) =>
+      runWatcher(ctx, now, async () => [companyId]),
+    );
+    ctx.jobs.register("pr-watch", () => watcher.dispatch());
     const board = boardCheck(ctx);
-    ctx.jobs.register("board-check", async () => {
-      await board.run(new Date());
-    });
+    const boardJob = scheduledPerCompany(ctx, roster, "board-check", (companyId, now) =>
+      board.run(now, async () => [companyId]),
+    );
+    ctx.jobs.register("board-check", () => boardJob.dispatch());
     ctx.events.on("issue.comment.created", async (event) => {
+      roster.remember(event.companyId);
       await board.onCommentCreated(event, new Date());
     });
     ctx.events.on("agent.run.failed", async (event) => {
+      roster.remember(event.companyId);
       await board.onRunFailed(event, new Date());
     });
     const effort = taskEffort(ctx, { fetch: (url, init) => fetch(url, init) });
-    ctx.events.on("issue.created", (event) => effort.onIssueEvent(event));
-    ctx.events.on("issue.updated", (event) => effort.onIssueEvent(event));
+    ctx.events.on("issue.created", (event) => {
+      roster.remember(event.companyId);
+      return effort.onIssueEvent(event);
+    });
+    ctx.events.on("issue.updated", (event) => {
+      roster.remember(event.companyId);
+      return effort.onIssueEvent(event);
+    });
     registerTools(ctx);
     registerReadyForReview(ctx);
     registerBoardTools(ctx);
@@ -46,6 +61,7 @@ export const plugin = definePlugin({
     if (input.routeKey !== "gh-guard") {
       return { status: 404, body: { error: "No such Agent tools route." } };
     }
+    roster.remember(input.companyId);
     return await handleGhGuard(input, context);
   },
 });

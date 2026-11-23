@@ -17,6 +17,7 @@ import { gitHubQueryReader } from "../snapshot/graphql.ts";
 import { takeSnapshot } from "../snapshot/read.ts";
 import type { Snapshot } from "../snapshot/shape.ts";
 import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
+import { type CompanySource, listedCompanies } from "./companies.ts";
 import { type HostApi, paperclipHost } from "./host.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
 
@@ -235,20 +236,23 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
 }
 
 /**
- * The `pr-watch` job: one pass for every company that has a token set. A
- * company that fails is logged and the others still run; the job fails at
- * the end, so the job log shows it.
+ * One watcher pass for every company `companies` names that has a token
+ * set. The worker runs it for one company at a time, inside that company's
+ * dispatch event (see `scheduled.ts`). A company that fails is logged and
+ * the others still run; the pass fails at the end, so the log shows it.
  */
-export async function runWatcher(ctx: JobApi, now: Date): Promise<void> {
+export async function runWatcher(
+  ctx: JobApi,
+  now: Date,
+  companies: CompanySource = listedCompanies,
+): Promise<void> {
   let failed = 0;
-  for (const company of await ctx.companies.list()) {
+  for (const companyId of await companies(ctx)) {
     try {
-      failed += await watchCompany(ctx, company.id, now);
+      failed += await watchCompany(ctx, companyId, now);
     } catch (error) {
       failed += 1;
-      ctx.logger.error(`PR watcher: couldn't run: ${(error as Error).message}`, {
-        companyId: company.id,
-      });
+      ctx.logger.error(`PR watcher: couldn't run: ${(error as Error).message}`, { companyId });
     }
   }
   if (failed > 0) {
