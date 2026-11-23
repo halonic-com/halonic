@@ -188,6 +188,20 @@ verifies("studio.page-versions", () => {
       expect(await liveVersionOf(nested)).toEqual({ kind: "history-off" });
     });
 
+    // HAL-16298: a git worktree whose main repository lies outside the opened folder.
+    it("refuses a folder with its own .git that the shell won't open, rather than calling its history off", async () => {
+      const worktree = new PageVersions({
+        git: async () => {
+          throw { kind: "folder_not_opened", message: "The repository's git folder is outside" };
+        },
+        hasGitFolder: async () => true,
+      });
+      await expect(liveVersionOf(worktree)).rejects.toMatchObject({
+        kind: "unavailable",
+        message: "This folder's history lies outside the folder you opened, so it can't be read.",
+      });
+    });
+
     it("refuses a folder git won't open, rather than calling its history off", async () => {
       const refused = new PageVersions({
         git: async () => ({
