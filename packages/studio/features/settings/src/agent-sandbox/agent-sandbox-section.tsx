@@ -198,7 +198,12 @@ export function AgentSandboxHostView({
           onCancel={() => setRemoving(false)}
           returnFocus={() => status.current}
         >
-          <p>{text.REMOVE_BODY}</p>
+          <p>
+            {text.removeBody(
+              sandbox.facts.check.state === "needs-setup" &&
+                sandbox.facts.check.accessKept === true,
+            )}
+          </p>
         </Dialog>
       ) : null}
     </>
@@ -287,6 +292,7 @@ export function AgentSandboxView({
         lead={view.lead}
         notAvailable={facts.available ? checkedNotAvailable(view, onCheckAgain) : notAvailable}
       />
+      {view.leadNote ? <p className="text-small">{view.leadNote}</p> : null}
       {facts.securityUpdatesOverdue && facts.available ? (
         <Callout tone="warning">{text.SECURITY_UPDATES_OVERDUE}</Callout>
       ) : null}

@@ -28,6 +28,9 @@ export const NEEDS_SETUP =
 /** In place of {@link NEEDS_SETUP} when the setup is there but older: Noah's sentence (HAL-14804), C633. */
 export const NEEDS_SETUP_AGAIN =
   "This version of Halonic needs the sandbox set up again, with administrator rights. Until then, agents set to run in a sandbox don't start.";
+/** Under the lead while a removal kept some access, so the person sees why Remove shows (C728-1). */
+export const ACCESS_KEPT =
+  "The sandbox still has access to some of your project folders. To end it, remove the sandbox.";
 export const needsRepair = (reason: string) =>
   `The sandbox is set up, but part of it is missing or out of date: ${reason} Until it's repaired, agents set to run in a sandbox don't start.`;
 /** After a reason the check found: the way round it (23.3, 13.1's second sentence). */
@@ -80,6 +83,14 @@ export const failedCheck = (reason: string) =>
 export const REMOVE_TITLE = "Remove the agent sandbox?";
 export const REMOVE_BODY =
   "Agents set to run in a sandbox won't start until you set it up again. Windows asks for administrator rights once.";
+/**
+ * Under Needs setting up while a removal kept some access (`accessKept`): agents already don't
+ * start, so the dialog says what removing does here, as the kept-access note says it (C728-1).
+ */
+export const REMOVE_KEPT_BODY =
+  "This ends the access the sandbox still has to some of your project folders. Halonic must be open normally, not as administrator. Windows asks for administrator rights once.";
+/** The Remove dialog's words: {@link REMOVE_KEPT_BODY} while access is kept, else {@link REMOVE_BODY}. */
+export const removeBody = (accessKept: boolean) => (accessKept ? REMOVE_KEPT_BODY : REMOVE_BODY);
 export const REMOVE_CONFIRM = "Remove sandbox";
 export const REMOVE_CANCEL = "Cancel";
 export const REMOVE_DENIED =
