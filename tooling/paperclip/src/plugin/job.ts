@@ -6,6 +6,7 @@ import {
   type PluginLogger,
   type PluginSecretsClient,
 } from "@paperclipai/plugin-sdk";
+import { fastTrackPass, loadFastTrack, saveFastTrack } from "../fast-track/pass.ts";
 import { discoverPulls } from "../pr-watcher/discover.ts";
 import { baseGreenSince, snapshotFacts } from "../pr-watcher/facts.ts";
 import { ciOk, gitHubReader } from "../pr-watcher/github.ts";
@@ -14,6 +15,7 @@ import type { TaskRow } from "../pr-watcher/paperclip.ts";
 import { type TickSummary, tick } from "../pr-watcher/watch.ts";
 import { gitHubQueryReader } from "../snapshot/graphql.ts";
 import { takeSnapshot } from "../snapshot/read.ts";
+import type { Snapshot } from "../snapshot/shape.ts";
 import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { type HostApi, paperclipHost } from "./host.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
@@ -34,6 +36,8 @@ export interface WatcherSettings {
   readonly repos: readonly string[];
   /** Only log what it would do. On unless the board turns it off. */
   readonly dryRun: boolean;
+  /** Fast-track pull requests the board or Chief said unblock the queue or CI for everyone (HAL-15971 point 3). */
+  readonly fastTrackUnblocks: ReadonlySet<number>;
 }
 
 const defaultRepos = ["halonic-com/halonic"];
@@ -61,6 +65,11 @@ export function readSettings(config: Readonly<Record<string, unknown>>): Watcher
         : undefined,
     repos: repos.length > 0 ? repos : defaultRepos,
     dryRun: config["dryRun"] !== false,
+    fastTrackUnblocks: new Set(
+      (Array.isArray(config["fastTrackUnblocks"]) ? config["fastTrackUnblocks"] : []).filter(
+        (value): value is number => Number.isInteger(value) && value > 0,
+      ),
+    ),
   };
 }
 
@@ -135,6 +144,28 @@ async function recordPass(
   );
 }
 
+/**
+ * The fast-track rules on the pass's snapshot, log only (phase 1). A failure
+ * is logged and leaves the watcher's own work alone.
+ */
+async function runFastTrack(
+  ctx: JobApi,
+  companyId: string,
+  snapshot: Snapshot,
+  unblocks: ReadonlySet<number>,
+  now: Date,
+): Promise<void> {
+  try {
+    const pass = fastTrackPass(snapshot, await loadFastTrack(ctx, companyId), unblocks, now);
+    for (const line of pass.lines) {
+      ctx.logger.info(line, { companyId });
+    }
+    await saveFastTrack(ctx, companyId, pass.state);
+  } catch (error) {
+    ctx.logger.error(`Fast-track rules: couldn't run: ${(error as Error).message}`, { companyId });
+  }
+}
+
 /** One watcher pass for one company. Returns how many tasks it couldn't check. */
 async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<number> {
   const settings = await companySettings(ctx, companyId);
@@ -162,6 +193,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
       companyId,
     });
   });
+  await runFastTrack(ctx, companyId, snapshot, settings.fastTrackUnblocks, now);
   const found = discoverPulls(snapshot);
   const paperclip = paperclipHost(ctx, companyId);
   // Kept from the pass, so the monitors are counted without reading the tasks twice.

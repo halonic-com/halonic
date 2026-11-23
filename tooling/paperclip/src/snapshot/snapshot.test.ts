@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { type GitHubQuery, gitHubGraphql, gitHubQueryReader, isReadOnly } from "./graphql.ts";
 import { closedPullsQuery } from "./queries.ts";
-import { type CheckFallback, mergeCommitChecks, takeSnapshot } from "./read.ts";
+import { type CheckFallback, checksOf, mergeCommitChecks, takeSnapshot } from "./read.ts";
 import { snapshotVersion } from "./shape.ts";
 
 /** Trimmed real answers from 22 Nov: comment text cut to the line that matters, checks to `ci-ok`. */
@@ -125,6 +125,32 @@ verifies("paperclip.github-snapshot", () => {
     expect(JSON.stringify(snapshot)).not.toMatch(
       /approved on head|changes requested|recorded comment/,
     );
+  });
+
+  test("names the failing and the still running checks on a head, by their newest run", () => {
+    const run = (name: string, status: string, conclusion: string | null, startedAt: string) => ({
+      name,
+      status,
+      conclusion,
+      startedAt,
+    });
+    const rollup = {
+      contexts: {
+        pageInfo: { hasNextPage: false, endCursor: null },
+        nodes: [
+          run("Lint", "COMPLETED", "FAILURE", "2026-11-22T10:00:00Z"),
+          run("Lint", "COMPLETED", "SUCCESS", "2026-11-22T11:00:00Z"),
+          run("Test", "COMPLETED", "FAILURE", "2026-11-22T11:00:00Z"),
+          run("ci-ok", "COMPLETED", "FAILURE", "2026-11-22T11:00:00Z"),
+          run("Build", "IN_PROGRESS", null, "2026-11-22T11:00:00Z"),
+        ],
+      },
+    };
+    expect(checksOf(rollup)).toEqual({
+      failingChecks: ["Test", "ci-ok"],
+      pendingChecks: ["Build"],
+    });
+    expect(checksOf(null)).toEqual({ failingChecks: [], pendingChecks: [] });
   });
 
   test("reads closed pull requests until one is older than the window", async () => {

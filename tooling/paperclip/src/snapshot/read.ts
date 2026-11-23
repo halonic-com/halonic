@@ -63,6 +63,8 @@ interface Comment {
 }
 
 interface OpenNode extends PullNode {
+  /** Null when the account is gone. Absent in recordings made before the field. */
+  readonly author?: { readonly login: string } | null;
   readonly isDraft: boolean;
   readonly mergeable: "MERGEABLE" | "CONFLICTING" | "UNKNOWN";
   readonly isInMergeQueue: boolean;
@@ -121,12 +123,9 @@ function ownerAndName(repo: string): { owner: string; name: string } {
   return { owner, name };
 }
 
-/** One check's result on a rollup, or undefined when the rollup was cut off before it. */
-export function checkOf(rollup: Rollup | null, name: string): CheckState | undefined {
-  const runs = (rollup?.contexts.nodes ?? []).filter((node) => node.name === name);
-  if (runs.length === 0 && rollup?.contexts.pageInfo.hasNextPage === true) {
-    return undefined;
-  }
+type RollupNode = Rollup["contexts"]["nodes"][number];
+
+function newestOf(runs: readonly RollupNode[]): CheckState {
   return newestCheck(
     runs.map((run) => ({
       status: run.status?.toLowerCase() ?? "",
@@ -134,6 +133,33 @@ export function checkOf(rollup: Rollup | null, name: string): CheckState | undef
       started_at: run.startedAt ?? null,
     })),
   );
+}
+
+/** One check's result on a rollup, or undefined when the rollup was cut off before it. */
+export function checkOf(rollup: Rollup | null, name: string): CheckState | undefined {
+  const runs = (rollup?.contexts.nodes ?? []).filter((node) => node.name === name);
+  if (runs.length === 0 && rollup?.contexts.pageInfo.hasNextPage === true) {
+    return undefined;
+  }
+  return newestOf(runs);
+}
+
+/** The checks whose newest run failed and those still running, by name, of the first 100 on a rollup. */
+export function checksOf(rollup: Rollup | null): {
+  failingChecks: string[];
+  pendingChecks: string[];
+} {
+  const byName = new Map<string, RollupNode[]>();
+  for (const node of rollup?.contexts.nodes ?? []) {
+    if (node.name !== undefined) {
+      byName.set(node.name, [...(byName.get(node.name) ?? []), node]);
+    }
+  }
+  const states = [...byName].map(([name, runs]) => [name, newestOf(runs)] as const);
+  return {
+    failingChecks: states.flatMap(([name, state]) => (state === "failure" ? [name] : [])).sort(),
+    pendingChecks: states.flatMap(([name, state]) => (state === "pending" ? [name] : [])).sort(),
+  };
 }
 
 const mergeableOf = { MERGEABLE: "yes", CONFLICTING: "no", UNKNOWN: "unknown" } as const;
@@ -213,6 +239,8 @@ async function openFacts(
       ) ?? null,
     approvals: signedApprovals(conversation),
     baseChangedSincePush: baseChangedSincePush(node, defaultBranch),
+    ...(node.author === undefined ? {} : { author: node.author?.login ?? null }),
+    ...checksOf(rollup),
   };
 }
 
@@ -246,6 +274,8 @@ function waitingOf(rollup: Rollup | null): { jobsWaiting: number; waitingSince: 
 
 async function queueOf(page: OpenPage, repo: string, fallback: CheckFallback) {
   const entries: QueueEntry[] = [];
+  // Entries in one group share its commit: its `ci-ok` is read once.
+  const groupChecks = new Map<string, CheckState>();
   for (const entry of page.repository.mergeQueue?.entries.nodes ?? []) {
     if (entry.pullRequest === null) {
       continue;
@@ -254,7 +284,11 @@ async function queueOf(page: OpenPage, repo: string, fallback: CheckFallback) {
     const rollup = entry.headCommit?.statusCheckRollup ?? null;
     let groupCiOk: QueueEntry["groupCiOk"] = null;
     if (groupHead !== null) {
-      groupCiOk = checkOf(rollup, "ci-ok") ?? (await fallback(repo, groupHead, "ci-ok"));
+      groupCiOk =
+        checkOf(rollup, "ci-ok") ??
+        groupChecks.get(groupHead) ??
+        (await fallback(repo, groupHead, "ci-ok"));
+      groupChecks.set(groupHead, groupCiOk);
     }
     entries.push({
       number: entry.pullRequest.number,

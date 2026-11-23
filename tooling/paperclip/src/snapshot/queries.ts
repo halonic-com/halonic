@@ -41,7 +41,7 @@ export const openPullsQuery = `query OpenPulls($owner: String!, $name: String!, 
     pullRequests(states: OPEN, first: ${openPageSize}, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
       pageInfo { hasNextPage endCursor }
       nodes {
-        number url isDraft mergeable updatedAt isInMergeQueue
+        number url isDraft mergeable updatedAt isInMergeQueue author { login }
         headRefName headRefOid baseRefName headRepository { nameWithOwner }
         labels(first: 20) { nodes { name } }
         timelineItems(itemTypes: [LABELED_EVENT], last: 20) {

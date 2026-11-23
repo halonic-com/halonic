@@ -171,7 +171,11 @@ describe("the job", () => {
       token: undefined,
       repos: ["halonic-com/halonic"],
       dryRun: true,
+      fastTrackUnblocks: new Set(),
     });
+    expect([
+      ...readSettings({ fastTrackUnblocks: [5101, 0, "5102", 1.5] }).fastTrackUnblocks,
+    ]).toEqual([5101]);
     expect(readSettings({ dryRun: "no", githubToken: "secret-pr-watcher" }).dryRun).toBe(true);
     expect(readSettings({ githubToken: "secret-pr-watcher" }).token).toBeUndefined();
     expect(readSettings({ repos: ["acme/tools", "../evil", 7] }).repos).toEqual(["acme/tools"]);
