@@ -1,10 +1,10 @@
 // The versions of a workspace an engine's runs read, as `halonic routines
 // watch` gives them to the engine (HAL-6084, HAL-7500).
 
+import type { TrustedVersion } from "@halonicjs/adapter-workspace-engine-node";
 import type { RunDefinitions } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
-import type { TrustedVersion } from "./local-run-connectors.ts";
 
 /** The versions of a workspace an engine's runs read, as {@link LocalEngineInput.versions} says. */
 export interface WorkspaceVersions {

@@ -1,5 +1,5 @@
-// The `Digest` port over Web Crypto, in a file of its own so the engine
-// (`local-engine.ts`) uses it without the CLI's profile checks and wording.
+// The `Digest` port over Web Crypto, which `workspace-runs.ts` gives the
+// CLI's commands.
 
 import type { Digest } from "@halonicjs/ports";
 

@@ -3,8 +3,8 @@
 // engine lock, stop the command at once (HAL-16337).
 
 import { LockLostError } from "@halonicjs/adapter-fs-node";
+import type { EngineErrorSource } from "@halonicjs/adapter-workspace-engine-node";
 import { KindedError } from "@halonicjs/std";
-import type { EngineErrorSource } from "./local-engine-host.ts";
 import { type Phrase, plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { workspaceMessages } from "./messages/workspace.ts";

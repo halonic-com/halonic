@@ -2,6 +2,7 @@
 // `halonic tools review | approve` (HAL-2827), so the person approves the
 // fingerprint of what they see.
 
+import { realWorkingFolders } from "@halonicjs/adapter-workspace-engine-node";
 import { connectorConfigOf } from "@halonicjs/app";
 import type { Connector } from "@halonicjs/format";
 import {
@@ -17,7 +18,6 @@ import { connectorReachError } from "./connector-reach-error.ts";
 import { connectorStartError } from "./connector-start-error.ts";
 import type { Message } from "./messages/define.ts";
 import { printable } from "./output/printable.ts";
-import { realWorkingFolders } from "./working-folders.ts";
 import { savedVersionOf } from "./workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { trustedGrant } from "./workspace-trust.ts";

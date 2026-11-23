@@ -46,7 +46,7 @@ export function nodeProfileEnvironment(): ProfileEnvironment {
   });
 }
 
-// In its own file, so the engine uses it without the CLI's profile check (HAL-14217).
+// The CLI's commands take the digest from here, with the profile environment.
 export { webCryptoDigest } from "./web-crypto-digest.ts";
 
 /**

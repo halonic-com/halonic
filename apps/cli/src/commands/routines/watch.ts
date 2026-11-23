@@ -20,6 +20,7 @@
 
 import { workspaceRoutineScheduler } from "@halonicjs/app";
 import type { RoutineScheduler } from "@halonicjs/app/routines";
+import type { RoutineEngine } from "@halonicjs/engine";
 import type { RunStore } from "@halonicjs/ports";
 import { DEFAULT_TICK_POLICY, type PlacedRoutine, routineKey } from "@halonicjs/routines";
 import { KindedError } from "@halonicjs/std";
@@ -30,7 +31,6 @@ import {
   loadWorkspace,
 } from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, StoppedResult } from "../../command.ts";
-import type { RoutineEngine } from "../../local-engine-host.ts";
 import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { runMessages } from "../../messages/run.ts";

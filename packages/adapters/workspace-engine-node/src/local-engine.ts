@@ -1,6 +1,6 @@
 // The engine for one workspace on this computer, without anything only the
-// CLI says or starts (HAL-14217): `cli-local-engine.ts` and the agent
-// host's engine role open it with their own parts. Its runs, blobs and timers
+// CLI says or starts (HAL-14217): the CLI's `cli-local-engine.ts` and the
+// agent host's engine role open it with their own parts. Its runs, blobs and timers
 // live in the person's profile folder, in the workspace's own folders, so
 // `halonic runs` and the Studio read the same runs. It is a plain function of
 // its inputs (Liam, HAL-3895) and never reads a printer, argv or `process`.
@@ -87,9 +87,6 @@ import {
   type RunConnectorsEngine,
 } from "./local-run-connectors.ts";
 import { webCryptoDigest } from "./web-crypto-digest.ts";
-
-export type { RoutineEngine, RoutineTicks };
-export { engineLockFile, routineStateCollection, runTimerCollection };
 
 /**
  * What an error the engine handles itself came from: the scheduler, the

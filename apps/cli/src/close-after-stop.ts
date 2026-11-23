@@ -5,7 +5,7 @@
 // releases the engine lock, and ends: `main.ts` ends the process once a
 // stopped command has returned, so the step left behind can't keep it open.
 
-import type { LocalEngine } from "./local-engine-host.ts";
+import type { LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
 
 /**
  * How long a stopped command waits for the engine to close: 15 seconds. A

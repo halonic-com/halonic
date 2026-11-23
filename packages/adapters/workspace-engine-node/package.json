@@ -1,0 +1,47 @@
+{
+  "name": "@halonicjs/adapter-workspace-engine-node",
+  "private": true,
+  "type": "module",
+  "description": "The engine of one workspace on this computer with Node: its engine lock, run store, blob store, a scheduler whose timers survive a restart, the copies a live run's programs start in and each run's connectors, shared by the CLI and the agent host's engine role. The harness host comes in from the caller.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-coordination-node": "workspace:*",
+    "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/adapter-git": "workspace:*",
+    "@halonicjs/adapter-program-copies-node": "workspace:*",
+    "@halonicjs/adapter-scheduler-node": "workspace:*",
+    "@halonicjs/adapter-workspace-models": "workspace:*",
+    "@halonicjs/app": "workspace:*",
+    "@halonicjs/engine": "workspace:*",
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/profile": "workspace:*",
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/adapter-memory": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "priya",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "node"
+  }
+}

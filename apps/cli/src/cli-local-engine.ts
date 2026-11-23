@@ -1,8 +1,9 @@
 // The engine for one workspace on this computer, as `halonic run` starts it
-// (HAL-3814): the engine of `local-engine-host.ts` with the CLI's own parts
-// (HAL-14217). Those are what only the CLI says or starts: the lock's refusal
-// in the CLI's words, the next step a refused send names, the profile check
-// of `HALONIC_HOME`, the listed tools' approvals given with `halonic tools`,
+// (HAL-3814): the shared engine (`@halonicjs/adapter-workspace-engine-node`)
+// with the CLI's own parts (HAL-14217). Those are what only the CLI says or
+// starts: the lock's refusal in the CLI's words, the next step a refused
+// send names, the profile check of `HALONIC_HOME`, the listed tools'
+// approvals given with `halonic tools`,
 // and the harness host (`openLocalHarnessHost`, HAL-7747), which runs an
 // agent in a harness, in a worktree of its own in the profile, and keeps
 // what the run changed as a proposal there, which `halonic proposals`
@@ -16,6 +17,14 @@ import {
   FolderRunStore,
   LockHeldError,
 } from "@halonicjs/adapter-fs-node";
+import {
+  type EnginePlace,
+  type LocalEngine,
+  type LocalRunConnectorsInput,
+  type OpenEngineHarnessHost,
+  type OpenLocalEngineInput,
+  openLocalEngine as openSharedEngine,
+} from "@halonicjs/adapter-workspace-engine-node";
 import type { ChatTurnWaiting, RunStore } from "@halonicjs/ports";
 import { type ProfileEnvironment, toolApprovalFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -24,25 +33,17 @@ import { approvedIntegrations } from "./approved-integrations.ts";
 import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
 import { type EngineHolder, engineHolders, engineLockRefusal } from "./engine-lock.ts";
 import {
-  type EnginePlace,
-  type LocalEngine,
-  type OpenEngineHarnessHost,
-  type OpenLocalEngineInput,
-  openLocalEngine as openSharedEngine,
-} from "./local-engine-host.ts";
-import {
   type LocalHarnessInput,
   type LocalHarnessParts,
   openLocalHarnessHost,
 } from "./local-harness-host.ts";
-import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import { runSendingSettings } from "./run-sending.ts";
 import type { RunFiles } from "./version-files.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { workspaceStore } from "./workspace-store.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
 
-export type { EngineErrorSource, LocalEngine } from "./local-engine-host.ts";
+export type { EngineErrorSource, LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
 export type { EngineHolder };
 
 /** What {@link openLocalEngine} builds the engine from. */
@@ -116,7 +117,7 @@ export interface LocalEngineInput
 
 /**
  * Opens the engine of the workspace in `input.workspaceRoot` with the CLI's
- * parts, as `local-engine-host.ts`'s `openLocalEngine` says.
+ * parts, as the shared `openLocalEngine` says.
  *
  * @throws KindedError `conflict` when another engine is open on the workspace
  * @throws when the workspace folder doesn't exist, or `HALONIC_HOME` or the

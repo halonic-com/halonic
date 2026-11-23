@@ -1,4 +1,4 @@
-// The connectors of the CLI engine's runs, as `openLocalEngine` wires them
+// The connectors of the engine's runs, as `openLocalEngine` wires them
 // into the executor (HAL-6277): each top-level run's own, started from its
 // hub's connector files in the version it read, in the folder its programs
 // start in, and what a connector call checks at the engine's side-effect
@@ -19,7 +19,7 @@ import { programWorkingFolders } from "./working-folders.ts";
 
 /** What the engine's runs start their connectors with, as the command gives it. */
 export interface LocalRunConnectorsInput {
-  /** The CLI's `stdio` and `http` factories (`cliConnectorFactories`). */
+  /** The `stdio` and `http` factories, such as the CLI's `cliConnectorFactories`. */
   readonly factories: ConnectorFactories;
   /** The sign-ins and the HTTP client a connector reaches its server with; the secrets are the engine's. */
   readonly context: Pick<ConnectorFactoryContext, "tokens" | "http">;

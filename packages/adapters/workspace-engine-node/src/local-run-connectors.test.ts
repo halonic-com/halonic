@@ -20,12 +20,12 @@ import { noSavedSending } from "./test/no-saved-sending.ts";
 import { noSheetHosts } from "./test/no-sheet-hosts.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 
-const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
+const acmeExample = fileURLToPath(new URL("../../../../examples/acme", import.meta.url));
 
 let folder: string;
 
 beforeEach(async () => {
-  folder = await mkdtemp(join(tmpdir(), "halonic-cli-run-connectors-"));
+  folder = await mkdtemp(join(tmpdir(), "halonic-engine-run-connectors-"));
 });
 
 afterEach(async () => {

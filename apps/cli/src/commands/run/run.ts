@@ -5,6 +5,7 @@
 // the input, answers each wait with the next `--event`, and turns the run
 // into lines (`result.ts`).
 
+import type { LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
 import {
   type FollowOptions,
   hubWorkflows,
@@ -30,7 +31,6 @@ import {
 import type { AddedPlugins } from "../../connector-plugin.ts";
 import { followUntilStopped } from "../../follow-run.ts";
 import { type HarnessProgram, nodeHarnessPrograms } from "../../harness-programs.ts";
-import type { LocalEngine } from "../../local-engine-host.ts";
 import { openLocalProposals } from "../../local-proposals.ts";
 import type { Message } from "../../messages/define.ts";
 import type { Phrase } from "../../messages/phrase.ts";

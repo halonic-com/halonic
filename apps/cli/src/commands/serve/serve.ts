@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { makePrivateFolder } from "@halonicjs/adapter-fs-node";
 import { createScryptHasher } from "@halonicjs/adapter-password-scrypt";
 import { workspaceModelSettings } from "@halonicjs/adapter-workspace-models";
+import type { RoutineEngine } from "@halonicjs/engine";
 import {
   createServer,
   passwordSecretName,
@@ -43,7 +44,6 @@ import {
 } from "../../command.ts";
 import { engineHttp } from "../../engine-http.ts";
 import { openGoogleHost } from "../../google-host.ts";
-import type { RoutineEngine } from "../../local-engine-host.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { serveMessages } from "../../messages/serve.ts";
 import { printable } from "../../output/printable.ts";
