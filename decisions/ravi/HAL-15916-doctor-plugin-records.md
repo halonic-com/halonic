@@ -3,6 +3,7 @@
 - Task: HAL-15916
 - Approval: the team decides this on HAL-15916 (https://paperclip.halonic.com/HAL/issues/HAL-15916), from Iris's flow check C646 on HAL-15887 (follow-up to HAL-15893). It shows a refusal `halonic plugin list` already gives, with its words and fix, on an existing doctor line: a team decision with no board card (HAL-2282 rule). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ki7Buf0OUCRvgI82m1Y7MZD1ZGlpa0ZJjzZQHF5nWs+GzlzE6WZmt7MAW76ob832u7F2wX4/hcu/lPLAwViTBQ==
 
 ## What changes
 
