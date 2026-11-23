@@ -235,8 +235,9 @@ fn handshake_body(
 
 /// Whether `name` shows as the plain text it is: no control characters, none
 /// that change how the text around them is laid out and none that are there
-/// without showing.
-fn is_plain_name(name: &str) -> bool {
+/// without showing. The phone also checks a name found on the Wi-Fi with it
+/// (`halonic-phone-tunnel`'s nearby list, HAL-16824).
+pub fn is_plain_name(name: &str) -> bool {
     name.chars().all(|character| {
         !character.is_control() && !is_layout_control(character) && !is_invisible(character)
     })

@@ -15,6 +15,7 @@ mod connect;
 mod connections;
 mod host;
 mod messages;
+mod nearby;
 mod pairing;
 mod send;
 mod service;
@@ -31,6 +32,8 @@ mod host_tests;
 #[cfg(test)]
 mod messages_tests;
 #[cfg(test)]
+mod nearby_tests;
+#[cfg(test)]
 mod start_tests;
 
 pub use answers::{
@@ -42,6 +45,7 @@ pub use host::{
     needs_local_network, phone_name,
 };
 pub use messages::{GATEWAY_MAX_MESSAGE_BYTES, PHONE_MESSAGE_TYPES, SendAnswer, SendRefusal};
+pub use nearby::{Hit, MAX_NEARBY, NearbyComputers, NearbyView};
 pub use service::{Options, PhoneTunnel};
 pub use start::{CheckedStart, PairingStart};
 pub use status::{PageStatus, Reason};
