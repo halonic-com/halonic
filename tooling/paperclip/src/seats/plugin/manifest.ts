@@ -6,7 +6,7 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  * from Agent tools, so the board installs, stops and trusts it on its own.
  *
  * So far: settings, its own database schema, the board-only routes, the
- * `seats.read`, `seats.history` and `seats.check` jobs, the read-only
+ * `seats.read`, `seats.history`, `seats.check` and `seats.calibrate` jobs, the read-only
  * `seat_usage` tool and the board's "AI seats" page.
  */
 export const manifest: PaperclipPluginManifestV1 = {
@@ -205,6 +205,13 @@ export const manifest: PaperclipPluginManifestV1 = {
       description:
         "Every 10 minutes: works out which agents should move to another seat and which full seat is worth its manual reset, and posts that on the board's task when it changes. It moves no one.",
       schedule: "5-59/10 * * * *",
+    },
+    {
+      jobKey: "seats.calibrate",
+      displayName: "Calibrate the seat forecast",
+      description:
+        "Every night: fits how many points of each seat's limits a million tokens cost, from the last 7 days of readings, placements and usage, and stores the fits for the forecast.",
+      schedule: "20 0 * * *",
     },
   ],
   apiRoutes: [
