@@ -102,7 +102,8 @@ export type RunEventBody =
    * `engine.llm-request-alias`). `address`: the `host:port` of a provider on
    * this computer, such as `localhost:11434`, never a URL, path or user
    * name; absent for any other provider and in older logs (requirement
-   * `engine.llm-event-address`).
+   * `engine.llm-event-address`). `effort`: the effort the harness bridge set
+   * on the call in place of the program's (requirement `events.llm-request-effort`).
    */
   | {
       type: "llm.request";
@@ -111,6 +112,7 @@ export type RunEventBody =
       model: string;
       alias?: string;
       address?: string;
+      effort?: "low" | "medium" | "high";
       messages: number;
     }
   | {

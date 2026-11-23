@@ -13,6 +13,7 @@ import type {
 } from "@halonicjs/engine";
 import type {
   BridgeApprovals,
+  BridgeEffort,
   BridgeProvider,
   BridgeProviderAccess,
   BridgeRecorder,
@@ -39,6 +40,12 @@ export interface BridgeAgent {
    * an alias to choose the provider's access; `undefined` when the file names none.
    */
   readonly model?: string;
+  /**
+   * The agent file's `params.reasoningEffort`, which the host lays over its
+   * alias's own for the bridge to set on the agent's model (requirement
+   * `harness-host.bridge-effort`); `undefined` when the file sets none.
+   */
+  readonly effort?: BridgeEffort;
   /**
    * Where the agent runs for this call, as the engine started it: an agent on
    * this computer keeps the program's own sign-in, and one in the sandbox may
@@ -131,6 +138,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       harness: agent.harness,
       hubId: agent.hubId,
       ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
+      ...effortOf(agent.file),
       runsOn,
     });
     const asks = sandboxedAsks(agent, {
@@ -203,6 +211,12 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       reportLost(error);
     }
   }
+}
+
+/** The agent file's own effort, for `servicesFor`; nothing when it sets none. */
+function effortOf(file: HarnessAgent["file"]): { effort?: BridgeEffort } {
+  const effort = file.params.reasoningEffort;
+  return effort === undefined ? {} : { effort };
 }
 
 /**

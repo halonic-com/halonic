@@ -215,6 +215,8 @@ verifies("events.run-log-contract", () => {
       alias?: string;
       // Added after the reference by engine.llm-event-address (HAL-13404).
       address?: string;
+      // Added after the reference by events.llm-request-effort (HAL-16735).
+      effort?: "low" | "medium" | "high";
       messages: number;
     }>();
     expectTypeOf<EventOf<"llm.response">>().toEqualTypeOf<{

@@ -4,6 +4,9 @@ import { type Schema, s } from "@halonicjs/schema-kit";
 import type { ChannelAnswer } from "../server/call-channel.ts";
 import { portSchema } from "../server/port-schema.ts";
 
+// The efforts the bridge sets on the agent's models (HAL-16735), by model name.
+const efforts = s.record(s.string().min(1), s.enum(["low", "medium", "high"])).optional();
+
 const access = portSchema<BridgeProviderAccess>(
   s.discriminatedUnion("kind", [
     s
@@ -16,9 +19,10 @@ const access = portSchema<BridgeProviderAccess>(
         baseUrl: s.string().min(1).optional(),
         providerId: s.string().min(1).optional(),
         models: s.array(s.string().min(1)).optional(),
+        efforts,
       })
       .strict(),
-    s.object({ kind: s.literal("sign-in") }).strict(),
+    s.object({ kind: s.literal("sign-in"), efforts }).strict(),
   ]),
 );
 

@@ -1,6 +1,7 @@
 import type { Secrets } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { type KnownRequest, refuseUnknownAtCompatible } from "./compatible-request.ts";
+import { openAiEffort, withEffort } from "./effort.ts";
 import { refuseModelsNotGiven } from "./keyed-model.ts";
 import { OpenAiReplyReader } from "./openai-reply.ts";
 import { refuseStoredPrompt, refuseUrlInputs } from "./openai-sources.ts";
@@ -163,7 +164,9 @@ export interface OpenAiRouteDependencies {
  * OpenAI's web search and MCP tools are removed first, and a `tool_choice`
  * that forces one, or forces some tool when none is left, becomes `auto`.
  * An image or file that OpenAI would fetch
- * from a URL, and a stored prompt, are refused. Each call is recorded
+ * from a URL, and a stored prompt, are refused. A model the host set an
+ * effort for gets it as `reasoning.effort` (requirement
+ * `harness-bridge.effort`). Each call is recorded
  * with its usage and cost (requirement `harness-bridge.spend`).
  */
 export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute {
@@ -182,7 +185,7 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       if (target.atCompatibleProvider) {
         refuseUnknownAtCompatible(request, openAiKnown, target.models);
       }
-      const call = readModelCall("openai", request, "input");
+      const call = readModelCall("openai", request, "input", access);
       // Also before the key is read, so a model the agent wasn't given never reads it.
       refuseModelsNotGiven(access, request);
       const authorization = await providerAuthorization(
@@ -191,7 +194,10 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
         "openai",
         (key) => ({ authorization: `Bearer ${key}` }),
       );
-      const body = withoutProviderReach(request, openAiReach);
+      const body = withoutProviderReach(
+        withEffort(request, call.effort, openAiEffort),
+        openAiReach,
+      );
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new OpenAiReplyReader();
       await recordModelCall(context.run, call, reply, () =>

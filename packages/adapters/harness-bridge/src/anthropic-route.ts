@@ -3,6 +3,7 @@ import { isPlainObject } from "@halonicjs/std";
 import { AnthropicReplyReader } from "./anthropic-reply.ts";
 import { refuseUrlSources } from "./anthropic-sources.ts";
 import { type KnownRequest, refuseUnknownAtCompatible } from "./compatible-request.ts";
+import { anthropicEffort, withEffort } from "./effort.ts";
 import { refuseModelsNotGiven } from "./keyed-model.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
 import { type ProviderApi, providerTarget } from "./provider-address.ts";
@@ -140,7 +141,8 @@ export interface AnthropicRouteDependencies {
  * `tool_choice` that forces a removed tool, or forces some tool when none
  * is left, becomes `auto`; image
  * and PDF blocks go on as they are, and one with a URL source is refused.
- * Each call is recorded with its usage and cost (requirement
+ * A model the host set an effort for gets it as `output_config.effort`
+ * (requirement `harness-bridge.effort`). Each call is recorded with its usage and cost (requirement
  * `harness-bridge.spend`).
  */
 export function anthropicRoute(dependencies: AnthropicRouteDependencies): BridgeRoute {
@@ -159,7 +161,7 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       if (target.atCompatibleProvider) {
         refuseUnknownAtCompatible(request, anthropicKnown, target.models);
       }
-      const call = readModelCall("anthropic", request, "messages");
+      const call = readModelCall("anthropic", request, "messages", access);
       // Also before the key is read, so a model the agent wasn't given never reads it.
       refuseModelsNotGiven(access, request);
       const authorization = await providerAuthorization(
@@ -168,7 +170,10 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
         "anthropic",
         (key) => ({ "x-api-key": key }),
       );
-      const body = withoutProviderReach(request, anthropicReach);
+      const body = withoutProviderReach(
+        withEffort(request, call.effort, anthropicEffort),
+        anthropicReach,
+      );
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new AnthropicReplyReader();
       await recordModelCall(context.run, call, reply, () =>

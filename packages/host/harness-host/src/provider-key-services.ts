@@ -15,7 +15,13 @@
 
 import type { HarnessModelNames } from "@halonicjs/engine";
 import type { Provider } from "@halonicjs/format";
-import type { BridgeProvider, BridgeProviderAccess, ModelPrice, Secrets } from "@halonicjs/ports";
+import type {
+  BridgeEffort,
+  BridgeProvider,
+  BridgeProviderAccess,
+  ModelPrice,
+  Secrets,
+} from "@halonicjs/ports";
 import { errorKindOf, KindedError, SecretScrubber } from "@halonicjs/std";
 import {
   definitionsOf,
@@ -158,7 +164,7 @@ export class ProviderKeyServices {
       providers: {
         anthropic: signIn,
         openai: signIn,
-        [choice.provider]: accessOf(choice, models, pinned),
+        [choice.provider]: accessOf(choice, models, pinned, effortsOf(agent, target)),
       },
       prices: choice.kind === "key" ? pricesOf(workspace, agent.hubId, choice) : {},
       tools: {
@@ -354,20 +360,42 @@ function aliasKey(hubId: string | undefined, model: string | undefined): string 
  * included, so the key pays only for the model the alias prices. Else, at
  * the type's own host, it names none, so the program's background calls on
  * its other models still go through (`harness-bridge.keyed-model`).
+ * Either kind carries the agent's `efforts`, when it has one.
  */
 function accessOf(
   choice: ProviderAccessChoice,
   models: readonly string[],
   pinned: boolean,
+  efforts: Readonly<Record<string, BridgeEffort>> | undefined,
 ): BridgeProviderAccess {
-  if (choice.kind === "sign-in") return signIn;
+  const withEfforts = efforts === undefined ? {} : { efforts };
+  if (choice.kind === "sign-in") return { ...signIn, ...withEfforts };
   return {
     kind: "key",
     secret: choice.secret,
     providerId: choice.providerId,
     ...(choice.baseUrl === undefined ? {} : { baseUrl: choice.baseUrl }),
     ...(choice.baseUrl === undefined && !pinned ? {} : { models }),
+    ...withEfforts,
   };
+}
+
+/**
+ * The effort the bridge sets on the agent's model (requirement
+ * `harness-host.bridge-effort`), by the name the program asks for it by:
+ * for an alias, its provider's model id; for any other name, the name as
+ * written. The agent file's `params.reasoningEffort` wins over the
+ * alias's, as in the built-in loop's layered params. `undefined` when
+ * neither sets one, so the program's own effort stays.
+ */
+function effortsOf(
+  agent: BridgeAgent,
+  target: ResolvedModelTarget | undefined,
+): Readonly<Record<string, BridgeEffort>> | undefined {
+  const effort = agent.effort ?? target?.params.reasoningEffort;
+  const model = target?.alias === undefined ? agent.model : target.model;
+  if (effort === undefined || model === undefined) return undefined;
+  return { [model]: effort };
 }
 
 /**

@@ -129,6 +129,22 @@ verifies("harness-host.bridge-agent-model", () => {
   });
 });
 
+verifies("harness-host.bridge-effort", () => {
+  it("tells the host the agent file's own effort", async () => {
+    const { asked, host } = setup();
+    const lowWriter = {
+      ...writer,
+      file: { ...writer.file, params: { reasoningEffort: "low" as const } },
+    };
+
+    await host.open(lowWriter, recorder, "sandbox");
+
+    expect(asked).toEqual([
+      { runId: "01JD8Q", agentId: "writer", hubId: "support", effort: "low", ...asSandboxed },
+    ]);
+  });
+});
+
 verifies("harness-host.bridge-agent-harness", () => {
   it("tells the host the harness the agent's call runs in", async () => {
     const { asked, host } = setup();

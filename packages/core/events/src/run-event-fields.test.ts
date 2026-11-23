@@ -289,3 +289,19 @@ verifies("events.answer-labels", () => {
     >();
   });
 });
+
+verifies("events.llm-request-effort", () => {
+  typeTest("may say the effort the bridge set on a model call", () => {
+    expectTypeOf<EventOf<"llm.request">["effort"]>().toEqualTypeOf<
+      "low" | "medium" | "high" | undefined
+    >();
+    expectTypeOf({
+      type: "llm.request",
+      agent: "writer",
+      provider: "deepseek",
+      model: "deepseek-v4.1-flash",
+      effort: "low",
+      messages: 3,
+    } as const).toExtend<RunEventBody>();
+  });
+});
