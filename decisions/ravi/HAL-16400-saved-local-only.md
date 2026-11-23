@@ -39,8 +39,27 @@ cancel or an answer that has to open a closed engine is refused the same way whe
 version it records; only the engine's Local only is stricter. Nothing changes with history off or
 while nothing is live, where the saved files are already what the engine reads.
 
-The fakes of `engine-service-saved-files.test.ts` move, unchanged, to `engine-local-only.testing.ts`,
-so the new tests share them. No test there changes or goes.
+Two fakes of `engine-service-saved-files.test.ts`, `hungServer` and `pageTimers`, move, unchanged, to
+`engine-local-only.testing.ts`, and `acmeWithTwoProviders` of `engine-service.testing.ts` takes more
+files, so the new tests share them. No test there changes or goes.
+
+Words check C739 rows 11 and 12 (HAL-16658, team decision under HAL-2282) change two of Studio's
+refusals in the same requirement, its example and `engine-service-live-version.test.ts`. The old text:
+
+> a start shall be refused as `conflict` with the CLI's words, "Nothing is live yet, so there is
+> nothing to run. Nothing ran." and the fix "Make a first commit in git, then run again.", … as
+> `unavailable` with "git can't start on this computer, so the live version can't be read. Nothing
+> ran." and the fix …
+
+The new text:
+
+> a start shall be refused as `conflict`, as the CLI refuses it, with "Nothing is live yet, so there
+> is nothing to run." and the fix "Create a first version, then try again.", … as `unavailable` with
+> "git can't start on this computer, so the live version can't be read." and the fix …
+
+Each Studio start screen's lead already says the run didn't start, and Studio makes a commit with
+Create version. The tests still check the same refusals, kinds and that no lock is taken, with the new
+words. The CLI keeps its own words.
 
 ## Why
 
@@ -55,3 +74,4 @@ reading the live version only; matching it is HAL-16406.
 
 - studio.engine-service
 - apps/studio/src/engine/engine-service-saved-files.test.ts
+- apps/studio/src/engine/engine-service-live-version.test.ts
