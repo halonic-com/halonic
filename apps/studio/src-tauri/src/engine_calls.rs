@@ -30,6 +30,11 @@ const FRAME_LIMIT: usize = 1024 * 1024;
 /// How long a JSON route may take, its answer included.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 
+/// How long a stream route's opening answer may take: its head, and its
+/// whole body when the engine refuses the stream. Every wait ends
+/// (failure-path rule 1); the events after it have no limit.
+pub(super) const OPENING_TIMEOUT: Duration = REQUEST_TIMEOUT;
+
 /// How long a chat turn may take. A turn is one model call, and the model
 /// adapters give a model API 5 minutes to start its reply, so 120 s would
 /// cut off a slow answer the engine still waits for. The page ends a turn
@@ -102,6 +107,35 @@ pub(super) async fn send<R: Runtime>(
         .send()
         .await
         .map_err(|_| unavailable())
+}
+
+/// A stream route's opening answer: the open stream, or the engine's
+/// refusal read whole.
+pub(super) enum Opening {
+    Stream(reqwest::Response),
+    Refused(EngineAnswer),
+}
+
+/// Calls the stream route `route` and waits for the engine to open the
+/// stream, or to finish refusing it, for at most `limit`. An engine that
+/// doesn't is refused as `engine_unavailable`, and the request is dropped,
+/// which hangs up on it.
+pub(super) async fn open_stream<R: Runtime>(
+    webview: &Webview<R>,
+    route: EngineRoute,
+    path: &str,
+    limit: Duration,
+) -> Result<Opening, EngineRefusal> {
+    let opening = async {
+        let response = send(webview, route, path, None).await?;
+        if response.status() != reqwest::StatusCode::OK {
+            return read_answer(response).await.map(Opening::Refused);
+        }
+        Ok(Opening::Stream(response))
+    };
+    tokio::time::timeout(limit, opening)
+        .await
+        .unwrap_or_else(|_| Err(unavailable()))
 }
 
 /// Reads a whole JSON answer, up to [`ANSWER_LIMIT`]. An answer that is

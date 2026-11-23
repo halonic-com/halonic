@@ -22,6 +22,8 @@ use super::{
 
 #[path = "engine_call_end_tests.rs"]
 mod call_end;
+#[path = "engine_failure_tests.rs"]
+mod failures;
 
 /// A made-up token of the right form, 43 base64url characters.
 const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ-_01234";
@@ -182,8 +184,13 @@ fn bystander() -> (u16, Receiver<()>) {
 
 /// A shell on the mock runtime with its main window, connected to `fake`.
 fn shell(fake: &FakeEngine) -> App<MockRuntime> {
+    shell_with(fake, EngineState::default())
+}
+
+/// [`shell`], with the engine state `state`.
+fn shell_with(fake: &FakeEngine, state: EngineState) -> App<MockRuntime> {
     let app = mock_app();
-    app.manage(EngineState::default());
+    app.manage(state);
     WebviewWindowBuilder::new(&app, "main", WebviewUrl::default())
         .build()
         .expect("the main window opens");
@@ -192,7 +199,9 @@ fn shell(fake: &FakeEngine) -> App<MockRuntime> {
         fake.port
     );
     let handshake = read_handshake(&line).expect("a valid handshake");
-    app.state::<EngineState>().connect("main", handshake);
+    app.state::<EngineState>()
+        .connect("main", handshake)
+        .expect("connected");
     app
 }
 
@@ -348,7 +357,9 @@ fn engine_commands_send_bodies_within_the_limit_and_none_for_a_get() {
 fn engine_commands_refuse_every_call_while_no_engine_runs() {
     let fake = FakeEngine::serve(0);
     let app = shell(&fake);
-    app.state::<EngineState>().disconnect("main");
+    app.state::<EngineState>()
+        .disconnect("main")
+        .expect("disconnected");
     let refusal = request(&app, "GET /api/hello", json!({}), None).expect_err("no engine");
     assert_eq!(as_json(&refusal)["kind"], "engine_unavailable");
     let (opened, _) = open_stream(&app, "GET /api/run-updates", 1, json!({}));
@@ -438,7 +449,11 @@ fn engine_commands_hang_up_when_the_page_ends_reloads_or_the_engine_goes() {
     let ends: [&EndStream; 3] = [
         &|app, stream| engine_stream_end(page(app), stream),
         &|app, _| end_page(app, "main"),
-        &|app, _| app.state::<EngineState>().disconnect("main"),
+        &|app, _| {
+            app.state::<EngineState>()
+                .disconnect("main")
+                .expect("disconnected");
+        },
     ];
     for (stream, end) in (0_u64..).zip(ends) {
         let app_state = app.state::<EngineState>();
@@ -447,7 +462,8 @@ fn engine_commands_hang_up_when_the_page_ends_reloads_or_the_engine_goes() {
                 r#"{{"url":"http://127.0.0.1:{}","token":"{TOKEN}"}}"#,
                 fake.port
             );
-            app_state.connect("main", read_handshake(&line).expect("a valid handshake"));
+            let handshake = read_handshake(&line).expect("a valid handshake");
+            app_state.connect("main", handshake).expect("connected");
         }
         let (opened, events) = open_stream(&app, "GET /api/run-updates", stream, json!({}));
         assert!(opened.is_ok());

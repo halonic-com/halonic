@@ -28,14 +28,16 @@ use crate::page_streams::{OpenRefusal, PageStreams, StreamKey};
 
 #[path = "engine_calls.rs"]
 mod calls;
-use calls::{forward_events, read_answer, request_body, send};
+use calls::{
+    OPENING_TIMEOUT, Opening, forward_events, open_stream, read_answer, request_body, send,
+};
 
 /// How many streams one page may have open: a run's events for each run it
 /// shows, and the run updates.
 const STREAMS_PER_PAGE: usize = 16;
 
-/// How long connecting to the engine on loopback may take. A stream has no
-/// other limit: it may stay quiet for as long as a run waits.
+/// How long connecting to the engine on loopback may take. Once a stream is
+/// open it has no limit: it may stay quiet for as long as a run waits.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// The engine of each window, the calls and streams pages have open on
@@ -46,6 +48,8 @@ pub struct EngineState {
     calls: PageCalls,
     streams: PageStreams,
     client: Mutex<Option<reqwest::Client>>,
+    /// How long a stream route's opening answer may take.
+    stream_opening_limit: Duration,
 }
 
 impl Default for EngineState {
@@ -55,28 +59,25 @@ impl Default for EngineState {
             calls: PageCalls::default(),
             streams: PageStreams::new(STREAMS_PER_PAGE),
             client: Mutex::new(None),
+            stream_opening_limit: OPENING_TIMEOUT,
         }
     }
 }
 
 impl EngineState {
-    /// Notes the engine that runs `window`'s workspace, from its handshake,
-    /// which `read_handshake` has checked: a loopback address and a token.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the shell starts engines in B1 step 5 (HAL-14220)"
-        )
-    )]
-    pub fn connect(&self, window: &str, handshake: Handshake) {
-        if let Ok(mut connections) = self.connections.lock() {
-            connections.insert(window.to_owned(), handshake);
+    /// A state whose streams' opening answers have `limit`, so a test
+    /// needn't wait the real 120 s.
+    #[cfg(test)]
+    fn with_stream_opening_limit(limit: Duration) -> Self {
+        Self {
+            stream_opening_limit: limit,
+            ..Self::default()
         }
     }
 
-    /// Forgets `window`'s engine, which has stopped, and ends the streams
-    /// the window had open on it.
+    /// Notes the engine that runs `window`'s workspace, from its handshake,
+    /// which `read_handshake` has checked: a loopback address and a token.
+    /// A lock an earlier failure left broken is refused, not skipped.
     #[cfg_attr(
         not(test),
         expect(
@@ -84,11 +85,32 @@ impl EngineState {
             reason = "the shell starts engines in B1 step 5 (HAL-14220)"
         )
     )]
-    pub fn disconnect(&self, window: &str) {
-        if let Ok(mut connections) = self.connections.lock() {
-            connections.remove(window);
-        }
+    pub fn connect(&self, window: &str, handshake: Handshake) -> Result<(), EngineRefusal> {
+        let mut connections = self.connections.lock().map_err(|_| poisoned())?;
+        connections.insert(window.to_owned(), handshake);
+        Ok(())
+    }
+
+    /// Forgets `window`'s engine, which has stopped, and ends the streams
+    /// the window had open on it. The streams end even when an earlier
+    /// failure left the lock broken; that is then refused.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "the shell starts engines in B1 step 5 (HAL-14220)"
+        )
+    )]
+    pub fn disconnect(&self, window: &str) -> Result<(), EngineRefusal> {
+        let forgotten = self
+            .connections
+            .lock()
+            .map(|mut connections| {
+                connections.remove(window);
+            })
+            .map_err(|_| poisoned());
         self.streams.end(|key| key.page == window);
+        forgotten
     }
 
     fn connection(&self, window: &str) -> Result<Handshake, EngineRefusal> {
@@ -234,6 +256,8 @@ pub fn engine_request_end<R: Runtime>(webview: Webview<R>, call: u64) {
 /// Calls a stream route of the window's engine, as the page's stream
 /// `stream`. Its events go to `channel` until the engine ends the stream,
 /// the page ends it with `engine_stream_end`, or the page reloads or closes.
+/// An engine that hasn't opened the stream, or finished refusing it, within
+/// 120 s is refused as `engine_unavailable`.
 #[tauri::command]
 pub async fn engine_stream<R: Runtime>(
     webview: Webview<R>,
@@ -250,18 +274,18 @@ pub async fn engine_stream<R: Runtime>(
     };
     let state = webview.state::<EngineState>();
     let serial = state.streams.open(&key).map_err(open_refusal)?;
-    let response = match send(&webview, route, &path, None).await {
-        Ok(response) => response,
+    let opening = open_stream(&webview, route, &path, state.stream_opening_limit).await;
+    let response = match opening {
+        Ok(Opening::Stream(response)) => response,
+        Ok(Opening::Refused(answer)) => {
+            state.streams.forget(&key, serial);
+            return Ok(EngineStreamStart::Refused { answer });
+        }
         Err(refusal) => {
             state.streams.forget(&key, serial);
             return Err(refusal);
         }
     };
-    if response.status() != reqwest::StatusCode::OK {
-        state.streams.forget(&key, serial);
-        let answer = read_answer(response).await?;
-        return Ok(EngineStreamStart::Refused { answer });
-    }
     let app = webview.app_handle().clone();
     let task_key = key.clone();
     // The page may have ended the stream, or reloaded, while the engine
