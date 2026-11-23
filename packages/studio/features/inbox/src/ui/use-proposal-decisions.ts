@@ -5,7 +5,10 @@ import {
   changeLine,
   decidedToast,
   decisionFailureReason,
+  undidPartToast,
+  undoDecidedAfterToast,
   undoLeftAloneLine,
+  undoPartLine,
 } from "../plain/proposal-text.ts";
 import {
   type ProposalDecided,
@@ -259,13 +262,13 @@ function useUndoSteps(
     if (decisions === undefined) return;
     const restoring = decisions
       .undo(id)
-      .then(({ leftAlone }) => {
+      .then(({ leftAlone, decidedAfter }) => {
         const left = new Set(leftAlone);
         const kept = step.paths.filter((path) => left.has(path));
-        undone(step.paths.filter((path) => !left.has(path)));
-        if (kept.length === 0) return;
-        const text = undoLeftAloneLine(decidedWords[step.verb], kept);
-        toasts?.show({ tone: "danger", title: undoFailedTitle, text });
+        const putBack = step.paths.filter((path) => !left.has(path));
+        undone(putBack);
+        const toast = undoneToast(runId, step.verb, kept, putBack.length, decidedAfter);
+        if (toast !== null) toasts?.show(toast);
       })
       .catch((error: unknown) => {
         const failure = failureOf(error);
@@ -372,6 +375,26 @@ function settleWhenToastsClose(
 }
 
 const undoFailedTitle = "Couldn't undo this.";
+
+/**
+ * The toast after an Undo that left files as they were (C665 31): a later decision kept it back,
+ * it put back some files, or none; nothing when it put back every one.
+ */
+function undoneToast(
+  runId: string,
+  verb: ProposalVerb,
+  kept: readonly string[],
+  putBack: number,
+  decidedAfter: boolean,
+): ToastMessage | null {
+  if (decidedAfter) return { tone: "danger", title: undoDecidedAfterToast(runId) };
+  if (kept.length === 0) return null;
+  const decided = decidedWords[verb];
+  if (putBack === 0) {
+    return { tone: "danger", title: undoFailedTitle, text: undoLeftAloneLine(decided, kept) };
+  }
+  return { tone: "warning", title: undidPartToast(runId), text: undoPartLine(decided, kept) };
+}
 
 /** A failure the app sorted keeps its kind; anything else is one Halonic can't explain. */
 function failureOf(error: unknown): ProposalFailure {

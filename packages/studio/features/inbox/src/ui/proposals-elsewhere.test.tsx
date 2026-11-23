@@ -19,7 +19,7 @@ const elsewhere =
 const decisions: ProposalDecisions = {
   accept: async () => ({ undo: "u1", changedSinceRun: [], cantBeWritten: [] }),
   reject: async () => ({ undo: "u2", changedSinceRun: [], cantBeWritten: [] }),
-  undo: async () => ({ leftAlone: [] }),
+  undo: async () => ({ leftAlone: [], decidedAfter: false }),
   settle: async () => {},
   remove: async () => {},
 };
