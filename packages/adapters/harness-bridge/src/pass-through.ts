@@ -1,5 +1,3 @@
-import { once } from "node:events";
-import type { IncomingHttpHeaders } from "node:http";
 import type { HttpClient } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { BridgeRequestContext } from "./route.ts";
@@ -55,20 +53,29 @@ export interface UpstreamCaller {
  * other header stays behind, the program's own key and the run token among
  * them.
  */
-export function pickHeaders(
-  headers: IncomingHttpHeaders,
-  names: readonly string[],
-): Record<string, string> {
+export function pickHeaders(headers: Headers, names: readonly string[]): Record<string, string> {
   const picked: Record<string, string> = {};
   for (const name of names) {
-    const value = headers[name];
-    if (value !== undefined) picked[name] = Array.isArray(value) ? value.join(", ") : value;
+    const value = headers.get(name);
+    if (value !== null) picked[name] = value;
   }
   return picked;
 }
 
+/** A provider's reply on its way back to the program. */
+export interface PassedReply {
+  /** The reply the route answers with; its body streams the provider's as it arrives. */
+  response: Response;
+  /**
+   * Settles once the body has ended, whether it was read to the end, failed
+   * or was given up by the program. It never rejects: the bridge reports a
+   * body that fails.
+   */
+  ended: Promise<void>;
+}
+
 /**
- * Sends a request on to the provider and copies its reply back to the
+ * Sends a request on to the provider and hands its reply back for the
  * program: the status, the allowed headers and the body byte for byte, as
  * it arrives, so a stream of server-sent events stays a stream. The
  * provider's own error replies go back unchanged.
@@ -77,43 +84,111 @@ export function pickHeaders(
  * closes, the provider is silent for longer than the limits allow, or the
  * program stops reading for as long as the idle limit. Each wait has its own
  * reason, so a program that stops reading isn't taken for a silent provider.
+ * Once the reply has started, the body fails with that reason.
  *
- * @throws KindedError `unavailable` when the provider can't be reached or doesn't start its reply in time, goes silent, or the program stops reading
+ * @throws KindedError `unavailable` when the provider can't be reached or doesn't start its reply in time
  */
 export async function passThrough(
   context: BridgeRequestContext,
   upstream: UpstreamRequest,
   caller: UpstreamCaller,
-): Promise<void> {
+): Promise<PassedReply> {
   const { limits } = caller;
   const deadline = new Deadline();
   const signal = AbortSignal.any([context.signal, deadline.signal]);
-
+  let reply: Response;
   try {
     deadline.start(limits.responseTimeoutMs, didNotAnswer(upstream, limits));
-    const reply = await callProvider(upstream, caller.fetch, signal);
-    context.response.writeHead(reply.status, replyHeaders(reply.headers, upstream.replyHeader));
-    upstream.watch?.started(reply.status, reply.headers);
-    // Send the status now: a program waiting on a stream shouldn't wait for its first event too.
-    context.response.flushHeaders();
-    if (reply.body !== null) {
-      const reader = reply.body.getReader();
-      for (;;) {
-        deadline.start(limits.idleTimeoutMs, wentSilent(upstream, limits));
-        const { done, value } = await reader.read();
-        if (done) break;
-        upstream.watch?.received(value);
-        if (!context.response.write(value)) {
-          deadline.start(limits.idleTimeoutMs, stoppedReading(limits));
-          await once(context.response, "drain", { signal });
-        }
-      }
-    }
-    context.response.end();
+    reply = await callProvider(upstream, caller.fetch, signal);
   } catch (error) {
-    throw deadline.signal.aborted ? deadline.signal.reason : error;
-  } finally {
     deadline.clear();
+    throw deadline.signal.aborted ? deadline.signal.reason : error;
+  }
+  upstream.watch?.started(reply.status, reply.headers);
+  const headers = replyHeaders(reply.headers, upstream.replyHeader);
+  if (reply.body === null) {
+    deadline.clear();
+    return {
+      response: new Response(null, { status: reply.status, headers }),
+      ended: Promise.resolve(),
+    };
+  }
+  const body = new CopiedBody(reply.body, upstream, limits, deadline, signal);
+  return {
+    response: new Response(body.stream, { status: reply.status, headers }),
+    ended: body.ended,
+  };
+}
+
+/**
+ * The provider's body as the program reads it. It reads the provider only
+ * when the program asks for more, so a program that stops reading holds the
+ * provider back instead of filling memory, and runs out of the idle limit.
+ */
+class CopiedBody {
+  readonly stream: ReadableStream<Uint8Array>;
+  readonly ended: Promise<void>;
+  #end: () => void = () => {};
+  #finished = false;
+
+  constructor(
+    source: ReadableStream<Uint8Array>,
+    upstream: UpstreamRequest,
+    limits: UpstreamLimits,
+    deadline: Deadline,
+    signal: AbortSignal,
+  ) {
+    this.ended = new Promise((resolve) => {
+      this.#end = resolve;
+    });
+    const reader = source.getReader();
+    const finish = () => {
+      this.#finished = true;
+      deadline.clear();
+      signal.removeEventListener("abort", onAbort);
+      this.#end();
+    };
+    let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
+    // A wait that runs out, or the bridge closing, while the program isn't reading.
+    const onAbort = () => {
+      if (this.#finished) return;
+      controller?.error(signal.reason);
+      finish();
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    this.stream = new ReadableStream<Uint8Array>(
+      {
+        start: (started) => {
+          controller = started;
+          deadline.start(limits.idleTimeoutMs, stoppedReading(limits));
+        },
+        pull: async (pulled) => {
+          deadline.start(limits.idleTimeoutMs, wentSilent(upstream, limits));
+          try {
+            const { done, value } = await reader.read();
+            if (this.#finished) return;
+            if (done) {
+              pulled.close();
+              finish();
+              return;
+            }
+            upstream.watch?.received(value);
+            pulled.enqueue(value);
+            deadline.start(limits.idleTimeoutMs, stoppedReading(limits));
+          } catch (error) {
+            if (this.#finished) return;
+            pulled.error(deadline.signal.aborted ? deadline.signal.reason : error);
+            finish();
+          }
+        },
+        cancel: async (reason) => {
+          finish();
+          await reader.cancel(reason);
+        },
+      },
+      // Read the provider only for a read the program has asked for.
+      { highWaterMark: 0 },
+    );
   }
 }
 

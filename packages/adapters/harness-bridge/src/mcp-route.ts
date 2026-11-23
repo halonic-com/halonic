@@ -48,25 +48,24 @@ function mcpServerRoutes(
   ];
 }
 
-async function answerMcpMessage(context: BridgeRequestContext, tools: McpToolSet): Promise<void> {
-  const { request, response, signal, reportError } = context;
-  checkVersionHeader(request.headers[versionHeader]);
+async function answerMcpMessage(
+  context: BridgeRequestContext,
+  tools: McpToolSet,
+): Promise<Response> {
+  const { request, signal, reportError } = context;
+  checkVersionHeader(request.headers.get(versionHeader));
   const server = new McpToolServer(tools, { reportError });
   const reply = await server.answerBytes(await context.readBody(), { signal });
   if (reply === null) {
     // A notification or a response gets no reply (streamable HTTP, "sending messages").
-    response.writeHead(202);
-    response.end();
-    return;
+    return new Response(null, { status: 202 });
   }
-  response.writeHead(200, { "content-type": "application/json" });
-  response.end(JSON.stringify(reply));
+  return Response.json(reply);
 }
 
 /** The bridge offers no stream of its own messages, which MCP answers with 405. */
-async function refuseEventStream({ response }: BridgeRequestContext): Promise<void> {
-  response.writeHead(405, { allow: "POST" });
-  response.end();
+async function refuseEventStream(): Promise<Response> {
+  return new Response(null, { status: 405, headers: { allow: "POST" } });
 }
 
 /**
@@ -74,8 +73,8 @@ async function refuseEventStream({ response }: BridgeRequestContext): Promise<vo
  * without the header is let in: the first ones, `initialize` among them,
  * come before the version is agreed.
  */
-function checkVersionHeader(sent: string | string[] | undefined): void {
-  if (sent === undefined) return;
+function checkVersionHeader(sent: string | null): void {
+  if (sent === null) return;
   if (!supportedMcpVersions.some((version) => version === sent)) {
     throw new KindedError("invalid_input", "The bridge doesn't speak this MCP version.");
   }

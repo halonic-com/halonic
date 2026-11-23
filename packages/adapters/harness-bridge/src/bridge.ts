@@ -9,8 +9,9 @@ import {
   type OpenHarnessBridge,
 } from "@halonicjs/ports";
 import { errorKindOf, KindedError } from "@halonicjs/std";
-import { sendBridgeError, sendBridgeRefusal } from "./bridge-error.ts";
+import { bridgeErrorReply, bridgeRefusalReply } from "./bridge-error.ts";
 import { type BridgePlace, listenAt } from "./listener.ts";
+import { webRequestOf, writeReply } from "./node-exchange.ts";
 import { type BodyLimits, bodyTooLarge, readRequestBody } from "./read-body.ts";
 import { refusalOf } from "./request-checks.ts";
 import type { BridgeRoute } from "./route.ts";
@@ -54,6 +55,11 @@ export async function openBridge(
   const token = randomRunToken();
   const closing = new AbortController();
   const handlers = new Set<Promise<void>>();
+  // Holds a request's handling, and work a route left for after its reply, until it settles.
+  const keep = (work: Promise<void>) => {
+    handlers.add(work);
+    void work.finally(() => handlers.delete(work));
+  };
   const recorder = new ClosingRecorder(run.recorder);
   const hosts = new Set<string>();
   const context: ServeContext = {
@@ -69,9 +75,8 @@ export async function openBridge(
     // reply and srt's proxy turns a late write (EPIPE) into a 502 though the reply was complete (HAL-8158).
     // `close()` still ends every connection through `closeAllConnections`.
     (response as unknown as { shouldKeepAlive: boolean }).shouldKeepAlive = true;
-    const handler = serve(context, request, response);
-    handlers.add(handler);
-    void handler.finally(() => handlers.delete(handler));
+    const handler = serve(context, request, response, keep);
+    keep(handler);
   });
   const listening = await listenAt(server, settings.place);
   for (const host of listening.hosts) hosts.add(host);
@@ -118,7 +123,12 @@ interface ServeContext {
 }
 
 /** Lets one request in, or answers it with the bridge's error. */
-async function serve(context: ServeContext, request: IncomingMessage, response: ServerResponse) {
+async function serve(
+  context: ServeContext,
+  request: IncomingMessage,
+  response: ServerResponse,
+  keep: (work: Promise<void>) => void,
+) {
   const { run, settings, token, hosts, closing, endedConnections } = context;
   if (endedConnections.has(request.socket)) {
     // Node reads a request sent right behind a refused one before the connection closes.
@@ -130,7 +140,7 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
     // The caller may still be sending: close the connection once the refusal is out.
     endedConnections.add(request.socket);
     response.shouldKeepAlive = false;
-    sendBridgeRefusal(response, refusal);
+    await answerWith(bridgeRefusalReply(refusal), response, closing);
     return;
   }
   const requestEnded = new AbortController();
@@ -159,7 +169,17 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
       return body;
     };
     const reportError = (error: unknown) => reportFailure(run, token, error);
-    await route.handle({ run, request, response, readBody, signal, reportError });
+    const afterReply = (work: Promise<void>) =>
+      keep(work.catch((error: unknown) => reportUnnamedFailure(run, token, error)));
+    const reply = await route.handle({
+      run,
+      request: webRequestOf(request),
+      readBody,
+      signal,
+      reportError,
+      afterReply,
+    });
+    await writeReply(reply, response, signal);
   } catch (error) {
     if (response.headersSent) {
       // The reply has begun, so the program can't be told: end it, and tell the run.
@@ -170,9 +190,22 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
     // The program may still be sending: close the connection once the error reply is out.
     endedConnections.add(request.socket);
     response.shouldKeepAlive = false;
-    sendBridgeError(response, error);
+    await answerWith(bridgeErrorReply(error), response, signal);
     // After the reply, so a hook that fails can't stop the program from getting it.
     reportUnnamedFailure(run, token, error);
+  }
+}
+
+/**
+ * Writes one of the bridge's own replies, a refusal or an error. When the
+ * program goes away before it is out, there is no one left to answer: the
+ * connection is ended, and the failure that led here is reported as usual.
+ */
+async function answerWith(reply: Response, response: ServerResponse, signal: AbortSignal) {
+  try {
+    await writeReply(reply, response, signal);
+  } catch {
+    response.destroy();
   }
 }
 

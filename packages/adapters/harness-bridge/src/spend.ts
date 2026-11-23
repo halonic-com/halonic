@@ -9,7 +9,8 @@ import {
 import { isPlainObject, KindedError } from "@halonicjs/std";
 import { effortFor } from "./effort.ts";
 import { routingFor } from "./openrouter-routing.ts";
-import type { ReplyWatcher } from "./pass-through.ts";
+import type { PassedReply, ReplyWatcher } from "./pass-through.ts";
+import type { BridgeRequestContext } from "./route.ts";
 
 /** What the bridge knows of a model call before it goes out. */
 export interface ModelCall {
@@ -81,16 +82,20 @@ function countMessages(messages: unknown): number {
  * Makes one model call with `send` and records it through the run's
  * recorder, as the built-in loop does (requirement `harness-bridge.spend`):
  * `llm.request` before the call goes out, and `llm.response` with its usage
- * and cost once the reply has ended. A reply cut short still records what
- * its usage said so far, because the provider charges for it. A reply that
- * said no usage, such as an error reply, records no `llm.response`.
+ * and cost once the reply has ended. The reply goes back to the program
+ * right away; the `llm.response` is recorded through
+ * {@link BridgeRequestContext.afterReply} once its body has ended. A reply
+ * cut short still records what its usage said so far, because the provider
+ * charges for it. A reply that said no usage, such as an error reply,
+ * records no `llm.response`.
  */
 export async function recordModelCall(
-  run: HarnessBridgeOptions,
+  context: BridgeRequestContext,
   call: ModelCall,
   reply: ReplyReader,
-  send: () => Promise<void>,
-): Promise<void> {
+  send: () => Promise<PassedReply>,
+): Promise<Response> {
+  const { run } = context;
   const { model } = call;
   const provider = providerNamed(run, call);
   // On both events, so the roll-up can read either (requirement `harness-bridge.subagent-calls`).
@@ -106,24 +111,30 @@ export async function recordModelCall(
     messages: call.messages,
   });
   const started = performance.now();
-  try {
-    await send();
-  } finally {
+  const recordReply = async () => {
     const read = reply.reading();
-    if (read !== undefined) {
-      await run.recorder.record({
-        type: "llm.response",
-        agent: run.agentId,
-        provider,
-        model,
-        usage: read.usage,
-        latencyMs: Math.round(performance.now() - started),
-        text: read.text,
-        ...subagent,
-        ...callCharge(run, call, read.usage),
-      });
-    }
+    if (read === undefined) return;
+    await run.recorder.record({
+      type: "llm.response",
+      agent: run.agentId,
+      provider,
+      model,
+      usage: read.usage,
+      latencyMs: Math.round(performance.now() - started),
+      text: read.text,
+      ...subagent,
+      ...callCharge(run, call, read.usage),
+    });
+  };
+  let passed: PassedReply;
+  try {
+    passed = await send();
+  } catch (error) {
+    await recordReply();
+    throw error;
   }
+  context.afterReply(passed.ended.then(recordReply));
+  return passed.response;
 }
 
 /**

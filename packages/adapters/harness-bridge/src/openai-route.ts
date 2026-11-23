@@ -178,7 +178,7 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
     path: "/v1/responses",
     handle: async (context) => {
       const access = providerAccess(context, "openai");
-      const { search } = new URL(context.request.url ?? "", openAiOrigin);
+      const { search } = new URL(context.request.url, openAiOrigin);
       // Before the key is read, so an address the bridge refuses never reads it.
       const target = providerTarget(access, openAiApi, search, dependencies);
       const sent = await context.readBody();
@@ -206,7 +206,7 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       );
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new OpenAiReplyReader();
-      await recordModelCall(context.run, call, reply, () =>
+      return recordModelCall(context, call, reply, () =>
         passThrough(
           context,
           {

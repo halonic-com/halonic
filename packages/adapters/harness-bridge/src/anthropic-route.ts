@@ -156,7 +156,7 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
     handle: async (context) => {
       const access = providerAccess(context, "anthropic");
       // Keep the program's query, such as Claude Code's `?beta=true`.
-      const { search } = new URL(context.request.url ?? "", anthropicOrigin);
+      const { search } = new URL(context.request.url, anthropicOrigin);
       // Before the key is read, so an address the bridge refuses never reads it.
       const target = providerTarget(access, anthropicApi, search, dependencies);
       const sent = await context.readBody();
@@ -183,7 +183,7 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       );
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new AnthropicReplyReader();
-      await recordModelCall(context.run, call, reply, () =>
+      return recordModelCall(context, call, reply, () =>
         passThrough(
           context,
           {
