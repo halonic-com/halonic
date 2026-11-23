@@ -2,6 +2,7 @@
 
 - Approval: design check C746 rows 1 and 2 (HAL-16681), a team decision on an approved screen under HAL-2282; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:N+it6FhdIpRwNNsg84pfSRa/gE3LOdZN1oGvKTNWgHNyx8aDcjP3sCfYO6FM10VleeazY5WztHrEoXn8ktkIDg==
 - Task: HAL-16688
 
 ## What changes
