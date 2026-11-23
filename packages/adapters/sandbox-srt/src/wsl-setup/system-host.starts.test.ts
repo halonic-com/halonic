@@ -80,6 +80,13 @@ verifies("sandbox-srt.wsl-setup", () => {
       expect(script).toContain("-ArgumentList '--update'");
     });
 
+    it("throws when reg.exe can't set RunOnce, so a restart that wouldn't resume isn't hidden", async () => {
+      const refused = async () => ({ code: 1, output: "ERROR: Access is denied.\r\n" });
+      await expect(systemWslHost(refused).setRunOnce("Halonic.exe --resume")).rejects.toThrow(
+        "reg add RunOnce: exit 1: ERROR: Access is denied.",
+      );
+    });
+
     it("quotes PowerShell's typographic single quotes in SystemRoot too", async () => {
       vi.stubEnv("SystemRoot", "C:\\Win\u2019; Remove-Item x; \u2018"); // leak-guard: allow absolute-path made-up folder
       await systemWslHost().updateWsl();

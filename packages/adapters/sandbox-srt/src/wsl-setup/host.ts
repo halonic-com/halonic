@@ -58,7 +58,7 @@ export interface WslHost {
    * this (`install_runtime` in the agent-host crate, HAL-14644).
    */
   installRuntime(name: string, runtime: WslRuntime): Promise<ProgramResult>;
-  /** Puts `command` in the user's `RunOnce` key (no administrator) under Halonic's own value name. */
+  /** Puts `command` in the user's `RunOnce` key (no administrator) under Halonic's own value name; throws when it can't. */
   setRunOnce(command: string): Promise<void>;
   /** Takes Halonic's value out of `RunOnce`; fine when it isn't there. */
   clearRunOnce(): Promise<void>;

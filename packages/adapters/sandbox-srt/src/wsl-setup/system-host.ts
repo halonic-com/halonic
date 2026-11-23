@@ -171,7 +171,7 @@ export function systemWslHost(given: Run = systemRun): WslHost {
       output: "installing the runtime goes through Studio's shell, which isn't connected yet",
     }),
     async setRunOnce(command) {
-      await run(reg, [
+      const result = await run(reg, [
         "add",
         RUN_ONCE_KEY,
         "/v",
@@ -182,6 +182,11 @@ export function systemWslHost(given: Run = systemRun): WslHost {
         command,
         "/f",
       ]);
+      // Without the key a restart wouldn't bring the setup back, so the
+      // install mustn't go ahead as if it would.
+      if (result.code !== 0) {
+        throw new Error(`reg add RunOnce: exit ${result.code}: ${result.output.trim()}`);
+      }
     },
     async clearRunOnce() {
       await run(reg, ["delete", RUN_ONCE_KEY, "/v", RUN_ONCE_NAME, "/f"]);
