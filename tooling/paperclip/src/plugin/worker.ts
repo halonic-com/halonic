@@ -8,6 +8,7 @@ import { companyRoster } from "./companies.ts";
 import { difficultyTagger } from "./difficulty-tagger.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
 import { runWatcher } from "./job.ts";
+import { registerNextStepTools } from "./next-step-tools.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
 import { taskEffort } from "./task-effort.ts";
@@ -80,6 +81,7 @@ export const plugin = definePlugin({
     registerReadyForReview(ctx);
     registerBoardTools(ctx);
     registerTaskTools(ctx);
+    registerNextStepTools(ctx);
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
   },
   async onApiRequest(input) {
