@@ -27,6 +27,8 @@ const fsNode = pkg("packages/adapters/fs-node", "@halonicjs/adapter-fs-node", "a
 });
 const nodeRuntime = (options: Parameters<typeof pkg>[3] = {}): FixturePackage =>
   pkg("packages/targets/node/runtime", "@halonicjs/target-node-runtime", "targets", options);
+const nodeHarness = (options: Parameters<typeof pkg>[3] = {}): FixturePackage =>
+  pkg("packages/targets/node/harness", "@halonicjs/target-node-harness", "targets", options);
 const cloudflareRuntime = (options: Parameters<typeof pkg>[3] = {}): FixturePackage =>
   pkg(
     "packages/targets/cloudflare/runtime",
@@ -120,6 +122,55 @@ describe("tooling/check: host and targets", () => {
     );
   });
 
+  it("passes a Node harness wiring core, the host and a Node adapter", () => {
+    const harness = nodeHarness({
+      uses: ["@halonicjs/std", "@halonicjs/host-server", "@halonicjs/adapter-fs-node"],
+      source: 'import "node:fs";\nimport "@halonicjs/host-server";\nexport const x = 1;\n',
+    });
+    expect(messages([std, server, fsNode, harness])).toEqual([]);
+  });
+
+  it("gives a harness the runtime's rules: no deploy package, no other target package", () => {
+    const found = messages([
+      cloudflareDeploy(),
+      nodeRuntime(),
+      nodeHarness({
+        uses: ["@halonicjs/target-cloudflare-deploy", "@halonicjs/target-node-runtime"],
+      }),
+    ]);
+    expect(
+      found.filter((message) => message.includes("a target's harness never uses a deploy package")),
+    ).toHaveLength(2);
+  });
+
+  it("keeps Studio packages out of a harness", () => {
+    const shell = pkg("packages/studio/shell", "@halonicjs/studio-shell", "studio");
+    const found = messages([shell, nodeHarness({ uses: ["@halonicjs/studio-shell"] })]);
+    expect(
+      found.some((message) => message.includes("harness may use core, host and adapter")),
+    ).toBe(true);
+  });
+
+  it("allows node:* only in the Node target's harness", () => {
+    const cloudflareHarness = pkg(
+      "packages/targets/cloudflare/harness",
+      "@halonicjs/target-cloudflare-harness",
+      "targets",
+      { source: 'import "node:fs";\nexport const x = 1;\n' },
+    );
+    const found = messages([cloudflareHarness]);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("the cloudflare harness uses its own platform's APIs");
+  });
+
+  it("stops a deploy package from shipping a harness", () => {
+    const found = messages([
+      pkg("packages/targets/cloudflare/harness", "@halonicjs/target-cloudflare-harness", "targets"),
+      cloudflareDeploy({ uses: ["@halonicjs/target-cloudflare-harness"] }),
+    ]);
+    expect(found.some((message) => message.includes("a deploy package may use"))).toBe(true);
+  });
+
   it("refuses unknown target package kinds", () => {
     const odd = pkg("packages/targets/node/server", "@halonicjs/target-node-server", "targets");
     expect(
@@ -140,6 +191,21 @@ verifies("check.cli-never-uses-deploy-targets", () => {
   it("passes the CLI using the Node runtime behind halonic serve", () => {
     const source = 'import "@halonicjs/target-node-runtime";\nexport const x = 1;\n';
     expect(messages([nodeRuntime(), cli(["@halonicjs/target-node-runtime"], source)])).toEqual([]);
+  });
+
+  it("passes the CLI using the Node harness it shares with the engine host", () => {
+    const source = 'import "@halonicjs/target-node-harness";\nexport const x = 1;\n';
+    expect(messages([nodeHarness(), cli(["@halonicjs/target-node-harness"], source)])).toEqual([]);
+  });
+
+  it("fails the CLI depending on another target's harness", () => {
+    const cloudflareHarness = pkg(
+      "packages/targets/cloudflare/harness",
+      "@halonicjs/target-cloudflare-harness",
+      "targets",
+    );
+    const found = messages([cloudflareHarness, cli(["@halonicjs/target-cloudflare-harness"])]);
+    expect(found.some((message) => message.includes(shipsOnlyNode))).toBe(true);
   });
 
   it("fails the CLI depending on a deploy package or a cloud runtime, naming each", () => {

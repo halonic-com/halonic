@@ -190,8 +190,9 @@ function builtinProblem(
     }
     case "targets": {
       const target = context.placeOf(site.pkg)?.target;
-      return target?.kind === "runtime" && target.name !== "node"
-        ? `only the Node target's runtime may use Node APIs ("${specifier}"); the ${target.name} runtime uses its own platform's APIs.`
+      const runsOnTarget = target?.kind === "runtime" || target?.kind === "harness";
+      return runsOnTarget && target.name !== "node"
+        ? `only the Node target's runtime and harness may use Node APIs ("${specifier}"); the ${target.name} ${target.kind} uses its own platform's APIs.`
         : undefined;
     }
     default:

@@ -75,11 +75,12 @@ function layerRule(
 }
 
 /**
- * The one target the `halonic` CLI ships with: the Node runtime behind
- * `halonic serve`. Every other target is installed by the user who deploys
+ * The target packages the `halonic` CLI ships with: the Node runtime behind
+ * `halonic serve` and the Node harness wiring it shares with the engine host
+ * (HAL-16907). Every other target is installed by the user who deploys
  * to it, and the CLI loads it by name (board decision, HAL-7114).
  */
-const targetShippedWithCli = { name: "node", kind: "runtime" } as const;
+const targetShippedWithCli = { name: "node", kinds: ["runtime", "harness"] } as const;
 
 function appRule(
   context: CheckContext,
@@ -94,10 +95,11 @@ function appRule(
     return undefined;
   }
   const shipped =
-    target.name === targetShippedWithCli.name && target.kind === targetShippedWithCli.kind;
+    target.name === targetShippedWithCli.name &&
+    (targetShippedWithCli.kinds as readonly string[]).includes(target.kind);
   return shipped
     ? undefined
-    : "the halonic CLI ships only the Node runtime. It loads a deploy target by name when the user deploys, so users install only the targets they use (HAL-7114).";
+    : "the halonic CLI ships only the Node runtime and the Node harness. It loads a deploy target by name when the user deploys, so users install only the targets they use (HAL-7114).";
 }
 
 function coreRule(
@@ -129,13 +131,15 @@ function targetRule(
   if (toLayer === "core" || toLayer === "adapters") {
     return undefined;
   }
-  if (kind === "runtime") {
+  // The harness package gets the runtime's rules: it runs next to the
+  // runtime on the same computer and is never shipped by a deploy package.
+  if (kind === "runtime" || kind === "harness") {
     if (toLayer === "host") {
       return undefined;
     }
     return toLayer === "targets"
-      ? "a target's runtime never uses a deploy package or another target's runtime."
-      : "a target's runtime may use core, host and adapter packages only.";
+      ? `a target's ${kind} never uses a deploy package or another target package.`
+      : `a target's ${kind} may use core, host and adapter packages only.`;
   }
   const toTarget = context.placeOf(to)?.target;
   if (toTarget?.kind === "runtime" && toTarget.name === context.placeOf(from)?.target?.name) {
