@@ -17,7 +17,9 @@
 //! the call touches: a `pull` or a `checkout` brings in files no path names
 //! yet, and a macro or a pattern in any attribute file can pick the filter.
 //! That refuses some calls git could have made without the filter, which
-//! costs a terminal command; a commit without it costs more.
+//! costs a terminal command; a commit without it costs more. When every
+//! filter it names is the user's own and only the folder's trust is
+//! missing, the refusal says so, since trusting the folder lets them run.
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -138,49 +140,78 @@ pub(crate) fn named_filter(text: &str, filters: &[String]) -> Option<String> {
         .map(str::to_owned)
 }
 
+/// The filters a call runs without: every blanked one, and of those the
+/// ones blanked even in a trusted folder, which a repository's own config
+/// defines.
+#[derive(Clone, Copy)]
+pub(crate) struct Blanked<'a> {
+    pub(crate) filters: &'a [String],
+    pub(crate) always: &'a [String],
+}
+
 impl GitRunner {
     /// Refuses `call` with `filter_not_run` when it passes content (see
     /// [`passes_content`]) and an attribute file git would read names one
-    /// of the blanked `filters`: every `.gitattributes` in the working tree
+    /// of the blanked filters: every `.gitattributes` in the working tree
     /// and the index, in the revisions the call brings in and in the
     /// `attr.tree` the config names, then `info/attributes` and the user's
-    /// own attributes file.
+    /// own attributes file. It names a filter trust can't bring back first,
+    /// so `trust_runs` says whether trusting the folder would let every
+    /// named filter run.
     pub(crate) fn check_filter_writes(
         &self,
         repository: &Repository,
         entries: &[ConfigEntry],
-        filters: &[String],
+        blanked: Blanked<'_>,
         call: &CheckedCall,
         deadline: Instant,
     ) -> Result<(), GitError> {
-        if filters.is_empty() || !passes_content(call) {
+        if blanked.filters.is_empty() || !passes_content(call) {
             return Ok(());
         }
-        let refuse = |filter| GitError::FilterNotRun {
+        let texts = self.attribute_texts(repository, entries, call, deadline)?;
+        let named = |filters: &[String]| texts.iter().find_map(|text| named_filter(text, filters));
+        let (filter, trust_runs) = match named(blanked.always) {
+            Some(filter) => (filter, false),
+            None => match named(blanked.filters) {
+                Some(filter) => (filter, true),
+                None => return Ok(()),
+            },
+        };
+        Err(GitError::FilterNotRun {
             subcommand: call.subcommand().to_owned(),
             filter,
-        };
+            trust_runs,
+        })
+    }
+
+    /// The `filter=` lines of every attribute file git would read for
+    /// `call`, and the whole text of `info/attributes` and the user's own
+    /// attributes file.
+    fn attribute_texts(
+        &self,
+        repository: &Repository,
+        entries: &[ConfigEntry],
+        call: &CheckedCall,
+        deadline: Instant,
+    ) -> Result<Vec<String>, GitError> {
         let mut sources = vec!["--untracked".to_owned(), "--cached".to_owned()];
         let mut revisions = target_revisions(call);
         revisions.extend(attribute_tree(entries));
         for revision in revisions {
             sources.extend(self.resolve_tree(repository, &revision, deadline)?);
         }
+        let mut texts = Vec::new();
         for source in sources {
-            let text = self.grep_attribute_files(repository, &source, deadline)?;
-            if let Some(filter) = named_filter(&text, filters) {
-                return Err(refuse(filter));
-            }
+            texts.push(self.grep_attribute_files(repository, &source, deadline)?);
         }
         let mut files = vec![repository.common_dir.join("info").join("attributes")];
         files.extend(self.user_attributes_file(repository, deadline)?);
         let limit = self.limits().max_output_bytes;
         for file in files {
-            if let Some(filter) = named_filter(&read_attribute_file(&file, limit)?, filters) {
-                return Err(refuse(filter));
-            }
+            texts.push(read_attribute_file(&file, limit)?);
         }
-        Ok(())
+        Ok(texts)
     }
 
     /// The lines of every `.gitattributes` in `source` (`--untracked` for

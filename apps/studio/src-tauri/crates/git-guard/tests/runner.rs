@@ -127,6 +127,7 @@ fn repo_config_neutralises_a_planted_filter_and_keeps_the_content() {
         Err(GitError::FilterNotRun {
             subcommand: "add".to_owned(),
             filter: "x".to_owned(),
+            trust_runs: false,
         })
     );
     assert_eq!(sandbox.marks(), Vec::<String>::new());
@@ -157,6 +158,7 @@ fn repo_config_follows_includes() {
         Err(GitError::FilterNotRun {
             subcommand: "add".to_owned(),
             filter: "x".to_owned(),
+            trust_runs: false,
         })
     );
     assert_eq!(sandbox.marks(), Vec::<String>::new());

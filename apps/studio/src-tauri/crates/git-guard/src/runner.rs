@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use crate::check_args::{CheckedCall, check_args};
 use crate::error::GitError;
+use crate::filter_writes::Blanked;
 use crate::hardening::{HARDENING_CONFIG, HARDENING_ENVIRONMENT};
 use crate::limited_run::{GitOutput, Limits, new_command, run_limited};
 use crate::opened_folders::{OpenedFolders, canonical, plain_path};
@@ -149,8 +150,13 @@ impl GitRunner {
         let mut visited = vec![repository.clone()];
         self.add_nested_filters(folders, &repository, &mut visited, &mut filters, deadline)?;
         self.check_untracked_nested(folders, &repository, call, deadline)?;
+        let always = filters.repository().to_vec();
         let filters = filters.blanked(in_trusted_folders(&visited, trusted));
-        self.check_filter_writes(&repository, &entries, &filters, call, deadline)?;
+        let blanked = Blanked {
+            filters: &filters,
+            always: &always,
+        };
+        self.check_filter_writes(&repository, &entries, blanked, call, deadline)?;
         let mut overrides = blank_filters(&filters);
         overrides.extend(neutralise_programs(&entries));
         if call.subcommand() == "merge" {

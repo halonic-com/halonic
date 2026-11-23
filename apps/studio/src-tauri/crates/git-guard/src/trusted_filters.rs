@@ -34,6 +34,12 @@ impl Filters {
         add_filters(&own, &mut self.repository);
     }
 
+    /// The filters blanked even in a trusted folder: those a repository's
+    /// own config defines.
+    pub(crate) fn repository(&self) -> &[String] {
+        &self.repository
+    }
+
     /// The filters to blank: those a repository's own config defines, and
     /// unless `trusted`, the user's own too. A filter both define counts as
     /// the repository's, so its own keys can't change the user's filter.
