@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16722 (words check C754 on HAL-16719, row 3, decided by the team under HAL-2282); the reviewer (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+uWGNJZypDAa+GHbFpxr9U5o5KK3HD4UpCApPEAe5IsAMaaVvLVkxyTt0CowaAmrykNPO97osRKtTpHtUGn4AQ==
 - Task: HAL-16722
 
 ## What changes
