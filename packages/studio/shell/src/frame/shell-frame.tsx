@@ -85,6 +85,11 @@ export interface ShellFrameProps {
    * is open, something in it opened that page, so the drawer closes and the page keeps the focus.
    */
   readonly shownPage?: string;
+  /**
+   * The open side panel on the desktop, `PanelWindowSlot`, at the right of the content area. Under
+   * 900px it covers the content area, so the frame makes the page inert while it shows.
+   */
+  readonly panel?: ReactNode;
   /** The page. */
   readonly children: ReactNode;
 }
@@ -160,6 +165,8 @@ const phonePage = "short:overflow-visible";
 function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentation }) {
   const desktop = props.presentation === "desktop";
   const drawer = usePlacesDrawer(props.sidebar !== undefined, props.placesButton, props.shownPage);
+  // Under 900px an open side panel covers the page, which mustn't take focus behind it.
+  const covered = desktop && drawer.narrow && hasContent(props.panel);
   return (
     <div
       data-layout={props.presentation}
@@ -199,21 +206,18 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
               {props.sidebar}
             </SidebarSlot>
           ) : null}
-          <PageColumn desktop={desktop} inert={drawer.open} strips={props.strips}>
+          <PageColumn desktop={desktop} inert={drawer.open || covered} strips={props.strips}>
             {props.children}
           </PageColumn>
+          {desktop ? props.panel : null}
           <ToastRegion store={props.toasts} />
         </div>
         {desktop ? (
-          <footer className={statusBarClasses}>
-            {hasContent(props.badges) ? (
-              <div className="flex shrink-0 items-center gap-2 empty:hidden">{props.badges}</div>
-            ) : null}
-            {props.statusBar}
-            {hasContent(props.saveNote) ? (
-              <div className="ms-auto shrink-0">{props.saveNote}</div>
-            ) : null}
-          </footer>
+          <DesktopStatusBar
+            badges={props.badges}
+            statusBar={props.statusBar}
+            saveNote={props.saveNote}
+          />
         ) : (
           props.phoneNavigation
         )}
@@ -249,6 +253,19 @@ function PageColumn(props: {
         </main>
       </div>
     </div>
+  );
+}
+
+/** The desktop's status bar: the header badges first, the features' items, the save note last. */
+function DesktopStatusBar(props: Pick<ShellFrameProps, "badges" | "statusBar" | "saveNote">) {
+  return (
+    <footer className={statusBarClasses}>
+      {hasContent(props.badges) ? (
+        <div className="flex shrink-0 items-center gap-2 empty:hidden">{props.badges}</div>
+      ) : null}
+      {props.statusBar}
+      {hasContent(props.saveNote) ? <div className="ms-auto shrink-0">{props.saveNote}</div> : null}
+    </footer>
   );
 }
 

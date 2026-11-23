@@ -129,6 +129,24 @@ export interface WorkspaceContext {
    * without a window has none.
    */
   readonly closeStack?: CloseStack;
+  /**
+   * The window's side panel (`shell.panel-window`), so the feature that adds it can open and close
+   * it from a command or its shortcut, as the title bar button does. The window gives it to the
+   * views and commands it draws; a context built without a window has none.
+   */
+  readonly panelWindow?: PanelWindowControl;
+}
+
+/** Opens and closes the window's side panel; one per window. */
+export interface PanelWindowControl {
+  /** Whether the panel is open in this window. */
+  isOpen(): boolean;
+  /** Opens it, remembering where focus was. Does nothing while it is open. */
+  show(): void;
+  /** Closes it; focus goes back to where it was before it opened, else to the title bar button. */
+  hide(): void;
+  /** Opens it when it's closed and closes it when it's open, as the title bar button does. */
+  toggle(): void;
 }
 
 /** The item the active window tab shows, and a way to hear it change. */
