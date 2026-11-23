@@ -2,6 +2,7 @@
 
 - Approval: the task asks for these changes (HAL-16342); Liam approves and signs this note in his review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:US3vwZDZLT+8f7y9vkqaNhgobWDrpCukwIN9Ipx1zhbzZuZX+HpWXTrTBwPrMBjk/uIrnwaR3ByjD25lcoeXAw==
 
 Two requirements of the desktop shell change.
 
