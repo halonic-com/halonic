@@ -26,7 +26,11 @@ than 3 days ago while its task stayed open is missed; close such a task by
 hand. Nobody has to link pull requests on the task.
 
 It looks at open tasks (`todo`, `in_progress`, `in_review`) and acts only
-when every branch found for the task names the agent that holds it. When the
+when every branch found for the task names the agent that holds it. It also
+reads tasks in `backlog` and `blocked`, where a stacked pull request's task
+often waits, but only for a retargeted pull request (below): it never marks
+them done, wakes them for anything else or hands them on, and moves one to
+`todo` only if Paperclip won't wake it as it is (HAL-17869). When the
 reviewer holds it, the branches name different agents, or the author already
 has a run going, it does nothing and logs why.
 

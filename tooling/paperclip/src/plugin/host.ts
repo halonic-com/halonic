@@ -18,7 +18,8 @@ import {
  * only file that changes a task through the SDK: `doneOnly` lets the watcher
  * set `done`, `handoffOnly` lets it give a task to one agent with status
  * `todo` (its reviewer, HAL-17675), `todoOnly` lets its unblock sweep set `todo`
- * on a blocked task (HAL-17692), and nothing else; `setTaskLabels` lets the difficulty tagger
+ * on a blocked task (HAL-17692) and a wake pick up a parked task Paperclip
+ * won't wake as it is (HAL-17869), and nothing else; `setTaskLabels` lets the difficulty tagger
  * set labels and nothing else, and `assignTaskBack` lets the hand-off limit
  * set the task's agent and nothing else, because the manifest can't narrow
  * `issues.update`.
@@ -36,6 +37,13 @@ export interface HostApi {
 /** Statuses of a task whose work isn't finished. A blocked task waits on someone else. */
 const openStatuses = ["backlog", "todo", "in_progress", "in_review", "blocked"] as const;
 const watchedStatuses: ReadonlySet<string> = new Set(["todo", "in_progress", "in_review"]);
+/**
+ * Statuses of a task put aside until something else happens, often a stacked
+ * pull request's task waiting for the one below. The watcher reads them only
+ * for a retargeted pull request (HAL-17869), and only wakes them.
+ */
+const parkedStatuses: ReadonlySet<string> = new Set(["backlog", "blocked"]);
+const wakeStatuses: ReadonlySet<string> = new Set([...watchedStatuses, ...parkedStatuses]);
 const pageSize = 500;
 
 /** The only status change the watcher may make. Anything else throws before it reaches the host. */
@@ -129,7 +137,7 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
       const issues = await everyIssue(host, companyId);
       const parents = new Set(issues.flatMap((issue) => issue.parentId ?? []));
       return issues
-        .filter((issue) => watchedStatuses.has(issue.status) && issue.identifier !== null)
+        .filter((issue) => wakeStatuses.has(issue.status) && issue.identifier !== null)
         .map(
           (issue): TaskRow => ({
             id: issue.id,
@@ -139,6 +147,7 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
             openChildren: parents.has(issue.id),
             monitorNextCheckAt: isoOrNull(issue.monitorNextCheckAt),
             monitorLastTriggeredAt: isoOrNull(issue.monitorLastTriggeredAt),
+            parked: parkedStatuses.has(issue.status),
           }),
         );
     },
@@ -158,11 +167,17 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
       return agents.map((agent): AgentRow => ({ id: agent.id, urlKey: agent.urlKey }));
     },
     async wake(taskId, body, key) {
-      if (!(await stillWatched(host, taskId, companyId))) {
+      if (!(await stillWatched(host, taskId, companyId, wakeStatuses))) {
         return "closed";
       }
       await host.issues.createComment(taskId, body, companyId);
       // A plugin's comment wakes nobody, so the wake-up is its own call.
+      const woken = await wakeAssignee(host, taskId, companyId, key);
+      if (woken === "written" || !(await stillWatched(host, taskId, companyId, parkedStatuses))) {
+        return woken;
+      }
+      // Paperclip wakes nobody on a parked task: pick it up as todo, then wake.
+      await host.issues.update(taskId, todoOnly({ status: "todo" }), companyId);
       return wakeAssignee(host, taskId, companyId, key);
     },
     async markDone(taskId, body) {
@@ -238,9 +253,14 @@ async function wakeAssignee(
  * minute, and an author who closes their task in that time shouldn't get a
  * comment on a done task or fail the pass (HAL-16139, 22 Nov).
  */
-async function stillWatched(host: HostApi, taskId: string, companyId: string): Promise<boolean> {
+async function stillWatched(
+  host: HostApi,
+  taskId: string,
+  companyId: string,
+  statuses = watchedStatuses,
+): Promise<boolean> {
   const issue = await host.issues.get(taskId, companyId);
-  return issue !== null && watchedStatuses.has(issue.status);
+  return issue !== null && statuses.has(issue.status);
 }
 
 /** The only status change the sweep may make. Anything else throws before it reaches the host. */

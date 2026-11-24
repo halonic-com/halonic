@@ -7,6 +7,7 @@ import {
   type Memory,
   marker,
   type PullFacts,
+  parkedCandidates,
   type Reason,
 } from "./decide.ts";
 import type { FoundPulls, PullRef } from "./discover.ts";
@@ -242,6 +243,14 @@ function factsOf(ref: PullRef, facts: TickRefs["facts"]): PullFacts {
   return found;
 }
 
+/** Whether a decision on the task depends on its comments: a wake, or a done the author may hold. */
+function needsMemory(task: TaskRow, pulls: readonly PullFacts[]): boolean {
+  if (task.parked === true) {
+    return parkedCandidates(pulls).length > 0;
+  }
+  return candidates(pulls).length > 0 || closedOutcome(pulls)?.kind === "done";
+}
+
 async function decideTask(
   options: TickOptions,
   task: TaskRow,
@@ -263,14 +272,10 @@ async function decideTask(
     pulls.map((pull) => pull.branch),
     refs.owners,
   );
-  // Comments are read only when a decision depends on them: a wake, or a done the author may hold.
-  const needsMemory =
-    ownerId !== undefined &&
-    ownerId === task.assigneeAgentId &&
-    (candidates(pulls).length > 0 || closedOutcome(pulls)?.kind === "done");
-  const memory = needsMemory
-    ? readMemory(await options.paperclip.comments(task.id), ownerId)
-    : emptyMemory;
+  const memory =
+    ownerId !== undefined && ownerId === task.assigneeAgentId && needsMemory(task, pulls)
+      ? readMemory(await options.paperclip.comments(task.id), ownerId)
+      : emptyMemory;
   return decide(task, ownerId, pulls, memory);
 }
 
@@ -317,7 +322,8 @@ async function keepMonitorBack(
   decision: Decision,
 ): Promise<"postponed" | "refused" | undefined> {
   const until = postponeUntil(task.monitorNextCheckAt, options.now);
-  if (decision.kind === "done" || until === undefined) {
+  // A parked task's monitor is its holder's own plan for when to pick it up.
+  if (decision.kind === "done" || until === undefined || task.parked === true) {
     return undefined;
   }
   const pulls = watchedPulls(task, refs.found, refs.owners).map((ref) => factsOf(ref, refs.facts));
@@ -348,7 +354,8 @@ async function keepMonitorBack(
 function reviewStepsOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
   const pulls = watchedPulls(task, refs.found, refs.owners).map((ref) => factsOf(ref, refs.facts));
   const ownerId = task.assigneeAgentId;
-  if (pulls.length === 0 || ownerId === null) {
+  // A parked task isn't ready for review: its holder picks it up first.
+  if (pulls.length === 0 || ownerId === null || task.parked === true) {
     return Promise.resolve({ handedOff: false, warned: false });
   }
   return reviewSteps(

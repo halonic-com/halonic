@@ -57,6 +57,8 @@ export interface WatchedTask {
   readonly running: boolean;
   /** It has a child task that isn't done or cancelled, so its work isn't finished. */
   readonly openChildren: boolean;
+  /** It is in `backlog` or `blocked`, as a stacked pull request's task often is until the one below merges. */
+  readonly parked?: boolean;
 }
 
 /** One state the author should hear about. `key` says when it is the same state again. */
@@ -223,11 +225,29 @@ function commentedSinceMerge(pulls: readonly PullFacts[], memory: Memory): Reaso
 }
 
 /**
+ * The pull requests of a parked task that GitHub moved to the default branch:
+ * the one thing the watcher tells its holder about (HAL-17869). #5737 sat
+ * blocked for 2 hours on 24 Nov because its task was in `backlog`.
+ */
+export function parkedCandidates(pulls: readonly PullFacts[]): Reason[] {
+  return candidates(pulls).filter((reason) => reason.kind === "retargeted");
+}
+
+/** A parked task: a wake for a retargeted pull request, and nothing else, not even done. */
+function parkedDecision(pulls: readonly PullFacts[], memory: Memory): Decision {
+  const reasons = newReasons(parkedCandidates(pulls), memory);
+  return reasons.length === 0
+    ? { kind: "skip", why: "it is parked; only a retargeted pull request wakes it" }
+    : { kind: "wake", reasons };
+}
+
+/**
  * The decision for one task. `ownerId` is the agent every one of its pull
  * requests' branches names; when anyone else holds the task (its reviewer),
  * or the branches name different agents, the watcher does nothing. Done
  * also waits for its child tasks and for the author's hold line, and a
- * comment after the last merge turns it into one wake for the author.
+ * comment after the last merge turns it into one wake for the author. A
+ * parked task only hears about a retargeted pull request.
  */
 export function decide(
   task: WatchedTask,
@@ -240,6 +260,9 @@ export function decide(
   }
   if (task.running) {
     return { kind: "skip", why: "its author is already running on it" };
+  }
+  if (task.parked === true) {
+    return parkedDecision(pulls, memory);
   }
   const closed = closedOutcome(pulls);
   if (closed?.kind === "done" && heldAfterMerge(closed.pulls, memory)) {
