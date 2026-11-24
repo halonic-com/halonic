@@ -15,6 +15,16 @@ export const SIGNED_IN = "Signed in";
 export const SIGN_OUT = "Sign out";
 export const SIGN_IN_AGAIN = "Sign in again";
 
+/**
+ * Read once after a sign-out the provider confirmed, or one with nothing to sign out (team
+ * wording, decided by the designer on HAL-17220, row SI1).
+ *
+ * @param service - the plugin's name
+ */
+export function signedOutOf(service: string): string {
+  return `Signed out of ${service}.`;
+}
+
 const list = new Intl.ListFormat("en-GB", { type: "conjunction" });
 
 /**
