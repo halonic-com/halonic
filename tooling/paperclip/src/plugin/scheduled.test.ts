@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { companyRoster } from "./companies.ts";
 import { fakeHost, fakeJobContext, mergedGreenOnGitHub } from "./fake-host.test-helper.ts";
 import { type JobApi, runWatcher } from "./job.ts";
@@ -8,6 +8,17 @@ import { withScopeRule } from "./scoped-host.test-helper.ts";
 
 const now = new Date("2026-11-23T11:30:00Z");
 const token = { type: "secret_ref", secretId: "secret-pr-watcher" };
+
+// The job passes the wall clock to the watcher, which reads only pull requests
+// closed in the last few days; pin it, or the recorded merge ages out of the
+// window and the tests start failing on a later day.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 /** The PR watcher of HAL-4485 (see job.test.ts) on a host that applies the scope rule. */
 function setUp(configured: readonly string[] = ["acme"]) {
