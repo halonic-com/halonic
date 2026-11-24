@@ -9,6 +9,7 @@ import type {
   MessagingAgent,
   MessagingId,
   MessagingSource,
+  OutgoingAttachment,
   SearchHit,
   SendResult,
   WorkItem,
@@ -139,10 +140,16 @@ export class MessagingHub implements AgentMessaging {
     return owner.messaging.readAttachment(attachment);
   }
 
-  async send(conversation: MessagingId, body: string): Promise<SendResult> {
+  async send(
+    conversation: MessagingId,
+    body: string,
+    attachments?: readonly OutgoingAttachment[],
+  ): Promise<SendResult> {
     const owner = await this.#conversationOwner(conversation);
     if (owner === undefined) return { outcome: "refused", reason: "not-found" };
-    return owner.messaging.send(conversation, body);
+    const result = await owner.messaging.send(conversation, body, attachments);
+    if (result.outcome === "sent") this.#rememberSent(conversation, owner, result.message);
+    return result;
   }
 
   changes(): AsyncIterable<MessagingId> {
@@ -202,6 +209,15 @@ export class MessagingHub implements AgentMessaging {
           list.map((each) => each.id),
         );
     });
+  }
+
+  /** Adds the files of a message just sent, so the person can open them before the next read. */
+  #rememberSent(conversation: MessagingId, owner: NamedMessagingProvider, message: Message): void {
+    const provider = this.#providers.indexOf(owner);
+    const known = this.#messageAttachments.get(conversation);
+    const ids = known?.provider === provider ? known.ids : new Set<MessagingId>();
+    for (const id of attachmentIds(message)) ids.add(id);
+    this.#messageAttachments.set(conversation, { provider, ids });
   }
 
   /** The providers that listed a file, on an inbox item or on a conversation's messages. */

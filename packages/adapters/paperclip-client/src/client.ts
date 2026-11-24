@@ -10,6 +10,7 @@ import type {
   MessagingId,
   MessagingRefusal,
   MessagingSource,
+  OutgoingAttachment,
   SearchHit,
   SendResult,
   WorkItem,
@@ -182,7 +183,15 @@ export class PaperclipMessaging implements AgentMessaging {
     return { outcome: "refused", reason: "not-found" };
   }
 
-  async send(conversation: MessagingId, body: string): Promise<SendResult> {
+  async send(
+    conversation: MessagingId,
+    body: string,
+    attachments: readonly OutgoingAttachment[] = [],
+  ): Promise<SendResult> {
+    // Files aren't sent to Paperclip yet, so a message with files is refused whole, before any request.
+    if (attachments.length > 0) {
+      return { outcome: "refused", reason: "unsupported-type" };
+    }
     const [task] = this.#ids.read(conversation, "chat") ?? [];
     // An unsafe ID is refused before any request, the chat check's read included.
     if (task === undefined || !isSafeSegment(task)) {

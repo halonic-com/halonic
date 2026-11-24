@@ -171,6 +171,15 @@ verifies("ports.paperclip-key", () => {
       );
       expect(paperclip.seen.length).toBe(before);
     });
+
+    it("refuses a message with files whole with unsupported-type, sending nothing", async () => {
+      paperclip.serveAcme();
+      const screenshot = { name: "Screenshot.png", type: "image/png", bytes: new Uint8Array([1]) };
+      await expect(
+        client().send(`paperclip:acme:chat:${chatTask}`, "See this", [screenshot]),
+      ).resolves.toEqual({ outcome: "refused", reason: "unsupported-type" });
+      expect(paperclip.seen).toEqual([]);
+    });
   });
 
   describe("transport", () => {
