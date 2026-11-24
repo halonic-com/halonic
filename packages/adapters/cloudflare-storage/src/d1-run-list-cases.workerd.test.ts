@@ -5,7 +5,7 @@ import { env } from "cloudflare:workers";
 import { type RunSummary, summarize } from "@halonicjs/events";
 import { entered, started } from "@halonicjs/testing-contracts";
 import { describe, expect, it } from "vitest";
-import { D1RunList } from "./d1-run-list.ts";
+import { D1RunList, openRunScopes } from "./d1-run-list.ts";
 
 declare global {
   namespace Cloudflare {
@@ -112,5 +112,15 @@ describe("D1RunList", () => {
     expect(await list.list({ hubId: "x' OR '1'='1" })).toEqual([]);
     expect(await list.list({ workflowId: "'; DROP TABLE run_list; --" })).toEqual([]);
     expect(await list.list()).toHaveLength(1);
+  });
+
+  it("finds the scopes with open runs through the status index, not by reading every row", async () => {
+    await ownList().publish(summaryOf("r1", 1), 2);
+    const { results } = await env.DB.prepare(`EXPLAIN QUERY PLAN ${openRunScopes}`).all<{
+      detail: string;
+    }>();
+    const details = results.map((row) => row.detail).join("\n");
+    expect(details).toContain("run_list_by_status");
+    expect(details).not.toMatch(/SCAN run_list(?! USING)/);
   });
 });
