@@ -5,15 +5,15 @@ import {
   type ToastStore,
   ToastStoreProvider,
 } from "@halonicjs/studio-kit";
-import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
+import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FilesHost } from "../files-host.ts";
 import { takeRenameAsked } from "../rename-request.ts";
 import { forgetOpenedEditors } from "../test-support/code-editor.ts";
+import { filesLookup } from "../test-support/lookup.ts";
 import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost } from "../test-support/sidebar.ts";
@@ -43,9 +43,7 @@ async function showFile(path: string, host: FilesHost = contextHost()) {
   // One host for the whole render: a new object on each read would restart the tab's effects.
   const readable: FilesHost = { ...host, read: async () => "name: a\n" };
   const context = {
-    services: limitedLookup(filesFeature, {
-      get: () => readable,
-    }),
+    services: filesLookup(readable),
     announcer: { announce: () => {} },
     showSidebarView: (viewId: string) => shownViews.push(viewId),
     openItem: (item: ItemRef) => opened.push(item),

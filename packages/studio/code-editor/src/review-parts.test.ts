@@ -83,6 +83,17 @@ describe("the assistant's changes to review in the editor", () => {
       editor.destroy();
     });
 
+    it("doesn't mark a line the user types at the very start of a part", () => {
+      const editor = editorWith();
+      editor.setReviewParts([{ line: 1, added: 2, removed: [] }]);
+      editor.view.dispatch({ changes: { from: 0, insert: "# note\n" } });
+      expect(markedLines(editor)).toEqual(["name: Triage", "model: large"]);
+
+      editor.view.dispatch({ changes: { from: 0, insert: "x" } });
+      expect(markedLines(editor)).toEqual(["name: Triage", "model: large"]);
+      editor.destroy();
+    });
+
     it("shows lines removed at the end after the text", () => {
       const editor = editorWith();
       editor.setReviewParts([{ line: 5, added: 0, removed: ["extra: yes"] }]);

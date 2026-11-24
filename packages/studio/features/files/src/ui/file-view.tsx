@@ -1,11 +1,5 @@
 import { type CodeEditor, languageFor, openCodeEditor } from "@halonicjs/studio-code-editor";
-import {
-  Callout,
-  EmptyState,
-  SkeletonBar,
-  useToastStore,
-  useWriteClipboard,
-} from "@halonicjs/studio-kit";
+import { Callout, useToastStore, useWriteClipboard } from "@halonicjs/studio-kit";
 import { errorReasonFor, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyPath } from "../copy-path.ts";
@@ -34,22 +28,17 @@ import { subscribeTrashed, type Trashed, trashedFile } from "../trash.ts";
 import { CompareView } from "./compare-view.tsx";
 import { FileHeader } from "./file-header.tsx";
 import { followFileText } from "./follow-file-text.ts";
+import { type Loaded, LoadNotice } from "./load-notice.tsx";
 import { OutsideStrip } from "./outside-strip.tsx";
 import { ProblemsPanel } from "./problems-panel.tsx";
 import { TrashedStrip } from "./trashed-strip.tsx";
 import { useFileGone } from "./use-file-gone.ts";
+import { useFileReview } from "./use-file-review.tsx";
 
 /** How long after the last change the problems are checked again, in milliseconds. */
 export const recheckDelayMs = 300;
 
 const noElsewhere: Elsewhere = { count: 0, firstFile: undefined };
-
-type Loaded =
-  | { readonly kind: "loading" }
-  | { readonly kind: "error"; readonly reason: string }
-  | { readonly kind: "missing" }
-  | { readonly kind: "not-text"; readonly size: string }
-  | { readonly kind: "ready"; readonly text: string; readonly readOnly: boolean };
 
 /** The language's name as the editor's label says it. */
 const languageNames = { yaml: "YAML", markdown: "Markdown", plain: "text" } as const;
@@ -62,13 +51,6 @@ function loadedOf(text: string | null): Loaded {
   return { kind: "ready", text, readOnly: kind === "large" };
 }
 
-/** Moves focus to the Files tree's Tab stop, where the user picks another file. */
-function goToFiles(): void {
-  document
-    .querySelector<HTMLElement>('[role="tree"][aria-label="Files"] [data-path][tabindex="0"]')
-    ?.focus();
-}
-
 /** The strip that shows above the editor: only the first of those that apply. */
 function stripShown(applies: {
   readonly unreadable: boolean;
@@ -78,62 +60,6 @@ function stripShown(applies: {
   if (applies.unreadable) return "unreadable";
   if (applies.trashed) return "trash";
   return applies.outside ? "outside" : undefined;
-}
-
-/**
- * What stands in for the editor while the file loads, is gone, isn't text, or can't be read. A
- * file that can't be read offers **Try again**, which reads it again in the same tab.
- */
-function LoadNotice({
-  loaded,
-  missing,
-  onRetry,
-}: {
-  loaded: Loaded;
-  missing: boolean;
-  onRetry: () => void;
-}) {
-  return (
-    <>
-      {loaded.kind === "loading" && (
-        <div role="status" aria-label={filesWords.fileLoading} className="grid gap-3 p-4">
-          <SkeletonBar kind="title" width="2/3" />
-          <SkeletonBar kind="title" width="1/2" />
-        </div>
-      )}
-      {missing && (
-        <EmptyState
-          plain
-          title={filesWords.missingTitle}
-          action={{ label: filesWords.goToFiles, onClick: goToFiles }}
-        />
-      )}
-      {loaded.kind === "not-text" && (
-        <EmptyState
-          plain
-          title={filesWords.notTextTitle}
-          description={filesWords.notTextDescription(loaded.size)}
-        />
-      )}
-      {loaded.kind === "ready" && loaded.readOnly && (
-        <div
-          role="status"
-          className="border-b border-border bg-surface-muted px-4 py-1 text-small text-fg"
-        >
-          {filesWords.largeFile}
-        </div>
-      )}
-      {loaded.kind === "error" && (
-        <EmptyState
-          tone="error"
-          plain
-          title={filesWords.unreadableTitle}
-          description={loaded.reason}
-          action={{ label: filesWords.tryAgain, onClick: onRetry }}
-        />
-      )}
-    </>
-  );
 }
 
 /**
@@ -179,6 +105,13 @@ export function FileView({ item, context }: ItemViewProps) {
   // in between did not come from this tab.
   const edits = useRef(0);
   const [reveal, setReveal] = useState<{ line: number; round: number } | undefined>();
+  const review = useFileReview({
+    services: context.services,
+    path,
+    editor: editorRef,
+    toasts,
+    onCompare: () => setComparing(true),
+  });
 
   // The problems are checked when the tab opens and again a moment after the files change, so
   // typing never waits for the check. The first check is what other files looked like before
@@ -313,12 +246,14 @@ export function FileView({ item, context }: ItemViewProps) {
           filesWords.problemRead(problem.severity, problem.line, problem.message),
         ),
       onProblemMarkClick: (line) => setReveal((was) => ({ line, round: (was?.round ?? 0) + 1 })),
+      review: review.actions,
     }).then((made) => {
       if (stopped) made.destroy();
       else {
         editor = made;
         editorRef.current = made;
         made.setProblems(problemsRef.current);
+        made.setReviewParts(review.parts());
         unsubscribe = follow(made);
         // A broken file's row opens the file with the cursor on its first problem (C348).
         stopLines = takeOpenAtLineRequests(path, (line) => made.goTo(line));
@@ -449,10 +384,13 @@ export function FileView({ item, context }: ItemViewProps) {
         />
       )}
       {editing && (
-        <div
-          ref={parent}
-          className={`min-h-0 flex-1 overflow-hidden ${trashedHere ? "opacity-60" : ""}`}
-        />
+        <>
+          {review.bar}
+          <div
+            ref={parent}
+            className={`min-h-0 flex-1 overflow-hidden ${trashedHere ? "opacity-60" : ""}`}
+          />
+        </>
       )}
       {editing && !trashedHere && (
         <ProblemsPanel

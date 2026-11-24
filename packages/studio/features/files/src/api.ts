@@ -10,6 +10,14 @@ export {
 } from "./broken-file-actions.ts";
 export { fileItem } from "./file-item.ts";
 export {
+  type FilePartToReview,
+  type FileReview,
+  type FileReviewDecision,
+  type FileReviewHost,
+  FileReviewService,
+  type FileReviewTarget,
+} from "./file-review.ts";
+export {
   type CompareChoice,
   type FileCompare,
   type FileIssue,
