@@ -3,6 +3,7 @@
 - Task: HAL-17615 (PR 1 of the plan on HAL-16764, which Liam wrote and Julian read)
 - Approval: Liam approves the plan on HAL-16764 and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DKo1hrfFclTDQ3KPD0eMNC47s8VRq7SvB2NAtI8A9pTFZz7P9FAkg+dYVVZ21t+k7AI5Z7+0NOHPhPw4XoUkAA==
 
 ## What changes
 
