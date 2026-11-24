@@ -22,6 +22,12 @@ export interface Snapshot {
   /** Closed pull requests updated within this many days before `takenAt` are in `pulls`. */
   readonly closedWindowDays: number;
   readonly repos: readonly SnapshotRepo[];
+  /**
+   * The GitHub calls taking it cost: GraphQL queries and REST fallbacks,
+   * failed ones included (HAL-17933). Added after version 1 shipped: a
+   * snapshot saved before it has none.
+   */
+  readonly githubCalls?: number;
 }
 
 /** One watched repository. */

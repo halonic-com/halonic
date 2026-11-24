@@ -7,12 +7,15 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * rebase with an identical diff, Julian within `reviewerFor`, "Author: Liam",
  * and open change requests. The texts follow the Merger's own matching,
  * which differs from `pr-tools/approvals.ts`: a bare "re-approved on head"
- * counts here (HAL-15553), and time after the last push matters.
+ * counts here (HAL-15553), and time after the last push matters. A signed
+ * line counts on any line of a comment, after notes too (#5758, HAL-17933),
+ * as in the Merger's `gate.js` and `pr-tools/approvals.ts`.
  */
 
-const liamLine = /^\s*Liam:\s*(?:re-)?approved(?: again)? on head\s*`?([0-9a-f]{7,40})/i;
-const julianLine = /^\s*Julian:\s*(re-approved|approved(?: again)?) on head\s*`?([0-9a-f]{7,40})/i;
-const signedLine = /^\s*(Liam|Julian):/i;
+const liamLine = /^[ \t]*Liam:[ \t]*(?:re-)?approved(?: again)? on head[ \t]*`?([0-9a-f]{7,40})/im;
+const julianLine =
+  /^[ \t]*Julian:[ \t]*(re-approved|approved(?: again)?) on head[ \t]*`?([0-9a-f]{7,40})/im;
+const signedLine = /^[ \t]*(Liam|Julian):/im;
 
 /** A change request in words (board, 20 Nov 21:25). */
 export const blockWords =
@@ -262,9 +265,11 @@ export interface ChangeRequest {
   readonly at: string;
 }
 
-function firstLineApproves(body: string): boolean {
+/** Its first line approves, or any line is a signed approval: then its notes aren't a change request. */
+function approves(body: string): boolean {
   const first = body.split("\n")[0] ?? "";
-  return /\bapprov/i.test(first) && !/\b(not|un)\s*approv/i.test(first);
+  const firstApproves = /\bapprov/i.test(first) && !/\b(not|un)\s*approv/i.test(first);
+  return firstApproves || liamLine.test(body) || julianLine.test(body);
 }
 
 function approvesHead(text: PullText, head: string): boolean {
@@ -286,8 +291,7 @@ export function changeRequestOf(
   const named = texts.filter((text) => /\b(Liam|Julian)\b/.test(text.body.slice(0, 160)));
   const blocks = named.filter(
     (text) =>
-      !firstLineApproves(text.body) &&
-      blockWords.test(text.body.slice(0, 600).replace(fixedWords, "")),
+      !approves(text.body) && blockWords.test(text.body.slice(0, 600).replace(fixedWords, "")),
   );
   const last = blocks.pop();
   if (last !== undefined) {

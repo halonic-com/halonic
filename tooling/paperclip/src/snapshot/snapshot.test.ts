@@ -225,8 +225,9 @@ verifies("paperclip.github-snapshot", () => {
       }
     }
     const asked: string[] = [];
+    const fake = fakeQuery(answers);
     const snapshot = await takeSnapshot({
-      query: fakeQuery(answers).query,
+      query: fake.query,
       repos,
       now: new Date("2026-11-22T14:10:00Z"),
       fallback: async (_repo, sha, name) => {
@@ -235,6 +236,8 @@ verifies("paperclip.github-snapshot", () => {
       },
     });
     expect(asked).toEqual(["0d237fd ci-ok", "0d237fd ci-ok (draft, light run)"]);
+    // The fallbacks count as calls too (HAL-17933).
+    expect(snapshot.githubCalls).toBe(fake.calls.length + asked.length);
     expect(snapshot.repos[0]?.pulls.find((pull) => pull.number === 5114)?.open?.ciOk).toBe(
       "pending",
     );

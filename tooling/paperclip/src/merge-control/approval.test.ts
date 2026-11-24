@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
+import { approvalOf } from "./approval.ts";
 import {
   actionsOf,
   ago,
@@ -43,6 +44,22 @@ verifies("paperclip.merge-control-signed-approval", () => {
     const echo = said(`Queue manager: Liam: approved on head ${head.slice(0, 7)}`);
     expect(reasonsOf({ texts: [stranger] }).added).toEqual([]);
     expect(reasonsOf({ texts: [echo] }).added).toEqual([]);
+  });
+
+  test("a signed line after notes counts on any line, as on #5758", () => {
+    const notes = "Reviewed the gate and its tests.\n[nit] one wording note, no change needed.\n";
+    const signed = said(`${notes}\nLiam: approved on head \`${head.slice(0, 7)}\``);
+    expect(approvalOf(pull(1, { texts: [signed] }), "halonic-dev", {}).approval?.ok).toBe(true);
+    expect(reasonsOf({ texts: [signed] }).added).toEqual([1]);
+    const julian = said(`${notes}\nJulian: approved on head \`${head.slice(0, 7)}\``);
+    expect(reasonsOf({ texts: [julian] }).added).toEqual([1]);
+  });
+
+  test("an unsigned mention of the head on line 4 still doesn't count", () => {
+    const notes = "Reviewed the gate and its tests.\n[nit] one wording note.\n";
+    const unsigned = said(`${notes}\nLooks approved on head \`${head.slice(0, 7)}\` to me`);
+    expect(approvalOf(pull(1, { texts: [unsigned] }), "halonic-dev", {}).approval).toBeNull();
+    expect(reasonsOf({ texts: [unsigned] }).added).toEqual([]);
   });
 
   test("a GitHub approval review on the head that names Liam counts", () => {
@@ -139,6 +156,11 @@ verifies("paperclip.merge-control-change-request", () => {
     ];
     expect(reasonsOf({ texts: [fixed] }).added).toEqual([1]);
     expect(reasonsOf({ texts: note }).added).toEqual([1]);
+  });
+
+  test("notes with a blocking word before a signed approval on a later line don't hold it", () => {
+    const body = `Liam: the blocking question from yesterday: answered.\n\nLiam: approved on head \`${head.slice(0, 7)}\``;
+    expect(reasonsOf({ texts: [said(body)] }).added).toEqual([1]);
   });
 
   test("a signed line naming a head that rejects it holds it", () => {
