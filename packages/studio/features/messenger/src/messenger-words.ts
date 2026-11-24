@@ -19,7 +19,7 @@ export const messengerWords = {
   nothingWaiting: "No chat is waiting for you.",
   pickChat: "Pick a chat to read it.",
   searchLabel: "Search this chat",
-  noMatches: "No message in this chat holds that.",
+  noMatches: "No message in this chat matches.",
   activity: {
     idle: "Idle",
     working: "Working",
