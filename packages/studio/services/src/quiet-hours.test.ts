@@ -3,8 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentNotice, Notifier } from "./agent-notifications.ts";
 import { isQuiet, type QuietHours, QuietHoursNotifier } from "./quiet-hours.ts";
 
-const requirement = "services.agent-quiet-hours";
-
 /** 22:00 to 07:00, past midnight. */
 const night: QuietHours = { startMinute: 22 * 60, endMinute: 7 * 60 };
 
@@ -33,7 +31,7 @@ function notifierAt(quietHours: QuietHours | undefined) {
   return { notifier, shown, errors };
 }
 
-verifies(requirement, () => {
+verifies("services.agent-quiet-hours", () => {
   describe("QuietHoursNotifier", () => {
     beforeEach(() => {
       vi.useFakeTimers();
