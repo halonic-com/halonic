@@ -1605,6 +1605,83 @@ jobs:
           "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" "${built_on[@]}" "${affected[@]}" --branch "$HEAD_BRANCH" \
             --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --base-sha "$PR_BASE_SHA"
 
+  # The requirement guard's checks that read only files (requirements, skips,
+  # mocks, golden files, coverage settings, the guard's own paths and the
+  # decision note), at the start of the run (HAL-17892). The guard job above
+  # waits for the build and the merge base's tests, about 14 min; this one
+  # needs neither, so a missing or unsigned note shows in about 2 min. Same
+  # rule as the guard job: the merge base's copy of the guard, the merge
+  # base's dependencies and Node, the pull request's checkout only read. The
+  # guard job still runs every check, so this one only reports earlier.
+  # fail-fast doesn't cancel the run for it: a reviewer still sees the tests'
+  # results on a pull request whose note isn't signed yet.
+  guard-files:
+    name: Requirement guard, file checks (merge base's copy)
+    needs: changes
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      BASE_DIR: ${{ github.workspace }}/base
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: head
+          # The merge commit and its parents, so HEAD^1 can be read.
+          fetch-depth: 2
+      # The checkout is the merge ref, whose first parent is the main commit
+      # it was built on: the files the guard job compares with (base-tests'
+      # built-on), so both report the same pull request's own changes.
+      - id: base
+        name: Find the commit the merge ref was built on
+        working-directory: head
+        run: |
+          # Assign first: an empty sha makes the next checkout fall back to
+          # the pull request's own ref, and the guard would compare it with
+          # itself.
+          sha=$(git rev-parse --verify HEAD^1)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: base
+          ref: ${{ steps.base.outputs.sha }}
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: false
+          package_json_file: base/package.json
+      - name: Install the merge base's dependencies
+        working-directory: base
+        run: pnpm install --frozen-lockfile
+      # `--skip-test-runs` leaves out the one check that reads test result
+      # files, as `pnpm check:enqueue` does. The note's signature is checked
+      # as in the guard job, against the base branch's approvers.json; both
+      # commits are fetched as objects only.
+      - name: Requirement guard without test results (merge base's copy)
+        working-directory: head
+        env:
+          BASE_SHA: ${{ steps.base.outputs.sha }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          guard="tooling/check/src/cli/requirement-guard.ts"
+          git fetch --quiet --no-tags --depth=1 origin "$PR_HEAD_SHA" "$PR_BASE_SHA"
+          if ! git -C "$BASE_DIR" cat-file -e "$BASE_SHA:$guard" 2>/dev/null; then
+            echo "::notice title=requirement-guard::The merge base has no requirement guard yet; it runs from the next pull request on."
+            exit 0
+          fi
+          # Calling pnpm in the pull request's checkout would read its
+          # config, so only node runs there.
+          base_node=$(cd "$BASE_DIR" && pnpm exec node -p process.execPath)
+          "$base_node" "$BASE_DIR/$guard" --base "$BASE_DIR" --skip-test-runs --branch "$HEAD_BRANCH" \
+            --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --base-sha "$PR_BASE_SHA"
+
   scaffold:
     # Proves the templates still pass every check, so `pnpm new` never
     # hands an agent a package that fails.
@@ -3582,7 +3659,7 @@ jobs:
           ignored='[]'
           if [ "$EVENT" = pull_request ]; then
             interval=60
-            ignored='["Fast gates", "Leak guard", "Coverage floors don'"'"'t go down", "Live cloud suites passed"]'
+            ignored='["Fast gates", "Leak guard", "Coverage floors don'"'"'t go down", "Live cloud suites passed", "Requirement guard, file checks (merge base'"'"'s copy)"]'
           fi
           pause=$interval
           cancel() {
@@ -3751,6 +3828,7 @@ jobs:
         trace,
         base-tests,
         guard,
+        guard-files,
         scaffold,
         tauri,
         tauri-windows,
