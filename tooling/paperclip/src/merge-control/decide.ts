@@ -3,6 +3,7 @@ import { failedGroups } from "./culprit.ts";
 import { fill, fillOrder, trackReady, verifiedFastTrack } from "./fill.ts";
 import { gateRow, withSizeHolds } from "./gate.ts";
 import { notes } from "./notes.ts";
+import { queueFirst } from "./order.ts";
 import { removals } from "./removal.ts";
 import { cancelledReruns, flakeReruns, rerunPause, staleRuns, stalledGroups } from "./reruns.ts";
 import type { MergeSnapshot } from "./snapshot.ts";
@@ -75,5 +76,5 @@ export function decide(
     "pass",
     `queued=${state.lastQueue.length} removed=${removed.map((row) => `#${row.pull.number}`).join(",") || "-"} added=${added.map((number) => `#${number}`).join(",") || "-"} candidatesPassing=${rows.filter((row) => row.entry === undefined && row.pass).length}`,
   );
-  return { actions: context.actions, state, log: context.log };
+  return { actions: queueFirst(context.actions), state, log: context.log };
 }
