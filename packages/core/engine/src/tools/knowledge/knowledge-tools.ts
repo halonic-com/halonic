@@ -6,7 +6,7 @@
 // A hit or document those helpers drop, because its ref is too long, never
 // reaches the model.
 
-import { knowledgeDocForModel, knowledgeHitForModel } from "@halonicjs/app";
+import { knowledgeDocForModel, knowledgeHitForModel } from "@halonicjs/app/model-text";
 import type { KnowledgeHit, KnowledgeProvider } from "@halonicjs/ports";
 import type { HalonicTool } from "../../agent/turn-tools.ts";
 import { integerArg, requiredStringArg, type ToolArgs } from "../tool-args.ts";

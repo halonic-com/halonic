@@ -13,7 +13,7 @@ import {
   spendByMonth,
   treeCost,
   treeUsage,
-} from "@halonicjs/app";
+} from "@halonicjs/app/spend";
 import { addUsage } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
 import type { RunState } from "../kernel/run-state.ts";

@@ -2,8 +2,7 @@
 // their kits use `reviewedTools`; the tests of the gate itself use a
 // `ApprovalDesk`, which keeps approvals the way a person's would be kept.
 
-import { readToolListing } from "@halonicjs/app";
-import { approveAllShown, approveListedTools } from "@halonicjs/app/listed-tools";
+import { approveAllShown, approveListedTools, readToolListing } from "@halonicjs/app/listed-tools";
 import type {
   ChatTurnWaiting,
   ConnectorClient,

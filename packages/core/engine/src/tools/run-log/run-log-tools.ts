@@ -2,7 +2,7 @@
 // model. An agent gets them with `runLogs: true`. It sees only its own hub's
 // runs, so one hub's agent never reads another hub's work.
 
-import { fenceUntrusted } from "@halonicjs/app";
+import { fenceUntrusted } from "@halonicjs/app/model-text";
 import type { RunStatus, RunSummary } from "@halonicjs/events";
 import type { Clock, RunStore } from "@halonicjs/ports";
 import type { HalonicTool } from "../../agent/turn-tools.ts";

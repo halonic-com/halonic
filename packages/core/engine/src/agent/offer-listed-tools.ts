@@ -7,9 +7,10 @@
 // only the connector file's `read` list marks as reading. The tool keeps the
 // name the server listed; naming it after its source is left to HAL-998.
 
-import { toolForModel } from "@halonicjs/app";
 import { escapeListedText, type KeptListedTool, readListedTool } from "@halonicjs/app/listed-tools";
-import { asksBeforeEachUse, type Connector, type IntegrationTool } from "@halonicjs/format";
+import { toolForModel } from "@halonicjs/app/model-text";
+import type { IntegrationTool } from "@halonicjs/format";
+import { asksBeforeEachUse, type Connector } from "@halonicjs/format/connector";
 import type { ChatTurnRefusal, ConnectorTool, ToolDefinition, ToolRisk } from "@halonicjs/ports";
 
 /**
