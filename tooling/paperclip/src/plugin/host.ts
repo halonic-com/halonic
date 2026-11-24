@@ -199,14 +199,16 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
       ) {
         return "closed";
       }
-      // The comment first, so the reviewer's run finds it.
-      await host.issues.createComment(taskId, body, companyId);
+      // The reassignment first: the comment carries the head's once-only marker, so a
+      // failed reassignment after it would never hand that head off again (HAL-17690).
       await host.issues.update(
         taskId,
         handoffOnly({ assigneeAgentId: to, status: "todo" }),
         companyId,
       );
-      // A plugin's change may not wake the new assignee, so the wake-up is its own call.
+      await host.issues.createComment(taskId, body, companyId);
+      // A plugin's change may not wake the new assignee, so the wake-up is its own call,
+      // after the comment, so the reviewer's run finds it.
       return wakeAssignee(host, taskId, companyId, key);
     },
     async note(taskId, body) {
