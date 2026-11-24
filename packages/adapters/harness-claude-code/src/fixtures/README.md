@@ -23,7 +23,10 @@ the harness sets: the characters of `system`, of `messages` and of each tool
 definition, with the tool's name. Never the prompt's text.
 `starting-context.test.ts` fails when the call with the setting for Claude's
 own models goes over the target (requirement
-`harness-claude-code.starting-context`).
+`harness-claude-code.starting-context`). It also fails when the
+`claude_code_version` the CLI platform probe installs
+(`.github/workflows/cli-platform-probe.yml`) has no recording: record that
+version when you change the probe's default.
 
 To record a new version, point `ANTHROPIC_BASE_URL` at a local server that
 saves each `/v1/messages` body and answers with a short `end_turn` message,
