@@ -1,4 +1,3 @@
-import type { SecretShape } from "@halonicjs/std";
 import {
   Button,
   CommandBox,
@@ -7,8 +6,8 @@ import {
   TextArea,
   usePresentation,
 } from "@halonicjs/studio-kit";
+import { type SecretHold, secretHold } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
-import { secretHold } from "../plain/secret-hold.ts";
 
 /** The empty note's field error (mc 10.2, state-coverage D6). */
 export const emptyNoteError = "Say what should change.";
@@ -53,9 +52,7 @@ export function AskForChangesDialog(props: AskForChangesDialogProps) {
   const { note, busy, secretPlace = "setup" } = props;
   const field = useRef<HTMLTextAreaElement>(null);
   const [empty, setEmpty] = useState(false);
-  const [held, setHeld] = useState<{ readonly line: string; readonly shape: SecretShape } | null>(
-    null,
-  );
+  const [held, setHeld] = useState<SecretHold | null>(null);
   // A phone can't reach the Google setup's field from here: the line sends it to its computer.
   const phone = usePresentation() === "phone";
 

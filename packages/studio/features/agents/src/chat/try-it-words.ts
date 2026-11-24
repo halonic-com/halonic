@@ -54,9 +54,7 @@ export const tryItWords = {
   /** H16: the toast after Not now in the trust gate, or where there is no gate to open. */
   notTrusted: (workspace: string | undefined) =>
     `Not started: ${workspace ?? "this workspace"} isn't trusted yet`,
-  /** H29: a message that looks like it holds a key isn't sent (flow-assistant 5.9, HAL-1625). */
-  keyInMessage:
-    "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
+  /** H29: the line itself comes with the held message, from `chatSecretHold` in the shell. */
   goToKeyField: "Go to the key field ›",
   sendAnyway: "Send anyway",
   /** H27: the harness line's way to fix it. */

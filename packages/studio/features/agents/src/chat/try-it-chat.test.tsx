@@ -223,7 +223,9 @@ verifies("agents.chat.reply-ends", () => {
 });
 
 verifies("agents.chat.box-lines", () => {
+  // Invented, shaped like the real thing: a prefix and random-looking characters.
   const key = `sk-${"a1B2".repeat(6)}`;
+  const googleSecret = `GOCSPX-${"aB3".repeat(8)}`;
 
   it("holds a message that looks like it has a key, with the way to the key field", async () => {
     const { host, requests } = scriptedHost();
@@ -237,6 +239,21 @@ verifies("agents.chat.box-lines", () => {
     );
     await act(async () => buttonNamed(page, "Go to the key field")?.click());
     expect(ways.goToKeyField).toHaveBeenCalledTimes(1);
+  });
+
+  it("holds a Google client secret with its own line and no way to the key field", async () => {
+    const { host, requests } = scriptedHost();
+    const page = await show(<Chat host={host} announce={vi.fn()} ways={ways} />);
+    await sendMessage(page, `The secret is ${googleSecret}`);
+    expect(requests).toHaveLength(0);
+    const status = page.querySelector("[role=status]") as HTMLElement;
+    expect(status.textContent).toContain(
+      "This looks like a Google client secret. It goes in the Google setup or in a connector in the Library, so it stays out of chats and files.",
+    );
+    expect(status.textContent).not.toContain("aB3");
+    expect(buttonNamed(page, "Go to the key field")).toBeUndefined();
+    await act(async () => buttonNamed(page, "Send anyway")?.click());
+    expect(requests).toHaveLength(1);
   });
 
   it("sends the held message once, as it is, on Send anyway", async () => {

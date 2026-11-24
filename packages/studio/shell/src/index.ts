@@ -318,6 +318,13 @@ export {
   searchPageWords,
 } from "./search/search-page-names.ts";
 export {
+  type ChatSecretHold,
+  chatSecretHold,
+  type SecretHold,
+  type SecretHoldWhere,
+  secretHold,
+} from "./secret-hold/secret-hold.ts";
+export {
   type FeatureServices,
   limitedLookup,
   type OpenLookup,
