@@ -1,0 +1,126 @@
+import {
+  effectiveToolScriptLimits,
+  type ToolScriptIsolate,
+  type ToolScriptIsolateRequest,
+  type ToolScriptIsolateResult,
+  type ToolScriptLimits,
+  toolScriptDefaultLimits,
+} from "@halonicjs/ports";
+import {
+  newQuickJSWASMModuleFromVariant,
+  newVariant,
+  type QuickJSSyncVariant,
+} from "quickjs-emscripten-core";
+import { captureBuiltins } from "./builtins.ts";
+import { CpuMeter } from "./cpu-meter.ts";
+import { preludeSource, quickJsIntrinsics } from "./prelude.ts";
+import { RunSession } from "./session.ts";
+
+/** Options for {@link createQuickJsToolScriptIsolate}. */
+export interface QuickJsToolScriptIsolateOptions {
+  /** The most a run gets; the user defaults of ADR 2.3 when left out. */
+  readonly limits?: ToolScriptLimits;
+}
+
+/**
+ * A `ToolScriptIsolate` on QuickJS-ng compiled to WebAssembly (ADR
+ * "Halonic ToolScript" 2.1). Every run gets a WASM module, runtime and
+ * context of its own, with the pinned intrinsics, the checked eval prelude,
+ * the memory, stack and CPU limits, and no module loader, so `import()`
+ * is refused. Nothing carries over from one run to the next. A host
+ * function named `input` or `log`, the names of `ctx`'s own members, ends
+ * the run with `toolscript.failed` before the script runs; an aborted
+ * `signal` ends it with `toolscript.cancelled`, and one aborted before the
+ * run starts means the script never runs. It runs on any
+ * runtime with WebAssembly; the worker wrappers that keep it off the main
+ * thread come separately.
+ *
+ * @example
+ * const isolate = createQuickJsToolScriptIsolate();
+ * const result = await isolate.run({ runId, code, input, functions, limits });
+ */
+export function createQuickJsToolScriptIsolate(
+  options: QuickJsToolScriptIsolateOptions = {},
+): ToolScriptIsolate {
+  const limits = options.limits ?? toolScriptDefaultLimits.user;
+  return {
+    limits,
+    // Async, so request limits that `effectiveToolScriptLimits` refuses reject instead of throwing.
+    run: async (request) =>
+      runInQuickJs(request, effectiveToolScriptLimits(limits, request.limits)),
+  };
+}
+
+/**
+ * One run in a module of its own. `prelude` is replaced only by the tests
+ * that check a broken prelude stops the run before any script code runs.
+ */
+export async function runInQuickJs(
+  request: ToolScriptIsolateRequest,
+  limits: ToolScriptLimits,
+  prelude: string = preludeSource,
+): Promise<ToolScriptIsolateResult> {
+  if (request.signal?.aborted)
+    return { ok: false, reason: "toolscript.cancelled", log: [], limits };
+  const inputBytes = jsonBytes(request.input);
+  if (inputBytes === undefined) {
+    return { ok: false, reason: "toolscript.bad-input", log: [], limits };
+  }
+  if (inputBytes > limits.inputBytes) {
+    return { ok: false, reason: "limit.input", log: [], limits };
+  }
+  // A module of its own per run, in a fresh WASM memory of a fixed size that
+  // is dropped whole afterwards. The fixed size is the hard memory limit:
+  // QuickJS's own limit doesn't count large strings (HAL-17776).
+  const variant = await quickJsVariant();
+  const module = await newQuickJSWASMModuleFromVariant(
+    newVariant(variant, { wasmMemory: fixedMemory(limits.memoryBytes) as never }),
+  );
+  const meter = new CpuMeter(limits.cpuMs);
+  const runtime = module.newRuntime({
+    memoryLimitBytes: limits.memoryBytes,
+    maxStackSizeBytes: limits.stackBytes,
+    interruptHandler: meter.shouldInterrupt,
+  });
+  const vm = runtime.newContext({ intrinsics: quickJsIntrinsics });
+  const builtins = captureBuiltins(vm);
+  return new RunSession({ runtime, vm, builtins, meter, request, limits, prelude }).run();
+}
+
+/** The size of `value` as UTF-8 JSON, or `undefined` when it can't be written as JSON (a cycle, a BigInt). */
+function jsonBytes(value: unknown): number | undefined {
+  try {
+    return new TextEncoder().encode(JSON.stringify(value)).length;
+  } catch {
+    return undefined;
+  }
+}
+
+/** A WebAssembly page. */
+const wasmPageBytes = 64 * 1024;
+
+/** The module's own memory beside the script's heap: the build declares 16 MiB to start. */
+export const moduleMemoryBytes = 16 * 1024 * 1024;
+
+/** The one part of `WebAssembly` the isolate uses; the host tsconfig has no WebAssembly types. */
+interface WasmMemoryConstructor {
+  new (descriptor: { readonly initial: number; readonly maximum: number }): unknown;
+}
+
+/** A WASM memory that can't grow: the module's own 16 MiB plus the script's heap. */
+function fixedMemory(heapBytes: number): unknown {
+  const { WebAssembly } = globalThis as unknown as {
+    readonly WebAssembly: { readonly Memory: WasmMemoryConstructor };
+  };
+  const pages = Math.ceil((moduleMemoryBytes + heapBytes) / wasmPageBytes);
+  return new WebAssembly.Memory({ initial: pages, maximum: pages });
+}
+
+/**
+ * The pinned QuickJS-ng build. Its package types its default export as a
+ * CommonJS namespace; at run time it is the variant object itself.
+ */
+async function quickJsVariant(): Promise<QuickJSSyncVariant> {
+  const loaded: unknown = (await import("@jitl/quickjs-ng-wasmfile-release-sync")).default;
+  return loaded as QuickJSSyncVariant;
+}

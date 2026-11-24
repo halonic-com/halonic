@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/adapter-toolscript-quickjs",
+  "private": true,
+  "type": "module",
+  "description": "Runs a ToolScript in a fresh QuickJS (WASM) isolate per run.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@jitl/quickjs-ng-wasmfile-release-sync": "catalog:",
+    "quickjs-emscripten-core": "catalog:"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/testing-toolscript-fence": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "any"
+  }
+}
