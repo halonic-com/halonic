@@ -1,5 +1,10 @@
 import type { AgentActivity, MessagingRefusal } from "@halonicjs/ports";
+import type { FileRefusal } from "./file-limits.ts";
 import type { MessengerTab } from "./messenger.ts";
+
+/** Why the engine refused a message's files; it sends none of the message then. Approved on HAL-17459. */
+const filesNotSent =
+  "These files can't be sent. Up to 5 files of 10 MB each can: PNG, JPEG, GIF or WebP pictures, PDFs and text files.";
 
 /**
  * The Messenger's words. "Messenger", "All" and "Waiting for me" are the
@@ -14,7 +19,7 @@ export const messengerWords = {
   nothingWaiting: "No chat is waiting for you.",
   pickChat: "Pick a chat to read it.",
   searchLabel: "Search this chat",
-  noMatches: "No message in this chat holds that.",
+  noMatches: "No message in this chat matches.",
   activity: {
     idle: "Idle",
     working: "Working",
@@ -30,6 +35,42 @@ export const messengerWords = {
     "signed-out": (source: string) =>
       `You're signed out of ${source}. Sign in again to send; your message stays here.`,
     "not-found": () => "This chat is gone. Your message stays here and isn't sent.",
+    "too-large": () => filesNotSent,
+    "unsupported-type": () => filesNotSent,
   } satisfies Record<MessagingRefusal, (source: string) => string>,
   you: "You",
+  /** An agent's open card in its chat (HAL-17421 render 4e, approved by the board, 24 Nov). */
+  card: {
+    needsYou: "Needs you",
+    waitingSince: (time: string) => `Waiting since ${time}`,
+    alsoInInbox: "Also in your Inbox. Answering here answers it there.",
+    answeredBy: (name: string) => `${name} answered this first.`,
+    answeredByYou: "You already answered this.",
+  },
+  askForUpdate: "Ask for an update",
+  /** Files and screenshots in a chat: picked, pasted, or sent by the agent. */
+  files: {
+    attach: "Attach a file",
+    remove: (name: string) => `Remove ${name}`,
+    /** Why a file wasn't added to the box; the limits are `messengerFileLimits`. */
+    refused: {
+      "too-large": (name: string) => `${name} is over 10 MB, so it wasn't added.`,
+      "too-many": () => "A message takes at most 5 files.",
+      "unsupported-type": (name: string) =>
+        `${name} can't be sent. PNG, JPEG, GIF and WebP pictures, PDFs and text files can.`,
+    } satisfies Record<FileRefusal, (name: string) => string>,
+    notSent: filesNotSent,
+    pastedName: "Screenshot.png",
+    show: (name: string) => `Show ${name}`,
+    notShown: "This picture can't be shown.",
+  },
+  /** Why a quick action sent nothing; it is never sent later on its own. */
+  notSent: {
+    offline: (source: string) => `${source} is offline, so nothing was sent.`,
+    "signed-out": (source: string) =>
+      `You're signed out of ${source}, so nothing was sent. Sign in again first.`,
+    "not-found": () => "This is gone, so nothing was sent.",
+    "too-large": () => filesNotSent,
+    "unsupported-type": () => filesNotSent,
+  } satisfies Record<MessagingRefusal, (source: string) => string>,
 } as const;

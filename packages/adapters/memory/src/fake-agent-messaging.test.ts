@@ -196,6 +196,29 @@ verifies("contracts.fake-agent-messaging", () => {
     });
   });
 
+  it("sends a message with files the engine takes, and refuses one it won't, whole", async () => {
+    const messaging = new FakeAgentMessaging({
+      attachmentLimit: 4,
+      attachmentTypes: ["image/png"],
+    });
+    const acme = messaging.addSource({ label: "Paperclip · Acme" });
+    const chat = messaging.addConversation(messaging.addAgent(acme.id, { name: "Chief" }).id);
+    const png = { name: "a.png", type: "image/png", bytes: new Uint8Array([7, 8]) };
+
+    const sent = await messaging.send(chat.id, "Here", [png]);
+    const big = await messaging.send(chat.id, "Big", [{ ...png, bytes: new Uint8Array(5) }]);
+    const pdf = await messaging.send(chat.id, "Doc", [png, { ...png, type: "application/pdf" }]);
+
+    const file = sent.outcome === "sent" ? sent.message.attachments[0] : undefined;
+    expect(file).toMatchObject({ name: "a.png", type: "image/png", size: 2 });
+    expect(await messaging.readAttachment(file?.id ?? "")).toMatchObject({ outcome: "read" });
+    expect(big).toEqual({ outcome: "refused", reason: "too-large" });
+    expect(pdf).toEqual({ outcome: "refused", reason: "unsupported-type" });
+    expect((await messaging.listMessages(chat.id)).map((message) => message.body)).toEqual([
+      "Here",
+    ]);
+  });
+
   it("tells a reader which source changed", async () => {
     const { messaging, acme } = makeFake();
     const changes = messaging.changes()[Symbol.asyncIterator]();

@@ -10,7 +10,9 @@ import type {
   MessagingAgent,
   MessagingAuthor,
   MessagingId,
+  MessagingRefusal,
   MessagingSource,
+  OutgoingAttachment,
   SearchHit,
   SendResult,
   WorkItem,
@@ -27,6 +29,10 @@ export interface FakeAgentMessagingOptions {
    * own, so their IDs never collide, as two real providers' never do.
    */
   idPrefix?: string;
+  /** The largest file `send` takes, in bytes; 10 MiB unless told otherwise. */
+  attachmentLimit?: number;
+  /** The file types `send` takes; any unless told otherwise. */
+  attachmentTypes?: readonly string[];
 }
 
 /** Everything a source holds, live or as it was when its line was cut. */
@@ -39,11 +45,7 @@ interface Held {
 }
 
 /** A file to put on an item or a message: its bytes, which only `readAttachment` gives back. */
-export interface FakeAttachment {
-  name: string;
-  type: string;
-  bytes: Uint8Array;
-}
+export type FakeAttachment = OutgoingAttachment;
 
 const me: MessagingAuthor = { kind: "me" };
 
@@ -72,6 +74,8 @@ const bySource = (item: { source: MessagingId }): MessagingId => item.source;
 export class FakeAgentMessaging implements AgentMessaging {
   private readonly now: () => Date;
   private readonly idPrefix: string;
+  private readonly attachmentLimit: number;
+  private readonly attachmentTypes: readonly string[] | undefined;
   private readonly sources: MessagingSource[] = [];
   private readonly live: Held = {
     agents: [],
@@ -89,6 +93,8 @@ export class FakeAgentMessaging implements AgentMessaging {
   constructor(options: FakeAgentMessagingOptions = {}) {
     this.now = options.now ?? (() => new Date("2026-11-24T10:00:00.000Z"));
     this.idPrefix = options.idPrefix ?? "fake";
+    this.attachmentLimit = options.attachmentLimit ?? 10 * 1024 * 1024;
+    this.attachmentTypes = options.attachmentTypes;
   }
 
   listSources(): Promise<readonly MessagingSource[]> {
@@ -174,12 +180,16 @@ export class FakeAgentMessaging implements AgentMessaging {
     return Promise.resolve({ outcome: "read", bytes: bytes.slice(), type });
   }
 
-  send(conversation: MessagingId, body: string): Promise<SendResult> {
+  send(
+    conversation: MessagingId,
+    body: string,
+    attachments: readonly OutgoingAttachment[] = [],
+  ): Promise<SendResult> {
     const found = this.live.conversations.find((each) => each.id === conversation);
     if (found === undefined) return Promise.resolve({ outcome: "refused", reason: "not-found" });
-    const refusal = this.refusal(found.source);
+    const refusal = this.refusal(found.source) ?? this.fileRefusal(attachments);
     if (refusal !== undefined) return Promise.resolve({ outcome: "refused", reason: refusal });
-    const message = this.addMessage(found.id, { author: me, body });
+    const message = this.addMessage(found.id, { author: me, body, attachments });
     found.waitingForMe = false;
     return Promise.resolve({ outcome: "sent", message: copy(message) });
   }
@@ -346,6 +356,14 @@ export class FakeAgentMessaging implements AgentMessaging {
   signOut(source: MessagingId): void {
     this.sourceOf(source).state = { kind: "signed-out" };
     this.changed(source, true);
+  }
+
+  /** Why `send` won't take these files, as the engine checks them whatever a screen did. */
+  private fileRefusal(files: readonly OutgoingAttachment[]): MessagingRefusal | undefined {
+    if (files.some((file) => file.bytes.byteLength > this.attachmentLimit)) return "too-large";
+    const types = this.attachmentTypes;
+    if (types === undefined) return undefined;
+    return files.every((file) => types.includes(file.type)) ? undefined : "unsupported-type";
   }
 
   private refusal(source: MessagingId): "offline" | "signed-out" | undefined {

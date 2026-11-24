@@ -9,7 +9,9 @@ import type {
   InboxItem,
   Message,
   MessagingId,
+  MessagingRefusal,
   MessagingSource,
+  OutgoingAttachment,
   SendResult,
 } from "./index.ts";
 
@@ -38,8 +40,12 @@ verifies("ports.agent-messaging", () => {
       [attachment: MessagingId]
     >();
     expectTypeOf<AgentMessaging["answer"]>().returns.toEqualTypeOf<Promise<AnswerResult>>();
-    expectTypeOf<AgentMessaging["send"]>().parameters.toEqualTypeOf<
-      [conversation: MessagingId, body: string]
+    expectTypeOf<AgentMessaging["send"]>().toEqualTypeOf<
+      (
+        conversation: MessagingId,
+        body: string,
+        attachments?: readonly OutgoingAttachment[],
+      ) => Promise<SendResult>
     >();
     expectTypeOf<AgentMessaging["send"]>().returns.toEqualTypeOf<Promise<SendResult>>();
     expectTypeOf<AgentMessaging["changes"]>().returns.toEqualTypeOf<AsyncIterable<MessagingId>>();
@@ -76,6 +82,15 @@ verifies("ports.agent-messaging-attachments", () => {
       expectTypeOf<Message["attachments"]>().toEqualTypeOf<readonly Attachment[]>();
       expectTypeOf<AgentMessaging["readAttachment"]>().returns.toEqualTypeOf<
         Promise<AttachmentRead>
+      >();
+    },
+  );
+
+  typeTest(
+    "refuses a file sent with a message that is too large or of a type it won't take",
+    () => {
+      expectTypeOf<Extract<MessagingRefusal, "too-large" | "unsupported-type">>().toEqualTypeOf<
+        "too-large" | "unsupported-type"
       >();
     },
   );

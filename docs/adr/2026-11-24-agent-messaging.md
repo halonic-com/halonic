@@ -179,6 +179,10 @@ content security policy stays as it is. The name and type come from the
 agent, so apps show them as text and draw only common picture types (PNG,
 JPEG, GIF and WebP), never SVG.
 
+A message can be sent with files. The engine checks each file's size and type
+itself, whatever the screen checked, and refuses the whole message with
+`too-large` or `unsupported-type`, so nothing is sent in part.
+
 ## Threat model
 
 | Threat | Mitigation |

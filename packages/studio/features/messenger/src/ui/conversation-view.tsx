@@ -1,8 +1,11 @@
-import type { Message, MessagingRefusal } from "@halonicjs/ports";
-import { ChatBoxLine, ChatComposer, ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { activityOf, type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
+import type { Message } from "@halonicjs/ports";
+import { ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { AttachmentList } from "./attachment-list.tsx";
+import { ChatBox } from "./chat-box.tsx";
+import { ChatCards } from "./chat-cards.tsx";
 
 /** The props of {@link ConversationView}. */
 export interface ConversationViewProps {
@@ -16,15 +19,16 @@ export interface ConversationViewProps {
  * One open conversation (HAL-17421 render 4a): its agent and activity in the
  * header, a search through its messages, the messages oldest first, and the
  * box. While its source is offline or signed out, the box keeps the text and
- * Send sends nothing (requirement `messenger.conversations`). The page gives
- * each conversation its own view (a `key`), so its draft and search start fresh.
+ * Send sends nothing (requirement `messenger.conversations`). Files picked or
+ * pasted wait in the box and go with the message (`messenger.files`); the
+ * agent's cards and "Ask for an update" are its quick actions
+ * (`messenger.quick-actions`). The page gives each conversation its own view
+ * (a `key`), so its draft and search start fresh.
  */
 export function ConversationView({ messenger, row, changed }: ConversationViewProps) {
   const id = row.conversation.id;
   const [search, setSearch] = useState("");
   const [messages, setMessages] = useState<readonly Message[]>([]);
-  const [draft, setDraft] = useState(() => messenger.draft(id));
-  const [kept, setKept] = useState<MessagingRefusal | undefined>(undefined);
   // Counts the reads, so an answer that arrives after a newer read's never shows.
   const reads = useRef(0);
 
@@ -39,47 +43,13 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
     void read().catch((error: unknown) => console.error("The chat couldn't be read:", error));
   }, [read, changed]);
 
-  function type(text: string) {
-    setDraft(text);
-    messenger.setDraft(id, text);
-  }
-
-  async function send() {
-    const outcome = await messenger.sendDraft(id, row);
-    if (outcome.outcome === "kept") {
-      if (outcome.reason !== "blank") setKept(outcome.reason);
-      return;
-    }
-    setKept(undefined);
-    // The Messenger cleared the draft only if nothing was typed during the send.
-    setDraft(messenger.draft(id));
-    await read();
-  }
-
-  const name = row.conversation.title;
-  const refusal = kept ?? refusalOf(row);
-  const line =
-    refusal === undefined ? undefined : messengerWords.kept[refusal](row.source?.label ?? "");
   return (
-    <section aria-label={name} className="flex min-h-0 flex-1 flex-col">
+    <section aria-label={row.conversation.title} className="flex min-h-0 flex-1 flex-col">
       <ConversationHeader row={row} search={search} onSearch={setSearch} />
-      <Transcript messages={messages} searching={search.trim() !== ""} />
-      <div className="px-4 pb-4">
-        <ChatComposer
-          label={messengerWords.composerLabel(name)}
-          placeholder={messengerWords.composerPlaceholder(name)}
-          value={draft}
-          onChange={type}
-          onSend={() => {
-            void send().catch((error: unknown) =>
-              console.error("The message couldn't be sent:", error),
-            );
-          }}
-          onStop={() => {}}
-          answering={false}
-          line={line === undefined ? undefined : <ChatBoxLine tone="warning">{line}</ChatBoxLine>}
-        />
-      </div>
+      <Transcript messenger={messenger} messages={messages} searching={search.trim() !== ""}>
+        <ChatCards quickActions={messenger.quickActions} row={row} changed={changed} />
+      </Transcript>
+      <ChatBox messenger={messenger} row={row} onSent={read} />
     </section>
   );
 }
@@ -126,11 +96,16 @@ function ConversationHeader({
  * address as plain text, and a web link opens outside the app with its address after it.
  */
 function Transcript({
+  messenger,
   messages,
   searching,
+  children,
 }: {
+  readonly messenger: Messenger;
   readonly messages: readonly Message[];
   readonly searching: boolean;
+  /** What follows the messages: the agent's open cards. */
+  readonly children: ReactNode;
 }) {
   const openLink = useOpenExternal();
   return (
@@ -145,8 +120,10 @@ function Transcript({
         >
           <span className="sr-only">{authorName(message)}: </span>
           <ChatText openLink={openLink}>{message.body}</ChatText>
+          <AttachmentList messenger={messenger} attachments={message.attachments} />
         </li>
       ))}
+      {children}
     </ol>
   );
 }

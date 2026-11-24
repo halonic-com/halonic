@@ -259,4 +259,18 @@ verifies("agent-host.messaging-hub-attachments", () => {
     expect(read).toEqual({ outcome: "refused", reason: "not-found" });
     for (const call of calls) expect(call).not.toHaveBeenCalled();
   });
+
+  it("sends files only to the provider that listed the conversation, and can read them back", async () => {
+    const { a, b, sourceB, hub } = twoSources();
+    const chief = b.addAgent(sourceB.id, { name: "Chief" });
+    const chat = b.addConversation(chief.id);
+    const sendA = vi.spyOn(a, "send");
+
+    const sent = await hub.send(chat.id, "See this", [screenshot]);
+    const file = sent.outcome === "sent" ? sent.message.attachments[0] : undefined;
+
+    expect(file?.name).toBe("login.png");
+    expect(sendA).not.toHaveBeenCalled();
+    expect((await hub.readAttachment(file?.id ?? "")).outcome).toBe("read");
+  });
 });
