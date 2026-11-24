@@ -33,7 +33,7 @@ export function StandingScreen({
   const removed = standing === "removed";
   const words = removed ? standingWords.removed : standingWords.cantConfirm;
   return (
-    <div className="grid min-h-full place-items-center px-6 py-8">
+    <div className="grid flex-1 place-items-center px-6 py-8">
       <div className="flex max-w-empty flex-col items-center gap-3 text-center">
         <span
           aria-hidden="true"
@@ -43,7 +43,7 @@ export function StandingScreen({
             {removed ? <LockIcon /> : <ShieldIcon />}
           </span>
         </span>
-        <h2 className="text-title text-fg">{words.heading(computer.name)}</h2>
+        <h2 className="text-heading text-fg">{words.heading(computer.name)}</h2>
         <p className="text-body text-fg-muted">{words.body}</p>
         {removed ? null : (
           <p className="text-small text-fg-muted">{standingWords.cantConfirm.nothingCleared}</p>

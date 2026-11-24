@@ -78,7 +78,7 @@ export function PairedComputers({
 
   if (!Array.isArray(computers)) {
     return (
-      <div className="flex min-h-full flex-col justify-center px-6 py-6">
+      <div className="flex flex-1 flex-col justify-center px-6 py-6">
         <EmptyState
           tone="error"
           title={computersWords.keysUnavailable.title}
@@ -106,12 +106,12 @@ export function PairedComputers({
   const today = now();
   const unreadables = listed.filter(isUnreadable);
   return (
-    <div className="flex min-h-full flex-col gap-6 px-6 py-6">
+    <div className="flex flex-1 flex-col gap-6">
       <p className="sr-only" aria-live="polite">
         {said}
       </p>
       {listed.length === 0 ? (
-        <div className="flex flex-1 flex-col justify-center">
+        <div className="flex flex-1 flex-col justify-center px-6 py-6">
           <EmptyState
             icon={<LaptopIcon />}
             title={computersWords.empty.title}
@@ -122,7 +122,7 @@ export function PairedComputers({
         </div>
       ) : (
         <>
-          <div className="flex flex-1 flex-col gap-4">
+          <div className="flex flex-1 flex-col gap-4 px-6 pt-6">
             <ul className="m-0 flex list-none flex-col divide-y divide-border rounded-lg border border-border p-0">
               {listed.map((computer) => {
                 const onRowForget = () => setForgetting(computer);
@@ -151,16 +151,19 @@ export function PairedComputers({
             </ul>
             <p className="text-small text-fg-muted">{computersWords.note}</p>
           </div>
-          <Button
-            variant="primary"
-            size="touch"
-            block
-            ref={pairButton}
-            icon={<PlusIcon />}
-            onClick={onPair}
-          >
-            {computersWords.pair}
-          </Button>
+          {/* In thumb reach at the foot: 16px from the sides and the bottom, plus the home bar. */}
+          <div className="px-4 pb-[calc(1rem+var(--safe-bottom))]">
+            <Button
+              variant="primary"
+              size="touch"
+              block
+              ref={pairButton}
+              icon={<PlusIcon />}
+              onClick={onPair}
+            >
+              {computersWords.pair}
+            </Button>
+          </div>
         </>
       )}
       {forgetting === undefined ? null : (
@@ -215,6 +218,9 @@ function ComputerRow({
   readonly onForget: () => void;
 }) {
   const said = [computer.name, spoken(meta).replace("Paired", "paired")].join(", ");
+  // "Paired 14 Nov" stays on one line; only the route before it may wrap.
+  const split = meta.lastIndexOf(" · ");
+  const day = split === -1 ? 0 : split + 3;
   return (
     <li className="flex items-center gap-4 px-4 py-3">
       {/* Only Can't reach dims, and only its tile: the name, lines and Forget stay readable (G16). */}
@@ -225,7 +231,10 @@ function ComputerRow({
         </span>
         <div aria-hidden="true" className="flex flex-col gap-0.5">
           <p className="text-fg">{computer.name}</p>
-          <p className="text-small text-fg-muted">{meta}</p>
+          <p className="text-small text-fg-muted">
+            {meta.slice(0, day)}
+            <span className="whitespace-nowrap">{meta.slice(day)}</span>
+          </p>
           {state === undefined ? null : (
             <p className="flex items-center gap-2 text-small text-fg">
               <span

@@ -69,8 +69,10 @@ function PairScreen({
   onCamera,
 }: PhoneAppProps & { readonly flow: PhonePairingFlow; readonly onBack: (() => void) | undefined }) {
   const step = useSyncExternalStore(flow.subscribe, () => flow.view);
+  // The scanner is full-bleed, with only its Close scanner (p-m2). The bar only goes: the same
+  // tree stays, since unmounting the pairing screens closes the scanner.
   return (
-    <TopBar title={pairTitle(step)} onBack={onBack}>
+    <TopBar title={pairTitle(step)} onBack={onBack} bar={step.step !== "scanning"}>
       <PairingScreens
         flow={flow}
         typed={() => <TypedStep onEnterAddress={() => router.enterAddress()} />}
@@ -114,21 +116,33 @@ function TypedStep({ onEnterAddress }: { readonly onEnterAddress: () => void }) 
 function TopBar({
   title,
   onBack,
+  bar = true,
   children,
 }: {
   readonly title: string;
   readonly onBack: (() => void) | undefined;
+  /** False leaves the screen alone, without the bar. */
+  readonly bar?: boolean;
   readonly children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="flex min-h-14 items-center gap-2 border-b border-border px-2">
-        {onBack === undefined ? null : (
-          <Button variant="ghost" size="touch" icon={<BackIcon />} label="Back" onClick={onBack} />
-        )}
-        <h1 className="px-2 text-body-strong text-fg">{title}</h1>
-      </header>
-      <div className="flex-1">{children}</div>
+    // Fills the page's tunnel screen, so the screens in it centre or dock at the foot.
+    <div className="flex grow flex-col">
+      {bar ? (
+        <header className="flex min-h-14 items-center gap-2 border-b border-border px-2">
+          {onBack === undefined ? null : (
+            <Button
+              variant="ghost"
+              size="touch"
+              icon={<BackIcon />}
+              label="Back"
+              onClick={onBack}
+            />
+          )}
+          <h1 className="px-2 text-heading text-fg">{title}</h1>
+        </header>
+      ) : null}
+      <div className="flex flex-1 flex-col">{children}</div>
     </div>
   );
 }

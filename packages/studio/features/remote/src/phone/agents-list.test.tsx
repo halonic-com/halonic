@@ -19,6 +19,10 @@ import { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";
 
 afterEach(unmountAll);
 
+/** The state chip's classes, which carry its tone. */
+const chipOf = (row: Element | undefined) =>
+  row?.querySelector('span[aria-hidden="true"].shrink-0 > span')?.className;
+
 const shown = (line: HostText | undefined) => (line === undefined ? undefined : hostShown(line));
 
 const now = new Date(2026, 10, 21, 14, 5);
@@ -94,6 +98,12 @@ verifies("remote.phone-agents", () => {
       "Sorter, Send 4 replies, as of 14:02, Needs you",
     );
     expect(screen.textContent).toContain("You can answer once your phone reconnects.");
+    // The chips go grey, with their words and dot, so the phone doesn't claim the state now (C49 G6).
+    const liveRows = show(live).rows;
+    expect(chipOf(liveRows[0])).not.toBe(chipOf(liveRows[1]));
+    expect(chipOf(rows[0])).toBe(chipOf(rows[1]));
+    expect(chipOf(rows[0])).not.toBe(chipOf(liveRows[0]));
+    expect(rows[1]?.textContent).toContain("Needs you");
     // An agent that ended keeps its end time alone: no second time beside it (C672).
     expect(rows[2]?.querySelector(".sr-only")?.textContent).toBe("Writer, Finished 13:40, Done");
     expect(shown(agentRowLine(stale, remoteSession(), undefined, now))).toBe("as of 14:02");

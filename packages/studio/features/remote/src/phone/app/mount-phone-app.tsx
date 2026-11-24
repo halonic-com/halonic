@@ -1,3 +1,4 @@
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import type { OwnerCheckAvailable } from "../gateway-client.ts";
@@ -86,12 +87,15 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
   const root = createRoot(container);
   root.render(
     <StrictMode>
-      <PhoneApp
-        router={router}
-        onOpenSettings={mount.onOpenSettings}
-        onOpenTailscale={mount.onOpenTailscale}
-        onCamera={mount.onCamera}
-      />
+      {/* The kit's parts draw their phone forms: a stacked confirmation, full-width buttons. */}
+      <PresentationProvider presentation="phone">
+        <PhoneApp
+          router={router}
+          onOpenSettings={mount.onOpenSettings}
+          onOpenTailscale={mount.onOpenTailscale}
+          onCamera={mount.onCamera}
+        />
+      </PresentationProvider>
     </StrictMode>,
   );
   void router.start();
