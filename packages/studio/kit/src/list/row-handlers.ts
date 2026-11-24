@@ -6,19 +6,23 @@ export interface RowHandlerOptions<Id extends string> {
   readonly isUnavailable: boolean;
   readonly onOpen: ((id: Id) => void) | undefined;
   readonly onOpenInNewTab: ((id: Id) => void) | undefined;
+  /** An Alt-click or Alt Enter (⌥ on a Mac), as an agent's row shows the agent in chat. */
+  readonly onAltOpen: ((id: Id) => void) | undefined;
   /** Toggles the row, when the list allows selection. */
   readonly onToggle: ((id: Id) => void) | undefined;
 }
 
 /**
  * The row's click and key handlers. A plain Enter or click opens; with Ctrl or ⌘ held it opens in
- * a new tab, and does nothing without `onOpenInNewTab`; with Shift or Alt it does nothing.
+ * a new tab, and does nothing without `onOpenInNewTab`; with only Alt (⌥) held it calls
+ * `onAltOpen`, and does nothing without it; with Shift held, Alt or not, it does nothing.
  */
 export function rowHandlers<Id extends string>({
   id,
   isUnavailable,
   onOpen,
   onOpenInNewTab,
+  onAltOpen,
   onToggle,
 }: RowHandlerOptions<Id>) {
   const open = (event: {
@@ -29,7 +33,15 @@ export function rowHandlers<Id extends string>({
   }) => {
     if (event.ctrlKey || event.metaKey) {
       onOpenInNewTab?.(id);
-    } else if (!(event.shiftKey || event.altKey)) {
+      return;
+    }
+    // Shift wins over Alt, so a Shift+Alt click does nothing, as a Shift-click does.
+    if (event.shiftKey) {
+      return;
+    }
+    if (event.altKey) {
+      onAltOpen?.(id);
+    } else {
       onOpen?.(id);
     }
   };

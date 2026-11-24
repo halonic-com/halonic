@@ -81,6 +81,8 @@ export interface OverviewPageProps {
   readonly onOpen: (id: string) => void;
   /** Ctrl Enter, a Ctrl-click or a middle click on a row. */
   readonly onOpenInNewTab: (id: string) => void;
+  /** Alt Enter or an Alt-click on a row, as Agents shows an agent in chat. Without it those do nothing. */
+  readonly onAltOpen?: ((id: string) => void) | undefined;
   /** The items are on their way. */
   readonly loading?: boolean;
   readonly failure?: OverviewFailure;
@@ -124,6 +126,7 @@ export function OverviewPage({
   words,
   onOpen,
   onOpenInNewTab,
+  onAltOpen,
   loading = false,
   failure,
   newButton,
@@ -232,6 +235,7 @@ export function OverviewPage({
         failure={failure}
         onOpen={onOpen}
         onOpenInNewTab={onOpenInNewTab}
+        onAltOpen={onAltOpen}
         itemMenu={itemMenu}
         openMenu={(item, element) => setMenu({ item, target: { element } })}
       />
@@ -277,6 +281,7 @@ interface OverviewBodyProps {
   readonly failure: OverviewFailure | undefined;
   readonly onOpen: (id: string) => void;
   readonly onOpenInNewTab: (id: string) => void;
+  readonly onAltOpen: ((id: string) => void) | undefined;
   readonly itemMenu: OverviewPageProps["itemMenu"];
   readonly openMenu: OpenMenu;
 }
@@ -294,6 +299,7 @@ function OverviewBody({
   failure,
   onOpen,
   onOpenInNewTab,
+  onAltOpen,
   itemMenu,
   openMenu,
 }: OverviewBodyProps) {
@@ -344,6 +350,7 @@ function OverviewBody({
             empty={{ plain: true, title: words.emptySection(name) }}
             onOpen={onOpen}
             onOpenInNewTab={onOpenInNewTab}
+            {...(onAltOpen === undefined ? {} : { onAltOpen })}
           />
         ) : (
           <List
@@ -353,6 +360,7 @@ function OverviewBody({
             groupHeadingLevel={2}
             onOpen={onOpen}
             onOpenInNewTab={onOpenInNewTab}
+            {...(onAltOpen === undefined ? {} : { onAltOpen })}
           />
         );
       })}

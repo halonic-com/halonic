@@ -388,6 +388,7 @@ export function AgentsView({
           }}
           onOpen={openRow}
           onOpenInNewTab={openRowInNewTab}
+          {...altOpenOf(showInChat, phone, listingOf, openRow)}
         />
       )}
       {creating && (
@@ -416,4 +417,25 @@ export function AgentsView({
       )}
     </div>
   );
+}
+
+/**
+ * The rows' Alt-click and Alt Enter (flow-assistant 5.7): show the agent in chat, as its ⋮'s
+ * **Show in chat**; a broken file's row opens as on a plain click. None without the Assistant or
+ * on a phone, where the ⋮ has no Show in chat either.
+ */
+function altOpenOf(
+  showInChat: AgentsViewProps["showInChat"],
+  phone: boolean,
+  listingOf: (id: string) => AgentListing | undefined,
+  openRow: (id: string) => void,
+): { readonly onAltOpen?: (id: string) => void } {
+  if (showInChat === undefined || phone) return {};
+  return {
+    onAltOpen: (id) => {
+      const listing = listingOf(id);
+      if (listing === undefined) openRow(id);
+      else showInChat.show(listing);
+    },
+  };
 }

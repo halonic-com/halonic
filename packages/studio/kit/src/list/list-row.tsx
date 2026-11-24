@@ -169,6 +169,7 @@ export interface RowShared<Id extends string> {
   readonly grid: GridNavigation;
   readonly onOpen: ((id: Id) => void) | undefined;
   readonly onOpenInNewTab: ((id: Id) => void) | undefined;
+  readonly onAltOpen: ((id: Id) => void) | undefined;
   readonly selection: ListSelection<Id> | undefined;
   /** The list's `current` row. */
   readonly current: Id | undefined;
@@ -189,6 +190,24 @@ export function isRowInert<Id extends string>(
   shared: Pick<RowShared<Id>, "onOpen" | "selection">,
 ): boolean {
   return row.inert === true || (shared.onOpen === undefined && shared.selection === undefined);
+}
+
+/** What a click, Enter and Space call. An inert row gets none, so they do nothing. */
+function rowActions<Id extends string>(shared: RowShared<Id>, isInert: boolean) {
+  if (isInert) {
+    return {
+      onOpen: undefined,
+      onOpenInNewTab: undefined,
+      onAltOpen: undefined,
+      onToggle: undefined,
+    };
+  }
+  return {
+    onOpen: shared.onOpen,
+    onOpenInNewTab: shared.onOpenInNewTab,
+    onAltOpen: shared.onAltOpen,
+    onToggle: shared.selection?.onToggle,
+  };
 }
 
 /** The main cell takes focus first, also after a checkbox cell. */
@@ -232,13 +251,10 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
   const mainColumn = firstFocusColumn(hasCheck);
   const mainCell = grid.cell(row.id, mainColumn);
   const more = moreClasses[phone ? "phone" : "desktop"];
-  // An inert row gets no handlers, so a click, Enter or Space does nothing.
   const { onClick, onAuxClick, onKeyDown } = rowHandlers({
     id: row.id,
     isUnavailable,
-    onOpen: isInert ? undefined : shared.onOpen,
-    onOpenInNewTab: isInert ? undefined : shared.onOpenInNewTab,
-    onToggle: isInert ? undefined : selection?.onToggle,
+    ...rowActions(shared, isInert),
   });
 
   return (

@@ -1050,7 +1050,8 @@ bar in each column.
 rows; the right arrow key reaches the row's More button and the left one comes back. At the ends
 they do nothing, and don't scroll the page. Enter opens the row, Space selects it when the list
 allows selection. With Ctrl or ⌘ held, Enter and a click call `onOpenInNewTab`, and do nothing
-when there isn't one; with Shift or Alt they do nothing. When the focused row is removed, focus
+when there isn't one; with Alt (⌥) held they call `onAltOpen`, as the Agents list shows an agent
+in chat, and do nothing without it; with Shift they do nothing. When the focused row is removed, focus
 goes to the row that took its place, else the one before. When the last row goes and the list has
 `empty`, focus that was in the list moves to the Empty state's title, and focus elsewhere stays
 put. It's a `grid`, not a `listbox`, because
