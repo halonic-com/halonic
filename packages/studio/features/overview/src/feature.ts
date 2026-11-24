@@ -11,7 +11,8 @@ import { OverviewStore } from "./overview-store.ts";
 export const overviewFeature = defineFeature({
   id: "overview",
   title: "Overview",
-  needs: [OverviewMessagingService],
+  // Until studio/services provides AgentMessaging, nothing reads OverviewService, so the app still starts.
+  wants: [OverviewMessagingService],
   provides: [OverviewService],
   register(studio) {
     studio.services.provide(

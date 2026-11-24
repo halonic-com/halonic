@@ -21,7 +21,7 @@ export function OverviewView({ store }: OverviewViewProps) {
 
   if (state.kind === "loading") return <p className="px-4 py-3 text-fg-muted">Loading…</p>;
   if (state.kind === "failed") {
-    return <p className="px-4 py-3 text-fg-danger">The overview couldn't be read.</p>;
+    return <p className="px-4 py-3 text-danger">The overview couldn't be read.</p>;
   }
   const { agents, blocked } = state.overview;
   return (
