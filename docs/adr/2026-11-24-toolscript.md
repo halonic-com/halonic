@@ -1,13 +1,13 @@
 # Halonic ToolScript: a TypeScript profile for reviewed actions and agent tools, run in an isolate
 
-- **Status:** Accepted (board, HAL-10, 24 Nov ~15:20 UTC), **revision 7**; security section **signed by Julian on revision 5** (HAL-17596). Revision 6 changes only where the code lives (sections 0, 5, 6, 7 and the CLI name), not section 3. Revision 7 changes how `eval` is removed (section 2.1) as Julian decided on HAL-17650.
+- **Status:** Accepted (board, HAL-10, 24 Nov ~15:20 UTC), **revision 8**; security section **signed by Julian on revision 5** (HAL-17596). Revision 6 changes only where the code lives (sections 0, 5, 6, 7 and the CLI name), not section 3. Revision 7 changes how `eval` is removed (section 2.1) as Julian decided on HAL-17650. Revision 8 makes our own QuickJS-ng build the plan (sections 2.1 to 2.3, 3.3 and 6), as the board chose on HAL-17781.
 - **Date:** 2026-11-24
 - **Author:** Liam. **Security reviewer:** Julian (section 3).
 - **Lands as:** `docs/adr/2026-11-24-toolscript.md` in `halonic` (task T1, HAL-17566).
 
 ## Revisions
 
-Written on HAL-17560 in six revisions on 24 Nov. Julian's security reviews (HAL-17596) are answered in sections 2 and 3, and Tomas's stepper properties (HAL-17488) in 3.4. Revision 6 follows the board's choice of the monorepo (HAL-10, ~15:20 UTC): the core is a set of `halonic` packages (section 5). Revision 7 (T4, HAL-17569): QuickJS can't compile the script with the `Eval` intrinsic off, so a checked host prelude replaces every path to the compiler instead (section 2.1), the `ToolScriptIsolate` port is named (section 5), and the T4 fence list gains Julian's conditions from HAL-17650 (section 6).
+Written on HAL-17560 in six revisions on 24 Nov. Julian's security reviews (HAL-17596) are answered in sections 2 and 3, and Tomas's stepper properties (HAL-17488) in 3.4. Revision 6 follows the board's choice of the monorepo (HAL-10, ~15:20 UTC): the core is a set of `halonic` packages (section 5). Revision 7 (T4, HAL-17569): QuickJS can't compile the script with the `Eval` intrinsic off, so a checked host prelude replaces every path to the compiler instead (section 2.1), the `ToolScriptIsolate` port is named (section 5), and the T4 fence list gains Julian's conditions from HAL-17650 (section 6). Revision 8 (HAL-17847) follows the board's runtime choice **13a** (HAL-17781, 24 Nov 20:35 UTC) with Julian's conditions: we build the QuickJS-ng WASM ourselves (HAL-17780), each run gets a fresh WASM module instance, the CPU limit is a hard kill of the worker, ToolScript isn't switched on for users before our build lands, and an OS-sandbox layer around the server host comes later as its own task.
 
 ## 0. Scope (board, 14:03 UTC)
 
@@ -34,7 +34,7 @@ Written on HAL-17560 in six revisions on 24 Nov. Julian's security reviews (HAL-
 
 - **Halonic ToolScript ("ToolScript" below) is not a new language.** It's ordinary TypeScript in one file, `*.tool.ts`, written under a few strict rules. Editors, `tsc` and Biome all work on it as usual.
 - **A script can only do what `ctx` lets it do.** Every effect goes through one injected object, `ctx`, whose methods are our **reviewed capabilities**: catalog step types for users, reviewed actions for agents. A script can loop, branch and shape data. It can **never add an API route, an address, a key or a library**.
-- **The runtime is the boundary; the static check is there to help authors.** Scripts run in **QuickJS compiled to WebAssembly** on desktop, Node and the Paperclip plugin, and in a **Cloudflare Dynamic Worker** (a V8 isolate with no network) on the Cloudflare target. Neither has `eval`, network, files or timers, and both enforce limits on memory, CPU time, calls and output. One fence suite runs against both. Nothing that matters for security depends on the static check.
+- **The runtime is the boundary; the static check is there to help authors.** Scripts run in **QuickJS-ng compiled to WebAssembly, built by us,** on desktop, Node and the Paperclip plugin, and in a **Cloudflare Dynamic Worker** (a V8 isolate with no network) on the Cloudflare target. Neither has `eval`, network, files or timers, and both enforce limits on memory, CPU time, calls and output. One fence suite runs against both. Nothing that matters for security depends on the static check.
 - **One header, two audiences, two separate registries.** `audience: "user"` scripts run only in Studio desktop, with the user's own sign-in through the shell. `audience: "agent"` scripts run only in the engine or the Paperclip plugin, with the agent's permissions. Neither host can even import the other's capabilities.
 - **Declarative steps are ToolScripts with no code.** A header with `steps` (the same blocks as `halonic.stepper-request/1`) and no `run` function is a complete ToolScript. The manual guide is generated from the header, as it is for steppers.
 - **The header carries the UI and wording too** (OpenUI card, table, form, buttons), so code, screens and text are reviewed together, and an action looks the same in the stepper, the Inbox, a chat reply and on the phone. The capability's own preview lines can't be hidden or reworded.
@@ -113,11 +113,11 @@ Scripts are compiled **at build time, never at run time**. `halonic toolscript b
 
 ## 2. The isolated runtime
 
-### 2.1 Choice: QuickJS (quickjs-ng) compiled to WebAssembly, via `quickjs-emscripten`
+### 2.1 Choice: QuickJS (quickjs-ng) compiled to WebAssembly by us, driven through `quickjs-emscripten-core`
 
 | Option | Desktop (webview) | Node engine / plugin | Cloudflare | Memory limit | CPU limit | Boundary |
 | --- | --- | --- | --- | --- | --- | --- |
-| **QuickJS WASM** (chosen) | yes | yes | yes | yes, hard | yes, interrupt handler | separate heap in WASM linear memory, no host objects |
+| **QuickJS WASM, built by us** (chosen) | yes | yes | yes | yes, hard (fixed-size memory) | yes: the interrupt handler, and the worker's hard kill as the real limit (2.3) | its own WASM module instance per run, so its own linear memory; no host objects |
 | `isolated-vm` | no | yes (native addon) | no | yes | yes | strong, but Node only |
 | `node:vm` | no | yes | no | no | partial | **not a security boundary** (Node docs) |
 | SES / Hardened JS | yes | yes | yes | no | no | good for capabilities, no resource limits |
@@ -128,6 +128,8 @@ Scripts are compiled **at build time, never at run time**. `halonic toolscript b
 
 The deciding reason for QuickJS is that it **runs the same on desktop, Node and the Paperclip plugin**: Studio's webview, the Node engine and Paperclip plugin, and Cloudflare Workers. It uses no Node APIs and gives hard memory and CPU limits. We use the **sync** build with promise-based host functions (`newPromise` plus `executePendingJobs`), not asyncify.
 
+**Board choice 13a (HAL-17781, 24 Nov 20:35 UTC):** QuickJS-ng in WASM, built by us, on every host except Cloudflare, which keeps the Dynamic Worker. **workerd** on server and desktop (13b) is the fallback, only if we ever need full V8 speed; its per-isolate limits would have to be checked in a spike first.
+
 **How `eval` and `Function` are removed:**
 - `eval` is removed by a fixed host prelude that replaces every path to the compiler with a frozen thrower, checked by the host before each run. The `Eval` intrinsic stays on because QuickJS needs it to compile the script: with `Eval` off, the context refuses every source text, the host's own included, and `quickjs-emscripten` doesn't expose loading precompiled bytecode (found in T4, decided with Julian on HAL-17650).
 - The paths the prelude replaces are `globalThis.eval`, `globalThis.Function`, the `constructor` of the function, async function, generator and async-generator prototypes, and the thrower's own `constructor`. Each slot is non-writable and non-configurable; the thrower and its prototype chain up to `Function.prototype` are frozen. The prelude deletes nothing.
@@ -135,7 +137,11 @@ The deciding reason for QuickJS is that it **runs the same on desktop, Node and 
 - The context's intrinsics list is explicit: `Proxy`, `TypedArrays` and the bignum extras are off, and there is no module loader, so `import()` of any string is refused and `std` and `os` aren't globals.
 - The fence suite tests behaviour, not mechanism: every path must throw. A unit test pins the intrinsics list and the prelude's list of paths. If upstream ever exposes bytecode loading (HAL-17651), switching to a context without the compiler needs no fence test change.
 
-**Isolates are never reused.** Each run gets a new runtime and context, disposed of when the run ends or a limit trips. Both libraries are MIT-licensed. The dependency (`quickjs-emscripten-core` and its `@jitl/quickjs-ng-wasmfile-release-sync` variant, both pinned to exactly the same version; any update reruns the fence suite and needs my dependency review) is used only by `adapters/toolscript-quickjs`, with a `dependencies.json` entry (my approval). Everything else reaches it only through the `ToolScriptHost` port.
+**We build the engine ourselves (HAL-17780); this is the plan, not a fallback.** The wrapper's prebuilt WASM has one maintainer and carries an older quickjs-ng than upstream, with bugs that later releases fix. So `adapters/toolscript-quickjs` builds the release-sync WASM itself from a **pinned quickjs-ng release (0.13 or later)** and the wrapper's MIT C glue, with a pinned Emscripten toolchain and a **fixed-size memory** (no growth). CI builds it twice, checks the two builds match byte for byte and that the shipped module matches the source, and a unit test pins the engine version. `quickjs-emscripten-core` stays the JavaScript API, through `newVariant`; the prebuilt `@jitl/quickjs-ng-wasmfile-release-sync` variant goes. Both are MIT-licensed. `quickjs-emscripten-core` and the build's pins (engine, glue, toolchain image) are used only by `adapters/toolscript-quickjs`, with a `dependencies.json` entry; any update reruns the fence suite and needs my dependency review. Nothing above the `ToolScriptIsolate` port changes, and everything else reaches the engine only through the `ToolScriptHost` port.
+
+**No user runs before our build (blocks T9).** ToolScript isn't switched on for users, in Studio or anywhere else, until HAL-17780 has landed and the fence suite passes against our build. Until then the prebuilt variant is used only in tests and development.
+
+**Isolates are never reused: one fresh WASM module instance per run** (Julian, HAL-17781). Each run instantiates the WASM module anew, with its own linear memory, then makes a new runtime and context in it; the instance is dropped when the run ends or a limit trips. The compiled module (`WebAssembly.Module`, code only) may be cached and shared; an instance and its memory never are. `quickjs-emscripten` shares one module, and so one linear memory, across runtimes by default, and then a memory bug in one run could read or corrupt another run's heap in the same host process. So the adapter never reuses a module instance, not even for a later run of the same artifact, and a fence test (T4) pins it.
 
 **Cloudflare target: a Dynamic Worker, not QuickJS (board question, 14:11 UTC).**
 - **How it works:** the Worker Loader starts the artifact's code in a new V8 isolate in a few milliseconds. We start it with:
@@ -160,7 +166,7 @@ The deciding reason for QuickJS is that it **runs the same on desktop, Node and 
 | Host | Audience | Process | Kill switch |
 | --- | --- | --- | --- |
 | Studio desktop, page side (`studio/services` wires it) | `user` only | a dedicated **Web Worker** that holds the QuickJS instance | `worker.terminate()` when a limit trips or the stepper closes |
-| Desktop or server engine (Node) | `agent` only | a `worker_threads` Worker per run | `worker.terminate()` |
+| Desktop or server engine (Node) | `agent` only | a `worker_threads` Worker per run | `worker.terminate()`; an OS-sandbox layer around it comes later (below) |
 | Paperclip plugin (phase 3) | `agent` only | same adapter, inside the plugin process | same |
 | Cloudflare target | `agent` only | a **Dynamic Worker** per run, with `globalOutbound: null` and RPC stubs only (2.1) | the platform's CPU limit; the parent drops the stub |
 
@@ -168,6 +174,8 @@ The deciding reason for QuickJS is that it **runs the same on desktop, Node and 
 - **Studio:** the Web Worker loads from a dedicated script under its own CSP: `default-src 'none'; connect-src 'none'; script-src 'self' 'wasm-unsafe-eval'`. It gets no Tauri IPC, because the Tauri capability files grant the worker nothing. Its only channel is `postMessage` to `studio/services`. A worker doesn't inherit the page's `<meta>` CSP, so the CSP is sent as a response header for the worker script by Tauri's custom protocol, and a test checks it's really delivered. Because `script-src 'self'` still allows same-origin `importScripts`, the app origin serves only our own bundle.
 - **Node:** the `worker_threads` worker starts with an empty `env` and no secrets in `argv` or `workerData`. The only channel is its message port, and keys stay in the parent.
 - **Either way, the parent side decides (S16).** It checks every message against the artifact's `uses`, `touches` and input schemas itself, and never trusts the worker's word.
+
+**An OS-sandbox layer around the server engine's ToolScript host comes later, as its own task.** The engine's ToolScript workers would then run inside the `Sandbox` port (`sandbox-srt` on Linux and macOS, `sandbox-mxc` on Windows) as defence in depth, with no network, a read-only file system, an empty environment and real memory and CPU caps. Where no such sandbox is available, that layer refuses to start rather than run without it. It doesn't block T9: QuickJS in a fresh module per run is the boundary on its own.
 
 User scripts run on the **page side** on purpose. There they have no more power than the page already has: they can only ask the shell for catalog steps through `ActionSender` (HAL-17491 2.4). They never run in the engine process, which must never hold `ActionSender`.
 
@@ -184,6 +192,8 @@ User scripts run on the **page side** on purpose. There they have no more power 
 | Memory on the Cloudflare host | the Workers platform limit per isolate (128 MB) applies instead of 32 MB; the host reports it as `limit.memory`, and the conformance suite expects whichever limit the host declares | same |
 | Arguments to one `ctx` call, after the plain-data copy (S15) | 8 KB, at most 8 levels deep, arrays of at most 100 items | same |
 | Pending promises | 32 | 32 |
+
+**The CPU limit is a hard kill of the worker.** The interrupt handler stops a script at its next check, but long native operations (a regex, a sort, building a big string) check it rarely or not at all. So in every host, the plugin included, the parent also counts the time the isolate is running (not waiting on `ctx` or the user) and **terminates the worker** (`Worker.terminate()` or `worker_threads` `terminate()`) once the CPU limit plus a short grace has passed, whatever the isolate is doing. On Cloudflare the platform's CPU limit is that hard kill.
 
 When a limit trips, the run stops with a named reason (`limit.cpu`, `limit.memory`, …) that goes into the record, and the host throws the isolate away. Nothing is retried on its own. **No outside libraries:** the only code in the isolate is the script and a fixed prelude of our own (`ctx` wiring, frozen). Lodash, an SDK or anything else can't be bundled in, because P1 refuses imports and the builder bundles nothing.
 
@@ -223,7 +233,7 @@ A **capability** is one reviewed operation with a typed input schema, a typed an
 
 - A trusted **user script with a logic bug** can make many reviewed writes. Answers: S9's per-write preview, the limit of 100 calls, and `irreversible` confirmed one at a time.
 - An **agent tool** composes the agent's own powers. It can do nothing the agent couldn't do with two tool calls, but it can do them without the model seeing the step in between. Answers: S3 makes `uses` part of the review, and the phase 3 rule that tool changes need Liam (and Julian for keys, permissions and network) still applies.
-- **QuickJS bugs**: a WASM escape still lands in the host's worker, which has only the capabilities wired for that audience. On the server we may add the OS sandbox as an outer layer later (T7 decides).
+- **QuickJS bugs**: a WASM escape still lands in the host's worker, which has only the capabilities wired for that audience. On the server an OS-sandbox layer goes around the engine's ToolScript host later, as its own task (2.2).
 - **Cloudflare:** answered by the Dynamic Worker host (2.1). The loaded isolate holds only RPC stubs and no secret bindings, and it can't reach the network. Until that host passes the fence suite (T11), agent ToolScripts don't run on the Cloudflare target.
 
 ### 3.4 The stepper's five properties hold for `audience: user` (Tomas, HAL-17488)
@@ -301,7 +311,7 @@ The board chose the monorepo on 24 Nov at ~15:20 UTC (HAL-10), replacing its 14:
 **Next to them, in the same repo:** the capability registries and their implementations (catalog step types for `user` in `core/action-catalog`, phase 3 actions for `agent`), the Studio, engine and Paperclip plugin wiring, and the **library** of reviewed scripts next to the capabilities they call (section 7).
 
 **Rules that keep it modular:**
-- Only `adapters/toolscript-check`, `adapters/toolscript-quickjs` and `adapters/cloudflare-toolscript` hold vendor code (the TypeScript compiler, `quickjs-emscripten`, the Workers API), each with a `dependencies.json` entry and my approval.
+- Only `adapters/toolscript-check`, `adapters/toolscript-quickjs` and `adapters/cloudflare-toolscript` hold vendor code (the TypeScript compiler, `quickjs-emscripten-core` and our quickjs-ng build, the Workers API), each with a `dependencies.json` entry and my approval.
 - The engine, Studio, targets and the plugin reach a run **only through the `ToolScriptHost` port**; the wiring (`studio/services`, the Node and Cloudflare targets) picks the adapter.
 - Below that port, an isolate is reached through the `ToolScriptIsolate` port in `core/ports`: one fresh isolate per run, given code, input, host functions by namespace and limits, giving back output or a fixed reason. `adapters/toolscript-quickjs` and `adapters/cloudflare-toolscript` implement it, `core/toolscript-host` builds on it, and `testing/toolscript-fence` runs against it.
 - No `toolscript*` package imports a capability registry; registries are passed in (S1, S5).
@@ -319,6 +329,7 @@ The board chose the monorepo on 24 Nov at ~15:20 UTC (HAL-10), replacing its 14:
 | T2 | HAL-17567 | `core/toolscript`: header schema (with `touches`, `ui`, `examples`), types, artifact format | Maya | none | `packages/core/toolscript/src/header.test.ts` covers strict keys, risk ≥ `uses`, no `secret` for `agent`, `steps` and `run` exclusive, `ui` only from the four components, and `touches` only from `inputs` |
 | T3 | HAL-17568 | `adapters/toolscript-check`: rules P1–P7, reproducible build | Elena | T2 | one fixture per rule yields exactly that rule's message; the test `build-is-reproducible` passes |
 | T4 | HAL-17569 | `adapters/toolscript-quickjs` (the isolate) and `testing/toolscript-fence`, **security PR** | Mateo | T1 | the T4 fence list below passes with the static check off |
+| T4b | HAL-17780 | our own quickjs-ng WASM build (2.1) in `adapters/toolscript-quickjs`, **security PR** | Mateo | T4 | the fence suite passes against our build with the static check off; a unit test pins the engine version (0.13 or later) |
 | T5 | HAL-17570 | `core/toolscript-host`: `ctx` by audience, handles, frozen arguments, batches, `touches`, the `ui` preview block; `adapters/toolscript-quickjs` implements `ToolScriptHost` with it, **security PR** | Priya | T2, T4 | tests for S3, S4, S7, S8, S9, S14–S17 pass against an `acme` registry; the `ToolScriptHost` contract passes against `adapters/toolscript-quickjs` |
 | T8 | HAL-17573 | `halonic toolscript check`, `build`, `guide`, `test`; `docs/guides/toolscript.md`; `examples/acme/tools/` | Maya | T3 | `pnpm exec node apps/cli/bin/halonic.js toolscript check examples/acme/tools/bad-eval.tool.ts` prints `P4: eval is not allowed in a ToolScript` and exits 1; `guide` prints the pinned guide |
 | T10 | HAL-17589 | library index and search: the `toolscript-index/1` format and ranking in `core/toolscript`, `halonic toolscript index` and `search`, the agent skill text | Owen | T2, T8 | `index` on `examples/acme/tools/` writes the pinned `toolscript-index.json`; `search "release variable"` returns `acme.sync-release-variables@1` first with its declaration |
@@ -332,7 +343,8 @@ The board chose the monorepo on 24 Nov at ~15:20 UTC (HAL-10), replacing its 14:
 - prototype writes; another `this`; a `ctx` call after the run ends or after a limit trips;
 - getters, `Proxy`, `Symbol.toPrimitive`, `toJSON` and `valueOf` in arguments;
 - an 8 KB argument cap; forged handles and another run's handles; reading a secret handle;
-- the limits for CPU, memory, stack, promises and output;
+- the limits for CPU, memory, stack, promises and output; a long native operation (such as a catastrophic regex) is stopped by the worker's hard kill within the CPU limit plus the grace;
+- **a fresh WASM module instance per run:** run 1 writes a global and a value in its heap, and run 2 in the same host process sees neither; the adapter never starts a run on a module instance that already ran one;
 - the worker CSP, including `importScripts` of a `blob:`, `data:` or remote URL;
 - an empty Node `env`;
 - on the Cloudflare host: an argument that is or contains a stub, function or promise (`toolscript.bad-argument`), a stub saved and called after the run ends, a module global set in run 1 and read in run 2, and `fetch`, `cloudflare:sockets` `connect()` and a remote `import` (`toolscript.no-network`).
@@ -341,7 +353,7 @@ The board chose the monorepo on 24 Nov at ~15:20 UTC (HAL-10), replacing its 14:
 
 | # | Task | PR | Owner | Blocked by | Done when |
 | --- | --- | --- | --- | --- | --- |
-| T9 | HAL-17591 | wiring: `studio/services` (user host) and the Node target (agent host) pick `adapters/toolscript-quickjs`; the S1 and S5 checks in `tooling/check`; the agent tool `toolscript_search` in `harness-bridge`, **security PR** | Priya | T5, T10 | the S1 rule fails on a fixture with one id in both registries; the S5 rule fails on a fixture importing `ActionSender` from `core/engine`; `toolscript_search` finds the `acme` example |
+| T9 | HAL-17591 | wiring (the first time users can run ToolScript): `studio/services` (user host) and the Node target (agent host) pick `adapters/toolscript-quickjs`; the S1 and S5 checks in `tooling/check`; the agent tool `toolscript_search` in `harness-bridge`, **security PR** | Priya | T5, T10, T4b (HAL-17780) | the S1 rule fails on a fixture with one id in both registries; the S5 rule fails on a fixture importing `ActionSender` from `core/engine`; `toolscript_search` finds the `acme` example |
 
 **Adopt Halonic ToolScript** (one task per consuming track, all blocked by T9):
 
@@ -421,9 +433,10 @@ I agree with Chief's proposal, with these specifics.
 
 ## Consequences
 
-- One header and one host for both audiences; two runtimes (QuickJS, and a Dynamic Worker on Cloudflare) that pass one fence suite. Authors use their normal TypeScript tools.
+- One header and one host for both audiences; two runtimes (QuickJS-ng built by us, and a Dynamic Worker on Cloudflare) that pass one fence suite. Authors use their normal TypeScript tools.
 - What a user can be asked to run is still bounded by the catalog's route list, and what an agent tool can do is still bounded by the reviewed actions. ToolScript adds composition, not power.
 - No second repo: the core uses `halonic`'s CI, guard, review rules and releases (section 5).
-- New reviewed surfaces: the QuickJS dependency, the Dynamic Worker host, the `ui` renderer, the fence suite, the S5 dependency wall, and the capability registries (changing a capability is a security review, as for a step type).
+- New reviewed surfaces: our QuickJS-ng build and its pins, the Dynamic Worker host, the `ui` renderer, the fence suite, the S5 dependency wall, and the capability registries (changing a capability is a security review, as for a step type).
 - It changes the phase 3 rule on workspace code (section 4) and adds the instruction trust store to user scripts from workspaces.
+- We own the engine build: each quickjs-ng update is our job (a pin bump, a rebuild and the fence suite), not the wrapper's.
 - Harder: QuickJS is slower than V8 (fine for orchestration that is mostly waiting on `ctx`), and the manual guide for a branching script can only list what it may do, not the exact order.
