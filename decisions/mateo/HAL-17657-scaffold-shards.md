@@ -12,9 +12,8 @@ with two legs. Both check out, install and generate the same five `ci-example` p
 
 - `generated`: `pnpm verify --full` with the same `--only` folders and `--also @halonicjs/app-studio`,
   so the repo-wide checks, the generated packages, the Studio app, their dependents and the trace
-  check, as before, then `turbo run typecheck lint build --filter=...halonic`. Only `--also halonic`
-  moves out of verify.
-- `cli`: `turbo run test --filter=...halonic`. With the step above, these are the four tasks
+  check, as before. Only `--also halonic` moves out.
+- `cli`: `turbo run typecheck lint test build --filter=...halonic`, the same four tasks
   `--also halonic` gave verify (nothing depends on `halonic`, so it is the one package). On a GitHub
   runner it leaves Vitest its own worker count; on our CI server it keeps 2, as the build job does.
 
