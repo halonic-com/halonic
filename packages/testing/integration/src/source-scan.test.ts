@@ -41,6 +41,11 @@ verifies("integration.source-scan-imports", () => {
     [importRule, 'export { readFileSync } from "fs";'],
     [importRule, 'import "child_process";'],
     [importRule, 'import { a } from "../../outside.ts";'],
+    // A default import named `type`, which loads the module.
+    [importRule, 'import type from "fs";'],
+    [importRule, 'import type, { readFileSync } from "fs";'],
+    [importRule, 'import { readFileSync } from /* the disk */ "fs";'],
+    [importRule, 'import /* setup */ "child_process";'],
     ["eval or new Function", '(0, eval)("1");'],
     ["eval or new Function", "const run = eval;"],
     ["eval or new Function", 'const make = (() => {}).constructor("return 1");'],
@@ -50,6 +55,13 @@ verifies("integration.source-scan-imports", () => {
       line: 2,
       rule,
     });
+  });
+
+  it("finds an import with a line comment before its name", () => {
+    const source = 'import { readFileSync } from // the disk\n  "fs";\n';
+    expect(scanIntegrationSource({ "src/a.ts": source })).toEqual([
+      { file: "src/a.ts", line: 2, rule: importRule },
+    ]);
   });
 
   it("finds an import written over several lines on the line that names it", () => {
@@ -69,6 +81,7 @@ verifies("integration.source-scan-imports", () => {
       'import { send } from "@acme/shared";',
       'import type { Integration } from "@halonicjs/ports";',
       'export type { IntegrationHost } from "@halonicjs/ports";',
+      'import type { IntegrationPolicy } from /* the sheet */ "@halonicjs/format";',
     ].join("\n");
     expect(scanIntegrationSource({ "src/a.ts": source }, { bundled: ["@acme/shared"] })).toEqual(
       [],

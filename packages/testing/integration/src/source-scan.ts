@@ -93,19 +93,20 @@ export function scanIntegrationSource(
 /**
  * Every static import and `export … from` in a source file, in order. Any
  * `from` followed by a quoted name counts, in a comment too, so an odd way
- * of writing an import can't hide one; only a plain `import type` is
- * type-only.
+ * of writing an import can't hide one, with comments before the name too;
+ * only a plain `import type` is type-only. `import type from` is a
+ * default import named `type`, so it isn't.
  *
  * @example
  * sourceImports(text); // [{ specifier: "zod", line: 1, typeOnly: false }] for a file that imports zod first
  */
 export function sourceImports(text: string): SourceImport[] {
   const typeOnlyAt = new Set<number>();
-  for (const match of text.matchAll(/\b(?:import|export)\s+type\s+[\w$*{},\s]*?\bfrom\s*["']/g)) {
+  for (const match of text.matchAll(typeOnlyImport)) {
     typeOnlyAt.add(match.index + match[0].length);
   }
   const imports: SourceImport[] = [];
-  for (const match of text.matchAll(/\b(?:from|import)\s*(["'])([^"'\n]*)\1/g)) {
+  for (const match of text.matchAll(anyImport)) {
     const specifier = match[2] ?? "";
     const at = match.index + match[0].length - specifier.length - 1;
     imports.push({
@@ -116,6 +117,22 @@ export function sourceImports(text: string): SourceImport[] {
   }
   return imports;
 }
+
+/** Whitespace and comments, which JavaScript allows between `from` and the name. */
+const gap = String.raw`(?:\s|/\*[\s\S]*?\*/|//[^\n]*\n)*`;
+
+/**
+ * A plain `import type` or `export type` clause up to its quote: `type` is
+ * followed by a name, `{` or `*`, never by `from` or `,`, which would make
+ * `type` itself the default import's name.
+ */
+const typeOnlyImport = new RegExp(
+  String.raw`\b(?:import|export)\s+type\s+(?!from\b)(?=[{*\w$])[\w$*{},\s]*?\bfrom${gap}["']`,
+  "g",
+);
+
+/** Every `from` or `import` followed by a quoted name: the name is group 2. */
+const anyImport = new RegExp(String.raw`\b(?:from|import)${gap}(["'])([^"'\n]*)\1`, "g");
 
 /** Whether `file` may import `specifier`: its own file inside the folder, or an allowed package. */
 function importAllowed(file: string, specifier: string, packages: readonly string[]): boolean {

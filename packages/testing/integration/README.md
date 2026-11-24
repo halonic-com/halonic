@@ -21,7 +21,7 @@ host, reads a file or leaks a key fails. Published as
 | `checkDeclaration` | the sheet fails its schema; the code differs from the sheet in kit version, name, version, or a tool's text, arguments, `risk` or `untrusted` (the loader's own check); the sheet lists the tools in another order than the code; a tool takes an argument without a description; a case calls an undeclared tool; or a recording isn't a valid `halonic.recording/1` file |
 | `checkPolicy` | a `{ fromSetting }` host has no usable URL in `settings` or one outside its class, plain `http` goes to a non-local address, or a secret goes over it to another machine |
 | `checkConnectIsQuiet` | connecting sends a request, or closing twice throws |
-| `checkSources` | the source uses global `fetch`, `globalThis`, `window` or `self`, `process`, `Deno` or `Bun`, `node:` modules, `require`, `import()`, `eval` in any form or `Function`, timers or other network APIs; or it imports anything but its own files (no `../` out of the scanned folder), `zod`, `@halonicjs/adapters/integration-kit` and the packages named in `bundled` (type-only imports are fine); or the subject has no `sources` |
+| `checkSources` | the source uses global `fetch`, `globalThis`, `window` or `self`, `process`, `Deno` or `Bun`, `node:` modules, `require`, `import()`, `eval` in any form, `Function` or `Function` reached through `.constructor` (so `error.constructor.name` counts too), timers or other network APIs; or it imports anything but its own files (no `../` out of the scanned folder), `zod`, `@halonicjs/adapters/integration-kit` and the packages named in `bundled` (type-only imports are fine); or the subject has no `sources` |
 | `checkCase` | the call fails, the kit refused a request (even one the integration swallowed), a request didn't match the next recorded exchange or some were never asked for, the global `fetch` was used, or a canary appears in the result, the error (its message, stack, own fields and `cause` chain), the log, a URL, or a request to a host the secret may not go to, as it is, URL-, form- or JSON-encoded, or in base64 or base64url, or the call took other pauses than the case's `waits` |
 | `checkAbort` | an aborted call doesn't reject |
 | `checkHostWait` | the host's `wait` doesn't clamp to 0 … 30 000 ms, or doesn't reject with the signal's reason when the signal is already aborted or aborts during the wait |
@@ -34,7 +34,9 @@ when it ends.
 
 `describeIntegrationConformance` always scans the source. Without `sources` it
 scans the code files in the test file's folder and below, other than tests
-(`*.test.*`, `*.spec.*`) and `node_modules`. A shared package the build bundles
+(`*.test.*`, `*.spec.*`) and `node_modules`, and every file the test imports by
+a relative path, directly or through other files. It fails when the test
+imports code outside its package (the nearest folder with a `package.json`). A shared package the build bundles
 in and the code imports by name goes in `bundled`, with its files in `sources`.
 
 The suite never really waits: the integration's `host.wait` is a `fakeWait`
@@ -119,7 +121,7 @@ plugin with only a backend) as Halonic does, and fails when the folder has no ma
 manifest fails its schema or its own checks, its `sdk` isn't this Halonic's, a file it names (the
 backend's `entry`, a local tool's `script`) is missing, or the backend's code differs from the
 backend. A backend then gets every check above, with each code file beside its `entry` scanned, and every
-file in the plugin folder those files import:
+file in the plugin folder those files import, with or without a file ending:
 
 ```ts
 import { fileURLToPath } from "node:url";

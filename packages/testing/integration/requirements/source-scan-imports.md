@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-17787 (the scan checks imports the way the fenced runner's module hook does)
 
-The source scan shall report each static `import`, `export … from` or side-effect import whose specifier is not a relative path that stays inside the scanned folder, `zod`, `@halonicjs/adapters/integration-kit` or a package the subject names as bundled, except a type-only import, and shall report every mention of `eval`, so indirect `eval` is caught too. The conformance suite shall always scan: with no `sources`, `describeIntegrationConformance` shall scan the code files in its test file's folder and below, other than tests and `node_modules`, and `checkSources` shall fail and say to pass `sources`. For a plugin, the suite shall also scan every file in the plugin folder that the backend's `entry` imports, directly or through other files.
+The source scan shall report each static `import`, `export … from` or side-effect import whose specifier is not a relative path that stays inside the scanned folder, `zod`, `@halonicjs/adapters/integration-kit` or a package the subject names as bundled, except a type-only import, and shall report every mention of `eval`, so indirect `eval` is caught too. The conformance suite shall always scan: with no `sources`, `describeIntegrationConformance` shall scan the code files in its test file's folder and below, other than tests and `node_modules`, and every file the test imports by a relative path, and shall fail when the test imports code outside its package, and `checkSources` shall fail and say to pass `sources`. For a plugin, the suite shall also scan every file in the plugin folder that the backend's `entry` imports, directly or through other files, written with or without a file ending.
 
 ## Examples
 

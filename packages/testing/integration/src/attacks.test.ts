@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, onTestFinished } from "vitest";
 import {
@@ -82,6 +85,48 @@ verifies("integration.source-scan-imports", () => {
   it("scans the code beside the test file when the test passes no sources", () => {
     expect(() => checkOwnSources(weatherSubject)).toThrow(
       /source-scan\.ts:\d+: eval or new Function/,
+    );
+  });
+
+  // Built from parts: this file is in the package the scan with no sources
+  // reads, so a written-out import here would count as this file's own.
+  const importLine = (path: string) => `import { weather } from ${'"'}${path}${'"'};\n`;
+
+  /** Runs `check` as if the running test were `test/conformance.test.ts` of a made-up package with these files. */
+  function asTestIn(files: Record<string, string>, check: () => void): void {
+    const folder = mkdtempSync(join(tmpdir(), "halonic-integration-"));
+    const testPath = expect.getState().testPath;
+    try {
+      for (const [path, text] of Object.entries({ "package.json": "{}", ...files })) {
+        mkdirSync(dirname(join(folder, path)), { recursive: true });
+        writeFileSync(join(folder, path), text);
+      }
+      expect.setState({ testPath: join(folder, "test", "conformance.test.ts") });
+      check();
+    } finally {
+      expect.setState({ testPath: testPath ?? "" });
+      rmSync(folder, { recursive: true, force: true });
+    }
+  }
+
+  it("scans the files a test with no sources imports from outside its own folder", () => {
+    asTestIn(
+      {
+        "test/conformance.test.ts": importLine("../src/index.ts"),
+        "test/names.ts": "export const city = 'Ghent';\n",
+        "src/index.ts":
+          'import { readFileSync } from "fs";\nexport const weather = readFileSync;\n',
+      },
+      () =>
+        expect(() => checkOwnSources(weatherSubject)).toThrow(
+          /src\/index\.ts:1: imports other than its own files, zod or the kit/,
+        ),
+    );
+  });
+
+  it("fails a test with no sources that imports code outside its package", () => {
+    asTestIn({ "test/conformance.test.ts": importLine("../../elsewhere/index.ts") }, () =>
+      expect(() => checkOwnSources(weatherSubject)).toThrow(/outside its package; pass/),
     );
   });
 

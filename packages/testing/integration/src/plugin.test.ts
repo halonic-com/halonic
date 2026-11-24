@@ -149,7 +149,7 @@ verifies("integration.source-scan-imports", () => {
     for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
   });
 
-  it("scans every file the backend's entry imports, beyond the entry's folder", () => {
+  it("scans every file the backend's entry imports, beyond the entry's folder and without an ending", () => {
     const folder = mkdtempSync(join(tmpdir(), "halonic-plugin-"));
     folders.push(folder);
     cpSync(weatherFolder, folder, { recursive: true });
@@ -160,18 +160,23 @@ verifies("integration.source-scan-imports", () => {
     );
     writeFileSync(
       join(folder, "lib", "weather.ts"),
-      'import { readFileSync } from "fs";\nexport { weather } from "./tools.ts";\n',
+      'import { readFileSync } from "fs";\nexport { weather } from "./tools";\n',
     );
-    writeFileSync(join(folder, "lib", "tools.ts"), "export const weather = (0, eval)('1');\n");
+    // Written without an ending: a folder with an index file.
+    mkdirSync(join(folder, "lib", "tools"));
+    writeFileSync(
+      join(folder, "lib", "tools", "index.ts"),
+      "export const weather = (0, eval)('1');\n",
+    );
     const subject = pluginBackendSubject({ ...weatherPlugin, folder });
     expect(Object.keys(subject.sources ?? {}).sort()).toEqual([
       "backend/index.ts",
       "backend/weather.ts",
-      "lib/tools.ts",
+      "lib/tools/index.ts",
       "lib/weather.ts",
     ]);
     expect(() => checkSources(subject)).toThrow(
-      /lib\/weather\.ts:1: imports other than its own files, zod or the kit\nlib\/tools\.ts:1: eval or new Function/,
+      /lib\/weather\.ts:1: imports other than its own files, zod or the kit\nlib\/tools\/index\.ts:1: eval or new Function/,
     );
   });
 });
