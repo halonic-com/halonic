@@ -3,13 +3,14 @@ import type { FakePaperclip } from "./fake-paperclip.test-helper.ts";
 import { PaperclipTeamStatus } from "./team-status.ts";
 
 // Answers of the architecture note's section 1.5 routes, recorded from our
-// server's Paperclip (cost routes, 24 Nov) and from the seats plugin route's
-// answer type (seats `GET /seats/summary`), with every value replaced by Acme's.
+// server's Paperclip (cost routes, 24 Nov) and from the two plugin routes'
+// answer types (seats `GET /seats/summary`, agent-tools `GET /github/summary`
+// and `GET /github/pr/{number}`), with every value replaced by Acme's.
 
 /** The time the team status tests' clock reads. */
 export const teamNow = new Date("2026-11-24T10:10:00.000Z");
 
-/** When the seats summary was made. */
+/** The snapshot's own time, which the PR answers carry as `asOf`. */
 export const takenAt = "2026-11-24T10:00:00.000Z";
 
 const anthropic = { provider: "anthropic", biller: "anthropic", eventCount: 4 };
@@ -169,16 +170,115 @@ export const seatsSummary = {
   proposal: { text: "Move Ada to reserve-1.", at: takenAt },
 };
 
+/** A pull request of the GitHub summary; `changes` replaces fields. */
+export function pull(number: number, changes: Record<string, unknown> = {}) {
+  return {
+    number,
+    title: `Change ${number}`,
+    author: { kind: "agent", name: "ada" },
+    work: "ACME-7",
+    state: "open",
+    updatedAt: "2026-11-24T08:00:00.000Z",
+    mergedAt: null,
+    draft: false,
+    mergeable: "yes",
+    ciOk: "success",
+    inQueue: false,
+    fastTrack: false,
+    approvedBy: [],
+    failedCheck: null,
+    reviewCounts: null,
+    dequeued: null,
+    ...changes,
+  };
+}
+
+/** `github/summary`: one repository, with a queue of one group and one waiting entry. */
+export const githubSummary = {
+  takenAt,
+  repos: [
+    {
+      repo: "acme/app",
+      defaultBranch: "main",
+      open: [
+        pull(11, { inQueue: true, approvedBy: ["Bo"] }),
+        pull(12, { inQueue: true }),
+        pull(13, {
+          author: { kind: "person", name: "the board" },
+          ciOk: "failure",
+          failedCheck: "typecheck",
+        }),
+        pull(14, { author: { kind: "person", name: "outside contributor" }, work: null }),
+        pull(15, { dequeued: { at: "2026-11-24T09:00:00.000Z", reason: "group failed" } }),
+      ],
+      recent: [pull(10, { state: "merged", mergedAt: "2026-11-24T07:00:00.000Z" })],
+      queue: [
+        {
+          number: 11,
+          position: 1,
+          state: "AWAITING_CHECKS",
+          enqueuedAt: "2026-11-24T09:30:00.000Z",
+          groupHead: "abc1234",
+          estimatedSeconds: 900,
+          groupCiOk: null,
+          jobsWaiting: 0,
+          waitingSince: null,
+        },
+        {
+          number: 12,
+          position: 2,
+          state: "QUEUED",
+          enqueuedAt: "2026-11-24T09:40:00.000Z",
+          groupHead: null,
+          estimatedSeconds: null,
+          groupCiOk: null,
+          jobsWaiting: 2,
+          waitingSince: "2026-11-24T09:50:00.000Z",
+        },
+      ],
+    },
+  ],
+  mergeSpeed: {
+    hours: 24,
+    merges: 8,
+    mergesPerHour: 0.3,
+    exits: 9,
+    dropRate: 0.1,
+    medianMinutes: 42,
+    longestMinutes: 90,
+  },
+};
+
+/** `github/pr/13`: the board's pull request with a failing check. */
+export const githubPull13 = {
+  takenAt,
+  repo: "acme/app",
+  pull: githubSummary.repos[0]?.open[2],
+  failingChecks: ["typecheck"],
+  pendingChecks: [],
+  approvals: [],
+  labels: [],
+  queue: null,
+};
+
 /** Serves the recorded answers on the section 1.5 routes. */
 export function serveTeam(paperclip: FakePaperclip): FakePaperclip {
   const costs = `/api/companies/${company}`;
   return paperclip
+    .on("GET", `/api/companies/${company}/agents`, {
+      body: [
+        { id: agentAda, name: "Ada" },
+        { id: agentBo, name: "Bo" },
+      ],
+    })
     .on("GET", `${costs}/costs/summary`, { body: costsSummary })
     .on("GET", `${costs}/costs/by-provider`, { body: costsByProvider })
     .on("GET", `${costs}/costs/by-agent`, { body: costsByAgent })
     .on("GET", `${costs}/costs/by-agent-model`, { body: costsByAgentModel })
     .on("GET", `${costs}/budgets/overview`, { body: budgetsOverview })
-    .on("GET", "/api/plugins/halonic.seats/api/seats/summary", { body: seatsSummary });
+    .on("GET", "/api/plugins/halonic.seats/api/seats/summary", { body: seatsSummary })
+    .on("GET", "/api/plugins/halonic.agent-tools/api/github/summary", { body: githubSummary })
+    .on("GET", "/api/plugins/halonic.agent-tools/api/github/pr/13", { body: githubPull13 });
 }
 
 /** A team status reader for the Acme connection on `paperclip`. */

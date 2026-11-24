@@ -41,7 +41,31 @@ export const paperclipRequests = {
   spendByAgentModel: { method: "GET", path: "/api/companies/:company/costs/by-agent-model" },
   budgetsOverview: { method: "GET", path: "/api/companies/:company/budgets/overview" },
   seatsSummary: { method: "GET", path: "/api/plugins/halonic.seats/api/seats/summary" },
+  // Pull requests and the merge queue (`paperclip-client.team-pull-requests`, HAL-17681),
+  // from the agent-tools plugin's stored snapshot: the GitHub token stays with the plugin.
+  pullRequestsSummary: {
+    method: "GET",
+    path: "/api/plugins/halonic.agent-tools/api/github/summary",
+  },
+  pullRequestDetail: {
+    method: "GET",
+    path: "/api/plugins/halonic.agent-tools/api/github/pr/:number",
+  },
 } as const satisfies Record<string, { method: "GET" | "POST"; path: string }>;
+
+/**
+ * Segments that must be more than one safe segment: a pull request number
+ * is a positive integer of at most 9 digits, as the plugin route requires.
+ */
+const segmentRules: Readonly<Record<string, RegExp>> = {
+  number: /^[1-9]\d{0,8}$/,
+};
+
+/** Whether `value` may fill segment `:segment`: safe, and passing the segment's own rule. */
+export function fitsSegment(segment: string, value: string): boolean {
+  const rule = segmentRules[segment];
+  return isSafeSegment(value) && (rule === undefined || rule.test(value));
+}
 
 /** The name of one request on {@link paperclipRequests}. */
 export type PaperclipRequestName = keyof typeof paperclipRequests;
@@ -85,7 +109,7 @@ export function buildPath(name: PaperclipRequestName, values: PathValues): strin
       }
       const segment = part.slice(1);
       const value = values[segment];
-      if (value === undefined || !isSafeSegment(value)) {
+      if (value === undefined || !fitsSegment(segment, value)) {
         throw new UnsafeIdError(segment);
       }
       return encodeURIComponent(value);
@@ -103,7 +127,9 @@ export function matchesRequest(name: PaperclipRequestName, method: string, path:
   }
   return patternParts.every((patternPart, index) => {
     const part = parts[index] ?? "";
-    return patternPart.startsWith(":") ? isSafeSegment(part) : patternPart === part;
+    return patternPart.startsWith(":")
+      ? fitsSegment(patternPart.slice(1), part)
+      : patternPart === part;
   });
 }
 

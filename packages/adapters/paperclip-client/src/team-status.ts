@@ -10,10 +10,19 @@ import type {
   TeamStatus,
   TeamStatusParts,
 } from "@halonicjs/ports";
+import { checkedOrigin } from "./address.ts";
 import { ChangeFeed } from "./changes.ts";
 import { PaperclipIds } from "./ids.ts";
+import { asRecords, text } from "./json.ts";
 import { PaperclipReader } from "./reader.ts";
-import type { PaperclipRequestName } from "./requests.ts";
+import { fitsSegment, type PaperclipRequestName } from "./requests.ts";
+import {
+  type KnownAgent,
+  type PullContext,
+  toMergeQueues,
+  toPullRequestDetail,
+  toPullRequestLists,
+} from "./team-pulls.ts";
 import { toSeats } from "./team-seats.ts";
 import { rangeStart, type SpendContext, toAgentSpend, toSpendSummary } from "./team-spend.ts";
 import {
@@ -33,29 +42,34 @@ export interface PaperclipTeamStatusOptions extends TransportOptions {
 }
 
 /** The parts served by a plugin, which a server may not have installed. */
-type PluginPart = "seats";
+type PluginPart = "seats" | "pullRequests";
 
 /**
  * The Paperclip provider's {@link TeamStatus} for one connection
- * (`paperclip-client.team-status`, architecture section 1.5): spend from
- * Paperclip's cost routes and seats from the `halonic.seats` plugin. It
- * only reads and sends only the requests on `paperclipRequests`. A part
- * whose plugin answers 404 reads as not served. Pull requests and the merge
- * queue come next (HAL-17606's second PR); until then that part isn't served.
+ * (`paperclip-client.team-status` and `paperclip-client.team-pull-requests`,
+ * architecture section 1.5): spend from
+ * Paperclip's cost routes, seats from the `halonic.seats` plugin, pull
+ * requests and the merge queue from the `halonic.agent-tools` plugin's
+ * stored GitHub snapshot. It only reads, sends only the requests on
+ * `paperclipRequests`, and holds no GitHub token: the snapshot is the
+ * plugin's. A part whose plugin answers 404 reads as not served.
  */
 export class PaperclipTeamStatus implements TeamStatus {
   readonly #ids: PaperclipIds;
   readonly #company: string;
+  readonly #origin: string;
   readonly #now: () => Date;
   readonly #reader: PaperclipReader;
   readonly #feed = new ChangeFeed<MessagingId>();
   readonly #missing = new Set<PluginPart>();
+  #agents = new Map<string, KnownAgent>();
   #lastSeen: string | undefined;
 
   constructor(options: PaperclipTeamStatusOptions) {
     this.#now = options.now ?? (() => new Date());
     this.#ids = new PaperclipIds(options.connection);
     this.#company = options.company;
+    this.#origin = checkedOrigin(options.address);
     this.#reader = new PaperclipReader(new PaperclipTransport(options), this.#now);
   }
 
@@ -65,7 +79,7 @@ export class PaperclipTeamStatus implements TeamStatus {
         source: this.#ids.source(),
         spend: true,
         seats: !this.#missing.has("seats"),
-        pullRequests: false,
+        pullRequests: !this.#missing.has("pullRequests"),
       },
     ];
   }
@@ -93,15 +107,26 @@ export class PaperclipTeamStatus implements TeamStatus {
   }
 
   async pullRequests(): Promise<readonly PullRequestList[]> {
-    return [];
+    const answer = await this.#pluginRead("pullRequests", "pullRequestsSummary", {});
+    return answer === undefined ? [] : toPullRequestLists(await this.#pullContext(), answer);
   }
 
-  async pullRequest(_id: MessagingId): Promise<PullRequestDetail | undefined> {
-    return undefined;
+  async pullRequest(id: MessagingId): Promise<PullRequestDetail | undefined> {
+    const [repo, number] = this.#ids.read(id, "pull") ?? [];
+    // A number the route would refuse is refused here, before any request.
+    if (repo === undefined || number === undefined || !fitsSegment("number", number)) {
+      return undefined;
+    }
+    const details = { path: { number }, query: { repo } };
+    const answer = await this.#pluginRead("pullRequests", "pullRequestDetail", details);
+    return answer === undefined
+      ? undefined
+      : toPullRequestDetail(await this.#pullContext(), answer);
   }
 
   async mergeQueue(): Promise<readonly MergeQueue[]> {
-    return [];
+    const answer = await this.#pluginRead("pullRequests", "pullRequestsSummary", {});
+    return answer === undefined ? [] : toMergeQueues(await this.#pullContext(), answer);
   }
 
   changes(): AsyncIterable<MessagingId> {
@@ -109,11 +134,17 @@ export class PaperclipTeamStatus implements TeamStatus {
   }
 
   /**
-   * Reads today's spend and the seats again and tells `changes` readers
-   * when either changed. The engine calls it on its 5-minute schedule.
+   * Reads today's spend, the seats, the pull requests and the queue again and
+   * tells `changes` readers when any of them changed. The engine calls it on
+   * its 5-minute schedule.
    */
   async refresh(): Promise<void> {
-    const seen = JSON.stringify([await this.spend("today"), await this.seats()]);
+    const seen = JSON.stringify([
+      await this.spend("today"),
+      await this.seats(),
+      await this.pullRequests(),
+      await this.mergeQueue(),
+    ]);
     const changed = this.#lastSeen !== undefined && seen !== this.#lastSeen;
     this.#lastSeen = seen;
     if (changed) {
@@ -133,7 +164,9 @@ export class PaperclipTeamStatus implements TeamStatus {
     const query = { ...details.query, companyId: this.#company };
     const answer = await this.#reader.send(name, { ...details, query });
     if (answer.kind === "failed" && answer.failure === "not-found") {
-      this.#missing.add(part);
+      if (name !== "pullRequestDetail") {
+        this.#missing.add(part);
+      }
       return undefined;
     }
     const body = bodyOf(name, answer);
@@ -147,5 +180,24 @@ export class PaperclipTeamStatus implements TeamStatus {
 
   #spendContext(range: SpendRange): SpendContext {
     return { ids: this.#ids, range, asOf: this.#now().toISOString() };
+  }
+
+  /** The mapping's context, with the company's agents read once so branch names find them. */
+  async #pullContext(): Promise<PullContext> {
+    if (this.#agents.size === 0) {
+      const records = asRecords(
+        await this.#reader.read("listAgents", { path: { company: this.#company } }),
+      );
+      this.#agents = new Map(
+        records.flatMap((record) => {
+          const id = text(record, "id");
+          const name = text(record, "name");
+          return id === undefined || name === undefined
+            ? []
+            : [[name.toLowerCase(), { id, name }] as const];
+        }),
+      );
+    }
+    return { ids: this.#ids, origin: this.#origin, agents: this.#agents };
   }
 }
