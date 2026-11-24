@@ -2,10 +2,11 @@
 
 Linux jobs of `ci.yml` for `halonic-com/halonic`, run on our own server instead of
 GitHub-hosted runners, **only for our own reviewed runs**: pushes to `main` now, merge groups
-later. The one exception is the **fast pool** (HAL-15972): open pull requests from our own
-branches that carry the `fast-track` label, on their own slots, with the shared caches read-only.
-Fork pull requests never run here. Plan and security review: HAL-14831 (Julian's changes C1–C8
-and the fork test T1); the fast pool: HAL-15972.
+later. The one exception is the **fast pool** (HAL-15972): open pull requests a person opened
+from our own branches, with or without a label since HAL-17463, on their own slots, with the shared
+caches read-only. Fork pull requests and bots' pull requests never run here. Plan and security
+review: HAL-14831 (Julian's changes C1–C8 and the fork test T1); the fast pool: HAL-15972 and
+HAL-17463.
 
 This folder is the server's setup **as built** (21 Nov 2026). A change here is deployed to the
 server by the board supervisor after it merges; the server doesn't pull from the repo.
@@ -15,7 +16,10 @@ server by the board supervisor after it merges; the server doesn't pull from the
 1. **Routing** (`.github/workflows/ci.yml`): a job uses `vars.CI_RUNNER_LARGE` or
    `vars.CI_RUNNER_SMALL` only for a merge group or a push to `main`, and only while the event is
    listed in `vars.CI_SELF_HOSTED_EVENTS`. Empty variables send everything to `ubuntu-24.04`.
-   This is routing, not security: a fork's pull request runs its own copy of `ci.yml`.
+   A pull request a person opened from our own branch uses `vars.CI_RUNNER_FAST` when it is set;
+   forks and bots (a `Bot` account, a login ending in `[bot]`, `dependabot`, `renovate`,
+   `renovate-bot`) stay on `ubuntu-24.04`. This is routing, not security: a pull request runs its
+   own copy of `ci.yml`.
 2. **The runner group** `halonic-ci` serves only `halonic-com/halonic`.
 3. **The hook** (`vm/job-started.sh`) is the boundary. It is baked into the image, runs before
    the job's first step and fails the job unless every check passes. It trusts nothing a
@@ -30,8 +34,10 @@ server by the board supervisor after it merges; the server doesn't pull from the
      and go into `halonic-com/halonic`, run `ci.yml@refs/pull/<n>/merge`, and see the three cache
      mounts as overlays or read-only. Then the hook asks the VM's gate about pull request `<n>`
      **now**, not as the event saw it: it must be open, not cross-repository, with a head
-     repository owned by `halonic-com`, still at the event's head commit, and labelled
-     `fast-track`. A gate or API failure, a missing field or a pull request not found is a refusal;
+     repository owned by `halonic-com`, still at the event's head commit, and opened by a person:
+     its author a `User` (not a `Bot`) whose login doesn't end in `[bot]` and isn't `dependabot`,
+     `renovate` or `renovate-bot` (HAL-17463; a label no longer counts). A gate or API failure, a
+     missing field or author or a pull request not found is a refusal;
    - a push must be to `main` and run `ci.yml@refs/heads/main`; a merge group must target `main`
      and run `ci.yml` from its own `gh-readonly-queue/main/pr-<n>-<sha>` ref;
    - **a merge group must hold only our own pull requests (C7):** the hook asks the VM's queue
@@ -65,8 +71,8 @@ it in the `fast` job).
 | Host | `host/halonic-ci-status.*`: a read-only status feed, fetched from the VM every minute over SSH with a key that can run only the status command. |
 | VM | Docker with `userns-remap`. One systemd unit per slot (`vm/halonic-runner@.service`). |
 | VM | `/etc/halonic-ci/app.pem`: the GitHub App's key (only permission: self-hosted runners), root-only `0400`. Never in the image, a container or a backup that leaves the VM. |
-| VM | Queue gate (C7): `vm/halonic-ci-gate.socket` listens on `/run/halonic-ci-gate/gate.sock`, which every container gets read-only. Each connection starts `vm/halonic-ci-gate@.service` (`vm/halonic-ci-gate.sh`), which answers one of two fixed GraphQL queries: one pull request's state, owner, head commit and labels for `GET /pr/<n>` (1-9 digits, the only input that reaches a query), `main`'s merge queue for anything else. Its token is `/etc/halonic-ci/queue-token`, root-only `0400`, handed to the service as a systemd credential under a throwaway user. |
-| VM | Fast pool (HAL-15972): fast slots' containers run under gVisor (`runsc`) on the Docker network `halonic-ci-fast` (no traffic between its containers, and none to the merge-group jobs on the default bridge), and get the gate as `vm/halonic-ci-gate-fast.socket` (`/run/halonic-ci-gate-fast/gate.sock`, 10 connections, at most 30 a minute, pull request queries only) instead of the merge queue's. |
+| VM | Queue gate (C7): `vm/halonic-ci-gate.socket` listens on `/run/halonic-ci-gate/gate.sock`, which every container gets read-only. Each connection starts `vm/halonic-ci-gate@.service` (`vm/halonic-ci-gate.sh`), which answers one of two fixed GraphQL queries: one pull request's state, owner, head commit and author for `GET /pr/<n>` (1-9 digits, the only input that reaches a query), `main`'s merge queue for anything else. Its token is `/etc/halonic-ci/queue-token`, root-only `0400`, handed to the service as a systemd credential under a throwaway user. |
+| VM | Fast pool (HAL-15972): fast slots' containers run under gVisor (`runsc`) on the Docker network `halonic-ci-fast` (no traffic between its containers, and none to the merge-group jobs on the default bridge), and get the gate as `vm/halonic-ci-gate-fast.socket` (`/run/halonic-ci-gate-fast/gate.sock`, 24 connections, at most 48 a minute, pull request queries only) instead of the merge queue's. |
 | VM | `/cache/trusted/{pnpm-store,turbo,ms-playwright}`: package, Turbo and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
 
 Site data stays out of this repo: `/etc/halonic-ci/pool.env` (see `vm/pool.env.example`),
@@ -82,7 +88,7 @@ integrity hash; the Turbo cache (the build job's `TURBO_CACHE_DIR`, HAL-15467; o
 **The fast pool never gets these folders read-write (C2, C8).** For each cache, a fast slot mounts
 an overlay on the VM: a snapshot of the shared folder is its read-only lower layer, and every write
 goes to an upper layer under `/cache/overlay/<slot>`, counted in the slot's quota and deleted with
-the job. A fast-track job reads what reviewed runs cached; nothing it writes reaches another job. It gets no
+the job. A pull request's job reads what reviewed runs cached; nothing it writes reaches another job. It gets no
 Turbo token either (`ci.yml` asks for one only off pull requests, and the cache hands a write token
 only to a push to `main`). The job runs under gVisor, which gives it a kernel of its own in user
 space, so a kernel bug it finds doesn't reach the VM, the App key or the merge-group jobs (C8).
@@ -118,6 +124,7 @@ for it to exit and cleans up. systemd starts the next cycle.
 | `fast-1` … `fast-3` | `halonic-ci-fast` | 6 | those of `large-11`, `large-10`, `large-9` | 6 GB → 16 GB | 20 GB |
 | `fast-4` … `fast-8` | `halonic-ci-fast` | 6 | those of `large-15` … `large-19` (shared) | 6 GB → 16 GB | 20 GB |
 | `fast-9`, `fast-10` | `halonic-ci-fast` | 6 | 15-20, 39-44 (shared with two large slots each) | 6 GB → 16 GB | 20 GB |
+| `fast-11` … `fast-24` | `halonic-ci-fast` | 4 | 0-3, 4-7, 8-11, 22-25, 26-29, 30-33, 34-37, 50-53, 56-59, 62-65, 74-77, 80-83, 86-89, 92-95 (shared with large slots; `fast-18` … `fast-24` also with `fast-3`, `fast-2`, `fast-1`, `fast-4` … `fast-7`) | 4 GB → 12 GB | 20 GB |
 
 The VM has 112 vCPUs (56 cores) and 128 GB. Each slot is pinned to its own vCPUs
 (`--cpuset-cpus`), so a job sees only those (`nproc`, Node's `availableParallelism`) and test
@@ -137,7 +144,9 @@ cgroup's `memory.high` sits 512 MB under the limit, so the kernel reclaims cache
 before the hard limit kills it, which gives the loop time to grow it. All slots start at
 19×6 + 3×2 = 120 GB and could grow to 19×16 + 3×3 = 313 GB, far more than the VM's 128 GB. The
 VM-wide reserve check (`MemAvailable` above the 4 GB step plus 4 GB) is the only thing that stops
-growth from overcommitting it.
+growth from overcommitting it. The 24 fast slots add 10×6 + 14×4 = 116 GB of start size: fast jobs
+peaked at 4.4 GB (p90 4.35 GB) over 24 h on 23–24 Nov, so most stay at their start size, and the same
+reserve check stops the rest from growing past what the VM has.
 
 Every container: all capabilities dropped, `no-new-privileges`, Docker's default seccomp and
 AppArmor profiles, `--pids-limit 8192`, no host devices, no Docker socket. The image
@@ -201,6 +210,16 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   Then set
   `CI_RUNNER_FAST` to `{"group":"halonic-ci","labels":["halonic-ci-fast"]}`. Off: clear
   `CI_RUNNER_FAST`, then stop the fast slots and start the large ones again.
+- **Every person's pull request** (HAL-17463, only after Julian's OK on that task). Keep copies of
+  the live `/etc/halonic-ci/pool-fast/pool.conf`, slot script, gate script and units, and the
+  current image (it holds the hook), first. Raise the VM's memory target (about 96 GB), then deploy the new
+  `vm/halonic-ci-gate.sh` and `vm/halonic-ci-gate-fast.socket` (`systemctl daemon-reload &&
+  systemctl restart halonic-ci-gate-fast.socket`), rebuild the image with the new hook, deploy
+  `vm/halonic-runner-slot.sh` and `vm/pool-fast.conf`, and add `halonic-runner@fast-11` …
+  `halonic-runner@fast-24` to `/etc/halonic-ci/slots` and start them. The new hook needs the new
+  gate (it reads the pull request's author), so deploy the gate first. Then a pull request without
+  a label should show its Linux checks on `hci-fast-*`. Off at once: clear `CI_RUNNER_FAST`. Back:
+  restore the copies and restart the gate socket and the slots.
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,
   set `IMAGE=` in `pool.env`, restart the slots.
 - **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images, stale work dirs and Turbo

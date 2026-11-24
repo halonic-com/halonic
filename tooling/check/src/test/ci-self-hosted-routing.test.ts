@@ -7,11 +7,17 @@ const workflow = readFileSync(
   "utf8",
 );
 
-/** The fast pool's part (HAL-15972): a fast-track pull request from our own branch. */
+/** The bots whose pull requests stay off our server (HAL-17463), besides any `[bot]` login. */
+const BOTS = ["dependabot", "renovate", "renovate-bot"];
+
+/** The fast pool's part (HAL-15972, HAL-17463): a pull request a person opened from our own branch. */
 const FAST =
   "github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != ''" +
   " && github.event.pull_request.head.repo.full_name == github.repository" +
-  " && contains(github.event.pull_request.labels.*.name, 'fast-track') && fromJSON(vars.CI_RUNNER_FAST)";
+  " && github.event.pull_request.user.type == 'User'" +
+  " && !endsWith(github.event.pull_request.user.login, '[bot]')" +
+  BOTS.map((bot) => ` && github.event.pull_request.user.login != '${bot}'`).join("") +
+  " && fromJSON(vars.CI_RUNNER_FAST)";
 
 /** The pool's part: a merge group or a push to main, for the runner in `variable`. */
 function pool(variable: "CI_RUNNER_LARGE" | "CI_RUNNER_SMALL"): string {
@@ -92,7 +98,7 @@ verifies("check.ci-self-hosted-routing", () => {
       );
     });
 
-    test("only a fast-track pull request from our own branch goes to the fast pool, with its variable set", () => {
+    test("only a pull request a person opened from our own branch goes to the fast pool, with its variable set", () => {
       const expression = routing("CI_RUNNER_SMALL");
       expect(expression.startsWith(`\${{ ${FAST} || `)).toBe(true);
       // Every condition must hold: the fast part is one chain of &&, without an ||.
@@ -101,9 +107,15 @@ verifies("check.ci-self-hosted-routing", () => {
         "github.event_name == 'pull_request'",
         "vars.CI_RUNNER_FAST != ''",
         "github.event.pull_request.head.repo.full_name == github.repository",
-        "contains(github.event.pull_request.labels.*.name, 'fast-track')",
+        "github.event.pull_request.user.type == 'User'",
+        "!endsWith(github.event.pull_request.user.login, '[bot]')",
+        "github.event.pull_request.user.login != 'dependabot'",
+        "github.event.pull_request.user.login != 'renovate'",
+        "github.event.pull_request.user.login != 'renovate-bot'",
         "fromJSON(vars.CI_RUNNER_FAST)",
       ]);
+      // A label no longer decides (HAL-17463): the hook's gate refuses bots, not a missing label.
+      expect(workflow).not.toContain("labels.*.name, 'fast-track'");
     });
   });
 });

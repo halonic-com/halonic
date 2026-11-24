@@ -41,6 +41,7 @@ case "$SLOT" in
   large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
   fast-[1-9]|fast-10) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
+  fast-1[1-9]|fast-2[0-4]) LABEL=halonic-ci-fast; CPUS=4; MEM=12g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
@@ -56,6 +57,11 @@ case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PR
 # the CPUs of large-15..19, and fast-9 (15-20) and fast-10 (39-44) straddle two large slots each, as
 # large-12..14 do: on purpose, since fast slots sit idle between pull requests; when both are busy,
 # both run slower.
+# fast-11..24 (HAL-17463, every person's pull request) get 4 CPUs each, GitHub's runner size, as two
+# whole cores. Each shares them with one to three large slots and none with another new fast slot;
+# fast-11..17 share them with no older fast slot, fast-18..24 each with one (4 of its 6). No twin
+# rule for them, as for fast-4..10: a large slot and a fast slot on the same cores both run slower.
+FAST4_FROM=(0 4 8 22 26 30 34 50 56 62 74 80 86 92)
 case "$SLOT" in
   large-12) CPUSET="3-8" ;;
   large-13) CPUSET="27-32" ;;
@@ -66,6 +72,7 @@ case "$SLOT" in
   fast-[4-8]) CPUSET="$(( 72+(N-4)*6 ))-$(( 77+(N-4)*6 ))" ;;
   fast-9)  CPUSET="15-20" ;;
   fast-10) CPUSET="39-44" ;;
+  fast-1[1-9]|fast-2[0-4]) CPUSET="${FAST4_FROM[N-11]}-$(( FAST4_FROM[N-11]+3 ))" ;;
   fast-*)  CPUSET="$(( (11-N)*6 ))-$(( (12-N)*6-1 ))" ;;
 esac
 # Fast slots take pull requests (HAL-15972), so they get their own pool config, and the other
