@@ -22,8 +22,12 @@ export interface AssistantHostParts {
   readonly trust: Pick<WorkspaceTrust, "isTrusted">;
   /** Answers on the workspace's engine, as the Try it chat does. */
   readonly answerChat: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
-  /** The window's engine connection, which says when the engine stopped answering. */
-  readonly engine?: Pick<ShellEngine, "on"> | undefined;
+  /** The window's engine connection, which says whether the engine answers. */
+  readonly engine?: Pick<ShellEngine, "on" | "connection"> | undefined;
+  /** The workspace's name, as the window shows it. */
+  readonly name: string;
+  /** Opens the window's trust check for a message it refused. */
+  readonly askTrust?: (() => Promise<"trusted" | "declined">) | undefined;
 }
 
 /**
@@ -41,13 +45,16 @@ export function provideAssistantHost(services: ServiceRegistry, parts: Assistant
       isTrusted: () => parts.trust.isTrusted(),
       answerChat: parts.answerChat,
       settings: services.get(HostSettingsService),
-      onEngineStopped:
+      engine:
         engine === undefined
           ? undefined
-          : (listener) =>
-              engine.on("engine.connection", (event) => {
-                if (event.state !== "connected") listener();
-              }),
+          : {
+              answering: () => engine.connection === "connected",
+              onChange: (listener) =>
+                engine.on("engine.connection", (event) => listener(event.state === "connected")),
+            },
+      workspaceName: parts.name,
+      askTrust: parts.askTrust,
     }),
   );
 }

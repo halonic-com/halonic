@@ -1,7 +1,7 @@
 import type { ChatAnswerEnd } from "@halonicjs/app";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
-import { EngineNotAnswering } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, isUntrustedRefusal } from "@halonicjs/studio-shell";
 import type { AssistantHost, Chat, ShownItem } from "../api.ts";
 import { cardReviewsOf } from "../cards/card-reviews.ts";
 import { buildChatWords } from "./build-chat-words.ts";
@@ -111,9 +111,15 @@ export class BuildChats {
 
   /**
    * Sends `message` in the chat shown, or, without one, continues the answer that reached the
-   * model call limit (flow-assistant 3.6). Says once how it ended.
+   * model call limit (flow-assistant 3.6) or tries a failed one again. Says once how it ended.
+   * When the host refuses it because the workspace isn't trusted, nothing was sent (H16): the chat
+   * goes back to how it was, nothing is announced, and `refused` gets the message.
    */
-  async send(message: string | undefined, announce: Announce): Promise<void> {
+  async send(
+    message: string | undefined,
+    announce: Announce,
+    refused?: (message: string | undefined) => void,
+  ): Promise<void> {
     const view = this.state.kind === "chat" ? this.state.view : undefined;
     if (view === undefined || view.answering) return;
     const chatId = view.chat.id;
@@ -153,15 +159,12 @@ export class BuildChats {
       });
       end = endOf(answer.end);
     } catch (error) {
-      const toolsRan = this.toolsRanSince(chatId, view.messages.length);
-      end =
-        error instanceof EngineNotAnswering
-          ? { kind: "engine-stopped", toolsRan }
-          : {
-              kind: "failed",
-              reason: error instanceof Error ? error.message : String(error),
-              toolsRan,
-            };
+      if (isUntrustedRefusal(error)) {
+        this.takeBack(view);
+        refused?.(message);
+        return;
+      }
+      end = endOfError(error, this.toolsRanSince(chatId, view.messages.length));
     }
     this.stoppers.delete(chatId);
     this.update(chatId, (now) => ({
@@ -172,6 +175,13 @@ export class BuildChats {
     }));
     await this.refresh(chatId);
     await this.announceEnd(chatId, end, announce);
+  }
+
+  /** Puts a chat back as it was before a message the host refused, which sent nothing. */
+  private takeBack(before: ChatView): void {
+    this.stoppers.delete(before.chat.id);
+    const { messages, ends } = before;
+    this.update(before.chat.id, () => ({ messages, ends, answering: false }));
   }
 
   /** Stops the answer of the chat shown; it ends with "Stopped by you.". */
@@ -199,7 +209,7 @@ export class BuildChats {
         this.show({ kind: "none" });
         return;
       }
-      this.show({ kind: "failed", reason: error instanceof Error ? error.message : String(error) });
+      this.show({ kind: "failed", reason: loadFailure(error) });
     }
   }
 
@@ -258,6 +268,21 @@ function viewOf(chat: Chat): ChatView {
 function isSameItem(one: ShownItem, other: ShownItem): boolean {
   const [a, b] = [one.item, other.item];
   return a.kind === b.kind && a.hub === b.hub && a.id === b.id;
+}
+
+/** Why a chat couldn't load: the engine not answering yet in its own words (H11), else the error. */
+function loadFailure(error: unknown): string {
+  if (error instanceof EngineNotAnswering || errorKindOf(error) === "unavailable") {
+    return buildChatWords.engineNotStarted;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** How an answer the host rejected ended: the engine stopped (H13), or it failed (H22, H23). */
+function endOfError(error: unknown, toolsRan: boolean): ReplyEnd {
+  if (error instanceof EngineNotAnswering) return { kind: "engine-stopped", toolsRan };
+  const reason = error instanceof Error ? error.message : String(error);
+  return { kind: "failed", reason, toolsRan };
 }
 
 function endOf(end: ChatAnswerEnd): ReplyEnd | undefined {

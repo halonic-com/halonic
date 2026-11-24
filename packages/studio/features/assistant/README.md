@@ -30,8 +30,13 @@ The desktop app provides the host for each open folder (`apps/studio/src/assista
 `studio.workspace-assistant`): answers on the engine's chat service with the Build chat's tools
 from `@halonicjs/assistant`. Until the sessions store lands (T14 PR 2 and 3), its chats last
 while the window is open. When Halonic's engine stops mid-answer, the reply ends with "Stopped
-when Halonic's engine stopped." (`assistant.chat.engine-stopped`). The chat tab, the chat menu,
-a card's states after a decision (T14 PR 8b) and the line under the box come later.
+when Halonic's engine stopped." (`assistant.chat.engine-stopped`). While the engine isn't
+answering, the chat says so at the top and Send waits (`assistant.chat.engine-not-answering`). A
+model from a workspace that isn't trusted opens the trust check instead of sending
+(`assistant.chat.trust-check`), and a message that looks like it holds a key stays in the box
+(`assistant.chat.key-in-message`). The chat tab, the chat menu, a card's states after a decision
+(T14 PR 8b) and the model's own lines under the box (no model, no key, local only, budget) come
+later.
 
 ## Example
 

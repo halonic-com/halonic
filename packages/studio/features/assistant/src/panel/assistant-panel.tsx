@@ -18,6 +18,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -34,6 +35,7 @@ import {
 } from "../chat/build-chats.ts";
 import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../chat/turns.ts";
 import { BuildComposer } from "./build-composer.tsx";
+import { useEngineAnswering, useTrustCheck } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
 import { SkillLink } from "./skill-link.tsx";
 
@@ -134,9 +136,31 @@ interface PanelBodyProps {
   readonly onOpenItem: (item: ItemRef) => void;
 }
 
-/** The chat, its first load (H7), a chat that can't load, or no chat (H3). */
+/** Opens the workspace page's Models, where keys are kept (models flow 3.1). */
+const openModelsCommand = "workspace.open-models";
+
+/**
+ * The chat, its first load (H7), a chat that can't load, or no chat (H3). While the engine doesn't
+ * answer, the chat says so at the top and Send waits with that line as its reason (H12, D5); Try
+ * again and Continue wait too. A message the host refused because the workspace isn't trusted
+ * opens the trust check (H16).
+ */
 function PanelBody(props: PanelBodyProps) {
   const { context, shown, chats, box, announce, onNewChat, lookingAt, skillLink } = props;
+  const host = context.services.get(AssistantHostService);
+  const runCommand = context.runCommand;
+  const engineAnswering = useEngineAnswering(host);
+  const askTrust = useTrustCheck(host);
+  const noticeId = useId();
+  const send = (message: string | undefined, putBack: (message: string) => void) =>
+    void chats.send(message, announce, () => {
+      void askTrust(
+        () => send(message, putBack),
+        () => {
+          if (message !== undefined) putBack(message);
+        },
+      );
+    });
   if (shown.kind === "none") return <NoChat onNewChat={onNewChat} />;
   if (shown.kind === "failed") {
     return (
@@ -167,18 +191,22 @@ function PanelBody(props: PanelBodyProps) {
         <Transcript
           view={view}
           context={context}
-          onContinue={() => void chats.send(undefined, announce)}
+          notice={engineAnswering ? undefined : words.engineNotAnswering}
+          noticeId={noticeId}
+          onContinue={engineAnswering ? () => send(undefined, () => {}) : undefined}
         />
       )}
       <BuildComposer
         answering={view?.answering === true}
         box={box}
-        onSend={(message) => {
-          if (view === undefined) return false;
-          void chats.send(message, announce);
+        onSend={(message, putBack) => {
+          if (view === undefined || !engineAnswering) return false;
+          send(message, putBack);
           return true;
         }}
         onStop={() => chats.stop()}
+        sendUnavailable={engineAnswering || view === undefined ? undefined : { reason: noticeId }}
+        onGoToKeyField={runCommand && (() => void runCommand(openModelsCommand))}
       />
       {view === undefined ? null : skillLink(view)}
     </>
@@ -225,14 +253,20 @@ function useShownTitle(context: WorkspaceContext): string | undefined {
 function Transcript({
   view,
   context,
+  notice,
+  noticeId,
   onContinue,
 }: {
   readonly view: ChatView;
   readonly context: WorkspaceContext;
-  readonly onContinue: () => void;
+  /** The engine's line at the top while it doesn't answer (H12). */
+  readonly notice: string | undefined;
+  readonly noticeId: string;
+  /** Continue or Try again on the last reply; absent while they would wait. */
+  readonly onContinue: (() => void) | undefined;
 }) {
   const turns = turnsOf(view.messages, view.ends, view.answering);
-  if (turns.length === 0) {
+  if (turns.length === 0 && notice === undefined) {
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-1 px-4 py-3">
         <h3 className="text-section text-fg">{words.heading}</h3>
@@ -241,7 +275,7 @@ function Transcript({
     );
   }
   return (
-    <ChatTranscript label={words.transcript}>
+    <ChatTranscript label={words.transcript} notice={notice} noticeId={noticeId}>
       {turns.map((turn, index) => (
         // Turns are only added at the end, so their place is their key.
         <Fragment key={index}>
@@ -274,7 +308,8 @@ function Reply({
 }) {
   const end = turn.end;
   // Only the last reply offers Continue or Try again: each carries on that answer without a new
-  // message (flow-assistant 3.6), which sends the last message again when nothing ran (H13).
+  // message (flow-assistant 3.6), which sends the last message again when nothing ran (H13, H22,
+  // H23). After a tool ran there is no Try again, since a tool may have sent something (H24).
   const actions = onContinue === undefined ? [] : endActions(end, onContinue);
   return (
     <ChatMessage from="reply" heading={words.said}>
@@ -293,7 +328,7 @@ function Reply({
 
 function endActions(end: Turn["end"], onContinue: () => void) {
   if (end?.kind === "model-call-limit") return [{ label: words.continue, onClick: onContinue }];
-  if (end?.kind === "engine-stopped" && !end.toolsRan) {
+  if ((end?.kind === "engine-stopped" || end?.kind === "failed") && !end.toolsRan) {
     return [{ label: words.tryAgain, onClick: onContinue }];
   }
   return [];

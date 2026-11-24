@@ -32,7 +32,7 @@ import type {
   ModelOption,
   ShownItem,
 } from "@halonicjs/studio-feature-assistant/api";
-import { EngineNotAnswering } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { type LoadedWorkspace, loadWorkspace, modelAliases } from "@halonicjs/workspace";
 import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
 import { type KeptChat, KeptChats } from "./kept-chats.ts";
@@ -59,9 +59,22 @@ export interface WorkspaceAssistantParts {
   readonly answerChat: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
   /** Settings › Assistant: the model call limit and the person's own model. */
   readonly settings: Pick<HostSettings, "get">;
-  /** Calls `listener` when the shell finds the engine stopped answering. Returns the stop. */
-  readonly onEngineStopped?: ((listener: () => void) => () => void) | undefined;
+  /**
+   * The window's engine connection: whether the engine answers now, and `onChange`, which calls
+   * its listener on each change and returns the stop. Absent: the engine always counts as answering.
+   */
+  readonly engine?: WorkspaceAssistantEngine | undefined;
+  /** The workspace's name, as the window shows it. */
+  readonly workspaceName: string;
+  /** Opens the window's trust check; absent where there is none. */
+  readonly askTrust?: (() => Promise<"trusted" | "declined">) | undefined;
   readonly now?: (() => Date) | undefined;
+}
+
+/** The window's engine connection, as {@link WorkspaceAssistant} follows it. */
+export interface WorkspaceAssistantEngine {
+  readonly answering: () => boolean;
+  readonly onChange: (listener: (answering: boolean) => void) => () => void;
 }
 
 /**
@@ -76,6 +89,8 @@ export class WorkspaceAssistant implements AssistantHost {
   readonly #answering = new Set<string>();
   readonly #listeners = new Set<(change: AssistantChange) => void>();
   readonly #stopReview: () => void;
+  readonly #stopEngine: () => void;
+  readonly askTrust: AssistantHost["askTrust"];
 
   constructor(parts: WorkspaceAssistantParts) {
     this.#parts = parts;
@@ -83,9 +98,20 @@ export class WorkspaceAssistant implements AssistantHost {
     this.#chats = new KeptChats(parts.now ?? (() => new Date()), (chatId) =>
       this.#tools.delete(chatId),
     );
+    this.askTrust = parts.askTrust;
     this.#stopReview = parts.review.onDidChange((paths) =>
       this.#changed({ kind: "review", paths }),
     );
+    this.#stopEngine =
+      parts.engine?.onChange(() => this.#changed({ kind: "engine" })) ?? (() => undefined);
+  }
+
+  engineAnswering(): boolean {
+    return this.#parts.engine?.answering() ?? true;
+  }
+
+  workspaceName(): string {
+    return this.#parts.workspaceName;
   }
 
   async chats(): Promise<readonly ChatSummary[]> {
@@ -113,7 +139,9 @@ export class WorkspaceAssistant implements AssistantHost {
   /**
    * Answers in the chat. The person's message is kept once the engine took the answer, so a
    * refused one leaves the chat as it was. When the shell finds the engine stopped, the answer
-   * stops and ends as failed with `EngineNotAnswering` (K3's fallback, states H13).
+   * stops and ends as failed with `EngineNotAnswering` (K3's fallback, states H13). A model from
+   * the workspace is refused as `WorkspaceUntrusted` while the workspace isn't trusted, before
+   * anything is sent (flow-assistant 5.9, HAL-720).
    */
   async answer(request: AssistantAnswerRequest): Promise<ChatAnswer> {
     const chat = this.#chats.get(request.chatId);
@@ -125,7 +153,8 @@ export class WorkspaceAssistant implements AssistantHost {
     request.signal?.addEventListener("abort", stop);
     if (request.signal?.aborted) stop();
     let engineStopped = false;
-    const stopWatching = this.#parts.onEngineStopped?.(() => {
+    const stopWatching = this.#parts.engine?.onChange((answering) => {
+      if (answering) return;
       engineStopped = true;
       stop();
     });
@@ -235,6 +264,7 @@ export class WorkspaceAssistant implements AssistantHost {
   /** Stops listening to the review service; the registry calls it as the workspace closes. */
   dispose(): void {
     this.#stopReview();
+    this.#stopEngine();
     this.#listeners.clear();
   }
 
@@ -249,13 +279,19 @@ export class WorkspaceAssistant implements AssistantHost {
       if (message !== undefined) this.#add(chat.id, message);
     };
     const own = request.listener;
+    const settings: ChatSettings = chatSettingsOf(chat.model, loaded, this.#parts.settings);
+    // Picked by where the model comes from, not by its name: only the person's own Settings ›
+    // Assistant model is never written in the workspace, so any other needs trust first.
+    if (settings.agent === undefined && !this.#parts.isTrusted()) {
+      throw new WorkspaceUntrusted(`${this.#parts.workspaceName} isn't trusted yet.`);
+    }
     const messages = forTheModel(
       [...chat.messages, ...shownNote(request.shown)],
       sent,
       request.notes ?? [],
     );
     const answer = await this.#parts.answerChat({
-      settings: chatSettingsOf(chat.model, loaded, this.#parts.settings) satisfies ChatSettings,
+      settings,
       messages: chat.kind === "build" ? [await this.#skillOf(loaded), ...messages] : messages,
       tools: this.#toolsOf(chat.id),
       turnLimit: turnLimitOf(loaded, this.#parts.settings),

@@ -9,7 +9,7 @@ import {
 import { builtInAuthoringInstructions } from "@halonicjs/assistant";
 import type { ChatTurnRequest, ChatTurnResponse, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
-import { EngineNotAnswering } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, isUntrustedRefusal } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { WorkspaceAssistant } from "./workspace-assistant.ts";
@@ -43,6 +43,8 @@ function setup(
     /** Refuses every answer before any model turn, as the engine refuses an untrusted start. */
     refuse?: Error;
     now?: () => Date;
+    /** Whether this computer trusts the workspace; it does unless told otherwise. */
+    trusted?: boolean;
   } = {},
 ) {
   const store = new MemoryDefinitionStore({ ...acme, ...options.files }, "memory:acme");
@@ -50,7 +52,7 @@ function setup(
     store,
     records: new MemoryDefinitionStore({}, "memory:review"),
     digest: webCryptoDigest,
-    isTrusted: () => true,
+    isTrusted: () => options.trusted ?? true,
   });
   const turns = [...(options.turns ?? [])];
   const requests: ChatAnswerRequest[] = [];
@@ -66,26 +68,32 @@ function setup(
   const settings = {
     get: (setting) => (values.has(setting.key) ? values.get(setting.key) : setting.fallback),
   } as Pick<HostSettings, "get">;
-  const engineStopped = new Set<() => void>();
+  const engineListeners = new Set<(answering: boolean) => void>();
+  let engineAnswering = true;
   const assistant = new WorkspaceAssistant({
     files: store,
     review,
     digest: webCryptoDigest,
-    isTrusted: () => true,
+    isTrusted: () => options.trusted ?? true,
     answerChat: async (request) => {
       requests.push(request);
       if (options.refuse !== undefined) throw options.refuse;
       return new ChatService(executor).answer(request);
     },
     settings,
-    onEngineStopped: (listener) => {
-      engineStopped.add(listener);
-      return () => engineStopped.delete(listener);
+    engine: {
+      answering: () => engineAnswering,
+      onChange: (listener) => {
+        engineListeners.add(listener);
+        return () => engineListeners.delete(listener);
+      },
     },
+    workspaceName: "Acme",
     now: options.now ?? (() => new Date("2026-11-23T10:00:00.000Z")),
   });
   const stopEngine = () => {
-    for (const listener of engineStopped) listener();
+    engineAnswering = false;
+    for (const listener of engineListeners) listener(false);
   };
   return { assistant, store, requests, turnRequests, stopEngine };
 }
@@ -373,5 +381,66 @@ verifies("assistant.build.authoring-skill-accepted", () => {
     expect(await assistant.itemsToReview(chat.id)).toHaveLength(1);
     await assistant.answer({ chatId: chat.id, message: "Add a routine" });
     expect(requests[1]?.messages[0]?.content).toBe("Always answer in Dutch.");
+  });
+});
+
+verifies("studio.workspace-assistant-send", () => {
+  it("says when the engine stops answering, and that it doesn't (H12)", async () => {
+    const { assistant, stopEngine } = setup();
+    const changes: string[] = [];
+    assistant.onDidChange((change) => changes.push(change.kind));
+    expect(assistant.engineAnswering()).toBe(true);
+    stopEngine();
+    expect(assistant.engineAnswering()).toBe(false);
+    expect(changes).toEqual(["engine"]);
+    expect(assistant.workspaceName()).toBe("Acme");
+  });
+
+  describe("in a workspace this computer doesn't trust", () => {
+    it("refuses a model from the workspace before anything is sent (H16)", async () => {
+      const { assistant, requests } = setup({ trusted: false, settings: device });
+      const chat = await assistant.newChat("build");
+      await assistant.setModel(chat.id, { kind: "alias", name: "smart" });
+      await expect(assistant.answer({ chatId: chat.id, message: "Hi" })).rejects.toSatisfy(
+        isUntrustedRefusal,
+      );
+      expect(requests).toEqual([]);
+      expect(await assistant.chat(chat.id)).toMatchObject({ draft: true, messages: [] });
+    });
+
+    it("keeps the Settings model after the assistant adds an alias with its name (R1)", async () => {
+      const propose = (id: string, path: string, content: string): ToolCall => ({
+        id,
+        name: "propose_file",
+        arguments: { path, content, why: "Use my own address." },
+      });
+      const models = `${acme["models.yaml"]}\n  claude-sonnet-5-5: { provider: elsewhere, model: echo }\n`;
+      const elsewhere =
+        "id: elsewhere\nname: Elsewhere\ntype: openai\nbaseUrl: https://models.example.test/v1\n";
+      const { assistant, store, turnRequests } = setup({
+        trusted: false,
+        settings: device,
+        turns: [
+          // A write to a file that exists needs the model to have read it first (HAL-3247).
+          answered("", [{ id: "call-0", name: "read_file", arguments: { path: "models.yaml" } }]),
+          answered("", [
+            propose("call-1", "models.yaml", models),
+            propose("call-2", "providers/elsewhere.yaml", elsewhere),
+          ]),
+        ],
+      });
+      const chat = await assistant.newChat("build");
+      await assistant.answer({ chatId: chat.id, message: "Point the model somewhere else" });
+      expect(await store.read("models.yaml")).toBe(models);
+      await assistant.answer({ chatId: chat.id, message: "Hi" });
+      const next = turnRequests.at(-1);
+      expect(next?.alias).toBeUndefined();
+      expect(next?.agent).toEqual({
+        type: "anthropic",
+        model: "claude-sonnet-5-5",
+        secret: "ANTHROPIC_API_KEY",
+        local: false,
+      });
+    });
   });
 });
