@@ -51,6 +51,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `SandboxSettingStore` | `sandbox-setting-store.ts` | 1 | the person's sandbox choice (a backend or none) in the user's profile; `SandboxChoiceService` decides | `sandbox-setting-store` |
 | `Scheduler` | `scheduler.ts` | 1 | run timers and the routine tick; timers may arrive late or twice | `scheduler` |
 | `Secrets` | `secrets.ts` | 1 | configured secrets, read-only; `SecretStore` (same file and version) adds `set`, `remove` and `names` for a store the person owns | `secrets`, `secret-store` |
+| `TeamStatus` | `team-status.ts` | 1 | how Studio's Team screens read spend, seat use, pull requests and the merge queue: read-only by type, every answer as of its source's time, no seat account, login or review text | `team-status` (with first adapter; `FakeTeamStatus` in `testing/contracts` until then) |
 | `TokenStore` | `token-store.ts` | 1 | secrets the server writes itself, such as refresh tokens | `token-store` |
 | `ToolApprovalStore` | `tool-approval-store.ts` | 1 | approved listed tools in the user's profile, by workspace, source, name; `approveListedTools` decides | `tool-approval-store` (with first adapter) |
 | `TrustStore` | `trust-store.ts` | 1 | trust records in the user's profile, by location and fingerprint; `TrustService` decides | `trust-store` |
@@ -132,6 +133,7 @@ next to the ports:
 | `isSavedChat`, `savedChatIdPattern` | whether a stored chat is valid; the id rule that lets an adapter use the id as a file name | `chat-sessions` |
 | `isInstructionTrustFor` | whether a stored trusted-instructions record is valid for its key | `instruction-trust-store` |
 | `isUnreadableToolApprovalError`, `maxWaitingVersions` | recognise an unreadable tool approval without `instanceof`, and how many waiting versions of a tool are kept | `listed-tool-approval` |
+| `isAllowedWebLink` | whether a `TeamStatus` web link may open in the system browser: a GitHub pull request page, or the connection's own Paperclip origin, port included | `team-status` |
 | `priceOf` | what a model call costs from a `ModelPrice` and the tokens used | `model-price` |
 | `addHarnessEnvironment`, `harnessBridgeTokenHeader` | add a harness's environment without replacing a variable that is set; the header that carries the run's bridge token | `harness-environment` |
 | `signInCommandText` | a harness's sign-in for one agent's settings folder, as a person types it into PowerShell or `sh`, making the folder first; Studio's sign-in by hand and `halonic doctor` both show it | `harness-sign-in-command` |

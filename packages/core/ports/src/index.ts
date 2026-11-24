@@ -485,6 +485,27 @@ export {
   workspaceSecrets,
   workspaceSecretWriter,
 } from "./secrets.ts";
+export {
+  type AgentSpend,
+  type AsOf,
+  type MergeGroup,
+  type MergeQueue,
+  type Money,
+  type PullRequest,
+  type PullRequestDetail,
+  type PullRequestEvent,
+  type PullRequestList,
+  type PullRequestState,
+  type Seat,
+  type SeatState,
+  type SeatWindow,
+  type SpendRange,
+  type SpendSummary,
+  type TeamStatus,
+  type TeamStatusParts,
+  type TokenCount,
+  teamStatusVersion,
+} from "./team-status.ts";
 export { type TokenStore, tokenStoreVersion } from "./token-store.ts";
 export {
   isUnreadableToolApprovalError,
@@ -556,3 +577,4 @@ export {
   vcsVersion,
 } from "./vcs.ts";
 export { parseStatus } from "./vcs-status.ts";
+export { isAllowedWebLink } from "./web-link.ts";

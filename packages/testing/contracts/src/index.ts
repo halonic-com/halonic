@@ -84,6 +84,7 @@ export {
   idleProgram,
   readText,
 } from "./fake-sandbox-session.ts";
+export { FakeTeamStatus, type FakeTeamStatusOptions } from "./fake-team-status.ts";
 export {
   FakeTunnelProvider,
   type FakeTunnelProviderOptions,
