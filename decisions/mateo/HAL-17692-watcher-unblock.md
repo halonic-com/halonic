@@ -2,6 +2,7 @@
 
 - Approval: HAL-17692, the board's ask on HAL-10 (24 Nov, 17:15 UTC) after HAL-17446 and HAL-17458 stayed blocked behind merged work; fast-track
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:l+cRMeQJONHNuQ0c0St7SIEa9gYdvuNfS7/kOj68YYjmOGLKykU3VCYvy6hom+0JET1mrFS0cwZ3HiF4l+KzBg==
 
 #5626 (HAL-17445) merged at 13:28 UTC, but its author had put the line
 `PR watcher: more PRs to come` under every task comment, the last one
