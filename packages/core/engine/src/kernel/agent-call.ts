@@ -1,4 +1,4 @@
-import { AGENT_HARNESSES, type Agent } from "@halonicjs/format";
+import { AGENT_HARNESSES, type Agent } from "@halonicjs/format/agent";
 import type { Effect, ProgramHarness } from "./decide-types.ts";
 import type { PendingCall, RunState } from "./run-state.ts";
 

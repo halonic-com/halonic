@@ -3,7 +3,7 @@
 // (`AgentResume`) the run log keeps, so a run goes on after a restart. It
 // holds the conversation and the calls still to handle, never a key.
 
-import { fenceUntrusted } from "@halonicjs/app";
+import { fenceUntrusted } from "@halonicjs/app/model-text";
 import type { AgentResume, LoggedToolCall, ToolOutcome } from "@halonicjs/events";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { connectorStartCause } from "./connector-start-cause.ts";

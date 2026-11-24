@@ -1,4 +1,4 @@
-import { fenceUntrusted } from "@halonicjs/app";
+import { fenceUntrusted } from "@halonicjs/app/model-text";
 import { type RunEvent, upgradeEvent } from "@halonicjs/events";
 import { shortText } from "../tool-args.ts";
 

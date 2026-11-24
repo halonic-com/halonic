@@ -7,9 +7,9 @@ import {
   type OfferedDeclaredTool,
   type OfferedListedTool,
   type OfferedTool,
-} from "@halonicjs/app";
-import { UntrustedText } from "@halonicjs/app/listed-tools";
-import { type Connector, needsApproval } from "@halonicjs/format";
+  UntrustedText,
+} from "@halonicjs/app/listed-tools";
+import { type Connector, needsApproval } from "@halonicjs/format/connector";
 import type { ToolCall } from "@halonicjs/ports";
 import type { CallCheck, CallChecker } from "./check-call-before-run.ts";
 import type { HalonicTool, TurnTool } from "./turn-tools.ts";

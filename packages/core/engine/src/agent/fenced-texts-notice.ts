@@ -3,7 +3,7 @@
 // (`ports.untrusted-tool-listings`). The line is fixed, names no tool and
 // quotes nothing a server wrote.
 
-import { fencedTextsNotice } from "@halonicjs/app";
+import { fencedTextsNotice } from "@halonicjs/app/model-text";
 import type { ChatMessage, ToolDefinition } from "@halonicjs/ports";
 
 /**

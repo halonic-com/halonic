@@ -1,7 +1,8 @@
 // A run's start as the local executor gets it: the checks it passes before
 // anything is recorded, and the `start` input it is recorded with.
 
-import { AGENT_HARNESSES, type Workflow } from "@halonicjs/format";
+import type { Workflow } from "@halonicjs/format";
+import { AGENT_HARNESSES } from "@halonicjs/format/agent";
 import type { StartRunRequest } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import { missingStartFields } from "@halonicjs/workflow";

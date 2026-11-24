@@ -5,7 +5,7 @@
 // hit it refuses doesn't reach the model at all (requirement
 // `ports.untrusted-knowledge`).
 
-import { knowledgeHitForModel } from "@halonicjs/app";
+import { knowledgeHitForModel } from "@halonicjs/app/model-text";
 import type { ChatMessage, KnowledgeHit, KnowledgeProvider } from "@halonicjs/ports";
 import type { TurnLog } from "../agent/turn-log.ts";
 

@@ -8,9 +8,10 @@
 // The engine opens them at the first step that needs one and ends them when
 // the run ends; the engine's own close ends the rest, before the copies go.
 
-import { type ConnectorFactories, connectorConfigOf, type ProgramCopyLease } from "@halonicjs/app";
+import type { ProgramCopyLease } from "@halonicjs/app";
+import { type ConnectorFactories, connectorConfigOf } from "@halonicjs/app/connector-factories";
 import type { RunVersion } from "@halonicjs/events";
-import { type Connector, connectorIsLocalWith, type SheetHosts } from "@halonicjs/format";
+import { type Connector, connectorIsLocalWith, type SheetHosts } from "@halonicjs/format/connector";
 import {
   type ConnectorClient,
   type ConnectorFactoryContext,

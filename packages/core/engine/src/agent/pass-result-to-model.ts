@@ -4,7 +4,7 @@
 // reaches the model only inside the untrusted fence
 // (`ports.untrusted-tool-listings`), whatever the listing says about it.
 
-import { fenceUntrusted } from "@halonicjs/app";
+import { fenceUntrusted } from "@halonicjs/app/model-text";
 import type { TurnTool } from "./turn-tools.ts";
 
 /**
