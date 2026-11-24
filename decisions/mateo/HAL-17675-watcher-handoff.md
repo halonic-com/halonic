@@ -2,6 +2,7 @@
 
 - Approval: the board decided on HAL-10 (24 Nov 16:35 UTC) that the watcher hands a ready, green pull request to its reviewer and warns once on a push after an approval; the work is HAL-17675, and Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IVfdbftV+XTDh+kea9dxZRWDKNBT9JSwQer3N+CmKhK2BexGtpgsd41NbEx0IEaRAh/iRLX79SsYSwoQpHBZCA==
 
 Until now the watcher changed a task only by setting it `done`. It may now
 also give a task to its reviewer with status `todo`: the host adapter's
