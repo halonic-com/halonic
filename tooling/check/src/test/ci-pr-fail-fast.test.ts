@@ -25,12 +25,14 @@ function field(block: string, key: string): string | undefined {
   return new RegExp(`^ {4}${key}: (.+)$`, "m").exec(block)?.[1];
 }
 
-/** The jobs another workflow re-runs alone, so a failure there mustn't cancel a pull request's run. */
+/** The jobs whose failure mustn't cancel a pull request's run: another workflow re-runs them alone, or a later job reports it again. */
 const rerunAlone = [
   "Fast gates",
   "Leak guard",
   "Coverage floors don't go down",
   "Live cloud suites passed",
+  // Not re-run alone, but the guard job reports its finding again at the end (HAL-17892).
+  "Requirement guard, file checks (merge base's copy)",
 ];
 
 verifies("check.ci-pr-fail-fast", () => {
@@ -45,7 +47,7 @@ verifies("check.ci-pr-fail-fast", () => {
       );
     });
 
-    test("on a pull request it skips only the jobs another workflow re-runs alone", () => {
+    test("on a pull request it skips only the jobs whose failure is reported again", () => {
       const ignored = /ignored='(\[.+\])'$/m.exec(failFast.replaceAll(`'"'"'`, "'"))?.[1] ?? "[]";
       expect(JSON.parse(ignored)).toEqual(rerunAlone);
       for (const name of rerunAlone) {
