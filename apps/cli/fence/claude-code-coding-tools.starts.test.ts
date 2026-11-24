@@ -35,7 +35,7 @@ const codingTools = [
   "mcp__halonic-tools__search",
 ];
 
-/** Whether `claude` is on PATH: the sandbox CI jobs don't install it yet. */
+/** Whether `claude` is on PATH: only the Linux sandbox fence CI job installs it. */
 function claudeInstalled(): boolean {
   try {
     execFileSync("claude", ["--version"], { stdio: "ignore" });
