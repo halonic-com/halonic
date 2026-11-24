@@ -1,5 +1,6 @@
 // Shared by the approval card's test files.
 import { KindedError } from "@halonicjs/std";
+import { type Presentation, PresentationProvider } from "@halonicjs/studio-kit";
 import { act } from "react";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { inboxItems } from "../inbox-items.ts";
@@ -32,7 +33,10 @@ export const manual = () =>
   );
 
 /** A clock the test moves, and a card on it. */
-export function openCard(overrides: Partial<ApprovalCardProps> = {}) {
+export function openCard(
+  overrides: Partial<ApprovalCardProps> = {},
+  presentation: Presentation = "desktop",
+) {
   const clock = { now: new Date(2026, 10, 8, 10, 43) };
   const sent: string[] = [];
   const props: ApprovalCardProps = {
@@ -59,12 +63,20 @@ export function openCard(overrides: Partial<ApprovalCardProps> = {}) {
     now: () => clock.now,
     ...overrides,
   };
-  const { container: root, update } = renderWithUpdate(<ApprovalCard {...props} />);
+  const { container: root, update } = renderWithUpdate(
+    <PresentationProvider presentation={presentation}>
+      <ApprovalCard {...props} />
+    </PresentationProvider>,
+  );
   const later = (seconds: number) => {
     clock.now = new Date(clock.now.getTime() + seconds * 1000);
   };
   const rerender = (changes: Partial<ApprovalCardProps>) =>
-    update(<ApprovalCard {...props} {...changes} />);
+    update(
+      <PresentationProvider presentation={presentation}>
+        <ApprovalCard {...props} {...changes} />
+      </PresentationProvider>,
+    );
   return { root, sent, clock, later, rerender };
 }
 

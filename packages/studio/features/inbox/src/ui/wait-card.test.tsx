@@ -6,10 +6,10 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WaitItem } from "../inbox-items.ts";
+import { answerLabel } from "../plain/answer-text.ts";
 import { waitingRun } from "../test-runs.test-helper.ts";
 import { unmountAll } from "../test-support/render.tsx";
 import { button, openCard, press, reviewItem } from "./wait-card.test-helper.tsx";
-import { answerLabel } from "./wait-card.tsx";
 
 afterEach(unmountAll);
 

@@ -1,7 +1,7 @@
 import { markHiddenName } from "@halonicjs/std";
-import { Button, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
+import { Button, type CalloutHandle, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useId, useRef, useState } from "react";
-import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
+import { type AfterAnswer, afterAnswer, approvalSentText, type InboxDecisions } from "../decide.ts";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { actionSummary, approvalTitle } from "../plain/approval-text.ts";
 import { decidedAt, waitingSince } from "../plain/waiting-time.ts";
@@ -124,15 +124,17 @@ const busyLabels: Record<Decision, string> = { approve: "Approving…", reject: 
  * text, folded when long, so a pasted page can't fill the bar. `at` is
  * Studio's clock when the answer was recorded: the summary `send` returns
  * has no time for a decision, and the local engine records with the same clock. `after` is what
- * that run did with the answer: it only says the run continues while it does (HAL-13919).
+ * that run did with the answer: it only says the run continues while it does (HAL-13919), and on a
+ * `phone` an approve says only that it was sent (HAL-17820).
  */
-export function decidedText(decided: Decided, at: Date, after: AfterAnswer): string {
+export function decidedText(decided: Decided, at: Date, after: AfterAnswer, phone = false): string {
   const time = decidedAt(at);
   const finished = after === "finished" ? " The run finished." : "";
+  const continues = phone ? approvalSentText : "The run continues.";
   switch (decided.kind) {
     case "approve":
       return after === "continues"
-        ? `Approved by you at ${time}. The run continues.`
+        ? `Approved by you at ${time}. ${continues}`
         : `Approved by you at ${time}.${finished}`;
     case "reject":
       return after === "continues"
@@ -154,6 +156,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
   const now = props.now ?? (() => new Date());
   const titleId = useId();
   const title = approvalTitle(item, agentName, subagentName);
+  const phone = usePresentation() === "phone";
   const heading = useRef<HTMLHeadingElement>(null);
   const decided = useRef<CalloutHandle>(null);
   const [state, setState] = useState<CardState>({
@@ -252,7 +255,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
       </div>
       {state.kind === "decided" ? (
         <DecidedBar
-          text={decidedText(state.decided, state.at, state.after)}
+          text={decidedText(state.decided, state.at, state.after, phone)}
           {...(state.decided.kind === "note" ? { note: state.decided.note } : {})}
           next={next}
           back={back}

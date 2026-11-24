@@ -1,4 +1,5 @@
 // Shared by the wait card's test files.
+import { type Presentation, PresentationProvider } from "@halonicjs/studio-kit";
 import { act } from "react";
 import type { WaitItem } from "../inbox-items.ts";
 import { inboxItems } from "../inbox-items.ts";
@@ -26,7 +27,10 @@ export function reviewItem(fields: Parameters<typeof waitingRun>[1] = {}): WaitI
 }
 
 /** Renders a wait card three minutes after the run started waiting; `later` moves its clock on. */
-export function openCard(overrides: Partial<WaitCardProps> = {}) {
+export function openCard(
+  overrides: Partial<WaitCardProps> = {},
+  presentation: Presentation = "desktop",
+) {
   const clock = { now: new Date(2026, 10, 10, 10, 43) };
   const sent: string[] = [];
   const props: WaitCardProps = {
@@ -43,12 +47,20 @@ export function openCard(overrides: Partial<WaitCardProps> = {}) {
     now: () => clock.now,
     ...overrides,
   };
-  const { container: root, update } = renderWithUpdate(<WaitCard {...props} />);
+  const { container: root, update } = renderWithUpdate(
+    <PresentationProvider presentation={presentation}>
+      <WaitCard {...props} />
+    </PresentationProvider>,
+  );
   const later = (seconds: number) => {
     clock.now = new Date(clock.now.getTime() + seconds * 1000);
   };
   const rerender = (changes: Partial<WaitCardProps>) =>
-    update(<WaitCard {...props} {...changes} />);
+    update(
+      <PresentationProvider presentation={presentation}>
+        <WaitCard {...props} {...changes} />
+      </PresentationProvider>,
+    );
   return { root, sent, later, rerender };
 }
 

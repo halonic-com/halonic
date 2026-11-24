@@ -56,6 +56,12 @@ export function afterAnswer(run: Pick<RunSummary, "status">): AfterAnswer {
   return run.status === "completed" ? "finished" : "ended";
 }
 
+/**
+ * What a phone says after an approve where the desktop says "The run continues.": the phone can't
+ * see the run go on, which may stop soon after, at its budget (HAL-17820).
+ */
+export const approvalSentText = "Approval sent.";
+
 /** The engine's refusals that mean "not waiting for this answer any more", so trying again can't work. */
 const staleAnswerCodes: ReadonlySet<string> = new Set([
   "engine.decision-callid-must-match",

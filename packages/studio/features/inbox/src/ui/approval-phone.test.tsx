@@ -1,0 +1,59 @@
+// @vitest-environment jsdom
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { waitingRun } from "../test-runs.test-helper.ts";
+import { fakeModal, restoreModal } from "../test-support/modal.ts";
+import { unmountAll } from "../test-support/render.tsx";
+import { button, openCard, press } from "./approval-card.test-helper.tsx";
+import * as wait from "./wait-card.test-helper.tsx";
+
+beforeEach(fakeModal);
+afterEach(() => {
+  unmountAll();
+  restoreModal();
+});
+
+verifies("inbox.approval-phone", () => {
+  describe("on a phone", () => {
+    it("says the approval was sent, not that the run continues", async () => {
+      const { root, later } = openCard({}, "phone");
+      later(61);
+      await press(button(root, "Approve"));
+      const callout = root.querySelector("[role='group']");
+      expect(callout?.textContent).toContain("Approved by you at 10:44. Approval sent.");
+      expect(root.textContent).not.toContain("The run continues.");
+    });
+
+    it("says the approval was sent after a wait step's approve, in the step's own word", async () => {
+      const { root, sent, later } = wait.openCard(
+        { item: { ...wait.reviewItem(), answerLabels: { approve: "Send reply" } } },
+        "phone",
+      );
+      later(61);
+      await wait.press(wait.button(root, "Send reply"));
+      expect(sent).toEqual(["approve"]);
+      expect(root.querySelector("[role='group']")?.textContent).toContain(
+        "You chose Send reply at 10:44. Approval sent.",
+      );
+      expect(root.textContent).not.toContain("The run continues.");
+    });
+
+    it("still says the run finished when the approve finished it", async () => {
+      const { root, later } = openCard(
+        {
+          decisions: {
+            approve: async () => waitingRun("r47", { status: "completed" }),
+            reject: async () => waitingRun("r47"),
+            askForChanges: async () => waitingRun("r47"),
+          },
+        },
+        "phone",
+      );
+      later(61);
+      await press(button(root, "Approve"));
+      expect(root.querySelector("[role='group']")?.textContent).toContain(
+        "Approved by you at 10:44. The run finished.",
+      );
+    });
+  });
+});
