@@ -983,7 +983,8 @@ jobs:
     runs-on: ubuntu-24.04
     # A change to ci.yml tests every package, uncached, which took 13–19 min
     # on 21 Nov and passed 20 on a slow runner (HAL-15369). A walk-back
-    # below runs every package a second time.
+    # after the tests runs every package a second time; the red-base step
+    # avoids that when main's push run already failed (HAL-17600).
     timeout-minutes: 45
     # The walk-back runs older commits whose tests were not written for a
     # loaded runner, and a git-heavy contract test passed the default 5 s
@@ -1030,6 +1031,42 @@ jobs:
           fi
           git checkout --quiet --detach "$sha"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      # When the merge base's own push CI run already failed, main is red
+      # there, and testing it only to walk back afterwards runs every package
+      # twice, which passed the time limit (HAL-17600). So walk back first,
+      # to the newest commit within 20 whose push CI run passed, the same
+      # commit the walk-back after the tests would pick, and test only that.
+      # A push run that is still running, was cancelled or doesn't exist yet
+      # proves nothing: the merge base is tested, and the walk-back after the
+      # tests still catches a red main. API and network errors fail.
+      - id: red-base
+        name: Walk back first if the merge base's push CI run failed
+        env:
+          MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs="repos/$REPO/actions/workflows/ci.yml/runs?event=push&branch=main&per_page=1"
+          conclusion=$(gh api "$runs&head_sha=$MERGE_BASE" --jq '.workflow_runs[0].conclusion // "none"')
+          if [ "$conclusion" != failure ] && [ "$conclusion" != timed_out ]; then
+            exit 0
+          fi
+          back=0
+          for candidate in $(git rev-list --first-parent -n 20 "$MERGE_BASE^"); do
+            back=$((back + 1))
+            green=$(gh api "$runs&head_sha=$candidate&status=success" --jq .total_count)
+            if ! grep -qE '^[0-9]+$' <<< "$green"; then
+              echo "::error::Couldn't read the push CI runs of $candidate."
+              exit 1
+            fi
+            if [ "$green" -gt 0 ]; then
+              echo "::warning title=baseline-walked-back::The merge base's push CI run failed, so main is red. Using ${candidate}, $back commit(s) back on main and the newest with a green push CI run, as the baseline. Fix main (docs/guides/broken-main.md)."
+              git checkout --quiet --detach "$candidate"
+              exit 0
+            fi
+          done
+          echo "::error::The merge base's push CI run failed and no commit within 20 of it on main has a green push CI run. Fix main first (docs/guides/broken-main.md)."
+          exit 1
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: false
@@ -1070,9 +1107,9 @@ jobs:
       # testing more here is harmless and testing fewer fails it. So when
       # the merge base's copy fails (an older copy without --head, say),
       # every package is tested; the later lines win in $GITHUB_OUTPUT.
-      # After the lockfile walk-back above, an older commit's copy would
-      # choose, so every package is tested then too, as after the test
-      # walk-back below.
+      # After either walk-back above, an older commit's copy would choose,
+      # so every package is tested then too, as after the test walk-back
+      # below.
       - id: affected
         name: Choose the packages to test
         if: env.AFFECTED_TESTS == 'on'
@@ -1083,7 +1120,7 @@ jobs:
         run: |
           cli=tooling/check/src/cli/affected-tests.ts
           if [ "$INSTALLED" != "$MERGE_BASE" ]; then
-            echo "::notice title=Affected tests::The merge base's lockfile doesn't install, so every package is tested."
+            echo "::notice title=Affected tests::The baseline was walked back from the merge base, so every package is tested."
             echo "all=true" >> "$GITHUB_OUTPUT"
           elif [ -n "$MERGE_REF" ] && [ -f "$cli" ]; then
             if ! pnpm exec node "$cli" --base "$MERGE_BASE" --head "$MERGE_REF"; then
