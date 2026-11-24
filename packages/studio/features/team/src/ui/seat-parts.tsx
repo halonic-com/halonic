@@ -28,9 +28,8 @@ function problemLines(problem: SeatProblem, clock: TeamClock): [string, string] 
     case "reaches-90-soon":
       return [words.reaches90(seat.label, formatTime(week?.reaches90At ?? "", clock)), withResets];
     case "at-90":
-      return [words.used(seat.label, 90), withResets];
     case "at-80":
-      return [words.used(seat.label, 80), withResets];
+      return [words.used(seat.label, Math.round(week?.usedPercent ?? 0)), withResets];
   }
 }
 

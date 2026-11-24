@@ -24,10 +24,11 @@ export interface SpendAndSeatsState {
  * seats. It holds no copy; each read asks the port again.
  */
 export class SpendAndSeats {
-  private readonly team: TeamStatus;
+  /** Absent where no engine serves `TeamStatus`: the screen then says seat use isn't available. */
+  private readonly team: TeamStatus | undefined;
   private readonly clock: TeamClock;
 
-  constructor(team: TeamStatus, clock: TeamClock) {
+  constructor(team: TeamStatus | undefined, clock: TeamClock) {
     this.team = team;
     this.clock = clock;
   }
@@ -39,15 +40,17 @@ export class SpendAndSeats {
 
   /** The screen's state now, or `undefined` when no source serves spend or seats. */
   async read(): Promise<SpendAndSeatsState | undefined> {
-    const parts = await this.team.parts();
+    const team = this.team;
+    if (team === undefined) return undefined;
+    const parts = await team.parts();
     const part = parts.find((each) => each.spend || each.seats);
     if (part === undefined) return undefined;
     const ofSource = <Item extends { source: MessagingId }>(items: readonly Item[]) =>
       items.filter((each) => each.source === part.source);
     const [today, month, allSeats] = await Promise.all([
-      part.spend ? this.team.spend("today") : [],
-      part.spend ? this.team.spend("month") : [],
-      part.seats ? this.team.seats() : [],
+      part.spend ? team.spend("today") : [],
+      part.spend ? team.spend("month") : [],
+      part.seats ? team.seats() : [],
     ]);
     const seats = ofSource(allSeats);
     const problems = seatProblems(seats, this.clock.now());
@@ -66,12 +69,13 @@ export class SpendAndSeats {
       hasSeats: part.seats,
       ...shown,
       problems,
-      asOf: times.sort()[0],
+      asOf: times.sort((a, b) => Date.parse(a) - Date.parse(b))[0],
     };
   }
 
   /** Calls `listener` whenever a source says its team status changed. Returns a function that stops it. */
   watch(listener: () => void): () => void {
+    if (this.team === undefined) return () => {};
     const changes = this.team.changes()[Symbol.asyncIterator]();
     let stopped = false;
     const next = (): void => {

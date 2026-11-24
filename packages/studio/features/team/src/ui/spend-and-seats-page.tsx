@@ -13,30 +13,41 @@ export interface SpendAndSeatsPageProps {
   readonly onLink: (link: TeamLink) => void;
 }
 
-/** What the page holds: still loading, nothing to show, or a read. */
-type Shown = { kind: "loading" } | { kind: "read"; state: SpendAndSeatsState | undefined };
+/**
+ * What the page holds: still loading, the last good read, or a failed first
+ * read. A read that fails after a good one keeps the good one, marked failed.
+ */
+type Shown =
+  | { kind: "loading" }
+  | { kind: "read"; state: SpendAndSeatsState | undefined; failed: boolean }
+  | { kind: "failed" };
 
 /**
  * The Spend and seats screen (requirement `team.spend-and-seats`, HAL-17515
  * renders S1–S9): Needs you, the money and seat tiles, and the seats worst
- * first. It reads when it opens and whenever a source says it changed, and
- * shows each state of Sofia's table 1.6 that `TeamStatus` can tell apart.
- * It only shows: every action opens Paperclip.
+ * first. It reads when it opens, whenever a source says it changed, and on
+ * **Try again** after a failed read, and shows each state of Sofia's table
+ * 1.6 that `TeamStatus` can tell apart. It only shows: every action opens
+ * Paperclip.
  */
 export function SpendAndSeatsPage({ spendAndSeats, onLink }: SpendAndSeatsPageProps) {
   const [shown, setShown] = useState<Shown>({ kind: "loading" });
-  // Grows on each change a source reports, so the page reads again.
+  // Grows on each change a source reports and on Try again, so the page reads again.
   const [changed, setChanged] = useState(0);
+  const readAgain = () => setChanged((count) => count + 1);
 
-  useEffect(() => spendAndSeats.watch(() => setChanged((count) => count + 1)), [spendAndSeats]);
+  useEffect(() => spendAndSeats.watch(readAgain), [spendAndSeats]);
 
   useEffect(() => {
     let current = true;
     spendAndSeats.read().then(
       (state) => {
-        if (current) setShown({ kind: "read", state });
+        if (current) setShown({ kind: "read", state, failed: false });
       },
-      (error: unknown) => console.error("Spend and seats couldn't be read:", error),
+      (error: unknown) => {
+        console.error("Spend and seats couldn't be read:", error);
+        if (current) setShown((before) => failedAfter(before));
+      },
     );
     return () => {
       current = false;
@@ -52,6 +63,16 @@ export function SpendAndSeatsPage({ spendAndSeats, onLink }: SpendAndSeatsPagePr
       </main>
     );
   }
+  if (shown.kind === "failed") {
+    return (
+      <main>
+        <h1>{teamWords.title}</h1>
+        <p role="alert">
+          {teamWords.notAnswering} <TryAgain onPress={readAgain} />
+        </p>
+      </main>
+    );
+  }
   const state = shown.state;
   if (state === undefined) {
     return (
@@ -62,9 +83,47 @@ export function SpendAndSeatsPage({ spendAndSeats, onLink }: SpendAndSeatsPagePr
       </main>
     );
   }
-  const oldest = state.seats.map((seat) => seat.asOf).sort()[0];
+  return (
+    <ReadScreen
+      state={state}
+      failed={shown.failed}
+      clock={clock}
+      onLink={onLink}
+      onTryAgain={readAgain}
+    />
+  );
+}
+
+/** A failed read keeps what the screen already showed; with nothing shown yet, it says so. */
+function failedAfter(before: Shown): Shown {
+  return before.kind === "read" ? { ...before, failed: true } : { kind: "failed" };
+}
+
+function TryAgain({ onPress }: { onPress: () => void }) {
+  return (
+    <button type="button" className="text-small text-accent" onClick={onPress}>
+      {teamWords.tryAgain}
+    </button>
+  );
+}
+
+/** The time of the oldest of these readings, compared as times, not as text. */
+function oldestOf(times: readonly string[]): string | undefined {
+  return [...times].sort((a, b) => Date.parse(a) - Date.parse(b))[0];
+}
+
+/** The screen with a read: freshness, the warnings, Needs you, the tiles and the seats. */
+function ReadScreen(props: {
+  state: SpendAndSeatsState;
+  failed: boolean;
+  clock: TeamClock;
+  onLink: (link: TeamLink) => void;
+  onTryAgain: () => void;
+}) {
+  const { state, failed, clock, onLink } = props;
+  const oldest = oldestOf(state.seats.map((seat) => seat.asOf));
   const seatsAreOld =
-    oldest !== undefined && minutesSince(oldest, clock) * 60 * 1000 >= notReadAfterMs;
+    oldest !== undefined && clock.now().getTime() - Date.parse(oldest) >= notReadAfterMs;
   return (
     <main className="flex flex-col gap-3 p-3">
       <header className="flex justify-between">
@@ -76,6 +135,12 @@ export function SpendAndSeatsPage({ spendAndSeats, onLink }: SpendAndSeatsPagePr
           </p>
         )}
       </header>
+      {failed ? (
+        <p role="alert">
+          {teamWords.offline(formatTime(state.asOf ?? clock.now().toISOString(), clock))}{" "}
+          <TryAgain onPress={props.onTryAgain} />
+        </p>
+      ) : null}
       {seatsAreOld && oldest !== undefined ? (
         <p role="status">
           {teamWords.oldReadings(minutesSince(oldest, clock))}{" "}

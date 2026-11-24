@@ -2,7 +2,7 @@
 import { FakeTeamStatus } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { SpendAndSeats } from "../spend-and-seats.ts";
 import type { TeamLink } from "../team-words.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -29,10 +29,19 @@ async function open(fake: ReturnType<typeof acme>, opened: TeamLink[] = []) {
   const page = render(
     <SpendAndSeatsPage spendAndSeats={spendAndSeats} onLink={(link) => opened.push(link)} />,
   );
+  await settle();
+  return page;
+}
+
+async function settle(): Promise<void> {
   await act(async () => {
     for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
   });
-  return page;
+}
+
+async function pressAndSettle(page: HTMLElement, label: string): Promise<void> {
+  press(page, label);
+  await settle();
 }
 
 const text = (page: HTMLElement) => page.textContent ?? "";
@@ -129,7 +138,8 @@ verifies("team.spend-and-seats", () => {
       fake.team.addSeat(fake.source, { label: "Seat D", state: "signed-out", agents: ["a", "b"] });
       fake.setNow("2026-11-24T09:50:00.000Z");
       const page = await open(fake);
-      expect(text(page)).toContain("Signed out · since 09:40 · last read 09:40");
+      expect(text(page)).toContain("Signed out · since 09:40");
+      expect(text(page)).not.toContain("last read");
       expect(text(page)).toContain("Seat D is signed out / Since 09:40 · 2 agents on it");
     });
 
@@ -200,6 +210,44 @@ verifies("team.spend-and-seats", () => {
       );
       press(page, "Connect again");
       expect(opened).toEqual(["connect-again"]);
+    });
+
+    it("says a seat at 94% of its week has used 94%, not the 90% threshold", async () => {
+      const fake = acme();
+      fake.team.addSeat(fake.source, {
+        label: "Seat A",
+        windows: [{ kind: "week", label: "This week", usedPercent: 94 }],
+      });
+      const page = await open(fake);
+      expect(text(page)).toContain("Seat A has used 94% of its week");
+    });
+
+    it("says Paperclip isn't answering when the first read fails, and reads again on Try again", async () => {
+      const fake = acme();
+      const parts = fake.team.parts.bind(fake.team);
+      let failing = true;
+      fake.team.parts = () => (failing ? Promise.reject(new Error("no answer")) : parts());
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      const page = await open(fake);
+      expect(text(page)).toContain("Paperclip isn't answering.");
+      expect(text(page)).not.toContain("Loading…");
+      failing = false;
+      await pressAndSettle(page, "Try again");
+      expect(text(page)).toContain("No seats are set up in Paperclip's AI seats page.");
+      errors.mockRestore();
+    });
+
+    it("keeps the numbers under the offline banner when a later read fails", async () => {
+      const fake = acme();
+      fake.team.setSpend(fake.source, { range: "today", paid: usd(41.2) });
+      const page = await open(fake);
+      fake.team.parts = () => Promise.reject(new Error("no answer"));
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      fake.team.setSpend(fake.source, { range: "today", paid: usd(50) });
+      await settle();
+      expect(text(page)).toContain("Offline, as of 13:00. Numbers stay as they were;");
+      expect(text(page)).toContain("$41.20");
+      errors.mockRestore();
     });
 
     it("shows a seat's label as plain text", async () => {

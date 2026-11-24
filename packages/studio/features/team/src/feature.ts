@@ -18,7 +18,8 @@ export const teamFeature = defineFeature({
   register(studio) {
     studio.services.provide(
       SpendAndSeatsService,
-      (services) => new SpendAndSeats(services.get(TeamStatusService), { now: () => new Date() }),
+      // `find`, not `get`: the shell builds services eagerly, and most Studios have no TeamStatus yet.
+      (services) => new SpendAndSeats(services.find(TeamStatusService), { now: () => new Date() }),
     );
   },
 });

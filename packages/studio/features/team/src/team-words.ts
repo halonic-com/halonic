@@ -13,6 +13,12 @@ export const teamWords = {
   title: "Spend and seats",
   loading: "Loading…",
   loadingSpoken: "Loading spend and seats",
+  /** The phase 1 offline banner with HAL-17515's second sentence: a read failed after a good one. */
+  offline: (time: string) =>
+    `Offline, as of ${time}. Numbers stay as they were; opening things in Paperclip is off until Paperclip answers again.`,
+  /** The first read failed, so there are no numbers to keep. Not in HAL-17515's table: new wording. */
+  notAnswering: "Paperclip isn't answering.",
+  tryAgain: "Try again",
   asOf: (time: string, minutes: number) => `As of ${time} · ${minutes} min ago`,
   needsYou: "Needs you",
   problemCount: (count: number) => (count === 1 ? "1 problem" : `${count} problems`),
@@ -70,8 +76,9 @@ export const teamWords = {
     "near-limit": (forecast?: string) =>
       forecast === undefined ? "Near limit" : `Near limit · ↗ 90% around ${forecast}`,
     full: (until?: string) => (until === undefined ? "Full" : `Full · until ${until}`),
+    // Only "since": the port has one time, `asOf`, so a separate "last read" would repeat it.
     "signed-out": (since?: string) =>
-      since === undefined ? "Signed out" : `Signed out · since ${since} · last read ${since}`,
+      since === undefined ? "Signed out" : `Signed out · since ${since}`,
     "not-read": (since?: string) =>
       since === undefined ? "? Not read" : `? Not read · last good ${since}`,
     other: () => "",
