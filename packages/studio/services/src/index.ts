@@ -17,6 +17,15 @@ export {
   tauriEngineFetch,
 } from "./engine-fetch.ts";
 export {
+  type InboxOpenRequests,
+  inboxKeyOf,
+  type MessagingItemKind,
+  type MessagingItemToOpen,
+  type OpenItemResult,
+  type OpenItemWindow,
+  openMessagingItem,
+} from "./open-messaging-item.ts";
+export {
   connectPaperclip,
   type PaperclipConnectResult,
   type PaperclipKeyEntry,

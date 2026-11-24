@@ -59,6 +59,7 @@ mod lite_check;
 mod local_network;
 mod native_dialogs;
 mod navigation;
+mod notification_clicks;
 #[cfg(target_os = "android")]
 mod owner_check;
 mod owner_check_page;
