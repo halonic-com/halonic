@@ -4,7 +4,8 @@
 # job. This is the real boundary (HAL-14831, Julian's C1/C2): it trusts only the root-owned
 # pool config (mounted read-only), the event file the runner wrote and the VM's gate, and fails
 # closed. Pull requests run only on the fast pool, and only ones labelled fast-track that a person
-# opened from our own branches (HAL-15972, HAL-17616; bots are refused here even with the label).
+# opened from our own branches (HAL-15972, HAL-17616; bots are refused here even with the label),
+# and not from a bot's branch, whoever opened the pull request (HAL-17473).
 set -euo pipefail
 deny() { echo "::error title=halonic-ci refused this job::$1. These runners only take halonic-com/halonic's own reviewed runs (ci.yml on merge groups / pushes to main) and, on the fast pool, open pull requests labelled fast-track that a person opened from halonic-com/halonic branches (every other pull request runs on GitHub's runners)."; exit 1; }
 REPO=halonic-com/halonic
@@ -94,6 +95,11 @@ case "$kind" in
           elif $p.headRefOid != $sha then "pull request #\($pr) is no longer at \($sha)"
           elif ([$p.labels.nodes[]?.name] | any(. == "fast-track")) | not
             then "pull request #\($pr) has no fast-track label"
+          elif ($p.headRefName | type) != "string" or $p.headRefName == ""
+            then "pull request #\($pr) has no head branch we can check"
+          elif ($p.headRefName | ascii_downcase) as $b
+            | ($b | startswith("dependabot/")) or ($b | startswith("renovate/"))
+            then "pull request #\($pr) comes from a bot branch (dependabot/ or renovate/), whoever opened it"
           elif ($p.author | type) != "object" or ($p.author.login | type) != "string"
             then "pull request #\($pr) has no author we can check"
           elif $p.author.__typename != "User"
