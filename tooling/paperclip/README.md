@@ -873,9 +873,11 @@ jobs, the `seat_usage` tool and the board's "AI seats" page.
   page's data (below), `GET /seats/summary` gives Halonic's `TeamStatus`
   provider each seat's label, role, newest reading time, windows (used %,
   reset, when they reach 90%), agents by name and whether its manual reset
-  is used, plus the proposal `seats.check` would post now as plain text,
-  built field by field so a folder, account, connection id or sign-in
-  expiry never leaves, and `POST /seats/:seatId/manual-reset`
+  is used, when a failed newest read ran (`failedReadAt`), plus the
+  proposal `seats.check` would post now as plain text, and, with
+  `?from=<ISO time>` at most 31 days back, `unknownSeatRuns`: the runs since
+  then with cost rows but no seat. It is built field by field so a folder,
+  account, connection id or sign-in expiry never leaves. `POST /seats/:seatId/manual-reset`
   records a manual reset by the board user. Seats in one reset group share
   one manual reset, so a second one in the group is refused (409); a seat
   without a group is a group of its own. Manual resets stay when old rows go.

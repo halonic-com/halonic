@@ -71,6 +71,7 @@ const statusB: SeatReadStatus = {
 
 function setup() {
   const asked: string[] = [];
+  const unknownAsked: string[] = [];
   const deps: SeatsRouteDeps = {
     readSettings: async (companyId) => {
       asked.push(companyId);
@@ -85,17 +86,24 @@ function setup() {
     now: () => new Date(at),
     reads: () => ({ readerStartedAt: hoursFromNow(-2), seats: [statusA, statusB] }),
     seatsNow: async () => seatsNowState,
+    unknownSeatRuns: async (_companyId, since) => {
+      unknownAsked.push(since);
+      return 3;
+    },
   };
-  return { deps, asked };
+  return { deps, asked, unknownAsked };
 }
 
-function request(actor: PluginApiRequestInput["actor"]): PluginApiRequestInput {
+function request(
+  actor: PluginApiRequestInput["actor"],
+  query: Record<string, string | string[]> = {},
+): PluginApiRequestInput {
   return {
     routeKey: "seats.summary",
     method: "GET",
     path: "/seats/summary",
     params: {},
-    query: { companyId: "acme" },
+    query: { companyId: "acme", ...query },
     body: undefined,
     actor,
     companyId: "acme",
@@ -170,5 +178,44 @@ verifies("paperclip.seats-summary", () => {
     expect(proposal?.at).toBe(at);
     expect(proposal?.text).toContain("Ada: seat-a → seat-c");
     expect(proposal?.text).not.toContain("**");
+  });
+});
+
+verifies("paperclip.seats-summary-fields", () => {
+  test("gives a seat whose newest read failed the time that read ran", async () => {
+    const summary = await boardSummary();
+    expect(summary.seats[1]?.lastError).toBe("signed-out");
+    expect(summary.seats[1]?.failedReadAt).toBe(hoursFromNow(-1 / 6));
+  });
+
+  test("gives no failed-read time to a seat whose newest read was good, or never ran", async () => {
+    const summary = await boardSummary();
+    expect(summary.seats[0]?.failedReadAt).toBeUndefined();
+    expect(summary.seats[2]?.failedReadAt).toBeUndefined();
+  });
+
+  test("counts the runs with no seat since the asked time", async () => {
+    const { deps, unknownAsked } = setup();
+    const from = hoursFromNow(-12);
+    const response = await handleSeatsRequest(request(board, { from }), deps);
+    expect(response.status).toBe(200);
+    expect((response.body as SeatsSummary).unknownSeatRuns).toBe(3);
+    expect(unknownAsked).toEqual([from]);
+  });
+
+  test("leaves the count out, and reads no cost rows, when no time is asked", async () => {
+    const { deps, unknownAsked } = setup();
+    const response = await handleSeatsRequest(request(board), deps);
+    expect((response.body as SeatsSummary).unknownSeatRuns).toBeUndefined();
+    expect(unknownAsked).toEqual([]);
+  });
+
+  test("refuses a from time that isn't a time, is in the future or is over 31 days back", async () => {
+    for (const from of ["yesterday", hoursFromNow(1), hoursFromNow(-32 * 24), ["a", "b"]]) {
+      const { deps, unknownAsked } = setup();
+      const response = await handleSeatsRequest(request(board, { from }), deps);
+      expect(response.status).toBe(400);
+      expect(unknownAsked).toEqual([]);
+    }
   });
 });

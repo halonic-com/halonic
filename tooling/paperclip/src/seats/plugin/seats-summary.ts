@@ -20,6 +20,11 @@ export interface SeatsSummary {
   readonly seats: readonly SummarySeat[];
   /** What `seats.check` would propose now, in plain words; absent when it proposes nothing. */
   readonly proposal: SummaryProposal | undefined;
+  /**
+   * How many runs since the asked `from` time have cost rows but no seat;
+   * absent when the caller gave no `from`.
+   */
+  readonly unknownSeatRuns: number | undefined;
 }
 
 /** One seat, by its board label only. */
@@ -33,6 +38,8 @@ export interface SummarySeat {
   /** `false` when the newest read failed or is too old to act on. */
   readonly readable: boolean;
   readonly lastError: ReadError | undefined;
+  /** When the failed newest read ran; absent when that read didn't fail. */
+  readonly failedReadAt: string | undefined;
   readonly windows: readonly SummaryWindow[];
   readonly agents: readonly AgentLabel[];
   /** Whether the seat's reset group has used its one manual reset. */
@@ -55,11 +62,35 @@ export interface SummaryProposal {
   readonly at: string;
 }
 
-/** The summary's data: the page's seat rows and the proposal `seats.check` would post now. */
+/** The furthest back `from` may go: a month range starts at most 31 days ago. */
+export const longestUnknownSeatRangeMs = 31 * 24 * 60 * 60_000;
+
+/**
+ * The `from` query of a summary request: `undefined` when it is absent, the
+ * ISO time when it is one between 31 days ago and now, and `"invalid"`
+ * otherwise. The limit keeps one request from reading every cost row ever.
+ */
+export function summaryFrom(query: unknown, now: Date): string | undefined | "invalid" {
+  if (query === undefined) {
+    return undefined;
+  }
+  const fromMs = typeof query === "string" ? Date.parse(query) : Number.NaN;
+  const nowMs = now.getTime();
+  if (Number.isNaN(fromMs) || fromMs > nowMs || fromMs < nowMs - longestUnknownSeatRangeMs) {
+    return "invalid";
+  }
+  return new Date(fromMs).toISOString();
+}
+
+/**
+ * The summary's data: the page's seat rows, the proposal `seats.check` would
+ * post now and, when `from` is given, the runs since then that had no seat.
+ */
 export async function seatsSummaryData(
   companyId: string,
   settings: SeatsSettings,
   deps: SeatsRouteDeps,
+  from: string | undefined,
 ): Promise<SeatsSummary> {
   const now = deps.now();
   const at = now.toISOString();
@@ -91,11 +122,13 @@ export async function seatsSummaryData(
     at,
     seats: page.seats.map((row) => summarySeat(row, reads.seats, at)),
     proposal: text === undefined ? undefined : { text: plainText(text), at },
+    unknownSeatRuns: from === undefined ? undefined : await deps.unknownSeatRuns(companyId, from),
   };
 }
 
 function summarySeat(row: SeatRow, statuses: readonly SeatReadStatus[], at: string): SummarySeat {
-  const ageMs = statuses.find((status) => status.seatId === row.seatId)?.readingAgeMs;
+  const status = statuses.find((candidate) => candidate.seatId === row.seatId);
+  const ageMs = status?.readingAgeMs;
   const windows: SummaryWindow[] = [];
   if (row.session !== undefined) {
     windows.push(summaryWindow("five-hour", "5-hour window", row.session));
@@ -110,6 +143,7 @@ function summarySeat(row: SeatRow, statuses: readonly SeatReadStatus[], at: stri
     asOf: ageMs === undefined ? undefined : new Date(Date.parse(at) - ageMs).toISOString(),
     readable: row.readable,
     lastError: row.lastError,
+    failedReadAt: row.lastError === undefined ? undefined : status?.lastReadAt,
     windows,
     agents: row.agents.map((agent) => ({ agentId: agent.agentId, name: agent.name })),
     manualResetUsed: row.manualResetUsed,

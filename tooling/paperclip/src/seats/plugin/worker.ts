@@ -1,6 +1,7 @@
 import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
 import { runCommand } from "../read/command.ts";
 import { readSeat } from "../read/read-seat.ts";
+import { unknownSeatRunCount } from "../usage-buckets.ts";
 import { runSeatsAccuracy } from "./accuracy-job.ts";
 import { databaseAccuracyStore } from "./accuracy-store.ts";
 import { registerSeatsBridge } from "./bridge.ts";
@@ -135,6 +136,11 @@ function routeDeps(ctx: PluginContext, reader: SeatsReader): SeatsRouteDeps {
           store: databaseStore(ctx.db),
         },
         now,
+      ),
+    unknownSeatRuns: async (companyId, since) =>
+      unknownSeatRunCount(
+        await databaseTables(ctx.db).costRowsSince(companyId, since),
+        await databaseHistoryStore(ctx.db).placementsSince(since),
       ),
   };
 }
