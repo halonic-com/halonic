@@ -47,6 +47,8 @@ mod remote_asks;
 
 #[path = "agent_host_life.rs"]
 mod life;
+#[cfg(desktop)]
+pub use life::current_host;
 pub use life::{end_page_streams, host_answers, stop_host};
 // Only Windows has a WSL setup to start the host after.
 #[cfg(windows)]

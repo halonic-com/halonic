@@ -35,6 +35,8 @@ halonic-agent-host = { path = "crates/agent-host" }
 halonic-blob-store = { path = "crates/blob-store" }
 halonic-command-paths = { path = "crates/command-paths" }
 halonic-connect = { path = "crates/connect" }
+halonic-engine-pipe = { path = "crates/engine-pipe" }
+halonic-engine-supervisor = { path = "crates/engine-supervisor" }
 halonic-git-guard = { path = "crates/git-guard" }
 halonic-host-settings = { path = "crates/host-settings" }
 halonic-http-guard = { path = "crates/http-guard" }
@@ -50,6 +52,7 @@ halonic-record-store = { path = "crates/record-store" }
 halonic-resource-probe = { path = "crates/resource-probe" }
 halonic-run-lock = { path = "crates/run-lock" }
 halonic-run-store = { path = "crates/run-store" }
+halonic-secret-broker = { path = "crates/secret-broker" }
 halonic-server-session = { path = "crates/server-session" }
 halonic-secrets = { path = "crates/secrets" }
 halonic-shell-log = { path = "crates/shell-log" }

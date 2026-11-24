@@ -225,12 +225,24 @@ export async function openRemoteEngine(
   }
 }
 
-/** {@link openRemoteEngine} through the shell's IPC, logging what goes wrong on a stream. */
-export function openShellEngine(ipc: TauriIpc & TauriCallbacks): Promise<RemoteEngine | undefined> {
-  return openRemoteEngine({
-    fetch: tauriEngineFetch(ipc),
-    reportError: (error) => console.error("The background engine", error),
-  });
+/**
+ * Asks the shell for `workspace`'s background engine with `engine_open`, which starts it or
+ * connects the window to the one running and answers once that engine is in, then looks for it as
+ * {@link openRemoteEngine} does. Asking first keeps the page from starting its own engine while the
+ * shell's is still starting. A refusal (the folder isn't open, the engine didn't start) is
+ * reported, and the page then runs its own engine as before.
+ */
+export async function openShellEngine(
+  ipc: TauriIpc & TauriCallbacks,
+  workspace: string,
+  reportError: (error: unknown) => void = (error) => console.error("The background engine", error),
+): Promise<RemoteEngine | undefined> {
+  try {
+    await ipc.invoke("engine_open", { workspace });
+  } catch (error) {
+    reportError(error);
+  }
+  return openRemoteEngine({ fetch: tauriEngineFetch(ipc), reportError });
 }
 
 /** The engine's `{ code, message }` refusal as the executor reads it. */

@@ -7,8 +7,8 @@ use std::time::{Duration, Instant};
 
 use halonic_agent_host::Handshake;
 use halonic_engine_pipe::{
-    EngineEvent, EngineHealth, MAX_SHELL_FRAME_BYTES, PipeFault, PipeSession, SandboxHost,
-    read_frame, sandbox_host_json, secret_answer_json, stop_json, write_frame,
+    EngineEvent, EngineHealth, MAX_SHELL_FRAME_BYTES, PipeFault, PipeSession, RoutinePause,
+    SandboxHost, read_frame, sandbox_host_json, secret_answer_json, stop_json, write_frame,
 };
 use halonic_secret_broker::{
     BrokerAnswer, BrokerRefusal, BrokerRequest, MAX_OUTSTANDING, SecretBroker,
@@ -153,6 +153,17 @@ impl EngineLink {
     /// [`PipeFault::Write`] when the input is closed or its queue is full.
     pub fn send_sandbox_host(&self, host: Option<SandboxHost<'_>>) -> Result<(), PipeFault> {
         send(&self.input, sandbox_host_json(host))
+    }
+
+    /// Sends the user's Pause routines for this workspace as it is now. The
+    /// shell sends it after every handshake: the engine starts no routine
+    /// run until it has one.
+    ///
+    /// # Errors
+    ///
+    /// [`PipeFault::Write`] when the input is closed or its queue is full.
+    pub fn send_routine_pause(&self, pause: RoutinePause) -> Result<(), PipeFault> {
+        send(&self.input, pause.after_handshake())
     }
 
     /// Closes the engine's input: it stops, and exits, when it reads the end.
