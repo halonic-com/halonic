@@ -62,7 +62,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
       {...roleOf(item)}
       tabIndex={-1}
       // A tagged item's name carries its attention words too, which the label replaces.
-      aria-label={taggedItemName(item, item.attention)}
+      aria-label={item.name ?? taggedItemName(item, item.attention)}
       aria-disabled={disabled || unavailable ? true : undefined}
       aria-describedby={describedBy([
         item.detail === undefined ? undefined : detailId,
@@ -102,8 +102,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
           </span>
         ) : null}
       </span>
-      {item.tag === undefined ? null : <ItemTag words={item.tag} />}
-      {item.attention === undefined ? null : <AttentionDot words={item.attention} />}
+      <ItemFacts item={item} />
       {item.keys === undefined ? null : (
         <span className="ml-auto pl-4">
           <Kbd keys={item.keys} />
@@ -115,6 +114,23 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
         </span>
       ) : null}
     </button>
+  );
+}
+
+/** What follows the label: the time, the tag, the count, and the attention or running dot. */
+function ItemFacts({ item }: { readonly item: MenuItem }) {
+  return (
+    <>
+      {item.time === undefined ? null : (
+        <span aria-hidden="true" className="shrink-0 text-caption text-fg-subtle tabular-nums">
+          {item.time}
+        </span>
+      )}
+      {item.tag === undefined ? null : <ItemTag words={item.tag} />}
+      {item.count === undefined ? null : <ItemTag words={item.count} tone="neutral" />}
+      {item.attention === undefined ? null : <ItemDot words={item.attention} tone="warning" />}
+      {item.running === undefined ? null : <ItemDot words={item.running} tone="running" />}
+    </>
   );
 }
 
@@ -153,27 +169,44 @@ function ItemDetail({
   );
 }
 
+const dotClasses = { warning: "bg-warning", running: "bg-running" } as const;
+
 /**
- * The still 6px `warning` dot, kept in its colour in forced colours, and its words for a screen
- * reader, so the item doesn't rely on colour alone.
+ * The still 6px `warning` or `running` dot, kept in its colour in forced colours, and its words
+ * for a screen reader, so the item doesn't rely on colour alone.
  */
-function AttentionDot({ words }: { readonly words: string }) {
+function ItemDot({
+  words,
+  tone,
+}: {
+  readonly words: string;
+  readonly tone: keyof typeof dotClasses;
+}) {
   return (
     <span className="inline-grid size-icon-sm shrink-0 place-items-center">
       <span
         aria-hidden="true"
-        className="size-1.5 rounded-full bg-warning forced-color-adjust-none"
+        className={`size-1.5 rounded-full ${dotClasses[tone]} forced-color-adjust-none`}
       />
       <span className="sr-only">, {words}</span>
     </span>
   );
 }
 
-/** The outline tag after the label. A screen reader hears its words in the item's `aria-label`. */
-function ItemTag({ words }: { readonly words: string }) {
+/**
+ * The outline tag after the label, or the `neutral` count chip. A screen reader hears a tag's
+ * words in the item's `aria-label`, and a count's in its `name`.
+ */
+function ItemTag({
+  words,
+  tone = "outline",
+}: {
+  readonly words: string;
+  readonly tone?: "outline" | "neutral";
+}) {
   return (
     <span aria-hidden="true" className="inline-flex shrink-0">
-      <StatusChip tone="outline">{words}</StatusChip>
+      <StatusChip tone={tone}>{words}</StatusChip>
     </span>
   );
 }

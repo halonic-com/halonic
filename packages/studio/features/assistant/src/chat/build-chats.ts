@@ -184,6 +184,41 @@ export class BuildChats {
     this.update(before.chat.id, () => ({ messages, ends, answering: false }));
   }
 
+  /** Shows a kept chat picked in the chat menu, where it got to when shown before (flow 5.5). */
+  async pick(chatId: string): Promise<void> {
+    const shown = this.views.get(chatId);
+    if (shown !== undefined) {
+      this.currentId = chatId;
+      return this.show({ kind: "chat", view: shown });
+    }
+    await this.load(() => this.host.chat(chatId));
+  }
+
+  /**
+   * Renames the chat shown (`assistant.chat.rename`): the title trimmed, and an empty one keeps
+   * the old title.
+   */
+  async rename(title: string): Promise<void> {
+    if (this.state.kind !== "chat" || title.trim() === "") return;
+    const chatId = this.state.view.chat.id;
+    await this.host.rename(chatId, title);
+    await this.refresh(chatId);
+  }
+
+  /**
+   * Deletes the chat shown (`assistant.chat.delete`), stopping its answer: the panel shows no
+   * chat (H3). Its changes to review stay in the items.
+   */
+  async deleteShown(): Promise<void> {
+    if (this.state.kind !== "chat") return;
+    const chatId = this.state.view.chat.id;
+    await this.host.deleteChat(chatId);
+    this.stoppers.get(chatId)?.abort();
+    this.views.delete(chatId);
+    this.currentId = undefined;
+    this.show({ kind: "none" });
+  }
+
   /** Stops the answer of the chat shown; it ends with "Stopped by you.". */
   stop(): void {
     if (this.state.kind === "chat") this.stoppers.get(this.state.view.chat.id)?.abort();

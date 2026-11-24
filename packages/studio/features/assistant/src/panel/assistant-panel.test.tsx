@@ -26,7 +26,9 @@ function panel(
 
 const said = (page: HTMLElement) =>
   [...page.querySelectorAll("[data-chat-message] p")].map((line) => line.textContent);
-const status = (page: HTMLElement) => page.querySelector("p.text-caption")?.textContent;
+const status = (page: HTMLElement) =>
+  [...page.querySelectorAll("p.text-caption")].find((line) => line.closest("[role=menu]") === null)
+    ?.textContent;
 
 verifies("assistant.chat.panel-shortcut", () => {
   it("opens on the most recently used chat, named Assistant, with focus in the box", async () => {
@@ -41,7 +43,9 @@ verifies("assistant.chat.panel-shortcut", () => {
     const page = await show(panel(fakeHost()));
     expect(page.querySelector("h2")?.textContent).toBe("Assistant");
     (page.querySelector("h2") as HTMLElement).focus();
-    await act(async () => buttonNamed(page, "New chat")?.click());
+    // The header's ＋, not the chat menu's own New chat.
+    const plus = page.querySelector<HTMLButtonElement>('header button[aria-label="New chat"]');
+    await act(async () => plus?.click());
     expect(document.activeElement?.tagName).toBe("TEXTAREA");
   });
 });

@@ -201,3 +201,14 @@ verifies("kit.side-panel", () => {
     });
   });
 });
+
+verifies("kit.side-panel-heading", () => {
+  it("shows the heading in the title's place and keeps the title for screen readers", () => {
+    const { container } = render(
+      panel({ heading: <button type="button">Add a routine ▾</button> }),
+    );
+    const { title, header } = parts(container);
+    expect(title.className).toBe("sr-only");
+    expect(header?.querySelector("button")?.textContent).toBe("Add a routine ▾");
+  });
+});

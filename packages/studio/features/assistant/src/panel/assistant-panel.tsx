@@ -37,6 +37,7 @@ import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../cha
 import { BuildComposer } from "./build-composer.tsx";
 import { useEngineAnswering, useTrustCheck } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
+import { ChatHeading, ChatMoreActions } from "./chat-header.tsx";
 import { SkillLink } from "./skill-link.tsx";
 
 /** Focus as it is: the panel "moves" focus to what has it, so Show in chat leaves it there. */
@@ -61,6 +62,8 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
   const lookingAt = useShownTitle(context);
   const box = useRef<HTMLTextAreaElement>(null);
   const [keepFocus] = useState(() => chats.takeKeepFocus());
+  const newChatButton = useRef<HTMLButtonElement>(null);
+  const [renaming, setRenaming] = useState(false);
   const announce = useCallback<Announce>(
     (text, politeness) => context.announcer.announce(text, politeness),
     [context],
@@ -73,10 +76,12 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
   const newChat = () => void chats.newChat().then(() => box.current?.focus());
   const view = shown.kind === "chat" ? shown.view : undefined;
   const heading = view === undefined || view.chat.draft ? title : view.chat.title;
+  const header = { host, chats, view, title, box, onNewChat: newChat };
 
   return (
     <SidePanel
       title={heading}
+      heading={<ChatHeading {...header} renaming={renaming} onRenamed={() => setRenaming(false)} />}
       label={title}
       halo
       initialFocus={keepFocus ? focusAsItIs : box}
@@ -89,6 +94,11 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
             icon={<PlusIcon />}
             label={words.newChat}
             onClick={newChat}
+          />
+          <ChatMoreActions
+            {...header}
+            onRename={() => setRenaming(true)}
+            afterDelete={() => newChatButton.current}
           />
           <Button
             variant="ghost"
@@ -109,6 +119,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
           box={box}
           announce={announce}
           onNewChat={newChat}
+          newChatButton={newChatButton}
           lookingAt={lookingAt}
           skillLink={(view: ChatView) =>
             view.chat.kind === "build" ? (
@@ -129,6 +140,8 @@ interface PanelBodyProps {
   readonly box: RefObject<HTMLTextAreaElement | null>;
   readonly announce: Announce;
   readonly onNewChat: () => void;
+  /** The empty panel's New chat, which takes focus after Delete chat. */
+  readonly newChatButton: RefObject<HTMLButtonElement | null>;
   /** The page the window shows, as its tab names it; none in a window without tabs. */
   readonly lookingAt: string | undefined;
   /** The link under the box for a chat: "customize skill" or "edit skill" in a Build chat. */
@@ -161,7 +174,7 @@ function PanelBody(props: PanelBodyProps) {
         },
       );
     });
-  if (shown.kind === "none") return <NoChat onNewChat={onNewChat} />;
+  if (shown.kind === "none") return <NoChat onNewChat={onNewChat} button={props.newChatButton} />;
   if (shown.kind === "failed") {
     return (
       <EmptyState
@@ -218,13 +231,19 @@ function PanelBody(props: PanelBodyProps) {
  * doesn't centre. The kit's `EmptyState` aligns to the start only for an error, so the panel lays
  * it out here, with the spacing of that failed state.
  */
-function NoChat({ onNewChat }: { readonly onNewChat: () => void }) {
+function NoChat({
+  onNewChat,
+  button,
+}: {
+  readonly onNewChat: () => void;
+  readonly button: RefObject<HTMLButtonElement | null>;
+}) {
   return (
     <div className="flex flex-col items-start gap-1.5 px-4 py-3">
       <p className="text-section text-fg">{words.noChat}</p>
       <p className="text-body text-fg-muted">{words.noChatLine}</p>
       <div className="mt-1.5">
-        <Button variant="primary" size="md" onClick={onNewChat}>
+        <Button ref={button} variant="primary" size="md" onClick={onNewChat}>
           {words.newChat}
         </Button>
       </div>
