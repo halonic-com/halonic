@@ -13,6 +13,7 @@ import { ciOk, gitHubReader } from "../pr-watcher/github.ts";
 import { countMonitors, type MonitorCounts } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
 import { gitHubRebaseOnly } from "../pr-watcher/rebase-only.ts";
+import { longestWaitingLine } from "../pr-watcher/review-wait.ts";
 import { gitHubRoute } from "../pr-watcher/route.ts";
 import { unblockPass } from "../pr-watcher/unblock.ts";
 import { snapshotSummary } from "../pr-watcher/wake-status.ts";
@@ -140,6 +141,7 @@ async function recordPass(
       "pr_watcher.handed_off": summary.handedOff,
       "pr_watcher.warned_after_approval": summary.warned,
       "pr_watcher.review_waits": summary.reviewWaits,
+      "pr_watcher.review_priority_raised": summary.priorityRaised,
       "pr_watcher.github_requests": requests,
       "pr_watcher.duration_ms": durationMs,
       "monitors.set": monitors.set,
@@ -155,9 +157,14 @@ async function recordPass(
     ctx.logger.error(`PR watcher: couldn't save its metrics: ${failure.message}`, { companyId });
   }
   ctx.logger.info(
-    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
+    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.priorityRaised} raised to high, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
     { companyId },
   );
+  // The top 5, so Chief's team check can list the longest review waits (HAL-17920).
+  const longest = longestWaitingLine(summary.longestWaits);
+  if (longest !== undefined) {
+    ctx.logger.info(longest, { companyId });
+  }
 }
 
 /**

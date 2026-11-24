@@ -2,8 +2,8 @@
  * The PR watcher's view of Paperclip. The plugin's host adapter
  * (`src/plugin/host.ts`) implements it; it reads tasks, comments and agents,
  * and writes only comments, wake-ups, a task's `done` status, a handoff of
- * a task to its reviewer with status `todo`, and a later time for a monitor
- * the task already has.
+ * a task to its reviewer with status `todo`, a later time for a monitor
+ * the task already has, and a raise of a task's priority to `high`.
  */
 
 /** An open task, as the watcher reads it. */
@@ -20,6 +20,8 @@ export interface TaskRow {
   readonly monitorLastTriggeredAt: string | null;
   /** It is in `backlog` or `blocked`: only a retargeted pull request wakes its holder (HAL-17869). */
   readonly parked?: boolean;
+  /** Its Paperclip priority (`critical`, `high`, `medium` or `low`); unset when unknown. */
+  readonly priority?: string;
 }
 
 /** A task comment: who wrote it, when, and what it says. */
@@ -77,4 +79,10 @@ export interface Paperclip {
    * anything but a later time within 24 hours on an in-progress or in-review task.
    */
   postponeMonitor(taskId: string, until: string): Promise<PostponeOutcome>;
+  /**
+   * Sets the task's priority to `high` if it is still open and `low` or
+   * `medium` when re-read; `closed` otherwise, so a person's change during
+   * the pass stays. Wakes nobody (HAL-17920).
+   */
+  raisePriority(taskId: string, to: "high"): Promise<WriteOutcome>;
 }

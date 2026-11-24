@@ -75,6 +75,7 @@ export function fakePaperclip(
   const wakes: { taskId: string; key: string }[] = [];
   const postponed: { taskId: string; until: string }[] = [];
   const handoffs: { taskId: string; from: string; to: string; key: string }[] = [];
+  const raised: { taskId: string; to: string }[] = [];
   const append = (taskId: string, body: string) => {
     const createdAt = new Date(
       Date.parse("2026-11-21T22:00:00Z") + Object.keys(comments).length,
@@ -130,10 +131,19 @@ export function fakePaperclip(
       postponed.push({ taskId, until });
       return "postponed";
     },
+    raisePriority: async (taskId, to) => {
+      const held = tasks.find((each) => each.id === taskId);
+      if (closedMeanwhile.has(taskId) || !["low", "medium"].includes(held?.priority ?? "")) {
+        return "closed";
+      }
+      raised.push({ taskId, to });
+      tasks = tasks.map((each) => (each.id === taskId ? { ...each, priority: to } : each));
+      return "written";
+    },
   };
   const discover = async (): Promise<FoundPulls> =>
     new Map(tasks.map((task) => [task.identifier, task.pulls]));
-  return { paperclip, discover, comments, done, wakes, postponed, handoffs };
+  return { paperclip, discover, comments, done, wakes, postponed, handoffs, raised };
 }
 
 /** An open task with one pull request on halonic, on a branch of `assignee` unless `branch` says otherwise. */
@@ -152,6 +162,7 @@ export function task(
     openChildren: false,
     monitorNextCheckAt: null,
     monitorLastTriggeredAt: null,
+    priority: "medium",
     pulls: [
       { repo: "halonic-com/halonic", number, branch: branch ?? `${owner}/HAL-${number}-work` },
     ],
