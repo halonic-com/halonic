@@ -82,8 +82,16 @@ export function chatAgentsOf(workspace: LoadedWorkspace): ChatAgent[] {
   return filesOf(workspace, "agent")
     .flatMap((file): ChatAgent[] => {
       if (file.hub === null) return [];
-      const { id, name, description, model } = file.value;
-      return [{ kind: `agent:${file.hub}/${id}`, name, description, model: model ?? "default" }];
+      const { id, name, description, model, character } = file.value;
+      return [
+        {
+          kind: `agent:${file.hub}/${id}`,
+          name,
+          description,
+          model: model ?? "default",
+          colors: character?.colors,
+        },
+      ];
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
