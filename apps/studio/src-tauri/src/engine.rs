@@ -32,6 +32,9 @@ use calls::{
     OPENING_TIMEOUT, Opening, forward_events, open_stream, read_answer, request_body, send,
 };
 
+#[path = "engine_chat_stream.rs"]
+pub mod chat_stream;
+
 /// How many streams one page may have open: a run's events for each run it
 /// shows, and the run updates.
 const STREAMS_PER_PAGE: usize = 16;
@@ -172,8 +175,9 @@ pub struct EngineAnswer {
     body: Value,
 }
 
-/// What `engine_stream` answers: the page's id for the stream, whose
-/// events then come on the channel, or the engine's answer when it refused.
+/// What `engine_stream` and `engine_chat_stream` answer: the page's id for
+/// the stream, whose events or lines then come on the channel, or the
+/// engine's answer when it refused (or, for a chat turn, answered whole).
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum EngineStreamStart {

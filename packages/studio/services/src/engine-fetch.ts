@@ -9,6 +9,12 @@ import type { TauriCallbacks, TauriIpc } from "./tauri-ipc.ts";
  */
 export const engineBaseUrl = "http://engine.invalid";
 
+/** The route whose answer can come as lines, through the shell's `engine_chat_stream`. */
+const chatTurnRoute = "POST /api/chat-turn";
+
+/** The media type of a chat turn's answer as lines: one JSON object per line (`server.chat-turn-stream`). */
+const chatTurnLinesType = "application/x-ndjson";
+
 /** Sends one request to the window's engine, as `fetch` would. */
 export type EngineFetch = (request: Request) => Promise<Response>;
 
@@ -37,13 +43,15 @@ let nextCallId = 1;
 let nextStreamId = 1;
 
 /**
- * The window's engine through the shell's `engine_request`, `engine_request_end`, `engine_stream`
- * and `engine_stream_end` commands (`apps/studio/src-tauri/src/engine.rs`), as a `fetch` for
- * `createRemoteExecutor`. A request names the engine's route by its method and path on
+ * The window's engine through the shell's `engine_request`, `engine_request_end`, `engine_stream`,
+ * `engine_chat_stream` and `engine_stream_end` commands (`apps/studio/src-tauri/src/engine.rs`), as
+ * a `fetch` for `createRemoteExecutor`. A request names the engine's route by its method and path on
  * {@link engineBaseUrl}; the shell gets the route's name and params, never a URL, and keeps the
  * engine's token. A stream route's answer is a body of server-sent events, rebuilt from the
- * channel's messages. Aborting the request stops waiting and tells the shell, which hangs up on the
- * engine, so the engine stops what it was doing for it, such as a chat turn's model call.
+ * channel's messages; a chat turn that accepts `application/x-ndjson` gets its answer as lines the
+ * same way, as the model writes them. Aborting the request stops waiting and tells the shell, which
+ * hangs up on the engine, so the engine stops what it was doing for it, such as a chat turn's model
+ * call.
  *
  * @throws EngineCallRefused when the request isn't to a route of the shell's table, or the shell refuses it
  */
@@ -55,9 +63,14 @@ export function tauriEngineFetch(ipc: TauriIpc & TauriCallbacks): EngineFetch {
       throw new EngineCallRefused("unknown_route", "That isn't a route of the engine.");
     }
     const { route, params } = call;
-    if (call.answer === "stream") return openStream(ipc, route, params, request.signal);
+    if (call.answer === "stream") {
+      return openStream(ipc, "engine_stream", { route, params }, serverSentEvents, request.signal);
+    }
     const text = await request.text();
     const body: unknown = text === "" ? undefined : JSON.parse(text);
+    if (route === chatTurnRoute && acceptsLines(request)) {
+      return openStream(ipc, "engine_chat_stream", { route, body }, chatTurnLines, request.signal);
+    }
     return callJson(ipc, route, params, body, request.signal);
   };
 }
@@ -87,20 +100,58 @@ async function callJson(
   }
 }
 
+/** Whether the caller's `Accept` header names {@link chatTurnLinesType}, with or without parameters. */
+function acceptsLines(request: Request): boolean {
+  const accept = request.headers.get("accept") ?? "";
+  return accept
+    .split(",")
+    .some((range) => range.replace(/;.*/s, "").trim().toLowerCase() === chatTurnLinesType);
+}
+
+/**
+ * How a stream's items become its body: the type of the shell's message for one item, how that
+ * item reads as text, and the body's media type.
+ */
+interface StreamFormat {
+  readonly itemType: string;
+  readonly contentType: string;
+  readonly text: (message: Record<string, unknown>) => string;
+}
+
+/** A stream route's events: `{ type: "event", event, data, id? }`, as server-sent events. */
+const serverSentEvents: StreamFormat = {
+  itemType: "event",
+  contentType: "text/event-stream",
+  text: sseBlock,
+};
+
+/** A chat turn's lines: `{ type: "line", line }`, each line's JSON on a line of its own. */
+const chatTurnLines: StreamFormat = {
+  itemType: "line",
+  contentType: chatTurnLinesType,
+  text: (message) => `${JSON.stringify(message["line"])}\n`,
+};
+
+/**
+ * Opens a stream with the shell's `command` (`engine_stream` or `engine_chat_stream`) and `args`,
+ * which name the route, as a body in `format`.
+ */
 async function openStream(
   ipc: TauriIpc & TauriCallbacks,
-  route: string,
-  params: Readonly<Record<string, string | number>>,
+  command: string,
+  args: { readonly route: string } & Record<string, unknown>,
+  format: StreamFormat,
   signal: AbortSignal,
 ): Promise<Response> {
-  const stream = new EngineStream(ipc, nextStreamId++);
+  const { route } = args;
+  const stream = new EngineStream(ipc, nextStreamId++, format);
   signal.addEventListener("abort", () => stream.hangUp(signal.reason), { once: true });
   let start: unknown;
   try {
     start = await invoke(
       ipc,
-      "engine_stream",
-      { route, stream: stream.id, params, channel: stream.channelArgument },
+      command,
+      { ...args, stream: stream.id, channel: stream.channelArgument },
       signal,
     );
   } catch (error) {
@@ -118,13 +169,13 @@ async function openStream(
   }
   return new Response(stream.body, {
     status: 200,
-    headers: { "Content-Type": "text/event-stream" },
+    headers: { "Content-Type": format.contentType },
   });
 }
 
 /**
- * One stream: the channel its events come on, as a body of server-sent events. The shell sends
- * `{ type: "event", event, data, id? }` for each event, then `{ type: "end" }`, or
+ * One stream: the channel its items come on, as a body in its {@link StreamFormat}. The shell sends
+ * a message of the format's item type for each item, then `{ type: "end" }`, or
  * `{ type: "failed", message }` when the stream broke off.
  */
 class EngineStream {
@@ -132,14 +183,16 @@ class EngineStream {
   readonly body: ReadableStream<Uint8Array>;
   readonly #ipc: TauriIpc;
   readonly #channel: TauriChannel;
+  readonly #format: StreamFormat;
   readonly #encoder = new TextEncoder();
   // Set before the constructor returns: the `ReadableStream` constructor runs `start` at once.
   #controller!: ReadableStreamDefaultController<Uint8Array>;
   #finished = false;
 
-  constructor(ipc: TauriIpc & TauriCallbacks, id: number) {
+  constructor(ipc: TauriIpc & TauriCallbacks, id: number, format: StreamFormat) {
     this.id = id;
     this.#ipc = ipc;
+    this.#format = format;
     this.body = new ReadableStream({
       start: (controller) => {
         this.#controller = controller;
@@ -193,8 +246,8 @@ class EngineStream {
       return;
     }
     switch (message["type"]) {
-      case "event":
-        this.#controller.enqueue(this.#encoder.encode(sseBlock(message)));
+      case this.#format.itemType:
+        this.#controller.enqueue(this.#encoder.encode(this.#format.text(message)));
         return;
       case "end":
         this.finish();

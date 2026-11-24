@@ -278,6 +278,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             engine::engine_request,
             engine::engine_request_end,
             engine::engine_stream,
+            engine::chat_stream::engine_chat_stream,
             engine::engine_stream_end,
             http_fetch::http_fetch,
             http_fetch::http_fetch_abort,

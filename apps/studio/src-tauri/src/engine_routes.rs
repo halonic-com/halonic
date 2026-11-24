@@ -76,7 +76,7 @@ const fn route(
 
 /// Every route a page may call. `Answer::Stream` routes answer with
 /// server-sent events. No other route of the engine is reachable.
-const ROUTES: &[EngineRoute] = &[
+pub(crate) const ROUTES: &[EngineRoute] = &[
     // The engine's version, which `executor-remote`'s `send` reads first.
     route(
         "GET /api/hello",
