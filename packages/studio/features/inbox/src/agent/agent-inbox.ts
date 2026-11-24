@@ -5,6 +5,7 @@ import type {
   InboxAnswer,
   MessagingId,
   MessagingSource,
+  WorkItem,
 } from "@halonicjs/ports";
 
 /** What the Inbox last read from `AgentMessaging`. */
@@ -14,11 +15,19 @@ export interface AgentInboxState {
   readonly sources: readonly MessagingSource[];
   /** Every item, open and answered, newest first, so an open card still finds its item once answered. */
   readonly items: readonly AgentItem[];
+  /** The sources' work, so each item can say which work it came from (`inbox.every-waiting-item`). */
+  readonly work: readonly WorkItem[];
   /** Why the last read failed; `undefined` once one succeeds. */
   readonly error: unknown;
 }
 
-const notRead: AgentInboxState = { loaded: false, sources: [], items: [], error: undefined };
+const notRead: AgentInboxState = {
+  loaded: false,
+  sources: [],
+  items: [],
+  work: [],
+  error: undefined,
+};
 
 /**
  * The cards and questions agents put to the person, from every `AgentMessaging` source
@@ -49,16 +58,17 @@ export class AgentInbox {
     };
   }
 
-  /** Reads the sources and items again. A failed read keeps what was shown and says why. */
+  /** Reads the sources, items and work again. A failed read keeps what was shown and says why. */
   async refresh(): Promise<void> {
     this.reads += 1;
     const read = this.reads;
     try {
-      const [sources, items] = await Promise.all([
+      const [sources, items, work] = await Promise.all([
         this.messaging.listSources(),
         this.messaging.listInboxItems(),
+        this.messaging.listWork(),
       ]);
-      if (read === this.reads) this.set({ loaded: true, sources, items, error: undefined });
+      if (read === this.reads) this.set({ loaded: true, sources, items, work, error: undefined });
     } catch (error) {
       if (read === this.reads) this.set({ ...this.state, loaded: true, error });
     }

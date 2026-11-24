@@ -28,7 +28,13 @@ export interface AgentItems {
   readonly card: (now: () => Date, otherwise: ReactNode) => ReactNode;
 }
 
-const nothing: AgentInboxState = { loaded: true, sources: [], items: [], error: undefined };
+const nothing: AgentInboxState = {
+  loaded: true,
+  sources: [],
+  items: [],
+  work: [],
+  error: undefined,
+};
 
 /** Couldn't read the agents' items; said over the list, with **Try again**. */
 export const agentLoadFailed = "Couldn't load the items from your agents.";
@@ -80,6 +86,7 @@ export function useAgentItems(messaging: AgentMessaging | undefined): AgentItems
           key={openItem.id}
           item={openItem}
           source={sourceOf(openItem)}
+          work={state.work.find((work) => work.id === openItem.work)}
           now={now}
           answer={(answer) => inbox.answer(openItem.id, answer)}
         />

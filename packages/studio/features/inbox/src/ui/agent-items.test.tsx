@@ -257,3 +257,30 @@ verifies("inbox.agent-inbox-items", () => {
     });
   });
 });
+
+verifies("inbox.every-waiting-item", () => {
+  it("lists a card from a task that isn't a chat after one change, names its task, and answers it", async () => {
+    const messaging = new FakeAgentMessaging({ now: () => asked });
+    const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+    const task = messaging.addWork(source.id, { label: "ACME-12", title: "Fix the login" });
+    const root = await openInbox(messaging);
+    expect(rows(root)).toHaveLength(0);
+    const reads = vi.spyOn(messaging, "listInboxItems");
+    let card: ReturnType<FakeAgentMessaging["addInboxItem"]> | undefined;
+    await act(async () => {
+      card = messaging.addInboxItem(source.id, { question: "Approve the plan?", work: task.id });
+    });
+    await settled();
+    expect(reads).toHaveBeenCalledTimes(1);
+    expect(rows(root).map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Approve the plan?"),
+    ]);
+    await openFirstRow(root);
+    expect(root.querySelector("section")?.textContent).toContain("From ACME-12 · Fix the login");
+    await click(button(root, "Yes"));
+    const [answered] = await messaging.listInboxItems();
+    expect(answered?.id).toBe(card?.id);
+    expect(answered?.state).toMatchObject({ kind: "answered", answer: { option: "yes" } });
+    expect(rows(root)).toHaveLength(0);
+  });
+});

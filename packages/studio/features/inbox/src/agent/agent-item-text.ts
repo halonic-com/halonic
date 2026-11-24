@@ -3,6 +3,7 @@ import type {
   InboxAnswer,
   MessagingAuthor,
   MessagingSource,
+  WorkItem,
 } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
 import { type MarkdownInline, readMarkdown } from "@halonicjs/studio-kit";
@@ -48,6 +49,14 @@ export function agentItemMeta(
   const from = item.from.kind === "me" ? [] : [authorName(item.from)];
   const parts = [...(source === undefined ? [] : [source.label]), ...from];
   return [...parts, waitingFor(new Date(item.createdAt), now)].join(" · ");
+}
+
+/**
+ * The work an item came from, as its card says it: "From HAL-12 · Fix the login". Any task or work
+ * can ask, not only a chat, so the card names it (`inbox.every-waiting-item`).
+ */
+export function workLine(work: WorkItem): string {
+  return `From ${markHiddenName(work.label)} · ${markHiddenName(work.title)}`;
 }
 
 /** Whether the item has waited a day or more, as a run's item is late. */

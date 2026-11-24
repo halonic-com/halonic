@@ -4,6 +4,7 @@ import type {
   InboxAnswer,
   MessagingAuthor,
   MessagingSource,
+  WorkItem,
 } from "@halonicjs/ports";
 import { Button, Callout } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
@@ -12,6 +13,7 @@ import {
   answeredLine,
   answerText,
   sourceDownLine,
+  workLine,
 } from "../agent/agent-item-text.ts";
 import { waitingSince } from "../plain/waiting-time.ts";
 import { AgentMarkdown } from "./agent-markdown.tsx";
@@ -29,6 +31,8 @@ export interface AgentItemCardProps {
   /** The item as last read, so it turns answered when another client answers it. */
   readonly item: AgentItem;
   readonly source: MessagingSource | undefined;
+  /** The work it came from, when the source names one and has it. */
+  readonly work?: WorkItem | undefined;
   readonly now: () => Date;
   readonly answer: (answer: InboxAnswer) => Promise<AnswerResult>;
 }
@@ -45,10 +49,10 @@ type Sent =
  * An agent's card or question (`inbox.agent-inbox-items`): its title, its source and since when it
  * waits, the question as safe Markdown, and one button per option, or a reply field when it has
  * none. Once answered, here or elsewhere, a line says by whom and how, and the buttons stay, off
- * (render 5f). While its source is offline or signed out the buttons are off and say why; nothing
+ * (render 5f). It names the work it came from, whatever made it (`inbox.every-waiting-item`). While its source is offline or signed out the buttons are off and say why; nothing
  * is kept to send later.
  */
-export function AgentItemCard({ item, source, now, answer }: AgentItemCardProps) {
+export function AgentItemCard({ item, source, work, now, answer }: AgentItemCardProps) {
   useEveryMinute();
   const titleId = useId();
   const reasonId = useId();
@@ -86,6 +90,7 @@ export function AgentItemCard({ item, source, now, answer }: AgentItemCardProps)
           heading={heading}
           since={[label, since].filter((part) => part != null).join(" · ")}
         />
+        {work === undefined ? null : <p className="text-small text-fg-muted">{workLine(work)}</p>}
         <AgentMarkdown text={item.question} />
       </div>
       <div className="flex flex-col gap-3 border-t border-border p-4">
