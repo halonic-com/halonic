@@ -17,7 +17,7 @@ function useSecondTick(): void {
 function Phrase({ phrase, faded }: { readonly phrase: string; readonly faded: boolean }) {
   return (
     <p
-      className={`m-0 rounded-lg border border-border px-4 py-3 text-center font-mono text-lg text-fg ${faded ? "opacity-30" : ""}`}
+      className={`m-0 rounded-lg border border-border px-4 py-3 text-center font-mono text-heading text-fg ${faded ? "opacity-30" : ""}`}
       data-phrase
     >
       {phrase}
