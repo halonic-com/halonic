@@ -58,6 +58,34 @@ export function globalCases(make: MakeToolScriptIsolate): void {
       expect(second.ok && second.output).toEqual(["undefined", "undefined", "undefined"]);
     });
   });
+
+  verifies("toolscript-fence.fresh-module-per-run", () => {
+    it("starts a second run on the same isolate without the first run's globals or heap", async () => {
+      const isolate = await make();
+      const same = () => isolate;
+      const limits = { memoryBytes: 8 * 1024 * 1024 };
+      // 4 MB held in a global: a second run in the same heap would start
+      // with it and run out of memory filling its own 4 MB.
+      const fill = `const kept = []; for (let i = 0; i < 4; i += 1) kept.push("x".repeat(1 << 20) + i);`;
+      const first = await runScript(
+        same,
+        script(
+          `${fill} globalThis.kept = kept; Object.prototype.polluted = 1; return kept.length;`,
+        ),
+        { limits },
+      );
+      expect(first).toMatchObject({ ok: true, output: 4 });
+      const second = await runScript(
+        same,
+        script(`
+          const seen = [typeof globalThis.kept, typeof ({}).polluted];
+          ${fill}
+          return [...seen, kept.length];`),
+        { limits },
+      );
+      expect(second).toMatchObject({ ok: true, output: ["undefined", "undefined", 4] });
+    });
+  });
 }
 
 /** `ctx` itself: frozen, no prototype, `this` ignored, nothing after the end. */
