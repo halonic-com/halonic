@@ -149,6 +149,16 @@ verifies("assistant.chat.rename", () => {
 });
 
 verifies("assistant.chat.delete", () => {
+  it("offers Delete chat… in ⋮ as a danger item, last, below a divider", async () => {
+    const page = await show(panel(fakeHost([routine])));
+    const remove = [...page.querySelectorAll("[role^=menuitem]")].find(
+      (item) => item.textContent === "Delete chat…",
+    );
+    expect(remove?.nextElementSibling).toBeNull();
+    expect(remove?.className).toContain("text-danger");
+    expect(remove?.previousElementSibling?.tagName).toBe("HR");
+  });
+
   it("asks first, saying the changes to review stay, then shows no chat", async () => {
     const fake = fakeHost([alias]);
     const page = await show(panel(fake));

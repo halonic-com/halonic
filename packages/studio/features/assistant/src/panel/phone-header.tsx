@@ -73,8 +73,9 @@ export function focusPanelHeading(anchor: RefObject<HTMLElement | null>): void {
 
 /**
  * The phone's ⋮ (flow-assistant 11.3): **New chat** while the chat has messages, **Recent
- * chats**, and for a kept chat **Rename** and **Delete chat**, with 48px items. A phone's top bar
- * has no New chat or ✕ of its own: Back closes the panel.
+ * chats**, and for a kept chat **Rename** and **Delete chat**, with 48px items. Delete chat is a
+ * danger item, last, below a divider (component specs 14). A phone's top bar has no New chat or
+ * ✕ of its own: Back closes the panel.
  */
 export function PhoneChatMenu(
   props: ChatHeaderProps & {
@@ -99,7 +100,13 @@ export function PhoneChatMenu(
           { id: "new", label: buildChatWords.newChat, onSelect: props.onNewChat },
           recent,
           { id: "rename", label: words.rename, onSelect: props.onRename },
-          { id: "delete", label: words.phone.deleteChat, onSelect: () => setDeleting(true) },
+          "divider",
+          {
+            id: "delete",
+            label: words.phone.deleteChat,
+            danger: true,
+            onSelect: () => setDeleting(true),
+          },
         ];
   return (
     <>

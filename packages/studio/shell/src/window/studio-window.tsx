@@ -46,7 +46,7 @@ import { useOpenPageAcrossLayouts } from "./layout-crossing.ts";
 import { placeStackMoves } from "./place-stack-moves.ts";
 import { itemLocationOf, showItemInWindow } from "./show-item.ts";
 import { useShownPlaces } from "./shown-places.ts";
-import { tabReadersOf } from "./shown-title.ts";
+import { useShownReaders } from "./shown-title.ts";
 import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
@@ -208,7 +208,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   openItemInNewTab.current = desktop
     ? (location) => openLocation(tabs, announcer, location, true)
     : (location) => phone.open(location);
-  const tabReaders = useMemo(() => tabReadersOf(tabs), [tabs]);
+  const readers = useShownReaders(tabs, phone.topBar.title);
   // The pages that take items as cards, which `showItem` asks first.
   const cardTakers = useMemo(() => new ItemCardTakers(), []);
   // The phone's page, read when a feature asks what shows, so the context stays the same.
@@ -235,7 +235,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   const contextFor = useCallback(
     (featureId: string): WorkspaceContext => ({
       ...shell.services.contextFor(featureId, workspace.services),
-      ...(onDesktop.current ? { ...tabReaders, showSidebarView, showItem } : {}),
+      ...(onDesktop.current ? { ...readers.desktop, showSidebarView, showItem } : readers.phone),
       host,
       shown: shownPage,
       openPlace: (place) => openPlaceHere.current(place),
@@ -260,7 +260,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       backFromPhone,
       settingsSections,
       contributions,
-      tabReaders,
+      readers,
       showSidebarView,
       shownPage,
       panelWindow.control,

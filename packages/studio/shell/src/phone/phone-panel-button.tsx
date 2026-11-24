@@ -20,6 +20,10 @@ const haloColors = ["var(--halo-blue)", "var(--halo-violet)"] as const;
  * button takes the focus when pressed, since a tap doesn't focus a button in every browser, and
  * the panel gives the focus back to what had it.
  *
+ * Built by hand, not as the kit's ghost `Button`, because that button draws its icon at 20px on a
+ * phone and the orb is 24px. So it takes the kit button's see-through 1px border itself: in high
+ * contrast the border shows, as **Search**'s does next to it (component specs 15.1).
+ *
  * @example
  * <PhonePanelButton title="Assistant" onOpen={panelWindow.show} ref={button} />
  */
@@ -29,7 +33,7 @@ export function PhonePanelButton({ title, onOpen, ref }: PhonePanelButtonProps) 
       ref={ref}
       type="button"
       aria-label={title}
-      className="inline-grid size-touch shrink-0 place-items-center rounded-sm outline-none focus-ring hover:bg-surface-muted active:bg-surface-muted"
+      className="inline-grid size-touch shrink-0 place-items-center rounded-sm border border-transparent outline-none focus-ring hover:bg-surface-muted active:bg-surface-muted"
       onClick={(event) => {
         event.currentTarget.focus();
         onOpen();

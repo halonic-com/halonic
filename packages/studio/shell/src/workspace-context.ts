@@ -118,10 +118,10 @@ export interface WorkspaceContext {
    */
   readonly activeItem?: ActiveItemSource;
   /**
-   * The name of the page the active window tab shows, as its tab names it ("Home", "Changes", an
-   * item's name), so a feature can say what the user is looking at, such as the Assistant panel's
-   * "Looking at: Home". The window gives it to the views it draws on the desktop; a context built
-   * without a window, and a phone, which has no tabs, have none.
+   * The name of the page the window shows, so a feature can say what the user is looking at, such
+   * as the Assistant panel's "Looking at: Home": on the desktop the active tab's, as its tab names
+   * it ("Home", "Changes", an item's name), on a phone the phone page's, as its top bar names it.
+   * The window gives it to the views it draws; a context built without a window has none.
    */
   readonly shownTitle?: ShownTitleSource;
   /**
@@ -186,7 +186,7 @@ export interface ActiveItemSource {
 
 /** The name of the page the active window tab shows, and a way to hear it change. */
 export interface ShownTitleSource {
-  /** The active tab's label. */
+  /** The shown page's name: the active tab's label, or the phone page's title on a phone. */
   get(): string;
   /** Calls `listener` when the name changes. Returns a function that stops it. */
   subscribe(listener: () => void): () => void;
