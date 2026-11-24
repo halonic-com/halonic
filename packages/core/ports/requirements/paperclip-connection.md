@@ -1,0 +1,19 @@
+# ports.paperclip-connection
+
+- Status: draft
+- Since: unreleased
+- Source: HAL-17422 plan, approved by the board on HAL-10 (24 Nov), with the board's direction of 24 Nov 10:18 and 10:20 UTC (apps talk only to the engine; desktop and server engines); ADR `docs/adr/2026-11-24-agent-messaging.md`; Julian's security review HAL-17436 (finding 6). Draft until track A (the connection file and the Paperclip provider) lands; it then moves to the package that holds the code and becomes active.
+
+The workspace shall describe each Paperclip connection in its own file, `connections/paperclip/<name>.yaml`, holding only a label, the server's address and the company, never a key and never Paperclip's data; a workspace shall be able to hold several connections. Opening a workspace with a connection file shall make no call to Paperclip until the user chooses to connect and has seen the server's address and company.
+
+## Examples
+
+- Given a workspace with `connections/paperclip/halonic.yaml` and `connections/paperclip/acme.yaml` that both have a task `HAL-10`,
+  when Studio lists work,
+  then it shows two items, each with its own source's label.
+- Given a connection file that holds a field `key`,
+  when the workspace is read,
+  then the file is refused with a message that keys live in the keychain.
+- Given a workspace with a connection file nobody has connected,
+  when it is opened,
+  then no request goes to the file's address.

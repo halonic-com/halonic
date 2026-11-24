@@ -59,6 +59,7 @@ code is built the way it is, before you change something they describe.
 | [A setup done for an older release says `setupAgain`](2026-11-21-sandbox-check-setup-again.md) | An optional flag on a `setup-needed` refusal, so Studio can tell "set up again" from "never set up" (v9) |
 | [Access a removal with administrator rights left says `accessKept`](2026-11-22-sandbox-check-access-kept.md) | An optional flag on a `setup-needed` refusal, so Settings offers to remove the sandbox again (v11) |
 | [A WSL distro without its runtime says `runtime-missing`](2026-11-21-sandbox-reason-runtime-missing.md) | A new `SandboxUnavailableReason` for Halonic's distro without its runtime, which repair installs without importing the distro again (v10) |
+| [Apps talk to agents only through the engine](2026-11-24-agent-messaging.md) | Studio's apps see only `AgentMessaging`, with opaque IDs; Paperclip is one provider in the engine, with the key in the keychain and engine memory, a fixed request list, `https` only and no redirects; desktop engine now, server engine in phase 2 (proposed) |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

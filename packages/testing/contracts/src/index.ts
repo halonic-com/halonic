@@ -62,6 +62,10 @@ export {
   type MakeDeployTarget,
 } from "./deploy-target.ts";
 export {
+  FakeAgentMessaging,
+  type FakeAgentMessagingOptions,
+} from "./fake-agent-messaging.ts";
+export {
   type AccountsFailureCode,
   FakeDeployTarget,
   type FakeDeployTargetOptions,
