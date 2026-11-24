@@ -46,32 +46,35 @@ export function BehaviourPage({
   useReportNotSaved(reportNotSaved, [description, instructions], outputNotSaved);
   return (
     <div className="flex flex-col gap-6">
-      <ReviewMark agent={settings} field="description" />
-      <Field label={words.description} error={description.error} announceWhileFocused>
-        <Input
-          value={description.value}
-          onChange={(event) => description.onChange(event.target.value)}
-          onBlur={description.flush}
-        />
-      </Field>
-      <ReviewMark agent={settings} field="instructions" />
-      <Field
-        label={words.instructions}
-        hint={instructions.value === "" ? words.instructionsHint : undefined}
-        error={instructions.error}
-        announceWhileFocused
-      >
-        <TextArea
-          autoFocus={focusInstructions === true}
-          minRows={4}
-          maxRows={12}
-          value={instructions.value}
-          onChange={(event) => instructions.onChange(event.target.value)}
-          onBlur={instructions.flush}
-        />
-      </Field>
-      <ReviewMark agent={settings} field="output" />
-      <OutputField output={settings.output} save={save} reportNotSaved={setOutputNotSaved} />
+      <ReviewMark agent={settings} field="description">
+        <Field label={words.description} error={description.error} announceWhileFocused>
+          <Input
+            value={description.value}
+            onChange={(event) => description.onChange(event.target.value)}
+            onBlur={description.flush}
+          />
+        </Field>
+      </ReviewMark>
+      <ReviewMark agent={settings} field="instructions">
+        <Field
+          label={words.instructions}
+          hint={instructions.value === "" ? words.instructionsHint : undefined}
+          error={instructions.error}
+          announceWhileFocused
+        >
+          <TextArea
+            autoFocus={focusInstructions === true}
+            minRows={4}
+            maxRows={12}
+            value={instructions.value}
+            onChange={(event) => instructions.onChange(event.target.value)}
+            onBlur={instructions.flush}
+          />
+        </Field>
+      </ReviewMark>
+      <ReviewMark agent={settings} field="output">
+        <OutputField output={settings.output} save={save} reportNotSaved={setOutputNotSaved} />
+      </ReviewMark>
     </div>
   );
 }

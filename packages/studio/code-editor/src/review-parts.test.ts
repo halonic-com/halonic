@@ -26,6 +26,11 @@ function markedLines(editor: TestEditor): string[] {
   );
 }
 
+/** Every CSS rule the editor's theme put in the page, as text. */
+function pageCss(): string {
+  return [...document.querySelectorAll("style")].map((style) => style.textContent).join("\n");
+}
+
 function groups(editor: TestEditor): HTMLElement[] {
   return [...editor.view.dom.querySelectorAll<HTMLElement>(".cm-review-part")];
 }
@@ -100,6 +105,22 @@ describe("the assistant's changes to review in the editor", () => {
       const [group] = groups(editor);
       expect(group?.querySelector("del")?.textContent).toBe("extra: yes");
       expect(group?.previousElementSibling?.textContent).toBe("last: ok");
+      editor.destroy();
+    });
+
+    it("edges the changed lines and draws the buttons as the kit's sm Button", () => {
+      const editor = editorWith();
+      const css = pageCss();
+      expect(css).toMatch(
+        /\.cm-review-added\s*\{[^}]*border-inline-start:\s*2px solid var\(--color-success\)/,
+      );
+      expect(css).toMatch(
+        /\.cm-review-removed\s*\{[^}]*border-inline-start:\s*2px solid var\(--color-danger\)/,
+      );
+      expect(css).toMatch(/\.cm-review-button\s*\{[^}]*min-height:\s*var\(--spacing-control-sm\)/);
+      expect(css).toMatch(
+        /\.cm-review-button:focus-visible\s*\{[^}]*box-shadow:\s*var\(--focus-ring\)/,
+      );
       editor.destroy();
     });
 

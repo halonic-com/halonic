@@ -108,6 +108,20 @@ verifies("agents.review.changes-to-review", () => {
     expect(mark(page, "field:model")?.textContent).toContain("small");
   });
 
+  it("draws the mark around its field: the Model select sits inside the change's group", async () => {
+    const { page } = await showPage(fakeReview(reviewOf([modelChange])).host);
+    await click(buttonNamed(page, "Configuration"));
+    await click(buttonNamed(page, "Model"));
+
+    const group = page.querySelector<HTMLElement>('fieldset[aria-label="Model: small → large"]');
+    const label = [...(group?.querySelectorAll("label") ?? [])].find(
+      (each) => each.textContent === "Model",
+    );
+    const select = label === undefined ? null : document.getElementById(label.htmlFor);
+    expect(select).not.toBeNull();
+    expect(group?.contains(select)).toBe(true);
+  });
+
   it("accepts one change with a toast whose Undo takes it back", async () => {
     const review = fakeReview(reviewOf([descriptionChange, modelChange]));
     const { page, toasts } = await showPage(review.host);
