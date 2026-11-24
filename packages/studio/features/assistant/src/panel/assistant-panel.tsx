@@ -35,9 +35,9 @@ import {
 } from "../chat/build-chats.ts";
 import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../chat/turns.ts";
 import { BuildComposer } from "./build-composer.tsx";
-import { useEngineAnswering, useTrustCheck } from "./send-gate.ts";
-import { ShownItems } from "./shown-items.tsx";
 import { ChatHeading, ChatMoreActions } from "./chat-header.tsx";
+import { useEngineAnswering, useTrustCheck } from "./send-gate.ts";
+import { ShownItems, ShownItems } from "./shown-items.tsx";
 import { SkillLink } from "./skill-link.tsx";
 
 /** Focus as it is: the panel "moves" focus to what has it, so Show in chat leaves it there. */
