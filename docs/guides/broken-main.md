@@ -43,6 +43,12 @@ merge base. That commit is the baseline: it's installed and its tests run
 without a cache, and the guard installs and compares against exactly that
 commit. A `baseline-walked-back` warning names it.
 
+When the merge base's own `push` CI run has already failed, the job walks
+back before it runs any tests, so it tests every package once instead of
+twice and stays inside its time limit (HAL-17600). If that push run is still
+running, was cancelled or doesn't exist yet, the merge base is tested first
+and the walk-back follows only if its tests fail.
+
 - The baseline is still a commit on `main`, found with
   `git rev-list --first-parent` and checked against the `push` runs of
   `ci.yml` on `main`. The lookup only reads, so the trust boundary is
