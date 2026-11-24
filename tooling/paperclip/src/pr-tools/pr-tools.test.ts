@@ -184,3 +184,38 @@ verifies("paperclip.pr-tools", () => {
     });
   });
 });
+
+verifies("paperclip.pr-tools-reapproval", () => {
+  describe("pr_status", () => {
+    test("counts Julian's rebase-only re-approval on Liam's paths when Liam approved the head it names", async () => {
+      const reapproval =
+        "Julian: re-approved on head `7651f8c` (rebase only, range-diff vs `0000000`)";
+      const github = pr4588(["Liam: approved on head `0000000`", reapproval], ["pnpm-lock.yaml"]);
+      const status = await prStatus(github.get, repo, 4588);
+      expect(status.approvedOnHead).toBe(true);
+      expect(status.approvals[1]).toMatchObject({
+        by: "Julian",
+        rebaseOf: "0000000",
+        counts: true,
+      });
+      expect(statusText(status)).toContain("rebase only since Liam's approval on 0000000");
+    });
+
+    test("doesn't count a re-approval without Liam's approval on the named head or without the range-diff", async () => {
+      const bare = "Julian: re-approved on head `7651f8c`";
+      expect(signedApprovals([{ body: bare, author_association: "MEMBER" }])).toEqual([]);
+      const github = pr4588(
+        [
+          "Liam: approved on head `1111111`",
+          "Julian: re-approved on head `7651f8c` (rebase only, range-diff vs `0000000`)",
+        ],
+        ["pnpm-lock.yaml"],
+      );
+      const status = await prStatus(github.get, repo, 4588);
+      expect(status.approvedOnHead).toBe(false);
+      expect(status.approvals[1]?.note).toBe(
+        "re-approval after a rebase, but Liam didn't approve 0000000 (HAL-14809)",
+      );
+    });
+  });
+});
