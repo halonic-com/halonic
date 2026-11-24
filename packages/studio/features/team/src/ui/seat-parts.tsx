@@ -1,5 +1,5 @@
 import type { Seat } from "@halonicjs/ports";
-import type { SeatProblem } from "../seat-problems.ts";
+import type { SeatProblem, SeatProblemKind } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
 import { teamWords } from "../team-words.ts";
 import { Tile } from "./money-tiles.tsx";
@@ -60,14 +60,23 @@ export function NeedsYou(props: { problems: readonly SeatProblem[]; clock: TeamC
   );
 }
 
+/** The problems that count as near the limit: the tile uses Needs you's words, not the seat's state. */
+const nearLimitKinds: readonly SeatProblemKind[] = ["reaches-90-soon", "at-90", "at-80"];
+
 /** Seats this week: the pool's room left, the seats near their limit and signed out, the next refill. */
-export function SeatsTile(props: { seats: readonly Seat[]; clock: TeamClock }) {
+export function SeatsTile(props: {
+  seats: readonly Seat[];
+  problems: readonly SeatProblem[];
+  clock: TeamClock;
+}) {
   const pool = props.seats.filter((seat) => seat.role === "pool");
   const readable = pool.filter((seat) => seat.state !== "signed-out" && seat.state !== "not-read");
   const weeks = readable.flatMap((seat) => seat.windows.filter((each) => each.kind === "week"));
   if (weeks.length === 0) return null;
   const used = weeks.reduce((sum, week) => sum + week.usedPercent, 0) / weeks.length;
-  const near = pool.filter((seat) => seat.state === "near-limit").length;
+  const near = props.problems.filter(
+    (problem) => problem.seat.role === "pool" && nearLimitKinds.includes(problem.kind),
+  ).length;
   const signedOut = pool.filter((seat) => seat.state === "signed-out").length;
   const refill = weeks
     .flatMap((week) => (week.resetsAt === undefined ? [] : [week.resetsAt]))

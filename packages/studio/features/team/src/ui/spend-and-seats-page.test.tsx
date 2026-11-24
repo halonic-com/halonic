@@ -250,6 +250,42 @@ verifies("team.spend-and-seats", () => {
       errors.mockRestore();
     });
 
+    it("dates freshness and the offline banner from readings, not a signed-out seat's since", async () => {
+      const fake = acme();
+      fake.setNow("2026-11-24T09:40:00.000Z");
+      fake.team.addSeat(fake.source, { label: "Seat D", state: "signed-out" });
+      fake.setNow("2026-11-24T13:00:00.000Z");
+      fake.team.addSeat(fake.source, { label: "Seat A" });
+      fake.setNow("2026-11-24T13:03:00.000Z");
+      const page = await open(fake);
+      expect(text(page)).toContain("As of 13:00 · 3 min ago");
+      expect(text(page)).not.toContain("⚠");
+      expect(text(page)).not.toContain("The seats job may have stopped.");
+      fake.team.parts = () => Promise.reject(new Error("no answer"));
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      fake.team.addSeat(fake.source, { label: "Seat B" });
+      await settle();
+      expect(text(page)).toContain("Offline, as of 13:03.");
+      errors.mockRestore();
+    });
+
+    it("counts seats near their limit the way Needs you does, not by their state", async () => {
+      const fake = acme();
+      for (const [label, usedPercent] of [
+        ["Seat A", 94],
+        ["Seat B", 82],
+      ] as const) {
+        fake.team.addSeat(fake.source, {
+          label,
+          windows: [{ kind: "week", label: "This week", usedPercent }],
+        });
+      }
+      const page = await open(fake);
+      expect(text(page)).toContain("Needs you · 2 problems");
+      expect(text(page)).not.toContain("None near their limit");
+      expect(text(page)).toContain("2 near their limit");
+    });
+
     it("shows a seat's label as plain text", async () => {
       const fake = acme();
       fake.team.addSeat(fake.source, { label: "<b>Seat</b> [x](javascript:alert(1))" });
