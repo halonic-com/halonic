@@ -6,6 +6,7 @@
 import type { ChatAnswer, ChatAnswerListener } from "@halonicjs/app";
 import type { ChatMessage } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+import type { TryItChanges } from "./chat/try-it-changes.ts";
 import type { AgentPlacementState, ThisComputerChoice } from "./placement-api.ts";
 import type { AgentTeamMember } from "./team.ts";
 
@@ -270,6 +271,16 @@ export interface AgentRoutine {
 }
 
 export {
+  noTryItChanges,
+  type TryItChanges,
+  type TryItLeftOutReason,
+} from "./chat/try-it-changes.ts";
+export {
+  TryItChangesLine,
+  type TryItChangesLineProps,
+  type WatchTryItChanges,
+} from "./chat/try-it-changes-line.tsx";
+export {
   ConfirmAgainCallouts,
   type ConfirmAgainCalloutsProps,
   type RunAgent,
@@ -373,6 +384,11 @@ export interface AgentsHost {
    * in a workspace that isn't trusted only says it wasn't started.
    */
   askTrust?(): Promise<"trusted" | "declined">;
+  /**
+   * Watches the assistant's changes to review that Try it uses and leaves out for this agent
+   * (flow-assistant 4.4); returns the way to stop. Absent where there are none (the browser).
+   */
+  watchTryItChanges?(ref: AgentRef, listener: (changes: TryItChanges) => void): () => void;
   /** The workspace's name, for "Not started: *Acme* isn't trusted yet"; `undefined` before it's read. */
   workspaceName?(): string | undefined;
   /**

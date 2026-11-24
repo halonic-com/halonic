@@ -1,5 +1,6 @@
 import { stateAgentsOf } from "@halonicjs/adapter-workspace-models";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
+import type { TryItChanges } from "@halonicjs/studio-feature-agents/api";
 import {
   type NewWorkflow,
   type RemovedStep,
@@ -157,6 +158,13 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         .filter((agent) => agent.hub === hubId)
         .map((agent) => ({ id: agent.value.id, name: agent.value.name })),
     };
+  }
+
+  /** Watches the workflow's changes to review for its tests; nothing to watch without the review service. */
+  watchTryItChanges(ref: WorkflowRef, listener: (changes: TryItChanges) => void): () => void {
+    const watch = this.#parts.tryItChanges;
+    if (watch === undefined) return () => {};
+    return watch(async () => (await this.configuration(ref)).file, listener);
   }
 
   /** One workflow's settings and the problems the checks found in its file, with unsaved changes applied. */

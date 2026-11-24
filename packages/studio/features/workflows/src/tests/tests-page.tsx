@@ -1,4 +1,5 @@
 import { halonicCommand } from "@halonicjs/app";
+import { TryItChangesLine, type WatchTryItChanges } from "@halonicjs/studio-feature-agents/api";
 import { Button, CommandBox, EmptyState, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
 import {
   copyDetails,
@@ -8,7 +9,7 @@ import {
   engineWordsOf,
   isUnexplained,
 } from "@halonicjs/studio-shell";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { WorkflowRef, WorkflowsHost, WorkflowTests } from "../api.ts";
 import { useHostRead } from "../page/use-workflow.ts";
 import { CaseCard } from "./case-card.tsx";
@@ -49,6 +50,7 @@ export function TestsPage({
   const [picked, setPicked] = useState<number | undefined>();
   const rowButtons = useRef(new Map<number, HTMLButtonElement>());
   const ids = useId();
+  const watchChanges = useWatchTryItChanges(host, workflow);
   // A newer read from the host replaces what a run handed back.
   useEffect(() => setRan(undefined), [load]);
   // The case made from a run starts picked, once, as soon as the cases have it.
@@ -145,6 +147,10 @@ export function TestsPage({
   return (
     <div className="-m-6 flex min-h-0 flex-1">
       <div className="min-w-0 flex-1 overflow-auto p-6">
+        {/* Tests read the assistant's changes you haven't accepted yet, as Try it does (flow-assistant 4.4). */}
+        <div className="mb-3 empty:hidden">
+          <TryItChangesLine watch={watchChanges} />
+        </div>
         {/* Without Run tests the command goes under the count, so the count never wraps beside it. */}
         <div
           className={
@@ -269,4 +275,19 @@ function RunInTerminal({ command }: { readonly command: string | undefined }) {
       <CommandBox command={command} />
     </div>
   );
+}
+
+/**
+ * The host's watch of this workflow's changes to review, kept the same while the workflow is, so
+ * the line doesn't start watching again on every render.
+ */
+function useWatchTryItChanges(
+  host: WorkflowsHost,
+  workflow: WorkflowRef,
+): WatchTryItChanges | undefined {
+  const { hubId, id } = workflow;
+  return useMemo(() => {
+    if (host.watchTryItChanges === undefined) return undefined;
+    return (listener) => host.watchTryItChanges?.({ hubId, id }, listener) ?? (() => {});
+  }, [host, hubId, id]);
 }

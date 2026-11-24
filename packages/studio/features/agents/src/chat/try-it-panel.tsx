@@ -1,10 +1,11 @@
 import type { SandboxStartCheck } from "@halonicjs/app";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import type { AgentRef, AgentSettings, AgentsHost } from "../api.ts";
 import { harnessStrip } from "../configuration/harness-strip.ts";
 import { useHarnessCheck } from "../configuration/use-harness-check.ts";
 import type { Load } from "../page/use-load.ts";
 import type { BoxLineActions } from "./box-line.tsx";
+import { TryItChangesLine, type WatchTryItChanges } from "./try-it-changes-line.tsx";
 import { TryItChatView } from "./try-it-chat.tsx";
 import { useTryItChat } from "./use-try-it-chat.ts";
 
@@ -49,16 +50,36 @@ function ReadyChat({
 }: Omit<TryItPanelProps, "settings" | "waiting"> & { readonly settings: AgentSettings }) {
   const chat = useTryItChat({ host, agent, name: settings.name, announce });
   const { found } = useHarnessCheck(host, agent.hubId, agent.id);
+  const watchChanges = useWatchTryItChanges(host, agent);
   return (
-    <TryItChatView
-      chat={chat}
-      name={settings.name}
-      description={settings.description}
-      harness={settings.harness}
-      harnessStrip={harnessStrip(settings.harness, found[settings.harness])}
-      ways={ways}
-      sandboxStartCheck={sandboxStartCheck}
-      announce={announce}
-    />
+    <div className="flex size-full min-h-0 flex-col">
+      <div className="mx-auto w-full max-w-reading px-4 pt-3 empty:hidden">
+        <TryItChangesLine watch={watchChanges} />
+      </div>
+      <div className="min-h-0 flex-1">
+        <TryItChatView
+          chat={chat}
+          name={settings.name}
+          description={settings.description}
+          harness={settings.harness}
+          harnessStrip={harnessStrip(settings.harness, found[settings.harness])}
+          ways={ways}
+          sandboxStartCheck={sandboxStartCheck}
+          announce={announce}
+        />
+      </div>
+    </div>
   );
+}
+
+/**
+ * The host's watch of this agent's changes to review, kept the same while the agent is, so the
+ * line doesn't start watching again on every render.
+ */
+function useWatchTryItChanges(host: AgentsHost, agent: AgentRef): WatchTryItChanges | undefined {
+  const { hubId, id } = agent;
+  return useMemo(() => {
+    if (host.watchTryItChanges === undefined) return undefined;
+    return (listener) => host.watchTryItChanges?.({ hubId, id }, listener) ?? (() => {});
+  }, [host, hubId, id]);
 }

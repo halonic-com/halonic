@@ -3,7 +3,9 @@
  * file. The app provides `WorkflowsHostService` for each open workspace; the Workflows feature's
  * list, dialogs and page read it.
  */
+
 import { errorKindOf, KindedError } from "@halonicjs/std";
+import type { TryItChanges } from "@halonicjs/studio-feature-agents/api";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { NewWorkflow, TrashedWorkflow, WorkflowHub, WorkflowUsers } from "./lifecycle-api.ts";
 import type { WorkflowTests } from "./tests-api.ts";
@@ -319,6 +321,11 @@ export interface WorkflowsHost {
    * these lines under it (rule N5 of the UX check, HAL-12363). Absent with `startRun`.
    */
   startRefusal?(ref: WorkflowRef): Promise<StartRefusal | undefined>;
+  /**
+   * Watches the assistant's changes to review that Test uses and leaves out for this workflow
+   * (flow-assistant 4.4); returns the way to stop. Absent where there are none (the browser).
+   */
+  watchTryItChanges?(ref: WorkflowRef, listener: (changes: TryItChanges) => void): () => void;
   /**
    * Saves the real run `runId` as a test case called `name` in the workflow's test file: the run's
    * input, and the step it ended in as the step the case expects. Absent while the app can't write
