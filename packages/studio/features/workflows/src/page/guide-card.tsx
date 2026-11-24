@@ -63,7 +63,9 @@ export interface GuideSlotProps {
 /**
  * Where the workflow page may show the guide's card (`workflows.page.guide-card`): on Flow, while no
  * other card is docked at the right. The page has two slots, and only the one for the layout
- * draws: `top` on a phone, `right` on the desktop.
+ * draws: `top` on a phone, `right` on the desktop. The `right` slot comes before the canvas in the
+ * DOM and is drawn after it, so Tab reaches the card's one button before the canvas's cards
+ * (`workflows.page.guide-card-first`).
  */
 export function GuideSlot({
   guide,
@@ -154,6 +156,6 @@ const chevron = "inline-grid size-icon-sm shrink-0 place-items-center *:size-ful
 
 const classes = {
   desktop:
-    "m-4 flex w-80 max-w-full shrink-0 flex-col self-start overflow-hidden rounded-md border border-border bg-surface",
+    "order-last m-4 flex w-80 max-w-full shrink-0 flex-col self-start overflow-hidden rounded-md border border-border bg-surface",
   phone: "mx-4 my-3 flex flex-col overflow-hidden rounded-md border border-border bg-surface",
 } as const;

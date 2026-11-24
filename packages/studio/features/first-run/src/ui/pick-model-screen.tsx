@@ -1,5 +1,5 @@
 import { BackIcon, Button, Callout, SecretText } from "@halonicjs/studio-kit";
-import { type Ref, useCallback, useId, useRef, useSyncExternalStore } from "react";
+import { type Ref, useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react";
 import type { PickModel } from "../pick-model/pick-model.ts";
 import type { PickModelState } from "../pick-model/pick-model-state.ts";
 import {
@@ -25,6 +25,11 @@ export interface PickModelScreenProps {
   readonly pick: PickModel;
   /** Back, next to the one button: back to where the screen was opened from. */
   readonly onBack: () => void;
+  /**
+   * Whether its heading takes the focus when it opens, for a screen that replaces the page whose
+   * button opened it, so the focus doesn't fall to the body (`first-run.pick-model-focus`).
+   */
+  readonly takeFocus?: boolean;
 }
 
 /**
@@ -36,11 +41,15 @@ export interface PickModelScreenProps {
  * @example
  * <PickModelScreen pick={new PickModel(parts)} onBack={backToWorkflow} />
  */
-export function PickModelScreen({ pick, onBack }: PickModelScreenProps) {
+export function PickModelScreen({ pick, onBack, takeFocus = false }: PickModelScreenProps) {
   const subscribe = useCallback((listener: () => void) => pick.subscribe(listener), [pick]);
   const state = useSyncExternalStore(subscribe, () => pick.state);
   const keyField = useRef<HTMLInputElement>(null);
   const headingId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (takeFocus) heading.current?.focus();
+  }, [takeFocus]);
   const press = () => {
     const text = keyField.current?.value;
     void pick.press(text === undefined ? undefined : new SecretText(text));
@@ -52,7 +61,7 @@ export function PickModelScreen({ pick, onBack }: PickModelScreenProps) {
       className="mx-auto flex w-full max-w-column flex-col gap-4 px-4 py-8"
     >
       <div className="flex flex-col gap-1">
-        <h1 id={headingId} className="text-title text-fg">
+        <h1 ref={heading} id={headingId} tabIndex={-1} className="text-title text-fg focus-ring">
           {words.heading}
         </h1>
         <p className="text-body text-fg-muted">{words.intro}</p>

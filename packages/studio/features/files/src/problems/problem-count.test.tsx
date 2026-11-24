@@ -116,6 +116,8 @@ verifies("files.problems.count", () => {
       expect(pill?.className).toContain("text-danger");
       expect(pill?.className).toContain("contrast-more:border-danger");
       expect(pill?.className).not.toContain("bg-surface-muted");
+      // 24 px high like the status bar's other items, not 20 (C46 PB1).
+      expect(pill?.className.split(" ")).toContain("min-h-6");
       expect(pill?.querySelector("svg")).not.toBeNull();
       expect(pill?.querySelector(".underline")?.textContent).toBe("Show");
     }

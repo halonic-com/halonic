@@ -316,6 +316,8 @@ export function WorkflowScreen({
       <GuideSlot {...guideSlot} page={guidePage} at="top" />
       {/* The container a docked card measures: under 800 px it takes the whole body (DW1). */}
       <div ref={body} className="@container flex min-h-0 flex-1">
+        {/* First in the DOM, so Tab reaches its button before the canvas; drawn at the right. */}
+        <GuideSlot {...guideSlot} page={guidePage} at="right" />
         <TabPanel
           ids={ids}
           tabs={views}
@@ -446,7 +448,6 @@ export function WorkflowScreen({
           announce={announce}
           onClose={closeStepCard}
         />
-        <GuideSlot {...guideSlot} page={guidePage} at="right" />
       </div>
     </div>
   );

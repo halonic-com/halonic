@@ -19,8 +19,11 @@ import {
   PHONE_MIN_FIT_SCALE,
 } from "./map-geometry.ts";
 
-/** The map's natural width; the fit scales it to the panel from there. */
-const MAP_WIDTH = "w-[56rem]";
+/**
+ * The map's natural width; the fit scales it to the panel from there. At the 0.8 floor it's 43.2 rem,
+ * 691 px, so it fits the 700 px panel the chat opens it in (`PANEL_DEFAULT_WIDTH`, C46 AG1).
+ */
+const MAP_WIDTH = "w-[54rem]";
 
 /**
  * The map's width on a phone, where it lays out for the width instead (HAL-485 11.6): three columns
@@ -29,10 +32,11 @@ const MAP_WIDTH = "w-[56rem]";
 const PHONE_MAP_WIDTH = "w-[22.5rem]";
 
 /**
- * Narrower than this many rem, the fitted map's words get too small to read, so its sides stack
- * (C525-5). In rem, so larger text stacks it sooner.
+ * Narrower than this many rem, the map doesn't fit even at its least scale, 0.8 of its 54 rem
+ * (43.2 rem), so its right side would run off the panel; its sides stack instead (C525-5, C46 AG1).
+ * In rem, so larger text stacks it sooner.
  */
-export const STACK_BELOW_REM = 36;
+export const STACK_BELOW_REM = 43.5;
 
 /**
  * On a phone, narrower than this many rem the side cards can't be 92 px wide, so the map stacks
@@ -106,8 +110,9 @@ export function MapFrame({
     setFit({
       stacked: false,
       scale,
-      left: Math.max(0, (room.clientWidth - width * scale) / 2),
-      top: Math.max(0, (room.clientHeight - height * scale) / 2),
+      // On whole pixels, so the words stay sharp.
+      left: Math.max(0, Math.round((room.clientWidth - width * scale) / 2)),
+      top: Math.max(0, Math.round((room.clientHeight - height * scale) / 2)),
     });
   }, [floor, narrowest]);
 
@@ -158,6 +163,8 @@ export function MapFrame({
             onCanvasPress?.();
           }
         }}
+        // A card or button Tab reaches shows whole, its ring too, also below the panel's fold.
+        onFocus={(event) => event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" })}
       >
         <section
           ref={map}

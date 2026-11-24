@@ -19,7 +19,8 @@ export interface PickModelPageParts {
 /**
  * The Pick a model screen as Support reply's page shows it while the first run picks a model
  * (`first-run.run`, first-run-flow 3.3 and 3.4): **Back** closes it, and Continue starts the run
- * and shows it on the page. A run that doesn't start leaves the screen with why, and **Try again**.
+ * and shows it on the page. It opens with the focus on its heading, since the button that opened it
+ * goes with the page (`first-run.pick-model-focus`). A run that doesn't start leaves the screen with why, and **Try again**.
  * The component closes over `parts`, so the page's guide screen loads it with what it needs.
  *
  * @example
@@ -74,7 +75,7 @@ export function pickModelPageOf(
             />
           </div>
         )}
-        <PickModelScreen pick={pick} onBack={() => parts.firstRun.closePicker("back")} />
+        <PickModelScreen pick={pick} onBack={() => parts.firstRun.closePicker("back")} takeFocus />
       </div>
     );
   };

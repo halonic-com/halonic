@@ -254,3 +254,15 @@ verifies("workflows.page.guide-card-focus", () => {
     expect(document.activeElement).toBe(runButtonOf(page));
   });
 });
+
+verifies("workflows.page.guide-card-first", () => {
+  it("puts the card before the canvas's cards in Tab order, still drawn at the canvas's right", async () => {
+    const page = await show(screen(guideFor(firstRunCard).guide));
+    const button = buttonNamed(page, "Run your first workflow");
+    const firstStep = page.querySelector("[data-step]");
+    expect(firstStep).not.toBeNull();
+    const after = firstStep === null ? 0 : (button?.compareDocumentPosition(firstStep) ?? 0);
+    expect(after & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(guideCardOf(page)?.className.split(" ")).toContain("order-last");
+  });
+});
