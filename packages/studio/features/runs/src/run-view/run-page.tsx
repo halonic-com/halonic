@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   type InstructionTrustHost,
   InstructionTrustHostService,
+  RunFilesService,
   type RunStartHost,
   RunStartHostService,
   type SourcedRun,
@@ -32,10 +33,12 @@ import {
   messageLines,
   modelLines,
   readLines,
+  savedFiles,
   summaryLine,
 } from "./receipt-model.ts";
 import { useRunAgain } from "./run-again.ts";
 import { rejectedAfterAgentSaid, runEnding } from "./run-ending.ts";
+import { runFileItem } from "./run-file-ref.ts";
 import { LogUnread, RunLayout } from "./run-layout.tsx";
 import { RunNotShown, useRunGone } from "./run-not-shown.tsx";
 import type { RunPageContext } from "./run-page-model.ts";
@@ -57,6 +60,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const versionHistory = context.services.find(VersionHistoryHostService);
   const openModels = openModelsOf(context);
   const openPlugin = openPluginOf(context);
+  const canReadFiles = context.services.find(RunFilesService) !== undefined;
   return (
     <RunView
       list={list}
@@ -88,6 +92,9 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
         ? {}
         : {
             openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
+            ...(canReadFiles
+              ? { openFile: (name: string) => openItem(runFileItem(item.hub, item.id, name)) }
+              : {}),
           })}
     />
   );
@@ -129,6 +136,8 @@ export interface RunViewProps {
   readonly reviewInInbox?: () => void;
   /** Opens another run's page, for a child run; without it the button isn't there. */
   readonly openRun?: (runId: string) => void;
+  /** Opens a file the run saved read-only in its own tab, for **Open** under Items; without it the button isn't there. */
+  readonly openFile?: (name: string) => void;
   /** Opens a plugin's own page, for the plugin a step's connector didn't start for; without it the plugin's name isn't a link. */
   readonly openPlugin?: (pluginId: string) => void;
   /**
@@ -179,6 +188,7 @@ export function RunView({
   goToRuns,
   reviewInInbox,
   openRun,
+  openFile,
   openPlugin,
   checkThisComputer,
   now = () => new Date(),
@@ -278,6 +288,7 @@ export function RunView({
                 logRead={logRead}
                 engine={engine}
                 entries={entries}
+                openFile={openFile}
                 openEntry={open?.id}
                 onOpenEntry={setOpenEntry}
               />
@@ -332,6 +343,7 @@ function ReceiptAndSteps({
   logRead,
   engine,
   entries,
+  openFile,
   openEntry,
   onOpenEntry,
 }: {
@@ -341,6 +353,7 @@ function ReceiptAndSteps({
   readonly logRead: ReturnType<typeof useRunLog>;
   readonly engine: EngineWords;
   readonly entries: readonly StepEntry[];
+  readonly openFile: ((name: string) => void) | undefined;
   readonly openEntry: string | undefined;
   readonly onOpenEntry: (entryId: string | undefined) => void;
 }) {
@@ -355,6 +368,8 @@ function ReceiptAndSteps({
         ending={runEnding(run.summary, context.workflow)}
         approvals={approvalLines(log)}
         items={itemLines(log)}
+        files={savedFiles(log)}
+        openFile={openFile}
         messages={messageLines(log)}
         reads={readLines(log)}
         models={modelLines(log, run.summary, context.currency)}

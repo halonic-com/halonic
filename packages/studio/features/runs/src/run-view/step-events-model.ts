@@ -23,6 +23,7 @@ import {
 import { escapeHidden } from "@halonicjs/std";
 import { runPageWords, stepEventsWords, stepName } from "../run-words.ts";
 import { entrySiteLimit } from "./blocked-sites.tsx";
+import { answerText } from "./receipt-model.ts";
 
 /** One model call of a step. */
 export interface ModelCall {
@@ -253,4 +254,16 @@ export function stepChildRuns(
  */
 export function eventsOfStep(events: readonly RunEvent[], entryId: string): RunEvent[] {
   return eventsBySteps(events)[Number(entryId.slice("step-".length))] ?? [];
+}
+
+/**
+ * What the step's agents answered, oldest first, as plain text by the dashed frame's rules
+ * (`answerText`): for the side panel's Answer part (HAL-17831). A failed or empty answer has none.
+ */
+export function stepAnswers(events: readonly RunEvent[], entryId: string): string[] {
+  return eventsOfStep(events, entryId).flatMap((event) => {
+    if (event.type !== "agent.finished" || event.error !== undefined) return [];
+    const text = answerText(event.output);
+    return text === undefined ? [] : [text];
+  });
 }

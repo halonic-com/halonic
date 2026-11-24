@@ -1,7 +1,9 @@
 import { sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
+import { escapeHidden } from "@halonicjs/std";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
   InstructionTrustHostService,
+  RunFilesService,
   RunStartHostService,
   RunsSourceService,
   SampleHintService,
@@ -10,6 +12,8 @@ import {
 import { searchWords } from "./home-words.ts";
 import { listRows } from "./list/list-rows.ts";
 import { findRuns } from "./list/run-search.ts";
+import { runFileKind, runFileOf } from "./run-view/run-file-ref.ts";
+import { runFileWords } from "./run-view/run-file-words.ts";
 import { runPageWords } from "./run-words.ts";
 import { RunsList, RunsListService } from "./runs-list.ts";
 
@@ -18,7 +22,8 @@ import { RunsList, RunsListService } from "./runs-list.ts";
  * runs the app provides (`RunsSourceService`), and adds the Runs place, whose
  * running dot in the sidebar reads that same list, and the `run` item kind,
  * one run per tab, and Home's Recent runs, whose heading counts the same
- * running runs, and Home's Spend, the last six months of what the runs cost (HAL-8552). Ctrl K finds a run by its short id or its workflow's name (HAL-1301).
+ * running runs, and the `run-file` item kind, a file a run saved read-only in its tab
+ * (HAL-17831), and Home's Spend, the last six months of what the runs cost (HAL-8552). Ctrl K finds a run by its short id or its workflow's name (HAL-1301).
  */
 export const runsFeature = defineFeature({
   id: "runs",
@@ -26,6 +31,7 @@ export const runsFeature = defineFeature({
   needs: [RunsSourceService],
   wants: [
     InstructionTrustHostService,
+    RunFilesService,
     RunStartHostService,
     SampleHintService,
     sandboxStartCheckKey,
@@ -93,6 +99,18 @@ export const runsFeature = defineFeature({
       // so its tab stays open.
       tab: {
         describe: (item) => ({ label: runPageWords.title(shortRunId(item.id)) }),
+        exists: () => true,
+      },
+    });
+    studio.itemKinds.add({
+      kind: runFileKind,
+      label: runFileWords.kind,
+      icon: "runs",
+      place: "runs",
+      open: { view: "RunFilePage", load: () => import("./run-view/run-file-page.tsx") },
+      // The page says itself when the file's text is gone, so its tab stays open.
+      tab: {
+        describe: (item) => ({ label: escapeHidden(runFileOf(item.id).name) }),
         exists: () => true,
       },
     });

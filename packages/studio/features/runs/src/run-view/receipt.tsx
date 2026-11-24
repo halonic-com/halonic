@@ -1,4 +1,6 @@
-import type { ApprovalLine } from "./receipt-model.ts";
+import { Button } from "@halonicjs/studio-kit";
+import type { ReactNode } from "react";
+import type { ApprovalLine, SavedFile } from "./receipt-model.ts";
 import { receiptWords } from "./receipt-words.ts";
 import type { Rejecter } from "./run-ending.ts";
 
@@ -12,6 +14,10 @@ export interface ReceiptProps {
   readonly approvals: readonly ApprovalLine[];
   /** The Items section's lines from `itemLines`; none hides the section. */
   readonly items?: readonly string[];
+  /** The files the run saved, from `savedFiles`, each with **Open** under the Items line. */
+  readonly files?: readonly SavedFile[];
+  /** Opens a saved file read-only in its own tab; without it the files have no **Open**. */
+  readonly openFile?: ((name: string) => void) | undefined;
   /** The Messages section's lines from `messageLines`; none hides the section. */
   readonly messages?: readonly string[];
   /** The Read section's line from `readLines`; none hides the section. */
@@ -33,6 +39,8 @@ export function Receipt({
   ending,
   approvals,
   items = [],
+  files = [],
+  openFile,
   messages = [],
   reads = [],
   models = [],
@@ -44,7 +52,17 @@ export function Receipt({
       </h2>
       <p className="text-section">{summary}</p>
       {ending === undefined ? null : <p className="text-small">{receiptWords.ending(ending)}</p>}
-      <TextSection id="receipt-items" heading={receiptWords.itemsHeading} lines={items} />
+      <TextSection id="receipt-items" heading={receiptWords.itemsHeading} lines={items}>
+        {openFile === undefined
+          ? null
+          : files.map((file) => (
+              <li key={file.name}>
+                <Button variant="ghost" size="sm" onClick={() => openFile(file.name)}>
+                  {receiptWords.openFile(file.shown)}
+                </Button>
+              </li>
+            ))}
+      </TextSection>
       <TextSection id="receipt-messages" heading={receiptWords.messagesHeading} lines={messages} />
       <TextSection id="receipt-read" heading={receiptWords.readHeading} lines={reads} />
       <TextSection id="receipt-models" heading={receiptWords.modelsHeading} lines={models} />
@@ -102,15 +120,17 @@ function agentSaysHeading(rejectedBy: Rejecter | undefined): string {
     : receiptWords.agentRejectedHeading;
 }
 
-/** A section of plain lines under its own small heading; no lines, no section. */
+/** A section of plain lines under its own small heading, then `children`; no lines, no section. */
 function TextSection({
   id,
   heading,
   lines,
+  children,
 }: {
   readonly id: string;
   readonly heading: string;
   readonly lines: readonly string[];
+  readonly children?: ReactNode;
 }) {
   if (lines.length === 0) return null;
   return (
@@ -124,6 +144,7 @@ function TextSection({
             {line}
           </li>
         ))}
+        {children}
       </ul>
     </section>
   );

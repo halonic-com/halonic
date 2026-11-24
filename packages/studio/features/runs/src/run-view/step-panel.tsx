@@ -5,9 +5,10 @@ import { stepEventsWords } from "../run-words.ts";
 import { BlockedSitesPanel } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
 import { ConnectorNotStartedLine, FailedCallLine } from "./failed-call-line.tsx";
+import { receiptWords } from "./receipt-words.ts";
 import { noConnectionProven, stepSandboxes } from "./sandbox-model.ts";
 import { SandboxOffPanel, SandboxPanel, sayText } from "./sandbox-panel.tsx";
-import { stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
+import { stepAnswers, stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
 import { stepHarnessStopped } from "./step-harness-stopped.ts";
 
 /** Props for {@link StepPanel}. */
@@ -34,7 +35,8 @@ export interface StepPanelProps {
  * runs it started, "Started Verify → Run 7k2m9p" with the link, then its model
  * calls with their model and tokens, then its tool calls, each with its
  * arguments folded and, under one that failed, a quiet "✕ Didn't work"
- * line, then a quiet line for each harness program Halonic stopped after
+ * line, then what its agents answered, in a dashed frame as their own words
+ * (HAL-17831), then a quiet line for each harness program Halonic stopped after
  * it gave its result (HAL-15988), and last what its sandbox could do
  * (sandbox-screens 1.3).
  * Opening it moves focus to its title, and closing it moves focus back to
@@ -63,6 +65,7 @@ export function StepPanel({
   const sandboxes = useMemo(() => stepSandboxes(log, entry.id), [log, entry.id]);
   const proven = useMemo(() => noConnectionProven(log, entry.id), [log, entry.id]);
   const harnessStopped = useMemo(() => stepHarnessStopped(log, entry.id), [log, entry.id]);
+  const answers = useMemo(() => stepAnswers(log, entry.id), [log, entry.id]);
   const children = stepChildRuns(log, entry.id, workflowName);
   const place = phone ? "phone" : "desktop";
   const frame = useRef<HTMLDivElement>(null);
@@ -173,6 +176,7 @@ export function StepPanel({
             </ul>
           </section>
         )}
+        {answers.length === 0 ? null : <StepAnswer answers={answers} />}
         {harnessStopped.map((stopped) => (
           <p key={stopped.id} className="pt-4 text-body text-fg-muted">
             {stopped.text}
@@ -205,4 +209,26 @@ function SandboxItem({
     return <SandboxOffPanel agent={sandbox.agent} place={place} />;
   }
   return <SandboxPanel view={sandbox.view} agent={sandbox.agent} live={live} place={place} />;
+}
+
+/**
+ * What the step's agents answered, as plain text in a dashed frame named as their own words, the
+ * rules of the frame after the receipt: a link or image shows as text and loads nothing.
+ */
+function StepAnswer({ answers }: { readonly answers: readonly string[] }) {
+  return (
+    <section
+      aria-labelledby="step-answer"
+      className="mt-4 flex flex-col gap-1 rounded-sm border border-dashed border-border p-3"
+    >
+      <h3 id="step-answer" className="text-body-strong">
+        {receiptWords.stepAnswerHeading}
+      </h3>
+      {answers.map((text, index) => (
+        <p key={index} className="whitespace-pre-wrap break-words text-body">
+          {text}
+        </p>
+      ))}
+    </section>
+  );
 }

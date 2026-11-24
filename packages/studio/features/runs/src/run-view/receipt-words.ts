@@ -52,8 +52,12 @@ export const receiptWords = {
   /** The Items section's line for the files a run saved (RCPT-2.1): "Created 1 file: weekly-report.md". */
   createdFiles: (names: readonly string[]) =>
     `Created ${names.length === 1 ? "1 file" : `${names.length} files`}: ${namesInWords(names)}`,
+  /** The button after the Items line, one per saved file, that opens it read-only (HAL-17831). */
+  openFile: (name: string) => `Open ${name}`,
   /** The heading of the agent's own words after the receipt (RCPT-3.4). */
   agentSaysHeading: "What the agent says it did (its own words, not checked)",
+  /** A step's answers in its side panel, named as the frame names them (HAL-17831). */
+  stepAnswerHeading: "Answer (its own words, not checked)",
   /** The same frame when its words came before a rejection and no agent answered after it (HAL-14586). */
   agentRejectedHeading: "What you rejected (the agent's own words, not used)",
   agentRuleRejectedHeading: "What a rule rejected (the agent's own words, not used)",

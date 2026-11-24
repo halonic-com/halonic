@@ -273,11 +273,24 @@ export function readLines(events: readonly RunEvent[]): string[] {
  * // ["Created 1 file: weekly-report.md"]
  */
 export function itemLines(events: readonly RunEvent[]): string[] {
+  const files = savedFiles(events);
+  return files.length === 0 ? [] : [receiptWords.createdFiles(files.map((file) => file.shown))];
+}
+
+/** A file the run saved: its `name` as the log has it, and as the page shows it. */
+export interface SavedFile {
+  readonly name: string;
+  /** The name with hidden characters escaped. */
+  readonly shown: string;
+}
+
+/** The files the run saved, in the order it saved them, each name once (RCPT-2.1). */
+export function savedFiles(events: readonly RunEvent[]): SavedFile[] {
   const names = new Set<string>();
   for (const event of events) {
-    if (event.type === "artifact.created") names.add(escapeHidden(event.name));
+    if (event.type === "artifact.created") names.add(event.name);
   }
-  return names.size === 0 ? [] : [receiptWords.createdFiles([...names])];
+  return [...names].map((name) => ({ name, shown: escapeHidden(name) }));
 }
 
 /**
@@ -295,10 +308,19 @@ export function agentSays(events: readonly RunEvent[]): string | undefined {
   for (let index = events.length - 1; index >= 0; index--) {
     const event = events[index];
     if (event?.type !== "agent.finished" || event.error !== undefined) continue;
-    const text = outputText(event.output).trim();
-    if (text !== "") return escapeHidden(text);
+    const text = answerText(event.output);
+    if (text !== undefined) return text;
   }
   return undefined;
+}
+
+/**
+ * An agent's answer as plain text, the frame's rules: text as written, any other output as its
+ * JSON, trimmed, hidden characters escaped. Undefined when it answered with nothing.
+ */
+export function answerText(output: unknown): string | undefined {
+  const text = outputText(output).trim();
+  return text === "" ? undefined : escapeHidden(text);
 }
 
 function outputText(output: unknown): string {

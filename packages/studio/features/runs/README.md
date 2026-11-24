@@ -143,6 +143,15 @@ itemLines(events); // ["Created 1 file: weekly-report.md"]
 agentSays(events); // "This week: 12 emails…"
 ```
 
+Where the app provides `RunFilesService` (the desktop app reads the workspace's blob folder), each saved file gets **Open _name_** under the Items line. It opens a `run-file` tab that shows the file's text read-only, by the dashed frame's plain-text rules (requirement `runs.run-view.open-file`). A step's side panel ends its calls with an Answer part, "Answer (its own words, not checked)", holding what the step's agents answered (requirement `runs.run-view.step-answer`).
+
+```ts
+import { runFileItem } from "./run-view/run-file-ref.ts";
+
+openItem(runFileItem("reports", runId, "weekly-report.md"));
+// opens { kind: "run-file", hub: "reports", id: `${runId}/weekly-report.md` }
+```
+
 Under the timeline, **Show the run log** shows the run's events in its place, numbered by `seq`, the same events `halonic runs show --json` returns, and **Show every step** brings the timeline back (requirement `runs.run-view.run-log`). Each line's fields are one line of JSON with hidden characters escaped (`escapeHidden` in `@halonicjs/std`), and a step's blocked sites read "Blocked: registry.npmjs.org (12 tries)" once:
 
 ```ts
