@@ -24,6 +24,7 @@ import {
   socketFolderFor,
   sweepLeftOverBridges,
 } from "./bridge/socket-folder.ts";
+import { serveAgentHostCodingTools } from "./coding-tools-mode.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
 import { ConnectorTable } from "./connector/connector-table.ts";
@@ -62,7 +63,7 @@ import { sweepRoots, takeHostLock } from "./sandbox/sweep-lock.ts";
 import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
 import { type HostKeychain, hostKeychainOf } from "./secrets/host-keychain.ts";
 import { healthRoute } from "./server/health-route.ts";
-import { type HostServices, relayPortOf, serveHost } from "./serving-modes.ts";
+import { type HostServices, relayPortForServing, serveHost } from "./serving-modes.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
 import { takeStandardOutput } from "./stdio/standard-output.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
@@ -228,6 +229,9 @@ export async function run(
   }
 }
 
+/** The `coding-tools` mode, which `main.ts` runs from the payload it checked (`coding-tools-mode.ts`). */
+export const serveCodingTools = serveAgentHostCodingTools;
+
 /** The engine role or a sandbox command, when `args` ask for one; `undefined` when the host serves. */
 function roleCommand(
   args: readonly string[],
@@ -251,11 +255,6 @@ function wslRemoverOf(
 /** The folders every session denies: the WSL distro's shared ones when the launcher says the host runs there. */
 function sharedFoldersOf(args: readonly string[]): readonly string[] {
   return args.includes("--wsl-shared-folders") ? WSL_SHARED_FOLDERS : [];
-}
-
-/** The relay's port, which only serving over frames uses for the sign-in redirect. */
-function relayPortForServing(args: readonly string[]): number | undefined {
-  return args.includes("--stdio") ? relayPortOf(args) : undefined;
 }
 
 /**

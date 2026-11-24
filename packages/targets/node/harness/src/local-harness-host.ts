@@ -117,6 +117,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
       env: parts.programEnvironment ?? programEnvironment(process.env),
       timeLimitMs: harnessCallLimitMs,
       platform,
+      ...(input.codingTools === undefined ? {} : { codingTools: input.codingTools }),
     }),
     // An agent with `asks: in-sandbox` runs its calls in its working folder without asking, fenced (HAL-14992).
     paths: { resolve: resolveRealPath, windows: platform === "win32" },

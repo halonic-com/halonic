@@ -32,6 +32,7 @@ import {
 import type { LoadedWorkspace, LocalIntegrationInput } from "@halonicjs/workspace";
 import { approvedIntegrations } from "./approved-integrations.ts";
 import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
+import { cliCodingToolsServer } from "./coding-tools-mode.ts";
 import { type EngineHolder, engineHolders, engineLockRefusal } from "./engine-lock.ts";
 import { runSendingSettings } from "./run-sending.ts";
 import { halonicVersion } from "./version.ts";
@@ -189,9 +190,12 @@ export function withSendingNextStep(
 
 /** The CLI's harness host for the engine `input` opens, on this computer's parts. */
 function cliHarnessHost(input: LocalEngineInput): OpenEngineHarnessHost {
+  // Harness programs start the coding tools server through this same CLI (HAL-17183).
+  const codingTools = cliCodingToolsServer();
   return ({ location, folders, profile, environment }) =>
     openLocalHarnessHost({
       halonicVersion,
+      ...(codingTools === undefined ? {} : { codingTools }),
       location,
       folders,
       profile,

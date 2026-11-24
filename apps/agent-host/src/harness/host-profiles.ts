@@ -12,8 +12,16 @@ import {
 } from "@halonicjs/adapter-harness-kit";
 import type { HarnessAgent, HarnessProfile, ProgramHarness } from "@halonicjs/engine";
 import { SCHEMA_VERSION } from "@halonicjs/format";
-import type { Digest, Harness, HarnessBridge, Sandbox, SandboxProfile } from "@halonicjs/ports";
+import type {
+  CodingToolsServer,
+  Digest,
+  Harness,
+  HarnessBridge,
+  Sandbox,
+  SandboxProfile,
+} from "@halonicjs/ports";
 import { type ProfileFolder, workspaceFolders } from "@halonicjs/profile";
+import { agentHostCodingToolsServer } from "../coding-tools-mode.ts";
 import { type BuiltProfiles, isBuiltProfile } from "../sandbox/built-profiles.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
 
@@ -72,6 +80,8 @@ export interface HostHarnessProfilesOptions {
   readonly unopenedAfterMs?: number;
   /** Hears a temp folder that couldn't be removed when its session closed. */
   readonly onLeftoverTempFolder: (folder: string, error: unknown) => void;
+  /** How a harness program starts the coding tools server here; absent when the host runs from source. */
+  readonly codingTools?: CodingToolsServer;
 }
 
 /**
@@ -222,6 +232,9 @@ export class HostHarnessProfiles implements BuiltProfiles {
       env,
       timeLimitMs: harnessCallLimitMs,
       platform,
+      ...(this.#options.codingTools === undefined
+        ? {}
+        : { codingTools: this.#options.codingTools }),
     });
     this.#hosts.push(host);
     return { profiles, host };
@@ -311,7 +324,9 @@ export function hostHarnessProfiles(
   log: (text: string) => void,
 ): HostHarnessProfiles | undefined {
   if (profile === undefined) return undefined;
+  const codingTools = agentHostCodingToolsServer(profile.root);
   return new HostHarnessProfiles({
+    ...(codingTools === undefined ? {} : { codingTools }),
     profile,
     workspaceRoots,
     harnesses,

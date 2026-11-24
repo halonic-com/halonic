@@ -85,6 +85,29 @@ verifies("harness-kit.coding-tools-server", () => {
       expect(profile.readOnlyPaths).not.toContain(join(top, "opt", "halonic"));
     });
 
+    it("reopens code in the data folder read-only, as the agent host's payload is", async () => {
+      const payload = join(data, "agent-host", "1.0.0-0123456789abcdef");
+      await mkdir(payload, { recursive: true });
+
+      const { profile, codingTools } = await profileWith(
+        serverAt(join(top, "opt", "halonic"), payload),
+      );
+
+      expect(codingTools?.codePaths).toContain(payload);
+      expect(profile.reopenedPaths).toContain(payload);
+      expect(profile.readOnlyPaths.filter((path) => path === payload)).toHaveLength(1);
+    });
+
+    it("reopens nothing of a server whose code a writable folder holds", async () => {
+      const inTemp = join(data, "tmp", "run_1", "tools");
+
+      const { profile, codingTools } = await profileWith(serverAt(inTemp));
+
+      expect(codingTools).toBeUndefined();
+      expect(profile.reopenedPaths).not.toContain(inTemp);
+      expect(profile.readOnlyPaths).not.toContain(inTemp);
+    });
+
     it("names no server whose code the profile denies", async () => {
       const { codingTools } = await profileWith(serverAt(join(home, ".claude", "local")));
 

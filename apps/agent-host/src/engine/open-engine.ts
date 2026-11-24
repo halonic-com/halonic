@@ -36,6 +36,7 @@ import { DEFAULT_TICK_POLICY } from "@halonicjs/routines";
 import { systemClock } from "@halonicjs/std";
 import { openLocalHarnessHost } from "@halonicjs/target-node-harness";
 import { filesOf } from "@halonicjs/workspace";
+import { agentHostCodingToolsServer } from "../coding-tools-mode.ts";
 import { profileOf, profileTrustStore } from "../profile-folder.ts";
 import { proxySetting } from "../proxy-setting.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
@@ -259,8 +260,10 @@ function harnessHostAt(
   },
 ) {
   const { location, folders, profile, environment } = place;
+  const codingTools = agentHostCodingToolsServer(profile.root);
   return openLocalHarnessHost({
     halonicVersion: engine.version,
+    ...(codingTools === undefined ? {} : { codingTools }),
     location,
     folders,
     profile,

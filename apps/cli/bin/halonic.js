@@ -8,6 +8,10 @@ const tooOld = nodeTooOldLines(process.versions.node);
 if (tooOld.length > 0) {
   process.stderr.write(`${tooOld.join("\n")}\n`);
   process.exitCode = 1;
+} else if (process.argv[2] === "coding-tools") {
+  // A harness program's coding tools server: standard output carries its MCP lines only (HAL-17183).
+  const { serveCliCodingTools } = await import("../src/coding-tools-mode.ts");
+  process.exitCode = await serveCliCodingTools(process.argv.slice(3));
 } else {
   await import("../src/main.ts");
 }

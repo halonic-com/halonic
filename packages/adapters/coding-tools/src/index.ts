@@ -13,6 +13,7 @@ export {
   type WriteProbe,
   writeProbeOnThisComputer,
 } from "./stdio/own-code-check.ts";
+export { type CodingToolsProcess, serveCodingToolsOnProcess } from "./stdio/process-server.ts";
 export { type StdioChannel, serveOverStdio } from "./stdio/serve-stdio.ts";
 export {
   type CodingToolsStart,

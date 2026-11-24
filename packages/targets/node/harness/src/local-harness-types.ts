@@ -7,6 +7,7 @@ import type { RunVersion } from "@halonicjs/events";
 import type { BridgeAgent, HarnessHost, ProviderAccessChoice } from "@halonicjs/host-harness-host";
 import type {
   Clock,
+  CodingToolsServer,
   DefinitionStore,
   Digest,
   HarnessBridgeServer,
@@ -72,6 +73,12 @@ export interface RunFileVersions {
 export interface LocalHarnessInput {
   /** This Halonic's version, which Codex is told it runs under. */
   readonly halonicVersion: string;
+  /**
+   * How a harness program starts Halonic's coding tools server inside its
+   * fence: the CLI's or the agent host's own `coding-tools` mode. Absent
+   * when the host has none; the profile builder still checks each run.
+   */
+  readonly codingTools?: CodingToolsServer;
   /** The workspace folder's real path: the choices in the profile are keyed by it. */
   readonly location: string;
   /** The workspace's folders in the profile. */

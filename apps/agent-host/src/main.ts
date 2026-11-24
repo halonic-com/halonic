@@ -12,6 +12,9 @@
 //     runs one of the payload's programs, as Node would. sandbox-srt starts
 //     srt's command line this way, with `process.execPath`, which is this
 //     executable.
+//   halonic-agent-host --profile-folder <folder> coding-tools [arguments]
+//     serves the coding tools server for a harness program, from the
+//     payload a running host unpacked (coding-tools-mode.ts).
 import { createHash, randomUUID } from "node:crypto";
 import {
   type Dirent,
@@ -36,6 +39,7 @@ declare const HALONIC_AGENT_HOST_PAYLOAD: PayloadManifest | undefined;
 /** What the host module (host.ts) offers the entry point. */
 interface HostModule {
   run(args: readonly string[], version: string): Promise<number>;
+  serveCodingTools(args: readonly string[], payload: string): Promise<number>;
 }
 
 /** The folder the payload unpacks into: one per version and payload, under the profile folder. */
@@ -354,15 +358,53 @@ async function start(version: string, manifest: PayloadManifest): Promise<number
     createRequire(program)(program);
     return 0;
   }
-  const { profileFolder } = hostArguments(args);
+  const { profileFolder, rest } = hostArguments(args);
   if (profileFolder === undefined || !isAbsolute(profileFolder)) {
     process.stderr.write("The agent host needs --profile-folder with an absolute folder.\n");
     return 2;
   }
   const folder = payloadFolder(profileFolder, version, manifest);
+  if (rest[0] === "coding-tools") return await serveCodingTools(folder, manifest, rest.slice(1));
   process.once("exit", claimPayload(folder));
   unpackPayload(folder, manifest, (path) => new Uint8Array(getRawAsset(path)));
   removeOldPayloads(folder);
+  const host = loadHost(folder, manifest);
+  // The host gets --profile-folder too: --sandbox-cleanup reads it, the host
+  // takes the profile's host lock there before it sweeps kept grants, and
+  // HALONIC_HOME can put the profile anywhere (HAL-6214, HAL-6256).
+  return host.run(args, version);
+}
+
+/**
+ * Why the coding tools server can't run from the payload in `folder`, or
+ * `undefined` when it can. The mode only reads: inside the fence nothing
+ * may be unpacked, claimed or removed, so a payload a running host hasn't
+ * unpacked, or one whose files changed, isn't run.
+ */
+export function codingToolsPayloadRefusal(
+  folder: string,
+  manifest: PayloadManifest,
+): string | undefined {
+  if (holdsPayload(folder, manifest)) return undefined;
+  return "The coding tools server needs the payload a running agent host unpacked, unchanged.";
+}
+
+/** Serves the coding tools server from the payload in `folder`, once it is checked. */
+async function serveCodingTools(
+  folder: string,
+  manifest: PayloadManifest,
+  args: readonly string[],
+): Promise<number> {
+  const refusal = codingToolsPayloadRefusal(folder, manifest);
+  if (refusal !== undefined) {
+    process.stderr.write(`${refusal}\n`);
+    return 1;
+  }
+  return await loadHost(folder, manifest).serveCodingTools(args, folder);
+}
+
+/** Loads the host module from the payload in `folder`, its workspace packages resolved there too. */
+function loadHost(folder: string, manifest: PayloadManifest): HostModule {
   registerHooks({
     resolve(specifier, context, nextResolve) {
       const url = resolveWorkspace(folder, manifest.packages, specifier);
@@ -370,11 +412,7 @@ async function start(version: string, manifest: PayloadManifest): Promise<number
     },
   });
   const entry = placeOf(folder, manifest.entry);
-  const host = createRequire(entry)(entry) as HostModule;
-  // The host gets --profile-folder too: --sandbox-cleanup reads it, the host
-  // takes the profile's host lock there before it sweeps kept grants, and
-  // HALONIC_HOME can put the profile anywhere (HAL-6214, HAL-6256).
-  return host.run(args, version);
+  return createRequire(entry)(entry) as HostModule;
 }
 
 if (isSea() && typeof HALONIC_AGENT_HOST_PAYLOAD === "object") {
