@@ -2,6 +2,7 @@
 
 - Approval: Chief decided it on HAL-17893 (item 2 of the merge-time report on HAL-17891); Liam owns the flow, Julian reviews and signs it there
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:sltwuPvl+0r2EHHbVtUiTp/pUYVdNPx19H0FIUHVrkhNQesZxSKPq0XjZxjI+Wrw0Mj5FSbuSprQmCnI3/ByCg==
 
 `pnpm decision sign <number>` gets a `--push` option. After signing, it adds the
 `- Signature:` line to the note at the head it signed, commits only that as `halonic-dev`
