@@ -24,10 +24,15 @@ export type ReadRun = (runId: string) => Promise<RunLinks | null>;
 
 /**
  * Why a signal may not start a routine: the routine's own run sent it
- * (`itself`), or the start would make the chain longer than
- * {@link MAX_SIGNAL_CHAIN} (`chain`, with the length it would have had).
+ * (`itself`), the start would make the chain longer than
+ * {@link MAX_SIGNAL_CHAIN} (`chain`, with the length it would have had), or
+ * the chain can't be followed back (`unknown`): a run on the way is gone, or
+ * a signal start doesn't name its signal.
  */
-export type SignalLoop = { kind: "itself" } | { kind: "chain"; length: number };
+export type SignalLoop =
+  | { kind: "itself" }
+  | { kind: "chain"; length: number }
+  | { kind: "unknown" };
 
 /**
  * Whether a signal starting a routine would make a loop, or `null` when the
@@ -41,15 +46,18 @@ export type SignalLoop = { kind: "itself" } | { kind: "chain"; length: number };
  *   step. A chain of {@link MAX_SIGNAL_CHAIN} signal starts may run; the next
  *   start is refused. That also stops two routines that start each other.
  *
- * A run the store no longer has ends the chain there. A run met twice on the
- * way back can only come from a broken store, and is refused as a chain.
+ * The guard fails closed: a run the store no longer has, or a signal start
+ * without its `signalId`, is refused as `unknown`, since the chain can't be
+ * told apart from a loop. A run met twice on the way back can only come from
+ * a broken store, and is refused as a chain. A read that throws rejects; the
+ * caller refuses the start then too.
  *
  * @param routine - the routine key the signal would start (`<hub>/<id>` or `@workspace/<id>`)
  * @param sentBy - the run that sent the signal, a child run included
  *
  * @example
  * await signalLoop("@workspace/on-paid", "run-1", read);
- * // null, or { kind: "itself" }, or { kind: "chain", length: 5 }
+ * // null, or { kind: "itself" }, or { kind: "chain", length: 5 }, or { kind: "unknown" }
  */
 export async function signalLoop(
   routine: string,
@@ -62,13 +70,14 @@ export async function signalLoop(
   while (runId !== null) {
     const top = await topLevelRun(runId, read, seen);
     if (top === "loop") return { kind: "chain", length: starts + 1 };
-    if (top === null) return null;
+    if (top === null) return { kind: "unknown" };
     if (starts === 0 && top.trigger?.routineId === routine) return { kind: "itself" };
-    const signalId = top.trigger?.type === "signal" ? top.trigger.signalId : undefined;
-    if (signalId === undefined) return null;
+    if (top.trigger?.type !== "signal") return null;
+    const signalId = top.trigger.signalId;
+    if (signalId === undefined) return { kind: "unknown" };
     starts += 1;
     if (starts >= MAX_SIGNAL_CHAIN) return { kind: "chain", length: starts + 1 };
-    runId = senderOf(signalId);
+    runId = signalSender(signalId);
   }
   return null;
 }
@@ -90,7 +99,7 @@ async function topLevelRun(
 }
 
 /** The run that sent a signal: its id is `<runId>:<seq>`, and a run id may hold ":" too. */
-function senderOf(signalId: string): string {
+export function signalSender(signalId: string): string {
   const colon = signalId.lastIndexOf(":");
   return colon === -1 ? signalId : signalId.slice(0, colon);
 }

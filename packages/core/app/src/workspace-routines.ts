@@ -1,4 +1,5 @@
 import type { RunVersion } from "@halonicjs/events";
+import type { RunStore } from "@halonicjs/ports";
 import {
   DEFAULT_TICK_POLICY,
   type DueRun,
@@ -6,7 +7,9 @@ import {
   type PlacedRoutine,
   routineKey,
   routineStart,
+  type SignalRun,
   type TickPolicy,
+  type TriggerFacts,
 } from "@halonicjs/routines";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import {
@@ -14,10 +17,19 @@ import {
   type RoutineSchedulerOptions,
   type RoutineStart,
 } from "./routine-scheduler.ts";
+import { SignalStarts } from "./routine-signals.ts";
 
 /** What {@link workspaceRoutineScheduler} needs: the scheduler's options without the routines logic. */
 export interface WorkspaceRoutineSchedulerOptions
-  extends Omit<RoutineSchedulerOptions, "due" | "startOf" | "overlapOf" | "keyOf" | "policy"> {
+  extends Omit<
+    RoutineSchedulerOptions,
+    "due" | "startOf" | "overlapOf" | "keyOf" | "policy" | "signals" | "runs"
+  > {
+  /**
+   * The workspace's runs, and only its own: for the overlap rule, and for the
+   * signals runs sent, which start routines on a signal.
+   */
+  runs: Pick<RunStore, "list" | "get">;
   /**
    * The zone, grace period, catch-up cap and catch-up window. Default: `DEFAULT_TICK_POLICY`,
    * whose zone is UTC; a host passes the machine's zone, which core can't read.
@@ -37,7 +49,8 @@ export interface WorkspaceRoutineSchedulerOptions
  * The routine scheduler of a workspace, with the tick function `dueWithSkips` of
  * `@halonicjs/routines`, each routine's `overlap` setting, and
  * {@link startOfDueRun}, which fills in the `{{trigger.at}}` and
- * `{{trigger.lastRun}}` placeholders.
+ * `{{trigger.lastRun}}` placeholders. Routines on a signal start from the
+ * signals the workspace's runs sent ({@link SignalStarts}).
  *
  * @example
  * const scheduler = workspaceRoutineScheduler({
@@ -50,9 +63,17 @@ export interface WorkspaceRoutineSchedulerOptions
 export function workspaceRoutineScheduler(
   options: WorkspaceRoutineSchedulerOptions,
 ): RoutineScheduler<PlacedRoutine, TickPolicy, DueRun> {
+  const policy = options.policy ?? DEFAULT_TICK_POLICY;
+  const signals = new SignalStarts({
+    ...options,
+    policy,
+    startOf: async (run, lastRun) =>
+      withVersion(startOfSignalRun(run, lastRun), options.runVersion),
+  });
   return new RoutineScheduler({
     ...options,
-    policy: options.policy ?? DEFAULT_TICK_POLICY,
+    signals,
+    policy,
     keyOf: routineKey,
     due: dueWithSkips,
     startOf: async (run, lastRun) => withVersion(startOfDueRun(run, lastRun), options.runVersion),
@@ -68,7 +89,22 @@ export function workspaceRoutineScheduler(
  *   that doesn't name one in `run.hub`
  */
 export function startOfDueRun(run: DueRun, lastRun: Date | null): RoutineStart {
-  const start = routineStart(run.placed, { at: run.at, lastRun });
+  return startOf(run, { at: run.at, lastRun });
+}
+
+/**
+ * What to start for a routine a signal starts: as {@link startOfDueRun},
+ * with `{{trigger.at}}` the time the signal was sent and `{{trigger.signal}}`
+ * its data.
+ *
+ * @throws Error when the target has no hub, as for {@link startOfDueRun}
+ */
+export function startOfSignalRun(run: SignalRun, lastRun: Date | null): RoutineStart {
+  return startOf(run, { at: run.at, lastRun, signal: run.signal.data });
+}
+
+function startOf(run: DueRun | SignalRun, facts: TriggerFacts): RoutineStart {
+  const start = routineStart(run.placed, facts);
   if (start.hub === null) {
     throw new Error(`Routine ${run.key} runs outside a hub, so it must name one in run.hub.`);
   }
