@@ -163,6 +163,12 @@ verifies("studio.workspace-assistant", () => {
       expect(kept.messages.map((message) => message.content)).toEqual(["Thanks", "Done."]);
     });
 
+    it("reads a file as saved, for a card to tell an Accept from a Reject", async () => {
+      const { assistant } = setup({ files: { "notes.md": "Hello\n" } });
+      expect(await assistant.savedText("notes.md")).toBe("Hello\n");
+      expect(await assistant.savedText("missing.md")).toBeNull();
+    });
+
     it("takes the model call limit of workspace.yaml over Settings", async () => {
       const files = { "workspace.yaml": "id: acme\nname: Acme\nassistant:\n  maxSteps: 3\n" };
       const { assistant, requests } = setup({ files, settings: { "assistant.turn-limit": 9 } });

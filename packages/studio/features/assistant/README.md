@@ -23,7 +23,12 @@ The Assistant feature of the Studio: the Build chat, its sessions and its change
 - `src/cards`: the proposal card (flow-assistant 3.2 to 3.4): the tag and the sentence Changes
   uses, the path, the why, **Show the diff**, **Review**, **Accept all** and **Reject all**, each
   decision as one step with a toast and **Undo**, and the notes that tell the model about it with
-  the next message. `CardReviews` follows each card's changes to review, wherever they are decided.
+  the next message. `CardReviews` follows each card's changes to review, wherever they are decided,
+  and its state once none are left (flow-assistant 3.3): **Accepted**, **Accepted 2 of 3**,
+  **Rejected** or **Replaced**, each a `neutral` chip. It tells an Accept from a Reject made
+  elsewhere by the baseline (an Accept moves it) or, for the last changes, by the saved file. A
+  file that changed outside Halonic waits for **Compare**. The state lives for the session: a card
+  decided before Studio started says **Accepted** only when its file is just as the model wrote it.
 - `src/feature.ts`: the panel window, Ctrl+Alt+I and Ctrl K's **Assistant** and **New chat**.
 
 The desktop app provides the host for each open folder (`apps/studio/src/assistant`,
@@ -34,9 +39,8 @@ when Halonic's engine stopped." (`assistant.chat.engine-stopped`). While the eng
 answering, the chat says so at the top and Send waits (`assistant.chat.engine-not-answering`). A
 model from a workspace that isn't trusted opens the trust check instead of sending
 (`assistant.chat.trust-check`), and a message that looks like it holds a key stays in the box
-(`assistant.chat.key-in-message`). The chat tab, the chat menu, a card's states after a decision
-(T14 PR 8b) and the model's own lines under the box (no model, no key, local only, budget) come
-later.
+(`assistant.chat.key-in-message`). The chat tab, the chat menu and the model's own lines under
+the box (no model, no key, local only, budget) come later.
 
 ## Example
 

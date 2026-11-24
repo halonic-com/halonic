@@ -32,6 +32,26 @@ export const cardWords = {
    * it ends with one full stop even when the reason already has its own.
    */
   cantRead: (reason: string) => `Couldn't read these changes: ${reason.replace(/\.+$/, "")}.`,
+  /** The state chips once nothing is left to review (flow-assistant 3.3): `neutral`, never green or ✓. */
+  chip: {
+    accepted: "Accepted",
+    partly: (accepted: number, total: number) => `Accepted ${accepted} of ${total}`,
+    rejected: "Rejected",
+    replaced: "Replaced",
+  },
+  /** After an Accept, where the change lives now: "Changes ›" opens Changes. */
+  nowAChange: (name: string) => `Now a change in ${name}.`,
+  undoItIn: "Undo it in",
+  changesLink: "Changes ›",
+  newerBelow: "A newer change to this file is below.",
+  newerInAnotherChat: "A newer change to this file is in another chat.",
+  goToIt: "Go to it",
+  replacedOutside: "Replaced by the version from outside Halonic.",
+  /** The file changed outside Halonic, so Accept all and Reject all wait (flow-assistant 3.4). */
+  changedOutside: (name: string) => `${name} changed outside Halonic. Compare first.`,
+  compare: "Compare",
+  /** Review panel note 1: a decision on parts the file no longer has reloads quietly. */
+  latest: "The file changed. Showing the latest changes.",
 } as const;
 
 /**
@@ -42,6 +62,12 @@ export const notesToTheModel = {
   accepted: (path: string) => `(The person accepted the changes to ${path}.)`,
   rejected: (path: string) =>
     `(The person rejected the changes to ${path}. The file is back as it was.)`,
+  partly: (accepted: number, total: number, path: string) =>
+    `(The person accepted ${accepted} of ${total} changes to ${path} and rejected the rest.)`,
+  anotherChat: (path: string) =>
+    `(Another chat changed ${path}. Its card now covers these changes.)`,
+  outside: (path: string) =>
+    `(The file ${path} was replaced by a version from outside Halonic. Your changes to it are gone.)`,
 } as const;
 
 function changes(count: number): string {
