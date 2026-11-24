@@ -143,6 +143,12 @@ impl WorkspaceFolders {
     pub fn review_folder(&self) -> String {
         join_path(self.platform, &self.folder, &["review"])
     }
+
+    /// The folder for the assistant's chats, one record per chat, as
+    /// `chatsFolder` names it. They are kept here, never in the workspace.
+    pub fn chats_folder(&self) -> String {
+        join_path(self.platform, &self.folder, &["chats"])
+    }
 }
 
 /// The first 32 hex characters of the SHA-256 of the path's one spelling.

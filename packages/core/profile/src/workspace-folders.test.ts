@@ -38,11 +38,13 @@ verifies("profile.workspace-folders", () => {
     expect(windows.recordsFolder()).toBe(`${windows.folder}\\records`);
   });
 
-  it("keeps the workspace's changes to review beside its records", async () => {
+  it("keeps the workspace's changes to review and its chats beside its records", async () => {
     const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
     expect(folders.reviewFolder()).toBe(`${folders.folder}/review`);
     const windows = await workspaceFolders(windowsProfile, `${drive}\\Work\\Acme`, digest);
     expect(windows.reviewFolder()).toBe(`${windows.folder}\\review`);
+    expect(folders.chatsFolder()).toBe(`${folders.folder}/chats`);
+    expect(windows.chatsFolder()).toBe(`${windows.folder}\\chats`);
   });
 
   it("keeps the copies a live run's programs start in beside its records", async () => {

@@ -69,6 +69,11 @@ export interface WorkspaceFolders {
    */
   reviewFolder(): string;
   /**
+   * The folder for the assistant's chats, one record per chat (HAL-16792).
+   * They are kept here, never in the workspace, so a pull can't add one.
+   */
+  chatsFolder(): string;
+  /**
    * The folder an agent's harness keeps its own settings in, such as the
    * agent's own sign-in: `harness-settings/<agentId>/<harnessId>`. One
    * agent signs in once per workspace, for every deployment (HAL-5355), so
@@ -181,6 +186,9 @@ export async function workspaceFolders(
     },
     reviewFolder(): string {
       return joinPath(profile.platform, folder, "review");
+    },
+    chatsFolder(): string {
+      return joinPath(profile.platform, folder, "chats");
     },
     harnessSettingsFolder(agentId: string, harnessId: string): string {
       checkFolderId("an agent id", agentId);
