@@ -6,3 +6,8 @@ export {
   teamAlerts,
   teamNotices,
 } from "./team-notices.ts";
+export {
+  type TeamNotificationsOptions,
+  type TeamNotificationsWatch,
+  watchTeamNotifications,
+} from "./team-notifications.ts";
