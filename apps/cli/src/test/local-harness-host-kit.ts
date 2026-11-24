@@ -226,6 +226,8 @@ export function fakesFor(program: Program, options: { bridge?: "fake" | "node" }
       fenced: recording,
       launcher: recording,
       harnesses: { "claude-code": harness },
+      // The fake sandbox starts no program, so the coding tools server couldn't run in it.
+      codingTools: null,
       ...(options.bridge === "node" ? {} : { bridgeServer }),
       platform: "linux",
     },

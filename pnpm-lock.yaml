@@ -309,6 +309,9 @@ importers:
 
   apps/agent-host:
     dependencies:
+      '@halonicjs/adapter-coding-tools':
+        specifier: workspace:*
+        version: link:../../packages/adapters/coding-tools
       '@halonicjs/adapter-connector-stdio-sandbox':
         specifier: workspace:*
         version: link:../../packages/adapters/connector-stdio-sandbox
@@ -463,6 +466,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@halonicjs/adapter-coding-tools':
+        specifier: workspace:*
+        version: link:../../packages/adapters/coding-tools
       '@halonicjs/adapter-connector-stdio-sandbox':
         specifier: workspace:*
         version: link:../../packages/adapters/connector-stdio-sandbox

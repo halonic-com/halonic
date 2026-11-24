@@ -31,7 +31,7 @@ import {
 import { createHostSandbox, createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { InstructionTrustService } from "@halonicjs/app";
 import { type BridgeServers, harnessHostOf } from "@halonicjs/host-harness-host";
-import type { Secrets } from "@halonicjs/ports";
+import type { CodingToolsServer, Secrets } from "@halonicjs/ports";
 import { type ProfileFolder, placementFolder } from "@halonicjs/profile";
 import { cliProviderKeys } from "./cli-provider-keys.ts";
 import { sweepingUnderHostLock, withoutHostLock } from "./fenced-sandbox.ts";
@@ -117,6 +117,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
       env: parts.programEnvironment ?? programEnvironment(process.env),
       timeLimitMs: harnessCallLimitMs,
       platform,
+      ...codingToolsOf(input),
     }),
     // An agent with `asks: in-sandbox` runs its calls in its working folder without asking, fenced (HAL-14992).
     paths: { resolve: resolveRealPath, windows: platform === "win32" },
@@ -259,4 +260,11 @@ async function emptyFolder(folder: string): Promise<void> {
   for (const entry of await readdir(folder)) {
     await rm(join(folder, entry), { recursive: true, force: true });
   }
+}
+
+/** The coding tools server the profile builder gets: the test's part when it gives one, else the host's. */
+function codingToolsOf(input: LocalHarnessInput): { codingTools?: CodingToolsServer } {
+  const own = input.parts?.codingTools;
+  const server = own === undefined ? input.codingTools : (own ?? undefined);
+  return server === undefined ? {} : { codingTools: server };
 }

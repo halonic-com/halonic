@@ -114,6 +114,11 @@ async function serveOverFrames(
   return 1;
 }
 
+/** The relay's port, which only serving over frames uses for the sign-in redirect. */
+export function relayPortForServing(args: readonly string[]): number | undefined {
+  return args.includes("--stdio") ? relayPortOf(args) : undefined;
+}
+
 /** The port `--relay-host` names, or `undefined` when it is missing or isn't `127.0.0.1:<port>`. */
 export function relayPortOf(args: readonly string[]): number | undefined {
   const relayHost = args[args.indexOf("--relay-host") + 1] ?? "";

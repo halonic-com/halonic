@@ -13,9 +13,11 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   claimPayload,
+  codingToolsPayloadRefusal,
   hostArguments,
   payloadFolder,
   payloadProgram,
@@ -379,5 +381,31 @@ describe("hostArguments", () => {
   it("has no profile folder when none is given", () => {
     expect(hostArguments(["--x"])).toEqual({ profileFolder: undefined, rest: ["--x"] });
     expect(hostArguments(["--profile-folder"]).profileFolder).toBeUndefined();
+  });
+});
+
+verifies("agent-host.coding-tools-mode", () => {
+  describe("codingToolsPayloadRefusal", () => {
+    const folder = () => payloadFolder(profile, "1.2.3", manifest);
+
+    it("lets the server run from a payload a host unpacked", () => {
+      unpackPayload(folder(), manifest, readAsset);
+
+      expect(codingToolsPayloadRefusal(folder(), manifest)).toBeUndefined();
+    });
+
+    it("refuses a payload no host unpacked, and unpacks nothing", () => {
+      expect(codingToolsPayloadRefusal(folder(), manifest)).toMatch(/needs the payload/);
+      expect(existsSync(folder())).toBe(false);
+    });
+
+    it("refuses a payload whose file was changed, and leaves it as it is", () => {
+      unpackPayload(folder(), manifest, readAsset);
+      const cli = join(folder(), "node_modules", "srt", "dist", "cli.js");
+      writeFileSync(cli, "changed");
+
+      expect(codingToolsPayloadRefusal(folder(), manifest)).toMatch(/unchanged/);
+      expect(readFileSync(cli, "utf8")).toBe("changed");
+    });
   });
 });

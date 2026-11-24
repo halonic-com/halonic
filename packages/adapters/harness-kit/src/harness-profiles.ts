@@ -158,8 +158,9 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     // The instructions folder is the run's own too, but read-only: it is
     // reopened and kept out of the denied entries, and never listed as writable.
     const writable = [tempFolder, ...pathsOf(settingsFolder)];
-    const readable = pathsOf(instructions);
     if (agent.filesFolder !== null) writable.unshift(workingFolder);
+    const unwritableCodingTools = await this.#unwritableCodingTools([workingFolder, ...writable]);
+    const readable = [...pathsOf(instructions), ...codeInDataFolder(unwritableCodingTools, data)];
     const reopenedPaths =
       this.#platform === "win32"
         ? []
@@ -186,7 +187,7 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     // A definition path the profile denies, such as a workspace's `.halonic`
     // that is Halonic's data folder, is left out: the deny already keeps the
     // program from changing it, and on Windows naming it would grant reading it.
-    const codingTools = allowedCodingTools(await this.#realCodingTools(), {
+    const codingTools = allowedCodingTools(unwritableCodingTools, {
       writable: [workingFolder, ...writable],
       isDenied: (path) => deniedHolding(deniedGroups, path, reopenedPaths) !== null,
     });
@@ -196,7 +197,7 @@ export class HarnessProfiles implements HarnessProfileBuilder {
       ),
       ...installPaths,
       ...readable,
-      ...(codingTools?.codePaths ?? []),
+      ...codePathsOutside(codingTools, readable),
     ];
     const profile: SandboxProfile = {
       workingFolder,
@@ -232,6 +233,17 @@ export class HarnessProfiles implements HarnessProfileBuilder {
       // A path that isn't there can't be checked, so the run names no server.
       return undefined;
     }
+  }
+
+  /**
+   * The host's coding tools server, at its real places, when no folder the
+   * run may write holds its code; the deny check comes once the profile's
+   * denied paths are known.
+   */
+  async #unwritableCodingTools(
+    writable: readonly string[],
+  ): Promise<CodingToolsServer | undefined> {
+    return allowedCodingTools(await this.#realCodingTools(), { writable, isDenied: () => false });
   }
 
   /** The real folder the agent works in: the workspace, or its run's proposal folder in Halonic's data. */
@@ -434,6 +446,23 @@ function sandboxBridgeOf(bridge: HarnessBridge): SandboxBridge {
   if (url.port === "") throw new Error(`The bridge's address ${bridge.url} names no port.`);
   const host = url.hostname.replace(/^\[(.*)\]$/, "$1");
   return { kind: "loopback", host, port: Number(url.port) };
+}
+
+/**
+ * The server's code paths in Halonic's data folder: the agent host's
+ * payload is unpacked there, so the profile reopens them read-only, as it
+ * does the instructions folder.
+ */
+function codeInDataFolder(server: CodingToolsServer | undefined, data: string): string[] {
+  return (server?.codePaths ?? []).filter((path) => isStrictlyInside(path, data));
+}
+
+/** The server's code paths that `reopened` doesn't already name. */
+function codePathsOutside(
+  server: CodingToolsServer | undefined,
+  reopened: readonly string[],
+): string[] {
+  return (server?.codePaths ?? []).filter((path) => !reopened.includes(path));
 }
 
 /** The path as a list: empty when there is none. */
