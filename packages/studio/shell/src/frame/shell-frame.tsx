@@ -86,8 +86,10 @@ export interface ShellFrameProps {
    */
   readonly shownPage?: string;
   /**
-   * The open side panel on the desktop, `PanelWindowSlot`, at the right of the content area. Under
-   * 900px it covers the content area, so the frame makes the page inert while it shows.
+   * The open side panel, `PanelWindowSlot`: on the desktop at the right of the content area, and
+   * under 900px over it, so the frame makes the page inert while it shows. On a phone it's a full
+   * page (`shell.phone-panel`): the top bar, the lines under it and the bottom navigation make way
+   * for it, and the page stays, inert, under it, so it comes back as it was.
    */
   readonly panel?: ReactNode;
   /** The page. */
@@ -167,6 +169,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
   const drawer = usePlacesDrawer(props.sidebar !== undefined, props.placesButton, props.shownPage);
   // Under 900px an open side panel covers the page, which mustn't take focus behind it.
   const covered = desktop && drawer.narrow && hasContent(props.panel);
+  const phonePanel = !desktop && hasContent(props.panel);
   return (
     <div
       data-layout={props.presentation}
@@ -188,10 +191,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
         </header>
       ) : null}
       <div className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? panel : phoneColumn}`}>
-        {desktop ? null : props.phoneTopBar}
-        <EngineLine engine={props.engine} />
-        {desktop ? null : props.strips}
-        {desktop ? null : <PhoneNotices saveNote={props.saveNote} badges={props.phoneBadges} />}
+        <TopLines props={props} desktop={desktop} phonePanel={phonePanel} />
         <div className={`relative flex min-h-0 flex-1 ${desktop ? "" : phoneContent}`}>
           {desktop ? (
             <SidebarSlot
@@ -206,10 +206,14 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
               {props.sidebar}
             </SidebarSlot>
           ) : null}
-          <PageColumn desktop={desktop} inert={drawer.open || covered} strips={props.strips}>
+          <PageColumn
+            desktop={desktop}
+            inert={drawer.open || covered || phonePanel}
+            strips={props.strips}
+          >
             {props.children}
           </PageColumn>
-          {desktop ? props.panel : null}
+          {props.panel}
           <ToastRegion store={props.toasts} />
         </div>
         {desktop ? (
@@ -218,11 +222,31 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
             statusBar={props.statusBar}
             saveNote={props.saveNote}
           />
-        ) : (
-          props.phoneNavigation
-        )}
+        ) : null}
+        {desktop || phonePanel ? null : props.phoneNavigation}
       </div>
     </div>
+  );
+}
+
+/**
+ * What sits above the page: the engine's line, and on a phone the top bar first and the strips and
+ * the notice strip after it. A phone's full-page panel takes the place of all of them.
+ */
+function TopLines(props: {
+  readonly props: ShellFrameProps;
+  readonly desktop: boolean;
+  readonly phonePanel: boolean;
+}) {
+  const { props: frame, desktop, phonePanel } = props;
+  if (phonePanel) return null;
+  return (
+    <>
+      {desktop ? null : frame.phoneTopBar}
+      <EngineLine engine={frame.engine} />
+      {desktop ? null : frame.strips}
+      {desktop ? null : <PhoneNotices saveNote={frame.saveNote} badges={frame.phoneBadges} />}
+    </>
   );
 }
 

@@ -28,14 +28,16 @@ export interface StudioPhoneTopBarProps {
   readonly search: Omit<ShellPhoneSearchProps, "onOpenLocation" | "onClose">;
   /** Gets the slot the page's own buttons go in (`PhoneTopBarActions`), after **Search**. */
   readonly slot: RefCallback<HTMLElement>;
+  /** The side panel's orb, after **Search** at the top of a place (`shell.phone-panel`). */
+  readonly panelButton?: ReactNode;
 }
 
 /**
  * The phone's top bar in the Studio window (`shell.studio-phone`): the page's title, Back under
- * the top of a place, **Search** at the top of a place, and then the page's own buttons
- * (`shell.phone-top-bar-actions`), so an overflow ⋮ is always last.
+ * the top of a place, **Search** and the Assistant's orb at the top of a place, and then the
+ * page's own buttons (`shell.phone-top-bar-actions`), so an overflow ⋮ is always last.
  */
-export function StudioPhoneTopBar({ places, search, slot }: StudioPhoneTopBarProps) {
+export function StudioPhoneTopBar({ places, search, slot, panelButton }: StudioPhoneTopBarProps) {
   const atPlaceTop = places.topBar.onBack === undefined;
   return (
     <PhoneTopBar
@@ -43,6 +45,7 @@ export function StudioPhoneTopBar({ places, search, slot }: StudioPhoneTopBarPro
       actions={
         <>
           {atPlaceTop ? <PhoneSearchButton {...search} onOpenLocation={places.open} /> : null}
+          {atPlaceTop ? panelButton : null}
           {/* Its children are the top bar's own flex items, 4px apart like the rest. */}
           <span ref={slot} className="contents" />
         </>

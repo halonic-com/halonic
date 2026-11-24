@@ -192,15 +192,15 @@ verifies("shell.panel-window", () => {
     expect(document.querySelector("main")?.closest("[inert]")).toBeNull();
   });
 
-  it("draws no side panel on a phone, and draws it again on a wide window", async () => {
+  it("stays open as a full page on a phone, and is the side panel again on a wide window", async () => {
     const { button, panel } = await renderWindow();
     await press(button());
 
     act(() => media.resize(390));
-    expect(panel()).toBeNull();
+    expect(panel()?.className).toContain("absolute inset-0");
 
     act(() => media.resize(1440));
-    expect(panel()).not.toBeNull();
+    expect(panel()?.className).toContain("w-panel");
   });
 
   it("opens and closes through the context's panelWindow", async () => {

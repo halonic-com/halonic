@@ -293,8 +293,7 @@ function StudioWindowBody(props: StudioWindowProps) {
     placeOfKind: (kind) => contributions.itemKinds.get(kind)?.place,
     showSettings: showSettingsDialog,
   });
-  // Read again on every phone move and whenever a place's signal changes, so the bottom
-  // navigation's counts follow, such as the Inbox's right after an answer (HAL-13371).
+  // Read on every phone move and signal change, so the bottom bar's counts follow (HAL-13371).
   const shown = useShownPlaces(places, contextFor);
   useWindowKeys({ host, platform, tabs, toasts: shell.toasts, onNewTab: palette.show });
   // The palette is the desktop's: one opened on a phone (Mod K on a keyboard) or left open when the
@@ -381,6 +380,7 @@ function StudioWindowBody(props: StudioWindowProps) {
         <StudioPhoneTopBar
           places={phone}
           slot={setTopBarSlot}
+          panelButton={panel.phoneButton}
           search={{
             recent: workspace.recent,
             providers: contributions.search.providers(),
