@@ -22,6 +22,8 @@ export interface TaskRow {
   readonly parked?: boolean;
   /** Its Paperclip priority (`critical`, `high`, `medium` or `low`); unset when unknown. */
   readonly priority?: string;
+  /** It is in `blocked`: the 6-hour escalation leaves its pull requests alone while a blocker is set (HAL-17938). */
+  readonly blocked?: boolean;
 }
 
 /** A task comment: who wrote it, when, and what it says. */

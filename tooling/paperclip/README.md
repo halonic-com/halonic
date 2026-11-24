@@ -834,6 +834,31 @@ company, the newest 200 queue entries.
 Not in phase 1: the job log's first error lines in a `check_fail`, reading
 the task before a nudge, the board's watched tasks, and the writes.
 
+## Reviewer wake and UNHANDLED
+
+`src/watchers/` runs after the watcher's tick in each `pr-watch` pass
+(HAL-17938; Chief's answers on HAL-17940). Both read only the pass's
+snapshot and plugin state (`merge-watchers`/`reviewer-wake` and
+`merge-watchers`/`unhandled` per company) and send no GitHub request. While
+`mergeWatchersDryRun` is on (the default), or the task setting is empty,
+they only log what they would write.
+
+- **Reviewer wake:** an open pull request on the watcher's first repository
+  that waits only for its reviewer (out of draft, `ci-ok` green, mergeable,
+  not queued, no signed approval on the head) for 60 min on the same head,
+  30 min with `fast-track`, wakes Liam on `liamWakeTask` (Chat with Liam,
+  HAL-45), or Julian on `julianWakeTask` (Chat with Julian, HAL-44) for a
+  `liam/` branch. Once per head; one comment per reviewer per pass with
+  every pull request due.
+- **UNHANDLED:** a problem on the same pull request, head and kind for
+  6 hours is reported once on `unhandledTask` (Chat with Chief, HAL-10), one
+  comment per pass, waking Chief. Kinds: red `ci-ok`, a conflict outside the
+  queue, a required check with no run, approved and green but not queued, an
+  approval only on an older head, a red merge group, merge-group jobs
+  waiting for a runner, and two exits from the queue without merging.
+  Drafts and pull requests whose task is blocked with a blocker set are left
+  out. A fix or a new head starts the 6 hours over.
+
 ## Leaving a task the watcher watches
 
 Paperclip wakes an agent again ("disposition repair") when a run ends with
