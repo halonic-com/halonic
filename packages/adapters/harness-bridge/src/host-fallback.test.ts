@@ -267,6 +267,47 @@ verifies("harness-bridge.host-fallback", () => {
     expect(breaksOff.calls).toHaveLength(1);
   });
 
+  it("never moves on when the program stops the call during the first try", async () => {
+    const upstream = answers();
+    let firstTry: ((signal: AbortSignal) => void) | undefined;
+    const tried = new Promise<AbortSignal>((resolve) => {
+      firstTry = resolve;
+    });
+    const silentOnce: Fetch = async (input, init) => {
+      if (firstTry === undefined) return upstream.fetch(input, init);
+      const signal = init?.signal as AbortSignal;
+      firstTry(signal);
+      firstTry = undefined;
+      // Never answers: only the program stopping the call ends it.
+      return new Promise((_resolve, reject) =>
+        signal.addEventListener("abort", () => reject(signal.reason)),
+      );
+    };
+    const opened = await open("anthropic", keyed("anthropic", [backup]), { fetch: silentOnce });
+    const program = new AbortController();
+
+    const sent = fetch(`${opened.bridge.url}${routes.anthropic.path}`, {
+      method: "POST",
+      headers: {
+        [harnessBridgeTokenHeader]: opened.bridge.token,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(routes.anthropic.body),
+      signal: program.signal,
+    }).catch(() => undefined);
+    const upstreamSignal = await tried;
+    program.abort();
+    await sent;
+    if (!upstreamSignal.aborted) {
+      await new Promise((resolve) => upstreamSignal.addEventListener("abort", resolve));
+    }
+    // Closing waits for the route still handling the call, so a second try would be in by now.
+    await opened.bridge.close();
+
+    expect(upstream.calls).toHaveLength(0);
+    expect(logged(opened.recorded)).not.toContain("llm.fallback fast -> fast-backup");
+  });
+
   it("starts the run's next call on the pin it moved on to", async () => {
     const upstream = answers(503);
     const opened = await open("anthropic", keyed("anthropic", [backup]), upstream);
