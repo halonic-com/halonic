@@ -2,6 +2,7 @@
 
 - Approval: HAL-16810 (T14 PR 18, flow-assistant 11.1 and 11.3, plan approved by Liam on HAL-16788)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vr0+ZlSpug9FQ6QiuL7AJosFNWP7CjxOp1Oh8FijsdAOzfeRtaCMrGx8WY6JZTJRj0zPHeEFv+fgShGyu9vDCg==
 
 `shell.panel-window` said that below 600px the window draws no side panel: T14 PR 5 left the
 phone out until PR 18 builds it. Now the phone top bar at the top of a place shows the panel's
