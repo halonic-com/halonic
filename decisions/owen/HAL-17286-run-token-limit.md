@@ -2,7 +2,7 @@
 
 - Task: HAL-17286
 - Approval: Liam approves the plan on HAL-17286 (https://paperclip.halonic.com/HAL/issues/HAL-17286#comment-8ba566d4-50a8-475a-b7a4-457c4963e267) and the Studio fix (https://paperclip.halonic.com/HAL/issues/HAL-17286#comment-c5f9248f-932d-4328-85e0-6eda29df7edf). A team decision with no board card (HAL-2282 rule).
-- Kind: behaviour
+- Kind: user-visible
 
 ## What changes
 
