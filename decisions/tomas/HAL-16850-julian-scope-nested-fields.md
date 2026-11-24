@@ -1,6 +1,6 @@
 # Decision: Julian's review scope widens: 800 lines, wording files and package manifests
 
-- Approval: the board asked for it on HAL-14809 (Timothy, 22 Nov); Liam named the paths there and signs it on HAL-16850, which replaces #5059 with Julian's findings fixed
+- Approval: the board asked for it on HAL-14809 (22 Nov); Liam named the paths there and signs it on HAL-16850, which replaces #5059 with Julian's findings fixed
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BjBMJuEhCPd/4/C3uI68a97VDbJyPZzTGAX6voAvR6/qvuFTIFlX3EjUqVCSHOqWr+uRohBTPjU9TdHL7lfYAw==
 
