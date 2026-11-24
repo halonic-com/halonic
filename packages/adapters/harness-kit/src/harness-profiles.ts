@@ -157,8 +157,8 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     // lies in a denied path and nothing is reopened.
     // The instructions folder is the run's own too, but read-only: it is
     // reopened and kept out of the denied entries, and never listed as writable.
-    const writable = [tempFolder, ...(settingsFolder ? [settingsFolder] : [])];
-    const readable = instructions === null ? [] : [instructions];
+    const writable = [tempFolder, ...pathsOf(settingsFolder)];
+    const readable = pathsOf(instructions);
     if (agent.filesFolder !== null) writable.unshift(workingFolder);
     const reopenedPaths =
       this.#platform === "win32"
@@ -416,4 +416,9 @@ function sandboxBridgeOf(bridge: HarnessBridge): SandboxBridge {
   if (url.port === "") throw new Error(`The bridge's address ${bridge.url} names no port.`);
   const host = url.hostname.replace(/^\[(.*)\]$/, "$1");
   return { kind: "loopback", host, port: Number(url.port) };
+}
+
+/** The path as a list: empty when there is none. */
+function pathsOf(path: string | null): string[] {
+  return path === null ? [] : [path];
 }
