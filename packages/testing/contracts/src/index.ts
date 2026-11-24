@@ -86,6 +86,13 @@ export {
 } from "./fake-sandbox-session.ts";
 export { FakeTeamStatus, type FakeTeamStatusOptions } from "./fake-team-status.ts";
 export {
+  type FakeToolScript,
+  type FakeToolScriptContext,
+  FakeToolScriptHost,
+  type FakeToolScriptHostOptions,
+  sha256Hex,
+} from "./fake-tool-script-host.ts";
+export {
   FakeTunnelProvider,
   type FakeTunnelProviderOptions,
   FakeTunnelTime,
@@ -261,6 +268,12 @@ export {
   toolApprovalStoreContract,
   waitingVersion,
 } from "./tool-approval-store.ts";
+export {
+  type MakeToolScriptHost,
+  type ToolScriptFixture,
+  type ToolScriptHostHarness,
+  toolScriptHostContract,
+} from "./tool-script-host.ts";
 export {
   type FingerprintCase,
   type FingerprintConnectors,

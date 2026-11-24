@@ -54,6 +54,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `TeamStatus` | `team-status.ts` | 1 | how Studio's Team screens read spend, seat use, pull requests and the merge queue: read-only by type, every answer as of its source's time, no seat account, login or review text | `team-status` (with first adapter; `FakeTeamStatus` in `testing/contracts` until then) |
 | `TokenStore` | `token-store.ts` | 1 | secrets the server writes itself, such as refresh tokens | `token-store` |
 | `ToolApprovalStore` | `tool-approval-store.ts` | 1 | approved listed tools in the user's profile, by workspace, source, name; `approveListedTools` decides | `tool-approval-store` (with first adapter) |
+| `ToolScriptHost` | `tool-script-host.ts` | 1 | runs a built Halonic ToolScript in an isolate for one audience, with a capability registry, inputs and limits; answers with the output or a listed reason (ADR "Halonic ToolScript") | `tool-script-host` (`FakeToolScriptHost` in `testing/contracts`; QuickJS with T5) |
 | `TrustStore` | `trust-store.ts` | 1 | trust records in the user's profile, by location and fingerprint; `TrustService` decides | `trust-store` |
 | `TunnelProvider` | `tunnel-provider.ts` | 1 | makes the remote gateway (and only it) reachable from a phone: capabilities, start, a status stream, stop | `tunnel-provider` (with the fake provider) |
 | `TunnelResolver` | `tunnel-resolver.ts` | 1 | on the phone, turns an endpoint into a transport that reconnects with `tunnelReconnectDelayMs` while in the foreground | `tunnel-resolver` (with the fake provider) |
@@ -134,6 +135,7 @@ next to the ports:
 | `isInstructionTrustFor` | whether a stored trusted-instructions record is valid for its key | `instruction-trust-store` |
 | `isUnreadableToolApprovalError`, `maxWaitingVersions` | recognise an unreadable tool approval without `instanceof`, and how many waiting versions of a tool are kept | `listed-tool-approval` |
 | `isAllowedWebLink` | whether a `TeamStatus` web link may open in the system browser: a GitHub pull request page, or the connection's own Paperclip origin, port included | `team-status` |
+| `effectiveToolScriptLimits`, `toolScriptCapabilityPath`, `toolScriptDefaultLimits` | a run's limits, only ever lowered from the host's; where a capability id sits on `ctx`; each audience's default limits | `tool-script-host` |
 | `priceOf` | what a model call costs from a `ModelPrice` and the tokens used | `model-price` |
 | `addHarnessEnvironment`, `harnessBridgeTokenHeader` | add a harness's environment without replacing a variable that is set; the header that carries the run's bridge token | `harness-environment` |
 | `signInCommandText` | a harness's sign-in for one agent's settings folder, as a person types it into PowerShell or `sh`, making the folder first; Studio's sign-in by hand and `halonic doctor` both show it | `harness-sign-in-command` |
