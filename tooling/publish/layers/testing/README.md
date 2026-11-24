@@ -16,8 +16,14 @@ npm install --save-dev --save-exact @halonicjs/testing @halonicjs/adapters vites
 The suite loads the integration from its permission sheet through the kit's
 real loader, as Halonic does. It runs it with fake secret values, a replay
 transport that fails closed, and the global network APIs replaced by
-tripwires. An integration that reaches an undeclared host, reads a file or
-leaks a key fails.
+tripwires until the test ends. Its source check refuses every import but the
+integration's own files, `zod` and `@halonicjs/adapters/integration-kit`. An
+integration that reaches an undeclared host, imports a file or network module,
+or shows a key in its result or error, plainly or encoded, fails.
+
+The suite is a check before review, not a sandbox: it reads the source as text
+and runs only the cases it replays. What stops an integration at run time is
+Halonic's fenced runner, which refuses those imports, files and hosts itself.
 
 ```ts
 import { describeIntegrationConformance } from "@halonicjs/testing/integration";

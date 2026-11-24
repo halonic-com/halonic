@@ -6,6 +6,7 @@ import { parse } from "@halonicjs/schema-kit";
 import { canaryFor, canaryMark } from "./canaries.ts";
 import { fail } from "./failure.ts";
 import { fakeWait } from "./fake-wait.ts";
+import { canaryForms, errorTexts } from "./leak-texts.ts";
 import { loadSubject, policyOf, sheetOf } from "./load.ts";
 import { replayTransport } from "./recording.ts";
 import {
@@ -158,7 +159,7 @@ export async function checkProviderErrors(
   };
   const run = await runCase(subject, toolCase, recording ? { recording } : {});
   checkNoBypass(run);
-  const shown = `${run.result ?? ""} ${run.error === undefined ? "" : messageOf(run.error)}`;
+  const shown = [run.result ?? "", ...errorTexts(run.error)].join("\n");
   if (shown.includes("PROVIDER-BODY") || shown.includes(canaryMark)) {
     fail(`"${toolCase.tool}" passed the provider's error body through`);
   }
@@ -203,9 +204,15 @@ async function expectRejection(waiting: ReturnType<IntegrationHost["wait"]>, rea
     fail(`wait must reject with the signal's reason ("${reason.message}") but ${outcome}`);
 }
 
-/** The source uses nothing that reaches past its host. */
+/**
+ * The source uses nothing that reaches past its host, and imports only its
+ * own files, `zod`, the kit and the packages it names as `bundled`. A
+ * subject without `sources` fails: there would be nothing to scan.
+ */
 export function checkSources(subject: ConformanceSubject): void {
-  const findings = scanIntegrationSource(subject.sources ?? {});
+  const sources =
+    subject.sources ?? fail("pass `sources`, the integration's code files by path, to scan them");
+  const findings = scanIntegrationSource(sources, { bundled: subject.bundled ?? [] });
   if (findings.length > 0) {
     fail(findings.map((f) => `${f.file}:${f.line}: ${f.rule}`).join("\n"));
   }
@@ -230,10 +237,14 @@ function refusedRequest(entry: { method: string; host: string; path: string }): 
 
 function checkNoLeak(subject: ConformanceSubject, run: CaseRun): void {
   const policy = policyOf(subject);
-  const shown = `${run.result ?? ""}\n${run.error === undefined ? "" : messageOf(run.error)}`;
-  if (shown.includes(canaryMark)) fail("a secret value appears in the tool's result or error");
-  if (JSON.stringify(run.log).includes(canaryMark))
-    fail("a secret value appears in the request log");
+  const forms = [
+    canaryMark,
+    ...Object.keys(sheetOf(subject).secrets).flatMap((secret) => canaryForms(canaryFor(secret))),
+  ];
+  const holdsCanary = (text: string) => forms.some((form) => text.includes(form));
+  if (holdsCanary([run.result ?? "", ...errorTexts(run.error)].join("\n")))
+    fail("a secret value appears in the tool's result or error");
+  if (holdsCanary(JSON.stringify(run.log))) fail("a secret value appears in the request log");
   for (const request of run.seen) {
     const url = new URL(request.url);
     if (request.url.includes(canaryMark))

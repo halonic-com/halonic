@@ -37,4 +37,8 @@ export {
   type ToolCase,
   tripNetworkGlobals,
 } from "./run.ts";
-export { type SourceFinding, scanIntegrationSource } from "./source-scan.ts";
+export {
+  type SourceFinding,
+  type SourceScanOptions,
+  scanIntegrationSource,
+} from "./source-scan.ts";

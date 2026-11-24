@@ -2,8 +2,8 @@
 // sections 1 and 1.5): one `plugin.yaml`, or an `integration.yaml` read as a
 // plugin with only a backend, never both. The suite runs in Node, so it reads
 // the folder itself; the plugin's own code never gets a file system.
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import {
   type FileProblem,
   type Plugin,
@@ -11,6 +11,7 @@ import {
   pluginFromIntegrationSheet,
 } from "@halonicjs/format";
 import { fail } from "./failure.ts";
+import { codeFilesIn, withImportedFiles } from "./source-files.ts";
 
 /** The manifest files a plugin folder may have, at most one of them. */
 export type ManifestFile = "plugin.yaml" | "integration.yaml";
@@ -22,9 +23,6 @@ export interface PluginFolder {
 }
 
 const manifestFiles: readonly ManifestFile[] = ["plugin.yaml", "integration.yaml"];
-
-/** The file endings of code the source scan reads. */
-const codeFile = /\.(?:[cm]?js|[cm]?ts)$/;
 
 /**
  * The folder's manifest, parsed and checked as `halonic validate` does.
@@ -52,20 +50,14 @@ export function readPluginFolder(folder: string): PluginFolder {
 }
 
 /**
- * The code files in the folder of the backend's `entry` and below it, by
- * their path in the plugin folder, for the source scan. Skips
- * `node_modules`, which the built entry doesn't load from.
+ * The code files in the folder of the backend's `entry` and below it, and
+ * every file in the plugin folder they import, by their path in the plugin
+ * folder, for the source scan. Skips `node_modules`, which the built entry
+ * doesn't load from.
  */
 export function backendSources(folder: string, entry: string): Record<string, string> {
-  const sources: Record<string, string> = {};
-  const root = join(folder, dirname(entry));
-  const files = existsSync(root) ? readdirSync(root, { recursive: true, encoding: "utf8" }) : [];
-  for (const file of files) {
-    if (!codeFile.test(file) || file.split(sep).includes("node_modules")) continue;
-    const path = join(root, file);
-    sources[relative(folder, path).split(sep).join("/")] = readFileSync(path, "utf8");
-  }
-  return sources;
+  const beside = codeFilesIn(join(folder, dirname(entry)), folder, { skipTests: false });
+  return withImportedFiles(folder, beside);
 }
 
 function problemsText(manifest: ManifestFile, problems: readonly FileProblem[]): string {

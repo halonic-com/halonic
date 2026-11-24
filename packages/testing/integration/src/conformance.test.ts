@@ -13,6 +13,10 @@ verifies("integration.fake-integration-passes", () => {
         new URL("./fixtures/weather.ts", import.meta.url),
         "utf8",
       ),
+      "fixtures/plugins/weather/backend/weather.ts": readFileSync(
+        new URL("./fixtures/plugins/weather/backend/weather.ts", import.meta.url),
+        "utf8",
+      ),
     },
   });
 });
