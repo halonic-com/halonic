@@ -21,6 +21,8 @@
     "src/export-data.test.ts",
     "src/import-data.test.ts",
     "src/worker-executor.test.ts",
-    "src/session-routes.test.ts"
+    "src/session-routes.test.ts",
+    "src/scope-export.test.ts",
+    "src/scope-export-route.test.ts"
   ]
 }

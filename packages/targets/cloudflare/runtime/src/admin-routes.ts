@@ -2,6 +2,7 @@ import {
   type RuntimeExportManifest,
   runtimeExportManifestSchema,
 } from "@halonicjs/format/runtime-export";
+import { parseScope, type Scope, scopeName } from "@halonicjs/host-server";
 import type { AdminHandler, AdminRoute } from "./admin.ts";
 import type { RuntimeEnv } from "./env.ts";
 import { ConfigurationError } from "./env.ts";
@@ -29,10 +30,27 @@ function refusal(status: number, body: Record<string, unknown>): Response {
   return Response.json(body, { status, headers: { "cache-control": "no-store" } });
 }
 
-/** Opens the stores an export reads; only a test passes its own. */
-export type OpenExportSource = (env: RuntimeEnv) => Promise<ExportSource>;
+/** Opens the stores an export reads, the scope's when one is given; only a test passes its own. */
+export type OpenExportSource = (env: RuntimeEnv, scope?: Scope) => Promise<ExportSource>;
 
-const openRuntime: OpenExportSource = (env) => createRuntime(env);
+const openRuntime: OpenExportSource = (env, scope) =>
+  createRuntime(
+    env,
+    scope === undefined ? {} : { scope: scopeName(scope), sharedDefinitions: true },
+  );
+
+/**
+ * The scope a request's `?scope=` names, checked as a session's scope is: `undefined` without
+ * one, which exports the deployment's own data, and `null` when it isn't `u/<id>` or `o/<id>`.
+ */
+function requestedScope(request: Request): Scope | null | undefined {
+  const text = new URL(request.url).searchParams.get("scope");
+  return text === null ? undefined : parseScope(text);
+}
+
+function badScope(): Response {
+  return refusal(400, { code: "bad_scope", message: "The scope isn't u/<id> or o/<id>." });
+}
 
 /** What an import writes to, and where it stages the files first. */
 export interface ImportDeps {
@@ -96,17 +114,22 @@ async function answering(work: () => Promise<Response>): Promise<Response> {
 
 /** The export's two routes: the manifest, and one file by the path the manifest lists. */
 function exportRoutes(open: OpenExportSource): readonly AdminRoute[] {
-  const manifest: AdminHandler = (_request, env) =>
+  // The admin key is the operator's, so an export with a scope is that scope's whole export.
+  const manifest: AdminHandler = (request, env) =>
     answering(async () => {
+      const scope = requestedScope(request);
+      if (scope === null) return badScope();
       const { deploymentId } = serverConfigOf(env);
-      const body = await buildManifest(await open(env), deploymentId, new Date());
+      const body = await buildManifest(await open(env, scope), deploymentId, new Date());
       return jsonAnswer(body);
     });
 
   const file: AdminHandler = (request, env) =>
     answering(async () => {
+      const scope = requestedScope(request);
+      if (scope === null) return badScope();
       const path = decodePath(new URL(request.url).pathname.slice(`${exportFilesPath}/`.length));
-      const bytes = path === undefined ? null : await readExportFile(await open(env), path);
+      const bytes = path === undefined ? null : await readExportFile(await open(env, scope), path);
       if (bytes === null) {
         return refusal(404, { code: "not_found", message: "The export has no such file." });
       }
