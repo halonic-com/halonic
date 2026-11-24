@@ -25,6 +25,12 @@ export {
   type PaperclipSignInRequestName,
   paperclipSignInRequests,
 } from "./sign-in-requests.ts";
+export {
+  PaperclipTasks,
+  type PaperclipTasksOptions,
+  type TaskWriteRefusal,
+  type TaskWriteResult,
+} from "./tasks.ts";
 export { PaperclipTeamStatus, type PaperclipTeamStatusOptions } from "./team-status.ts";
 export {
   type PaperclipAnswer,

@@ -51,7 +51,38 @@ export const paperclipRequests = {
     method: "GET",
     path: "/api/plugins/halonic.agent-tools/api/github/pr/:number",
   },
-} as const satisfies Record<string, { method: "GET" | "POST"; path: string }>;
+  // Workflow task writes (`paperclip-client.task-writes`, HAL-17975): a routine wakes an
+  // agent or closes a task, each with a comment. Both use Paperclip's task update, so
+  // each row also pins its body: exactly these fields, and this one status.
+  getTask: { method: "GET", path: "/api/issues/:task" },
+  wakeTask: {
+    method: "PATCH",
+    path: "/api/issues/:task",
+    body: { fields: ["assigneeAgentId", "status", "comment"], status: "todo" },
+  },
+  finishTask: {
+    method: "PATCH",
+    path: "/api/issues/:task",
+    body: { fields: ["status", "comment"], status: "done" },
+  },
+} as const satisfies Record<string, RequestRule>;
+
+/**
+ * What a write's body must be: an object with exactly `fields`, its
+ * `status` field set to `status`, and every field a non-empty string.
+ */
+interface BodyRule {
+  fields: readonly string[];
+  status: string;
+}
+
+/** One row of the fixed list. */
+interface RequestRule {
+  method: "GET" | "POST" | "PATCH";
+  path: string;
+  /** For a write on a route that takes many fields: the only body it may send. */
+  body?: BodyRule;
+}
 
 /**
  * Segments that must be more than one safe segment: a pull request number
@@ -131,6 +162,27 @@ export function matchesRequest(name: PaperclipRequestName, method: string, path:
       ? fitsSegment(patternPart.slice(1), part)
       : patternPart === part;
   });
+}
+
+/**
+ * Whether `body` may go with request `name`: anything for a row without a
+ * body rule, otherwise exactly the rule's fields, each a non-empty string,
+ * with the rule's status. So a task write can't change a title, a blocker
+ * or a budget, or set any other status.
+ */
+export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
+  const rule: BodyRule | undefined = (paperclipRequests[name] as RequestRule).body;
+  if (rule === undefined) {
+    return true;
+  }
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return false;
+  }
+  const fields = new Map<string, unknown>(Object.entries(body));
+  const onlyRuleFields =
+    fields.size === rule.fields.length && rule.fields.every((field) => fields.has(field));
+  const allText = [...fields.values()].every((value) => typeof value === "string" && value !== "");
+  return onlyRuleFields && allText && fields.get("status") === rule.status;
 }
 
 /**

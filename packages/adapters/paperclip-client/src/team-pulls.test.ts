@@ -30,7 +30,10 @@ verifies("paperclip-client.team-pull-requests", () => {
     it("has exactly the two agent-tools rows, each a GET pinned to its path", () => {
       const names = Object.keys(paperclipRequests);
       const rows = Object.fromEntries(
-        Object.entries(paperclipRequests).slice(names.indexOf("pullRequestsSummary")),
+        Object.entries(paperclipRequests).slice(
+          names.indexOf("pullRequestsSummary"),
+          names.indexOf("pullRequestDetail") + 1,
+        ),
       );
       expect(rows).toEqual({
         pullRequestsSummary: { method: "GET", path: summaryPath },
