@@ -9,7 +9,7 @@ import {
   undoChatDecision,
 } from "../cards/chat-decisions.ts";
 import { cardReviewId } from "../cards/proposal-card.tsx";
-import type { Announce } from "../chat/build-chats.ts";
+import type { Announce, ChatView } from "../chat/build-chats.ts";
 
 /** The props of {@link ReviewStrip}. */
 export interface ReviewStripProps {
@@ -20,6 +20,26 @@ export interface ReviewStripProps {
   /** Where focus goes once the strip is done with: the box. */
   readonly box: RefObject<HTMLTextAreaElement | null>;
   readonly announce: Announce;
+}
+
+/** The strip above the box once the chat has loaded (H10); nothing while it loads. */
+export function StripAboveBox(props: {
+  readonly view: ChatView | undefined;
+  readonly host: AssistantHost;
+  readonly box: ReviewStripProps["box"];
+  readonly announce: Announce;
+}) {
+  const { view } = props;
+  if (view === undefined) return null;
+  return (
+    <ReviewStrip
+      host={props.host}
+      chatId={view.chat.id}
+      answering={view.answering}
+      box={props.box}
+      announce={props.announce}
+    />
+  );
 }
 
 /**
