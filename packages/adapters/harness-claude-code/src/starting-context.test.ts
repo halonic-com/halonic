@@ -10,6 +10,10 @@ import {
 } from "./starting-context.ts";
 
 const recordingsFolder = new URL("./fixtures/starting-context/", import.meta.url);
+const probeWorkflow = new URL(
+  "../../../../.github/workflows/cli-platform-probe.yml",
+  import.meta.url,
+);
 
 /** Every recording of a pinned harness version's first calls. */
 function recordings(): StartingContextRecording[] {
@@ -33,6 +37,15 @@ verifies("harness-claude-code.starting-context", () => {
   describe("the starting context of each recorded Claude Code version", () => {
     it("has at least one recording", () => {
       expect(recordings().length).toBeGreaterThan(0);
+    });
+
+    // The repo pins only a minimum Claude Code version; the CLI platform probe
+    // installs the one that runs, so a newer one there needs its own recording.
+    it("has a recording of the version the CLI platform probe installs", () => {
+      const workflow = readFileSync(probeWorkflow, "utf8");
+      const probeVersion = /claude_code_version:[\s\S]*?default: "([^"]+)"/.exec(workflow)?.[1];
+      expect(probeVersion, "the probe's claude_code_version default").toBeDefined();
+      expect(recordings().map((recording) => recording.version)).toContain(probeVersion);
     });
 
     it.each<[string, Pick<HarnessTask, "model" | "modelForEveryCall">]>([
