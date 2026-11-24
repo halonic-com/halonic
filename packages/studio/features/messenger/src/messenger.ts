@@ -8,6 +8,10 @@ import type {
   MessagingRefusal,
   MessagingSource,
 } from "@halonicjs/ports";
+import { QuickActions } from "./quick-actions.ts";
+import { refusalOf } from "./refusal.ts";
+
+export { refusalOf } from "./refusal.ts";
 
 /** The Messenger's tabs: every conversation, or only those whose agent wrote last. */
 export type MessengerTab = "all" | "waiting";
@@ -42,11 +46,14 @@ export type DraftOutcome =
  * await messenger.sendDraft(rows[0].conversation.id);
  */
 export class Messenger {
+  /** The chats' quick actions: answering the agent's cards, and asking for an update. */
+  readonly quickActions: QuickActions;
   private readonly messaging: AgentMessaging;
   private readonly drafts = new Map<MessagingId, string>();
 
   constructor(messaging: AgentMessaging) {
     this.messaging = messaging;
+    this.quickActions = new QuickActions(messaging);
   }
 
   /** The conversations of a tab, newest first, each with its agents and its source's label. */
@@ -148,12 +155,6 @@ function rowOf(
     agents: agents.filter((agent) => agent.id === conversation.agent),
     source: sources.find((each) => each.id === conversation.source),
   };
-}
-
-/** Why a row's source can't take a message now, or `undefined` when it can. */
-export function refusalOf(row: ConversationRow): MessagingRefusal | undefined {
-  const state = row.source?.state.kind ?? "not-found";
-  return state === "online" ? undefined : state;
 }
 
 /** Whether `text` holds `search`, ignoring case; an empty search matches everything. */

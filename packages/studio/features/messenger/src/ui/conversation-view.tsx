@@ -1,8 +1,9 @@
 import type { Message, MessagingRefusal } from "@halonicjs/ports";
-import { ChatBoxLine, ChatComposer, ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, ChatBoxLine, ChatComposer, ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { activityOf, type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { ChatCards } from "./chat-cards.tsx";
 
 /** The props of {@link ConversationView}. */
 export interface ConversationViewProps {
@@ -25,6 +26,7 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
   const [messages, setMessages] = useState<readonly Message[]>([]);
   const [draft, setDraft] = useState(() => messenger.draft(id));
   const [kept, setKept] = useState<MessagingRefusal | undefined>(undefined);
+  const [notSent, setNotSent] = useState<MessagingRefusal | undefined>(undefined);
   // Counts the reads, so an answer that arrives after a newer read's never shows.
   const reads = useRef(0);
 
@@ -51,20 +53,44 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
       return;
     }
     setKept(undefined);
+    setNotSent(undefined);
     // The Messenger cleared the draft only if nothing was typed during the send.
     setDraft(messenger.draft(id));
     await read();
   }
 
+  async function askForUpdate() {
+    const outcome = await messenger.quickActions.askForUpdate(row);
+    if (outcome.outcome === "refused") {
+      setNotSent(outcome.reason);
+      return;
+    }
+    setNotSent(undefined);
+    await read();
+  }
+
   const name = row.conversation.title;
-  const refusal = kept ?? refusalOf(row);
-  const line =
-    refusal === undefined ? undefined : messengerWords.kept[refusal](row.source?.label ?? "");
+  const line = boxLine(row, notSent, kept ?? refusalOf(row));
   return (
     <section aria-label={name} className="flex min-h-0 flex-1 flex-col">
       <ConversationHeader row={row} search={search} onSearch={setSearch} />
-      <Transcript messages={messages} searching={search.trim() !== ""} />
-      <div className="px-4 pb-4">
+      <Transcript messages={messages} searching={search.trim() !== ""}>
+        <ChatCards quickActions={messenger.quickActions} row={row} changed={changed} />
+      </Transcript>
+      <div className="flex flex-col gap-2 px-4 pb-4">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              void askForUpdate().catch((error: unknown) =>
+                console.error("The chat couldn't ask for an update:", error),
+              );
+            }}
+          >
+            {messengerWords.askForUpdate}
+          </Button>
+        </div>
         <ChatComposer
           label={messengerWords.composerLabel(name)}
           placeholder={messengerWords.composerPlaceholder(name)}
@@ -82,6 +108,21 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
       </div>
     </section>
   );
+}
+
+/**
+ * The line under the box: why a quick action sent nothing, or else why a
+ * message would stay in the box, or nothing while the source takes messages.
+ */
+function boxLine(
+  row: ConversationRow,
+  notSent: MessagingRefusal | undefined,
+  refusal: MessagingRefusal | undefined,
+): string | undefined {
+  const source = row.source?.label ?? "";
+  if (notSent !== undefined) return messengerWords.notSent[notSent](source);
+  if (refusal !== undefined) return messengerWords.kept[refusal](source);
+  return undefined;
 }
 
 /** The conversation's agent, its source and activity, and the search through its messages. */
@@ -128,9 +169,12 @@ function ConversationHeader({
 function Transcript({
   messages,
   searching,
+  children,
 }: {
   readonly messages: readonly Message[];
   readonly searching: boolean;
+  /** What follows the messages: the agent's open cards. */
+  readonly children: ReactNode;
 }) {
   const openLink = useOpenExternal();
   return (
@@ -147,6 +191,7 @@ function Transcript({
           <ChatText openLink={openLink}>{message.body}</ChatText>
         </li>
       ))}
+      {children}
     </ol>
   );
 }

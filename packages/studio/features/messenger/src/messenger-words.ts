@@ -32,4 +32,19 @@ export const messengerWords = {
     "not-found": () => "This chat is gone. Your message stays here and isn't sent.",
   } satisfies Record<MessagingRefusal, (source: string) => string>,
   you: "You",
+  /** An agent's open card in its chat (HAL-17421 render 4e, approved by the board, 24 Nov). */
+  card: {
+    needsYou: "Needs you",
+    waitingSince: (time: string) => `Waiting since ${time}`,
+    alsoInInbox: "Also in your Inbox. Answering here answers it there.",
+    answeredBy: (name: string) => `${name} answered this first.`,
+  },
+  askForUpdate: "Ask for an update",
+  /** Why a quick action sent nothing; it is never sent later on its own. */
+  notSent: {
+    offline: (source: string) => `${source} is offline, so nothing was sent.`,
+    "signed-out": (source: string) =>
+      `You're signed out of ${source}, so nothing was sent. Sign in again first.`,
+    "not-found": () => "This is gone, so nothing was sent.",
+  } satisfies Record<MessagingRefusal, (source: string) => string>,
 } as const;

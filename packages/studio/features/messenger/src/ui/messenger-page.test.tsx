@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
-import { OpenExternalProvider } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Messenger } from "../messenger.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import { MessengerPage } from "./messenger-page.tsx";
+import {
+  byText,
+  openChat,
+  openMessenger,
+  press,
+  settle,
+  typeAndSend,
+} from "../test-support/page.tsx";
+import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(unmountAll);
 
@@ -29,54 +34,13 @@ function twoChiefs() {
   return { messaging, acme, acmeChat };
 }
 
-/** Renders the Messenger and lets its first reads land. */
-async function openMessenger(messaging: FakeAgentMessaging, opened: string[] = []) {
-  const page = render(
-    <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
-      <MessengerPage messenger={new Messenger(messaging)} />
-    </OpenExternalProvider>,
-  );
-  await settle();
-  return page;
-}
-
-async function settle(): Promise<void> {
-  await act(async () => {
-    for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
-  });
-}
-
 function rows(page: HTMLElement): string[] {
   return [...page.querySelectorAll("nav li")].map((row) => row.textContent ?? "");
 }
 
-async function press(element: Element | null | undefined): Promise<void> {
-  if (!(element instanceof HTMLElement)) throw new Error("nothing to press");
-  await act(async () => element.click());
-  await settle();
-}
-
-function byText(page: HTMLElement, selector: string, text: string): Element | undefined {
-  return [...page.querySelectorAll(selector)].find((each) => each.textContent?.includes(text));
-}
-
 /** Opens Acme's chat with Chief, the one whose row names Acme. */
-async function openAcmeChat(page: HTMLElement): Promise<HTMLTextAreaElement> {
-  await press(byText(page, "nav li button", "Acme"));
-  const box = page.querySelector("textarea");
-  if (box === null) throw new Error("no message box");
-  return box;
-}
-
-async function typeAndSend(box: HTMLTextAreaElement, text: string): Promise<void> {
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(box, text);
-    box.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await act(async () => {
-    box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-  });
-  await settle();
+function openAcmeChat(page: HTMLElement): Promise<HTMLTextAreaElement> {
+  return openChat(page, "Acme");
 }
 
 async function searchFor(page: HTMLElement, text: string): Promise<void> {
