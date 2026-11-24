@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for it on HAL-17467, a follow-up to the agent messaging ADR (HAL-17425); Julian signs, since Liam wrote the pull request
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:zSZQfL2kGw6CWOy90s3reILFknsA/siVPW7U4yzmFqgV7upWS0ISXMbwwJFxfS6sBsmcnyg0Gw/Tb8/7+Nm/Bw==
 
 `paperclip.reviewer-paths` adds one path to Liam's:
 `packages/adapters/paperclip-client/src/requests.ts`, the Paperclip provider's fixed list
