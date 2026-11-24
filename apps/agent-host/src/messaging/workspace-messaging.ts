@@ -1,9 +1,16 @@
 import { type PaperclipMessaging, paperclipSourceId } from "@halonicjs/adapter-paperclip-client";
 import type { PaperclipConnection } from "@halonicjs/format";
-import type { AgentMessaging } from "@halonicjs/ports";
+import type {
+  AgentMessaging,
+  MessagingId,
+  MessagingSource,
+  MessagingSourceState,
+} from "@halonicjs/ports";
+import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import type { PaperclipKeys } from "../paperclip/paperclip-keys.ts";
 import { CachedAgentMessaging } from "./cached-agent-messaging.ts";
 import { ChangeLog, type ChangesSince } from "./change-log.ts";
+import { listConnectionFiles } from "./connection-file.ts";
 import { type MessagingFailure, MessagingHub } from "./messaging-hub.ts";
 import { paperclipProvider } from "./paperclip-provider.ts";
 
@@ -33,6 +40,18 @@ export interface WorkspaceMessagingOptions {
 /** What Disconnect did: whether Paperclip revoked the key. The key and the cache are gone either way. */
 export interface Disconnected {
   revoked: boolean;
+}
+
+/** One connection file as Settings › Connections lists it; never a key. */
+export interface ConnectionRow {
+  /** The connection's source ID, as `AgentMessaging` gives it. */
+  id: MessagingId;
+  /** The file name without `.yaml`. */
+  name: string;
+  /** "Paperclip · Halonic". */
+  label: string;
+  address: string;
+  state: MessagingSourceState;
 }
 
 /**
@@ -112,6 +131,34 @@ export class WorkspaceMessaging {
     return { revoked };
   }
 
+  /**
+   * The workspace's connection files, each with its state: signed out until
+   * the person connects it here. It reads Paperclip only for connections
+   * the person connected, as Inbox does; when that fails they show as offline.
+   */
+  async connections(): Promise<ConnectionRow[]> {
+    const { workspace, now } = this.#options;
+    const files = await listConnectionFiles(workspace, paperclipConnectionNamePattern);
+    const sources =
+      this.#providers.size === 0
+        ? []
+        : await this.#served.listSources().catch((error: unknown) => {
+            this.#failed("list connections", error);
+            return undefined;
+          });
+    const asOf = (now?.() ?? new Date()).toISOString();
+    return files.map(({ name, connection }) => {
+      const id = paperclipSourceId(name);
+      return {
+        id,
+        name,
+        label: `Paperclip · ${connection.label}`,
+        address: connection.address,
+        state: this.#providers.has(name) ? stateOf(id, sources, asOf) : { kind: "signed-out" },
+      };
+    });
+  }
+
   /** Reads every connected source again; each names its source on `changes` when something changed. */
   refresh(): Promise<void> {
     return this.#hub.refresh();
@@ -158,4 +205,14 @@ export class WorkspaceMessaging {
     const { fetch, now } = this.#options;
     return { ...(fetch === undefined ? {} : { fetch }), ...(now === undefined ? {} : { now }) };
   }
+}
+
+/** A connected source's state; offline when its sources couldn't be read. */
+function stateOf(
+  id: MessagingId,
+  sources: readonly MessagingSource[] | undefined,
+  asOf: string,
+): MessagingSourceState {
+  if (sources === undefined) return { kind: "offline", asOf };
+  return sources.find((source) => source.id === id)?.state ?? { kind: "signed-out" };
 }

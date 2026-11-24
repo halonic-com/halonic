@@ -54,6 +54,12 @@ export {
   type PaperclipConnectionRef,
   type PaperclipKeyHandOver,
 } from "./paperclip-key.ts";
+export {
+  AgentHostPaperclipSignIn,
+  type PaperclipConnectionRow,
+  type PaperclipSignInStart,
+  type PaperclipSignInState,
+} from "./paperclip-sign-in.ts";
 export { AgentHostPlacementStore } from "./placement-store.ts";
 export { AgentHostPluginRunStates, type PluginRunState } from "./plugin-run-state.ts";
 export { AgentHostPluginSecrets } from "./plugin-secrets.ts";

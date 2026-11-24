@@ -20,8 +20,8 @@ export interface ChallengeRequest {
   /** The name Paperclip gives the key, followed by "(board)". */
   clientName: string;
   requestedAccess: "board";
-  /** Only labels Paperclip's audit log; it doesn't limit the key. */
-  requestedCompanyId: string;
+  /** Only labels Paperclip's audit log; it doesn't limit the key. A new connection has none yet. */
+  requestedCompanyId?: string;
 }
 
 /**
@@ -76,9 +76,13 @@ export interface ChallengeRef {
   token: string;
 }
 
-/** Where a signed-in key goes: the OS keychain, one entry per connection (A3d). */
+/**
+ * Where a signed-in key goes: the host keeps it in memory for the
+ * connection, and the approved poll's answer hands it to Studio once, which
+ * writes it to the OS keychain, one entry per connection (A3d).
+ */
 export interface PaperclipKeyStore {
-  /** Saves the key with the address and company it was made for. */
+  /** Keeps the key with the address and company it was made for; a failure makes the flow revoke it. */
   save(entry: StoredPaperclipKey): Promise<void>;
 }
 
@@ -88,4 +92,8 @@ export interface StoredPaperclipKey {
   address: string;
   companyId: string;
   key: string;
+  /** The workspace that holds the connection file. */
+  workspace: string;
+  /** The connection's name, its file name without `.yaml`. */
+  name: string;
 }

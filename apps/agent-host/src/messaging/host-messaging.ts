@@ -1,13 +1,18 @@
 import { join } from "node:path";
 import { MemoryRecordStore } from "@halonicjs/adapter-memory";
+import { PaperclipSignInClient } from "@halonicjs/adapter-paperclip-client";
 import { NodeScheduler } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
+import type { Scheduler } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { HostKeyStore } from "../paperclip/host-key-store.ts";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
 import { PaperclipKeys } from "../paperclip/paperclip-keys.ts";
+import { PaperclipSignIn } from "../paperclip/paperclip-sign-in.ts";
+import { paperclipSignInRoutes } from "../paperclip/paperclip-sign-in-routes.ts";
 import type { HostRoute } from "../server/host-server.ts";
-import { readConnectionFile } from "./connection-file.ts";
+import { readConnectionFile, writeConnectionFile } from "./connection-file.ts";
 import { DesktopMessaging } from "./desktop-messaging.ts";
 import type { MessagingFailure } from "./messaging-hub.ts";
 import { MessagingPoller } from "./messaging-poller.ts";
@@ -24,8 +29,8 @@ export const messagingCacheFolderName = "agent-messaging-cache";
 
 /**
  * The desktop engine's agent messaging, for the agent host: the key
- * hand-over, Studio's messaging routes and Disconnect, and the poller on a
- * scheduler of its own. Without a profile folder there is nowhere outside
+ * hand-over, Paperclip's sign-in, Studio's messaging routes and Disconnect,
+ * and the poller and the sign-ins' time limits on a scheduler of its own. Without a profile folder there is nowhere outside
  * the workspaces for the cache, so only the hand-over is served and no
  * provider ever starts.
  *
@@ -56,7 +61,11 @@ export function hostMessaging(
   });
   const scheduler = new NodeScheduler(
     {
-      onTimer: async (timer) => void (await poller.onTimer(timer)),
+      // Each timer is the poller's or a sign-in's time limit; each checks its own key.
+      onTimer: async (timer) => {
+        if (await poller.onTimer(timer)) return;
+        await signIn.onTimer(timer);
+      },
       // The poll needs no tick: its own timer brings every poll.
       onTick: async () => {},
     },
@@ -72,6 +81,7 @@ export function hostMessaging(
     clock: systemClock,
     poll: () => messaging.refresh(),
   });
+  const signIn = hostSignIn(keys, messaging, scheduler);
   poller
     .start()
     .catch((error: unknown) => report({ provider: "scheduler", action: "start", error }));
@@ -85,6 +95,7 @@ export function hostMessaging(
         log,
       }),
       ...messagingRoutes({ messaging, poller, log }),
+      ...paperclipSignInRoutes({ signIn, workspaceRoots, log }),
     ],
     stop: async () => {
       await poller.stop();
@@ -92,6 +103,33 @@ export function hostMessaging(
       messaging.close();
     },
   };
+}
+
+/**
+ * Paperclip's sign-in on the host's scheduler: an approved key is kept in
+ * memory for its connection, whose file is written first when it is new,
+ * and starts the connection's provider.
+ */
+function hostSignIn(
+  keys: PaperclipKeys,
+  messaging: DesktopMessaging,
+  scheduler: Scheduler,
+): PaperclipSignIn {
+  return new PaperclipSignIn({
+    callsFor: (address) => new PaperclipSignInClient({ address }),
+    keyStore: new HostKeyStore({
+      keep: (entry) =>
+        keys.replace(
+          { workspace: entry.workspace, connection: entry.name },
+          { key: entry.key, address: entry.address, company: entry.companyId },
+        ),
+      connect: async (workspace, name) => (await messaging.of(workspace))?.connect(name),
+      readConnection: readConnectionFile,
+      writeConnection: writeConnectionFile,
+    }),
+    scheduler,
+    clock: systemClock,
+  });
 }
 
 function describe(error: unknown): string {

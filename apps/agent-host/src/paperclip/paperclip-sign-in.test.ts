@@ -7,7 +7,12 @@ import { FakeKeyStore, FakeSignInCalls, fakeBoardKey } from "./sign-in-calls.tes
 import { signInRequests } from "./sign-in-calls.ts";
 import { phraseWordCount, signInPhraseWords } from "./sign-in-phrase.ts";
 
-const connection = { address: "https://paperclip.acme.test", companyId: "acme" };
+const connection = {
+  address: "https://paperclip.acme.test",
+  companyId: "acme",
+  workspace: "/work/acme",
+  name: "acme",
+};
 
 function setUp() {
   const calls = new FakeSignInCalls();
@@ -58,8 +63,12 @@ verifies("agent-host.paperclip-sign-in", () => {
       expect(await flow.poll(started.signInId)).toEqual({
         status: "connected",
         userId: "user-ada",
+        companyId: "acme",
+        key: fakeBoardKey,
       });
       expect(keyStore.saved).toEqual([{ ...connection, key: fakeBoardKey }]);
+      // The answer that holds the key ends the sign-in: no later poll gets it again.
+      expect(await flow.poll(started.signInId)).toEqual({ status: "unknown" });
       expect(flow.holdsKey(started.signInId)).toBe(false);
       expect(calls.revoked).toEqual([]);
     });
@@ -212,7 +221,7 @@ verifies("agent-host.paperclip-sign-in", () => {
       const first = flow.poll(started.signInId);
       expect(await flow.poll(started.signInId)).toEqual({ status: "pending" });
       answer();
-      expect(await first).toEqual({ status: "connected", userId: "user-ada" });
+      expect(await first).toMatchObject({ status: "connected", userId: "user-ada" });
       expect(keyStore.saved).toHaveLength(1);
       expect(calls.revoked).toEqual([]);
     });

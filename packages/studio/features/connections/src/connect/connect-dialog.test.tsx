@@ -176,6 +176,15 @@ verifies("connections.connect-dialog", () => {
     expect(dialog()?.querySelector("input")?.value).toBe("https://paperclip.acme.test");
   });
 
+  it("says the key wasn't saved when the keychain refused it", async () => {
+    const { fake } = await openDialog();
+    await connectTo("https://paperclip.acme.test");
+    act(() => fake.failKeychain());
+    await settle();
+    expect(text()).toContain("Halonic couldn't save the key");
+    expect(button("Start again")).toBeDefined();
+  });
+
   it("starts nothing for an address that isn't https, unless it's on this computer", async () => {
     const { fake } = await openDialog();
     await connectTo("http://paperclip.acme.test");

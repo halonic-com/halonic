@@ -99,6 +99,8 @@ function endingOf(result: EndedResult): words.Ending {
       return words.EXPIRED;
     case "cancelled":
       return words.CANCELLED;
+    case "key-not-saved":
+      return words.KEY_NOT_SAVED;
     case "refused":
       return words.companyMismatch(result.company);
   }

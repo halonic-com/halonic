@@ -43,6 +43,7 @@ const sendBody = s
 const attachmentBody = s.object({ workspace, attachment: id }).strict();
 const changesBody = s.object({ workspace, after: s.number().int().min(0) }).strict();
 const focusBody = s.object({ inFront: s.boolean() }).strict();
+const connectionsBody = s.object({ workspace }).strict();
 const disconnectBody = s
   .object({ workspace, connection: s.string().regex(paperclipConnectionNamePattern) })
   .strict();
@@ -75,6 +76,9 @@ type ReadBody = Infer<typeof readBody>;
  *   the sources that changed since Studio's last look.
  * - `POST /v1/messaging/focus` with `{ inFront }` tells the poller whether
  *   Studio's window is in front.
+ * - `POST /v1/paperclip/connections` answers `{ connections }`: the
+ *   workspace's connection files with their labels, addresses and states,
+ *   for Settings › Connections. No key.
  * - `POST /v1/paperclip/disconnect` with `{ connection }` revokes the key,
  *   then forgets it and deletes the cache even if the revoke failed, and
  *   answers `{ revoked }`.
@@ -130,6 +134,9 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
     inWorkspace("/v1/messaging/changes", changesBody, async (messaging, body) =>
       messaging.changesSince(body.after),
     ),
+    inWorkspace("/v1/paperclip/connections", connectionsBody, async (messaging) => ({
+      connections: await messaging.connections(),
+    })),
     inWorkspace("/v1/paperclip/disconnect", disconnectBody, (messaging, body) =>
       messaging.disconnect(body.connection),
     ),

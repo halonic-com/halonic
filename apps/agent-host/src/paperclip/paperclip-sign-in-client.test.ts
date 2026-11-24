@@ -10,7 +10,7 @@ import type { SignInCalls } from "./sign-in-calls.ts";
 // against a Paperclip stand-in that answers as HAL-17423 recorded.
 
 const address = "https://paperclip.acme.test";
-const connection = { address, companyId: "acme" };
+const connection = { address, companyId: "acme", workspace: "/work/acme", name: "acme" };
 const challengeId = "c0000000-0000-4000-8000-000000000001";
 const challengePath = `/api/cli-auth/challenges/${challengeId}`;
 
@@ -113,8 +113,10 @@ verifies("agent-host.paperclip-sign-in", () => {
       await expect(flow.poll(started.signInId)).resolves.toEqual({
         status: "connected",
         userId: "user-ada",
+        companyId: "acme",
+        key: fakeBoardKey,
       });
-      expect(keyStore.saved).toEqual([{ address, companyId: "acme", key: fakeBoardKey }]);
+      expect(keyStore.saved).toEqual([{ ...connection, key: fakeBoardKey }]);
       expect(flow.holdsKey(started.signInId)).toBe(false);
     });
 

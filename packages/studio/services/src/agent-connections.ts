@@ -36,6 +36,11 @@ export type SignInResult =
   | { readonly outcome: "expired" }
   /** It was cancelled, here or at the approval page. */
   | { readonly outcome: "cancelled" }
+  /**
+   * The board approved, but the keychain didn't take the key, so the engine
+   * revoked it and nothing is kept (Liam's option 1, HAL-17439).
+   */
+  | { readonly outcome: "key-not-saved" }
   | {
       readonly outcome: "refused";
       /** Only the approver can be refused once the sign-in started. */

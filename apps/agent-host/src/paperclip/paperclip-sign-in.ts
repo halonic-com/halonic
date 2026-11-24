@@ -20,7 +20,15 @@ export const signInClientName = "Halonic Studio";
 export interface SignInConnection {
   /** The address the board uses for Paperclip's page: scheme, host and port, no path. */
   address: string;
-  companyId: string;
+  /**
+   * The connection file's company. A new connection has none yet: it takes
+   * the approver's company, when `me` lists exactly one.
+   */
+  companyId?: string;
+  /** The workspace that holds, or will hold, the connection file; only passed to the key store. */
+  workspace: string;
+  /** The connection's name, its file name without `.yaml`; only passed to the key store. */
+  name: string;
 }
 
 /** What Studio gets when a sign-in starts. It never holds the key. */
@@ -37,7 +45,13 @@ export interface StartedSignIn {
 /** Where a sign-in stands after a step. */
 export type SignInState =
   | { status: "pending" }
-  | { status: "connected"; userId: string }
+  /**
+   * The key was stored for the connection's company. This answer is the only
+   * one that holds the key, and the sign-in ends with it, so no later poll
+   * gets it again (Liam's option 1, HAL-17439): Studio writes it to the
+   * keychain at once.
+   */
+  | { status: "connected"; userId: string; companyId: string; key: string }
   | { status: "cancelled" | "expired"; keyMayWork?: KeyMayWork }
   /** The key's user isn't in the connection's company; the key was revoked. */
   | { status: "wrong-company" }
@@ -99,7 +113,7 @@ export class PaperclipSignIn {
       command: phrase,
       clientName: signInClientName,
       requestedAccess: "board",
-      requestedCompanyId: connection.companyId,
+      ...(connection.companyId === undefined ? {} : { requestedCompanyId: connection.companyId }),
     });
     const challenge = { id: created.id, token: created.token };
     const signInId = crypto.randomUUID();
@@ -223,13 +237,11 @@ export class PaperclipSignIn {
     try {
       await this.#endTimer(signInId);
       const owner = await calls.readMe(open.key);
-      if (owner.companyIds.includes(open.connection.companyId)) {
-        await keyStore.save({
-          address: open.connection.address,
-          companyId: open.connection.companyId,
-          key: open.key,
-        });
-        return { status: "connected", userId: owner.userId };
+      const companyId = companyOf(open.connection, owner.companyIds);
+      if (companyId !== undefined) {
+        const { address, workspace, name } = open.connection;
+        await keyStore.save({ address, companyId, key: open.key, workspace, name });
+        return { status: "connected", userId: owner.userId, companyId, key: open.key };
       }
     } catch (error) {
       // The key works but isn't stored: revoke it so no working key is left anywhere.
@@ -257,6 +269,21 @@ export class PaperclipSignIn {
   async #endTimer(signInId: string): Promise<void> {
     await this.#options.scheduler.cancel(signInTimerKey, signInId);
   }
+}
+
+/**
+ * The company the key is stored for: the connection file's, when the key's
+ * user belongs to it; for a new connection, the user's only company. A user
+ * in several companies gets none, as Studio can't ask which one yet.
+ */
+function companyOf(
+  connection: SignInConnection,
+  companyIds: readonly string[],
+): string | undefined {
+  if (connection.companyId !== undefined) {
+    return companyIds.includes(connection.companyId) ? connection.companyId : undefined;
+  }
+  return companyIds.length === 1 ? companyIds[0] : undefined;
 }
 
 /**

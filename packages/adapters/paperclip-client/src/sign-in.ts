@@ -13,7 +13,8 @@ export interface SignInChallengeRequest {
   command: string;
   clientName: string;
   requestedAccess: "board";
-  requestedCompanyId: string;
+  /** Only labels Paperclip's audit log; a new connection has no company yet. */
+  requestedCompanyId?: string;
 }
 
 /** A challenge Paperclip made, with the key that works only once the board approves. */

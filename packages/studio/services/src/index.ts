@@ -32,6 +32,11 @@ export {
   type FakeAgentConnectionsOptions,
 } from "./fake-agent-connections.ts";
 export {
+  HostAgentConnections,
+  type HostAgentConnectionsOptions,
+  signInPollMs,
+} from "./host-agent-connections.ts";
+export {
   type InboxOpenRequests,
   inboxKeyOf,
   type MessagingItemKind,

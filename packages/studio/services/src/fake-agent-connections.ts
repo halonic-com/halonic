@@ -132,6 +132,11 @@ export class FakeAgentConnections implements AgentConnections {
     );
   }
 
+  /** Ends the waiting sign-in as approved, but with a keychain that didn't take the key. */
+  failKeychain(): void {
+    this.end({ outcome: "key-not-saved" });
+  }
+
   /** Ends the waiting sign-in as the server does after its 10 minutes. */
   expire(): void {
     this.end({ outcome: "expired" });
