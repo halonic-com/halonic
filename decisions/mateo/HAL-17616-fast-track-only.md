@@ -3,6 +3,7 @@
 - Task: HAL-17616 (the board's decision on the task, 24 Nov)
 - Approval: the board decided on HAL-17616 (24 Nov ~16:15 Spain) that the fast pool goes back to `fast-track` pull requests only, with the bot check kept and fast-1..16 as the normal pool; Liam signs this note in review, Julian checks C1–C8 on the task
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:r10FhTuLs2yeuJOK6VSZBr+KhQ7isN+rC/smU6Yamia29iUxaQWzyOh1SpEytlLvhkSWJTH7xcOhS14c5sKCAQ==
 
 ## What changes
 
