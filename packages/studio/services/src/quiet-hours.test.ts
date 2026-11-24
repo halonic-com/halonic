@@ -50,7 +50,12 @@ verifies("services.agent-quiet-hours", () => {
       expect(shown).toEqual([]);
       await vi.advanceTimersByTimeAsync(1);
       expect(shown).toEqual([
-        { reason: "summary", title: "3 new during quiet hours", body: "", target: { kind: "inbox", id: "" } },
+        {
+          reason: "summary",
+          title: "3 new during quiet hours",
+          body: "",
+          target: { kind: "inbox", id: "" },
+        },
       ]);
       expect(errors).toEqual([]);
     });
