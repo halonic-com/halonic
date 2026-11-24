@@ -65,12 +65,14 @@ agent host commands take a route of the host's table, never a URL: the shell
 starts the host for the profile and makes each call, so the launch token never
 reaches the page (`src-tauri/requirements/agent-host-commands.md`). The
 engine commands (`engine_request`, `engine_request_end`, `engine_stream`,
-`engine_stream_end`, `capabilities/desktop-engine.json`) work the same way for
+`engine_chat_stream`, `engine_stream_end`, `capabilities/desktop-engine.json`) work the same way for
 the engine process that runs a window's workspace: the page names a route of
 the shell's table and sends its params apart, the shell checks each param and
 makes the call with the engine's token. When the page stops waiting for a
 call (Stop in Try it), `engine_request_end` hangs up on the engine, which then
-stops the model call. While the shell knows no engine for the window, they
+stops the model call. A Try it chat turn comes through `engine_chat_stream`
+as lines, so its text shows as the model writes it, and Stop ends it with
+`engine_stream_end`. While the shell knows no engine for the window, they
 answer `engine_unavailable` (`src-tauri/requirements/engine-commands.md`).
 `src-tauri/gen/android/` is the Android project, generated once by
 `tauri android init` and kept in git, so changes to it show up in review.

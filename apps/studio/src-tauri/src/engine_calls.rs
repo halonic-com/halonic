@@ -18,10 +18,11 @@ use crate::page_streams::StreamKey;
 /// is the biggest; this keeps a page from handing the engine megabytes.
 const BODY_LIMIT: usize = 1024 * 1024;
 
-/// The largest JSON answer the shell reads. The engine's answers are run
-/// summaries and lists; this only keeps a broken engine from filling the
-/// shell's memory.
-const ANSWER_LIMIT: usize = 16 * 1024 * 1024;
+/// The largest JSON answer the shell reads, and the longest line of a
+/// streamed chat turn, whose last line is the whole answer. The engine's
+/// answers are run summaries and lists; this only keeps a broken engine
+/// from filling the shell's memory.
+pub(super) const ANSWER_LIMIT: usize = 16 * 1024 * 1024;
 
 /// The largest event the shell reads from a stream. A run event carries a
 /// step's output, which the engine already keeps far below this.
@@ -79,14 +80,27 @@ pub(super) fn request_body(
     }
 }
 
-/// Sends one request to the window's engine, with the launch token and no
-/// `Origin`. A JSON route has its [`time_limit`] for its whole answer.
+/// Sends one request to the window's engine, as [`request`] builds it.
 pub(super) async fn send<R: Runtime>(
     webview: &Webview<R>,
     route: EngineRoute,
     path: &str,
     body: Option<Vec<u8>>,
 ) -> Result<reqwest::Response, EngineRefusal> {
+    request(webview, route, path, body)?
+        .send()
+        .await
+        .map_err(|_| unavailable())
+}
+
+/// One request to the window's engine, with the launch token and no
+/// `Origin`. A JSON route has its [`time_limit`] for its whole answer.
+pub(super) fn request<R: Runtime>(
+    webview: &Webview<R>,
+    route: EngineRoute,
+    path: &str,
+    body: Option<Vec<u8>>,
+) -> Result<reqwest::RequestBuilder, EngineRefusal> {
     let state = webview.state::<EngineState>();
     let connection = state.connection(webview.label())?;
     let client = state.client()?;
@@ -102,11 +116,7 @@ pub(super) async fn send<R: Runtime>(
         Answer::Json => request.timeout(time_limit(route)),
         Answer::Stream => request.header(reqwest::header::ACCEPT, "text/event-stream"),
     };
-    request
-        .bearer_auth(connection.token())
-        .send()
-        .await
-        .map_err(|_| unavailable())
+    Ok(request.bearer_auth(connection.token()))
 }
 
 /// A stream route's opening answer: the open stream, or the engine's

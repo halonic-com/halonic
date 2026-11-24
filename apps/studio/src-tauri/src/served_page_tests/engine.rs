@@ -20,6 +20,14 @@ fn served_page_test_sees_the_connect_page_allowed_the_engine_commands_on_desktop
     );
     let refusal = answer.expect_err("not a route");
     assert_eq!(refusal["kind"], "unknown_route", "{refusal}");
+    let answer = invoke(
+        &window,
+        CONNECT_PAGE,
+        "engine_chat_stream",
+        json!({"route": "POST /api/runs", "stream": 7, "body": null, "channel": "__CHANNEL__:1"}),
+    );
+    let refusal = answer.expect_err("not a chat turn");
+    assert_eq!(refusal["kind"], "unknown_route", "{refusal}");
     let ended = invoke(
         &window,
         CONNECT_PAGE,
@@ -51,6 +59,7 @@ fn served_page_test_sees_the_engine_granted_to_the_local_main_window_only() {
             "allow-engine-request",
             "allow-engine-request-end",
             "allow-engine-stream",
+            "allow-engine-chat-stream",
             "allow-engine-stream-end"
         ])
     );
