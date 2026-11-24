@@ -70,6 +70,19 @@ verifies("messenger.conversations", () => {
       ]);
     });
 
+    it("keeps text typed while the draft was being sent", async () => {
+      const { messaging, acmeChat } = twoChiefs();
+      const messenger = new Messenger(messaging);
+      const send = messaging.send.bind(messaging);
+      vi.spyOn(messaging, "send").mockImplementation(async (conversation, body) => {
+        messenger.setDraft(conversation, "Also the invoices");
+        return send(conversation, body);
+      });
+      messenger.setDraft(acmeChat.id, "Morning");
+      expect((await messenger.sendDraft(acmeChat.id)).outcome).toBe("sent");
+      expect(messenger.draft(acmeChat.id)).toBe("Also the invoices");
+    });
+
     it("offline, keeps the typed text as a draft and sends nothing", async () => {
       const { messaging, acme, acmeChat } = twoChiefs();
       messaging.goOffline(acme.id);

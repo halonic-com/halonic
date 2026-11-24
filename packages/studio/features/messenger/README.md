@@ -6,9 +6,8 @@ for me". It sends through `AgentMessaging.send`, keeps a draft per conversation,
 draft unsent while the conversation's source is offline or signed out. It never sees a provider's
 own types, IDs or addresses: it gets the port from `AgentMessagingService` in `studio/services`.
 
-Messages are written by agents, so `MessageBody` draws them with the kit's Markdown reader: no raw
-HTML, scripts, images or `javascript:` links, and web links open in the browser with their host
-shown.
+Messages are written by agents, so the kit's `ChatText` draws them: no raw HTML, scripts, images or
+`javascript:` links, and web links open in the browser with their address shown.
 
 - **Layer:** studio
 - **Owner:** elena
