@@ -1,3 +1,13 @@
+export {
+  type AgentConnection,
+  type AgentConnections,
+  AgentConnectionsService,
+  type DisconnectResult,
+  type SignInChallenge,
+  type SignInRefusal,
+  type SignInResult,
+  type SignInStart,
+} from "./agent-connections.ts";
 export { harnessEnvironments, studioHarnesses } from "./agent-host-harnesses.ts";
 export { AgentHostNotAnswering } from "./agent-host-not-answering.ts";
 export { TauriAgentHostTransport, tauriAgentHostTransport } from "./agent-host-transport.ts";
@@ -16,6 +26,10 @@ export {
   engineBaseUrl,
   tauriEngineFetch,
 } from "./engine-fetch.ts";
+export {
+  FakeAgentConnections,
+  type FakeAgentConnectionsOptions,
+} from "./fake-agent-connections.ts";
 export {
   type InboxOpenRequests,
   inboxKeyOf,
