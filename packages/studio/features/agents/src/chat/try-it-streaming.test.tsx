@@ -2,7 +2,7 @@
 import type { ChatAnswerListener } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, type MockInstance, vi } from "vitest";
 import { buttonNamed, show, unmount } from "../test-support.tsx";
 import {
   emptyTranscript,
@@ -14,13 +14,38 @@ import {
 } from "./transcript.ts";
 import { Chat, said, scriptedHost, sendMessage } from "./try-it-test-support.tsx";
 
+/**
+ * The frames the chat asked for. They run only when a test lets a frame pass, never on the
+ * clock, so a slow runner can't draw the text before the test looks (HAL-17870).
+ */
+const frames = new Map<number, FrameRequestCallback>();
+let requestFrame: MockInstance<typeof requestAnimationFrame>;
+
+beforeEach(() => {
+  let lastFrame = 0;
+  requestFrame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((run) => {
+    lastFrame += 1;
+    frames.set(lastFrame, run);
+    return lastFrame;
+  });
+  vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+    frames.delete(id);
+  });
+});
+
 afterEach(() => {
   unmount();
+  frames.clear();
   vi.restoreAllMocks();
 });
 
 /** Lets the frame the chat waits for pass. */
-const nextFrame = () => act(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
+const nextFrame = () =>
+  act(() => {
+    const due = [...frames.values()];
+    frames.clear();
+    for (const run of due) run(performance.now());
+  });
 
 /** Writes `pieces` as the model would, then lets the frame pass. */
 async function write(listener: ChatAnswerListener | undefined, ...pieces: string[]) {
@@ -39,13 +64,12 @@ verifies("agents.chat.streaming", () => {
     const page = await show(<Chat host={host} announce={announce} />);
     await sendMessage(page, "Sort this mail");
     const listener = requests[0]?.listener;
-    const frame = vi.spyOn(window, "requestAnimationFrame");
     await act(async () => {
       for (const text of ["It's ", "about ", "a refund"])
         listener?.onText?.({ kind: "delta", text });
     });
     expect(said(page)).toEqual(["Sort this mail"]);
-    expect(frame).toHaveBeenCalledOnce();
+    expect(requestFrame).toHaveBeenCalledOnce();
     await nextFrame();
     expect(said(page)).toEqual(["Sort this mail", "It's about a refund"]);
     expect(reply(page).getAttribute("aria-busy")).toBe("true");
