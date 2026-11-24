@@ -197,16 +197,16 @@ verifies("agent-host.agent-messaging-cache", () => {
       await expect(cached.listWork()).rejects.toThrow("Paperclip answered 500");
     });
 
-    it.skipIf(process.platform === "win32")(
-      "[platform:win32] Windows has no file modes: keeps every cache file 0600 in 0700 folders",
-      async () => {
-        await readAcme();
-        const files = await filesUnder(cacheFolder);
-        for (const file of files) expect((await stat(file)).mode & 0o777).toBe(0o600);
-        const [sourceFolder] = await readdir(cacheFolder);
-        expect((await stat(cacheFolder)).mode & 0o777).toBe(0o700);
-        expect((await stat(join(cacheFolder, sourceFolder ?? ""))).mode & 0o777).toBe(0o700);
-      },
-    );
+    it("keeps every cache file 0600 in 0700 folders on POSIX", async () => {
+      await readAcme();
+      const files = await filesUnder(cacheFolder);
+      expect(files.length).toBeGreaterThan(0);
+      // Windows has no POSIX file modes to check; the files still have to exist there.
+      if (process.platform === "win32") return;
+      for (const file of files) expect((await stat(file)).mode & 0o777).toBe(0o600);
+      const [sourceFolder] = await readdir(cacheFolder);
+      expect((await stat(cacheFolder)).mode & 0o777).toBe(0o700);
+      expect((await stat(join(cacheFolder, sourceFolder ?? ""))).mode & 0o777).toBe(0o700);
+    });
   });
 });
