@@ -10,7 +10,8 @@ import type {
 // provider hangs on an answer (a request, its headers, a key) never reaches
 // the hub's answers or its cache file (requirement `agent-host.team-status-hub`).
 // The team status types nest deeper than messaging's, so the fields are
-// written as shapes and one picker walks them.
+// written as shapes and one picker walks them. `fromCache` is left out on
+// purpose: the hub sets it only on an answer it serves from its cache.
 
 /** The fields of a type to keep: `true` for a plain value or a list of them, a nested shape for an object. */
 type Shape = { readonly [field: string]: true | Shape };
@@ -29,6 +30,7 @@ const spendShape: Shape = {
   tokens,
   budget: money,
   unpricedRuns: true,
+  unknownSeatRuns: true,
 };
 
 const seatShape: Shape = {
@@ -42,6 +44,7 @@ const seatShape: Shape = {
   agents: true,
   manualReset: { usedAt: true },
   proposal: { text: true, at: true },
+  failedRead: { cause: true, at: true },
 };
 
 const pullRequestShape: Shape = {
