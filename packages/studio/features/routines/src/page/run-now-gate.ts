@@ -3,22 +3,32 @@ import { type SandboxStart, useSandboxStart } from "@halonicjs/studio-feature-ru
 import type { ButtonUnavailable } from "@halonicjs/studio-kit";
 import { type RefObject, useId, useRef } from "react";
 import type { RoutinesHost, RoutineView } from "../api.ts";
+import { startsAgent } from "./agent-routine-notice.tsx";
 
 /** What **Run now** and the can't-run Callout need (requirement `routines.page.cant-run`). */
 export interface RunNowGate {
   readonly sandbox: SandboxStart;
   /** The `id` of the Callout's first line, which describes Run now while it is unavailable. */
   readonly cantRunId: string;
-  /** Run now's `unavailable` while the sandbox can't start; `undefined` while it can. */
+  /**
+   * The `id` of the agent routine notice's sentence, which describes Run now and Runs on its own
+   * while the routine starts an agent (`routines.page.agent-routine-notice`).
+   */
+  readonly agentNoticeId: string;
+  /**
+   * Run now's `unavailable` while the routine starts an agent or the sandbox can't start;
+   * `undefined` while it can start.
+   */
   readonly unavailable: ButtonUnavailable | undefined;
   /** Run now, which takes focus once **Check again** finds the sandbox ready. */
   readonly runNow: RefObject<HTMLButtonElement | null>;
 }
 
 /**
- * Whether the routine page's **Run now** can start a run: it needs the sandbox only when what the
- * routine starts runs a program (`startsProgram`), and only a check that refuses makes it
- * unavailable. The routine stays on either way (checklist 3.4).
+ * Whether the routine page's **Run now** can start a run. A routine that starts an agent can't, as
+ * its notice says (HAL-17816). Otherwise it needs the sandbox only when what the routine starts
+ * runs a program (`startsProgram`), and only a check that refuses makes it unavailable. The
+ * routine stays on either way (checklist 3.4).
  */
 export function useRunNowGate(
   host: RoutinesHost,
@@ -30,11 +40,23 @@ export function useRunNowGate(
     host.runNow !== undefined && routine?.startsProgram === true,
   );
   const cantRunId = useId();
+  const agentNoticeId = useId();
   const runNow = useRef<HTMLButtonElement>(null);
   return {
     sandbox,
     cantRunId,
-    unavailable: sandbox.refused === undefined ? undefined : { reason: cantRunId },
+    agentNoticeId,
+    unavailable: unavailableFor(routine, sandbox, { cantRunId, agentNoticeId }),
     runNow,
   };
+}
+
+/** Run now's `unavailable`, pointing at the line that says why, or `undefined` when it can start. */
+function unavailableFor(
+  routine: RoutineView | undefined,
+  sandbox: SandboxStart,
+  ids: { readonly cantRunId: string; readonly agentNoticeId: string },
+): ButtonUnavailable | undefined {
+  if (startsAgent(routine)) return { reason: ids.agentNoticeId };
+  return sandbox.refused === undefined ? undefined : { reason: ids.cantRunId };
 }

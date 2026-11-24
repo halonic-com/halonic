@@ -27,6 +27,7 @@ import { runsWords } from "../runs/runs-words.ts";
 import { type RoutineRunsLoad, useRoutineRuns } from "../runs/use-routine-runs.ts";
 import { StartsCard } from "../starts/starts-card.tsx";
 import { WhenCard } from "../when/when-card.tsx";
+import { AgentRoutineNotice } from "./agent-routine-notice.tsx";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { pageWords } from "./page-words.ts";
 import { RoutineHeader, type RoutineViewId } from "./routine-header.tsx";
@@ -132,6 +133,9 @@ export function RoutineScreen({
   // Asked for its Trigger picker, the page shows the Schedule view and the picker takes the focus
   // once the card is drawn, whether the page was just opened or already open.
   const trigger = useTriggerFocus(triggerAsked, () => setView("schedule"));
+  // **Pick what it runs** shows the Schedule view and its Starts picker takes the focus.
+  const [focusPicker, setFocusPicker] = useState(false);
+  const pickerFocused = useCallback(() => setFocusPicker(false), []);
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const routine = load.kind === "ready" ? load.routine : undefined;
@@ -173,6 +177,14 @@ export function RoutineScreen({
             announce={announce}
             onReady={() => gate.runNow.current?.focus()}
           />
+          <AgentRoutineNotice
+            routine={load.routine}
+            noticeId={gate.agentNoticeId}
+            onPick={() => {
+              setView("schedule");
+              setFocusPicker(true);
+            }}
+          />
           {/* Below the can't-run Callout; it never makes Run now unavailable. */}
           {host.runNow !== undefined && (
             <RunAgentsView
@@ -190,6 +202,9 @@ export function RoutineScreen({
               openTarget={openTarget}
               focusTrigger={trigger.focusTrigger}
               onTriggerFocused={trigger.done}
+              agentNoticeId={gate.agentNoticeId}
+              focusPicker={focusPicker}
+              onPickerFocused={pickerFocused}
               readAgain={readAgain}
               focusTitle={focusTitle}
             />
@@ -271,6 +286,9 @@ function ScheduleView({
   openTarget,
   focusTrigger,
   onTriggerFocused,
+  agentNoticeId,
+  focusPicker,
+  onPickerFocused,
   readAgain,
   focusTitle,
 }: {
@@ -280,6 +298,11 @@ function ScheduleView({
   readonly openTarget: ((target: RoutineTarget) => void) | undefined;
   readonly focusTrigger: boolean;
   readonly onTriggerFocused: () => void;
+  /** The `id` of the agent routine notice, which says why Runs on its own is unavailable. */
+  readonly agentNoticeId: string;
+  /** Whether the Starts picker should take the focus now, for **Pick what it runs**. */
+  readonly focusPicker: boolean;
+  readonly onPickerFocused: () => void;
   /** Reads the routine again, for the not-live line once a version is made. */
   readonly readAgain: () => void;
   /** Gives the routine's name the focus, once the not-live line has gone. */
@@ -294,8 +317,15 @@ function ScheduleView({
         announce={announce}
         focusTrigger={focusTrigger}
         onTriggerFocused={onTriggerFocused}
+        agentNoticeId={agentNoticeId}
       />
-      <StartsCard host={host} routine={routine} {...(openTarget && { openTarget })} />
+      <StartsCard
+        host={host}
+        routine={routine}
+        focusPicker={focusPicker}
+        onPickerFocused={onPickerFocused}
+        {...(openTarget && { openTarget })}
+      />
       <RulesSection host={host} routine={routine} />
     </>
   );
