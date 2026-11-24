@@ -405,7 +405,9 @@ git fetch origin && git worktree add --detach ../sign origin/main
 cd ../sign && pnpm decision sign <pull request number>
 ```
 
-`pnpm decision sign` refuses any other checkout. It reads the note and the
+`pnpm decision sign` refuses any other checkout. It signs for a pull request
+into `main` or a release branch (`release/<name>`), the bases the note check
+runs on, against that base's `approvers.json`. It reads the note and the
 covered files from git's objects at the pull request's head (as
 `git show <head>:decisions/<branch>.md` would), prints exactly the text it
 signs and then the `- Signature:` line. The author adds that line under
