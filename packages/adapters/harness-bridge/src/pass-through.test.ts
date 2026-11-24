@@ -269,6 +269,19 @@ verifies("harness-bridge.pass-through", () => {
       await reply.body?.cancel();
     });
 
+    it("stops the call with the program's hang-up when it comes before the idle limit", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const provider = fakeProvider(() => new Response(endlessStream()));
+      const bridge = await open(provider.fetch);
+      const reader = (await programRequest(bridge)).body?.getReader();
+      await reader?.read();
+
+      await reader?.cancel();
+      await vi.waitFor(() => expect(provider.calls[0]?.signal.aborted).toBe(true));
+      await vi.advanceTimersByTimeAsync(500);
+      expect(provider.calls[0]?.signal.reason).toMatchObject({ name: "AbortError" });
+    });
+
     it("stops it when the bridge closes in the middle of a reply", async () => {
       const stream = controlledStream();
       const provider = fakeProvider(() => new Response(stream.body));
