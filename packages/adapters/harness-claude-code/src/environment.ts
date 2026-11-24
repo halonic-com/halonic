@@ -54,11 +54,12 @@ export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFol
  *   telemetry, error reports or update checks of its own. Those go straight
  *   to Anthropic, not through the bridge, so the sandbox's network fence
  *   blocks them and fills the run's log with refused connections (HAL-14992).
- * - `ENABLE_TOOL_SEARCH`: `false`, so Claude Code lists the MCP servers'
- *   tools (the bridge's integrations among them) directly in every model
- *   request. By default it hides them behind its `ToolSearch` tool, and a
- *   cheaper model never searches for them (HAL-16737, requirement
- *   `harness-claude-code.mcp-tools-listed`).
+ * - `ENABLE_TOOL_SEARCH`: `true` for Claude's own models, so the MCP servers'
+ *   tools and the rarely used built-in ones load on demand through its
+ *   `ToolSearch` tool, and the first call stays under the starting-context
+ *   target (HAL-17253). `false` when the task's model is for every call: a
+ *   compatible provider's cheaper model never searches, so it gets every
+ *   tool listed (HAL-16737, requirement `harness-claude-code.mcp-tools-listed`).
  * - `HALONIC_RUN_TOKEN`: the run token again, for the bridge's MCP server.
  *   `ANTHROPIC_CUSTOM_HEADERS` covers only model requests, so the MCP
  *   settings name this variable in the server's header, and the token is
@@ -92,13 +93,18 @@ export function claudeCodeEnvironment(
     CLAUDE_CONFIG_DIR: folders.settingsFolder,
     CLAUDE_CODE_TMPDIR: folders.tempFolder,
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
-    ENABLE_TOOL_SEARCH: "false",
+    ENABLE_TOOL_SEARCH: toolSearch(model),
     [claudeCodeRunTokenVariable]: bridge.token,
     ...modelVariables(model),
     ...(bridge.keyProviders?.includes("anthropic") === true
       ? { ANTHROPIC_API_KEY: claudeCodeStandInKey }
       : {}),
   };
+}
+
+/** Tool search on, except for a model for every call, which never searches. */
+function toolSearch(model: Pick<HarnessTask, "modelForEveryCall"> | undefined): "true" | "false" {
+  return model?.modelForEveryCall === true ? "false" : "true";
 }
 
 /** Each of Claude Code's own model variables set to the task's model, or none when it isn't for every call. */

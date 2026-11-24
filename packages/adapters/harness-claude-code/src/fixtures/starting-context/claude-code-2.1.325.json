@@ -1,0 +1,151 @@
+{
+  "harness": "claude-code",
+  "version": "2.1.325",
+  "recordedOn": "2026-11-24",
+  "firstCalls": {
+    "false": {
+      "systemCharacters": 6025,
+      "messagesCharacters": 9816,
+      "tools": [
+        {
+          "name": "Agent",
+          "characters": 5372
+        },
+        {
+          "name": "Bash",
+          "characters": 3788
+        },
+        {
+          "name": "CronCreate",
+          "characters": 4607
+        },
+        {
+          "name": "CronDelete",
+          "characters": 445
+        },
+        {
+          "name": "CronList",
+          "characters": 289
+        },
+        {
+          "name": "Edit",
+          "characters": 1006
+        },
+        {
+          "name": "EnterWorktree",
+          "characters": 4069
+        },
+        {
+          "name": "ExitWorktree",
+          "characters": 2546
+        },
+        {
+          "name": "ListAgents",
+          "characters": 1196
+        },
+        {
+          "name": "Monitor",
+          "characters": 7716
+        },
+        {
+          "name": "NotebookEdit",
+          "characters": 1679
+        },
+        {
+          "name": "Read",
+          "characters": 1975
+        },
+        {
+          "name": "ReportFindings",
+          "characters": 2283
+        },
+        {
+          "name": "ScheduleWakeup",
+          "characters": 5017
+        },
+        {
+          "name": "SendMessage",
+          "characters": 5800
+        },
+        {
+          "name": "Skill",
+          "characters": 1846
+        },
+        {
+          "name": "TaskStop",
+          "characters": 810
+        },
+        {
+          "name": "WebFetch",
+          "characters": 1120
+        },
+        {
+          "name": "WebSearch",
+          "characters": 902
+        },
+        {
+          "name": "Workflow",
+          "characters": 5489
+        },
+        {
+          "name": "Write",
+          "characters": 663
+        }
+      ]
+    },
+    "true": {
+      "systemCharacters": 6023,
+      "messagesCharacters": 10204,
+      "tools": [
+        {
+          "name": "Agent",
+          "characters": 5372
+        },
+        {
+          "name": "Bash",
+          "characters": 3788
+        },
+        {
+          "name": "Edit",
+          "characters": 1006
+        },
+        {
+          "name": "ListAgents",
+          "characters": 1196
+        },
+        {
+          "name": "Read",
+          "characters": 1975
+        },
+        {
+          "name": "ReportFindings",
+          "characters": 2283
+        },
+        {
+          "name": "ScheduleWakeup",
+          "characters": 5017
+        },
+        {
+          "name": "Skill",
+          "characters": 1846
+        },
+        {
+          "name": "ToolSearch",
+          "characters": 1490
+        },
+        {
+          "name": "Workflow",
+          "characters": 5489
+        },
+        {
+          "name": "DeferredToolPlaceholder",
+          "characters": 214
+        },
+        {
+          "name": "Write",
+          "characters": 663
+        }
+      ]
+    }
+  }
+}
