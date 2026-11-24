@@ -1,9 +1,12 @@
 import { formatPath, type Issue, parse } from "@halonicjs/schema-kit";
 import { encodeUtf8, err, ok, type Result } from "@halonicjs/std";
 import { checkBrowserAddress } from "./browser-address.ts";
+import { findKeyShapedText } from "./key-shaped-text.ts";
 import { compileResultPattern } from "./result-pattern.ts";
+import type { ServerSessionBlock } from "./server-session-block.ts";
 import {
   maxStepperRequestBytes,
+  type RequestBlock,
   type StepperBlock,
   type StepperRequest,
   splitReference,
@@ -103,7 +106,17 @@ function checkBrowser(
   });
 }
 
-function checkBlock(block: StepperBlock, catalog: StepperCatalog): BlockCheck {
+function checkServerSession(block: ServerSessionBlock): BlockCheck {
+  const shaped = [...block.steps, block.doneWhen].map(findKeyShapedText).find(Boolean);
+  if (shaped !== undefined) return err(`it holds text shaped like a key (${shaped})`);
+  // It hands the requester's words to Claude Code with the user's server access: the highest risk.
+  return ok({
+    risk: "irreversible",
+    targets: [{ service: "server", kind: "task", name: block.task }],
+  });
+}
+
+function checkBlock(block: RequestBlock, catalog: StepperCatalog): BlockCheck {
   switch (block.kind) {
     case "use":
       return checkUse(block, catalog);
@@ -111,6 +124,8 @@ function checkBlock(block: StepperBlock, catalog: StepperCatalog): BlockCheck {
       return checkStep(block, catalog);
     case "browser":
       return checkBrowser(block, catalog);
+    case "server-session":
+      return checkServerSession(block);
   }
 }
 
@@ -128,7 +143,8 @@ function readJson(json: string): Result<unknown, string> {
  * Checks a `halonic.stepper-request/1` document against the installed
  * catalog (architecture note on HAL-17491, 7.3). The engine runs it when an
  * agent files, the Paperclip provider when it reads a card, and Studio when
- * the user opens the item and before each step.
+ * the user opens the item and before each step. A `server-session` block is
+ * the request's only block and has the risk `irreversible` (plan on HAL-17834).
  *
  * @param json - the document's text, at most 16 KB
  * @returns the parsed request with its touches and risk, or every reason, each naming its block
