@@ -21,6 +21,9 @@ export interface FakeTask {
   readonly monitorNextCheckAt?: Date | null;
   readonly monitorLastTriggeredAt?: Date | null;
   readonly monitorNotes?: string | null;
+  readonly createdAt?: Date;
+  readonly parentId?: string | null;
+  readonly createdByAgentId?: string | null;
 }
 
 /** A comment as the fake host stores it. */

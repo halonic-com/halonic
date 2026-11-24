@@ -59,7 +59,8 @@ export const stateKey = (
     | "approvals"
     | "merge-speed"
     | "agent-merges"
-    | "rule-checks",
+    | "rule-checks"
+    | "stale",
 ) =>
   ({
     scopeKind: "company",

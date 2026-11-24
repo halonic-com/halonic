@@ -12,6 +12,7 @@ import { planMergeSpeed } from "./board-check-merge-speed.ts";
 import { planPilesPart } from "./board-check-piles.ts";
 import { planRuleChecks } from "./board-check-rule-checks.ts";
 import { planRuns, recordFailedRun } from "./board-check-runs.ts";
+import { planStalePart } from "./board-check-stale.ts";
 import { planWaiting } from "./board-check-waiting.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
 import { everyIssue } from "./host.ts";
@@ -50,7 +51,7 @@ function gateFor(ctx: BoardCheckApi, companyId: string, settings: BoardCheckSett
   };
 }
 
-/** Parts (b), (c) and (e), and the queued-run piles of part (a), run on the first job pass of each hour. */
+/** Parts (b), (c) and (e), the queued-run piles of part (a) and the stale tasks run on the first job pass of each hour. */
 export function hourlyPass(trigger: Trigger, now: Date): boolean {
   return trigger === "job" && now.getUTCMinutes() < 10;
 }
@@ -82,6 +83,10 @@ async function planJobParts(
     parts.push(
       await planPilesPart(ctx, companyId, { openTasks, boardCheckerTaskId: checker, names }, now),
     );
+    // Last, so it fits in what the other parts leave under the gate's ceilings.
+    const planned = [asks, ...parts].flatMap((part) => part.writes);
+    const stale = { openTasks, chiefTaskId: settings.chiefTaskId, planned };
+    parts.push(await planStalePart(ctx, companyId, stale, now));
   }
   return parts;
 }
