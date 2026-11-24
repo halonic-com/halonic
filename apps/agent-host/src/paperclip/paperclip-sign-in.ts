@@ -47,7 +47,8 @@ export type SignInState =
 
 /** What the sign-in flow needs. */
 export interface PaperclipSignInOptions {
-  calls: SignInCalls;
+  /** The Paperclip calls for one connection's address; each sign-in sends only to its own. */
+  callsFor: (address: string) => SignInCalls;
   keyStore: PaperclipKeyStore;
   scheduler: Scheduler;
   clock: Clock;
@@ -57,6 +58,7 @@ export interface PaperclipSignInOptions {
 
 interface OpenSignIn {
   connection: SignInConnection;
+  calls: SignInCalls;
   challenge: ChallengeRef;
   /** The board key, held only here until a poll says `approved`. */
   key: string;
@@ -85,7 +87,8 @@ export class PaperclipSignIn {
   /** Starts a sign-in: makes a challenge with a new phrase and sets its time limit. */
   async start(connection: SignInConnection): Promise<StartedSignIn> {
     const phrase = (this.#options.newPhrase ?? newSignInPhrase)();
-    const created = await this.#options.calls.createChallenge({
+    const calls = this.#options.callsFor(connection.address);
+    const created = await calls.createChallenge({
       command: phrase,
       clientName: signInClientName,
       requestedAccess: "board",
@@ -97,6 +100,7 @@ export class PaperclipSignIn {
     const expiresAt = new Date(deadline).toISOString();
     this.#open.set(signInId, {
       connection,
+      calls,
       challenge,
       key: created.boardApiToken,
       deadline,
@@ -136,7 +140,7 @@ export class PaperclipSignIn {
     open.polling = true;
     let status: ChallengeStatus;
     try {
-      status = await this.#options.calls.pollChallenge(open.challenge);
+      status = await open.calls.pollChallenge(open.challenge);
     } finally {
       open.polling = false;
     }
@@ -180,13 +184,14 @@ export class PaperclipSignIn {
    * nobody holds it any more.
    */
   async #endChallenge(open: OpenSignIn): Promise<void> {
-    const { calls } = this.#options;
+    const { calls } = open;
     const endedAs = await calls.cancelChallenge(open.challenge);
     if (endedAs === "approved") await calls.revokeCurrent(open.key);
   }
 
   async #finishApproved(signInId: string, open: OpenSignIn): Promise<SignInState> {
-    const { calls, keyStore } = this.#options;
+    const { keyStore } = this.#options;
+    const { calls } = open;
     try {
       await this.#endTimer(signInId);
       const owner = await calls.readMe(open.key);

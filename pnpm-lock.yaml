@@ -363,6 +363,9 @@ importers:
       '@halonicjs/adapter-model-openai':
         specifier: workspace:*
         version: link:../../packages/adapters/model-openai
+      '@halonicjs/adapter-paperclip-client':
+        specifier: workspace:*
+        version: link:../../packages/adapters/paperclip-client
       '@halonicjs/adapter-program-copies-node':
         specifier: workspace:*
         version: link:../../packages/adapters/program-copies-node

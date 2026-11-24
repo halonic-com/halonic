@@ -113,9 +113,12 @@ it is linked to, read the content of an attachment on one of those, answer a
 card, approve or reject an approval, and comment on one of the person's own
 chat tasks. It approves, rejects, answers or comments only when the person
 does so in Halonic, and shows an approval's type (what approving does) next to
-the asking agent's title (Julian's review of the provider, HAL-17437). Sign-in
-and disconnect may also start, poll and cancel a sign-in, read
-`/api/cli-auth/me` and revoke the current key. It makes nothing else, even
+the asking agent's title (Julian's review of the provider, HAL-17437).
+Disconnect may also read `/api/cli-auth/me` and revoke the current key.
+Starting a sign-in makes a key, so start, poll and cancel are on a separate
+sign-in list that only the engine's sign-in flow uses, by the board's exception
+to the rule below (HAL-17714, HAL-17439); none of them carries a key. It makes
+nothing else, even
 though the key could: it never hires, sets budgets, changes settings or deletes
 on its own, and no route
 that makes, lists or deletes keys. A board key can make more board keys that

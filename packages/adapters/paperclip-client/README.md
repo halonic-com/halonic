@@ -80,8 +80,20 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 **No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
 main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's
 keys, setup or gateway tokens, secrets, or the sign-in challenge (`POST /api/cli-auth/challenges`), which
-makes a key. A4 brings sign-in with its own security review. Just before `fetch`, the client checks the
-exact method and path against the list again, and refuses a request off it before anything goes out.
+makes a key. Just before `fetch`, the client checks the exact method and path against the list again, and
+refuses a request off it before anything goes out.
+
+**Sign-in** (track A4, HAL-17439) has its own list, `src/sign-in-requests.ts`, by the board's exception to
+the rule above. Only `PaperclipSignInClient`, which the engine's sign-in flow uses, sends it, and none of its
+requests carries a key: a challenge is polled and cancelled with its own secret.
+
+| Request | Paperclip route | Used for |
+| --- | --- | --- |
+| `createChallenge` | `POST /api/cli-auth/challenges` | start a sign-in; the answer holds a key that works only after the board approves |
+| `pollChallenge` | `GET /api/cli-auth/challenges/{challenge}?token=…` | `pending`, `approved`, `cancelled` or `expired` |
+| `cancelChallenge` | `POST /api/cli-auth/challenges/{challenge}/cancel` | the dialog closed or the 10 minutes passed; a refused cancel is followed by a poll, and `approved` means the key is revoked |
+
+The client reads the new key's owner and revokes it through `whoAmI` and `revokeKey` on the messaging list.
 
 **Every waiting item** (`inbox.every-waiting-item`): `GET /api/companies/{company}/interactions` doesn't
 exist on our version, and `GET /api/companies/{company}/attention` is a board-only feed whose shape we
