@@ -421,10 +421,7 @@ export class WorkspaceAssistant implements AssistantHost {
     };
   }
 
-  /**
-   * The chat's tools, made once, so they remember what the model read in it. `show` shows an item
-   * in the window of the answer running now, and nowhere without one; it waits for trust.
-   */
+  /** The chat's tools, made once to remember what the model read; `show` uses `#shows`. */
   #toolsOf(chatId: string): readonly ChatTool[] {
     const { files, review, isTrusted, digest } = this.#parts;
     let tools = this.#tools.get(chatId);

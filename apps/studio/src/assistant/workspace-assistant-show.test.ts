@@ -1,5 +1,5 @@
 import { webCryptoDigest } from "@halonicjs/adapter-fs-tauri";
-import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { MemoryChatSessions, MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import { ChatService, type HostSettings, ReviewService } from "@halonicjs/app";
 import type { ChatTurnResponse, ToolCall } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -42,6 +42,7 @@ function setup() {
     answerChat: (request) => new ChatService(executor).answer(request),
     settings: { get: (setting) => setting.fallback } as Pick<HostSettings, "get">,
     workspaceName: "Acme",
+    chats: { sessions: new MemoryChatSessions(), location: "memory:acme" },
   });
 }
 
