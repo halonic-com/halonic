@@ -15,7 +15,9 @@ attempts, unsigned webhooks and requests with no session are no longer counted. 
 match: the ceiling tests now send signed-in requests, and "counts every route, including ones that
 answer 404" becomes "counts every signed-in request, including ones that answer 404". A test is added
 that requests without a session don't use up the day. The `Host` refusal test, the reset at midnight,
-`Retry-After` and the no-ceiling test keep what they check.
+`Retry-After` and the no-ceiling test keep what they check. The Cloudflare runtime's workerd case
+"answers 429 past the daily ceiling" now counts signed-in requests, and also checks that requests
+without a session don't count; it still checks the 429 from the counter in the Durable Object.
 
 `server.webhooks`: the delivery id is claimed under the routine's secret instead of under the
 routine's address, so a delivery one routine took is refused at every routine whose secret has the
