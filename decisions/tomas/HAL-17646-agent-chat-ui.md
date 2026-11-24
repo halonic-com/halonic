@@ -3,6 +3,7 @@
 - Task: HAL-17646
 - Approval: OpenUI plan approved by the board on 23 Nov (HAL-17107, document `plan`); the agent setting as proposed in Liam's technical review on HAL-16863. Liam approves this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bqpZUQDWRBsrXmi0rS8WJVk+9WXgFi5wyCCnC2QGiKncd6GMtaDy4ncZDTmr1Fd9Q5L/v4+Cq2n6OXIFVIszDA==
 
 ## What changes
 
