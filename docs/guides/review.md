@@ -40,6 +40,16 @@ We count findings per pull request by severity, to see whether our reviews
 and our changes get better over time. Untagged findings are lost to that
 count.
 
+## Decision notes
+
+A pull request that needs a decision note comes to review with the note
+unsigned, and its `ci-ok` red only because "the note has no signature line".
+That counts as ready for review. The reviewer signs in the same run as the
+approval, never in a separate round: review, then
+`pnpm decision sign <number> --push` from a clean `origin/main` worktree, then
+approve the head it prints. If you request changes, don't sign yet. Details:
+[checks.md, "Signing with the review"](checks.md#requirement-guard-nothing-that-works-may-break).
+
 ## Checklist
 
 Check these on every pull request. The guides for
