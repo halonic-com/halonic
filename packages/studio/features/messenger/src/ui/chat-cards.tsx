@@ -104,8 +104,10 @@ function lineOf(outcome: AnswerResult, row: ConversationRow): string | undefined
     return messengerWords.notSent[outcome.reason](row.source?.label ?? "");
   }
   if (outcome.outcome === "already-answered") {
-    const name = outcome.by.kind === "me" ? messengerWords.you : outcome.by.name;
-    return messengerWords.card.answeredBy(name);
+    if (outcome.by.kind === "me") {
+      return messengerWords.card.answeredByYou;
+    }
+    return messengerWords.card.answeredBy(outcome.by.name);
   }
   return undefined;
 }

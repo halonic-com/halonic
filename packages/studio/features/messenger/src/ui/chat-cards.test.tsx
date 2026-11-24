@@ -63,6 +63,16 @@ verifies("messenger.quick-actions", () => {
       expect(transcript(page)).toContain("Dana answered this first.");
     });
 
+    it("says you already answered when you answered the card on another device", async () => {
+      const { messaging, card } = chiefAsks();
+      vi.spyOn(messaging, "changes").mockReturnValue({ [Symbol.asyncIterator]: idle });
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      messaging.answerElsewhere(card.id, { kind: "me" }, { kind: "reply", text: "No" });
+      await press(byText(page, "main ol button", "Approve"));
+      expect(transcript(page)).toContain("You already answered this.");
+    });
+
     it("Ask for an update sends one plain message with one `send` call and shows it", async () => {
       const { messaging, chat } = chiefAsks();
       const answer = vi.spyOn(messaging, "answer");

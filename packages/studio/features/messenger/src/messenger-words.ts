@@ -38,6 +38,7 @@ export const messengerWords = {
     waitingSince: (time: string) => `Waiting since ${time}`,
     alsoInInbox: "Also in your Inbox. Answering here answers it there.",
     answeredBy: (name: string) => `${name} answered this first.`,
+    answeredByYou: "You already answered this.",
   },
   askForUpdate: "Ask for an update",
   /** Files and screenshots in a chat: picked, pasted, or sent by the agent. */
@@ -49,12 +50,13 @@ export const messengerWords = {
       "too-large": (name: string) => `${name} is over 10 MB, so it wasn't added.`,
       "too-many": () => "A message takes at most 5 files.",
       "unsupported-type": (name: string) =>
-        `${name} can't be sent. Pictures, PDFs and text files can.`,
+        `${name} can't be sent. PNG, JPEG, GIF and WebP pictures, PDFs and text files can.`,
     } satisfies Record<AttachmentRefusal, (name: string) => string>,
-    notSent: "These files can't be sent. Up to 5 pictures, PDFs or text files of 10 MB each can.",
+    notSent:
+      "These files can't be sent. Up to 5 files of 10 MB each can: PNG, JPEG, GIF or WebP pictures, PDFs and text files.",
     pastedName: "Screenshot.png",
     show: (name: string) => `Show ${name}`,
-    notShown: "This file can't be shown now.",
+    notShown: "This picture can't be shown.",
   },
   /** Why a quick action sent nothing; it is never sent later on its own. */
   notSent: {
