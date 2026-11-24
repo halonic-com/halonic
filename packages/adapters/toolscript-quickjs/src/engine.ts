@@ -13,13 +13,27 @@ const wasmPageBytes = 64 * 1024;
  */
 export const moduleMemoryBytes = 16 * 1024 * 1024;
 
-const engineVariant: QuickJSSyncVariant = {
+/**
+ * Our build as a variant for `quickjs-emscripten-core`. Its loader refuses to
+ * start the glue without a `wasmMemory`: the build keeps memory growth on,
+ * so the hard limit is the maximum of the memory we pass in, and a memory
+ * the glue made itself could grow without one (Liam, HAL-17780).
+ */
+export const engineVariant: QuickJSSyncVariant = {
   type: "sync",
   // biome-ignore lint/correctness/useImportExtensions: biome takes the .d.mts types for the module and asks for .mts; the file at runtime is .mjs
   importFFI: () => import("./generated/engine/ffi.mjs").then((module) => module.QuickJSFFI),
-  importModuleLoader: () =>
+  importModuleLoader: async () => {
     // biome-ignore lint/correctness/useImportExtensions: biome takes the .d.mts types for the module and asks for .mts; the file at runtime is .mjs
-    import("./generated/engine/quickjs.mjs").then((module) => module.default),
+    const { default: loadGlue } = await import("./generated/engine/quickjs.mjs");
+    const loadWithOurMemory: typeof loadGlue = (options) => {
+      if (options?.wasmMemory === undefined) {
+        throw new Error("the ToolScript engine only runs in a memory the host gives it");
+      }
+      return loadGlue(options);
+    };
+    return loadWithOurMemory;
+  },
 };
 
 /** One run's engine: the variant to load, and the memory it runs in. */

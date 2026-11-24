@@ -4,7 +4,7 @@ import { toolScriptDefaultLimits } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 import { expect, it } from "vitest";
-import { engineForRun, moduleMemoryBytes } from "./engine.ts";
+import { engineForRun, engineVariant, moduleMemoryBytes } from "./engine.ts";
 // biome-ignore lint/correctness/useImportExtensions: biome takes the .d.mts types for the module and asks for .mts; the file at runtime is .mjs
 import type QuickJSRaw from "./generated/engine/quickjs.mjs";
 import { createQuickJsToolScriptIsolate } from "./index.ts";
@@ -98,6 +98,12 @@ verifies("toolscript-quickjs.engine", () => {
     const { memory } = engineForRun(heapBytes);
     expect(memory.buffer.byteLength).toBe(moduleMemoryBytes + heapBytes);
     expect(() => memory.grow(1)).toThrow(RangeError);
+  });
+
+  it("never lets the glue make a memory of its own", async () => {
+    const loadEngine = (await engineVariant.importModuleLoader()) as typeof QuickJSRaw;
+    expect(() => loadEngine()).toThrow("only runs in a memory the host gives it");
+    expect(() => loadEngine({})).toThrow("only runs in a memory the host gives it");
   });
 
   it("gives a script that fills the whole memory an out-of-memory error, not a trap", async () => {

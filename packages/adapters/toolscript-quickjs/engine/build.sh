@@ -17,7 +17,9 @@ flags=(
   # its own maximum is the hard limit. Growth stays allowed in the build:
   # without it the module would declare its maximum equal to its start and
   # link only to a memory of exactly that size. A grow past the given
-  # memory's maximum fails, and malloc returns NULL.
+  # memory's maximum fails, and malloc returns NULL. With growth on, that
+  # limit holds only while the glue never makes a memory of its own, so
+  # src/engine.ts refuses to load it without one.
   -s IMPORTED_MEMORY=1 -s ALLOW_MEMORY_GROWTH=1 -s "INITIAL_MEMORY=$MODULE_MEMORY_BYTES"
   # Halonic: 1 MiB of C stack instead of the wrapper's 5 MB. QuickJS's own
   # stack limit for a script (stackBytes) is 256 KiB, and this comes out of
