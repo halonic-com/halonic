@@ -1,4 +1,12 @@
-import { Button, Menu, MoreIcon, TrashStrip, useToastStore } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Menu,
+  type MenuEntry,
+  MoreIcon,
+  TrashStrip,
+  usePresentation,
+  useToastStore,
+} from "@halonicjs/studio-kit";
 import { errorReasonFor, PhoneTopBarActions, useInPhoneTopBar } from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import type { WorkflowRef, WorkflowsHost } from "../api.ts";
@@ -11,6 +19,10 @@ export interface ShownWorkflow {
   readonly name: string;
   /** Whether the page has read the workflow: there is no ⋮ before. */
   readonly ready: boolean;
+  /** The ⋮'s **Show in chat**, first in it (`assistant.chat.show-in-chat`); none when absent or on a phone. */
+  readonly showInChat?:
+    | { readonly label: string; readonly show: (name: string) => void }
+    | undefined;
 }
 
 /** What {@link useWorkflowTrash} gives the page. */
@@ -34,11 +46,13 @@ export interface WorkflowTrash {
 export function useWorkflowTrash(
   host: WorkflowsHost,
   { hubId, id }: WorkflowRef,
-  { name, ready }: ShownWorkflow,
+  { name, ready, showInChat }: ShownWorkflow,
   title: RefObject<HTMLElement | null>,
 ): WorkflowTrash {
   const toasts = useToastStore();
   const inTopBar = useInPhoneTopBar();
+  // A phone's full-page chat comes later (flow-assistant 11), so its ⋮ has no Show in chat yet.
+  const chat = usePresentation() === "phone" ? undefined : showInChat;
   const [removed, setRemoved] = useState<LeftDeleted>();
   // Set when the page comes back, so its title takes the focus once it is drawn again.
   const focusWhenBack = useRef(false);
@@ -95,8 +109,33 @@ export function useWorkflowTrash(
     };
   }, [inTrash, host, hubId, id]);
 
+  const chatEntries: MenuEntry[] =
+    chat === undefined
+      ? []
+      : [{ id: "show-in-chat", label: chat.label, onSelect: () => chat.show(name) }];
+  // There is no ⋮ before the page has read the workflow.
+  const menuOf = (entries: readonly MenuEntry[]) => {
+    if (!ready || entries.length === 0) return null;
+    const button = (
+      <Menu
+        align="end"
+        trigger={(props) => (
+          <Button
+            {...props}
+            variant="ghost"
+            size="sm"
+            icon={<MoreIcon />}
+            label={deleteWords.menuLabel(name)}
+          />
+        )}
+        entries={entries}
+      />
+    );
+    return inTopBar ? <PhoneTopBarActions>{button}</PhoneTopBarActions> : button;
+  };
   const { trash, referencesTo } = host;
-  if (trash === undefined) return { menu: null, strip: null };
+  // A workspace that can't delete it still has Show in chat in the ⋮.
+  if (trash === undefined) return { menu: menuOf(chatEntries), strip: null };
 
   const onDelete = async () => {
     if (deleting.current) return;
@@ -132,23 +171,6 @@ export function useWorkflowTrash(
     });
   };
 
-  const button = (
-    <Menu
-      align="end"
-      trigger={(props) => (
-        <Button
-          {...props}
-          variant="ghost"
-          size="sm"
-          icon={<MoreIcon />}
-          label={deleteWords.menuLabel(name)}
-        />
-      )}
-      entries={[
-        { id: "delete", label: deleteWords.delete, danger: true, onSelect: () => void onDelete() },
-      ]}
-    />
-  );
   // Undo takes the focus, which was on the ⋮ that went with the page; it reads the strip's text
   // as its description, so no toast says it too. The strip gets 16px above it, like the page's sides.
   const strip =
@@ -163,6 +185,11 @@ export function useWorkflowTrash(
         />
       </div>
     );
-  const menu = inTopBar ? <PhoneTopBarActions>{button}</PhoneTopBarActions> : button;
-  return { menu: ready ? menu : null, strip };
+  const deleteEntry = {
+    id: "delete",
+    label: deleteWords.delete,
+    danger: true,
+    onSelect: () => void onDelete(),
+  };
+  return { menu: menuOf([...chatEntries, deleteEntry]), strip };
 }

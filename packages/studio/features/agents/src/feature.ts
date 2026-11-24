@@ -1,4 +1,5 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
+import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { RoutineRunAgentsService } from "@halonicjs/studio-feature-routines/api";
 import { defineFeature, FilesWithErrorsService } from "@halonicjs/studio-shell";
@@ -23,6 +24,8 @@ export const agentsFeature = defineFeature({
     FilesHostService,
     // The assistant's changes to review; where the app has none, the page shows no bar.
     AgentReviewService,
+    // Show in chat in a row's and the page's ⋮ (assistant.chat.show-in-chat).
+    ShowInChatService,
   ],
   // The confirm-again Callout of an agent on hold, on the page of a routine that runs it.
   provides: [RoutineRunAgentsService],

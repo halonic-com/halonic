@@ -55,4 +55,8 @@ export interface AgentScreenProps extends AgentRef {
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
   /** The assistant's changes to the agent, for the item bar and the marks; none where absent. */
   readonly review?: AgentReviewHost | undefined;
+  /** The page ⋮'s **Show in chat** (`assistant.chat.show-in-chat`); none without the Assistant. */
+  readonly showInChat?:
+    | { readonly label: string; readonly show: (name: string) => void }
+    | undefined;
 }

@@ -88,6 +88,7 @@ export function WorkflowScreen({
   openFileAt,
   filesWithErrors,
   guide,
+  showInChat,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -222,7 +223,7 @@ export function WorkflowScreen({
   const trash = useWorkflowTrash(
     host,
     { hubId, id },
-    { name, ready: load.kind === "ready" },
+    { name, ready: load.kind === "ready", showInChat },
     title,
   );
   const instead = insteadOfPage(trash.strip, load, goToWorkflows);

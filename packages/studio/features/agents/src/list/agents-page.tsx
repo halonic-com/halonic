@@ -1,3 +1,4 @@
+import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import {
   type BrokenFileActions,
   brokenFileActions,
@@ -79,6 +80,12 @@ export function AgentsPage({ context }: PlaceViewProps) {
     openItem === undefined ? undefined : (path: string) => openItem(fileItemOf(path));
   const filesWithErrors = context.services.find(FilesWithErrorsService);
   const toasts = useToastStore();
+  const assistant = context.services.find(ShowInChatService);
+  const showInChat = assistant && {
+    label: assistant.label,
+    show: ({ hubId: hub, id, name }: AgentListing) =>
+      void assistant.show({ item: { kind: "agent", hub, id }, name }, context),
+  };
   return (
     <AgentsView
       announceState={(key, text) => context.announcer.announceState(key, text)}
@@ -89,6 +96,7 @@ export function AgentsPage({ context }: PlaceViewProps) {
       {...(open ? { open } : {})}
       {...(openInNewTab ? { openInNewTab } : {})}
       {...(openFile ? { openFile } : {})}
+      {...(showInChat ? { showInChat } : {})}
     />
   );
 }
@@ -110,6 +118,8 @@ export interface AgentsViewProps {
   readonly filesWithErrors?: FilesWithErrorsSource;
   /** What a broken file's row and its ⋮ menu do; without it the row opens nothing and has no menu. */
   readonly brokenActions?: BrokenFileActions;
+  /** The row ⋮'s **Show in chat** (`assistant.chat.show-in-chat`); none without the Assistant. */
+  readonly showInChat?: { readonly label: string; readonly show: (agent: AgentListing) => void };
 }
 
 /**
@@ -128,6 +138,7 @@ export function AgentsView({
   openFile,
   engine,
   announceState,
+  showInChat,
   filesWithErrors,
   brokenActions = {},
 }: AgentsViewProps) {
@@ -267,6 +278,7 @@ export function AgentsView({
                   onSelect: () => openRowAsFile(id),
                 },
               ]),
+          ...showInChatEntry(id),
         ]),
     {
       id: "delete",
@@ -275,6 +287,13 @@ export function AgentsView({
       onSelect: () => trashRow(id),
     },
   ];
+  const showInChatEntry = (id: string) => {
+    const listing = listingOf(id);
+    if (showInChat === undefined || listing === undefined) return [];
+    return [
+      { id: "show-in-chat", label: showInChat.label, onSelect: () => showInChat.show(listing) },
+    ];
+  };
   const brokenMenu = (file: FileWithErrors, id: string) =>
     brokenFileMenu(file, brokenActions, {
       removed: () => {

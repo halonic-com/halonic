@@ -4,6 +4,7 @@ import {
   stepsToSelect,
   WHERE_IT_RUNS_STEP,
 } from "@halonicjs/studio-feature-agents/api";
+import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   openModelsOf,
@@ -24,6 +25,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
   const outline = stepsToSelect(step);
   const runsList = context.services.get(RunsListService);
   const openModels = openModelsOf(context);
+  const assistant = context.services.find(ShowInChatService);
   return (
     <WorkflowScreen
       host={context.services.get(WorkflowsHostService)}
@@ -46,6 +48,12 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       })}
       shownRuns={context.services.find(InboxService)?.shownRuns}
       filesWithErrors={context.services.find(FilesWithErrorsService)}
+      {...(assistant && {
+        showInChat: {
+          label: assistant.label,
+          show: (name: string) => void assistant.show({ item, name }, context),
+        },
+      })}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),

@@ -3152,6 +3152,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-feature-assistant':
+        specifier: workspace:*
+        version: link:../assistant
       '@halonicjs/studio-feature-files':
         specifier: workspace:*
         version: link:../files
@@ -3959,6 +3962,9 @@ importers:
       '@halonicjs/studio-feature-agents':
         specifier: workspace:*
         version: link:../agents
+      '@halonicjs/studio-feature-assistant':
+        specifier: workspace:*
+        version: link:../assistant
       '@halonicjs/studio-feature-files':
         specifier: workspace:*
         version: link:../files
