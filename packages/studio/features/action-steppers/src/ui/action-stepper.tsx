@@ -33,6 +33,8 @@ const stageTones: Partial<Record<StepperStage["kind"], CalloutTone>> = {
  */
 export function ActionStepper({ view, actions }: ActionStepperProps) {
   const titleId = useId();
+  // The running step's "Running…" line: the reason every button that waits for it points at.
+  const runningId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const stage = view.stage;
@@ -61,7 +63,12 @@ export function ActionStepper({ view, actions }: ActionStepperProps) {
             signInAgain={actions.signInAgain}
           />
         ) : null}
-        <StepList view={view} actions={actions} active={stage.kind === "ready"} />
+        <StepList
+          view={view}
+          actions={actions}
+          active={stage.kind === "ready"}
+          runningId={runningId}
+        />
         <RequestCalls steps={view.steps} />
         {stage.kind === "ready" ? <ManualGuide view={view} actions={actions} /> : null}
         {line === null ? null : (
@@ -70,7 +77,9 @@ export function ActionStepper({ view, actions }: ActionStepperProps) {
           </Callout>
         )}
       </div>
-      {stage.kind === "ready" ? <RunBar view={view} actions={actions} /> : null}
+      {stage.kind === "ready" ? (
+        <RunBar view={view} actions={actions} runningId={runningId} />
+      ) : null}
       {stage.kind !== "ready" && canDecline(stage) ? (
         <div className="border-t border-border p-4">
           <Button variant="ghost" onClick={actions.decline}>

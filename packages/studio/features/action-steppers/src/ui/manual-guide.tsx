@@ -1,6 +1,6 @@
-import { Button, Disclosure } from "@halonicjs/studio-kit";
+import { Button, type ButtonUnavailable, Disclosure } from "@halonicjs/studio-kit";
 import type { ManualForm, StepperActions, StepperView } from "../stepper-view.ts";
-import { isDone, showsManualFirst } from "../stepper-view.ts";
+import { isDone, isRunning, showsManualFirst } from "../stepper-view.ts";
 import { manualWords, stepLabel } from "./stepper-words.ts";
 
 /** One step's manual form: the page, the numbered lines and how to check it worked. */
@@ -23,8 +23,9 @@ function ManualSteps({
         </div>
       )}
       <ol className="list-decimal pl-5 text-body text-fg">
-        {manual.lines.map((line) => (
-          <li key={line} className="wrap-break-word">
+        {manual.lines.map((line, index) => (
+          // Two lines may read the same, so their place is their key; the list never reorders.
+          <li key={index} className="wrap-break-word">
             {line}
           </li>
         ))}
@@ -41,6 +42,8 @@ export interface StepByHandProps {
   readonly view: StepperView;
   readonly number: number;
   readonly actions: StepperActions;
+  /** Set while any step runs: **Mark done by hand** waits for it, and says why. */
+  readonly waits: ButtonUnavailable | undefined;
 }
 
 /**
@@ -48,11 +51,12 @@ export interface StepByHandProps {
  * step failed or the service is down, and **Mark done by hand**, which runs the step's check where
  * it has one and otherwise records it as not checked (HAL-17491 7.8).
  */
-export function StepByHand({ view, number, actions }: StepByHandProps) {
+export function StepByHand({ view, number, actions, waits }: StepByHandProps) {
   const step = view.steps.find((candidate) => candidate.number === number);
   if (step === undefined || isDone(step)) return null;
   const openFirst = showsManualFirst(view, step);
-  const running = step.outcome.kind === "running";
+  // Any step running, not only this one: steps run one at a time (`action-steppers.run`).
+  const running = isRunning(view);
   return (
     // A new key when it should open by itself, since a Disclosure reads `defaultOpen` once.
     <Disclosure
@@ -65,6 +69,7 @@ export function StepByHand({ view, number, actions }: StepByHandProps) {
       <ManualSteps manual={step.manual} openPage={actions.openPage} />
       <div className="px-4 pb-4">
         <Button
+          unavailable={waits}
           onClick={() => {
             if (running) return;
             if (step.hasCheck) actions.checkStep(number);

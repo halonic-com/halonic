@@ -19,6 +19,8 @@ export interface StepListProps {
   readonly actions: StepperActions;
   /** Whether the steps can be worked on now: only while the request is `ready`. */
   readonly active: boolean;
+  /** The `id` for the running step's "Running…" line, which says why the other buttons wait. */
+  readonly runningId: string;
 }
 
 /**
@@ -28,10 +30,11 @@ export interface StepListProps {
  * stops there. While the request is ready, each step not done has **Do it by hand**, and the next
  * browser step has its own controls.
  */
-export function StepList({ view, actions, active }: StepListProps) {
+export function StepList({ view, actions, active, runningId }: StepListProps) {
   const headingId = useId();
   if (view.steps.length === 0) return null;
   const next = active ? nextStep(view) : undefined;
+  const waits = isRunning(view) ? { reason: runningId } : undefined;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
       <h3 id={headingId} className="text-body-strong text-fg">
@@ -57,12 +60,14 @@ export function StepList({ view, actions, active }: StepListProps) {
                   action={step.action}
                   requester={view.requester}
                   actions={actions}
-                  running={isRunning(view)}
+                  waits={waits}
                 />
               ) : null}
-              <StepOutcomeLine step={step} service={view.service} />
+              <StepOutcomeLine step={step} service={view.service} runningId={runningId} />
             </div>
-            {active ? <StepByHand view={view} number={step.number} actions={actions} /> : null}
+            {active ? (
+              <StepByHand view={view} number={step.number} actions={actions} waits={waits} />
+            ) : null}
           </li>
         ))}
       </ol>
@@ -73,9 +78,11 @@ export function StepList({ view, actions, active }: StepListProps) {
 function StepOutcomeLine({
   step,
   service,
+  runningId,
 }: {
   readonly step: StepView;
   readonly service: StepperService;
+  readonly runningId: string;
 }) {
   const text = outcomeText(step.outcome, service);
   if (text === null) return null;
@@ -86,5 +93,12 @@ function StepOutcomeLine({
       </Callout>
     );
   }
-  return <p className="text-small text-fg-muted">{text}</p>;
+  return (
+    <p
+      id={step.outcome.kind === "running" ? runningId : undefined}
+      className="text-small text-fg-muted"
+    >
+      {text}
+    </p>
+  );
 }

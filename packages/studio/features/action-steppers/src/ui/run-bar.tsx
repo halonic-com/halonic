@@ -15,6 +15,8 @@ import { confirmWords, runWords } from "./stepper-words.ts";
 export interface RunBarProps {
   readonly view: StepperView;
   readonly actions: StepperActions;
+  /** The `id` of the running step's "Running…" line, which says why the bar's buttons wait. */
+  readonly runningId: string;
 }
 
 /**
@@ -23,10 +25,11 @@ export interface RunBarProps {
  * and **Decline**. A browser step has its own controls in the list instead. An irreversible step
  * asks once more in a dialog before `runStep` is called.
  */
-export function RunBar({ view, actions }: RunBarProps) {
+export function RunBar({ view, actions, runningId }: RunBarProps) {
   const [confirming, setConfirming] = useState<StepView | null>(null);
   const step = nextStep(view);
   const running = isRunning(view);
+  const waits = running ? { reason: runningId } : undefined;
   const total = view.steps.length;
 
   const run = (chosen: StepView) => {
@@ -50,9 +53,15 @@ export function RunBar({ view, actions }: RunBarProps) {
         </Button>
       )}
       {canRunAll(view) ? (
-        <Button onClick={() => (running ? undefined : actions.runAll())}>{runWords.all}</Button>
+        <Button unavailable={waits} onClick={() => (running ? undefined : actions.runAll())}>
+          {runWords.all}
+        </Button>
       ) : null}
-      <Button variant="ghost" onClick={() => (running ? undefined : actions.decline())}>
+      <Button
+        variant="ghost"
+        unavailable={waits}
+        onClick={() => (running ? undefined : actions.decline())}
+      >
         {runWords.decline}
       </Button>
       {confirming === null ? null : (
@@ -67,7 +76,7 @@ export function RunBar({ view, actions }: RunBarProps) {
           }}
           onConfirm={() => {
             setConfirming(null);
-            actions.runStep(confirming.number);
+            if (!running) actions.runStep(confirming.number);
           }}
           onCancel={() => setConfirming(null)}
         >

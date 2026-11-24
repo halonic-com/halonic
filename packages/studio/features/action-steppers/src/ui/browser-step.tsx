@@ -1,4 +1,4 @@
-import { Button, CopyButton, Field, Input } from "@halonicjs/studio-kit";
+import { Button, type ButtonUnavailable, CopyButton, Field, Input } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import type { StepAction, StepperActions, StepperRequester } from "../stepper-view.ts";
 import { browserWords, instructionsText, sourceText } from "./stepper-words.ts";
@@ -41,7 +41,8 @@ export interface BrowserControlsProps {
   readonly action: BrowserAction;
   readonly requester: StepperRequester;
   readonly actions: StepperActions;
-  readonly running: boolean;
+  /** Set while a step runs: **Step 2 is done** waits for it, and says why. */
+  readonly waits: ButtonUnavailable | undefined;
 }
 
 /**
@@ -54,7 +55,7 @@ export function BrowserControls({
   action,
   requester,
   actions,
-  running,
+  waits,
 }: BrowserControlsProps) {
   const [result, setResult] = useState("");
   const label = action.source.kind === "requester" ? sourceText(action.source, requester) : null;
@@ -80,8 +81,9 @@ export function BrowserControls({
       <div>
         <Button
           variant="primary"
+          unavailable={waits}
           onClick={() =>
-            running
+            waits !== undefined
               ? undefined
               : actions.confirmBrowserStep(
                   number,

@@ -37,6 +37,10 @@ function button(root: ParentNode, name: string): HTMLButtonElement {
   return found;
 }
 
+function buttons(root: ParentNode, name: string): HTMLButtonElement[] {
+  return [...root.querySelectorAll("button")].filter((b) => b.textContent?.startsWith(name));
+}
+
 async function click(target: HTMLElement) {
   await act(async () => target.click());
 }
@@ -74,12 +78,19 @@ verifies("action-steppers.run", () => {
       expect(actions.calls).toEqual(["run 2"]);
     });
 
-    it("starts nothing while a step runs", async () => {
+    it("starts nothing while a step runs, and says why its buttons can't be used", async () => {
       const { root, actions } = show(withOutcomes(routineRequest(), [{ kind: "running" }]));
-      await click(button(root, "Run step 1 of 3"));
-      await click(button(root, "Run all steps"));
-      await click(button(root, "Decline"));
+      const markDone = buttons(root, "Mark done by hand");
+      // One per step: step 1 is running, steps 2 and 3 wait for it (HAL-17527 review).
+      expect(markDone).toHaveLength(3);
+      const waiting = [button(root, "Run all steps"), button(root, "Decline"), ...markDone];
+      for (const target of [button(root, "Run step 1 of 3"), ...waiting]) await click(target);
       expect(actions.calls).toEqual([]);
+      for (const target of waiting) {
+        expect(target.getAttribute("aria-disabled")).toBe("true");
+        const reason = target.getAttribute("aria-describedby") ?? "";
+        expect(root.querySelector(`[id="${reason}"]`)?.textContent).toBe("Running…");
+      }
     });
 
     it("offers Run all steps only when every step is routine", async () => {
