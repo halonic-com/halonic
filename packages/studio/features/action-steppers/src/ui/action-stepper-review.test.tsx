@@ -8,6 +8,7 @@ import {
   inStage,
   projectPage,
   recordingActions,
+  releaseRequest,
   routineRequest,
 } from "../test-support/acme-requests.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -73,6 +74,22 @@ verifies("action-steppers.review", () => {
       expect(step?.textContent).toContain(
         "Step 2 of 3RoutineRe-runs the failed jobs of run 123456",
       );
+    });
+
+    it("warns under the facts about a step that can't be undone, while it can still run", () => {
+      const { root } = show(releaseRequest());
+      const warning = [...root.querySelectorAll("p")].find(
+        (p) => p.textContent === "Step 2 can't be undone",
+      )?.parentElement;
+      expect(warning?.textContent).toContain("Approves the deployment of acme/app to release");
+      expect(root.querySelector("dl")?.compareDocumentPosition(warning as Node)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(warning?.compareDocumentPosition(section(root, "Steps") as Node)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      const declined = show(releaseRequest({ stage: { kind: "declined" } }));
+      expect(declined.root.textContent).not.toContain("can't be undone");
     });
 
     it("shows the reason as quoted plain text, never as Markdown or a link", () => {

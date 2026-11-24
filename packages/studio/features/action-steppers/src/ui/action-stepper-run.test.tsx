@@ -146,6 +146,19 @@ verifies("action-steppers.end", () => {
       expect(buttonNames(root)).toEqual([]);
     });
 
+    it("says so right under the title, before the facts and the steps", () => {
+      const { root } = show(inStage({ kind: "expired" }));
+      const line = [...root.querySelectorAll('[role="status"]')].find(
+        (status) => status.textContent === "This request has expired, so it can't run anymore.",
+      );
+      expect(root.querySelector("h2")?.compareDocumentPosition(line as Node)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      for (const later of [root.querySelector("dl"), root.querySelector("ol")]) {
+        expect(line?.compareDocumentPosition(later as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      }
+    });
+
     it("says a request this version doesn't know isn't available, with no steps", () => {
       const { root } = show(inStage({ kind: "not-available" }, { steps: [] }));
       expect(root.textContent).toContain(

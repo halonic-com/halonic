@@ -1,10 +1,17 @@
-import { Disclosure, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
+import { Callout, Disclosure, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
 import { type ReactNode, useId } from "react";
-import type { StepAction, StepperView, StepRisk, StepView } from "../stepper-view.ts";
+import {
+  irreversibleStepsAhead,
+  type StepAction,
+  type StepperView,
+  type StepRisk,
+  type StepView,
+} from "../stepper-view.ts";
 import {
   expiresText,
   factLabels,
   hideRequest,
+  irreversibleTitle,
   notSignedIn,
   requesterText,
   riskWords,
@@ -65,6 +72,18 @@ export function RequestFacts({ view }: { readonly view: StepperView }) {
   );
 }
 
+/**
+ * A warning for each step that can't be undone, under the facts and before anything runs
+ * (HAL-17491 6.4): the step's number, then what it does in its own words.
+ */
+export function IrreversibleWarnings({ view }: { readonly view: StepperView }) {
+  return irreversibleStepsAhead(view).map((step) => (
+    <Callout key={step.number} tone="attention" title={irreversibleTitle(step.number)}>
+      {step.preview}
+    </Callout>
+  ));
+}
+
 function Fact({ label, children }: { readonly label: string; readonly children: ReactNode }) {
   return (
     <>
@@ -89,7 +108,8 @@ export function RequestCalls({ steps }: { readonly steps: readonly StepView[] })
       <ol className="flex flex-col gap-3 px-4 pb-4">
         {steps.map((step) => (
           <li key={step.number}>
-            <pre className="overflow-x-auto rounded-sm bg-surface-subtle p-3 font-mono text-small text-fg">
+            {/* Wrapped, never scrolled sideways: a 390px phone shows the whole call. */}
+            <pre className="rounded-sm bg-surface-subtle p-3 font-mono text-small text-fg whitespace-pre-wrap wrap-anywhere">
               {actionText(step.action)}
             </pre>
           </li>

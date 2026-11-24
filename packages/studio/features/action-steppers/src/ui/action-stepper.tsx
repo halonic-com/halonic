@@ -7,11 +7,11 @@ import {
   type StepperView,
 } from "../stepper-view.ts";
 import { ManualGuide } from "./manual-guide.tsx";
-import { RequestCalls, RequestFacts } from "./request-review.tsx";
+import { IrreversibleWarnings, RequestCalls, RequestFacts } from "./request-review.tsx";
 import { RunBar } from "./run-bar.tsx";
 import { MissingPermission, SignInPanel } from "./sign-in-panel.tsx";
 import { StepList } from "./step-list.tsx";
-import { runWords, stageText } from "./stepper-words.ts";
+import { runWords, serviceDownText, stageText } from "./stepper-words.ts";
 
 /** Props for {@link ActionStepper}. */
 export interface ActionStepperProps {
@@ -51,7 +51,14 @@ export function ActionStepper({ view, actions }: ActionStepperProps) {
         >
           {view.title}
         </h2>
+        {/* Right under the title, so a closed request says so before anything has to scroll. */}
+        {line === null ? null : (
+          <Callout tone={stageTones[stage.kind] ?? "info"} announce="polite">
+            {line}
+          </Callout>
+        )}
         <RequestFacts view={view} />
+        <IrreversibleWarnings view={view} />
         {stage.kind === "sign-in" ? (
           <SignInPanel signIn={stage.signIn} start={actions.signIn} />
         ) : null}
@@ -63,6 +70,9 @@ export function ActionStepper({ view, actions }: ActionStepperProps) {
             signInAgain={actions.signInAgain}
           />
         ) : null}
+        {stage.kind === "ready" && view.serviceDown ? (
+          <Callout tone="attention">{serviceDownText(view.service)}</Callout>
+        ) : null}
         <StepList
           view={view}
           actions={actions}
@@ -71,11 +81,6 @@ export function ActionStepper({ view, actions }: ActionStepperProps) {
         />
         <RequestCalls steps={view.steps} />
         {stage.kind === "ready" ? <ManualGuide view={view} actions={actions} /> : null}
-        {line === null ? null : (
-          <Callout tone={stageTones[stage.kind] ?? "info"} announce="polite">
-            {line}
-          </Callout>
-        )}
       </div>
       {stage.kind === "ready" ? (
         <RunBar view={view} actions={actions} runningId={runningId} />
