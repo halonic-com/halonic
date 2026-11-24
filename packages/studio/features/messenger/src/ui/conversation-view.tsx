@@ -1,12 +1,11 @@
-import type { AttachmentRefusal, Message, MessagingRefusal } from "@halonicjs/ports";
-import { Button, ChatBoxLine, ChatComposer, ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
+import type { Message } from "@halonicjs/ports";
+import { ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import type { DraftFile } from "../draft-files.ts";
-import { activityOf, type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
+import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { AttachmentList } from "./attachment-list.tsx";
+import { ChatBox } from "./chat-box.tsx";
 import { ChatCards } from "./chat-cards.tsx";
-import { DraftFilesBar, pastedFiles } from "./draft-files-bar.tsx";
 
 /** The props of {@link ConversationView}. */
 export interface ConversationViewProps {
@@ -30,11 +29,6 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
   const id = row.conversation.id;
   const [search, setSearch] = useState("");
   const [messages, setMessages] = useState<readonly Message[]>([]);
-  const [draft, setDraft] = useState(() => messenger.draft(id));
-  const [files, setFiles] = useState(() => messenger.files.of(id));
-  const [kept, setKept] = useState<MessagingRefusal | undefined>(undefined);
-  // What the last action that sent nothing says: a quick action, a file or a send.
-  const [notice, setNotice] = useState<string | undefined>(undefined);
   // Counts the reads, so an answer that arrives after a newer read's never shows.
   const reads = useRef(0);
 
@@ -49,115 +43,15 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
     void read().catch((error: unknown) => console.error("The chat couldn't be read:", error));
   }, [read, changed]);
 
-  function type(text: string) {
-    setDraft(text);
-    messenger.setDraft(id, text);
-  }
-
-  function addFiles(added: readonly DraftFile[]) {
-    let refused: string | undefined;
-    for (const file of added) {
-      const refusal = messenger.files.add(id, file);
-      if (refusal !== undefined) refused = messengerWords.files.refused[refusal](file.name);
-    }
-    setFiles(messenger.files.of(id));
-    setNotice(refused);
-  }
-
-  function removeFile(index: number) {
-    messenger.files.remove(id, index);
-    setFiles(messenger.files.of(id));
-  }
-
-  async function send() {
-    const outcome = await messenger.sendDraft(id, row);
-    if (outcome.outcome === "kept") {
-      if (isFileRefusal(outcome.reason)) setNotice(messengerWords.files.notSent);
-      else if (outcome.reason !== "blank") setKept(outcome.reason);
-      return;
-    }
-    setKept(undefined);
-    setNotice(undefined);
-    // The Messenger cleared the draft only if nothing was typed during the send.
-    setDraft(messenger.draft(id));
-    setFiles(messenger.files.of(id));
-    await read();
-  }
-
-  async function askForUpdate() {
-    const outcome = await messenger.quickActions.askForUpdate(row);
-    if (outcome.outcome === "refused") {
-      setNotice(
-        isFileRefusal(outcome.reason)
-          ? messengerWords.files.notSent
-          : messengerWords.notSent[outcome.reason](row.source?.label ?? ""),
-      );
-      return;
-    }
-    setNotice(undefined);
-    await read();
-  }
-
-  const name = row.conversation.title;
-  const line = notice ?? keptLine(row, kept ?? refusalOf(row));
   return (
-    <section aria-label={name} className="flex min-h-0 flex-1 flex-col">
+    <section aria-label={row.conversation.title} className="flex min-h-0 flex-1 flex-col">
       <ConversationHeader row={row} search={search} onSearch={setSearch} />
       <Transcript messenger={messenger} messages={messages} searching={search.trim() !== ""}>
         <ChatCards quickActions={messenger.quickActions} row={row} changed={changed} />
       </Transcript>
-      <div
-        className="flex flex-col gap-2 px-4 pb-4"
-        onPaste={(event) => {
-          const pasted = pastedFiles(event.clipboardData);
-          if (pasted.length === 0) return;
-          event.preventDefault();
-          addFiles(pasted);
-        }}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <DraftFilesBar files={files} onAdd={addFiles} onRemove={removeFile} />
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              void askForUpdate().catch((error: unknown) =>
-                console.error("The chat couldn't ask for an update:", error),
-              );
-            }}
-          >
-            {messengerWords.askForUpdate}
-          </Button>
-        </div>
-        <ChatComposer
-          label={messengerWords.composerLabel(name)}
-          placeholder={messengerWords.composerPlaceholder(name)}
-          value={draft}
-          onChange={type}
-          onSend={() => {
-            void send().catch((error: unknown) =>
-              console.error("The message couldn't be sent:", error),
-            );
-          }}
-          onStop={() => {}}
-          answering={false}
-          line={line === undefined ? undefined : <ChatBoxLine tone="warning">{line}</ChatBoxLine>}
-        />
-      </div>
+      <ChatBox messenger={messenger} row={row} onSent={read} />
     </section>
   );
-}
-
-/** Why a message would stay in the box, or nothing while the source takes messages. */
-function keptLine(row: ConversationRow, refusal: MessagingRefusal | undefined): string | undefined {
-  return refusal === undefined ? undefined : messengerWords.kept[refusal](row.source?.label ?? "");
-}
-
-const fileRefusals: readonly string[] = ["too-large", "too-many", "unsupported-type"];
-
-/** Whether a send was refused for its files, not for its source. */
-function isFileRefusal(reason: string): reason is AttachmentRefusal {
-  return fileRefusals.includes(reason);
 }
 
 /** The conversation's agent, its source and activity, and the search through its messages. */
