@@ -3,6 +3,7 @@
 - Task: HAL-17821
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17820 (option A, "Approval sent.", decided by Chief with Nina on 24 Nov as a team decision under HAL-2282, a detail of the approved phone Inbox; HAL-12744 ships the phone Inbox in 0.1.x without Notices)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ESIBnDJnCtTNSjjYvnILAubkEv3ipYZofjQPnO32udHIaOVB5ZToobJadKoPxU0KDIzoLIPofS+OCDxc+Y1sCw==
 
 ## What changes
 
