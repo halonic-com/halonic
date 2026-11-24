@@ -121,6 +121,17 @@
       "reason": "Approved by the board on HAL-10536 (option A, kit spec 24.7). The Files code editor. Only the core packages plus YAML and Markdown language support; our own undo history replaces the library's; loaded only when a file is opened.",
       "useInstead": "the code editor from @halonicjs/studio-code-editor"
     },
+    "@jitl/quickjs-ng-wasmfile-release-sync": {
+      "category": "outside-world",
+      "allowedIn": [
+        "@halonicjs/adapter-toolscript-quickjs"
+      ],
+      "layers": [
+        "adapters"
+      ],
+      "reason": "The QuickJS-ng engine compiled to WebAssembly, the one build variant the ToolScript isolate loads (ADR 'Halonic ToolScript' 2.1): a separate heap in WASM memory with no host objects, memory, stack and interrupt limits, on Node and in a Web Worker. Taken alone instead of the quickjs-emscripten meta-package, which pulls in every variant. MIT. Approved by Liam on HAL-17569 (24 Nov, comment 'plan approved', answer 2), with Julian's security conditions on HAL-17650: pinned to exactly 0.32.0, and any bump reruns the ToolScript fence suite (@halonicjs/testing-toolscript-fence) and goes through Liam's dependency review.",
+      "useInstead": "the ToolScriptIsolate port"
+    },
     "@lezer/highlight": {
       "category": "studio-framework",
       "allowedIn": [
@@ -355,6 +366,17 @@
         "testing"
       ],
       "reason": "Starts Cloudflare's own Workers runtime (workerd) on this machine with local D1, R2 and Durable Objects, so the port contract suites run against the Cloudflare adapters inside workerd itself, not in Node against a proxy. Called from our own small runner, not @cloudflare/vitest-pool-workers, which brings Wrangler and Zod (plan section 7, HAL-197 build plan). Brings workerd, undici, ws, youch, sharp and source-map-support, which our code never imports. sharp is Apache-2.0, but its prebuilt libvips (@img/sharp-libvips-*) is LGPL-3.0-or-later: fine for a dev-only tool we never ship or modify, and the reason it must stay out of anything we distribute. Tests only; never in a runtime bundle."
+    },
+    "quickjs-emscripten-core": {
+      "category": "outside-world",
+      "allowedIn": [
+        "@halonicjs/adapter-toolscript-quickjs"
+      ],
+      "layers": [
+        "adapters"
+      ],
+      "reason": "The JavaScript API around a QuickJS WebAssembly build (contexts, handles, limits, interrupt handler, promises), used with @jitl/quickjs-ng-wasmfile-release-sync to run a ToolScript in a fresh isolate per run (ADR 'Halonic ToolScript' 2.1). Writing our own bindings would mean our own emscripten build to maintain. MIT. Approved by Liam on HAL-17569 (24 Nov, comment 'plan approved', answer 2), with Julian's security conditions on HAL-17650: pinned to exactly 0.32.0, and any bump reruns the ToolScript fence suite (@halonicjs/testing-toolscript-fence) and goes through Liam's dependency review.",
+      "useInstead": "the ToolScriptIsolate port"
     },
     "react": {
       "category": "studio-framework",
