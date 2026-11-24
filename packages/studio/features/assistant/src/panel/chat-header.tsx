@@ -116,7 +116,10 @@ export function DesktopActions(
   );
 }
 
-/** The header's ⋮ (Rename, Delete chat…) and the Delete dialog, for a kept chat only. */
+/**
+ * The header's ⋮ (Rename, Delete chat…) and the Delete dialog, for a kept chat only. Delete chat
+ * is a danger item, below a divider (component specs 14).
+ */
 export function ChatMoreActions(
   props: ChatHeaderProps & {
     readonly onRename: () => void;
@@ -142,7 +145,13 @@ export function ChatMoreActions(
         )}
         entries={[
           { id: "rename", label: words.rename, onSelect: props.onRename },
-          { id: "delete", label: words.deleteChat, onSelect: () => setDeleting(true) },
+          "divider",
+          {
+            id: "delete",
+            label: words.deleteChat,
+            danger: true,
+            onSelect: () => setDeleting(true),
+          },
         ]}
       />
       {deleting ? (

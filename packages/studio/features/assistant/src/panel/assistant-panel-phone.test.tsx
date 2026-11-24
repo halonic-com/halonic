@@ -100,6 +100,10 @@ verifies("assistant.chat.phone-screen", () => {
   it("offers New chat, Recent chats, Rename and Delete chat in ⋮ for a kept chat", async () => {
     const page = await show(phonePanel(fakeHost([routine])));
     expect(moreEntries(page)).toEqual(["New chat", "Recent chats", "Rename", "Delete chat"]);
+    // Delete chat is a danger item, last, below a divider (component specs 14).
+    const remove = [...topBar(page).querySelectorAll("[role^=menuitem]")].at(-1);
+    expect(remove?.className).toContain("text-danger");
+    expect(remove?.previousElementSibling?.tagName).toBe("HR");
   });
 
   it("offers only Recent chats in ⋮ for a chat with no messages yet", async () => {

@@ -85,6 +85,8 @@ verifies("shell.phone-panel", () => {
       each.getAttribute("aria-label"),
     );
     expect(actions).toEqual(["Search", "Assistant"]);
+    // A see-through border, as Search's, which high contrast draws (component specs 15.1).
+    expect(button("Assistant")?.className).toContain("border border-transparent");
     const orb = button("Assistant")?.querySelector(".agent-orb");
     expect(orb?.getAttribute("data-size")).toBe("24");
     expect(orb?.getAttribute("aria-hidden")).toBe("true");
