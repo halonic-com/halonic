@@ -3,6 +3,7 @@
 - Approval: the board asked for it on HAL-17292 (for HAL-16851); Liam wrote it, so Julian reviews
   and signs as the security reviewer
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:omKF26zt1Vuaw6XQvTpGDIkurg8jbxCaP+JVNVXdw3ep0r9fxXXAO/M878ppMfIiPHFsd9I1PvS16kGMOYT7BA==
 
 ## What changes
 
