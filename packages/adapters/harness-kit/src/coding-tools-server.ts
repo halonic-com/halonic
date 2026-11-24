@@ -8,7 +8,7 @@
 // commands and an MCP server would run unfenced.
 
 import type { CodingToolsServer, HarnessTask, SandboxSession } from "@halonicjs/ports";
-import { overlaps } from "./working-folder.ts";
+import { isInsideOrSame, overlaps } from "./working-folder.ts";
 
 /** The name a harness gives the server in its program's MCP settings, so its tools are `mcp__halonic-tools__…`. */
 export const codingToolsServerName = "halonic-tools";
@@ -47,17 +47,20 @@ export interface CodingToolsRunFolders {
 
 /**
  * `server` when the run's program can read its code and can't change it:
- * none of its code paths is, holds or is inside a writable folder, and none
- * is denied. `undefined` otherwise, so the run names no server (requirement
- * `harness-kit.coding-tools-server`). This is the check that counts: the
- * server checks itself again when it starts, but code rewritten before
- * that would skip its own check.
+ * it names at least one code path, its program lies inside one, none of
+ * its code paths is, holds or is inside a writable folder, and none is
+ * denied. `undefined` otherwise, so the run names no server (requirement
+ * `harness-kit.coding-tools-server`). Every path must be at its real place,
+ * as the writable folders are, so a link can't hide where the code is.
+ * This is the check that counts: the server checks itself again when it
+ * starts, but code rewritten before that would skip its own check.
  */
 export function allowedCodingTools(
   server: CodingToolsServer | undefined,
   folders: CodingToolsRunFolders,
 ): CodingToolsServer | undefined {
-  if (server === undefined) return undefined;
+  if (server === undefined || server.codePaths.length === 0) return undefined;
+  if (!server.codePaths.some((code) => isInsideOrSame(server.program, code))) return undefined;
   const allowed = server.codePaths.every(
     (code) => !folders.writable.some((folder) => overlaps(code, folder)) && !folders.isDenied(code),
   );

@@ -24,7 +24,9 @@ export const unfencedSettingsFile = "halonic-unfenced.json";
  * The file in the session's temp folder that names the coding tools
  * server, for a fenced run only; the command adds it as a second
  * `--mcp-config`. It is the run's own, because the server's command names
- * the run's temp folder.
+ * the run's temp folder. The program may write that folder, but Claude Code
+ * reads `--mcp-config` only when it starts, before the program can run
+ * anything, so a later change to the file names no other server.
  */
 export const codingToolsSettingsFile = "halonic-tools-mcp.json";
 

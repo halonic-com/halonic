@@ -1,7 +1,7 @@
 import type { CodingToolsServer, SandboxFence } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { codingToolsCommand } from "./coding-tools-server.ts";
+import { allowedCodingTools, codingToolsCommand } from "./coding-tools-server.ts";
 
 const server: CodingToolsServer = {
   program: "/opt/halonic/node",
@@ -57,6 +57,24 @@ verifies("harness-kit.coding-tools-server", () => {
 
     it("gives no server when the task names none", () => {
       expect(codingToolsCommand({}, sessionWith({ state: "fenced" }), "all")).toBeNull();
+    });
+  });
+
+  describe("allowedCodingTools", () => {
+    const nothingWritable = { writable: [], isDenied: () => false };
+
+    it("names a server whose program is in its code and nothing writable holds it", () => {
+      expect(allowedCodingTools(server, nothingWritable)).toEqual(server);
+    });
+
+    it("names no server without a code path", () => {
+      expect(allowedCodingTools({ ...server, codePaths: [] }, nothingWritable)).toBeUndefined();
+    });
+
+    it("names no server whose program lies outside its code paths", () => {
+      const elsewhere = { ...server, program: "/usr/bin/node" };
+
+      expect(allowedCodingTools(elsewhere, nothingWritable)).toBeUndefined();
     });
   });
 });

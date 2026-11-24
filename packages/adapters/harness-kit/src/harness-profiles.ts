@@ -186,7 +186,7 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     // A definition path the profile denies, such as a workspace's `.halonic`
     // that is Halonic's data folder, is left out: the deny already keeps the
     // program from changing it, and on Windows naming it would grant reading it.
-    const codingTools = allowedCodingTools(this.#options.codingTools, {
+    const codingTools = allowedCodingTools(await this.#realCodingTools(), {
       writable: [workingFolder, ...writable],
       isDenied: (path) => deniedHolding(deniedGroups, path, reopenedPaths) !== null,
     });
@@ -214,6 +214,24 @@ export class HarnessProfiles implements HarnessProfileBuilder {
       deniedGroups,
       ...(codingTools === undefined ? {} : { codingTools: codingTools }),
     };
+  }
+
+  /**
+   * The host's coding tools server with its program and code paths at their
+   * real places, so the outside check sees where a link really leads;
+   * `undefined` when the host gave none or a path can't be resolved.
+   */
+  async #realCodingTools(): Promise<CodingToolsServer | undefined> {
+    const server = this.#options.codingTools;
+    if (server === undefined) return undefined;
+    try {
+      const codePaths: string[] = [];
+      for (const path of server.codePaths) codePaths.push(await this.#disk.realPath(path));
+      return { ...server, program: await this.#disk.realPath(server.program), codePaths };
+    } catch {
+      // A path that isn't there can't be checked, so the run names no server.
+      return undefined;
+    }
   }
 
   /** The real folder the agent works in: the workspace, or its run's proposal folder in Halonic's data. */

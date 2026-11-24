@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16753 (PR 4 of the HAL-16737 plan, Liam's conditions on HAL-16748 and HAL-16752); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:B6hmhuchgM1vzA4MUZ1W7vb74fBkEJnL8ziIWhReOwtPK2d7W4ZpZZph6Gx3ePSjc2d1yHQzL+sAm/PfJMsOAA==
 
 The coding tools server (`read_ranges`, `search`, `repo_map`, `run_tests`) runs as a child of the agent's program, inside its fence. This changes three existing requirements and adds three.
 

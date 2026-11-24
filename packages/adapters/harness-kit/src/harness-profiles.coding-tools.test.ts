@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CodingToolsServer } from "@halonicjs/ports";
@@ -27,6 +27,7 @@ beforeEach(async () => {
     join(data, "settings", "writer"),
   ];
   for (const folder of folders) await mkdir(folder, { recursive: true });
+  await writeFile(join(top, "opt", "halonic", "node"), "");
 });
 
 afterEach(async () => {
@@ -86,6 +87,35 @@ verifies("harness-kit.coding-tools-server", () => {
 
     it("names no server whose code the profile denies", async () => {
       const { codingTools } = await profileWith(serverAt(join(home, ".claude", "local")));
+
+      expect(codingTools).toBeUndefined();
+    });
+
+    it("checks code reached through a link where it really is", async () => {
+      const linked = join(top, "opt", "linked");
+      await symlink(workspace, linked);
+
+      const { profile, codingTools } = await profileWith(
+        serverAt(join(top, "opt", "halonic"), linked),
+      );
+
+      expect(codingTools).toBeUndefined();
+      expect(profile.readOnlyPaths).not.toContain(linked);
+    });
+
+    it("opens the code at its real place", async () => {
+      const linked = join(top, "linked-halonic");
+      await symlink(join(top, "opt", "halonic"), linked);
+      const server = { program: join(linked, "node"), args: ["coding-tools"], codePaths: [linked] };
+
+      const { profile, codingTools } = await profileWith(server);
+
+      expect(codingTools?.codePaths).toEqual([join(top, "opt", "halonic")]);
+      expect(profile.readOnlyPaths).toContain(join(top, "opt", "halonic"));
+    });
+
+    it("names no server whose code isn't there", async () => {
+      const { codingTools } = await profileWith(serverAt(join(top, "opt", "missing")));
 
       expect(codingTools).toBeUndefined();
     });
