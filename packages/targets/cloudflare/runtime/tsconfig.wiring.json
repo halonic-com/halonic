@@ -4,6 +4,7 @@
   "include": [
     "src/runtime.node.test.ts",
     "src/scoped-runtime.node.test.ts",
+    "src/scoped-sweep.node.test.ts",
     "src/definitions-version.node.test.ts",
     "src/worker.node.test.ts",
     "src/scheduled.test.ts",

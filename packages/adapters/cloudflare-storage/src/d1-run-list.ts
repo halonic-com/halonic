@@ -26,6 +26,13 @@ export interface D1RunListOptions {
   scope: string;
 }
 
+const openRunScopes = `SELECT DISTINCT scope FROM run_list
+  WHERE scope != '' AND status IN ('running', 'waiting') ORDER BY scope`;
+
+interface ScopeRow {
+  scope: string;
+}
+
 /** A user's scope, `u/<id>`: its runs are that user's own, so the user started every one. */
 const userScopePrefix = "u/";
 
@@ -109,6 +116,23 @@ export class D1RunList {
     });
     return this.#ready;
   }
+}
+
+/**
+ * The scopes that have a running or waiting run in the run list, in order, without the empty
+ * scope of a deployment with no principal. The cron's watchdog reads it to sweep each scope's
+ * runs with that scope's runtime, since no single list sees them all. Like the list itself, it may
+ * lag the run logs a little.
+ *
+ * @param db - the D1 binding from the Worker's `env`
+ *
+ * @example
+ * for (const scope of await listOpenRunScopes(env.DB)) await sweep(scope);
+ */
+export async function listOpenRunScopes(db: SqlDatabase): Promise<string[]> {
+  await runMigrations(db, migrations);
+  const { results } = await db.prepare(openRunScopes).all<ScopeRow>();
+  return results.map((row) => row.scope);
 }
 
 /**
