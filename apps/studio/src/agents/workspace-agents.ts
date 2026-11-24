@@ -20,6 +20,7 @@ import type {
   HarnessSignIn,
   NewAgent,
   NewAgentStep,
+  SavedChatsPlace,
   ThisComputerChoice,
   TrashedAgent,
   TryItChanges,
@@ -70,10 +71,13 @@ export class WorkspaceAgents implements AgentsHost {
   askTrust?: NonNullable<AgentsHost["askTrust"]>;
   /** Present only where there is a folder to trust; see {@link AgentsHost.workspaceName}. */
   workspaceName?: NonNullable<AgentsHost["workspaceName"]>;
+  /** Present only where the workspace's chats are saved; see {@link AgentsHost.savedChats}. */
+  readonly savedChats?: SavedChatsPlace;
 
   constructor(parts: WorkspaceAgentsParts) {
     this.#parts = parts;
-    const { versionDialog, trust } = parts;
+    const { versionDialog, trust, savedChats } = parts;
+    if (savedChats !== undefined) this.savedChats = savedChats;
     if (versionDialog !== undefined) {
       // Only the agent's own file, so the version holds nothing else the person changed.
       this.makeLive = async (ref, options) =>

@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@halonicjs/app": "workspace:*",
+    "@halonicjs/assistant": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-feature-assistant": "workspace:*",
