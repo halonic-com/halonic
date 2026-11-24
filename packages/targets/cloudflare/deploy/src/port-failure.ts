@@ -55,7 +55,7 @@ export function toDeployFailure(error: unknown): DeployFailure {
     );
   }
   const [code, kind] = portCodes[error.code];
-  return Object.assign(failure(code, kind, error.message, error), { fix: error.fix });
+  return withFix(failure(code, kind, error.message, error), error.fix);
 }
 
 /** The holder a second deploy is shown, from the stored lease or the error that names it. */
@@ -75,7 +75,12 @@ export function portFailure(
   message: string,
   fix?: string,
 ): DeployFailure {
-  return Object.assign(failure(code, kind, message, undefined), { fix });
+  return withFix(failure(code, kind, message, undefined), fix);
+}
+
+/** The failure with `fix` set, when there is one; `failure` leaves it `undefined`. */
+function withFix(failure: DeployFailure, fix: string | undefined): DeployFailure {
+  return fix === undefined ? failure : Object.assign(failure, { fix });
 }
 
 function failure(

@@ -72,12 +72,13 @@ export const deployMessages = defineMessages("deploy", {
       : phrase`${markPart("done")} ${deployment} already runs commit ${commit} with Halonic ${halonic}. Nothing changed on Cloudflare.`;
   },
   /**
-   * Ends line 1 of a failure that says what still serves (deploy flow 3.6 and
-   * 3.7, words check C759 row 3): a deploy that stopped, or lost its lock
-   * before the switch, never takes the live version down.
+   * Line 1 of a failure that says what still serves (deploy flow 3.6 and 3.7,
+   * words check C759 row 3): the target's reason, with a full stop when it has
+   * none (C787 row 2), then what still serves. A deploy that stopped, or lost
+   * its lock before the switch, never takes the live version down.
    */
-  /** The target's reason, then what still serves. */
-  failedWhileLive: (reason: string, still: string) => phrase`${reason} ${still}`,
+  failedWhileLive: (reason: string, still: string) =>
+    phrase`${/[.!?]$/u.test(reason) ? reason : `${reason}.`} ${still}`,
   /** The target's own fix, as it gives it. */
   targetFix: (fix: string) => phrase`${fix}`,
   stillLive: (version: number) => phrase`Version ${version} is still live.`,
@@ -89,7 +90,6 @@ export const deployMessages = defineMessages("deploy", {
   stepUpdating: () => phrase`updating the database`,
   stepUploading: (version: number) => phrase`uploading version ${version}`,
   stepSelfTest: (version: number) => phrase`the self-test of version ${version}`,
-  stepSwitching: (version: number) => phrase`making version ${version} live`,
   /** The fix after a stop (3.7), when the target gives none of its own. */
   stoppedFix: (deployment: string) =>
     phrase`Run halonic deploy ${deployment} again to finish. It picks up what's already there.`,

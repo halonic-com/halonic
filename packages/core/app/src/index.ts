@@ -70,6 +70,7 @@ export {
   type DeployService,
   type DeployServiceDeps,
 } from "./deploy/deploy-service.ts";
+export { deploymentRefOf } from "./deploy/deployment-ref.ts";
 export {
   type DetectedHarness,
   type DoctorLine,
