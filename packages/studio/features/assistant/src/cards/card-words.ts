@@ -73,3 +73,45 @@ export const notesToTheModel = {
 function changes(count: number): string {
   return count === 1 ? "change" : "changes";
 }
+
+/**
+ * The words of the strip above the box (microcopy 14.2 and 19.5, flow-assistant 3.5), for two or
+ * more items with changes to review from the chat.
+ */
+export const stripWords = {
+  count: (items: number) => `${items} items to review`,
+  /** The count is a button that moves focus to the next card's Review. */
+  countName: (items: number) => `${items} items to review, go to the next one`,
+  acceptAll: "Accept all",
+  rejectAll: "Reject all",
+  /** Written under the count while the chat answers: both buttons' reason, not only a tooltip. */
+  waitForAnswer: "Wait for the answer to finish.",
+  accepted: (changes: number, items: number) =>
+    `Accepted ${changes} ${changesWord(changes)} in ${items} ${itemsWord(items)}`,
+  rejected: (changes: number, items: number) =>
+    `Rejected ${changes} ${changesWord(changes)} in ${items} ${itemsWord(items)}`,
+  /** After the toast's title when items were left out, so a partial result never reads as done. */
+  waiting: (names: readonly string[]) =>
+    `${listed(names)} ${names.length === 1 ? "waits" : "wait"} for Compare.`,
+  undo: "Undo",
+  undone: (decision: "accept" | "reject", changes: number) =>
+    `Undone: ${decision === "accept" ? "accepted" : "rejected"} ${changes} ${changesWord(changes)}`,
+  /** New (HAL-16800): the strip's decision or its undo failed, with the reason under it. */
+  cantAccept: (items: number) => `Couldn't accept the changes in ${items} ${itemsWord(items)}`,
+  cantReject: (items: number) => `Couldn't reject the changes in ${items} ${itemsWord(items)}`,
+  cantUndo: "Couldn't undo it",
+} as const;
+
+function changesWord(count: number): string {
+  return count === 1 ? "change" : "changes";
+}
+
+function itemsWord(count: number): string {
+  return count === 1 ? "item" : "items";
+}
+
+/** "Support triage", "Support triage and Billing", "A, B and C". */
+function listed(names: readonly string[]): string {
+  if (names.length < 2) return names.join("");
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}

@@ -1,4 +1,4 @@
-import type { FileReview, ReviewStep } from "@halonicjs/app";
+import type { FileReview, ReviewCard, ReviewStep } from "@halonicjs/app";
 import type { AssistantHost } from "../api.ts";
 import {
   type CardEnd,
@@ -144,6 +144,30 @@ export class CardReviews {
   async undo(proposal: Proposal, step: ReviewStep): Promise<void> {
     await this.#host.undo(step);
     await this.#read(keyOf(proposal));
+  }
+
+  /**
+   * Leaves the note for a decision the strip made on a card's file (`assistant.chat.apply-all`),
+   * as the card's own buttons do.
+   */
+  leaveNote(card: ReviewCard, path: string, decision: "accept" | "reject"): void {
+    const note =
+      decision === "accept" ? notesToTheModel.accepted(path) : notesToTheModel.rejected(path);
+    this.#notesOf(card.chatId).set(card.cardId, note);
+  }
+
+  /** Takes back the note of a decision that was undone. */
+  dropNote(card: ReviewCard): void {
+    this.#notesOf(card.chatId).delete(card.cardId);
+  }
+
+  /** The name the chat's card for `path` gives its item, as the toasts say it; the path's own without one. */
+  nameOf(chatId: string, path: string): string {
+    for (const kept of this.#cards.values()) {
+      const { proposal } = kept;
+      if (proposal.chatId === chatId && proposal.path === path) return kept.state.facts.name;
+    }
+    return factsOf(path, null).name;
   }
 
   /** The notes for the model since the chat's last message; taking them clears them. */

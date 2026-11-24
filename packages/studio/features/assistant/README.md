@@ -15,7 +15,9 @@ The Assistant feature of the Studio: the Build chat, its sessions and its change
   changes to review, and the workspace's own authoring skill (`authoringSkill`, `customizeSkill`).
   `onDidChange` says when any of it changed.
 - `src/panel`: the Assistant's side panel (flow-assistant 2.2): the chat's title, **New chat** and
-  ✕, the status line, the transcript and the box with Send and Stop, and under a Build chat's box
+  ✕, the status line, the transcript, the strip "*n* items to review" with **Accept all** and
+  **Reject all** for the whole chat (flow-assistant 3.5, two or more items), the box with Send and
+  Stop, and under a Build chat's box
   **customize skill** or **edit skill** (flow-assistant 5.10), not on a phone.
 - `src/chat`: the Build chats of a workspace in this session (`BuildChats`): which chat the panel
   shows, each chat shown so far (so going back to one shows it at once), the answer being written

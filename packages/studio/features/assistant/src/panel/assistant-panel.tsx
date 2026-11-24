@@ -54,6 +54,7 @@ import {
 } from "./chat-choices.tsx";
 import { ChatHeading, ChatMoreActions } from "./chat-header.tsx";
 import { openModelsCommand, useModelBox } from "./model-line.tsx";
+import { ReviewStrip } from "./review-strip.tsx";
 import { useAuthoringOnly, useEngineAnswering, useTrustCheck } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
 import { SkillLink } from "./skill-link.tsx";
@@ -231,6 +232,15 @@ function PanelBody(props: PanelBodyProps) {
           noticeId={noticeId}
           onContinue={() => send(undefined, () => {})}
           continueWaits={engineAnswering ? undefined : { reason: noticeId }}
+        />
+      )}
+      {view === undefined ? null : (
+        <ReviewStrip
+          host={host}
+          chatId={view.chat.id}
+          answering={view.answering}
+          box={box}
+          announce={announce}
         />
       )}
       <ChipsAboveBox view={view} chats={chats} choices={choices} box={box} announce={announce} />
