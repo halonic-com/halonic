@@ -38,12 +38,19 @@ export interface StartedSignIn {
 export type SignInState =
   | { status: "pending" }
   | { status: "connected"; userId: string }
-  | { status: "cancelled" }
-  | { status: "expired" }
+  | { status: "cancelled" | "expired"; keyMayWork?: KeyMayWork }
   /** The key's user isn't in the connection's company; the key was revoked. */
   | { status: "wrong-company" }
   /** No such sign-in: it ended already, or never started. */
   | { status: "unknown" };
+
+/**
+ * Set on a cancelled or expired sign-in when Paperclip couldn't say how its
+ * challenge ended and the key couldn't be revoked either. If the board
+ * approved it, the key works until it expires, and only Paperclip can revoke
+ * it; Studio says so, as Disconnect does (Julian, HAL-17733).
+ */
+export type KeyMayWork = true;
 
 /** What the sign-in flow needs. */
 export interface PaperclipSignInOptions {
@@ -158,9 +165,7 @@ export class PaperclipSignIn {
   async cancel(signInId: string): Promise<SignInState> {
     const open = this.#take(signInId);
     if (open === undefined) return { status: "unknown" };
-    await this.#endChallenge(open);
-    await this.#endTimer(signInId);
-    return { status: "cancelled" };
+    return await this.#end(signInId, open, "cancelled");
   }
 
   /** The scheduler's timer: a sign-in still open at its limit ends as `expired`. */
@@ -173,9 +178,32 @@ export class PaperclipSignIn {
     const open = this.#take(signInId);
     if (open === undefined) return { status: "unknown" };
     // Paperclip ends the challenge too, but its clock may run behind ours.
-    await this.#endChallenge(open);
+    return await this.#end(signInId, open, "expired");
+  }
+
+  /**
+   * Ends a sign-in taken out of memory. The key is already dropped here, so a
+   * failed cancel can't be tried again later: the key is revoked instead, and
+   * when that fails too, the answer says the key may work.
+   */
+  async #end(
+    signInId: string,
+    open: OpenSignIn,
+    status: "cancelled" | "expired",
+  ): Promise<SignInState> {
     await this.#endTimer(signInId);
-    return { status: "expired" };
+    try {
+      await this.#endChallenge(open);
+      return { status };
+    } catch {
+      // Paperclip couldn't say how the challenge ended. A key the board never
+      // approved can't be revoked, so a failed revoke leaves it unknown.
+      const revoked = await open.calls.revokeCurrent(open.key).then(
+        () => true,
+        () => false,
+      );
+      return revoked ? { status } : { status, keyMayWork: true };
+    }
   }
 
   /**

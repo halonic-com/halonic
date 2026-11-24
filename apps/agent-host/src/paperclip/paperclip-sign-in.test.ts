@@ -161,6 +161,36 @@ verifies("agent-host.paperclip-sign-in", () => {
       expect(keyStore.saved).toEqual([]);
     });
 
+    it("revokes the key when Paperclip can't say how a cancelled challenge ended", async () => {
+      const { calls, flow } = setUp();
+      const started = await flow.start(connection);
+      calls.cancelFailsWith = new Error("Paperclip unreachable");
+      expect(await flow.cancel(started.signInId)).toEqual({ status: "cancelled" });
+      expect(calls.revoked).toEqual([fakeBoardKey]);
+      expect(flow.holdsKey(started.signInId)).toBe(false);
+    });
+
+    it.each(["cancelled", "expired"] as const)(
+      "says the key may work when a %s sign-in can't end its challenge or revoke the key",
+      async (status) => {
+        const { calls, clock, scheduler, flow } = setUp();
+        const started = await flow.start(connection);
+        calls.cancelFailsWith = new Error("Paperclip unreachable");
+        calls.revokeCurrent = async () => {
+          calls.sent.push(signInRequests.revokeCurrent);
+          throw new Error("Paperclip unreachable");
+        };
+        if (status === "expired") clock.advance(signInLimitMs);
+        const ended =
+          status === "expired"
+            ? await flow.poll(started.signInId)
+            : await flow.cancel(started.signInId);
+        expect(ended).toEqual({ status, keyMayWork: true });
+        expect(flow.holdsKey(started.signInId)).toBe(false);
+        expect(await scheduler.pending("paperclip-sign-in")).toEqual([]);
+      },
+    );
+
     it("doesn't revoke a key nobody approved when the sign-in ends", async () => {
       const { calls, clock, scheduler, flow } = setUp();
       await flow.cancel((await flow.start(connection)).signInId);

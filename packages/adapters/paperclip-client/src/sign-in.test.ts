@@ -73,24 +73,27 @@ verifies("agent-host.paperclip-key", () => {
       expect(seen?.headers.get("authorization")).toBeNull();
     });
 
-    it("polls with the challenge's own secret and reads its status", async () => {
+    it("polls with the challenge's own secret and reads its status, sending no key", async () => {
       pollAnswers("approved");
       await expect(client.pollChallenge(challenge)).resolves.toBe("approved");
       expect(paperclip.seen[0]?.query.get("token")).toBe(challengeSecret);
+      expect(paperclip.seen[0]?.headers.get("authorization")).toBeNull();
     });
 
-    it("answers `cancelled` when the cancel goes through", async () => {
+    it("answers `cancelled` when the cancel goes through, sending no key", async () => {
       paperclip.on("POST", `${challengePath}/cancel`, {
         body: { status: "cancelled", cancelled: true },
       });
       await expect(client.cancelChallenge(challenge)).resolves.toBe("cancelled");
       expect(paperclip.seen[0]?.body).toEqual({ token: challengeSecret });
+      expect(paperclip.seen[0]?.headers.get("authorization")).toBeNull();
     });
 
     it("answers `approved` when the board approved before the cancel, so the flow revokes the key", async () => {
       paperclip.on("POST", `${challengePath}/cancel`, { status: 409, body: { error: "approved" } });
       pollAnswers("approved");
       await expect(client.cancelChallenge(challenge)).resolves.toBe("approved");
+      for (const seen of paperclip.seen) expect(seen.headers.get("authorization")).toBeNull();
     });
 
     it("throws when a refused cancel leaves the challenge pending", async () => {
