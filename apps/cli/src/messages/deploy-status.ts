@@ -60,13 +60,16 @@ export const deployStatusMessages = defineMessages("deployStatus", {
     phrase`${running} running ${markPart("separator")} ${waiting} waiting for you ${markPart("separator")} ${lastDay} in the last day`,
   runsUnknown: () => phrase`open the address to see them`,
 
-  /** Another deploy holds the lock right now. */
-  deployRunning: (deployment: string, who: string, started: string) =>
-    phrase`${markPart("needsYou")} A deploy of ${deployment} by ${who} is running, started ${started}.`,
+  /**
+   * A deploy holds the lock. It may be running, or it was stopped and its
+   * lock hasn't run out yet (3.7), so the line says when it does.
+   */
+  deployLocked: (deployment: string, who: string, started: string, until: string) =>
+    phrase`${markPart("needsYou")} A deploy of ${deployment} by ${who} started ${started} and hasn't finished. If it was stopped, deploy again after ${until}, when its lock runs out.`,
   /** The last deploy stopped in a step without finishing (3.7, the second Ctrl C). */
   deployUnfinished: (deployment: string, step: string) =>
     phrase`${markPart("needsYou")} The last deploy of ${deployment} stopped while ${step}. The next deploy finishes it: halonic deploy ${deployment}`,
-  unfinishedCreating: () => phrase`creating what it needs`,
+  unfinishedCreating: () => phrase`creating the Worker, the database and the bucket`,
   unfinishedDatabase: () => phrase`updating the database`,
   unfinishedUpload: () => phrase`uploading a version`,
   unfinishedSelfTest: () => phrase`self-testing a version`,

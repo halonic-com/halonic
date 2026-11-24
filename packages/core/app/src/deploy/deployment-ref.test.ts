@@ -42,7 +42,7 @@ verifies("app.deploy-account", () => {
     it("refuses with denied when the token doesn't reach it", async () => {
       await expect(deploymentRefOf(reaching(studio), "web", web(sams.id))).rejects.toMatchObject({
         kind: "denied",
-        message: `The token doesn't reach the account web is on (${sams.id}).`,
+        message: `The token doesn't reach the account web is on (ID ${sams.id}).`,
         fix: "Make a token for that account and save it: halonic deploy login cloudflare",
       });
     });
@@ -60,7 +60,7 @@ verifies("app.deploy-account", () => {
         kind: "invalid_input",
         message:
           "The token reaches 2 Cloudflare accounts, and deployments.yaml doesn't say which one web is on.",
-        fix: "Add the account's id to web in deployments.yaml as cloudflare.account.",
+        fix: "Add the account's ID to web in deployments.yaml as cloudflare.account.",
       });
     });
 

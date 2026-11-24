@@ -14,7 +14,7 @@ import type { Message } from "../messages/define.ts";
 import { deployStatusMessages as words } from "../messages/deploy-status.ts";
 import { type Phrase, plainText } from "../messages/phrase.ts";
 import { startedInWords } from "../messages/runs-list.ts";
-import { type RunClock, startedAt } from "../run-times.ts";
+import { clockTime, type RunClock, startedAt } from "../run-times.ts";
 
 /** What the status lines need besides what the host said. */
 export interface DeployStatusFacts {
@@ -30,7 +30,7 @@ export interface DeployStatusFacts {
 
 /**
  * The result of `halonic deploy status`: the rows of 5.1, then a `!` line
- * when another deploy is running or the last one didn't finish. `--json`
+ * when a deploy holds the lock or, with none, the last one didn't finish. `--json`
  * has what the host said, as it said it, and this computer's Halonic.
  */
 export function deployStatusResult(
@@ -67,10 +67,17 @@ export function deployStatusResult(
   }
   const notes: Phrase[] = [];
   if (status.lockedBy !== undefined) {
-    const { who, startedAt: started } = status.lockedBy;
-    notes.push(words.deployRunning(deployment, who, minutesAgo(started, facts.clock)).phrase);
-  }
-  if (status.unfinished !== undefined) {
+    const { who, startedAt: started, expiresAt } = status.lockedBy;
+    notes.push(
+      words.deployLocked(
+        deployment,
+        who,
+        minutesAgo(started, facts.clock),
+        clockTime(expiresAt, facts.clock),
+      ).phrase,
+    );
+  } else if (status.unfinished !== undefined) {
+    // Only with no lock: a deploy that holds it may still be in that step.
     notes.push(
       words.deployUnfinished(deployment, plainText(unfinished(status.unfinished).phrase)).phrase,
     );

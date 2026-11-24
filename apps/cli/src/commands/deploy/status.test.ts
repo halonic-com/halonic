@@ -154,7 +154,7 @@ verifies("cli.commands.deploy.status", () => {
     ]);
   });
 
-  it("says who is deploying, and when the last deploy didn't finish", async () => {
+  it("says who holds the lock and when it runs out, and leaves out the unfinished step then", async () => {
     const { io } = await deploy(
       setupWith({
         ...live,
@@ -168,10 +168,18 @@ verifies("cli.commands.deploy.status", () => {
       ["status", "web"],
     );
 
-    expect(io.stdout.slice(-2)).toEqual([
-      "! A deploy of web by sam@example.com is running, started 2 min ago.",
-      "! The last deploy of web stopped while updating the database. The next deploy finishes it: halonic deploy web",
-    ]);
+    expect(io.stdout.at(-1)).toBe(
+      "! A deploy of web by sam@example.com started 2 min ago and hasn't finished. If it was stopped, deploy again after 14:42, when its lock runs out.",
+    );
+    expect(io.stdout.join("\n")).not.toContain("The last deploy");
+  });
+
+  it("says where the last deploy stopped when no deploy holds the lock", async () => {
+    const { io } = await deploy(setupWith({ ...live, unfinished: "create" }), ["status", "web"]);
+
+    expect(io.stdout.at(-1)).toBe(
+      "! The last deploy of web stopped while creating the Worker, the database and the bucket. The next deploy finishes it: halonic deploy web",
+    );
   });
 
   it("adds what the host said and this computer's Halonic to --json", async () => {

@@ -13,10 +13,10 @@ When a deploy subcommand works on a Cloudflare deployment from `deployments.yaml
   then the target is asked about the Worker `acme` in that account.
 - Given `web` with `cloudflare.account` 9a78… and a token that reaches only another account,
   when a deploy subcommand runs,
-  then it fails with `denied`, "The token doesn't reach the account web is on (9a78…)." and the fix "Make a token for that account and save it: halonic deploy login cloudflare".
+  then it fails with `denied`, "The token doesn't reach the account web is on (ID 9a78…)." and the fix "Make a token for that account and save it: halonic deploy login cloudflare".
 - Given `web` without `cloudflare.account` and a token that reaches 2 accounts,
   when a deploy subcommand runs,
-  then it fails with `invalid_input` and the fix "Add the account's id to web in deployments.yaml as cloudflare.account.".
+  then it fails with `invalid_input` and the fix "Add the account's ID to web in deployments.yaml as cloudflare.account.".
 - Given `web` without `cloudflare` settings,
   when a deploy subcommand runs,
   then it fails with `not_found` and "There's no Worker for web in deployments.yaml yet.", and the host isn't asked.

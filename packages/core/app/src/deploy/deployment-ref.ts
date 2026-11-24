@@ -40,7 +40,7 @@ export async function deploymentRefOf(
     if (accounts.some((account) => account.id === settings.account)) return ref(settings.account);
     throw new KindedError(
       "denied",
-      `The token doesn't reach the account ${id} is on (${settings.account}).`,
+      `The token doesn't reach the account ${id} is on (ID ${settings.account}).`,
       { fix: "Make a token for that account and save it: halonic deploy login cloudflare" },
     );
   }
@@ -54,7 +54,7 @@ export async function deploymentRefOf(
     throw new KindedError(
       "invalid_input",
       `The token reaches ${accounts.length} Cloudflare accounts, and deployments.yaml doesn't say which one ${id} is on.`,
-      { fix: `Add the account's id to ${id} in deployments.yaml as cloudflare.account.` },
+      { fix: `Add the account's ID to ${id} in deployments.yaml as cloudflare.account.` },
     );
   }
   return ref(only.id);
