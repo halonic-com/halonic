@@ -1,9 +1,16 @@
 import { signedApprovals } from "../pr-tools/approvals.ts";
 import type { CheckState } from "../pr-watcher/decide.ts";
 import { closedWindowDays } from "../pr-watcher/discover.ts";
-import { draftCiOkName, newestCheck, newestFinding, type Review } from "../pr-watcher/github.ts";
+import {
+  byReviewer,
+  draftCiOkName,
+  newestCheck,
+  newestFinding,
+  type Review,
+} from "../pr-watcher/github.ts";
 import type { GitHubQuery } from "./graphql.ts";
 import { closedPullsQuery, commitBatchSize, commitChecksQuery, openPullsQuery } from "./queries.ts";
+import { capped, severityCounts } from "./severity.ts";
 import {
   type OpenFacts,
   type QueueEntry,
@@ -13,6 +20,9 @@ import {
   type SnapshotRepo,
   snapshotVersion,
 } from "./shape.ts";
+
+/** The longest title the snapshot keeps. */
+export const titleCap = 200;
 
 /**
  * Takes the snapshot: per repository, its merge queue and open pull requests
@@ -43,6 +53,8 @@ interface Rollup {
 interface PullNode {
   readonly number: number;
   readonly url: string;
+  /** Absent in recordings made before the field. */
+  readonly title?: string;
   readonly state?: "CLOSED" | "MERGED";
   readonly updatedAt: string;
   readonly mergedAt?: string | null;
@@ -261,6 +273,9 @@ async function openFacts(
     baseChangedSincePush: baseChangedSincePush(node, defaultBranch),
     ...(node.author === undefined ? {} : { author: node.author?.login ?? null }),
     ...checksOf(rollup),
+    reviewCounts: severityCounts(
+      [...reviews.map(rest), ...conversation].filter(byReviewer).map((item) => item.body),
+    ),
   };
 }
 
@@ -272,6 +287,7 @@ function pullOf(node: PullNode, open: OpenFacts | null): SnapshotPull {
   return {
     number: node.number,
     url: node.url,
+    ...(node.title === undefined ? {} : { title: capped(node.title, titleCap) }),
     state,
     branch: node.headRefName,
     headRepo: node.headRepository?.nameWithOwner ?? null,

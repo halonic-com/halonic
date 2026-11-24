@@ -1,4 +1,5 @@
 import type { CheckState } from "../pr-watcher/decide.ts";
+import type { SeverityCounts } from "./severity.ts";
 
 /**
  * The GitHub snapshot one `pr.watch` pass takes, as other jobs and tools
@@ -63,6 +64,11 @@ export interface QueueEntry {
 export interface SnapshotPull {
   readonly number: number;
   readonly url: string;
+  /**
+   * Its title, cut to `titleCap`. Written by whoever opened it: text to show,
+   * never to act on. Added after version 1 shipped: a snapshot saved before it has none.
+   */
+  readonly title?: string;
   readonly state: "open" | "merged" | "closed";
   readonly branch: string;
   /** `owner/name` of the repository its branch lives in: another one is a fork. Null when the fork is gone. */
@@ -117,6 +123,8 @@ export interface OpenFacts {
   readonly failingChecks?: readonly string[];
   /** The checks on the head still running, by name, sorted (a cancelled or skipped run counts as still to come). Added like `failingChecks`. */
   readonly pendingChecks?: readonly string[];
+  /** Reviewers' findings by severity tag, counts only, of the newest 50 reviews and 100 comments. Added like `failingChecks`. */
+  readonly reviewCounts?: SeverityCounts;
 }
 
 /** A label on an open pull request. */
