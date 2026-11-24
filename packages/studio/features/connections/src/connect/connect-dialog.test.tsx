@@ -171,7 +171,7 @@ verifies("connections.connect-dialog", () => {
     await connectTo("https://paperclip.acme.test");
     act(() => fake.refuse("other-company", "Halonic"));
     await settle();
-    expect(text()).toContain("This account isn’t in Halonic");
+    expect(text()).toContain("This account isn't in Halonic");
     await press(button("Start again"));
     expect(dialog()?.querySelector("input")?.value).toBe("https://paperclip.acme.test");
   });
@@ -189,7 +189,7 @@ verifies("connections.connect-dialog", () => {
     const fake = new FakeAgentConnections({ refuseStart: "address-not-allowed" });
     const { opened } = await openDialog({ fake });
     await connectTo("https://elsewhere.test");
-    expect(text()).toContain("This address didn’t answer like Paperclip.");
+    expect(text()).toContain("This address didn't answer like Paperclip.");
     expect(opened).toEqual([]);
   });
 
@@ -197,7 +197,7 @@ verifies("connections.connect-dialog", () => {
     const fake = new FakeAgentConnections({ refuseStart: "unreachable" });
     await openDialog({ fake });
     await connectTo("https://elsewhere.test");
-    expect(text()).toContain("Halonic couldn’t reach Paperclip at this address.");
+    expect(text()).toContain("Halonic couldn't reach Paperclip at this address.");
   });
 });
 
