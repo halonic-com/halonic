@@ -191,7 +191,7 @@ jobs:
           fi
           areas=(
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/|packages/adapters/e2e-noise/src/noise\.wasm$|packages/adapters/remote-gateway/src/|packages/core/ports/src/remote-gateway-)"
-            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox|git)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|packages/core/ports/|pnpm-lock\.yaml$)"
+            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox|git)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|apps/agent-host/(fence/|scripts/|src/(main|coding-tools-mode)\.ts$)|packages/adapters/coding-tools/|packages/core/ports/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/adapters/integration-runner/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
@@ -2087,6 +2087,14 @@ jobs:
         # run's own folders are writable and the file lands in the proposal.
         working-directory: apps/cli
         run: pnpm test:fence
+      - name: Build the agent host executable
+        run: pnpm --filter @halonicjs/app-agent-host build:sea
+      - name: Agent host coding tools mode through the fence
+        # The packed agent host's `coding-tools` mode started from its payload
+        # in the profile, in a real session as a harness program starts it:
+        # it reads the working folder and not the profile (HAL-17226).
+        working-directory: apps/agent-host
+        run: pnpm test:fence
 
   sandbox-fence-macos:
     # The same fence tests on macOS, where sandbox-runtime uses Seatbelt
@@ -2142,6 +2150,14 @@ jobs:
         # host runs in the real sandbox: the profile root is hidden, only the
         # run's own folders are writable and the file lands in the proposal.
         working-directory: apps/cli
+        run: pnpm test:fence
+      - name: Build the agent host executable
+        run: pnpm --filter @halonicjs/app-agent-host build:sea
+      - name: Agent host coding tools mode through the fence
+        # The packed agent host's `coding-tools` mode started from its payload
+        # in the profile, in a real session as a harness program starts it:
+        # it reads the working folder and not the profile (HAL-17226).
+        working-directory: apps/agent-host
         run: pnpm test:fence
 
   sandbox-mxc-fence:
