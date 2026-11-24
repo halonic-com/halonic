@@ -99,6 +99,15 @@ const placeLinks = (root: HTMLElement) => [
 const stopped = (root: HTMLElement) =>
   root.textContent?.includes("This page stopped working") === true;
 
+/** The shell's Loading state while a page's code imports (`shell.view-loading-state`). */
+const loading = (root: HTMLElement) => root.querySelector('main [aria-busy="true"]') !== null;
+
+/**
+ * How long a page's code may take to import. On a loaded CI runner one took over 4 s (HAL-17612);
+ * locally each takes well under half a second.
+ */
+const IMPORT_LIMIT_MS = 15_000;
+
 let element: HTMLDivElement;
 let started: StartedStudio | undefined;
 let restoreDialogs: () => void;
@@ -141,7 +150,11 @@ verifies("studio.entry", () => {
         () => expect(element.querySelector('[aria-current="page"]')?.textContent).toBe(label),
         { timeout: 4_000 },
       );
-      // Pages load on demand: wait until the page drew its heading or stopped, then tell which.
+      // Pages load on demand: wait out the import, then until the page drew its heading or
+      // stopped, and tell which. Only the import gets the wider limit.
+      await vi.waitFor(() => expect(loading(element), `${label} still loading`).toBe(false), {
+        timeout: IMPORT_LIMIT_MS,
+      });
       await vi.waitFor(
         () => expect(stopped(element) || element.querySelector("main h1") !== null).toBe(true),
         { timeout: 4_000 },
@@ -149,7 +162,8 @@ verifies("studio.entry", () => {
       expect(stopped(element), `the ${label} place stopped working`).toBe(false);
     }
     expect(labels).toEqual(expect.arrayContaining(["Inbox", "Library"]));
-  }, 30_000);
+    // Room for every place to use its import limit.
+  }, 120_000);
 });
 
 /** The innermost element in the page whose text starts with `text`; a click on it reaches its row. */
