@@ -3,6 +3,7 @@
 - Task: HAL-17217 (sandbox-srt's Windows deny-placeholder tests timed out on #5561 and on `main`)
 - Approval: Liam approves this note in review on HAL-17217 (CI workflows are the guard's path; internal CI load, no board card)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cs3jGYxEHZE4W682ujgcB74tIqXlhTzhOK02MklvfpbVg6qMQXsEHDC/XWx0MKVYoO5lLTt4AeB4hEC2whphDg==
 
 ## What changes
 
