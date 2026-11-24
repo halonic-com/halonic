@@ -12,7 +12,8 @@ import type { UsageAmounts, UsageAnswer, UsageLimits } from "./usage-types.ts";
  * {@link UsageScope}.
  *
  * The Worker names it with `idFromName(scope)`, and the object refuses a call for any scope other
- * than its name. The Worker may subclass it and override {@link UsageObject.pullLimits} to ask
+ * than its name. That check needs the name: an object made with `newUniqueId` or `idFromString`
+ * has none, so only the scope its first call noted is checked. The Worker may subclass it and override {@link UsageObject.pullLimits} to ask
  * Cloud; until then an object that was pushed no limits refuses every step.
  *
  * Never rename or delete this class: Cloudflare deletes a Durable Object class's data with it.
@@ -52,6 +53,11 @@ export class UsageObject extends DurableObject {
   /** Keeps a limits document the Worker verified as Cloud's, unless it is not newer. */
   applyLimits(scope: string, limits: UsageLimits): "applied" | "stale" {
     return this.#scope.applyLimits(scope, limits);
+  }
+
+  /** Records a verified Cloud request's nonce for its time window; `"seen"` for a repeat. */
+  rememberNonce(scope: string, keyId: string, nonce: string, keepUntilMs: number): "new" | "seen" {
+    return this.#scope.rememberNonce(scope, keyId, nonce, keepUntilMs);
   }
 
   check(principal: UsagePrincipal): Promise<UsageAnswer> {

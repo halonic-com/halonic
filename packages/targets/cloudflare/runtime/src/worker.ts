@@ -2,6 +2,7 @@ import { answerAdmin } from "./admin.ts";
 import { adminRoutes } from "./admin-routes.ts";
 import type { RuntimeEnv } from "./env.ts";
 import { plainHttpAnswer } from "./https-only.ts";
+import { answerLimitsPushOf } from "./limits-push.ts";
 import { answerRequest, healthPath } from "./routes.ts";
 import { createRuntime } from "./runtime.ts";
 import { runScheduled } from "./scheduled.ts";
@@ -28,6 +29,8 @@ export const worker = {
     if (env === undefined || new URL(request.url).pathname === healthPath) {
       return answerRequest(request);
     }
+    const limitsPush = await answerLimitsPushOf(request, env);
+    if (limitsPush !== undefined) return limitsPush;
     const admin = await answerAdmin(request, env, adminRoutes);
     return admin ?? serveRequest(request, env);
   },

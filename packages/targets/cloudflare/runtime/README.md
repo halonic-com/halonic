@@ -39,6 +39,22 @@ snapshot's routine index (`routines.index.json`, written by `halonic deploy` fro
 as the files, so the Worker reads no YAML) at every delivery and gets the same checks as on the Node host, so a signed delivery for a
 routine starts its run and answers 202.
 
+## Limits push from Halonic Cloud
+
+A deployment Halonic Cloud sells through takes each scope's limits document at
+`POST /cloud/limits/<scope>`, where the scope is `u/<id>` or `o/<id>` (requirement `runtime.limits-push`).
+Only a request signed by one of Cloud's pinned `command` keys, in the `cloud-to-deployment` direction of
+`@halonicjs/host-signed-request`, for this deployment's product and this scope's path, reaches the scope's
+`UsageObject` (binding `USAGE`); every other one answers the same 401. The object keeps the nonce for the
+time window and keeps the document unless it has that version or a newer one. Two plain variables configure it:
+
+| Variable | Meaning |
+| --- | --- |
+| `HALONIC_CLOUD_KEYS` | Cloud's published public key set, as JSON (`{"keys":[{"id","use","publicKey"}]}`) |
+| `HALONIC_CLOUD_PRODUCT` | the product id Cloud sells this deployment as |
+
+Without both and the `USAGE` binding, the path is an unknown path; with only some of them it answers 503.
+
 ## Export and import routes (the contract for the CLI)
 
 `halonic deploy export` and `import` talk to the Worker through routes that exist only while a one-job
