@@ -39,16 +39,22 @@ verifies("runtime.scheduled-routines", () => {
     });
 
     it("fails the deployment's tick when the runtime can't be built, and builds again next time", async () => {
-      const routines = objectNamed("routines", { ...bindings });
-      for (const at of ["2026-11-13T12:00:00.000Z", "2026-11-13T12:01:00.000Z"]) {
-        await expect(routines.tick(at)).rejects.toBeInstanceOf(ConfigurationError);
-      }
+      const env: object = { ...bindings };
+      const routines = objectNamed("routines", env);
+      await expect(routines.tick("2026-11-13T12:00:00.000Z")).rejects.toBeInstanceOf(
+        ConfigurationError,
+      );
+      // A kept failed build would reject with the configuration error again; a new build gets past it.
+      Object.assign(env, secrets);
+      // The rebuilt runtime's scheduler then fails on the stand-in object's missing `read`.
+      await expect(routines.tick("2026-11-13T12:01:00.000Z")).rejects.toBeInstanceOf(TypeError);
     });
 
     it("fails the deployment's tick when the routine scheduler fails", async () => {
-      // The stand-in bindings wire a runtime, but can't answer the scheduler's first read.
+      // The stand-in bindings wire a runtime, but their objects have no `read`, so the
+      // scheduler's first read throws a TypeError.
       const routines = objectNamed("routines", { ...bindings, ...secrets });
-      await expect(routines.tick("2026-11-13T12:00:00.000Z")).rejects.toThrow();
+      await expect(routines.tick("2026-11-13T12:00:00.000Z")).rejects.toBeInstanceOf(TypeError);
     });
 
     it("names each routine and time whose run failed to start, with the start's error as the cause", () => {
