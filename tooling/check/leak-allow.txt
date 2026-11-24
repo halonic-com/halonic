@@ -9,7 +9,12 @@
 # root the leak guard printed) or commit:<hash> (the commit that added it), so
 # it allows that one kind of path or that one commit only. A personal term
 # can only be allowed in an old commit, with commit:<hash> and the exact
-# file; anything new must be reworded instead.
+# file; anything new must be reworded instead. A term added to the list
+# later can get one cutoff, for the weekly full history scan only:
+#
+#   term-cutoff entry:<n> before:<YYYY-MM-DDTHH:MMZ> <reason>
+#
+# n is the term's position in the HALONIC_DENY_TERMS list (1 is the first).
 
 # Old commits that hold made-up paths (drive letters, /tmp, /home) as test
 # data or examples. The nightly --all scan reads every commit, and history
@@ -52,3 +57,11 @@ personal-term tooling/check/src/guard/reviews.ts commit:45b4e15cf old text, kept
 personal-term decisions/julian/HAL-1337-06-user-review.md commit:80cda4fab old text, kept in history
 personal-term tooling/check/approvers.json commit:80cda4fab old text, kept in history
 personal-term CONTRIBUTING.md commit:ec5795b10 old text, kept in history
+
+# Terms 7 and 8, added to the list after these entries (HAL-17292). They sit
+# in many older commits and closed pull requests, and history can't be
+# rewritten. The full scan passes them only in commits committed before the
+# cutoff; every later commit, and every other term, is still checked. Keep
+# them at positions 7 and 8 when the list is edited.
+term-cutoff entry:7 before:2026-11-24T07:00Z added later, older history kept
+term-cutoff entry:8 before:2026-11-24T07:00Z added later, older history kept

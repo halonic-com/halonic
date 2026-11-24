@@ -124,7 +124,28 @@ A personal term in new text can't be allowed. Reword the text instead.
 Only an old commit that can't be reworded any more, and that the repo
 owners accept in history, gets a `personal-term` entry: it names the exact
 file and `commit:<hash>`, so it excuses that one commit in that one file
-and the same term added anywhere later is still refused. Technical
+and the same term added anywhere later is still refused.
+
+A term added to the list later may already sit in many old commits and
+closed pull requests. For such a term, a `term-cutoff` line in the allow
+file lets the weekly full scan (`--all`) pass it in commits committed
+before a date:
+
+```text
+term-cutoff entry:<n> before:<YYYY-MM-DDTHH:MMZ> <reason>
+```
+
+`n` is the term's position in the `HALONIC_DENY_TERMS` list, counting one
+term per line or comma-separated entry, comments and blank lines skipped.
+The line never holds the term or a hash of it. Add the new terms at the end
+of the list and never reorder it: a full scan fails when an entry names a
+position past the end of the list, but a reordered list would silently move
+the cutoff to another term. The date can't be in the future. Every other
+term, the same term in any later commit, the working tree and every branch
+or tag name are still checked, and the hooks, pull requests, the merge
+queue and pushes to `main` ignore cutoffs.
+
+Technical
 phrases that happen to contain a term, such as a CSS property name, go in
 `tooling/check/terms-allowed-phrases.txt`. A term is let through only where
 it lies wholly inside such a phrase; the same term elsewhere on the line is

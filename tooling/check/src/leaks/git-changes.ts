@@ -177,8 +177,8 @@ export function stagedChanges(root: string): Change[] {
 }
 
 /**
- * Every commit the revisions select, each with its message, author,
- * committer and the lines it adds (pre-push, CI, the history scan).
+ * Every commit the revisions select, each with its committer date, message,
+ * author, committer and the lines it adds (pre-push, CI, the history scan).
  *
  * @param revisions - `git log` revisions, such as `["base..head"]` or `["--all"]`
  */
@@ -188,7 +188,7 @@ export function commitChanges(root: string, revisions: readonly string[]): Chang
   const nonce = randomBytes(16).toString("hex");
   const commitStart = `\0${nonce} commit\n`;
   const messageEnd = `\0${nonce} diff`;
-  const format = `--format=%x00${nonce} commit%n%h%n%an <%ae>%n%cn <%ce>%n%B%x00${nonce} diff`;
+  const format = `--format=%x00${nonce} commit%n%h%n%cI%n%an <%ae>%n%cn <%ce>%n%B%x00${nonce} diff`;
   const output = git(root, [
     "-c",
     "core.quotePath=false",
@@ -206,9 +206,11 @@ export function commitChanges(root: string, revisions: readonly string[]): Chang
     .filter((entry) => entry.trim() !== "")
     .map((entry) => {
       const [header = "", diff = ""] = entry.split(messageEnd);
-      const [commit = "", author = "", committer = "", ...message] = header.split("\n");
+      const [commit = "", committed = "", author = "", committer = "", ...message] =
+        header.split("\n");
       return {
         commit,
+        committed,
         files: parseDiff(diff, readBlob),
         texts: [
           { label: "commit message", text: message.join("\n"), termsOnly: false },

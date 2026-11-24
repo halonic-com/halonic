@@ -12,6 +12,7 @@ import { loadAgentNames, MentionMatcher } from "../leaks/mentions.ts";
 import { pushedRefNames, pushedRevisions } from "../leaks/push.ts";
 import type { Change, ChangeText, Finding } from "../leaks/scan.ts";
 import { scanChanges } from "../leaks/scan.ts";
+import { cutoffsProblem } from "../leaks/term-cutoffs.ts";
 import {
   allowedPhrasesFile,
   loadAllowedPhrases,
@@ -37,7 +38,8 @@ import { readPullRequestText } from "../lib/pull-request.ts";
  *   pnpm check:leaks --range A..B       the commits of a pull request, plus its branch,
  *                                       title and body from $GITHUB_EVENT_PATH (CI)
  *   pnpm check:leaks --all              the working tree, every commit on every ref, and
- *                                       every branch and tag name and tag message
+ *                                       every branch and tag name and tag message; a term
+ *                                       with a `term-cutoff` entry passes in older commits
  *
  * --allowed-phrases FILE and --allow-file FILE read those two lists from FILE
  * instead of the repo's copy. CI points them at the base commit's copies, so
@@ -263,9 +265,24 @@ function scan(argv: readonly string[]): number {
   // New work only: --all also reads old commits and closed pull requests.
   const [mode] = options.rest;
   const checksMentions = mode === "--push" || mode === "--range";
+  const allowList = loadAllowList(root, options);
+  // Only the history scan reads old commits, so only it applies cutoffs.
+  const termCutoffs = mode === "--all" && source !== "none" ? allowList.termCutoffs : [];
+  const cutoffProblem = cutoffsProblem(termCutoffs, terms.length);
+  if (cutoffProblem !== undefined) {
+    console.error(`leak guard: FAILED. ${allowFilePath} ${cutoffProblem}`);
+    return 1;
+  }
+  if (termCutoffs.length > 0) {
+    const entries = termCutoffs.map((cutoff) => cutoff.entry).join(", ");
+    console.log(
+      `leak guard: terms ${entries} pass in commits before their cutoff (${allowFilePath}).`,
+    );
+  }
   const findings = scanChanges(changes, {
     terms: matcher,
-    allowList: loadAllowList(root, options),
+    allowList,
+    termCutoffs,
     ...(checksMentions ? { mentions: new MentionMatcher(loadAgentNames()) } : {}),
   });
   if (source === "none") {
