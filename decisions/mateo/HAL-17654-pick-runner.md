@@ -3,7 +3,7 @@
 - Task: HAL-17654 (the board's decision on the task, 24 Nov)
 - Approval: the board decided on HAL-17654 (24 Nov ~16:35 Spain) that a first job picks the fast pool only when it has enough idle runners, with `CI_FAST_MIN_IDLE` and `CI_FAST_SCOPE` as repo variables and the CI VM's gate as the real control; Liam signs this note in review, Julian checks C1–C8 on the task (the job adds a token)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4djlYicbCNoEoP0fG04xWbAJ/eeM76FvDYrFPXLdLuGQ+MGFB+mLNvC47LVufz372VFHm+lumqegLyQQkuUPDw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BB3OzZ979bchgUfYNj1d2BCqCT6Aa+D/Hq0SRPfICkbLh5oEV9qRRhAV2b6ygMAXyW2aA5KywdxL+L1+nQG2CQ==
 
 ## What changes
 
