@@ -59,7 +59,7 @@ export function handleCases(make: MakeToolScriptIsolate): void {
       for (const output of ["token", "{ nested: [token] }", "'token: ' + token"]) {
         const code = script(`const token = await ctx.secrets.get(); return ${output};`);
         const result = await runScript(make, code, { functions });
-        expect(result).toMatchObject({ ok: false, reason: "toolscript.bad-handle" });
+        expect(result).toMatchObject({ ok: false, reason: "toolscript.bad-output" });
       }
     });
 

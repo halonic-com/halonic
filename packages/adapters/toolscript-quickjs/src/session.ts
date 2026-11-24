@@ -209,6 +209,8 @@ export class RunSession implements RunState {
       maxItems: Number.MAX_SAFE_INTEGER,
       maxBytes: this.limits.outputBytes,
       handles: "refuse",
+      // Liam on HAL-17741: a handle the script tries to return is a bad output.
+      handleReason: "toolscript.bad-output",
       shapeReason: "toolscript.bad-output",
       sizeReason: "limit.output",
     });

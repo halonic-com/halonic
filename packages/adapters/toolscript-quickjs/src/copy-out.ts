@@ -11,6 +11,8 @@ export interface CopyOutRules {
   readonly maxBytes: number;
   /** `resolve`: a known handle id becomes its handle. `refuse`: any handle id stops the copy. */
   readonly handles: "resolve" | "refuse";
+  /** The reason for a handle id this copy refuses: unknown when resolving, any when refusing. */
+  readonly handleReason: ToolScriptReason;
   /** The reason for a value that isn't plain data. */
   readonly shapeReason: ToolScriptReason;
   /** The reason for a value over `maxBytes`, `maxItems` or `maxDepth`. */
@@ -101,7 +103,7 @@ class Walker {
     this.count(value.length);
     if (!value.includes(handleIdPrefix)) return value;
     const handle = this.rules.handles === "resolve" ? this.table.handleFor(value) : undefined;
-    if (handle === undefined) throw new Refused("toolscript.bad-handle");
+    if (handle === undefined) throw new Refused(this.rules.handleReason);
     return handle;
   }
 

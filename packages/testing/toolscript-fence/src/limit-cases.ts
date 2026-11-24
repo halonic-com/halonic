@@ -22,7 +22,8 @@ export function limitCases(make: MakeToolScriptIsolate): void {
   verifies("toolscript-fence.limits", () => {
     isolateLimitCases(make);
     hostCountCases(make);
-    waitAndStopCases(make);
+    waitCases(make);
+    stopCases(make);
   });
 }
 
@@ -97,8 +98,8 @@ function hostCountCases(make: MakeToolScriptIsolate): void {
   });
 }
 
-/** The wall clock, host waits, a ToolScriptStop and a cancel. */
-function waitAndStopCases(make: MakeToolScriptIsolate): void {
+/** The wall clock, and host waits that aren't CPU. */
+function waitCases(make: MakeToolScriptIsolate): void {
   it("stops at the wall clock while the script waits", async () => {
     const never = held();
     const code = script("await ctx.acme.never(); return 1;");
@@ -127,7 +128,10 @@ function waitAndStopCases(make: MakeToolScriptIsolate): void {
       vi.useRealTimers();
     }
   });
+}
 
+/** A host function's ToolScriptStop and the caller's cancel. */
+function stopCases(make: MakeToolScriptIsolate): void {
   it("stops with a host function's listed reason, and with a cancel", async () => {
     const decline = async () => {
       throw new ToolScriptStop("toolscript.declined");
@@ -146,5 +150,17 @@ function waitAndStopCases(make: MakeToolScriptIsolate): void {
       signal: cancel.signal,
     });
     expect(cancelled).toMatchObject({ ok: false, reason: "toolscript.cancelled" });
+  });
+
+  it("never runs a script whose signal is already aborted", async () => {
+    const acme = recorder();
+    const cancel = new AbortController();
+    cancel.abort();
+    const result = await runScript(make, script("await ctx.acme.ping('ran'); return 1;"), {
+      functions: { acme: { ping: acme.fn } },
+      signal: cancel.signal,
+    });
+    expect(result).toMatchObject({ ok: false, reason: "toolscript.cancelled" });
+    expect(acme.calls).toEqual([]);
   });
 }

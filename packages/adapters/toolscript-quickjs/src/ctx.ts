@@ -79,6 +79,7 @@ function argumentRules(state: RunState): CopyOutRules {
     maxItems: state.limits.argumentItems,
     maxBytes: state.limits.argumentBytes,
     handles: "resolve",
+    handleReason: "toolscript.bad-handle",
     shapeReason: "toolscript.bad-argument",
     sizeReason: "toolscript.bad-argument",
   };

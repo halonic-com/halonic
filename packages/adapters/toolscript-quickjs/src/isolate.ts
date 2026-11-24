@@ -23,7 +23,11 @@ export interface QuickJsToolScriptIsolateOptions {
  * "Halonic ToolScript" 2.1). Every run gets a WASM module, runtime and
  * context of its own, with the pinned intrinsics, the checked eval prelude,
  * the memory, stack and CPU limits, and no module loader, so `import()`
- * is refused. Nothing carries over from one run to the next. It runs on any
+ * is refused. Nothing carries over from one run to the next. A host
+ * function named `input` or `log`, the names of `ctx`'s own members, ends
+ * the run with `toolscript.failed` before the script runs; an aborted
+ * `signal` ends it with `toolscript.cancelled`, and one aborted before the
+ * run starts means the script never runs. It runs on any
  * runtime with WebAssembly; the worker wrappers that keep it off the main
  * thread come separately.
  *
@@ -52,6 +56,8 @@ export async function runInQuickJs(
   limits: ToolScriptLimits,
   prelude: string = preludeSource,
 ): Promise<ToolScriptIsolateResult> {
+  if (request.signal?.aborted)
+    return { ok: false, reason: "toolscript.cancelled", log: [], limits };
   const inputBytes = new TextEncoder().encode(JSON.stringify(request.input)).length;
   if (inputBytes > limits.inputBytes) {
     return { ok: false, reason: "limit.input", log: [], limits };
