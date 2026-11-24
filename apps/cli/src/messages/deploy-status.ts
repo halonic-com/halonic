@@ -66,6 +66,9 @@ export const deployStatusMessages = defineMessages("deployStatus", {
    */
   deployLocked: (deployment: string, who: string, started: string, until: string) =>
     phrase`${markPart("needsYou")} A deploy of ${deployment} by ${who} started ${started} and hasn't finished. If it was stopped, deploy again after ${until}, when its lock runs out.`,
+  /** When the lock's deploy started, as the lock's own message says it (3.7). */
+  startedJustNow: () => phrase`less than a minute ago`,
+  startedMinutesAgo: (minutes: number) => phrase`${minutes} min ago`,
   /** The last deploy stopped in a step without finishing (3.7, the second Ctrl C). */
   deployUnfinished: (deployment: string, step: string) =>
     phrase`${markPart("needsYou")} The last deploy of ${deployment} stopped while ${step}. The next deploy finishes it: halonic deploy ${deployment}`,

@@ -131,7 +131,9 @@ function runs(status: DeploymentStatus): Message {
 /** "less than a minute ago", "2 min ago", as the lock's own message says it. */
 function minutesAgo(iso: string, clock: RunClock): string {
   const minutes = Math.max(0, Math.round((clock.now.getTime() - Date.parse(iso)) / 60_000));
-  return minutes === 0 ? "less than a minute ago" : `${minutes} min ago`;
+  return plainText(
+    (minutes === 0 ? words.startedJustNow() : words.startedMinutesAgo(minutes)).phrase,
+  );
 }
 
 function unfinished(step: DeployStep["step"]): Message {

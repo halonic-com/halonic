@@ -15,7 +15,7 @@ import type {
   HttpClient,
 } from "@halonicjs/ports";
 import { deployTargetVersion } from "@halonicjs/ports";
-import { reachableAccounts } from "./accounts.ts";
+import { reachableAccounts, type TokenSource, tokenVariable } from "./accounts.ts";
 import { withAdminKey } from "./admin-key.ts";
 import type { CloudflareApi, ResourceKind } from "./api.ts";
 import { createCloudflareClient } from "./client.ts";
@@ -75,20 +75,21 @@ export function createCloudflareDeployTarget(
     options.api ?? ((token: string) => createCloudflareClient({ token, fetch: fetchOver }));
   const label = context.who;
 
-  const tokenOf = async (): Promise<string> => {
+  const sourcedToken = async (): Promise<{ token: string; source: TokenSource }> => {
     // An empty token from the environment is no token, so it doesn't hide the saved one.
-    const token = context.environmentToken || (await context.tokens.get(tokenName));
+    if (context.environmentToken) return { token: context.environmentToken, source: "environment" };
+    const token = await context.tokens.get(tokenName);
     if (token === null || token === "") {
       throw portFailure(
         "token-missing",
         "unauthenticated",
         "There's no Cloudflare token on this computer.",
-        "Save one with halonic deploy login cloudflare, or set HALONIC_CLOUDFLARE_API_TOKEN.",
+        `Save one with halonic deploy login cloudflare, or set ${tokenVariable}.`,
       );
     }
-    return token;
+    return { token, source: "saved" };
   };
-  const api = async (): Promise<CloudflareApi> => apiFor(await tokenOf());
+  const api = async (): Promise<CloudflareApi> => apiFor((await sourcedToken()).token);
 
   const notYet = (method: string) => async (): Promise<never> => {
     throw portFailure("unexpected", "internal", `The Cloudflare target can't ${method} yet.`);
@@ -114,8 +115,8 @@ export function createCloudflareDeployTarget(
 
     accounts: () =>
       guard(async () => {
-        const token = await tokenOf();
-        return reachableAccounts(apiFor(token), token);
+        const { token, source } = await sourcedToken();
+        return reachableAccounts(apiFor(token), token, source);
       }),
 
     plan: (request) => guard(async () => planDeploy(await api(), request)),
