@@ -1,13 +1,13 @@
 # Halonic ToolScript: a TypeScript profile for reviewed actions and agent tools, run in an isolate
 
-- **Status:** Accepted (board, HAL-10, 24 Nov ~15:20 UTC), **revision 6**; security section **signed by Julian on revision 5** (HAL-17596). Revision 6 changes only where the code lives (sections 0, 5, 6, 7 and the CLI name), not section 3.
+- **Status:** Accepted (board, HAL-10, 24 Nov ~15:20 UTC), **revision 7**; security section **signed by Julian on revision 5** (HAL-17596). Revision 6 changes only where the code lives (sections 0, 5, 6, 7 and the CLI name), not section 3. Revision 7 changes how `eval` is removed (section 2.1) as Julian decided on HAL-17650.
 - **Date:** 2026-11-24
 - **Author:** Liam. **Security reviewer:** Julian (section 3).
 - **Lands as:** `docs/adr/2026-11-24-toolscript.md` in `halonic` (task T1, HAL-17566).
 
 ## Revisions
 
-Written on HAL-17560 in six revisions on 24 Nov. Julian's security reviews (HAL-17596) are answered in sections 2 and 3, and Tomas's stepper properties (HAL-17488) in 3.4. Revision 6 follows the board's choice of the monorepo (HAL-10, ~15:20 UTC): the core is a set of `halonic` packages (section 5).
+Written on HAL-17560 in six revisions on 24 Nov. Julian's security reviews (HAL-17596) are answered in sections 2 and 3, and Tomas's stepper properties (HAL-17488) in 3.4. Revision 6 follows the board's choice of the monorepo (HAL-10, ~15:20 UTC): the core is a set of `halonic` packages (section 5). Revision 7 (T4, HAL-17569): QuickJS can't compile the script with the `Eval` intrinsic off, so a checked host prelude replaces every path to the compiler instead (section 2.1), the `ToolScriptIsolate` port is named (section 5), and the T4 fence list gains Julian's conditions from HAL-17650 (section 6).
 
 ## 0. Scope (board, 14:03 UTC)
 
@@ -99,7 +99,7 @@ A declarative ToolScript has `header.steps` and no `run`.
 ### 1.3 Enforcement: two layers, and only one of them is the boundary
 
 1. **Static check (for authors and reviewers).** `halonic toolscript check <file>` uses the TypeScript compiler API (in an adapter, see T3). It type-checks against `@halonicjs/toolscript`, walks the syntax tree for P1–P7, and checks `header` against its schema (section 4). Each failure names the rule (`P4: eval is not allowed in a ToolScript`). It runs in `pnpm check` for `*.tool.ts` files in `halonic`, in the phase 3 builder, and in the workspace's CI.
-2. **Runtime (the boundary).** The isolate (section 2) enforces what matters even if the static check is skipped or fooled. The isolate has no eval intrinsic, no network, file or timer globals, a frozen `ctx` made of host functions only, and hard limits. A fence test suite (T4) runs **known escape attempts with the static check turned off**, and each must fail inside the isolate.
+2. **Runtime (the boundary).** The isolate (section 2) enforces what matters even if the static check is skipped or fooled. The isolate has no reachable `eval` or `Function`, no network, file or timer globals, a frozen `ctx` made of host functions only, and hard limits. A fence test suite (T4) runs **known escape attempts with the static check turned off**, and each must fail inside the isolate.
 
 ### 1.4 Build: TypeScript in, one checked JS string out
 
@@ -129,11 +129,13 @@ Scripts are compiled **at build time, never at run time**. `halonic toolscript b
 The deciding reason for QuickJS is that it **runs the same on desktop, Node and the Paperclip plugin**: Studio's webview, the Node engine and Paperclip plugin, and Cloudflare Workers. It uses no Node APIs and gives hard memory and CPU limits. We use the **sync** build with promise-based host functions (`newPromise` plus `executePendingJobs`), not asyncify.
 
 **How `eval` and `Function` are removed:**
-- The context is created with an explicit intrinsics list in which `Eval` is off (`newContext({ intrinsics })`). Without that intrinsic, QuickJS can't compile code from a string at run time. So `eval(…)`, `Function(…)`, and every constructor reached through `.constructor` on a function, async function, generator or async generator throw.
-- The prelude deletes nothing.
-- A fence test pins this exact mechanism, and a unit test pins the host's intrinsics list.
+- `eval` is removed by a fixed host prelude that replaces every path to the compiler with a frozen thrower, checked by the host before each run. The `Eval` intrinsic stays on because QuickJS needs it to compile the script: with `Eval` off, the context refuses every source text, the host's own included, and `quickjs-emscripten` doesn't expose loading precompiled bytecode (found in T4, decided with Julian on HAL-17650).
+- The paths the prelude replaces are `globalThis.eval`, `globalThis.Function`, the `constructor` of the function, async function, generator and async-generator prototypes, and the thrower's own `constructor`. Each slot is non-writable and non-configurable; the thrower and its prototype chain up to `Function.prototype` are frozen. The prelude deletes nothing.
+- The prelude runs as its own `evalCode` call, never joined to the script text. After it, the host reads every slot's descriptor back through the QuickJS API and refuses to run the script if the prelude threw or any slot is wrong, so a library update that changes the intrinsics fails closed. After the prelude, the host never calls `evalCode` on text derived from the script or its output.
+- The context's intrinsics list is explicit: `Proxy`, `TypedArrays` and the bignum extras are off, and there is no module loader, so `import()` of any string is refused and `std` and `os` aren't globals.
+- The fence suite tests behaviour, not mechanism: every path must throw. A unit test pins the intrinsics list and the prelude's list of paths. If upstream ever exposes bytecode loading (HAL-17651), switching to a context without the compiler needs no fence test change.
 
-**Isolates are never reused.** Each run gets a new runtime and context, disposed of when the run ends or a limit trips. Both libraries are MIT-licensed. The dependency (`quickjs-emscripten` and its `@jitl/quickjs-ng-wasmfile-release-sync` variant, both pinned) is used only by `adapters/toolscript-quickjs`, with a `dependencies.json` entry (my approval). Everything else reaches it only through the `ToolScriptHost` port.
+**Isolates are never reused.** Each run gets a new runtime and context, disposed of when the run ends or a limit trips. Both libraries are MIT-licensed. The dependency (`quickjs-emscripten-core` and its `@jitl/quickjs-ng-wasmfile-release-sync` variant, both pinned to exactly the same version; any update reruns the fence suite and needs my dependency review) is used only by `adapters/toolscript-quickjs`, with a `dependencies.json` entry (my approval). Everything else reaches it only through the `ToolScriptHost` port.
 
 **Cloudflare target: a Dynamic Worker, not QuickJS (board question, 14:11 UTC).**
 - **How it works:** the Worker Loader starts the artifact's code in a new V8 isolate in a few milliseconds. We start it with:
@@ -301,6 +303,7 @@ The board chose the monorepo on 24 Nov at ~15:20 UTC (HAL-10), replacing its 14:
 **Rules that keep it modular:**
 - Only `adapters/toolscript-check`, `adapters/toolscript-quickjs` and `adapters/cloudflare-toolscript` hold vendor code (the TypeScript compiler, `quickjs-emscripten`, the Workers API), each with a `dependencies.json` entry and my approval.
 - The engine, Studio, targets and the plugin reach a run **only through the `ToolScriptHost` port**; the wiring (`studio/services`, the Node and Cloudflare targets) picks the adapter.
+- Below that port, an isolate is reached through the `ToolScriptIsolate` port in `core/ports`: one fresh isolate per run, given code, input, host functions by namespace and limits, giving back output or a fixed reason. `adapters/toolscript-quickjs` and `adapters/cloudflare-toolscript` implement it, `core/toolscript-host` builds on it, and `testing/toolscript-fence` runs against it.
 - No `toolscript*` package imports a capability registry; registries are passed in (S1, S5).
 - A new package and a change to the port are core building blocks, so I give final approval; T4, T5, T9 and T11 are security PRs (Julian signs).
 - The core ships with Halonic's normal releases. There's no separate npm release and no standing 0.x ask.
@@ -321,8 +324,10 @@ The board chose the monorepo on 24 Nov at ~15:20 UTC (HAL-10), replacing its 14:
 | T10 | HAL-17589 | library index and search: the `toolscript-index/1` format and ranking in `core/toolscript`, `halonic toolscript index` and `search`, the agent skill text | Owen | T2, T8 | `index` on `examples/acme/tools/` writes the pinned `toolscript-index.json`; `search "release variable"` returns `acme.sync-release-variables@1` first with its declaration |
 | T11 | HAL-17590 | `adapters/cloudflare-toolscript` (Dynamic Worker host), **security PR** | Ravi | T4, T5 | the fence suite and the `ToolScriptHost` contract pass against the Dynamic Worker host in `wrangler dev` (local, no network); a script calling `fetch`, `connect()` from `cloudflare:sockets` or a remote `import` fails with `toolscript.no-network`; the parent refuses an unpinned `codeHash` before calling the loader; a module global from run 1 isn't visible in run 2 |
 
-**T4 fence list (unchanged from revision 3):**
-- `eval`, and `Function` through `.constructor` of a function, async function, generator and async generator;
+**T4 fence list:**
+- `eval`, and `Function` through `.constructor` of a function, async function, generator and async generator, and of the thrower itself;
+- the prelude (section 2.1): a forced prelude failure means the script never runs; after a script that tries `defineProperty`, `delete` and assignment on every replaced path, each slot still holds the same thrower and is non-writable and non-configurable;
+- `import()` of a `data:` URL or any other string is refused; `std`, `os`, `Proxy`, typed arrays and bignum are `undefined`;
 - `globalThis` probing; `Reflect` and `Object.getPrototypeOf(ctx)`;
 - prototype writes; another `this`; a `ctx` call after the run ends or after a limit trips;
 - getters, `Proxy`, `Symbol.toPrimitive`, `toJSON` and `valueOf` in arguments;
