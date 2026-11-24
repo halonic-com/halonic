@@ -50,19 +50,32 @@ export class FakeContainer implements ContainerControl<FakeGate> {
   destroyed = 0;
   intercepts: { scheme: "http" | "https"; host: string; gate: FakeGate }[] = [];
   processes: FakeProcess[] = [];
+  /** Still booting after `start`: `running` stays false, as on the platform before boot ends. */
+  booting = false;
+  /** The error `destroy` throws, while the container keeps running. */
+  destroyFails: Error | null = null;
+  /** The error the bridge's intercept throws, after the container started. */
+  interceptFails: Error | null = null;
 
   start(options: { enableInternet: boolean; env: Record<string, string> }): void {
-    this.running = true;
+    this.running = !this.booting;
     this.starts.push(options);
   }
 
   destroy(): Promise<void> {
+    if (this.destroyFails !== null) {
+      this.running = true;
+      return Promise.reject(this.destroyFails);
+    }
     this.running = false;
     this.destroyed += 1;
     return Promise.resolve();
   }
 
   interceptOutboundHttp(host: string, gate: FakeGate): Promise<void> {
+    if (this.interceptFails !== null) {
+      return Promise.reject(this.interceptFails);
+    }
     this.intercepts.push({ scheme: "http", host, gate });
     return Promise.resolve();
   }

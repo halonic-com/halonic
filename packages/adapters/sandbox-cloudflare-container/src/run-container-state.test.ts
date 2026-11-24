@@ -86,6 +86,53 @@ verifies("sandbox-cloudflare-container.torn-down", () => {
       expect(object.container.starts).toHaveLength(0);
     });
 
+    it("destroys a container that is still booting at the end", async () => {
+      const object = fakeObject("run-a", new HandClock(start));
+      object.container.booting = true;
+      await object.state.begin(setup("run-a"));
+      expect(object.container.running).toBe(false);
+      await object.state.end("run-a");
+      expect(object.container.destroyed).toBe(1);
+      expect(object.storage.alarmAt).toBeNull();
+    });
+
+    it("keeps the alarm when the teardown fails", async () => {
+      const object = fakeObject("run-a", new HandClock(start));
+      await object.state.begin(setup("run-a"));
+      object.container.destroyFails = new Error("destroy failed");
+      await expect(object.state.end("run-a")).rejects.toThrow(/destroy failed/);
+      expect(object.storage.alarmAt).toBe(start + 60_000);
+      object.container.destroyFails = null;
+      await object.state.alarm();
+      expect(object.container.destroyed).toBe(1);
+      expect(object.storage.alarmAt).toBeNull();
+    });
+
+    it("destroys the container when the start fails halfway", async () => {
+      const object = fakeObject("run-a", new HandClock(start));
+      object.container.interceptFails = new Error("intercept failed");
+      await expect(object.state.begin(setup("run-a"))).rejects.toThrow(/intercept failed/);
+      expect(object.container.destroyed).toBe(1);
+      expect(object.container.running).toBe(false);
+      await expect(object.state.begin(setup("run-a"))).rejects.toThrow(/never starts again/);
+    });
+
+    it("reports both errors when the start and the teardown fail", async () => {
+      const object = fakeObject("run-a", new HandClock(start));
+      object.container.interceptFails = new Error("intercept failed");
+      object.container.destroyFails = new Error("destroy failed");
+      await expect(object.state.begin(setup("run-a"))).rejects.toThrow(AggregateError);
+      expect(object.storage.alarmAt).toBe(start + 60_000);
+    });
+
+    it("keeps a refused second start from touching the first one's container", async () => {
+      const object = fakeObject("run-a", new HandClock(start));
+      await object.state.begin(setup("run-a"));
+      await expect(object.state.begin(setup("run-a"))).rejects.toThrow(/never starts again/);
+      expect(object.container.running).toBe(true);
+      expect(object.container.destroyed).toBe(0);
+    });
+
     it("does nothing on an alarm before any start", async () => {
       const object = fakeObject("run-a", new HandClock(start));
       await object.state.alarm();

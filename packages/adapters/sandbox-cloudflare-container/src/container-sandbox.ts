@@ -86,7 +86,12 @@ export class ContainerSandbox implements Sandbox {
       container,
       () => clock.now().getTime() >= deadlineMs,
     );
-    options?.signal?.addEventListener("abort", () => void session.close(), { once: true });
+    const signal = options?.signal;
+    if (signal?.aborted) {
+      await session.close();
+    } else {
+      signal?.addEventListener("abort", () => void session.close(), { once: true });
+    }
     return session;
   }
 }
@@ -96,7 +101,6 @@ class ContainerSession implements SandboxSession {
   readonly profile: SandboxProfile;
   #fence: SandboxFence = { state: "fenced" };
   #closing: Promise<void> | null = null;
-  readonly #processes = new Set<ContainerProcess>();
   readonly #runId: string;
   readonly #container: RunContainer;
   readonly #pastDeadline: () => boolean;
@@ -132,7 +136,6 @@ class ContainerSession implements SandboxSession {
       args: command.args,
       cwd,
     });
-    this.#processes.add(started);
     return this.#wrap(started);
   }
 
@@ -162,7 +165,6 @@ class ContainerSession implements SandboxSession {
       (code): SandboxExit => ({ code, signal: null, reason: this.#exitReason(killed) }),
       (): SandboxExit => ({ code: null, signal: "SIGKILL", reason: this.#exitReason(killed) }),
     );
-    void exited.finally(() => this.#processes.delete(started));
     return {
       stdin: started.stdin ?? new WritableStream(),
       stdout: started.stdout ?? new ReadableStream({ start: (controller) => controller.close() }),

@@ -12,6 +12,8 @@ interface StoredRun {
   runId: string;
   deadlineMs: number;
   ended: boolean;
+  /** Set once the container was destroyed, so a later end or alarm has nothing left to do. */
+  tornDown: boolean;
 }
 
 /** The storage key of {@link StoredRun}. */
@@ -63,7 +65,7 @@ export class RunContainerState<Gate> {
   /** Starts the container with internet off and intercepts only for the bridge and the allowed sites. */
   async begin(setup: RunContainerSetup): Promise<void> {
     this.#refuseOtherRun(setup.runId);
-    const { storage, container, clock } = this.#options;
+    const { storage, clock } = this.#options;
     if ((await storage.get(runKey)) !== undefined) {
       throw new Error(
         `The container of run ${setup.runId} was started before; it never starts again.`,
@@ -73,8 +75,32 @@ export class RunContainerState<Gate> {
       throw new Error(`Run ${setup.runId} is past its time limit; its container doesn't start.`);
     }
     // Stored before the start, so a start that fails halfway can't be tried again.
-    await storage.put(runKey, { runId: setup.runId, deadlineMs: setup.deadlineMs, ended: false });
+    const run: StoredRun = {
+      runId: setup.runId,
+      deadlineMs: setup.deadlineMs,
+      ended: false,
+      tornDown: false,
+    };
+    await storage.put(runKey, run);
     await storage.setAlarm(setup.deadlineMs);
+    try {
+      await this.#startContainer(setup);
+    } catch (error) {
+      // A start that failed halfway may have left a container up: tear it down now rather than
+      // at the alarm. Only here, after this start was recorded, so a refused second start can
+      // never tear down the first one's container.
+      await this.#stop(run).catch((stopError: unknown) => {
+        throw new AggregateError(
+          [error, stopError],
+          `Run ${setup.runId}'s container failed to start and to stop.`,
+        );
+      });
+      throw error;
+    }
+  }
+
+  async #startContainer(setup: RunContainerSetup): Promise<void> {
+    const { container } = this.#options;
     container.start({ enableInternet: false, env: setup.env });
     const gate = this.#options.gateFor({
       bridgeHost: setup.bridgeHost,
@@ -138,11 +164,23 @@ export class RunContainerState<Gate> {
 
   async #stop(run: StoredRun): Promise<void> {
     const { storage, container } = this.#options;
+    if (run.tornDown) {
+      return;
+    }
     // Marked ended first, so nothing starts in the container while it is torn down.
     await storage.put(runKey, { ...run, ended: true });
-    if (container.running) {
+    // Destroyed even when it doesn't say it is running: a container still booting reports
+    // `running` false and would come up after this with no teardown left.
+    try {
       await container.destroy();
+    } catch (error) {
+      if (container.running) {
+        // The alarm stays, so the platform tries the teardown again.
+        throw error;
+      }
     }
+    // Cleared only after the teardown worked, so the alarm stays the backstop until then.
+    await storage.put(runKey, { ...run, ended: true, tornDown: true });
     await storage.deleteAlarm();
   }
 }

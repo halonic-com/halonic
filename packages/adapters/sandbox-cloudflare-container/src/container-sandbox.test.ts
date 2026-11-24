@@ -65,6 +65,16 @@ verifies("sandbox-cloudflare-container.torn-down", () => {
       expect(namespace.objects.get("run-b")?.container.running).toBe(false);
     });
 
+    it("closes at once for a run cancelled before it opened", async () => {
+      const clock = new HandClock(start);
+      const namespace = new FakeNamespace(clock);
+      const session = await sandboxFor("run-a", namespace, clock).open(profile(), {
+        signal: AbortSignal.abort(),
+      });
+      expect(session.fence).toEqual({ state: "stopped" });
+      expect(namespace.objects.get("run-a")?.container.destroyed).toBe(1);
+    });
+
     it("reports a program that ends past the deadline as a timeout", async () => {
       const clock = new HandClock(start);
       const namespace = new FakeNamespace(clock);
