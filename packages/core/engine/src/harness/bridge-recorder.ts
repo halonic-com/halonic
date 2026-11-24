@@ -15,7 +15,8 @@ import type { StepLimits } from "./step-limits.ts";
  * Where the bridge writes its events (model and tool calls), which carry no
  * state. It records a model call's `llm.request` before the call goes out,
  * so a call the budget or a step limit refuses is never logged, and stops
- * the harness call. A model call's cost counts once its `llm.response` is in.
+ * the harness call. A model call's cost and tokens count once its
+ * `llm.response` is in, a sub-agent's as well as the agent's own.
  */
 export function bridgeRecorderOf(
   log: HarnessEventLog,
@@ -30,7 +31,7 @@ export function bridgeRecorderOf(
         await keepToBudget(budget, callStop);
       }
       await log.append(event);
-      if (event.type === "llm.response") stepLimits.afterModelCall(event.cost);
+      if (event.type === "llm.response") stepLimits.afterModelCall(event);
     },
   };
 }

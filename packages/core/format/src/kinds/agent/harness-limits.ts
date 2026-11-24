@@ -10,6 +10,9 @@ export const MAX_HARNESS_STEPS = 10_000;
 /** The most minutes `harnessLimits.maxMinutes` may allow: one day. */
 export const MAX_HARNESS_MINUTES = 1440;
 
+/** The most tokens `harnessLimits.maxTokens` may allow: one billion. */
+export const MAX_HARNESS_TOKENS = 1_000_000_000;
+
 /**
  * `harnessLimits`: what one step of the agent may use when it runs in a
  * harness program (`claude-code`, `codex`). Each field is optional; a limit
@@ -26,5 +29,11 @@ export const HarnessLimits = s
      * subscription pays for count as 0, so only time and steps bound those.
      */
     maxCost: s.number().positive().optional(),
+    /**
+     * Most tokens one step's model calls may use, sub-agents' included:
+     * input, output and prompt-cache tokens together. Calls a subscription
+     * pays for count too, so this bounds what `maxCost` can't.
+     */
+    maxTokens: s.number().int().min(1).max(MAX_HARNESS_TOKENS).optional(),
   })
   .strict();

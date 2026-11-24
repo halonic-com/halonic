@@ -319,7 +319,8 @@ An optional `harnessLimits` block bounds one step of a harness agent
 (requirement `agent-harness-limits`): `maxSteps` (model calls, 1 to 10000),
 `maxMinutes` (1 to 1440, not counting waits for a person's answer) and
 `maxCost` (in the budget's currency, above 0; calls a subscription pays for
-count as 0). A limit left out doesn't apply. The agent's own `maxSteps`, 6 by
+count as 0) and `maxTokens` (1 to 1000000000, every token of the step's model
+calls, sub-agents' and subscription calls included). A limit left out doesn't apply. The agent's own `maxSteps`, 6 by
 default, is sized for Halonic's own loop and doesn't bound a harness step: a
 coding program makes hundreds of model calls in one.
 

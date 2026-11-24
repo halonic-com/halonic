@@ -27,6 +27,11 @@ verifies("format.agent-harness-limits", () => {
     expect(value.harnessLimits).toEqual({ maxMinutes: 20 });
   });
 
+  it("reads maxTokens", () => {
+    const value = parsedValue("agent", agent("harnessLimits: { maxTokens: 2000000 }"));
+    expect(value.harnessLimits).toEqual({ maxTokens: 2000000 });
+  });
+
   describe("refuses a value outside its bounds, at its own field", () => {
     it.each([
       ["maxSteps: 0", "harnessLimits.maxSteps too_small 3"],
@@ -34,13 +39,16 @@ verifies("format.agent-harness-limits", () => {
       ["maxMinutes: 1.5", "harnessLimits.maxMinutes invalid_type 3"],
       ["maxMinutes: 1441", "harnessLimits.maxMinutes too_big 3"],
       ["maxCost: 0", "harnessLimits.maxCost too_small 3"],
+      ["maxTokens: 0", "harnessLimits.maxTokens too_small 3"],
+      ["maxTokens: 1.5", "harnessLimits.maxTokens invalid_type 3"],
+      ["maxTokens: 1000000001", "harnessLimits.maxTokens too_big 3"],
     ])("%s", (field, problem) => {
       expect(summary(problemsOf("agent", agent(`harnessLimits: { ${field} }`)))).toEqual([problem]);
     });
   });
 
   it("refuses a field the block doesn't have", () => {
-    expect(summary(problemsOf("agent", agent("harnessLimits: { maxTokens: 10 }")))).toEqual([
+    expect(summary(problemsOf("agent", agent("harnessLimits: { maxTurns: 10 }")))).toEqual([
       "harnessLimits unrecognized_keys 3",
     ]);
   });
