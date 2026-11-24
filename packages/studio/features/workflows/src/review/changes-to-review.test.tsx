@@ -27,6 +27,13 @@ const writeChange: ItemChangeToReview = {
   parts: [["states", "write"]],
   before: { value: { type: "task", agent: "drafter" } },
 };
+/** No value before it, so the step on the canvas reads as added. */
+const writeAdded: ItemChangeToReview = {
+  id: "step:write",
+  sentence: "Step added: Write",
+  important: false,
+  parts: [["states", "write"]],
+};
 const checkAdded: ItemChangeToReview = {
   id: "step:check",
   sentence: "Step added: Check",
@@ -114,6 +121,15 @@ verifies("workflows.review.changes-to-review", () => {
 
     expect(card(page, "write")?.getAttribute("aria-pressed")).toBe("true");
     expect(document.activeElement).toBe(mark(page, "step:write"));
+  });
+
+  it("edges an added step's card in success, 2px as ChangeMark draws it", async () => {
+    const { page } = await showPage(fakeReview(reviewOf([writeAdded])).host);
+
+    const classes = card(page, "write")?.classList;
+    expect(classes?.contains("border-s-2")).toBe(true);
+    expect(classes?.contains("border-s-success")).toBe(true);
+    expect(classes?.contains("border-s-4")).toBe(false);
   });
 
   it("accepts one change with a toast whose Undo takes it back", async () => {
