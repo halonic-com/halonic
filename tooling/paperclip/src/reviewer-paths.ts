@@ -18,6 +18,8 @@ export const liamFiles: readonly string[] = [
   "tooling/paperclip/src/reviewer-paths.ts",
   "tooling/paperclip/src/reviewer-paths.test.ts",
   "tooling/paperclip/requirements/reviewer-paths.md",
+  // The Paperclip provider's fixed request list: a new entry widens what the board key may do (HAL-17467).
+  "packages/adapters/paperclip-client/src/requests.ts",
 ];
 
 /** Folders whose files only Liam reviews. */

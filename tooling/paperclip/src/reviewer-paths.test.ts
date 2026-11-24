@@ -48,6 +48,11 @@ verifies("paperclip.reviewer-paths", () => {
     expect(reviewerFor({ files: [path], changedLines: 10, sensitive: false })).toBe("liam");
   });
 
+  test("a change to only the Paperclip provider's request list goes to Liam", () => {
+    const files = ["packages/adapters/paperclip-client/src/requests.ts"];
+    expect(reviewerFor({ files, changedLines: 2, sensitive: false })).toBe("liam");
+  });
+
   test.each([
     ".changeset/trust-words.md",
     "docs/guides/Sign-In.md",
