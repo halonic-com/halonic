@@ -5018,6 +5018,9 @@ importers:
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../../core/schema-kit
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../core/std
     devDependencies:
       '@halonicjs/adapter-remote-gateway':
         specifier: workspace:*

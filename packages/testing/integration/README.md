@@ -21,11 +21,25 @@ host, reads a file or leaks a key fails. Published as
 | `checkDeclaration` | the sheet fails its schema; the code differs from the sheet in kit version, name, version, or a tool's text, arguments, `risk` or `untrusted` (the loader's own check); the sheet lists the tools in another order than the code; a tool takes an argument without a description; a case calls an undeclared tool; or a recording isn't a valid `halonic.recording/1` file |
 | `checkPolicy` | a `{ fromSetting }` host has no usable URL in `settings` or one outside its class, plain `http` goes to a non-local address, or a secret goes over it to another machine |
 | `checkConnectIsQuiet` | connecting sends a request, or closing twice throws |
-| `checkSources` | the source uses global `fetch`, `globalThis`, `window` or `self`, `process`, `Deno` or `Bun`, `node:` modules, `require`, `import()`, `eval` or `Function`, timers or other network APIs |
-| `checkCase` | the call fails, the kit refused a request (even one the integration swallowed), a request didn't match the next recorded exchange or some were never asked for, the global `fetch` was used, or a canary appears in the result, the error, the log, a URL, or a request to a host the secret may not go to, or the call took other pauses than the case's `waits` |
+| `checkSources` | the source uses global `fetch`, `globalThis`, `window` or `self`, `process`, `Deno` or `Bun`, `node:` modules, `require`, `import()`, `eval` in any form, `Function` or `Function` reached through `.constructor` (so `error.constructor.name` counts too), timers or other network APIs; or it imports anything but its own files (no `../` out of the scanned folder), `zod`, `@halonicjs/adapters/integration-kit` and the packages named in `bundled` (type-only imports are fine); or the subject has no `sources` |
+| `checkCase` | the call fails, the kit refused a request (even one the integration swallowed), a request didn't match the next recorded exchange or some were never asked for, the global `fetch` was used, or a canary appears in the result, the error (its message, stack, own fields and `cause` chain), the log, a URL, or a request to a host the secret may not go to, as it is, URL-, form- or JSON-encoded, or in base64 or base64url, or the call took other pauses than the case's `waits` |
 | `checkAbort` | an aborted call doesn't reject |
 | `checkHostWait` | the host's `wait` doesn't clamp to 0 … 30 000 ms, or doesn't reject with the signal's reason when the signal is already aborted or aborts during the wait |
 | `checkProviderErrors` | the provider's error body reaches the result or the error |
+
+The global network APIs stay tripwires until the test that ran a case ends, so
+a promise the integration didn't wait for can't find the real `fetch` after it
+answers. A test in which the integration uses one after its call returned fails
+when it ends.
+
+`describeIntegrationConformance` always scans the source. Without `sources` it
+scans the code files in the test file's folder and below, other than tests
+(`*.test.*`, `*.spec.*`) and `node_modules`, and every file the test imports by
+a relative path, directly or through other files. It fails when the test
+imports code outside its package (the nearest folder with a `package.json`).
+It doesn't follow an import by package name, so a test that imports its
+integration that way passes `sources`. A shared package the build bundles
+in and the code imports by name goes in `bundled`, with its files in `sources`.
 
 The suite never really waits: the integration's `host.wait` is a `fakeWait`
 that resolves at once and records each pause, clamped as the real host
@@ -108,7 +122,8 @@ A plugin runs the same suite on its folder ([plugins ADR](../../../docs/adr/2026
 plugin with only a backend) as Halonic does, and fails when the folder has no manifest or both, the
 manifest fails its schema or its own checks, its `sdk` isn't this Halonic's, a file it names (the
 backend's `entry`, a local tool's `script`) is missing, or the backend's code differs from the
-backend. A backend then gets every check above, with each code file beside its `entry` scanned:
+backend. A backend then gets every check above, with each code file beside its `entry` scanned, and every
+file in the plugin folder those files import, with or without a file ending:
 
 ```ts
 import { fileURLToPath } from "node:url";
@@ -140,6 +155,24 @@ body and key headers where the recording kept them. `<scrubbed:secret>` and
 The suite takes the permission sheet itself (`sheet`: the JSON the build writes, or
 `integration.yaml` parsed) and checks it is valid. For an integration with a
 `{ fromSetting }` host, `settings` gives the URL it reads.
+
+## What the suite proves, and what it doesn't
+
+The suite is a check before review, not a sandbox. It proves that the code it
+was given has no import, global or call the scan knows to refuse, and that the
+cases it replays reach no undeclared host, use no global network API until the
+test ends and show no canary in the forms above. It can't prove more than that:
+
+- The scan reads text. Code built at run time from strings, a key encoded some
+  other way (reversed, split, encrypted) or code the scan wasn't given gets
+  past it.
+- It runs the integration in the test's own Node process. Only the cases it
+  replays run, and work the integration starts after its test ends isn't seen.
+
+What stops an integration at run time is Halonic's fenced runner: its module
+hook refuses every import that isn't the integration's own file or `zod`,
+Node's permission model refuses files and processes, and the sandbox around it
+limits the network.
 
 ## Not yet
 

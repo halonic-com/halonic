@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -138,6 +138,45 @@ verifies("integration.plugin-conformance", () => {
   it("scans every code file beside the backend's entry", () => {
     expect(Object.keys(pluginBackendSubject(weatherPlugin).sources ?? {})).toEqual([
       "backend/index.ts",
+      "backend/weather.ts",
     ]);
+  });
+});
+
+verifies("integration.source-scan-imports", () => {
+  const folders: string[] = [];
+  afterEach(() => {
+    for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
+  });
+
+  it("scans every file the backend's entry imports, beyond the entry's folder and without an ending", () => {
+    const folder = mkdtempSync(join(tmpdir(), "halonic-plugin-"));
+    folders.push(folder);
+    cpSync(weatherFolder, folder, { recursive: true });
+    mkdirSync(join(folder, "lib"));
+    writeFileSync(
+      join(folder, "backend", "index.ts"),
+      'export { weather } from "../lib/weather.js";\n',
+    );
+    writeFileSync(
+      join(folder, "lib", "weather.ts"),
+      'import { readFileSync } from "fs";\nexport { weather } from "./tools";\n',
+    );
+    // Written without an ending: a folder with an index file.
+    mkdirSync(join(folder, "lib", "tools"));
+    writeFileSync(
+      join(folder, "lib", "tools", "index.ts"),
+      "export const weather = (0, eval)('1');\n",
+    );
+    const subject = pluginBackendSubject({ ...weatherPlugin, folder });
+    expect(Object.keys(subject.sources ?? {}).sort()).toEqual([
+      "backend/index.ts",
+      "backend/weather.ts",
+      "lib/tools/index.ts",
+      "lib/weather.ts",
+    ]);
+    expect(() => checkSources(subject)).toThrow(
+      /lib\/weather\.ts:1: imports other than its own files, zod or the kit\nlib\/tools\/index\.ts:1: eval or new Function/,
+    );
   });
 });

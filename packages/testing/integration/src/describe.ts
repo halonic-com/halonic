@@ -16,6 +16,7 @@ import {
   pluginBackendSubject,
 } from "./plugin.ts";
 import type { ConformanceSubject, ToolCase } from "./run.ts";
+import { testFolderSources } from "./source-files.ts";
 
 /**
  * Registers the conformance suite for one integration with Vitest. Every
@@ -32,7 +33,7 @@ import type { ConformanceSubject, ToolCase } from "./run.ts";
  */
 export function describeIntegrationConformance(subject: ConformanceSubject): void {
   describe(`integration conformance: ${subject.integration.name}`, () => {
-    integrationChecks(() => subject, subject.cases, subject.sources !== undefined);
+    integrationChecks(() => subject, subject.cases);
   });
 }
 
@@ -55,7 +56,7 @@ export function describePluginConformance(subject: PluginConformanceSubject): vo
       passes(() => checkPluginManifest(subject)));
     if (subject.backend !== undefined) {
       describe("backend", () => {
-        integrationChecks(() => pluginBackendSubject(subject), subject.cases ?? [], true);
+        integrationChecks(() => pluginBackendSubject(subject), subject.cases ?? []);
       });
     }
   });
@@ -66,11 +67,7 @@ export function describePluginConformance(subject: PluginConformanceSubject): vo
  * subject is read when each test runs, so a broken plugin folder fails its
  * tests instead of the whole file.
  */
-function integrationChecks(
-  subjectOf: () => ConformanceSubject,
-  cases: readonly ToolCase[],
-  withSources: boolean,
-): void {
+function integrationChecks(subjectOf: () => ConformanceSubject, cases: readonly ToolCase[]): void {
   it("is what its sheet declares: name, version, tools and their risk", () =>
     passes(() => checkDeclaration(subjectOf())));
   it("declares exact https hosts and ties every secret to them", () =>
@@ -79,9 +76,7 @@ function integrationChecks(
     passes(() => checkConnectIsQuiet(subjectOf())));
   it("waits through a host that caps the pause and stops on abort", () =>
     passes(() => checkHostWait(subjectOf())));
-  if (withSources) {
-    it("uses nothing that reaches past its host", () => passes(() => checkSources(subjectOf())));
-  }
+  it("uses nothing that reaches past its host", () => passes(() => checkOwnSources(subjectOf())));
   for (const [index, toolCase] of cases.entries()) {
     const name = `${toolCase.tool} (case ${index + 1})`;
     it(`${name} answers from its recording without leaking a secret`, () =>
@@ -91,6 +86,15 @@ function integrationChecks(
     it(`${name} doesn't pass a provider's error body through`, () =>
       passes(() => checkProviderErrors(subjectOf(), toolCase)));
   }
+}
+
+/**
+ * {@link checkSources} on the subject's `sources`, or, when it has none, on
+ * the code beside the running test file, so leaving `sources` out never
+ * skips the scan. Call it inside a test.
+ */
+export function checkOwnSources(subject: ConformanceSubject): void {
+  checkSources({ ...subject, sources: subject.sources ?? testFolderSources() });
 }
 
 /**
