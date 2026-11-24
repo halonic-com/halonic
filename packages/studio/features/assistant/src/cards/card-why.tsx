@@ -1,3 +1,4 @@
+import { standaloneLinkClasses } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { cardWords as words } from "./card-words.ts";
 
@@ -9,7 +10,8 @@ function isClamped(element: HTMLElement | null): boolean {
 /**
  * The model's why, quoted, at most 3 lines (flow-assistant 3.2), so a long one doesn't push Show
  * the diff and the buttons down the 360px panel. Only when it's cut, **more** under it shows the
- * rest; then the button is gone, with no "less".
+ * rest; then the button is gone, with no "less", so focus moves to the text rather than falling to
+ * the page (HAL-17850).
  */
 export function CardWhy({ why }: { readonly why: string }) {
   const textId = useId();
@@ -24,12 +26,16 @@ export function CardWhy({ why }: { readonly why: string }) {
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [opened, why]);
+  useEffect(() => {
+    if (opened) text.current?.focus();
+  }, [opened]);
   return (
     <>
       <p
         id={textId}
         ref={text}
-        className={`text-small text-fg-muted [overflow-wrap:anywhere] ${opened ? "" : "line-clamp-3"}`}
+        tabIndex={-1}
+        className={`text-small text-fg-muted wrap-anywhere ${opened ? "" : "line-clamp-3"}`}
       >
         “{why}”
       </p>
@@ -38,7 +44,7 @@ export function CardWhy({ why }: { readonly why: string }) {
           type="button"
           aria-expanded={false}
           aria-controls={textId}
-          className="self-start text-small text-primary focus-ring"
+          className={`self-start text-small font-medium ${standaloneLinkClasses}`}
           onClick={() => setOpened(true)}
         >
           {words.more}
