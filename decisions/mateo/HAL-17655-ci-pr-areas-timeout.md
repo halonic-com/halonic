@@ -2,6 +2,7 @@
 
 - Approval: HAL-17655, a routine test fix under `tooling/check/`; Liam reviews the pull request and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7BIacYHipgYpYRckaIlxjeIxC272gmDiumd/MylEQT7wKkbP9lHPy8Xk3zLe41r0zBbkzO98pHZjRjtS/q03Cg==
 
 `tooling/check/src/test/ci-pr-areas.test.ts` checked the installer area for ten files in one test,
 and each file builds its own throwaway git repo (about 13 processes). That is about 10 s on an idle
