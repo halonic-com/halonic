@@ -22,6 +22,8 @@ export interface CachedAgentMessagingOptions {
   folder: string;
   /** Every workspace folder the host serves; the cache folder must be outside each. */
   workspaceRoots: readonly string[];
+  /** Says which cache file was broken and read as missing, so it isn't dropped silently. */
+  warn: (message: string) => void;
 }
 
 /** What a read gave: its items, or the error it threw. */
@@ -45,7 +47,7 @@ export class CachedAgentMessaging implements AgentMessaging {
 
   constructor(live: AgentMessaging, options: CachedAgentMessagingOptions) {
     this.#live = live;
-    this.#cache = new MessagingCacheFolder(options.folder, options.workspaceRoots);
+    this.#cache = new MessagingCacheFolder(options.folder, options.workspaceRoots, options.warn);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {

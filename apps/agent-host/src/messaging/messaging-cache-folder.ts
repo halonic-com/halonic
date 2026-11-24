@@ -21,12 +21,16 @@ const lastLiveReadFile = "as-of.json";
  * named by a hash of its ID so no ID can name a path, holding files only the
  * user can read (0600 in a 0700 folder; on Windows the user's profile folder
  * keeps them private). It refuses a folder inside a workspace, so nothing a
- * source gave can end up in git.
+ * source gave can end up in git. A file that is broken or not a cache file
+ * counts as missing, and `warn` says which, so one damaged file never stops
+ * the reads; an item in it that isn't the source's (or the conversation's) is
+ * dropped, so a swapped file can't show one source's items under another.
  */
 export class MessagingCacheFolder {
   readonly #folder: string;
+  readonly #warn: (message: string) => void;
 
-  constructor(folder: string, workspaceRoots: readonly string[]) {
+  constructor(folder: string, workspaceRoots: readonly string[], warn: (message: string) => void) {
     if (!isAbsolute(folder)) {
       throw new Error(`the messaging cache folder must be an absolute path, not ${folder}`);
     }
@@ -35,6 +39,7 @@ export class MessagingCacheFolder {
       throw new Error(`the messaging cache folder ${folder} is inside the workspace ${workspace}`);
     }
     this.#folder = resolve(folder);
+    this.#warn = warn;
   }
 
   /** Replaces the source's cached list, and records `read.asOf` as its last live read. */
@@ -52,42 +57,56 @@ export class MessagingCacheFolder {
     conversation: MessagingId,
     read: CachedRead<Item>,
   ): Promise<void> {
-    await this.#write(source, `${messagesPrefix}${hashOf(conversation)}.json`, read);
+    await this.#write(source, messagesFileOf(conversation), read);
   }
 
-  /** The source's cached list, or `undefined` when none was saved. */
-  async loadList<Item>(
+  /** The source's cached list, or `undefined` when none was saved or its file is broken. */
+  async loadList<Item extends { source: MessagingId }>(
     source: MessagingId,
     list: CachedList,
   ): Promise<CachedRead<Item> | undefined> {
-    return this.#read(source, `${list}.json`);
+    return this.#read<Item>(source, `${list}.json`, (item) => item["source"] === source);
   }
 
-  /** A conversation's cached messages, or `undefined` when none were saved. */
-  async loadMessages<Item>(
+  /** A conversation's cached messages, or `undefined` when none were saved or their file is broken. */
+  async loadMessages<Item extends { conversation: MessagingId }>(
     source: MessagingId,
     conversation: MessagingId,
   ): Promise<CachedRead<Item> | undefined> {
-    return this.#read(source, `${messagesPrefix}${hashOf(conversation)}.json`);
+    return this.#read<Item>(
+      source,
+      messagesFileOf(conversation),
+      (item) => item["conversation"] === conversation,
+    );
   }
 
   /** Every conversation's cached messages of the source, for a search while it is offline. */
-  async loadAllMessages<Item>(source: MessagingId): Promise<Item[]> {
+  async loadAllMessages<Item extends { conversation: MessagingId }>(
+    source: MessagingId,
+  ): Promise<Item[]> {
     const files = await readdir(this.#sourceFolder(source)).catch(noFolderAsEmpty);
     const reads = await Promise.all(
       files
         .filter((file) => file.startsWith(messagesPrefix))
-        .map((file) => this.#read<Item>(source, file)),
+        .map((file) =>
+          this.#read<Item>(
+            source,
+            file,
+            (item) =>
+              typeof item["conversation"] === "string" &&
+              messagesFileOf(item["conversation"]) === file,
+          ),
+        ),
     );
     return reads.flatMap((read) => read?.items ?? []);
   }
 
-  /** When the source last gave a live read that was cached, or `undefined` before the first. */
+  /** When the source last gave a cached live read; `undefined` before the first or when its file is broken. */
   async lastLiveRead(source: MessagingId): Promise<string | undefined> {
     const path = join(this.#sourceFolder(source), lastLiveReadFile);
-    const record = await readJson(path);
+    const record = await this.#readJson(path);
     if (record === undefined) return undefined;
-    if (!hasAsOf(record)) throw new Error(`the messaging cache file ${path} is not a cache file`);
+    if (!hasAsOf(record)) return this.#missing(path, "it has no asOf time");
     return record.asOf;
   }
 
@@ -104,15 +123,44 @@ export class MessagingCacheFolder {
     );
   }
 
-  async #read<Item>(source: MessagingId, file: string): Promise<CachedRead<Item> | undefined> {
+  /** The file's read, keeping only the items `belongs` accepts; a broken file counts as missing. */
+  async #read<Item>(
+    source: MessagingId,
+    file: string,
+    belongs: (item: Record<string, unknown>) => boolean,
+  ): Promise<CachedRead<Item> | undefined> {
     const path = join(this.#sourceFolder(source), file);
-    const read = await readJson(path);
+    const read = await this.#readJson(path);
     if (read === undefined) return undefined;
-    if (!hasAsOf(read) || !Array.isArray(read["items"])) {
-      throw new Error(`the messaging cache file ${path} is not a cache file`);
+    if (!hasAsOf(read)) return this.#missing(path, "it has no asOf time");
+    const items = read["items"];
+    if (!Array.isArray(items)) return this.#missing(path, "its items are not a list");
+    const kept = items.filter((item: unknown) => isRecord(item) && belongs(item));
+    if (kept.length < items.length) {
+      this.#warn(
+        `The messaging cache file ${path} held ${items.length - kept.length} items that aren't its own; they were left out.\n`,
+      );
     }
-    // The items are the port's fields as this folder wrote them, in a file only the user can change.
-    return { asOf: read.asOf, items: read["items"] as Item[] };
+    // The items left are the port's fields as this folder wrote them, in a file only the user can change.
+    return { asOf: read.asOf, items: kept as Item[] };
+  }
+
+  /** The file's JSON, or `undefined` when there is no file or its text isn't JSON. */
+  async #readJson(path: string): Promise<unknown> {
+    const text = await privateFileAt(path).read();
+    if (text === undefined) return undefined;
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error);
+      return this.#missing(path, `it isn't JSON (${why})`);
+    }
+  }
+
+  /** Says why the file at `path` counts as missing, and answers as if there were none. */
+  #missing(path: string, why: string): undefined {
+    this.#warn(`The messaging cache file ${path} was read as missing: ${why}.\n`);
+    return undefined;
   }
 
   #sourceFolder(source: MessagingId): string {
@@ -120,15 +168,16 @@ export class MessagingCacheFolder {
   }
 }
 
-/** The file's JSON, or `undefined` when there is no file. */
-async function readJson(path: string): Promise<unknown> {
-  const text = await privateFileAt(path).read();
-  return text === undefined ? undefined : JSON.parse(text);
+function messagesFileOf(conversation: MessagingId): string {
+  return `${messagesPrefix}${hashOf(conversation)}.json`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function hasAsOf(value: unknown): value is { asOf: string } & Record<string, unknown> {
-  if (typeof value !== "object" || value === null) return false;
-  return typeof (value as Record<string, unknown>)["asOf"] === "string";
+  return isRecord(value) && typeof value["asOf"] === "string";
 }
 
 function isInside(folder: string, root: string): boolean {

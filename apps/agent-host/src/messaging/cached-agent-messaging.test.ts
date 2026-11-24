@@ -74,6 +74,9 @@ verifies("agent-host.agent-messaging-cache", () => {
         {
           folder: cacheFolder,
           workspaceRoots: [workspace],
+          warn: (message) => {
+            throw new Error(`unexpected cache warning: ${message}`);
+          },
         },
       );
     });
@@ -161,6 +164,7 @@ verifies("agent-host.agent-messaging-cache", () => {
           new CachedAgentMessaging(fake, {
             folder: join(workspace, ".halonic", "cache"),
             workspaceRoots: [workspace],
+            warn: () => {},
           }),
       ).toThrow(/inside the workspace/);
     });
@@ -193,6 +197,7 @@ verifies("agent-host.agent-messaging-cache", () => {
       const cached = new CachedAgentMessaging(failing, {
         folder: cacheFolder,
         workspaceRoots: [workspace],
+        warn: () => {},
       });
       await expect(cached.listWork()).rejects.toThrow("Paperclip answered 500");
     });
