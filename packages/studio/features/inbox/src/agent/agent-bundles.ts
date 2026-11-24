@@ -5,7 +5,7 @@ import type {
   WorkItem,
 } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
-import { waitingFor } from "../plain/waiting-time.ts";
+import { waitingFor } from "@halonicjs/studio-kit";
 import { agentItemKey, authorName } from "./agent-item-text.ts";
 
 /**

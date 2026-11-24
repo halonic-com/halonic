@@ -171,6 +171,8 @@ verifies("inbox.agent-item-media", () => {
     expect(shown?.getAttribute("aria-label")).toBe("login.png");
     expect(drawImage).toHaveBeenCalledWith(picture, 0, 0);
     expect(buttons(root, "Show image")).toHaveLength(0);
+    // The button is gone, so focus moves to the picture rather than falling to the page.
+    expect(document.activeElement).toBe(shown);
     expect(fetch).not.toHaveBeenCalled();
   });
 

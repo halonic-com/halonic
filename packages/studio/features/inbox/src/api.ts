@@ -11,6 +11,7 @@ import type { InboxRequests } from "./request/inbox-requests.ts";
 import type { HeldAgents } from "./sandbox/on-hold-setup-source.ts";
 import type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 
+export { clockTime } from "@halonicjs/studio-kit";
 export { AnswerElsewhere } from "./answer-elsewhere.ts";
 export type { AnsweredViewProps, InboxAnsweredView } from "./answered-view.ts";
 export { type AfterAnswer, type InboxDecisions, inboxDecisions } from "./decide.ts";
@@ -40,7 +41,6 @@ export {
 export { type FailedRunNotice, failedRunNotices } from "./notices/failed-run-notices.ts";
 export type { InboxNotice, InboxNotices, SandboxFixedNotice } from "./notices/inbox-notices.ts";
 export { newestFirst as newestNoticeFirst } from "./notices/merge-notices.ts";
-export { clockTime } from "./plain/waiting-time.ts";
 export {
   type ProposalCompare,
   type ProposalCompareChoice,

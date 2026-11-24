@@ -82,6 +82,27 @@ verifies("messenger.files", () => {
       expect(picture?.getAttribute("aria-label")).toBe("Screenshot.png");
       expect(drawn).toHaveLength(1);
       expect(transcript(page).querySelector("img")).toBeNull();
+      // The button is gone, so focus moves to the picture rather than falling to the page.
+      expect(document.activeElement).toBe(picture);
+    });
+
+    it("says a picture couldn't load as the Inbox does, and reads it again on Try again", async () => {
+      const { messaging, chat } = chiefChat();
+      messaging.addMessage(chat.id, {
+        body: "Look",
+        attachments: [{ name: "login.png", type: "image/png", bytes: screenshotBytes }],
+      });
+      const read = vi
+        .spyOn(messaging, "readAttachment")
+        .mockResolvedValueOnce({ outcome: "refused", reason: "offline" });
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      await press(byText(page, "main ol button", "Show login.png"));
+      expect(transcript(page).textContent).toContain("login.png · 4 bytes");
+      expect(transcript(page).textContent).toContain("Couldn't load the image.");
+      await press(byText(page, "main ol button", "Try again"));
+      expect(read).toHaveBeenCalledTimes(2);
+      expect(transcript(page).querySelector('canvas[role="img"]')).not.toBeNull();
     });
 
     it("refuses a file over 10 MB with a message, and sends the message without it", async () => {
@@ -114,8 +135,39 @@ verifies("messenger.files", () => {
       });
       const page = await openMessenger(messaging);
       await openChat(page, "Chief");
-      expect(transcript(page).textContent).toContain("report.pdf 2 KB");
+      expect(transcript(page).textContent).toContain("report.pdf · 2 KB");
       expect(byText(page, "main ol button", "report.pdf")).toBeUndefined();
+    });
+
+    it("says just under 1 MB as 1 MB, as the Inbox does (HAL-17457)", async () => {
+      const { messaging, chat } = chiefChat();
+      messaging.addMessage(chat.id, {
+        body: "The log",
+        attachments: [{ name: "run.log", type: "text/plain", bytes: new Uint8Array(1_048_575) }],
+      });
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      expect(transcript(page).textContent).toContain("run.log · 1 MB");
+    });
+
+    it("lists the box's files on their own row, whole names that wrap, each with Remove", async () => {
+      const { messaging } = chiefChat();
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      const name = "quarterly-report-for-the-whole-acme-board-final-final.pdf";
+      await attach(page, [new File(["x"], name, { type: "application/pdf" })]);
+      const chip = [...page.querySelectorAll("main li")].find((li) =>
+        li.textContent?.includes(name),
+      );
+      expect(chip?.textContent).toBe(`${name} · 1 byte`);
+      expect(chip?.innerHTML).not.toContain("truncate");
+      // The list isn't in the row with Attach a file and Ask for an update, so neither drops below it.
+      const attachButton = byText(page, "main button", "Attach a file");
+      expect(attachButton?.parentElement?.contains(chip ?? null)).toBe(false);
+      const remove = chip?.querySelector("button");
+      expect(remove?.getAttribute("aria-label")).toBe(`Remove ${name}`);
+      await press(remove);
+      expect(page.textContent).not.toContain(name);
     });
   });
 });

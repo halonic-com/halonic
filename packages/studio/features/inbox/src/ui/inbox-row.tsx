@@ -1,11 +1,10 @@
 import { shortRunId } from "@halonicjs/app";
 import { markHiddenName } from "@halonicjs/std";
-import { type ListRow, StatusChip } from "@halonicjs/studio-kit";
+import { isLate, type ListRow, movesOnMeta, StatusChip, waitingFor } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { type InboxItem, isRunItem, type SetupItem } from "../inbox-items.ts";
 import { approvalTitle } from "../plain/approval-text.ts";
 import { doneOutcome, proposalMeta, proposalTitle } from "../plain/proposal-text.ts";
-import { isLate, movesOnMeta, waitingFor } from "../plain/waiting-time.ts";
 import type { ProposalItem } from "../proposal-items.ts";
 import type { RunFacts, RunFactsOf } from "./run-facts.ts";
 

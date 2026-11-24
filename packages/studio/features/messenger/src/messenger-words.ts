@@ -42,7 +42,6 @@ export const messengerWords = {
   /** An agent's open card in its chat (HAL-17421 render 4e, approved by the board, 24 Nov). */
   card: {
     needsYou: "Needs you",
-    waitingSince: (time: string) => `Waiting since ${time}`,
     alsoInInbox: "Also in your Inbox. Answering here answers it there.",
     answeredBy: (name: string) => `${name} answered this first.`,
     answeredByYou: "You already answered this.",
@@ -62,7 +61,9 @@ export const messengerWords = {
     notSent: filesNotSent,
     pastedName: "Screenshot.png",
     show: (name: string) => `Show ${name}`,
-    notShown: "This picture can't be shown.",
+    /** The Inbox's own line and button for a picture that didn't load. */
+    notShown: "Couldn't load the image.",
+    tryAgain: "Try again",
   },
   /** Why a quick action sent nothing; it is never sent later on its own. */
   notSent: {

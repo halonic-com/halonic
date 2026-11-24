@@ -338,11 +338,22 @@ export {
   type TabsProps,
   useTabIds,
 } from "./tabs/tabs.tsx";
+export { sizeText } from "./text/file-size.ts";
 export {
   type MarkdownBlock,
   type MarkdownInline,
   readMarkdown,
 } from "./text/markdown.ts";
+export {
+  clockTime,
+  decidedAt,
+  endedAgo,
+  isLate,
+  movesOnLine,
+  movesOnMeta,
+  waitingFor,
+  waitingSince,
+} from "./text/waiting-time.ts";
 export { TextSheet, type TextSheetProps } from "./text-sheet/text-sheet.tsx";
 export {
   TOAST_CLOSES_AFTER_MS,

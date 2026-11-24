@@ -6,8 +6,14 @@ import type {
   WorkItem,
 } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
-import { type MarkdownInline, readMarkdown } from "@halonicjs/studio-kit";
-import { clockTime, decidedAt, isLate, waitingFor } from "../plain/waiting-time.ts";
+import {
+  clockTime,
+  decidedAt,
+  isLate,
+  type MarkdownInline,
+  readMarkdown,
+  waitingFor,
+} from "@halonicjs/studio-kit";
 
 /** The list's key of an agent item; the item's ID is opaque, so the prefix keeps it apart from run items. */
 export function agentItemKey(item: AgentItem): string {

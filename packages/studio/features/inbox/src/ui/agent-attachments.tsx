@@ -1,6 +1,6 @@
 import type { Attachment, AttachmentRead, MessagingId } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
-import { Button } from "@halonicjs/studio-kit";
+import { Button, sizeText } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
 
 /** The picture types a card draws; SVG never, since it is a document that can hold script. */
@@ -43,16 +43,6 @@ export function AgentAttachments({ attachments, read }: AgentAttachmentsProps) {
 /** A file's line: "login.png · 120 KB". The name is the agent's, so a hidden character is marked. */
 export function attachmentLine(attachment: Attachment): string {
   return `${markHiddenName(attachment.name)} · ${sizeText(attachment.size)}`;
-}
-
-function sizeText(bytes: number): string {
-  if (bytes === 1) return "1 byte";
-  if (bytes < 1024) return `${bytes} bytes`;
-  const kilobytes = Math.round(bytes / 1024);
-  // Just under 1 MB rounds to 1024 KB, which reads as 1 MB (Noah, HAL-17457).
-  if (kilobytes < 1024) return `${kilobytes} KB`;
-  const megabytes = (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, "");
-  return `${megabytes} MB`;
 }
 
 type Shown =
@@ -115,7 +105,10 @@ function ImageAttachment({
   );
 }
 
-/** Draws the decoded picture at its own size, never wider than the card. */
+/**
+ * Draws the decoded picture at its own size, never wider than the card. **Show image** is gone
+ * once it's drawn, so focus moves to the picture instead of falling to the page.
+ */
 function Picture({ picture, name }: { readonly picture: ImageBitmap; readonly name: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -124,6 +117,7 @@ function Picture({ picture, name }: { readonly picture: ImageBitmap; readonly na
     target.width = picture.width;
     target.height = picture.height;
     target.getContext("2d")?.drawImage(picture, 0, 0);
+    target.focus();
     return () => picture.close();
   }, [picture]);
   return (
@@ -131,6 +125,7 @@ function Picture({ picture, name }: { readonly picture: ImageBitmap; readonly na
       ref={canvas}
       role="img"
       aria-label={markHiddenName(name)}
+      tabIndex={-1}
       className="h-auto max-w-full self-start rounded-sm border border-border"
     />
   );

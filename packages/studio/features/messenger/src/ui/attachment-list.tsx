@@ -1,10 +1,9 @@
 import type { Attachment } from "@halonicjs/ports";
-import { Button } from "@halonicjs/studio-kit";
+import { Button, sizeText } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
 import { isPicture } from "../draft-files.ts";
 import type { Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
-import { sizeOf } from "./file-size.ts";
 
 /** The props of {@link AttachmentList}. */
 export interface AttachmentListProps {
@@ -37,7 +36,8 @@ export function AttachmentList({ messenger, attachments }: AttachmentListProps) 
 function FileLine({ attachment }: { readonly attachment: Attachment }) {
   return (
     <span>
-      <bdi>{attachment.name}</bdi> <span className="text-fg-muted">{sizeOf(attachment.size)}</span>
+      <bdi>{attachment.name}</bdi>
+      <span className="text-fg-muted"> · {sizeText(attachment.size)}</span>
     </span>
   );
 }
@@ -53,37 +53,41 @@ function Picture({
   const [picture, setPicture] = useState<ImageBitmap | "not-shown" | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
-  async function show() {
+  function show() {
     setBusy(true);
-    try {
-      setPicture(await pictureOf(messenger, attachment));
-    } finally {
-      setBusy(false);
-    }
+    void pictureOf(messenger, attachment)
+      .catch((error: unknown) => {
+        console.error("The picture couldn't be shown:", error);
+        return "not-shown" as const;
+      })
+      .then(setPicture)
+      .finally(() => setBusy(false));
   }
 
   if (picture === undefined) {
     return (
-      <Button
-        variant="secondary"
-        size="sm"
-        busy={busy}
-        onClick={() => {
-          void show().catch((error: unknown) => {
-            console.error("The picture couldn't be shown:", error);
-            setPicture("not-shown");
-          });
-        }}
-      >
-        {messengerWords.files.show(attachment.name)} · {sizeOf(attachment.size)}
+      <Button variant="secondary" size="sm" busy={busy} onClick={show}>
+        {messengerWords.files.show(attachment.name)} · {sizeText(attachment.size)}
       </Button>
     );
   }
   if (picture === "not-shown") {
+    // The Inbox's line and button for a picture that didn't load (HAL-17851).
     return (
       <>
         <FileLine attachment={attachment} />
-        <span className="text-fg-muted">{messengerWords.files.notShown}</span>
+        <span className="flex flex-wrap items-center gap-2 text-fg-muted">
+          {messengerWords.files.notShown}
+          <Button
+            variant="secondary"
+            size="sm"
+            busy={busy}
+            name={`${messengerWords.files.tryAgain}: ${attachment.name}`}
+            onClick={show}
+          >
+            {messengerWords.files.tryAgain}
+          </Button>
+        </span>
       </>
     );
   }
@@ -100,11 +104,15 @@ async function pictureOf(
   return createImageBitmap(new Blob([new Uint8Array(read.bytes)], { type: read.type }));
 }
 
-/** The decoded picture on a canvas: no `<img>`, so no address and no load of its own. */
+/**
+ * The decoded picture on a canvas: no `<img>`, so no address and no load of its own. The Show
+ * button is gone once it's drawn, so focus moves to the picture instead of falling to the page.
+ */
 function DrawnPicture({ name, picture }: { readonly name: string; readonly picture: ImageBitmap }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     canvas.current?.getContext("2d")?.drawImage(picture, 0, 0);
+    canvas.current?.focus();
     return () => picture.close();
   }, [picture]);
   return (
@@ -112,6 +120,7 @@ function DrawnPicture({ name, picture }: { readonly name: string; readonly pictu
       ref={canvas}
       role="img"
       aria-label={name}
+      tabIndex={-1}
       width={picture.width}
       height={picture.height}
       className="h-auto max-w-full rounded-md border border-border"
