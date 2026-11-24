@@ -12,6 +12,7 @@ import { baseGreenSince, snapshotFacts } from "../pr-watcher/facts.ts";
 import { ciOk, gitHubReader } from "../pr-watcher/github.ts";
 import { countMonitors, type MonitorCounts } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
+import { snapshotSummary } from "../pr-watcher/wake-status.ts";
 import { type TickSummary, tick } from "../pr-watcher/watch.ts";
 import { gitHubQueryReader } from "../snapshot/graphql.ts";
 import { takeSnapshot } from "../snapshot/read.ts";
@@ -224,6 +225,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     dryRun: settings.dryRun,
     log: (line) => ctx.logger.info(line, { companyId }),
     now,
+    summary: snapshotSummary(snapshot),
   });
   const prTasks = new Set([...found].filter(([, pulls]) => pulls.length > 0).map(([id]) => id));
   await recordPass(ctx, companyId, settings.dryRun, {

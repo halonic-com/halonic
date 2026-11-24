@@ -48,24 +48,36 @@ export interface ApprovedPull {
   readonly head: string;
   /** The agent the branch belongs to, lower case. */
   readonly author: string | undefined;
-  /** The reviewer by the path rules. */
-  readonly reviewer: "julian" | "liam";
+  /** The reviewer by the path rules, or undefined when the changed files weren't read. */
+  readonly reviewer: "julian" | "liam" | undefined;
 }
 
 /** Each signed approval, with whether it counts on this pull request's current head. */
 export function approvals(comments: readonly PullComment[], pull: ApprovedPull): Approval[] {
-  return signedApprovals(comments).map(({ by, head }): Approval => {
+  return judgeApprovals(signedApprovals(comments), pull);
+}
+
+/** Whether each signed approval, already read, counts on this pull request's current head. */
+export function judgeApprovals(
+  signed: readonly { readonly by: string; readonly head: string }[],
+  pull: ApprovedPull,
+): Approval[] {
+  return signed.map(({ by, head }): Approval => {
     if (!pull.head.startsWith(head)) {
       return { by, head, counts: false, note: "names an older head" };
     }
     if (by.toLowerCase() === pull.author) {
       return { by, head, counts: false, note: "the author's own pull request" };
     }
-    if (by === "Julian" && pull.author !== "liam" && pull.reviewer !== "julian") {
+    if (by !== "Julian") {
+      return { by, head, counts: true };
+    }
+    const anyPaths = pull.author === "liam";
+    if (!anyPaths && pull.reviewer === "liam") {
       return { by, head, counts: false, note: "outside Julian's limits (HAL-14809)" };
     }
-    return by === "Julian"
+    return anyPaths || pull.reviewer === "julian"
       ? { by, head, counts: true, note: "unless it's a security or release pull request" }
-      : { by, head, counts: true };
+      : { by, head, counts: true, note: "only within his limits (HAL-14809); pr_status checks" };
   });
 }
