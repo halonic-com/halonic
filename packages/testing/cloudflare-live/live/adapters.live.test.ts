@@ -9,6 +9,7 @@ import {
 import { afterAll } from "vitest";
 import { deployAdapterRunner } from "../src/adapter-runner.ts";
 import { createCloudflareRest } from "../src/cloudflare-rest.ts";
+import { retryInternalErrors, retryTransient } from "../src/transient.ts";
 
 /** Names the missing variables, never a value. */
 function required(name: string): string {
@@ -44,8 +45,8 @@ const runnerToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =
 if (process.env["GITHUB_ACTIONS"] === "true") console.log(`::add-mask::${runnerToken}`);
 const runner = await deployAdapterRunner({
   randomSecret: () => runnerToken,
-  api: createCloudflareClient({ token }),
-  rest: createCloudflareRest({ token }),
+  api: createCloudflareClient({ token, fetch: retryTransient() }),
+  rest: createCloudflareRest({ token, fetch: retryTransient() }),
   accountId: required("CLOUDFLARE_LIVE_ACCOUNT_ID"),
   prefix,
   script,
@@ -57,11 +58,13 @@ const runner = await deployAdapterRunner({
     { binding: "ROUTINES", className: "TestRoutinesObject" },
   ],
 });
-afterAll(() => runner.destroy());
+// Emptying the buckets deletes every object one by one, which can take Cloudflare over 2 minutes.
+afterAll(() => runner.destroy(), 300_000);
 
 try {
   const remote = new RemoteRunner(runner.url, runner.token);
-  mirrorCases((await remote.cases()).children, remote);
+  // A case Cloudflare failed with its own internal error runs again; any other failure counts.
+  mirrorCases((await remote.cases()).children, retryInternalErrors(remote));
 } catch (error) {
   // If collection fails, the file fails before any test runs and afterAll may never run.
   await runner.destroy();
