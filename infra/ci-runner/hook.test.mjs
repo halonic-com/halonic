@@ -201,9 +201,9 @@ test("a job container starts at MEM_START and grows only up to MEM, with swap ke
   // 19 large slots would allow 190 GB on a 128 GB VM with no free-memory check below 10 GB.
   assert.match(slot, /^ {2}large-\*\).* MEM=16g; MEM_START=6g; /m);
   assert.match(slot, /^ {2}fast-\[1-9\]\|fast-10\).* MEM=16g; MEM_START=6g; /m);
-  // fast-11..24 (HAL-17463): GitHub's runner size, 4 CPUs, starting at 4 GB (fast jobs peaked at
-  // 4.4 GB over 24 h) and growing to 12 GB at most.
-  assert.match(slot, /^ {2}fast-1\[1-9\]\|fast-2\[0-4\]\).* CPUS=4; MEM=12g; MEM_START=4g; /m);
+  // fast-11..40 (HAL-17463, HAL-17574): GitHub's runner size, 4 CPUs, starting at 4 GB (fast jobs
+  // peaked at 4.4 GB over 24 h) and growing to 12 GB at most.
+  assert.match(slot, /^ {2}fast-1\[1-9\]\|fast-\[23\]\[0-9\]\|fast-40\).* CPUS=4; MEM=12g; MEM_START=4g; /m);
   assert.match(slot, /^ {2}small-\*\).* MEM=3g; {2}MEM_START=2g; /m);
   assert.ok(slot.includes('--memory "$MEM_START" --memory-swap "$MEM_START"'));
   assert.doesNotMatch(slot, /--memory "\$MEM" /);
@@ -316,8 +316,9 @@ test("a fast slot and the large slot whose CPUs it takes never run at once", () 
   // Other large slots have no twin, and an idle twin doesn't stop a slot.
   assert.match(slotCycle({ ...both, args: ["large-8"] }).stderr, /pool\.env/);
   assert.match(slotCycle({ paused: false, docker: ready, args: ["fast-2"] }).stderr, /pool\.env/);
-  // fast-11..24 have no twin (HAL-17463): they start whatever runs (and stop at pool.env here).
-  for (const slot of ["fast-11", "fast-24"]) {
+  // fast-11..40 have no twin (HAL-17463, HAL-17574): they start whatever runs (and stop at
+  // pool.env here).
+  for (const slot of ["fast-11", "fast-24", "fast-25", "fast-40"]) {
     assert.match(slotCycle({ ...both, args: [slot] }).stderr, /pool\.env/, slot);
   }
 });

@@ -38,6 +38,9 @@ if [[ "$SLOT" == fast-* ]] && [ "${2:-}" != "--cleanup" ]; then
   [[ "$rts" == *" runsc "* ]] || fail "Docker has no runsc runtime (gVisor); fast slots run only under it"
   icc=$(docker network inspect -f '{{index .Options "com.docker.network.bridge.enable_icc"}}' "$FAST_NET" 2>/dev/null || true)
   [ "$icc" = false ] || fail "Docker network $FAST_NET missing or lets containers reach each other"
+  # gVisor tells the job it has as many CPUs as its --cpus quota, not its CPU set (HAL-17574, below).
+  rargs=$(docker info --format '{{json (index .Runtimes "runsc")}}' 2>/dev/null || true)
+  if [[ "$rargs" =~ \"--cpu-num-from-quota(=true)?\" ]]; then FAST_FLOAT=1; fi
 fi
 . /etc/halonic-ci/pool.env   # APP_ID INSTALLATION_ID ORG RUNNER_GROUP_ID IMAGE
 KEY=/etc/halonic-ci/app.pem
@@ -49,10 +52,11 @@ case "$SLOT" in
   large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
   fast-[1-9]|fast-10) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
-  fast-1[1-9]|fast-2[0-4]) LABEL=halonic-ci-fast; CPUS=4; MEM=12g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
+  fast-1[1-9]|fast-[23][0-9]|fast-40) LABEL=halonic-ci-fast; CPUS=4; MEM=12g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
+SHARES=1024; [ "$LABEL" != halonic-ci-large ] || SHARES=2048
 case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PROJ=$((400+N));; esac
 # Each slot gets its own CPUs, so a job sees only those (nproc, Node's availableParallelism).
 # With --cpus alone it saw all of the VM's, and test runners started a worker per CPU and ran
@@ -69,7 +73,16 @@ case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PR
 # whole cores. Each shares them with one to three large slots and none with another new fast slot;
 # fast-11..17 share them with no older fast slot, fast-18..24 each with one (4 of its 6). No twin
 # rule for them, as for fast-4..10: a large slot and a fast slot on the same cores both run slower.
-FAST4_FROM=(0 4 8 22 26 30 34 50 56 62 74 80 86 92)
+# fast-25..40 (HAL-17574) are 16 more of the same size. With 40 fast slots the pinned sets ask for
+# 276 vCPUs on the 96 outside the small slots' and the VM's, so no fixed map keeps every core at two
+# slots: most would carry three and some four, while other cores sit idle. So fast-11..40 float:
+# their CPU set is all of FAST_WIDE and --cpus 4 is their quota, and the kernel runs them on whichever
+# cores are free. The job still sees 4 CPUs, because runsc runs with --cpu-num-from-quota (checked at
+# the top; Docker's daemon.json runtimeArgs). Without that flag a job would see 96 CPUs and start a
+# test worker for each, so they keep a fixed 4-vCPU set (FAST4_FROM) instead. Large slots get twice
+# the CPU weight (--cpu-shares), so a merge-group job wins the cores it shares with fast jobs.
+FAST4_FROM=(0 4 8 22 26 30 34 50 56 62 74 80 86 92 46 12 58 18 36 42 22 62 96 10 48 0 32 54 14 38)
+FAST_WIDE="0-65,72-101"
 case "$SLOT" in
   large-12) CPUSET="3-8" ;;
   large-13) CPUSET="27-32" ;;
@@ -80,7 +93,8 @@ case "$SLOT" in
   fast-[4-8]) CPUSET="$(( 72+(N-4)*6 ))-$(( 77+(N-4)*6 ))" ;;
   fast-9)  CPUSET="15-20" ;;
   fast-10) CPUSET="39-44" ;;
-  fast-1[1-9]|fast-2[0-4]) CPUSET="${FAST4_FROM[N-11]}-$(( FAST4_FROM[N-11]+3 ))" ;;
+  fast-1[1-9]|fast-[23][0-9]|fast-40)
+           if [ -n "${FAST_FLOAT:-}" ]; then CPUSET=$FAST_WIDE; else CPUSET="${FAST4_FROM[N-11]}-$(( FAST4_FROM[N-11]+3 ))"; fi ;;
   fast-*)  CPUSET="$(( (11-N)*6 ))-$(( (12-N)*6-1 ))" ;;
 esac
 # Fast slots take pull requests (HAL-15972), so they get their own pool config, and the other
@@ -234,7 +248,7 @@ trap cleanup EXIT
 echo "slot $SLOT: runner $NAME (id $RUNNER_ID) waiting for a job"
 STARTED=$(date +%s)
 docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
-  --cpus "$CPUS" --cpuset-cpus "$CPUSET" --memory "$MEM_START" --memory-swap "$MEM_START" --pids-limit 8192 \
+  --cpus "$CPUS" --cpuset-cpus "$CPUSET" --cpu-shares "$SHARES" --memory "$MEM_START" --memory-swap "$MEM_START" --pids-limit 8192 \
   --cap-drop ALL --security-opt no-new-privileges "${SANDBOX[@]}" \
   --tmpfs "/tmp:rw,exec,nosuid,nodev,size=$TMPFS" \
   -v "$RUN:/run/halonic-ci:ro" \

@@ -72,7 +72,7 @@ it in the `fast` job).
 | VM | Docker with `userns-remap`. One systemd unit per slot (`vm/halonic-runner@.service`). |
 | VM | `/etc/halonic-ci/app.pem`: the GitHub App's key (only permission: self-hosted runners), root-only `0400`. Never in the image, a container or a backup that leaves the VM. |
 | VM | Queue gate (C7): `vm/halonic-ci-gate.socket` listens on `/run/halonic-ci-gate/gate.sock`, which every container gets read-only. Each connection starts `vm/halonic-ci-gate@.service` (`vm/halonic-ci-gate.sh`), which answers one of two fixed GraphQL queries: one pull request's state, owner, head commit and author for `GET /pr/<n>` (1-9 digits, the only input that reaches a query), `main`'s merge queue for anything else. Its token is `/etc/halonic-ci/queue-token`, root-only `0400`, handed to the service as a systemd credential under a throwaway user. |
-| VM | Fast pool (HAL-15972): fast slots' containers run under gVisor (`runsc`) on the Docker network `halonic-ci-fast` (no traffic between its containers, and none to the merge-group jobs on the default bridge), and get the gate as `vm/halonic-ci-gate-fast.socket` (`/run/halonic-ci-gate-fast/gate.sock`, 24 connections, at most 48 a minute, pull request queries only) instead of the merge queue's. |
+| VM | Fast pool (HAL-15972): fast slots' containers run under gVisor (`runsc`) on the Docker network `halonic-ci-fast` (no traffic between its containers, and none to the merge-group jobs on the default bridge), and get the gate as `vm/halonic-ci-gate-fast.socket` (`/run/halonic-ci-gate-fast/gate.sock`, 40 connections, at most 48 a minute, pull request queries only) instead of the merge queue's. |
 | VM | `/cache/trusted/{pnpm-store,turbo,ms-playwright}`: package, Turbo and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
 
 Site data stays out of this repo: `/etc/halonic-ci/pool.env` (see `vm/pool.env.example`),
@@ -124,13 +124,23 @@ for it to exit and cleans up. systemd starts the next cycle.
 | `fast-1` … `fast-3` | `halonic-ci-fast` | 6 | those of `large-11`, `large-10`, `large-9` | 6 GB → 16 GB | 20 GB |
 | `fast-4` … `fast-8` | `halonic-ci-fast` | 6 | those of `large-15` … `large-19` (shared) | 6 GB → 16 GB | 20 GB |
 | `fast-9`, `fast-10` | `halonic-ci-fast` | 6 | 15-20, 39-44 (shared with two large slots each) | 6 GB → 16 GB | 20 GB |
-| `fast-11` … `fast-24` | `halonic-ci-fast` | 4 | 0-3, 4-7, 8-11, 22-25, 26-29, 30-33, 34-37, 50-53, 56-59, 62-65, 74-77, 80-83, 86-89, 92-95 (shared with large slots; `fast-18` … `fast-24` also with `fast-3`, `fast-2`, `fast-1`, `fast-4` … `fast-7`) | 4 GB → 12 GB | 20 GB |
+| `fast-11` … `fast-40` | `halonic-ci-fast` | 4 (quota) | float over 0-65 and 72-101 while `runsc` runs with `--cpu-num-from-quota`; without it a fixed 4-vCPU set each (`FAST4_FROM`; `fast-11` … `fast-24` keep 0-3, 4-7, 8-11, 22-25, 26-29, 30-33, 34-37, 50-53, 56-59, 62-65, 74-77, 80-83, 86-89, 92-95) | 4 GB → 12 GB | 20 GB |
 
 The VM has 112 vCPUs (56 cores) and 128 GB. Each slot is pinned to its own vCPUs
 (`--cpuset-cpus`), so a job sees only those (`nproc`, Node's `availableParallelism`) and test
 runners don't start a worker for each of the VM's 112. The eleven large slots take vCPUs 0-65, the
 three small slots share 66-71 (capped at 2 CPUs each), large-15..19 take 72-101, and 102-111 are left
 for the VM itself.
+
+**fast-11 … fast-40 float** (HAL-17574). With 40 fast slots the pinned sets would ask for 276 vCPUs
+on the 96 outside the small slots' and the VM's, so a fixed map puts three or four slots on most
+cores while other cores sit idle (on 24 Nov the guest was 70 % idle with CPU pressure around 24 %).
+So the 4-CPU fast slots get all of 0-65 and 72-101 as their set and `--cpus 4` as their quota, and
+the kernel runs them wherever cores are free. The job still sees 4 CPUs only because `runsc` runs with
+`--cpu-num-from-quota` (in `daemon.json`'s `runtimeArgs`): the slot script reads that from
+`docker info` and, without it, pins each of them to a fixed 4-vCPU set instead, as before. Large
+slots get twice the CPU weight (`--cpu-shares 2048`), so where a merge-group job and fast jobs want
+the same core, the merge group gets two thirds of it.
 
 **Memory grows as a job needs it** (since 22 Nov 2026; HAL-15994 asked for a fixed 10 GB start after
 kills at 6 GB under the old 4 GB start, 2 GB step and 3 s check. With the 6 GB start, 4 GB step every
@@ -144,7 +154,7 @@ cgroup's `memory.high` sits 512 MB under the limit, so the kernel reclaims cache
 before the hard limit kills it, which gives the loop time to grow it. All slots start at
 19×6 + 3×2 = 120 GB and could grow to 19×16 + 3×3 = 313 GB, far more than the VM's 128 GB. The
 VM-wide reserve check (`MemAvailable` above the 4 GB step plus 4 GB) is the only thing that stops
-growth from overcommitting it. The 24 fast slots add 10×6 + 14×4 = 116 GB of start size: fast jobs
+growth from overcommitting it. The 40 fast slots add 10×6 + 30×4 = 180 GB of start size: fast jobs
 peaked at 4.4 GB (p90 4.35 GB) over 24 h on 23–24 Nov, so most stay at their start size, and the same
 reserve check stops the rest from growing past what the VM has. Start sizes aren't covered by that
 check, so a fast slot also waits before it registers a runner (memory admission, HAL-17463): it
@@ -232,6 +242,18 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   gate (it reads the pull request's author), so deploy the gate first. Then a pull request without
   a label should show its Linux checks on `hci-fast-*`. Off at once: clear `CI_RUNNER_FAST`. Back:
   restore the copies and restart the gate socket and the slots.
+- **40 fast slots** (HAL-17574, after Liam's and Julian's OK). Keep copies of the live slot script
+  and `halonic-ci-gate-fast.socket` first. Add `"--cpu-num-from-quota"` to `runsc`'s
+  `runtimeArgs` in `/etc/docker/daemon.json` and `systemctl reload docker` (Docker rereads its
+  runtimes on a reload; running containers keep theirs). Deploy `vm/halonic-ci-gate-fast.socket`
+  (`systemctl daemon-reload && systemctl restart halonic-ci-gate-fast.socket`) and
+  `vm/halonic-runner-slot.sh`, restart `fast-11` and `large-1` while idle, and check
+  `docker inspect -f '{{.HostConfig.CpusetCpus}} {{.HostConfig.CpuShares}}'` on their containers
+  (`0-65,72-101 1024` and `0-5 2048`) and `nproc` in a fast job (4). Then add
+  `halonic-runner@fast-25` … `halonic-runner@fast-40` to `/etc/halonic-ci/slots` and start them;
+  memory admission holds those the VM has no room for. Back to fixed CPU sets: remove the flag and
+  reload Docker (slots pick it up on their next cycle). Back to 24 slots: stop and disable
+  `fast-25` … `fast-40` and remove them from `/etc/halonic-ci/slots`. Full: restore the copies.
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,
   set `IMAGE=` in `pool.env`, restart the slots.
 - **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images, stale work dirs and Turbo
