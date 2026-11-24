@@ -9,6 +9,7 @@ import { checkConflictMarkers } from "./conflict-markers.ts";
 import { checkDco } from "./dco.ts";
 import { checkDeny } from "./deny.ts";
 import { checkDependencies } from "./dependencies.ts";
+import { checkEnvironmentSecrets } from "./environment-secrets.ts";
 import { checkFeatures } from "./features.ts";
 import { checkFileSize } from "./file-size.ts";
 import { checkInvisibleCharacters } from "./invisible-characters.ts";
@@ -45,6 +46,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "webview-apis": checkWebviewApis,
   "invisible-characters": checkInvisibleCharacters,
   "conflict-markers": checkConflictMarkers,
+  "environment-secrets": checkEnvironmentSecrets,
   "markdown-tables": checkMarkdownTables,
   "tracker-links": checkTrackerLinks,
   // On a pull request, GitHub sets GITHUB_HEAD_REF to its branch; the note
