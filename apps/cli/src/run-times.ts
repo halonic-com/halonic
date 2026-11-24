@@ -91,7 +91,7 @@ function calendarDay(date: Date, timeZone: string | undefined): YearDay {
 }
 
 /** "10:31": hours and minutes on a 24-hour clock, in the clock's time zone. */
-function clockTime(iso: string, clock: RunClock): string {
+export function clockTime(iso: string, clock: RunClock): string {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: clock.timeZone,
     hour: "2-digit",

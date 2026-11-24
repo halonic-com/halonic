@@ -86,6 +86,28 @@ verifies("cli.deploy-output", () => {
     });
   });
 
+  it("adds a full stop to a reason that has none before saying what still serves", () => {
+    const lost = failure({
+      message: "This deploy lost its hold on web, so it stopped: fetch failed",
+      live: version1,
+    });
+    expect(printed(lost)[0]).toBe(
+      "✕ Couldn't deploy web: this deploy lost its hold on web, so it stopped: fetch failed. Version 1 is still live.",
+    );
+  });
+
+  it("never names making a version live next to an older version still live", () => {
+    const lost = failure({
+      message: "Lost.",
+      live: version1,
+      stoppedAfter: { step: "switch", version: 2 },
+    });
+    expect(printed(lost)).toEqual([
+      "✕ Couldn't deploy web: Lost. Version 1 is still live.",
+      "  Run halonic deploy again.",
+    ]);
+  });
+
   it("gives back a failure that doesn't say what still serves", () => {
     const locked = failure({ message: "A deploy of web by sam@example.com is still running." });
     expect(deployFailure(locked, "web")).toBe(locked);

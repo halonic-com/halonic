@@ -41,7 +41,10 @@ export function deployFailure(error: unknown, deployment: string): unknown {
       live,
       ...(stoppedAfter === undefined ? {} : { stoppedAfter }),
     },
-    stoppedAfter === undefined
+    // A stop during the switch finishes it and a lock lost after it is only a
+    // warning, so no failure comes after it; were one to, "after making
+    // version 2 live" would sit next to "Version 1 is still live." (C787 row 3).
+    stoppedAfter === undefined || stoppedAfter.step === "switch"
       ? undefined
       : { lines: [deployMessages.stoppedAfter(stepWords(stoppedAfter)).phrase], fix },
   );
@@ -65,7 +68,7 @@ function hasLive(error: unknown): error is FailureWithLive {
 }
 
 /** "uploading version 2", as 2.8 names the step. */
-function stepWords(step: DeployStep): string {
+function stepWords(step: Exclude<DeployStep, { step: "switch" }>): string {
   const words = (() => {
     switch (step.step) {
       case "create":
@@ -76,8 +79,6 @@ function stepWords(step: DeployStep): string {
         return deployMessages.stepUploading(step.version);
       case "self-test":
         return deployMessages.stepSelfTest(step.version);
-      case "switch":
-        return deployMessages.stepSwitching(step.version);
     }
   })();
   return plainText(words.phrase);

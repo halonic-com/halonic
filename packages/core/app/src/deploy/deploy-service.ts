@@ -1,8 +1,10 @@
+import type { Deployment } from "@halonicjs/format";
 import type {
   Clock,
   DeployEvent,
   DeployLockHolder,
   DeploymentRef,
+  DeploymentStatus,
   DeployPlan,
   DeployReach,
   DeployRequest,
@@ -12,6 +14,7 @@ import type {
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { type DeployNews, deployNews, hasNews } from "./deploy-news.ts";
+import { deploymentRefOf } from "./deployment-ref.ts";
 
 /** The questions a deploy may ask. Only given when there's a terminal to ask them in. */
 export interface DeployQuestions {
@@ -87,6 +90,16 @@ export function createDeployService(deps: DeployServiceDeps) {
       for (const name of missing) secrets.set(name, await questions.secret(name));
       if (ask && !(await questions.confirm(plan, news))) return { outcome: "declined" };
       return deployNamingHolder(target, { ...request, secrets }, onEvent, deps);
+    },
+
+    /**
+     * What's live on a deployment from `deployments.yaml`, read through its
+     * target once its account is checked (requirement `app.deploy-account`).
+     * Changes nothing and takes no lock.
+     */
+    async status(host: string, id: string, deployment: Deployment): Promise<DeploymentStatus> {
+      const target = await deps.loadTarget(host);
+      return target.status(await deploymentRefOf(target, id, deployment));
     },
   };
 }

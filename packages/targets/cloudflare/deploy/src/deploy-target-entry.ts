@@ -76,14 +76,14 @@ export function createCloudflareDeployTarget(
   const label = context.who;
 
   const tokenOf = async (): Promise<string> => {
-    // An empty CLOUDFLARE_API_TOKEN is no token, so it doesn't hide the saved one.
+    // An empty token from the environment is no token, so it doesn't hide the saved one.
     const token = context.environmentToken || (await context.tokens.get(tokenName));
     if (token === null || token === "") {
       throw portFailure(
         "token-missing",
         "unauthenticated",
-        "There's no Cloudflare API token on this computer.",
-        "Run `halonic deploy login`, or set CLOUDFLARE_API_TOKEN in CI.",
+        "There's no Cloudflare token on this computer.",
+        "Save one with halonic deploy login cloudflare, or set HALONIC_CLOUDFLARE_API_TOKEN.",
       );
     }
     return token;
