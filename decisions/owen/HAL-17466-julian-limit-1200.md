@@ -2,6 +2,7 @@
 
 - Approval: Liam decided it on HAL-17465 (24 Nov); Julian's scope is Liam's call under HAL-14809
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:J6g/dLTJzsX4JcWCQbTW67IjuI281eSLkBOeDpRxFAybsKEOutaVGsvN+L3+ynr6S0RrN+Slsg1TK1MVKWPVAw==
 
 `paperclip.reviewer-paths` names Julian for a pull request of up to 1200 changed lines
 instead of 800. A pull request of 1201 lines or more, outside tests and Markdown, still
