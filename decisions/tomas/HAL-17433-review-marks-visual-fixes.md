@@ -3,6 +3,7 @@
 - Task: HAL-17433
 - Approval: Noah's design check C803 asks for this change (https://paperclip.halonic.com/HAL/issues/HAL-17432), written up on HAL-17433 (https://paperclip.halonic.com/HAL/issues/HAL-17433); Liam approves this note in review. A team decision with no board card (HAL-2282 rule): it follows the approved AI changes 1.2.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/xJKw9iiODQPxKrChzHKsQhmkBNRZ2vzn1AzjvCcO4FpkNwhkCTLInBxyuRnk1S2rXDJWzmQD5+RX03eEbTCCw==
 
 ## What changes
 
