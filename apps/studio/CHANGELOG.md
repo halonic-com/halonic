@@ -1,5 +1,822 @@
 # @halonicjs/app-studio
 
+## 0.1.1
+
+### Patch Changes
+
+- 9800bc3: Accepting or undoing a run's changes never writes into Halonic's own data folder, even when the workspace holds it (such as your home folder): that file is listed as one that can't be written.
+- 9f2c645: In Studio, Add trigger on an agent's page now asks what the agent should do before it writes the routine, instead of giving it the task "Describe what to do."
+- e6d9b99: An agent file can set `answerRetries: 1` so a workflow step asks the agent once more, instead of failing the run, when its answer isn't the JSON or option it expects.
+- 7f97e19: A Claude Code agent's file can say `asks: in-sandbox`; the trust check shows it, and Halonic refuses it on Codex and Halonic's own agents.
+- d3c90c8: In `halonic run`, a Claude Code agent with `asks: in-sandbox` edits and runs commands in its working folder inside Halonic's sandbox without asking, and the run log lists each such call.
+- 5872505: In Studio, an agent's Configuration now has a Triggers page that shows the routines that start the agent and offers Add trigger.
+- 43d4c60: `halonic run` and `halonic runs send` now check an agent set to On this computer against its file in the version the run starts, so a saved change to that file that isn't live yet doesn't count.
+- e026400: An agent file can set `harnessLimits` (`maxSteps`, `maxMinutes`, `maxCost`) to bound one step that runs in Claude Code or Codex.
+- 27dc732: When a run's bridge fails to open in the agent host, the run now keeps the error's kind and typed cause, as it does with the bridge in Studio's own process. A bridge socket path longer than the system takes then reads as a known cause instead of "Halonic can't tell the cause yet".
+- 9a27899: On Linux, Studio's sandbox check now says what is missing when bubblewrap, socat or ripgrep isn't installed, instead of failing to read the check.
+- 7c9290b: The agent host checks a workspace connector's trust itself before it starts the program, with or without a sandbox. It reads the trust record in the profile and refuses a connector that record doesn't hold.
+- 29adcca: An integration or plugin backend started by the agent host may reach the hosts its sheet lists under `localHosts`, and a workspace's `http` connector may lead to this computer, as in the CLI.
+- ca6431b: The agent host's model route refuses a provider whose address is one of Halonic's own ports, runs at most two chats at once, and stops the model call when the window drops its connection.
+- ae5966a: The agent host has a route that runs one chat call on a workspace provider on this computer, so the Studio window can use a local model. The host checks the provider itself and refuses any that isn't on this computer.
+- 0662fdf: A connector tool that answers with an error, for a connector the agent host runs, now shows as a failed call with the tool's own text, and the agent goes on, instead of a call that broke off and waits for Retry or Skip.
+- de1e286: On an agent's map, + Add trigger opens Configuration › Triggers, which says Halonic can't run an agent on its own yet and leads to the workflows that run it.
+- 835943b: In Studio, the agent map stacks its sides in a narrow panel instead of running off the edge, and a subagent's card has Open *name* › to its own page.
+- daa2c90: The agent map's lines are easier to see (in high contrast too), it keeps its size on a phone or a narrow window and shrinks less on a desktop, and its Add a tool and Add trigger buttons move the focus to the page they open; the agent page's tabs read Flow, Configuration, Runs.
+- 7093d6d: When a change leaves a side of the agent map with three items or fewer while its drawer is open, the focus moves to that side's first card instead of getting lost.
+- 700000e: In Studio, an agent's page now has a Flow tab with the agent map: what brings it work, what it can use and who it hands work to, each with its add button.
+- ba3ef47: On the agent map, the hand before "Every tool asks first" is now Studio's own icon, so it no longer shows as a blank gap on computers without an emoji font.
+- 74e7d80: In Studio, an agent's page now opens on Flow, where the agent map joins each card to the agent with a line and fits the panel.
+- cf6e1a4: A workflow opened from an agent's map now says on screen which steps use the agent and how to clear the outline, and both the map's workflow card and that line name steps by their titles.
+- b633f0a: On a phone, the agent map now shows as three narrow columns at full size, with cards large enough to tap. On a screen narrower than 360 px, or with larger text, its parts go one under the other.
+- 167e34c: On a phone, pressing a summary card on the agent map now opens a full-width sheet over the map with Back, listing every item as a row, instead of a narrow drawer.
+- 63d684d: An agent's Flow map now says "Can't start" on the card of a routine that starts the agent on its own, as the Routines list does.
+- 47b12e0: The agent map shows the routines that start the agent, and a connector card says whether every tool asks first, or how many read-only tools don't.
+- 1a17dbd: On a narrow window or a phone, a card opened from the agent map's summary sheet now shows over the sheet, not under it.
+- 00e73f8: When an agent's Flow tab is too narrow for the map's columns, in a small panel or with larger text, the map now shows each item as a full-width row with its kind and details, and ends each group with a large add row.
+- 69a1fb1: In Studio, the agent map's lines no longer run along + Add trigger, and lines whose ends are only a few pixels apart are drawn straight instead of with a small step.
+- 35f47aa: In Studio, a side of the agent map with more than three items shows one summary card, which opens a drawer listing all of them.
+- 666e5b6: In Studio, a workflow card on an agent's Flow map now names the steps that run the agent, such as "triage, draft", instead of only counting them.
+- 85d3f1e: On an agent's Behaviour page, the JSON output hint now says the agent is asked to reply in the schema's shape, since replies aren't checked against it yet.
+- bb64fad: In Studio on a computer, an agent's page now shows its Try it chat on the left, beside Flow, Configuration and Runs, so you can try the agent while you change it, and an emptied name puts the old one back instead of saying "Give it a name.".
+- 47af657: In Studio, an agent's "Changes not live yet" line now ends in Review and make live, which opens Create version with only that agent's file.
+- daa2c90: An agent step that answers in JSON with no fields now shows "JSON" as its output on its card, instead of an empty line.
+- 2442bc7: An agent step's card now shows its output and the tools it may use.
+- 2442bc7: An agent's Configuration now has an Agent steps page that lists its agent steps, opens one as a card and makes a new one with New agent step.
+- dd0b042: An agent's Triggers section now says that Halonic can't run an agent on its own yet, before Add trigger asks what the agent should do.
+- a3ed5c5: An agent's Triggers section no longer says twice that the agent can't run on its own.
+- 05760ea: An agent's Triggers section no longer offers Add trigger, which made a routine that can't run: it offers Add trigger on each workflow the agent is a step in, or New workflow when there is none.
+- b8fd928: In Studio, an agent's Harness page now has Where it runs: In a sandbox, or On this computer after a warning you confirm again whenever its file changes. Studio can't start an agent on this computer yet; `halonic run` in a terminal can.
+- 2224d17: In Studio, keyboard and screen-reader users get clearer focus and feedback on the Agents page, in Inbox's notices, in the file editor and on status dots in high contrast.
+- 46280a5: A run waiting for your answer to "Allow this address?" now shows Needs you in Runs, on Home and in `halonic runs`.
+- 282aaad: After you press Don't allow on "Allow this address?", the same run doesn't ask about that key and address again.
+- e421142: While Studio asks "Allow this address?", the run's step now says "Waiting for your answer", and the run log records the question.
+- e6c8726: When a run you started would send a saved key to an address that isn't allowed for it, Studio asks "Allow this address?" instead of failing at once.
+- 1d89fa5: On Android, a link to another website opens in the browser again, instead of freezing the app until Android says it isn't responding.
+- d20b4cf: A tool call you approve in a run only ever goes to the connector the approval named, and `halonic run --event` and `halonic runs send` no longer answer a different approval when the one they saw was answered somewhere else first.
+- cbe046b: When Studio can't approve a connector's tool call itself, its message now says "Studio can't run tools from …" instead of "This window can't run tools from …".
+- 3fbf0b2: When you approve a call whose connector can't start any more, because its program was removed or its secret isn't set, the run log now records the call as failed and says which program or secret is missing, instead of treating it as a tool the agent was never offered.
+- 4f08977: The trust check, in the CLI and in Studio, no longer says an agent with `asks: in-sandbox` still asks first, since a run in the sandbox now answers its calls in both.
+- f18d9ff: The trust check says an agent with `asks: in-sandbox` will edit and run commands without asking; `halonic trust` without a terminal says a changed workspace changed since you trusted it.
+- 92e9911: The icon on the "Blocked 3 sites" line under a step on a run's page is now amber, like the shield on the "Ran on this computer, without the sandbox" line.
+- 96c74ba: On a phone, a run's Blocked sites panel now says to fix the allowed sites on your computer, instead of showing the computer's steps.
+- ee73f65: The run log has a new `bridge.failed` event for a request the harness bridge failed without naming the reason to the agent's program, with the error kind and its message. The bridge's recorder takes it, and it never counts towards a budget. Logs written before it read as before.
+- d75fa4b: With `--debug`, a harness bridge failure the run log couldn't record now prints its own line, with the run log's error, instead of saying the engine couldn't clean up after a harness run.
+- 3803012: The harness bridge can open a pull request and change its title or description on one repository, each call only after a person approves it. Nothing it offers can merge, close or release.
+- 01bbce3: The harness host writes a request its bridge failed without naming the reason to the run log as `bridge.failed`. `LocalBridgeHost` and `harnessHostOf` take a required `reportError`, which hears of such a failure when the run log can't take it.
+- a208833: When the harness bridge's MCP server can't list or check the tools, it still gives the program only an internal error, but now also tells the run why through `reportError` instead of dropping the cause.
+- a1dd24a: The harness bridge can post a comment on one Paperclip task and change its status, each call only after a person approves it. Nothing it offers can cancel, reassign or create a task.
+- 19cde5d: The harness bridge tells the run about a request that failed for a reason it doesn't name to the program, through the new optional `reportError` of the bridge options, and the OpenAI route refuses an image or file URL given in any form but a `data:` string.
+- 1db8a5c: In Studio, an agent or workflow file with a problem no longer drops off its list: it keeps a red row with the line and the reason, which opens the file at the first problem.
+- 51f045e: A run the budget stopped now says which budget it reached, with the limit and, for the monthly one, when it resets, instead of "Halonic can't tell the cause yet".
+- b2ff316: The Inbox now says when a run stopped at its run budget and when the month's budget is used up, with Change budget, and a request isn't started once the month's budget is used up.
+- 252a16f: Four messages read more plainly: Settings says it couldn't check whether plugins and integrations may run without the sandbox, the CLI's plugin commands give a sandbox fix you can follow from the terminal, a workspace already open in another Halonic no longer shows a process number, and a key whose addresses can't be read says to check the system keychain, with Try again.
+- 15f305c: The notes that ask you to confirm On this computer again, or to wait until the agent's file is saved, are now amber like other notes that ask you to act.
+- 15f305c: The On this computer warning no longer asks you to save first, and `halonic runs` says "Estimated spend this month: €0.42" and where the monthly budget is set in Studio.
+- 42fc2bd: The trust check now shows in brackets the names a local integration reads each workspace secret as, such as my-notes-key (as notes-key). `halonic validate` says when a value is empty, and suggests http:// for an address on this computer.
+- 663ee50: `halonic validate` names the connector first in three local-only errors and words a routine's run more clearly, and in Studio a share that fails after Review and make live still says the routine or agent is live.
+- 0457293: When a connector's program stops right after it starts, its page now names the connector first ("notes-mcp's program sh stopped"), the phone's Trigger picker shows Manual only without a second line that repeats it, and when a for-each item's run stops at a wait step, `halonic run` now says "To see which step it is, run halonic validate".
+- 3c53794: On Windows, a connector that can't start without the sandbox says why in plain words and what to do, and `halonic doctor`'s fix for a profile folder inside the workspace starts with the step to take.
+- f79d996: Studio says more exactly what went wrong: when a key saves but its address doesn't, it says the address didn't save; when the trust check can't save your yes to run plugins and integrations without the sandbox, it says why in plain words; and a Try it reply that failed for a reason Halonic can't explain offers Copy details instead of Try again.
+- ba5a7e0: `halonic routines watch` now says which agent runs in Claude Code or Codex and to set it to Halonic on its Harness page, and `halonic validate` names the model, what uses it and its unknown provider in one sentence.
+- 20326ec: The Routines list says a routine starts a workflow on its own, and `halonic validate` puts "Did you mean" straight after a routine's missing workflow or agent, before the fix.
+- f5547fb: When an integration secret has `hosts` but no `as`, the problem Halonic reports now puts those field names in quotes and says Halonic reads the secret as a sign-in's client secret.
+- 8a9aff8: `halonic proposals accept` names the reject command that keeps a file you changed since the run, and a proposal whose changes were deleted outside Halonic says to remove them from the list with `halonic proposals reject`.
+- f5628da: Studio's line for a proposal it can't decide now says to run the command in a terminal on your computer, `halonic proposals accept` says to reject a file you changed since the run to keep it as it is, and `halonic proposals reject --help` says that `discard` still works.
+- 616e63a: The phone's Paired computers screen now says that once no computer is paired it connects to its saved address again, if it has one, and a run that failed because an agent's answer wasn't one of its choices links to the how-to for giving it a second try.
+- fb9eebb: In the first run, Cancel run after you remove the workspace's trust now says the workspace isn't trusted yet and offers Review, instead of a problem Halonic can't explain.
+- 3615b32: A cancelled run that another run started now always leads to that run: Open run on its page in Studio, and "See the run that started it" in `halonic runs show`, also when a person cancelled the run that started it.
+- 500b5b2: When you cancel a plugin's sign-in in Halonic and then finish it in the browser, the page now says the sign-in was cancelled and nothing was saved, and to sign in again from Halonic.
+- 5264ccf: When a run can't start because of the sandbox, the fix above Check again now says what to install or turn on for every reason, also on a phone, instead of "install it".
+- 67a5956: On a phone, a narrow card's ← with the name of where it goes is as tall as its ✕ (48px) and lines up with it.
+- 4169709: On a phone, a card's back button names where it goes instead of a cut-off path.
+- 52be220: On the Changes page, Undo these changes puts a file back as your last version has it, at once, with a copy kept and Undo on the toast. The developer view adds Discard and Discard this part.
+- a0db288: Studio no longer runs git about once a second while you work in a folder without history.
+- 0d7903c: On the Changes page, Get updates now lets you choose item by item when you and your team both have new versions: Keep mine, Use theirs or Keep both for each item, with Undo, Finish getting updates and Cancel. A choice left half done comes back with Continue.
+- cb6a197: The workspace's history can now start combining a team's versions with yours when both have new ones: it brings in what only they changed, lists the items both changed, and keeps each choice (Keep mine, Use theirs, Keep both) until you finish or cancel. The Changes page doesn't offer it yet.
+- 9619cbb: On the Changes page, Get updates now works on a branch that tracks no branch of the shared copy, as after joining a team: it gets the shared copy's branch of the same name.
+- 5ef4f80: On the Changes page, Get updates brings in a team's newer versions when yours have nothing they lack, and says what it got or why it couldn't.
+- ac0a34c: The Changes page shows History: the newest versions grouped by day with Show more, and a picked version's author, date, notes and files beside the list. A folder without history says everything you save is used right away.
+- e408224: The Changes page reads the workspace's history: the newest 20 versions, 20 more on request, kept current after a save or when the window comes to the front.
+- a2a0363: The Changes page intro no longer promises to "go back" to a version. Restoring a version isn't built yet; the intro says only that Halonic saves versions so you can see what changed.
+- d998d3f: In Studio, the Changes page for a folder inside a larger git repository now says so in a quiet note, instead of "Couldn't load changes".
+- cb959e9: The Changes page explains git's most common failures in plain sentences, such as a folder owned by another user, a busy history or a missing permission, instead of showing git's own words.
+- 04b0ffe: On the Changes page, a folder with no share address says "Only on this computer" and offers Add where to share, a small dialog for a git address.
+- 8359852: Before the first Create version of a workspace whose history has no name and email, the Changes page asks "Who should versions be from?" and saves the answer in the workspace's own history settings.
+- 331ba9a: A chat turn on a workspace whose latest commit isn't trusted now answers that the workspace needs trust, instead of saying it has no such model provider.
+- 9acd43c: With a workspace open, Studio now has Help › Check this computer. It checks the engine, the workspace, the sandbox, the harnesses, the network, the disk, the models and their keys, and the last run if it failed. Its report leaves out keys, names and addresses.
+- e39f68c: Check this computer no longer says the engine isn't running once it is, and the report's "after N s" says when the start failed, not when the report was copied.
+- ce2e994: A child run's short id now starts with the short id of the run that started it, such as 7k2m9p.3.1.
+- 4880bd2: A Claude Code step that gave its result but didn't exit afterwards no longer fails the run; Halonic stops the program and keeps the result.
+- 4d9cc85: A Claude Code agent now sees its integrations' tools straight away, instead of having to search for them first.
+- 623c04f: A Claude Code agent in Halonic's sandbox no longer tries to send its own telemetry and update checks, so the run's log no longer lists them as blocked connections.
+- ec9ac03: In the CLI, a harness agent's provider file can no longer send its key to one of Halonic's own ports, such as another run's bridge or `halonic serve`'s; the call fails and nothing is sent.
+- b54e0f4: `halonic` now shows control characters in a name or message as their visible codes, such as `\u001b`, and writes the command on a waiting run's "Answer with:" line so you can paste it as it is. A workflow file is now refused when a transition's event isn't lowercase letters, digits, `-` and `_`, starting with a letter or digit.
+- 598633a: The CLI explains four first-run problems more clearly: `halonic trust` without a terminal prints the exact command to run with its fingerprint, `halonic doctor` warns when the proxy setting isn't an http:// proxy, `halonic init --dir x` shows the right command line, and `halonic serve` says when its port is in use and which one to try instead.
+- 192cf71: With `--debug` on Windows, the sandbox's notes about its host lock no longer show as "couldn't clean up after a harness run".
+- 8cf87dd: Local integrations and plugin backends started by the CLI read only the folder holding the Node executable, and an integration may reach the hosts its sheet lists under `localHosts`.
+- b3727b0: On Windows with the WSL sandbox, when a local integration can't start, `halonic run` now says why in plain words and to use Halonic inside WSL 2.
+- 0986107: When Halonic stops a local integration because the sandbox didn't work when it started, the halonic command now names the integration and says it tries the sandbox again next time, instead of saying the sandbox failed its check.
+- 57a4413: On Windows, a sandboxed run of the CLI no longer loses access to its folders when Studio starts on the same computer at the same time, and only one of them cleans up what crashed sandbox sessions left.
+- dd600b1: The halonic command runs a workspace's local integrations without the sandbox when you've allowed that in Studio on this computer.
+- 942472b: `halonic run` now starts the programs of a trusted plugin in a sandbox, and warns when one of them can't start on this computer and says why, while the plugin's other tools keep working.
+- 76adb77: `halonic plugin add`, `halonic trust --plugin` and `halonic plugin list` say a trusted plugin with a backend is off on this computer when its code can't run in the sandbox here, with the reason, a link to the sandbox guide and where to allow it, and their trust check says where the plugin was copied from.
+- 54434fb: When a plugin's program can't start, `halonic run` now gives one warning that says why instead of two, and the run's log records which part of the plugin was off.
+- 2becb3c: `halonic plugin add`, `halonic trust --plugin` and `halonic plugin list` now say whether a plugin's programs can run on this computer, and mark a plugin whose programs can't start here.
+- e0c214a: `halonic routines` now lists a routine whose saved schedule isn't live yet by its live schedule, the one `halonic routines watch` runs, as Studio does.
+- e11d61f: `halonic routines` now says "Not live yet" for a routine that was never committed, since the watch doesn't run it. A routine whose saved changes have errors is listed as last committed, since that's the version the watch runs. `halonic routines watch` says when a routine that couldn't start can start again.
+- 86b312e: `halonic run` and `halonic runs show` now say when a run stopped at its run or monthly budget, with the key to raise in workspace.yaml (`budget.perRun` or `budget.monthly`), instead of "Halonic can't tell the cause yet". `halonic run` exits 8 (limit reached) for a budget stop, rather than 1.
+- 03142c6: When `halonic run --event` sends an event the waiting step doesn't take, the `halonic runs show` command it suggests now keeps your `--dir`, as `halonic runs send` already did.
+- 0ff19b6: `halonic run --json --follow` prints JSON Lines for a live run: one `{ outputVersion, event }` line for each event as it happens, then one last line with the result, `{ outputVersion, ok, run }`, or the error. `--json` alone still prints one document.
+- 22b4204: When a step fails because a run it started failed, `halonic run`, `halonic runs send` and `halonic runs show` say why that run failed, with its fix and how to see it.
+- 3920c5e: `halonic runs show` says a child run was cancelled because the run that started it ended, and how to see that run, as Studio's run page does.
+- 8c310a6: `halonic run`, `halonic runs` and `halonic runs show` now say when a run's answers came from the built-in test model (Sample answers), as Studio does, and their `--json` carries `sampleAnswers`.
+- 7b8ac59: `halonic run`, `runs send`, `routines watch` and `serve` now count Local only as on as soon as it's saved on, before it's made live.
+- aec8098: On Windows, when another program's sandbox setup is in the way, `halonic doctor` and a refused run now say to remove that setup, then set up the sandbox with `halonic sandbox setup`, instead of to use Halonic inside WSL 2.
+- ae25a4b: `halonic run` and `halonic runs show` end a `sandbox-start-failed` line with the sandbox's reason, and word a `harness-start-failed` for a program that isn't installed or isn't signed in with the approved known-cause lines, when the run log gives `sandboxReason` or `harnessCause`. Older logs read as before.
+- e55b071: On Windows, a `halonic` command that runs an agent in the agent sandbox now takes back the sandbox's access to your folders that an uninstall with administrator rights left, as Studio does.
+- 0d42835: `halonic trust revoke` suggests `--remove` ("Did you mean --remove?") in place of `--dir revoke`.
+- 3cd740c: Install the command line from the source with `pnpm add -g ./apps/cli`; `halonic --version` prints its version. On a Node.js older than 26.12, `halonic` says in one line which version it needs.
+- 5f153ad: Codex agents now follow `asks`: a Codex agent without `asks: in-sandbox` asks before nearly every command, even inside the sandbox, so an unattended `halonic run` waits for an answer; give the agent `asks: in-sandbox` to let it work on its own inside the sandbox.
+- 64c0088: `halonic doctor` and Studio now say a Codex agent isn't signed in when it has never signed in, instead of counting it as signed in.
+- cea89ee: In Studio, on a narrow phone screen a command you can copy now takes the whole line with the Copy button under it, instead of shrinking to a few letters per line.
+- 7eb763f: A run that stops on the workspace's own setup now says what is wrong and how to fix it, instead of "Halonic can't tell the cause yet" and a bug report link: a model whose provider the workspace doesn't have, for-each items that aren't a list, a step with no transition for its event, a task step with no agent, and an answer that isn't the JSON its step asks for.
+- bb3ff0e: A workflow's Configuration › General now names the first step by the title its card shows, such as "Read the email", instead of its id.
+- a3a817e: A routine's page now says when an agent its Run now starts is in the sandbox until you confirm again, with Review and confirm to open that agent's Where it runs.
+- 4cbe7b4: A workflow page now says when an agent it runs is in the sandbox until you confirm again, with Review and confirm to open that agent's Where it runs.
+- f07c703: In the Android app, the phone app's screens keep their own look instead of taking on the connect page's buttons and headings, and the connect screen no longer shifts once the phone app has loaded.
+- c4536e5: When a connector's program stops right after it starts, its page now shows the line to run straight under the sentence that introduces it, with Try again after it.
+- 7706932: An `http` connector without a `local` key now counts as local only at `localhost`, `[::1]` or a `127.x.x.x` address, the same hosts the connection itself keeps on this computer. Other host names, such as `tools.localhost`, count as outside under `privacy.localOnly`; set `local: true` on the connector if it really runs on your machine.
+- 9919a7a: On a connector's page, Review now opens the trust check over the page and lists the tools once you trust the workspace. A secret now saves when you press Enter, and Tab then goes on to its Remove button.
+- 433d360: When a connector's program stops right after it starts, its page in Studio now says the command to run yourself leaves out the connector's environment variables and secrets, and says so when a Windows folder gets no command.
+- be36ec9: When a connector's program stops right after it starts, its page in Studio now names the connector file and shows the command that starts the program, with Copy, so you can run it yourself to see why.
+- e821624: A connector's page lists each secret once, says that `halonic secret set` keeps a separate one for the command line, and empties a secret's entry when saving it fails.
+- acf2391: A connector's Secrets section now says its secrets are kept in your system keychain, gives the reason after a colon when saving or removing one fails, and tells you to rename a secret in the connector's file when that name belongs to Halonic or a plugin.
+- b7017a4: A connector tool that doesn't answer in time now says which tool it was and how long Halonic waited, instead of saying the connector lost its program.
+- a77616e: Copy details in the Remove trust dialog says Copied on the button, a sandbox check that hit an error shows it in the warning box with Copy details, and a plugin's trust and update errors write the reason in lower case after the colon.
+- 299b6a0: Studio's Create version can now share the new version with your team right away, and remembers that choice for the folder.
+- 13ac77b: On the Changes page, Create version records what changed as one named version: a name, notes, and what's in it with the important changes first.
+- b18420e: In Studio, when the Default hub's file can't be read, New agent and New workflow now say which line to fix and to try again, instead of showing the YAML parser's message.
+- f9b7b1d: A workspace can no longer name `cloud-key`, `user-secrets-key` or `admin-key-hash` as a secret: those belong to a deployment, so a model or provider that names one is refused like `token-key`.
+- c162374: A deployment in `deployments.yaml` can now have a `users` block for who may use it (`mode`) and how their usage is counted (`meter` and its limits); `halonic validate` checks it, but this version doesn't act on it yet, and `halonic deploy` refuses `meter: cloud`.
+- 12593ec: A deployment's `users.config` in `deployments.yaml` can now list `organisations` whose members share a pool of limits, and `halonic validate` warns when `meter: config` has no limits, because it then counts nothing.
+- 7b9d69d: `halonic validate` refuses an organisation's pool limits, or one member's limits, in `deployments.yaml` that name the same unit and period twice.
+- 6bd2db3: Settings › Plugins › Add plugin in the desktop app now refuses an `https://` git address with a user name in it, as `halonic plugin add` does, and for a password it says to leave it out or use an `ssh://` address with a key.
+- 3b39d39: The Studio desktop app can add a plugin: Settings → Plugins → Add plugin takes a folder you pick with Choose folder… or a git address, checks it as `halonic plugin add` does, and adds it not trusted.
+- d8cb88f: `halonic doctor` on a folder inside Halonic's profile folder that has no `workspace.yaml` now says there's no workspace there, instead of a problem it can't explain.
+- 389a9f1: `halonic doctor` now says when a Claude Code or Codex agent in the sandbox needs an API key that isn't set, also when the agent names no model.
+- e86828a: `halonic doctor` now says when a harness agent can't run with its model alias, such as a Claude Code agent whose alias points at an OpenAI-compatible provider, instead of asking you to sign in, and warns about a model that searches the web only when the agent's harness can reach it.
+- ee08ef3: `halonic doctor` warns when a Claude Code or Codex agent's model alias points at a model its provider file lists as searching the web by itself.
+- ed42f68: `halonic doctor` now shows a Secrets line that fails when a secret a used connector, provider or webhook routine needs isn't set, with the `halonic secret set` command to fix it, and exits 1 instead of passing. It names the secret, never its value.
+- ed42f68: When `halonic doctor` can't read a cloud provider's key from the secret store (for example, a locked keychain), the Models line now warns that it couldn't read the key instead of saying the key isn't set, so you aren't told to set a key that's already there.
+- 70a884a: `halonic doctor` now shows a plugin record file that you can't open or that is damaged on its Plugins line, with the same fix `halonic plugin list` gives, even outside a workspace.
+- 542fef7: `halonic doctor` says that a connector whose plugin isn't added has no tools yet, and every plugin problem it shows, including a near id and a plugin that can't be read, now ends with a fix.
+- 43f169f: `halonic doctor` now has a Plugins line that names a plugin a connector needs when it isn't added on this computer, is off, or can't be read, with what to do about it, and the other lines still show when the plugins folder can't be read.
+- 193cc90: `halonic doctor` shows a failed Profile line when your profile folder is inside the workspace, or the workspace is inside your profile folder, with what to move.
+- 9f4709a: `halonic doctor` no longer asks you to sign in to Claude Code or Codex for an agent whose runs use your provider's key, and it checks the key of a provider an agent names directly, such as `claude/claude-sonnet-5-5`.
+- c5c6fa1: On Windows, `halonic doctor` now names a ready sandbox "Sandbox for Windows", as Settings does, instead of "win32".
+- 328bfd8: `halonic doctor` gives each check 5 seconds. A check that doesn't answer in time shows as a warning, "didn't answer in 5 seconds", and the other checks still show.
+- 768d993: `halonic doctor`'s warning for a workspace on a Windows drive under WSL no longer says Halonic doesn't notice edits made in Windows. It says runs are slower there and that a folder Studio on Windows opens stays there; the move to the Linux home folder is for a folder used only from the command line.
+- 3cd740c: Under WSL, `halonic doctor` warns when the workspace is on a Windows drive such as `/mnt/c`, and `halonic doctor` and `halonic run` warn when Node.js or pnpm is the Windows one.
+- cf3ef98: On a phone, the button on an empty screen is now full width and easier to tap.
+- 36951b7: When the desktop app couldn't take back its own hold on a workspace's runs, and no other Halonic took them over, its toast now says "Halonic lost its hold on Acme's runs." and to open the workspace again, instead of naming another Halonic.
+- 9b623ef: `halonic routines watch` and `halonic serve` now stop and say so when the computer slept or the command was paused long enough to lose its hold on the workspace, instead of staying open and doing nothing.
+- 5f80505: When `halonic routines watch` or `halonic serve` holds a workspace, other commands now say which command is running there and to stop it with Ctrl C.
+- 2870114: A run's Every step names a wait step's answer by the label the step gave it, as the receipt does, such as "You answered Send to a manager at 10:44".
+- 5b95932: A failed run that another run started now leads back to that run: Open run on its banner in Studio, and "See the run that started it" in `halonic runs show`, which also names the agent by its name when its answer wasn't one of the step's options.
+- d7ee636: In Studio, when an agent's file changes after you chose On this computer, the Harness page now says the agent runs in the sandbox until you confirm again.
+- 80ed36f: Deleting a file in the Files tree no longer leaves a live editor on it: an open tab shows its text greyed and read-only under "This file was deleted" with Undo, a file that is gone says "This file isn't in this workspace any more." with Go to Files, focus moves to the next row (and back to the restored row after Undo), and the toast names the full path.
+- 0450287: Undo after deleting a file, a Library item or a routine now puts it back even after later edits.
+- 031110e: A file made with New file opens in its tab with the cursor in the editor, so the user can type at once instead of landing on the page title.
+- 6decd6c: The ⋮ menu of a file's tab offers Open as agent, Open as workflow or Open as routine when the file defines one, and opens that item's page.
+- 79e66be: A file changed outside Halonic shows a warning strip with Keep mine, Load theirs and Compare, a file reloaded quietly says so in a toast, the editor takes focus after a choice, Shift Alt M turns on Tab moves focus on macOS, and the code editor no longer colours strings and numbers green and amber.
+- aebf871: Rename or F2 in a file's tab now switches the sidebar to Files, so the name field shows in the tree straight away.
+- 6a97861: A file's tab shows its folder in muted text next to its name, and a ⋮ menu with Rename, Copy path and Delete. F2 in the tab asks the tree to rename the file.
+- 4de601c: In the Files tree, a long name is cut in the middle to the room its row has, so its start and its end stay in sight in a deep folder, in any font.
+- 6b5f668: A file in the Files tree has a menu: right-click, Shift F10, the Menu key or the ⋮ that shows on the row open Open, Open in new tab, Rename, Copy path and Delete.
+- d172c7d: A screen reader names a file in the Files tree by its full name only, no longer followed by "More actions for …" from its ⋮ button.
+- 7704cda: In the Files tree, a screen reader reads a long file name once, and a row in a deep folder stays as wide as the sidebar: its name is cut, and its marks and ⋮ stay in sight.
+- f28280e: The first run uses one name for each action: a failed run offers Run again, the line for a model that hasn't answered says you can keep waiting or pick another model, the slow line says the first run can take a few minutes, and Cancel run leaves "Run cancelled." in the bar.
+- 39ef5a3: The first-run bar now joins its steps with short lines and keeps its step marks visible in high contrast mode, and after **Skip, I'll explore** the focus moves to the page's heading instead of being lost.
+- 9fffff9: In the demo, a first-run bar under the top bar shows your four steps and a guide card on Support reply leads you to your first run, replacing Home's Try the sample card.
+- 678ce77: When Cancel run in the first-run bar doesn't work, the bar now says why, for example that the engine isn't answering yet, instead of asking you to try again.
+- f667e8f: In the Inbox's Finish your first run item, the current step's progress piece is now half filled, so it stands out from the steps still to come.
+- 66a98ef: Dismissing "Finish your first run" in Inbox now says that Help › First run › Show the guide again brings it back.
+- be67941: The first-run bar now sits above the page, next to the sidebar, instead of above both. On Support reply, the guide card shows the customer's email as a quote, with a full-width button.
+- 5153067: A key saved during first-run setup starts with no allowed addresses, even when an earlier key under the same secret name had some.
+- ef7c983: Every open folder now shows the same first run: switching back to a folder shows what you did in another, and Open demo on a folder that is already open starts the first run there.
+- 77133db: On a phone, the first run's card says what the boxes on the drawing are.
+- cd54f3d: After your first run, "Run it again with your own message" opens Support reply's Run form.
+- 9e73c74: After Skip, I'll explore, the Inbox keeps a Finish your first run item, so you can continue the demo where you left it or dismiss it.
+- ba7fd77: The Finish your first run item in the Inbox now shows all four pieces of its progress line, with the current step marked, in every theme and in high contrast.
+- 190dfff: In the demo, Run your first workflow now opens Pick a model, and Continue starts Support reply at once with Sam's email, says what it changed in the demo's files, and offers Pick another model when the model is slow or fails; Cancel run in the first-run bar stops the run.
+- d6fc106: When your first run waits for you, its card says "Waiting for you. It's in your Inbox." with Open Inbox, and the demo's reply no longer says the test model writes it to any email.
+- bbc0cf6: Approving your first run in the Inbox now shows "Your first run is done." with the run's steps, time and cost, and what to try next.
+- 18cbbb8: The workflow's Flow tab fills the space under its header, so the steps show on open, and Ctrl K lists "Workspace settings" once, as an Action.
+- cbf8832: The workspace menu stays inside a narrow window, as at 200% zoom, and cuts a long folder in the middle like the switcher above it, so its Ctrl key and check stay on screen. A folder cut in the middle always shows its first letter and a whole "…". On a phone, a sample's Demo tag on Welcome follows its name, so the folder keeps the row's width. The sidebar's switcher and More's workspace row tell a screen reader the workspace's folder too.
+- d8b71d2: When a for-each step fails because one item's run had to wait, the item runs it stops now say "…was cancelled because the run that started it ended.", instead of that someone cancelled them.
+- 6cd4629: Settings › Formats labels its sample line "Example:", shows today's date and a larger number so the formats differ, and lets the Format select grow so its text isn't cut off.
+- 72d29af: The Full access chip is amber, the same on the agent page and the run page.
+- 9d16c6b: Studio's Get updates now says who recorded the versions it brought in, such as "Got 2 versions from Sam".
+- ff6a23b: In a repository that uses a filter such as git-lfs, Studio's git refuses to stage, commit or check out files rather than store or write them without the filter.
+- c187dc5: Studio's git runs no filter program, git-lfs included, and refuses a repository whose own config names a git-lfs program.
+- a713708: Studio's git never fetches a missing object from a remote while it reads a folder, and a folder whose `.git/config` sets `extensions.partialClone` or `remote.<name>.promisor` is refused with the key named.
+- 8434b67: Halonic's git calls never fetch a missing object from a remote while they read a workspace, and a workspace whose `.git/config` sets `extensions.partialClone` or `remote.<name>.promisor` is refused with the key named.
+- 0498c59: In a folder you trust, Studio's git runs your own git filters again, such as git-lfs, so you can stage, commit and check out files that use them. A filter defined in the repository's own config still doesn't run.
+- e082cb1: When the key that locks your saved Google sign-ins is gone, the error now points to the new `halonic google reset`, which removes this computer's Google setup and saved sign-ins so you can set up Google again.
+- 5d13732: `halonic google reset` names a folder it can't read, says nothing was removed and how to fix it, and exits 7 instead of reporting a problem it can't explain.
+- 9f604b3: `halonic google reset` now says in its help and without a terminal that every integration's saved sign-ins go too, says "Nothing to remove" when there is nothing, and names `halonic google secret` and `halonic google sign-in` for setting Google up again.
+- dbe4e73: `halonic google reset` stops with an error when it can't read the Google or sign-in folder, instead of saying there's nothing to remove.
+- fe82ca0: `halonic google` now says "Studio" instead of "the Studio", calls a connector a connector, as Studio does, and calls the account argument `<ref>`, the setup's ref that Studio's sign-in step shows.
+- 56553a3: The run page says "sent nothing" when a run made no tool call, says when a run ended on a rejection, and no longer shows what you or a rule rejected with a green check or as what the agent did.
+- 3bb9e0a: The command to review an HTTP server's tools now names the workspace folder, so it works from a new terminal.
+- ce0ea40: In the desktop app, a connector's page now has a Secrets section where you set or remove the secrets its program needs.
+- 3bb9e0a: A connector page no longer tells you to run `halonic secret set` for a missing secret, which couldn't fix it; it names the secret and says Studio can't set it yet.
+- 8faa376: On a connector's page, the Secrets section no longer shows "Not set" while it waits for the keychain. After Remove, focus moves to the secret's field. Try again stays busy while it lists the tools, then focus moves to the line that replaces it.
+- f4ec35b: When a workflow's run was refused because the workspace isn't trusted yet, trusting it from the status bar now clears the message and brings back Start run.
+- 9abcbf2: Copy command quotes a missing Ollama model's name for the terminal, and a Library view of today's records follows your computer's calendar instead of UTC.
+- a8db502: The file editor no longer loses what you just typed when a save brings the file back, and two quick changes to an agent's settings both stay.
+- e5129e1: Get updates no longer drops a teammate's change to a file Halonic leaves to git, such as `.env.example`: it names those files and asks you to get the updates with git.
+- e85d93c: Get updates brings in a teammate's files exactly as they are, Source control refuses to write a file that isn't plain UTF-8 text instead of changing it, and Undo these changes keeps blank lines.
+- 6af2518: In the desktop app, outside links and sign-in pages open in your browser, and Restart to update asks first when runs in the window are still going.
+- 68215c0: Trust saves only the check you were shown: if the workspace changed while the dialog was open, the first Trust saves nothing and the next one trusts the new version. Until you trust a workspace, a provider's page shows Check only for a provider on this computer.
+- 3213552: When Get updates refuses because the shared copy changed a file Halonic leaves to git, it now names the command to run (`git pull --no-rebase` in the workspace folder) and what to do after.
+- 9445a7b: When Trust saves nothing because the workspace changed, focus moves to Not now, so a second press can't trust the new version unread.
+- 7467614: When Get updates refuses because the shared copy changed a file Halonic leaves to git, the message no longer offers Try again, since only getting the updates with git clears it.
+- 65aaf67: When Get updates refuses because the shared copy changed a file Halonic leaves to git, the message now has Show how, which opens the guide to getting those updates with git.
+- 2d63e50: When Get updates refuses over a file Halonic leaves to git, the Changes page now shows `git pull --no-rebase` in a box you can copy, with a link to the how-to. In the trust check, a program's secret names show as code, and on a narrow window each label and its value stand apart from the next.
+- c3eebbd: When Trust saves nothing because the workspace changed, a double click can no longer trust the new version unread. A provider's page now says to press Review in the header to trust the workspace and check its address. Get updates no longer offers Try again when it would overwrite changes that aren't in a version.
+- c01e77b: When Studio refuses a git change because it would skip one of your own git filters, such as git-lfs, in a workspace you haven't trusted, the message now says to press Review in the header to trust the workspace and try again, instead of sending you to a terminal.
+- a276896: Get updates and Create version over a git filter Halonic doesn't run now say to trust the workspace, or to use git in a terminal, instead of "Git didn't answer" with Try again.
+- 75467e8: When Halonic answers a Claude Code agent's ask inside the sandbox (`asks: in-sandbox`), the run log now also says how long that answer took, in milliseconds (`waitedMs`).
+- dbb1de9: On an agent's Harness page, when Check again makes the warning strip appear or go away, keyboard focus now moves to the Check again that is still on the page instead of being lost.
+- b655ea8: When Halonic can't reach the agent host, the Harness page now says "Couldn't check Claude Code" instead of claiming it found the program, and shows one Check again button.
+- 4c344e8: A Claude Code or Codex agent now runs its model at the `params.reasoningEffort` its agent file or model alias sets, and the run log's `llm.request` shows that effort.
+- 6696e5c: In `halonic run`, a sandboxed Claude Code agent that uses a provider key Halonic keeps now gets its stand-in key instead of running signed out, and a key that may not be sent is refused with the same words and exit code as a model call.
+- ee23e09: In Studio, a Claude Code or Codex agent with its own `AGENTS.md` or skills, or with a model alias from `models.yaml`, now starts its run instead of failing at once.
+- 89e9570: Each Claude Code and Codex run starts from a clean agent settings folder that keeps only Halonic's settings and the agent's sign-in, and a Codex run doesn't start when its working folder or project holds its own `.codex/config.toml`: the error names the file to remove.
+- 483dad4: A harness step keeps to its agent's `harnessLimits`: the engine refuses the model call past `maxSteps`, stops the step once it has cost `maxCost`, and stops it after `maxMinutes` of running time. The run log says which limit stopped it.
+- bc2cb6c: Studio's sidebar has a Help menu above Settings. In the demo, under First run, Show the guide again takes the guide up where you left it, and Start over makes a fresh copy of the demo and leaves your old copy where it is.
+- ddb9d04: Home in your own workspace now shows Get set up: connect your own model, make your first agent and run it once.
+- 061af75: While a file has a problem, Home starts with a Problems section, such as "Problems · 12 files", that lists the first five files with their first problem; each opens its file at that line, and "Show all 12 files" lists the rest.
+- 09d33b7: Hardening: an MCP connector over HTTP now lists its tools only once you trust the workspace, like a connector that starts a program.
+- da65505: The page of a connector over HTTP that needs a secret now says that Studio can't tell whether it's set, that in the desktop app only runs started with halonic in a terminal use it, and that setting `HALONIC_SECRET_<NAME>` works too.
+- 14d2517: The page of a connector over HTTP that needs a secret now says where to set it: Studio can't set it, and the page shows the `halonic secret set` command to run in a terminal.
+- ae8d514: `validate` now says when a file's id isn't its file name, and suggests the agent or step you likely meant for an unknown name, such as `Did you mean "sorter"?`.
+- 050e871: In Inbox, dismissing a notice tells a screen reader which notice went.
+- c197f63: In a narrow window, **Next** in the Inbox now opens the next card at its top, so its title is on screen instead of scrolled out of view above it.
+- 2cedbbc: A run proposal you decided just before closing Studio now moves to Done in the Inbox. While the engine isn't answering, Undo on a decision sends nothing, says why and stays, so you can press it again later.
+- 398e018: While the engine isn't answering, a run proposal in the Inbox says so above its title, and its Accept and Reject buttons don't act until the engine answers again. A Done list that can't load no longer stops the rest of the Inbox from showing.
+- 2b3f3cc: In the Inbox, the file changes a run proposes can be accepted or rejected one at a time or all at once, each with Undo.
+- 2fe084d: On a phone, a run proposal in the Inbox shows Accept all and Reject all as full-width buttons under its changes, and the bar over an open item shows its place among what's waiting, such as "1 of 4".
+- 38bbf8c: A run you start from the Inbox's request form now says "Started by you, in the Inbox" instead of "with Run".
+- 5003cbb: In the Inbox, pressing Try again on an approval or a wait step keeps the keyboard focus on the answer being sent, so it is still there if the answer fails again.
+- 4752b3e: In Studio, each waiting row in the Inbox and on Home's Needs you now shows the run's short id, so two runs of one workflow read apart.
+- dcd74cd: In the Inbox and Home's Needs you, a row's second line can now take two lines, so a long line still shows how long the item has waited.
+- bf1fbf3: The Inbox lists the file changes a run proposes under Needs you, counted with what waits for you.
+- c5f0a97: **Go to the secret field** opens New connector in the Library when no Google account is waiting for setup.
+- 94d7d27: The Inbox says why an answer couldn't be sent: another Halonic holding the workspace offers Try again instead of "no longer waiting", an untrusted workspace offers Review, and an Approve of a connector's tool call the window can't run gives the command that sends it from a terminal.
+- 54d9e0b: On a phone, a request that didn't start now shows its "Not started" line first, with the command to run and its buttons under it.
+- cc2292b: When the engine isn't answering, pressing Undo on an Inbox decision now swaps that toast for one that says why and keeps Undo, so the reason also shows on a phone.
+- 3162bba: The Inbox says a workspace isn't trusted, with Review, only when that is why an answer was refused; any other refusal shows Couldn't record your decision with its own reason and Try again.
+- 41ffe88: An answer to a card in the Inbox now goes only to the step that card shows. If the run has moved on to a later step, the answer is refused and the new step stays open for you.
+- 0581c8d: A new workspace, from `halonic init` or Studio's New workspace, now starts with a hub named Default and the built-in test model, so a first agent runs with no key.
+- 239a139: On a phone, a link inside a sentence no longer opens a gap in its paragraph, and it still takes a full-size tap.
+- e5abf70: When a step reads an input field the workflow doesn't have, `halonic validate` no longer tells you to add it to the workflow's tests when the workflow has none, and reads naturally when the input has only one field. `halonic run` and `halonic runs --workflow` in a workspace with no workflows now point to the recipes to add one from.
+- 1e7be5d: `halonic validate` now says to add a missing input field to the workflow's test file, `halonic models allow-address` no longer points to the Models page for a key, and a workspace with no workflows links a recipe to start from.
+- 79f7d43: `halonic validate` now reports a step that reads an input field the workflow doesn't have, with the name you probably meant, and a start field that no step reads. `halonic run` stops with exit code 2 when the input is missing a field the first step reads, and names the fields the input has, instead of running every step with the value unset.
+- d9e8f9b: On Windows, after the installer sets up the agent sandbox with administrator rights, its last page says where to check the sandbox: Settings › Agent sandbox.
+- 9e2f2e7: On Windows, Halonic no longer goes back to an earlier version whose agent sandbox setup is older than the one on your computer: an update stays on the newer version and says why in the update log, and an older installer stops and says to remove the sandbox first.
+- f72f5fb: On Windows, the installer asks from its own window for the administrator rights the agent sandbox's setup needs, and once you say yes, it waits at most 5 minutes for the setup to finish.
+- 4d89c44: On Windows, removing the agent sandbox with administrator rights could leave it with access to your folders. Installing Halonic again now takes that access back, whether or not you set the sandbox up again.
+- 1eced65: The Windows installer now includes what Halonic installs in its WSL sandbox, so setting up the sandbox doesn't download it. Halonic now uses about 200 MB of disk space.
+- 611ddae: When Studio can't save or remove an agent's trusted instructions because Halonic can't write to its data folder, it now says so in plain words, with the raw error only in Copy details.
+- 0f0a42c: Two hubs with an agent of the same name now each keep their own trusted instructions, so trusting one no longer makes you trust the other again; you're asked once more for each agent you trusted before.
+- d8d576c: Integrations set to a private network can now use a host name, such as a Tailscale name, as long as it points to a private address.
+- b79407b: `halonic doctor` now names a secret a local integration's connector picks that isn't set, and Studio's trust check lists that connector once, with its secrets joined by "and" as the CLI does.
+- 4130a2d: A secret in an `integration.yaml` with `hosts` and no `as` now says to add `as: bearer`, `header` or `form`, instead of saying it has no field `hosts`.
+- 8173ea7: Integrations set to a private network can now reach Tailscale addresses (100.64.0.0/10).
+- 8a3af7e: A harness agent's working folder can't be inside `integrations/`, where local integrations keep their code, and a name written in styled letters (such as 𝐁𝐨𝐥𝐝) now gives a lowercase id.
+- 55a1bbb: On Windows, when a removal with administrator rights may have left the sandbox some access, Settings and `halonic sandbox remove` now name the same step to end it: remove the sandbox again without administrator rights.
+- 457f063: After a removal that kept some sandbox access, `halonic sandbox remove` says to run it again from a terminal on Windows itself, not inside WSL.
+- 8fe99eb: On Windows, after a sandbox removal with administrator rights, Settings and `halonic sandbox remove` now name the step that ends the access the sandbox kept, instead of "the next time you start Halonic without administrator rights".
+- 5fc6403: `halonic trust` now warns when a provider's stored key isn't allowed to go to the provider's address, with the command that allows it, and `halonic models allow-address` says when a key's first address means the key now goes only there.
+- 0ae7a2c: `halonic run` and `halonic runs show` now say why a run stopped at a provider's address instead of saying Halonic can't tell the cause: a key that may not go to its provider's address names the provider, the key and the address, with the `halonic models allow-address` command, and a workspace that isn't trusted on this computer says so, with `halonic trust`, and `halonic run` exits with code 7 for these.
+- 330184f: When a key is missing or refused for a model no alias points at, the run page and `halonic run` name that model ("used by the model gpt-4.1") instead of calling it a model alias.
+- 72d29af: A locked keychain on a connector's page and in Settings' plugin secret fields now reads "Couldn't save the secret: the keychain is locked."
+- 32129bd: In a very narrow window, such as at 400 % zoom, a button's label now wraps instead of making the page scroll sideways.
+- 0e6a821: The kit now refuses a request with `secret-too-short` when a declared secret has fewer than 8 bytes, also when the request doesn't place it. Before, such a value was read for the carried-secret check and the response filter without the minimum: ordinary text that held it was refused or removed.
+- 52cd52a: In a very narrow window, such as at 400 % zoom, a toast no longer covers the button you just pressed: it moves to the top of the window.
+- 7709d02: A failed run whose cause Halonic knows, such as a full disk or a bridge socket path longer than the system takes, now says that cause as the reason, instead of "Halonic can't tell the cause yet", and doesn't ask for a bug report.
+- 360ae31: The connector page shows how the connector connects: its transport, where it goes, and the names of its secrets.
+- a09a742: Library items can be deleted from a row's ⋮ menu or an open item page's ⋮ menu. The item is deleted with no dialog, and Undo brings it back while the delete is the newest change.
+- a87f69b: A skill, knowledge source or collection page says "Loading the skill…", "Loading the source…" or "Loading the collection…" while it opens, and a knowledge source that can't load says "Couldn't load this source", instead of showing the item's file name.
+- cba45dc: In **New connector**, pressing Create with no way picked moves focus to the first way, and a starting way the app doesn't offer is ignored.
+- b6bbef2: The Library can open **New connector** with a name and a way already filled in, for the run banner's "Add connector" to ask for.
+- 8ddb4fd: The Library's Connectors tab has a **New connector** button. It asks for a name, how it connects (Gmail and Google Drive, an MCP server over HTTP, or a local program) and an optional secret name, makes the connector's file without connecting anything, and opens its page. Every tool a new connector offers asks a person first, except Google's reading and searching.
+- b940c7a: A connector's page and `halonic tools` no longer call turning on a server's listed tools "approval": tools are "off until you review them", and "waiting for your approval" now only means a run is waiting for you.
+- 3696f2b: `llm.request` has an optional `address`: the `host:port` of a provider on this computer, such as `localhost:11434`, never a URL, path or user name. `llm.fallback` names the model it moved to with an optional `provider`, `model`, `alias` and `address`. The workspace's model resolver works out the address, and logs written before read as before.
+- 7ab7a5c: The CLI no longer reads the folders Claude Code and Codex agents work in, or any `node_modules` folder, when it checks or loads a workspace (a run that copies the workspace for its agents still copies them), and `halonic extract` no longer copies `node_modules` folders into the new workspace.
+- 671b0dd: Checking a workspace stays fast on very large or malformed files: a file reports its first 100 problems and how many more it has, and a connector whose program arguments hold too much text to check for the paths they name is refused with a message that says how to fix it.
+- 144b78c: A local integration's connector file can now give the integration its `settings`, such as a URL, and name the workspace secrets it gets; if either changes, run `halonic trust` again before it starts.
+- 13f7ef6: "Local only" counts an HTTP connector as on this computer only when its `http` or `https` URL plainly names `localhost`, `[::1]` or a `127.x.y.z` address, and an integration setting whose host is an address written in hex is refused.
+- 81be015: In a local-only workspace, a connector whose plugin isn't added or can't be read now says to add it, or fix what `halonic plugin list` says about it, instead of offering to turn off local-only.
+- f8f404d: `halonic validate` and `halonic run` now count the hosts a plugin or local integration lists when the workspace is local only.
+- 4c3c23d: In a local-only workspace, a plugin counts as local only when neither its backend nor its local tools reach a site outside this computer, and a plugin with only local tools that reach nothing can now be used.
+- 63e645a: In a local-only workspace, Studio no longer offers to turn off local-only for a plugin's connector; it says to check the workspace with `halonic validate`, which can tell whether the plugin is local.
+- 340617a: When Local only changes while a run is going, Studio says whether it was turned on or off and offers Try again.
+- 18b6cad: In Studio, a run waiting for a timer now resumes with Local only as you last saved it, instead of with the setting from before the save.
+- 0e5d7d5: On a Mac, shortcut hints write Control, Option and Shift as ⌃, ⌥ and ⇧, as macOS menus do (for example ⌘ ⇧ T to reopen a closed tab).
+- 405ec47: After Review and make live, Studio says the routine or agent is live.
+- 721dfd7: With `users.mode: many` in `deployments.yaml`, `halonic validate` now refuses a Claude Code or Codex agent that has no provider key, because other people's runs would use your own sign-in; deploying such a deployment, or starting such an agent's run in it, stops with the same `users-many-subscription` code.
+- 876a4b3: When a connector's program stops, the lines it wrote that Halonic shows no longer leave the end of a secret with a line break whose start wasn't kept: that line reads "[line removed: it follows text that wasn't kept]".
+- 5bae48e: When a connector's program stops, the lines it wrote that Halonic shows no longer leave any line of a secret that holds a line break, such as the middle of a private key.
+- 17548b9: A long folder cut in the middle keeps at most its last 24 characters, from a "/" or "\", so `…\Documents\Acme sample` fits on one line in the sidebar's workspace switcher and Welcome's Recent list. The phone's More page cuts its workspace folder in the middle too, so the folder's own name stays.
+- d361cc9: A long Windows folder in the sidebar's workspace switcher and in Welcome's Recent list is cut in the middle at a "\", so the folder's own name stays. The sample's lines say "Documents" instead of "~/Documents".
+- 1859b29: `halonic validate` and Studio now say a workflow step "uses the agent "x", which its hub doesn't have" and "goes to the step "y", which this workflow doesn't have", instead of "unknown agent" and "unknown state".
+- 32ac2f6: Studio and the command line now call an agent's and the assistant's limit the model call limit, as the agent's Model page does.
+- 88e5e50: `halonic doctor` now fails with "no model alias default" in a workspace that has no model yet, and `halonic validate` now finds a provider no file has in a hub's model alias or a `provider/model` setting, with "Did you mean", and refuses an artifact name that isn't one file name.
+- da8bf41: In Studio, a provider's page now names a wrong address on an older key before asking for the key, and says when a new key stayed stored without an address.
+- 359d27e: In Studio, a provider's page now asks for the address a new API key may be sent to, lists each key's addresses, and marks a key saved before addresses existed as "Not bound yet".
+- 34322d1: In Studio, a provider's key block shows "Not bound yet" as a visible chip, sets its notice and the "Allowed address" line in small text with the address as code, and moves the focus to the Address field after "Add another address".
+- a43933e: In Studio, when a new key is left without an address, its provider's page no longer says it was saved before Halonic recorded addresses, and gives one next step.
+- e98d612: The downloaded MXC SDK is checked file by file against the hashes written when it was unpacked, each time it is imported. A changed, missing or added file makes it count as not downloaded, and the next download puts it back.
+- 771462b: Studio names a never-taken arrow the same way on its card, on its plate on the canvas and in Problems, an unavailable button's tooltip no longer ends on a colon, and the CLI says "See it with: halonic validate" when there is one problem.
+- 8d6f366: In Studio, Settings › Agent sandbox › New agents run, and its dialog for On this computer, now say when Studio itself can't start agents on this computer outside the sandbox, and that halonic in a terminal on this computer can.
+- 0aad02c: Settings › Agent sandbox now has the **New agents run** choice: In a sandbox (recommended) or On this computer. Choosing On this computer asks first, and agents you already have keep their setting.
+- b603f4d: In Studio on a very narrow screen or at 400 % zoom, the New routine, New agent and New workflow sheets no longer scroll sideways, so the Name, Hub and Prompt labels are no longer cut off.
+- 716721a: A new routine that runs an agent now asks what the agent should do, instead of saving "Describe what to do." as its task.
+- 79c83cf: The shield on a run's "Ran on this computer, without the sandbox" line is amber, like the Full access chip.
+- d84802d: When an agent set to run outside the sandbox can't start, the run page now says that Studio can't start it yet but halonic in a terminal on this computer can, and to set it back to In a sandbox on its Harness page, then press Run again.
+- 2c0e8ac: Installed from npm, `halonic init --example` copies only the examples that come with the package, and `halonic serve` says the Studio page doesn't come with the npm package instead of looking for it.
+- dfef04f: When plugins are off on this computer, Settings › Agent sandbox, the CLI and the plugins guide say where to allow them (each plugin's Review), an open plugin page shows it's off right after Take back, and `halonic plugin add` says it will stay off before it asks.
+- c36f6b1: When Halonic on your computer is too old for an answer in the Inbox, the card's "Update Halonic, then answer again" line is now a highlighted box instead of a plain line.
+- 56c051a: When an agent's file changed since you chose On this computer, `halonic run` now says it runs in the sandbox until you confirm again in Studio, and Studio shows the choice as on hold instead of Full access.
+- 71a1110: In Studio on a phone, a Workflows, Library, Agents or Routines row's chips now sit on a line of their own under its text, so the name, description and Last run keep the row's full width, and a chip too wide for its column wraps instead of being cut.
+- c0d2329: On a phone, an overview row with a short detail no longer shows a gap between the detail's dot and its used-by text.
+- 4a5c269: On a phone, a short detail under a skill's name no longer leaves a gap before its "Used by" text.
+- 229af4f: An agent or workflow deleted from its own page keeps its Undo in a toast after you leave the page, and the agent's page now names the agent that was deleted.
+- b1b1a6e: In Pair a phone, "Pairing was not allowed" now shows as a note, not a warning, a code that stopped working stays faded under the reason, and on a narrow screen the code sits in the middle.
+- 5a68d4d: Ctrl K shows a run found by "#" and its short id, such as "#8b16", and anything else a search found by more than its name, after the names that match.
+- b9151d0: Ctrl K hides only the places a command opens, not a place that happens to share a command's name, and no longer says "Nothing matches" when the match is a place its Action stands in for.
+- 14c349b: A screen reader now hears each Ctrl K row's hub, such as "Writer, agent, Reports", so two items with the same name in different hubs no longer sound the same, and run rows show their hub's name rather than its id.
+- 58fecb8: Ctrl K says "Nothing matches" only when no action matches either, and a workflow's tab shows the workflow's name, not its id, when it was opened before Studio read the workflow.
+- ac55467: A paused routine's Runs view now has a Review button that opens the trust check, and a routine's empty start field now says that, left empty, the routine won't start.
+- 46d4d76: The Android app shows the paired computer's real agents, and shows hidden characters in their text as visible markers.
+- 46d4d76: On the phone, tapping an agent opens its messages and approvals with a prompt box, and an approval waiting for you says to answer it on your computer instead of showing buttons that can't be used.
+- 19ae189: On the Android app, Approve and Reject now ask for your fingerprint or face before your answer is sent. If you cancel, or your phone can't check, nothing is sent.
+- 923593c: The Android app can now pair with a computer and list your paired computers. It shows the connection's state, with a warning when what you see may be out of date, and a larger tile for each agent. While the phone can't reach the computer, the prompt box says why you can't send. A phone with nothing paired that remembers an address still connects to it, as before.
+- 0f07678: On the phone, while Studio reaches a computer for the first time, it shows "Reaching" with the computer's name and the seconds. After 30 seconds it names the likely causes and offers Try again. Check this connection lists what the phone can see, with a report you can copy.
+- d8a11ae: On the phone, a hidden character in the computer's text now shows as a small chip with its code, an agent's name keeps its room next to the connection label, and the prompt box no longer shows a doubled "…" after a long name.
+- 90fa502: On a phone, "Not trusted yet" and a connection that needs you, such as "Needs sign-in again", now show under the top bar.
+- 9734ea9: On a phone, a change that couldn't be saved now shows under the top bar, with Try again or Compare.
+- c8072af: A two-line title in the phone's top bar now fits inside the bar, and in Chromium a screen reader reads the Inbox's Next as "Next: title, 1 left", without a space before the comma.
+- 5a47bad: An agent's "On this computer" choice now applies only to that agent in its own hub, and a choice made before this change counts as not made until you choose again.
+- 3a78452: In a narrow Studio window, picking a place or a file in the Places drawer, or opening a page from Settings, now closes the drawer and moves the focus to the new page's title.
+- 2eed94c: `halonic validate` says an agent routine takes `prompt`, not `input`, and says why a plugin's or local integration's connector isn't local, and `halonic doctor` says agents won't start "until the sandbox is fixed".
+- 9dd9708: `validate` now says common file mistakes in plain words with the field's name and what to write, such as `temperature is a number: write 0.2 without quotes.` instead of `Invalid input: expected number, received string`.
+- d3ca57b: `halonic plugin add` now says why it refuses a source in words that point the right way: a commit id cut short asks for the full id, a branch or a tag; `git@host:path` says which `ssh://` address to write instead; an `https://` address with a password and no path says it has a password in it; a missing folder says there's no folder; a manifest problem starts with the field it is about, such as `backend.tools[0].risk:`; and a git wrapper on the `PATH` ends with exit 9 and says to put git itself first on the `PATH`. `halonic tools review` and `halonic tools approve` on a plugin's connector now say when that plugin isn't added, with `halonic plugin add`.
+- 0414d21: When `halonic plugin add` can't fetch a git address, it shows git's message as normal lines instead of escape codes such as `\u000d\u000a`.
+- f2adf99: `halonic plugin add` now says why it refuses a plugins folder that is a link or not a folder, and how to fix it, instead of a generic error.
+- b1f3629: `halonic plugin add` now names the line and field of `plugin.yaml` that's wrong and says to fix it, finds a `plugin.yaml` one folder down, and refuses a tool name with a space (use one word, such as `find-order`).
+- 913483b: `halonic plugin add` no longer copies private folders such as `.ssh` or `.aws` from a plugin's folder, and says which ones it left out.
+- 48c3638: Adding a plugin leaves `.git`, `.studio`, `.env*` and `.envrc` out of its files at any depth, in the CLI and the desktop app, so a plugin author's secrets don't end up in the plugins folder.
+- ce2f46f: `halonic plugin add <folder> --update` puts an edited plugin in place of the added one and keeps its settings, and `halonic plugin list` shows a folder plugin as "copied from <folder> on <day>".
+- 05ae0da: `halonic plugin add` now says that a user name in a git address would show in `halonic plugin list`, and for a password it says to leave it out or use an `ssh://` address with a key, which is how a private repository works.
+- 9b623ef: `halonic plugin add` refuses an `https://` git address with a user name in it, so no token given that way is kept or shown by `halonic plugin list`; it says to leave it out or use an `ssh://` address with a key.
+- 4f9eb97: `halonic run` now starts a plugin's backend: it reads the plugin's own secrets instead of failing with "A workspace can't pick a secret that belongs to a plugin."
+- 1a210ac: A trusted plugin can now sign in to its service: its page shows **Sign in** for each sign-in its backend declares, and the trust check names every host the sign-in reaches.
+- 3cd740c: `halonic plugin add` adds a plugin from a folder or a git address, `halonic plugin remove` removes one, and `halonic trust --plugin <id>` turns on a plugin that is off.
+- 9b024eb: `halonic validate` warns when a plugin connector's plugin isn't added on this computer and names the five kinds of a connector's `transport` when it has none, and `halonic plugin add` without a terminal prints the trust command with the real fingerprint.
+- 5fb23e4: `halonic tools review` and `halonic tools approve` on a plugin's connector now say its tools need no approval, because trusting the plugin covers them, and exit 0 instead of failing. The plugin trust check now says which program gets a program's secret, as which variable, and where that program can connect; the file list is headed "Files".
+- 98a0100: When `halonic trust --plugin` refuses a `--fingerprint` that isn't the current one, it now gives the full command to copy, with the plugin's current fingerprint filled in.
+- 69a5856: `halonic plugin add` now also says why it refuses a plugins folder that is a file, and `halonic plugin remove` refuses a plugins folder that is a link or not a folder, with the reason and how to fix it, instead of removing through it.
+- c31017d: `halonic run` now says a plugin's backend didn't start because the sandbox can't start on this computer, in the words `halonic plugin list` uses, and points to `halonic doctor`; `halonic plugin add` offers the trust command as "To trust it anyway" when trusting won't turn the plugin on; and a refusal for an untrusted workspace shows its fingerprint once in a terminal.
+- 5083064: The Plugins list marks a trusted plugin "Off on this computer" while it waits for your yes to run without the sandbox, and a phone or a served browser says to allow it in the Halonic desktop app.
+- 1bbc1ec: In Studio, a trusted plugin's page now says when the plugin is off on this computer until you allow it to run without the sandbox, with the fix and a Review button.
+- 5133950: In Studio, a plugin's page now says when Halonic stopped the plugin because the sandbox didn't work when it started, says the next run tries the sandbox again, and has a Check again button.
+- dc858ee: The CLI's plugin trust check and `halonic plugin list` now say "Doesn't start on this computer: the sandbox can't start here" for programs whose sandbox can't start, the same words as Studio's trust check.
+- 1649f6b: When a plugin record file can't be read or is damaged, `halonic plugin list` and `halonic plugin remove` now name the file and say how to fix it, such as "Delete line 2 from it, or delete the file, then run again.", instead of asking you to report a bug.
+- 63d2abc: While a plugin's sign-in waits for the browser, Open again opens its page again, Cancel shows a sign-in the browser had just finished, and a sign-in that didn't finish says nothing was saved.
+- a6787de: On Windows, signing in to a plugin's service from Studio now works instead of saying it doesn't work in this setup yet.
+- 15b28bf: In Studio, while a plugin's sign-in waits for the browser, keyboard focus moves to Cancel, then to the button that comes back when the wait ends. On a phone, the sign-in buttons are now touch size.
+- 13744d0: While a plugin's sign-in is open in the browser, its block on the plugin page says it's waiting, with Cancel.
+- a040bc9: When a provider doesn't confirm a plugin's sign-out, Studio and the halonic command now name the sign-ins and say how to end the token now: remove the access you gave in your account settings at the provider. A sign-in cancelled twice in a row in the browser no longer keeps Studio waiting.
+- 01ee19f: Removing a plugin's trust in Settings › Trusted sources now signs out of its sign-ins too, and a plugin added under the id of one whose folder was deleted by hand no longer finds the old sign-ins.
+- a0b7376: `halonic trust --plugin <id> --remove` and `halonic plugin remove` now say which of the plugin's sign-ins they signed you out of, and warn when the provider didn't confirm, because the token may still work at the provider until it expires.
+- 50357ab: Removing a plugin's trust or removing the plugin now signs out of its sign-ins, so a plugin added later under the same id has to sign in again.
+- ec1c6ed: On a plugin's page, the status box now shows the focus ring when focus moves to it after Check for updates, Keep or Check again, so a keyboard user sees where focus landed.
+- a028315: When Halonic stops a plugin because the sandbox didn't work when it started, a plugin's card and command dialog now name the plugin, say that Try again starts it in the sandbox, and link its page for details.
+- b357f60: The trust check of `halonic plugin add` and `halonic trust --plugin` shows the plugin's folder and the first ten files its fingerprint covers, then how many more.
+- 13f74f9: The app gives the files of a plugin's folder that its fingerprint covers, the first ten by path and how many more, for the trust check to list.
+- ca3e223: `halonic plugin add` and `halonic trust --plugin` now ask only whether to trust the plugin, not whether to turn it on, when it stays off on this computer, say that it stays off even when there's no terminal to ask in, and line up the plugin's tools under Reads, Changes things and Sends.
+- 5fb23e4: The plugin trust dialog now says which program gets a program's secret, as which variable, and where that program can connect, in the same words as the CLI; the file list is headed "Files".
+- fe36479: In Studio on macOS and Linux, a plugin's trust check now says whether each of its programs can start on this computer.
+- c801c09: In Studio's plugin trust check, the Programs heading shows a warning triangle when plugin code isn't in the sandbox, and an address from a setting now stands out from where it may be.
+- 8323d9d: In Studio, a plugin's trust check now says whether plugin code runs in the sandbox on this computer, and when it doesn't, asks you to confirm before Trust.
+- 5ae598d: In Studio, a plugin's trust check now shows the address you entered in the plugin's settings, and where it comes from.
+- 0028752: In Studio, a plugin's trust check now lists an address you enter in the plugin's settings as its own row, and says where that address may be.
+- 96a28e7: Studio's trust check of a plugin shows the plugin's folder and the first ten backend files its fingerprint covers, then how many more, as `halonic plugin add` does.
+- 72b68ec: `halonic plugin list` now says when a plugin's folder changed since it was copied, with the `plugin add --update` command to run. `plugin add --update` names the files that changed, and says why an updated plugin is off in the list's words. `halonic runs send` to a run waiting for "Allow this address?" now says to answer it in Studio.
+- 84cc0f1: `halonic plugin add --update` now says when the new copy comes from a different folder or git address than the plugin was added from, since its settings, secrets and sign-ins carry over to it.
+- 2bc8398: Settings › Agent sandbox › Plugins and integrations no longer says the Windows reason twice, words a failed Take back plainly with Try again, and says when it couldn't check instead of hiding.
+- 9141cdd: When your user account can't read the plugins folder, `halonic plugin list` and `halonic doctor`'s Plugins line now name the folder and say how to fix it, such as "Run chmod 700 <folder>, then run again.", instead of asking you to report a bug.
+- 4ae3332: In the Library's Plugins tab at 200 % zoom on a narrow window, a plugin's version and trust date go under its chip instead of being cut off.
+- bfe42d6: Settings has a Plugins section that lists the installed plugins and the ones that come with Halonic, and opens a plugin's page.
+- c2b2b3b: In the Studio desktop app, a plugin's page and the plugins list keep their actions in a narrow window or at 400 % zoom; only a phone or a served browser makes them view only.
+- 8036ab6: The curve, time and spring the point of light will fly between two steps of a run, ready for the canvas's run mode.
+- 2913618: When an agent's file changed after you chose On this computer, Studio's confirm-again warning now says on which day and at what time it changed, when the workspace's versions show it.
+- 72139f9: In Studio, an agent you chose to run on this computer shows a Full access chip next to its name. While that choice waits for you to confirm again after the agent's file changed, the agent runs in its sandbox and there's no chip.
+- 27d739b: In Studio, confirming again after an agent's file changed starts with a line saying the file changed, and Open the file opens it in a tab beside the agent.
+- a2a1af0: The status bar says how many files have a problem, such as "2 files with problems · Show", and Show lists them; each opens its file at the first problem. On a phone the count sits under the header.
+- 46a2029: On a phone, a file's problem now shows in full on its row, and the problem count looks the same on every workflow.
+- c7deeb2: When a workflow can't run because of a problem in another file, its page now names that file and offers to open it at the first problem.
+- f55552b: On a workflow page, the band that says a workflow can't run because of its problems now also says to fix them.
+- 3601fa4: When `HALONIC_HOME` isn't a full path, Check this computer shows it as a problem on the Profile folder line, with what to set instead; the copied report names the problem without the value.
+- 2ee7861: `halonic doctor` and the refusal for a workspace that overlaps your profile folder now say "your profile folder" with its path, give the same fix as Studio, and doctor's line starts with a capital.
+- 7f64853: The CLI refuses a workspace that holds your profile folder because `HALONIC_HOME`, `XDG_DATA_HOME` or `LOCALAPPDATA` put it there, and a workspace inside the profile folder, and says to move the profile and set `HALONIC_HOME` to its new place.
+- 2884458: On a run's proposal page, a button says Accepting… or Rejecting… while its decision is sent, and a long file path wraps between folder names before it wraps inside one.
+- d23a21a: In a run proposal, a file that changed after the run started keeps Reject, so the proposal can still be finished, and a window that can't decide it says to use the desktop app or run `halonic proposals show` on your computer.
+- c2979d2: When Remove from Inbox finds a run's changes there again, the Inbox now shows them to review instead of a line with nothing to press.
+- 216db5b: In Studio in a browser or on a phone, Needs you now says that run proposals show only in the desktop app or with `halonic proposals` in a terminal on your computer, and a proposal it can't decide names the command that does.
+- 683a3dd: When you decide the last change of a run proposal, its row stays in the Inbox, muted, with what you decided, until you open another row or leave the Inbox; then it moves to Done.
+- 53d343e: The Inbox keeps run proposals decided in the last 30 days under a collapsed Done heading, each showing what was accepted, rejected or not reviewed.
+- 180d4ef: When accepting, rejecting or undoing a run's changes fails, the Inbox says why in plain words (the engine isn't answering, the workspace isn't trusted yet, or a problem Halonic can't explain yet) with **Try again**, **Review** or **Copy details**, instead of showing the engine's own error text.
+- cfb4b7f: When a run's changes were deleted outside Halonic, the Inbox now says so, with Remove from Inbox to take them out of Needs you.
+- 9ce829b: When Undo can put back only some of a run's accepted changes, the Inbox says it undid part of them and names the file it couldn't put back; when a later decision keeps the Undo back, it says so.
+- 5413863: `halonic proposals reject` replaces `discard` (which still works), matching Studio's Reject.
+- 441e053: When a run's changes were deleted outside Halonic, `halonic proposals` now says to check with `halonic proposals show` before removing the run, since `reject` rejects the changes if they came back.
+- 802a6eb: When you cancel a plugin's sign-in on the provider's page, the browser tab now says you cancelled it and can close the tab, instead of asking you to go back to Halonic to see why.
+- 30fff99: `halonic validate` now links to an example provider file when it tells you to add one, and a hub's model alias on an unknown provider gets the same message as one in `models.yaml`.
+- 13ab099: A provider file can list the models that search the web by themselves in `searchesWeb`, such as `perplexity/sonar`.
+- 91f43d0: `halonic validate` refuses a provider file whose secret name belongs to Halonic or a plugin, such as `token-key`, and choosing a model never saves your key under such a name.
+- 1c10633: A provider's tab that is already open takes the provider's name, such as "LM Studio", once `providers/` is read, and follows the name when it changes. A provider with no name keeps its id with a capital ("Anthropic") after the read.
+- 57a36bc: `HTTPS_PROXY` and `NO_PROXY` are now honoured: model calls, Google sign-in and connectors over `https` go through an `http://` proxy by tunnel, and a setting that can't be used fails the request instead of going direct.
+- 57a36bc: `HTTPS_PROXY` and `NO_PROXY` are now honoured: model calls, Google sign-in and connectors over `https` go through an `http://` proxy by tunnel, and a setting that can't be used fails the request instead of going direct.
+- bfe0c50: In Studio, a run's receipt now names a wait step's answer by the label the Inbox card showed, such as "answered Send to a manager", instead of its event id.
+- 47f094b: A run can record that a person answered an approval from a remote device. `SendOptions` takes `by: "remote-device"`, and `approval.resolved` then says `by: "remote-device"` instead of `"person"`. The answer is taken exactly as a card click is: the same call id check, and the first answer wins.
+- 11bf6d0: The toast that says a step couldn't be changed names the step by its title, as the step card does.
+- 70c2f33: After a removal that kept some access to your project folders, Settings › Agent sandbox offers Remove the sandbox… under Needs setting up, so you no longer have to set the sandbox up again just to remove it.
+- e56b7f2: Renaming on a phone now reads an empty name's error while Name has the focus, and the top bar and window title take the new name; a renamed routine or Library item also renames its desktop tabs. A long title in the phone's top bar wraps to two lines before it is cut. The kit's `FilterChips` takes `flush`, which drops the row's 16px sides, so a collection's chips line up with its title and grid. In the Inbox, a screen reader reads Next as "Next: title, 1 left", without a stray space before the comma.
+- 6c14029: When Halonic won't read a workspace's git repository, such as a linked worktree or one whose config sets `include.path`, the CLI now says why and how to fix it, instead of "Halonic ran into a problem it can't explain yet." `halonic schema` now replaces a link where it writes a schema file, instead of writing to the file the link points to. `halonic init --example` with a name that isn't an example says so.
+- c64995a: In Studio, after you remove a workspace's trust, starting a run, answering an Inbox card or sending in Try it now says the workspace isn't trusted yet and offers Review, instead of a problem Halonic can't explain.
+- b2b76db: When every tool of a connector is on, Review tools opens with the Approved group open, so you can switch a tool off at once; the trust check's integration row now reads "home-station · ⚠ not in the sandbox".
+- 738e301: A connector whose tools are all on now offers Review tools again, so you can switch one off, and the run's line says the tools are off until you review them. The connector's Status section now lists those tools under "Off until you review them" instead of "Waiting for approval".
+- 9b02955: The ring in the Studio's title bar and on the Android connect page now has the new blue to cyan gradient, a band of 16% of the diameter, and is drawn the same in both places.
+- efb8d50: On Windows, when Windows raised an update to administrator rights from a limited account and the new version doesn't start, the update no longer goes back to the version before by itself, because the installer it would start is in a folder the account's other programs can change: the new version stays, and `updates.log` says how to go back.
+- dda3628: On Windows, when an update that doesn't start can't go back to the version before, the installer now shows a message saying why, how to go back and where `updates.log` is, instead of only writing it to the log.
+- e896f7f: In Studio, a routine that starts an agent in Claude Code or Codex no longer asks you to fix the sandbox first: Run now says right away that Halonic can't run an agent on its own yet.
+- 8342553: Run now on a routine that starts an agent says Halonic can't run an agent on its own yet, not that the engine isn't answering, and the routine's page and the New routine dialog say it too.
+- 9aab270: On the Routines list, screen readers and braille displays get a routine's "Can't start: … isn't in this workspace" without a stray space before the colon.
+- 68c1b99: On the Routines list, a routine whose workflow or agent isn't in the workspace shows "Can't start" and no next start time.
+- 9eee683: A routine's summary and next times show the schedule that's live, not one you haven't made live yet.
+- 30e6f92: `halonic validate` and Studio no longer add "unknown hub" or "need run.hub" to a routine when the hub or root agent it uses has its own error; only that file's error shows.
+- 73b7a2e: A routine's page keeps the routine's name when it can't be read, and says "Halonic ran into a problem it can't explain yet." instead of blaming the engine for an error that isn't the engine's.
+- 3897808: A routine with a problem no longer stops every workflow from running, in Studio and in `halonic run`; only that routine can't start.
+- cafdf64: On a phone, a routine's Runs tab now wraps a long field or step name in a row that couldn't start, instead of scrolling sideways.
+- cafdf64: A routine's Runs tab now says the next step after why a timed start couldn't start, and points to Run now when that step is a command or when Halonic can't explain what went wrong.
+- ae1334c: A routine whose start was refused for a connector now says to run `halonic routines watch` to keep it starting on time, and the Routines list says when a routine couldn't start in place of its next time.
+- 112b78a: A routine's Runs tab now says when a timed start couldn't start, and why, instead of showing no runs.
+- 64627cd: In Studio, a routine's "Changes not live yet" line now ends in Review and make live, which opens Create version with only that routine's file.
+- b958b38: A routine whose file has an error now says what's wrong in a full sentence on its row, and names the mailbox to pick when its connector is gone.
+- 63b3449: The Routines list says "Not live yet" for a routine that is on but has never been live, in place of a next time it wouldn't start at.
+- e33a29d: A routine's row on the Routines list says "Changes not live yet" while its saved changes aren't live, as its page does.
+- 5264ccf: When the sandbox can't start, a routine that runs a Claude Code or Codex agent now says why at the top of its page, with the fix, and its Run now can't start a run until the sandbox works.
+- 6be4be6: When a routine has no runs yet, its Runs view now says why it won't start on its own (it can't start, it's off, or it's paused until you trust the workspace) instead of giving a next time it won't keep. A start refused because the workflow or agent isn't in the workspace now says so, and Run now on a routine that is off says it stays off.
+- be678d7: An open routine's Runs view and the Routines list now show a start that was refused as soon as it happens, without leaving the page.
+- 17aa6e8: A routine whose input lacks a field its workflow needs no longer starts: `validate` and `halonic routines` say which field to add.
+- d5641ef: Run now and a webhook for a routine whose input uses a trigger value it doesn't have, such as `{{trigger.date}}`, now answer with that reason instead of a generic server error.
+- 7c67327: A routine whose input uses a trigger value it doesn't have, such as `{{trigger.date}}`, now fails `halonic validate` with the reason and doesn't start, where it used to run with that input left blank.
+- 1635017: A routine that starts an agent on its own shows "Can't start" and why in Studio's Routines list and in `halonic routines`, with no next time, and a routine's page no longer says the engine isn't answering when the workspace's history can't be read.
+- 94de0d2: `halonic routines` says "Can't start" for a routine that can't start, as Studio does, gives it no next run in `--json`, and `halonic routines list` works too.
+- a926c83: A routine whose file has an error now says why it can't start on its page too, in the Starts card, with the same sentence as its Routines row, and the page no longer lists next start times for a routine that can't start.
+- 28b697d: `halonic routines` counts every routine that can't start and says why under the list, and `halonic routines watch` says which routines it leaves out and how many aren't live yet.
+- 7c9571c: A routine that can't start now says why and what to do on its Routines row, including one whose file has an error; when its workflow or agent is missing, its page and Run now say the same.
+- 1732349: Routines go on after your computer's clock was set back, instead of waiting until it catches up. An agent set to run **On this computer** now asks you before a file search whose pattern reaches outside its folder. A server address with a hidden character, such as a line break, or a space at its start or end, can't be trusted.
+- 2974e18: `halonic routines` and `halonic routines watch` say a routine can't start until its fix is committed when the fix is saved but not committed, instead of pointing to `halonic validate`, and lines that ask for a commit name Studio's Make live.
+- fe64d6f: When Studio can't read a folder's history, the Routines list and an agent's or workflow's Triggers section still show its routines as saved, and only the routine's own page says what went wrong.
+- 106d464: `halonic routines` puts a dim · between a routine's name and its hub when routines come from more than one hub, so the hub no longer reads as part of the name.
+- 207bde6: The Trigger picker no longer offers New mail, because Halonic doesn't check mail yet.
+- 1d5fd87: `halonic routines` says when a routine has changes that aren't live yet, and that routines also start on time while the workspace is open in Halonic Studio.
+- 106d464: The Routines page no longer promises starts the app doesn't make yet: its sentence and the When card say routines start on time only while `halonic routines watch` is running in a terminal, and a routine on New mail says Halonic doesn't check mail yet.
+- 56271cc: `halonic routines` now says "Paused until trusted" for a routine that is on in a workspace that isn't trusted on this computer, as Studio does, with a line above the list that names `halonic trust`. When a file names something trust can't cover, the line says which file, how to fix it, and then to trust the workspace with `halonic trust`.
+- 207bde6: On a phone, a routine's sentence gets up to two lines, Run now is a bar at the bottom, and Next shows one start time per line.
+- f5993f7: Routines on a schedule or an interval, and waiting run timers, now start on time while Halonic is open, without `halonic routines watch` in a terminal.
+- 75ec19e: In Studio, a routine's page now says when its input lacks a field its workflow needs, Run now says why a start failed instead of saying the engine isn't answering, and New routine opens the new routine at its trigger.
+- 9d32a8b: `halonic run --help` now lists halonic, claude-code and codex for `--harness`, and `halonic routines watch` now says "Routines can't run agents in Claude Code yet" when it refuses a routine whose agent runs in Claude Code.
+- 96689e5: `halonic run` in a terminal now shows an agent's instructions that nobody has trusted yet, asks whether to trust them, and on yes starts the run again.
+- 4fa255d: A run that failed because a provider has no key, refused the key, was busy, has no credit left, doesn't have the model, or because the workspace is local only now says so on its run page, with a button to fix it, instead of "Halonic can't tell the cause yet".
+- 330184f: On a failed run's page, a screen reader now reads each banner button with the banner's sentence, so "Add key" says which provider has no key.
+- 9000510: A failed run's banner names the model provider as its file does, such as OpenAI or LM Studio, instead of "Openai" or "Lmstudio".
+- 6e6263c: When a run stops because the secrets file can be read by other users, the run page now names the file and says to run chmod 600 on it, like the CLI.
+- 267f37a: A failed run's banner says when a provider has a type Halonic can't call, or the hub has no such model alias, with Open Models, instead of "Halonic can't tell the cause yet". A provider address without `http://` gets a sentence that points to the address in Models, instead of "couldn't reach Ollama at  for".
+- b555feb: When there are no runs yet, Home and Runs now say to open the first workflow and press Run, instead of pointing to the command line.
+- 7488919: After you reject with `halonic runs send`, the CLI says "You rejected in run …", and a finished run whose workflow has more than one ending names the ending it reached, as the run page does.
+- d86e507: `run.failed` for `sandbox-start-failed` gives the sandbox's reason code as `sandboxReason` when the sandbox check fails once the sandbox didn't open, and `harness-start-failed` gives `harnessCause` (`not-installed` or `signed-out`) when the harness's `detect()` says why.
+- 436f977: When a fix is saved but not committed, `halonic run`, `halonic runs send` and `halonic routines watch` now say the fix isn't live yet and to commit it or make it live in Halonic Studio, instead of pointing to `halonic validate`, which finds nothing; a watch with no routine that can start says to leave it running; and a mail routine's connector error in Studio says "mailbox" throughout.
+- 3efa569: When an integration's connector can't list its tools, `halonic run` and `halonic runs show` now suggest `halonic doctor`, which checks the sandbox and trust the integration needs, instead of `halonic tools review`, which can't say why.
+- 32a8f66: `halonic run` now says why a local integration didn't start without the sandbox, and how to allow it, instead of sending you to `halonic doctor`.
+- 79a1e8c: When a for-each step's run for one item waits, `halonic run` and `halonic runs show` now say so and where to move the wait step, instead of "Halonic can't tell the cause yet".
+- e33a7ab: When a run stops because its provider's address isn't allowed for a key in the profile's secrets file, Studio's run page now gives the `halonic models allow-address` command to copy and Run again, instead of pointing to Models, which can't change that key's addresses.
+- acc014a: When a run stops because its provider's address isn't allowed for the key, Studio's run page now says so and how to allow it, instead of saying Halonic can't tell the cause.
+- 3cd740c: A run's log now shows the model calls of its own steps, and the run's usage and cost count them.
+- 10a91e8: An agent that reads earlier runs gets the tool arguments, tool results and errors in them marked as outside text it shouldn't follow, and hidden control characters no longer slip text past that mark.
+- b153042: A run whose agent used all its model calls now says so: `halonic run` tells you to raise its model call limit (`maxSteps`) in the agent's file, and Studio's run page names the agent, the limit and the step, with See the step.
+- 31ac3fe: When Run now can't start a routine because its input lacks a field, the message now says to fill it in under Starts on the routine's page, and no longer offers Try again, which would fail the same way.
+- 0e89d57: When a routine's Run now can't start, the toast now gives the reason with its next step and command (with Copy command), offers Try again when that can help, and no longer says the engine isn't answering when Studio simply can't start that workflow.
+- 553eaec: When an agent's answer isn't one of the step's choices, the run page now also says how to fix it, as it already did for older runs.
+- 48f95b5: When an agent's answer isn't one of the step's choices, the run page now names the choices and offers See the step.
+- 9bfe35b: In Studio, when an agent set to run on this computer is refused, the run page now offers Run again straight away instead of a Check again that could say the sandbox works.
+- 553eaec: A run cancelled because the run that started it ended now says so on its page, with a link to that run.
+- 0244adb: Studio's run page now says which secrets file your user account can't read and how to fix it, instead of saying Halonic can't tell the cause. When the fix is a command, the desktop app has Copy command for it.
+- cd09487: `halonic run` says why a plugin's connector gave no tools when its plugin isn't added, can't be read, or its sandbox can't start on this computer.
+- c1ccb14: `halonic run` now says when a connector didn't start because its plugin isn't trusted yet or changed since you trusted it, and names the `halonic trust --plugin` command that fixes it.
+- 8ca2bdc: `halonic run` now says when a connector's program stopped right after it started, and how to see why, instead of sending you to `halonic tools review` first; `halonic tools` usage names the `<connector>`.
+- f622627: `halonic run`, `runs send`, `serve` and `routines watch` now let a Google connector send once you switch it on with `halonic google allow-sending <connector> on`; while it's off, the refusal names that command.
+- f55552b: `halonic run`, `halonic runs send` and Studio's **Run** button now refuse a workflow for the same errors: those in its own file, in the agents and workflows it uses, and in the workspace files every run needs, such as providers and `workspace.yaml`. The refusal names the files, such as "Acme has 1 problem in providers/mock.yaml."
+- f870586: When a run stops because an agent's instructions aren't trusted, `halonic run` now says so and names `halonic trust instructions`, instead of asking you to report a problem.
+- 3cd740c: `halonic run`, `halonic runs send` and `halonic routines watch` refuse a workspace whose files have errors, before anything starts, and point you to `halonic validate`. `halonic doctor` shows the same problem on its Workspace line.
+- e841517: `halonic run` prints a dim line under a step for each of its tool calls that didn't work, saying why, as `halonic runs show` does.
+- 9a44a4c: If the sandbox doesn't work when a plugin starts, `halonic run` and Studio's run view now say so, name the plugin as the plugin list does, and say the next run tries it in the sandbox again, instead of only saying the connector couldn't list its tools.
+- 271792e: `halonic run` and `halonic runs show` now say which secrets file your user account can't read and how to fix it, instead of asking you to report a bug; `halonic run` exits 7.
+- 626b62e: `halonic run` and `halonic runs show` now mark a step with "!" instead of "✓" when one of its agent's connectors didn't start.
+- 73f8b50: `halonic run` and `halonic test` point at `halonic validate` when the workspace's files have errors, instead of saying a workflow whose file has an error doesn't exist.
+- 72d29af: On a run page, "this workspace isn't trusted yet" goes once you trust the workspace from the status bar, and screen readers hear the command the refusal suggests.
+- 102f40e: In Studio, Run is unavailable when the workflow's files say the run can't start, and the line under the header says why and gives the command to start it in a terminal.
+- b531077: `halonic run` and `halonic runs show` now name the model alias a step really ran on: the one its agent step sets, instead of the agent's own.
+- 51e092a: A local integration runs only if its code in the run's commit is the code you trusted, and `halonic serve` and `halonic routines` say whether the workspace is trusted for that same version, so a saved change that isn't committed no longer pauses them.
+- 2347ee6: On Windows the runner's private temp folder is made in the account's own folder directly in `%ProgramData%` (named by a hash of its SID), outside the user's profile folder, so the path the runner sees (its working folder, `TEMP` and `USERPROFILE`) no longer holds the account name. Because every account can read `%ProgramData%`, a folder that is already there is used only when this user owns it and it holds exactly one entry, for this user; otherwise the temp folder is made in the profile folder as before, and one line is logged.
+- 0add8bb: In Studio, a step's panel now shows a call you approved whose connector then didn't start, and says above the tool calls when a connector couldn't list its tools, for example "Couldn't list the tools from notes: its program acme-notes-mcp isn't on this computer."
+- 3556007: In Studio, the line under a failed tool call in a step's panel now says why it failed when Halonic knows: the tool didn't answer in time, Halonic stopped, the call wasn't made, or its connector didn't start because a program or a secret is missing.
+- 21a1476: `halonic runs` now says to answer "Allow this address?" in Studio for a run waiting on it.
+- 80eb41f: `halonic runs` names the ending a finished run reached, so a rejected reply no longer reads as sent. When a run's changes were deleted outside Halonic, `halonic proposals` now says to remove the run from the list, as Remove from Inbox does in Studio, and exits with code 5 instead of 9.
+- ebcd1fa: `halonic runs` now ends with "Estimated spend this month" and says to set `budget.monthly` in workspace.yaml or in Studio's Settings › Models; Studio's Models line says "per run" and "per month", as its Budget block does.
+- ac2948d: `halonic runs` now shows this month's estimated spend and your monthly budget.
+- 1e5c907: Screen readers now hear list search results on Workflows, Agents, Routines and Library, a routine deleted from its own page keeps an Undo, and Runs and Routines read their headings and run rows more clearly.
+- 4850eda: `halonic runs send` now takes `--call <id>` to answer only that approval. A run that waits for approvals lists each one's call id, and the answer command it suggests names the oldest's, so running that command twice no longer answers the next approval.
+- 355e6e9: `halonic runs send` now says before it sends when one of the run's agents is set to run on this computer, or is on hold until you confirm again, as `halonic run` does.
+- 7508074: `halonic runs send` takes `--payload <file or JSON>`, a JSON object sent with the event, which the waiting step writes to the run's context.
+- ae22d6b: `halonic runs show` of a run waiting for your answer to "Allow this address?" now shows the question and says to answer it in Studio.
+- 2e14bf3: `halonic runs show` names a wait step's answer by the label the step gave it, as Studio does, such as "you answered Send to a manager at 14:02".
+- 0238c93: `halonic runs show` now says, under the steps, why a connector didn't start, as `halonic run` does while the run goes.
+- 8520db0: `halonic runs show` now says under a step why one of its tool calls didn't work, in the same words as the run page in Studio.
+- b852352: `halonic runs show <run-id> --output` prints what each step wrote under its step line, and a finished run's receipt now points to it.
+- b18cb76: `halonic runs show` now says when a run didn't make a call because sending is turned off for its connector, and how to switch it on.
+- 6e6f069: Runs and the Workflows list say the engine "isn't answering" only when the host says it can't be reached, and then in that host's words (a phone says "Halonic on your computer isn't answering."). Any other failure to load runs, read a run's log, refresh a list or start Run again gives its own reason, or "Halonic ran into a problem it can't explain yet." with Copy details.
+- fa226c5: A run whose replies came from the built-in test model now carries a "Sample answers" chip on its Inbox card and its row in Runs, so nobody takes it for a real model's work, even after you pick a real model.
+- 1a0f505: The Try the sample card's first step opens the Inbox with the invented customer's refund email already in Message, so a new person presses Send once. Text you have already typed stays.
+- 41d1b5c: When the sandbox can't start for a reason Halonic can't tell, the Callout on a run page now offers Copy details, which copies what the sandbox check found for a bug report.
+- f09c913: The sandbox help links in the CLI and Studio now open the sandbox page of the docs directly, without two redirects.
+- 8cb94d8: On Windows, when the sandbox can't start because Halonic's own Linux system is missing, its setup didn't finish, or another program's sandbox setup is in the way, Settings, the Inbox and the run page now give a fix that works: use Halonic inside WSL 2, try again (or reinstall the Halonic desktop app), or remove the other program's setup. Before, they sent you to Settings to set up the sandbox, which didn't help.
+- 4ad24ab: After an uninstall that ran with administrator rights on Windows, Halonic takes back the sandbox's access to your folders the next time it starts.
+- da34add: At session end, the sandbox reads the working folder's git index the way git does, and reports an index it can't read that way.
+- 5db150e: The sandbox's guide link says where it goes, such as "How to install bubblewrap", and Open Models for a missing local model opens the model alias's tab.
+- af8ae56: On Windows, after a sandbox removal with administrator rights, the CLI and Settings say more exactly how to end the access the sandbox kept on your project folders, and the uninstaller gives a step that ends it.
+- 2a130b2: Settings › Agent sandbox now calls Halonic's own WSL distro its "Linux system", as the halonic command and the rest of Studio do, instead of its "Linux part".
+- de0d984: Settings › Agent sandbox no longer offers Repair the sandbox when another program set up the sandbox or Halonic's own Linux system is missing or unfinished, since the repair can't fix those; it shows them as Not available with the reason.
+- d14505f: Settings › Agent sandbox shows a sandbox problem's fix on its own line. When Halonic's Linux system didn't finish setting up, the desktop app says to choose Check again, and Studio in a browser or on a phone says to open the desktop app on the computer.
+- 2b41cab: After you remove the agent sandbox in Settings, focus stays on the removal's progress and a screen reader hears the result, and a removal that is still running or took too long says so in plain words.
+- fb6a385: When removing the agent sandbox takes longer than 5 minutes, Settings now says to wait a minute and try again, and a removal that works shows "Sandbox removed." and moves focus to the result, so a screen reader hears it.
+- 0a452ee: When removing the agent sandbox with administrator rights keeps some access to your project folders, `halonic sandbox remove`, Settings and the uninstaller now say so and say how to end it, also when the next start of Halonic doesn't end it.
+- 31eae61: On Windows, Settings › Agent sandbox says "This version of Halonic needs the sandbox set up again" when the sandbox was set up for an older release.
+- c9df45c: When the agent sandbox needs setting up on Windows, `halonic doctor` and a refused run say to run `halonic sandbox setup`, and a silent update that can't set it up again says so in `updates.log`.
+- 8d48d22: Settings › Agent sandbox shows the last check at once and offers Check again in every state. Trusted sources shows the folder under the name and keeps focus on the next Remove after one is removed.
+- bf86e87: `halonic run` now gives an agent in Claude Code or Codex that runs in the sandbox the key of your workspace's provider, so it no longer fails as signed out. The program never sees the key.
+- e1b2cbe: The save note's Try again and Compare now read in blue like the other actions, its "·" stays next to the message on a phone, and on a touch screen Try again stays inside the status bar.
+- 77d22c3: Turning on Local only in Settings now keeps runs on this computer from the next start, before the change is made live.
+- be052c9: When Local only is on only in your saved `workspace.yaml`, `halonic run` and `halonic routines watch` now say it comes from that file and isn't live yet.
+- b2555a4: On a Scoop install, the desktop app's update check now goes through `HTTPS_PROXY` and `NO_PROXY` by Halonic's rules, as the rest of the app does, and says when the proxy setting or the proxy stopped it.
+- 0f1d719: `halonic secret set` and `remove` no longer show a usage line when they refuse a name or value, and refusing `remote-host-key` says it's the key paired phones use to confirm this computer, which Halonic keeps itself.
+- bde1519: `halonic secret set` and `remove` refuse `remote-host-key`, the key the agent host keeps for paired phones, and `halonic secret list` no longer shows it.
+- 12cf6fa: `halonic secret remove` now says when no secret is set under that name, and how to see the names that are, instead of saying it removed it. When a `HALONIC_SECRET_` variable still holds it, it says so and names the variable.
+- e043792: On a Mac, the chmod command Halonic gives for a secrets file other users can read now works when typed or pasted as shown.
+- 119e010: On the desktop, when a run stops because other users can read the secrets file, Studio's banner says to run `chmod 600` on it in a terminal and offers Copy command.
+- ff913ff: `halonic secret list` and the other secret commands now say when you can't read your secrets file, and how to fix it, instead of asking for a bug report.
+- bd5cf51: `halonic serve` shows a renamed agent's new name in the waiting list as soon as the rename is committed, and `halonic validate` refuses a webhook routine whose secret name belongs to Halonic or a plugin, such as `serve-password`.
+- 7032250: `halonic serve` now uses a renamed workspace, a changed Google connector and a changed model provider as soon as the change is committed (a provider change only once it is also trusted here), not only after the next run starts.
+- 812dd01: `halonic serve` lets you save a provider key and pick a model from a signed-in browser; it commits only the files the choice changes, refuses when one of them has changes that aren't committed, and a new provider is still trusted on the computer that serves the workspace.
+- 8cb48b7: Changing the sign-in password (`halonic secret set serve-password`) now ends every existing sign-in to `halonic serve`, also when the same password is set again. After this update, everyone signs in once more.
+- 2b93b12: `halonic secret set serve-password` now says, after "✓ Saved serve-password.", that every browser and phone that was signed in has to sign in again.
+- 1d2dc3b: `halonic serve` now says when a webhook routine starts an agent, which Halonic can't run on its own yet, and a web request that fails inside it says to start serve again with `--debug` and report it.
+- b7c58fd: `halonic serve` now says when a webhook routine can't start because of a trigger value it doesn't have, prints a line when it refuses a signed webhook request (with the reason, or `--debug` for more), and a new how-to explains how to sign one.
+- 0d8f903: `halonic serve` no longer says a webhook routine starts when the line under it says it can't, prints a line for each run a web request starts, and `halonic routines` marks the same webhook routines "Can't start" and then exits 1.
+- ffe9c34: The Inbox that `halonic serve` shows on a phone or in a browser now names the agent that asks, such as "Writer wants to use read_note", as `halonic run` and the desktop do. It shows the agent's id only when its file can't be read.
+- 1fa122d: On a served Studio or a phone, Home's Needs you now says to sign in again once your sign-in has ended, and an answer from a card left open is refused with "This is no longer waiting for you." if that step was already answered elsewhere.
+- 3eaf040: In a browser on `halonic serve`, Settings › Models names the workspace's model and opens Pick a model, so you can test and save a key or a local model from another device; trust is still given on your computer.
+- 7208cde: Signed out in a served Studio, an open setup item in the Inbox now says to sign in again instead of saying Halonic on the server isn't answering.
+- b0f7ad7: Settings › Agent sandbox tells a screen reader why the sandbox is not available after Check again, and Studio in a browser or on a phone says to fix it on the computer Halonic runs on.
+- baf575c: In Studio, when Take back in Settings › Agent sandbox can't stop every plugin and integration, it now says they may still be running without the sandbox and that quitting Halonic stops them.
+- 98b3453: When the agent sandbox still has access to some of your project folders after a removal, Settings says so next to Remove the sandbox, and its dialog says removing ends that access.
+- 752ce37: Settings › Agent sandbox now has Allow… to let plugins and integrations run without the sandbox on this computer, and the halonic command points there when an integration needs that yes.
+- f984b1e: Settings › Agent sandbox says why the sandbox can't start when it reads Not available: the reason, the fix, Check again and the guide, then that an agent can run on this computer after a warning.
+- f3ee6bc: In the Settings dialog, Take back now says its result right under Plugins and integrations, and its heading shows the focus ring in high contrast.
+- 9962842: In Studio, Settings › Agent sandbox now shows when you allowed plugins and integrations to run without the sandbox on this computer, and lets you take it back.
+- 2e4b956: Settings › Trust no longer offers **Open Trust** when the workspace holds nothing to trust, and its row in the phone's settings list says where trust stands. Models and Workspace now say "Part of *Acme*." without promising undo, which a workspace with history off can't do.
+- 151262c: In a window that is both narrow and short, such as a phone held sideways or a small window zoomed in, the page fits the window again instead of running off to the right.
+- 19422dd: `halonic proposals show` no longer stops on a proposal with a file in Halonic's own data folder: it labels that file "can't be written" and shows the other files.
+- 6ab11f6: The sign-in command that `halonic doctor` and Studio show for an agent now makes the agent's settings folder first, so it also works for a Codex agent that has never run.
+- 785a58c: In Studio, removing a plugin's trust now also removes its saved sign-ins, so a plugin added later under the same name doesn't start signed in.
+- ad5d162: A `signal:` on a workflow's final step is now sent when the run ends, so a routine can start on it. `halonic validate` and the Studio now refuse a `signal:` on a wait step, which can't send one, and say to put it on the step after it.
+- 102f40e: In Studio, when a skill can't be deleted because its folder has other files, the next step names File Explorer on Windows, Finder on macOS and your file manager on Linux.
+- f61bfec: A run that fails because the bridge's socket path is too long now says how to fix it: move Halonic's data folder to a short path, such as `~/.halonic`, and set `HALONIC_HOME` to it. The README's new Environment section explains `HALONIC_HOME`.
+- 9c51edf: On Windows, the sandbox check now says `setup-conflict` when srt was installed with loopback open (by another program), instead of `setup-needed`. Halonic doesn't change that machine-wide mode itself, so running the setup again would not fix it.
+- d4cf87a: In the agent map's stacked view, each row starts with its kind's icon (routine, workflow, agent or Library), and a focused row shows its focus ring inside the row instead of as two lines above and below it.
+- 689c652: `halonic trust --plugin` with a fingerprint that no longer matches now asks "Trust Weather?" and says it stays off on this computer when it can't run here, and `halonic run` names a plugin whose part didn't start as the plugin list does.
+- 6d0acd5: When `halonic plugin add` or `halonic trust --plugin` refuses an old `--fingerprint` for a plugin that stays off on this computer, it now offers the trust command as "To trust it anyway", as it does without a terminal.
+- ffd59a8: Starting a run and Run again offer Review, and the Try it chat opens the trust check, only when the workspace really isn't trusted; any other refusal shows its own reason.
+- 0ca3745: A run that didn't start now reads the same in the Run panel, after Run again and in the Inbox, and a failure Halonic can't explain offers Copy details instead of Try again.
+- 3f41ca0: After a Run again that didn't start, Try again keeps focus while it starts and the next step is read out, and the Inbox's "Not started" line now gives the next step and its command too.
+- c60e385: In Studio, when a run can't start or the Try it chat can't send because the workspace's folder isn't open in this window, Studio now says Halonic ran into a problem it can't explain yet, with Copy details, instead of showing the folder's path.
+- 8e7541f: Help › First run › Start over now keeps the first-run bar and the guide card where they were when the fresh copy of the demo can't be made.
+- cf0ffc5: When a change can't be saved, the whole status bar now takes the warning or error colour, and its Try again and Compare buttons fit inside the bar.
+- 34b98fa: A workflow step's card in Studio now says what's wrong with the step at its top, with the full message from Configuration › Problems, and marks the Agent field when it names an agent the hub doesn't have.
+- a1d8b76: In a narrow window or at 200 % zoom, a step's editor on the Flow tab takes the whole page instead of leaving it blank beside it, and closing it brings the canvas back with focus on the step.
+- a2cd30b: Studio's step panel says when Claude Code didn't stop after giving its result and Halonic stopped it, keeping the result.
+- 7e60793: When an agent step uses a model alias the workspace doesn't have, the workflow page now names the agent step and the alias, with Open Models, and the agent step's card says the alias is missing.
+- e32d67b: In a run's step panel, the name of a plugin that isn't trusted yet, or changed since you trusted it, now opens that plugin's page, where you can review and trust it.
+- 8621121: A run's step panel names the plugin when a connector didn't start because its plugin isn't trusted yet or changed since you trusted it, as `halonic run` does.
+- d93df88: In Studio, Approve on a tool call from a connector that reaches its server over HTTP now gives the command to run in a terminal, instead of failing the run.
+- dd58ef1: In Studio, a Claude Code agent with `asks: in-sandbox` edits and runs commands in its working folder inside Halonic's sandbox without an approval card, and the run log lists each such call.
+- 087291a: A run that stopped at its budget now says the budget and what to raise in `workspace.yaml`, in the same words as the command line, instead of the general budget message.
+- 7031c0b: In Studio, an agent or routine with saved changes that aren't in a version now says "Changes not live yet" until you create a version.
+- 038eff2: In Studio, a command to copy now breaks only between its words, so a flag like `--filter` stays whole, and in a narrow place the Copy button goes under the command.
+- 6ed0ee6: Studio's failed-run banner now says what is wrong and what to do when a model names a provider the workspace doesn't have, a for-each step's items aren't a list, a step ends with an event none of its arrows take, or an agent step has no agent.
+- 9ef7cdd: In Studio, New agent and New workflow now work in a workspace that has no hub yet: the first one goes in a new hub named Default.
+- 3c54443: The Studio desktop app's own model calls now honour `HTTPS_PROXY` and `NO_PROXY` by the same rules as the CLI: public `https` hosts go through an `http://` proxy by tunnel, and a setting that can't be used fails the call instead of going direct.
+- 1e929ff: When HALONIC_HOME isn't a full path, the Studio now also says what to set it to instead, as the CLI does.
+- fbffcdc: When HALONIC_HOME isn't a full path, Studio now says "HALONIC_HOME must be a full path", the same words as the CLI.
+- 0aac90e: When HALONIC_HOME isn't a full path, Studio now also says to quit Halonic and open it again once you've fixed it.
+- e297323: When a sandboxed agent's provider key isn't saved, or its provider has its own Base URL, the run page now says so, with Add key or the command that runs the workflow, instead of "Halonic can't tell the cause yet".
+- 99e8bb8: A sandboxed Claude Code or Codex agent in Studio can now use a provider with its own public address (`baseUrl`), with the same checks as `halonic run`, which still refuse an address on this computer or the local network.
+- ea762a6: Studio now gives an agent in Claude Code or Codex that runs in the sandbox the key of your workspace's provider, as `halonic run` does, so it no longer runs signed out. The program never sees the key. A provider with its own address doesn't work from Studio yet: the run stops and says so.
+- d28f0a8: In Studio, the sidebar's Help row now shows a circled question mark instead of the info mark.
+- 6ad41b1: In Studio, a request the app sends for the page is refused for `100.100.100.100` and `100.100.100.200`, while the rest of `100.64.0.0/10` still counts as a private network.
+- cdfb567: In Studio, the Library's list of what the engine refused now shows what an agent's Try it chat refused and which connector tools a chat or run left waiting for an approval.
+- c31594c: Studio no longer reads the folders Claude Code and Codex agents work in, or any `node_modules` folder, when it loads a workspace.
+- 595f48b: In Studio, a workflow whose agent names a model alias the workspace doesn't have now says which agent and alias under "can't run", with a link to open that agent.
+- c8de24b: Studio no longer flags a valid model alias as unknown, and a workflow with errors offers Open Problems in place of Start run.
+- 2fefe77: When a new workflow name can't be used, Studio now reads out the reason, wraps it to fit the window and keeps the title at its heading size.
+- 8038022: In Studio, a routine that is on but isn't live yet now says on its Runs tab that it doesn't run, and its row on the Routines list no longer says "Paused until trusted", since trusting wouldn't start it. A run's page now says when a connector didn't start because the sandbox its plugin runs in can't start on this computer.
+- dac5f94: On older systems (WebKitGTK 2.44 or Chromium 123), Studio no longer fails when it calls a model with a stored key, reads which sites a key may go to, names a local model in the run log or opens a plugin's sign-in page.
+- 982e66f: Studio's workspace trust check names a plugin connector's plugin and the hosts its backend reaches, as `halonic trust` does.
+- 8f6f2d6: Studio's workspace trust check now lists the hosts a plugin's local tools reach under the plugin's connector, as `halonic trust` does.
+- 6afe9f9: In Studio, a trusted plugin's programs now run in the sandbox when an agent calls their tools, and a plugin whose only part is a program can be used.
+- f7b366d: Studio's **Remove trust** and **Remove plugin** now warn when the provider didn't confirm a plugin's sign-out, because the token may still work there until it expires.
+- 2e00a76: When Studio can't open a folder because of where your profile folder is, it now says why and what to move, and offers Remove from Recent for a recent folder that's inside your profile folder.
+- e84e409: When a connector's program stops right after it starts, Studio's connector page now says it in the same words as `halonic tools review`.
+- b612318: A connector's page in Studio now says when its program stopped right after it started, and how to see why, in the same words as `halonic tools review`.
+- cd71871: When a run fails because your proxy refused or couldn't reach the model provider, Studio's run banner now names the proxy and the variable it came from and gives the one fix, instead of "Check your internet connection".
+- 5abcab3: In the Studio desktop app, a model call that failed at the company proxy no longer tells you the computer may be offline. The run page says Halonic couldn't reach the provider through your proxy, says what to change, and links the how-to for model calls through a proxy.
+- 292d908: On Windows, Halonic opened with administrator rights no longer starts: it says to open it again the usual way, because with those rights its agents could change anything on the computer.
+- 067e376: Like the CLI, Studio now refuses to open a folder that's inside your profile folder, or one that holds your profile folder because a variable such as `HALONIC_HOME` moved it there.
+- 2fba367: In Studio, a routine you turned off shows no next time, and one you turned on shows its next time, even before the change is live, as `halonic routines watch` runs it.
+- 72e28cf: In Studio, routines now start as they are in the workspace's live version, as `halonic routines watch` does. A saved change to a routine counts once you make it live, and a routine that was never live doesn't start. Turning a routine on or off still counts as soon as you save.
+- afd9e3e: When a for-each step's run for one item waits, Studio's run page now says so and where to move the wait step, instead of "Halonic can't tell the cause yet".
+- c1e8c72: When a step's child run failed, Studio's run page now says why that run failed, led by the step that started it, with Open run to that run, instead of saying Halonic can't tell the cause.
+- 2d63e70: Studio's run page now says when a step's answer wasn't one of its options, or when the path to Halonic's data is too long for the bridge's socket, instead of "Halonic can't tell the cause yet".
+- f983523: Run is unavailable on a workflow with errors, with the reason and Open Problems under the header.
+- 8d8b7e0: Studio now runs an agent you set to On this computer on macOS and Linux, after the same checks `halonic run` makes, instead of saying it can't start it yet.
+- 15e4962: In a workspace with versions, Studio's Run, Run now, the Inbox form and routines now start from the live version, as `halonic run` does. A saved change isn't used until you make it live, except connector programs and a harness agent's skills, which are still read as saved. While nothing is live yet, Run says so.
+- 87c6806: Each run Studio starts uses the workspace's files as they are saved then, including its agents, models, budget and Local only setting, not the files as they were when the first run started.
+- 8d763ce: On Windows, Studio now refuses to start the sandbox helper with administrator rights when the helper beside the app isn't signed by Halonic, and shows why instead of Windows' prompt.
+- b0f837f: On Windows, Studio now asks for the agent sandbox's administrator rights from its own window, so the prompt comes to the front, and waits 5 minutes, not 3, before it says the setup didn't finish.
+- 3a9e611: Removing the agent sandbox on Windows no longer shows an error when the removal worked, and Settings says what access to your project folders it kept, if any.
+- cdba073: On Windows, removing the agent sandbox in Settings now also asks for administrator rights from Studio's own window, and waits 5 minutes before it says the removal didn't finish.
+- f5c6fbe: Summarize on a knowledge source's page now drafts a summary with a model that runs on your computer, such as Ollama.
+- 192cac8: Studio says only what is true today: deleting a Library item, a file, an agent or a routine says "Deleted", since there is no trash, and trust says only what it gates today: a workspace's routines and connectors won't start and a provider won't send its key to another address, and a plugin's tools won't run.
+- 66c992b: A workspace that isn't trusted says again that Halonic won't start its programs or call real models, which Studio now checks before every run.
+- 7777053: Removing a workspace's trust while a run is going now ends that run at once as failed, saying the trust was removed, instead of leaving it shown as running. The Remove trust dialog says that runs in progress stop.
+- 3b2de9e: The Studio desktop app now checks for and downloads updates through `HTTPS_PROXY` by the same rules as its model calls, instead of reqwest's own reading of the proxy variables.
+- e70fd4f: Summarize on a knowledge page says why it failed: no local model, the local model didn't answer, Halonic on the computer didn't answer, or too much text. "Try again" follows the two that can pass.
+- 2775757: On a phone, tabs that need two rows now share them evenly, and Add a subagent lists the agents as rows you can press, starts on the first one and says when a subagent is added or removed.
+- d03e8ca: In Settings › Agent sandbox, Take back now says that Halonic asks again the next time a plugin starts. When it fails, it says why when it can, and whether the yes is still saved. When some plugins didn't stop, it says so.
+- 7a0f7d1: A workflow step can have a transition on the event `unusable`, which it takes instead of failing the run when its agent's last answer isn't the JSON or one of the options its output asks for.
+- d604f11: `halonic validate` now gives one error for a misspelled step name in `to:`, with its Did you mean, and no second one about what the next step reads.
+- 6d5f5d0: `halonic test` now says why a step failed under the failed test, as `halonic run` does, for example when an agent answered with something that isn't one of its options.
+- dfec006: An agent set to "On this computer" now starts from `halonic run` and `halonic serve` on Linux and macOS. The engine tells the host the run's placement when it opens the bridge, and the host opens it on that placement's bridge server: a fenced run's bridge stays on a Unix socket, and an unfenced run's is on loopback, which the launcher accepts. `harnessHostOf` takes `bridgeServers`, one per placement, in place of `bridgeServer`.
+- 314acb6: In Studio, a run whose agent didn't start on this computer now says that nothing ran in that step and asks you to copy the details and report it, instead of showing the launcher's internal reason on the page.
+- 2995b87: When an agent set to run on this computer without the sandbox doesn't start, Studio's run page now says why, as `halonic runs show` does, and both name the agent by its name.
+- 107460c: When an agent set to run on this computer can't start, `halonic run` and `runs show` now say it didn't start on this computer and why, instead of blaming a sandbox and suggesting you run it again.
+- 4e4b4fd: In Studio, the banner for an agent that didn't start on this computer now says to report it on GitHub, reminds you that reports there are public, and has a Report a problem button next to Copy details.
+- b2590e7: A step added with Step or Wait goes right of the picked step and gets an arrow from it, so pressing Step a few times builds a chain instead of loose steps.
+- e4bb1cb: Studio's tools review screen asks only about the tools the connector file's `tools.allow` names, and leaves the hidden ones out.
+- e4bb1cb: `halonic tools approve <source> <tool>` still approves a tool the connector file's `tools.allow` leaves out, and now says that agents never see it until `tools.allow` names it.
+- 2859de3: In a run's step panel, the plugin's name in "Couldn't list the tools from …" now opens that plugin's page too, where you can review and trust it.
+- 107a184: `halonic tools review` and `halonic tools approve` now name the connector whose tools they couldn't list, for example "Couldn't list the tools from notes: its program acme-notes-mcp isn't on this computer."
+- 9a12e5f: `halonic tools review` and `halonic tools approve` name a connector's program that stopped right after it started, and say how to see why.
+- dbadc2d: `halonic tools review` and Studio's tools review now say a tool "Doesn't ask before each use" only when a run really doesn't ask: the connector file's `tools.read` names it, `tools.approve` doesn't, and its server doesn't list it as sending. Before, every tool `tools.approve` didn't name showed that line, while each run still stopped to ask.
+- ae364e2: `halonic tools review` and `halonic tools approve` now say that an integration's connector needs no tool approval, instead of an error Halonic couldn't explain.
+- 2deb956: `halonic tools review` and `tools approve` now warn when a plugin connector's plugin is off (not trusted yet, changed since you trusted it, or unreadable), suggest the plugin you probably meant when its name has a typo, and give the plugin's state as `pluginState` in `--json`.
+- 43d9fdc: When a connector's program stops right after it starts, `halonic tools review` and `halonic tools approve` now show its last lines of error output under "The program said:", with keys and personal data removed.
+- 5e7d380: `halonic tools review` and `halonic tools approve` say when nothing answers at a connector's address, or its server stopped before it listed its tools, with a fix and exit code 9, instead of a problem Halonic can't explain.
+- 53de468: `halonic trust instructions <agent>` shows the instructions of an agent that runs in Claude Code or Codex and trusts them on this computer, so its runs can start.
+- 9236734: In the trust check, an integration's Runs line is amber when it doesn't start on this computer, and a second address under Reaches no longer starts with a colon.
+- 10c2431: When a program changed since you trusted a workspace, the trust check now shows what changed in it: the old value, an arrow and the new value, and shows a value that's new in heavier text.
+- 92f22a1: The trust check now shows a connector's tool lists, an HTTP connector's headers and any setting Halonic doesn't recognise, on the command line and in Studio.
+- 7a87518: The trust check now names the folder of a local integration's connector and which of your secrets it gets, such as `gets the secret my-notes-key as notes-key`.
+- 6113ce5: The trust check lists the secrets an integration gets under their own name first, such as `sync-key and my-notes-key as notes-key`, so "as" no longer reads as a second name.
+- 9637da7: The trust check now names the plugin a connector runs and the hosts that plugin reaches, and `halonic run` checks a local-only workspace against the integration sheets of the version it starts.
+- 445e653: `halonic trust` and Studio's trust check now show the folder a program starts in when it isn't the workspace's own. Studio's trust check also shows the rest of what `halonic trust` shows for a program: where its command is on this computer, its own environment variables and, where integrations run in the sandbox, the sites it may reach.
+- 3730c12: The workspace trust check now shows hidden characters as amber markers such as ⟦U+202E⟧, puts each label over its value in a narrow window, shows paths, env entries and sites in mono, and labels a program's path **Runs**.
+- b66328d: When `HALONIC_HOME` isn't a full path, trusting a folder or an agent's instructions now says so and what to set it to, instead of only that Halonic can't read its data folder.
+- 48c8fc8: On a phone-narrow window, the trust check's "⚠ not in the sandbox" goes on its own line under the integration's name, without a leading dot.
+- b88b6cf: `halonic trust instructions` reviews an agent's instructions and skills as committed in the version `halonic run` starts, and runs read the skills from that version too, so trusting them clears a run's refusal; it also names the files with uncommitted changes, which the check doesn't cover.
+- 5f5830c: Trusting a workspace again after adding a connector or an agent while its engine is open no longer gets undone, so Halonic doesn't ask you to trust it again.
+- bad7394: A `HALONIC_HOME` that isn't a full path is now refused in plainer words, on Windows with your own home folder as the example, and `halonic trust --list` and `--remove` say what they were doing instead of "Couldn't trust this folder".
+- 019e32a: `halonic trust --plugin` now names the field of a broken plugin's bad value.
+- 785a58c: `halonic trust --remove` in a plugin's folder now also removes the plugin's saved sign-ins, as `halonic trust --plugin <id> --remove` does.
+- c250386: `halonic trust --plugin <id> --remove` says when the plugin had no trust to remove, and `halonic trust --list` names plugins by their name.
+- 1510a47: `halonic trust --remove` in a plugin's folder now also signs you out of the plugin's sign-ins when its trust record can't be read, and `halonic trust --plugin <id> --remove` says when a plugin that can't be read had no trust to remove.
+- 8d8afb9: When removing trust fails, Studio now says why in plain words, such as "Halonic can't write to its data folder.", with Copy details for the full error, and `halonic trust --remove` says when there was no trust to remove.
+- cd26a0e: `halonic trust` now checks the latest commit, which is the version `halonic run` starts, and names the files with uncommitted changes that this check doesn't cover.
+- 9949822: When trust refuses a connector or provider address with a backslash, a hidden character or no `//` after `http:` or `https:`, it now says so in plain words about "the address" instead of URL terms such as "query" and "scheme".
+- 77f1c61: When Remove trust couldn't sign a plugin out, Trusted sources now says to press Remove trust again to sign it out.
+- 8ad1753: In Settings › Trusted sources, when a plugin's trust is removed but it couldn't be signed out, the row now stays and says so, and Remove trust tries the sign-out again.
+- 5e1325e: Try it now answers in the desktop app when Halonic runs your workspace's engine in the background, where it said the engine wasn't answering.
+- 984b857: Try it holds back a proposed change to an agent's `harnessLimits` until you accept it, and Changes names the field "Harness limits".
+- 4f9280e: Try it now says an agent with a model call limit of 1 "used its only model call without finishing", as the command line does.
+- 71cfb64: Stop in Try it also stops the model call when the desktop app runs your workspace in the background, and a slow answer there gets 10 minutes instead of 2.
+- cd8d9a1: A run's agent that asks its model several times in one step, or hands work to a helper agent, now stops as soon as the run or monthly budget is reached, not only between steps.
+- ee074e6: A greyed-out button now shows why it can't be used when you hover it or reach it with the keyboard, using the first line of the reason written next to it.
+- 51d218c: When Undo can't put back a deleted file, agent, workflow, routine or Library item because something new took its place, the message stays with Undo, so you can rename the new one and undo again.
+- 04901f4: Undoing a decision on a run's changes now keeps a file it couldn't put back as accepted, and a later decision on another file of the run no longer stops the Undo.
+- ceb388d: Before the desktop app saves your yes to run plugins and integrations without the sandbox, it asks again in its own window, and saves nothing unless you press Allow there.
+- 0d0a55c: After an uninstall with administrator rights on Windows, the uninstaller's last page says what access to your project folders the sandbox kept, and how it ends.
+- c068c3e: When an uninstall on Windows leaves the agent sandbox with access to your project folders, the uninstaller now says that access ends when you install Halonic again normally, not as administrator.
+- 9bc6d0b: The CLI now says what's wrong, and how to fix it, when `HALONIC_HOME` isn't a full path (such as a quoted `"~/.halonic"`) and when a run can't copy a workspace folder or file it may not read, instead of saying it ran into a problem it can't explain yet.
+- 403e5b4: On Windows, an update that needs the agent sandbox set up again says so in About Halonic and asks for administrator rights once while it installs.
+- 692e08c: When your proxy stops an update check or download, Settings › About Halonic now says so instead of saying you're offline.
+- c554fa7: `halonic validate` now stops a workflow whose run would fail: a task step without an agent, a for-each step whose items can't be a list or whose prompt uses the wrong item name, and a step whose transitions never take its done event; and a new workflow in Studio runs an agent of its hub when it has one.
+- 1188895: `halonic validate` and Studio refuse a for-each step whose workflow has a wait step, since a run for one item can't wait, instead of the run failing there.
+- 3bd99e3: `halonic validate` and Studio now also refuse a for-each step whose workflow reaches a wait step through a workflow step, because a run for one item can't wait.
+- 023fc8f: `halonic validate` now warns when `defaults.runtime` names a runtime Halonic doesn't have, and when an agent's `instructions` are only the name of a file, which Halonic would send as the text.
+- 3b8b003: `halonic validate` and the Studio now warn about a workflow step key that its type ignores, such as an agent on a wait step or `items` on a task step, with what to do instead.
+- efac37b: `halonic validate` now lists what is wrong with a local integration's `integration.yaml` that can't be read as a sheet, on that file, so a local-only workspace's "can't be read" error says why.
+- 2a698ca: `halonic validate` names a routine whose workflow or agent isn't in the workspace by its name, says what Studio says, and tells you to pick another one for run.workflow or run.agent.
+- d68e7c5: `halonic validate` now reports a connector or provider file whose address has a user name or password in it, and `halonic trust` now refuses such a file with "the address has a user name or password in it" instead of "the URL has user info".
+- f66a739: `halonic validate` says how to fix a model alias whose provider the workspace doesn't have: add its file in providers/, or point the alias at a provider the workspace has.
+- 5e2bc59: `halonic validate` now warns about files Halonic doesn't read because of their name or folder, such as `models.yml` or a `hub.yaml` outside `hubs/`, and says what to rename or move them to. `halonic run` points to `halonic validate` when it skipped such files.
+- b07b12d: `validate` now warns when a routine passes an input field its workflow doesn't read, such as `input.dya` for a workflow that reads `input.day`, and suggests the field it probably meant, never one the routine already gives.
+- a3999e5: `halonic validate` now checks workflow tests: a mocked agent or an expected step the workflow doesn't have is an error with "Did you mean", and a mocked choice reply that isn't one of the agent's options is a warning.
+- 98f5e82: A wait step's arrow without an answer, next to named answers such as approve, now gets a warning in Studio and `halonic validate`, because it's taken only if someone answers Done.
+- d5d2e16: A wait step with a signal says "Can't send a signal" on its card, and a step's problems call it a wait step or an end step, as halonic validate does.
+- 362967b: A wait step with a timer whose other arrows have no answer now gets the warning that a person can only answer Done, in Studio and `halonic validate`.
+- 017de98: A run that waits because a run it started waits for you now says what that run asks and how to answer it, in `halonic run`, `halonic runs show` and `halonic runs send`; `halonic runs show` of such a run also says which run started it.
+- 8c60b87: `halonic routines watch` no longer stops for a routine whose agent runs in Claude Code or Codex: it says that routine can't start and starts the others.
+- f527d04: `halonic routines watch` now says when a routine's saved changes aren't live yet, as `halonic routines` does, and the refusal for a linked worktree names the repository's own folder and says `halonic test` and `halonic validate` still work there.
+- a5a7f1d: `halonic routines watch` keeps running the other routines on time when one routine's file has errors and says that routine can't start, and `halonic serve` says "can't start" for a webhook routine it refuses, as the list and Studio do.
+- 9a52e27: Check this computer now opens on its title, marks a problem with a cross, says "No problems found" with what to do next, and names its report fold Show the report or Hide the report; Welcome's starting line no longer moves anything when its sentence changes.
+- 67e0494: Welcome now waits up to 10 seconds for the engine to start, then says "the engine isn't answering. It may still be starting." instead of showing system words.
+- f54ca51: On a narrow window Welcome's Open demo and Open folder buttons stack at the same width, and "Can't copy the demo…" now shows above New workspace… instead of under it.
+- e37553d: A Recent row on Welcome that is opening now says "Opening…" to screen readers, like Open folder does.
+- 53018f9: On Windows, when setting up Halonic's own Linux system for the sandbox didn't finish, Welcome no longer says that Halonic's engine couldn't start: it opens as usual, as it does when that Linux system is missing, and Settings › Agent sandbox says what's wrong.
+- 30e9461: Welcome now shows that Halonic is starting, keeps Open demo and Open folder off until it's ready, and if its engine doesn't start, says why with Try again, Check this computer and Copy report.
+- d7ee636: Under Where it runs › On this computer, Studio now says that `halonic run` can start the agent on this computer too, not only `halonic serve`.
+- 5569d8c: On Windows, Studio no longer flashes a console window each time it runs git.
+- 94f3ccb: The Windows installer opens with a licence page: it shows the terms for the Microsoft Visual C++ runtime file it installs, and installs only after you press I Agree. Running the same version again, updates and silent installs don't show it.
+- b1e20f2: On Windows, an agent's sandboxed commands no longer flash a console window.
+- 045de2c: On Windows, when the last sandboxed run in a workspace ends, Halonic now removes the empty settings files, such as `.npmrc`, `.mcp.json` and `.pre-commit-config.yaml`, that the sandbox made when the run started, so they no longer show up in `git status`. A file that was there before, or that has content, stays.
+- 7b2a7a8: On Windows, a command the CLI suggests escapes `$`, backticks and quotes in a folder name, so pasting it into PowerShell runs only what it shows.
+- fbf02a7: On Windows, "Restart to update" no longer sometimes stops before installing because Halonic was still closing. The installer now waits for Halonic to close first.
+- a7f3b60: A step card's arrows say when one can never be taken because an earlier arrow always matches first, and the card names steps as the canvas does.
+- d15abf6: On a workflow's canvas, an arrow that goes to a missing step or is never taken now shows the problem on its label, with the full message when you point at it.
+- 3b07199: In Studio, a long arrow row on a workflow step's card now wraps as one sentence from the left, and on a phone, the link to the agent sits on its own line under the message about a missing model alias.
+- 20cf316: In Studio, when a workflow's first step fails, its Start and Failed labels now line up on the step card's top edge.
+- 6291006: In Studio, when a workflow page is too narrow for a run's card and the canvas side by side, as at 200 % zoom, the card now takes the whole page instead of covering the canvas.
+- 5083871: A workflow routine whose input is a text or a list, not named fields, now says its input needs named fields, with an example, instead of saying it needs a workflow and an input.
+- a275f1b: A workflow step's arrow that is never taken is shown in amber, and says Never taken on the canvas and the card.
+- 81d20e3: A step's card is titled with its name, so a new step no longer reads "Step step-1", and Configuration › Problems says in plain words what a new step is missing.
+- 446454e: In Studio, a workflow card on an agent's Flow map now opens the workflow on Flow with the steps that run the agent outlined, and a screen reader hears which steps they are, by the titles their cards show.
+- b83b7df: On a workflow's canvas, moving to a step below the view now brings its problem line into view too, not just its card.
+- 2c958df: When the sandbox can't start, a workflow whose steps run a Claude Code or Codex agent now says why under its header, with the fix, and its Run can't start a run until the sandbox works.
+- b544500: When the sandbox check says it can't start while a workflow's start card is already open, the card's Start run is now unavailable too, and what you typed stays in the card.
+- 5417559: A workflow step with a problem now shows it on its card on the canvas, and Configuration › Problems names the step as its card does.
+- e77183b: Undo after deleting a workflow or an agent now puts it back even after later edits, and the workflow's strip names the workflow.
+- 1d1b728: Pressing an arrow in a step's docked card now opens its fields: To, On event, Condition (JSON) and Label, each saved when you leave it. A wait step's arrow can fire after a time instead ("Use a timer instead"). A condition that isn't JSON says so under the field and isn't saved.
+- 8337424: A workflow's canvas has a toolbar at its top left: **Step** and **Wait** add a step to the right of the right-most card and select it, and **Auto layout** puts every step back in its automatic place and fits the canvas.
+- 5a36cc8: Clicking a step on a workflow's canvas docks its card at the right, where its Prompt, Save output as and Description can be edited. Each field saves by itself; a key pasted into a field isn't saved. Esc, ✕ or a click on the canvas's background closes it.
+- c814f34: On a workflow's canvas, every step that isn't an end or a wait now has a small port at the bottom of its card. Drag from it onto another step to add an arrow to that step. While you drag, the steps you can drop on are outlined. A wait step's arrows are added on its card, where you also give the answer that takes each one.
+- c67e0da: On a zoomed-in workflow canvas, a step card reached with the keyboard pans into view, so focus never lands out of sight, and the canvas no longer scrolls itself off its zoom and pan.
+- 859b030: A step added from the canvas's toolbar is numbered from the first, `step-1` or `wait-1`, so its card's title no longer reads "Step step".
+- c42f39d: A workflow's page has a ⋮ menu with Delete, which deletes the workflow and its tests at once and offers Undo.
+- d8cb8ea: A Workflows page run no longer refuses an agent whose model isn't the mock model. The page's model calls already go through the shell, which checks every address and every redirect, and a key never goes through the webview's network layer.
+- 1b70746: Studio's toasts after removing a step or an arrow name the steps by their titles.
+- a2ec41a: A workflow step or arrow can now be removed from the step card, at once, with a toast that says what went and Undo; the first step stays until you pick another first step in Configuration.
+- bdd3e88: A workflow's name in its page header is a rename field: Enter or leaving the field renames it and keeps its id and file, Esc puts the old name back, and a name another workflow of the hub has shows "A workflow called … already exists." under the field and isn't applied.
+- a4c18df: The workflow's Run panel is titled "Run" with the workflow's name, starts its input from the workflow's first test with the line "Filled from the first test.", and has a **Cancel** button.
+- c68c280: The Workflows page can save a finished run as a test case: Save as test adds the run's input and the step it ended in to the workflow's test file, and makes the file when the workflow has none.
+- 76243fc: In a workflow step's side panel you can now see, reorder and add its arrows, and jump to the steps that lead to it.
+- ed2bfe9: A step's docked card on a workflow's canvas now has Type and Agent, which save as soon as you pick them.
+- 831de9f: The workflow canvas's zoom buttons are a column of named icons at the bottom left, and the fit leaves their strip free, so they no longer touch the cards in a narrow window.
+- a631fcf: The run and monthly budget in workspace.yaml now stop runs in the CLI and the Studio once the estimated spend reaches them.
+- bbbf647: The workspace trust check lets you allow its integrations to run without the sandbox on this computer, as the plugin check does. On Windows with the WSL sandbox, the `halonic` command's refusal no longer tells you to trust the workspace in Studio, because a yes given in Studio doesn't reach the command there.
+- cba81ab: A program connector's `inheritEnv` is refused when the program starts in a sandbox, because the sandbox gives it only its own `env` and secrets. A connector can now name the sites it may reach with `sites`, and `halonic trust` lists them.
+- 3cd740c: New workspaces from `halonic init` start local only: they use only models and connectors on this computer. To use a cloud model, set `privacy.localOnly: false` in `workspace.yaml`.
+- e2f8060: In Studio, when the workspace page can't remove trust because of an internal error, the dialog now says Halonic ran into a problem it can't explain yet and offers Copy details, as Settings › Trusted sources does.
+- 119c9ba: In Studio, the workspace trust check now lists the workspace's own integrations, with their folder, addresses and secrets, and says whether they run in the sandbox on this computer.
+- da361f1: In a folder that keeps its git files outside it, such as a git worktree, Studio no longer runs the saved files: it says it can't read that folder's versions, and which folder to open instead.
+- fbfcaef: When Halonic refuses a folder that keeps its git files outside it, a `.git` file it can't read no longer replaces that refusal with the read error.
+- c77fe61: On Windows, when the agent host runs beside the app, Settings can now remove Halonic's WSL sandbox setup and offer a backup first. The app shows the system's save dialog for the backup file and can show the saved file in the file manager.
+
 ## 0.1.0
 
 First release of Halonic. From the command line you can validate a workspace, run its workflows, test them with the test model, and answer a run that is waiting for you.
