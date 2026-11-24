@@ -11,7 +11,10 @@ if (tooOld.length > 0) {
 } else if (process.argv[2] === "coding-tools") {
   // A harness program's coding tools server: standard output carries its MCP lines only (HAL-17183).
   const { serveCliCodingTools } = await import("../src/coding-tools-mode.ts");
-  process.exitCode = await serveCliCodingTools(process.argv.slice(3));
+  const code = await serveCliCodingTools(process.argv.slice(3));
+  // A server that couldn't start reads nothing more, so an open input mustn't keep it running.
+  if (code === 0) process.exitCode = code;
+  else process.exit(code);
 } else {
   await import("../src/main.ts");
 }

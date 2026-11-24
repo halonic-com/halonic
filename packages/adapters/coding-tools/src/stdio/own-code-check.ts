@@ -5,7 +5,8 @@
 // the approval card. The profile builder checks the same from outside.
 
 import { randomUUID } from "node:crypto";
-import { open, readdir, rm } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, open, readdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 /** Whether a file or folder can be changed from this process. */
@@ -36,6 +37,9 @@ export const writeProbeOnThisComputer: WriteProbe = async (path, kind) => {
     await handle.close();
   } catch (error) {
     if (isNotWritable(error)) return false;
+    // Linux won't open a running program for writing, the runtime itself
+    // included, whatever its rights: ask the system instead.
+    if (hasCode(error, "ETXTBSY")) return await accessAllowsWriting(path);
     throw error;
   }
   if (kind === "folder") await rm(target, { force: true });
@@ -62,10 +66,23 @@ export async function refuseChangeableCode(
       folder.filter((entry) => !entry.isSymbolicLink()).map((entry) => join(path, entry.name)),
       probe,
     );
-    for (const link of folder.filter((entry) => entry.isSymbolicLink())) {
-      if (await probe(join(path, link.name), "file"))
-        throw new ChangeableCodeError(join(path, link.name));
-    }
+    const links = folder.filter((entry) => entry.isSymbolicLink());
+    await refuseChangeableLinks(
+      links.map((link) => join(path, link.name)),
+      probe,
+    );
+  }
+}
+
+/**
+ * Throws when a link's target can be changed. Each is probed where it
+ * leads, as a folder when it leads to one, such as a workspace package in
+ * `node_modules`, and not walked into.
+ */
+async function refuseChangeableLinks(links: readonly string[], probe: WriteProbe): Promise<void> {
+  for (const link of links) {
+    const kind = (await stat(link)).isDirectory() ? "folder" : "file";
+    if (await probe(link, kind)) throw new ChangeableCodeError(link);
   }
 }
 
@@ -75,6 +92,17 @@ async function folderEntries(path: string) {
     return await readdir(path, { withFileTypes: true });
   } catch (error) {
     if (hasCode(error, "ENOTDIR")) return null;
+    throw error;
+  }
+}
+
+/** Whether the system says this process may write the file. */
+async function accessAllowsWriting(path: string): Promise<boolean> {
+  try {
+    await access(path, constants.W_OK);
+    return true;
+  } catch (error) {
+    if (isNotWritable(error)) return false;
     throw error;
   }
 }

@@ -398,9 +398,12 @@ async function serveCodingTools(
   const refusal = codingToolsPayloadRefusal(folder, manifest);
   if (refusal !== undefined) {
     process.stderr.write(`${refusal}\n`);
-    return 1;
+    process.exit(1);
   }
-  return await loadHost(folder, manifest).serveCodingTools(args, folder);
+  const code = await loadHost(folder, manifest).serveCodingTools(args, folder);
+  // A server that couldn't start reads nothing more, so an open input mustn't keep it running.
+  if (code !== 0) process.exit(code);
+  return code;
 }
 
 /** Loads the host module from the payload in `folder`, its workspace packages resolved there too. */

@@ -3,7 +3,12 @@ import { join, relative } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { removeTestFolders, testFolders } from "../folders.test-helper.ts";
-import { ChangeableCodeError, refuseChangeableCode, type WriteProbe } from "./own-code-check.ts";
+import {
+  ChangeableCodeError,
+  refuseChangeableCode,
+  type WriteProbe,
+  writeProbeOnThisComputer,
+} from "./own-code-check.ts";
 
 /** Folders made read-only by a test, made writable again so they can be removed. */
 const lockedFolders: string[] = [];
@@ -58,6 +63,32 @@ verifies("coding-tools.stdio", () => {
       ]);
     },
   );
+
+  // A workspace package in `node_modules` is a link to its folder (HAL-17183: EISDIR on macOS).
+  it.skipIf(process.platform === "win32")(
+    "probes a link to a folder as a folder, where it leads",
+    async () => {
+      const { code } = await codeFolder();
+      await symlink(join(code, "lib"), join(code, "linked-lib"));
+      const probed: string[] = [];
+      const probe: WriteProbe = async (path, kind) => {
+        probed.push(`${kind} ${relative(code, path)}`);
+        return false;
+      };
+      await refuseChangeableCode([code], probe);
+      expect(probed).toContain("folder linked-lib");
+      await expect(refuseChangeableCode([join(code, "linked-lib")])).rejects.toThrow(
+        ChangeableCodeError,
+      );
+    },
+  );
+
+  // Linux refuses to open a running program for writing (HAL-17183: ETXTBSY on the runtime itself).
+  it("answers for the running runtime instead of failing on it", async () => {
+    await expect(writeProbeOnThisComputer(process.execPath, "file")).resolves.toEqual(
+      expect.any(Boolean),
+    );
+  });
 
   it.skipIf(writesEverything)("lets code it can't change start", async () => {
     const { code } = await codeFolder();
