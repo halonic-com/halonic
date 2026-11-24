@@ -18,6 +18,7 @@ import {
 } from "./provider-reach.ts";
 import type { BridgeRoute } from "./route.ts";
 import { readModelCall, recordModelCall } from "./spend.ts";
+import { withSubagent } from "./subagent.ts";
 
 /** The one host the bridge sends OpenAI requests to. */
 export const openAiOrigin = "https://api.openai.com";
@@ -185,7 +186,10 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       if (target.atCompatibleProvider) {
         refuseUnknownAtCompatible(request, openAiKnown, target.models);
       }
-      const call = readModelCall("openai", request, "input", access);
+      const call = withSubagent(
+        readModelCall("openai", request, "input", access),
+        context.request.headers,
+      );
       // Also before the key is read, so a model the agent wasn't given never reads it.
       refuseModelsNotGiven(access, request);
       const authorization = await providerAuthorization(

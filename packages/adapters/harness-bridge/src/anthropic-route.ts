@@ -17,6 +17,7 @@ import {
 } from "./provider-reach.ts";
 import type { BridgeRoute } from "./route.ts";
 import { readModelCall, recordModelCall } from "./spend.ts";
+import { withSubagent } from "./subagent.ts";
 
 /** The one host the bridge sends Anthropic requests to. */
 export const anthropicOrigin = "https://api.anthropic.com";
@@ -161,7 +162,10 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       if (target.atCompatibleProvider) {
         refuseUnknownAtCompatible(request, anthropicKnown, target.models);
       }
-      const call = readModelCall("anthropic", request, "messages", access);
+      const call = withSubagent(
+        readModelCall("anthropic", request, "messages", access),
+        context.request.headers,
+      );
       // Also before the key is read, so a model the agent wasn't given never reads it.
       refuseModelsNotGiven(access, request);
       const authorization = await providerAuthorization(

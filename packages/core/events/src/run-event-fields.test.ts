@@ -305,3 +305,18 @@ verifies("events.llm-request-effort", () => {
     } as const).toExtend<RunEventBody>();
   });
 });
+
+verifies("events.llm-subagent", () => {
+  typeTest("may mark a model call a sub-agent made, on the request and the response", () => {
+    expectTypeOf<EventOf<"llm.request">["subagent"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<EventOf<"llm.response">["subagent"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf({
+      type: "llm.request",
+      agent: "writer",
+      provider: "anthropic",
+      model: "claude-sonnet-5-5",
+      subagent: "subagent",
+      messages: 3,
+    } as const).toExtend<RunEventBody>();
+  });
+});
