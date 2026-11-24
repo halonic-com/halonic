@@ -108,10 +108,11 @@ fn chat_turn_route(name: &str) -> Result<EngineRoute, EngineRefusal> {
     named_route(name, Answer::Json)
 }
 
-/// Sends the turn and waits for the engine to start its lines, or to finish
-/// answering otherwise, for at most `limit`. An engine that doesn't is
-/// refused as `engine_unavailable`, and the request is dropped, which hangs
-/// up on it.
+/// Sends the turn and waits for the engine to start its answer, for at most
+/// `limit`. An engine that doesn't is refused as `engine_unavailable`, and
+/// the request is dropped, which hangs up on it. The engine starts its lines
+/// before the model has written anything; an answer that isn't lines is
+/// read whole within the turn's own 10 minutes, as through `engine_request`.
 async fn open_lines<R: Runtime>(
     webview: &Webview<R>,
     route: EngineRoute,
@@ -119,20 +120,17 @@ async fn open_lines<R: Runtime>(
     body: Option<Vec<u8>>,
     limit: Duration,
 ) -> Result<Opening, EngineRefusal> {
-    let opening = async {
-        let response = request(webview, route, path, body)?
-            .header(reqwest::header::ACCEPT, LINES_TYPE)
-            .send()
-            .await
-            .map_err(|_| unavailable())?;
-        if response.status() != reqwest::StatusCode::OK || !sends_lines(&response) {
-            return read_answer(response).await.map(Opening::Refused);
-        }
-        Ok(Opening::Stream(response))
-    };
-    tokio::time::timeout(limit, opening)
+    let sending = request(webview, route, path, body)?
+        .header(reqwest::header::ACCEPT, LINES_TYPE)
+        .send();
+    let response = tokio::time::timeout(limit, sending)
         .await
-        .unwrap_or_else(|_| Err(unavailable()))
+        .map_err(|_| unavailable())?
+        .map_err(|_| unavailable())?;
+    if response.status() != reqwest::StatusCode::OK || !sends_lines(&response) {
+        return read_answer(response).await.map(Opening::Refused);
+    }
+    Ok(Opening::Stream(response))
 }
 
 /// Whether the engine answered with lines, rather than the whole turn.

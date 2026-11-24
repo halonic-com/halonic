@@ -12,7 +12,7 @@ passes each whole line of the engine's answer to the page's channel, parsed from
 or `failed`. A refused turn, or one the engine answers whole, comes back as the engine's status and
 body. The turn is one of the page's engine streams, so `engine_stream_end` (Stop), a reload, and the
 engine going all end it and hang up on the engine, and it counts against the 16 streams a page may
-have. It keeps the chat turn's 10-minute limit and the streams' 120 s for the opening answer. A line
+have. The engine has 120 s to start its answer, as for a stream route, and the whole turn keeps its 10-minute limit. A line
 the stream stops in the middle of is not passed on, so a cut-off turn reads as failed.
 `engine_request`, `engine_stream` and the route table don't change. The command is granted only
 where the other engine commands are, the main window's local `desktop-engine` capability, so
