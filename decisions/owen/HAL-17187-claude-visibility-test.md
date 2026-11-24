@@ -2,6 +2,7 @@
 
 - Approval: the board approved Claude Code for CI only, pinned and in this one job (HAL-17188); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AqdUxu476/QOjfmHLNmCqVF0GT3fkewA+Lwbk9uY95aKF5WBeEsOvCxYhys5A2DlDBFxw9yBsvWAZ73UQvitBA==
 
 ## What changes
 
