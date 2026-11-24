@@ -1445,6 +1445,15 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' scaffold ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
     runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 35
+    # Two legs, each generating the same packages (HAL-17657). The CLI's
+    # tests alone took 279 s of an uncached run on a GitHub runner, so they
+    # get a leg of their own: one job took 6.4 to 7 min. No cache in either
+    # leg: every task here has new inputs (the generated packages change
+    # the codegen task every task depends on), so a cache would only miss.
+    strategy:
+      fail-fast: false
+      matrix:
+        leg: [generated, cli]
     permissions:
       contents: read
     steps:
@@ -1470,18 +1479,25 @@ jobs:
         # run took 14 to 19 minutes (HAL-10774). The trace check reads only the
         # generated packages. Test timeout and workers: HAL-3852, a test that
         # passes in its own job can pass the default 5 s limit only barely.
+        # The cli leg runs the same four tasks `--also halonic` gave
+        # verify (nothing depends on halonic) and nothing else, so it can
+        # leave Vitest its own worker count on a GitHub runner.
         env:
           HALONIC_TEST_TIMEOUT: "30000"
-          HALONIC_TEST_WORKERS: "2"
+          HALONIC_TEST_WORKERS: ${{ (matrix.leg == 'generated' || runner.environment == 'self-hosted') && '2' || '' }}
+          LEG: ${{ matrix.leg }}
         run: |
+          if [ "$LEG" = cli ]; then
+            pnpm exec turbo run typecheck lint test build --filter=...halonic --output-logs=errors-only
+            exit 0
+          fi
           pnpm verify --full \
             --only packages/core/ci-example \
             --only packages/adapters/ci-example \
             --only packages/host/ci-example \
             --only packages/targets/ci-example/runtime \
             --only packages/studio/features/ci-example \
-            --also @halonicjs/app-studio \
-            --also halonic
+            --also @halonicjs/app-studio
       # Peak memory and CPU time on our own CI server (HAL-14831).
       - if: always() && runner.environment == 'self-hosted'
         uses: $/.github/actions/runner-usage
