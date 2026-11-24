@@ -1,6 +1,6 @@
 import type { AgentMessaging } from "@halonicjs/ports";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
-import { EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
+import { EmptyState, List, useNarrow, usePresentation } from "@halonicjs/studio-kit";
 import { AgentMessagingService } from "@halonicjs/studio-services";
 import {
   type EngineWords,
@@ -148,7 +148,9 @@ export interface InboxViewProps {
  * On a phone (HAL-8778, phone layout 5) the list is the whole page, and an open item replaces it
  * as a page with **Back to Inbox** and, for an item that waits, where it is among them ("1 of 4",
  * HAL-11945 Q12); the top bar already says "Inbox", so the page's own heading is for screen
- * readers only.
+ * readers only. A window narrower than 900px (`useNarrow`, such as 200 % zoom on a laptop) shows
+ * one pane at a time in the same way, with **Back to Inbox** and the request sheet, but keeps the
+ * list's visible heading, since it has no phone top bar (HAL-17822).
  *
  * With no card open, the right pane is the request form when the workspace has a workflow with a
  * `start:` block (`InboxRequests`), and **New request** in the header brings it back.
@@ -156,7 +158,7 @@ export interface InboxViewProps {
  * Notices (`InboxNotices`) follow Needs you as flat rows with **Open run** and **×**, then the
  * collapsed **Done** heading of settled run proposals (HAL-11945 Q10).
  *
- * Not here yet: the notices' new dot and the narrow layout (HAL-1305).
+ * Not here yet: the notices' new dot (HAL-1305).
  */
 export function InboxView({
   inbox,
@@ -200,13 +202,15 @@ export function InboxView({
     const row = list.current?.querySelector<HTMLElement>(
       'tr[aria-current="true"] [role="gridcell"]',
     );
-    // On a phone the list is hidden until the item closes, and a hidden row can't take focus.
+    // With one pane the list is hidden until the item closes, and a hidden row can't take focus.
     flushSync(() => openItem(null));
     row?.focus();
   };
   const failedFirst = !state.loaded && state.error !== undefined;
   const phone = usePresentation() === "phone";
-  const itemPage = phone && open !== null;
+  // A phone or a narrow window: one pane at a time, the list or the open item (HAL-17822).
+  const onePane = useNarrow() || phone;
+  const itemPage = onePane && open !== null;
   const requestSheetOpen = useRef(false);
   const itemPane = useRef<HTMLDivElement>(null);
   const sentCard = useSentRequestCard({
@@ -218,7 +222,7 @@ export function InboxView({
   const request = useRequestPane({
     inbox,
     requests,
-    phone,
+    phone: onePane,
     list,
     closeItem: () => openItem(null),
     words,
@@ -233,8 +237,8 @@ export function InboxView({
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      <div data-pane="list" className={listPaneClass(phone, itemPage)}>
-        <ListHeader phone={phone} newRequest={request.newRequest} />
+      <div data-pane="list" className={listPaneClass(onePane, itemPage)}>
+        <ListHeader phone={phone} onePane={onePane} newRequest={request.newRequest} />
         <StaleLine error={state.loaded ? state.error : undefined} words={words} phone={phone} />
         {agent.lines(now())}
         {project.chips}
@@ -302,7 +306,7 @@ export function InboxView({
       <div
         ref={itemPane}
         data-pane="item"
-        className={`${phone && open === null ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`}
+        className={`${onePane && open === null ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`}
       >
         <div className="flex w-full max-w-190 flex-col">
           {itemPage ? <ItemPageBar open={open} items={state.items} close={close} /> : null}

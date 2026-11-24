@@ -285,9 +285,12 @@ export {
   type PickerSheetProps,
 } from "./picker-sheet/picker-sheet.tsx";
 export {
+  NarrowProvider,
+  type NarrowProviderProps,
   type Presentation,
   PresentationProvider,
   type PresentationProviderProps,
+  useNarrow,
   usePresentation,
 } from "./presentation/presentation.tsx";
 export { QrTile, type QrTileProps } from "./qr-tile/qr-tile.tsx";

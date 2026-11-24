@@ -28,9 +28,17 @@ export const narrowQuery = `(width < ${WIDE_MIN_WIDTH}px)`;
  * phone, which has its own layout.
  */
 export function useNarrowWindow(): boolean {
-  const narrow = useMediaQuery(narrowQuery);
+  const narrow = useNarrowFromWidth();
   const presentation = usePresentationFromWidth();
   return narrow && presentation === "desktop";
+}
+
+/**
+ * Whether the window is narrower than `WIDE_MIN_WIDTH`, a phone included, following every change:
+ * the kit's `NarrowProvider` value, for pages that show one pane at a time there.
+ */
+export function useNarrowFromWidth(): boolean {
+  return useMediaQuery(narrowQuery);
 }
 
 function useMediaQuery(query: string): boolean {
