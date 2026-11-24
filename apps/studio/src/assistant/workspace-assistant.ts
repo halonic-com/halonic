@@ -19,6 +19,7 @@ import {
   buildChatTools,
   builtInAuthoringSkill,
   ownAuthoringSkill,
+  type ShowOutcome,
 } from "@halonicjs/assistant";
 import type { ChatMessage, DefinitionStore, Digest } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
@@ -34,7 +35,7 @@ import type {
   ModelOption,
   ShownItem,
 } from "@halonicjs/studio-feature-assistant/api";
-import { EngineNotAnswering, WorkspaceUntrusted } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, type ItemRef, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
 import { agentOfKind, chatAgentsOf, type HasKey, modelOptionsOf } from "./chat-models.ts";
@@ -113,6 +114,8 @@ export class WorkspaceAssistant implements AssistantHost {
   readonly #chats: KeptChats;
   readonly #tools = new Map<string, readonly ChatTool[]>();
   readonly #answering = new Set<string>();
+  /** How each answering chat's `show` tool shows an item: the window of the answer's panel. */
+  readonly #shows = new Map<string, NonNullable<AssistantAnswerRequest["show"]>>();
   readonly #listeners = new Set<(change: AssistantChange) => void>();
   readonly #stopReview: () => void;
   readonly #stopEngine: () => void;
@@ -201,6 +204,7 @@ export class WorkspaceAssistant implements AssistantHost {
     });
     this.#answering.add(chat.id);
     this.#chats.answering(chat.id, true);
+    if (request.show !== undefined) this.#shows.set(chat.id, request.show);
     this.#changed({ kind: "chats" });
     try {
       const answer = await this.#answerOn(chat, request, stopper.signal);
@@ -212,6 +216,7 @@ export class WorkspaceAssistant implements AssistantHost {
       stopWatching?.();
       this.#answering.delete(chat.id);
       this.#chats.answering(chat.id, false);
+      this.#shows.delete(chat.id);
       this.#changed({ kind: "chats" });
     }
   }
@@ -416,15 +421,21 @@ export class WorkspaceAssistant implements AssistantHost {
     };
   }
 
-  /** The chat's tools, made once, so they remember what the model read in it. */
+  /**
+   * The chat's tools, made once, so they remember what the model read in it. `show` shows an item
+   * in the window of the answer running now, and nowhere without one; it waits for trust.
+   */
   #toolsOf(chatId: string): readonly ChatTool[] {
+    const { files, review, isTrusted, digest } = this.#parts;
     let tools = this.#tools.get(chatId);
     if (tools === undefined) {
-      const { files, review, isTrusted, digest } = this.#parts;
-      tools = buildChatTools({ chatId, files, review, isTrusted, digest });
+      const show = async (item: ItemRef): Promise<ShowOutcome> =>
+        this.#shows.get(chatId)?.(item) ?? "nowhere";
+      tools = buildChatTools({ chatId, files, review, isTrusted, digest, show });
       this.#tools.set(chatId, tools);
     }
-    return tools;
+    // Before trust a turn offers exactly the six authoring tools (`studio.assistant-authoring-turn`).
+    return isTrusted() ? tools : tools.filter((tool) => tool.definition.name !== "show");
   }
 
   #add(chatId: string, message: ChatMessage): void {

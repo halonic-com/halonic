@@ -5,7 +5,7 @@ export {
   builtInAuthoringSkill,
   ownAuthoringSkill,
 } from "./build/authoring-skill.ts";
-export type { BuildToolsOptions } from "./build/build-chat.ts";
+export type { BuildToolsOptions, ItemToShow, ShowOutcome } from "./build/build-chat.ts";
 export { buildChatTools } from "./build/build-tools.ts";
 export { toolTexts } from "./build/tool-texts.ts";
 export {

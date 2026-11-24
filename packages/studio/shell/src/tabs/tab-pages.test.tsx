@@ -153,6 +153,31 @@ verifies("shell.tab-pages", () => {
   });
 });
 
+verifies("shell.panels.show-replaces-windows", () => {
+  const runs: TabLocation = { key: "run/acme/r42", title: "r42", kind: "run" };
+
+  it("leaves the focus outside the pages where it is when a tab opens next to it", () => {
+    const { tabs, container } = renderPages();
+    const panelBox = document.createElement("textarea");
+    container.append(panelBox);
+    act(() => panelBox.focus());
+    act(() => {
+      tabs.openInNewTab(runs, { activate: true });
+    });
+    expect(currentLocation(tabs.active).key).toBe(runs.key);
+    expect(document.activeElement).toBe(panelBox);
+  });
+
+  it("gives the focus to the new tab's page when it was in the page that goes hidden", () => {
+    const { tabs, field } = renderPages();
+    act(() => field("Agents")?.focus());
+    act(() => {
+      tabs.openInNewTab(runs, { activate: true });
+    });
+    expect(document.activeElement?.textContent).toBe("r42");
+  });
+});
+
 verifies("shell.page-stopped", () => {
   it("stops only the page that throws, and draws the next place in its tab afresh", () => {
     // React logs every error a boundary catches; here the failure is the point.

@@ -17,7 +17,27 @@ export interface BuildToolsOptions {
   readonly isTrusted: () => boolean;
   /** Hashes what the model read, for the check before a write. */
   readonly digest: Digest;
+  /**
+   * Shows an item to the person, next to the chat, for the `show` tool, and says how it went.
+   * Absent: there is nowhere to show items, and `show` says so.
+   */
+  readonly show?: ((item: ItemToShow) => Promise<ShowOutcome>) | undefined;
 }
+
+/** An item the `show` tool shows, as the model names it. */
+export interface ItemToShow {
+  /** The item's kind, such as `run`, `agent` or `workflow`. */
+  readonly kind: string;
+  /** The hub it belongs to. */
+  readonly hub: string;
+  readonly id: string;
+}
+
+/**
+ * How showing an item went: `shown` next to the chat, `unknown` because there is no such item, or
+ * `nowhere` because this chat has nowhere to show it, such as on a phone.
+ */
+export type ShowOutcome = "shown" | "unknown" | "nowhere";
 
 /**
  * The tools' shared state for one chat. It remembers the digest of each

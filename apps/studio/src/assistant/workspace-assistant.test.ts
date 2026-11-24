@@ -51,6 +51,7 @@ verifies("studio.workspace-assistant", () => {
         "validate",
         "propose_file",
         "propose_delete",
+        "show",
       ]);
       expect(requests[0]?.turnLimit).toBe(9);
       expect(turnRequests[0]).toMatchObject({ hubId: "support", alias: "default" });
