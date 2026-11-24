@@ -146,7 +146,16 @@ before the hard limit kills it, which gives the loop time to grow it. All slots 
 VM-wide reserve check (`MemAvailable` above the 4 GB step plus 4 GB) is the only thing that stops
 growth from overcommitting it. The 24 fast slots add 10×6 + 14×4 = 116 GB of start size: fast jobs
 peaked at 4.4 GB (p90 4.35 GB) over 24 h on 23–24 Nov, so most stay at their start size, and the same
-reserve check stops the rest from growing past what the VM has.
+reserve check stops the rest from growing past what the VM has. Start sizes aren't covered by that
+check, so a fast slot also waits before it registers a runner (memory admission, HAL-17463): it
+registers only while the VM's available memory, less the start size of every idle fast runner and
+the room every busy job still has under its limit, is at least its start size plus the 4 GB reserve;
+otherwise it logs `waiting for memory` and checks again every 15 s. Large and small slots never
+wait. **When the VM is short**, then: no new fast job starts (fast jobs wait in GitHub's queue), a
+running job's limit isn't raised, and a job that needs more than its limit is slowed at `memory.high`
+and, past the limit, killed inside its own container (its job fails); the VM itself isn't
+overcommitted by fast slots. On a 72 GB VM that is about 15 idle fast runners with the large pool
+idle, and about 8 fast jobs at once at their 4.4 GB peak next to the large pool's normal load.
 
 Every container: all capabilities dropped, `no-new-privileges`, Docker's default seccomp and
 AppArmor profiles, `--pids-limit 8192`, no host devices, no Docker socket. The image
@@ -216,7 +225,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   `vm/halonic-ci-gate.sh` and `vm/halonic-ci-gate-fast.socket` (`systemctl daemon-reload &&
   systemctl restart halonic-ci-gate-fast.socket`), rebuild the image with the new hook, deploy
   `vm/halonic-runner-slot.sh` and `vm/pool-fast.conf`, and add `halonic-runner@fast-11` …
-  `halonic-runner@fast-24` to `/etc/halonic-ci/slots` and start them. The new hook needs the new
+  `halonic-runner@fast-24` to `/etc/halonic-ci/slots` and start them. On a 72 GB VM not all of
+  them register at once: memory admission (above) holds the rest, which is expected. The new hook needs the new
   gate (it reads the pull request's author), so deploy the gate first. Then a pull request without
   a label should show its Linux checks on `hci-fast-*`. Off at once: clear `CI_RUNNER_FAST`. Back:
   restore the copies and restart the gate socket and the slots.
