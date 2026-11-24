@@ -197,6 +197,7 @@ verifies("services.agent-notifications", () => {
             from: { kind: "person", name: "Liam" },
             question: "Ship?",
             options: [],
+            attachments: [],
             createdAt: "2026-11-24T10:00:00.000Z",
             state: { kind: "open" },
           },

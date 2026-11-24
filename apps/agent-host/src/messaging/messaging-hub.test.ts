@@ -218,3 +218,45 @@ verifies("agent-host.messaging-hub", () => {
     });
   });
 });
+
+const screenshot = {
+  name: "login.png",
+  type: "image/png",
+  bytes: new Uint8Array([137, 80, 78, 71]),
+};
+
+verifies("agent-host.messaging-hub-attachments", () => {
+  it("reads a message's file only from the provider that listed it", async () => {
+    const { a, b, sourceB, hub } = twoSources();
+    const chief = b.addAgent(sourceB.id, { name: "Chief" });
+    const chat = b.addConversation(chief.id);
+    b.addMessage(chat.id, { body: "Here", attachments: [screenshot] });
+    const readA = vi.spyOn(a, "readAttachment");
+    const [message] = await hub.listMessages(chat.id);
+    const file = message?.attachments[0];
+
+    const read = await hub.readAttachment(file?.id ?? "");
+
+    expect(read).toEqual({ outcome: "read", bytes: screenshot.bytes, type: "image/png" });
+    expect(readA).not.toHaveBeenCalled();
+  });
+
+  it("finds an inbox item's file it hasn't listed yet", async () => {
+    const { a, sourceA, hub } = twoSources();
+    const item = a.addInboxItem(sourceA.id, { question: "Looks right?", files: [screenshot] });
+
+    const read = await hub.readAttachment(item.attachments[0]?.id ?? "");
+
+    expect(read.outcome).toBe("read");
+  });
+
+  it("refuses a file no provider listed with not-found, and asks no provider", async () => {
+    const { a, b, hub } = twoSources();
+    const calls = [vi.spyOn(a, "readAttachment"), vi.spyOn(b, "readAttachment")];
+
+    const read = await hub.readAttachment("nobody-listed-this");
+
+    expect(read).toEqual({ outcome: "refused", reason: "not-found" });
+    for (const call of calls) expect(call).not.toHaveBeenCalled();
+  });
+});
