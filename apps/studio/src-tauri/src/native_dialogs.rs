@@ -3,7 +3,9 @@
 //! questions, about a folder (HAL-2612) and about an agent's instructions,
 //! the question before Studio runs agents without a sandbox (HAL-16342), and
 //! the one before it saves the yes to run plugins and integrations without
-//! the sandbox (HAL-16466).
+//! the sandbox (HAL-16466), and the three before Settings › Remote turns
+//! remote on, lets phones answer risky approvals or allows a phone to pair
+//! (HAL-17795).
 //! They are shown with `rfd`, the library `tauri-plugin-dialog` uses, called
 //! from Rust only: registering the plugin would put its script in every
 //! page, the served Studio too, replacing `alert` and `confirm`.
@@ -60,6 +62,49 @@ Allow only if you just chose this in Halonic.";
 /// The button that saves the yes, as the page's own button says.
 #[cfg(desktop)]
 const UNFENCED_ALLOW_BUTTON: &str = "Allow";
+
+/// The title of the question before remote is turned on; the page's switch
+/// has the same name.
+#[cfg(desktop)]
+const REMOTE_ON_TITLE: &str = "Let phones reach this computer?";
+
+/// The question's text. As [`NO_SANDBOX_QUESTION`], it says the shell asks
+/// again on purpose.
+#[cfg(desktop)]
+const REMOTE_ON_QUESTION: &str = "Halonic is about to let paired phones reach this computer. \
+A paired phone can view your agents, approve and send prompts.\n\n\
+Turn on only if you just chose this in Halonic.";
+
+/// The button that turns remote on.
+#[cfg(desktop)]
+const REMOTE_ON_BUTTON: &str = "Turn on";
+
+/// The title of the question before phones may answer risky approvals; the
+/// page's switch has the same name.
+#[cfg(desktop)]
+const RISKY_REMOTE_TITLE: &str = "Let phones answer risky approvals?";
+
+/// The question's text, with what risky means, as the page's switch says it.
+#[cfg(desktop)]
+const RISKY_REMOTE_QUESTION: &str = "Halonic is about to let paired phones answer risky \
+approvals: a shell command, a file change, a secret or leaving the sandbox. A phone's yes then \
+counts as yours.\n\n\
+Allow only if you just chose this in Halonic.";
+
+/// The title of the question before a phone is allowed to pair.
+#[cfg(desktop)]
+const PAIRING_TITLE: &str = "Pair this phone?";
+
+/// The question's text. It points at the check code, the page's own check.
+#[cfg(desktop)]
+const PAIRING_QUESTION: &str = "Halonic is about to pair a new phone with this computer. \
+It can then view your agents, approve and send prompts until you revoke it.\n\n\
+Allow only if you just pressed Allow in Halonic and your phone shows the same code.";
+
+/// The button that saves the yes, the risky approvals or the pairing, as
+/// the page's own button says.
+#[cfg(desktop)]
+const REMOTE_ALLOW_BUTTON: &str = "Allow";
 
 /// The label of the shell's only window. tauri.conf.json gives the window
 /// no label, so Tauri names it `main`, as the capabilities do.
@@ -136,6 +181,32 @@ pub fn ask_to_allow_without_sandbox<R: Runtime>(app: &AppHandle<R>) -> bool {
         UNFENCED_ALLOW_QUESTION,
         UNFENCED_ALLOW_BUTTON,
     )
+}
+
+/// Shows the question before remote is turned on; `true` only when the
+/// person presses Turn on, answered as [`ask_to_trust`] answers.
+#[cfg(desktop)]
+pub fn ask_to_turn_remote_on<R: Runtime>(app: &AppHandle<R>) -> bool {
+    ask(app, REMOTE_ON_TITLE, REMOTE_ON_QUESTION, REMOTE_ON_BUTTON)
+}
+
+/// Shows the question before phones may answer risky approvals; `true` only
+/// when the person presses Allow, answered as [`ask_to_trust`] answers.
+#[cfg(desktop)]
+pub fn ask_to_allow_risky_remotely<R: Runtime>(app: &AppHandle<R>) -> bool {
+    ask(
+        app,
+        RISKY_REMOTE_TITLE,
+        RISKY_REMOTE_QUESTION,
+        REMOTE_ALLOW_BUTTON,
+    )
+}
+
+/// Shows the question before a phone is allowed to pair; `true` only when
+/// the person presses Allow, answered as [`ask_to_trust`] answers.
+#[cfg(desktop)]
+pub fn ask_to_allow_pairing<R: Runtime>(app: &AppHandle<R>) -> bool {
+    ask(app, PAIRING_TITLE, PAIRING_QUESTION, REMOTE_ALLOW_BUTTON)
 }
 
 /// Shows a warning with `yes` and Cancel; `true` only for `yes`.
@@ -234,6 +305,21 @@ pub fn ask_to_continue_without_sandbox<R: Runtime>(_app: &AppHandle<R>) -> bool 
 
 #[cfg(mobile)]
 pub fn ask_to_allow_without_sandbox<R: Runtime>(_app: &AppHandle<R>) -> bool {
+    false
+}
+
+#[cfg(mobile)]
+pub fn ask_to_turn_remote_on<R: Runtime>(_app: &AppHandle<R>) -> bool {
+    false
+}
+
+#[cfg(mobile)]
+pub fn ask_to_allow_risky_remotely<R: Runtime>(_app: &AppHandle<R>) -> bool {
+    false
+}
+
+#[cfg(mobile)]
+pub fn ask_to_allow_pairing<R: Runtime>(_app: &AppHandle<R>) -> bool {
     false
 }
 
