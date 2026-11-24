@@ -88,7 +88,7 @@ export class RoutinesObject extends AdapterRoutinesObject {
  *
  * @throws AggregateError when `result.failed` isn't empty
  */
-function throwFailedStarts(result: RoutineTickResult): void {
+export function throwFailedStarts(result: RoutineTickResult): void {
   if (result.failed.length === 0) return;
   const failures = result.failed.map(
     ({ key, at, error }) =>

@@ -7,6 +7,7 @@
     "src/scoped-sweep.node.test.ts",
     "src/definitions-version.node.test.ts",
     "src/worker.node.test.ts",
+    "src/routines-object.node.test.ts",
     "src/scheduled.test.ts",
     "src/password-limit.test.ts",
     "src/self-test.test.ts",
