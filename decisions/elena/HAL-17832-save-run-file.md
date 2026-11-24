@@ -2,7 +2,7 @@
 
 - Approval: Paperclip task HAL-17832, the board's option A on HAL-12421 (24 Nov); Liam reviews the code and Julian signs this note
 - Kind: user-visible
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:dcDEwUFs26mIqAr+4+DPMDY2+bQoywq9vLZcwevpUYx/Hlwa+jQ5dCRJ4Fddq+zCR5y8lAF1ref+z11Yj4t1CQ==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:hV2gM2IppNm6THlMmgwn3pVjUsZe4mmQ9sJ1PutY+WNX4qYnS+5dJw8AOR9mKm2cFtZVNl06eL6geh0K+ygmBA==
 
 The run page's Items line names the files a run created ("Created 1 file: weekly-report.md"), but
 the file existed only in Halonic's blob folder, so the person couldn't use it. The board approved
