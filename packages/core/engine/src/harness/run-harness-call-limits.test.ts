@@ -16,8 +16,11 @@ const request = {
   messages: 1,
 } as const satisfies BridgeEvent;
 
+/** A model call's answer, as the bridge records it. */
+type ModelAnswer = Extract<BridgeEvent, { type: "llm.response" }>;
+
 /** An answer that cost `cost`, as the bridge records it. */
-function response(cost: number): BridgeEvent {
+function response(cost: number): ModelAnswer {
   return {
     type: "llm.response",
     agent: "writer",
@@ -28,6 +31,18 @@ function response(cost: number): BridgeEvent {
     text: "",
     cost,
   };
+}
+
+/**
+ * An answer that used `tokens` tokens and that a subscription paid, as the
+ * bridge records it; `subAgent` splits them as a `Task` sub-agent's call
+ * does, with cache reads and writes, under the run's agent.
+ */
+function subscriptionResponse(tokens: number, subAgent = false): BridgeEvent {
+  const usage = subAgent
+    ? { inputTokens: 100, outputTokens: 50, cacheReadTokens: tokens - 200, cacheWriteTokens: 50 }
+    : { inputTokens: tokens - 100, outputTokens: 100 };
+  return { ...response(0), usage, paidBy: "subscription" };
 }
 
 /** The writer's call, with `harnessLimits` on its agent. */
@@ -136,6 +151,66 @@ verifies("engine.harness-step-limits", () => {
     expect(refused.map(errorKindOf)).toEqual(["limit_reached"]);
     expect(written.filter((event) => event.type === "llm.request")).toHaveLength(2);
     expect(stillOpen(ports.steps)).toBe(0);
+  });
+
+  it("stops once the answers, a sub-agent's and subscription calls included, used maxTokens", async () => {
+    const { ports, refused, recorded } = programRecording([
+      request,
+      subscriptionResponse(600),
+      request,
+      subscriptionResponse(500, true),
+      request,
+    ]);
+
+    const { error, written } = await runCallOn(
+      ports,
+      undefined,
+      undefined,
+      undefined,
+      limitedCall({ maxTokens: 1000 }),
+    );
+    await recorded;
+
+    expect((error as Error).message).toBe(
+      'Agent "writer" used 1100 of its 1000 tokens (harnessLimits.maxTokens), so Halonic stopped Claude Code.',
+    );
+    expect(
+      failedCallInput(error, { callId: "call-1", at: "2026-11-18T10:00:00.000Z", step: "draft" }),
+    ).toMatchObject({
+      reason: "error",
+      cause: {
+        kind: "limit_reached",
+        code: "harness.max-tokens",
+        detail: { limit: "1000", used: "1100" },
+      },
+    });
+    expect(refused.map(errorKindOf)).toEqual(["limit_reached"]);
+    expect(written.filter((event) => event.type === "llm.request")).toHaveLength(2);
+    expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
+    expect(stillOpen(ports.steps)).toBe(0);
+  });
+
+  it("goes on below maxTokens", async () => {
+    const { ports, refused, recorded } = programRecording([
+      request,
+      subscriptionResponse(600),
+      request,
+      subscriptionResponse(300, true),
+    ]);
+    ports.harness.hangs = false;
+    ports.harness.events = [finished("Done")];
+
+    const { output } = await runCallOn(
+      ports,
+      undefined,
+      undefined,
+      undefined,
+      limitedCall({ maxTokens: 1000 }),
+    );
+    await recorded;
+
+    expect(output).toBe("Done");
+    expect(refused).toEqual([]);
   });
 
   it("stops the step when its maxMinutes timer arrives", async () => {

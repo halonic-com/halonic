@@ -344,6 +344,11 @@
         "maxCost": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "maxTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000000
         }
       },
       "additionalProperties": false

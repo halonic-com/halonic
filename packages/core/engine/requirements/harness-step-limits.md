@@ -2,15 +2,16 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-12481, Liam's plan on the task (Halonic Code first slice, HAL-12473; gap found by HAL-11950); builds on `format.agent-harness-limits` and `engine.budget-stops`
+- Source: HAL-12481, Liam's plan on the task (Halonic Code first slice, HAL-12473; gap found by HAL-11950); builds on `format.agent-harness-limits` and `engine.budget-stops`; `maxTokens` from HAL-17251 (token phase 1b), counting sub-agents' calls as `harness-bridge.sub-agent-spend` records them
 
 While a harness step runs, the engine shall keep it to its agent's `harnessLimits`, and a limit the file leaves out shall not apply:
 
 - `maxSteps`: the engine shall count each model call the bridge passes on. It shall refuse the call that would go past `maxSteps`, before its `llm.request` is logged, with a `limit_reached` error the bridge answers with 429.
 - `maxCost`: the engine shall add up the `cost` of each `llm.response` the bridge records. A response without a cost, or one a subscription paid, adds 0. Once the total reaches `maxCost`, the step shall stop, and the bridge shall refuse every later model call.
+- `maxTokens`: the engine shall add up the tokens of each `llm.response` the bridge records, a sub-agent's included: its input, output, cache read and cache write tokens. A call a subscription paid counts as well. Once the total reaches `maxTokens`, the step shall stop, and the bridge shall refuse every later model call.
 - `maxMinutes`: the engine shall count the step's running time from the start of the harness, on one timer through the `Scheduler` port. The timer shall not count while the run waits for a person's answer, and shall go on from where it stopped once the answer comes. When the time is up, the step shall stop.
 
-A step that reaches a limit shall stop as a budget stop does: the harness run, the session and the bridge stop, in that order. The step shall then fail with the error `Agent "<agent>" used all <n> of its steps (harnessLimits.maxSteps), so Halonic stopped <harness>.`, `Agent "<agent>" spent <spent> of its <limit> (harnessLimits.maxCost), so Halonic stopped <harness>.` or `Agent "<agent>" ran for its <n> minutes (harnessLimits.maxMinutes), so Halonic stopped <harness>.`, with the reason `error` and the cause `{ kind: "limit_reached", code, detail: { limit, used } }`, where `code` is `harness.max-steps`, `harness.max-cost` or `harness.max-minutes`. The agent's own `maxSteps` shall not bound a harness step.
+A step that reaches a limit shall stop as a budget stop does: the harness run, the session and the bridge stop, in that order. The step shall then fail with the error `Agent "<agent>" used all <n> of its steps (harnessLimits.maxSteps), so Halonic stopped <harness>.`, `Agent "<agent>" spent <spent> of its <limit> (harnessLimits.maxCost), so Halonic stopped <harness>.`, `Agent "<agent>" used <used> of its <limit> tokens (harnessLimits.maxTokens), so Halonic stopped <harness>.` or `Agent "<agent>" ran for its <n> minutes (harnessLimits.maxMinutes), so Halonic stopped <harness>.`, with the reason `error` and the cause `{ kind: "limit_reached", code, detail: { limit, used } }`, where `code` is `harness.max-steps`, `harness.max-cost`, `harness.max-tokens` or `harness.max-minutes`. The agent's own `maxSteps` shall not bound a harness step.
 
 ## Examples
 
@@ -20,6 +21,9 @@ A step that reaches a limit shall stop as a budget stop does: the harness run, t
 - Given `harnessLimits: { maxCost: 1 }` and two model calls that cost 0.60 and 0.50,
   when the second answer is in,
   then the step stops with `Agent "coder" spent 1.10 of its 1.00 (harnessLimits.maxCost), so Halonic stopped Claude Code.`, and a third model call is refused.
+- Given `harnessLimits: { maxTokens: 1000 }`, an answer of 600 tokens to the agent and one of 500 tokens to a sub-agent it started, both paid by a subscription,
+  when the second answer is in,
+  then the step stops with `Agent "coder" used 1100 of its 1000 tokens (harnessLimits.maxTokens), so Halonic stopped Claude Code.` and the cause `harness.max-tokens`, and a third model call is refused.
 - Given `harnessLimits: { maxMinutes: 10 }` and a program that keeps working,
   when the step's timer arrives,
   then the step stops with the cause `harness.max-minutes`.

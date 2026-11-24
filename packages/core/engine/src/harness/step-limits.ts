@@ -1,10 +1,10 @@
 // Keeps one harness step to the limits its agent's file sets in
 // `harnessLimits` (requirement `engine.harness-step-limits`): the model calls
-// its program makes, what they cost and how long it runs. A program such as
+// its program makes, what they cost, the tokens they use and how long it runs. A program such as
 // Claude Code can run for an hour and make hundreds of model calls, and the
 // run's budget only bounds what it costs, never a subscription's calls.
 
-import type { RunFailureCause } from "@halonicjs/events";
+import type { RunFailureCause, Usage } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import { KindedError } from "@halonicjs/std";
 import type { RunningLimit, StartLimits } from "./start-limits.ts";
@@ -15,8 +15,8 @@ export type HarnessLimits = NonNullable<Agent["harnessLimits"]>;
 /**
  * A harness step stopped because it reached one of its agent's
  * `harnessLimits`. The run records its message as the step's error and
- * its cause, `harness.max-steps`, `harness.max-minutes` or
- * `harness.max-cost` with the limit and what was used, as the typed cause.
+ * its cause, `harness.max-steps`, `harness.max-minutes`,
+ * `harness.max-cost` or `harness.max-tokens` with the limit and what was used, as the typed cause.
  */
 export class HarnessLimitError extends KindedError {
   readonly failureCause: Omit<RunFailureCause, "kind">;
@@ -45,6 +45,7 @@ export class StepLimits {
   readonly #stopStep: (error: HarnessLimitError) => void;
   #modelCalls = 0;
   #spent = 0;
+  #tokens = 0;
   #reached: HarnessLimitError | undefined;
   #clock: RunningLimit | undefined;
 
@@ -79,20 +80,32 @@ export class StepLimits {
   }
 
   /**
-   * Adds what a model call cost, once its answer is in. When the step has
-   * then spent `maxCost` or more, it stops; the call itself is already done.
+   * Adds what a model call cost and the tokens it used, once its answer is
+   * in. When the step has then spent `maxCost` or used `maxTokens` or more,
+   * it stops; the call itself is already done.
    *
-   * @param cost - the `cost` of its `llm.response`; a call without one, or one a subscription paid, costs 0
+   * @param answer - the call's `llm.response`: its `cost`, absent or 0 when a subscription paid, and its `usage`
    */
-  afterModelCall(cost: number | undefined): void {
-    this.#spent += cost ?? 0;
-    const { maxCost } = this.#limits;
-    if (maxCost === undefined || this.#spent < maxCost || this.#reached !== undefined) return;
-    this.#reach(
-      `spent ${this.#spent.toFixed(2)} of its ${maxCost.toFixed(2)} (harnessLimits.maxCost)`,
-      "harness.max-cost",
-      { limit: maxCost.toFixed(2), used: this.#spent.toFixed(2) },
-    );
+  afterModelCall(answer: { readonly cost?: number; readonly usage: Usage }): void {
+    this.#spent += answer.cost ?? 0;
+    this.#tokens += tokensOf(answer.usage);
+    if (this.#reached !== undefined) return;
+    const { maxCost, maxTokens } = this.#limits;
+    if (maxCost !== undefined && this.#spent >= maxCost) {
+      this.#reach(
+        `spent ${this.#spent.toFixed(2)} of its ${maxCost.toFixed(2)} (harnessLimits.maxCost)`,
+        "harness.max-cost",
+        { limit: maxCost.toFixed(2), used: this.#spent.toFixed(2) },
+      );
+      return;
+    }
+    if (maxTokens !== undefined && this.#tokens >= maxTokens) {
+      this.#reach(
+        `used ${this.#tokens} of its ${maxTokens} tokens (harnessLimits.maxTokens)`,
+        "harness.max-tokens",
+        { limit: String(maxTokens), used: String(this.#tokens) },
+      );
+    }
   }
 
   /**
@@ -146,4 +159,18 @@ export class StepLimits {
     this.#stopStep(error);
     return error;
   }
+}
+
+/**
+ * Every token a model call used: input, output and what the prompt cache
+ * served or stored. A cached token is still a token a seat pays for.
+ */
+function tokensOf(usage: Usage): number {
+  return (
+    usage.inputTokens +
+    usage.outputTokens +
+    (usage.cacheReadTokens ?? 0) +
+    (usage.cacheWriteTokens ?? 0) +
+    (usage.cacheWrite1hTokens ?? 0)
+  );
 }
