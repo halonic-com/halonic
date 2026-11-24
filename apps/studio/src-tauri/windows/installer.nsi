@@ -138,6 +138,10 @@ Var SandboxState
 Var ShortcutState
 Var SandboxOutcome
 Var SandboxReason
+; 1 when a silent install was given /SANDBOX=1, even where the step itself is
+; skipped for want of administrator rights: Microsoft's runtime is copied
+; then, so the sandbox can be set up later (HAL-17810).
+Var SandboxAsked
 Var LineCopy
 Var LineSetup
 Var LineCheck
@@ -607,6 +611,7 @@ Function .onInit
     ${GetOptions} $CMDLINE "/SANDBOX=" $R0
     ${IfNot} ${Errors}
     ${AndIf} $R0 == "1"
+      StrCpy $SandboxAsked 1
       ; Halonic change (HAL-7414): a silent install can't let anyone answer
       ; Windows' prompt, so it sets the sandbox up only from an elevated
       ; prompt, as a silent uninstall removes it (HAL-7385, S-8).
@@ -1152,10 +1157,13 @@ Section Install
   ; nothing loads, only for the sandbox step, whose helper puts it beside
   ; srt-win (crates/sandbox-elevate). With pages, the box was ticked and
   ; Microsoft's licence accepted; silently, /SANDBOX=1 asked for the step. Run
-  ; again without Repair needs it too. An install over one that has the file
-  ; replaces it, so an update can set the sandbox up again.
+  ; again without Repair needs it too, and so does /SANDBOX=1 without
+  ; administrator rights, where the step is skipped but can run later. An
+  ; install over one that has the file replaces it, so an update can set the
+  ; sandbox up again.
   !ifdef SANDBOX_STEP
     ${If} $SandboxState == ${BST_CHECKED}
+    ${OrIf} $SandboxAsked = 1
     ${OrIf} ${FileExists} "$INSTDIR\vcruntime140.dll.pinned"
       SetDetailsPrint none
       File /a "/oname=vcruntime140.dll.pinned" "${VCRUNTIME}"
