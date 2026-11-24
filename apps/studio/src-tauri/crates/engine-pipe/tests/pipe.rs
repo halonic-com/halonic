@@ -137,7 +137,7 @@ fn control_pipe_faults_on_anything_else() {
     let invalid_utf8 = PipeSession::default().accept(b"{\"kind\":\"\xff\"}", now);
     assert_eq!(invalid_utf8.unwrap_err(), PipeFault::NotAMessage);
 
-    let after_handshake: [(&str, &str, PipeFault); 7] = [
+    let after_handshake: [(&str, &str, PipeFault); 9] = [
         (
             "unknown kind",
             r#"{"kind":"secret_set","id":1,"name":"a"}"#,
@@ -167,6 +167,16 @@ fn control_pipe_faults_on_anything_else() {
         (
             "health without lastTick",
             r#"{"kind":"health","scheduling":true,"activeRuns":0}"#,
+            PipeFault::NotAMessage,
+        ),
+        (
+            "repeated kind",
+            r#"{"kind":"stopped","kind":"secret_get","id":1,"name":"a"}"#,
+            PipeFault::NotAMessage,
+        ),
+        (
+            "repeated id",
+            r#"{"kind":"secret_get","id":1,"id":2,"name":"a"}"#,
             PipeFault::NotAMessage,
         ),
     ];

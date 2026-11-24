@@ -47,15 +47,19 @@ pub(crate) enum EngineFrame {
 }
 
 /// Parses one frame's JSON bytes. Bad UTF-8 is bad JSON to `serde_json`.
-/// Read as a value first: serde would also take an internally tagged enum
-/// written as an array, such as `["secret_get",5,"acme"]`.
+/// Only an object is a frame: serde would also take an internally tagged
+/// enum written as an array, such as `["secret_get",5,"acme"]`. The check
+/// looks at the first byte rather than going through `serde_json::Value`,
+/// which would keep the last of two repeated keys instead of refusing them.
 pub(crate) fn parse_frame(json: &[u8]) -> Result<EngineFrame, PipeFault> {
-    let value: serde_json::Value =
-        serde_json::from_slice(json).map_err(|_| PipeFault::NotAMessage)?;
-    if !value.is_object() {
+    let first = json
+        .iter()
+        .copied()
+        .find(|&byte| !matches!(byte, b' ' | b'\t' | b'\n' | b'\r'));
+    if first != Some(b'{') {
         return Err(PipeFault::NotAMessage);
     }
-    serde_json::from_value(value).map_err(|_| PipeFault::NotAMessage)
+    serde_json::from_slice(json).map_err(|_| PipeFault::NotAMessage)
 }
 
 /// Where the sandbox host is: its loopback address and launch token. The
