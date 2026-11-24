@@ -1,5 +1,6 @@
 import { defineFeature, FilesWithErrorsService } from "@halonicjs/studio-shell";
 import { FILE_KIND, FILES_VIEW, fileName } from "./file-item.ts";
+import { FileReviewService } from "./file-review.ts";
 import { FilesHostService } from "./files-host.ts";
 import { filesWords } from "./files-words.ts";
 import { problemsSignal, subscribeProblems } from "./problems/problems-signal.ts";
@@ -14,7 +15,7 @@ export const filesFeature = defineFeature({
   id: "files",
   title: "Files",
   needs: [FilesHostService],
-  wants: [FilesWithErrorsService],
+  wants: [FilesWithErrorsService, FileReviewService],
   register(studio) {
     studio.statusBar.add({
       id: "files.problems",

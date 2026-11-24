@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
+import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FilesHost } from "../files-host.ts";
 import { forgetOpenedEditors, openedEditors } from "../test-support/code-editor.ts";
+import { filesLookup } from "../test-support/lookup.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
@@ -46,7 +46,7 @@ function show(
   announce: (text: string) => void = () => {},
 ): HTMLElement {
   const context = {
-    services: limitedLookup(filesFeature, { get: () => host }),
+    services: filesLookup(host),
     announcer: { announce },
     openItem: () => {},
   } as unknown as WorkspaceContext;

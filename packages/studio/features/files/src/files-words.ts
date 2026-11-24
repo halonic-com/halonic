@@ -130,6 +130,12 @@ export const filesWords = {
       ? "1 place now shows an error until you update it."
       : `${count} places now show an error until you update them.`,
   undo: "Undo",
+  /** The file's review bar decides all of the assistant's changes in it (AI changes 1.2). */
+  acceptFile: "Accept file",
+  rejectFile: "Reject file",
+  /** The toast after an Accept or Reject in a file, Undo follows (AI changes 1.3): "Accepted 3 changes in models.yaml". */
+  decided: (decision: "accept" | "reject", count: number, name: string): string =>
+    `${decision === "accept" ? "Accepted" : "Rejected"} ${count} ${count === 1 ? "change" : "changes"} in ${name}`,
   tryAgain: "Try again",
   couldntDelete: (path: string, reason: string | undefined): string =>
     reason === undefined

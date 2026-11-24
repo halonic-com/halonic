@@ -24,6 +24,8 @@ export interface ItemReviewBarProps {
    * Accept all and Reject all wait, and the bar offers Compare in their place.
    */
   readonly heldOutside?: { readonly onCompare: () => void } | undefined;
+  /** In place of "Accept all" and "Reject all", such as "Accept file" and "Reject file" in a file's tab. */
+  readonly labels?: { readonly acceptAll: string; readonly rejectAll: string } | undefined;
 }
 
 /**
@@ -43,6 +45,7 @@ export function ItemReviewBar({
   onRejectAll,
   busy,
   heldOutside,
+  labels = words,
 }: ItemReviewBarProps) {
   if (count <= 0) return null;
   return (
@@ -64,7 +67,7 @@ export function ItemReviewBar({
               busy={busy === "accept-all"}
               onClick={onAcceptAll}
             >
-              {words.acceptAll}
+              {labels.acceptAll}
             </Button>
             <Button
               variant="secondary"
@@ -72,7 +75,7 @@ export function ItemReviewBar({
               busy={busy === "reject-all"}
               onClick={onRejectAll}
             >
-              {words.rejectAll}
+              {labels.rejectAll}
             </Button>
           </>
         ) : (

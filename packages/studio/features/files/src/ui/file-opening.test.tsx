@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
+import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { filesFeature } from "../feature.ts";
 import type { FilesHost } from "../files-host.ts";
+import { filesLookup } from "../test-support/lookup.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
@@ -31,7 +31,7 @@ const host: FilesHost = {
 /** Shows the Files view with `models.yaml` as the open file. */
 async function showWithModelsOpen(openItem: (item: ItemRef) => void): Promise<HTMLElement> {
   const context = {
-    services: limitedLookup(filesFeature, { get: () => host }),
+    services: filesLookup(host),
     openItem,
     activeItem: {
       get: () => ({ kind: "file", hub: "workspace", id: "models.yaml" }),
