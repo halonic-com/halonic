@@ -258,6 +258,7 @@ export interface WorkflowConfiguration extends WorkflowRef {
 }
 
 export type { NewWorkflow, TrashedWorkflow, WorkflowHub, WorkflowUsers } from "./lifecycle-api.ts";
+export { type WorkflowReviewHost, WorkflowReviewService } from "./review-api.ts";
 export type { WorkflowTestCase, WorkflowTestResult, WorkflowTests } from "./tests-api.ts";
 
 /**
