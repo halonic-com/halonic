@@ -64,6 +64,13 @@ describe("ChangeMark", () => {
       expect(mark({ waiting: true }).buttons()).toEqual([]);
     });
 
+    it("lets a long unbroken value shrink and wrap instead of widening the page", () => {
+      // jsdom lays nothing out, so the test holds the class that resets the fieldset's
+      // min-content width (C800): without it a 600-character value widens a 360px column.
+      const { container } = mark({ before: "x".repeat(600) });
+      expect(container.querySelector("fieldset")?.classList).toContain("min-w-0");
+    });
+
     it("is found by its change's id", () => {
       const { container } = mark();
       expect(container.querySelector(changeMarkSelector("field:model"))).not.toBeNull();
