@@ -197,9 +197,6 @@ catalogs:
     '@codemirror/view':
       specifier: ^6.43.15
       version: 6.43.15
-    '@jitl/quickjs-ng-wasmfile-release-sync':
-      specifier: 0.32.0
-      version: 0.32.0
     '@lezer/highlight':
       specifier: ^1.2.5
       version: 1.2.5
@@ -2272,9 +2269,6 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
-      '@jitl/quickjs-ng-wasmfile-release-sync':
-        specifier: 'catalog:'
-        version: 0.32.0
       quickjs-emscripten-core:
         specifier: 'catalog:'
         version: 0.32.0
@@ -6412,9 +6406,6 @@ packages:
   '@jitl/quickjs-ffi-types@0.32.0':
     resolution: {integrity: sha512-v9T+GQpmk43VDJ7d72sf0Nexhk+ArvtUihW27dy7lqAl0zBObFKtSBBIm5RBjwIhE8VwsPPm9PNuvPvNqLWUEg==, tarball: https://registry.npmjs.org/@jitl/quickjs-ffi-types/-/quickjs-ffi-types-0.32.0.tgz}
 
-  '@jitl/quickjs-ng-wasmfile-release-sync@0.32.0':
-    resolution: {integrity: sha512-XAX2jjZWWh3M0YaRqi82xMKNW/gkF6mo3MpW3UY2cmVxnQai1JuboVsJQVoLU629iEL4XWvHtO4h5lo7NRnAcg==, tarball: https://registry.npmjs.org/@jitl/quickjs-ng-wasmfile-release-sync/-/quickjs-ng-wasmfile-release-sync-0.32.0.tgz}
-
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==, tarball: https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz}
 
@@ -8973,10 +8964,6 @@ snapshots:
       '@types/node': 26.6.6
 
   '@jitl/quickjs-ffi-types@0.32.0': {}
-
-  '@jitl/quickjs-ng-wasmfile-release-sync@0.32.0':
-    dependencies:
-      '@jitl/quickjs-ffi-types': 0.32.0
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

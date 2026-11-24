@@ -41,7 +41,7 @@ Most CI jobs check one area. A failing job goes to its area's owner.
 | Studio | Tauri shell (Rust checks), Tauri shell on Windows, Keychain contract on macOS, Android shell (debug APK), Android device keys (emulator), Studio end-to-end (Playwright) | `android-screens.yml` |
 | Engine and CLI | Live cloud suites passed |  |
 | Adapters | Agent host executable, WSL runtime |  |
-| Tooling and CI | Changed areas, Fast gates, Leak guard, Coverage floors don't go down, Secret scan (gitleaks), Workflow lint (zizmor), Requirements and the requirement guard, Empty package and feature pass every check, Policy rules, Windows installer, Windows update, ci-ok | the jobs in `scheduled.yml` |
+| Tooling and CI | Changed areas, Fast gates, Leak guard, Coverage floors don't go down, Secret scan (gitleaks), Workflow lint (zizmor), ToolScript engine is its build, Requirements and the requirement guard, Empty package and feature pass every check, Policy rules, Windows installer, Windows update, ci-ok | the jobs in `scheduled.yml` |
 | Docs | Docs build and link check |  |
 
 Two jobs test every package: "Typecheck, lint, test, build" (one job per

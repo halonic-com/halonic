@@ -48,8 +48,9 @@ verifies("toolscript-quickjs.intrinsics", () => {
     expect(result.ok && result.output).toEqual(names.map(() => "undefined"));
   });
 
-  it("pins both QuickJS packages to exactly 0.32.0", () => {
-    expect(workspace).toMatch(/^ {2}"@jitl\/quickjs-ng-wasmfile-release-sync": 0\.32\.0$/m);
+  it("pins the QuickJS API to exactly 0.32.0, with the engine built from engine/SOURCES.json", () => {
     expect(workspace).toMatch(/^ {2}quickjs-emscripten-core: 0\.32\.0$/m);
+    // The engine is our own build now (HAL-17780), not a variant package from npm.
+    expect(workspace).not.toMatch(/@jitl\/quickjs-ng-/);
   });
 });

@@ -121,17 +121,6 @@
       "reason": "Approved by the board on HAL-10536 (option A, kit spec 24.7). The Files code editor. Only the core packages plus YAML and Markdown language support; our own undo history replaces the library's; loaded only when a file is opened.",
       "useInstead": "the code editor from @halonicjs/studio-code-editor"
     },
-    "@jitl/quickjs-ng-wasmfile-release-sync": {
-      "category": "outside-world",
-      "allowedIn": [
-        "@halonicjs/adapter-toolscript-quickjs"
-      ],
-      "layers": [
-        "adapters"
-      ],
-      "reason": "The QuickJS-ng engine compiled to WebAssembly, the one build variant the ToolScript isolate loads (ADR 'Halonic ToolScript' 2.1): a separate heap in WASM memory with no host objects, memory, stack and interrupt limits, on Node and in a Web Worker. Taken alone instead of the quickjs-emscripten meta-package, which pulls in every variant. MIT. Approved by Liam on HAL-17569 (24 Nov, comment 'plan approved', answer 2), with Julian's security conditions on HAL-17650: pinned to exactly 0.32.0, and any bump reruns the ToolScript fence suite (@halonicjs/testing-toolscript-fence) and goes through Liam's dependency review.",
-      "useInstead": "the ToolScriptIsolate port"
-    },
     "@lezer/highlight": {
       "category": "studio-framework",
       "allowedIn": [
@@ -375,7 +364,7 @@
       "layers": [
         "adapters"
       ],
-      "reason": "The JavaScript API around a QuickJS WebAssembly build (contexts, handles, limits, interrupt handler, promises), used with @jitl/quickjs-ng-wasmfile-release-sync to run a ToolScript in a fresh isolate per run (ADR 'Halonic ToolScript' 2.1). Writing our own bindings would mean our own emscripten build to maintain. MIT. Approved by Liam on HAL-17569 (24 Nov, comment 'plan approved', answer 2), with Julian's security conditions on HAL-17650: pinned to exactly 0.32.0, and any bump reruns the ToolScript fence suite (@halonicjs/testing-toolscript-fence) and goes through Liam's dependency review.",
+      "reason": "The JavaScript API around a QuickJS WebAssembly build (contexts, handles, limits, interrupt handler, promises), used with our own QuickJS-ng build (packages/adapters/toolscript-quickjs/engine, HAL-17780) to run a ToolScript in a fresh isolate per run (ADR 'Halonic ToolScript' 2.1). Writing our own bindings would mean our own emscripten build to maintain. MIT. Approved by Liam on HAL-17569 (24 Nov, comment 'plan approved', answer 2), with Julian's security conditions on HAL-17650: pinned to exactly 0.32.0, and any bump reruns the ToolScript fence suite (@halonicjs/testing-toolscript-fence) and goes through Liam's dependency review.",
       "useInstead": "the ToolScriptIsolate port"
     },
     "react": {

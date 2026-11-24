@@ -1,0 +1,59 @@
+{
+  "quickjsNg": {
+    "version": "0.18.0",
+    "repository": "https://github.com/quickjs-ng/quickjs",
+    "tag": "v0.18.0",
+    "commit": "d7215b0ad3fc2c562e8317fd9bca058fd4863804",
+    "amalgam": {
+      "url": "https://github.com/quickjs-ng/quickjs/releases/download/v0.18.0/quickjs-amalgam.zip",
+      "sha256": "6c05066a6b62b483e2ba0f83d7a16688c6958182b214bfd693529434cef84a9e"
+    }
+  },
+  "wrapper": {
+    "repository": "https://github.com/justjake/quickjs-emscripten",
+    "tag": "v0.32.0",
+    "commit": "df4efb9ef2cb25c417ecb57986da462d11b244ed"
+  },
+  "emsdk": {
+    "version": "5.0.1",
+    "image": "emscripten/emsdk:5.0.1@sha256:c89732ef63a56de5a96395c5a8c1c7904f7420131a045406e6fedc4cbe1cc198"
+  },
+  "files": {
+    "upstream/LICENSE": {
+      "from": "wrapper:LICENSE",
+      "sha256": "3c6040aa318612a234cc951609b640c0c63d85ae5a98a9330d3116f1553a79db"
+    },
+    "upstream/interface.c": {
+      "from": "wrapper:c/interface.c",
+      "sha256": "93827e352fad514ac081469614f5eddba7402e552c23e25478fa58f127d27060"
+    },
+    "upstream/module-detection.patch": {
+      "from": "wrapper:vendor/quickjs-ng-patches/0001-bellard-module-detection.patch",
+      "sha256": "3dee819aa9f190fcc9e38b4d1695b90b64decd76bae22d42ce3461bde87cf550"
+    },
+    "upstream/pre-extension.js": {
+      "from": "wrapper:templates/pre-extension.js",
+      "sha256": "fba0e5621004cccbee7278ea1d2f3093f5bb7ff9312736a67cc1064e7e4d3fcf"
+    },
+    "upstream/pre-wasm-memory.js": {
+      "from": "wrapper:templates/pre-wasmMemory.js",
+      "sha256": "ed9a77bd671e51f89823e4158c3741782d16320d7fef4accc50743cd88c05769"
+    },
+    "upstream/exported-runtime-methods.json": {
+      "from": "wrapper:exportedRuntimeMethods.json",
+      "sha256": "9cf049b99c7910170a772c9dad7b057100bdf1539ff2186f352013fb3f2fd20c"
+    },
+    "upstream/ffi.mjs": {
+      "from": "npm:@jitl/quickjs-ng-wasmfile-release-sync@0.32.0:dist/ffi.mjs",
+      "sha256": "ccf8b3aa066c2be5755e3ea49d81b01dff5a671deb34b7ec3a1c983dd52e9335"
+    },
+    "upstream/quickjs-ng-LICENSE": {
+      "from": "quickjsNg:LICENSE",
+      "sha256": "96f73f9d2a16c21a36b418f06073be26e7d6d5e7c1bc99756b21a4f2c74ef171"
+    }
+  },
+  "build": {
+    "moduleMemoryBytes": 16777216,
+    "shadowStackBytes": 1048576
+  }
+}

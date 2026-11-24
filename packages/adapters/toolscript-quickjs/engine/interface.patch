@@ -1,0 +1,41 @@
+diff --git a/interface.c b/interface.c
+index ff68294..756e9b5 100644
+--- a/interface.c
++++ b/interface.c
+@@ -529,11 +529,21 @@ JSValue *QTS_NewArray(JSContext *ctx) {
+   return jsvalue_to_heap(JS_NewArray(ctx));
+ }
+ 
+-void qts_free_buffer(JSRuntime *unused_rt, void *unused_opaque, void *ptr) { free(ptr); }
++// Halonic: quickjs-ng 0.16 changed JS_NewArrayBuffer's free callback into a
++// realloc callback and added max_len. The buffer comes from the host's
++// malloc, so the callback uses free and realloc; quickjs frees it by asking
++// for size 0. max_len 0 keeps the buffer fixed-length, as before 0.16.
++void *qts_realloc_buffer(JSRuntime *unused_rt, void *unused_opaque, void *ptr, size_t size) {
++  if (size == 0) {
++    free(ptr);
++    return NULL;
++  }
++  return realloc(ptr, size);
++}
+ 
+ JSValue *QTS_NewArrayBuffer(JSContext *ctx, JSVoid *buffer, size_t length) {
+   return jsvalue_to_heap(
+-      JS_NewArrayBuffer(ctx, (uint8_t *)buffer, length, qts_free_buffer, NULL, false));
++      JS_NewArrayBuffer(ctx, (uint8_t *)buffer, length, 0, qts_realloc_buffer, NULL, false));
+ }
+ 
+ JSValue *QTS_NewFloat64(JSContext *ctx, double num) {
+@@ -1126,6 +1136,12 @@ void QTS_SetDebugLogEnabled(JSRuntime *rt, int is_enabled) {
+ #endif
+ }
+ 
++// Halonic: the engine's own version string, so a test can check which
++// quickjs-ng release the .wasm was built from.
++const char *QTS_GetEngineVersion() {
++  return JS_GetVersion();
++}
++
+ int QTS_BuildIsDebug() {
+ #ifdef QTS_DEBUG_MODE
+   return 1;
