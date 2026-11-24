@@ -28,6 +28,7 @@ fail() { echo "slot ${SLOT}: $1" >&2; exit 1; }
 # the merge-group jobs (C8). It also gets its own Docker network, where containers can't reach each
 # other or the merge-group jobs on the default bridge. Checked first: without both, no fast runner.
 FAST_NET=halonic-ci-fast
+FAST_FLOAT=""  # set below when fast-11..40 may float over the free cores (HAL-17574)
 # fast-N and large-(12-N) share CPUs (below), so one never starts while the other runs.
 case "$SLOT" in fast-[1-3]) TWIN=large-$((12-${SLOT#fast-}));; large-9|large-10|large-11) TWIN=fast-$((12-${SLOT#large-}));; *) TWIN="";; esac
 if [ -n "$TWIN" ] && [ "${2:-}" != "--cleanup" ] && systemctl is-active -q "halonic-runner@$TWIN.service"; then
