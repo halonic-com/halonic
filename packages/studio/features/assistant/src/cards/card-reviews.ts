@@ -151,9 +151,8 @@ export class CardReviews {
    * as the card's own buttons do.
    */
   leaveNote(card: ReviewCard, path: string, decision: "accept" | "reject"): void {
-    const note =
-      decision === "accept" ? notesToTheModel.accepted(path) : notesToTheModel.rejected(path);
-    this.#notesOf(card.chatId).set(card.cardId, note);
+    const note = noteOf({ kind: decision === "accept" ? "accepted" : "rejected" }, path);
+    if (note !== undefined) this.#notesOf(card.chatId).set(card.cardId, note);
   }
 
   /** Takes back the note of a decision that was undone. */
