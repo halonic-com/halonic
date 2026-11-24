@@ -2,6 +2,7 @@
 
 - Approval: HAL-13216, follow-ups from the reviews of the scope delete (HAL-17284, HAL-17285)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Qk6nHIaaFnLf0xPSeS3Oi/dkhmb4PmS2qq2EE4QrNBPjGujYr59KZvJIEjIFXS385Ov3OgwscXlfP+unAsqjDw==
 
 The scope delete (`runtime.delete-scope`) landed answering 204 with no body,
 and its known limits named only a run that hadn't reached the run list yet.
