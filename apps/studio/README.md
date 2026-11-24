@@ -126,7 +126,8 @@ What it shows (design: the install flow, sections 2.2 to 2.7):
   ticked, the page's button says **Next**, and the next page shows Microsoft's
   own licence for that file, unchanged (the `license.rtf` of the pinned Visual
   C++ Redistributable, `windows/vcruntime.json`). **I Agree** installs, with the
-  file; **Back** goes back to the box. With the box cleared there is no licence
+  file; **Back** goes back to the page, with both boxes as you left them
+  (HAL-17872). With the box cleared there is no licence
   page and the file isn't installed (HAL-17810, board decision on HAL-12716).
 - Run again with the same version: one page with the sandbox box (or "The agent
   sandbox is set up.") and **Repair Halonic**. Without Repair it copies nothing

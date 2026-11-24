@@ -7,7 +7,9 @@
 # -NoSandbox clears the sandbox box and presses Install instead: then no
 # licence page may show and no vcruntime140.dll may be installed (HAL-17810).
 # With the box ticked, the licence page must show Microsoft's own licence, and
-# the pinned DLL must be in the install folder and beside srt-win.
+# the pinned DLL must be in the install folder and beside srt-win. Before
+# that, it clears the desktop shortcut box, presses Back on the licence page
+# and checks the box is still cleared (HAL-17872).
 param(
   [Parameter(Mandatory)][string]$Setup,
   [Parameter(Mandatory)][string]$InstallFolder,
@@ -75,6 +77,14 @@ function Licence-Text([IntPtr]$h) {
   [W]::SendMessage($box, 0x000D, [IntPtr]($length + 1), $s) | Out-Null
   return $s.ToString()
 }
+# A box on the install page, by its words.
+function Find-Box([IntPtr]$h, [string]$words) {
+  $box = [W]::FindWindowEx((Inner $h), [IntPtr]::Zero, 'Button', $words)
+  if ($box -eq [IntPtr]::Zero) { throw "The install page has no box '$words'" }
+  return $box
+}
+# BM_GETCHECK: 1 when the box is ticked.
+function Box-Checked([IntPtr]$box) { return [int][W]::SendMessage($box, 0xF0, [IntPtr]::Zero, [IntPtr]::Zero) -eq 1 }
 function Runtime-Files { return @(Get-ChildItem $InstallFolder -Recurse -File -Filter 'vcruntime140*' -ErrorAction SilentlyContinue) }
 
 $pin = Get-Content (Join-Path $PSScriptRoot 'vcruntime.json') -Raw | ConvertFrom-Json
@@ -94,8 +104,7 @@ if ($h -eq [IntPtr]::Zero) { throw "The installer showed no install page with th
 Wait-Button $h '&Next >' 20
 
 if ($NoSandbox) {
-  $box = [W]::FindWindowEx((Inner $h), [IntPtr]::Zero, 'Button', 'Set up the agent sandbox (recommended)')
-  if ($box -eq [IntPtr]::Zero) { throw 'The install page has no sandbox box' }
+  $box = Find-Box $h 'Set up the agent sandbox (recommended)'
   [W]::SendMessage($box, 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
   Wait-Button $h '&Install' 10
   Save-Picture $h '4-install-no-sandbox'
@@ -113,6 +122,18 @@ if ($NoSandbox) {
   if ($found.Count -gt 0) { throw "An install without the sandbox installed $($found.FullName -join ', ')" }
   Write-Output 'without the sandbox: no licence page, and no vcruntime140 file in the install folder'
 } else {
+  # Back from the licence page keeps the person's choices (HAL-17872): clear
+  # the shortcut box, go on, come back, and both boxes are as they were left.
+  $shortcut = Find-Box $h 'Add a desktop shortcut'
+  [W]::SendMessage($shortcut, 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+  if ((Box-Checked $shortcut)) { throw 'The desktop shortcut box stayed ticked after a click' }
+  Press $h
+  Wait-Button $h 'I &Agree' 20
+  [W]::PostMessage($h, 0x111, [IntPtr]3, [W]::GetDlgItem($h, 3)) | Out-Null
+  Wait-Button $h '&Next >' 20
+  if ((Box-Checked (Find-Box $h 'Add a desktop shortcut'))) { Save-Picture $h 'back-shortcut-ticked'; throw 'Back from the licence page ticked the desktop shortcut box again' }
+  if (-not (Box-Checked (Find-Box $h 'Set up the agent sandbox (recommended)'))) { throw 'Back from the licence page cleared the sandbox box' }
+  Write-Output 'Back from the licence page: the desktop shortcut box stays cleared'
   Save-Picture $h '0-install'
   Press $h
   Wait-Button $h 'I &Agree' 20

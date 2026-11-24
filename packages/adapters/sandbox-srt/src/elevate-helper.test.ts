@@ -108,7 +108,6 @@ verifies("sandbox-srt.setup", () => {
       for (const code of [12, 13, 14, 17, 30, 31, 32, 33, 34, 35, 36, 38, 39, 40]) {
         expect(helperFailure("setup", code, "")).toMatch(/^[A-Za-z].*[a-z]$/);
       }
-      expect(helperFailure("setup", 39, "")).toContain("runtime for the sandbox is missing");
       expect(helperFailure("setup", 40, "")).toContain("has been changed");
       expect(helperFailure("setup", 1, "")).toBe("the sandbox setup stopped with an error");
       expect(helperFailure("remove", 99, "")).toBe("the sandbox removal stopped with an error");
@@ -128,6 +127,14 @@ verifies("sandbox-srt.setup", () => {
         reason: "Windows didn't accept the sandbox's network rules",
         code: 12,
       });
+    });
+
+    it("sends a person whose install skipped the sandbox's runtime back to the installer, rather than say something broke", () => {
+      const reason = helperFailure("setup", 39, "");
+      expect(reason).toBe(
+        "the sandbox needs a Microsoft file that wasn't installed with Halonic. Run the Halonic installer again with Set up the agent sandbox ticked",
+      );
+      expect(reason).not.toContain("Reinstall Halonic");
     });
 
     it("says why Windows couldn't start the helper, from the first line it gave", () => {
