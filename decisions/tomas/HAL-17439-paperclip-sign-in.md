@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17714 (the board chose option B on 24 Nov, 18:20 UTC; this pull request is HAL-17439)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:J3HPiwILRErC1u0QmBghkDC2fJe5PnycQAVMhLncGxjsKGDQc37Aeeq7oR1RkLhNgmQQWezYqajbYfCZi0mXCg==
 
 Starting a Paperclip sign-in (`POST /api/cli-auth/challenges`) makes a board key.
 The board ruled on HAL-10 (24 Nov) that the Paperclip client's fixed request
