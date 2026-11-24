@@ -7,8 +7,8 @@ import type { CatalogEntry } from "./catalog.ts";
  * The same shape an alias's `params.extra.provider` has (HAL-16834).
  */
 export interface PinnedRouting {
-  readonly order: readonly string[];
-  readonly only: readonly string[];
+  readonly order: string[];
+  readonly only: string[];
   readonly allow_fallbacks: false;
   readonly data_collection: "deny";
 }
