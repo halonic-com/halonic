@@ -1,4 +1,4 @@
-import type { ChatSettings, HostSettings } from "@halonicjs/app";
+import { type ChatSettings, type HostSettings, maxTurnLimit } from "@halonicjs/app";
 import type { ChatAgentSettings } from "@halonicjs/ports";
 import type { ChatModel } from "@halonicjs/studio-feature-assistant/api";
 import { assistantPrefs } from "@halonicjs/studio-feature-settings/api";
@@ -56,6 +56,26 @@ export function turnLimitOf(
 ): number {
   const own = filesOf(workspace, "workspace")[0]?.value.assistant?.maxSteps;
   return own ?? settings.get(assistantPrefs.turnLimit);
+}
+
+/**
+ * The most model turns of one answer before trust (HAL-720 condition 7): the Settings › Assistant
+ * limit, which an untrusted `workspace.yaml` may lower and never raise. A `maxSteps` that isn't a
+ * whole number above 0 counts as not set.
+ */
+export function authoringTurnLimitOf(
+  workspace: LoadedWorkspace,
+  settings: Pick<HostSettings, "get">,
+): number {
+  const own: unknown = filesOf(workspace, "workspace")[0]?.value.assistant?.maxSteps;
+  const limit = Math.min(settings.get(assistantPrefs.turnLimit), maxTurnLimit);
+  const valid = typeof own === "number" && Number.isSafeInteger(own) && own > 0;
+  return valid ? Math.min(own, limit) : limit;
+}
+
+/** Whether the workspace sets `privacy.localOnly`, which can only narrow the models called. */
+export function localOnlyOf(workspace: LoadedWorkspace): boolean {
+  return filesOf(workspace, "workspace")[0]?.value.privacy.localOnly === true;
 }
 
 /**

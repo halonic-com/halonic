@@ -23,6 +23,10 @@ export interface BuildComposerProps {
   readonly sendUnavailable?: ButtonUnavailable | undefined;
   /** Opens where keys are kept, for a message held because it looks like it holds one. */
   readonly onGoToKeyField?: (() => void) | undefined;
+  /** The chat answers with the authoring tools only, before trust (H17): the line says so. */
+  readonly authoringOnly?: boolean | undefined;
+  /** **Review** on that line: opens the window's trust check. */
+  readonly onReviewTrust?: (() => void) | undefined;
 }
 
 /**
@@ -30,7 +34,9 @@ export interface BuildComposerProps {
  * change…". Enter sends and empties it; while the chat answers, Stop takes Send's place and Enter
  * sends nothing, keeping the text (`assistant.chat.enter-sends`, `assistant.chat.stop`). A message
  * that looks like it holds a key isn't sent: it stays in the box under the key line, with **Send
- * anyway**, until the text changes (`assistant.chat.key-in-message`, H29).
+ * anyway**, until the text changes (`assistant.chat.key-in-message`, H29). Otherwise, before trust,
+ * the muted line says the chat can read and propose but not run anything, with **Review**
+ * (`assistant.chat.authoring-only`, H17).
  */
 export function BuildComposer(props: BuildComposerProps) {
   const { answering, box, onSend } = props;
@@ -79,9 +85,25 @@ export function BuildComposer(props: BuildComposerProps) {
             <ChatBoxLine tone="warning" actions={offers}>
               {words.keyInMessage}
             </ChatBoxLine>
-          ) : undefined
+          ) : (
+            <AuthoringLine {...props} />
+          )
         }
       />
     </div>
+  );
+}
+
+/** The H17 line, or nothing once the workspace is trusted or the chat is on another model. */
+function AuthoringLine({ authoringOnly, onReviewTrust }: BuildComposerProps) {
+  if (authoringOnly !== true) return null;
+  const review: ChatAction[] =
+    onReviewTrust === undefined
+      ? []
+      : [{ label: words.review, onClick: onReviewTrust, look: "link" }];
+  return (
+    <ChatBoxLine tone="muted" actions={review}>
+      {words.authoringOnly}
+    </ChatBoxLine>
   );
 }

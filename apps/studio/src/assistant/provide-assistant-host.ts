@@ -12,6 +12,8 @@ import {
 import { AssistantHostService } from "@halonicjs/studio-feature-assistant/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import type { ShellEngine } from "@halonicjs/studio-shell";
+import { answerChatOn } from "../engine/answer-chat-on.ts";
+import { type AuthoringTurnParts, authoringChatExecutor } from "../engine/authoring-chat-turn.ts";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { WorkspaceAssistant } from "./workspace-assistant.ts";
 
@@ -19,9 +21,14 @@ import { WorkspaceAssistant } from "./workspace-assistant.ts";
 export interface AssistantHostParts {
   readonly files: TauriFileShell;
   readonly location: string;
-  readonly trust: Pick<WorkspaceTrust, "isTrusted">;
+  readonly trust: Pick<WorkspaceTrust, "isTrusted" | "subscribe">;
   /** Answers on the workspace's engine, as the Try it chat does. */
   readonly answerChat: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
+  /**
+   * What a Build chat on the Settings › Assistant model calls its model with while the workspace
+   * isn't trusted: in the page, on no engine, whichever engine the window uses (HAL-17335).
+   */
+  readonly authoring: Omit<AuthoringTurnParts, "localOnly">;
   /** The window's engine connection, which says whether the engine answers. */
   readonly engine?: Pick<ShellEngine, "on" | "connection"> | undefined;
   /** The workspace's name, as the window shows it. */
@@ -44,6 +51,9 @@ export function provideAssistantHost(services: ServiceRegistry, parts: Assistant
       digest: webCryptoDigest,
       isTrusted: () => parts.trust.isTrusted(),
       answerChat: parts.answerChat,
+      answerAuthoring: (request, localOnly) =>
+        answerChatOn(async () => authoringChatExecutor({ ...parts.authoring, localOnly }))(request),
+      onTrustChange: (listener) => parts.trust.subscribe(listener),
       settings: services.get(HostSettingsService),
       engine:
         engine === undefined

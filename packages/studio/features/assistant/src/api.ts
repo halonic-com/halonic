@@ -135,7 +135,9 @@ export type AssistantChange =
   | { readonly kind: "chat"; readonly chatId: string }
   | { readonly kind: "review"; readonly paths: readonly string[] }
   /** The engine stopped or started answering: {@link AssistantHost.engineAnswering} changed. */
-  | { readonly kind: "engine" };
+  | { readonly kind: "engine" }
+  /** The workspace was trusted, or its trust removed: {@link AssistantHost.authoringOnly} may change. */
+  | { readonly kind: "trust" };
 
 /**
  * The Assistant of the open workspace, as the app runs it. The app keeps the chats (each
@@ -167,6 +169,12 @@ export interface AssistantHost {
    * and Send waits (states H12, D5); {@link onDidChange} tells when it changes.
    */
   engineAnswering(): boolean;
+  /**
+   * Whether the chat answers with the authoring tools only: the workspace isn't trusted and the
+   * chat is a Build chat on the person's own Settings › Assistant model (states H17, flow-assistant
+   * 5.9). It can read and propose, but not run anything.
+   */
+  authoringOnly(chatId: string): Promise<boolean>;
   /** The workspace's name, for the toast "Not started: Acme isn't trusted yet" (states H16). */
   workspaceName(): string;
   /**

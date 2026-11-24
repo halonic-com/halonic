@@ -38,8 +38,10 @@ import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
 import { type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
   assistantModelOf,
+  authoringTurnLimitOf,
   chatSettingsOf,
   deviceModelOf,
+  localOnlyOf,
   turnLimitOf,
 } from "./workspace-assistant-model.ts";
 
@@ -57,6 +59,16 @@ export interface WorkspaceAssistantParts {
   readonly isTrusted: () => boolean;
   /** Answers on the engine's chat service, as the Try it chat does (`answerChatOn`). */
   readonly answerChat: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
+  /**
+   * Answers a Build chat on the Settings › Assistant model while the workspace isn't trusted,
+   * with the authoring tools only and no engine (`authoringChatExecutor`). Absent: such a chat
+   * asks for trust, as a model from the workspace does.
+   */
+  readonly answerAuthoring?:
+    | ((request: ChatAnswerRequest, localOnly: boolean) => Promise<ChatAnswer>)
+    | undefined;
+  /** Calls `listener` each time the workspace's trust changes. Returns the stop. */
+  readonly onTrustChange?: ((listener: () => void) => () => void) | undefined;
   /** Settings › Assistant: the model call limit and the person's own model. */
   readonly settings: Pick<HostSettings, "get">;
   /**
@@ -90,6 +102,7 @@ export class WorkspaceAssistant implements AssistantHost {
   readonly #listeners = new Set<(change: AssistantChange) => void>();
   readonly #stopReview: () => void;
   readonly #stopEngine: () => void;
+  readonly #stopTrust: () => void;
   readonly askTrust: AssistantHost["askTrust"];
 
   constructor(parts: WorkspaceAssistantParts) {
@@ -104,6 +117,8 @@ export class WorkspaceAssistant implements AssistantHost {
     );
     this.#stopEngine =
       parts.engine?.onChange(() => this.#changed({ kind: "engine" })) ?? (() => undefined);
+    this.#stopTrust =
+      parts.onTrustChange?.(() => this.#changed({ kind: "trust" })) ?? (() => undefined);
   }
 
   engineAnswering(): boolean {
@@ -112,6 +127,14 @@ export class WorkspaceAssistant implements AssistantHost {
 
   workspaceName(): string {
     return this.#parts.workspaceName;
+  }
+
+  async authoringOnly(chatId: string): Promise<boolean> {
+    if (this.#parts.isTrusted() || this.#parts.answerAuthoring === undefined) return false;
+    const chat = this.#chats.get(chatId);
+    const loaded = await loadWorkspace(this.#parts.files);
+    const settings = chatSettingsOf(chat.model, loaded, this.#parts.settings);
+    return chat.kind === "build" && settings.agent !== undefined;
   }
 
   async chats(): Promise<readonly ChatSummary[]> {
@@ -141,7 +164,8 @@ export class WorkspaceAssistant implements AssistantHost {
    * refused one leaves the chat as it was. When the shell finds the engine stopped, the answer
    * stops and ends as failed with `EngineNotAnswering` (K3's fallback, states H13). A model from
    * the workspace is refused as `WorkspaceUntrusted` while the workspace isn't trusted, before
-   * anything is sent (flow-assistant 5.9, HAL-720).
+   * anything is sent (flow-assistant 5.9, HAL-720). A Build chat on the Settings › Assistant model
+   * answers then with the authoring tools only, on no engine (states H17).
    */
   async answer(request: AssistantAnswerRequest): Promise<ChatAnswer> {
     const chat = this.#chats.get(request.chatId);
@@ -269,6 +293,7 @@ export class WorkspaceAssistant implements AssistantHost {
   dispose(): void {
     this.#stopReview();
     this.#stopEngine();
+    this.#stopTrust();
     this.#listeners.clear();
   }
 
@@ -284,21 +309,17 @@ export class WorkspaceAssistant implements AssistantHost {
     };
     const own = request.listener;
     const settings: ChatSettings = chatSettingsOf(chat.model, loaded, this.#parts.settings);
-    // Picked by where the model comes from, not by its name: only the person's own Settings ›
-    // Assistant model is never written in the workspace, so any other needs trust first.
-    if (settings.agent === undefined && !this.#parts.isTrusted()) {
-      throw new WorkspaceUntrusted(`${this.#parts.workspaceName} isn't trusted yet.`);
-    }
+    const answerOn = this.#answererOf(chat, settings, loaded);
     const messages = forTheModel(
       [...chat.messages, ...shownNote(request.shown)],
       sent,
       request.notes ?? [],
     );
-    const answer = await this.#parts.answerChat({
+    const answer = await answerOn.answer({
       settings,
       messages: chat.kind === "build" ? [await this.#skillOf(loaded), ...messages] : messages,
       tools: this.#toolsOf(chat.id),
-      turnLimit: turnLimitOf(loaded, this.#parts.settings),
+      turnLimit: answerOn.turnLimit,
       signal,
       listener: {
         onTurn: (turn) => {
@@ -317,6 +338,33 @@ export class WorkspaceAssistant implements AssistantHost {
     });
     keep();
     return answer;
+  }
+
+  /**
+   * Where the answer goes, picked on every Send by where the model comes from, not by its name
+   * (HAL-720 condition 1): only the person's own Settings › Assistant model is never written in the
+   * workspace. While the workspace isn't trusted, a Build chat on it answers with the authoring
+   * tools only, on no engine, and any other model needs trust first. A file the assistant wrote,
+   * such as a `models.yaml` alias with the device model's name, changes neither.
+   *
+   * @throws WorkspaceUntrusted for any other chat while the workspace isn't trusted
+   */
+  #answererOf(chat: KeptChat, settings: ChatSettings, loaded: LoadedWorkspace) {
+    if (this.#parts.isTrusted()) {
+      return {
+        answer: this.#parts.answerChat,
+        turnLimit: turnLimitOf(loaded, this.#parts.settings),
+      };
+    }
+    const authoring = this.#parts.answerAuthoring;
+    if (authoring === undefined || settings.agent === undefined || chat.kind !== "build") {
+      throw new WorkspaceUntrusted(`${this.#parts.workspaceName} isn't trusted yet.`);
+    }
+    const localOnly = localOnlyOf(loaded);
+    return {
+      answer: (request: ChatAnswerRequest) => authoring(request, localOnly),
+      turnLimit: authoringTurnLimitOf(loaded, this.#parts.settings),
+    };
   }
 
   /**

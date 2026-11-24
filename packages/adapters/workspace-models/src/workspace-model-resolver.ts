@@ -359,7 +359,7 @@ export async function requireKeyMayGo(
  * The model a provider file and a target make, with its alias's params. The
  * mock model runs on this computer whatever its file says, so its calls cost nothing.
  */
-function resolvedModel(
+export function resolvedModel(
   provider: LlmProvider,
   file: ProviderFile,
   target: ModelTarget,
