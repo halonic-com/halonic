@@ -26,7 +26,7 @@ export const HarnessLimits = s
     maxMinutes: s.number().int().min(1).max(MAX_HARNESS_MINUTES).optional(),
     /**
      * Most one step may spend, in the workspace budget's currency. Calls a
-     * subscription pays for count as 0, so only time and steps bound those.
+     * subscription pays for count as 0, so only time, steps and tokens bound those.
      */
     maxCost: s.number().positive().optional(),
     /**

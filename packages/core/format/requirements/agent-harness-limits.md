@@ -19,5 +19,5 @@ Any other field in the block, or a value outside those bounds, fails. The agent'
 - Given `harnessLimits: { maxSteps: 150, maxMinutes: 20, maxCost: 2.5 }`, when it is parsed, then the block holds those three values.
 - Given `harnessLimits: { maxTokens: 2000000 }`, when it is parsed, then the block holds only `maxTokens`.
 - Given `harnessLimits: { maxMinutes: 20 }`, when it is parsed, then the block holds only `maxMinutes`.
-- Given `maxSteps: 0`, `maxSteps: 10001`, `maxMinutes: 1.5`, `maxMinutes: 1441` `maxCost: 0`, `maxTokens: 0`, `maxTokens: 1.5` or `maxTokens: 1000000001` in the block, when it is parsed, then it fails at that field.
+- Given `maxSteps: 0`, `maxSteps: 10001`, `maxMinutes: 1.5`, `maxMinutes: 1441`, `maxCost: 0`, `maxTokens: 0`, `maxTokens: 1.5` or `maxTokens: 1000000001` in the block, when it is parsed, then it fails at that field.
 - Given `harnessLimits: { maxTurns: 10 }`, when it is parsed, then it fails with `unrecognized_keys` at `harnessLimits`.
