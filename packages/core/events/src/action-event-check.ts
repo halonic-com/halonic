@@ -14,7 +14,6 @@ export const maxActionReasonLength = 2000;
 const maxIdLength = 200;
 const maxValueLength = 1000;
 const maxFlatEntries = 50;
-const maxStep = 100;
 const fieldName = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const isoUtc = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 
@@ -50,14 +49,36 @@ type SpecsFor<E> = {
 
 const base = { request: { kind: "id" }, at: { kind: "time" } } as const;
 const step = { kind: "step" } as const;
-const failures: readonly ActionStepFailure[] = [
+
+/** Every reason a step may fail for. Other checks of action results read this list, so a new reason reaches them too. */
+export const actionStepFailures: readonly ActionStepFailure[] = [
   "service-error",
   "refused",
   "unreachable",
   "malformed",
   "state-changed",
 ];
-const outcomes: readonly ActionOutcome[] = ["succeeded", "failed", "declined", "expired"];
+
+/** Every way a request may end. */
+export const actionOutcomes: readonly ActionOutcome[] = [
+  "succeeded",
+  "failed",
+  "declined",
+  "expired",
+];
+
+/** The highest step number a definition may have. */
+export const maxActionStep = 100;
+
+/**
+ * Checks the kept fields of a successful step: plain values (or `null`) under
+ * plain names, so no object, list or long text can hide in them.
+ *
+ * @returns the problem, never naming a value; `undefined` when the fields fit
+ */
+export function actionKeptProblem(value: unknown): string | undefined {
+  return flatProblem(value, true);
+}
 
 /** The allow-list: every field each action event may carry. Anything else is refused. */
 const schemas: { readonly [T in ActionEventType]: SpecsFor<Extract<ActionEvent, { type: T }>> } = {
@@ -82,12 +103,12 @@ const schemas: { readonly [T in ActionEventType]: SpecsFor<Extract<ActionEvent, 
   "action.step.failed": {
     ...base,
     step,
-    failure: { kind: "one-of", values: failures },
+    failure: { kind: "one-of", values: actionStepFailures },
     status: { kind: "status", optional: true },
     error: { kind: "error", optional: true },
   },
   "action.step.skipped": { ...base, step },
-  "action.finished": { ...base, outcome: { kind: "one-of", values: outcomes } },
+  "action.finished": { ...base, outcome: { kind: "one-of", values: actionOutcomes } },
 };
 
 /** The fields each kind of requester may carry. */
@@ -153,10 +174,10 @@ const checkers: Readonly<Record<FieldKind, (value: unknown) => string | undefine
   error: (value) => textProblem(value, maxActionErrorLength),
   time: (value) => (typeof value === "string" && isoUtc.test(value) ? undefined : "not a UTC time"),
   version: (value) => wholeNumberProblem(value, 1, 1000),
-  step: (value) => wholeNumberProblem(value, 1, maxStep),
+  step: (value) => wholeNumberProblem(value, 1, maxActionStep),
   status: (value) => wholeNumberProblem(value, 100, 599),
   parameters: (value) => flatProblem(value, false),
-  kept: (value) => flatProblem(value, true),
+  kept: actionKeptProblem,
   requester: requesterProblem,
 };
 

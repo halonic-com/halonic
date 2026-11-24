@@ -1,3 +1,4 @@
+import { actionStepFailures } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { agentMessagingVersion, type InboxItem } from "./agent-messaging.ts";
@@ -151,6 +152,39 @@ verifies("ports.agent-messaging-actions", () => {
       ]);
       expect(problemsOf({ ...succeeded, steps: "all" })).toEqual(["steps: not a list"]);
     });
+  });
+
+  describe("refuses an outcome that disagrees with its steps", () => {
+    it.each(["declined", "expired"])("refuses %s with steps", (outcome) => {
+      expect(problemsOf({ ...succeeded, outcome })).toEqual([`steps: none for ${outcome}`]);
+    });
+
+    it("refuses succeeded with a failed step", () => {
+      expect(problemsOf({ ...failed, outcome: "succeeded" })).toEqual([
+        "outcome: succeeded with a failed step",
+      ]);
+    });
+
+    it("refuses a repeated step or a step out of order", () => {
+      const [skipped, done] = succeeded.steps;
+      const repeated = [skipped, { ...done, step: 1 }];
+      const backwards = [
+        { ...done, step: 3 },
+        { ...skipped, step: 2 },
+      ];
+
+      expect(problemsOf({ ...succeeded, steps: repeated })).toEqual([
+        "steps.1.step: not after the step before it",
+      ]);
+      expect(problemsOf({ ...succeeded, steps: backwards })).toEqual([
+        "steps.1.step: not after the step before it",
+      ]);
+    });
+  });
+
+  it.each(actionStepFailures)("takes every failure the action events know, here %s", (failure) => {
+    const step = { ...failed.steps[0], failure };
+    expect(problemsOf({ ...failed, steps: [step] })).toEqual([]);
   });
 
   it("fits an action item only with an action-result that passes the check", () => {

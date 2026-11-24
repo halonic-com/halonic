@@ -7,7 +7,11 @@ import {
   type ActionOutcome,
   type ActionParameterValue,
   type ActionStepFailure,
+  actionKeptProblem,
+  actionOutcomes,
+  actionStepFailures,
   maxActionErrorLength,
+  maxActionStep,
 } from "@halonicjs/events";
 import type { InboxAnswer, InboxItem } from "./agent-messaging.ts";
 
@@ -77,19 +81,7 @@ export function answerFitsItem(item: InboxItem, answer: InboxAnswer): boolean {
   return answer.kind === "action-result" && checkActionResultAnswer(answer).ok;
 }
 
-const maxSteps = 100;
-const maxFlatEntries = 50;
-const maxValueLength = 1000;
-const fieldName = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
-const outcomes: readonly string[] = ["succeeded", "failed", "declined", "expired"];
 const stepOutcomes: readonly string[] = ["succeeded", "failed", "skipped"];
-const failures: readonly string[] = [
-  "service-error",
-  "refused",
-  "unreachable",
-  "malformed",
-  "state-changed",
-];
 const answerFields = ["kind", "outcome", "steps"];
 const stepFields = ["step", "outcome", "status", "kept", "failure", "error"];
 
@@ -100,7 +92,8 @@ const stepFields = ["step", "outcome", "status", "kept", "failure", "error"];
  * error text is marked untrusted and at most 300 characters, and `kept`,
  * `failure` and `error` appear only on the outcome they belong to. So an
  * account name, a token or a whole answer body can't ride along under any
- * name. A provider checks an answer before it sends it on; the engine checks
+ * name. The outcome must agree with the steps, and steps come in the order
+ * the stepper ran them, each once. A provider checks an answer before it sends it on; the engine checks
  * one before it records it on a run.
  *
  * @param value - an answer about to be sent, or one read back, parsed
@@ -114,20 +107,50 @@ export function checkActionResultAnswer(value: unknown): ActionResultCheck {
   if (!isRecord(value)) return { ok: false, problems: ["an answer is a JSON object"] };
   const problems = unlistedFields(value, answerFields, "");
   if (value["kind"] !== "action-result") problems.push("kind: not action-result");
-  if (!oneOf(value["outcome"], outcomes)) problems.push("outcome: not allowed");
+  if (!oneOf(value["outcome"], actionOutcomes)) problems.push("outcome: not allowed");
   const steps = value["steps"];
   if (!Array.isArray(steps)) problems.push("steps: not a list");
-  else if (steps.length > maxSteps) problems.push(`steps: more than ${maxSteps}`);
+  else if (steps.length > maxActionStep) problems.push(`steps: more than ${maxActionStep}`);
   else problems.push(...steps.flatMap((step, index) => stepProblems(step, `steps.${index}.`)));
   if (problems.length > 0) return { ok: false, problems };
-  return { ok: true, answer: value as unknown as ActionResultAnswer };
+  const answer = value as unknown as ActionResultAnswer;
+  const disagreement = orderProblem(answer.steps) ?? outcomeProblem(answer);
+  if (disagreement !== undefined) return { ok: false, problems: [disagreement] };
+  return { ok: true, answer };
+}
+
+/**
+ * A stepper runs its steps in order and each at most once, so step numbers
+ * only go up. A repeat or a step out of order means the answer wasn't built
+ * from one run, and the requester would read the wrong outcome for a step.
+ */
+function orderProblem(steps: readonly ActionResultStep[]): string | undefined {
+  const outOfOrder = steps.findIndex(
+    (step, index) => index > 0 && step.step <= (steps[index - 1]?.step ?? 0),
+  );
+  return outOfOrder === -1 ? undefined : `steps.${outOfOrder}.step: not after the step before it`;
+}
+
+/**
+ * Declined and expired requests never ran, so they list no steps; a request
+ * that succeeded has no failed step.
+ */
+function outcomeProblem(answer: ActionResultAnswer): string | undefined {
+  const ran = answer.steps.length > 0;
+  if ((answer.outcome === "declined" || answer.outcome === "expired") && ran) {
+    return `steps: none for ${answer.outcome}`;
+  }
+  const failedStep = answer.steps.some((step) => step.outcome === "failed");
+  if (answer.outcome === "succeeded" && failedStep) return "outcome: succeeded with a failed step";
+  return undefined;
 }
 
 function stepProblems(value: unknown, at: string): string[] {
   if (!isRecord(value)) return [`${at.slice(0, -1)}: not an object`];
   const problems = unlistedFields(value, stepFields, at);
   const outcome = value["outcome"];
-  if (!wholeNumberIn(value["step"], 1, maxSteps)) problems.push(`${at}step: not a step number`);
+  if (!wholeNumberIn(value["step"], 1, maxActionStep))
+    problems.push(`${at}step: not a step number`);
   if (!oneOf(outcome, stepOutcomes)) problems.push(`${at}outcome: not allowed`);
   const status = value["status"];
   if (status !== undefined && !wholeNumberIn(status, 100, 599)) {
@@ -138,8 +161,12 @@ function stepProblems(value: unknown, at: string): string[] {
     if (outcome !== belongsTo) problems.push(`${at}${field}: only for ${belongsTo}`);
     else if (problem !== undefined) problems.push(`${at}${field}: ${problem}`);
   };
-  only("kept", "succeeded", flatProblem(value["kept"]));
-  only("failure", "failed", oneOf(value["failure"], failures) ? undefined : "not allowed");
+  only("kept", "succeeded", actionKeptProblem(value["kept"]));
+  only(
+    "failure",
+    "failed",
+    oneOf(value["failure"], actionStepFailures) ? undefined : "not allowed",
+  );
   only("error", "failed", untrustedTextProblem(value["error"]));
   if (outcome === "failed" && value["failure"] === undefined)
     problems.push(`${at}failure: missing`);
@@ -153,24 +180,6 @@ function untrustedTextProblem(value: unknown): string | undefined {
   const text = value["text"];
   if (typeof text !== "string" || text === "") return "not a text";
   return text.length > maxActionErrorLength ? `longer than ${maxActionErrorLength}` : undefined;
-}
-
-/** A record of plain values under plain names: no object, list or long text can hide in it. */
-function flatProblem(value: unknown): string | undefined {
-  if (!isRecord(value)) return "not an object";
-  const entries = Object.entries(value);
-  if (entries.length > maxFlatEntries) return `more than ${maxFlatEntries} fields`;
-  for (const [name, entry] of entries) {
-    if (!fieldName.test(name)) return "a field name that isn't plain";
-    if (!isPlainValue(entry)) return `${name} isn't a plain value`;
-  }
-  return undefined;
-}
-
-function isPlainValue(value: unknown): boolean {
-  if (value === null || typeof value === "boolean") return true;
-  if (typeof value === "string") return value.length <= maxValueLength;
-  return typeof value === "number" && Number.isFinite(value);
 }
 
 /** A problem for each key not on the list, named but cut short, since a key can be anything. */
