@@ -1127,6 +1127,8 @@ Section Install
 
   ; Create start menu shortcut (always, in the "Halonic" folder)
   Call CreateOrUpdateStartMenuShortcut
+  ; Halonic change (HAL-17903): and the focused apps' shortcuts beside it.
+  Call CreateFocusedAppShortcuts
 
   ; Halonic change (HAL-1202): the desktop shortcut is a box on our page; a
   ; silent or passive install keeps it, as before.
@@ -1641,6 +1643,9 @@ Section Uninstall
 
     ; Remove start menu shortcut
     StrCpy $AppStartMenuFolder "${STARTMENUFOLDER}"
+    ; Halonic change (HAL-17903): the focused apps' shortcuts first, so the
+    ; folder is empty when Halonic's own goes.
+    Call un.RemoveFocusedAppShortcuts
     !insertmacro IsShortcutTarget "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
     Pop $0
     ${If} $0 = 1
@@ -1812,6 +1817,81 @@ Function CreateOrUpdateDesktopShortcut
 
   CreateShortcut "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
   !insertmacro SetLnkAppUserModelId "$DESKTOP\${PRODUCTNAME}.lnk"
+FunctionEnd
+
+; ---------------------------------------------------------------------------
+; Halonic change (HAL-17903): Halonic Inbox and Halonic Messenger, the focused
+; apps (board direction HAL-17358), each get a Start menu shortcut beside
+; Halonic's, so Windows search finds them. Each starts the same exe with
+; `--app <name>` and carries its own AppUserModelID, the one its window sets
+; (src/focused_apps.rs), so each has its own taskbar entry. Unlike Halonic's
+; own shortcut they are made on an update too, so an update from a version
+; without them adds them. src/studio/installer-focused-apps.test.ts checks them.
+; ---------------------------------------------------------------------------
+
+; Tauri's SetLnkAppUserModelId (utils.nsh) with the ID as an argument instead
+; of ${BUNDLEID}.
+!macro SetLnkAppUserModelIdTo shortcut appid
+  !insertmacro ComHlpr_CreateInProcInstance ${CLSID_ShellLink} ${IID_IShellLink} r0 ""
+  ${If} $0 P<> 0
+    ${IUnknown::QueryInterface} $0 '("${IID_IPersistFile}",.r1)'
+    ${If} $1 P<> 0
+      ${IPersistFile::Load} $1 '("${shortcut}", ${STGM_READWRITE})'
+      ${IUnknown::QueryInterface} $0 '("${IID_IPropertyStore}",.r2)'
+      ${If} $2 P<> 0
+        System::Call 'Oleaut32::SysAllocString(w "${appid}") i.r3'
+        System::Call '*${SYSSTRUCT_PROPERTYKEY}(${PKEY_AppUserModel_ID})p.r4'
+        System::Call '*${SYSSTRUCT_PROPVARIANT}(${VT_BSTR},,&i4 $3)p.r5'
+        ${IPropertyStore::SetValue} $2 '($4,$5)'
+
+        System::Call 'Oleaut32::SysFreeString($3)'
+        System::Free $4
+        System::Free $5
+        ${IPropertyStore::Commit} $2 ""
+        ${IUnknown::Release} $2 ""
+        ${IPersistFile::Save} $1 '("${shortcut}",1)'
+      ${EndIf}
+      ${IUnknown::Release} $1 ""
+    ${EndIf}
+    ${IUnknown::Release} $0 ""
+  ${EndIf}
+!macroend
+
+; Where the focused apps' shortcuts go: beside Halonic's.
+!if "${STARTMENUFOLDER}" != ""
+  !define FOCUSEDAPPFOLDER "$SMPROGRAMS\$AppStartMenuFolder"
+!else
+  !define FOCUSEDAPPFOLDER "$SMPROGRAMS"
+!endif
+
+; The shortcut `${title}.lnk` for the focused app `${app}`.
+!macro FocusedAppShortcut title app
+  CreateShortcut "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "--app ${app}"
+  !insertmacro SetLnkAppUserModelIdTo "${FOCUSEDAPPFOLDER}\${title}.lnk" "${BUNDLEID}.${app}"
+!macroend
+
+; Removes the shortcut `${title}.lnk`, only when it still starts this install.
+!macro RemoveFocusedAppShortcut title
+  !insertmacro IsShortcutTarget "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+  Pop $0
+  ${If} $0 = 1
+    !insertmacro UnpinShortcut "${FOCUSEDAPPFOLDER}\${title}.lnk"
+    Delete "${FOCUSEDAPPFOLDER}\${title}.lnk"
+  ${EndIf}
+!macroend
+
+Function CreateFocusedAppShortcuts
+  ${If} $NoShortcutMode = 1
+    Return
+  ${EndIf}
+  CreateDirectory "${FOCUSEDAPPFOLDER}"
+  !insertmacro FocusedAppShortcut "${PRODUCTNAME} Inbox" "inbox"
+  !insertmacro FocusedAppShortcut "${PRODUCTNAME} Messenger" "messenger"
+FunctionEnd
+
+Function un.RemoveFocusedAppShortcuts
+  !insertmacro RemoveFocusedAppShortcut "${PRODUCTNAME} Inbox"
+  !insertmacro RemoveFocusedAppShortcut "${PRODUCTNAME} Messenger"
 FunctionEnd
 
 ; ---------------------------------------------------------------------------

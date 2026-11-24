@@ -131,7 +131,10 @@ fn google_setup_command_is_granted_to_the_local_main_window_only() {
         serde_json::from_str(include_str!("../capabilities/desktop-google-setups.json"))
             .expect("the capability is JSON");
     assert_eq!(capability["local"], true);
-    assert_eq!(capability["windows"], serde_json::json!(["main"]));
+    assert_eq!(
+        capability["windows"],
+        serde_json::json!(["main", "inbox", "messenger"])
+    );
     assert!(capability.get("remote").is_none(), "{capability}");
     assert_eq!(
         capability["permissions"],

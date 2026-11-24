@@ -55,7 +55,12 @@ app. On desktop it opens one window with the Studio page (`studio.html`, built
 into `dist/studio`; `tauri build` and `tauri dev` build it first), and on
 Android one with the connect page (`dist/connect`). Tauri reads that folder
 when the shell compiles, so run `pnpm build` here once before a plain
-`cargo clippy` or `cargo test` (`studio.desktop-page`). On desktop only, the
+`cargo clippy` or `cargo test` (`studio.desktop-page`). On desktop, Halonic
+runs once: started with `--app inbox` or `--app messenger`, as the Start menu's
+Halonic Inbox and Halonic Messenger do, it opens that focused app's own window
+on the same page instead, with its own taskbar entry, and a second start hands
+its arguments to the running Halonic (`studio.src-tauri.focused-apps`,
+`studio.installer-focused-apps`). On desktop only, the
 page may also call the commands for git, secrets, trust and picked folders
 (`reopen_folder`, `forget_folder`), runs, the workspace's files (`fs_*`) and the agent
 host (`agent_host_request`, `agent_host_stream`, `agent_host_stream_end`),
