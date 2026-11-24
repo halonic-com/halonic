@@ -1,6 +1,8 @@
+// The fake lives in @halonicjs/testing-contracts, whose code is measured in
+// this package's run (its "measuredIn"), so its tests run here.
+import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { FakeAgentMessaging } from "./fake-agent-messaging.ts";
 
 /** A fake with two sources whose clock the test moves by hand. */
 function makeFake() {
