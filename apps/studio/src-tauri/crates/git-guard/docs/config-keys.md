@@ -29,6 +29,7 @@ How a key is handled:
 | `core.pager`, `pager.<cmd>` | Flag `--no-pager`, environment `GIT_PAGER=cat` |  |
 | `core.sshCommand` | Neutralised | It falls back to the user's own value, or `ssh`. `GIT_SSH` and `GIT_SSH_COMMAND` are removed with every other `GIT_*` variable. |
 | `credential.helper`, `credential.<url>.helper` | Neutralised | The helper list is cleared and only the user's own helpers go back on. |
+| `credential.<name>`, `credential.<url>.<name>`, every name but `helper`, `username` and `useHttpPath` | Refused | The user's own credential helper, such as Git Credential Manager, reads them from every config file, the repository's included. They make it write the token to a file, run a sign-in program or send a token refresh to another server, and a per-URL key beats the runner's own value, so it can't be overridden (HAL-17786). `username` and `useHttpPath` are accepted: they only pick which stored credential answers, for the host the remote names, and setting `credential.username` per repository is how a helper keeps several accounts apart. The user's own values still apply. |
 | `diff.external`, `diff.<driver>.command`, `diff.<driver>.textconv` | Flag `--no-ext-diff --no-textconv` on `diff` and `log`, after the call's own options | The last of two opposite options wins, so the flags come just before `--` and the paths; the allow-list also has no `--ext-diff` or `--textconv` (HAL-3971). No other allowed call shows a diff: `commit` never opens an editor (see `commit.template`), so `commit.verbose` shows nothing. |
 | `diff.submodule` | Hardening config `short` | `diff` would otherwise run `git diff` inside each submodule, without the flags above. |
 | `diff.tool`, `diff.guitool`, `difftool.*`, `merge.tool`, `merge.guitool`, `mergetool.*` | Not reachable | `difftool` and `mergetool` aren't allowed. |
@@ -49,7 +50,7 @@ How a key is handled:
 | `submodule.<name>.update` (`!command`) | Not reachable | `submodule` isn't allowed, and hardening config keeps git out of submodules. |
 | `uploadpack.packObjectsHook`, `receive.procReceiveRefs`, a remote's hooks | Not reachable | The server's git runs them, with its own config. A local remote would run them here, which is why the `file` transport is refused. git reads `uploadpack.packObjectsHook` only from protected config (system, global, command line) anyway. |
 | `trailer.<token>.cmd`, `trailer.<token>.command` | Neutralised | Only `commit --trailer` and `interpret-trailers` run it, and neither is allowed. Blanked anyway, as `interactive.diffFilter` (HAL-3971). |
-| `trace2.normalTarget`, `trace2.perfTarget`, `trace2.eventTarget` | Not reachable | git reads them only from system and global config, which only the person or an administrator can write, never the opened folder. |
+| `trace2.normalTarget`, `trace2.perfTarget`, `trace2.eventTarget`, every `trace2.*` key | Refused | git reads them only from system and global config, but the user's credential helper, such as Git Credential Manager, reads them from the repository's config too and writes its trace where they say (HAL-17786). The user's own values still apply. |
 
 ## Keys that read a file or folder
 

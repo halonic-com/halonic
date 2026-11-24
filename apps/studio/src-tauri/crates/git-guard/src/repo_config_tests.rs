@@ -316,6 +316,54 @@ fn no_lazy_fetch_refuses_the_partial_clone_keys_from_the_repository_only() {
 }
 
 #[test]
+fn repo_config_refuses_credential_and_trace2_keys_from_the_repository_only() {
+    let keys = [
+        "credential.trace",
+        "Credential.TraceSecrets",
+        "credential.https://example.com.uiHelper",
+        "credential.credentialStore",
+        "credential.plaintextStorePath",
+        "credential.oauthTokenEndpoint",
+        "trace2.eventTarget",
+    ];
+    for key in keys {
+        for scope in ["local", "worktree"] {
+            assert_eq!(
+                check_refused_keys(&[entry(scope, key, "acme")]),
+                Err(GitError::ConfigNotAllowed {
+                    key: key.to_owned(),
+                }),
+                "{scope} {key}"
+            );
+        }
+        assert_eq!(
+            check_refused_keys(&[entry("global", key, "acme")]),
+            Ok(()),
+            "{key}"
+        );
+    }
+}
+
+#[test]
+fn repo_config_accepts_the_repositorys_credential_username_and_neutralises_its_helper() {
+    let entries = [
+        entry("local", "credential.helper", "!touch owned"),
+        entry("local", "credential.username", "acme"),
+        entry("local", "credential.useHttpPath", "true"),
+        entry(
+            "worktree",
+            "credential.https://git.acme.example.username",
+            "acme",
+        ),
+    ];
+    assert_eq!(check_refused_keys(&entries), Ok(()));
+    assert_eq!(
+        pairs(&neutralise_programs(&entries)),
+        [("credential.helper", "")]
+    );
+}
+
+#[test]
 fn repo_leaks_refuses_every_config_hook_from_the_repository() {
     for key in ["hook.acme.command", "hook.acme.event", "Hook.a.b.enabled"] {
         assert!(

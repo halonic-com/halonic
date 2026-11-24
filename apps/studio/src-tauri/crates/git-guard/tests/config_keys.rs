@@ -282,6 +282,103 @@ fn repo_config_refuses_a_repository_that_names_an_lfs_program() {
     assert!(sandbox.marks().is_empty());
 }
 
+/// The credential and trace2 keys the tests plant, as section, name, the
+/// key as git lists it and the file the value names.
+const HELPER_KEYS: &[(&str, &str, &str, &str)] = &[
+    (
+        "credential",
+        "trace",
+        "credential.trace",
+        "credential.trace",
+    ),
+    ("trace2", "eventTarget", "trace2.eventtarget", "trace2.json"),
+];
+
+#[test]
+fn repo_config_refuses_a_repository_that_configures_the_credential_helper() {
+    for (section, name, key, file) in HELPER_KEYS {
+        let sandbox = Sandbox::new();
+        sandbox.init_repository();
+        sandbox.git_ok("status");
+        let target = sandbox.temporary.path().join(file);
+        sandbox.append_config(&format!(
+            "[remote \"origin\"]\n\turl = https://git.acme.invalid/acme.git\n[{section}]\n\t{name} = {}\n",
+            config_path(&target)
+        ));
+        let refused = Err(GitError::ConfigNotAllowed {
+            key: (*key).to_owned(),
+        });
+        assert_eq!(sandbox.git("status"), refused, "{key}");
+        assert_eq!(
+            sandbox.git("fetch --quiet --no-tags origin"),
+            refused,
+            "{key}"
+        );
+        assert!(!target.exists(), "{key}");
+    }
+}
+
+/// Set in the child process, to the made-up home.
+#[cfg(unix)]
+const CHILD_HOME: &str = "HALONIC_GIT_GUARD_CONFIG_KEYS_HOME";
+
+/// The user's own values for the same keys still apply. The user's config is
+/// the global one, which git finds through `HOME`, so the test runs itself
+/// again as a child process with a made-up home, as `trusted_filters.rs`
+/// does.
+#[cfg(unix)]
+#[test]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+fn repo_config_keeps_the_users_own_credential_and_trace2_keys() {
+    const TEST_NAME: &str = "repo_config_keeps_the_users_own_credential_and_trace2_keys";
+    if let Some(home) = std::env::var_os(CHILD_HOME) {
+        return check_users_own_keys(std::path::Path::new(&home));
+    }
+    let home = support::TemporaryFolder::new();
+    let mut config = String::new();
+    for (section, name, _, file) in HELPER_KEYS {
+        let target = home.path().join(file);
+        config.push_str(&format!(
+            "[{section}]\n\t{name} = {}\n",
+            config_path(&target)
+        ));
+    }
+    std::fs::write(home.path().join(".gitconfig"), config).expect("the config writes");
+    let child =
+        std::process::Command::new(std::env::current_exe().expect("the test knows its program"))
+            .args(["--exact", TEST_NAME, "--nocapture", "--test-threads=1"])
+            .env(CHILD_HOME, home.path())
+            .env("HOME", home.path())
+            .env("XDG_CONFIG_HOME", home.path().join("xdg"))
+            .output()
+            .expect("the test runs itself again");
+    assert!(
+        child.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&child.stdout),
+        String::from_utf8_lossy(&child.stderr)
+    );
+}
+
+/// The checks, in a process whose home sets the keys.
+#[cfg(unix)]
+fn check_users_own_keys(home: &std::path::Path) {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.append_config("[remote \"origin\"]\n\turl = https://git.acme.invalid/acme.git\n");
+    sandbox.git_ok("status");
+    // The host doesn't exist, so the fetch runs and fails to connect.
+    let fetch = sandbox
+        .git("fetch --quiet --no-tags origin")
+        .expect("fetch runs");
+    assert_ne!(fetch.code, Some(0));
+    // git writes its own trace where the user's config says.
+    assert!(home.join("trace2.json").exists());
+}
+
 #[test]
 fn no_lazy_fetch_refuses_a_repository_that_is_a_partial_clone() {
     for (text, key) in [
