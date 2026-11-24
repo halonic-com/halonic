@@ -15,6 +15,7 @@ import type {
   HttpClient,
 } from "@halonicjs/ports";
 import { deployTargetVersion } from "@halonicjs/ports";
+import { reachableAccounts } from "./accounts.ts";
 import { withAdminKey } from "./admin-key.ts";
 import type { CloudflareApi, ResourceKind } from "./api.ts";
 import { createCloudflareClient } from "./client.ts";
@@ -74,7 +75,7 @@ export function createCloudflareDeployTarget(
     options.api ?? ((token: string) => createCloudflareClient({ token, fetch: fetchOver }));
   const label = context.who;
 
-  const api = async (): Promise<CloudflareApi> => {
+  const tokenOf = async (): Promise<string> => {
     // An empty CLOUDFLARE_API_TOKEN is no token, so it doesn't hide the saved one.
     const token = context.environmentToken || (await context.tokens.get(tokenName));
     if (token === null || token === "") {
@@ -85,8 +86,9 @@ export function createCloudflareDeployTarget(
         "Run `halonic deploy login`, or set CLOUDFLARE_API_TOKEN in CI.",
       );
     }
-    return apiFor(token);
+    return token;
   };
+  const api = async (): Promise<CloudflareApi> => apiFor(await tokenOf());
 
   const notYet = (method: string) => async (): Promise<never> => {
     throw portFailure("unexpected", "internal", `The Cloudflare target can't ${method} yet.`);
@@ -108,6 +110,12 @@ export function createCloudflareDeployTarget(
         await resolveCredentials(cloudflare, { token, accountId: first.id });
         await context.tokens.set(tokenName, token);
         return { accounts: accounts.map(({ id, name }) => ({ id, name })) };
+      }),
+
+    accounts: () =>
+      guard(async () => {
+        const token = await tokenOf();
+        return reachableAccounts(apiFor(token), token);
       }),
 
     plan: (request) => guard(async () => planDeploy(await api(), request)),

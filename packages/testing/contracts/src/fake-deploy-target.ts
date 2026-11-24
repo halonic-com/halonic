@@ -27,8 +27,10 @@ import { deployTargetVersion } from "@halonicjs/ports";
 
 /** How a {@link FakeDeployTarget} answers. */
 export interface FakeDeployTargetOptions {
-  /** The one account the token reaches. Defaults to "sam@example.com's Account". */
+  /** The account plans and status show. Defaults to "sam@example.com's Account". */
   account?: DeployAccount;
+  /** Every account the token reaches, for `login` and `accounts`. Defaults to `account` alone. */
+  accounts?: readonly DeployAccount[];
   /** The token `login` accepts. Defaults to "fake-deploy-token". */
   token?: string;
   /** Who takes the lock. Defaults to "sam@example.com". */
@@ -47,6 +49,21 @@ interface FakeDeployment {
   sessionsRevoked: number;
 }
 
+/** How `accounts` can fail, as {@link FakeDeployTarget.failNextAccounts} takes it. */
+export type AccountsFailureCode = "token-missing" | "token-inactive" | "missing-permission";
+
+const accountsFailures: Readonly<
+  Record<AccountsFailureCode, readonly [RunFailureKind, AccountsFailureCode, string]>
+> = {
+  "token-missing": [
+    "unauthenticated",
+    "token-missing",
+    "There's no deploy token on this computer.",
+  ],
+  "token-inactive": ["unauthenticated", "token-inactive", "The token isn't active."],
+  "missing-permission": ["denied", "missing-permission", "The token can't list accounts."],
+};
+
 const lockMs = 10 * 60 * 1000;
 const empty: DeployTransferCounts = { runs: 0, records: 0, files: 0, bytes: 0 };
 
@@ -62,16 +79,19 @@ export class FakeDeployTarget implements DeployTarget {
   /** Tokens `login` saved, in order. */
   readonly savedTokens: string[] = [];
   private readonly account: DeployAccount;
+  private readonly reachable: readonly DeployAccount[];
   private readonly token: string;
   private readonly who: string;
   private readonly clock: Clock;
   private readonly deployments = new Map<string, FakeDeployment>();
   private readonly folders = new Map<string, DeployTransferCounts>();
   private nextSelfTestFailure: readonly string[] | undefined;
+  private nextAccountsFailure: AccountsFailureCode | undefined;
   private nextWarnings: string[] = [];
 
   constructor(options: FakeDeployTargetOptions = {}) {
     this.account = options.account ?? { id: "fake-account", name: "sam@example.com's Account" };
+    this.reachable = options.accounts ?? [this.account];
     this.token = options.token ?? "fake-deploy-token";
     this.who = options.who ?? "sam@example.com";
     this.clock = options.clock ?? { now: () => new Date("2026-11-19T14:30:00.000Z") };
@@ -85,6 +105,11 @@ export class FakeDeployTarget implements DeployTarget {
   /** Makes the next deploy's self-test fail with these checks. */
   failNextSelfTest(failedChecks: readonly string[]): void {
     this.nextSelfTestFailure = failedChecks;
+  }
+
+  /** Makes the next `accounts` reject with this code, as a host with no token, or a refusing one, would. */
+  failNextAccounts(code: AccountsFailureCode): void {
+    this.nextAccountsFailure = code;
   }
 
   /** Adds a warning to the next deploy that goes live, as a lock lost after the switch would. */
@@ -107,7 +132,14 @@ export class FakeDeployTarget implements DeployTarget {
       throw failure("unauthenticated", "token-inactive", "The token isn't active.");
     }
     this.savedTokens.push(token);
-    return { accounts: [this.account] };
+    return { accounts: this.reachable };
+  }
+
+  async accounts(): Promise<readonly DeployAccount[]> {
+    const code = this.nextAccountsFailure;
+    this.nextAccountsFailure = undefined;
+    if (code !== undefined) throw failure(...accountsFailures[code]);
+    return this.reachable;
   }
 
   async plan(request: DeployRequest): Promise<DeployPlan> {

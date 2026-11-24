@@ -62,6 +62,7 @@ verifies("deploy.target-entry", () => {
     const { target } = setup();
     for (const method of [
       "login",
+      "accounts",
       "plan",
       "deploy",
       "status",

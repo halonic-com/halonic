@@ -204,7 +204,10 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
       if (body.errors?.some((error) => error.code === newestVersionNotDeployedCode)) {
         throw newestVersionNotDeployed(`${method} ${path}`);
       }
-      throw failed(`${method} ${path} was refused (HTTP ${response.status})${describe(body)}`);
+      throw failed(
+        `${method} ${path} was refused (HTTP ${response.status})${describe(body)}`,
+        response.status,
+      );
     }
     return body;
   }
@@ -214,10 +217,11 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
    * One upload at a time per client: the deploy lock guarantees it.
    */
   let hidden: readonly string[] = [];
-  function failed(message: string): DeployError {
+  function failed(message: string, status?: number): DeployError {
     return new DeployError(
       "cloudflare-request-failed",
       redact(message, [options.token, ...hidden]),
+      status === undefined ? undefined : { status },
     );
   }
 

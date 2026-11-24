@@ -52,6 +52,18 @@ export function deployTargetContract(name: string, make: MakeDeployTarget): void
       destroyCases(make);
     });
   });
+  verifies("contracts.deploy-target-accounts", () => {
+    describe(`DeployTarget contract: ${name}`, () => {
+      it(
+        "lists the accounts the saved token reaches, as login did, and changes nothing",
+        withTarget(make, async ({ target, token, deployment }) => {
+          const { accounts } = await target.login(token);
+          expect(await target.accounts()).toEqual(accounts);
+          expect((await target.status(deployment)).live).toBeUndefined();
+        }),
+      );
+    });
+  });
 }
 
 /** Runs one test against a new harness and disposes of it afterwards. */
