@@ -5,7 +5,7 @@
  * claims more than it knows.
  */
 
-import { type HostText, hostAppend, hostLineMax, hostLineParts } from "./host-text.ts";
+import { type HostText, hostAppend, hostLineMax, hostLineParts, hostPlain } from "./host-text.ts";
 import { asOfText } from "./phone-forms.ts";
 import type { RemoteApproval, RemoteSession, RemoteView } from "./remote-view.ts";
 
@@ -30,9 +30,9 @@ export function agentLine(
 ): HostText | undefined {
   if (hasEnded(session)) {
     const ended = new Date(session.updatedAt);
-    if (Number.isNaN(ended.getTime())) return words(agentStateWords[session.state]);
+    if (Number.isNaN(ended.getTime())) return hostPlain(agentStateWords[session.state]);
     const verb = session.state === "done" ? "Finished" : "Failed";
-    return words(`${verb} ${asOfText(ended, now)}`);
+    return hostPlain(`${verb} ${asOfText(ended, now)}`);
   }
   if (approval !== undefined) return hostLineParts(approval.approval.summary, hostLineMax);
   for (let index = session.events.length - 1; index >= 0; index--) {
@@ -59,12 +59,7 @@ export function agentRowLine(
   const line = agentLine(session, approval, now);
   if (view.canAnswer || view.asOf === undefined || hasEnded(session)) return line;
   const asOf = `as of ${asOfText(view.asOf, now)}`;
-  return line === undefined ? words(asOf) : hostAppend(line, ` · ${asOf}`);
-}
-
-/** The phone's own words, as host text with no markers. */
-function words(text: string): HostText {
-  return [{ kind: "text", text }];
+  return line === undefined ? hostPlain(asOf) : hostAppend(line, ` · ${asOf}`);
 }
 
 function hasEnded(session: RemoteSession): boolean {

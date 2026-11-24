@@ -18,10 +18,13 @@ export function HostTextView({ text }: { readonly text: HostText }) {
   );
 }
 
-/** One hidden character: its code in a mono caption chip, in the line's own text colour. */
+/**
+ * One hidden character: its code in a mono caption chip, in the line's own text colour. A chip is
+ * never split: at the end of a line it moves whole to the next one, or a clamp drops it (HAL-17067).
+ */
 function HiddenCharacterChip({ code }: { readonly code: string }) {
   return (
-    <span className="rounded-sm border border-border bg-surface-muted px-1 font-mono text-caption">
+    <span className="inline-block whitespace-nowrap rounded-sm border border-border bg-surface-muted px-1 font-mono text-caption">
       <span className="sr-only">{`${hiddenCharacterWords} `}</span>
       {code}
     </span>
