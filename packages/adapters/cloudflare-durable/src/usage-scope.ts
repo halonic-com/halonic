@@ -33,9 +33,12 @@ export interface UsageScopeOptions {
   readonly pullLimits: (scope: string) => Promise<UsageLimits | null>;
   /**
    * The name the Worker gave the object (`idFromName(scope)`), when it has one. A call for any
-   * other scope is then refused even before the first call notes one.
+   * other scope is then refused even before the first call notes one. An object made from
+   * `newUniqueId` or `idFromString` has no name, so only the noted scope is checked.
    */
   readonly objectName?: string | undefined;
+  /** Told of a pull that threw, which the step still sees as `plan.none`; ignored by default. */
+  readonly onPullError?: (error: unknown) => void;
   /** How long a pull that found no limits is remembered before the next one; 30 s by default. */
   readonly pullRetryMs?: number;
   /** The account's outbox cap and run lease, when not its defaults. */
@@ -179,12 +182,13 @@ export class UsageScope {
   /**
    * The pulled document, or `null` when the pull failed. A failed pull is Cloud being unreachable
    * for the step: it is refused with `plan.none`, the refusal a step gets with no limits, rather
-   * than failing the run with the transport's error.
+   * than failing the run with the transport's error. The error itself goes to `onPullError`.
    */
   async #pullOrNull(scope: string): Promise<UsageLimits | null> {
     try {
       return await this.#options.pullLimits(scope);
-    } catch {
+    } catch (error) {
+      this.#options.onPullError?.(error);
       return null;
     }
   }

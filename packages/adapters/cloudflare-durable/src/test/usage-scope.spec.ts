@@ -119,11 +119,15 @@ describe("usage object limits", () => {
       expect(cloud.pulls).toBe(2);
     }));
 
-  it("refuses with no limits when the pull throws", () =>
+  it("refuses with no limits when the pull throws, and reports the error", () =>
     inObjectState(async ({ storage }) => {
-      const pullLimits = () => Promise.reject(new Error("Cloud is down"));
-      const { scope } = newScope(storage, false, { pullLimits });
+      const failure = new Error("Cloud is down");
+      const pullLimits = () => Promise.reject(failure);
+      const reported: unknown[] = [];
+      const onPullError = (error: unknown) => reported.push(error);
+      const { scope } = newScope(storage, false, { pullLimits, onPullError });
       expect(await scope.check(acme)).toEqual({ allowed: false, refusal: { code: "plan.none" } });
+      expect(reported).toEqual([failure]);
     }));
 
   it("pulls limits once for parallel steps, then allows them", () =>

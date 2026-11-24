@@ -35,13 +35,15 @@ export class UsageObject extends DurableObject {
       clock: () => this.clock,
       objectName: ctx.id.name,
       pullLimits: (scope) => this.pullLimits(scope),
+      // The step is refused with `plan.none`; the log keeps why Cloud couldn't be asked.
+      onPullError: (error) => console.error("The usage limits pull failed.", error),
     });
   }
 
   /**
    * Asks Cloud for the scope's limits; `null` when it can't be reached. None by default. An
    * override returns only a document it has verified as Cloud's (signed with Cloud's key): the
-   * object keeps whatever this returns. A throw counts as `null`.
+   * object keeps whatever this returns. A throw counts as `null` and is logged.
    */
   protected async pullLimits(_scope: string): Promise<UsageLimits | null> {
     return null;
