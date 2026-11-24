@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { FileReview, ItemToReview, ReviewOutcome, ReviewTarget } from "@halonicjs/app";
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -224,5 +224,19 @@ verifies("assistant.chat.apply-all", () => {
       await press(page, "2 items to review, go to the next one");
       expect(document.activeElement?.id).toBe("card-review-b");
     });
+  });
+});
+
+verifies("assistant.build.phone-review", () => {
+  it("on a phone, reads '2 to review' while the chat answers, with the reason under the count", async () => {
+    const host = stripHost(["models.yaml", "hubs/sales/agents/billing.agent.yaml"]);
+    const page = await show(
+      <PresentationProvider presentation="phone">{strip(host, true).node}</PresentationProvider>,
+    );
+    expect(page.firstElementChild?.className).toContain("min-h-14");
+    expect(buttonNamed(page, "2 items to review, go to the next one")?.textContent).toBe(
+      "2 to review",
+    );
+    expect(page.textContent).toContain("Wait for the answer to finish.");
   });
 });

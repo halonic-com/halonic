@@ -1,5 +1,11 @@
 import type { FileReview } from "@halonicjs/app";
-import { Button, Disclosure, StatusChip, useToastStore } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Disclosure,
+  StatusChip,
+  usePresentation,
+  useToastStore,
+} from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { AssistantHostService } from "../api.ts";
@@ -8,8 +14,12 @@ import { reviewPlaceOf } from "./card-facts.ts";
 import { type CardReview, cardReviewsOf, type Proposal } from "./card-reviews.ts";
 import { CardWhy } from "./card-why.tsx";
 import { cardWords as words } from "./card-words.ts";
+import { TouchActions } from "./touch-actions.tsx";
 
-/** The start of the `id` of an open card's **Review**, which the strip's count moves focus to. */
+/**
+ * The start of the `id` of an open card's **Review** (**See what changes** on a phone), which the
+ * strip's count moves focus to.
+ */
 export const cardReviewId = "card-review-";
 
 /** Props for {@link ProposalCard}. */
@@ -25,6 +35,7 @@ export interface ProposalCardProps {
  * model's why, the diff, and **Review**, **Accept all** and **Reject all** while any of it is left
  * to review. An `article` named by its tag and sentence, with 12px padding inside the 360px panel
  * (component specs 21.2), so it draws the kit Card's box itself. Never green, never "Saved".
+ * On a phone its buttons are the touch ones, with the diff in a sheet (flow-assistant 11.4).
  */
 export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
   const cards = cardReviewsOf(context.services.get(AssistantHostService));
@@ -36,6 +47,19 @@ export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
   const nameId = useId();
   const tag = words.tag[facts.tag];
   const end = state.kind === "decided" ? state.end : undefined;
+  const phone = usePresentation() === "phone";
+  const about = (id?: string) => (
+    <>
+      <p id={id} className="flex flex-wrap items-start gap-x-2 gap-y-1">
+        <StatusChip tone="outline">{tag}</StatusChip>
+        <span className="text-body-strong">{facts.sentence}</span>
+        {facts.important ? <StatusChip tone="outline">{words.important}</StatusChip> : null}
+      </p>
+      <p className="break-all font-mono text-caption text-fg-muted">{proposal.path}</p>
+      {/* A rejected card folds its why away: it keeps only what you turned down. */}
+      {why === "" || end?.kind === "rejected" ? null : <CardWhy why={why} />}
+    </>
+  );
   return (
     <article
       ref={decide.card}
@@ -44,14 +68,7 @@ export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
       aria-label={words.cardName(tag, facts.sentence)}
       className="flex flex-col gap-1 rounded-md border border-border bg-surface p-3 text-body focus-ring"
     >
-      <p id={nameId} className="flex flex-wrap items-start gap-x-2 gap-y-1">
-        <StatusChip tone="outline">{tag}</StatusChip>
-        <span className="text-body-strong">{facts.sentence}</span>
-        {facts.important ? <StatusChip tone="outline">{words.important}</StatusChip> : null}
-      </p>
-      <p className="break-all font-mono text-caption text-fg-muted">{proposal.path}</p>
-      {/* A rejected card folds its why away: it keeps only what you turned down. */}
-      {why === "" || end?.kind === "rejected" ? null : <CardWhy why={why} />}
+      {about(nameId)}
       {state.kind === "open" ? (
         <OpenCard
           state={state}
@@ -59,9 +76,14 @@ export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
           nameId={nameId}
           context={context}
           path={proposal.path}
+          touch={phone ? { about: about(), stateLine: () => line.current } : undefined}
         />
       ) : null}
-      {end?.kind === "accepted" && state.kind === "decided" && state.first !== undefined ? (
+      {/* No inline disclosure on a phone: a scrolling box in the scrolling chat is hard to use. */}
+      {!phone &&
+      end?.kind === "accepted" &&
+      state.kind === "decided" &&
+      state.first !== undefined ? (
         <Disclosure summary={words.showDiff}>
           <Diff review={state.first} />
         </Disclosure>
@@ -92,12 +114,17 @@ function OpenCard({
   nameId,
   context,
   path,
+  touch,
 }: {
   readonly state: Open;
   readonly decide: Decide;
   readonly nameId: string;
   readonly context: WorkspaceContext;
   readonly path: string;
+  /** On a phone: what the What changes sheet shows above the diff, and the state line. */
+  readonly touch:
+    | { readonly about: React.ReactNode; readonly stateLine: () => HTMLElement | null }
+    | undefined;
 }) {
   const { left, total, held } = state;
   const heldId = useId();
@@ -106,9 +133,11 @@ function OpenCard({
   return (
     <>
       {state.latest ? <p className="text-small text-fg-muted">{words.latest}</p> : null}
-      <Disclosure summary={words.showDiff}>
-        <Diff review={state.review} />
-      </Disclosure>
+      {touch === undefined ? (
+        <Disclosure summary={words.showDiff}>
+          <Diff review={state.review} />
+        </Disclosure>
+      ) : null}
       {left < total ? (
         <p className="text-small text-fg-muted">{words.leftToReview(left, total)}</p>
       ) : null}
@@ -125,49 +154,72 @@ function OpenCard({
           </Button>
         </p>
       ) : null}
-      <div className="mt-1 flex flex-wrap gap-2">
-        <Button
-          id={`${cardReviewId}${nameId}`}
-          variant="secondary"
-          size="sm"
-          aria-describedby={nameId}
-          onClick={decide.review}
-        >
-          {words.review}
-        </Button>
-        <Button
-          variant="primary"
-          size="sm"
-          aria-describedby={nameId}
-          busy={decide.busy === "accept"}
-          unavailable={waits}
-          onClick={() => decide.run("accept")}
-        >
-          {words.acceptAll}
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          aria-describedby={nameId}
-          busy={decide.busy === "reject"}
-          unavailable={waits}
-          onClick={() => decide.run("reject")}
-        >
-          {words.rejectAll}
-        </Button>
-      </div>
+      {touch === undefined ? (
+        <div className="mt-1 flex flex-wrap gap-2">
+          <Button
+            id={`${cardReviewId}${nameId}`}
+            variant="secondary"
+            size="sm"
+            aria-describedby={nameId}
+            onClick={decide.review}
+          >
+            {words.review}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            aria-describedby={nameId}
+            busy={decide.busy === "accept"}
+            unavailable={waits}
+            onClick={() => decide.run("accept")}
+          >
+            {words.acceptAll}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-describedby={nameId}
+            busy={decide.busy === "reject"}
+            unavailable={waits}
+            onClick={() => decide.run("reject")}
+          >
+            {words.rejectAll}
+          </Button>
+        </div>
+      ) : (
+        <TouchActions
+          host={context.services.get(AssistantHostService)}
+          nameId={nameId}
+          reviewId={`${cardReviewId}${nameId}`}
+          busy={decide.busy}
+          onDecide={decide.run}
+          held={held ? { id: heldId, text: words.changedOutside(state.facts.name) } : undefined}
+          about={touch.about}
+          diff={<Diff review={state.review} whole />}
+          stateLine={touch.stateLine}
+        />
+      )}
     </>
   );
 }
 
 /**
  * The card's changes as a unified diff block: removed lines then added ones, each part in order,
- * at most 320px high, then it scrolls. A delete shows one sentence and no lines.
+ * at most 320px high, then it scrolls; `whole` in a sheet, which scrolls itself. A delete shows
+ * one sentence and no lines.
  */
-function Diff({ review }: { readonly review: FileReview }) {
+function Diff({
+  review,
+  whole = false,
+}: {
+  readonly review: FileReview;
+  readonly whole?: boolean;
+}) {
   if (review.deleted) return <p className="text-small text-fg-muted">{words.wholeFileDeleted}</p>;
   return (
-    <div className="max-h-80 overflow-y-auto rounded-sm border border-border bg-surface-subtle py-1.5 font-mono text-caption">
+    <div
+      className={`${whole ? "" : "max-h-80 overflow-y-auto"} rounded-sm border border-border bg-surface-subtle py-1.5 font-mono text-caption`}
+    >
       {review.parts.map((part, index) => (
         // Parts are worked out again for each read, in file order, so their place is their key.
         <div key={index}>

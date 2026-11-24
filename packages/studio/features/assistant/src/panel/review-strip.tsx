@@ -1,4 +1,4 @@
-import { Button, useToastStore } from "@halonicjs/studio-kit";
+import { Button, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import type { AssistantHost } from "../api.ts";
 import { stripWords as words } from "../cards/card-words.ts";
@@ -45,7 +45,9 @@ export function StripAboveBox(props: {
 /**
  * "3 items to review" with **Accept all** and **Reject all** for the whole chat (flow-assistant
  * 3.5, component specs 21.4), above the box and outside the transcript's scroll. Only with two or
- * more items: with one, its card's own buttons are right there.
+ * more items: with one, its card's own buttons are right there. On a phone (flow-assistant 11.3)
+ * it is at least 56px with touch-sized buttons, and while the chat answers the count is short,
+ * "2 to review", so the reason under it doesn't make the strip taller.
  */
 export function ReviewStrip({ host, chatId, answering, box, announce }: ReviewStripProps) {
   const items = useItemsToReview(host, chatId);
@@ -53,7 +55,9 @@ export function ReviewStrip({ host, chatId, answering, box, announce }: ReviewSt
   const next = useRef(0);
   const reasonId = useId();
   const decide = useDecideChat({ host, chatId, box, announce });
+  const phone = usePresentation() === "phone";
   if (items < 2) return null;
+  const size = phone ? "lg" : "sm";
   const unavailable = answering ? { reason: reasonId } : undefined;
   // Each press moves focus to the next card with changes to review, on its Review (a11y 12.1).
   const goToNext = () => {
@@ -66,7 +70,7 @@ export function ReviewStrip({ host, chatId, answering, box, announce }: ReviewSt
   return (
     <div
       ref={strip}
-      className="flex items-center justify-between gap-2 border-border border-t py-1.5 pr-3 pl-4"
+      className={`flex items-center justify-between gap-2 border-border border-t ${phone ? "min-h-14 px-4 py-2" : "py-1.5 pr-3 pl-4"}`}
     >
       <div className="flex min-w-0 flex-col">
         <button
@@ -75,7 +79,7 @@ export function ReviewStrip({ host, chatId, answering, box, announce }: ReviewSt
           className="self-start rounded-sm text-small text-fg focus-ring"
           onClick={goToNext}
         >
-          {words.count(items)}
+          {phone && answering ? words.shortCount(items) : words.count(items)}
         </button>
         {answering ? (
           <p id={reasonId} className="text-caption text-fg-muted">
@@ -86,7 +90,7 @@ export function ReviewStrip({ host, chatId, answering, box, announce }: ReviewSt
       <div className="flex shrink-0 gap-2">
         <Button
           variant="secondary"
-          size="sm"
+          size={size}
           unavailable={unavailable}
           busy={decide.busy === "accept"}
           onClick={() => decide.run("accept", items)}
@@ -95,7 +99,7 @@ export function ReviewStrip({ host, chatId, answering, box, announce }: ReviewSt
         </Button>
         <Button
           variant="secondary"
-          size="sm"
+          size={size}
           unavailable={unavailable}
           busy={decide.busy === "reject"}
           onClick={() => decide.run("reject", items)}

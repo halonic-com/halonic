@@ -306,6 +306,10 @@ export {
   SetupSteps,
   type SetupStepsProps,
 } from "./setup-steps/setup-steps.tsx";
+export {
+  PanelSheetDialog,
+  type PanelSheetDialogProps,
+} from "./sheet/panel-sheet-dialog.tsx";
 export { SheetFrame, type SheetFrameProps } from "./sheet/sheet-frame.tsx";
 export { SidePanel, type SidePanelProps } from "./side-panel/side-panel.tsx";
 export {

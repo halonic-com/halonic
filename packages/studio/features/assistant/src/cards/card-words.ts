@@ -54,6 +54,11 @@ export const cardWords = {
   compare: "Compare",
   /** Review panel note 1: a decision on parts the file no longer has reloads quietly. */
   latest: "The file changed. Showing the latest changes.",
+  /** On a phone (microcopy 14.3): one button for Review and Show the diff, which opens the sheet. */
+  seeWhatChanges: "See what changes",
+  whatChanges: "What changes",
+  /** Under an open card's buttons on a phone while Halonic on the computer isn't answering (11.6). */
+  waitingForComputer: "Waiting for Halonic on your computer.",
 } as const;
 
 /**
@@ -84,6 +89,8 @@ export const stripWords = {
   count: (items: number) => `${items} items to review`,
   /** The count is a button that moves focus to the next card's Review. */
   countName: (items: number) => `${items} items to review, go to the next one`,
+  /** The count on a phone while the chat answers, so the reason under it doesn't grow the strip. */
+  shortCount: (items: number) => `${items} to review`,
   acceptAll: "Accept all",
   rejectAll: "Reject all",
   /** Written under the count while the chat answers: both buttons' reason, not only a tooltip. */
