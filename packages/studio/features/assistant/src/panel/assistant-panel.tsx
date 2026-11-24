@@ -221,11 +221,9 @@ function Reply({
   readonly onContinue: (() => void) | undefined;
 }) {
   const end = turn.end;
-  // Only the last reply's limit offers Continue: it carries on that answer (flow-assistant 3.6).
-  const actions =
-    end?.kind === "model-call-limit" && onContinue !== undefined
-      ? [{ label: words.continue, onClick: onContinue }]
-      : [];
+  // Only the last reply offers Continue or Try again: each carries on that answer without a new
+  // message (flow-assistant 3.6), which sends the last message again when nothing ran (H13).
+  const actions = onContinue === undefined ? [] : endActions(end, onContinue);
   return (
     <ChatMessage from="reply" heading={words.said}>
       {turn.steps.map((step, index) => (
@@ -239,6 +237,14 @@ function Reply({
       )}
     </ChatMessage>
   );
+}
+
+function endActions(end: Turn["end"], onContinue: () => void) {
+  if (end?.kind === "model-call-limit") return [{ label: words.continue, onClick: onContinue }];
+  if (end?.kind === "engine-stopped" && !end.toolsRan) {
+    return [{ label: words.tryAgain, onClick: onContinue }];
+  }
+  return [];
 }
 
 function Step({ step }: { readonly step: ReplyStep }) {

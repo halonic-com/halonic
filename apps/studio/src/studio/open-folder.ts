@@ -135,6 +135,7 @@ export async function openFolder(
       name,
       scope,
       remoteEngine: await openShellEngine(ipc),
+      engineConnection: shell.engine,
       // Run waits through the workspace's own save, which is made below, once the workspace is.
       settle: async () => {
         if (!((await saving?.saveNow()) ?? true))

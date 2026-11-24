@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { KindedError } from "@halonicjs/std";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -260,5 +260,47 @@ describe("a failed answer", () => {
       "Couldn't reach the model: Anthropic was busy. Some tool calls already ran. Send a new message to continue.";
     expect(page.textContent).toContain(line);
     expect(announce).toHaveBeenCalledWith(line, "assertive");
+  });
+});
+
+verifies("assistant.chat.engine-stopped", () => {
+  const stopped = "Stopped when Halonic's engine stopped.";
+
+  it("ends with the engine's line and Try again, which sends the last message again", async () => {
+    const fake = fakeHost();
+    const page = await show(panel(fake));
+    await sendMessage(page, "Add a routine");
+    await fake.finish({
+      messages: [],
+      end: { reason: "failed", error: new EngineNotAnswering(), toolsRan: false },
+    });
+    expect(page.textContent).toContain(stopped);
+    expect(page.textContent).not.toContain("Couldn't reach the model");
+    await act(async () => buttonNamed(page, "Try again")?.click());
+    expect(fake.requests[1]).toMatchObject({ chatId: fake.requests[0]?.chatId });
+    expect(fake.requests[1]?.message).toBeUndefined();
+  });
+
+  it("ends the same way when the answer is rejected because the engine isn't answering", async () => {
+    const fake = fakeHost();
+    const page = await show(panel(fake));
+    await sendMessage(page, "Add a routine");
+    await fake.finish(new EngineNotAnswering());
+    expect(page.textContent).toContain(stopped);
+    expect(buttonNamed(page, "Try again")).not.toBeUndefined();
+  });
+
+  it("drops Try again when a tool already ran", async () => {
+    const fake = fakeHost();
+    const page = await show(panel(fake));
+    await sendMessage(page, "Add a routine");
+    await fake.finish({
+      messages: [],
+      end: { reason: "failed", error: new EngineNotAnswering(), toolsRan: true },
+    });
+    expect(page.textContent).toContain(
+      `${stopped} Some tool calls already ran. Send a new message to continue.`,
+    );
+    expect(buttonNamed(page, "Try again")).toBeUndefined();
   });
 });

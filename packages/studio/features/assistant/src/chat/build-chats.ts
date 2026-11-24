@@ -1,6 +1,7 @@
 import type { ChatAnswerEnd } from "@halonicjs/app";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
+import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import type { AssistantHost, Chat } from "../api.ts";
 import { buildChatWords } from "./build-chat-words.ts";
 import { endLine, type ReplyEnd } from "./turns.ts";
@@ -117,11 +118,14 @@ export class BuildChats {
       const toolsRan = (this.views.get(chatId)?.messages ?? [])
         .slice(view.messages.length)
         .some((each) => each.role === "tool");
-      end = {
-        kind: "failed",
-        reason: error instanceof Error ? error.message : String(error),
-        toolsRan,
-      };
+      end =
+        error instanceof EngineNotAnswering
+          ? { kind: "engine-stopped", toolsRan }
+          : {
+              kind: "failed",
+              reason: error instanceof Error ? error.message : String(error),
+              toolsRan,
+            };
     }
     this.stoppers.delete(chatId);
     this.update(chatId, (now) => ({
@@ -217,6 +221,10 @@ function endOf(end: ChatAnswerEnd): ReplyEnd | undefined {
     case "turn-limit":
       return { kind: "model-call-limit", calls: end.turns };
     case "failed":
+      // The engine stopped mid-answer: the shell found it gone, or a turn couldn't reach it (K3).
+      if (end.error instanceof EngineNotAnswering) {
+        return { kind: "engine-stopped", toolsRan: end.toolsRan };
+      }
       return { kind: "failed", reason: end.error.message, toolsRan: end.toolsRan };
   }
 }
