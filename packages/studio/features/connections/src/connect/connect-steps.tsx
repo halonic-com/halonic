@@ -27,7 +27,7 @@ function Phrase({ phrase }: { readonly phrase: string }) {
     <div>
       <span className="sr-only">{words.WORDS_LABEL}</span>
       <p
-        className="m-0 rounded-lg border border-border bg-surface-subtle px-4 py-3 text-center text-heading font-semibold text-fg [word-spacing:18px]"
+        className="m-0 rounded-md border border-border bg-surface-subtle px-4 py-3 text-center text-heading font-semibold text-fg [word-spacing:18px]"
         data-phrase
       >
         {phrase}
@@ -41,8 +41,16 @@ function Countdown({ leftMs }: { readonly leftMs: number }) {
   const share = Math.max(0, Math.min(1, leftMs / signInLimitMs));
   return (
     <div className="flex flex-col gap-1">
-      <div aria-hidden="true" className="h-1 overflow-hidden rounded-full bg-surface-subtle">
-        <div className="h-full bg-accent" style={{ width: `${share * 100}%` }} />
+      {/* High contrast drops fills: the track keeps an edge and the fill keeps CanvasText. */}
+      <div
+        aria-hidden="true"
+        className="h-1 overflow-hidden rounded-full bg-surface-subtle forced-colors:border forced-colors:border-[CanvasText]"
+      >
+        <div
+          className="h-full bg-accent forced-color-adjust-none forced-colors:bg-[CanvasText]"
+          data-countdown-fill
+          style={{ width: `${share * 100}%` }}
+        />
       </div>
       <p className="m-0 text-small text-fg-muted" role="timer">
         {words.timeLeft(leftMs)}

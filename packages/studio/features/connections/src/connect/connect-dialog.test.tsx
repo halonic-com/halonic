@@ -194,6 +194,32 @@ verifies("connections.connect-dialog", () => {
     expect(fake.signIns).toEqual([{ address: "http://localhost:3100" }]);
   });
 
+  it("takes focus to the address after an error, off Continue", async () => {
+    await openDialog();
+    await connectTo("http://paperclip.acme.test");
+    expect(document.activeElement).toBe(dialog()?.querySelector("input"));
+    // Again on the same error, which doesn't change.
+    button("Continue", dialog() ?? document)?.focus();
+    await connectTo("http://paperclip.acme.test");
+    expect(document.activeElement).toBe(dialog()?.querySelector("input"));
+  });
+
+  it("takes focus to the address when the engine refuses it", async () => {
+    await openDialog({ fake: new FakeAgentConnections({ refuseStart: "unreachable" }) });
+    await connectTo("https://elsewhere.test");
+    expect(document.activeElement).toBe(dialog()?.querySelector("input"));
+  });
+
+  it("sets the lead in body type, the words in a 12px box, and the bar for high contrast", async () => {
+    await openDialog();
+    expect(dialog()?.querySelector("p")?.className).toContain("text-body");
+    await connectTo("https://paperclip.acme.test");
+    expect(dialog()?.querySelector("[data-phrase]")?.className).toContain("rounded-md");
+    const fill = dialog()?.querySelector("[data-countdown-fill]");
+    expect(fill?.className).toContain("forced-colors:bg-[CanvasText]");
+    expect(fill?.parentElement?.className).toContain("forced-colors:border-[CanvasText]");
+  });
+
   it("says why when the engine refuses the address, and opens no page", async () => {
     const fake = new FakeAgentConnections({ refuseStart: "address-not-allowed" });
     const { opened } = await openDialog({ fake });
