@@ -234,8 +234,9 @@ test("fast pool: fast slots run under gVisor, on their own network, with their o
   );
   const socket = read("vm/halonic-ci-gate-fast.socket");
   assert.match(socket, /^ListenStream=\/run\/halonic-ci-gate-fast\/gate\.sock$/m);
-  // One connection per fast slot; 48 a minute caps it at 2880 of the token's 5000 calls an hour.
-  assert.match(socket, /^MaxConnections=24$/m);
+  // One connection per fast slot (40 since HAL-17574); 48 a minute caps it at 2880 of the token's
+  // 5000 calls an hour, the same as for 24 slots: the calls follow the pull request jobs.
+  assert.match(socket, /^MaxConnections=40$/m);
   assert.match(socket, /^PollLimitIntervalSec=60s$/m);
   assert.match(socket, /^PollLimitBurst=48$/m);
   const unit = read("vm/halonic-ci-gate-fast@.service");
@@ -265,16 +266,22 @@ test("fast pool: fast slots get their own pool config and the shared caches only
   }
 });
 
-// The CPUs the slot script pins `slot` to, from its CPUSET table as shipped.
-const cpusOf = (slot) => {
+// The CPUs the slot script pins `slot` to, from its CPUSET table as shipped. `float`: runsc runs with
+// --cpu-num-from-quota, so fast-11..40 float over FAST_WIDE (HAL-17574).
+const cpusOf = (slot, float = false) => {
   const table = read("vm/halonic-runner-slot.sh").match(/^FAST4_FROM=[\s\S]*?\nesac$/m);
   assert.ok(table, "FAST4_FROM and the CPUSET table in vm/halonic-runner-slot.sh");
   const res = spawnSync("/bin/bash", ["-c", `${table[0]}\necho "$CPUSET"`], {
     encoding: "utf8",
-    env: { SLOT: slot, N: slot.split("-")[1] },
+    env: { SLOT: slot, N: slot.split("-")[1], ...(float ? { FAST_FLOAT: "1" } : {}) },
   });
-  const [from, to] = res.stdout.trim().split("-").map(Number);
-  return Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  return res.stdout
+    .trim()
+    .split(",")
+    .flatMap((part) => {
+      const [from, to = from] = part.split("-").map(Number);
+      return Array.from({ length: to - from + 1 }, (_, i) => from + i);
+    });
 };
 
 test("fast pool: fast-11..24 get 4 CPUs each, two whole cores, apart from each other (HAL-17463)", () => {
@@ -294,6 +301,34 @@ test("fast pool: fast-11..24 get 4 CPUs each, two whole cores, apart from each o
   assert.deepEqual(cpusOf("fast-1"), [60, 61, 62, 63, 64, 65]);
   assert.deepEqual(cpusOf("fast-9"), [15, 16, 17, 18, 19, 20]);
   assert.deepEqual(cpusOf("fast-10"), [39, 40, 41, 42, 43, 44]);
+});
+
+test("fast pool: fast-11..40 float over every CPU but the small slots' and the VM's (HAL-17574)", () => {
+  const wide = [...Array(66).keys(), ...Array.from({ length: 30 }, (_, i) => 72 + i)];
+  for (let n = 11; n <= 40; n++) assert.deepEqual(cpusOf(`fast-${n}`, true), wide, `fast-${n}`);
+  // Only the 4-CPU slots float: the others keep their sets, whatever runsc says.
+  assert.deepEqual(cpusOf("fast-1", true), [60, 61, 62, 63, 64, 65]);
+  assert.deepEqual(cpusOf("large-1", true), [0, 1, 2, 3, 4, 5]);
+  // Without the flag, fast-25..40 get a fixed 4-vCPU set of whole cores off the small slots' and
+  // the VM's, and fast-11..24 keep theirs.
+  for (let n = 25; n <= 40; n++) {
+    const cpus = cpusOf(`fast-${n}`);
+    assert.equal(cpus.length, 4, `fast-${n}`);
+    assert.equal(cpus[0] % 2, 0, `fast-${n} starts mid-core`);
+    for (const cpu of cpus)
+      assert.ok(cpu <= 101 && (cpu < 66 || cpu > 71), `fast-${n} takes ${cpu}`);
+  }
+  assert.deepEqual(cpusOf("fast-11"), [0, 1, 2, 3]);
+  assert.deepEqual(cpusOf("fast-24"), [92, 93, 94, 95]);
+  // The job sees its quota, not the set, only when runsc says so; and large slots get twice the
+  // CPU weight, so a merge-group job wins the cores it shares with floating fast jobs.
+  const slot = read("vm/halonic-runner-slot.sh");
+  assert.ok(slot.includes(`docker info --format '{{json (index .Runtimes "runsc")}}'`));
+  assert.ok(
+    slot.includes('if [[ "$rargs" =~ \\"--cpu-num-from-quota(=true)?\\" ]]; then FAST_FLOAT=1; fi'),
+  );
+  assert.ok(slot.includes('SHARES=1024; [ "$LABEL" != halonic-ci-large ] || SHARES=2048'));
+  assert.ok(slot.includes('--cpus "$CPUS" --cpuset-cpus "$CPUSET" --cpu-shares "$SHARES"'));
 });
 
 // Runs the VM's gate with a stub curl that logs the query it was sent, for request line `first`.

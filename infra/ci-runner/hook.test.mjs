@@ -196,14 +196,18 @@ test("each job container is capped and unprivileged (C5)", () => {
 
 test("a job container starts at MEM_START and grows only up to MEM, with swap kept equal", () => {
   const slot = read("vm/halonic-runner-slot.sh");
-  // Large and fast slots start at 6 GB and grow 4 GB every 2 s up to 16 GB: no OOM since 22 Nov 08:07
+  // Large slots start at 6 GB (fast-1..10 at 4 GB since HAL-17574, fast jobs peak at 4.4 GB) and grow
+  // 4 GB every 2 s up to 16 GB: no OOM since 22 Nov 08:07
   // UTC with this, and #4976 cut the biggest job (Fast gates) to under 1 GB. A fixed 10 GB start on
   // 19 large slots would allow 190 GB on a 128 GB VM with no free-memory check below 10 GB.
   assert.match(slot, /^ {2}large-\*\).* MEM=16g; MEM_START=6g; /m);
-  assert.match(slot, /^ {2}fast-\[1-9\]\|fast-10\).* MEM=16g; MEM_START=6g; /m);
-  // fast-11..24 (HAL-17463): GitHub's runner size, 4 CPUs, starting at 4 GB (fast jobs peaked at
-  // 4.4 GB over 24 h) and growing to 12 GB at most.
-  assert.match(slot, /^ {2}fast-1\[1-9\]\|fast-2\[0-4\]\).* CPUS=4; MEM=12g; MEM_START=4g; /m);
+  assert.match(slot, /^ {2}fast-\[1-9\]\|fast-10\).* MEM=16g; MEM_START=4g; /m);
+  // fast-11..40 (HAL-17463, HAL-17574): GitHub's runner size, 4 CPUs, starting at 4 GB (fast jobs
+  // peaked at 4.4 GB over 24 h) and growing to 12 GB at most.
+  assert.match(
+    slot,
+    /^ {2}fast-1\[1-9\]\|fast-\[23\]\[0-9\]\|fast-40\).* CPUS=4; MEM=12g; MEM_START=4g; /m,
+  );
   assert.match(slot, /^ {2}small-\*\).* MEM=3g; {2}MEM_START=2g; /m);
   assert.ok(slot.includes('--memory "$MEM_START" --memory-swap "$MEM_START"'));
   assert.doesNotMatch(slot, /--memory "\$MEM" /);
@@ -288,17 +292,25 @@ test("a fast slot starts only under gVisor and on its own network without contai
   // `docker info` lists the runtimes; `docker network inspect` the network's enable_icc option.
   const docker = ({ runtimes, icc }) =>
     `case "$1" in info) echo "${runtimes}";; network) [ -n "${icc}" ] && echo "${icc}" || exit 1;; esac`;
+  const net = "192.168.241.0/24";
   const fast = (setup) => slotCycle({ paused: false, args: ["fast-1"], docker: docker(setup) });
   const noRunsc = fast({ runtimes: "io.containerd.runc.v2 runc ", icc: "false" });
   assert.equal(noRunsc.status, 1);
   assert.match(noRunsc.stderr, /Docker has no runsc runtime \(gVisor\)/);
   for (const icc of ["", "true"]) {
-    const res = fast({ runtimes: "runc runsc ", icc });
+    const res = fast({ runtimes: "runc runsc ", icc: icc && `${icc} ${net}` });
     assert.equal(res.status, 1);
     assert.match(res.stderr, /Docker network halonic-ci-fast missing or lets containers reach/);
   }
   // Both in place, the cycle goes on (and stops at the VM's pool.env, which the test has none of).
-  const ok = fast({ runtimes: "runc runsc ", icc: "false" });
+  // One address per fast container (HAL-17574): Docker's default /28 held the pool at 13 jobs.
+  for (const icc of ["false 172.30.0.0/28", "false 172.30.0.0/27", "false ", "false fd00::/64"]) {
+    const res = fast({ runtimes: "runc runsc ", icc });
+    assert.equal(res.status, 1, icc);
+    assert.match(res.stderr, /too small for 40 fast containers/, icc);
+  }
+  assert.match(fast({ runtimes: "runc runsc ", icc: "false 172.30.0.0/26" }).stderr, /pool\.env/);
+  const ok = fast({ runtimes: "runc runsc ", icc: `false ${net}` });
   assert.doesNotMatch(ok.stderr, /runsc|halonic-ci-fast/);
   assert.match(ok.stderr, /pool\.env/);
   // A large slot doesn't ask.
@@ -306,7 +318,7 @@ test("a fast slot starts only under gVisor and on its own network without contai
 });
 
 test("a fast slot and the large slot whose CPUs it takes never run at once", () => {
-  const ready = 'case "$1" in info) echo "runsc ";; network) echo false;; esac';
+  const ready = 'case "$1" in info) echo "runsc ";; network) echo false 192.168.241.0/24;; esac';
   const both = { paused: false, docker: ready, systemctl: "exit 0" };
   const fast = slotCycle({ ...both, args: ["fast-1"] });
   assert.equal(fast.status, 1);
@@ -316,8 +328,9 @@ test("a fast slot and the large slot whose CPUs it takes never run at once", () 
   // Other large slots have no twin, and an idle twin doesn't stop a slot.
   assert.match(slotCycle({ ...both, args: ["large-8"] }).stderr, /pool\.env/);
   assert.match(slotCycle({ paused: false, docker: ready, args: ["fast-2"] }).stderr, /pool\.env/);
-  // fast-11..24 have no twin (HAL-17463): they start whatever runs (and stop at pool.env here).
-  for (const slot of ["fast-11", "fast-24"]) {
+  // fast-11..40 have no twin (HAL-17463, HAL-17574): they start whatever runs (and stop at
+  // pool.env here).
+  for (const slot of ["fast-11", "fast-24", "fast-25", "fast-40"]) {
     assert.match(slotCycle({ ...both, args: [slot] }).stderr, /pool\.env/, slot);
   }
 });

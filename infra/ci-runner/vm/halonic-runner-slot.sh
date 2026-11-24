@@ -28,6 +28,7 @@ fail() { echo "slot ${SLOT}: $1" >&2; exit 1; }
 # the merge-group jobs (C8). It also gets its own Docker network, where containers can't reach each
 # other or the merge-group jobs on the default bridge. Checked first: without both, no fast runner.
 FAST_NET=halonic-ci-fast
+FAST_FLOAT=""  # set below when fast-11..40 may float over the free cores (HAL-17574)
 # fast-N and large-(12-N) share CPUs (below), so one never starts while the other runs.
 case "$SLOT" in fast-[1-3]) TWIN=large-$((12-${SLOT#fast-}));; large-9|large-10|large-11) TWIN=fast-$((12-${SLOT#large-}));; *) TWIN="";; esac
 if [ -n "$TWIN" ] && [ "${2:-}" != "--cleanup" ] && systemctl is-active -q "halonic-runner@$TWIN.service"; then
@@ -36,8 +37,16 @@ fi
 if [[ "$SLOT" == fast-* ]] && [ "${2:-}" != "--cleanup" ]; then
   rts=" $(docker info --format '{{range $k, $v := .Runtimes}}{{$k}} {{end}}' 2>/dev/null || true) "
   [[ "$rts" == *" runsc "* ]] || fail "Docker has no runsc runtime (gVisor); fast slots run only under it"
-  icc=$(docker network inspect -f '{{index .Options "com.docker.network.bridge.enable_icc"}}' "$FAST_NET" 2>/dev/null || true)
+  read -r icc subnet _ <<<"$(docker network inspect -f '{{index .Options "com.docker.network.bridge.enable_icc"}} {{range .IPAM.Config}}{{.Subnet}} {{end}}' "$FAST_NET" 2>/dev/null || true)"
   [ "$icc" = false ] || fail "Docker network $FAST_NET missing or lets containers reach each other"
+  # One address per fast container plus the gateway. Created from Docker's default pools it was a /28
+  # (13 addresses), which held the pool at 13 jobs on 24 Nov (HAL-17574): /26 is the least for 40.
+  if ! [[ "$subnet" =~ ^[0-9.]+/([0-9]+)$ ]] || [ "${BASH_REMATCH[1]}" -gt 26 ]; then
+    fail "Docker network $FAST_NET has ${subnet:-no IPv4 subnet}, too small for 40 fast containers; recreate it with --subnet <a /24>"
+  fi
+  # gVisor tells the job it has as many CPUs as its --cpus quota, not its CPU set (HAL-17574, below).
+  rargs=$(docker info --format '{{json (index .Runtimes "runsc")}}' 2>/dev/null || true)
+  if [[ "$rargs" =~ \"--cpu-num-from-quota(=true)?\" ]]; then FAST_FLOAT=1; fi
 fi
 . /etc/halonic-ci/pool.env   # APP_ID INSTALLATION_ID ORG RUNNER_GROUP_ID IMAGE
 KEY=/etc/halonic-ci/app.pem
@@ -48,11 +57,15 @@ TRUSTED=/cache/trusted; TRUSTED_PROJ=300; TRUSTED_QUOTA=20g
 case "$SLOT" in
   large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
-  fast-[1-9]|fast-10) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
-  fast-1[1-9]|fast-2[0-4]) LABEL=halonic-ci-fast; CPUS=4; MEM=12g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
+  fast-[1-9]|fast-10) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
+  fast-1[1-9]|fast-[23][0-9]|fast-40) LABEL=halonic-ci-fast; CPUS=4; MEM=12g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
+SHARES=1024; [ "$LABEL" != halonic-ci-large ] || SHARES=2048
+# Fast jobs' memory is counted less strictly than their limits (memory admission, below), so if the
+# VM ever runs out, the kernel kills a fast job (its PR re-runs) before a merge-group job.
+OOM_ADJ=0; [ "$LABEL" != halonic-ci-fast ] || OOM_ADJ=500
 case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PROJ=$((400+N));; esac
 # Each slot gets its own CPUs, so a job sees only those (nproc, Node's availableParallelism).
 # With --cpus alone it saw all of the VM's, and test runners started a worker per CPU and ran
@@ -69,7 +82,16 @@ case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PR
 # whole cores. Each shares them with one to three large slots and none with another new fast slot;
 # fast-11..17 share them with no older fast slot, fast-18..24 each with one (4 of its 6). No twin
 # rule for them, as for fast-4..10: a large slot and a fast slot on the same cores both run slower.
-FAST4_FROM=(0 4 8 22 26 30 34 50 56 62 74 80 86 92)
+# fast-25..40 (HAL-17574) are 16 more of the same size. With 40 fast slots the pinned sets ask for
+# 276 vCPUs on the 96 outside the small slots' and the VM's, so no fixed map keeps every core at two
+# slots: most would carry three and some four, while other cores sit idle. So fast-11..40 float:
+# their CPU set is all of FAST_WIDE and --cpus 4 is their quota, and the kernel runs them on whichever
+# cores are free. The job still sees 4 CPUs, because runsc runs with --cpu-num-from-quota (checked at
+# the top; Docker's daemon.json runtimeArgs). Without that flag a job would see 96 CPUs and start a
+# test worker for each, so they keep a fixed 4-vCPU set (FAST4_FROM) instead. Large slots get twice
+# the CPU weight (--cpu-shares), so a merge-group job wins the cores it shares with fast jobs.
+FAST4_FROM=(0 4 8 22 26 30 34 50 56 62 74 80 86 92 46 12 58 18 36 42 22 62 96 10 48 0 32 54 14 38)
+FAST_WIDE="0-65,72-101"
 case "$SLOT" in
   large-12) CPUSET="3-8" ;;
   large-13) CPUSET="27-32" ;;
@@ -80,7 +102,8 @@ case "$SLOT" in
   fast-[4-8]) CPUSET="$(( 72+(N-4)*6 ))-$(( 77+(N-4)*6 ))" ;;
   fast-9)  CPUSET="15-20" ;;
   fast-10) CPUSET="39-44" ;;
-  fast-1[1-9]|fast-2[0-4]) CPUSET="${FAST4_FROM[N-11]}-$(( FAST4_FROM[N-11]+3 ))" ;;
+  fast-1[1-9]|fast-[23][0-9]|fast-40)
+           if [ -n "${FAST_FLOAT:-}" ]; then CPUSET=$FAST_WIDE; else CPUSET="${FAST4_FROM[N-11]}-$(( FAST4_FROM[N-11]+3 ))"; fi ;;
   fast-*)  CPUSET="$(( (11-N)*6 ))-$(( (12-N)*6-1 ))" ;;
 esac
 # Fast slots take pull requests (HAL-15972), so they get their own pool config, and the other
@@ -116,13 +139,20 @@ unmount_caches() {
 # nothing, so its jobs wait in GitHub's queue for a fast runner that can take them.
 # A running slot rewrites its state every 2 s, so a state not updated for STALE_S seconds, or with no
 # updated_at, belongs to a slot that is gone and promises nothing (HAL-17558).
-MEMINFO=/proc/meminfo; RESERVE_B=4294967296; STALE_S=120
+# A busy job promises at most BUSY_ROOM_B beyond what it uses now (anon + shmem; memory.peak from an
+# older state), not all the way to its limit (HAL-17574): the limit grows 4 GB at a time, so after a
+# raise a job that peaks at 3-4 GB held 4-5 GB back, and 24 fast slots on 96 GB topped out at 16-18
+# jobs. 2 GB is the margin the growth loop keeps under the limit anyway (HEAD_B). Jobs that do grow
+# past it are covered by the reserve, and by the OOM priority above if not.
+MEMINFO=/proc/meminfo; RESERVE_B=4294967296; STALE_S=120; BUSY_ROOM_B=2147483648
 fast_room() {
   local avail promised
   avail=$(awk '$1=="MemAvailable:"{print $2*1024}' "$MEMINFO")
-  promised=$(cat "$STATES"/*.state 2>/dev/null | jq -s --arg me "$SLOT" --argjson now "$(date +%s)" --argjson stale "$STALE_S" '[.[]
+  promised=$(cat "$STATES"/*.state 2>/dev/null | jq -s --arg me "$SLOT" --argjson now "$(date +%s)" --argjson stale "$STALE_S" \
+      --argjson busyroom "$BUSY_ROOM_B" '[.[]
       | select(.slot != $me and (.updated_at | type) == "number" and $now - .updated_at <= $stale)
-      | if .busy then (.mem_limit // 0) - (.mem_peak // 0) elif .label == "halonic-ci-fast" then .mem_limit // 0 else 0 end
+      | if .busy then [(.mem_limit // 0) - (.mem_anon // .mem_peak // 0), $busyroom] | min
+        elif .label == "halonic-ci-fast" then .mem_limit // 0 else 0 end
       | if . > 0 then . else 0 end] | add // 0') || return 1
   [[ "$avail" =~ ^[0-9]+$ ]] && [[ "$promised" =~ ^[0-9]+$ ]] || return 1
   echo $((avail - promised))
@@ -234,7 +264,7 @@ trap cleanup EXIT
 echo "slot $SLOT: runner $NAME (id $RUNNER_ID) waiting for a job"
 STARTED=$(date +%s)
 docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
-  --cpus "$CPUS" --cpuset-cpus "$CPUSET" --memory "$MEM_START" --memory-swap "$MEM_START" --pids-limit 8192 \
+  --cpus "$CPUS" --cpuset-cpus "$CPUSET" --cpu-shares "$SHARES" --oom-score-adj "$OOM_ADJ" --memory "$MEM_START" --memory-swap "$MEM_START" --pids-limit 8192 \
   --cap-drop ALL --security-opt no-new-privileges "${SANDBOX[@]}" \
   --tmpfs "/tmp:rw,exec,nosuid,nodev,size=$TMPFS" \
   -v "$RUN:/run/halonic-ci:ro" \
@@ -249,7 +279,7 @@ DPID=$!
 
 # Sample the container every 2 s for the status feed: busy (a job's Runner.Worker is running),
 # peak memory and CPU time from its cgroup. The only thing it changes is the job's memory limit (below).
-JOB_START=0; PEAK=0; CPU_US=0; EV=""; REF=""; SHA=""
+JOB_START=0; PEAK=0; ANON=0; CPU_US=0; EV=""; REF=""; SHA=""
 # memory.peak also counts file cache, which the kernel drops under pressure. ANON_PEAK is the highest
 # sampled anon + shmem (process memory plus the /tmp tmpfs): what the job can't give back, so the
 # number that decides how small a slot may be. Sampled every 2 s, so short spikes can be missed.
@@ -264,12 +294,12 @@ STEP_B=4294967296; HEAD_B=2147483648; GROWS=0; HIGH_SET=""  # RESERVE_B: memory 
 write_state() {
   local now; now=$(date +%s)
   jq -nc --arg slot "$SLOT" --arg runner "$NAME" --arg label "$LABEL" --argjson up "$STARTED" \
-    --argjson js "$JOB_START" --argjson peak "$PEAK" --argjson cpu "$CPU_US" --argjson now "$now" \
+    --argjson js "$JOB_START" --argjson peak "$PEAK" --argjson anon "$ANON" --argjson cpu "$CPU_US" --argjson now "$now" \
     --arg ev "$EV" --arg ref "$REF" --arg sha "$SHA" --argjson memlimit "$LIMIT_B" \
     '{slot:$slot, runner:$runner, label:$label, registered_at:$up, busy:($js>0),
       job_started_at:(if $js>0 then $js else null end), job_seconds:(if $js>0 then $now-$js else null end),
       event:(if $ev=="" then null else $ev end), ref:(if $ref=="" then null else $ref end), sha:(if $sha=="" then null else $sha end),
-      mem_peak:$peak, mem_limit:$memlimit, cpu_seconds:($cpu/1000000|floor), updated_at:$now}' > "$STATE.tmp" \
+      mem_peak:$peak, mem_anon:$anon, mem_limit:$memlimit, cpu_seconds:($cpu/1000000|floor), updated_at:$now}' > "$STATE.tmp" \
     && mv -f "$STATE.tmp" "$STATE"
 }
 while kill -0 "$DPID" 2>/dev/null; do
@@ -279,7 +309,7 @@ while kill -0 "$DPID" 2>/dev/null; do
     PEAK=$(cat "$cg/memory.peak" 2>/dev/null || echo "$PEAK")
     CPU_US=$(awk '$1=="usage_usec"{print $2}' "$cg/cpu.stat" 2>/dev/null || echo "$CPU_US")
     anon=$(awk '$1=="anon"||$1=="shmem"{s+=$2} END{print s+0}' "$cg/memory.stat" 2>/dev/null || echo 0)
-    [ "$anon" -gt "$ANON_PEAK" ] && ANON_PEAK=$anon
+    ANON=$anon; [ "$anon" -gt "$ANON_PEAK" ] && ANON_PEAK=$anon
     if [ -z "$HIGH_SET" ]; then echo $((LIMIT_B - 536870912)) > "$cg/memory.high" 2>/dev/null && HIGH_SET=1; fi
     if [ $((anon + HEAD_B)) -gt "$LIMIT_B" ] && [ "$LIMIT_B" -lt "$MAX_B" ]; then
       avail=$(awk '$1=="MemAvailable:"{print $2*1024}' /proc/meminfo)
