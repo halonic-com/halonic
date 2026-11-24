@@ -1,9 +1,8 @@
 import type { Message, MessagingRefusal } from "@halonicjs/ports";
-import { ChatBoxLine, ChatComposer, Input } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useState } from "react";
+import { ChatBoxLine, ChatComposer, ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { activityOf, type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
-import { MessageBody } from "./message-body.tsx";
 
 /** The props of {@link ConversationView}. */
 export interface ConversationViewProps {
@@ -26,9 +25,14 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
   const [messages, setMessages] = useState<readonly Message[]>([]);
   const [draft, setDraft] = useState(() => messenger.draft(id));
   const [kept, setKept] = useState<MessagingRefusal | undefined>(undefined);
+  // Counts the reads, so an answer that arrives after a newer read's never shows.
+  const reads = useRef(0);
 
   const read = useCallback(async () => {
-    setMessages(await messenger.messages(id, search));
+    reads.current += 1;
+    const thisRead = reads.current;
+    const found = await messenger.messages(id, search);
+    if (thisRead === reads.current) setMessages(found);
   }, [messenger, id, search]);
 
   useEffect(() => {
@@ -47,7 +51,8 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
       return;
     }
     setKept(undefined);
-    setDraft("");
+    // The Messenger cleared the draft only if nothing was typed during the send.
+    setDraft(messenger.draft(id));
     await read();
   }
 
@@ -114,7 +119,12 @@ function ConversationHeader({
   );
 }
 
-/** The messages, oldest first; the person's on the end side. Each says who wrote it to a screen reader. */
+/**
+ * The messages, oldest first; the person's on the end side. Each says who wrote it to a screen
+ * reader. An agent writes a message, so whoever can steer that agent does (ADR 2026-11-24,
+ * agent-written content): the kit's `ChatText` keeps HTML, images and any link that isn't a web
+ * address as plain text, and a web link opens outside the app with its address after it.
+ */
 function Transcript({
   messages,
   searching,
@@ -122,6 +132,7 @@ function Transcript({
   readonly messages: readonly Message[];
   readonly searching: boolean;
 }) {
+  const openLink = useOpenExternal();
   return (
     <ol className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 py-4">
       {messages.length === 0 && searching ? (
@@ -133,7 +144,7 @@ function Transcript({
           className={message.author.kind === "me" ? "ms-auto max-w-[80%]" : "max-w-[80%]"}
         >
           <span className="sr-only">{authorName(message)}: </span>
-          <MessageBody>{message.body}</MessageBody>
+          <ChatText openLink={openLink}>{message.body}</ChatText>
         </li>
       ))}
     </ol>

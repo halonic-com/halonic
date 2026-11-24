@@ -82,7 +82,9 @@ export class Messenger {
   /**
    * Sends a conversation's draft. Offline or signed out, it asks the source
    * nothing and keeps the draft: nothing is queued to send later (ADR, Offline).
-   * A refusal from the source keeps it too; only a sent message clears it.
+   * A refusal from the source keeps it too; only a sent message clears it, and
+   * only while the draft still holds what was sent, so text typed during the
+   * send stays.
    */
   async sendDraft(conversation: MessagingId, row?: ConversationRow): Promise<DraftOutcome> {
     const body = this.draft(conversation);
@@ -91,7 +93,7 @@ export class Messenger {
     if (refusal !== undefined) return { outcome: "kept", reason: refusal };
     const result = await this.messaging.send(conversation, body);
     if (result.outcome === "refused") return { outcome: "kept", reason: result.reason };
-    this.drafts.delete(conversation);
+    if (this.draft(conversation) === body) this.drafts.delete(conversation);
     return { outcome: "sent", message: result.message };
   }
 

@@ -79,6 +79,16 @@ async function typeAndSend(box: HTMLTextAreaElement, text: string): Promise<void
   await settle();
 }
 
+async function searchFor(page: HTMLElement, text: string): Promise<void> {
+  const search = page.querySelector<HTMLInputElement>('input[type="search"]');
+  if (search === null) throw new Error("no search box");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(search, text);
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await settle();
+}
+
 verifies("messenger.conversations", () => {
   describe("MessengerPage", () => {
     it("shows two conversations named Chief, each with its source's label and activity", async () => {
@@ -128,19 +138,33 @@ verifies("messenger.conversations", () => {
       messaging.addMessage(acmeChat.id, { body: "Morning" });
       const page = await openMessenger(messaging);
       await openAcmeChat(page);
-      const search = page.querySelector<HTMLInputElement>('input[type="search"]');
-      if (search === null) throw new Error("no search box");
-      await act(async () => {
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
-          search,
-          "merge",
-        );
-        search.dispatchEvent(new Event("input", { bubbles: true }));
-      });
-      await settle();
+      await searchFor(page, "merge");
       const shown = page.querySelector("main ol")?.textContent ?? "";
       expect(shown).toContain("Shall I merge #12?");
       expect(shown).not.toContain("Morning");
+    });
+
+    it("never lets a search's late answer replace a newer one's", async () => {
+      const { messaging, acmeChat } = twoChiefs();
+      messaging.addMessage(acmeChat.id, { body: "Morning" });
+      const page = await openMessenger(messaging);
+      await openAcmeChat(page);
+      // From here each read waits until the test lets it answer.
+      const held: (() => void)[] = [];
+      const list = messaging.listMessages.bind(messaging);
+      vi.spyOn(messaging, "listMessages").mockImplementation(
+        (conversation) => new Promise((answer) => held.push(() => answer(list(conversation)))),
+      );
+      await searchFor(page, "merge");
+      await searchFor(page, "morning");
+      const [mergeAnswer, morningAnswer] = held;
+      await act(async () => morningAnswer?.());
+      await settle();
+      await act(async () => mergeAnswer?.());
+      await settle();
+      const shown = page.querySelector("main ol")?.textContent ?? "";
+      expect(shown).toContain("Morning");
+      expect(shown).not.toContain("Shall I merge #12?");
     });
 
     it("renders a message's `<script>` and `javascript:` link as inert text, and opens web links outside", async () => {
