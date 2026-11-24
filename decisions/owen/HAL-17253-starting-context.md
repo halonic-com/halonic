@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-17253 (token-saving direction on HAL-16892, phase 1, the board's yes on HAL-16897)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Rt3Pj7RWN2sywhrhTKYZkdVv/ANXGiD39nHH3URhfYILb7Hc/uHtS4tMxIX0SO4t0rpD96jYF0gpylzLZ6nmBw==
 
 The requirement `harness-claude-code.mcp-tools-listed` said tool search is
 off for every model (HAL-16737), so a cheaper model that never searches
