@@ -14,8 +14,9 @@ The coding tools test (`cli.claude-code-coding-tools`) has to start a real `clau
 
 ## Tests
 
-`apps/cli/fence/claude-code-coding-tools.starts.test.ts`, in the Linux fence job.
+`apps/cli/fence/claude-code-coding-tools.starts.test.ts`, in the Linux fence job. It skips only where `claude` isn't installed: the other fence jobs don't install it, so the Linux job is the one that proves it. It shows requirement `harness-claude-code.mcp-tools-listed` in the real program; a fence test's results don't reach the requirement check, so it names no requirement of its own.
 
 ## Covers
 
 - .github/
+- apps/cli/fence/claude-code-coding-tools.starts.test.ts

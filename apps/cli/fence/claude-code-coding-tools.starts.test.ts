@@ -12,7 +12,6 @@ import type { LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
 import { WorkflowRuns } from "@halonicjs/app";
 import { type Harness, type HttpClient, noKeyOrigins } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
-import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openLocalEngine } from "../src/cli-local-engine.ts";
@@ -26,6 +25,8 @@ import { nodeProfileEnvironment } from "../src/workspace-runs.ts";
 // fake: the bridge's outbound fetch records each Messages request and ends
 // the turn at once. The first request must list the coding tools directly,
 // none of them held back for Claude Code's tool search.
+// What it shows in the real program: requirement `harness-claude-code.mcp-tools-listed`.
+// A fence test's results don't reach the requirement check, so it names no requirement.
 // Runs with `pnpm test:fence`, and skips only when `claude` isn't installed.
 
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
@@ -256,54 +257,52 @@ function fakeProvider(): { requests: MessagesRequest[]; http: HttpClient } {
   return { requests, http };
 }
 
-verifies("cli.claude-code-coding-tools", () => {
-  describe("the real Claude Code in the real srt sandbox", () => {
-    it.skipIf(noClaude)(
-      "[needs claude on PATH] lists the coding tools server's tools in its first model request, none deferred",
-      async () => {
-        const commit = await commitWorkspace();
-        const provider = fakeProvider();
-        const reported: unknown[] = [];
-        const failures: string[] = [];
-        const engine = await openLocalEngine({
-          keyOrigins: noKeyOrigins,
-          workspace: await loadWorkspace(new FolderDefinitionStore(acme, "./acme")),
-          workspaceRoot: acme,
-          trusted: true,
-          secrets: { get: async (name) => (name === "anthropic-key" ? key : null) },
-          http: provider.http,
-          environment: profile,
-          git: { git: await testGit() },
-          reportError: (error) => reported.push(error),
-          harnessParts: {
-            harnesses: { "claude-code": keepingFailures(failures) },
-            // The bridge reaches a compatible provider's own address through this client, not `http`.
-            compatibleHttp: provider.http,
-          },
-        });
-        opened.push(engine);
+describe("the real Claude Code in the real srt sandbox", () => {
+  it.skipIf(noClaude)(
+    "[needs claude on PATH] lists the coding tools server's tools in its first model request, none deferred",
+    async () => {
+      const commit = await commitWorkspace();
+      const provider = fakeProvider();
+      const reported: unknown[] = [];
+      const failures: string[] = [];
+      const engine = await openLocalEngine({
+        keyOrigins: noKeyOrigins,
+        workspace: await loadWorkspace(new FolderDefinitionStore(acme, "./acme")),
+        workspaceRoot: acme,
+        trusted: true,
+        secrets: { get: async (name) => (name === "anthropic-key" ? key : null) },
+        http: provider.http,
+        environment: profile,
+        git: { git: await testGit() },
+        reportError: (error) => reported.push(error),
+        harnessParts: {
+          harnesses: { "claude-code": keepingFailures(failures) },
+          // The bridge reaches a compatible provider's own address through this client, not `http`.
+          compatibleHttp: provider.http,
+        },
+      });
+      opened.push(engine);
 
-        const started = await engine.executor.start({
-          hubId: "lab",
-          workflowId: "code",
-          input: { note: "Read the code" },
-          version: { reads: "live-version", commit, versionDate: "2026-11-24T09:00:00.000Z" },
-        });
-        const run = await new WorkflowRuns(engine.executor).follow(started.id, {});
-        await engine.close();
+      const started = await engine.executor.start({
+        hubId: "lab",
+        workflowId: "code",
+        input: { note: "Read the code" },
+        version: { reads: "live-version", commit, versionDate: "2026-11-24T09:00:00.000Z" },
+      });
+      const run = await new WorkflowRuns(engine.executor).follow(started.id, {});
+      await engine.close();
 
-        expect({ status: run.summary.status, error: run.summary.error, failures }).toEqual({
-          status: "completed",
-          error: null,
-          failures: [],
-        });
-        const first = provider.requests[0];
-        const listed = (first?.tools ?? []).filter((tool) => codingTools.includes(tool.name));
-        expect(listed.map((tool) => tool.name).sort()).toEqual(codingTools);
-        expect(listed.filter((tool) => "defer_loading" in tool)).toEqual([]);
-        expect(reported).toEqual([]);
-      },
-      runTimeout,
-    );
-  });
+      expect({ status: run.summary.status, error: run.summary.error, failures }).toEqual({
+        status: "completed",
+        error: null,
+        failures: [],
+      });
+      const first = provider.requests[0];
+      const listed = (first?.tools ?? []).filter((tool) => codingTools.includes(tool.name));
+      expect(listed.map((tool) => tool.name).sort()).toEqual(codingTools);
+      expect(listed.filter((tool) => "defer_loading" in tool)).toEqual([]);
+      expect(reported).toEqual([]);
+    },
+    runTimeout,
+  );
 });
