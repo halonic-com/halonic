@@ -18,7 +18,7 @@ import { agentHostCodingToolsServer } from "../src/coding-tools-mode.ts";
 // Codex are told to, so it runs from a payload inside Halonic's denied data
 // folder that the profile opens again read-only. The test speaks MCP to it:
 // it reads a file of the working folder, is refused one in the profile, and
-// a `run_tests` command can't read the profile either. The CLI's mode has
+// a `run_tests` command reads the working folder but can't read the profile. The CLI's mode has
 // the same test in `apps/cli/fence/coding-tools-server.starts.test.ts`.
 // Runs with `pnpm test:fence` after `pnpm build:sea` in the sandbox CI jobs
 // on Linux and macOS, and never skips.
@@ -213,6 +213,9 @@ describe("the packed agent host's coding tools mode in the real srt sandbox", ()
         const readFile = await call("read_ranges", { files: [{ path: "hello.txt" }] });
         const private_ = join(profileRoot, "private.txt");
         const readProfile = await call("read_ranges", { files: [{ path: private_ }] });
+        // The control: `run_tests` does run commands in the fence, so a refused
+        // `cat` of the profile below is the fence's doing, not the tool's.
+        const catFile = await call("run_tests", { command: "cat hello.txt" });
         const catProfile = await call("run_tests", { command: `cat ${JSON.stringify(private_)}` });
         await step("close", client.close(), stderr);
         const exited = await step("exit", server.exited, stderr);
@@ -222,6 +225,7 @@ describe("the packed agent host's coding tools mode in the real srt sandbox", ()
           ((listed["tools"] ?? []) as { name: string }[]).map((tool) => tool.name).sort(),
         ).toEqual(["read_ranges", "repo_map", "run_tests", "search"]);
         expect(readFile).toContain("hello from acme");
+        expect(catFile).toContain("hello from acme");
         expect(readProfile).not.toContain("not for the program");
         expect(catProfile).not.toContain("not for the program");
         expect({ code: exited.code, stderr: stderr.text }).toEqual({ code: 0, stderr: "" });

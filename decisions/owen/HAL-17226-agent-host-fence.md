@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-17226, from Liam's review of #5562); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tkHHprNzA8H6tQGPJ95UY7F59XXfrkppPgdMeOmwZ17ifdZenyM4aLj5kLwT9FqyScxeMUgYcvPjZyUuz2+TDg==
 
 ## What changes
 
