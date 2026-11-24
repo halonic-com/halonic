@@ -4,6 +4,7 @@ import type { BridgeFailedEvent, HarnessAllowedEvent } from "./bridge-events.ts"
 import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts";
 import type { ConnectorPartOffEvent } from "./connector-part-off.ts";
 import type { ConnectorStartedEvent } from "./connector-started.ts";
+import type { HarnessStartedEvent } from "./harness-started.ts";
 import type { HarnessStoppedEvent } from "./harness-stopped.ts";
 import type { KeyOriginAnsweredEvent } from "./key-origin-answered.ts";
 import type { KeyOriginAskedEvent } from "./key-origin-asked.ts";
@@ -218,12 +219,7 @@ export type RunEventBody =
    * `timeoutMs` is how long the engine waits before the step fails.
    */
   | { type: "sandbox.started"; state: string; agent: string; timeoutMs: number }
-  /**
-   * A step's harness program is being started (requirement
-   * `events.started-events`). `harness` is the agent's harness id, such as
-   * `"claude-code"`; `timeoutMs` is how long the engine waits for its first event.
-   */
-  | { type: "harness.started"; state: string; agent: string; harness: string; timeoutMs: number }
+  | HarnessStartedEvent
   /**
    * The instructions a step's harness runs with, pinned by content hash
    * (requirement `events.harness-instructions`). Written right before

@@ -1,5 +1,6 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectTypeOf } from "vitest";
+import type { HarnessSessionStart } from "./harness-started.ts";
 import type {
   ApprovalResolver,
   ModelSkipReason,
@@ -235,6 +236,8 @@ verifies("events.started-events", () => {
       agent: string;
       harness: string;
       timeoutMs: number;
+      // Added after the reference by events.harness-session-start (HAL-17250).
+      session?: HarnessSessionStart;
     }>();
   });
 });
