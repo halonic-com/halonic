@@ -1,0 +1,254 @@
+// @vitest-environment jsdom
+import type { PullRequest } from "@halonicjs/ports";
+import { FakeAgentMessaging, FakeTeamStatus } from "@halonicjs/testing-contracts";
+import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { PullRequests } from "../pull-requests.ts";
+import { render, unmountAll } from "../test-support/render.tsx";
+import { WebLinkButton } from "./pull-request-row.tsx";
+import { PullRequestsPage } from "./pull-requests-page.tsx";
+
+afterEach(() => {
+  unmountAll();
+  vi.restoreAllMocks();
+});
+
+const origin = "https://paperclip.acme.test";
+const minutesAgo = (minutes: number) =>
+  new Date(Date.parse("2026-11-24T13:00:00.000Z") - minutes * 60 * 1000).toISOString();
+const agent = (name: string) => ({ kind: "agent" as const, agent: `acme-${name}`, name });
+
+/** A fake whose clock a test can move, starting at 24 Nov 13:00 UTC, with one source. */
+function acme(parts: { pullRequests?: boolean } = {}) {
+  let now = new Date("2026-11-24T13:00:00.000Z");
+  const team = new FakeTeamStatus({ now: () => now });
+  const { source } = team.addSource(parts);
+  const add = (label: string, pullRequest: Partial<PullRequest>) =>
+    team.addPullRequest(source, { label, title: `feat(app): change ${label}`, ...pullRequest });
+  const setNow = (at: string) => {
+    now = new Date(at);
+  };
+  return { team, source, add, setNow, clock: () => now };
+}
+
+/** Renders the screen and lets its first read land; `opened` collects the links opened. */
+async function open(
+  fake: ReturnType<typeof acme>,
+  options: { opened?: string[]; messaging?: FakeAgentMessaging; connectionOrigin?: string } = {},
+) {
+  const clock = { now: fake.clock, timeZone: "UTC" };
+  const pullRequests = new PullRequests(fake.team, options.messaging, clock);
+  const opener = {
+    connectionOrigin: options.connectionOrigin ?? origin,
+    open: (link: string) => options.opened?.push(link),
+  };
+  const page = render(
+    <PullRequestsPage pullRequests={pullRequests} opener={opener} onLink={() => {}} />,
+  );
+  await settle();
+  return page;
+}
+
+async function settle(): Promise<void> {
+  await act(async () => {
+    for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
+  });
+}
+
+const text = (page: HTMLElement) => page.textContent ?? "";
+const rows = (page: HTMLElement) => [...page.querySelectorAll("li")].map((li) => li.textContent);
+
+function press(page: HTMLElement, label: string): void {
+  const button = [...page.querySelectorAll("button")].find((each) => each.textContent === label);
+  if (button === undefined) throw new Error(`no button ${label}`);
+  act(() => button.click());
+}
+
+verifies("team.pull-requests", () => {
+  describe("PullRequestsPage", () => {
+    it("says Loading… until the first read lands", async () => {
+      const fake = acme();
+      const pullRequests = new PullRequests(fake.team, undefined, { now: fake.clock });
+      const opener = { connectionOrigin: origin, open: () => {} };
+      const page = render(
+        <PullRequestsPage pullRequests={pullRequests} opener={opener} onLink={() => {}} />,
+      );
+      expect(page.querySelector('[aria-label="Loading pull requests"]')?.textContent).toContain(
+        "Loading…",
+      );
+      await settle();
+    });
+
+    it("shows each state with its symbol and its word under All open", async () => {
+      const fake = acme();
+      fake.team.setMergeQueue(fake.source, {
+        health: "running",
+        groups: [{ position: 1, state: "building", since: minutesAgo(9), pullRequests: [] }],
+      });
+      fake.add("#1", { state: "draft", since: minutesAgo(2 * 24 * 60) });
+      fake.add("#2", {
+        state: "waiting-for-review",
+        reviewer: agent("Liam"),
+        since: minutesAgo(180),
+      });
+      fake.add("#3", {
+        state: "changes-requested",
+        reviewer: agent("Julian"),
+        since: minutesAgo(60),
+      });
+      fake.add("#4", { state: "approved" });
+      fake.add("#5", { state: "in-queue", queue: { position: 1, group: 1 } });
+      fake.add("#6", { state: "failing", reason: "typecheck", since: minutesAgo(120) });
+      fake.add("#7", { state: "conflicting", since: minutesAgo(300) });
+      fake.add("#8", { state: "dequeued", reason: "group failed", since: minutesAgo(20) });
+      fake.add("#9", { state: "approval-outdated", fastTrack: true });
+      const page = await open(fake);
+      press(page, "All open 9");
+      for (const line of [
+        "○ Draft · 2 d",
+        "◔ Waiting for review · Liam · 3 h",
+        "↩ Changes requested · Julian · 1 h",
+        "✓ Approved · waiting for the queue",
+        "≡ In the queue · 1 of 1 · group running 9 min",
+        "✕ Failing: typecheck · 2 h",
+        "✕ Conflicts with main · 5 h",
+        "⊘ Taken out: group failed · 20 min",
+        "⚠ Approved on an older head · pushed after approval · ⚡ Fast-track",
+      ]) {
+        expect(text(page)).toContain(line);
+      }
+      const headings = [...page.querySelectorAll("h2")].map((h2) => h2.textContent);
+      expect(headings).toEqual([
+        "Failing · 1",
+        "Conflicting · 1",
+        "Taken out of the queue · 1",
+        "Approval out of date · 1",
+        "Changes requested · 1",
+        "Waiting for review · 1",
+        "Approved · 1",
+        "In the queue · 1",
+        "Drafts · 1",
+      ]);
+    });
+
+    it("opens on the stuck PRs worst first, then those coming up", async () => {
+      const fake = acme();
+      fake.add("#20", { state: "waiting-for-review", since: minutesAgo(6 * 60) });
+      fake.add("#21", { state: "failing", reason: "typecheck", since: minutesAgo(61) });
+      fake.add("#22", { state: "approved" });
+      fake.add("#23", { state: "draft" });
+      const page = await open(fake);
+      expect(text(page)).toContain("Pull requests · app");
+      expect(text(page)).toContain("Needs attention 2");
+      expect(text(page)).toContain("As of 13:00 · 0 min ago");
+      const sections = [...page.querySelectorAll("section")];
+      expect(sections.map((each) => each.getAttribute("aria-label"))).toEqual([
+        "Stuck · worst first",
+        "Coming up",
+      ]);
+      expect(rows(page).map((row) => row?.slice(0, 3))).toEqual(["#21", "#20", "#22"]);
+    });
+
+    it("says nothing is stuck, with See all open", async () => {
+      const fake = acme();
+      fake.add("#30", { state: "draft" });
+      const page = await open(fake);
+      expect(text(page)).toContain("Nothing is stuck. 1 PR is open.");
+      press(page, "See all open");
+      expect(text(page)).toContain("Drafts · 1");
+    });
+
+    it("shows no rows, and says why, when no snapshot has arrived", async () => {
+      const page = await open(acme());
+      expect(text(page)).toContain("PR states aren't available yet.");
+      expect(text(page)).toContain("The PR watcher hasn't sent a snapshot to Paperclip");
+      expect(page.querySelectorAll("li")).toHaveLength(0);
+    });
+
+    it("asks to connect again when the connection may not read pull requests", async () => {
+      const page = await open(acme({ pullRequests: false }));
+      expect(text(page)).toContain(
+        "This connection can't read pull requests yet. Connect again to allow it.",
+      );
+      expect(page.querySelectorAll("li")).toHaveLength(0);
+    });
+
+    it("warns when the snapshot is old, and keeps the rows when a read fails", async () => {
+      const fake = acme();
+      fake.add("#40", { state: "draft" });
+      fake.setNow("2026-11-24T13:43:00.000Z");
+      const page = await open(fake);
+      expect(text(page)).toContain("⚠ As of 13:00 · 43 min ago. The PR watcher may have stopped.");
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.spyOn(fake.team, "pullRequests").mockRejectedValue(new Error("connection reset"));
+      fake.add("#41", { state: "draft" });
+      await settle();
+      expect(text(page)).toContain("Offline, as of 13:00. Rows stay as they were.");
+      expect(text(page)).toContain("Nothing is stuck. 1 PR is open.");
+    });
+
+    it("names the task a branch points to, from the source's work", async () => {
+      const fake = acme();
+      const messaging = new FakeAgentMessaging();
+      const tasks = messaging.addSource({ label: "Paperclip · Acme" });
+      const task = messaging.addWork(tasks.id, { label: "ACME-7", title: "A change" });
+      fake.add("#50", {
+        state: "failing",
+        author: agent("Bo"),
+        work: task.id,
+        since: minutesAgo(90),
+      });
+      const page = await open(fake, { messaging });
+      expect(rows(page)[0]).toContain("Bo · ACME-7");
+    });
+
+    it("shows a hostile title as typed: no link, no extra button", async () => {
+      const fake = acme();
+      fake.add("#60", { state: "approval-outdated", title: "[x](javascript:alert(1))" });
+      fake.add("#61", {
+        state: "approval-outdated",
+        title: '<button type="button">Approve</button>',
+      });
+      const page = await open(fake);
+      expect(rows(page)[0]).toContain("[x](javascript:alert(1))");
+      expect(rows(page)[1]).toContain('<button type="button">Approve</button>');
+      expect(page.querySelectorAll("a")).toHaveLength(0);
+      expect([...page.querySelectorAll("li button")]).toHaveLength(0);
+    });
+  });
+
+  describe("WebLinkButton", () => {
+    it("shows the full address, and opens a GitHub pull request page", async () => {
+      const fake = acme();
+      const link = "https://github.com/acme/app/pull/70";
+      fake.add("#70", { state: "draft", webLink: link });
+      const opened: string[] = [];
+      const page = await open(fake, { opened });
+      press(page, "See all open");
+      expect(rows(page)[0]).toContain(`No task found for this branch Open in GitHub ↗ ${link}`);
+      press(page, "Open in GitHub ↗");
+      expect(opened).toEqual([link]);
+    });
+
+    it("refuses a link off the connection's own Paperclip origin", async () => {
+      const fake = acme();
+      fake.add("#71", { state: "draft", webLink: `${origin}/ACME/issues/ACME-7` });
+      const page = await open(fake, { connectionOrigin: "https://paperclip.other.test" });
+      expect(text(page)).toContain("Nothing is stuck.");
+      press(page, "See all open");
+      expect(text(page)).not.toContain("Open in GitHub ↗");
+    });
+
+    it("draws nothing for a script address", () => {
+      const open = vi.fn();
+      const page = render(
+        <WebLinkButton link="javascript:alert(1)" opener={{ connectionOrigin: origin, open }}>
+          Open in GitHub ↗
+        </WebLinkButton>,
+      );
+      expect(page.querySelectorAll("button")).toHaveLength(0);
+      expect(open).not.toHaveBeenCalled();
+    });
+  });
+});
