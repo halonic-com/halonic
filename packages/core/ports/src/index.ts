@@ -18,6 +18,7 @@ export {
   type MessagingRefusal,
   type MessagingSource,
   type MessagingSourceState,
+  type OutgoingAttachment,
   type SearchHit,
   type SendResult,
   type WorkItem,

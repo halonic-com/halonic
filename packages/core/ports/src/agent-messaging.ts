@@ -1,6 +1,6 @@
 /**
  * Version of the {@link AgentMessaging} port. A breaking change bumps it and comes with an ADR.
- * Version 2 adds attachments and `readAttachment`.
+ * Version 2 adds attachments, `readAttachment` and files sent with a message.
  */
 export const agentMessagingVersion = 2;
 
@@ -59,6 +59,17 @@ export interface Attachment {
   type: string;
   /** Its size in bytes. */
   size: number;
+}
+
+/**
+ * A file the person sends with a message. Its name and type are the person's; the engine checks
+ * its size and type itself and refuses with `too-large` or `unsupported-type`, whatever a screen
+ * already checked.
+ */
+export interface OutgoingAttachment {
+  name: string;
+  type: string;
+  bytes: Uint8Array;
 }
 
 /** What reading an attachment's bytes gave. Offline, the cache may not hold them, so the read is refused. */
@@ -162,8 +173,16 @@ export interface WorkItem {
   updatedAt: string;
 }
 
-/** Why a write was refused before it was sent. Offline, nothing is queued to send later. */
-export type MessagingRefusal = "offline" | "signed-out" | "not-found";
+/**
+ * Why a write or a read was refused before it was sent. Offline, nothing is queued to send later.
+ * `too-large` and `unsupported-type` refuse a file sent with a message, whole: nothing of it is sent.
+ */
+export type MessagingRefusal =
+  | "offline"
+  | "signed-out"
+  | "not-found"
+  | "too-large"
+  | "unsupported-type";
 
 /** What answering an inbox item did. An item is answered once; the source decides who was first. */
 export type AnswerResult =
@@ -223,7 +242,12 @@ export interface AgentMessaging {
    * load nothing on their own and never get the provider's address for it.
    */
   readAttachment(attachment: MessagingId): Promise<AttachmentRead>;
-  send(conversation: MessagingId, body: string): Promise<SendResult>;
+  /** Sends a message, with files when given; the engine refuses a file it won't take, and then sends nothing. */
+  send(
+    conversation: MessagingId,
+    body: string,
+    attachments?: readonly OutgoingAttachment[],
+  ): Promise<SendResult>;
   /** The ID of each source that changed, as it changes. Ends when the reader stops. */
   changes(): AsyncIterable<MessagingId>;
 }
