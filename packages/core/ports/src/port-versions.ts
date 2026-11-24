@@ -36,6 +36,7 @@ import { teamStatusVersion } from "./team-status.ts";
 import { tokenStoreVersion } from "./token-store.ts";
 import { toolApprovalStoreVersion } from "./tool-approval-store.ts";
 import { toolScriptHostVersion } from "./tool-script-host.ts";
+import { toolScriptIsolateVersion } from "./tool-script-isolate.ts";
 import { trustStoreVersion } from "./trust-store.ts";
 import { tunnelProviderVersion } from "./tunnel-provider.ts";
 import { tunnelResolverVersion } from "./tunnel-resolver.ts";
@@ -89,6 +90,7 @@ export const portVersions = {
   TokenStore: tokenStoreVersion,
   ToolApprovalStore: toolApprovalStoreVersion,
   ToolScriptHost: toolScriptHostVersion,
+  ToolScriptIsolate: toolScriptIsolateVersion,
   TrustStore: trustStoreVersion,
   TunnelProvider: tunnelProviderVersion,
   TunnelResolver: tunnelResolverVersion,
