@@ -18,7 +18,7 @@ function setUp() {
     { onTimer: async (timer) => flow?.onTimer(timer), onTick: async () => undefined },
     clock,
   );
-  flow = new PaperclipSignIn({ calls, keyStore, scheduler, clock });
+  flow = new PaperclipSignIn({ callsFor: () => calls, keyStore, scheduler, clock });
   return { calls, keyStore, clock, scheduler, flow };
 }
 

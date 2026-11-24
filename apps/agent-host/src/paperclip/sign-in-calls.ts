@@ -1,8 +1,9 @@
 /**
  * The Paperclip requests a sign-in may send, and nothing else. HAL-17423
  * found that a board key can make more board keys that never expire, so no
- * request here makes, lists or deletes keys. HAL-17439 sends these through
- * the Paperclip client's fixed request list.
+ * request here makes, lists or deletes keys. The Paperclip client's
+ * `PaperclipSignInClient` sends them: start, poll and cancel through its own
+ * sign-in list, `me` and the revoke through the messaging list (HAL-17439).
  */
 export const signInRequests = {
   createChallenge: "POST /api/cli-auth/challenges",

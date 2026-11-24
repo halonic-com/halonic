@@ -51,6 +51,7 @@
     "@halonicjs/adapter-mcp": "workspace:*",
     "@halonicjs/adapter-model-mock": "workspace:*",
     "@halonicjs/adapter-model-openai": "workspace:*",
+    "@halonicjs/adapter-paperclip-client": "workspace:*",
     "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/adapter-program-copies-node": "workspace:*",
     "@halonicjs/adapter-remote-gateway": "workspace:*",

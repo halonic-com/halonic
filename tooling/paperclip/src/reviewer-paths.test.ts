@@ -48,9 +48,11 @@ verifies("paperclip.reviewer-paths", () => {
     expect(reviewerFor({ files: [path], changedLines: 10, sensitive: false })).toBe("liam");
   });
 
-  test("a change to only the Paperclip provider's request list goes to Liam", () => {
-    const files = ["packages/adapters/paperclip-client/src/requests.ts"];
-    expect(reviewerFor({ files, changedLines: 2, sensitive: false })).toBe("liam");
+  test.each([
+    "packages/adapters/paperclip-client/src/requests.ts",
+    "packages/adapters/paperclip-client/src/sign-in-requests.ts",
+  ])("a change to only the Paperclip provider's request list %s goes to Liam", (file) => {
+    expect(reviewerFor({ files: [file], changedLines: 2, sensitive: false })).toBe("liam");
   });
 
   test.each([

@@ -10,5 +10,19 @@ export {
   paperclipRequests,
   UnsafeIdError,
 } from "./requests.ts";
+export {
+  PaperclipSignInClient,
+  type PaperclipSignInClientOptions,
+  type SignInChallenge,
+  type SignInChallengeRef,
+  type SignInChallengeRequest,
+  type SignInChallengeStatus,
+  type SignInKeyOwner,
+} from "./sign-in.ts";
+export {
+  findSignInRequest,
+  type PaperclipSignInRequestName,
+  paperclipSignInRequests,
+} from "./sign-in-requests.ts";
 export { PaperclipTeamStatus, type PaperclipTeamStatusOptions } from "./team-status.ts";
 export { PaperclipClientError, type PaperclipFailure } from "./transport.ts";

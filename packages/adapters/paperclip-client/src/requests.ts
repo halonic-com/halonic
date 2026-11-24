@@ -30,7 +30,7 @@ export const paperclipRequests = {
   rejectApproval: { method: "POST", path: "/api/approvals/:approval/reject" },
   // Disconnect (track A4): read who the key belongs to, and revoke the key in use.
   // Starting a sign-in makes a key, so it isn't here: no route that makes keys is
-  // (board, HAL-10, 24 Nov). A4 brings sign-in with its own security review.
+  // (board, HAL-10, 24 Nov). Sign-in has its own list, `sign-in-requests.ts` (HAL-17439).
   whoAmI: { method: "GET", path: "/api/cli-auth/me" },
   revokeKey: { method: "POST", path: "/api/cli-auth/revoke-current" },
   // TeamStatus (`paperclip-client.team-status`, HAL-17606): reads only. The plugin row
