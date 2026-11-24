@@ -1,6 +1,6 @@
 # Halonic ToolScript: a TypeScript profile for reviewed actions and agent tools, run in an isolate
 
-- **Status:** Accepted (board, HAL-10, 24 Nov ~15:20 UTC), **revision 8**; security section **signed by Julian on revision 5** (HAL-17596). Revision 6 changes only where the code lives (sections 0, 5, 6, 7 and the CLI name), not section 3. Revision 7 changes how `eval` is removed (section 2.1) as Julian decided on HAL-17650. Revision 8 adds the fallback if the QuickJS wrapper falls behind (section 2.1, HAL-17776).
+- **Status:** Accepted (board, HAL-10, 24 Nov ~15:20 UTC), **revision 8**; security section **signed by Julian on revision 5** (HAL-17596). Revision 6 changes only where the code lives (sections 0, 5, 6, 7 and the CLI name), not section 3. Revision 7 changes how `eval` is removed (section 2.1) as Julian decided on HAL-17650. Revision 8: we build the QuickJS WASM ourselves instead of relying on the wrapper's build (section 2.1, HAL-17776).
 - **Date:** 2026-11-24
 - **Author:** Liam. **Security reviewer:** Julian (section 3).
 - **Lands as:** `docs/adr/2026-11-24-toolscript.md` in `halonic` (task T1, HAL-17566).
@@ -137,7 +137,7 @@ The deciding reason for QuickJS is that it **runs the same on desktop, Node and 
 
 **Isolates are never reused.** Each run gets a new runtime and context, disposed of when the run ends or a limit trips. Both libraries are MIT-licensed. The dependency (`quickjs-emscripten-core` and its `@jitl/quickjs-ng-wasmfile-release-sync` variant, both pinned to exactly the same version; any update reruns the fence suite and needs my dependency review) is used only by `adapters/toolscript-quickjs`, with a `dependencies.json` entry (my approval). Everything else reaches it only through the `ToolScriptHost` port.
 
-**If the wrapper falls behind (HAL-17776):** `quickjs-emscripten` has one maintainer, and its 0.32.0 release carries quickjs-ng 0.12.1 while quickjs-ng moves on. When we need an engine release the wrapper hasn't shipped, we build the WASM ourselves from a pinned quickjs-ng release and the wrapper's MIT C glue, with a fixed-size memory, inside `adapters/toolscript-quickjs`; `core/toolscript-host` and the fence suite don't change, because they reach it only through the `ToolScriptIsolate` port, and the fence suite must pass before the switch.
+**We build the engine ourselves (HAL-17776, HAL-17780):** `quickjs-emscripten` has one maintainer, and its 0.32.0 release still carries quickjs-ng 0.12.1. So `adapters/toolscript-quickjs` builds the WASM itself from a pinned quickjs-ng release and the wrapper's MIT C glue, with a pinned Emscripten and a fixed-size memory, and keeps `quickjs-emscripten-core` as the JavaScript API through `newVariant`. CI rebuilds the module and checks it matches the checked-in file. Every engine update reruns the fence suite and needs my dependency review. Nothing above the `ToolScriptIsolate` port changes. The `@jitl/quickjs-ng-wasmfile-release-sync` build is only a stopgap until then, and ToolScript isn't wired for users (T9) before the switch.
 
 **Cloudflare target: a Dynamic Worker, not QuickJS (board question, 14:11 UTC).**
 - **How it works:** the Worker Loader starts the artifact's code in a new V8 isolate in a few milliseconds. We start it with:
