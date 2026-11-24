@@ -203,7 +203,10 @@ test("a job container starts at MEM_START and grows only up to MEM, with swap ke
   assert.match(slot, /^ {2}fast-\[1-9\]\|fast-10\).* MEM=16g; MEM_START=6g; /m);
   // fast-11..40 (HAL-17463, HAL-17574): GitHub's runner size, 4 CPUs, starting at 4 GB (fast jobs
   // peaked at 4.4 GB over 24 h) and growing to 12 GB at most.
-  assert.match(slot, /^ {2}fast-1\[1-9\]\|fast-\[23\]\[0-9\]\|fast-40\).* CPUS=4; MEM=12g; MEM_START=4g; /m);
+  assert.match(
+    slot,
+    /^ {2}fast-1\[1-9\]\|fast-\[23\]\[0-9\]\|fast-40\).* CPUS=4; MEM=12g; MEM_START=4g; /m,
+  );
   assert.match(slot, /^ {2}small-\*\).* MEM=3g; {2}MEM_START=2g; /m);
   assert.ok(slot.includes('--memory "$MEM_START" --memory-swap "$MEM_START"'));
   assert.doesNotMatch(slot, /--memory "\$MEM" /);

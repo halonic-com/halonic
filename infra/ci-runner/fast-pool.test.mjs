@@ -315,7 +315,8 @@ test("fast pool: fast-11..40 float over every CPU but the small slots' and the V
     const cpus = cpusOf(`fast-${n}`);
     assert.equal(cpus.length, 4, `fast-${n}`);
     assert.equal(cpus[0] % 2, 0, `fast-${n} starts mid-core`);
-    for (const cpu of cpus) assert.ok(cpu <= 101 && (cpu < 66 || cpu > 71), `fast-${n} takes ${cpu}`);
+    for (const cpu of cpus)
+      assert.ok(cpu <= 101 && (cpu < 66 || cpu > 71), `fast-${n} takes ${cpu}`);
   }
   assert.deepEqual(cpusOf("fast-11"), [0, 1, 2, 3]);
   assert.deepEqual(cpusOf("fast-24"), [92, 93, 94, 95]);
@@ -323,7 +324,9 @@ test("fast pool: fast-11..40 float over every CPU but the small slots' and the V
   // CPU weight, so a merge-group job wins the cores it shares with floating fast jobs.
   const slot = read("vm/halonic-runner-slot.sh");
   assert.ok(slot.includes(`docker info --format '{{json (index .Runtimes "runsc")}}'`));
-  assert.ok(slot.includes('if [[ "$rargs" =~ \\"--cpu-num-from-quota(=true)?\\" ]]; then FAST_FLOAT=1; fi'));
+  assert.ok(
+    slot.includes('if [[ "$rargs" =~ \\"--cpu-num-from-quota(=true)?\\" ]]; then FAST_FLOAT=1; fi'),
+  );
   assert.ok(slot.includes('SHARES=1024; [ "$LABEL" != halonic-ci-large ] || SHARES=2048'));
   assert.ok(slot.includes('--cpus "$CPUS" --cpuset-cpus "$CPUSET" --cpu-shares "$SHARES"'));
 });
