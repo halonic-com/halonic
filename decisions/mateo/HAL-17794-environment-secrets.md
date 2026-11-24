@@ -3,7 +3,7 @@
 - Task: HAL-17794
 - Approval: /HAL/issues/HAL-17794 (the task asks for this change; Liam approves this note in review and signs it)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4/PyTep1yE8g/oGaPKGpKgjg8PB1Et4PImXUfvMEuzvvcYD0fAIhshqsO93HfawMrG9e8NlAa4Et5muNrqanCA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aF08wUHa9ZltHEhzqngrZDKOO+bV99AbepC1NCmGezgnDNePsm8gs4FBB+nGMEIlN2a9huGi+5058msEBGswAw==
 
 ## What changes
 
