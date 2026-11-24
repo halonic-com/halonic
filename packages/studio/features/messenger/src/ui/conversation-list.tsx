@@ -1,0 +1,85 @@
+import type { MessagingId } from "@halonicjs/ports";
+import { Avatar, TabList, TabPanel, useTabIds } from "@halonicjs/studio-kit";
+import { activityOf, type ConversationRow, type MessengerTab } from "../messenger.ts";
+import { messengerWords } from "../messenger-words.ts";
+
+/** The props of {@link ConversationList}. */
+export interface ConversationListProps {
+  readonly tab: MessengerTab;
+  readonly onTab: (tab: MessengerTab) => void;
+  /** The tab's conversations, newest first. */
+  readonly rows: readonly ConversationRow[];
+  readonly selected: MessagingId | undefined;
+  readonly onSelect: (conversation: MessagingId) => void;
+}
+
+const tabs = [
+  { id: "all", label: messengerWords.tabs.all },
+  { id: "waiting", label: messengerWords.tabs.waiting },
+] as const;
+
+/**
+ * The Messenger's list (HAL-17421 render 4a): the tabs All and Waiting for
+ * me, then one row per conversation with its name, its source's label and its
+ * agent's activity. The open conversation's row is marked current.
+ */
+export function ConversationList({ tab, onTab, rows, selected, onSelect }: ConversationListProps) {
+  const ids = useTabIds();
+  return (
+    <div className="flex min-h-0 flex-col gap-2">
+      <TabList
+        label={messengerWords.tabsLabel}
+        tabs={tabs}
+        selected={tab}
+        onSelect={onTab}
+        ids={ids}
+      />
+      <TabPanel ids={ids} tabs={tabs} selected={tab}>
+        {rows.length === 0 ? (
+          <p className="px-2 py-4 text-small text-fg-muted">
+            {tab === "waiting" ? messengerWords.nothingWaiting : messengerWords.noChats}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {rows.map((row) => (
+              <li key={row.conversation.id}>
+                <Row row={row} current={row.conversation.id === selected} onSelect={onSelect} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </TabPanel>
+    </div>
+  );
+}
+
+function Row({
+  row,
+  current,
+  onSelect,
+}: {
+  readonly row: ConversationRow;
+  readonly current: boolean;
+  readonly onSelect: (conversation: MessagingId) => void;
+}) {
+  const activity = messengerWords.activity[activityOf(row)];
+  return (
+    <button
+      type="button"
+      aria-current={current ? "true" : undefined}
+      onClick={() => onSelect(row.conversation.id)}
+      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-start hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted"
+    >
+      <Avatar name={row.conversation.title} />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-body">
+          <bdi>{row.conversation.title}</bdi>
+          {row.source === undefined ? null : (
+            <span className="text-small text-fg-muted"> · {row.source.label}</span>
+          )}
+        </span>
+        {activity === "" ? null : <span className="text-small text-fg-muted">{activity}</span>}
+      </span>
+    </button>
+  );
+}
