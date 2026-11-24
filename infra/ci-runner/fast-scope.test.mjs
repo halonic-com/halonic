@@ -19,6 +19,7 @@ const livePr = (patch = {}) =>
           state: "OPEN",
           isCrossRepository: false,
           headRefOid: SHA,
+          headRefName: "acme/HAL-42-scope",
           headRepositoryOwner: { login: "halonic-com" },
           labels: { nodes: [] },
           author: { __typename: "User", login: "halonic-dev" },
@@ -60,6 +61,7 @@ test('fast scope: PR_SCOPE="all" still refuses bots, forks, closed and moved-on 
   refused(fast(all, { isCrossRepository: true }), /comes from outside halonic-com/);
   refused(fast(all, { state: "CLOSED" }), /is not open/);
   refused(fast(all, { headRefOid: "f".repeat(40) }), /no longer at/);
+  refused(fast(all, { headRefName: "dependabot/npm/acme" }), /comes from a bot branch/);
 });
 
 test("fast scope: the shipped fast pool config keeps the label required", () => {
