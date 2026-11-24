@@ -16,7 +16,7 @@ import type { MetricsApi } from "./metrics.ts";
 /**
  * The thin-spec check's calls outside the plugin host (HAL-17076): Haiku's
  * reading through Anthropic's Messages API, and the clarify task and its
- * blocker through Paperclip's API, because the plugin SDK can't create a task
+ * blocker and the "Done when" comment through Paperclip's API, because the plugin SDK can't create a task
  * or set a blocker. None of them logs, so the keys can't reach a log.
  */
 
@@ -108,6 +108,27 @@ async function paperclip(
     throw Object.assign(new Error("paperclip"), { code: `http_${response.status}` });
   }
   return await response.json();
+}
+
+/** Comments on a task; true once Paperclip saved it, or an error code. */
+export async function addComment(
+  ctx: ThinSpecApi,
+  deps: ThinSpecDeps,
+  settings: ActiveThinSpecSettings,
+  companyId: string,
+  taskId: string,
+  body: string,
+): Promise<true | Failed> {
+  try {
+    await paperclip(ctx, deps, settings, companyId, {
+      method: "POST",
+      path: `/api/issues/${encodeURIComponent(taskId)}/comments`,
+      body: { body },
+    });
+    return true;
+  } catch (error) {
+    return { failure: errorCode(error) };
+  }
 }
 
 /** The clarify task to create under a flagged task. */

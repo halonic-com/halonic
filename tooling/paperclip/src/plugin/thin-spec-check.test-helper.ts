@@ -56,7 +56,7 @@ export function checkedTask(changes: Partial<FakeCheckedTask> = {}): FakeChecked
     identifier: "HAL-1",
     companyId: "acme",
     title: "Make the export faster",
-    description: "It is slow.",
+    description: "It is slow.\n\nDone when: `pnpm test` passes.",
     status: "todo",
     assigneeAgentId: "agent-mateo",
     createdByAgentId: "agent-chief",
@@ -162,6 +162,9 @@ export function checkHarness(
       path,
       body: init?.body === undefined ? undefined : JSON.parse(String(init.body)),
     });
+    if (method === "POST" && path.endsWith("/comments")) {
+      return Response.json({ id: "comment-1" });
+    }
     if (method === "POST") {
       return Response.json({ id: "clarify-1" });
     }
