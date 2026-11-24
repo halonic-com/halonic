@@ -1,0 +1,106 @@
+{
+  "$comment": "Shared cases for the server-session checks (plan on HAL-17834, sections 2 and 3). The TypeScript tests in packages/core/action-steppers and the desktop shell's Rust tests both run them, so the two checks can't drift apart. All values are invented.",
+  "hosts": {
+    "valid": [
+      "build.acme.example",
+      "acme-build",
+      "build-1.acme.example",
+      "10.0.0.7",
+      "Build.Acme.Example"
+    ],
+    "refused": [
+      "",
+      "-",
+      "-F",
+      "-oProxyCommand=sh",
+      "-p22",
+      ".acme.example",
+      "build..acme.example",
+      "build acme",
+      "build;acme",
+      "build$(id)",
+      "build`id`",
+      "build\nacme",
+      "ops@build.acme.example",
+      "build.acme.example:22",
+      "[::1]",
+      "build/acme",
+      "build'acme"
+    ]
+  },
+  "users": {
+    "valid": [
+      "ops",
+      "_deploy",
+      "build-user",
+      "u1"
+    ],
+    "refused": [
+      "",
+      "-",
+      "-oProxyCommand=sh",
+      "Ops",
+      "1ops",
+      "ops user",
+      "ops;id",
+      "ops@acme",
+      "ops'",
+      "a-very-long-user-name-of-33-chars"
+    ]
+  },
+  "ports": {
+    "valid": [
+      1,
+      22,
+      2222,
+      65535
+    ],
+    "refused": [
+      0,
+      65536,
+      -22,
+      22.5,
+      "22"
+    ]
+  },
+  "tasks": {
+    "valid": [
+      "HAL-1",
+      "HAL-1234",
+      "HAL-9999999"
+    ],
+    "refused": [
+      "",
+      "HAL-",
+      "hal-1",
+      "HAL-1;x",
+      "HAL-1\n",
+      "../HAL-1",
+      "HAL-12345678",
+      "HAL-1.md",
+      "-HAL-1",
+      "ACME-1"
+    ]
+  },
+  "launcher": {
+    "target": {
+      "host": "build.acme.example",
+      "user": "ops",
+      "port": 2222
+    },
+    "task": "HAL-1234",
+    "script": [
+      "#!/bin/sh",
+      "cd -- \"$(dirname -- \"$0\")\" || exit 1",
+      "ssh -p 2222 -- 'ops@build.acme.example' 'umask 077 && mkdir -p .halonic/briefs && cat > .halonic/briefs/HAL-1234.md && find .halonic/briefs -maxdepth 1 -type f -name \"HAL-*.md\" -mmin +60 -delete' < ./brief-HAL-1234.md",
+      "upload=$?",
+      "rm -f -- ./brief-HAL-1234.md ./run-HAL-1234.command ./run-HAL-1234.sh",
+      "if [ \"$upload\" -ne 0 ]; then",
+      "  echo 'Halonic: the brief could not be copied to the server, so Claude Code was not started.'",
+      "  exit 1",
+      "fi",
+      "exec ssh -t -p 2222 -- 'ops@build.acme.example' 'claude \"Read the file .halonic/briefs/HAL-1234.md and follow it.\"; rm -f .halonic/briefs/HAL-1234.md'",
+      ""
+    ]
+  }
+}

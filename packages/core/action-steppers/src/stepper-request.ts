@@ -1,4 +1,5 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
+import { serverSessionBlockSchema } from "./server-session-block.ts";
 
 /** The format name of a stepper request document. */
 export const stepperRequestFormat = "halonic.stepper-request/1";
@@ -44,31 +45,51 @@ const resultSchema = s
   })
   .strict();
 
+const useBlockSchema = referencedSchema.extend({ kind: s.literal("use") }).strict();
+const stepBlockSchema = referencedSchema.extend({ kind: s.literal("step") }).strict();
+const browserBlockSchema = s
+  .object({
+    kind: s.literal("browser"),
+    url: s.string().max(2000),
+    instructions: s
+      .array(s.string().min(1).max(maxBrowserInstructionLength))
+      .min(1)
+      .max(maxBrowserInstructions),
+    result: resultSchema.optional(),
+    check: referencedSchema.optional(),
+  })
+  .strict();
+
 /**
  * One block of a stepper request: `use` a whole shipped definition, one
  * reviewed `step` type, or a `browser` page on an allow-listed origin with
  * the requester's own instructions (architecture note on HAL-17491, 7.1).
- * ToolScript's header `steps` reuses this schema (HAL-17560, section 6).
+ * ToolScript's header `steps` reuses this schema (HAL-17560, section 6), so
+ * it never holds a `server-session` block.
  */
 export const stepperBlockSchema = s.discriminatedUnion("kind", [
-  referencedSchema.extend({ kind: s.literal("use") }).strict(),
-  referencedSchema.extend({ kind: s.literal("step") }).strict(),
-  s
-    .object({
-      kind: s.literal("browser"),
-      url: s.string().max(2000),
-      instructions: s
-        .array(s.string().min(1).max(maxBrowserInstructionLength))
-        .min(1)
-        .max(maxBrowserInstructions),
-      result: resultSchema.optional(),
-      check: referencedSchema.optional(),
-    })
-    .strict(),
+  useBlockSchema,
+  stepBlockSchema,
+  browserBlockSchema,
 ]);
 
-/** One block of a stepper request. */
+/** One block of a stepper request, as ToolScript's header may list it. */
 export type StepperBlock = Infer<typeof stepperBlockSchema>;
+
+/** Any block a request document may hold: a stepper block, or the one `server-session` block. */
+const requestBlockSchema = s.discriminatedUnion("kind", [
+  useBlockSchema,
+  stepBlockSchema,
+  browserBlockSchema,
+  serverSessionBlockSchema,
+]);
+
+/** One block of a stepper request document. */
+export type RequestBlock = Infer<typeof requestBlockSchema>;
+
+/** A `server-session` block opens one confirm screen for one thing, so it is the request's only block. */
+const onlyBlockWhenServerSession = (blocks: readonly RequestBlock[]): boolean =>
+  blocks.length === 1 || blocks.every((block) => block.kind !== "server-session");
 
 /** A stepper request document in the format `halonic.stepper-request/1`. */
 export const stepperRequestSchema = s
@@ -76,7 +97,14 @@ export const stepperRequestSchema = s
     format: s.literal(stepperRequestFormat),
     title: s.string().min(1).max(200),
     reason: s.string().max(2000),
-    blocks: s.array(stepperBlockSchema).min(1).max(maxStepperBlocks),
+    blocks: s
+      .array(requestBlockSchema)
+      .min(1)
+      .max(maxStepperBlocks)
+      .refine(
+        onlyBlockWhenServerSession,
+        "a server-session block must be the request's only block",
+      ),
   })
   .strict();
 
