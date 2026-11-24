@@ -2,7 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-7864 (Liam assigned the shared secret hold for the Assistant and Try it, design 4.2 and U12, already approved)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pyQjfbcL10+IkLDC6jwgVlVP3EdEZbXDu/5JZtOf5gnmVlK4MqjLc03Cv2C4KULIj6Sj2h6/rtNZnZ+MIshQCw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KVmSDwUUdYV33B47qGoC/H8cNQ5XqIltgP5JZh7mYdTCW2Adj3dE6qjfnzoKUZCjHB+LIkhgY94c+7tiZ1XvAg==
 
 The Assistant's Build box and the Try it chat already hold a message that looks like it holds a key
 (H29). For a Google client secret they said "This looks like an API key" and offered **Go to the key
