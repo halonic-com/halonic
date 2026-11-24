@@ -33,6 +33,12 @@ export interface LocalHarnessParts {
   /** Opens every run's bridge, whatever its placement; Node's, on the keys of `cliProviderKeys`, by default. */
   readonly bridgeServer?: HarnessBridgeServer;
   /**
+   * The coding tools server in place of the host's, or `null` for none: a
+   * test's sandbox that starts no program can't run it, and its code would
+   * only widen what the profile lets the program read.
+   */
+  readonly codingTools?: CodingToolsServer | null;
+  /**
    * What the Node bridges call a provider at its own `baseUrl` with; by
    * default a client that checks the address as a connector's and never
    * reaches one of Halonic's own ports.
