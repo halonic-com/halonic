@@ -6,7 +6,11 @@ import { hostConnectorFactory } from "./connector-factory.ts";
 function unfencedFactory() {
   return hostConnectorFactory({
     sandbox: {
-      check: async () => ({ ok: false, reason: "no sandbox in this test" }) as never,
+      check: async () => ({
+        ok: false,
+        reason: "not-supported",
+        missing: ["no sandbox in this test"],
+      }),
       open: async () => {
         throw new Error("no session in this test");
       },
