@@ -67,11 +67,34 @@ verifies("services.agent-connections", () => {
     expect(heard).toEqual(["changed"]);
   });
 
+  it("signs a connection in again under its own ID, and revokes on Disconnect by default", async () => {
+    const fake = new FakeAgentConnections({ connections: [halonic] });
+    expect(() => fake.approve()).toThrow("No sign-in waits for approval");
+    const again = await fake.signIn({
+      address: "https://paperclip.acme.test",
+      connection: "paperclip:halonic",
+    });
+    if (again.outcome !== "started") throw new Error("The sign-in didn't start");
+    fake.approve();
+    const result = await again.challenge.result;
+    expect(result.outcome === "connected" && result.connection.id).toBe("paperclip:halonic");
+    expect(result.outcome === "connected" && result.connection.label).toBe("Paperclip · Halonic");
+    expect(await fake.list()).toHaveLength(1);
+    expect(await fake.disconnect("paperclip:halonic")).toEqual({ revoked: true });
+  });
+
   it("ends a sign-in as refused or expired when the test says so", async () => {
     const fake = new FakeAgentConnections();
     const refused = await started(fake);
     fake.refuse("other-company");
     expect(await refused.result).toEqual({ outcome: "refused", reason: "other-company" });
+    const named = await started(fake);
+    fake.refuse("other-company", "Acme");
+    expect(await named.result).toEqual({
+      outcome: "refused",
+      reason: "other-company",
+      company: "Acme",
+    });
     const expired = await started(fake);
     fake.expire();
     expect(await expired.result).toEqual({ outcome: "expired" });
