@@ -1,4 +1,3 @@
-import type { IncomingHttpHeaders } from "node:http";
 import type { ModelCall } from "./spend.ts";
 
 /**
@@ -19,7 +18,7 @@ export const subagentLabel = "subagent";
  * `call`, marked as a sub-agent's when the program's request headers say so
  * (requirement `harness-bridge.subagent-calls`); unchanged otherwise.
  */
-export function withSubagent(call: ModelCall, headers: IncomingHttpHeaders): ModelCall {
-  const fromSubagent = subagentHeaders.some((name) => headers[name] !== undefined);
+export function withSubagent(call: ModelCall, headers: Headers): ModelCall {
+  const fromSubagent = subagentHeaders.some((name) => headers.has(name));
   return fromSubagent ? { ...call, subagent: subagentLabel } : call;
 }

@@ -11,10 +11,7 @@ import type { BridgeRequestContext, BridgeRoute } from "./route.ts";
 const echo: BridgeRoute = {
   method: "POST",
   path: "/echo",
-  handle: async ({ readBody, response }) => {
-    const body = await readBody();
-    response.end(body);
-  },
+  handle: async ({ readBody }) => new Response(await readBody()),
 };
 
 const settings: BridgeSettings = {
@@ -87,9 +84,20 @@ function recordsWhenAborted(stuckUntil?: Promise<void>) {
       const answer = run.recorder.record(spend);
       recording.resolve({ answer });
       await answer;
+      return new Response(null, { status: 204 });
     },
   };
   return { route, running: running.promise, recording: recording.promise };
+}
+
+/** A body that sends a little, then fails. */
+function brokenStream(): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode("partial"));
+      controller.error(new Error("the upstream stream broke"));
+    },
+  });
 }
 
 /** True once `promise` has settled; looks after one turn of the event loop. */
@@ -138,7 +146,7 @@ verifies("harness-bridge.server", () => {
         ...echo,
         handle: async (request) => {
           ran.push("echo");
-          await echo.handle(request);
+          return echo.handle(request);
         },
       };
       const bridge = await open([counted]);
@@ -225,10 +233,10 @@ verifies("harness-bridge.server", () => {
     it("gives a route that reads the body twice the same body both times", async () => {
       const twice: BridgeRoute = {
         ...echo,
-        handle: async ({ readBody, response }) => {
+        handle: async ({ readBody }) => {
           const first = await readBody();
           const second = await readBody();
-          response.end(`${Buffer.from(first)}|${Buffer.from(second)}`);
+          return new Response(`${Buffer.from(first)}|${Buffer.from(second)}`);
         },
       };
       const bridge = await open([twice]);
@@ -246,6 +254,7 @@ verifies("harness-bridge.server", () => {
         ...echo,
         handle: async () => {
           ran = true;
+          return new Response(null, { status: 204 });
         },
       };
       const bridge = await open([counting]);
@@ -344,11 +353,7 @@ verifies("harness-bridge.server", () => {
     it("ends the connection instead of sending a second reply", async () => {
       const halfway: BridgeRoute = {
         ...echo,
-        handle: async ({ response }) => {
-          response.writeHead(200);
-          response.write("partial");
-          throw new Error("the upstream stream broke");
-        },
+        handle: async () => new Response(brokenStream()),
       };
       const bridge = await open([halfway]);
       await expect(send(bridge, "/echo", { token: bridge.token })).rejects.toThrow();
@@ -357,11 +362,7 @@ verifies("harness-bridge.server", () => {
     it("reports the failure to the run", async () => {
       const halfway: BridgeRoute = {
         ...echo,
-        handle: async ({ response }) => {
-          response.writeHead(200);
-          response.write("partial");
-          throw new Error("the upstream stream broke");
-        },
+        handle: async () => new Response(brokenStream()),
       };
       const failures: { kind: string; message: string }[] = [];
       const run: HarnessBridgeOptions = {
@@ -386,7 +387,9 @@ verifies("harness-bridge.server", () => {
         handle: ({ signal }) => {
           seen = signal;
           started();
-          return new Promise((resolve) => signal.addEventListener("abort", () => resolve()));
+          return new Promise((resolve) =>
+            signal.addEventListener("abort", () => resolve(new Response(null))),
+          );
         },
       };
       const bridge = await open([hanging]);

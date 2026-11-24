@@ -1,4 +1,3 @@
-import type { IncomingHttpHeaders } from "node:http";
 import type { BridgeProvider, BridgeProviderAccess, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { BridgeRequestContext } from "./route.ts";
@@ -60,11 +59,12 @@ export function providerAccess(
 /**
  * The program's own sign-in, as the one `authorization` header the call to
  * the provider gets. Node's server keeps only the first of two
- * `authorization` headers, so it is always one value.
+ * `authorization` headers; elsewhere two are joined into one value, which
+ * the provider refuses.
  */
-function programSignIn(headers: IncomingHttpHeaders, name: string): Record<string, string> {
-  const signIn = headers.authorization;
-  if (signIn === undefined || signIn === "") {
+function programSignIn(headers: Headers, name: string): Record<string, string> {
+  const signIn = headers.get("authorization");
+  if (signIn === null || signIn === "") {
     throw new KindedError(
       "unauthenticated",
       `This agent signs in to ${name} with a subscription, but the program sent no sign-in in its authorization header.`,

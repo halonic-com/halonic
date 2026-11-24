@@ -1,5 +1,5 @@
 import { once } from "node:events";
-import { createServer, type RequestListener, type ServerResponse } from "node:http";
+import { createServer, type RequestListener } from "node:http";
 import type { AddressInfo } from "node:net";
 import { harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -28,7 +28,7 @@ function testRoute(fetch: Fetch): BridgeRoute {
     path: "/v1/test",
     handle: async (context) => {
       const headers = pickHeaders(context.request.headers, ["content-type"]);
-      await passThrough(
+      const { response, ended } = await passThrough(
         context,
         {
           provider: "The provider",
@@ -39,6 +39,8 @@ function testRoute(fetch: Fetch): BridgeRoute {
         },
         { fetch, limits: { responseTimeoutMs: 2_000, idleTimeoutMs: 500 } },
       );
+      context.afterReply(ended);
+      return response;
     },
   };
 }
@@ -80,9 +82,14 @@ async function listen(handle: RequestListener) {
 }
 
 /** A reply body that has a new 64 KiB chunk whenever the bridge asks for one. */
-function endlessStream() {
+function endlessStream(onPull: () => void = () => {}) {
   const chunk = new Uint8Array(64 * 1024);
-  return new ReadableStream<Uint8Array>({ pull: (controller) => controller.enqueue(chunk) });
+  return new ReadableStream<Uint8Array>({
+    pull: (controller) => {
+      onPull();
+      controller.enqueue(chunk);
+    },
+  });
 }
 
 /** The program's request, with the run token and a header the provider must not get. */
@@ -228,19 +235,15 @@ verifies("harness-bridge.pass-through", () => {
 
     it("cuts a reply the program stops reading, and doesn't blame the provider", async () => {
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-      const provider = fakeProvider(() => new Response(endlessStream()));
-      const route = testRoute(provider.fetch);
-      let response: ServerResponse | undefined;
-      const bridge = await openWith({
-        ...route,
-        handle: (context) => {
-          response = context.response;
-          return route.handle(context);
-        },
-      });
-      // The program never reads the body, so the bridge soon waits for room to write.
+      let pulls = 0;
+      const provider = fakeProvider(() => new Response(endlessStream(() => (pulls += 1))));
+      const bridge = await open(provider.fetch);
+      // The program never reads the body, so the bridge soon stops reading the provider.
       await programRequest(bridge);
-      while (response?.writableNeedDrain !== true) await new Promise(setImmediate);
+      for (let seen = -1; seen !== pulls; ) {
+        seen = pulls;
+        for (let turn = 0; turn < 20; turn += 1) await new Promise(setImmediate);
+      }
 
       await vi.advanceTimersByTimeAsync(500);
       expect(provider.calls[0]?.signal.reason).toMatchObject({
@@ -264,7 +267,12 @@ verifies("harness-bridge.pass-through", () => {
   });
 
   it("joins a header the program sent more than once", () => {
-    expect(pickHeaders({ "x-multi": ["a", "b"], other: "c" }, ["x-multi", "absent"])).toEqual({
+    const headers = new Headers([
+      ["x-multi", "a"],
+      ["x-multi", "b"],
+      ["other", "c"],
+    ]);
+    expect(pickHeaders(headers, ["x-multi", "absent"])).toEqual({
       "x-multi": "a, b",
     });
   });

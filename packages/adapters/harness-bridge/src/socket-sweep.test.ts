@@ -19,10 +19,7 @@ import {
 const ping: BridgeRoute = {
   method: "GET",
   path: "/ping",
-  handle: async ({ response }) => {
-    response.statusCode = 204;
-    response.end();
-  },
+  handle: async () => new Response(null, { status: 204 }),
 };
 
 let parent = "";

@@ -28,9 +28,9 @@ const served: string[] = [];
 const echo: BridgeRoute = {
   method: "POST",
   path: "/echo",
-  handle: async ({ readBody, request, response }) => {
-    served.push(request.url ?? "");
-    response.end(await readBody());
+  handle: async ({ readBody, request }) => {
+    served.push(new URL(request.url).pathname);
+    return new Response(await readBody());
   },
 };
 
