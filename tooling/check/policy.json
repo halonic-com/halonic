@@ -67,19 +67,23 @@
       "./node"
     ],
     "@halonicjs/app": [
+      "./connector-factories",
       "./failed-call",
       "./listed-tools",
       "./model-choice",
       "./model-choice-service",
+      "./model-text",
       "./outside-run",
       "./routines",
       "./run-failure",
-      "./saved-local-only"
+      "./saved-local-only",
+      "./spend"
     ],
     "@halonicjs/engine": [
       "./testing"
     ],
     "@halonicjs/format": [
+      "./agent",
       "./connector",
       "./integration",
       "./recording",
@@ -102,6 +106,9 @@
     ],
     "@halonicjs/testing-spec": [
       "./node"
+    ],
+    "@halonicjs/workspace": [
+      "./trust-url"
     ]
   },
   "cloudRuntimes": {

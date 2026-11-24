@@ -2,7 +2,7 @@
 // model and the refusals shown in the workspace's integration status, as
 // `ports.untrusted-tool-listings` asks.
 
-import { type Connector, marksRead } from "@halonicjs/format";
+import { type Connector, marksRead } from "@halonicjs/format/connector";
 import type { ConnectorTool, IntegrationTool, ToolRisk, TrustGrant } from "@halonicjs/ports";
 import { readListedTool } from "./listed-tool.ts";
 import {

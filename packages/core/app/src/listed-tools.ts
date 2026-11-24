@@ -1,7 +1,8 @@
 // The `@halonicjs/app/listed-tools` entry point: reading a tool a server
 // listed, its fingerprint and rules, reviewing and approving it, and
-// checking a connector's tools. It is its own entry point because the main
-// one, `index.ts`, reached the 500-line file limit (HAL-2827).
+// checking a connector's tools and calls. It is its own entry point because
+// the main one, `index.ts`, reached the 500-line file limit (HAL-2827), and so
+// the engine can reach it without `yaml` (HAL-16764).
 export {
   type ApproveAllResult,
   approveAllShown,
@@ -58,3 +59,12 @@ export {
   type WaitingState,
 } from "./listed-tool-review.ts";
 export { escapeListedText, UntrustedText } from "./listed-tool-rules.ts";
+export { checkToolCall, type ToolCallCheck } from "./tool-call-check.ts";
+export {
+  type OfferedDeclaredTool,
+  type OfferedListedTool,
+  type OfferedTool,
+  readToolListing,
+  type ToolListing,
+  type ToolRefusal,
+} from "./tool-listing.ts";

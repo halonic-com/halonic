@@ -6,6 +6,7 @@
   "description": "The workspace file format: one folder per file kind with its schema, defaults, cross-checks and JSON Schema.",
   "exports": {
     ".": "./src/index.ts",
+    "./agent": "./src/agent/index.ts",
     "./connector": "./src/connector/index.ts",
     "./integration": "./src/integration/index.ts",
     "./recording": "./src/recording/index.ts",

@@ -22,7 +22,7 @@ import {
   posixPath,
   type Result,
 } from "@halonicjs/std";
-import { trustUrl } from "@halonicjs/workspace";
+import { trustUrl } from "@halonicjs/workspace/trust-url";
 import { UntrustedText } from "./listed-tool-rules.ts";
 import type { OfferedListedTool } from "./tool-listing.ts";
 
