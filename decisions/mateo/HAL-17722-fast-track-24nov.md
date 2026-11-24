@@ -2,6 +2,7 @@
 
 - Approval: the board changed the fast-track rules on 24 Nov (Chief's comment on HAL-16003, HAL-17697, the Merger's "Fast-track PRs" rules 1–3); the work is HAL-17722, and Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TiOPXNmCzGgdrLaoU+GdStN6MvVRMV+vSLAFNkXABncX8vpCComYeYskePYzHw3WnvX9+bPIaYUHz0phM4aFBQ==
 
 The dry-run rules in `src/fast-track/` must say what the live Merger and
 Fast-track monitor do, or the board supervisor's 2-day comparison on
