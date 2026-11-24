@@ -133,7 +133,9 @@ export interface AssistantAnswerRequest {
 export type AssistantChange =
   | { readonly kind: "chats" }
   | { readonly kind: "chat"; readonly chatId: string }
-  | { readonly kind: "review"; readonly paths: readonly string[] };
+  | { readonly kind: "review"; readonly paths: readonly string[] }
+  /** The engine stopped or started answering: {@link AssistantHost.engineAnswering} changed. */
+  | { readonly kind: "engine" };
 
 /**
  * The Assistant of the open workspace, as the app runs it. The app keeps the chats (each
@@ -154,11 +156,24 @@ export interface AssistantHost {
   /**
    * Answers in the chat: adds the message, runs the answer and keeps the chat. A model or tool
    * that fails ends the answer as `failed` instead of rejecting, so the messages before it are
-   * kept. Rejects with `denied` when the chat's model comes from the workspace and the workspace
-   * isn't trusted (nothing was sent), with `not_found` for a chat that is gone, and with
-   * `conflict` while the chat is already answering.
+   * kept. Rejects with the shell's `WorkspaceUntrusted` (`denied`) when the chat's model comes
+   * from the workspace and the workspace isn't trusted (nothing was sent, flow-assistant 5.9),
+   * with `not_found` for a chat that is gone, and with `conflict` while the chat is already
+   * answering.
    */
   answer(request: AssistantAnswerRequest): Promise<ChatAnswer>;
+  /**
+   * Whether the workspace's engine answers now. While it doesn't, an open chat says so at the top
+   * and Send waits (states H12, D5); {@link onDidChange} tells when it changes.
+   */
+  engineAnswering(): boolean;
+  /** The workspace's name, for the toast "Not started: Acme isn't trusted yet" (states H16). */
+  workspaceName(): string;
+  /**
+   * Opens the window's trust check after {@link answer} refused a workspace that isn't trusted,
+   * and says how the person answered. Absent where there is no check to open.
+   */
+  readonly askTrust?: (() => Promise<"trusted" | "declined">) | undefined;
   /** Saves the title trimmed. Rejects with `invalid_input` for an empty title, and with `not_found`. */
   rename(chatId: string, title: string): Promise<void>;
   /** Removes the chat from the kept chats. Its changes to review stay in the items (flow 5.6). */

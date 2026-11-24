@@ -1,5 +1,6 @@
 /**
- * The Build chat's words in the panel (microcopy 14.1 and 19.5; states H1, H3, H7, H9, H28;
+ * The Build chat's words in the panel (microcopy 14.1 and 19.5; states H1, H3, H7, H9, H11 to H13,
+ * H16, H22 to H24, H28, H29;
  * flow-assistant 2.2, 3.6 and 5.1). Where flow-assistant and the microcopy differ, the microcopy
  * wins: the limit is "model calls" since its revision 117 (HAL-14707).
  */
@@ -59,9 +60,21 @@ export const buildChatWords = {
     itemsToReview === 0
       ? "Answer finished."
       : `Answer finished. ${itemsToReview} ${itemsToReview === 1 ? "item" : "items"} to review.`,
-  /** A failure; PR 7 gives each cause its own sentence and Try again (H18 to H24). */
+  /** H22, H23: a failure, with Try again only before a tool ran (H24). */
   failed: (reason: string) => `Couldn't reach the model: ${withoutStop(reason)}.`,
   toolsRan: "Some tool calls already ran. Send a new message to continue.",
+  /** H11: the chat can't load because the engine doesn't answer yet. */
+  engineNotStarted: "The engine isn't answering. It may still be starting.",
+  /** H12 (D5): the line at the top of an open chat while the engine doesn't answer. */
+  engineNotAnswering: "The engine isn't answering. Showing what it said last.",
+  /** H16: the toast after Not now in the trust check, with Review to open it again. */
+  notTrusted: (workspace: string) => `Not started: ${workspace} isn't trusted yet`,
+  review: "Review",
+  /** H29: a message that looks like it holds a key isn't sent (flow-assistant 5.9, HAL-1625). */
+  keyInMessage:
+    "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
+  goToKeyField: "Go to the key field ›",
+  sendAnyway: "Send anyway",
   /** A tool call's line, with the tool's name in words: "read file". */
   tool: {
     running: (tool: string) => `Using ${tool}…`,

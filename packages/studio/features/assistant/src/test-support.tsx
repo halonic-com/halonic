@@ -1,9 +1,10 @@
 import type { ChatAnswer } from "@halonicjs/app";
 import type { ChatMessage } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
+import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { AssistantAnswerRequest, AssistantHost, Chat } from "./api.ts";
+import type { AssistantAnswerRequest, AssistantChange, AssistantHost, Chat } from "./api.ts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -74,6 +75,11 @@ export function fakeHost(chats: Chat[] = []) {
   let items = 0;
   let skill: string | null = null;
   let customized = 0;
+  let engineAnswering = true;
+  let trusted = true;
+  let trustAnswer: "trusted" | "declined" = "declined";
+  let trustChecks = 0;
+  const listeners = new Set<(change: AssistantChange) => void>();
   const find = (chatId: string) => {
     const chat = chats.find((each) => each.id === chatId);
     if (chat === undefined) throw new KindedError("not_found", `No chat ${chatId}`);
@@ -96,6 +102,7 @@ export function fakeHost(chats: Chat[] = []) {
     },
     answer: (request) => {
       requests.push(request);
+      if (!trusted) return Promise.reject(new WorkspaceUntrusted("Acme isn't trusted yet."));
       const chat = find(request.chatId);
       const asked: ChatMessage[] =
         request.message === undefined ? [] : [{ role: "user", content: request.message }];
@@ -130,11 +137,35 @@ export function fakeHost(chats: Chat[] = []) {
       skill ??= "library/skills/halonic-authoring/SKILL.md";
       return skill;
     },
-    onDidChange: () => () => {},
+    onDidChange: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    engineAnswering: () => engineAnswering,
+    workspaceName: () => "Acme",
+    askTrust: async () => {
+      trustChecks += 1;
+      trusted = trustAnswer === "trusted";
+      return trustAnswer;
+    },
   };
   return {
     host,
     requests,
+    /** The engine stops or starts answering, as the app's host says it. */
+    setEngineAnswering: async (answering: boolean) => {
+      engineAnswering = answering;
+      await act(async () => {
+        for (const listener of listeners) listener({ kind: "engine" });
+      });
+    },
+    /** The workspace isn't trusted, and the trust check answers `answer`. */
+    untrusted: (answer: "trusted" | "declined") => {
+      trusted = false;
+      trustAnswer = answer;
+    },
+    /** How often the trust check opened. */
+    trustChecks: () => trustChecks,
     /** Ends the oldest answer still being written. */
     finish: async (answer: ChatAnswer | Error) => {
       await act(async () => pending.shift()?.(answer));

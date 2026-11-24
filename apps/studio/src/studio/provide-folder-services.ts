@@ -125,7 +125,7 @@ export interface FolderServiceParts {
    */
   readonly remoteEngine?: RemoteEngine | undefined;
   /** The window's engine connection: an Assistant answer ends when the engine stops answering. */
-  readonly engineConnection?: Pick<ShellEngine, "on"> | undefined;
+  readonly engineConnection?: Pick<ShellEngine, "on" | "connection"> | undefined;
 }
 
 /** Gives the folder in `location` the services its features read through the shell. */
@@ -248,6 +248,8 @@ export function provideFolderServices(
     trust,
     answerChat: answerChatOn(chatExecutorOf(engine), refusals),
     engine: engineConnection,
+    name,
+    askTrust,
   });
   // The assistant's changes to an agent, for its page's item bar and marks (AI changes 1.2).
   services.provide(
