@@ -4,6 +4,7 @@
 - Task: HAL-17793
 - Approval: HAL-17793; Liam reviews and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7vrhVzNt5xoBWUvSn74ODGCHGdDsmUc2cgOZJj7wyskpE5Z8f+p5OkIQtg/2a8c4z49+z+rKIu9tO2WZvhf0Cw==
 
 ## What changes
 
