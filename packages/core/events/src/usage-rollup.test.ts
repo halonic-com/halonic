@@ -42,6 +42,24 @@ function response(
   };
 }
 
+/** A harness program starting for `agent`, with how its session began when given. */
+function harnessStarted(
+  state: string,
+  agent: string,
+  session?: Extract<RunEventBody, { type: "harness.started" }>["session"],
+): RunEventBody {
+  return {
+    type: "harness.started",
+    state,
+    agent,
+    harness: "claude-code",
+    timeoutMs: 60_000,
+    ...(session === undefined ? {} : { session }),
+  };
+}
+
+const fresh = { start: "fresh", reason: "no-resume" } as const;
+
 function usageOf(events: RunEvent[]): RunUsage {
   const usage = runUsageOf(events);
   if (usage === null) throw new Error("expected the run's usage");
@@ -82,41 +100,20 @@ verifies("events.usage-rollup", () => {
     });
   });
 
-  it("counts fresh sessions by reason and resumed ones", () => {
+  it("counts fresh harness sessions by reason and resumed ones, and none without a session", () => {
     const usage = usageOf(
       runLog(
         "run-1",
         null,
-        {
-          type: "agent.started",
-          state: "draft",
-          agent: "writer",
-          prompt: "Reply",
-          session: { start: "fresh", reason: "no-session" },
-        },
-        {
-          type: "agent.started",
-          state: "check",
-          agent: "checker",
-          prompt: "Check",
-          session: { start: "resumed" },
-        },
-        {
-          type: "agent.started",
-          state: "send",
-          agent: "sender",
-          prompt: "Send",
-          session: { start: "fresh", reason: "__proto__" },
-        },
+        harnessStarted("draft", "writer", fresh),
+        harnessStarted("check", "checker", { start: "resumed", reason: "no-resume" }),
+        harnessStarted("send", "sender", fresh),
+        harnessStarted("old", "writer"),
       ),
     );
 
     expect(usage.task).toBeNull();
-    expect(usage.sessions).toEqual({
-      fresh: 2,
-      freshReasons: { "no-session": 1, ["__proto__"]: 1 },
-      resumed: 1,
-    });
+    expect(usage.sessions).toEqual({ fresh: 2, freshReasons: { "no-resume": 2 }, resumed: 1 });
   });
 
   it("adds up two runs on one task per task and per branch, and leaves out a run without one", () => {
@@ -125,13 +122,8 @@ verifies("events.usage-rollup", () => {
       runLog(
         "run-1",
         task,
-        {
-          type: "agent.started",
-          state: "draft",
-          agent: "writer",
-          prompt: "Reply",
-          session: { start: "fresh", reason: "no-session" },
-        },
+        { type: "agent.started", state: "draft", agent: "writer", prompt: "Reply" },
+        harnessStarted("draft", "writer", fresh),
         response("writer", 100, 20),
         {
           type: "agent.started",
@@ -147,13 +139,8 @@ verifies("events.usage-rollup", () => {
       runLog(
         "run-2",
         task,
-        {
-          type: "agent.started",
-          state: "fix",
-          agent: "writer",
-          prompt: "Fix",
-          session: { start: "fresh", reason: "no-session" },
-        },
+        { type: "agent.started", state: "fix", agent: "writer", prompt: "Fix" },
+        harnessStarted("fix", "writer", fresh),
         {
           ...response("writer", 50, 10),
           usage: { inputTokens: 50, outputTokens: 10, cacheWriteTokens: 400 },
@@ -165,7 +152,7 @@ verifies("events.usage-rollup", () => {
       usage: { inputTokens: 180, outputTokens: 35, cacheWriteTokens: 400 },
       subAgentUsage: { inputTokens: 30, outputTokens: 5 },
       calls: 3,
-      sessions: { fresh: 2, freshReasons: { "no-session": 2 }, resumed: 0 },
+      sessions: { fresh: 2, freshReasons: { "no-resume": 2 }, resumed: 0 },
       runIds: ["run-1", "run-2"],
     };
 

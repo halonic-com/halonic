@@ -62,8 +62,8 @@ optional and come with a requirement.
 - `summarize(events)`: folds a run's events into a `RunSummary`. Every run
   store uses it.
 - `runUsageOf(events)`: one run's tokens, by the summary's rule, with the
-  part its sub-agents used, its calls, its agents' fresh harness sessions by
-  reason and its resumed ones, and the task its `run.started` names.
+  part its sub-agents used, its calls, its fresh harness sessions by reason
+  and its resumed ones (`harness.started.session`), and the task its `run.started` names.
   `usageByTask(runs)` and `usageByBranch(runs)` add runs up per task and per
   branch, which stands for a pull request (requirement `usage-rollup`).
 - `upgradeEvent(raw)` and `parseEventLine(line)`: read stored events,
@@ -87,10 +87,6 @@ optional and come with a requirement.
 - `run.started.task`: the task the run worked on, `{ id, branch? }`
   (`RunTask`). The id is the caller's own string; nothing looks it up. A
   child run has its parent's (requirement `run-started-task`).
-- `agent.started.session`: how an agent's harness session began,
-  `{ start: "fresh", reason }` or `{ start: "resumed" }`
-  (`AgentSessionStart`); the harness bridge chooses the reason codes
-  (requirement `agent-started-session`).
 - `sandbox.off`: a step ran without the sandbox because a person chose to run
   the agent on this computer, with `chosenAt`, when they chose it
   (requirement `sandbox-off`).

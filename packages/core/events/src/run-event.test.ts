@@ -1,7 +1,6 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectTypeOf } from "vitest";
 import type { AgentResume } from "./agent-resume.ts";
-import type { AgentSessionStart } from "./agent-started.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
@@ -211,8 +210,6 @@ verifies("events.run-log-contract", () => {
       agent: string;
       prompt: string;
       parent?: string;
-      // Added after the reference by events.agent-started-session (HAL-17254).
-      session?: AgentSessionStart;
     }>();
     expectTypeOf<EventOf<"llm.request">>().toEqualTypeOf<{
       type: "llm.request";

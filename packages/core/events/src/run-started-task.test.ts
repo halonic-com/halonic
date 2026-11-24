@@ -1,11 +1,9 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectTypeOf } from "vitest";
-import type { AgentSessionStart } from "./agent-started.ts";
 import type { RunEventBody, RunEventType } from "./run-event.ts";
 import type { RunTask } from "./run-task.ts";
 
-// Type tests for the task a run worked on and how its agents' harness
-// sessions began, which the token roll-up reads.
+// Type tests for the task a run worked on, which the token roll-up reads.
 
 type EventOf<T extends RunEventType> = Extract<RunEventBody, { type: T }>;
 
@@ -29,28 +27,5 @@ verifies("events.run-started-task", () => {
       EventOf<"run.started">
     >();
     expectTypeOf(started).toExtend<EventOf<"run.started">>();
-  });
-});
-
-verifies("events.agent-started-session", () => {
-  typeTest("takes a fresh or resumed session, and an agent.started without one", () => {
-    const agentStarted = {
-      type: "agent.started",
-      state: "draft",
-      agent: "writer",
-      prompt: "Hi",
-    } as const;
-    expectTypeOf<EventOf<"agent.started">["session"]>().toEqualTypeOf<
-      AgentSessionStart | undefined
-    >();
-    expectTypeOf({
-      ...agentStarted,
-      session: { start: "fresh", reason: "no-session" },
-    } as const).toExtend<EventOf<"agent.started">>();
-    expectTypeOf({ ...agentStarted, session: { start: "resumed" } } as const).toExtend<
-      EventOf<"agent.started">
-    >();
-    expectTypeOf(agentStarted).toExtend<EventOf<"agent.started">>();
-    expectTypeOf({ start: "fresh" } as const).not.toExtend<AgentSessionStart>();
   });
 });

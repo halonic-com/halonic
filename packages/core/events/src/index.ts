@@ -1,6 +1,5 @@
 export { addUsage } from "./add-usage.ts";
 export type { AgentResume, LoggedToolCall } from "./agent-resume.ts";
-export type { AgentSessionStart, AgentStartedEvent } from "./agent-started.ts";
 export {
   type AnswerChoices,
   answerChoicesOf,

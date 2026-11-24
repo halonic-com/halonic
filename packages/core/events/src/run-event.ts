@@ -1,6 +1,5 @@
 import type { AgentAnswerRetriedEvent } from "./agent-answer-retried.ts";
 import type { AgentResume } from "./agent-resume.ts";
-import type { AgentStartedEvent } from "./agent-started.ts";
 import type { BridgeFailedEvent, HarnessAllowedEvent } from "./bridge-events.ts";
 import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts";
 import type { ConnectorPartOffEvent } from "./connector-part-off.ts";
@@ -101,7 +100,8 @@ export type RunEventBody =
       task?: RunTask;
     }
   | { type: "state.entered"; state: string }
-  | AgentStartedEvent
+  /** `parent`: the agent that delegated this one (subagents); absent for the state's own agent. */
+  | { type: "agent.started"; state: string; agent: string; prompt: string; parent?: string }
   /**
    * `alias`: the model alias the call went to, such as `fast`; absent in
    * older logs and when the model has none (requirement

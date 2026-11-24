@@ -4,14 +4,14 @@
 // on a run's page never disagree.
 
 import { addUsage } from "./add-usage.ts";
-import type { AgentSessionStart } from "./agent-started.ts";
+import type { HarnessSessionStart } from "./harness-started.ts";
 import { modelCallCharge } from "./model-call-charge.ts";
 import type { Usage } from "./run-basics.ts";
 import type { RunEvent } from "./run-event.ts";
 import type { RunTask } from "./run-task.ts";
 import { upgradeEvent } from "./upgrade.ts";
 
-/** How the harness sessions of agents began: how many were fresh, by reason, and how many resumed. */
+/** How a run's harness sessions began: how many were fresh, by reason, and how many resumed. */
 export interface SessionStarts {
   fresh: number;
   /** Fresh starts by their reason code, such as `{ "no-session": 2 }`. */
@@ -74,6 +74,9 @@ export function runUsageOf(events: readonly RunEvent[]): RunUsage | null {
 function countEvent(total: UsageTotal, subAgents: Set<string>, event: RunEvent): void {
   if (event.type === "agent.started") {
     if (event.parent !== undefined) subAgents.add(event.agent);
+    return;
+  }
+  if (event.type === "harness.started") {
     if (event.session !== undefined) countSession(total.sessions, event.session);
     return;
   }
@@ -136,7 +139,7 @@ function emptyTotal(): UsageTotal {
   };
 }
 
-function countSession(sessions: SessionStarts, session: AgentSessionStart): void {
+function countSession(sessions: SessionStarts, session: HarnessSessionStart): void {
   if (session.start === "resumed") {
     sessions.resumed += 1;
     return;
@@ -153,8 +156,8 @@ function addSessions(total: SessionStarts, more: SessionStarts): SessionStarts {
   };
 }
 
-// Through a Map, because the bridge picks the reason codes: one such as
-// `__proto__` must count like any other, not change the object.
+// Through a Map, so a reason code added later, whatever its name, counts
+// like any other and never changes the object.
 function addCounts(
   counts: Record<string, number>,
   more: Record<string, number>,
