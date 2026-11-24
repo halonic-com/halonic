@@ -392,14 +392,16 @@ function accessOf(
  * `harness-host.bridge-effort`), by the name the program asks for it by:
  * for an alias, its provider's model id; for any other name, the name as
  * written. The agent file's `params.reasoningEffort` wins over the
- * alias's, as in the built-in loop's layered params. `undefined` when
- * neither sets one, so the program's own effort stays.
+ * alias's, as in the built-in loop's layered params, and a `low` run wins
+ * over both (requirement `harness-host.run-effort`). `undefined` when none
+ * sets one, so the program's own effort stays.
  */
 function effortsOf(
   agent: BridgeAgent,
   target: ResolvedModelTarget | undefined,
 ): Readonly<Record<string, BridgeEffort>> | undefined {
-  const effort = agent.effort ?? target?.params.reasoningEffort;
+  const effort =
+    agent.runEffort === "low" ? "low" : (agent.effort ?? target?.params.reasoningEffort);
   const model = target?.alias === undefined ? agent.model : target.model;
   if (effort === undefined || model === undefined) return undefined;
   return { [model]: effort };

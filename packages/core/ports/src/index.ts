@@ -339,6 +339,7 @@ export {
   type ChatTurnWaiting,
   type EngineConnection,
   type EngineConnectionState,
+  type RunEffort,
   type RunEventListener,
   type RunExecutor,
   type RunSubscription,

@@ -101,3 +101,41 @@ verifies("harness-host.bridge-effort", () => {
     });
   });
 });
+
+verifies("harness-host.run-effort", () => {
+  describe("servicesFor", () => {
+    it("lets a low run win over the agent file's high effort", async () => {
+      const access = await anthropicAccessOf({ model: "plain", effort: "high", runEffort: "low" });
+
+      expect(access).toMatchObject({ kind: "key", efforts: { "acme-plain": "low" } });
+    });
+
+    it("keeps the agent file's high effort in a default run", async () => {
+      const access = await anthropicAccessOf({
+        model: "plain",
+        effort: "high",
+        runEffort: "default",
+      });
+
+      expect(access).toMatchObject({ efforts: { "acme-plain": "high" } });
+    });
+
+    it("keeps the agent file's effort when the run names none", async () => {
+      const access = await anthropicAccessOf({ model: "plain", effort: "high" });
+
+      expect(access).toMatchObject({ efforts: { "acme-plain": "high" } });
+    });
+
+    it("gives a low run the low effort where neither the file nor the alias sets one", async () => {
+      const access = await anthropicAccessOf({ model: "plain", runEffort: "low" });
+
+      expect(access).toMatchObject({ efforts: { "acme-plain": "low" } });
+    });
+
+    it("keeps the program's own effort in a default run where nothing sets one", async () => {
+      const access = await anthropicAccessOf({ model: "plain", runEffort: "default" });
+
+      expect(access).not.toHaveProperty("efforts");
+    });
+  });
+});

@@ -145,6 +145,24 @@ verifies("harness-host.bridge-effort", () => {
   });
 });
 
+verifies("harness-host.run-effort", () => {
+  it("tells the host the run's effort", async () => {
+    const { asked, host } = setup();
+
+    await host.open({ ...writer, effort: "low" }, recorder, "sandbox");
+
+    expect(asked.map((agent) => agent.runEffort)).toEqual(["low"]);
+  });
+
+  it("tells the host no run effort when the engine gives none", async () => {
+    const { asked, host } = setup();
+
+    await host.open(writer, recorder, "sandbox");
+
+    expect(asked[0]).not.toHaveProperty("runEffort");
+  });
+});
+
 verifies("harness-host.bridge-agent-harness", () => {
   it("tells the host the harness the agent's call runs in", async () => {
     const { asked, host } = setup();

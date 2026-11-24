@@ -13,6 +13,7 @@ import type {
   Harness,
   HarnessBridge,
   OpenHarnessBridge,
+  RunEffort,
   Sandbox,
   SandboxProfile,
   SandboxSession,
@@ -58,6 +59,13 @@ export interface HarnessAgent {
    * versions were recorded.
    */
   readonly version: RunVersion | null;
+  /**
+   * How hard the agent thinks, as its run's `run.started` names it: `low`
+   * puts the low effort on its model calls in place of its file's and its
+   * alias's (requirement `engine.run-effort`). The default when absent, as
+   * for a chat turn, which has no run.
+   */
+  readonly effort?: RunEffort;
   /**
    * Where the agent reads and writes workspace files: its top-level run's
    * proposal folder, a worktree of the workspace in Halonic's data folder;

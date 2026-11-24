@@ -14,6 +14,14 @@ import type { ChatMessage, ChatParams, ChatResponse, ToolDefinition } from "./ch
 export const runExecutorVersion = 2;
 
 /**
+ * How hard a run's harness agents think: `low` sets the low effort on their
+ * model calls, in place of their files' and aliases' own; `default` keeps
+ * those (requirement `engine.run-effort`). Two levels only, so a run can
+ * think less but never more than its agents are set to.
+ */
+export type RunEffort = "low" | "default";
+
+/**
  * Start a workflow run. Subflows are not started through this port: the
  * engine starts them inside the executor, which also tells the parent when a
  * child finishes.
@@ -32,6 +40,8 @@ export interface StartRunRequest {
    * the harness is installed is the caller's check (`detect()`).
    */
   harness?: string;
+  /** How hard the run's harness agents think; its child runs use it too. `default` when absent. */
+  effort?: RunEffort;
   /**
    * The steps of a Try it or Test run that can't be tried, as found when the
    * caller loaded the run's item: each `step` names a state of the run's

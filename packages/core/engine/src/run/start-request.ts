@@ -49,7 +49,7 @@ export function startInputOf(
   definitionsVersion: string,
   at: string,
 ): StartInput {
-  const { hubId, workflowId, input, trigger, harness, cantTry = [], version } = request;
+  const { hubId, workflowId, input, trigger, harness, effort, cantTry = [], version } = request;
   return {
     type: "start",
     at,
@@ -61,6 +61,8 @@ export function startInputOf(
     definitionsVersion,
     ...(trigger === undefined ? {} : { trigger }),
     ...(harness === undefined ? {} : { harness }),
+    // The default is the absence, so a run that keeps it logs as before.
+    ...(effort === "low" ? { effort } : {}),
     cantTry,
     ...(version === undefined ? {} : { version }),
   };

@@ -7,6 +7,7 @@ import type {
   RunStatus,
   RunVersion,
 } from "@halonicjs/events";
+import type { RunEffort } from "@halonicjs/ports";
 import {
   type RequestedEffect,
   type ResumeAfterEffect,
@@ -95,6 +96,8 @@ export interface RunState {
    * it, or `null` when each agent runs in the one its file names.
    */
   readonly harness: string | null;
+  /** How hard the run's harness agents think, as `run.started` names it; `default` when it names none. */
+  readonly effort: RunEffort;
   /**
    * The steps of a Try it or Test run that can't be tried: the ones
    * `run.started` names, then the ones found while running. Empty for any
@@ -210,6 +213,7 @@ function startedState(event: RunEvent): RunState {
     input: event.input,
     parent: event.parent ?? null,
     harness: event.harness ?? null,
+    effort: event.effort ?? "default",
     cantTry: event.cantTry ?? [],
     version: event.version ?? null,
     status: "running",

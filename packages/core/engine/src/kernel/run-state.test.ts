@@ -49,6 +49,7 @@ verifies("engine.run-state-fold", () => {
       input: { message: "Where is my invoice?" },
       parent: null,
       harness: null,
+      effort: "default",
       cantTry: [],
       version: null,
       status: "running",

@@ -77,6 +77,8 @@ export type RunEventBody =
        * each agent's own harness, and in older logs.
        */
       harness?: string;
+      /** `low`: the run's harness agents think less (requirement `events.run-started-effort`). */
+      effort?: "low";
       /**
        * The steps of a Try it or Test run that can't be tried, as found when
        * the run's item was loaded, so a timeline can mark them straight away

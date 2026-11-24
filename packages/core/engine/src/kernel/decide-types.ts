@@ -54,6 +54,8 @@ export interface StartInput extends InputBase {
   readonly parent?: RunParent;
   /** The harness every task agent of the run runs in, whatever its file names. */
   readonly harness?: string;
+  /** `low` when every harness agent of the run thinks with the low effort; the default when absent. */
+  readonly effort?: "low";
   /**
    * The steps of a Try it or Test run that can't be tried, as found when its
    * item was loaded. The run never runs them, and ends with `run.cant-try`
