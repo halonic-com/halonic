@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-17183 (PR 4b of the HAL-16737 plan); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pjIRsjXZZrRXre3NMBv0ATM2RnuSIQMnznXZsGaYmLACTVNqvlqZk91u7calhTvTDtD8qEd8cDZednF1r7BYCQ==
 
 The hosts now give the harness profile builder a coding tools server, so fenced Claude Code and Codex runs get `mcp__halonic-tools__…`. This changes one requirement and adds two.
 
