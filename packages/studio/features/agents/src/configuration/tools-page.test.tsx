@@ -42,7 +42,7 @@ async function openTools(
   await act(async () => buttonNamed(page, "Configuration")?.click());
   await act(async () =>
     [...page.querySelectorAll<HTMLElement>("[role=tab]")]
-      .find((tab) => tab.textContent === "Tools")
+      .find((tab) => tab.textContent?.startsWith("Tools"))
       ?.click(),
   );
   return page;

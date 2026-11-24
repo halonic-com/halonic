@@ -25,6 +25,7 @@ import {
   type ConfigurationPage,
   type ConfigurationStart,
 } from "../configuration/configuration.tsx";
+import { errorTotal, useConfigurationErrors } from "../configuration/configuration-errors.ts";
 import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
 import { PlacementProvider } from "../configuration/use-placement.ts";
 import { FlowView } from "../map/flow-view.tsx";
@@ -161,6 +162,8 @@ export function AgentScreen({
   const phone = usePresentation() === "phone";
   const { load, retry: retryAgent } = useLoad(source, () => title.current?.focus());
   const { settings, aliases, defaultModel } = useConfigurationLoads(host, { hubId, id });
+  const errors = useConfigurationErrors(host, { hubId, id }, settings.load, aliases.load);
+  const views = agentTabs(errorTotal(errors));
   // The chat's first load is the agent's (v0.1), so one Try again reads the agent and its settings.
   const retry = () => {
     retryAgent();
@@ -355,6 +358,7 @@ export function AgentScreen({
             page={configurationPage}
             onPickPage={setConfigurationPage}
             start={configurationStart}
+            errors={errors}
           />
         )}
       </StackedCards>
@@ -376,7 +380,7 @@ export function AgentScreen({
             </>
           )
         }
-        views={agentTabs}
+        views={views}
         view={view}
         onPickView={pickView}
         notice={notice}
@@ -398,7 +402,7 @@ export function AgentScreen({
       titleRef={titleRef}
       actions={ready ? trash.actions : []}
       end={ready && fullAccess}
-      views={agentTabs}
+      views={views}
       firstView={view}
       handle={itemPage}
       onPickView={pickView}

@@ -271,4 +271,6 @@ export const configurationWords = {
   loadFailedTitle: (name: string) => `Couldn't load ${name}'s settings`,
   modelsLoadFailedTitle: "Couldn't load the models",
   tryAgain: "Try again",
+  /** A counter's name for screen readers, "Model, 1 error", as on the workflow page. */
+  errors: (count: number) => `${count} ${count === 1 ? "error" : "errors"}`,
 } as const;

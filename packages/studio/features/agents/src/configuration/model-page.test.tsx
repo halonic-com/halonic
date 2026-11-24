@@ -65,7 +65,7 @@ async function openModel(
   await act(async () => buttonNamed(page, "Configuration")?.click());
   await act(async () =>
     [...page.querySelectorAll<HTMLElement>("[role=tab]")]
-      .find((tab) => tab.textContent === "Model")
+      .find((tab) => tab.textContent?.startsWith("Model"))
       ?.click(),
   );
   const select = page.querySelector("select") as HTMLSelectElement;

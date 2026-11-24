@@ -39,9 +39,20 @@ export function useAgentView(hubId: string, id: string, modelRequest: string | u
   return { view, selectView, fresh, modelWaiting, modelShown };
 }
 
-/** The panel's views. */
-export const agentTabs: readonly [Tab<AgentView>, ...Tab<AgentView>[]] = [
-  { id: "flow", label: mapWords.tab },
-  { id: "configuration", label: configurationWords.tab },
-  { id: "runs", label: pageWords.runsHeading },
-];
+/**
+ * The panel's views. Configuration carries the number of errors on its pages, read as
+ * "Configuration, 2 errors" (`agents.configuration.error-counts`).
+ */
+export function agentTabs(errors: number): readonly [Tab<AgentView>, ...Tab<AgentView>[]] {
+  return [
+    { id: "flow", label: mapWords.tab },
+    {
+      id: "configuration",
+      label: configurationWords.tab,
+      ...(errors > 0 && {
+        count: { value: errors, tone: "danger" as const, name: configurationWords.errors(errors) },
+      }),
+    },
+    { id: "runs", label: pageWords.runsHeading },
+  ];
+}

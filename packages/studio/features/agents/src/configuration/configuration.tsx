@@ -29,6 +29,7 @@ import type {
 import type { Load } from "../page/use-load.ts";
 import { AgentStepsPage } from "./agent-steps-page.tsx";
 import { BehaviourPage } from "./behaviour-page.tsx";
+import { type ConfigurationErrors, noConfigurationErrors } from "./configuration-errors.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { HarnessPage } from "./harness-page.tsx";
 import { ModelPage } from "./model-page.tsx";
@@ -87,6 +88,8 @@ export interface ConfigurationProps {
   readonly page?: ConfigurationPage | undefined;
   /** Hears the page the person picks in the list. */
   readonly onPickPage?: ((page: ConfigurationPage) => void) | undefined;
+  /** The errors on each page, for the counters in the page list; none when absent. */
+  readonly errors?: ConfigurationErrors | undefined;
 }
 
 type BuiltPageId = "behaviour" | "model" | "harness" | "tools" | "subagents" | "agentSteps";
@@ -109,10 +112,24 @@ export interface ConfigurationStart {
   readonly step?: string | undefined;
 }
 
-/** The pages that are built, in the order of flow-agents 5.1. */
-const builtPages: readonly Tab<PageId>[] = (
-  ["behaviour", "model", "harness", "tools", "subagents", "agentSteps"] as const
-).map((id) => ({ id, label: words.pageNames[id] }));
+/**
+ * The pages that are built, in the order of flow-agents 5.1. A page with errors carries their
+ * number, read as "Model, 1 error" (`agents.configuration.error-counts`).
+ */
+function builtPages(errors: ConfigurationErrors): readonly Tab<PageId>[] {
+  return (["behaviour", "model", "harness", "tools", "subagents", "agentSteps"] as const).map(
+    (id) => {
+      const count = id === "model" || id === "tools" ? errors[id] : 0;
+      return {
+        id,
+        label: words.pageNames[id],
+        ...(count > 0 && {
+          count: { value: count, tone: "danger" as const, name: words.errors(count) },
+        }),
+      };
+    },
+  );
+}
 
 /** Where Configuration opens unless it's asked to open elsewhere. */
 const onBehaviour: ConfigurationStart = { page: "behaviour" };
@@ -121,10 +138,11 @@ const onBehaviour: ConfigurationStart = { page: "behaviour" };
 function pageTabs(
   sections: readonly ItemPageSectionListing[],
   Sections: ComponentType<SectionsProps> | undefined,
+  errors: ConfigurationErrors,
 ): readonly Tab<PageId>[] {
-  if (Sections === undefined) return builtPages;
+  if (Sections === undefined) return builtPages(errors);
   return [
-    ...builtPages,
+    ...builtPages(errors),
     ...sections.map((section) => ({ id: `section:${section.id}` as const, label: section.title })),
   ];
 }
@@ -198,8 +216,9 @@ export function Configuration({
   start = onBehaviour,
   page: openedPage,
   onPickPage,
+  errors = noConfigurationErrors,
 }: ConfigurationProps) {
-  const pages = pageTabs(sections, Sections);
+  const pages = pageTabs(sections, Sections, errors);
   const [picked, setPicked] = usePickedPage(start.page, openedPage, onPickPage);
   const page = shownPage(pages, picked);
   // The Add subagent dialog opens once per press: once Subagents has been shown, coming back to it
