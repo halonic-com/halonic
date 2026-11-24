@@ -1,4 +1,5 @@
 import type { ChatAnswer, SandboxStartCheck } from "@halonicjs/app";
+import type { ChatSessions, SavedChat } from "@halonicjs/ports";
 import { act } from "react";
 import type { AgentChatRequest, AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
@@ -81,3 +82,23 @@ export async function sendMessage(page: HTMLElement, text: string) {
 
 export const said = (page: HTMLElement) =>
   [...page.querySelectorAll("[data-chat-message] p")].map((line) => line.textContent);
+
+/** A store that keeps chats in memory, one list per workspace. */
+export function memorySessions(): ChatSessions {
+  const chats = new Map<string, SavedChat>();
+  const keyOf = (location: string, id: string) => `${location}\n${id}`;
+  return {
+    list: async (location) =>
+      [...chats.entries()]
+        .filter(([key]) => key.startsWith(`${location}\n`))
+        .map(([, { messages: _messages, model: _model, ...summary }]) => summary)
+        .sort((left, right) => right.lastUsedAt.localeCompare(left.lastUsedAt)),
+    load: async (location, id) => chats.get(keyOf(location, id)) ?? null,
+    save: async (location, chat) => {
+      chats.set(keyOf(location, chat.id), structuredClone(chat));
+    },
+    delete: async (location, id) => {
+      chats.delete(keyOf(location, id));
+    },
+  };
+}
