@@ -1,30 +1,44 @@
-import { useMemo } from "react";
+import { createContext, useContext, useMemo } from "react";
+import { ExternalLink } from "../external-link/external-link.tsx";
+import { type OpenExternal, OpenExternalProvider } from "../external-link/open-external.tsx";
 import { type MarkdownBlock, type MarkdownInline, readMarkdown } from "../text/markdown.ts";
 
 /** The props of `ChatText`. */
 export interface ChatTextProps {
   /** What the model wrote in one step, as plain text. */
   readonly children: string;
+  /**
+   * How a link opens, such as the shell's `useOpenExternal()`. Left out, a link is text that
+   * opens nothing, which suits a model's reply in a chat. Given, a link is an `ExternalLink` whose
+   * click calls this instead of navigating the window (`kit.chat-text-links`).
+   */
+  readonly openLink?: OpenExternal;
 }
+
+// Set only when the caller gave `openLink`; the blocks and inlines in between don't need to know.
+const OpenLinkContext = createContext<OpenExternal | undefined>(undefined);
 
 /**
  * A step of a reply that's text: `text-reading` in `fg`, with the Markdown a reply may use drawn
  * as bold, italic, code, lists and quotes (`kit.chat-message`). Every string is React text, so
  * nothing the model writes becomes markup, and a link shows its address as text that opens
- * nothing. Paragraphs keep the model's line breaks.
+ * nothing unless the caller says how links open. Paragraphs keep the model's line breaks.
  *
  * @example
  * <ChatText>{"I added **morning-sort**. It runs at `0 8 * * 1-5`."}</ChatText>
+ * <ChatText openLink={useOpenExternal()}>{"See [the PR](https://example.com/pr/1)."}</ChatText>
  */
-export function ChatText({ children }: ChatTextProps) {
+export function ChatText({ children, openLink }: ChatTextProps) {
   // The text grows while it streams; it's read again only when it changes.
   const blocks = useMemo(() => readMarkdown(children), [children]);
   return (
-    <div className="flex min-w-0 flex-col gap-3 text-reading text-fg wrap-break-word">
-      {blocks.map((block, index) => (
-        <ReplyBlock key={index} block={block} />
-      ))}
-    </div>
+    <OpenLinkContext value={openLink}>
+      <div className="flex min-w-0 flex-col gap-3 text-reading text-fg wrap-break-word">
+        {blocks.map((block, index) => (
+          <ReplyBlock key={index} block={block} />
+        ))}
+      </div>
+    </OpenLinkContext>
   );
 }
 
@@ -110,19 +124,37 @@ function ReplyInline({ inline }: { readonly inline: MarkdownInline }) {
 }
 
 /**
- * A link as text: its words, then its full address. A model's words can say one place and go to
- * another, so nothing here opens; the address can be read and copied on purpose.
+ * A link: its words, then its full address, since a model's words can say one place and go to
+ * another. Without `openLink` nothing here opens and the address can be read and copied on
+ * purpose. With it, the words are an `ExternalLink`; `readMarkdown` only makes a link of a web
+ * address, so a `javascript:` one never gets here.
  */
 function ReplyLink({ href, text }: { readonly href: string; readonly text: string }) {
+  const openLink = useContext(OpenLinkContext);
   const address = <bdi dir="ltr">{href}</bdi>;
-  if (text === href) return address;
-  return (
-    <>
-      {text}
+  // A link whose words are its address shows it once.
+  const words = text === href ? address : text;
+  const addressAfter =
+    text === href ? null : (
       <span className="text-fg-muted">
         {" ("}
         {address})
       </span>
+    );
+  if (openLink === undefined) {
+    return (
+      <>
+        {words}
+        {addressAfter}
+      </>
+    );
+  }
+  return (
+    <>
+      <OpenExternalProvider openExternal={openLink}>
+        <ExternalLink href={href}>{words}</ExternalLink>
+      </OpenExternalProvider>
+      {addressAfter}
     </>
   );
 }
