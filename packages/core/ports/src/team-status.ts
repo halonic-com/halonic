@@ -6,6 +6,13 @@ export const teamStatusVersion = 1;
 /** When the source itself made the data, not when we asked. Apps show "As of 13:00" and warn after 30 minutes. */
 export interface AsOf {
   asOf: string;
+  /**
+   * True when the engine answered from its offline cache; `asOf` is still the
+   * source's time for the cached data. Left out when the answer is live, and by
+   * a source older than this field. Each answer says it for itself, so seats can
+   * come from the cache while spend is live.
+   */
+  fromCache?: boolean;
 }
 
 /** Money in whole cents, with its currency. Paid money only: subscription work is 0 here. */
@@ -35,6 +42,11 @@ export interface SpendSummary extends AsOf {
   budget?: Money;
   /** Runs whose cost isn't priced yet ("at least $41.20"). */
   unpricedRuns: number;
+  /**
+   * Runs counted in `paid` and `tokens` whose seat isn't known ("Seat unknown
+   * for 3 runs"). Never negative. Left out by a source that can't tell.
+   */
+  unknownSeatRuns?: number;
 }
 
 /** One agent's spend for a range. */
@@ -63,7 +75,16 @@ export interface SeatWindow {
   reaches90At?: string;
 }
 
-/** A seat, by its board label only: never its account, login folder or connection. */
+/** Why a seat's newest reading failed. A cause a provider can't map reads as `other`. */
+export type SeatReadCause = "rate-limited" | "other";
+
+/**
+ * A seat, by its board label only: never its account, login folder or connection.
+ *
+ * When its newest reading failed, `failedRead` says why and when, `state` is
+ * `"not-read"`, and `windows` and `asOf` stay the last good reading's, so an
+ * app shows "Not read · rate-limited · last good 12:20" with those numbers.
+ */
 export interface Seat extends AsOf {
   id: MessagingId;
   source: MessagingId;
@@ -76,6 +97,8 @@ export interface Seat extends AsOf {
   manualReset: "available" | { usedAt: string } | "none";
   /** The Seat Supervisor's open proposal, in words, with its time. Plain text; the app shows it and never carries it out. */
   proposal?: { text: string; at: string };
+  /** The newest reading failed: its cause and when. Only with `state: "not-read"`. */
+  failedRead?: { cause: SeatReadCause; at: string };
 }
 
 /** Where a pull request stands, as apps show it. A state a provider can't map reads as `other`. */

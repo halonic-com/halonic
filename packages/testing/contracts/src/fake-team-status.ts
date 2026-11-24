@@ -55,7 +55,8 @@ const bySource = (item: { source: MessagingId }): MessagingId => item.source;
  * `contracts.fake-team-status`). Read-only like the port: a test fills it
  * with `setSpend`, `addAgentSpend`, `addSeat`, `addPullRequest`,
  * `addPullRequestEvent` and `setMergeQueue`, and cuts a source's line with
- * `goOffline`, after which that source reads as it was, as of its last read.
+ * `goOffline`, after which that source reads as it was, as of its last read,
+ * with each answer marked `fromCache`.
  *
  * Like a provider, it drops a pull request's web link that
  * `isAllowedWebLink` refuses for the source's origin.
@@ -97,7 +98,7 @@ export class FakeTeamStatus implements TeamStatus {
 
   spend(range: SpendRange): Promise<readonly SpendSummary[]> {
     const spend = this.read((held) => held.spend, bySource);
-    return Promise.resolve(spend.filter((each) => each.range === range));
+    return Promise.resolve(spend.filter((each) => each.range === range).map(this.marked));
   }
 
   agentSpend(range: SpendRange): Promise<readonly AgentSpend[]> {
@@ -106,7 +107,7 @@ export class FakeTeamStatus implements TeamStatus {
   }
 
   seats(): Promise<readonly Seat[]> {
-    return Promise.resolve(this.read((held) => held.seats, bySource));
+    return Promise.resolve(this.read((held) => held.seats, bySource).map(this.marked));
   }
 
   pullRequests(): Promise<readonly PullRequestList[]> {
@@ -125,6 +126,7 @@ export class FakeTeamStatus implements TeamStatus {
         source: pullRequest.source,
         repo: pullRequest.repo,
         asOf: this.sourceOf(pullRequest.source).asOf,
+        ...this.cacheMark(pullRequest.source),
         open: [],
         recent: [],
       };
@@ -143,12 +145,16 @@ export class FakeTeamStatus implements TeamStatus {
     );
     const found = held.find((each) => each.pullRequest.id === id);
     if (found === undefined) return Promise.resolve(undefined);
-    const asOf = this.sourceOf(found.pullRequest.source).asOf;
-    return Promise.resolve({ ...found, asOf });
+    const source = found.pullRequest.source;
+    return Promise.resolve({
+      ...found,
+      asOf: this.sourceOf(source).asOf,
+      ...this.cacheMark(source),
+    });
   }
 
   mergeQueue(): Promise<readonly MergeQueue[]> {
-    return Promise.resolve(this.read((held) => held.queues, bySource));
+    return Promise.resolve(this.read((held) => held.queues, bySource).map(this.marked));
   }
 
   changes(): AsyncIterable<MessagingId> {
@@ -213,14 +219,14 @@ export class FakeTeamStatus implements TeamStatus {
     return this.add("agentSpend", source, added);
   }
 
-  /** Adds a pool seat that is `ok`, with no windows, unless told otherwise. */
+  /** Adds a pool seat that is `ok` (`not-read` with a `failedRead`), with no windows, unless told otherwise. */
   addSeat(source: MessagingId, seat: { label: string } & Partial<Seat>): Seat {
     this.serving(source, "seats");
     const added: Seat = {
       id: this.newId(),
       source,
       role: "pool",
-      state: "ok",
+      state: seat.failedRead === undefined ? "ok" : "not-read",
       windows: [],
       agents: [],
       manualReset: "none",
@@ -312,6 +318,16 @@ export class FakeTeamStatus implements TeamStatus {
   private read<Item>(pick: (held: Held) => Item[], sourceOf: (item: Item) => MessagingId): Item[] {
     const live = pick(this.live).filter((item) => !this.frozen.has(sourceOf(item)));
     return copy([...live, ...[...this.frozen.values()].flatMap(pick)]);
+  }
+
+  /** An answer of a source whose line is cut is marked `fromCache`; a live one has no mark. */
+  private readonly marked = <Answer extends { source: MessagingId }>(answer: Answer): Answer => ({
+    ...answer,
+    ...this.cacheMark(answer.source),
+  });
+
+  private cacheMark(source: MessagingId): { fromCache?: true } {
+    return this.frozen.has(source) ? { fromCache: true } : {};
   }
 
   private add<Key extends keyof Held>(

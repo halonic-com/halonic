@@ -131,4 +131,35 @@ verifies("contracts.fake-team-status", () => {
     expect(await changes.next()).toEqual({ done: false, value: acme });
     await changes.return?.();
   });
+
+  it("marks a cut source's answers fromCache, and none once it is back", async () => {
+    const { team, acme, globex } = makeFake();
+    team.setSpend(acme, { range: "today" });
+    team.setSpend(globex, { range: "today" });
+    team.addSeat(acme, { label: "Pool 1" });
+    const pullRequest = team.addPullRequest(acme, { label: "#1", title: "Search" });
+    team.setMergeQueue(acme);
+
+    team.goOffline(acme);
+    const cachedPullRequest = await team.pullRequest(pullRequest.id);
+
+    expect((await team.spend("today")).map((each) => each.fromCache)).toEqual([undefined, true]);
+    expect((await team.seats()).map((each) => each.fromCache)).toEqual([true]);
+    expect((await team.pullRequests()).map((each) => each.fromCache)).toEqual([true]);
+    expect((await team.mergeQueue()).map((each) => each.fromCache)).toEqual([true]);
+    expect(cachedPullRequest?.fromCache).toBe(true);
+
+    team.goOnline(acme);
+    expect((await team.seats()).map((each) => each.fromCache)).toEqual([undefined]);
+  });
+
+  it("adds a seat with a failedRead as not-read", async () => {
+    const { team, acme } = makeFake();
+    team.addSeat(acme, {
+      label: "Pool 1",
+      failedRead: { cause: "rate-limited", at: "2026-11-24T10:00:00.000Z" },
+    });
+
+    expect((await team.seats()).map((each) => each.state)).toEqual(["not-read"]);
+  });
 });

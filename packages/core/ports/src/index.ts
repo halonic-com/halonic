@@ -500,6 +500,7 @@ export {
   type PullRequestList,
   type PullRequestState,
   type Seat,
+  type SeatReadCause,
   type SeatState,
   type SeatWindow,
   type SpendRange,
