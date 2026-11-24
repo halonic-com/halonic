@@ -1,6 +1,7 @@
 import { unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { Scalar } from "yaml";
 import { keepLineComment } from "./edit-text.ts";
 import { readYaml } from "./read.ts";
 
@@ -9,31 +10,49 @@ const duplicate = (line: number, col: number) => ({
   error: { kind: "syntax", message: "Map keys must be unique", line, col },
 });
 
+/**
+ * Reads `text` and counts how often any parsed value was looked at. Every
+ * check that compares keys reads their values: our duplicate check once per
+ * key, the yaml library's own check once per earlier key (HAL-16339). So the
+ * count grows with the work, not with the runner's speed or load, and the
+ * test needs no clock (HAL-17932). The library sets `value` by assignment,
+ * so an accessor on the prototype sees every read.
+ */
+function countValueReads(text: string): { readonly data: unknown; readonly reads: number } {
+  const stored = Symbol("value");
+  let reads = 0;
+  Object.defineProperty(Scalar.prototype, "value", {
+    configurable: true,
+    get(this: Record<symbol, unknown>) {
+      reads++;
+      return this[stored];
+    },
+    set(this: Record<symbol, unknown>, value: unknown) {
+      this[stored] = value;
+    },
+  });
+  try {
+    return { data: unwrap(readYaml(text)).data, reads };
+  } finally {
+    Reflect.deleteProperty(Scalar.prototype, "value");
+  }
+}
+
 verifies("yaml.read-time", () => {
-  // Compares how the time grows instead of a fixed budget, so a slow runner
-  // (coverage makes CI 20-40 times slower) cannot fail it. Eight times the keys
-  // take about 7 times as long when reading is linear, about 30 times when it
-  // is quadratic. On a shared runner one reading can stall (another job, garbage
-  // collection), which once gave 23 times (HAL-17682). So both sizes are warmed
-  // up, each round reads the large map and the small one back to back so a slow
-  // stretch hits both, and the median of the rounds' ratios counts.
-  it("reads eight times the keys in well under 16 times the time", { timeout: 120_000 }, () => {
-    const mapOf = (count: number) =>
-      Array.from({ length: count }, (_, index) => `key${index}: ${index}`).join("\n");
-    const small = mapOf(2_000);
-    const large = mapOf(16_000);
-    const timed = (text: string, lastKey: number) => {
-      const start = performance.now();
-      const data = unwrap(readYaml(text)).data as Record<string, number>;
-      const took = performance.now() - start;
-      expect(data[`key${lastKey}`]).toBe(lastKey);
-      return took;
+  // Eight times the keys give eight times the reads when reading is linear,
+  // and about 64 times when keys are compared pairwise.
+  it("reads eight times the keys with well under 16 times the work", () => {
+    const readsForMapOf = (count: number) => {
+      const text = Array.from({ length: count }, (_, index) => `key${index}: ${index}`).join("\n");
+      const { data, reads } = countValueReads(text);
+      expect((data as Record<string, number>)[`key${count - 1}`]).toBe(count - 1);
+      return reads;
     };
-    timed(small, 1_999);
-    timed(large, 15_999);
-    const ratios = Array.from({ length: 7 }, () => timed(large, 15_999) / timed(small, 1_999));
-    const median = ratios.sort((left, right) => left - right)[3];
-    expect(median).toBeLessThan(16);
+    const small = readsForMapOf(2_000);
+    const large = readsForMapOf(16_000);
+    // Proves the accessor saw the reads: without them the ratio means nothing.
+    expect(small).toBeGreaterThan(2_000);
+    expect(large / small).toBeLessThan(16);
   });
 
   it("finds a key twice in a nested block map and in a flow map, at the second one", () => {
