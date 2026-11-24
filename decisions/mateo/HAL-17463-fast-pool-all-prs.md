@@ -3,6 +3,7 @@
 - Task: HAL-17463 (the board's decision on the task, 24 Nov)
 - Approval: the board decided on HAL-17463 (24 Nov) that every same-repo pull request runs its Linux checks on the fast pool, bots refused, 24 fast slots; Liam signs this note in review, Julian checks C1–C8 on the task
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hTvNUkR2sMmsWnHW0YJJHIOMZty+9mL+oF86IVGEeJITTgZwoOY1QqounGSjIQXDylj348dQXDyy3eeveE3kCQ==
 
 ## What changes
 
