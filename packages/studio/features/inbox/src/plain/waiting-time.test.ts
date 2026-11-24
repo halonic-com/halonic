@@ -1,5 +1,3 @@
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
 import {
   decidedAt,
   isLate,
@@ -7,7 +5,9 @@ import {
   movesOnMeta,
   waitingFor,
   waitingSince,
-} from "./waiting-time.ts";
+} from "@halonicjs/studio-kit";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 
 // Local times, so the test reads the same in every time zone. Sun 8 Nov 2026, 10:42.
 const asked = new Date(2026, 10, 8, 10, 42);

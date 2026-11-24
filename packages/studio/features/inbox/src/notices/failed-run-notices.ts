@@ -1,5 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
-import { clockTime } from "../plain/waiting-time.ts";
+import { clockTime } from "@halonicjs/studio-kit";
 
 /** A routine's failed runs on one day, as one row of the Inbox's Notices. */
 export interface FailedRunNotice {

@@ -1,5 +1,12 @@
 import type { AnswerResult, InboxItem } from "@halonicjs/ports";
-import { Button, ChatText, StatusChip, useOpenExternal } from "@halonicjs/studio-kit";
+import {
+  Button,
+  type ButtonVariant,
+  ChatText,
+  StatusChip,
+  useOpenExternal,
+  waitingSince,
+} from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useState } from "react";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
@@ -72,14 +79,14 @@ function ChatCard({
         <StatusChip tone="warning" dot>
           {messengerWords.card.needsYou}
         </StatusChip>
-        {messengerWords.card.waitingSince(timeOf(card.createdAt))}
+        {waitingSince(new Date(card.createdAt), new Date())}
       </p>
       <ChatText openLink={openLink}>{card.question}</ChatText>
       <div className="flex flex-wrap gap-2">
         {card.options.map((option, index) => (
           <Button
             key={option.id}
-            variant={index === 0 ? "primary" : "secondary"}
+            variant={variantOf(index)}
             busy={busy === option.id}
             onClick={() => {
               void choose(option.id).catch((error: unknown) =>
@@ -112,9 +119,9 @@ function lineOf(outcome: AnswerResult, row: ConversationRow): string | undefined
   return undefined;
 }
 
-/** The hour and minute a card came, in the person's own format. */
-function timeOf(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(
-    new Date(iso),
-  );
+/** The 1st option is primary, the 2nd secondary and any later one ghost (render 4e). */
+function variantOf(index: number): ButtonVariant {
+  if (index === 0) return "primary";
+  if (index === 1) return "secondary";
+  return "ghost";
 }

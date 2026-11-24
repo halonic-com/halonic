@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { DraftFile } from "../draft-files.ts";
 import { type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
-import { DraftFilesBar, pastedFiles } from "./draft-files-bar.tsx";
+import { AttachFileButton, DraftFileList, pastedFiles } from "./draft-files-bar.tsx";
 
 /** The props of {@link ChatBox}. */
 export interface ChatBoxProps {
@@ -15,7 +15,8 @@ export interface ChatBoxProps {
 }
 
 /**
- * A chat's box: the files waiting in it, "Ask for an update", the text, and
+ * A chat's box: "Attach a file" and "Ask for an update", the files waiting
+ * in it on their own row, the text, and
  * the line saying why something wasn't sent. A screenshot pasted anywhere in
  * it waits with the files (requirements `messenger.files`,
  * `messenger.quick-actions` and `messenger.conversations`).
@@ -35,7 +36,7 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
       }}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <DraftFilesBar files={box.files} onAdd={box.addFiles} onRemove={box.removeFile} />
+        <AttachFileButton onAdd={box.addFiles} />
         <Button
           variant="secondary"
           size="sm"
@@ -46,6 +47,7 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
           {messengerWords.askForUpdate}
         </Button>
       </div>
+      <DraftFileList files={box.files} onRemove={box.removeFile} />
       <ChatComposer
         label={messengerWords.composerLabel(name)}
         placeholder={messengerWords.composerPlaceholder(name)}

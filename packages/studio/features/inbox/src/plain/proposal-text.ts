@@ -4,9 +4,9 @@
 
 import { shortRunId } from "@halonicjs/app";
 import { markHiddenName } from "@halonicjs/std";
+import { clockTime, endedAgo } from "@halonicjs/studio-kit";
 import type { ProposalFailure } from "../proposal-decisions.ts";
 import type { ProposalEnding, ProposalFile, ProposalItem } from "../proposal-items.ts";
-import { clockTime, endedAgo } from "./waiting-time.ts";
 
 const endingVerbs: Readonly<Record<ProposalEnding, string>> = {
   finished: "Finished",

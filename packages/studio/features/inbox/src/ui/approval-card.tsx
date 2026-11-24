@@ -1,10 +1,16 @@
 import { markHiddenName } from "@halonicjs/std";
-import { Button, type CalloutHandle, StatusChip, usePresentation } from "@halonicjs/studio-kit";
+import {
+  Button,
+  type CalloutHandle,
+  decidedAt,
+  StatusChip,
+  usePresentation,
+  waitingSince,
+} from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import { type AfterAnswer, afterAnswer, approvalSentText, type InboxDecisions } from "../decide.ts";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { actionSummary, approvalTitle } from "../plain/approval-text.ts";
-import { decidedAt, waitingSince } from "../plain/waiting-time.ts";
 import { ArgumentList } from "./argument-list.tsx";
 import { AskForChangesDialog } from "./ask-for-changes-dialog.tsx";
 import {

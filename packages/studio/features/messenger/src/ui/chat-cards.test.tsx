@@ -73,6 +73,33 @@ verifies("messenger.quick-actions", () => {
       expect(transcript(page)).toContain("You already answered this.");
     });
 
+    it("says since when a card waits as the Inbox does, and draws options primary, secondary, then ghost", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 10, 8, 13, 0));
+      const messaging = new FakeAgentMessaging();
+      const acme = messaging.addSource({ label: "Paperclip · Acme" });
+      const chief = messaging.addAgent(acme.id, { name: "Chief" });
+      messaging.addConversation(chief.id);
+      messaging.addInboxItem(acme.id, {
+        question: "Ship the release notes?",
+        from: { kind: "agent", agent: chief.id, name: "Chief" },
+        createdAt: new Date(2026, 10, 8, 10, 0).toISOString(),
+        options: [
+          { id: "approve", label: "Approve" },
+          { id: "reject", label: "Reject" },
+          { id: "changes", label: "Ask for changes" },
+        ],
+      });
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      expect(transcript(page)).toContain("Waiting since 10:00 (3 h)");
+      const variant = (label: string) => byText(page, "main ol button", label)?.className ?? "";
+      expect(variant("Approve")).toContain("bg-primary");
+      expect(variant("Reject")).toContain("border-border-strong");
+      expect(variant("Ask for changes")).toContain("border-transparent text-fg-muted");
+      vi.useRealTimers();
+    });
+
     it("Ask for an update sends one plain message with one `send` call and shows it", async () => {
       const { messaging, chat } = chiefAsks();
       const answer = vi.spyOn(messaging, "answer");

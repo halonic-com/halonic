@@ -8,7 +8,7 @@ import type {
   MessagingSource,
   WorkItem,
 } from "@halonicjs/ports";
-import { Button, Callout } from "@halonicjs/studio-kit";
+import { Button, Callout, waitingSince } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   agentItemTitle,
@@ -17,7 +17,6 @@ import {
   sourceDownLine,
   workLine,
 } from "../agent/agent-item-text.ts";
-import { waitingSince } from "../plain/waiting-time.ts";
 import { AgentAttachments } from "./agent-attachments.tsx";
 import { AgentMarkdown } from "./agent-markdown.tsx";
 import {

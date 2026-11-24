@@ -1,23 +1,18 @@
-import { Button } from "@halonicjs/studio-kit";
+import { Button, CloseIcon, sizeText } from "@halonicjs/studio-kit";
 import { useRef } from "react";
 import type { DraftFile } from "../draft-files.ts";
 import { messengerFileLimits } from "../file-limits.ts";
 import { messengerWords } from "../messenger-words.ts";
-import { sizeOf } from "./file-size.ts";
-
-/** The props of {@link DraftFilesBar}. */
-export interface DraftFilesBarProps {
-  readonly files: readonly DraftFile[];
-  readonly onAdd: (files: readonly DraftFile[]) => void;
-  readonly onRemove: (index: number) => void;
-}
 
 /**
- * The files waiting in a chat's box, each with its size and Remove, and
  * "Attach a file", which picks only the types the port sends. Nothing is
  * read or sent until the person sends the message.
  */
-export function DraftFilesBar({ files, onAdd, onRemove }: DraftFilesBarProps) {
+export function AttachFileButton({
+  onAdd,
+}: {
+  readonly onAdd: (files: readonly DraftFile[]) => void;
+}) {
   const picker = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -37,25 +32,45 @@ export function DraftFilesBar({ files, onAdd, onRemove }: DraftFilesBarProps) {
           event.target.value = "";
         }}
       />
-      {files.length === 0 ? null : (
-        <ul className="flex w-full flex-wrap gap-2">
-          {files.map((file, index) => (
-            <li
-              // A box can hold two files of the same name; their place tells them apart.
-              key={`${index}-${file.name}`}
-              className="flex items-center gap-2 rounded-md border border-border px-2 py-1 text-small"
-            >
-              <bdi className="max-w-48 truncate">{file.name}</bdi>
-              <span className="text-fg-muted">{sizeOf(file.size)}</span>
-              <Button variant="ghost" size="xs" onClick={() => onRemove(index)}>
-                <span className="sr-only">{messengerWords.files.remove(file.name)}</span>
-                <span aria-hidden="true">×</span>
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
     </>
+  );
+}
+
+/**
+ * The files waiting in a chat's box, on their own row under the box's
+ * buttons: each by its whole name, which wraps and is never cut, its size
+ * and Remove.
+ */
+export function DraftFileList({
+  files,
+  onRemove,
+}: {
+  readonly files: readonly DraftFile[];
+  readonly onRemove: (index: number) => void;
+}) {
+  if (files.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {files.map((file, index) => (
+        <li
+          // A box can hold two files of the same name; their place tells them apart.
+          key={`${index}-${file.name}`}
+          className="flex min-w-0 items-center gap-2 rounded-md border border-border py-1 ps-2 text-small"
+        >
+          <span className="min-w-0 wrap-anywhere">
+            <bdi>{file.name}</bdi>
+            <span className="text-fg-muted"> · {sizeText(file.size)}</span>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<CloseIcon />}
+            label={messengerWords.files.remove(file.name)}
+            onClick={() => onRemove(index)}
+          />
+        </li>
+      ))}
+    </ul>
   );
 }
 

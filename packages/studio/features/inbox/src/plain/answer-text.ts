@@ -1,6 +1,6 @@
 import { markHiddenName } from "@halonicjs/std";
+import { decidedAt } from "@halonicjs/studio-kit";
 import { type AfterAnswer, approvalSentText } from "../decide.ts";
-import { decidedAt } from "./waiting-time.ts";
 
 /**
  * An answer's label, on its button and in the decided line alike: the step's own label when it

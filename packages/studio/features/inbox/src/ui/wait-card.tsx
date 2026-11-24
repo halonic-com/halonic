@@ -5,9 +5,11 @@ import {
   Button,
   type ButtonUnavailable,
   type CalloutHandle,
+  movesOnLine,
   StatusChip,
   Tooltip,
   usePresentation,
+  waitingSince,
 } from "@halonicjs/studio-kit";
 import { engineWords, type ViewRef } from "@halonicjs/studio-shell";
 import {
@@ -22,7 +24,6 @@ import {
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { answeredText, answerLabel, busyLabel, ownLabel } from "../plain/answer-text.ts";
-import { movesOnLine, waitingSince } from "../plain/waiting-time.ts";
 import { AnsweredView, type AnsweredViews, claimedView } from "./answered-view.tsx";
 import {
   type BackLink,
