@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import {
+  codingToolsCommand,
   exitWithin,
   type OwnSandboxCheck,
   outputTail,
@@ -21,6 +22,7 @@ import { AppServerClient, type AppServerMessage, type ClientInfo } from "./app-s
 import { AppServerEventReader, TurnFailedError } from "./app-server-events.ts";
 import { PendingApprovals } from "./approvals.ts";
 import {
+  codexCodingToolsArgs,
   codexConfigArgs,
   codexConfigFile,
   codexConfigText,
@@ -142,6 +144,8 @@ export class CodexRun implements HarnessRun {
     // Wherever the fence isn't proven, Codex's own sandbox is the one around the commands it starts.
     const own = session.fence.state !== "fenced" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
+    // Only the read-only tools: see codexCodingToolsArgs.
+    const codingTools = codingToolsCommand(this.#task, session, "read-only");
     return session.start({
       program: codexProgram,
       args: [
@@ -150,6 +154,7 @@ export class CodexRun implements HarnessRun {
         ...codexPinnedSettingsArgs(),
         ...codexPinnedInstructionsArgs,
         ...(own ? codexOwnSandboxArgs : []),
+        ...(codingTools === null ? [] : codexCodingToolsArgs(codingTools)),
       ],
     });
   }

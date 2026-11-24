@@ -109,6 +109,7 @@ export {
 } from "./folder-reader.ts";
 export {
   addHarnessEnvironment,
+  type CodingToolsServer,
   type Harness,
   type HarnessBridge,
   type HarnessDetection,

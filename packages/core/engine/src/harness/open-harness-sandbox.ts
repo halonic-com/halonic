@@ -11,6 +11,7 @@ import {
 import {
   addHarnessEnvironment,
   type BridgeProvider,
+  type CodingToolsServer,
   type Harness,
   type HarnessTask,
   type Sandbox,
@@ -61,6 +62,12 @@ export function startTimeoutOf(options: HarnessRunsOptions, phase: StartPhase): 
   return options.startTimeoutsMs?.[phase] ?? defaultStartTimeoutsMs[phase];
 }
 
+/** An opened sandbox, with the coding tools server its profile allows, if any. */
+export interface OpenedSandbox {
+  readonly session: SandboxSession;
+  readonly codingTools?: CodingToolsServer;
+}
+
 /**
  * Builds the profile, logs `sandbox.started`, opens the sandbox within its
  * time limit and logs `sandbox.opened`, or `sandbox.off` when a person chose
@@ -77,10 +84,10 @@ export async function openSandbox(
   bridge: HostedHarnessBridge,
   instructionsFolder: string | null,
   model: Pick<HarnessTask, "model" | "modelForEveryCall">,
-): Promise<SandboxSession> {
+): Promise<OpenedSandbox> {
   stop.throwIfStopped();
   const { state, agent } = call.effect;
-  const { profile, deniedGroups } = await options.profiles.profileOf(
+  const { profile, deniedGroups, codingTools } = await options.profiles.profileOf(
     subject,
     bridge,
     instructionsFolder,
@@ -123,7 +130,7 @@ export async function openSandbox(
     await session.close();
     throw error;
   }
-  return session;
+  return { session, ...(codingTools === undefined ? {} : { codingTools }) };
 }
 
 /** The provider whose model each harness's program calls through the bridge. */

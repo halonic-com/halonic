@@ -9,6 +9,7 @@ const files = {
   instructionsFile: join("sessions", "one", "temp", "halonic-instructions.md"),
   skillsFolder: null,
   ownSandbox: false,
+  codingToolsFile: null,
 };
 
 const task: HarnessTask = {

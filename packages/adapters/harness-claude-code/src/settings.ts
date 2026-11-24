@@ -1,4 +1,11 @@
-import { resetSettingsFolder, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
+import {
+  askingCodingTools,
+  type CodingToolsCommand,
+  codingToolsServerName,
+  readOnlyCodingTools,
+  resetSettingsFolder,
+  type SettingsFolderWriter,
+} from "@halonicjs/adapter-harness-kit";
 import { harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { bridgeServerName, permissionServerName } from "./bridge-tools.ts";
 import { claudeCodeRunTokenVariable } from "./environment.ts";
@@ -12,6 +19,14 @@ export const mcpSettingsFile = "halonic-mcp.json";
  * Halonic's fence, where Claude Code's sandbox works (`unfencedSettings`).
  */
 export const unfencedSettingsFile = "halonic-unfenced.json";
+
+/**
+ * The file in the session's temp folder that names the coding tools
+ * server, for a fenced run only; the command adds it as a second
+ * `--mcp-config`. It is the run's own, because the server's command names
+ * the run's temp folder.
+ */
+export const codingToolsSettingsFile = "halonic-tools-mcp.json";
 
 /** The tool on the bridge Claude Code asks when a tool call needs an OK (`--permission-prompt-tool`). */
 export const permissionPromptTool = `mcp__${permissionServerName}__approve_permission`;
@@ -33,11 +48,23 @@ export const deniedClaudeCodeTools: readonly string[] = ["WebFetch", "WebSearch"
  * Halonic's tools are allowed without Claude Code's own prompt: the bridge
  * checks each call and asks a person itself when the agent's file says so,
  * so asking in Claude Code too would ask the person twice.
+ *
+ * The coding tools server's read-only tools are allowed, as Claude Code's
+ * own `Read` is. `run_tests` has an `ask` rule: in Claude Code an `ask` rule
+ * wins over every `allow` rule, so no allow rule, from any settings file or
+ * from an "always allow" answer, lets a call skip the person's approval card.
  */
 function claudeCodeSettings(): object {
   return {
     sandbox: { enabled: false },
-    permissions: { allow: [`mcp__${bridgeServerName}`], deny: [...deniedClaudeCodeTools] },
+    permissions: {
+      allow: [
+        `mcp__${bridgeServerName}`,
+        ...readOnlyCodingTools.map((tool) => `mcp__${codingToolsServerName}__${tool}`),
+      ],
+      ask: askingCodingTools.map((tool) => `mcp__${codingToolsServerName}__${tool}`),
+      deny: [...deniedClaudeCodeTools],
+    },
   };
 }
 
@@ -98,6 +125,19 @@ export function claudeCodeSettingsFiles(): Readonly<Record<string, string>> {
     [mcpSettingsFile]: jsonFile(mcpSettings()),
     [unfencedSettingsFile]: jsonFile(unfencedSettings()),
   };
+}
+
+/**
+ * {@link codingToolsSettingsFile}'s text: the coding tools server, started
+ * by Claude Code as its own child over standard input and output, so it runs
+ * inside the same fence (requirement `harness-claude-code.coding-tools`).
+ */
+export function codingToolsSettings(command: CodingToolsCommand): string {
+  return jsonFile({
+    mcpServers: {
+      [codingToolsServerName]: { type: "stdio", command: command.command, args: command.args },
+    },
+  });
 }
 
 /** How a Claude Code MCP setting names an environment variable, for Claude Code to fill in: `${NAME}`. */

@@ -16,6 +16,8 @@ export interface ClaudeCodeFiles {
   skillsFolder: string | null;
   /** Whether Claude Code's own sandbox is on: only where Halonic's fence isn't proven, and it works. */
   ownSandbox: boolean;
+  /** The file that names the coding tools server, for a fenced run; `null` when the run names none. */
+  codingToolsFile: string | null;
 }
 
 /** Whether the agent's file sets instructions, so the run writes them to {@link instructionsFileName}. */
@@ -32,8 +34,9 @@ export function hasInstructions(task: HarnessTask): boolean {
  *   does on standard output. `--verbose` is what makes `-p` print every
  *   message, not only the result.
  * - `--mcp-config` with `--strict-mcp-config`: the bridge's MCP server from
- *   the settings folder, and no other, so a project's own `.mcp.json` can't
- *   add servers past Halonic.
+ *   the settings folder, and, for a fenced run, the coding tools server from
+ *   the run's temp folder, and no other, so a project's own `.mcp.json`
+ *   can't add servers past Halonic.
  * - `--setting-sources user`: only the settings in the agent's own settings
  *   folder (`CLAUDE_CONFIG_DIR`), which Halonic writes. A working folder's
  *   `.claude/settings.json` and `settings.local.json` are not read, so a
@@ -74,6 +77,7 @@ export function claudeCodeCommand(task: HarnessTask, files: ClaudeCodeFiles): Sa
     "--verbose",
     "--mcp-config",
     join(files.settingsFolder, mcpSettingsFile),
+    ...(files.codingToolsFile === null ? [] : [files.codingToolsFile]),
     "--strict-mcp-config",
     "--setting-sources",
     "user",

@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { askingCodingTools, readOnlyCodingTools } from "@halonicjs/adapter-harness-kit";
 import { secretRemoved } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
@@ -30,6 +31,14 @@ verifies("coding-tools.tool-set", () => {
       expect(tool.inputSchema).toMatchObject({ type: "object", additionalProperties: false });
     }
     expect(tools.readOnlyToolNames).toEqual(["read_ranges", "search", "repo_map"]);
+  });
+
+  // The harnesses allow and ask by these names, so a renamed tool must not slip past either list.
+  it("offers exactly the tools the harness kit allows and asks for", async () => {
+    const { tools } = await toolSet("all");
+    const listed = (await tools.list()).map((tool) => tool.name);
+    expect(tools.readOnlyToolNames).toEqual(readOnlyCodingTools);
+    expect(listed.filter((name) => !readOnlyCodingTools.includes(name))).toEqual(askingCodingTools);
   });
 
   it("answers a call to a tool it doesn't offer with an error that names its tools", async () => {

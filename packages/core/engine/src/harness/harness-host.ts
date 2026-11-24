@@ -10,6 +10,7 @@ import type {
   BridgeProvider,
   BridgeProviderAccess,
   BridgeRecorder,
+  CodingToolsServer,
   Harness,
   HarnessBridge,
   OpenHarnessBridge,
@@ -122,6 +123,12 @@ export interface HarnessProfile {
   readonly profile: SandboxProfile;
   /** The groups the profile's denied paths were built from, for `sandbox.opened`. */
   readonly deniedGroups: readonly DeniedPathGroup[];
+  /**
+   * The coding tools server, when the host has one and the profile's
+   * writable folders don't hold its code; the engine passes it to the
+   * harness as `HarnessTask.codingTools`.
+   */
+  readonly codingTools?: CodingToolsServer;
 }
 
 /**

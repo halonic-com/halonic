@@ -1,0 +1,22 @@
+# harness-kit.coding-tools-server
+
+- Status: active
+- Since: unreleased
+- Source: HAL-16737 plan, PR 4; Liam's conditions on HAL-16748 and HAL-16752; HAL-16753
+
+When the host gives the harness profile builder a coding tools server, the builder shall check, from outside the sandbox and before any program starts, that none of the server's code paths is, holds or lies inside the working folder or another folder the program may write, and that none is denied. If any is, then the profile shall name no server; otherwise it shall add every code path to the profile's read-only paths and pass the server on. The harness kit shall give a harness the server's command for a run only when the task names a server and the session's fence state is `fenced`; an unknown or missing fence state shall name no server.
+
+## Examples
+
+- Given a server whose code is in a folder outside the workspace and Halonic's data,
+  when a profile is built,
+  then the code is read-only in the profile and the profile names the server.
+- Given a server whose code lies inside the workspace the agent writes, or a working folder inside the server's code,
+  when a profile is built,
+  then the profile names no server and doesn't list its code.
+- Given a server whose code lies inside a denied folder,
+  when a profile is built,
+  then the profile names no server.
+- Given a task with a server and a session whose fence state is `off`, unknown or missing,
+  when a harness asks for the command,
+  then it gets none.

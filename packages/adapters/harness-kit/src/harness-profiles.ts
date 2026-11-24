@@ -17,7 +17,13 @@ import { dirname, join } from "node:path";
 import type { HarnessAgent, HarnessProfile, HarnessProfileBuilder } from "@halonicjs/engine";
 import type { DeniedPathGroup, DeniedPathGroupCode } from "@halonicjs/events";
 import { defaultWorkingFolder, PROTECTED_TOP_NAMES } from "@halonicjs/format";
-import type { HarnessBridge, SandboxBridge, SandboxProfile } from "@halonicjs/ports";
+import type {
+  CodingToolsServer,
+  HarnessBridge,
+  SandboxBridge,
+  SandboxProfile,
+} from "@halonicjs/ports";
+import { allowedCodingTools } from "./coding-tools-server.ts";
 import { entriesAround, homeDeniedGroups } from "./denied-groups.ts";
 import { type HarnessInstall, windowsInstallReadPaths } from "./install-folders.ts";
 import {
@@ -62,6 +68,13 @@ export interface HarnessProfilesOptions {
   readonly env: Readonly<Record<string, string>>;
   /** How long a harness call may last, in milliseconds. */
   readonly timeLimitMs: number;
+  /**
+   * Halonic's coding tools server on this computer, as a program inside the
+   * fence starts it; absent when the host has none. The profile opens its
+   * code read-only, and a run whose writable folders hold that code, or
+   * whose denied paths hide it, gets no server.
+   */
+  readonly codingTools?: CodingToolsServer;
   /** The system, as `process.platform` names it. */
   readonly platform?: NodeJS.Platform;
   readonly disk?: ProfileDisk;
@@ -173,12 +186,17 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     // A definition path the profile denies, such as a workspace's `.halonic`
     // that is Halonic's data folder, is left out: the deny already keeps the
     // program from changing it, and on Windows naming it would grant reading it.
+    const codingTools = allowedCodingTools(this.#options.codingTools, {
+      writable: [workingFolder, ...writable],
+      isDenied: (path) => deniedHolding(deniedGroups, path, reopenedPaths) !== null,
+    });
     const readOnlyPaths = [
       ...definitionPaths.filter(
         (path) => deniedHolding(deniedGroups, path, reopenedPaths) === null,
       ),
       ...installPaths,
       ...readable,
+      ...(codingTools?.codePaths ?? []),
     ];
     const profile: SandboxProfile = {
       workingFolder,
@@ -191,7 +209,11 @@ export class HarnessProfiles implements HarnessProfileBuilder {
       network: { bridge: sandboxBridgeOf(bridge), allowedSites: [...file.allowedSites] },
       timeLimitMs: this.#options.timeLimitMs,
     };
-    return { profile, deniedGroups };
+    return {
+      profile,
+      deniedGroups,
+      ...(codingTools === undefined ? {} : { codingTools: codingTools }),
+    };
   }
 
   /** The real folder the agent works in: the workspace, or its run's proposal folder in Halonic's data. */

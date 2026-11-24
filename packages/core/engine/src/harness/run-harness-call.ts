@@ -264,7 +264,7 @@ async function runInBridge(
       options.instructions?.open(agent) ?? Promise.resolve(null),
       async (late) => late?.release(),
     );
-    const session = await openSandbox(
+    const { session, codingTools } = await openSandbox(
       started,
       placement,
       sandbox,
@@ -296,6 +296,7 @@ async function runInBridge(
         ...(instructions === null ? {} : { instructionsFolder: instructions.folder }),
         ...model,
         ...asksOf(call.agent),
+        ...(codingTools === undefined ? {} : { codingTools }),
       };
       await started.stepLimits.startClock(started.limits);
       // From here the clock stops however the step ends, even when the harness fails to start.

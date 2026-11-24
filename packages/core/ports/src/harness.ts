@@ -95,6 +95,34 @@ export interface HarnessTask {
    * harness still asks when the session isn't fenced.
    */
   asks?: "in-sandbox";
+  /**
+   * How the program starts Halonic's coding tools server inside its fence,
+   * when the host has one and the profile builder checked from outside that
+   * the program can't change its code. Absent otherwise. A harness names
+   * the server only when the session is `fenced` (requirement
+   * `harness-kit.coding-tools-server`).
+   */
+  codingTools?: CodingToolsServer;
+}
+
+/**
+ * The command that starts Halonic's coding tools server (`read_ranges`,
+ * `search`, `repo_map`, `run_tests`) over MCP on standard input and output.
+ * The harness's program starts it as its own child, so it runs inside the
+ * same fence as the program. The harness adds the run's arguments after
+ * `args`: the temp folder and the tool choice.
+ */
+export interface CodingToolsServer {
+  /** The runtime, as an absolute path inside the fence, such as the CLI's `node`. */
+  readonly program: string;
+  /** Its arguments up to and including the `coding-tools` mode. */
+  readonly args: readonly string[];
+  /**
+   * The runtime and the files and folders of the server's code: the
+   * profile opens them read-only, and a run that could change one of them
+   * names no server.
+   */
+  readonly codePaths: readonly string[];
 }
 
 /**
