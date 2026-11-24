@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17439 (Liam accepted option 1 for the key on 24 Nov, 18:55 UTC); https://paperclip.halonic.com/HAL/issues/HAL-17897 (the board can't connect in the preview build, 24 Nov, 22:20 UTC)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Q648IepWYMNlEEuFX8+cSJ+gn95ADzTP3yTNPGBbgU4mmGzuXULLHzmjfRewzn9onAoR4RaZUk8DB1LqxVfSBQ==
 
 `agent-host.paperclip-key` said that no answer holds the key. But the engine
 gets the key at sign-in and the keychain is Studio's: the host can't write it
