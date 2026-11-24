@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-17422 plan, approved by the board on HAL-10 (24 Nov); ADR `docs/adr/2026-11-24-agent-messaging.md` (feature 6, Attachments and Sending files); Julian's security review HAL-17436 (finding 3); HAL-17443.
 
-In a conversation, the Messenger shall let the person attach files, or paste a screenshot, and send them with a message through `AgentMessaging.send`. When a file is over 10 MB, is not a PNG, JPEG, GIF or WebP picture, a PDF or a plain text, Markdown or CSV file, or is a sixth file, it shall refuse to add it and say why. When the engine refuses a message's files, it shall send nothing of the message and say why. It shall show each file on a message by its name and size, and shall read a picture's bytes through `AgentMessaging.readAttachment` and show the picture only after the person asks to see it, drawn from those bytes, never from an address.
+The Messenger shall let the person, in a conversation, attach files, or paste a screenshot, and send them with a message through `AgentMessaging.send`. When a file is over 10 MB, is not a PNG, JPEG, GIF or WebP picture, a PDF or a plain text, Markdown or CSV file, or is a sixth file, it shall refuse to add it and say why. When the engine refuses a message's files, it shall send nothing of the message and say why. It shall show each file on a message by its name and size, and shall read a picture's bytes through `AgentMessaging.readAttachment` and show the picture only after the person asks to see it, drawn from those bytes, never from an address.
 
 ## Examples
 
