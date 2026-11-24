@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17855 (from the Stage C visual check on HAL-17841; flow-assistant 11.1 and 11.3)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jJcYGV94tfQQVhBBKfVTSZdtSRrnFky7+8dazgMLcsEVl1IJYTUgzxLfXW1XuCMzd2HgbHgoBG4AIO5VCopdAA==
 
 `shell.shown-title` said a phone, which has no tabs, gives no `shownTitle`. So on a real phone
 the Assistant's status line was blank at rest, while flow-assistant 11.1 and 11.3 ask for
