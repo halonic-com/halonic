@@ -29,11 +29,18 @@ export type DeployErrorCode =
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {
   readonly code: DeployErrorCode;
+  /** The next step, when the code alone doesn't say which, such as waiting for another deploy. */
+  readonly fix: string | undefined;
 
-  constructor(code: DeployErrorCode, message: string, options?: ErrorOptions) {
+  constructor(
+    code: DeployErrorCode,
+    message: string,
+    options?: ErrorOptions & { readonly fix?: string },
+  ) {
     super(message, options);
     this.name = "DeployError";
     this.code = code;
+    this.fix = options?.fix;
   }
 }
 

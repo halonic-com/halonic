@@ -195,7 +195,7 @@ verifies("cli.deploy-output", () => {
       );
 
     expect(unchanged(undefined, undefined)).toBe(
-      "✓ web already runs this version. Nothing changed on Cloudflare.",
+      "✓ web is already up to date. Nothing changed on Cloudflare.",
     );
     expect(unchanged("8d1a04b", undefined)).toBe(
       "✓ web already runs commit 8d1a04b. Nothing changed on Cloudflare.",

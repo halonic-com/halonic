@@ -8,6 +8,9 @@ import { markPart, phrase } from "./phrase.ts";
  * never "provision", "migrate" or "smoke test".
  */
 export const deployMessages = defineMessages("deploy", {
+  /** What `halonic deploy <deployment>` does, for line 1's "Couldn't …:". */
+  action: (deployment: string) => phrase`deploy ${deployment}`,
+
   /** One thing a deploy creates, for "Creating …" and "Created …". */
   address: (name: string) => phrase`the workers.dev address ${name}`,
   service: (name: string) => phrase`the Worker ${name}`,
@@ -61,13 +64,38 @@ export const deployMessages = defineMessages("deploy", {
   unchanged: (deployment: string, commit: string | undefined, halonic: string | undefined) => {
     if (commit === undefined) {
       return halonic === undefined
-        ? phrase`${markPart("done")} ${deployment} already runs this version. Nothing changed on Cloudflare.`
+        ? phrase`${markPart("done")} ${deployment} is already up to date. Nothing changed on Cloudflare.`
         : phrase`${markPart("done")} ${deployment} already runs Halonic ${halonic}. Nothing changed on Cloudflare.`;
     }
     return halonic === undefined
       ? phrase`${markPart("done")} ${deployment} already runs commit ${commit}. Nothing changed on Cloudflare.`
       : phrase`${markPart("done")} ${deployment} already runs commit ${commit} with Halonic ${halonic}. Nothing changed on Cloudflare.`;
   },
+  /**
+   * Ends line 1 of a failure that says what still serves (deploy flow 3.6 and
+   * 3.7, words check C759 row 3): a deploy that stopped, or lost its lock
+   * before the switch, never takes the live version down.
+   */
+  /** The target's reason, then what still serves. */
+  failedWhileLive: (reason: string, still: string) => phrase`${reason} ${still}`,
+  /** The target's own fix, as it gives it. */
+  targetFix: (fix: string) => phrase`${fix}`,
+  stillLive: (version: number) => phrase`Version ${version} is still live.`,
+  nothingLive: (deployment: string) => phrase`Nothing is live on ${deployment} yet.`,
+  /** Under line 1: the step such a deploy stopped after, in the words of 2.8. */
+  stoppedAfter: (step: string) => phrase`It stopped after ${step}.`,
+  stepCreating: (what: string) => phrase`creating ${what}`,
+  stepSettingUp: () => phrase`setting up the database`,
+  stepUpdating: () => phrase`updating the database`,
+  stepUploading: (version: number) => phrase`uploading version ${version}`,
+  stepSelfTest: (version: number) => phrase`the self-test of version ${version}`,
+  stepSwitching: (version: number) => phrase`making version ${version} live`,
+  /** The fix after a stop (3.7), when the target gives none of its own. */
+  stoppedFix: (deployment: string) =>
+    phrase`Run halonic deploy ${deployment} again to finish. It picks up what's already there.`,
+  /** The fix after a lost lock, when the target gives none of its own (C759 row 3). */
+  runAgain: () => phrase`Run halonic deploy again.`,
+
   /** A line from the target the user must see, such as the lock lost after the switch. The deploy is live. */
   warning: (message: string) => phrase`${markPart("needsYou")} ${message}`,
 

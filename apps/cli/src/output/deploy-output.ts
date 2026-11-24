@@ -180,7 +180,7 @@ function done(event: Exclude<DeployStep, { step: "create" }>): Message | undefin
 }
 
 /** "the Worker acme", "the Worker acme and the D1 database acme-data", "a, b and c". */
-function resourceList(resources: readonly DeployResource[]): string {
+export function resourceList(resources: readonly DeployResource[]): string {
   const names = resources.map((resource) =>
     plainText(deployMessages[resource.kind](resource.name).phrase),
   );

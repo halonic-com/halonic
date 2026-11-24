@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-6704, HAL-6804; build plan 3a (HAL-198); multi-cloud ADR 5.6
 
-The deploy shall hold a lock in the deployed database while it changes anything, so two deploys of the same Worker never run at once. The lock is a lease of ten minutes. It shall be taken with one conditional write that wins only when no lease exists or the old one has expired, renewed at each step and in the background during a long step, and freed when the deploy ends, however it ends, and on Ctrl C. A second deploy shall stop with a typed error that names the holder and when it started. A deploy that finds its lease taken over shall stop. `plan` mode shall take no lock.
+The deploy shall hold a lock in the deployed database while it changes anything, so two deploys of the same Worker never run at once. The lock is a lease of ten minutes. It shall be taken with one conditional write that wins only when no lease exists or the old one has expired, renewed at each step and in the background during a long step, and freed when the deploy ends, however it ends, and on Ctrl C. A second deploy shall stop with a typed error that names the holder and when it started. A deploy that finds its lease taken over shall stop, with the fix to run again once the other deploy has finished; one that lost its hold for another reason, with the fix to run again. `plan` mode shall take no lock.
 
 Rationale: two deploys migrating and uploading at once can leave the database and the live version out of step; a lease frees itself when a deploy crashes without freeing it.
 
@@ -14,5 +14,6 @@ Rationale: two deploys migrating and uploading at once can leave the database an
 - Given another deploy's unexpired lease, then the deploy stops with `deploy-locked` and the holder and start time, and changes nothing.
 - Given another deploy's expired lease, then the deploy takes it over.
 - Given a step that takes longer than the lease, then the lease is renewed while the step runs.
-- Given the lease was taken over mid-deploy, then the next renewal fails with `deploy-lock-lost`.
+- Given the lease was taken over mid-deploy, then the next renewal fails with `deploy-lock-lost` and the fix "Run halonic deploy again once the other deploy has finished."
+- Given renewals failed until the lease ran out, then the deploy fails with `deploy-lock-lost` and the fix "Run halonic deploy again."
 - Given the deploy throws or is interrupted, then the lock is freed.

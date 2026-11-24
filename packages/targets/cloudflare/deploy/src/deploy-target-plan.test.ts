@@ -176,4 +176,16 @@ verifies("deploy.record", () => {
       expect(plan.unchanged).toBe(false);
     }
   });
+
+  it("fails status, plan and rollback when R2 refuses to read the record, rather than guess", async () => {
+    const { target } = setup({ ...live }, (api) => ({
+      ...api,
+      getObject: async () => {
+        throw new Error("R2 answered 403");
+      },
+    }));
+    await expect(target.status(web)).rejects.toMatchObject({ name: "DeployFailure" });
+    await expect(target.plan(request)).rejects.toMatchObject({ name: "DeployFailure" });
+    await expect(target.rollback(web)).rejects.toMatchObject({ name: "DeployFailure" });
+  });
 });
