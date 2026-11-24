@@ -31,6 +31,9 @@ verifies("agent-host.paperclip-connection", () => {
 
     expect(await on.studio.listSources()).toEqual([]);
     expect(await on.studio.listInboxItems()).toEqual([]);
+    expect(await on.studio.readAttachment("paperclip:halonic:file:a1")).toMatchObject({
+      outcome: "refused",
+    });
     await on.wait(30_000);
     await on.wait(30_000);
 

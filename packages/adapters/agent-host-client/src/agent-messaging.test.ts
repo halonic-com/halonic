@@ -61,6 +61,29 @@ verifies("agent-host-client.agent-messaging", () => {
     });
   });
 
+  describe("attachments", () => {
+    it("reads an attachment's bytes from the host's base64url, or passes on its refusal", async () => {
+      const route = "POST /v1/messaging/attachment";
+      const answers = [
+        ok({ result: { outcome: "read", type: "image/png", base64url: "AAEC_w" } }),
+        ok({ result: { outcome: "refused", reason: "offline" } }),
+      ];
+      const host = new FakeHost().answer(route, () => answers.shift() ?? ok({}));
+      const messaging = new AgentHostMessaging(host, workspace);
+
+      expect(await messaging.readAttachment("a1")).toEqual({
+        outcome: "read",
+        type: "image/png",
+        bytes: new Uint8Array([0, 1, 2, 255]),
+      });
+      expect(await messaging.readAttachment("a1")).toEqual({
+        outcome: "refused",
+        reason: "offline",
+      });
+      expect(host.calls[0]?.body).toEqual({ workspace, attachment: "a1" });
+    });
+  });
+
   describe("changes", () => {
     it("names each source that changed after it started listening, asking every 2 seconds", async () => {
       const looks = [

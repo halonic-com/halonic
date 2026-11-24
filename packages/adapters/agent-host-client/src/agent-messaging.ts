@@ -1,6 +1,7 @@
 import type {
   AgentMessaging,
   AnswerResult,
+  AttachmentRead,
   Conversation,
   InboxAnswer,
   InboxItem,
@@ -13,10 +14,19 @@ import type {
   WorkItem,
 } from "@halonicjs/ports";
 import { s } from "@halonicjs/schema-kit";
-import { type AgentHostTransport, readAnswer } from "./transport.ts";
+import { decodeBase64url } from "@halonicjs/std";
+import { AgentHostError, type AgentHostTransport, readAnswer } from "./transport.ts";
 
 const itemsAnswer = s.object({ items: s.array(s.unknown()) }).strict();
 const resultAnswer = s.object({ result: s.object({ outcome: s.string() }).passthrough() }).strict();
+const attachmentAnswer = s
+  .object({
+    result: s.union([
+      s.object({ outcome: s.literal("read"), type: s.string(), base64url: s.string() }).strict(),
+      s.object({ outcome: s.literal("refused"), reason: s.string() }).strict(),
+    ]),
+  })
+  .strict();
 const changesAnswer = s
   .object({ next: s.number().int().min(0), sources: s.array(s.string()) })
   .strict();
@@ -101,6 +111,15 @@ export class AgentHostMessaging implements AgentMessaging {
     return readAnswer(route, reply, resultAnswer).result as SendResult;
   }
 
+  /** An attachment's bytes, which the host reads from the source or its cache and sends as base64url. */
+  async readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
+    const route = "POST /v1/messaging/attachment";
+    const reply = await this.#transport.request(route, { workspace: this.#workspace, attachment });
+    const { result } = readAnswer(route, reply, attachmentAnswer);
+    if (result.outcome === "refused") return result as AttachmentRead;
+    return { outcome: "read", type: result.type, bytes: bytesOf(route, result.base64url) };
+  }
+
   /**
    * The sources that change from now on. A host that can't be asked ends the
    * stream with its error, so the reader shows it rather than missing changes.
@@ -139,6 +158,19 @@ export class AgentHostMessaging implements AgentMessaging {
     });
     return readAnswer(route, answer, itemsAnswer).items as Item[];
   }
+}
+
+/** The bytes `base64url` stands for; an answer that isn't base64url is refused, not guessed at. */
+function bytesOf(route: string, base64url: string): Uint8Array {
+  const bytes = decodeBase64url(base64url);
+  if (bytes === undefined) {
+    throw new AgentHostError(
+      200,
+      "answer_invalid",
+      `${route} answered bytes that aren't base64url.`,
+    );
+  }
+  return bytes;
 }
 
 function waitFor(ms: number): Promise<void> {

@@ -1,5 +1,5 @@
 import type { ServerResponse } from "node:http";
-import type { AgentMessaging, InboxAnswer } from "@halonicjs/ports";
+import type { AgentMessaging, AttachmentRead, InboxAnswer } from "@halonicjs/ports";
 import { type Infer, type Schema, s } from "@halonicjs/schema-kit";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
@@ -40,6 +40,7 @@ const answerBody = s
 const sendBody = s
   .object({ workspace, conversation: id, body: s.string().min(1).max(20_000) })
   .strict();
+const attachmentBody = s.object({ workspace, attachment: id }).strict();
 const changesBody = s.object({ workspace, after: s.number().int().min(0) }).strict();
 const focusBody = s.object({ inFront: s.boolean() }).strict();
 const disconnectBody = s
@@ -67,6 +68,9 @@ type ReadBody = Infer<typeof readBody>;
  *   `POST /v1/messaging/send` with `{ conversation, body }` answer
  *   `{ result }`: the source answers or refuses, and offline nothing is kept
  *   to send later.
+ * - `POST /v1/messaging/attachment` with `{ attachment }` answers
+ *   `{ result }`: the bytes as base64url with their type, or why they were
+ *   refused (offline, the cache may not hold them).
  * - `POST /v1/messaging/changes` with `{ after }` answers `{ next, sources }`:
  *   the sources that changed since Studio's last look.
  * - `POST /v1/messaging/focus` with `{ inFront }` tells the poller whether
@@ -120,6 +124,9 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
     inWorkspace("/v1/messaging/send", sendBody, async (messaging, body) => ({
       result: await messaging.messaging.send(body.conversation, body.body),
     })),
+    inWorkspace("/v1/messaging/attachment", attachmentBody, async (messaging, body) => ({
+      result: attachmentAnswer(await messaging.messaging.readAttachment(body.attachment)),
+    })),
     inWorkspace("/v1/messaging/changes", changesBody, async (messaging, body) =>
       messaging.changesSince(body.after),
     ),
@@ -165,4 +172,14 @@ function readList(messaging: AgentMessaging, body: ReadBody): Promise<readonly u
 /** The error's name and message: the client's errors name the request and status only, never a key. */
 function describe(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}` : "an unknown error";
+}
+
+/** An attachment's read as JSON: its bytes as base64url, which an answer body can carry. */
+function attachmentAnswer(read: AttachmentRead) {
+  if (read.outcome === "refused") return read;
+  return {
+    outcome: "read",
+    type: read.type,
+    base64url: Buffer.from(read.bytes).toString("base64url"),
+  };
 }
