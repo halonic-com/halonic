@@ -134,6 +134,9 @@ verifies("app.scheduler-starts-signal-routines", () => {
     await send("own-1", "2026-11-03T10:00:30.000Z", ["Acme"], own);
     const result = await tickAt("2026-11-03T10:01:00Z");
     expect(result.started).toEqual([]);
+    expect(result.refusedLoops).toEqual([
+      { key: "billing/thanks", at: "2026-11-03T10:00:30.000Z" },
+    ]);
     expect(await scheduler.skippedTimes("billing/thanks")).toMatchObject([
       { reason: "signal-loop", from: "2026-11-03T10:00:30.000Z", count: 1 },
     ]);

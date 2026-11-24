@@ -15,7 +15,7 @@ import { type RunClock, startedAt } from "../../run-times.ts";
 export interface StartedRoutineRun {
   readonly key: string;
   readonly runId: string;
-  /** ISO time it was due. */
+  /** ISO time it was due, or the time its signal was sent. */
   readonly at: string;
 }
 
@@ -39,18 +39,30 @@ export function watchReport(
   clock: () => RunClock,
   routines: () => readonly PlacedRoutine[],
 ): WatchReport {
-  const nameOf = (key: string) =>
-    printable(routines().find((placed) => routineKey(placed) === key)?.routine.name ?? key);
+  const routineOf = (key: string) =>
+    routines().find((placed) => routineKey(placed) === key)?.routine;
+  const nameOf = (key: string) => printable(routineOf(key)?.name ?? key);
+  // The signal a routine starts on, by name; a signal's id names only the run that sent it.
+  const signalOf = (key: string) => {
+    const trigger = routineOf(key)?.trigger;
+    return printable(trigger && "signal" in trigger ? trigger.signal.name : "");
+  };
   const started: StartedRoutineRun[] = [];
   let held: RoutineTickResult[] | undefined = [];
 
   const print = (result: RoutineTickResult) => {
     const now = clock();
-    for (const { key, runId, at } of result.started.map(startedRun)) {
-      context.printAhead(
-        routinesMessages.started(nameOf(key), shortRunId(runId), startedAt(new Date(at), now))
-          .phrase,
-      );
+    for (const run of result.started) {
+      const { key, runId, at } = startedRun(run);
+      const onSignal = run.trigger?.type === "signal";
+      const when = startedAt(new Date(at), now);
+      const line = onSignal
+        ? routinesMessages.startedOnSignal(nameOf(key), shortRunId(runId), signalOf(key), when)
+        : routinesMessages.started(nameOf(key), shortRunId(runId), when);
+      context.printAhead(line.phrase);
+    }
+    for (const { key } of result.refusedLoops) {
+      context.printAhead(routinesMessages.refusedLoop(nameOf(key), signalOf(key)).phrase);
     }
     for (const failure of result.failed) {
       context.printAhead(

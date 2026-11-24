@@ -143,7 +143,8 @@ const skipReasons: Record<
   cap: `${missed} (catch-up runs 100 at most)`,
   window: `${missed} (catch-up goes back 7 days at most)`,
   changed: "dropped because the routine was changed or turned off before it started",
-  "signal-loop": "not started, because the signal came from a loop of routines starting each other",
+  "signal-loop":
+    "not started, because the signal may come from a loop of routines starting each other",
 };
 
 /** The one line a skipped row says: the times, then why. */
