@@ -1,7 +1,7 @@
 import { checkedOrigin } from "./address.ts";
 import {
   buildPath,
-  findRequest,
+  matchesRequest,
   type PaperclipRequestName,
   type PathValues,
   paperclipRequests,
@@ -93,7 +93,7 @@ export class PaperclipTransport {
       url.searchParams.set(key, value);
     }
     // The last gate before the network: the exact method and path must match the list.
-    if (findRequest(method, url.pathname) !== name) {
+    if (!matchesRequest(name, method, url.pathname)) {
       throw new PaperclipClientError(`${method} ${name} isn't on the request list.`, "refused");
     }
     const headers: Record<string, string> = {

@@ -45,6 +45,9 @@ export interface PaperclipMessagingOptions extends TransportOptions {
 /** How many of a chat's newest messages are read. */
 const messagePage = "100";
 
+/** How many of Paperclip's matching tasks a search reads. */
+const searchPage = "50";
+
 /**
  * The Paperclip provider: {@link AgentMessaging} for one Paperclip
  * connection, over plain `fetch` (ADR 2026-11-24, agent messaging). The
@@ -62,6 +65,8 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #writer: PaperclipWriter;
   readonly #feed = new ChangeFeed<MessagingId>();
   #agentNames = new Map<string, string>();
+  /** The Inbox as last read, which search matches without reading every task's cards again. */
+  #lastInbox: readonly InboxItem[] = [];
   #lastSeen: string | undefined;
 
   constructor(options: PaperclipMessagingOptions) {
@@ -138,13 +143,24 @@ export class PaperclipMessaging implements AgentMessaging {
     return this.#workFrom(await this.#inbox.openTasks());
   }
 
+  /**
+   * Searches through Paperclip's issue search (`q=`) in the connection's
+   * company, and matches agents' names, chats' titles and the questions of
+   * the Inbox as last read. A blank query makes no request.
+   */
   async search(query: string): Promise<readonly SearchHit[]> {
-    return searchAll(query, {
-      agents: await this.listAgents(),
-      conversations: await this.listConversations(),
-      inbox: await this.listInboxItems(),
-      work: await this.listWork(),
+    const needle = query.trim();
+    if (needle === "") {
+      return [];
+    }
+    const agents = await this.listAgents();
+    const conversations = await this.listConversations();
+    const tasks = await this.#reader.read("searchTasks", {
+      path: { company: this.#company },
+      query: { q: needle, limit: searchPage },
     });
+    const lists = { agents, conversations, inbox: this.#lastInbox, tasks: asRecords(tasks) };
+    return searchAll(needle, lists, this.#context());
   }
 
   async answer(item: MessagingId, answer: InboxAnswer): Promise<AnswerResult> {
@@ -229,7 +245,9 @@ export class PaperclipMessaging implements AgentMessaging {
 
   async #inboxFrom(tasks: readonly JsonRecord[] | undefined): Promise<InboxItem[]> {
     await this.#knowAgents();
-    return this.#inbox.list(this.#context(), tasks);
+    const items = await this.#inbox.list(this.#context(), tasks);
+    this.#lastInbox = items;
+    return items;
   }
 
   #workFrom(tasks: readonly JsonRecord[]): WorkItem[] {

@@ -226,7 +226,9 @@ verifies("ports.agent-messaging", () => {
 
     it("searches agents, chats, inbox items and work", async () => {
       paperclip.serveAcme();
-      const hits = await client().search("LAUNCH");
+      const messaging = client();
+      await messaging.listInboxItems();
+      const hits = await messaging.search("LAUNCH");
       expect(hits.map((hit) => [hit.kind, hit.id])).toEqual([
         ["inbox-item", card(plainTask, confirmCard)],
         ["work", `${source}:task:${plainTask}`],

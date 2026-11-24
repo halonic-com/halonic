@@ -55,6 +55,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | --- | --- | --- |
 | `listAgents` | `GET /api/companies/{company}/agents` | agents, and authors' names |
 | `listTasks` | `GET /api/companies/{company}/issues?status=backlog,todo,in_progress,in_review,blocked&limit=1000` | work, and the tasks whose cards are read |
+| `searchTasks` | `GET /api/companies/{company}/issues?q={query}&limit=50` | search: Paperclip's matching tasks, as work or as a chat |
 | `listProjects` | `GET /api/companies/{company}/projects` | each inbox item's project, from its task |
 | `listChats` | `GET /api/companies/{company}/chats` | the signed-in user's chats; 404 when Agent Chat is off |
 | `listComments` | `GET /api/issues/{task}/comments?order=desc&limit=100` | a chat's newest messages |
@@ -86,6 +87,12 @@ approval's linked task is read once while it is pending.
 **At most 1000 open tasks.** The provider reads one page of `listTasks`, Paperclip's largest. Open tasks
 past the first 1000 are missing from work and the Inbox, without an error. Paging comes when a company
 gets near that; ours has about 400.
+
+**Search** uses Paperclip's issue search (`searchTasks`, the `listTasks` route with `q=`, so it reads
+nothing the provider couldn't already) in the connection's company, all states included. A matching chat
+task comes back as its conversation, any other task as work. Agents match by name and chats by title from
+`listAgents` and `listChats`; inbox items match by question from the Inbox as last read, so a search reads
+no cards. Messages and documents aren't searched in phase 1. A blank query makes no request.
 
 **Card kinds:** confirmations and one-question cards can be answered here. Cards with several questions,
 task suggestions, checklists and verdicts show in the Inbox with no options and are answered in Paperclip.
