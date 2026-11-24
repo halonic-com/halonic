@@ -3,6 +3,7 @@
 - Task: HAL-17600
 - Approval: HAL-17600 (found on HAL-17437, #5631); Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nFwnXZmRLP9ZzR0/HhJzLCDQql16lQfTchL84yWbAYNCQkI9ycKOFryGuBVLH3gAFfR4D2EIjhEjhMXw6IzqAA==
 
 ## What changes
 
