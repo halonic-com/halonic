@@ -43,7 +43,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "companies.read",
     "agents.read",
     "issues.read",
-    // Only `done`: src/plugin/host.ts is the one place that writes a status, through doneOnly.
+    // Only `done`, or `todo` with the reviewer as assignee: src/plugin/host.ts is the one place
+    // that writes a status, through doneOnly and handoffOnly.
     // A task's effort goes through Paperclip's own API instead (src/plugin/task-effort.ts),
     // because the SDK's update leaves that field out. The difficulty tagger sends only a task's
     // labelIds, through setTaskLabels in the same file, changing only its D1–D4 and opus-only labels.

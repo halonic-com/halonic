@@ -1,8 +1,9 @@
 /**
  * The PR watcher's view of Paperclip. The plugin's host adapter
  * (`src/plugin/host.ts`) implements it; it reads tasks, comments and agents,
- * and writes only comments, wake-ups, a task's `done` status and a later
- * time for a monitor the task already has.
+ * and writes only comments, wake-ups, a task's `done` status, a handoff of
+ * a task to its reviewer with status `todo`, and a later time for a monitor
+ * the task already has.
  */
 
 /** An open task, as the watcher reads it. */
@@ -35,7 +36,9 @@ export interface AgentRow {
 
 /**
  * What a write did: `closed` when the task was no longer open by the time the
- * watcher got to it (its author closed it during the pass), so nothing needed doing.
+ * watcher got to it (its author closed it during the pass), so nothing needed
+ * doing. A handoff is also `closed` when the author no longer holds the task
+ * or has a run going on it.
  */
 export type WriteOutcome = "written" | "closed";
 
@@ -50,6 +53,19 @@ export interface Paperclip {
   /** Comments and wakes the task's assignee. `key` makes a repeated wake-up a no-op. */
   wake(taskId: string, body: string, key: string): Promise<WriteOutcome>;
   markDone(taskId: string, body: string): Promise<WriteOutcome>;
+  /**
+   * Comments, then gives the task to the reviewer `to` with status `todo` and
+   * wakes them, if the author `from` still holds it with no run going.
+   * `key` makes a repeated wake-up a no-op.
+   */
+  handOff(
+    taskId: string,
+    change: { readonly from: string; readonly to: string },
+    body: string,
+    key: string,
+  ): Promise<WriteOutcome>;
+  /** Comments on the task and wakes nobody. */
+  note(taskId: string, body: string): Promise<WriteOutcome>;
   /**
    * Moves the task's existing monitor to `until`. Paperclip refuses (throws)
    * anything but a later time within 24 hours on an in-progress or in-review task.

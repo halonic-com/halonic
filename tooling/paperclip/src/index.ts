@@ -18,6 +18,7 @@ export {
   type Decision,
   decide,
   type Memory,
+  marker,
   newReasons,
   type PullFacts,
   type Reason,
@@ -53,7 +54,6 @@ export type { AgentRow, CommentRow, Paperclip, TaskRow } from "./pr-watcher/pape
 export {
   doneMessage,
   isSelf,
-  marker,
   readMemory,
   type TickOptions,
   type TickSummary,

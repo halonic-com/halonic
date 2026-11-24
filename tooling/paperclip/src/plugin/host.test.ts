@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { fakeHost } from "./fake-host.test-helper.ts";
-import { doneOnly, paperclipHost } from "./host.ts";
+import { doneOnly, handoffOnly, paperclipHost } from "./host.ts";
 
 const srcDir = fileURLToPath(new URL("..", import.meta.url));
 
@@ -65,6 +65,70 @@ verifies("paperclip.pr-watcher-monitor-postpone", () => {
     const until = "2026-11-23T16:00:00.000Z";
     expect(await paperclipHost(host, "acme").postponeMonitor("task-1", until)).toBe("postponed");
     expect(writes).toEqual([{ kind: "postpone", issueId: "task-1", until }]);
+  });
+});
+
+verifies("paperclip.pr-watcher-handoff", () => {
+  const authorsTask = { ...openTask, assigneeAgentId: "agent-mateo" };
+  const change = { from: "agent-mateo", to: "agent-julian" };
+
+  test("refuses every handoff other than to one agent with status todo", () => {
+    expect(handoffOnly({ assigneeAgentId: "agent-julian", status: "todo" })).toEqual({
+      assigneeAgentId: "agent-julian",
+      status: "todo",
+    });
+    for (const patch of [
+      { assigneeAgentId: "agent-julian", status: "in_review" },
+      { assigneeAgentId: "", status: "todo" },
+      { assigneeAgentId: null, status: "todo" },
+      { assigneeAgentId: "agent-julian", status: "todo", title: "renamed" },
+      { status: "todo" },
+    ]) {
+      expect(() => handoffOnly(patch)).toThrow("refusing a handoff other than");
+    }
+  });
+
+  test("comments, gives the task to the reviewer with status todo, then wakes them", async () => {
+    const { host, writes } = fakeHost([authorsTask]);
+    const body = "PR watcher: ready for review: #5701, head `5701aaa`.";
+    expect(await paperclipHost(host, "acme").handOff("task-1", change, body, "k1")).toBe("written");
+    expect(writes).toEqual([
+      { kind: "comment", issueId: "task-1", body },
+      {
+        kind: "update",
+        issueId: "task-1",
+        patch: { assigneeAgentId: "agent-julian", status: "todo" },
+      },
+      {
+        kind: "wake",
+        issueId: "task-1",
+        options: { reason: "pr_watcher", idempotencyKey: "pr-watcher task-1 k1" },
+      },
+    ]);
+  });
+
+  test("leaves a task its author handed on, closed or started a run on since the pass began", async () => {
+    for (const moved of [
+      { ...authorsTask, assigneeAgentId: "agent-liam" },
+      { ...authorsTask, status: "done" },
+      { ...authorsTask, activeRun: { id: "run-1" } },
+    ]) {
+      const { host, writes } = fakeHost([moved]);
+      expect(
+        await paperclipHost(host, "acme").handOff("task-1", change, "PR watcher: x", "k1"),
+      ).toBe("closed");
+      expect(writes).toEqual([]);
+    }
+  });
+
+  test("posts a note as a comment only, waking nobody", async () => {
+    const { host, writes } = fakeHost([authorsTask]);
+    expect(
+      await paperclipHost(host, "acme").note("task-1", "PR watcher: pushed after approval."),
+    ).toBe("written");
+    expect(writes).toEqual([
+      { kind: "comment", issueId: "task-1", body: "PR watcher: pushed after approval." },
+    ]);
   });
 });
 

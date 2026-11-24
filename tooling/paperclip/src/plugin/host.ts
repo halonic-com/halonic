@@ -10,7 +10,8 @@ import type {
 /**
  * The PR watcher's Paperclip, on top of the plugin host's API. This is the
  * only file that changes a task through the SDK: `doneOnly` lets the watcher
- * set `done` and nothing else, and `setTaskLabels` lets the difficulty tagger
+ * set `done`, `handoffOnly` lets it give a task to one agent with status
+ * `todo` (its reviewer, HAL-17675), and nothing else; `setTaskLabels` lets the difficulty tagger
  * set labels and nothing else, because the manifest can't narrow
  * `issues.update`.
  */
@@ -36,6 +37,29 @@ export function doneOnly(patch: Readonly<Record<string, unknown>>): { status: "d
     throw new Error(`PR watcher: refusing a task change other than done (${keys.join(", ")}).`);
   }
   return { status: "done" };
+}
+
+/**
+ * The only handoff the watcher may make: the task to one agent, with status
+ * `todo`, and no other field. Anything else throws before it reaches the host.
+ */
+export function handoffOnly(patch: Readonly<Record<string, unknown>>): {
+  assigneeAgentId: string;
+  status: "todo";
+} {
+  const keys = Object.keys(patch).sort();
+  const agent = patch["assigneeAgentId"];
+  if (
+    keys.join(",") !== "assigneeAgentId,status" ||
+    patch["status"] !== "todo" ||
+    typeof agent !== "string" ||
+    agent === ""
+  ) {
+    throw new Error(
+      `PR watcher: refusing a handoff other than to one agent with status todo (${keys.join(", ")}).`,
+    );
+  }
+  return { assigneeAgentId: agent, status: "todo" };
 }
 
 /**
@@ -125,6 +149,34 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
         return "closed";
       }
       await host.issues.update(taskId, doneOnly({ status: "done" }), companyId);
+      await host.issues.createComment(taskId, body, companyId);
+      return "written";
+    },
+    async handOff(taskId, { from, to }, body, key) {
+      // Re-read: the author may have handed it on, closed it or started a run during the pass.
+      const issue = await host.issues.get(taskId, companyId);
+      if (
+        issue === null ||
+        !watchedStatuses.has(issue.status) ||
+        issue.assigneeAgentId !== from ||
+        issue.activeRun != null
+      ) {
+        return "closed";
+      }
+      // The comment first, so the reviewer's run finds it.
+      await host.issues.createComment(taskId, body, companyId);
+      await host.issues.update(
+        taskId,
+        handoffOnly({ assigneeAgentId: to, status: "todo" }),
+        companyId,
+      );
+      // A plugin's change may not wake the new assignee, so the wake-up is its own call.
+      return wakeAssignee(host, taskId, companyId, key);
+    },
+    async note(taskId, body) {
+      if (!(await stillWatched(host, taskId, companyId))) {
+        return "closed";
+      }
       await host.issues.createComment(taskId, body, companyId);
       return "written";
     },
