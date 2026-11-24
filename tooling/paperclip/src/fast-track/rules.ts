@@ -9,16 +9,16 @@ import { approvedOnHead, failingToNudge, isBot, isGreen, pendingOf, reviewerOf }
  * here; `pass.ts` keeps the state and logs the events.
  */
 
-/** A reviewer has this long after the label before the monitor nudges. */
-export const reviewAfterMinutes = 30;
+/** Ready for review and still not approved on the same head this long, and the board hears of it. */
+export const reviewEscalateMinutes = 15;
 
 /** Approved and green this long, and still not queued, before the Merger is asked. */
 export const enqueueAfterMinutes = 10;
 
-/** In the merge queue this long before the monitor looks for what holds it. */
+/** First in the merge queue this long before the monitor looks for what holds it. */
 export const queueSlowMinutes = 30;
 
-/** More PRs than this ahead, and a fast-track PR jumps the queue (HAL-15971 point 3). */
+/** More PRs than this ahead, and none of them fast-track, and a fast-track PR jumps the queue (HAL-17697). */
 export const jumpAhead = 8;
 
 /** Who an event would go to. */
@@ -43,6 +43,10 @@ export interface Tracked {
   readonly readySince: { readonly head: string; readonly at: string } | null;
   /** When it entered the merge queue, while it was there at the last pass. */
   readonly queuedAt: string | null;
+  /** The head that was ready for review and not approved, and since when (absent in state from before 24 Nov). */
+  readonly reviewSince?: { readonly head: string; readonly at: string } | null;
+  /** Since when its queue entry has been first in the merge queue (absent in state from before 24 Nov). */
+  readonly firstInQueueSince?: string | null;
 }
 
 /** What one repository's rules need besides the snapshot. */
@@ -54,9 +58,10 @@ export interface RuleInput {
   /** Pull requests the board or Chief said unblock the queue or CI for everyone. */
   readonly unblocks: ReadonlySet<number>;
   /**
-   * The board's GitHub login, the only account whose `fast-track` label counts
-   * for a jump (the others all act as `halonic-dev`), from the plugin setting
-   * `fastTrackLabelAdder`. Empty: no label counts.
+   * The board's GitHub login, whose `fast-track` label counts for a jump next
+   * to `halonic-dev`'s (the board and Chief label through it, MERGER.md
+   * rule 3), from the plugin setting `fastTrackLabelAdder`. Empty: only
+   * `halonic-dev`'s counts.
    */
   readonly labelAdder: string;
 }
@@ -107,22 +112,28 @@ function eventOf(
   };
 }
 
-/** Whether the board added the label; never when the board's login isn't set. */
-function byBoard(subject: Pick<Subject, "input" | "label">): boolean {
-  return subject.input.labelAdder !== "" && subject.label.addedBy === subject.input.labelAdder;
+/** The account the board and Chief add the label through (MERGER.md rule 3). */
+export const sharedLabelAdder = "halonic-dev";
+
+/** Whether the board or Chief added the label: as `halonic-dev`, or as the board's login when it is set. */
+function labelVerified(subject: Pick<Subject, "input" | "label">): boolean {
+  const by = subject.label.addedBy;
+  if (by === null) {
+    return false;
+  }
+  return (
+    by === sharedLabelAdder || (subject.input.labelAdder !== "" && by === subject.input.labelAdder)
+  );
 }
 
 function wrongLabelText(by: string | null, labelAdder: string): string {
-  if (by === "halonic-dev") {
-    return "fast-track was added as halonic-dev: it counts only if Chief or the board allowed it on the task, so check there. Until then it is queued without a jump.";
-  }
   if (by === null) {
     return "GitHub doesn't say who added fast-track, so it never counts as allowed: queued without a jump.";
   }
   if (labelAdder === "") {
-    return "the board's login isn't set (fastTrackLabelAdder), so no fast-track label counts: queued without a jump.";
+    return `the board's login isn't set (fastTrackLabelAdder), so only a fast-track label added as ${sharedLabelAdder} counts, not ${by}'s: queued without a jump.`;
   }
-  return `fast-track was added by ${by}, not by the board: queued without a jump.`;
+  return `fast-track was added by ${by}, not by the board or as ${sharedLabelAdder}: queued without a jump.`;
 }
 
 function labelEvents(subject: Subject): FastTrackEvent[] {
@@ -139,7 +150,7 @@ function labelEvents(subject: Subject): FastTrackEvent[] {
       ),
     );
   }
-  if (!byBoard(subject)) {
+  if (!labelVerified(subject)) {
     events.push(
       eventOf(
         subject,
@@ -164,27 +175,47 @@ function labelEvents(subject: Subject): FastTrackEvent[] {
   return events;
 }
 
-function reviewEvents(subject: Subject): FastTrackEvent[] {
+/** Ready for review (no draft, no check running) and not approved on this head, and since when; null when it isn't. */
+export function reviewSinceOf(
+  subject: Pick<Subject, "input" | "pull" | "open" | "was">,
+): NonNullable<Tracked["reviewSince"]> | null {
   const { pull, open, input } = subject;
-  const waited = Math.round(minutesSince(subject.labelledAt, input.now));
-  if (
-    open.draft ||
-    pendingOf(open).length > 0 ||
-    approvedOnHead(pull, open) ||
-    waited < reviewAfterMinutes
-  ) {
+  if (open.draft || pendingOf(open).length > 0 || approvedOnHead(pull, open)) {
+    return null;
+  }
+  const before = subject.was?.reviewSince;
+  return before?.head === pull.head ? before : { head: pull.head, at: input.now.toISOString() };
+}
+
+function reviewEvents(subject: Subject, since: Tracked["reviewSince"]): FastTrackEvent[] {
+  if (since === null || since === undefined) {
     return [];
   }
+  const { pull, input } = subject;
   const reviewer = reviewerOf(pull);
-  return [
+  const short = pull.head.slice(0, 7);
+  const events = [
     eventOf(
       subject,
       "review_nudge",
       head12(pull),
-      ["task", "board"],
-      `${reviewer}, please review now: fast-track, ready and not approved on head ${pull.head.slice(0, 7)}, ${waited} min after the label.`,
+      ["task"],
+      `${reviewer}, please review now: fast-track, ready for review and not approved on head ${short}.`,
     ),
   ];
+  const waited = Math.round(minutesSince(since.at, input.now));
+  if (waited >= reviewEscalateMinutes) {
+    events.push(
+      eventOf(
+        subject,
+        "review_escalate",
+        head12(pull),
+        ["board"],
+        `still not approved on head ${short} ${waited} min after it was ready for review: ${reviewer} hasn't reviewed it.`,
+      ),
+    );
+  }
+  return events;
 }
 
 function checkEvents(subject: Subject): FastTrackEvent[] {
@@ -221,9 +252,16 @@ export function readySinceOf(
   return before?.head === pull.head ? before : { head: pull.head, at: input.now.toISOString() };
 }
 
-/** Why it jumps the queue (HAL-15971 point 3), or undefined when it only goes first among those waiting. */
-export function jumpReason(subject: Pick<Subject, "input" | "pull" | "label">): string | undefined {
-  if (!byBoard(subject)) {
+/**
+ * Why it jumps the queue (HAL-15971 point 3, HAL-17697), or undefined when it
+ * doesn't. A fast-track pull request jumps only pull requests without the
+ * label, so never while another `fast-track` pull request is queued.
+ */
+export function jumpReason(
+  subject: Pick<Subject, "input" | "pull" | "label">,
+  otherInQueue: number | undefined,
+): string | undefined {
+  if (!labelVerified(subject) || otherInQueue !== undefined) {
     return undefined;
   }
   if (subject.input.unblocks.has(subject.pull.number)) {
@@ -239,15 +277,18 @@ function enqueueEvents(
   otherInQueue: number | undefined,
 ): FastTrackEvent[] {
   const waited = Math.round(minutesSince(ready?.at ?? null, subject.input.now));
-  // One jump at a time, and a stacked pull request waits for its base (`readySince` needs the default branch).
-  if (ready === null || waited < enqueueAfterMinutes || otherInQueue !== undefined) {
+  // A stacked pull request waits for its base (`readySince` needs the default branch).
+  if (ready === null || waited < enqueueAfterMinutes) {
     return [];
   }
-  const why = jumpReason(subject);
-  const how =
-    why === undefined
-      ? `queue it first among the pull requests waiting to enter, without a jump (${subject.input.repo.queue.length} in the queue)`
-      : `queue it with a jump: ${why}`;
+  const why = jumpReason(subject, otherInQueue);
+  const queued = subject.input.repo.queue.length;
+  let how = `queue it with a jump: ${why}`;
+  if (otherInQueue !== undefined) {
+    how = `queue it normally, without a jump: fast-track #${otherInQueue} is already queued (${queued} in the queue)`;
+  } else if (why === undefined) {
+    how = `queue it first among the pull requests waiting to enter, without a jump (${queued} in the queue)`;
+  }
   return [
     eventOf(
       subject,
@@ -259,7 +300,20 @@ function enqueueEvents(
   ];
 }
 
-function queueEvents(subject: Subject): FastTrackEvent[] {
+/** Since when its queue entry has been first in the merge queue; null while it isn't. */
+export function firstInQueueSinceOf(
+  subject: Pick<Subject, "input" | "pull" | "was">,
+): string | null {
+  const entry = subject.input.repo.queue.find((each) => each.number === subject.pull.number);
+  if (entry?.position !== 1) {
+    return null;
+  }
+  const before = subject.was;
+  const sameEntry = before?.queuedAt === entry.enqueuedAt;
+  return (sameEntry ? before?.firstInQueueSince : null) ?? subject.input.now.toISOString();
+}
+
+function queueEvents(subject: Subject, firstSince: string | null): FastTrackEvent[] {
   const { input, pull } = subject;
   const entry = input.repo.queue.find((each) => each.number === pull.number);
   if (entry === undefined) {
@@ -277,16 +331,17 @@ function queueEvents(subject: Subject): FastTrackEvent[] {
         ];
   }
   const events: FastTrackEvent[] = [];
-  const waited = Math.round(minutesSince(entry.enqueuedAt, input.now));
   const where = `position ${entry.position}, ${entry.state}, group ci-ok ${entry.groupCiOk ?? "not formed"}`;
-  if (waited >= queueSlowMinutes) {
+  // Waiting behind others is normal without a jump; only a stuck first entry is slow.
+  const first = Math.round(minutesSince(firstSince, input.now));
+  if (firstSince !== null && first >= queueSlowMinutes) {
     events.push(
       eventOf(
         subject,
         "queue_slow",
         entry.enqueuedAt,
         ["task", "board"],
-        `${waited} min in the merge queue (${where}): find what holds it.`,
+        `${first} min first in the merge queue (${where}): find what holds it.`,
       ),
     );
   }
@@ -347,19 +402,23 @@ export function fastTrackRules(input: RuleInput): RuleOutput {
       labelledAt,
     };
     const ready = readySinceOf(subject);
+    const reviewSince = reviewSinceOf(subject);
+    const firstInQueueSince = firstInQueueSinceOf(subject);
     const other = queuedFast === pull.number ? undefined : queuedFast;
     events.push(
       ...labelEvents(subject),
-      ...reviewEvents(subject),
+      ...reviewEvents(subject, reviewSince),
       ...checkEvents(subject),
       ...enqueueEvents(subject, ready, other),
-      ...queueEvents(subject),
+      ...queueEvents(subject, firstInQueueSince),
     );
     const entry = input.repo.queue.find((each) => each.number === pull.number);
     tracked.set(pull.number, {
       labelledAt,
       readySince: ready,
       queuedAt: entry?.enqueuedAt ?? null,
+      reviewSince,
+      firstInQueueSince,
     });
   }
   for (const [number, was] of input.tracked) {
