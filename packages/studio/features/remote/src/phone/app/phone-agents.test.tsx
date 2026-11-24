@@ -129,6 +129,9 @@ verifies("remote.phone-computer-agents", () => {
     await press("Open agents");
     const [[computer, host] = []] = [...hosts];
     if (computer === undefined || host === undefined) throw new Error("No gateway client held.");
+    // The computer's screen opens on its heading (C48, CS2).
+    expect(document.activeElement?.tagName).toBe("H1");
+    expect(document.activeElement?.textContent).toBe("Tim's laptop");
 
     // List and watch: the session opens, the phone says hello, lists and watches.
     await step(() => {
@@ -153,9 +156,11 @@ verifies("remote.phone-computer-agents", () => {
     });
     expect(text()).toContain("Send 4 replies");
     expect(text()).toContain("Writing the weekly report");
+    // The heading stays, hidden, while the label shows (C48, CS1).
+    expect(document.querySelector("h1.sr-only")?.textContent).toBe("Tim's laptop");
 
     // Approve: sent once; the host takes it and settles the approval.
-    await press("Approve");
+    await press("Approve Sorter");
     expect(host.tunnel.sentOf("answer-approval")).toEqual([
       expect.objectContaining({ sessionId: "s-sorter", approvalId: "a-1", decision: "approve" }),
     ]);
@@ -168,6 +173,9 @@ verifies("remote.phone-computer-agents", () => {
       });
     });
     expect(document.querySelector("li button[aria-disabled], li button[aria-busy]")).toBeNull();
+    // Focus stays on Sorter's row, and the list says what was answered (C48, AP2).
+    expect(document.activeElement?.getAttribute("data-session")).toBe("s-sorter");
+    expect(text()).toContain("Approved: Sorter.");
 
     // Prompt: from Reporter's run detail, sent once.
     await tapRow("Reporter");
@@ -189,6 +197,8 @@ verifies("remote.phone-computer-agents", () => {
     expect(text()).toContain("You can send a prompt once your phone reconnects.");
     await press("Back to Agents");
     expect(text()).toContain("Writing the weekly report · as of");
+    // Back on the list, focus returns to Reporter's row (C48, RD1).
+    expect(document.activeElement?.getAttribute("data-session")).toBe("s-reporter");
 
     // Reconnect: hello and list again, each watch resumes after the last seq, and it's live.
     await step(() => {

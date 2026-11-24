@@ -1,12 +1,13 @@
 import {
   type ReactNode,
+  type RefObject,
   useCallback,
   useEffect,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
-import { AgentsList } from "../agents-list.tsx";
+import { AgentsList, rowButtonOf } from "../agents-list.tsx";
 import { routeOf } from "../computers-words.ts";
 import type { ReachRoute } from "../connection-check.ts";
 import { ConnectionCheckSheet } from "../connection-check-sheet.tsx";
@@ -34,7 +35,9 @@ export interface PhoneOutside {
  * body. Until the computer first answers, the body is the first reach's waiting line or its
  * give-up, which open Check this connection (first-run-progress 6). After that it is the
  * computer's agents from its gateway client, with the prompt box docked under them; a tapped
- * agent's run detail shows in place of the whole screen.
+ * agent's run detail shows in place of the whole screen. The computer's name is the screen's h1
+ * on every state, hidden while the label shows; focus goes to it when the screen opens, and back
+ * to the agent's row when its run detail closes (C48).
  */
 export function ComputerScreen({
   router,
@@ -57,6 +60,7 @@ export function ComputerScreen({
   const remote = router.remoteOf(computer.id);
   const view = useRemoteView(remote);
   const body = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const sheetOf = sheet === "status" ? statusSheetOf(state, status, computer) : undefined;
   const now = useNow(sheetOf?.kind === "reconnecting");
   const tryAgain = () => router.tryAgain(computer.id);
@@ -85,6 +89,7 @@ export function ComputerScreen({
     );
   const showsRun =
     run !== undefined && remote !== undefined && view !== undefined && !isStanding(state);
+  useOpeningFocus(computer.id, showsRun ? run : undefined, heading, body);
   return (
     <div className="flex min-h-full flex-col">
       {showsRun ? (
@@ -99,7 +104,17 @@ export function ComputerScreen({
       ) : (
         <>
           <header className="flex min-h-14 items-center gap-2 border-b border-border px-4">
-            {label ?? <h1 className="text-body-strong text-fg">{computer.name}</h1>}
+            {/* Hidden, not gone, while the label shows: nothing moves (C48, CS1). */}
+            <h1
+              ref={heading}
+              tabIndex={-1}
+              className={
+                label === null ? "rounded-sm text-body-strong text-fg focus-ring" : "sr-only"
+              }
+            >
+              {computer.name}
+            </h1>
+            {label}
           </header>
           <div ref={body} className="flex flex-1 flex-col gap-4 p-4">
             <ComputerBody
@@ -139,6 +154,30 @@ export function ComputerScreen({
       ) : null}
     </div>
   );
+}
+
+/**
+ * Where focus goes as the computer's screen opens: on another computer, or back from a run
+ * detail with no row to return to, the screen's heading; back from a run detail, that agent's
+ * row on the Agents list. The run detail focuses its own heading.
+ */
+function useOpeningFocus(
+  computerId: string,
+  shownRun: string | undefined,
+  heading: RefObject<HTMLHeadingElement | null>,
+  body: RefObject<HTMLDivElement | null>,
+): void {
+  const closedRun = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (shownRun !== undefined) {
+      closedRun.current = shownRun;
+      return;
+    }
+    const from = closedRun.current;
+    closedRun.current = undefined;
+    const row = from === undefined ? undefined : rowButtonOf(body.current, from);
+    (row ?? heading.current)?.focus();
+  }, [computerId, shownRun, heading, body]);
 }
 
 /** Check this connection over the computer's screen, with what the phone knows of the reach. */
