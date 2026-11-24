@@ -35,6 +35,7 @@ function setup(answer: () => Promise<CodeExchangeOutcome> = async () => goodSess
       exchanges.push({ code, state });
       return answer();
     },
+    refresh: unusedPort("refresh"),
     now: () => nowMs,
   };
   const server = testServer({
@@ -231,7 +232,12 @@ describe("cloud sign-in routes", () => {
     });
 
     it("refuses a sign-in origin that isn't https and a session cookie that isn't host-only", () => {
-      const ports: CloudSignInPorts = { signInOrigin, product, exchange: unusedPort("exchange") };
+      const ports: CloudSignInPorts = {
+        signInOrigin,
+        product,
+        exchange: unusedPort("exchange"),
+        refresh: unusedPort("refresh"),
+      };
       const errorLog = { record: () => undefined };
       const build = (signIn: string, cookieName: string) => () =>
         createCloudSignInRoutes(

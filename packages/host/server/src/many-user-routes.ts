@@ -1,4 +1,5 @@
 import type { ServerConfig, ServerPorts } from "./api.ts";
+import { createCloudSessionRoutes } from "./cloud-session-routes.ts";
 import { createCloudSignInRoutes } from "./cloud-sign-in-routes.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { helloResponse } from "./hello-route.ts";
@@ -103,6 +104,13 @@ export function createManyUserRoutes(
           sessionCookieName: manyUsers.cookieName,
           errorLog,
         });
+  const cloudSessionRoutes =
+    manyUsers.cloudSignIn === undefined
+      ? null
+      : createCloudSessionRoutes(manyUsers.cloudSignIn, {
+          sessionCookieName: manyUsers.cookieName,
+          errorLog,
+        });
 
   function scopedRoutesOf(principal: Principal): ScopedRoutes {
     const { runs, runStore } = manyUsers.scopedRuns(principal);
@@ -121,7 +129,8 @@ export function createManyUserRoutes(
       if (request.method === "GET" && pathname === "/api/hello") {
         return helloResponse(config);
       }
-      const signInAnswer = cloudSignInRoutes?.route(request) ?? null;
+      const signInAnswer =
+        cloudSignInRoutes?.route(request) ?? cloudSessionRoutes?.route(request) ?? null;
       if (signInAnswer !== null) {
         return signInAnswer;
       }

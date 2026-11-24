@@ -70,6 +70,11 @@ export interface SessionClaims {
 export interface CheckedSession {
   readonly principal: Principal;
   readonly client: string | null;
+  /**
+   * The session's id from the `sid` claim, for revocation and sign-out, or `null` when the token
+   * has none or one that isn't 1 to 128 printable ASCII characters. It grants nothing.
+   */
+  readonly sessionId: string | null;
 }
 
 /**
@@ -99,7 +104,16 @@ export function checkClaims(claims: unknown): CheckedSession | null {
   if (principal === null) {
     return null;
   }
-  return Object.freeze({ principal, client: client ?? null });
+  return Object.freeze({ principal, client: client ?? null, sessionId: sessionIdOf(claims) });
+}
+
+/** A key or session id as the token holds it: 1 to 128 printable ASCII characters. */
+const sessionIdPattern = /^[\x21-\x7E]{1,128}$/;
+
+/** The `sid` claim when it is a well-formed id; otherwise `null`, never a refusal. */
+function sessionIdOf(claims: object): string | null {
+  const sid = ownValue(claims, "sid");
+  return typeof sid === "string" && sessionIdPattern.test(sid) ? sid : null;
 }
 
 /** Turns a principal into the record a run keeps, so background work uses the stored principal. */
