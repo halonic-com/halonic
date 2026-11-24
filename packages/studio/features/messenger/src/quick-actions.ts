@@ -1,10 +1,4 @@
-import type {
-  AgentMessaging,
-  AnswerResult,
-  InboxItem,
-  MessagingRefusal,
-  SendResult,
-} from "@halonicjs/ports";
+import type { AgentMessaging, AnswerResult, InboxItem, SendResult } from "@halonicjs/ports";
 import type { ConversationRow } from "./messenger.ts";
 import { refusalOf } from "./refusal.ts";
 
@@ -13,12 +7,6 @@ import { refusalOf } from "./refusal.ts";
  * person types: the agent reads it, nothing runs on this machine.
  */
 export const askForUpdateText = "Can you give me an update?";
-
-/** What a quick action did: the port's own result, or a refusal before anything was sent. */
-export type QuickActionOutcome =
-  | AnswerResult
-  | SendResult
-  | { readonly outcome: "refused"; readonly reason: MessagingRefusal };
 
 /**
  * The quick actions of one chat (requirement `messenger.quick-actions`): the
@@ -51,18 +39,14 @@ export class QuickActions {
   }
 
   /** Answers one of the chat's cards with one of its options: one `answer` call. */
-  async answerCard(
-    row: ConversationRow,
-    card: InboxItem,
-    option: string,
-  ): Promise<QuickActionOutcome> {
+  async answerCard(row: ConversationRow, card: InboxItem, option: string): Promise<AnswerResult> {
     const refusal = refusalOf(row);
     if (refusal !== undefined) return { outcome: "refused", reason: refusal };
     return this.messaging.answer(card.id, { kind: "option", option });
   }
 
   /** Asks the chat's agent where its work stands: one `send` of {@link askForUpdateText}. */
-  async askForUpdate(row: ConversationRow): Promise<QuickActionOutcome> {
+  async askForUpdate(row: ConversationRow): Promise<SendResult> {
     const refusal = refusalOf(row);
     if (refusal !== undefined) return { outcome: "refused", reason: refusal };
     return this.messaging.send(row.conversation.id, askForUpdateText);

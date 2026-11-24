@@ -3,8 +3,9 @@
  * its buttons and types in its box, each inside `act` with every settled
  * promise run, so the test looks only after the page's reads have landed.
  */
+
+import type { AgentMessaging } from "@halonicjs/ports";
 import { OpenExternalProvider } from "@halonicjs/studio-kit";
-import type { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { act } from "react";
 import { Messenger } from "../messenger.ts";
 import { MessengerPage } from "../ui/messenger-page.tsx";
@@ -19,7 +20,7 @@ export async function settle(): Promise<void> {
 
 /** Renders the Messenger and lets its first reads land; links it opens go to `opened`. */
 export async function openMessenger(
-  messaging: FakeAgentMessaging,
+  messaging: AgentMessaging,
   opened: string[] = [],
 ): Promise<HTMLElement> {
   const page = render(

@@ -1,6 +1,8 @@
 import type {
   AgentActivity,
   AgentMessaging,
+  AttachmentRead,
+  AttachmentRefusal,
   Conversation,
   Message,
   MessagingAgent,
@@ -8,6 +10,7 @@ import type {
   MessagingRefusal,
   MessagingSource,
 } from "@halonicjs/ports";
+import { DraftFiles } from "./draft-files.ts";
 import { QuickActions } from "./quick-actions.ts";
 import { refusalOf } from "./refusal.ts";
 
@@ -31,7 +34,10 @@ export interface ConversationRow {
 /** What sending a conversation's draft did. A draft that wasn't sent stays as it was. */
 export type DraftOutcome =
   | { readonly outcome: "sent"; readonly message: Message }
-  | { readonly outcome: "kept"; readonly reason: MessagingRefusal | "blank" };
+  | {
+      readonly outcome: "kept";
+      readonly reason: MessagingRefusal | AttachmentRefusal | "blank";
+    };
 
 /**
  * The Messenger of one open workspace (requirement `messenger.conversations`):
@@ -48,6 +54,8 @@ export type DraftOutcome =
 export class Messenger {
   /** The chats' quick actions: answering the agent's cards, and asking for an update. */
   readonly quickActions: QuickActions;
+  /** The files waiting in each chat's box, sent with its next message. */
+  readonly files = new DraftFiles();
   private readonly messaging: AgentMessaging;
   private readonly drafts = new Map<MessagingId, string>();
 
@@ -87,21 +95,32 @@ export class Messenger {
   }
 
   /**
-   * Sends a conversation's draft. Offline or signed out, it asks the source
-   * nothing and keeps the draft: nothing is queued to send later (ADR, Offline).
-   * A refusal from the source keeps it too; only a sent message clears it, and
-   * only while the draft still holds what was sent, so text typed during the
-   * send stays.
+   * Sends a conversation's draft, with the files waiting in its box. Offline
+   * or signed out, it asks the source nothing and keeps the draft and the
+   * files: nothing is queued to send later (ADR, Offline). A refusal from the
+   * source keeps them too; only a sent message clears them, and the draft only
+   * while it still holds what was sent, so text typed during the send stays.
    */
   async sendDraft(conversation: MessagingId, row?: ConversationRow): Promise<DraftOutcome> {
     const body = this.draft(conversation);
-    if (body.trim() === "") return { outcome: "kept", reason: "blank" };
+    const files = this.files.of(conversation);
+    if (body.trim() === "" && files.length === 0) return { outcome: "kept", reason: "blank" };
     const refusal = row === undefined ? undefined : refusalOf(row);
     if (refusal !== undefined) return { outcome: "kept", reason: refusal };
-    const result = await this.messaging.send(conversation, body);
+    const outgoing = await this.files.outgoing(conversation);
+    const result =
+      outgoing.length === 0
+        ? await this.messaging.send(conversation, body)
+        : await this.messaging.send(conversation, body, outgoing);
     if (result.outcome === "refused") return { outcome: "kept", reason: result.reason };
     if (this.draft(conversation) === body) this.drafts.delete(conversation);
+    this.files.clear(conversation);
     return { outcome: "sent", message: result.message };
+  }
+
+  /** An attachment's bytes, read through the engine only when the person asks to see it. */
+  readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
+    return this.messaging.readAttachment(attachment);
   }
 
   /**

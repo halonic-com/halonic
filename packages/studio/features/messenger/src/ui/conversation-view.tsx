@@ -1,9 +1,12 @@
-import type { Message, MessagingRefusal } from "@halonicjs/ports";
+import type { AttachmentRefusal, Message, MessagingRefusal } from "@halonicjs/ports";
 import { Button, ChatBoxLine, ChatComposer, ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import type { DraftFile } from "../draft-files.ts";
 import { activityOf, type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { AttachmentList } from "./attachment-list.tsx";
 import { ChatCards } from "./chat-cards.tsx";
+import { DraftFilesBar, pastedFiles } from "./draft-files-bar.tsx";
 
 /** The props of {@link ConversationView}. */
 export interface ConversationViewProps {
@@ -17,16 +20,21 @@ export interface ConversationViewProps {
  * One open conversation (HAL-17421 render 4a): its agent and activity in the
  * header, a search through its messages, the messages oldest first, and the
  * box. While its source is offline or signed out, the box keeps the text and
- * Send sends nothing (requirement `messenger.conversations`). The page gives
- * each conversation its own view (a `key`), so its draft and search start fresh.
+ * Send sends nothing (requirement `messenger.conversations`). Files picked or
+ * pasted wait in the box and go with the message (`messenger.files`); the
+ * agent's cards and "Ask for an update" are its quick actions
+ * (`messenger.quick-actions`). The page gives each conversation its own view
+ * (a `key`), so its draft and search start fresh.
  */
 export function ConversationView({ messenger, row, changed }: ConversationViewProps) {
   const id = row.conversation.id;
   const [search, setSearch] = useState("");
   const [messages, setMessages] = useState<readonly Message[]>([]);
   const [draft, setDraft] = useState(() => messenger.draft(id));
+  const [files, setFiles] = useState(() => messenger.files.of(id));
   const [kept, setKept] = useState<MessagingRefusal | undefined>(undefined);
-  const [notSent, setNotSent] = useState<MessagingRefusal | undefined>(undefined);
+  // What the last action that sent nothing says: a quick action, a file or a send.
+  const [notice, setNotice] = useState<string | undefined>(undefined);
   // Counts the reads, so an answer that arrives after a newer read's never shows.
   const reads = useRef(0);
 
@@ -46,39 +54,69 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
     messenger.setDraft(id, text);
   }
 
+  function addFiles(added: readonly DraftFile[]) {
+    let refused: string | undefined;
+    for (const file of added) {
+      const refusal = messenger.files.add(id, file);
+      if (refusal !== undefined) refused = messengerWords.files.refused[refusal](file.name);
+    }
+    setFiles(messenger.files.of(id));
+    setNotice(refused);
+  }
+
+  function removeFile(index: number) {
+    messenger.files.remove(id, index);
+    setFiles(messenger.files.of(id));
+  }
+
   async function send() {
     const outcome = await messenger.sendDraft(id, row);
     if (outcome.outcome === "kept") {
-      if (outcome.reason !== "blank") setKept(outcome.reason);
+      if (isFileRefusal(outcome.reason)) setNotice(messengerWords.files.notSent);
+      else if (outcome.reason !== "blank") setKept(outcome.reason);
       return;
     }
     setKept(undefined);
-    setNotSent(undefined);
+    setNotice(undefined);
     // The Messenger cleared the draft only if nothing was typed during the send.
     setDraft(messenger.draft(id));
+    setFiles(messenger.files.of(id));
     await read();
   }
 
   async function askForUpdate() {
     const outcome = await messenger.quickActions.askForUpdate(row);
     if (outcome.outcome === "refused") {
-      setNotSent(outcome.reason);
+      setNotice(
+        isFileRefusal(outcome.reason)
+          ? messengerWords.files.notSent
+          : messengerWords.notSent[outcome.reason](row.source?.label ?? ""),
+      );
       return;
     }
-    setNotSent(undefined);
+    setNotice(undefined);
     await read();
   }
 
   const name = row.conversation.title;
-  const line = boxLine(row, notSent, kept ?? refusalOf(row));
+  const line = notice ?? keptLine(row, kept ?? refusalOf(row));
   return (
     <section aria-label={name} className="flex min-h-0 flex-1 flex-col">
       <ConversationHeader row={row} search={search} onSearch={setSearch} />
-      <Transcript messages={messages} searching={search.trim() !== ""}>
+      <Transcript messenger={messenger} messages={messages} searching={search.trim() !== ""}>
         <ChatCards quickActions={messenger.quickActions} row={row} changed={changed} />
       </Transcript>
-      <div className="flex flex-col gap-2 px-4 pb-4">
-        <div className="flex flex-wrap gap-2">
+      <div
+        className="flex flex-col gap-2 px-4 pb-4"
+        onPaste={(event) => {
+          const pasted = pastedFiles(event.clipboardData);
+          if (pasted.length === 0) return;
+          event.preventDefault();
+          addFiles(pasted);
+        }}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <DraftFilesBar files={files} onAdd={addFiles} onRemove={removeFile} />
           <Button
             variant="secondary"
             size="sm"
@@ -110,19 +148,16 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
   );
 }
 
-/**
- * The line under the box: why a quick action sent nothing, or else why a
- * message would stay in the box, or nothing while the source takes messages.
- */
-function boxLine(
-  row: ConversationRow,
-  notSent: MessagingRefusal | undefined,
-  refusal: MessagingRefusal | undefined,
-): string | undefined {
-  const source = row.source?.label ?? "";
-  if (notSent !== undefined) return messengerWords.notSent[notSent](source);
-  if (refusal !== undefined) return messengerWords.kept[refusal](source);
-  return undefined;
+/** Why a message would stay in the box, or nothing while the source takes messages. */
+function keptLine(row: ConversationRow, refusal: MessagingRefusal | undefined): string | undefined {
+  return refusal === undefined ? undefined : messengerWords.kept[refusal](row.source?.label ?? "");
+}
+
+const fileRefusals: readonly string[] = ["too-large", "too-many", "unsupported-type"];
+
+/** Whether a send was refused for its files, not for its source. */
+function isFileRefusal(reason: string): reason is AttachmentRefusal {
+  return fileRefusals.includes(reason);
 }
 
 /** The conversation's agent, its source and activity, and the search through its messages. */
@@ -167,10 +202,12 @@ function ConversationHeader({
  * address as plain text, and a web link opens outside the app with its address after it.
  */
 function Transcript({
+  messenger,
   messages,
   searching,
   children,
 }: {
+  readonly messenger: Messenger;
   readonly messages: readonly Message[];
   readonly searching: boolean;
   /** What follows the messages: the agent's open cards. */
@@ -189,6 +226,7 @@ function Transcript({
         >
           <span className="sr-only">{authorName(message)}: </span>
           <ChatText openLink={openLink}>{message.body}</ChatText>
+          <AttachmentList messenger={messenger} attachments={message.attachments} />
         </li>
       ))}
       {children}

@@ -1,4 +1,4 @@
-import type { AgentActivity, MessagingRefusal } from "@halonicjs/ports";
+import type { AgentActivity, AttachmentRefusal, MessagingRefusal } from "@halonicjs/ports";
 import type { MessengerTab } from "./messenger.ts";
 
 /**
@@ -40,6 +40,22 @@ export const messengerWords = {
     answeredBy: (name: string) => `${name} answered this first.`,
   },
   askForUpdate: "Ask for an update",
+  /** Files and screenshots in a chat: picked, pasted, or sent by the agent. */
+  files: {
+    attach: "Attach a file",
+    remove: (name: string) => `Remove ${name}`,
+    /** Why a file wasn't added to the box; the limits are the port's (`sendableAttachments`). */
+    refused: {
+      "too-large": (name: string) => `${name} is over 10 MB, so it wasn't added.`,
+      "too-many": () => "A message takes at most 5 files.",
+      "unsupported-type": (name: string) =>
+        `${name} can't be sent. Pictures, PDFs and text files can.`,
+    } satisfies Record<AttachmentRefusal, (name: string) => string>,
+    notSent: "These files can't be sent. Up to 5 pictures, PDFs or text files of 10 MB each can.",
+    pastedName: "Screenshot.png",
+    show: (name: string) => `Show ${name}`,
+    notShown: "This file can't be shown now.",
+  },
   /** Why a quick action sent nothing; it is never sent later on its own. */
   notSent: {
     offline: (source: string) => `${source} is offline, so nothing was sent.`,

@@ -1,9 +1,9 @@
-import type { InboxItem } from "@halonicjs/ports";
+import type { AnswerResult, InboxItem } from "@halonicjs/ports";
 import { Button, StatusChip } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useState } from "react";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
-import type { QuickActionOutcome, QuickActions } from "../quick-actions.ts";
+import type { QuickActions } from "../quick-actions.ts";
 import { MessageBody } from "./message-body.tsx";
 
 /** The props of {@link ChatCards}. */
@@ -99,7 +99,7 @@ function ChatCard({
 }
 
 /** What the card says after an answer that didn't land; nothing more once it did. */
-function lineOf(outcome: QuickActionOutcome, row: ConversationRow): string | undefined {
+function lineOf(outcome: AnswerResult, row: ConversationRow): string | undefined {
   if (outcome.outcome === "refused") {
     return messengerWords.notSent[outcome.reason](row.source?.label ?? "");
   }
