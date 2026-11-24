@@ -14,3 +14,6 @@ While Studio's window is in front, the engine shall read each Paperclip connecti
 - Given a window in the background for 2 minutes,
   when it comes back to the front,
   then the engine reads the connection at once.
+- Given a Paperclip connection that serves team status and a window in front,
+  when 30 seconds pass,
+  then the engine reads the connection's messaging once and not its team status, which it reads on the 5-minute tick.
