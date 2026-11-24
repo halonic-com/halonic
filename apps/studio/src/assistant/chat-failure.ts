@@ -11,11 +11,22 @@ import {
 } from "@halonicjs/app/run-failure";
 import type { Provider } from "@halonicjs/format";
 import type { ChatAgentSettings } from "@halonicjs/ports";
+import type { AssistantAnswer } from "@halonicjs/studio-feature-assistant/api";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { providerHost } from "../runs/provider-host.ts";
 
 /** A Build chat calls its model for no agent of the workspace. */
 const buildChatAgent = "assistant";
+
+/** The answer with its model call's facts when it failed at the model, as it is otherwise. */
+export function answerWithFailure(
+  answer: ChatAnswer,
+  settings: ChatSettings,
+  workspace: LoadedWorkspace,
+): AssistantAnswer {
+  const failure = chatFailureOfAnswer(answer, settings, workspace);
+  return failure === undefined ? answer : { ...answer, failure };
+}
 
 /**
  * The facts of a failed answer's model call; `undefined` when it didn't fail at the model, or

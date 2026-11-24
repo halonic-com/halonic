@@ -39,7 +39,7 @@ import type {
 import { EngineNotAnswering, type ItemRef, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
-import { chatFailureOfAnswer } from "./chat-failure.ts";
+import { answerWithFailure } from "./chat-failure.ts";
 import { agentOfKind, chatAgentsOf, type HasKey, modelOptionsOf } from "./chat-models.ts";
 import { type ChatStore, type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
@@ -310,11 +310,7 @@ export class WorkspaceAssistant implements AssistantHost {
     this.#listeners.clear();
   }
 
-  async #answerOn(
-    chat: KeptChat,
-    request: AssistantAnswerRequest,
-    signal: AbortSignal,
-  ): Promise<AssistantAnswer> {
+  async #answerOn(chat: KeptChat, request: AssistantAnswerRequest, signal: AbortSignal) {
     const loaded: LoadedWorkspace = await loadWorkspace(this.#parts.files);
     const sent: ChatMessage | undefined =
       request.message === undefined ? undefined : { role: "user", content: request.message };
@@ -355,8 +351,7 @@ export class WorkspaceAssistant implements AssistantHost {
       },
     });
     keep();
-    const failure = chatFailureOfAnswer(answer, model.settings, loaded);
-    return failure === undefined ? answer : { ...answer, failure };
+    return answerWithFailure(answer, model.settings, loaded);
   }
 
   /**
