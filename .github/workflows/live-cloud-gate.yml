@@ -61,8 +61,9 @@ jobs:
             echo "No live-cloud job has passed on $SHA: nothing to re-run."
             exit 0
           fi
-          ci=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=pull_request&per_page=1" \
-            --jq '.workflow_runs[0] // empty | "\(.id) \(.status) \(.conclusion) \(.run_attempt)"')
+          # The newest run that tests something: a label's empty run (HAL-17672) doesn't.
+          ci=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=pull_request&per_page=20" \
+            --jq '[.workflow_runs[] | select(.display_title != "A label was added: nothing to run")][0] // empty | "\(.id) \(.status) \(.conclusion) \(.run_attempt)"')
           read -r run status conclusion attempt <<< "$ci"
           if [ -z "$run" ] || [ "$status" != "completed" ]; then
             echo "CI on $SHA hasn't ended yet. Its gate re-runs when it ends, if it failed."

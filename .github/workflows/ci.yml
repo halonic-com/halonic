@@ -41,8 +41,8 @@
 # there, HAL-17463, filled the CI VM's CPUs), from a fork, or opened by a bot
 # (a `Bot` account, a login ending in `[bot]`, dependabot, renovate,
 # renovate-bot), because our server would run its third-party code before
-# anyone read it. Adding the label doesn't start a new run (no "labeled"
-# trigger, see `on:`); the next push does.
+# anyone read it. Adding the label starts a run (HAL-17672): the `labeled`
+# trigger, see `on:`, which does nothing for any other label.
 # This routing isn't the security boundary: a pull request runs its own copy
 # of this file, so a hook in the runner image refuses every job that isn't
 # one of ours, and asks GitHub about the pull request (open, our own branch,
@@ -68,11 +68,18 @@
 name: CI
 
 on:
-  # Not "edited", "labeled" or "unlabeled": each would cancel the run in
-  # progress and start every job again. pr-details.yml handles those: it
+  # Not "edited" or "unlabeled": each would cancel the run in progress and
+  # start every job again. pr-details.yml handles those and other labels: it
   # re-runs the title, leak and coverage-floor jobs here when they failed.
+  # "labeled" starts a run only for `fast-track` (HAL-17672): the event
+  # still carries the label, so the run goes to the fast pool at once
+  # instead of on the next push (a re-run reuses the old event, without it).
+  # Any other label gets a run that does nothing: its own concurrency group,
+  # so it cancels nothing, every job skipped but ci-ok, which reports under
+  # another name so the required check keeps the real run's result, and a
+  # fixed run name, so pr-details.yml and live-cloud-gate.yml pass it over.
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   merge_group:
   push:
     branches: [main, "release/**"]
@@ -80,6 +87,11 @@ on:
   schedule:
     - cron: "5 * * * *"
   workflow_dispatch:
+
+# A label run that does nothing (see `on:`), so the workflows that look for
+# a pull request's newest CI run can pass it over. Blank otherwise, which
+# keeps GitHub's own name. Quoted: the name holds ": ".
+run-name: "${{ github.event.action == 'labeled' && github.event.label.name != 'fast-track' && 'A label was added: nothing to run' || '' }}"
 
 permissions: {}
 
@@ -91,9 +103,11 @@ permissions: {}
 # hourly and manual runs (keyed on their branch, `refs/heads/main` for the
 # hourly one): only pull requests cancel a run in progress, so a new hourly
 # run waits for the one running, and a newer one replaces only the one
-# waiting (HAL-15889).
+# waiting (HAL-15889). A label other than fast-track gets a group of its own
+# run, so it never cancels the pull request's run (HAL-17672); adding
+# fast-track replaces the run in progress, like a push.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.sha) || github.ref }}
+  group: ci-${{ github.event.action == 'labeled' && github.event.label.name != 'fast-track' && format('label-{0}', github.run_id) || github.event.pull_request.number || github.event.merge_group.head_sha || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.sha) || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -150,6 +164,9 @@ jobs:
     # queue it waited a median 68 s (up to 173 s) for one of the server's 3
     # small slots. On GitHub it starts within seconds. It runs no tests and
     # uses no cache.
+    # Not for a label other than fast-track (HAL-17672): every job that
+    # needs this one skips with it.
+    if: github.event.action != 'labeled' || github.event.label.name == 'fast-track'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -337,7 +354,7 @@ jobs:
     name: Fast gates
     # Skips on a push to main when its merge group passed it (`merged`).
     needs: merged
-    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' fast ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
+    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' fast ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
     # A large slot on our own CI server: on a 2-CPU slot it took 50 s, as
     # long as on GitHub (HAL-14831).
     runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
@@ -382,7 +399,7 @@ jobs:
         uses: $/.github/actions/pull-request
       # Reads the title from a file: an `env:` block is printed in the log.
       - name: Pull request title
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track')
         env:
           PR_EVENT: ${{ steps.pr.outputs.event-path }}
           PR_RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
@@ -455,7 +472,7 @@ jobs:
     # third-party code: only the repo's own script on Node, so the secret is
     # never near a dependency. Prints locations, never a term or a secret.
     name: Leak guard
-    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track')
     runs-on: ubuntu-24.04
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
@@ -533,7 +550,7 @@ jobs:
     # pull request that adds the script runs its own copy). The
     # `coverage-floor-lowered` label (read from the event file) allows it.
     name: Coverage floors don't go down
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track')
     runs-on: ubuntu-24.04
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
@@ -569,7 +586,7 @@ jobs:
 
   gitleaks:
     name: Secret scan (gitleaks)
-    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -616,7 +633,7 @@ jobs:
     name: Typecheck, lint, test, build (${{ matrix.shard }})
     # Skips on a push to main when its merge group passed it (`merged`).
     needs: merged
-    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' build ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
+    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' build ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
     runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
     timeout-minutes: 15
@@ -3348,7 +3365,7 @@ jobs:
     # live-cloud.yml from this repository counts. Off, with a notice, until
     # LIVE_CLOUD_ENABLED is "true".
     name: Live cloud suites passed
-    if: github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    if: github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track')
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     permissions:
@@ -3547,7 +3564,7 @@ jobs:
     # pull request that adds `--lists-from` runs the old script, which reads
     # the pull request's lists.
     name: Policy rules (base commit's copy)
-    if: ${{ github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
+    if: ${{ github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
     runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
@@ -3614,8 +3631,11 @@ jobs:
     # guard, so its result reports under another name: the required `ci-ok`
     # check stays pending until the full run that marking it ready starts.
     # A green `ci-ok` then always means the guard ran (HAL-14115: #4223 was
-    # green as a draft and failed the guard once ready).
-    name: ${{ github.event.pull_request.draft && 'ci-ok (draft, light run)' || 'ci-ok' }}
+    # green as a draft and failed the guard once ready). In a label run that
+    # does nothing (HAL-17672) every other job skips, and this one reports
+    # under another name too: a skipped or green `ci-ok` there would stand in
+    # for the pull request's real result.
+    name: ${{ github.event.action == 'labeled' && github.event.label.name != 'fast-track' && 'ci-ok (label added, nothing to run)' || github.event.pull_request.draft && 'ci-ok (draft, light run)' || 'ci-ok' }}
     # Not always(): in a pull request run that was itself cancelled (a newer
     # push replaced it) ci-ok ends as cancelled, not failed, so the newer
     # run's result is the one that shows. Cancelled never satisfies the
