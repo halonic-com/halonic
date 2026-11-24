@@ -3,7 +3,8 @@
 // turn together (HAL-998). Nothing here knows which host it runs in; the
 // host's composition root hands in the factories it can serve.
 
-import { asciiAllowedSites, type Connector } from "@halonicjs/format";
+import { asciiAllowedSites } from "@halonicjs/format/agent";
+import type { Connector } from "@halonicjs/format/connector";
 import type {
   ConnectorClient,
   ConnectorConfig,

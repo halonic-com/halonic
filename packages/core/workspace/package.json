@@ -5,7 +5,8 @@
   "sideEffects": false,
   "description": "Loads one workspace through DefinitionSource: each file parsed by the kind its place gives, with every issue's file, key path and line, its trust content for the trust gate, and a new workspace laid out through DefinitionStore.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./trust-url": "./src/trust-url.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

@@ -2,7 +2,7 @@
 // outside a run: what `halonic tools` (HAL-2827) reviews, approves and
 // revokes. Studio's review screen (HAL-2213) can use the same steps.
 
-import type { Connector } from "@halonicjs/format";
+import type { Connector } from "@halonicjs/format/connector";
 import {
   type Clock,
   type ConnectorPin,
