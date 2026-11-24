@@ -5,7 +5,7 @@ import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature, FilesWithErrorsService } from "@halonicjs/studio-shell";
-import { WorkflowGuideService, WorkflowsHostService } from "./api.ts";
+import { WorkflowGuideService, WorkflowReviewService, WorkflowsHostService } from "./api.ts";
 import { searchWords } from "./list/list-words.ts";
 import { requestNewWorkflow } from "./list/new-request.ts";
 
@@ -33,6 +33,8 @@ export const workflowsFeature = defineFeature({
     FilesHostService,
     // Show in chat in a row's and the page's ⋮ (assistant.chat.show-in-chat).
     ShowInChatService,
+    // The assistant's changes to review; where the app has none, the page shows no bar.
+    WorkflowReviewService,
   ],
   register(studio) {
     studio.places.add({

@@ -1,19 +1,13 @@
-import { ChangeMark, type ChangeMarkBusy, type ChangeMarkKind } from "@halonicjs/studio-shell";
+import { ItemChangeMark, type ItemReviewMarks } from "@halonicjs/studio-shell";
 import { createContext, type ReactNode, useContext } from "react";
 import type { AgentRef } from "../api.ts";
 import type { ConfigurationPage } from "../configuration/configuration.tsx";
-import type { AgentChangeToReview, AgentReview } from "../review-api.ts";
+import type { AgentChangeToReview } from "../review-api.ts";
 
-/** What the agent page's marks read and decide, from {@link useAgentReview}. */
-export interface ReviewMarksValue {
+/** What the agent page's marks read and decide, from the shell's `useItemReview`. */
+export interface ReviewMarksValue extends ItemReviewMarks {
   /** The agent the page is for: a subagent's card on it shows no marks. */
   readonly agent: AgentRef;
-  readonly review: AgentReview;
-  readonly decide: (change: AgentChangeToReview, verb: ChangeMarkBusy) => void;
-  /** The change whose Accept or Reject is running. */
-  readonly busy?: { readonly id: string; readonly verb: ChangeMarkBusy } | undefined;
-  /** The file changed outside Halonic, so the decisions wait for Compare (review panel note 4). */
-  readonly held: boolean;
 }
 
 /** The agent page's changes to review, for the marks on its Configuration pages. */
@@ -95,9 +89,9 @@ export function ReviewMark({
     : marks?.review.changes.find((each) => fieldOf(each) === field);
   if (marks === null || change === undefined) return children;
   return (
-    <Mark marks={marks} change={change}>
+    <ItemChangeMark marks={marks} change={change}>
       {children}
-    </Mark>
+    </ItemChangeMark>
   );
 }
 
@@ -123,51 +117,8 @@ export function PageMarks({
   return (
     <div className="mb-6 flex flex-col gap-4">
       {loose.map((change) => (
-        <Mark key={change.id} marks={marks} change={change} />
+        <ItemChangeMark key={change.id} marks={marks} change={change} />
       ))}
     </div>
   );
-}
-
-function Mark({
-  marks,
-  change,
-  children,
-}: {
-  readonly marks: ReviewMarksValue;
-  readonly change: AgentChangeToReview;
-  readonly children?: ReactNode;
-}) {
-  const { review, decide, busy, held } = marks;
-  return (
-    <ChangeMark
-      id={change.id}
-      sentence={change.sentence}
-      kind={kindOf(review, change)}
-      important={change.important}
-      before={shownValue(change.before?.value)}
-      onAccept={() => decide(change, "accept")}
-      onReject={() => decide(change, "reject")}
-      deletesFile={review.created}
-      busy={busy?.id === change.id ? busy.verb : undefined}
-      waiting={held}
-    >
-      {children}
-    </ChangeMark>
-  );
-}
-
-function kindOf(review: AgentReview, change: AgentChangeToReview): ChangeMarkKind {
-  if (review.created) return "added";
-  return change.before === undefined && !review.whole ? "added" : "changed";
-}
-
-/** The old value as the mark strikes it through; a value with no short text shows none. */
-function shownValue(value: unknown): string | undefined {
-  if (value === "") return undefined;
-  if (typeof value === "string" || typeof value === "number") return String(value);
-  if (Array.isArray(value) && value.every((each) => typeof each === "string")) {
-    return value.join(", ");
-  }
-  return undefined;
 }

@@ -4,6 +4,7 @@ import type { WorkflowStep } from "../api.ts";
 import type { Box } from "../canvas/geometry.ts";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import type { ProblemMark } from "../configuration/problem-lines.ts";
+import { useStepChange } from "../review/workflow-review.tsx";
 import type { StepMark } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import type { ConnectTarget } from "./connect-port.tsx";
@@ -74,6 +75,8 @@ export function StepCard({
   }, [focusOnMount]);
   const ring = ringOf(failed === true, selected, problems?.severity, outlined === true);
   const outline = outlineOf(connectTarget);
+  // The assistant's change to the step: an edge in its colour, as the mark above the canvas has.
+  const changed = changeEdges[useStepChange(step.id) ?? "none"];
   return (
     <>
       <button
@@ -90,7 +93,7 @@ export function StepCard({
         onPointerDown={(event) => event.stopPropagation()}
         style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
         // Keyboard focus wears Studio's ring with its gap, outside the selection's border (C332 SC1).
-        className={`focus-ring absolute flex flex-col items-start justify-center gap-0.5 rounded-lg border bg-surface px-3 text-left ${ring} ${outline}`}
+        className={`focus-ring absolute flex flex-col items-start justify-center gap-0.5 rounded-lg border bg-surface px-3 text-left ${ring} ${outline} ${changed}`}
       >
         <span id={part.kind} className="text-caption text-fg-muted">
           {pageWords.stepKind[step.type]}
@@ -297,6 +300,14 @@ function ProblemLine({ id, problems }: { readonly id: string; readonly problems:
  * An outlined step that isn't picked and has no problem has a dashed accent border, so it doesn't
  * read as the selection.
  */
+/** The edge on the card's start side for the assistant's change, by kind, as `ChangeMark` draws it. */
+const changeEdges = {
+  added: "border-s-4 border-s-success",
+  removed: "border-s-4 border-s-danger",
+  changed: "border-s-4 border-s-accent",
+  none: "",
+} as const;
+
 function ringOf(
   failed: boolean,
   selected: boolean,

@@ -8,12 +8,13 @@ import {
 } from "@halonicjs/app";
 import { type KindName, type KindValues, parseFile } from "@halonicjs/format";
 import { applyLineChanges } from "@halonicjs/std";
-import type {
-  ItemChangeToReview,
-  ItemReview,
-  ItemReviewDecision,
-  ItemReviewHost,
-  ItemReviewTarget,
+import {
+  changesDecided,
+  type ItemChangeToReview,
+  type ItemReview,
+  type ItemReviewDecision,
+  type ItemReviewHost,
+  type ItemReviewTarget,
 } from "@halonicjs/studio-shell";
 import { placeOf } from "@halonicjs/workspace";
 
@@ -125,7 +126,7 @@ type Decision = "accept" | "reject";
 /**
  * The service's target for a decision. A review that is decided as a whole, and Accept all or
  * Reject all, cover the file; any other change covers its own parts and those of the changes
- * {@link changesDecided} takes along.
+ * `changesDecided` takes along, as the page's marks say.
  */
 function reviewTargetOf(
   target: ItemReviewTarget,
@@ -136,29 +137,6 @@ function reviewTargetOf(
   if (review.whole) return { kind: "file", path: review.path };
   const parts = changesDecided(review, change, decision).flatMap((decided) => decided.parts);
   return { kind: "change", path: review.path, parts, seen: review.seen };
-}
-
-/**
- * The changes one decision covers: Accept keeps the changes the change needs, and Reject undoes
- * the changes that need it, each in turn, so the item never points at a step that isn't there.
- */
-function changesDecided(
-  review: ItemReview,
-  change: ItemChangeToReview,
-  decision: Decision,
-): ItemChangeToReview[] {
-  const takesAlong = (decided: ItemChangeToReview, other: ItemChangeToReview): boolean =>
-    decision === "accept"
-      ? (decided.needs ?? []).includes(other.id)
-      : (other.needs ?? []).includes(decided.id);
-  const decided = [change];
-  // The loop also visits the changes it adds, so the ones they take along come too.
-  for (const next of decided) {
-    for (const other of review.changes) {
-      if (!decided.includes(other) && takesAlong(next, other)) decided.push(other);
-    }
-  }
-  return decided;
 }
 
 function changeOf(line: ChangeLine, baseline: string | null): ItemChangeToReview {

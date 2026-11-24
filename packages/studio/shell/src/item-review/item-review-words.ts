@@ -1,5 +1,5 @@
 // The words of the assistant's changes to review on an item page (AI changes 1.2 and section 3;
-// T14 review panel notes 3 and 4, HAL-1307).
+// T14 review panel notes 2 to 5, HAL-1307).
 
 /** What the item bar and the in-place marks say. */
 export const itemReviewWords = {
@@ -24,4 +24,21 @@ export const itemReviewWords = {
   /** The file changed outside Halonic, so Accept and Reject wait for Compare (note 4). */
   changedOutside: "Changed outside Halonic",
   compare: "Compare",
+  /** The toast after a decision: "Accepted 3 changes in Support triage" (note 5). */
+  decided: (verb: "accept" | "reject", count: number, name: string): string =>
+    `${verb === "accept" ? "Accepted" : "Rejected"} ${count} ${count === 1 ? "change" : "changes"} in ${name}`,
+  undo: "Undo",
+  /** Said politely when an edit inside a change accepted it (note 2). */
+  acceptedByEdit: "Change accepted by your edit",
+  /** A change that overlaps another can only be decided with the rest of the file. */
+  cantSeparate:
+    "This change overlaps another, so you can't accept or reject it on its own. Use Accept all or Reject all.",
+  /** Under a mark whose Accept also accepts the changes it needs: "Accept also accepts: Step added: Page oncall". */
+  alsoAccepts: (sentences: readonly string[]): string =>
+    `Accept also accepts: ${sentences.join("; ")}`,
+  /** Under a mark whose Reject also rejects the changes that need it. */
+  alsoRejects: (sentences: readonly string[]): string =>
+    `Reject also rejects: ${sentences.join("; ")}`,
+  /** A decision that failed, in the item pages' words. */
+  couldntSave: (reason: string): string => `Couldn't save: ${reason}`,
 };

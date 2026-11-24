@@ -16,6 +16,7 @@ import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { countProblems } from "../configuration/problem-lines.ts";
+import { useWorkflowReview, WorkflowReviewContext } from "../review/workflow-review.tsx";
 import { runCount } from "../runs/runs-model.ts";
 import { RunsView } from "../runs/runs-view.tsx";
 import { useRuns } from "../runs/use-runs.ts";
@@ -61,7 +62,7 @@ import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
  * is the canvas, a skeleton when the file takes over 300 ms, or why it couldn't be read.
  */
 export function WorkflowScreen({
-  host,
+  host: readHost,
   runs,
   hubId,
   id,
@@ -89,12 +90,30 @@ export function WorkflowScreen({
   filesWithErrors,
   guide,
   showInChat,
+  review,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
   const focusTitle = useCallback(() => title.current?.focus(), []);
-  const { load, retry } = useWorkflow(host, { hubId, id }, focusTitle);
+  const { load, retry } = useWorkflow(readHost, { hubId, id }, focusTitle);
   const name = load.kind === "ready" ? load.value.name : id;
+  const body = useRef<HTMLDivElement>(null);
+  // The assistant's changes; the page edits through `host`, so an edit inside one accepts it.
+  const changes = useWorkflowReview({
+    host: readHost,
+    review,
+    workflow: { hubId, id },
+    name,
+    page: body,
+    announce,
+    load,
+    openFileAt,
+    showStep: (stepId) => {
+      showView("flow");
+      setPickedStep(stepId);
+    },
+  });
+  const { host } = changes;
   const settings = useHostRead(
     host,
     { hubId, id },
@@ -120,7 +139,6 @@ export function WorkflowScreen({
   };
   // The step picked on the canvas, which says what happened to it while a run is shown (4.5).
   const [pickedStep, setPickedStep] = useState<string | undefined>();
-  const body = useRef<HTMLDivElement>(null);
   // Closing a step's card focuses its step after the canvas shows: under 800 px the card hid it.
   const closeStepCard = () => {
     const closed = pickedStep;
@@ -280,6 +298,7 @@ export function WorkflowScreen({
           </div>
         )}
       </header>
+      {changes.bar}
       <ProblemsBand
         name={name}
         problems={problems}
@@ -452,7 +471,8 @@ export function WorkflowScreen({
       </div>
     </div>
   );
-  return pageOrGuideScreen(page, guideScreen, {
+  const reviewed = <WorkflowReviewContext value={changes.marks}>{page}</WorkflowReviewContext>;
+  return pageOrGuideScreen(reviewed, guideScreen, {
     workflow: { hubId, id },
     phone,
     showRun,

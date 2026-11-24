@@ -43,7 +43,10 @@ import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
 import { InstructionTrustHostService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import { VersionDialogService } from "@halonicjs/studio-feature-source-control/api";
-import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
+import {
+  WorkflowReviewService,
+  WorkflowsHostService,
+} from "@halonicjs/studio-feature-workflows/api";
 import {
   ShellHttpClient,
   shellKeychain,
@@ -88,6 +91,7 @@ import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
 import { WorkspaceProviderCheck } from "../models/workspace-provider-check.ts";
 import { providePlugins } from "../plugins/provide-plugins.ts";
 import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
+import { WorkspaceWorkflowReview } from "../workflows/workspace-workflow-review.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import { folderEngine } from "./folder-engine.ts";
 import { focusOf, storageOf } from "./page-window.ts";
@@ -269,18 +273,24 @@ export function provideFolderServices(
     trust.subscribe(() => {
       if (trust.mayStartNow()) listener();
     });
-  const workflows = services.provide(
-    WorkflowsHostService,
-    new WorkspaceWorkflows({
-      files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
-      runs: services.get(RunsSourceService),
-      folder: location,
-      ...(settle === undefined ? {} : { settle }),
-      engine,
-      askTrust,
-      onTrusted,
-      tryItChanges,
+  const workflows = new WorkspaceWorkflows({
+    files: services.get(workspaceFilesKey),
+    onChange: (listener) => scope.events.on("files.changed", listener),
+    runs: services.get(RunsSourceService),
+    folder: location,
+    ...(settle === undefined ? {} : { settle }),
+    engine,
+    askTrust,
+    onTrusted,
+    tryItChanges,
+  });
+  services.provide(WorkflowsHostService, workflows);
+  // The assistant's changes to a workflow, for its page's item bar and marks (AI changes 1.2).
+  services.provide(
+    WorkflowReviewService,
+    new WorkspaceWorkflowReview({
+      review: services.get(reviewServiceKey),
+      pathOf: (ref) => workflows.filePath(ref),
     }),
   );
   services.provide(
