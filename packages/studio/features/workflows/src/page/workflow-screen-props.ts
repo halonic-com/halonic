@@ -80,4 +80,8 @@ export interface WorkflowScreenProps {
   readonly filesWithErrors?: FilesWithErrorsSource | undefined;
   /** Another feature's guide card, such as the first run's; without it the page shows none. */
   readonly guide?: WorkflowGuide | undefined;
+  /** The page ⋮'s **Show in chat** (`assistant.chat.show-in-chat`); none without the Assistant. */
+  readonly showInChat?:
+    | { readonly label: string; readonly show: (name: string) => void }
+    | undefined;
 }

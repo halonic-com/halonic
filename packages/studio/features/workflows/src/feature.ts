@@ -1,5 +1,6 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
+import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
@@ -30,6 +31,8 @@ export const workflowsFeature = defineFeature({
     // For the confirm-again Callout of an agent on hold (agents.confirm-again.run-controls).
     AgentsHostService,
     FilesHostService,
+    // Show in chat in a row's and the page's ⋮ (assistant.chat.show-in-chat).
+    ShowInChatService,
   ],
   register(studio) {
     studio.places.add({

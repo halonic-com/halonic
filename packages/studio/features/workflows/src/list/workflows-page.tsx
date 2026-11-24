@@ -1,3 +1,4 @@
+import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import {
   type BrokenFileActions,
   brokenFileActions,
@@ -67,6 +68,12 @@ export function WorkflowsPage({ context }: PlaceViewProps) {
       : (ref: WorkflowRef) => openItemInNewTab({ kind: "workflow", hub: ref.hubId, id: ref.id });
   const filesWithErrors = context.services.find(FilesWithErrorsService);
   const toasts = useToastStore();
+  const assistant = context.services.find(ShowInChatService);
+  const showInChat = assistant && {
+    label: assistant.label,
+    show: ({ hubId: hub, id, name }: WorkflowListing) =>
+      void assistant.show({ item: { kind: "workflow", hub, id }, name }, context),
+  };
   return (
     <WorkflowsView
       announceState={(key, text) => context.announcer.announceState(key, text)}
@@ -76,6 +83,7 @@ export function WorkflowsPage({ context }: PlaceViewProps) {
       {...(filesWithErrors ? { filesWithErrors } : {})}
       {...(open ? { open } : {})}
       {...(openInNewTab ? { openInNewTab } : {})}
+      {...(showInChat ? { showInChat } : {})}
     />
   );
 }
@@ -95,6 +103,11 @@ export interface WorkflowsViewProps {
   readonly filesWithErrors?: FilesWithErrorsSource;
   /** What a broken file's row and its ⋮ menu do; without it the row opens nothing and has no menu. */
   readonly brokenActions?: BrokenFileActions;
+  /** The row ⋮'s **Show in chat** (`assistant.chat.show-in-chat`); none without the Assistant. */
+  readonly showInChat?: {
+    readonly label: string;
+    readonly show: (workflow: WorkflowListing) => void;
+  };
 }
 
 /**
@@ -114,6 +127,7 @@ export function WorkflowsView({
   announceState,
   filesWithErrors,
   brokenActions = {},
+  showInChat,
 }: WorkflowsViewProps) {
   const words = engine ?? engineWordsOf({});
   const phone = usePresentation() === "phone";
@@ -174,6 +188,14 @@ export function WorkflowsView({
     if (listing !== undefined) open?.(listing);
     const file = brokenOf(id);
     if (file !== undefined) brokenActions.open?.(file);
+  };
+  // A healthy row's ⋮ has only Show in chat so far; a phone's full-page chat comes later.
+  const rowMenu = (id: string) => {
+    const listing = listings.find((each) => rowId(each) === id);
+    if (showInChat === undefined || listing === undefined || phone) return [];
+    return [
+      { id: "show-in-chat", label: showInChat.label, onSelect: () => showInChat.show(listing) },
+    ];
   };
   const openRowInNewTab = (id: string) => {
     const listing = listings.find((each) => rowId(each) === id);
@@ -240,10 +262,9 @@ export function WorkflowsView({
           }}
           loading={load.kind === "loading"}
           quietWhenEmpty
-          // Only a broken file's row has a ⋮ menu so far.
           itemMenu={(row) => {
             const file = brokenOf(row.id);
-            return file === undefined ? [] : brokenFileMenu(file, brokenActions);
+            return file === undefined ? rowMenu(row.id) : brokenFileMenu(file, brokenActions);
           }}
           {...(offersNew
             ? { newButton: { label: listWords.newWorkflow, onClick: startCreating } }

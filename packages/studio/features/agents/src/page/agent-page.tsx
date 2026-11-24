@@ -1,4 +1,5 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
+import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import { PlaceIcon, usePresentation } from "@halonicjs/studio-kit";
 import {
   changeMarkSelector,
@@ -45,6 +46,7 @@ import { NotLiveLine } from "./not-live-line.tsx";
 import { PageCard } from "./page-card.tsx";
 import { pageWords } from "./page-words.ts";
 import { RunsView } from "./runs-view.tsx";
+import { showInChatEntry } from "./show-in-chat-entry.ts";
 import { useAgentCards } from "./use-agent-cards.ts";
 import { type AgentView, agentTabs, useAgentView } from "./use-agent-view.ts";
 import { useLoad } from "./use-load.ts";
@@ -82,6 +84,7 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
     [announcer],
   );
   const host = context.services.get(AgentsHostService);
+  const assistant = context.services.find(ShowInChatService);
   // The warning's file link opens a tab beside this one, so Review and confirm stays where it was.
   const openFileBeside = openItemInNewTab && ((path: string) => openItemInNewTab(fileItemOf(path)));
   // One read of where the agent runs, so the header's chip follows a choice in Where it runs.
@@ -109,6 +112,12 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
         announce={announce}
         sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
         review={context.services.find(AgentReviewService)}
+        {...(assistant && {
+          showInChat: {
+            label: assistant.label,
+            show: (name: string) => void assistant.show({ item, name }, context),
+          },
+        })}
         {...(openItem && {
           openAgent: (agent: AgentRef) =>
             openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
@@ -155,6 +164,7 @@ export function AgentScreen({
   harnessRequest,
   sandboxStartCheck,
   review,
+  showInChat,
 }: AgentScreenProps) {
   // After a Try again reads, or the not-live line goes, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -422,7 +432,7 @@ export function AgentScreen({
       }}
       check={(next) => nameProblem(next, takenNames)}
       titleRef={titleRef}
-      actions={ready ? trash.actions : []}
+      actions={ready ? [...showInChatEntry(showInChat, name, phone), ...trash.actions] : []}
       end={ready && fullAccess}
       views={views}
       firstView={view}

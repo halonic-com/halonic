@@ -16,6 +16,7 @@
     "@halonicjs/app": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-feature-assistant": "workspace:*",
     "@halonicjs/studio-feature-files": "workspace:*",
     "@halonicjs/studio-feature-routines": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
