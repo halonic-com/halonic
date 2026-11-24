@@ -16,11 +16,11 @@ function goToFiles(): void {
     ?.focus();
 }
 
-export /**
+/**
  * What stands in for the editor while the file loads, is gone, isn't text, or can't be read. A
  * file that can't be read offers **Try again**, which reads it again in the same tab.
  */
-function LoadNotice({
+export function LoadNotice({
   loaded,
   missing,
   onRetry,

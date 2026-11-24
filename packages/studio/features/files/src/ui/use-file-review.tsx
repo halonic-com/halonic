@@ -69,22 +69,31 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
 
   useEffect(() => {
     if (host === undefined) return;
-    const stopped = false;
-    const read = () =>
-      host.changesIn(path).then(
+    // Only the newest read counts: an older, slower answer would show parts that are out of date.
+    let stopped = false;
+    let reads = 0;
+    const read = () => {
+      const mine = ++reads;
+      const current = () => !stopped && mine === reads;
+      return host.changesIn(path).then(
         (found) => {
-          if (stopped) return;
+          if (!current()) return;
           setReview(found);
           setPosition((was) => positionWithin(was, found?.parts.length ?? 0));
         },
         // The file's own read says why it can't be read; the tab shows that, so no bar here.
-        () => !stopped && setReview(null),
+        () => current() && setReview(null),
       );
+    };
     void read();
-    return host.subscribe(path, () => {
+    const unsubscribe = host.subscribe(path, () => {
       setHeld(false);
       void read();
     });
+    return () => {
+      stopped = true;
+      unsubscribe();
+    };
   }, [host, path, round]);
 
   useEffect(() => {

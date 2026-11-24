@@ -42,6 +42,13 @@ const twoParts: FileReview = {
   ],
 };
 
+/** The same file read again after its first part was decided. */
+const onePart: FileReview = {
+  ...twoParts,
+  seen: "seen-2",
+  parts: [twoParts.parts[1] ?? { line: 5, added: 2, removed: [] }],
+};
+
 /** A review host with `review`, whose decisions answer `decision`. */
 function reviewHostOf(review: FileReview | null, decision: FileReviewDecision) {
   return {
@@ -142,6 +149,55 @@ describe("the assistant's changes to review in a file's tab", () => {
       await settle();
       expect(host.changesIn).toHaveBeenCalledTimes(2);
       expect(toasts.list()).toEqual([]);
+    });
+
+    it("keeps the newest parts when an older read answers after a newer one", async () => {
+      const slow = Promise.withResolvers<FileReview | null>();
+      const answers = [Promise.resolve(twoParts), slow.promise, Promise.resolve(onePart)];
+      const wakes: (() => void)[] = [];
+      const host = {
+        ...reviewHostOf(twoParts, { status: "stale" }),
+        changesIn: vi.fn(() => answers.shift() ?? Promise.resolve(onePart)),
+        subscribe: (_path: string, wake: () => void) => {
+          wakes.push(wake);
+          return () => undefined;
+        },
+      } satisfies FileReviewHost;
+      show(host);
+      await settle();
+
+      // A wake starts a slow read, then a stale decision reads again and answers first.
+      act(() => wakes.at(-1)?.());
+      await act(async () => opened.at(-1)?.options.review?.onDecide(1, "accept"));
+      await settle();
+      expect(opened.at(-1)?.reviewParts).toHaveLength(1);
+
+      await act(async () => slow.resolve(twoParts));
+      await settle();
+      expect(opened.at(-1)?.reviewParts).toHaveLength(1);
+    });
+
+    it("keeps the newest parts when two wakes answer out of order", async () => {
+      const slow = Promise.withResolvers<FileReview | null>();
+      const answers = [Promise.resolve(twoParts), slow.promise, Promise.resolve(onePart)];
+      let wake = () => {};
+      const host = {
+        ...reviewHostOf(twoParts, { status: "stale" }),
+        changesIn: vi.fn(() => answers.shift() ?? Promise.resolve(onePart)),
+        subscribe: (_path: string, listener: () => void) => {
+          wake = listener;
+          return () => undefined;
+        },
+      } satisfies FileReviewHost;
+      show(host);
+      await settle();
+
+      act(() => wake());
+      act(() => wake());
+      await settle();
+      await act(async () => slow.resolve(twoParts));
+      await settle();
+      expect(opened.at(-1)?.reviewParts).toHaveLength(1);
     });
 
     it("says Reject and delete file for a file the assistant created", async () => {
