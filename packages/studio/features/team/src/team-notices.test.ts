@@ -2,7 +2,7 @@ import type { MergeQueue, Seat, SeatWindow } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { TeamClock } from "./team-format.ts";
-import { type TeamReading, teamAlerts, teamNotices } from "./team-notices.ts";
+import { type TeamReading, teamAlerts, teamBaseline, teamNotices } from "./team-notices.ts";
 
 const clock: TeamClock = { now: () => new Date("2026-11-24T13:00:00.000Z"), timeZone: "UTC" };
 const resetsAt = "2026-11-26T09:00:00.000Z";
@@ -140,6 +140,23 @@ verifies("team.notifications", () => {
         ["Runners busy · pushes are on hold", "Longest wait 12 min · 7 PRs in the queue"],
       ]);
       expect(alerts(busy(12), busy(14))).toEqual([]);
+    });
+
+    it("notifies once for a source whose queues in two repos are held up, as it opens the source", () => {
+      const busy = (repo: string) => queue({ repo, health: "runners-busy", runnerWaitMinutes: 12 });
+      const held = teamAlerts(
+        reading([], [queue(), queue({ repo: "website" })]),
+        reading([], [busy("halonic"), busy("website")]),
+        clock,
+      );
+      expect(held.map((alert) => alert.about)).toEqual([{ kind: "merge-queue", id: "acme" }]);
+    });
+
+    it("doesn't notify again for a seat at 90% that isn't read once and then is", () => {
+      const ninety = reading([seatB({ usedPercent: 91 })]);
+      const notRead = reading([seatB({ usedPercent: 91 }, { state: "not-read" })]);
+      expect(alerts(ninety, notRead)).toEqual([]);
+      expect(alerts(teamBaseline(ninety, notRead), ninety)).toEqual([]);
     });
   });
 });
