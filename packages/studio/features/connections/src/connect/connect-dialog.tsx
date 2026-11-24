@@ -54,7 +54,7 @@ function fieldProblem(problem: StartProblem | undefined): string | undefined {
 
 /**
  * How the sign-in ended, if it has: as the engine said, or expired once its 10 minutes ran out on
- * this clock. The engine ends an expired one by itself, so the dialog has nothing to cancel.
+ * this clock, for the one draw before the sign-in hears of it.
  */
 function endedOf(view: SignInView, leftMs: number): EndedResult | undefined {
   if (view.stage === "ended") return view.result;
@@ -76,6 +76,13 @@ export function ConnectDialog(props: ConnectDialogProps) {
   const [address, setAddress] = useState(again?.address ?? "");
   const view = signIn.view;
   const leftMs = useLeftMs(view.stage === "waiting" ? view.challenge : undefined, props.now);
+
+  // Out of time here first: end the sign-in, so Start again and Close don't act on it.
+  const timedOut = view.stage === "waiting" && leftMs <= 0;
+  const { expire } = signIn;
+  useEffect(() => {
+    if (timedOut) expire();
+  }, [timedOut, expire]);
 
   // The Settings row says Connected; the dialog has nothing left to say.
   useEffect(() => {

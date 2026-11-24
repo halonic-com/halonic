@@ -36,6 +36,11 @@ export interface SignIn {
   readonly again: () => void;
   /** Cancels a waiting sign-in, as closing the dialog does. */
   readonly cancel: () => Promise<void>;
+  /**
+   * Ends a waiting sign-in whose 10 minutes ran out on this clock before the engine said so. It
+   * cancels it as a best effort and says nothing if that fails: the engine ends it by itself.
+   */
+  readonly expire: () => void;
 }
 
 /** The step a sign-in's end leads to. */
@@ -129,5 +134,15 @@ export function useSignIn(
     setView({ stage: "address" });
   }, []);
 
-  return { view, start, again, cancel };
+  const expire = useCallback(() => {
+    // Cleared first, so a later Start again or Close finds nothing left to cancel.
+    generation.current++;
+    const waiting = open.current;
+    open.current = undefined;
+    if (waiting === undefined) return;
+    setView({ stage: "ended", result: { outcome: "expired" }, challenge: waiting });
+    void waiting.cancel().catch(() => undefined);
+  }, []);
+
+  return { view, start, again, cancel, expire };
 }

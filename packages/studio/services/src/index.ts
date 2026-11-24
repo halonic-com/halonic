@@ -7,6 +7,7 @@ export {
   type SignInRefusal,
   type SignInResult,
   type SignInStart,
+  signInLimitMs,
 } from "./agent-connections.ts";
 export { harnessEnvironments, studioHarnesses } from "./agent-host-harnesses.ts";
 export { AgentHostNotAnswering } from "./agent-host-not-answering.ts";

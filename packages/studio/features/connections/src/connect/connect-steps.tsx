@@ -1,11 +1,8 @@
 import { Dialog, IconTile, Spinner, useOpenExternal, WarningIcon } from "@halonicjs/studio-kit";
-import type { SignInChallenge } from "@halonicjs/studio-services";
+import { type SignInChallenge, signInLimitMs } from "@halonicjs/studio-services";
 import { useEffect, useState } from "react";
 import * as words from "../connections-words.ts";
 import type { EndedResult } from "./sign-in-flow.ts";
-
-/** How long a sign-in waits for approval, for the countdown's bar. */
-const signInMs = 10 * 60 * 1000;
 
 /**
  * The time left on `challenge`, read again once a second while there is one, for a timer written
@@ -21,7 +18,7 @@ export function useLeftMs(
     const timer = setInterval(() => setTick((tick) => tick + 1), 1000);
     return () => clearInterval(timer);
   }, [challenge]);
-  return challenge === undefined ? signInMs : Date.parse(challenge.expiresAt) - now();
+  return challenge === undefined ? signInLimitMs : Date.parse(challenge.expiresAt) - now();
 }
 
 /** The words the approval page shows too, in a row. */
@@ -41,7 +38,7 @@ function Phrase({ phrase }: { readonly phrase: string }) {
 
 /** "9:42 left", and a bar that empties over the 10 minutes. */
 function Countdown({ leftMs }: { readonly leftMs: number }) {
-  const share = Math.max(0, Math.min(1, leftMs / signInMs));
+  const share = Math.max(0, Math.min(1, leftMs / signInLimitMs));
   return (
     <div className="flex flex-col gap-1">
       <div aria-hidden="true" className="h-1 overflow-hidden rounded-full bg-surface-subtle">

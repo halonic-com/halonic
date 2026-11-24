@@ -8,9 +8,7 @@ import type {
   SignInResult,
   SignInStart,
 } from "./agent-connections.ts";
-
-/** How long a sign-in waits for approval, as Paperclip's CLI sign-in route gives it. */
-const signInMs = 10 * 60 * 1000;
+import { signInLimitMs } from "./agent-connections.ts";
 
 /** What a {@link FakeAgentConnections} starts with. */
 export interface FakeAgentConnectionsOptions {
@@ -21,6 +19,8 @@ export interface FakeAgentConnectionsOptions {
   readonly now?: () => number;
   /** What `signIn` answers instead of starting, such as an address that isn't allowed. */
   readonly refuseStart?: SignInRefusal;
+  /** When true, every cancel fails, as when the engine doesn't answer. */
+  readonly cancelFails?: boolean;
   /** What `disconnect` answers. Default a revoke that worked. */
   readonly disconnect?: DisconnectResult;
 }
@@ -82,11 +82,12 @@ export class FakeAgentConnections implements AgentConnections {
     const challenge: SignInChallenge = {
       phrase: this.options.phrase ?? "amber falcon river seven",
       approvalUrl: `${request.address}/cli-auth/fake-challenge`,
-      expiresAt: new Date(now() + signInMs).toISOString(),
+      expiresAt: new Date(now() + signInLimitMs).toISOString(),
       result,
       cancel: async () => {
         if (this.pending !== pending) return;
         this.cancels++;
+        if (this.options.cancelFails === true) throw new Error("The fake engine didn't answer.");
         this.end({ outcome: "cancelled" });
       },
     };
