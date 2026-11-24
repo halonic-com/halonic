@@ -7,6 +7,7 @@ import type {
 } from "@paperclipai/plugin-sdk";
 import { type ActResult, act, type MergeControlMode } from "../merge-control/act.ts";
 import { decide } from "../merge-control/decide.ts";
+import { keepSent } from "../merge-control/retry.ts";
 import {
   emptyShadowDay,
   type ObservedAction,
@@ -223,5 +224,6 @@ export async function mergeControlPass(
       shadow = recordShadow(day, decision.actions, facts.observed, now);
     }
   }
-  await ctx.state.set(key(companyId), { version: 1, state: decision.state, shadow });
+  const state = keepSent(stored.state, decision.state, decision.actions, results);
+  await ctx.state.set(key(companyId), { version: 1, state, shadow });
 }

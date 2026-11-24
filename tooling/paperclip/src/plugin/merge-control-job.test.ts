@@ -36,9 +36,12 @@ function busyPass(): MergeSnapshot {
   });
 }
 
-function fakeContext(config: Record<string, unknown>) {
+function fakeContext(config: Record<string, unknown>, failing: RegExp = /^$/) {
   const stored = new Map<string, unknown>();
-  const fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ data: {} }) }));
+  const fetch = vi.fn(async (url: string) => {
+    const status = failing.test(url) ? 502 : 200;
+    return { ok: status === 200, status, json: async () => ({ data: {} }) };
+  });
   const resolve = vi.fn(async () => "ghs_queue_token_for_tests");
   const createComment = vi.fn(async () => ({}));
   const lines: string[] = [];
@@ -141,5 +144,33 @@ verifies("paperclip.merge-control-write-scope", () => {
     expect(fake.lines).toContain(
       "Merge control: act mode without a queue token, nothing is written.",
     );
+  });
+});
+
+verifies("paperclip.merge-control-failed-writes", () => {
+  const reruns = (fake: ReturnType<typeof fakeContext>) =>
+    fake.fetch.mock.calls.filter(([url]) => url.endsWith("/rerun")).length;
+  const twoPasses = async (fake: ReturnType<typeof fakeContext>) => {
+    for (const at of [now, new Date(now.getTime() + 60_000)]) {
+      await mergeControlPass(fake.ctx, companyId, at, async () => ({
+        snapshot: busyPass(),
+        observed: [],
+      }));
+    }
+  };
+
+  test("a rerun whose write failed is sent again on the next pass", async () => {
+    const fake = fakeContext({ mergeControl: { mode: "act" }, mergeQueueToken: token }, /\/rerun$/);
+    await twoPasses(fake);
+    expect(reruns(fake)).toBe(2);
+    expect(fake.lines.some((line) => line.includes("rerun run") && line.includes("failed"))).toBe(
+      true,
+    );
+  });
+
+  test("a rerun that went out isn't sent again on the next pass", async () => {
+    const fake = fakeContext({ mergeControl: { mode: "act" }, mergeQueueToken: token });
+    await twoPasses(fake);
+    expect(reruns(fake)).toBe(1);
   });
 });
