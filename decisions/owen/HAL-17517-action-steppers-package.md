@@ -2,6 +2,7 @@
 
 - Approval: the board decided to build user-only action steppers now (HAL-10, 24 Nov, stream HAL-17488); the package `packages/core/action-steppers`, placed right after `ports` in `coreOrder`, is set by the task HAL-17517 after Liam's review. It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:ri3n+AQfMspoZR7C1WMAreYzLSonxNukCqpXpdjBDDpbbWs0ADOnvkfPEAGuPwaxnMNWj7fsKmoxM+lvJkhHCA==
 
 ## What changes
 
