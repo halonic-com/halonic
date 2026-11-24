@@ -2,7 +2,7 @@
 // ends with. The amounts are in the budget's currency, the one the prices in
 // `models.yaml` are written in.
 
-import type { RunFailureCause } from "@halonicjs/events";
+import type { RunFailureCause, Usage } from "@halonicjs/events";
 import type { WorkspaceSettings } from "@halonicjs/format";
 
 /** The workspace's spending limits, as `workspace.yaml` gives them. */
@@ -14,6 +14,19 @@ export interface Spend {
   readonly run: number;
   /** Every run that started in the same calendar month (UTC). */
   readonly month: number;
+  /**
+   * The tokens the same runs used, next to their cost (requirement
+   * `engine.budget-tokens`). Calls a subscription paid for count here, as
+   * they used tokens even though they cost nothing. Tracked only: no limit
+   * stops a run on them yet.
+   */
+  readonly tokens: SpentTokens;
+}
+
+/** The tokens behind a {@link Spend}: the whole run's and the month's. */
+export interface SpentTokens {
+  readonly run: Usage;
+  readonly month: Usage;
 }
 
 /** Why the budget lets no more paid calls happen: the run's error, and the cause its `run.failed` carries. */
@@ -34,7 +47,10 @@ export interface BudgetStop {
  * them. A limit is reached once the spend is at it, so the call that would
  * go past it never starts. The run budget is checked first.
  */
-export function budgetStopOf(budget: Budget, spend: Spend): BudgetStop | null {
+export function budgetStopOf(
+  budget: Budget,
+  spend: Pick<Spend, "run" | "month">,
+): BudgetStop | null {
   if (budget.perRun !== undefined && spend.run >= budget.perRun) {
     return {
       error: runBudgetReached(budget.perRun, spend.run, budget.currency),

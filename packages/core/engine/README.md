@@ -81,7 +81,7 @@ loop of one model turn, which the local chat turn runs.
 | `failureCauseOf` | the one place an error becomes the typed `cause` of `run.failed`: its kind, and the `code` and `detail` an integration names, checked for shape and keys | `engine.run-failure-cause-of` |
 | `run.cant-try` | a Try it or Test run ends with `run.cant-try`, never `run.failed`, at a step it can't try because it needs a change left out of the run: those the caller found at load (`cantTry` on the start) and those a call's `CantTryError` adds | `engine.run-cant-try` |
 | child runs at end | when a run ends, every child run it started and hasn't heard end is ended with `run.failed` and reason `cancelled`; at start, a waiting child whose parent has ended is ended the same way | `engine.child-runs-end-with-run`, `engine.end-orphaned-child-runs` |
-| budget stops | a model call or harness run is refused at or over the run or month budget, and a `parallel` or `foreach` state checks before it starts its branches or items (see Budgets) | `engine.budget-stops`, `engine.budget-composite-stops`, `engine.budget-stop-message` |
+| budget stops | a model call or harness run is refused at or over the run or month budget, its tokens tracked next to the spend, and a `parallel` or `foreach` state checks before it starts its branches or items (see Budgets) | `engine.budget-stops`, `engine.budget-composite-stops`, `engine.budget-stop-message`, `engine.budget-tokens` |
 | meter | the `Meter` port a deployment that sells runs counts usage through, and `NoMeter` as the default (see Meter) | `engine.meter-port` |
 | plan stops | the `plan.*` causes a meter refuses with, next to `budget.run` and `budget.month`, which stay final (see Budgets) | `engine.plan-stops` |
 | meter checks | a run's start, and a step that asks for a paid call, are checked with the meter between the run and the monthly budget; a top-level run's end is recorded once, however it ended (see Meter) | `engine.meter-checks` |
@@ -414,6 +414,11 @@ time it starts more items; a stopped run drops the calls it asked for but hadn't
 other items' child runs stop at their own next paid call, since they spend from the same run
 budget. The run's own
 model calls count as harness calls do, from the `llm.response` each one writes to the run's log.
+
+The spend also carries the same runs' tokens, from the summaries' `usage`, as `tokens.run` and
+`tokens.month`. Calls a subscription paid for count there, since they used tokens though they cost
+nothing. The tokens are tracked only: no budget stops a run on them yet (requirement
+`engine.budget-tokens`).
 
 A deployment that sells runs also keeps each customer to their plan, through a meter that refuses
 with a `limit_reached` stop whose code starts with `plan.`: `plan.<unit>` (such as `plan.cost`) and

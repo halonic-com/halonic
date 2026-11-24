@@ -2,6 +2,8 @@
 // A summary's `cost` is the sum of its priced model calls, without the calls
 // a subscription paid for (requirement `events.summary-cost`), so the budget
 // counts exactly what Halonic spends and never adds up `llm.response` itself.
+// The tokens are read from the same summaries' `usage`, subscription calls
+// included (requirement `engine.budget-tokens`).
 
 import {
   lastMonths,
@@ -10,7 +12,9 @@ import {
   monthStartOf,
   spendByMonth,
   treeCost,
+  treeUsage,
 } from "@halonicjs/app";
+import { addUsage } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
 import type { RunState } from "../kernel/run-state.ts";
 import type { Spend } from "./budget.ts";
@@ -30,7 +34,8 @@ const maxParentHops = 64;
  * start and the top-level run's start, since a child run starts after its
  * parent: the cost of a paid call doesn't grow with the workspace's history.
  * The list may lag the log for a short time in a cloud store; the local
- * stores are always up to date.
+ * stores are always up to date. The same runs' tokens come with it, in
+ * `tokens`.
  *
  * @param at - the ISO time of the input being decided
  */
@@ -45,10 +50,17 @@ export async function spendOf(
   const topStart = (await runs.get(top))?.startedAt ?? at;
   const since = Date.parse(topStart) < Date.parse(monthStart) ? topStart : monthStart;
   const summaries = await runs.list({ kind: "run", startedSince: since });
-  const monthSpend = summaries
-    .filter((summary) => monthOf(summary.startedAt) === month)
-    .reduce((total, summary) => total + summary.cost, 0);
-  return { run: treeCost(summaries, top), month: monthSpend };
+  const monthRuns = summaries.filter((summary) => monthOf(summary.startedAt) === month);
+  const monthSpend = monthRuns.reduce((total, summary) => total + summary.cost, 0);
+  const monthTokens = monthRuns.reduce((total, summary) => addUsage(total, summary.usage), {
+    inputTokens: 0,
+    outputTokens: 0,
+  });
+  return {
+    run: treeCost(summaries, top),
+    month: monthSpend,
+    tokens: { run: treeUsage(summaries, top), month: monthTokens },
+  };
 }
 
 /**
