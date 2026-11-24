@@ -163,6 +163,16 @@ verifies("cli.workspace-models", () => {
       expect(model.alias).toBeUndefined();
     });
 
+    it("doesn't count local: true for a provider at a public address", async () => {
+      const resolve = await resolverFor({
+        ...acmeFiles,
+        "providers/relay.yaml":
+          "id: relay\ntype: openai\nbaseUrl: https://api.example.com/v1\nlocal: true\n",
+      });
+
+      expect(await resolve(callOf({ alias: "relay/gpt-5" }))).toMatchObject({ local: false });
+    });
+
     it("gives the agent editor's unsaved settings a provider of their own", async () => {
       const resolve = await resolverFor();
 

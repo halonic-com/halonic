@@ -1,4 +1,4 @@
-import type { Provider } from "@halonicjs/format";
+import { isLocalUrl, type Provider } from "@halonicjs/format";
 import { defaultBaseUrl } from "@halonicjs/ports";
 import { type UrlHost, urlHost } from "@halonicjs/std";
 import type { ModelTarget } from "./resolve-model.ts";
@@ -35,6 +35,20 @@ export function isOnThisMachine(provider: CostProvider): boolean {
   }
   const host = addressHost(provider);
   return host !== undefined && isLoopback(host);
+}
+
+/**
+ * Whether the address a provider calls is on this computer or its network:
+ * {@link isOnThisMachine}, or a literal private address as the format counts
+ * it (`isLocalUrl`). What `local: true` may claim in a local-only workspace.
+ *
+ * @example
+ * isOnThisNetwork({ type: "openai", baseUrl: "http://192.168.1.20:11434/v1", options: {} }); // true
+ * isOnThisNetwork({ type: "openai", baseUrl: "https://api.example.com/v1", options: {} }); // false
+ */
+export function isOnThisNetwork(provider: CostProvider): boolean {
+  const address = providerAddress(provider);
+  return isOnThisMachine(provider) || (address !== undefined && isLocalUrl(address));
 }
 
 /**
@@ -105,9 +119,14 @@ export function providerHost(provider: CostProvider): string | undefined {
   }
 }
 
-/** The host the adapter really calls: `baseUrl`, or else its type's default. */
+/** The address the adapter really calls: `baseUrl`, or else its type's default. */
+export function providerAddress(provider: Pick<Provider, "type" | "baseUrl">): string | undefined {
+  return provider.baseUrl ?? defaultBaseUrl(provider.type);
+}
+
+/** The host of {@link providerAddress}. */
 function addressHost(provider: CostProvider): UrlHost | undefined {
-  const address = provider.baseUrl ?? defaultBaseUrl(provider.type);
+  const address = providerAddress(provider);
   return address === undefined ? undefined : urlHost(address);
 }
 
