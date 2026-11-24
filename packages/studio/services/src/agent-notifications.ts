@@ -8,16 +8,17 @@ import type {
 
 /**
  * What a notification opens in Studio: an inbox item, a conversation, a piece
- * of work, or the inbox as a whole (a quiet-hours summary, whose `id` is empty).
+ * of work, the inbox as a whole (a quiet-hours summary, whose `id` is empty),
+ * a seat on Spend and seats, or a source's merge queue.
  */
 export interface NoticeTarget {
-  kind: "inbox-item" | "conversation" | "work" | "inbox";
+  kind: "inbox-item" | "conversation" | "work" | "inbox" | "seat" | "merge-queue";
   id: MessagingId;
 }
 
 /** One desktop notification: why it was shown, what it says and what clicking it opens. */
 export interface AgentNotice {
-  reason: "card" | "question" | "done" | "summary";
+  reason: "card" | "question" | "done" | "summary" | "seat" | "queue";
   title: string;
   body: string;
   target: NoticeTarget;
