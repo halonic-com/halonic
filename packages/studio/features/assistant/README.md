@@ -47,9 +47,11 @@ model from a workspace that isn't trusted opens the trust check instead of sendi
 Assistant model answers with the authoring tools only, on no engine
 (`studio.assistant-authoring-turn`), under the line "Not trusted yet · it can read and propose, but
 not run anything." with **Review** (`assistant.chat.authoring-only`). A message that looks like it
-holds a key stays in the box (`assistant.chat.key-in-message`). The chat tab, the chat menu, a
-card's states after a decision (T14 PR 8b) and a failed model call's own sentence (F7, F8) come
-later.
+holds a key stays in the box (`assistant.chat.key-in-message`). A failed model call says the
+provider's own sentence, as the run page does but ending "then try again.", with **Open Models ›**
+(F7, F8, `assistant.chat.failed`); the app gives its facts on the answer (`AssistantAnswer.failure`)
+and the Runs feature words them (`chatFailureLine`). The chat tab, the chat menu and a card's
+states after a decision (T14 PR 8b) come later.
 
 ## Example
 

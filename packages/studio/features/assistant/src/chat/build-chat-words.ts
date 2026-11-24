@@ -68,6 +68,8 @@ export const buildChatWords = {
   /** H22, H23: a failure, with Try again only before a tool ran (H24). */
   failed: (reason: string) => `Couldn't reach the model: ${withoutStop(reason)}.`,
   toolsRan: "Some tool calls already ran. Send a new message to continue.",
+  /** After the provider's own sentence for a failed model call (microcopy 14.1 "Model unreachable"). */
+  openModels: "Open Models ›",
   /** H11: the chat can't load because the engine doesn't answer yet. */
   engineNotStarted: "The engine isn't answering. It may still be starting.",
   /** H12 (D5): the line at the top of an open chat while the engine doesn't answer. */

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { RunFailure } from "@halonicjs/app/run-failure";
 import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { EngineNotAnswering, engineWords, type WorkspaceContext } from "@halonicjs/studio-shell";
@@ -128,6 +129,63 @@ verifies("assistant.chat.failed", () => {
       "Couldn't reach the model: Overloaded. Some tool calls already ran. Send a new message to continue.",
     );
     expect(buttonNamed(page, "Try again")).toBeUndefined();
+  });
+
+  const failedAt = (failure: RunFailure) => ({
+    messages: [],
+    end: { reason: "failed" as const, error: new Error("fetch failed"), toolsRan: false },
+    failure,
+  });
+
+  it.each([
+    [
+      "a local model it couldn't reach",
+      { provider: "Ollama", address: "localhost:11434", alias: "fast", local: true },
+      "Halonic couldn't reach Ollama at localhost:11434 for the model alias fast. Ollama may not be running on this computer. Start Ollama, then try again.",
+    ],
+    [
+      "a cloud model it couldn't reach (F7)",
+      { provider: "Anthropic", address: "api.anthropic.com", alias: "smart", local: false },
+      "Halonic couldn't reach Anthropic at api.anthropic.com for the model alias smart. This computer may be offline. Check your internet connection, then try again.",
+    ],
+  ] as const)(
+    "says the provider's own sentence for %s, with Try again and Open Models ›",
+    async (_, facts, line) => {
+      const fake = fakeHost();
+      const runCommand = vi.fn(() => true);
+      const page = await show(panel(fake, runCommand).node);
+      await sendMessage(page, "Add a routine");
+      await fake.finish(failedAt({ reason: "model-unreachable", ...facts }));
+      expect(page.textContent).toContain(line);
+      expect(page.textContent).not.toContain("Couldn't reach the model");
+      await act(async () => buttonNamed(page, "Open Models ›")?.click());
+      expect(runCommand).toHaveBeenCalledWith("workspace.open-models");
+      await act(async () => buttonNamed(page, "Try again")?.click());
+      expect(fake.requests[1]).toMatchObject({ chatId: "chat-1", message: undefined });
+    },
+  );
+
+  it("says a local model didn't fit in memory (F8), and keeps the tools line after it", async () => {
+    const fake = fakeHost();
+    const page = await show(panel(fake).node);
+    await sendMessage(page, "Add a routine");
+    const memory = { provider: "Ollama", model: "llama3.1:70b", alias: "big" };
+    const failed = failedAt({ reason: "model-out-of-memory", ...memory });
+    await fake.finish({ ...failed, end: { ...failed.end, toolsRan: true } });
+    expect(page.textContent).toContain(
+      "Ollama couldn't load llama3.1:70b: this computer doesn't have enough free memory for it. Close other programs, or pick a smaller model in Models. Some tool calls already ran. Send a new message to continue.",
+    );
+    expect(buttonNamed(page, "Try again")).toBeUndefined();
+    expect(buttonNamed(page, "Open Models ›")).toBeDefined();
+  });
+
+  it("keeps its own words for a failure the provider has no sentence for", async () => {
+    const fake = fakeHost();
+    const page = await show(panel(fake).node);
+    await sendMessage(page, "Add a routine");
+    await fake.finish(failedAt({ reason: "error", message: "fetch failed" }));
+    expect(page.textContent).toContain("Couldn't reach the model: fetch failed.");
+    expect(buttonNamed(page, "Open Models ›")).toBeUndefined();
   });
 });
 

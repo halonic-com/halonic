@@ -1,4 +1,3 @@
-import type { ChatAnswerEnd } from "@halonicjs/app";
 import type { ShowOutcome } from "@halonicjs/assistant";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
@@ -8,7 +7,14 @@ import {
   isUntrustedRefusal,
   type ShownInWindow,
 } from "@halonicjs/studio-shell";
-import type { AssistantHost, Chat, ChatKind, ChatModel, ShownItem } from "../api.ts";
+import type {
+  AssistantAnswer,
+  AssistantHost,
+  Chat,
+  ChatKind,
+  ChatModel,
+  ShownItem,
+} from "../api.ts";
 import { cardReviewsOf } from "../cards/card-reviews.ts";
 import { buildChatWords } from "./build-chat-words.ts";
 import { endLine, type ReplyEnd } from "./turns.ts";
@@ -199,7 +205,7 @@ export class BuildChats {
             })),
         },
       });
-      end = endOf(answer.end);
+      end = endOf(answer);
     } catch (error) {
       if (isUntrustedRefusal(error)) {
         this.takeBack(view);
@@ -384,7 +390,7 @@ function endOfError(error: unknown, toolsRan: boolean): ReplyEnd {
   return { kind: "failed", reason, toolsRan };
 }
 
-function endOf(end: ChatAnswerEnd): ReplyEnd | undefined {
+function endOf({ end, failure }: AssistantAnswer): ReplyEnd | undefined {
   switch (end.reason) {
     case "answered":
       return undefined;
@@ -397,7 +403,7 @@ function endOf(end: ChatAnswerEnd): ReplyEnd | undefined {
       if (end.error instanceof EngineNotAnswering) {
         return { kind: "engine-stopped", toolsRan: end.toolsRan };
       }
-      return { kind: "failed", reason: end.error.message, toolsRan: end.toolsRan };
+      return { kind: "failed", reason: end.error.message, toolsRan: end.toolsRan, failure };
   }
 }
 

@@ -1,12 +1,8 @@
 import {
   Button,
   type ButtonUnavailable,
-  type ChatAction,
-  ChatEndLine,
   ChatLoading,
   ChatMessage,
-  ChatText,
-  ChatToolLine,
   ChatTranscript,
   EmptyState,
   SidePanel,
@@ -31,8 +27,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { AssistantHostService, type ChatAgent } from "../api.ts";
-import { ProposalCard } from "../cards/proposal-card.tsx";
-import { toolInWords, buildChatWords as words } from "../chat/build-chat-words.ts";
+import { buildChatWords as words } from "../chat/build-chat-words.ts";
 import {
   type Announce,
   type BuildChats,
@@ -41,7 +36,7 @@ import {
   type Shown,
 } from "../chat/build-chats.ts";
 import { chatWithWords as agentWords } from "../chat/chat-with-words.ts";
-import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../chat/turns.ts";
+import { runningLine, turnsOf } from "../chat/turns.ts";
 import { AgentStatusLine, PanelChatStart } from "./agent-chat.tsx";
 import { BuildComposer } from "./build-composer.tsx";
 import {
@@ -55,6 +50,7 @@ import { ChatHeading, DesktopActions } from "./chat-header.tsx";
 import { openModelsCommand, useModelBox } from "./model-line.tsx";
 import { PhoneChatMenu, PhoneHeading } from "./phone-header.tsx";
 import { PhoneSheets, usePhoneChat } from "./phone-sheets.tsx";
+import { Reply } from "./reply.tsx";
 import { StripAboveBox } from "./review-strip.tsx";
 import { useAuthoringOnly, useEngineAnswering, useTrustCheck } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
@@ -416,69 +412,4 @@ function Transcript({
       ))}
     </ChatTranscript>
   );
-}
-
-/** Where a reply's cards belong: their chat and the workspace. */
-interface CardPlace {
-  readonly chatId: string;
-  readonly context: WorkspaceContext;
-}
-
-function Reply({
-  turn,
-  place,
-  onContinue,
-  waits,
-}: {
-  readonly turn: Turn;
-  readonly place: CardPlace;
-  readonly onContinue: (() => void) | undefined;
-  readonly waits: ButtonUnavailable | undefined;
-}) {
-  const end = turn.end;
-  // Only the last reply offers Continue or Try again: each carries on that answer without a new
-  // message (flow-assistant 3.6), which sends the last message again when nothing ran (H13, H22,
-  // H23). After a tool ran there is no Try again, since a tool may have sent something (H24).
-  const actions = onContinue === undefined ? [] : endActions(end, onContinue, waits);
-  return (
-    <ChatMessage from="reply" heading={words.said}>
-      {turn.steps.map((step, index) => (
-        // Steps are only added at the end, so their place is their key.
-        <Step key={index} step={step} place={place} />
-      ))}
-      {end === undefined ? null : (
-        <ChatEndLine tone={end.kind === "failed" ? "danger" : "plain"} actions={actions}>
-          {endLine(end)}
-        </ChatEndLine>
-      )}
-    </ChatMessage>
-  );
-}
-
-function endActions(
-  end: Turn["end"],
-  onContinue: () => void,
-  unavailable: ButtonUnavailable | undefined,
-): ChatAction[] {
-  if (end?.kind === "model-call-limit") {
-    return [{ label: words.continue, onClick: onContinue, unavailable }];
-  }
-  if ((end?.kind === "engine-stopped" || end?.kind === "failed") && !end.toolsRan) {
-    return [{ label: words.tryAgain, onClick: onContinue, unavailable }];
-  }
-  return [];
-}
-
-function Step({ step, place }: { readonly step: ReplyStep; readonly place: CardPlace }) {
-  if (step.kind === "text") return <ChatText>{step.text}</ChatText>;
-  if (step.kind === "proposal") {
-    const { callId, path, content, why } = step;
-    const proposal = { chatId: place.chatId, callId, path, content };
-    return <ProposalCard proposal={proposal} why={why} context={place.context} />;
-  }
-  const line =
-    step.shown === undefined
-      ? words.tool[step.state](toolInWords(step.name))
-      : words.showed(step.shown.kind, step.shown.id);
-  return <ChatToolLine state={step.state}>{line}</ChatToolLine>;
 }
