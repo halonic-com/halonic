@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-watcher-review-priority`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
 
 ## PR watcher
 
@@ -95,6 +95,17 @@ on this head". The pass summary and the metric
 `pr_watcher.review_waits` count these notes, so Chief's team check can list
 them.
 
+**Longest wait first** (HAL-17920). In the same step, while such a head has
+waited more than an hour since its "ready for review" comment, the watcher
+raises the task's priority to `high` if it is `low` or `medium` when re-read
+right before the write. It never sets `critical`, never lowers a priority and
+changes no other field, so a person's choice stays. The pass summary and the
+metric `pr_watcher.review_priority_raised` count these raises. The pass also
+lists every handed-over head still waiting for its approval, whatever its age,
+oldest handoff first, and logs the oldest five as one line, "PR watcher:
+longest waiting for review: HAL-5702 #5702 4.0 h, HAL-5701 #5701 1.5 h.", for
+Chief's team check.
+
 A wake comment also carries, for each open pull request it names, the head
 lines `pr_status` would give, from the same pass: the head, `ci-ok` on it
 (with up to five failing checks by name when it failed), mergeable, the merge
@@ -160,7 +171,8 @@ webhooks, files or processes.
 - **Status changes:** the manifest can't narrow `issues.update`, so
   `host.ts` is the only file that changes a task's status: its
   `doneOnly` refuses anything but `{ status: "done" }`, and its
-  `handoffOnly` anything but one agent as assignee with `{ status: "todo" }`.
+  `handoffOnly` anything but one agent as assignee with `{ status: "todo" }`,
+  and its `highOnly` anything but `{ priority: "high" }`.
   A test fails if another file calls `issues.update(`.
 - **Outbound HTTP:** the manifest can't list allowed hosts, so the GitHub
   reader's origin guard keeps the token on `api.github.com`, and the

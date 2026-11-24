@@ -12,6 +12,7 @@ export interface FakeIssue {
   readonly activeRun?: { readonly id: string } | null;
   readonly monitorNextCheckAt?: Date | null;
   readonly monitorLastTriggeredAt?: Date | null;
+  readonly priority?: string;
 }
 
 /** A comment as the fake host stores it. */

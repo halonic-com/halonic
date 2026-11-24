@@ -17,7 +17,7 @@ import { postponeUntil } from "./monitors.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
 import type { RebaseOnly } from "./rebase-only.ts";
 import { reviewSteps } from "./review-steps.ts";
-import { noteReviewWait } from "./review-wait.ts";
+import { noReviewWait, noteReviewWait, oldestFirst, type WaitRow } from "./review-wait.ts";
 import type { PullSummary } from "./wake-status.ts";
 
 /**
@@ -56,6 +56,10 @@ export interface TickSummary {
   readonly warned: number;
   /** Tasks their reviewer holds, noted for a green head unapproved for over an hour (HAL-17760). */
   readonly reviewWaits: number;
+  /** Tasks raised to `high` for a green head unapproved for over an hour (HAL-17920). */
+  readonly priorityRaised: number;
+  /** Every handed-over head still waiting for its approval, oldest handoff first. */
+  readonly longestWaits: readonly WaitRow[];
   readonly failed: readonly string[];
 }
 
@@ -366,13 +370,13 @@ function reviewStepsOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
   );
 }
 
-/** The review-wait note for a task its reviewer holds; false for any other task. */
-function reviewWaitOf(options: TickOptions, task: TaskRow, refs: TickRefs): Promise<boolean> {
+/** The review-wait step for a task its reviewer holds; nothing for any other task. */
+function reviewWaitOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
   const pulls = reviewerHeldPulls(task, refs.found, refs.owners).map((ref) =>
     factsOf(ref, refs.facts),
   );
   if (pulls.length === 0) {
-    return Promise.resolve(false);
+    return Promise.resolve(noReviewWait);
   }
   return noteReviewWait(options, task, pulls, async () =>
     (await options.paperclip.comments(task.id)).filter(isSelf),
@@ -380,7 +384,7 @@ function reviewWaitOf(options: TickOptions, task: TaskRow, refs: TickRefs): Prom
 }
 
 /** What one tick counts, apart from the tasks it couldn't check. */
-type Counts = Omit<TickSummary, "failed">;
+type Counts = Omit<TickSummary, "failed" | "longestWaits">;
 
 const zero: Counts = {
   checked: 0,
@@ -391,14 +395,20 @@ const zero: Counts = {
   handedOff: 0,
   warned: 0,
   reviewWaits: 0,
+  priorityRaised: 0,
 };
 
 function one(yes: boolean): number {
   return yes ? 1 : 0;
 }
 
-/** Checks one task and carries out its decision; what it did, as counts. */
-async function checkTask(options: TickOptions, task: TaskRow, refs: TickRefs): Promise<Counts> {
+/** Checks one task and carries out its decision; what it did, as counts, with its review waits added to `waits`. */
+async function checkTask(
+  options: TickOptions,
+  task: TaskRow,
+  refs: TickRefs,
+  waits: WaitRow[],
+): Promise<Counts> {
   const decision = await decideTask(options, task, refs);
   if (decision === undefined) {
     return zero;
@@ -408,7 +418,8 @@ async function checkTask(options: TickOptions, task: TaskRow, refs: TickRefs): P
     decision.kind === "skip"
       ? await reviewStepsOf(options, task, refs)
       : { handedOff: false, warned: false };
-  const waited = decision.kind === "skip" && (await reviewWaitOf(options, task, refs));
+  const waited = decision.kind === "skip" ? await reviewWaitOf(options, task, refs) : noReviewWait;
+  waits.push(...waited.waits);
   const acted = await act(options, task, decision);
   return {
     checked: 1,
@@ -418,7 +429,8 @@ async function checkTask(options: TickOptions, task: TaskRow, refs: TickRefs): P
     postponeRefused: one(monitor === "refused"),
     handedOff: one(review.handedOff),
     warned: one(review.warned),
-    reviewWaits: one(waited),
+    reviewWaits: one(waited.noted),
+    priorityRaised: one(waited.raised),
   };
 }
 
@@ -442,9 +454,10 @@ export async function tick(options: TickOptions): Promise<TickSummary> {
   const refs: TickRefs = { owners, found, facts };
   const counts = { ...zero };
   const failed: string[] = [];
+  const waits: WaitRow[] = [];
   for (const task of tasks) {
     try {
-      const add = await checkTask(options, task, refs);
+      const add = await checkTask(options, task, refs, waits);
       for (const key of Object.keys(counts) as (keyof Counts)[]) {
         counts[key] += add[key];
       }
@@ -453,5 +466,5 @@ export async function tick(options: TickOptions): Promise<TickSummary> {
       options.log(`${task.identifier}: couldn't check it: ${(error as Error).message}`);
     }
   }
-  return { ...counts, failed };
+  return { ...counts, longestWaits: oldestFirst(waits), failed };
 }

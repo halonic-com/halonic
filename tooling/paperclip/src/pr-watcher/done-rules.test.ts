@@ -65,6 +65,8 @@ verifies("paperclip.pr-watcher-done", () => {
       handedOff: 0,
       warned: 0,
       reviewWaits: 0,
+      priorityRaised: 0,
+      longestWaits: [],
       failed: [],
     });
     expect(paperclip.comments["task-4485"]?.[0]?.body).not.toContain("#9001");
@@ -123,6 +125,8 @@ verifies("paperclip.pr-watcher-done", () => {
       handedOff: 0,
       warned: 0,
       reviewWaits: 0,
+      priorityRaised: 0,
+      longestWaits: [],
       failed: [],
     });
     expect(paperclip.wakes).toEqual([
@@ -139,6 +143,8 @@ verifies("paperclip.pr-watcher-done", () => {
       handedOff: 0,
       warned: 0,
       reviewWaits: 0,
+      priorityRaised: 0,
+      longestWaits: [],
       failed: [],
     });
     expect(second.lines[0]).toContain("it got comments after its merge");

@@ -19,7 +19,8 @@ import {
  * set `done`, `handoffOnly` lets it give a task to one agent with status
  * `todo` (its reviewer, HAL-17675), `todoOnly` lets its unblock sweep set `todo`
  * on a blocked task (HAL-17692) and a wake pick up a parked task Paperclip
- * won't wake as it is (HAL-17869), and nothing else; `setTaskLabels` lets the difficulty tagger
+ * won't wake as it is (HAL-17869), `highOnly` lets a long review wait raise
+ * a task to `high` (HAL-17920), and nothing else; `setTaskLabels` lets the difficulty tagger
  * set labels and nothing else, and `assignTaskBack` lets the hand-off limit
  * set the task's agent and nothing else, because the manifest can't narrow
  * `issues.update`.
@@ -77,6 +78,18 @@ export function handoffOnly(patch: Readonly<Record<string, unknown>>): {
   }
   return { assigneeAgentId: agent, status: "todo" };
 }
+
+/** The only priority change the watcher may make. Anything else throws before it reaches the host. */
+export function highOnly(patch: Readonly<Record<string, unknown>>): { priority: "high" } {
+  const keys = Object.keys(patch);
+  if (keys.length !== 1 || keys[0] !== "priority" || patch["priority"] !== "high") {
+    throw new Error(`PR watcher: refusing a priority change other than high (${keys.join(", ")}).`);
+  }
+  return { priority: "high" };
+}
+
+/** The priorities the watcher may raise; anything a person set higher stays. */
+const raisablePriorities: ReadonlySet<string> = new Set(["low", "medium"]);
 
 /**
  * The difficulty tagger's only task change (HAL-16901): the task's whole list
@@ -148,6 +161,7 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
             monitorNextCheckAt: isoOrNull(issue.monitorNextCheckAt),
             monitorLastTriggeredAt: isoOrNull(issue.monitorLastTriggeredAt),
             parked: parkedStatuses.has(issue.status),
+            priority: issue.priority,
           }),
         );
     },
@@ -220,6 +234,19 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
       // Paperclip checks the rest: only later, at most 24 hours out, an existing monitor (HAL-16413).
       const result = await host.issues.monitors.postpone(taskId, companyId, { until });
       return result.postponed ? "postponed" : "unchanged";
+    },
+    async raisePriority(taskId, to) {
+      // Re-read: a person may have set the priority or closed the task during the pass.
+      const issue = await host.issues.get(taskId, companyId);
+      if (
+        issue === null ||
+        !watchedStatuses.has(issue.status) ||
+        !raisablePriorities.has(issue.priority)
+      ) {
+        return "closed";
+      }
+      await host.issues.update(taskId, highOnly({ priority: to }), companyId);
+      return "written";
     },
   };
 }
