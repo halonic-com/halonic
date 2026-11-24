@@ -29,10 +29,11 @@ const MAP_WIDTH = "w-[56rem]";
 const PHONE_MAP_WIDTH = "w-[22.5rem]";
 
 /**
- * Narrower than this many rem, the fitted map's words get too small to read, so its sides stack
- * (C525-5). In rem, so larger text stacks it sooner.
+ * Narrower than this many rem, the map doesn't fit even at its least scale, 0.8 of its 56 rem
+ * (44.8 rem), so its right side would run off the panel; its sides stack instead (C525-5, C46 AG1).
+ * In rem, so larger text stacks it sooner.
  */
-export const STACK_BELOW_REM = 36;
+export const STACK_BELOW_REM = 45;
 
 /**
  * On a phone, narrower than this many rem the side cards can't be 92 px wide, so the map stacks
@@ -106,8 +107,9 @@ export function MapFrame({
     setFit({
       stacked: false,
       scale,
-      left: Math.max(0, (room.clientWidth - width * scale) / 2),
-      top: Math.max(0, (room.clientHeight - height * scale) / 2),
+      // On whole pixels, so the words stay sharp.
+      left: Math.max(0, Math.round((room.clientWidth - width * scale) / 2)),
+      top: Math.max(0, Math.round((room.clientHeight - height * scale) / 2)),
     });
   }, [floor, narrowest]);
 
@@ -158,6 +160,8 @@ export function MapFrame({
             onCanvasPress?.();
           }
         }}
+        // A card or button Tab reaches shows whole, its ring too, also below the panel's fold.
+        onFocus={(event) => event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" })}
       >
         <section
           ref={map}

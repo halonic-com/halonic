@@ -15,7 +15,7 @@ import { AgentScreen } from "../page/agent-page.tsx";
 import { buttonNamed, show, unmount } from "../test-support.tsx";
 
 /** The panel's size and the map's natural size, as a browser with a layout would measure them. */
-const sizes = { panel: { width: 672, height: 600 }, map: { width: 896, height: 400 } };
+const sizes = { panel: { width: 784, height: 600 }, map: { width: 896, height: 400 } };
 
 /** The resize observers the page made, with the elements each watches. */
 const observers: { readonly callback: () => void; readonly watched: Element[] }[] = [];
@@ -50,7 +50,7 @@ function measure(property: "clientWidth" | "clientHeight" | "offsetWidth" | "off
 }
 
 beforeEach(() => {
-  sizes.panel = { width: 672, height: 600 };
+  sizes.panel = { width: 784, height: 600 };
   observers.length = 0;
   vi.stubGlobal("ResizeObserver", FakeResizeObserver);
   for (const property of ["clientWidth", "clientHeight", "offsetWidth", "offsetHeight"] as const) {
@@ -133,12 +133,18 @@ verifies("agents.map.lines-and-fit", () => {
 
   it("fits the map to the panel when it opens, with no zoom buttons", async () => {
     const page = await openMap();
-    // 896 wide in a 672 wide panel: down to 0.8, the desktop's floor, centred in the panel's height;
-    // the panel scrolls for the rest.
-    expect(mapOf(page)?.style.transform).toBe("translate(0px, 140px) scale(0.8)");
+    // 896 wide in a 784 wide panel: down to 0.875, centred in the panel's height.
+    expect(mapOf(page)?.style.transform).toBe("translate(0px, 125px) scale(0.875)");
     for (const name of ["Zoom in", "Zoom out", "Fit"]) {
       expect(buttonNamed(page, name)).toBeUndefined();
     }
+  });
+
+  it("shrinks it no further than 0.8, centred on whole pixels, and the panel scrolls for the rest", async () => {
+    // 400 high in a 300 high panel would need 0.75.
+    sizes.panel = { width: 800, height: 300 };
+    const page = await openMap();
+    expect(mapOf(page)?.style.transform).toBe("translate(42px, 0px) scale(0.8)");
   });
 
   it("fits it again 260 ms after the panel stops changing size", async () => {
@@ -149,21 +155,36 @@ verifies("agents.map.lines-and-fit", () => {
     act(() => vi.advanceTimersByTime(200));
     resized();
     act(() => vi.advanceTimersByTime(259));
-    expect(mapOf(page)?.style.transform).toBe("translate(0px, 140px) scale(0.8)");
+    expect(mapOf(page)?.style.transform).toBe("translate(0px, 125px) scale(0.875)");
     act(() => vi.advanceTimersByTime(1));
     // Never larger than its natural size: centred at 896 in 1200.
     expect(mapOf(page)?.style.transform).toBe("translate(152px, 100px) scale(1)");
   });
 
+  it("scrolls a card or button that takes the focus into view inside the panel", async () => {
+    const page = await openMap();
+    const scrolled = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrolled;
+    try {
+      // React's onFocus listens to focusin; jsdom won't focus into the page's hidden tab panel.
+      const add = buttonNamed(page, "+ Add a tool");
+      act(() => add?.dispatchEvent(new FocusEvent("focusin", { bubbles: true })));
+      expect(scrolled).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" });
+      expect(scrolled.mock.contexts[0]).toBe(add);
+    } finally {
+      Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+    }
+  });
+
   it("never shrinks the map on a phone, so the panel scrolls instead", async () => {
     const page = await openMap("phone");
-    // 896 wide in a 672 wide panel stays at its natural size.
+    // 896 wide in a 784 wide panel stays at its natural size.
     expect(mapOf(page)?.style.transform).toBe("translate(0px, 100px) scale(1)");
   });
 });
 
 verifies("agents.map.stacked", () => {
-  it("stacks the sides in a panel narrower than 36 rem: left, centre, below, right, with no lines", async () => {
+  it("stacks the sides in a panel narrower than 45 rem: left, centre, below, right, with no lines", async () => {
     sizes.panel = { width: 390, height: 700 };
     const page = await openMap();
     const map = mapOf(page);
@@ -179,17 +200,25 @@ verifies("agents.map.stacked", () => {
     expect(text.indexOf("Mail triage")).toBeLessThan(text.indexOf("What it can use"));
   });
 
-  it("fits it again when the panel grows past 36 rem, and stacks it when it shrinks", async () => {
+  it("stacks it where even 0.8 of the map would run off the panel's right edge", async () => {
+    // The chat open beside the map in a 1280 px window (C46 AG1): 0.8 of 896 is 717 px.
+    sizes.panel = { width: 589, height: 700 };
+    const page = await openMap();
+    expect(mapOf(page)?.hasAttribute("data-map-stacked")).toBe(true);
+    expect(mapOf(page)?.style.transform).toBe("");
+  });
+
+  it("fits it again when the panel grows past 45 rem, and stacks it when it shrinks", async () => {
     sizes.panel = { width: 390, height: 700 };
     const page = await openMap();
     vi.useFakeTimers();
-    sizes.panel = { width: 672, height: 600 };
+    sizes.panel = { width: 728, height: 625 };
     resized();
     act(() => vi.advanceTimersByTime(260));
     expect(mapOf(page)?.hasAttribute("data-map-stacked")).toBe(false);
-    expect(mapOf(page)?.style.transform).toBe("translate(0px, 140px) scale(0.8)");
+    expect(mapOf(page)?.style.transform).toBe("translate(0px, 150px) scale(0.8125)");
     expect(page.querySelectorAll("[data-map-lines] path")).toHaveLength(5);
-    sizes.panel = { width: 500, height: 600 };
+    sizes.panel = { width: 700, height: 600 };
     resized();
     act(() => vi.advanceTimersByTime(260));
     expect(mapOf(page)?.hasAttribute("data-map-stacked")).toBe(true);

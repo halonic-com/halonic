@@ -102,3 +102,13 @@ verifies("first-run.run", () => {
     expect(firstRun.state).toMatchObject({ kind: "on", step: "demo" });
   });
 });
+
+verifies("first-run.pick-model-focus", () => {
+  it("opens with the focus on its heading, not the body, since the button that opened it is gone", async () => {
+    const { container } = await open({ startRun: vi.fn() });
+    const heading = container.querySelector("h1");
+    expect(heading?.textContent).toBe("Pick a model");
+    expect(document.activeElement).toBe(heading);
+    expect(heading?.className).toContain("focus-ring");
+  });
+});
