@@ -63,6 +63,8 @@ function keepingFailures(failures: string[]): Harness {
     name: real.name,
     detect: (options) => real.detect(options),
     ...(real.environment === undefined ? {} : { environment: real.environment.bind(real) }),
+    // The sign-in is what gives the run a settings folder of its own.
+    ...(real.signIn === undefined ? {} : { signIn: real.signIn }),
     start: (task, session, bridge) => {
       const run = real.start(task, session, bridge);
       return {
