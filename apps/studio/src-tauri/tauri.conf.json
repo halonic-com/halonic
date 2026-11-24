@@ -32,7 +32,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM4QTc3MTE2QzI5NUU0NzMKUldSejVKWENGbkduT0pPSXNCMTB6UDZnSmpRZFJNRHo5a1FVWEJwLzFFd0lpbjhqWEM3VlA2ckYK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ3QjRGQ0IyQkZCRkQxODgKUldTSTBiKy9zdnkwMTFUSnVSbGdXWU5JSWZNK2k4K3BXS3YzNlo5TXUwc21tdXcrNXorSGRlUVMK",
       "endpoints": [
         "https://github.com/halonic-com/halonic/releases/latest/download/latest.json"
       ],
