@@ -61,6 +61,18 @@ export const teamWords = {
     "connect-again": "Connect again",
   } satisfies Record<TeamLink, string>,
   openAiSeatsInPaperclip: "Open AI seats in Paperclip ↗",
+  agentsStillOn: (count: number) =>
+    count === 1 ? "1 agent still on it" : `${count} agents still on it`,
+  /** The Inbox notices and desktop notifications, HAL-17515 S19 and S20. */
+  notice: {
+    reaches90: (seat: string, time: string) => `${seat} reaches 90% around ${time}`,
+    /** After the agents, as in "4 agents on it · resets Thu 09:00". */
+    resets: (at: string) => `resets ${at}`,
+    clearsByItself: "Clears by itself",
+    queueHeld: "Runners busy · pushes are on hold",
+    queueHeldLine: (minutes: number, pullRequests: number) =>
+      `Longest wait ${minutes} min · ${pullRequests} PRs in the queue`,
+  },
   problem: {
     full: (seat: string, until: string) => `${seat} is full until ${until}`,
     signedOut: (seat: string) => `${seat} is signed out`,
