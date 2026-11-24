@@ -1,8 +1,9 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { clarifyDescription } from "../thin-spec/clarify.ts";
+import { fittedModel } from "../thin-spec/model.ts";
 import { parseReading, readingInstruction, readingSchema } from "../thin-spec/reading.ts";
-import { featureRow } from "../thin-spec/score.ts";
+import { featureRow, usableModel } from "../thin-spec/score.ts";
 import {
   anthropicKey,
   checkEvent,
@@ -192,7 +193,7 @@ verifies("paperclip.thin-spec-check", () => {
     });
   });
 
-  test("builds the trial's 24 features in its order", () => {
+  test("builds the trial's 25 features in its order", () => {
     const parsed = parseReading(reading(2));
     expect(parsed && featureRow(parsed)).toEqual([
       2,
@@ -221,5 +222,11 @@ verifies("paperclip.thin-spec-check", () => {
       0,
       0,
     ]);
+  });
+
+  test("carries the exported model, which fits the feature row", () => {
+    const parsed = parseReading(reading(2));
+    expect(fittedModel && usableModel(fittedModel)).toBe(true);
+    expect(parsed && featureRow(parsed).length).toBe(fittedModel?.weights.length);
   });
 });
