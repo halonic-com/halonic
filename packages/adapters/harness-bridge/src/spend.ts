@@ -19,6 +19,8 @@ export interface ModelCall {
   messages: number;
   /** The effort the host set for the model, which the bridge sends in place of the program's. */
   effort?: BridgeEffort;
+  /** Set when a sub-agent of the program made the call, as `withSubagent` finds it. */
+  subagent?: string;
 }
 
 /** What a reply reader found in a provider's reply. */
@@ -85,12 +87,15 @@ export async function recordModelCall(
 ): Promise<void> {
   const { model } = call;
   const provider = providerNamed(run, call);
+  // On both events, so the roll-up can read either (requirement `harness-bridge.subagent-calls`).
+  const subagent = call.subagent === undefined ? {} : { subagent: call.subagent };
   await run.recorder.record({
     type: "llm.request",
     agent: run.agentId,
     provider,
     model,
     ...(call.effort === undefined ? {} : { effort: call.effort }),
+    ...subagent,
     messages: call.messages,
   });
   const started = performance.now();
@@ -107,6 +112,7 @@ export async function recordModelCall(
         usage: read.usage,
         latencyMs: Math.round(performance.now() - started),
         text: read.text,
+        ...subagent,
         ...callCharge(run, call, read.usage),
       });
     }

@@ -107,6 +107,8 @@ export type RunEventBody =
    * name; absent for any other provider and in older logs (requirement
    * `engine.llm-event-address`). `effort`: the effort the harness bridge set
    * on the call in place of the program's (requirement `events.llm-request-effort`).
+   * `subagent`: set, on the request and its response alike, when a sub-agent of
+   * the program made the call; absent for the agent itself (requirement `events.llm-subagent`).
    */
   | {
       type: "llm.request";
@@ -116,6 +118,7 @@ export type RunEventBody =
       alias?: string;
       address?: string;
       effort?: "low" | "medium" | "high";
+      subagent?: string;
       messages: number;
     }
   | {
@@ -130,6 +133,8 @@ export type RunEventBody =
        */
       latencyMs: number;
       text: string;
+      /** As on `llm.request` (requirement `events.llm-subagent`). */
+      subagent?: string;
       /** The model's summary of its reasoning, when it gives one. */
       thoughts?: string;
       /**

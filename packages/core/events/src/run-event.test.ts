@@ -219,6 +219,8 @@ verifies("events.run-log-contract", () => {
       address?: string;
       // Added after the reference by events.llm-request-effort (HAL-16735).
       effort?: "low" | "medium" | "high";
+      // Added after the reference by events.llm-subagent (HAL-17263).
+      subagent?: string;
       messages: number;
     }>();
     expectTypeOf<EventOf<"llm.response">>().toEqualTypeOf<{
@@ -229,6 +231,8 @@ verifies("events.run-log-contract", () => {
       usage: Usage;
       latencyMs: number;
       text: string;
+      // Added after the reference by events.llm-subagent (HAL-17263).
+      subagent?: string;
       thoughts?: string;
       cost?: number;
       // Added after the reference by events.summary-cost (HAL-2311).
