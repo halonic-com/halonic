@@ -1,10 +1,9 @@
 import type { AnswerResult, InboxItem } from "@halonicjs/ports";
-import { Button, StatusChip } from "@halonicjs/studio-kit";
+import { Button, ChatText, StatusChip, useOpenExternal } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useState } from "react";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import type { QuickActions } from "../quick-actions.ts";
-import { MessageBody } from "./message-body.tsx";
 
 /** The props of {@link ChatCards}. */
 export interface ChatCardsProps {
@@ -53,6 +52,7 @@ function ChatCard({
 }) {
   const [busy, setBusy] = useState<string | undefined>(undefined);
   const [line, setLine] = useState<string | undefined>(undefined);
+  const openLink = useOpenExternal();
 
   async function choose(option: string) {
     setBusy(option);
@@ -74,7 +74,7 @@ function ChatCard({
         </StatusChip>
         {messengerWords.card.waitingSince(timeOf(card.createdAt))}
       </p>
-      <MessageBody>{card.question}</MessageBody>
+      <ChatText openLink={openLink}>{card.question}</ChatText>
       <div className="flex flex-wrap gap-2">
         {card.options.map((option, index) => (
           <Button
