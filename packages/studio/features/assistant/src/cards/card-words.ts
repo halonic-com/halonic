@@ -26,9 +26,12 @@ export const cardWords = {
   /** New (HAL-16798): a decision or its undo that failed, with the reason under it. */
   cantAccept: (name: string) => `Couldn't accept the changes in ${name}`,
   cantReject: (name: string) => `Couldn't reject the changes in ${name}`,
-  cantUndo: "Couldn't undo it",
-  /** New (HAL-16798): the card couldn't read its changes, so it offers no buttons. */
-  cantRead: (reason: string) => `Couldn't read these changes: ${reason}`,
+  cantUndo: (name: string) => `Couldn't undo it in ${name}`,
+  /**
+   * New (HAL-16798): the card couldn't read its changes, so it keeps only Review. A sentence, so
+   * it ends with one full stop even when the reason already has its own.
+   */
+  cantRead: (reason: string) => `Couldn't read these changes: ${reason.replace(/\.+$/, "")}.`,
 } as const;
 
 /**

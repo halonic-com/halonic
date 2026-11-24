@@ -45,7 +45,15 @@ export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
       {why === "" ? null : <p className="text-small text-fg-muted">“{why}”</p>}
       {state.kind === "open" ? <OpenCard state={state} decide={decide} nameId={nameId} /> : null}
       {state.kind === "failed" ? (
-        <p className="text-small text-danger">{words.cantRead(state.reason)}</p>
+        <>
+          <p className="text-small text-danger">{words.cantRead(state.reason)}</p>
+          {/* Review needs only the path, and the item bar there has Accept all and Reject all. */}
+          <div className="mt-1 flex">
+            <Button variant="secondary" size="sm" aria-describedby={nameId} onClick={decide.review}>
+              {words.review}
+            </Button>
+          </div>
+        </>
       ) : null}
     </article>
   );
@@ -165,8 +173,8 @@ function useDecide(proposal: Proposal, state: CardReview, context: WorkspaceCont
       title,
       text: error instanceof Error ? error.message : String(error),
     });
-  const undo = (step: Parameters<typeof cards.undo>[1]) =>
-    cards.undo(proposal, step).catch((error: unknown) => failed(words.cantUndo, error));
+  const undo = (step: Parameters<typeof cards.undo>[1], doneName: string) =>
+    cards.undo(proposal, step).catch((error: unknown) => failed(words.cantUndo(doneName), error));
   const run = async (decision: "accept" | "reject") => {
     if (busy !== undefined) return;
     setBusy(decision);
@@ -178,7 +186,7 @@ function useDecide(proposal: Proposal, state: CardReview, context: WorkspaceCont
       toasts?.show({
         tone: "info",
         title: said(done.count, done.name),
-        action: { label: words.undo, onClick: () => void undo(done.step) },
+        action: { label: words.undo, onClick: () => void undo(done.step, done.name) },
       });
     } catch (error) {
       failed(decision === "accept" ? words.cantAccept(name) : words.cantReject(name), error);

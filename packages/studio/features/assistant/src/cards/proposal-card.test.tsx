@@ -129,6 +129,21 @@ verifies("assistant.build.proposal-card", () => {
       await press(deleted, "Review");
       expect(deleting.openPlace).toHaveBeenCalledWith("changes");
     });
+
+    it("says why it can't read its changes, and keeps only Review", async () => {
+      const host = reviewHost(reviewOf(1));
+      Object.assign(host.fake.host, {
+        changesForCard: async () => Promise.reject(new Error("Gone.")),
+      });
+      const shown = card(host);
+      const page = await show(shown.node);
+      expect(page.textContent).toContain("Couldn't read these changes: Gone.");
+      expect(page.textContent).not.toContain("Gone..");
+      expect(buttonNamed(page, "Accept all")).toBeUndefined();
+      expect(buttonNamed(page, "Reject all")).toBeUndefined();
+      await press(page, "Review");
+      expect(shown.openItem).toHaveBeenCalledWith({ kind: "workflow", hub: "sales", id: "triage" });
+    });
   });
 });
 
@@ -162,6 +177,19 @@ verifies("assistant.build.apply-proposal", () => {
         `(The person accepted the changes to ${path}.)`,
       ]);
       await host.fake.finish({ messages: [], end: { reason: "answered" } } as never);
+    });
+
+    it("names the item when Undo fails", async () => {
+      const host = reviewHost(reviewOf(1));
+      Object.assign(host.fake.host, { undo: async () => Promise.reject(new Error("Disk full")) });
+      const shown = card(host);
+      const page = await show(shown.node);
+      await press(page, "Accept all");
+      await act(async () => shown.toasts.list()[0]?.action?.onClick());
+      expect(shown.toasts.list().find((toast) => toast.tone === "danger")).toMatchObject({
+        title: "Couldn't undo it in triage",
+        text: "Disk full",
+      });
     });
   });
 });
