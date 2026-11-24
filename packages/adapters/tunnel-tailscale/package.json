@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/adapter-tunnel-tailscale",
+  "private": true,
+  "type": "module",
+  "description": "The Tailscale tunnel provider: serves the remote gateway on the person's own tailnet with the tailscale CLI, never Funnel.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-system-node": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "owen",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "node"
+  }
+}
