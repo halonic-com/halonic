@@ -3,6 +3,7 @@
 - Task: HAL-17901
 - Approval: Liam asked for this change on HAL-17901 (Julian's finding in his review of #5744, HAL-17759); he reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uCFzcoaR7ZNo7zRWsltl80Pa2KRGI5JNPhD1c7jZQ32g+cD/tgmLy2ZaC//AL0leNUx2GWKi7BQX+4UzJH69CQ==
 
 ## What changes
 
