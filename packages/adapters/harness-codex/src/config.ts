@@ -1,3 +1,4 @@
+import { type CodingToolsCommand, codingToolsServerName } from "@halonicjs/adapter-harness-kit";
 import { type HarnessBridge, harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { bridgeServerName } from "./app-server-events.ts";
 import { codexRunTokenVariable } from "./environment.ts";
@@ -142,6 +143,26 @@ export function codexConfigArgs(bridge: Pick<HarnessBridge, "url">): string[] {
     "-c",
     `mcp_servers.${bridgeServerName}.url=${tomlString(`${address}/mcp`)}`,
   ];
+}
+
+/**
+ * The arguments that name the coding tools server for a fenced run
+ * (requirement `harness-codex.coding-tools`): Codex starts it as its own
+ * child over standard input and output, inside the same fence. `-c` sets it
+ * for this process only, so `config.toml` stays the same for every run, and
+ * no project setting can change it. The server's tools are only the three
+ * that read: Codex 0.166 isn't confirmed to ask before it calls an MCP tool,
+ * so `run_tests` stays out until it is (HAL-16748).
+ *
+ * @example
+ * codexCodingToolsArgs({ command: "/opt/halonic/node", args: ["cli.js", "coding-tools"] });
+ * // ["-c", 'mcp_servers.halonic-tools.command="/opt/halonic/node"',
+ * //  "-c", 'mcp_servers.halonic-tools.args=["cli.js","coding-tools"]']
+ */
+export function codexCodingToolsArgs(command: CodingToolsCommand): string[] {
+  const server = `mcp_servers.${codingToolsServerName}`;
+  const args = `[${command.args.map(tomlString).join(",")}]`;
+  return ["-c", `${server}.command=${tomlString(command.command)}`, "-c", `${server}.args=${args}`];
 }
 
 /**

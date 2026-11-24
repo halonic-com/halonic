@@ -10,7 +10,7 @@ The Claude Code harness shall set `ANTHROPIC_BASE_URL` to the run's bridge, put 
 
 - Given a bridge at "http://127.0.0.1:4100" and a profile with a settings and a temp folder,
   when the engine opens a session with the harness's environment,
-  then the program gets all six variables, and the token only in `ANTHROPIC_CUSTOM_HEADERS` and `HALONIC_RUN_TOKEN`.
+  then the program gets all seven variables (`ENABLE_TOOL_SEARCH` included, see `harness-claude-code.mcp-tools-listed`), and the token only in `ANTHROPIC_CUSTOM_HEADERS` and `HALONIC_RUN_TOKEN`.
 - Given a profile whose settings folder is `null`,
   when the environment is asked for,
   then it fails with an error that doesn't contain the token.

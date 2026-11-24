@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import {
+  codingToolsCommand,
   exitGraceMs,
   exitWithin,
   type OwnSandboxCheck,
@@ -25,7 +26,11 @@ import {
   userMessageLine,
 } from "./command.ts";
 import { streamJsonLines } from "./output.ts";
-import { writeClaudeCodeSettings } from "./settings.ts";
+import {
+  codingToolsSettings,
+  codingToolsSettingsFile,
+  writeClaudeCodeSettings,
+} from "./settings.ts";
 import { findSignInProblem, SignInError } from "./sign-in.ts";
 import { StreamJsonReader } from "./stream-json.ts";
 
@@ -100,6 +105,7 @@ export class ClaudeCodeRun implements HarnessRun {
     }
     await writeClaudeCodeSettings(folder, settings);
     const instructionsFile = await this.#writeInstructions(session.profile.tempFolder, settings);
+    const codingToolsFile = await this.#writeCodingTools(session, settings);
     // Wherever the fence isn't proven, Claude Code's own sandbox is the one around its shell commands.
     const own = session.fence.state !== "fenced" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
@@ -109,6 +115,7 @@ export class ClaudeCodeRun implements HarnessRun {
         instructionsFile,
         skillsFolder: this.#task.instructionsFolder ?? null,
         ownSandbox: own,
+        codingToolsFile,
       }),
     );
     const input = process.stdin.getWriter();
@@ -133,6 +140,22 @@ export class ClaudeCodeRun implements HarnessRun {
     if (!hasInstructions(this.#task)) return null;
     const path = join(tempFolder, instructionsFileName);
     await writer.write(path, this.#task.instructions);
+    return path;
+  }
+
+  /**
+   * Writes the file that names the coding tools server to the session's
+   * temp folder, for a fenced run with a server. Returns the file, or `null`
+   * when the run names no server.
+   */
+  async #writeCodingTools(
+    session: SandboxSession,
+    writer: SettingsFolderWriter,
+  ): Promise<string | null> {
+    const command = codingToolsCommand(this.#task, session, "all");
+    if (command === null) return null;
+    const path = join(session.profile.tempFolder, codingToolsSettingsFile);
+    await writer.write(path, codingToolsSettings(command));
     return path;
   }
 

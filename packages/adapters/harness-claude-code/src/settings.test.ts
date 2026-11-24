@@ -45,7 +45,16 @@ verifies("harness-claude-code.settings", () => {
 
       expect(await readJson("settings.json")).toEqual({
         sandbox: { enabled: false },
-        permissions: { allow: ["mcp__halonic"], deny: ["WebFetch", "WebSearch"] },
+        permissions: {
+          allow: [
+            "mcp__halonic",
+            "mcp__halonic-tools__read_ranges",
+            "mcp__halonic-tools__search",
+            "mcp__halonic-tools__repo_map",
+          ],
+          ask: ["mcp__halonic-tools__run_tests"],
+          deny: ["WebFetch", "WebSearch"],
+        },
       });
     });
 
