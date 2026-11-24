@@ -3,6 +3,7 @@ import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import type { AssistantHost, Chat, ShownItem } from "../api.ts";
+import { cardReviewsOf } from "../cards/card-reviews.ts";
 import { buildChatWords } from "./build-chat-words.ts";
 import { endLine, type ReplyEnd } from "./turns.ts";
 
@@ -138,6 +139,7 @@ export class BuildChats {
         chatId,
         message,
         shown: view.shown,
+        notes: cardReviewsOf(this.host).takeNotes(chatId),
         signal: stopper.signal,
         listener: {
           onToolCall: (tool) => this.update(chatId, () => ({ tool })),
@@ -151,9 +153,7 @@ export class BuildChats {
       });
       end = endOf(answer.end);
     } catch (error) {
-      const toolsRan = (this.views.get(chatId)?.messages ?? [])
-        .slice(view.messages.length)
-        .some((each) => each.role === "tool");
+      const toolsRan = this.toolsRanSince(chatId, view.messages.length);
       end =
         error instanceof EngineNotAnswering
           ? { kind: "engine-stopped", toolsRan }
@@ -177,6 +177,12 @@ export class BuildChats {
   /** Stops the answer of the chat shown; it ends with "Stopped by you.". */
   stop(): void {
     if (this.state.kind === "chat") this.stoppers.get(this.state.view.chat.id)?.abort();
+  }
+
+  /** Whether a tool answered after the chat's first `count` messages. */
+  private toolsRanSince(chatId: string, count: number): boolean {
+    const messages = this.views.get(chatId)?.messages ?? [];
+    return messages.slice(count).some((each) => each.role === "tool");
   }
 
   private async load(read: () => Promise<Chat>): Promise<void> {

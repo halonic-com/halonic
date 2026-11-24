@@ -248,11 +248,11 @@ export class WorkspaceAssistant implements AssistantHost {
       if (message !== undefined) this.#add(chat.id, message);
     };
     const own = request.listener;
-    const messages = [
-      ...chat.messages,
-      ...shownNote(request.shown),
-      ...(sent === undefined ? [] : [sent]),
-    ];
+    const messages = forTheModel(
+      [...chat.messages, ...shownNote(request.shown)],
+      sent,
+      request.notes ?? [],
+    );
     // The Build chat follows the workspace's own authoring skill, else the built-in one. It isn't
     // kept in the chat, so an edited skill counts from the next answer on.
     const skill: ChatMessage = { role: "system", content: authoringInstructions(loaded) };
@@ -317,4 +317,19 @@ function shownNote(shown: readonly ShownItem[] | undefined): ChatMessage[] {
   if (shown === undefined || shown.length === 0) return [];
   const items = shown.map(({ item, name }) => `${item.kind} "${name}" (${item.hub}/${item.id})`);
   return [{ role: "system", content: `The person showed you these items: ${items.join(", ")}.` }];
+}
+
+/**
+ * What the model reads: the chat, then the person's message with the notes on the cards they
+ * decided before it (flow-assistant 3.3). The notes aren't kept: the cards already say it.
+ */
+function forTheModel(
+  kept: readonly ChatMessage[],
+  sent: ChatMessage | undefined,
+  notes: readonly string[],
+): readonly ChatMessage[] {
+  if (notes.length === 0) return sent === undefined ? kept : [...kept, sent];
+  const said = notes.join("\n");
+  if (sent === undefined) return [...kept, { role: "user", content: said }];
+  return [...kept, { role: "user", content: `${said}\n\n${sent.content}` }];
 }

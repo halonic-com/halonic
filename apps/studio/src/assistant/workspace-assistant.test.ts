@@ -141,6 +141,19 @@ verifies("studio.workspace-assistant", () => {
       ]);
     });
 
+    it("gives the model the notes on decided cards with the message, and keeps only the message", async () => {
+      const { assistant, requests } = setup();
+      const chat = await assistant.newChat("build");
+      const notes = ["(The person accepted the changes to models.yaml.)"];
+      await assistant.answer({ chatId: chat.id, message: "Thanks", notes });
+      expect(requests[0]?.messages.at(-1)).toEqual({
+        role: "user",
+        content: "(The person accepted the changes to models.yaml.)\n\nThanks",
+      });
+      const kept = await assistant.chat(chat.id);
+      expect(kept.messages.map((message) => message.content)).toEqual(["Thanks", "Done."]);
+    });
+
     it("takes the model call limit of workspace.yaml over Settings", async () => {
       const files = { "workspace.yaml": "id: acme\nname: Acme\nassistant:\n  maxSteps: 3\n" };
       const { assistant, requests } = setup({ files, settings: { "assistant.turn-limit": 9 } });
