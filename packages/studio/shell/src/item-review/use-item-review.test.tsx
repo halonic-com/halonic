@@ -9,6 +9,7 @@ import { render, unmountAll } from "../test-support/render.tsx";
 import { changesDecided } from "./changes-decided.ts";
 import { ItemChangeMark } from "./item-change-mark.tsx";
 import type { ItemChangeToReview, ItemReview, ItemReviewDecision } from "./item-review-api.ts";
+import { itemReviewWords } from "./item-review-words.ts";
 import { useItemReview } from "./use-item-review.tsx";
 
 afterEach(unmountAll);
@@ -99,13 +100,24 @@ describe("useItemReview", () => {
       expect(changesDecided(review, checkAdded, "accept")).toEqual([checkAdded]);
     });
 
+    it("quotes each change it takes along and joins them as plain English", () => {
+      expect(itemReviewWords.alsoAccepts(["Step added: Check", "Step added: Notify"])).toBe(
+        "Accepting this also accepts “Step added: Check” and “Step added: Notify”",
+      );
+      expect(itemReviewWords.alsoRejects(["A", "B", "C"])).toBe(
+        "Rejecting this also rejects “A”, “B” and “C”",
+      );
+    });
+
     it("names them on the mark, and counts them in the toast", async () => {
       const undo = vi.fn(async () => "held" as const);
       accept.mockResolvedValueOnce({ status: "done", undo });
       const { container, toasts, acceptOn } = await showPage();
       const mark = container.querySelector('[data-change-id="step:start"]');
-      expect(mark?.textContent).toContain("Accept also accepts: Step added: Check");
-      expect(mark?.textContent).toContain("Reject also rejects: Step changed: Notify (input)");
+      expect(mark?.textContent).toContain("Accepting this also accepts “Step added: Check”");
+      expect(mark?.textContent).toContain(
+        "Rejecting this also rejects “Step changed: Notify (input)”",
+      );
 
       await acceptOn("step:start");
       const [toast] = toasts.list();

@@ -136,13 +136,13 @@ verifies("workflows.page.changes-to-review", () => {
     const { page, toasts } = await showPage(review.host);
     // `check` isn't on the canvas the page read, so its mark is above it, as a removed step's is.
     expect(mark(page, "step:check")?.textContent).toContain(
-      "Reject also rejects: Step changed: Start (next steps)",
+      "Rejecting this also rejects “Step changed: Start (next steps)”",
     );
 
     // Picking a changed step on the canvas shows its mark too.
     await click(card(page, "start") as HTMLElement);
     expect(mark(page, "step:start")?.textContent).toContain(
-      "Accept also accepts: Step added: Check",
+      "Accepting this also accepts “Step added: Check”",
     );
     await click(accept(page, "step:start"));
 

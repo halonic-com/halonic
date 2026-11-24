@@ -1,6 +1,13 @@
 // The words of the assistant's changes to review on an item page (AI changes 1.2 and section 3;
 // T14 review panel notes 2 to 5, HAL-1307).
 
+const changeList = new Intl.ListFormat("en-GB", { type: "conjunction" });
+
+/** Each change's sentence in curly quotes, joined as plain English: "“A”, “B” and “C”". */
+function quotedList(sentences: readonly string[]): string {
+  return changeList.format(sentences.map((sentence) => `“${sentence}”`));
+}
+
 /** What the item bar and the in-place marks say. */
 export const itemReviewWords = {
   /** The bar's name for screen readers: a region among the page's others. */
@@ -33,12 +40,12 @@ export const itemReviewWords = {
   /** A change that overlaps another can only be decided with the rest of the file. */
   cantSeparate:
     "This change overlaps another, so you can't accept or reject it on its own. Use Accept all or Reject all.",
-  /** Under a mark whose Accept also accepts the changes it needs: "Accept also accepts: Step added: Page oncall". */
+  /** Under a mark whose Accept also accepts the changes it needs: 'Accepting this also accepts “Step added: Check”'. */
   alsoAccepts: (sentences: readonly string[]): string =>
-    `Accept also accepts: ${sentences.join("; ")}`,
-  /** Under a mark whose Reject also rejects the changes that need it. */
+    `Accepting this also accepts ${quotedList(sentences)}`,
+  /** Under a mark whose Reject also rejects the changes that need it (HAL-17353). */
   alsoRejects: (sentences: readonly string[]): string =>
-    `Reject also rejects: ${sentences.join("; ")}`,
+    `Rejecting this also rejects ${quotedList(sentences)}`,
   /** A decision that failed, in the item pages' words. */
   couldntSave: (reason: string): string => `Couldn't save: ${reason}`,
 };
