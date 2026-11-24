@@ -170,28 +170,63 @@ function nextSteps(status: PrStatus): string[] {
   return steps;
 }
 
+/** What one head looks like, as `pr_status` and the PR watcher's wake comment both say it. */
+export interface HeadFacts {
+  readonly head: string;
+  readonly ciOk: CheckState;
+  readonly mergeable: PrStatus["mergeable"];
+  /** Left out when undefined: the watcher doesn't compare with the base. */
+  readonly behindBase?: number | "n/a";
+  readonly inQueue: boolean;
+  readonly approvals: readonly Approval[];
+  /** The checks that failed on the head, named only while `ci-ok` is red. */
+  readonly failingChecks?: readonly string[];
+}
+
+/** At most this many failing checks are named; the rest are counted. */
+const namedChecks = 5;
+
+/** The failing checks, JSON-quoted: a pull request's own workflows name them. */
+function failingText(facts: HeadFacts): string {
+  const names = facts.failingChecks ?? [];
+  if (facts.ciOk !== "failure" || names.length === 0) {
+    return "";
+  }
+  const named = names.slice(0, namedChecks).map((name) => JSON.stringify(name));
+  const more = names.length > namedChecks ? ` and ${names.length - namedChecks} more` : "";
+  return ` (failing: ${named.join(", ")}${more})`;
+}
+
+/** Two lines: the head with its `ci-ok` and mergeability, then the merge queue and approvals. */
+export function headFactsText(facts: HeadFacts): [string, string] {
+  const signed =
+    facts.approvals.length === 0
+      ? "none"
+      : facts.approvals
+          .map(
+            (a) =>
+              `${a.by} on ${a.head}${a.counts ? "" : " (doesn't count)"}${a.note ? `: ${a.note}` : ""}`,
+          )
+          .join("; ");
+  const behind = facts.behindBase === undefined ? "" : `; behind base by ${facts.behindBase}`;
+  return [
+    `head ${facts.head.slice(0, 7)}: ci-ok ${facts.ciOk}${failingText(facts)}; mergeable ${facts.mergeable}${behind}`,
+    `merge queue: ${facts.inQueue ? "queued" : "not queued"}; approvals: ${signed}`,
+  ];
+}
+
 /**
  * The short text an agent reads: one line per fact, then what needs doing.
  * The title and branch come from whoever opened the pull request, a stranger
  * on a fork included, so they stay JSON-quoted in fields of their own.
  */
 export function statusText(status: PrStatus): string {
-  const signed =
-    status.approvals.length === 0
-      ? "none"
-      : status.approvals
-          .map(
-            (a) =>
-              `${a.by} on ${a.head}${a.counts ? "" : " (doesn't count)"}${a.note ? `: ${a.note}` : ""}`,
-          )
-          .join("; ");
   const steps = nextSteps(status);
   return [
     `#${status.number} (${status.repo})`,
     `${untrustedNote}; title ${JSON.stringify(status.title ?? "")}; branch ${JSON.stringify(status.branch)}`,
     `${status.state}${status.draft ? ", draft" : ""}; task ${status.task ?? "none"}; author ${status.author ?? "unknown"}`,
-    `head ${status.head.slice(0, 7)}: ci-ok ${status.ciOk}; mergeable ${status.mergeable}; behind base by ${status.behindBase ?? "n/a"}`,
-    `merge queue: ${status.inQueue ? "queued" : "not queued"}; approvals: ${signed}`,
+    ...headFactsText({ ...status, behindBase: status.behindBase ?? "n/a" }),
     `${status.changedLines} changed lines; reviewer by the path rules: ${status.reviewer}`,
     ...(status.latestReviewFinding === undefined
       ? []

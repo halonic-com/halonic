@@ -12,6 +12,7 @@ import type { FoundPulls, PullRef } from "./discover.ts";
 import { type PullFactsReader, pullKey } from "./facts.ts";
 import { postponeUntil } from "./monitors.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
+import type { PullSummary } from "./wake-status.ts";
 
 /**
  * What one tick needs. `discover` finds each task's pull requests by branch;
@@ -26,6 +27,8 @@ export interface TickOptions {
   readonly log: (line: string) => void;
   /** When the pass started: monitors are moved relative to it. */
   readonly now: Date;
+  /** What `pr_status` would say about a pull request, for the wake comment; none when unset. */
+  readonly summary?: PullSummary;
 }
 
 /** How a tick went: counts, and the tasks it couldn't check. */
@@ -128,8 +131,29 @@ const reasonText: Record<Reason["kind"], (head: string) => string> = {
     "it merged and `ci-ok` is green, but the task has comments since. Mark it done if nothing else is left.",
 };
 
-/** The comment that wakes the author: one line per new state, each with its marker. */
-export function wakeMessage(reasons: readonly Reason[]): string {
+/** What `pr_status` would say about each open pull request the reasons name, once each. */
+function statusLines(reasons: readonly Reason[], summary: PullSummary | undefined): string[] {
+  if (summary === undefined) {
+    return [];
+  }
+  const pulls = new Map(reasons.map(({ pull }) => [pullKey(pull), pull]));
+  const lines = [...pulls.values()].flatMap((pull) =>
+    summary(pull).map((line) => `- #${pull.number} ${line}`),
+  );
+  return lines.length === 0
+    ? []
+    : [
+        "What `pr_status` says, as of this check. No need to check again unless you pushed since:",
+        ...lines,
+        "",
+      ];
+}
+
+/**
+ * The comment that wakes the author: one line per new state, then each pull
+ * request's status from the same pass, then the markers.
+ */
+export function wakeMessage(reasons: readonly Reason[], summary?: PullSummary): string {
   const lines = reasons.map(
     ({ pull, kind }) =>
       `- [#${pull.number}](${pull.url}): ${reasonText[kind](pull.head.slice(0, 7))}`,
@@ -139,6 +163,7 @@ export function wakeMessage(reasons: readonly Reason[]): string {
     "",
     ...lines,
     "",
+    ...statusLines(reasons, summary),
     ...reasons.map((reason) => marker(reason.key)),
   ].join("\n");
 }
@@ -220,7 +245,9 @@ async function act(options: TickOptions, task: TaskRow, decision: Decision): Pro
     return false;
   }
   const body =
-    decision.kind === "done" ? doneMessage(decision.pulls) : wakeMessage(decision.reasons);
+    decision.kind === "done"
+      ? doneMessage(decision.pulls)
+      : wakeMessage(decision.reasons, options.summary);
   options.log(`${task.identifier}: ${decision.kind}${options.dryRun ? " (dry run)" : ""}\n${body}`);
   if (options.dryRun) {
     return true;
