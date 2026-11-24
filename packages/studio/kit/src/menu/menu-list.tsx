@@ -19,6 +19,9 @@ export const dividerClasses = "mx-0 my-1 border-0 border-t border-border";
 // Padding 8px 8px 6px, at most 300px wide, wrapping (component specs 20.2).
 const descriptionClasses = "m-0 max-w-75 px-2 pt-2 pb-1.5 text-small text-fg-muted";
 
+// The description's padding, mirrored, at the bottom and in caption size (component specs 21.5).
+const footerClasses = "m-0 max-w-75 px-2 pt-1.5 pb-2 text-caption text-fg-subtle";
+
 // The caption-caps label of a group (component specs 24.4, "Group labels"). Exported for the states
 // page's static copy.
 export const menuHeadingClasses = "px-2 pt-2 pb-1 text-label uppercase text-fg-subtle";
@@ -33,6 +36,7 @@ export interface MenuListProps {
   readonly naming: MenuNaming;
   readonly entries: readonly MenuEntry[];
   readonly description?: string | undefined;
+  readonly footer?: string | undefined;
   /**
    * Escape, Tab or a pick: the owner hides the popover and gives the focus back. A pick runs the
    * item's `onSelect` after this, so a Dialog the item opens returns the focus there.
@@ -45,7 +49,15 @@ export interface MenuListProps {
  * between them, type-to-find and picking. Who opens it, where it goes and where the focus returns
  * is the owner's part.
  */
-export function MenuList({ id, listRef, naming, entries, description, onClose }: MenuListProps) {
+export function MenuList({
+  id,
+  listRef,
+  naming,
+  entries,
+  description,
+  footer,
+  onClose,
+}: MenuListProps) {
   const descriptionId = useId();
   const [active, setActive] = useState(-1);
   const typed = useRef({ text: "", at: 0 });
@@ -157,6 +169,13 @@ export function MenuList({ id, listRef, naming, entries, description, onClose }:
           </div>
         );
       })}
+      {footer === undefined ? null : (
+        // Not an item either, under a divider unless the menu has no items at all.
+        <>
+          {items.length === 0 ? null : <hr className={dividerClasses} />}
+          <p className={footerClasses}>{footer}</p>
+        </>
+      )}
     </div>
   );
 }

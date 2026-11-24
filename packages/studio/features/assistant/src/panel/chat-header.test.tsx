@@ -1,0 +1,178 @@
+// @vitest-environment jsdom
+import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { chatTime } from "../chat/chat-menu-words.ts";
+import {
+  buttonNamed,
+  chatOf,
+  fakeHost,
+  installFakePopover,
+  openDialogsInJsdom,
+  show,
+  unmount,
+} from "../test-support.tsx";
+import { AssistantPanel } from "./assistant-panel.tsx";
+
+let restorePopover = () => {};
+beforeEach(() => {
+  restorePopover = installFakePopover();
+  openDialogsInJsdom();
+});
+afterEach(() => {
+  unmount();
+  restorePopover();
+});
+
+const today = new Date().toISOString();
+const routine = {
+  ...chatOf("c1", [{ role: "user", content: "Add a routine" }], "Add a routine"),
+  lastUsedAt: today,
+  answering: true,
+};
+const alias = {
+  ...chatOf("c2", [{ role: "user", content: "Fix the alias" }], "Fix the triage alias"),
+  itemsToReview: 2,
+};
+
+function panel(fake: ReturnType<typeof fakeHost>) {
+  const services = { get: () => fake.host, find: () => fake.host };
+  const context = { services, announcer: { announce: () => {} } } as unknown as WorkspaceContext;
+  return <AssistantPanel context={context} title="Assistant" onClose={() => {}} />;
+}
+
+const rows = (page: HTMLElement) =>
+  [...page.querySelectorAll<HTMLElement>("[role=menuitemradio]")].map((row) => ({
+    name: row.getAttribute("aria-label"),
+    checked: row.getAttribute("aria-checked"),
+  }));
+const heading = (page: HTMLElement) => page.querySelector("h2")?.textContent;
+
+async function pick(page: HTMLElement, label: string) {
+  const item = [...page.querySelectorAll<HTMLElement>("[role^=menuitem]")].find(
+    (each) => each.textContent?.includes(label) === true,
+  );
+  await act(async () => item?.click());
+}
+
+verifies("assistant.chat.menu", () => {
+  it("lists the kept chats, recent first, with their time, running dot or to-review chip", async () => {
+    const page = await show(panel(fakeHost([routine, alias])));
+    const time = chatTime(today, new Date());
+    expect(rows(page)).toEqual([
+      { name: `Add a routine, ${time}, answering`, checked: "true" },
+      {
+        name: `Fix the triage alias, ${chatTime(alias.lastUsedAt, new Date())}, 2 to review`,
+        checked: "false",
+      },
+    ]);
+    expect(page.textContent).toContain("Keeps your 40 most recent chats on this computer.");
+  });
+
+  it("has only New chat and the footer when no chat is kept yet", async () => {
+    const page = await show(panel(fakeHost()));
+    expect(rows(page)).toEqual([]);
+    expect(page.querySelector("[role=menu]")?.textContent).toBe(
+      "New chatKeeps your 40 most recent chats on this computer.",
+    );
+  });
+
+  it("shows the chat picked, checked, with focus in the box", async () => {
+    const page = await show(panel(fakeHost([routine, alias])));
+    await pick(page, "Fix the triage alias");
+    expect(heading(page)).toBe("Fix the triage alias");
+    expect(rows(page).map((row) => row.checked)).toEqual(["false", "true"]);
+    expect(document.activeElement?.tagName).toBe("TEXTAREA");
+  });
+});
+
+describe("chatTime", () => {
+  const now = new Date(2026, 10, 24, 12, 0);
+  it("says the time today, yesterday, the day this week, then the date", () => {
+    expect(chatTime(new Date(2026, 10, 24, 9, 5).toISOString(), now)).toBe("09:05");
+    expect(chatTime(new Date(2026, 10, 23, 22, 0).toISOString(), now)).toBe("yesterday");
+    expect(chatTime(new Date(2026, 10, 20, 8, 0).toISOString(), now)).toBe("Fri");
+    expect(chatTime(new Date(2026, 10, 3, 8, 0).toISOString(), now)).toBe("3 Nov");
+    expect(chatTime(new Date(2025, 11, 2, 8, 0).toISOString(), now)).toBe("2 Dec 2025");
+  });
+});
+
+async function rename(page: HTMLElement) {
+  await pick(page, "Rename");
+  return page.querySelector("header input") as HTMLInputElement;
+}
+
+function type(field: HTMLInputElement, text: string) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(field, text);
+}
+
+verifies("assistant.chat.rename", () => {
+  it("turns the title into a field, and Enter saves it trimmed", async () => {
+    const fake = fakeHost([alias]);
+    const page = await show(panel(fake));
+    const field = await rename(page);
+    expect(field.getAttribute("aria-label")).toBe("Rename Fix the triage alias");
+    type(field, "  Daily triage  ");
+    await act(async () => {
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(fake.kept()[0]?.title).toBe("Daily triage");
+    expect(heading(page)).toBe("Daily triage");
+  });
+
+  it("puts the old title back when the field is left empty", async () => {
+    const fake = fakeHost([alias]);
+    const page = await show(panel(fake));
+    const field = await rename(page);
+    type(field, "   ");
+    await act(async () => field.blur());
+    expect(fake.kept()[0]?.title).toBe("Fix the triage alias");
+    expect(heading(page)).toBe("Fix the triage alias");
+  });
+
+  it("cancels on Escape without saving", async () => {
+    const fake = fakeHost([alias]);
+    const page = await show(panel(fake));
+    const field = await rename(page);
+    type(field, "Other");
+    await act(async () => {
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(fake.kept()[0]?.title).toBe("Fix the triage alias");
+    expect(page.querySelector("header input")).toBeNull();
+  });
+});
+
+verifies("assistant.chat.delete", () => {
+  it("asks first, saying the changes to review stay, then shows no chat", async () => {
+    const fake = fakeHost([alias]);
+    const page = await show(panel(fake));
+    await pick(page, "Delete chat…");
+    const dialog = document.querySelector("dialog") as HTMLElement;
+    expect(dialog.textContent).toContain('Delete the chat "Fix the triage alias"?');
+    expect(dialog.textContent).toContain("The changes it made in 2 items stay there to review.");
+    // The button holds its busy label too, to keep its width.
+    const confirm = [...dialog.querySelectorAll("button")].find((button) =>
+      button.textContent?.startsWith("Delete chat"),
+    );
+    await act(async () => confirm?.click());
+    expect(fake.kept()).toEqual([]);
+    expect(page.textContent).toContain("No chat open");
+    expect(document.activeElement?.textContent).toBe("New chat");
+  });
+
+  it("changes nothing on Cancel, and a draft has no ⋮", async () => {
+    const fake = fakeHost([routine]);
+    const page = await show(panel(fake));
+    await pick(page, "Delete chat…");
+    const dialog = document.querySelector("dialog") as HTMLElement;
+    expect(dialog.textContent).not.toContain("stay there to review");
+    await act(async () => buttonNamed(dialog, "Cancel")?.click());
+    expect(fake.kept()).toHaveLength(1);
+    expect(heading(page)).toBe("Add a routine");
+
+    const draft = await show(panel(fakeHost()));
+    expect(buttonNamed(draft, "More actions for New chat")).toBeUndefined();
+  });
+});

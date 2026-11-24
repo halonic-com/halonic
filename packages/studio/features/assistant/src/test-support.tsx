@@ -87,6 +87,7 @@ export function fakeHost(chats: Chat[] = []) {
   };
   const keep = (chat: Chat) => {
     chats = [chat, ...chats.filter((each) => each.id !== chat.id)];
+    for (const listener of listeners) listener({ kind: "chats" });
   };
   const host: AssistantHost = {
     chats: async () => chats.filter((chat) => !chat.draft),
@@ -121,8 +122,13 @@ export function fakeHost(chats: Chat[] = []) {
         });
       });
     },
-    rename: async () => {},
-    deleteChat: async () => {},
+    rename: async (chatId, title) => {
+      const chat = find(chatId);
+      chats = chats.map((each) => (each === chat ? { ...chat, title: title.trim() } : each));
+    },
+    deleteChat: async (chatId) => {
+      chats = chats.filter((each) => each.id !== chatId);
+    },
     setModel: async () => {},
     models: async () => [],
     itemsToReview: async () => Array.from({ length: items }, () => ({}) as never),
@@ -170,6 +176,8 @@ export function fakeHost(chats: Chat[] = []) {
     finish: async (answer: ChatAnswer | Error) => {
       await act(async () => pending.shift()?.(answer));
     },
+    /** The chats as the host keeps them now, drafts too. */
+    kept: () => chats,
     /** How often a chat was read. */
     reads: () => reads,
     /** Makes reading a chat fail, or work again with `undefined`. */
@@ -187,4 +195,30 @@ export function fakeHost(chats: Chat[] = []) {
       items = count;
     },
   };
+}
+
+/**
+ * Gives jsdom the `popover` methods the kit's Menu calls; returns the function that takes them
+ * away. The tests pick menu items directly, so opening and closing only need to exist.
+ */
+export function installFakePopover(): () => void {
+  const names = ["showPopover", "hidePopover"] as const;
+  for (const name of names) {
+    Object.defineProperty(HTMLElement.prototype, name, { configurable: true, value() {} });
+  }
+  return () => {
+    for (const name of names) Reflect.deleteProperty(HTMLElement.prototype, name);
+  };
+}
+
+/** jsdom has `<dialog>` but no `showModal()`; opening it is all the dialog tests need. */
+export function openDialogsInJsdom(): void {
+  Object.assign(HTMLDialogElement.prototype, {
+    showModal(this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    },
+    close(this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    },
+  });
 }

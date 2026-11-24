@@ -97,10 +97,11 @@ verifies("assistant.chat.show-in-chat", () => {
       await act(() => showInChat.show(shownOf("workflow", id), context));
     }
     expect(chips(page)).toEqual(["one", "two", "three"]);
-    expect(buttonNamed(page, "+1")).toBeDefined();
-    expect([...page.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(
-      ["four"],
-    );
+    const more = buttonNamed(page, "+1");
+    expect(more).toBeDefined();
+    // The chat menu in the header has its own items, so look only inside the +1 menu.
+    const moreItems = more?.parentElement?.querySelectorAll('[role="menuitem"]') ?? [];
+    expect([...moreItems].map((item) => item.textContent)).toEqual(["four"]);
     await act(async () => buttonNamed(page, "two")?.click());
     expect(context.openItem).toHaveBeenCalledWith({ kind: "workflow", hub: "acme", id: "two" });
   });

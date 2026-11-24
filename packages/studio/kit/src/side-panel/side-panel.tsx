@@ -8,6 +8,12 @@ import { SkeletonBar, type SkeletonBarWidth } from "../skeleton-bar/skeleton-bar
 export interface SidePanelProps {
   /** The panel's heading, in `text-section` (`text-heading` on a phone): "Sort the inbox". */
   readonly title: string;
+  /**
+   * What shows in the title's place, for a title you act on: the Assistant's chat menu button, or
+   * its rename field. The heading stays for screen readers, with the title's text, so a menu that
+   * opens from it isn't read as part of the heading.
+   */
+  readonly heading?: ReactNode;
   /** The region's name when it should stay put while the title changes: "Assistant". */
   readonly label?: string | undefined;
   /**
@@ -150,10 +156,17 @@ function PanelHeader({ props, sheet, inDialog, titleId, title }: PanelHeaderProp
         ref={title}
         id={titleId}
         tabIndex={-1}
-        className={`min-w-0 flex-1 truncate ${sheet ? "text-heading" : "text-section"}`}
+        className={
+          props.heading === undefined
+            ? `min-w-0 flex-1 truncate ${sheet ? "text-heading" : "text-section"}`
+            : "sr-only"
+        }
       >
         {props.title}
       </h2>
+      {props.heading === undefined ? null : (
+        <div className="flex min-w-0 flex-1 items-center">{props.heading}</div>
+      )}
       {props.actions === undefined ? null : (
         <div className="flex shrink-0 gap-1">{props.actions}</div>
       )}

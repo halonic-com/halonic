@@ -48,6 +48,20 @@ export interface MenuItem {
    * these words read after the label, "needs you". A list of open tabs.
    */
   readonly attention?: string | undefined;
+  /**
+   * The item is busy: the still 6px `running` dot at the right, and these words read after the
+   * label, "answering". The Assistant's chat menu.
+   */
+  readonly running?: string | undefined;
+  /** When the item was last used, after the label in `text-caption` `fg-subtle`: "10:42", "Mon". */
+  readonly time?: string | undefined;
+  /** A `neutral` chip at the right for what is left to do in the item: "2 to review". */
+  readonly count?: string | undefined;
+  /**
+   * The item's whole name for a screen reader, when its parts say more than its label: "Add a
+   * routine, 10:42, answering". It replaces the name built from the label and the tag.
+   */
+  readonly name?: string | undefined;
   readonly onSelect: () => void;
 }
 
@@ -100,6 +114,11 @@ export interface MenuProps {
    * isn't an item: never a link or a button (component specs 20.2).
    */
   readonly description?: string | undefined;
+  /**
+   * A sentence under the items, in `text-caption` `fg-subtle`: the chat menu's "Keeps your 40
+   * most recent chats on this computer." Not an item, and not read when the menu opens.
+   */
+  readonly footer?: string | undefined;
   /** Line the menu up with the trigger's left edge (the default) or its right edge. */
   readonly align?: PopoverAlign;
 }
@@ -126,7 +145,7 @@ export { dividerClasses, menuClasses, menuHeadingClasses } from "./menu-list.tsx
  *   entries={[{ id: "rename", label: "Rename…", onSelect: rename }, "divider", { id: "delete", label: "Delete agent", danger: true, onSelect: remove }]}
  * />
  */
-export function Menu({ trigger, entries, description, align = "start" }: MenuProps) {
+export function Menu({ trigger, entries, description, footer, align = "start" }: MenuProps) {
   const menuId = useId();
   const triggerId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -208,6 +227,7 @@ export function Menu({ trigger, entries, description, align = "start" }: MenuPro
         naming={{ labelledBy: triggerId }}
         entries={entries}
         description={description}
+        footer={footer}
         onClose={close}
       />
     </>

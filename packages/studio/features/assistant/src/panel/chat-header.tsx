@@ -1,0 +1,208 @@
+import {
+  Button,
+  ChevronDownIcon,
+  Dialog,
+  Menu,
+  type MenuEntry,
+  MoreIcon,
+  PlusIcon,
+  SparkIcon,
+} from "@halonicjs/studio-kit";
+import { type RefObject, useEffect, useRef, useState } from "react";
+import type { AssistantHost, ChatSummary } from "../api.ts";
+import { buildChatWords } from "../chat/build-chat-words.ts";
+import type { BuildChats, ChatView } from "../chat/build-chats.ts";
+import { chatTime, chatMenuWords as words } from "../chat/chat-menu-words.ts";
+
+/** The parts of the header that act on the chat shown. */
+export interface ChatHeaderProps {
+  readonly host: AssistantHost;
+  readonly chats: BuildChats;
+  /** The chat shown, if any: without one the header is "Assistant" and ✕ only (H3). */
+  readonly view: ChatView | undefined;
+  /** The panel's name, the heading while there is no kept chat. */
+  readonly title: string;
+  readonly box: RefObject<HTMLTextAreaElement | null>;
+  readonly onNewChat: () => void;
+}
+
+/**
+ * The title as the chat menu's button, or as the rename field while renaming (flow-assistant 5.5,
+ * 5.6). A draft has no menu of its own yet, so its button still opens the recent chats.
+ */
+export function ChatHeading(
+  props: ChatHeaderProps & { readonly renaming: boolean; readonly onRenamed: () => void },
+) {
+  const { chats, view, title, renaming } = props;
+  const recent = useRecentChats(props.host);
+  if (view === undefined) return title;
+  const heading = view.chat.draft ? title : view.chat.title;
+  if (renaming) {
+    const done = () => {
+      props.onRenamed();
+      props.box.current?.focus();
+    };
+    return <RenameField chats={chats} title={heading} onDone={done} />;
+  }
+  const now = new Date();
+  const rows: MenuEntry[] = recent.map((chat) => {
+    const time = chatTime(chat.lastUsedAt, now);
+    return {
+      id: chat.id,
+      label: chat.title,
+      icon: chat.kind === "build" ? <SparkIcon /> : <AgentLetter kind={chat.kind} />,
+      time,
+      running: chat.answering ? words.answering : undefined,
+      count:
+        !chat.answering && chat.itemsToReview > 0 ? words.toReview(chat.itemsToReview) : undefined,
+      name: words.rowName(chat.title, time, chat.answering, chat.itemsToReview),
+      checked: chat.id === view.chat.id,
+      onSelect: () => void chats.pick(chat.id).then(() => props.box.current?.focus()),
+    };
+  });
+  return (
+    <Menu
+      trigger={(trigger) => (
+        <Button {...trigger} variant="ghost" size="sm" name={heading}>
+          <span className="truncate">{heading}</span>
+          <ChevronDownIcon />
+        </Button>
+      )}
+      entries={[
+        { id: "new", label: buildChatWords.newChat, icon: <PlusIcon />, onSelect: props.onNewChat },
+        "divider",
+        ...rows,
+      ]}
+      footer={words.footer}
+    />
+  );
+}
+
+/** The header's ⋮ (Rename, Delete chat…) and the Delete dialog, for a kept chat only. */
+export function ChatMoreActions(
+  props: ChatHeaderProps & {
+    readonly onRename: () => void;
+    /** Where focus goes once the chat is deleted: the empty panel's New chat (flow 2.2). */
+    readonly afterDelete: () => HTMLElement | null;
+  },
+) {
+  const [deleting, setDeleting] = useState<"asking" | "busy" | { failed: string }>();
+  const chat = props.view?.chat;
+  if (chat === undefined || chat.draft) return null;
+  const remove = () => {
+    setDeleting("busy");
+    props.chats.deleteShown().then(
+      () => setDeleting(undefined),
+      (error: unknown) =>
+        setDeleting({ failed: error instanceof Error ? error.message : String(error) }),
+    );
+  };
+  return (
+    <>
+      <Menu
+        align="end"
+        trigger={(trigger) => (
+          <Button
+            {...trigger}
+            variant="ghost"
+            size="sm"
+            icon={<MoreIcon />}
+            label={words.moreActions(chat.title)}
+          />
+        )}
+        entries={[
+          { id: "rename", label: words.rename, onSelect: props.onRename },
+          { id: "delete", label: words.deleteChat, onSelect: () => setDeleting("asking") },
+        ]}
+      />
+      {deleting === undefined ? null : (
+        <Dialog
+          title={words.deleteTitle(chat.title)}
+          size="sm"
+          confirm={{ label: words.deleteConfirm, variant: "danger", busyLabel: words.deleting }}
+          busy={deleting === "busy"}
+          {...(typeof deleting === "object" ? { error: words.cantDelete(deleting.failed) } : {})}
+          onConfirm={remove}
+          onCancel={() => setDeleting(undefined)}
+          returnFocus={props.afterDelete}
+        >
+          {chat.itemsToReview > 0 ? <p>{words.deleteBody(chat.itemsToReview)}</p> : null}
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+/**
+ * The title as a field with its text selected (`assistant.chat.rename`): Enter or leaving saves
+ * it trimmed, an empty title puts the old one back, Escape cancels.
+ */
+function RenameField({
+  chats,
+  title,
+  onDone,
+}: {
+  readonly chats: BuildChats;
+  readonly title: string;
+  readonly onDone: () => void;
+}) {
+  const field = useRef<HTMLInputElement>(null);
+  const done = useRef(false);
+  useEffect(() => field.current?.select(), []);
+  const finish = (save: boolean) => {
+    if (done.current) return;
+    done.current = true;
+    const typed = field.current?.value ?? "";
+    // A rename the host refuses keeps the old title, as an empty one does.
+    void (save ? chats.rename(typed) : Promise.resolve()).catch(() => {}).finally(onDone);
+  };
+  return (
+    <input
+      ref={field}
+      aria-label={words.renameField(title)}
+      defaultValue={title}
+      className="w-full min-w-0 rounded-sm border border-border-control bg-surface px-2 text-section text-fg"
+      onBlur={() => finish(true)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") finish(true);
+        if (event.key === "Escape") {
+          // The panel's own Escape would close it: here it only cancels the rename.
+          event.stopPropagation();
+          finish(false);
+        }
+      }}
+    />
+  );
+}
+
+/** An agent chat's 16px letter: the first letter of its agent's id. */
+function AgentLetter({ kind }: { readonly kind: ChatSummary["kind"] }) {
+  const id = kind.slice(kind.lastIndexOf("/") + 1);
+  return (
+    <span className="grid size-4 place-items-center rounded-full bg-surface-muted text-caption">
+      {id.charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+/** The kept chats, read again whenever the list changes (one added, renamed, deleted, busy). */
+function useRecentChats(host: AssistantHost): readonly ChatSummary[] {
+  const [recent, setRecent] = useState<readonly ChatSummary[]>([]);
+  useEffect(() => {
+    let live = true;
+    const read = () =>
+      void host.chats().then(
+        (chats) => live && setRecent(chats),
+        () => {},
+      );
+    read();
+    const stop = host.onDidChange((change) => {
+      if (change.kind !== "chat") read();
+    });
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [host]);
+  return recent;
+}
