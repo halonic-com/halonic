@@ -20,6 +20,7 @@ import {
   type PullsPage,
   type QueueNode,
 } from "./facts-query.ts";
+import { countedGitHub, requestCountLine } from "./facts-requests.ts";
 import {
   ciOkRunOf,
   groupRunsOf,
@@ -208,8 +209,20 @@ async function readObserved(
   ];
 }
 
-/** One pass's facts. A failed GitHub read fails the pass: `decide` never sees half a snapshot. */
+/**
+ * One pass's facts. A failed GitHub read fails the pass: `decide` never sees
+ * half a snapshot. Either way the pass logs how many GitHub requests it sent.
+ */
 export async function readMergeFacts(deps: FactsDeps, now: Date): Promise<ReadFacts> {
+  const counted = countedGitHub(deps.get, deps.query);
+  try {
+    return await readCountedFacts({ ...deps, get: counted.get, query: counted.query }, now);
+  } finally {
+    deps.log(requestCountLine(counted.count));
+  }
+}
+
+async function readCountedFacts(deps: FactsDeps, now: Date): Promise<ReadFacts> {
   const { get, settings } = deps;
   const read = await readPulls(deps);
   const day = new Date(now.getTime() - 24 * 60 * 60_000).toISOString();
