@@ -1,8 +1,8 @@
-# ports.paperclip-polling
+# agent-host.paperclip-polling
 
-- Status: draft
+- Status: active
 - Since: unreleased
-- Source: HAL-17422 plan, approved by the board on HAL-10 (24 Nov), with the board's direction of 24 Nov 10:18 and 10:20 UTC (apps talk only to the engine; desktop and server engines); ADR `docs/adr/2026-11-24-agent-messaging.md`. Draft until track A's engine side lands; it then moves to the package that holds the code and becomes active.
+- Source: HAL-17422 plan, approved by the board on HAL-10 (24 Nov), with the board's direction of 24 Nov 10:18 and 10:20 UTC (apps talk only to the engine; desktop and server engines); ADR `docs/adr/2026-11-24-agent-messaging.md`. Was `ports.paperclip-polling` while a draft; moved here with the code that does it (HAL-17493).
 
 While Studio's window is in front, the engine shall read each Paperclip connection about every 30 seconds; while it is in the background, about every 5 minutes; and when the window comes back to the front, the engine shall read at once. Timers shall go through the `Scheduler` port, and a read that finds changes shall report the source on `AgentMessaging.changes`.
 
