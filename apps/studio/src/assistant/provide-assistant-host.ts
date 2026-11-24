@@ -10,6 +10,7 @@ import {
   type ServiceRegistry,
 } from "@halonicjs/app";
 import { AssistantHostService } from "@halonicjs/studio-feature-assistant/api";
+import { ModelKeysService } from "@halonicjs/studio-feature-models/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import type { ShellEngine } from "@halonicjs/studio-shell";
 import { answerChatOn } from "../engine/answer-chat-on.ts";
@@ -55,6 +56,13 @@ export function provideAssistantHost(services: ServiceRegistry, parts: Assistant
         answerChatOn(async () => authoringChatExecutor({ ...parts.authoring, localOnly }))(request),
       onTrustChange: (listener) => parts.trust.subscribe(listener),
       settings: services.get(HostSettingsService),
+      // Only whether a key is stored, never the key. A name the keychain refuses (one of
+      // Halonic's own) can't hold the provider's key, so the menu says it needs one.
+      hasKey: (secretName) =>
+        services
+          .get(ModelKeysService)
+          .stored(secretName)
+          .catch(() => false),
       engine:
         engine === undefined
           ? undefined

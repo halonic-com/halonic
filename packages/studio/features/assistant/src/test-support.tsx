@@ -4,7 +4,14 @@ import { KindedError } from "@halonicjs/std";
 import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { AssistantAnswerRequest, AssistantChange, AssistantHost, Chat } from "./api.ts";
+import type {
+  AssistantAnswerRequest,
+  AssistantChange,
+  AssistantHost,
+  Chat,
+  ChatAgent,
+  ModelOption,
+} from "./api.ts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -67,7 +74,10 @@ export function chatOf(
  * An Assistant host that keeps chats in memory and whose answers the test gives one by one. A
  * chat's messages grow as the answer adds them, as the app's host keeps them.
  */
-export function fakeHost(chats: Chat[] = []) {
+export function fakeHost(
+  chats: Chat[] = [],
+  choices: { models?: readonly ModelOption[]; agents?: readonly ChatAgent[] } = {},
+) {
   const requests: AssistantAnswerRequest[] = [];
   const pending: ((answer: ChatAnswer | Error) => void)[] = [];
   let reads = 0;
@@ -97,8 +107,11 @@ export function fakeHost(chats: Chat[] = []) {
       if (readFails !== undefined) throw readFails;
       return find(chatId);
     },
-    newChat: async () => {
-      const chat = chats.find((each) => each.draft) ?? chatOf(`chat-${chats.length + 1}`);
+    newChat: async (kind) => {
+      const chat = chats.find((each) => each.draft && each.kind === kind) ?? {
+        ...chatOf(`chat-${chats.length + 1}`),
+        kind,
+      };
       keep(chat);
       return chat;
     },
@@ -130,8 +143,9 @@ export function fakeHost(chats: Chat[] = []) {
     deleteChat: async (chatId) => {
       chats = chats.filter((each) => each.id !== chatId);
     },
-    setModel: async () => {},
-    models: async () => [],
+    setModel: async (chatId, model) => keep({ ...find(chatId), model }),
+    models: async () => choices.models ?? [],
+    agents: async () => choices.agents ?? [],
     itemsToReview: async () => Array.from({ length: items }, () => ({}) as never),
     changesForCard: async () => [],
     changesIn: async () => null,
@@ -186,7 +200,7 @@ export function fakeHost(chats: Chat[] = []) {
     finish: async (answer: ChatAnswer | Error) => {
       await act(async () => pending.shift()?.(answer));
     },
-    /** The chats as the host keeps them now, drafts too. */
+    /** The chats as the host keeps them now, drafts too, most recently used first. */
     kept: () => chats,
     /** How often a chat was read. */
     reads: () => reads,

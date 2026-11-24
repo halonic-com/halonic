@@ -23,7 +23,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { AssistantHostService } from "../api.ts";
+import { AssistantHostService, type ChatAgent } from "../api.ts";
 import { ProposalCard } from "../cards/proposal-card.tsx";
 import { toolInWords, buildChatWords as words } from "../chat/build-chat-words.ts";
 import {
@@ -33,8 +33,10 @@ import {
   type ChatView,
   type Shown,
 } from "../chat/build-chats.ts";
+import { chatWithWords as agentWords } from "../chat/chat-with-words.ts";
 import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../chat/turns.ts";
 import { BuildComposer } from "./build-composer.tsx";
+import { agentOf, ChatChips, type ChatChoices, useChatChoices } from "./chat-choices.tsx";
 import { ChatHeading, ChatMoreActions } from "./chat-header.tsx";
 import { useAuthoringOnly, useEngineAnswering, useTrustCheck } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
@@ -59,6 +61,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
   const host = context.services.get(AssistantHostService);
   const chats = buildChatsOf(host);
   const shown = useSyncExternalStore(chats.subscribe, chats.shown);
+  const choices = useChatChoices(host, shown.kind === "chat" ? shown.view.chat.id : undefined);
   const lookingAt = useShownTitle(context);
   const box = useRef<HTMLTextAreaElement>(null);
   const [keepFocus] = useState(() => chats.takeKeepFocus());
@@ -127,6 +130,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
             ) : null
           }
           onOpenItem={(item) => context.openItem?.(item)}
+          choices={choices}
         />
       </div>
     </SidePanel>
@@ -147,6 +151,7 @@ interface PanelBodyProps {
   /** The link under the box for a chat: "customize skill" or "edit skill" in a Build chat. */
   readonly skillLink: (view: ChatView) => ReactNode;
   readonly onOpenItem: (item: ItemRef) => void;
+  readonly choices: ChatChoices;
 }
 
 /** Opens the workspace page's Models, where keys are kept (models flow 3.1). */
@@ -159,7 +164,7 @@ const openModelsCommand = "workspace.open-models";
  * opens the trust check (H16).
  */
 function PanelBody(props: PanelBodyProps) {
-  const { context, shown, chats, box, announce, onNewChat, lookingAt, skillLink } = props;
+  const { context, shown, chats, box, announce, onNewChat, lookingAt, skillLink, choices } = props;
   const host = context.services.get(AssistantHostService);
   const runCommand = context.runCommand;
   const engineAnswering = useEngineAnswering(host);
@@ -188,6 +193,7 @@ function PanelBody(props: PanelBodyProps) {
     );
   }
   const view = shown.kind === "chat" ? shown.view : undefined;
+  const agent = view === undefined ? undefined : agentOf(view.chat, choices);
   return (
     <>
       <p className="px-4 text-caption text-fg-muted">{statusLine(view, lookingAt)}</p>
@@ -205,12 +211,15 @@ function PanelBody(props: PanelBodyProps) {
         <Transcript
           view={view}
           context={context}
+          agent={agent}
           notice={engineAnswering ? undefined : words.engineNotAnswering}
           noticeId={noticeId}
           onContinue={engineAnswering ? () => send(undefined, () => {}) : undefined}
         />
       )}
+      <ChipsAboveBox view={view} chats={chats} choices={choices} box={box} announce={announce} />
       <BuildComposer
+        {...agentBox(agent)}
         answering={view?.answering === true}
         box={box}
         onSend={(message, putBack) => {
@@ -229,9 +238,38 @@ function PanelBody(props: PanelBodyProps) {
   );
 }
 
+/** The Model and Chat with chips above the box, once the chat has loaded. */
+function ChipsAboveBox(props: {
+  readonly view: ChatView | undefined;
+  readonly chats: BuildChats;
+  readonly choices: ChatChoices;
+  readonly box: PanelBodyProps["box"];
+  readonly announce: Announce;
+}) {
+  const { view, chats, box, announce } = props;
+  if (view === undefined) return null;
+  return (
+    <ChatChips
+      chat={view.chat}
+      choices={props.choices}
+      onChatWith={(kind) => void chats.chatWith(kind).then(() => box.current?.focus())}
+      onModel={(model) => void chats.setModel(model, announce)}
+    />
+  );
+}
+
 /** The id of the chat the panel shows, once it has loaded. */
 function chatIdOf(shown: Shown): string | undefined {
   return shown.kind === "chat" ? shown.view.chat.id : undefined;
+}
+
+/** An agent chat's box is named for the agent: "Message Triage", with "Message Triage…". */
+function agentBox(agent: ChatAgent | undefined) {
+  if (agent === undefined) return {};
+  return {
+    label: agentWords.boxLabel(agent.name),
+    placeholder: agentWords.placeholder(agent.name),
+  };
 }
 
 /**
@@ -280,12 +318,15 @@ function useShownTitle(context: WorkspaceContext): string | undefined {
 function Transcript({
   view,
   context,
+  agent,
   notice,
   noticeId,
   onContinue,
 }: {
   readonly view: ChatView;
   readonly context: WorkspaceContext;
+  /** The agent an agent chat talks to: its start says "Chat with Triage" and its description. */
+  readonly agent: ChatAgent | undefined;
   /** The engine's line at the top while it doesn't answer (H12). */
   readonly notice: string | undefined;
   readonly noticeId: string;
@@ -296,8 +337,12 @@ function Transcript({
   if (turns.length === 0 && notice === undefined) {
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-1 px-4 py-3">
-        <h3 className="text-section text-fg">{words.heading}</h3>
-        <p className="text-body text-fg-muted">{words.startLine}</p>
+        <h3 className="text-section text-fg">
+          {agent === undefined ? words.heading : agentWords.heading(agent.name)}
+        </h3>
+        <p className="text-body text-fg-muted">
+          {agent === undefined ? words.startLine : agent.description}
+        </p>
       </div>
     );
   }
