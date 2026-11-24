@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import {
   actionsOf,
+  ago,
   entry,
   logText,
   pass,
@@ -60,6 +61,30 @@ verifies("paperclip.merge-control-capacity", () => {
     expect(actionsOf(elsewhere, "enqueue")[0]?.jump).toBe(true);
   });
 
+  test("while main is red the fix jumps even with no free slot, and carries its cost", () => {
+    const nine = queuedPulls(9);
+    const decision = pass(
+      snapshot({
+        pulls: [...nine.pulls, pull(2)],
+        queue: nine.queue,
+        capacity: { freeQueueSlots: 0, waitingByLabel: {}, cancelledGroupsLastHour: 0 },
+      }),
+      stateWith({
+        board: {
+          hold: {},
+          prio: {},
+          fillPause: null,
+          mainRed: { since: ago(60), allowRe: "HAL-2\\b" },
+        },
+      }),
+    );
+    expect(actionsOf(decision, "enqueue")).toMatchObject([
+      { number: 2, jump: true, cost: { groupsCancelled: 9, runnerMinutes: 9 * 240 } },
+    ]);
+    expect(logText(decision)).toContain("JUMP_SHORT #2 (main red; no free large slot)");
+    expect(actionsOf(jumpWith(null), "enqueue")[0]?.jump).toBe(false);
+  });
+
   test("capacity it couldn't read counts as short", () => {
     expect(actionsOf(jumpWith(null), "enqueue")[0]?.jump).toBe(false);
     const noSlots = jumpWith({
@@ -109,5 +134,19 @@ verifies("paperclip.merge-control-cost", () => {
     const [dequeue] = actionsOf(decision, "dequeue");
     expect(dequeue?.number).toBe(102);
     expect(dequeue?.cost).toEqual({ groupsCancelled: 3, runnerMinutes: 3 * 240 });
+  });
+
+  test("a pass that takes out two pull requests counts each cancelled group once", () => {
+    const five = queuedPulls(5);
+    const held = stateWith({
+      board: { hold: { "103": "wait", "101": "wait" }, prio: {}, fillPause: null, mainRed: null },
+    });
+    const dequeues = actionsOf(pass(snapshot(five), held), "dequeue");
+    expect(dequeues.map((each) => [each.number, each.cost.groupsCancelled])).toEqual([
+      [101, 4],
+      [103, 0],
+    ]);
+    const total = dequeues.reduce((sum, each) => sum + each.cost.runnerMinutes, 0);
+    expect(total).toBe(4 * 240);
   });
 });

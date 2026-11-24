@@ -27,6 +27,7 @@ export function decide(
     state: workCopy(before),
     actions: [],
     log: [],
+    cancelled: new Set(),
   };
   const { state } = context;
   const rows = withSizeHolds(

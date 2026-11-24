@@ -27,8 +27,15 @@ export function capacityShort(context: PassContext): string | undefined {
   return undefined;
 }
 
+/** Counts the formed groups no earlier action of this pass already cancels, and marks them. */
 function costOf(context: PassContext, groups: readonly QueueEntry[]): ActionCost {
-  const groupsCancelled = groups.filter((each) => each.groupHead !== null).length;
+  const fresh = groups.filter(
+    (each) => each.groupHead !== null && !context.cancelled.has(each.number),
+  );
+  for (const each of fresh) {
+    context.cancelled.add(each.number);
+  }
+  const groupsCancelled = fresh.length;
   return {
     groupsCancelled,
     runnerMinutes: groupsCancelled * context.settings.groupRunnerMinutes,
@@ -46,7 +53,10 @@ export function jumpCost(context: PassContext, queued: readonly number[]): Actio
   );
 }
 
-/** A dequeue cancels its own group and every group formed behind it. */
+/**
+ * A dequeue cancels its own group and every group formed behind it; when one
+ * pass takes out several, each group counts only on the first (HAL-17762).
+ */
 export function dequeueCost(context: PassContext, position: number): ActionCost {
   return costOf(
     context,
