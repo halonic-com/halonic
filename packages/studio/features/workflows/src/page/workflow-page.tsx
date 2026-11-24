@@ -471,11 +471,9 @@ export function WorkflowScreen({
       </div>
     </div>
   );
-  const reviewed = <WorkflowReviewContext value={changes.marks}>{page}</WorkflowReviewContext>;
-  return pageOrGuideScreen(reviewed, guideScreen, {
-    workflow: { hubId, id },
-    phone,
-    showRun,
-    announce,
-  });
+  return pageOrGuideScreen(
+    <WorkflowReviewContext value={changes.marks}>{page}</WorkflowReviewContext>,
+    guideScreen,
+    { workflow: { hubId, id }, phone, showRun, announce },
+  );
 }
