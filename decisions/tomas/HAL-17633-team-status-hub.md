@@ -3,6 +3,7 @@
 - Task: HAL-17633
 - Approval: Liam approves this change on HAL-17633, as its reviewer. The example is named in the task's "Done when", from the phase 2 plan the board approved on HAL-17544.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0laUvyjPaYY5Edr6RJUwxcZsi+Ckead+/w1hbvfY1gtaJLpqVcSwehqFIjQQGMAx+lTkZ0EYnh3dPZGSsyKSDw==
 
 ## What changes
 
