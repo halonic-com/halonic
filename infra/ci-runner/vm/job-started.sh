@@ -3,9 +3,10 @@
 # pull request can't change it. Runs before the job's first step; a non-zero exit fails the
 # job. This is the real boundary (HAL-14831, Julian's C1/C2): it trusts only the root-owned
 # pool config (mounted read-only), the event file the runner wrote and the VM's gate, and fails
-# closed. Pull requests run only on the fast pool, and only ones labelled fast-track that a person
-# opened from our own branches (HAL-15972, HAL-17616; bots are refused here even with the label),
-# and not from a bot's branch, whoever opened the pull request (HAL-17473).
+# closed. Pull requests run only on the fast pool, and only ones that a person opened from our own
+# branches (HAL-15972; bots are refused here even with the label), not from a bot's branch,
+# whoever opened the pull request (HAL-17473), and that carry the fast-track label (HAL-17616),
+# unless the fast pool's own config says PR_SCOPE="all" (HAL-17654).
 set -euo pipefail
 deny() { echo "::error title=halonic-ci refused this job::$1. These runners only take halonic-com/halonic's own reviewed runs (ci.yml on merge groups / pushes to main) and, on the fast pool, open pull requests labelled fast-track that a person opened from halonic-com/halonic branches (every other pull request runs on GitHub's runners)."; exit 1; }
 REPO=halonic-com/halonic
@@ -23,6 +24,8 @@ ALLOWED_EVENTS=" $(conf ALLOWED_EVENTS) "
 SMOKE_BRANCH=$(conf SMOKE_BRANCH)
 SMOKE_WORKFLOW=$(conf SMOKE_WORKFLOW)
 POOL=$(conf POOL)
+# Anything but exactly "all", a missing line included, keeps the fast-track label required.
+PR_SCOPE=$(conf PR_SCOPE)
 
 [ "${GITHUB_EVENT_PATH:-}" = "$EVENT_FILE" ] || deny "unexpected event path"
 [ -s "$EVENT_FILE" ] || deny "event file missing"
@@ -84,7 +87,7 @@ case "$kind" in
     # The event is what GitHub sent when the run started; the gate says what's true now.
     gate_ready
     answer=$(gate "pr/$pr") || deny "queue gate did not answer after $GATE_TRIES tries (last: $answer)"
-    verdict=$(jq -r --argjson pr "$pr" --arg sha "$head_sha" '
+    verdict=$(jq -r --argjson pr "$pr" --arg sha "$head_sha" --arg scope "$PR_SCOPE" '
       if (.errors // []) != [] then "GitHub API errors"
       else .data.repository.pullRequest as $p
         | if $p == null then "pull request #\($pr) not found"
@@ -93,7 +96,7 @@ case "$kind" in
           elif $p.isCrossRepository != false or $p.headRepositoryOwner.login != "halonic-com"
             then "pull request #\($pr) comes from outside halonic-com"
           elif $p.headRefOid != $sha then "pull request #\($pr) is no longer at \($sha)"
-          elif ([$p.labels.nodes[]?.name] | any(. == "fast-track")) | not
+          elif $scope != "all" and (([$p.labels.nodes[]?.name] | any(. == "fast-track")) | not)
             then "pull request #\($pr) has no fast-track label"
           elif ($p.headRefName | type) != "string" or $p.headRefName == ""
             then "pull request #\($pr) has no head branch we can check"

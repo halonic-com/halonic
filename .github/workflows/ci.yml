@@ -33,12 +33,14 @@
 # CI_SELF_HOSTED_EVENTS lists the events that use it (["push"], later
 # ["push","merge_group"]). Only merge groups and pushes to main can go to
 # those pools; release branches and forks stay on `ubuntu-24.04`.
-# The one exception is the fast pool (board decisions, HAL-15972, 22 Nov, and
-# HAL-17616, 24 Nov): a pull request from a halonic-com/halonic branch that a
-# person opened and that carries the `fast-track` label goes to
-# CI_RUNNER_FAST when it is set. Every other pull request stays on
-# `ubuntu-24.04`: without the label (sending every person's pull request
-# there, HAL-17463, filled the CI VM's CPUs), from a fork, or opened by a bot
+# The one exception is the fast pool (board decisions, HAL-15972, 22 Nov,
+# HAL-17616 and HAL-17654, 24 Nov): a pull request from a halonic-com/halonic
+# branch that a person opened goes to CI_RUNNER_FAST when it is set and the
+# run's `pick-runner` job answered `fast`: the pull request carries the
+# `fast-track` label (or CI_FAST_SCOPE is "all") and the pool has enough idle
+# runners now (a crowded pool is slower than GitHub's runners). Every other
+# pull request stays on `ubuntu-24.04`: not picked (sending every person's
+# pull request there, HAL-17463, filled the CI VM's CPUs), from a fork, or opened by a bot
 # (a `Bot` account, a login ending in `[bot]`, dependabot, renovate,
 # renovate-bot), because our server would run its third-party code before
 # anyone read it. Adding the label starts a run (HAL-17672): the `labeled`
@@ -350,14 +352,62 @@ jobs:
           done <<< "$runs"
           full "No merge-group run of $SHA has a green ci-ok"
 
+  pick-runner:
+    # Where a pull request's Linux jobs run (board decision, HAL-17654, 24 Nov): our fast pool
+    # only while it has room, otherwise GitHub's runners. A job's runner is fixed when GitHub
+    # creates it, so this runs first and answers once for the whole run. It runs only for a
+    # pull request a person opened from a halonic-com/halonic branch; forks and bots skip it
+    # and stay on GitHub's runners. pick-runner.mjs counts the online, idle runners of
+    # CI_RUNNER_FAST's group and labels and answers fast=true when there are at least
+    # CI_FAST_MIN_IDLE (14 when unset). CI_FAST_SCOPE says who may be picked: "fast-track"
+    # (the default, labelled pull requests only) or "all"; the CI VM's hook admits unlabelled
+    # pull requests only once its own PR_SCOPE says "all" too. Any doubt (no token, a failed API
+    # call, an odd setting) answers GitHub's runners, never our pool, and the job never fails.
+    # The token is minted from a GitHub App whose only permission is the organisation's
+    # self-hosted runners, read-only (infra/ci-runner/README.md); fork pull requests never get
+    # its key. A re-run of failed jobs reuses this answer. Adding another label skips it (HAL-17672).
+    if: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    outputs:
+      fast: ${{ steps.pick.outputs.fast }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: infra/ci-runner/pick-runner.mjs
+          sparse-checkout-cone-mode: false
+      - id: token
+        name: Mint a token that can only read the organisation's runners
+        if: ${{ vars.CI_PICK_APP_CLIENT_ID != '' }}
+        continue-on-error: true
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.CI_PICK_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_PICK_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-organization-self-hosted-runners: read
+      - id: pick
+        name: Pick our fast pool or GitHub's runners
+        env:
+          RUNNERS_TOKEN: ${{ steps.token.outputs.token }}
+          ORG: ${{ github.repository_owner }}
+          CI_RUNNER_FAST: ${{ vars.CI_RUNNER_FAST }}
+          CI_FAST_SCOPE: ${{ vars.CI_FAST_SCOPE }}
+          CI_FAST_MIN_IDLE: ${{ vars.CI_FAST_MIN_IDLE }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: node infra/ci-runner/pick-runner.mjs
+
   fast:
     name: Fast gates
     # Skips on a push to main when its merge group passed it (`merged`).
-    needs: merged
+    needs: [merged, pick-runner]
     if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' fast ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
     # A large slot on our own CI server: on a 2-CPU slot it took 50 s, as
     # long as on GitHub (HAL-14831).
-    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     permissions:
@@ -437,8 +487,8 @@ jobs:
           pnpm check
       - name: Licences
         run: pnpm check:licences
-      - name: Infra tests (spend guard, turbo-cache, CI runner hook)
-        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs infra/ci-runner/hook.test.mjs
+      - name: Infra tests (spend guard, turbo-cache, CI runner hook and picker)
+        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs infra/ci-runner/hook.test.mjs infra/ci-runner/pick-runner.test.mjs
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files
@@ -632,9 +682,9 @@ jobs:
   build:
     name: Typecheck, lint, test, build (${{ matrix.shard }})
     # Skips on a push to main when its merge group passed it (`merged`).
-    needs: merged
+    needs: [merged, pick-runner]
     if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' build ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
-    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
     timeout-minutes: 15
     # One job took 14-17 minutes in the merge queue and up to 24 on a cold
@@ -954,9 +1004,9 @@ jobs:
   # pull request, the guard job runs trace from the merge base's copy.
   trace:
     name: Requirements and their tests (trace)
-    needs: [merged, build]
+    needs: [merged, build, pick-runner]
     if: ${{ !cancelled() && github.event_name != 'pull_request' && !contains(needs.merged.outputs.passed, ' trace ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -1559,9 +1609,9 @@ jobs:
     # Proves the templates still pass every check, so `pnpm new` never
     # hands an agent a package that fails.
     name: Empty package and feature pass every check
-    needs: [changes, merged]
+    needs: [changes, merged, pick-runner]
     if: ${{ !cancelled() && needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' scaffold ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 35
     # Two legs, each generating the same packages (HAL-17657). The CLI's
     # tests alone took 279 s of an uncached run on a GitHub runner, so they
@@ -3251,9 +3301,9 @@ jobs:
     # only, never in the agents' runner container. Playwright's web server
     # builds the pages and serves them, and stops with the tests.
     name: Studio end-to-end (Playwright)
-    needs: [changes, merged]
+    needs: [changes, merged, pick-runner]
     if: ${{ !cancelled() && needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' e2e ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -3342,9 +3392,9 @@ jobs:
 
   docs:
     name: Docs build and link check
-    needs: [changes, merged]
+    needs: [changes, merged, pick-runner]
     if: ${{ !cancelled() && needs.changes.outputs.docs == 'true' && !contains(needs.merged.outputs.passed, ' docs ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 2
     permissions: {}
     steps:
@@ -3602,8 +3652,10 @@ jobs:
     # pull request that adds `--lists-from` runs the old script, which reads
     # the pull request's lists.
     name: Policy rules (base commit's copy)
-    if: ${{ github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
-    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'fast-track') && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
+    # !cancelled(): pick-runner skips outside pull requests, and a skipped need would skip this.
+    needs: pick-runner
+    if: ${{ !cancelled() && github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
