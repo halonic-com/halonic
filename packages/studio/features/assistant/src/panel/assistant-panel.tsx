@@ -35,6 +35,7 @@ import {
 } from "../chat/build-chats.ts";
 import { chatWithWords as agentWords } from "../chat/chat-with-words.ts";
 import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../chat/turns.ts";
+import { AgentStatusLine, PanelChatStart } from "./agent-chat.tsx";
 import { BuildComposer } from "./build-composer.tsx";
 import { agentOf, ChatChips, type ChatChoices, useChatChoices } from "./chat-choices.tsx";
 import { ChatHeading, ChatMoreActions } from "./chat-header.tsx";
@@ -79,7 +80,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
   const newChat = () => void chats.newChat().then(() => box.current?.focus());
   const view = shown.kind === "chat" ? shown.view : undefined;
   const heading = view === undefined || view.chat.draft ? title : view.chat.title;
-  const header = { host, chats, view, title, box, onNewChat: newChat };
+  const header = { host, chats, view, title, box, onNewChat: newChat, agents: choices.agents };
 
   return (
     <SidePanel
@@ -196,7 +197,7 @@ function PanelBody(props: PanelBodyProps) {
   const agent = view === undefined ? undefined : agentOf(view.chat, choices);
   return (
     <>
-      <p className="px-4 text-caption text-fg-muted">{statusLine(view, lookingAt)}</p>
+      <StatusLine view={view} agent={agent} lookingAt={lookingAt} />
       <ShownItems
         shown={view?.shown ?? []}
         onOpen={props.onOpenItem}
@@ -297,6 +298,18 @@ function NoChat({
   );
 }
 
+/** The line at the top: an agent chat's orb, name and state, else the status line. */
+function StatusLine(props: {
+  readonly view: ChatView | undefined;
+  readonly agent: ChatAgent | undefined;
+  readonly lookingAt: string | undefined;
+}) {
+  const { view, agent } = props;
+  if (view !== undefined && agent !== undefined)
+    return <AgentStatusLine agent={agent} view={view} />;
+  return <p className="px-4 text-caption text-fg-muted">{statusLine(view, props.lookingAt)}</p>;
+}
+
 /**
  * The status line (flow-assistant 2.2): running with the tool, "Stopped by you", else the page the
  * window shows ("Looking at: Home"). Not live.
@@ -334,18 +347,7 @@ function Transcript({
   readonly onContinue: (() => void) | undefined;
 }) {
   const turns = turnsOf(view.messages, view.ends, view.answering);
-  if (turns.length === 0 && notice === undefined) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col gap-1 px-4 py-3">
-        <h3 className="text-section text-fg">
-          {agent === undefined ? words.heading : agentWords.heading(agent.name)}
-        </h3>
-        <p className="text-body text-fg-muted">
-          {agent === undefined ? words.startLine : agent.description}
-        </p>
-      </div>
-    );
-  }
+  if (turns.length === 0 && notice === undefined) return <PanelChatStart agent={agent} />;
   return (
     <ChatTranscript label={words.transcript} notice={notice} noticeId={noticeId}>
       {turns.map((turn, index) => (

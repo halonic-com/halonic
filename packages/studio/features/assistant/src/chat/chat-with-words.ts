@@ -22,4 +22,11 @@ export const chatWithWords = {
   heading: (agent: string) => `Chat with ${agent}`,
   boxLabel: (agent: string) => `Message ${agent}`,
   placeholder: (agent: string) => `Message ${agent}…`,
+  /** The agent's state words next to its orb in an agent chat's header (flow-agents 4.2, parity). */
+  state: {
+    think: "thinking…",
+    talk: "replying…",
+    tool: (tool: string) => `using ${tool}…`,
+    idle: "idle",
+  },
 } as const;

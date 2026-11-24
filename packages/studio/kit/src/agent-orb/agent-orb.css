@@ -1,0 +1,94 @@
+/*
+ * The agent orb (flow-agents 4.2, 4.3; HAL-397). The box never changes size, and the ring sits
+ * inside it, so nothing shifts when a ring appears:
+ *
+ *   box   ring   gap   orb
+ *   16    1.5    1.5   10     lists, menus, chips
+ *   24    2      2     16     chat header, tab, map card
+ *   64    3      4     50     empty chat
+ *
+ * AgentOrb sets --orb-a (the highlight) and --orb-b (the edge): the agent's own colours, or one of
+ * the --character-* pairs. Working states use `running`, never the accent, so a working orb doesn't
+ * look selected. The ring is still: the words next to it carry the state (shell.a11y.reduced-motion).
+ * It sits next to the AgentOrb so theme.css stays under the size limit; theme.css imports it.
+ */
+@utility agent-orb {
+  --orb-box: 24px;
+  --orb-ring: 2px;
+  --orb-gap: 2px;
+  --orb-ring-color: transparent;
+  --orb-ring-style: solid;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: var(--orb-box);
+  height: var(--orb-box);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: calc(var(--orb-ring) + var(--orb-gap));
+    border-radius: 9999px;
+    background: radial-gradient(circle at 30% 28%, var(--orb-a) 0%, var(--orb-b) 78%);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    border: var(--orb-ring) var(--orb-ring-style) var(--orb-ring-color);
+  }
+
+  &[data-size="16"] {
+    --orb-box: 16px;
+    --orb-ring: 1.5px;
+    --orb-gap: 1.5px;
+  }
+
+  &[data-size="64"] {
+    --orb-box: 64px;
+    --orb-ring: 3px;
+    --orb-gap: 4px;
+  }
+
+  &[data-state="needs"] {
+    --orb-ring-color: var(--color-warning);
+  }
+
+  &[data-state="talk"],
+  &[data-state="tool"],
+  &[data-state="work"] {
+    --orb-ring-color: var(--color-running);
+  }
+
+  &[data-state="think"] {
+    --orb-ring-color: var(--color-running);
+    --orb-ring-style: dashed;
+  }
+
+  /* A thin 1px ring, at the outer edge of where the others are drawn. */
+  &[data-state="listen"]::after {
+    border: 1px solid var(--color-border-control);
+    inset: calc(var(--orb-ring) - 1px);
+  }
+
+  &[data-state="error"] {
+    --orb-ring-color: var(--color-danger);
+  }
+
+  &[data-state="done"] {
+    --orb-ring-color: var(--color-success);
+  }
+
+  &[data-state="sleep"]::before {
+    opacity: 0.4;
+  }
+
+  /* High contrast drops gradients: the orb is drawn in the text colour, the ring in its own. */
+  @media (forced-colors: active) {
+    &::before {
+      background: CanvasText;
+    }
+  }
+}

@@ -12,6 +12,13 @@ export {
   type ActionBarRow,
 } from "./action-bar/action-bar.tsx";
 export { type DecisionEvent, decisionRows } from "./action-bar/decision-rows.ts";
+export {
+  AgentOrb,
+  type AgentOrbProps,
+  type AgentOrbSize,
+  type AgentOrbState,
+  characterPairOf,
+} from "./agent-orb/agent-orb.tsx";
 export { Avatar, type AvatarProps } from "./avatar/avatar.tsx";
 export {
   Button,

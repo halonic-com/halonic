@@ -69,6 +69,11 @@ export interface ChatAgent {
   readonly description: string | undefined;
   /** The alias the agent answers with: its own `model`, else `default`. */
   readonly model: string;
+  /**
+   * The agent file's `character.colors` for its orb, highlight then edge; absent picks a pair
+   * from the agent's id (flow-agents 4.3).
+   */
+  readonly colors?: readonly [string, string] | undefined;
 }
 
 /** One row of the chat menu (flow 5.5). */

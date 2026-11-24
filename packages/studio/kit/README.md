@@ -1206,6 +1206,22 @@ screen readers), the heading in `text-heading`, and the muted description when t
 lines and the status line's label, and after 10 seconds "Still loading" with **Try again**. A chat
 already shown in this session opens at once, without it.
 
+## AgentOrb
+
+An agent's character: a round orb in two colours, no face, with the agent's state as a ring.
+
+```tsx
+<AgentOrb agentId="triage" colors={agent.colors} size={24} state="think" />
+```
+
+`size` is the box: 16 in lists, menus and chips, 24 in a chat header or tab, 64 in an empty chat.
+The ring sits inside the box, so nothing moves when it appears. The colours are the agent file's
+`character.colors`, else one of the five `--character-*` pairs picked from `agentId`, so one agent
+looks the same everywhere. `state` draws the ring: `running` for the working states (`think`
+dashed), `warning` for `needs`, `danger` for `error`, `success` for `done`, a thin neutral ring for
+`listen`, the orb faded for `sleep`, none for `idle`. The ring is still and the orb is hidden from
+screen readers: the feature writes the agent's name and its state words next to it.
+
 ## SidePanel
 
 The frame every side panel shares: step details, the assistant, the list of changes. The shell

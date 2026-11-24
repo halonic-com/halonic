@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import type { AssistantHost, Chat, ChatAgent, ChatKind, ChatModel, ModelOption } from "../api.ts";
 import { chatWithWords as words } from "../chat/chat-with-words.ts";
+import { ChatAgentOrb } from "./agent-chat.tsx";
 
 /** What the chips offer: the Build chat's models and the workspace's agents. */
 export interface ChatChoices {
@@ -70,6 +71,7 @@ export function ChatChips({ chat, choices, onChatWith, onModel }: ChatChipsProps
     ...choices.agents.map((each) => ({
       id: each.kind,
       label: each.name,
+      icon: <ChatAgentOrb kind={each.kind} agents={choices.agents} size={16} />,
       checked: each.kind === chat.kind,
       onSelect: () => onChatWith(each.kind),
     })),

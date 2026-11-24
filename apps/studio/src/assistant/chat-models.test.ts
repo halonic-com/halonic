@@ -93,3 +93,17 @@ verifies("assistant.chat.switch-build-or-agent", () => {
     });
   });
 });
+
+verifies("assistant.chat.agent-orb", () => {
+  it("gives each agent its character's colours, and none when its file sets none", async () => {
+    const triage = [
+      "id: triage",
+      "name: Triage",
+      "character: { colors: ['#3B82F6', '#8B5CF6'] }",
+      "",
+    ].join("\n");
+    const agents = chatAgentsOf(await load({ "hubs/support/agents/triage.agent.yaml": triage }));
+    expect(agents.find((agent) => agent.name === "Triage")?.colors).toEqual(["#3B82F6", "#8B5CF6"]);
+    expect(agents.find((agent) => agent.name === "Reply writer")?.colors).toBeUndefined();
+  });
+});

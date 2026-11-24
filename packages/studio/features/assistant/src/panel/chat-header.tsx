@@ -9,10 +9,11 @@ import {
   SparkIcon,
 } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useRef, useState } from "react";
-import type { AssistantHost, ChatSummary } from "../api.ts";
+import type { AssistantHost, ChatAgent, ChatSummary } from "../api.ts";
 import { buildChatWords } from "../chat/build-chat-words.ts";
 import type { BuildChats, ChatView } from "../chat/build-chats.ts";
 import { chatTime, chatMenuWords as words } from "../chat/chat-menu-words.ts";
+import { ChatAgentOrb } from "./agent-chat.tsx";
 
 /** The parts of the header that act on the chat shown. */
 export interface ChatHeaderProps {
@@ -24,6 +25,8 @@ export interface ChatHeaderProps {
   readonly title: string;
   readonly box: RefObject<HTMLTextAreaElement | null>;
   readonly onNewChat: () => void;
+  /** The workspace's agents, for the colours of an agent chat's orb in the recent chats. */
+  readonly agents: readonly ChatAgent[];
 }
 
 /**
@@ -50,7 +53,12 @@ export function ChatHeading(
     return {
       id: chat.id,
       label: chat.title,
-      icon: chat.kind === "build" ? <SparkIcon /> : <AgentLetter kind={chat.kind} />,
+      icon:
+        chat.kind === "build" ? (
+          <SparkIcon />
+        ) : (
+          <ChatAgentOrb kind={chat.kind} agents={props.agents} size={16} />
+        ),
       time,
       running: chat.answering ? words.answering : undefined,
       count:
@@ -172,16 +180,6 @@ function RenameField({
         }
       }}
     />
-  );
-}
-
-/** An agent chat's 16px letter: the first letter of its agent's id. */
-function AgentLetter({ kind }: { readonly kind: ChatSummary["kind"] }) {
-  const id = kind.slice(kind.lastIndexOf("/") + 1);
-  return (
-    <span className="grid size-4 place-items-center rounded-full bg-surface-muted text-caption">
-      {id.charAt(0).toUpperCase()}
-    </span>
   );
 }
 
