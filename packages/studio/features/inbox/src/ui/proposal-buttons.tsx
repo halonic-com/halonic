@@ -106,6 +106,8 @@ function RejectAll({
  * Cancel points at its busy confirming button (C667 #4). Like that button, the busy one says what
  * is under way ("Accepting…"), so the reason the others point at isn't just "Accept" (C678 #1); the
  * kit keeps its width. `onPress` does something else in its place, such as opening Compare.
+ * `what` names the one change it decides, after the words you see, so a screen reader tells a
+ * file's **Accept** from the next one's: "Accept docs/returns.md changed" (C46 PR1).
  */
 export function DecideButton({
   state,
@@ -114,6 +116,7 @@ export function DecideButton({
   label,
   busyLabel,
   variant,
+  what,
   buttonRef,
   onPress,
   block = false,
@@ -124,6 +127,8 @@ export function DecideButton({
   readonly label: string;
   readonly busyLabel: string;
   readonly variant: ButtonVariant;
+  /** The change it decides, read after the label: "docs/returns.md changed". */
+  readonly what?: string;
   readonly buttonRef?: (button: HTMLButtonElement | null) => void;
   readonly onPress?: (() => void) | undefined;
   /** Across the whole width at touch size, for a phone's bar (Q12). */
@@ -141,6 +146,9 @@ export function DecideButton({
       variant={variant}
       busy={busy}
       busyLabel={busyLabel}
+      {...(what === undefined
+        ? {}
+        : { name: `${label} ${what}`, busyName: `${busyLabel} ${what}` })}
       unavailable={waiting ? { reason: busyId } : offline}
       onClick={onPress ?? (() => state.decide(verb, target))}
     >

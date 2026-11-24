@@ -101,6 +101,18 @@ verifies("inbox.proposal-page", () => {
       }
     });
 
+    // C46 PR1: every file's buttons read just "Reject" and "Accept", so none said which file.
+    it("names each change's Reject and Accept after the words you see, busy words included", async () => {
+      const { root } = open(fakeDecisions({ accept: vi.fn(() => new Promise<never>(() => {})) }));
+      const accept = buttons(root, "Accept")[0];
+      expect(buttons(root, "Reject")[0]?.getAttribute("aria-label")).toBe(
+        "Reject notes/a.md changed",
+      );
+      expect(accept?.getAttribute("aria-label")).toBe("Accept notes/a.md changed");
+      await press(accept);
+      expect(accept?.getAttribute("aria-label")).toBe("Accepting… notes/a.md changed");
+    });
+
     // C667 #2: at 720 and 360 the line shrank beside its buttons and broke paths mid-word.
     it("keeps each change's line at least 16 rem wide, so its buttons wrap under it", () => {
       const { root } = open(fakeDecisions());

@@ -358,6 +358,7 @@ function ChangeRow({
   const decided = decidedWords[file.decision];
   const changedSinceRun = state.changedSinceRun.has(file.path);
   const target = { file: file.path };
+  const what = changeLine(file);
   const nextRef = (button: HTMLButtonElement | null) => {
     if (button === null) nextButtons.current.delete(file.path);
     else nextButtons.current.set(file.path, button);
@@ -366,7 +367,7 @@ function ChangeRow({
     <li className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="min-w-0 flex-1 basis-64 text-body wrap-break-word">
-          {breakableAtSeparators(changeLine(file))}
+          {breakableAtSeparators(what)}
         </span>
         {decided === undefined && buttons ? (
           <span className="flex gap-2">
@@ -377,6 +378,7 @@ function ChangeRow({
               label="Reject"
               busyLabel="Rejecting…"
               variant="ghost"
+              what={what}
             />
             <DecideButton
               state={state}
@@ -385,6 +387,7 @@ function ChangeRow({
               label="Accept"
               busyLabel="Accepting…"
               variant="ghost"
+              what={what}
               buttonRef={nextRef}
               onPress={changedSinceRun ? () => state.compare(file.path) : undefined}
             />
