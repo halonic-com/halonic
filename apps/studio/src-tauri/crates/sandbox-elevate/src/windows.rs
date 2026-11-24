@@ -3,16 +3,18 @@
 use crate::{Machine, UNINSTALL_KEY, Value};
 use halonic_file_identity::file_identity;
 use std::ffi::{OsStr, OsString, c_void};
-use std::io::{self, Write};
+use std::fs::File;
+use std::io::{self, Read, Write};
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
-use std::os::windows::fs::MetadataExt;
-use std::os::windows::io::FromRawHandle;
+use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
+use std::os::windows::io::{AsRawHandle, FromRawHandle};
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::ptr;
 use windows_sys::Win32::Foundation::{
-    CloseHandle, ERROR_FILE_NOT_FOUND, GENERIC_WRITE, HANDLE, INVALID_HANDLE_VALUE, LocalFree,
+    CloseHandle, ERROR_FILE_NOT_FOUND, GENERIC_READ, GENERIC_WRITE, HANDLE, INVALID_HANDLE_VALUE,
+    LocalFree,
 };
 use windows_sys::Win32::Security::Authorization::{
     ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
@@ -23,8 +25,10 @@ use windows_sys::Win32::Security::{
     SetFileSecurityW, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-    CREATE_NEW, CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_REPARSE_POINT,
-    MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
+    CREATE_NEW, CreateFileW, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL,
+    FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
+    FILE_TYPE_DISK, GetFileType, MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW, SECURITY_IDENTIFICATION,
+    SECURITY_SQOS_PRESENT,
 };
 use windows_sys::Win32::System::Com::CoTaskMemFree;
 use windows_sys::Win32::System::LibraryLoader::{
@@ -181,7 +185,7 @@ impl Machine for Windows {
             }
             // SAFETY: `handle` was just opened and nothing else owns it; the
             // `File` closes it once.
-            let mut file = unsafe { std::fs::File::from_raw_handle(handle) };
+            let mut file = unsafe { File::from_raw_handle(handle) };
             file.write_all(bytes)
         })
     }
@@ -202,11 +206,17 @@ impl Machine for Windows {
     }
 
     fn read(&self, file: &Path) -> io::Result<Vec<u8>> {
-        std::fs::read(file)
+        let mut opened = open_unfollowed(file, GENERIC_READ, 0)?;
+        plain_file(&opened)?;
+        let mut bytes = Vec::new();
+        opened.read_to_end(&mut bytes)?;
+        Ok(bytes)
     }
 
     fn exists(&self, file: &Path) -> bool {
-        file.is_file()
+        // Backup semantics opens a folder too, so a name that reaches
+        // anything is there, and `read` refuses what isn't a plain file.
+        open_unfollowed(file, 0, FILE_FLAG_BACKUP_SEMANTICS).is_ok()
     }
 
     #[expect(
@@ -311,6 +321,34 @@ impl Machine for Windows {
             unsafe { MoveFileExW(path.as_ptr(), ptr::null(), MOVEFILE_DELAY_UNTIL_REBOOT) };
         }
     }
+}
+
+/// Opens the name `path` itself with `access` and `flags`. A link or other
+/// reparse point there is opened as itself, never followed, and a named
+/// pipe's server may only identify the helper, never act as it. Any program
+/// of the user's can change the app folder, so an elevated open there must
+/// not reach an object that program chose (HAL-17788).
+fn open_unfollowed(path: &Path, access: u32, flags: u32) -> io::Result<File> {
+    std::fs::OpenOptions::new()
+        .access_mode(access)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT | flags)
+        .security_qos_flags(SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION)
+        .open(path)
+}
+
+/// Refuses an open handle that isn't a plain file on a disk, such as a named
+/// pipe, a device, a folder or a link, before anything is read from it.
+fn plain_file(file: &File) -> io::Result<()> {
+    let not_plain = || io::Error::other("not a plain file");
+    // SAFETY: `file` is open for the call.
+    if unsafe { GetFileType(file.as_raw_handle()) } != FILE_TYPE_DISK {
+        return Err(not_plain());
+    }
+    let attributes = file.metadata()?.file_attributes();
+    if attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT) != 0 {
+        return Err(not_plain());
+    }
+    Ok(())
 }
 
 /// Gives `path` the owner and access list in `access`, inheriting nothing.
