@@ -30,6 +30,15 @@ function entriesOf(page: HTMLElement): HTMLElement[] {
 
 const support = listing("support", "reply", "Support reply");
 
+/** Clicks the row's cell that holds the name, with the keys held. */
+function clickRow(page: HTMLElement, name: string, init: MouseEventInit = {}) {
+  const cells = [...page.querySelectorAll<HTMLElement>('[role="gridcell"]')];
+  const cell = cells.find((each) => each.textContent?.includes(name));
+  act(() => {
+    cell?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, ...init }));
+  });
+}
+
 verifies("assistant.chat.show-in-chat", () => {
   it("offers Show in chat in a row's ⋮, with the workflow", async () => {
     const showItem = vi.fn();
@@ -42,6 +51,26 @@ verifies("assistant.chat.show-in-chat", () => {
     expect(entries.map((entry) => entry.textContent)).toEqual(["Show in chat"]);
     act(() => entries[0]?.click());
     expect(showItem).toHaveBeenCalledWith(support);
+  });
+
+  it("shows the workflow in chat on an Alt-click on its row, and still opens it on a plain click", async () => {
+    const showItem = vi.fn();
+    const open = vi.fn();
+    const { host } = memoryHost([{ id: "support", name: "Support" }], [support]);
+    const page = await show(
+      <WorkflowsView
+        host={host}
+        open={open}
+        showInChat={{ label: "Show in chat", show: showItem }}
+      />,
+    );
+    await settled();
+    clickRow(page, "Support reply", { altKey: true });
+    expect(showItem).toHaveBeenCalledWith(support);
+    expect(open).not.toHaveBeenCalled();
+    clickRow(page, "Support reply");
+    expect(open).toHaveBeenCalledWith(support);
+    expect(showItem).toHaveBeenCalledTimes(1);
   });
 
   it("has no row ⋮ without the Assistant, nor on a phone", async () => {

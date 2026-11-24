@@ -228,6 +228,11 @@ interface ListBase<Id extends string> {
    * opens a run in a new tab. Without it those do nothing, as in the Changes file list.
    */
   readonly onOpenInNewTab?: (id: Id) => void;
+  /**
+   * An Alt-click or Alt Enter (⌥ on a Mac) on a row, as the Agents list shows an agent in chat
+   * (flow-assistant 5.7). Without it those do nothing. A middle click with Alt held does nothing.
+   */
+  readonly onAltOpen?: (id: Id) => void;
   readonly selection?: ListSelection<Id>;
   /**
    * The row whose item shows beside the list, as the Inbox's open item: it has the selected look
