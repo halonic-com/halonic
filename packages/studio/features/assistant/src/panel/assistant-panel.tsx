@@ -23,6 +23,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { AssistantHostService } from "../api.ts";
+import { ProposalCard } from "../cards/proposal-card.tsx";
 import { toolInWords, buildChatWords as words } from "../chat/build-chat-words.ts";
 import {
   type Announce,
@@ -100,6 +101,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
       {/* The transcript and the box reach the panel's edges; the transcript scrolls by itself. */}
       <div className="-mx-4 -my-3 flex h-[calc(100%+1.5rem)] flex-col">
         <PanelBody
+          context={context}
           shown={shown}
           chats={chats}
           box={box}
@@ -119,6 +121,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
 }
 
 interface PanelBodyProps {
+  readonly context: WorkspaceContext;
   readonly shown: Shown;
   readonly chats: BuildChats;
   readonly box: RefObject<HTMLTextAreaElement | null>;
@@ -133,7 +136,7 @@ interface PanelBodyProps {
 
 /** The chat, its first load (H7), a chat that can't load, or no chat (H3). */
 function PanelBody(props: PanelBodyProps) {
-  const { shown, chats, box, announce, onNewChat, lookingAt, skillLink } = props;
+  const { context, shown, chats, box, announce, onNewChat, lookingAt, skillLink } = props;
   if (shown.kind === "none") return <NoChat onNewChat={onNewChat} />;
   if (shown.kind === "failed") {
     return (
@@ -161,7 +164,11 @@ function PanelBody(props: PanelBodyProps) {
           <ChatLoading label={words.loading} onRetry={() => void chats.open()} />
         </div>
       ) : (
-        <Transcript view={view} onContinue={() => void chats.send(undefined, announce)} />
+        <Transcript
+          view={view}
+          context={context}
+          onContinue={() => void chats.send(undefined, announce)}
+        />
       )}
       <BuildComposer
         answering={view?.answering === true}
@@ -217,9 +224,11 @@ function useShownTitle(context: WorkspaceContext): string | undefined {
 
 function Transcript({
   view,
+  context,
   onContinue,
 }: {
   readonly view: ChatView;
+  readonly context: WorkspaceContext;
   readonly onContinue: () => void;
 }) {
   const turns = turnsOf(view.messages, view.ends, view.answering);
@@ -237,18 +246,30 @@ function Transcript({
         // Turns are only added at the end, so their place is their key.
         <Fragment key={index}>
           <ChatMessage from="you">{turn.message}</ChatMessage>
-          <Reply turn={turn} onContinue={index === turns.length - 1 ? onContinue : undefined} />
+          <Reply
+            turn={turn}
+            place={{ chatId: view.chat.id, context }}
+            onContinue={index === turns.length - 1 ? onContinue : undefined}
+          />
         </Fragment>
       ))}
     </ChatTranscript>
   );
 }
 
+/** Where a reply's cards belong: their chat and the workspace. */
+interface CardPlace {
+  readonly chatId: string;
+  readonly context: WorkspaceContext;
+}
+
 function Reply({
   turn,
+  place,
   onContinue,
 }: {
   readonly turn: Turn;
+  readonly place: CardPlace;
   readonly onContinue: (() => void) | undefined;
 }) {
   const end = turn.end;
@@ -259,7 +280,7 @@ function Reply({
     <ChatMessage from="reply" heading={words.said}>
       {turn.steps.map((step, index) => (
         // Steps are only added at the end, so their place is their key.
-        <Step key={index} step={step} />
+        <Step key={index} step={step} place={place} />
       ))}
       {end === undefined ? null : (
         <ChatEndLine tone={end.kind === "failed" ? "danger" : "plain"} actions={actions}>
@@ -278,8 +299,13 @@ function endActions(end: Turn["end"], onContinue: () => void) {
   return [];
 }
 
-function Step({ step }: { readonly step: ReplyStep }) {
+function Step({ step, place }: { readonly step: ReplyStep; readonly place: CardPlace }) {
   if (step.kind === "text") return <ChatText>{step.text}</ChatText>;
+  if (step.kind === "proposal") {
+    const { callId, path, content, why } = step;
+    const proposal = { chatId: place.chatId, callId, path, content };
+    return <ProposalCard proposal={proposal} why={why} context={place.context} />;
+  }
   return (
     <ChatToolLine state={step.state}>{words.tool[step.state](toolInWords(step.name))}</ChatToolLine>
   );

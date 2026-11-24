@@ -20,6 +20,10 @@ The Assistant feature of the Studio: the Build chat, its sessions and its change
 - `src/chat`: the Build chats of a workspace in this session (`BuildChats`): which chat the panel
   shows, each chat shown so far (so going back to one shows it at once), the answer being written
   and how each reply ended, with the words the panel says.
+- `src/cards`: the proposal card (flow-assistant 3.2 to 3.4): the tag and the sentence Changes
+  uses, the path, the why, **Show the diff**, **Review**, **Accept all** and **Reject all**, each
+  decision as one step with a toast and **Undo**, and the notes that tell the model about it with
+  the next message. `CardReviews` follows each card's changes to review, wherever they are decided.
 - `src/feature.ts`: the panel window, Ctrl+Alt+I and Ctrl K's **Assistant** and **New chat**.
 
 The desktop app provides the host for each open folder (`apps/studio/src/assistant`,
@@ -27,7 +31,7 @@ The desktop app provides the host for each open folder (`apps/studio/src/assista
 from `@halonicjs/assistant`. Until the sessions store lands (T14 PR 2 and 3), its chats last
 while the window is open. When Halonic's engine stops mid-answer, the reply ends with "Stopped
 when Halonic's engine stopped." (`assistant.chat.engine-stopped`). The chat tab, the chat menu,
-proposal cards and the line under the box come later.
+a card's states after a decision (T14 PR 8b) and the line under the box come later.
 
 ## Example
 

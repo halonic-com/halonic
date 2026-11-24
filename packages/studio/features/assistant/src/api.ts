@@ -113,6 +113,12 @@ export interface AssistantAnswerRequest {
    * as a message (flow 5.7).
    */
   readonly shown?: readonly ShownItem[] | undefined;
+  /**
+   * What the person decided on the chat's cards since its last message, such as "(The person
+   * accepted the changes to <path>.)" (flow-assistant 3.3). The model reads them with this
+   * message; the chat doesn't keep or show them, as the cards already say it.
+   */
+  readonly notes?: readonly string[] | undefined;
   /** Aborted when the person clicks Stop. */
   readonly signal?: AbortSignal | undefined;
   /** Told how the answer goes, for the status line and the transcript. */

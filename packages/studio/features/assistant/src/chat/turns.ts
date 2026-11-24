@@ -1,8 +1,9 @@
+import { toolTexts } from "@halonicjs/assistant";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import type { ChatToolState } from "@halonicjs/studio-kit";
 import { buildChatWords, toolInWords } from "./build-chat-words.ts";
 
-/** One step of a reply as the transcript shows it: some text, or one tool call. */
+/** One step of a reply as the transcript shows it: some text, one tool call, or a proposal card. */
 export type ReplyStep =
   | { readonly kind: "text"; readonly text: string }
   | {
@@ -10,6 +11,16 @@ export type ReplyStep =
       readonly callId: string;
       readonly name: string;
       readonly state: ChatToolState;
+    }
+  /** A `propose_file` or `propose_delete` that wrote changes to review (flow-assistant 3.1). */
+  | {
+      readonly kind: "proposal";
+      readonly callId: string;
+      readonly path: string;
+      /** The model's one sentence on the change, as it gave it. */
+      readonly why: string;
+      /** The file's new text; `null` for a delete. */
+      readonly content: string | null;
     };
 
 /** How a reply ended, when it ended other than by answering. */
@@ -40,25 +51,36 @@ export function turnsOf(
   answering: boolean,
 ): readonly Turn[] {
   const turns: { message: string; steps: ReplyStep[] }[] = [];
+  const calls = new Map<string, ToolCall>();
   for (const message of messages) {
+    for (const call of message.role === "assistant" ? (message.toolCalls ?? []) : []) {
+      calls.set(call.id, call);
+    }
     if (message.role === "user") {
       turns.push({ message: message.content, steps: [] });
       continue;
     }
     const steps = turns.at(-1)?.steps;
-    if (steps !== undefined) addStep(steps, message);
+    if (steps !== undefined) addStep(steps, message, calls);
   }
   return turns.map((turn, index) => {
     const live = answering && index === turns.length - 1;
     const steps = live
       ? turn.steps
-      : turn.steps.filter((step) => step.kind === "text" || step.state !== "running");
+      : turn.steps.filter((step) => step.kind !== "tool" || step.state !== "running");
     return { ...turn, steps, end: ends.get(index) };
   });
 }
 
-/** Adds what a message of the reply shows: its text and tool calls, or a call's result. */
-function addStep(steps: ReplyStep[], message: ChatMessage): void {
+/**
+ * Adds what a message of the reply shows: its text and tool calls, or a call's result. A write
+ * that was made shows as its card; a refused one stays a tool line (flow-assistant 3.1).
+ */
+function addStep(
+  steps: ReplyStep[],
+  message: ChatMessage,
+  calls: ReadonlyMap<string, ToolCall>,
+): void {
   if (message.role === "assistant") {
     if (message.content.trim() !== "") steps.push({ kind: "text", text: message.content });
     for (const call of message.toolCalls ?? []) {
@@ -72,7 +94,25 @@ function addStep(steps: ReplyStep[], message: ChatMessage): void {
     (step) => step.kind === "tool" && step.callId === message.toolCallId,
   );
   const step = steps[index];
-  if (step?.kind === "tool") steps[index] = { ...step, state };
+  if (step?.kind !== "tool") return;
+  const call = calls.get(step.callId);
+  const card = call === undefined ? undefined : proposalOf(call, message.content);
+  steps[index] = card ?? { ...step, state };
+}
+
+/** The card of a write the tool made, told by its result; `undefined` for any other call. */
+function proposalOf(call: ToolCall, result: string): ReplyStep | undefined {
+  const { path, why, content } = call.arguments;
+  if (typeof path !== "string") return undefined;
+  const said = typeof why === "string" ? why : "";
+  const written = { kind: "proposal", callId: call.id, path, why: said } as const;
+  if (call.name === "propose_file" && result === toolTexts.changed(path)) {
+    return typeof content === "string" ? { ...written, content } : undefined;
+  }
+  if (call.name === "propose_delete" && result === toolTexts.deleted(path)) {
+    return { ...written, content: null };
+  }
+  return undefined;
 }
 
 /** The status line while the chat answers: the tool it runs now, else "thinking" (H9). */
