@@ -28,7 +28,8 @@ export const teamWords = {
     `Seat readings are ${minutes} min old. The seats job may have stopped.`,
   spentToday: "Spent today",
   atLeast: (money: string) => `At least ${money}`,
-  notPriced: (runs: number) => `${runs} runs not priced yet`,
+  notPriced: (runs: number) =>
+    runs === 1 ? "1 run not priced yet" : `${runs} runs not priced yet`,
   tokensToday: (tokens: string) => `Subscription seats used ${tokens} tokens today.`,
   thisMonth: "This month",
   monthNoBudget: (money: string) => `${money} this month`,
@@ -43,7 +44,10 @@ export const teamWords = {
   cantReadSpend: "This connection can't read spend yet. Connect again to allow it.",
   seatsThisWeek: "Seats this week",
   poolLeft: (percent: number) => `${percent}% of pool left`,
-  nearLimit: (count: number) => (count === 0 ? "None near their limit" : `${count} near its limit`),
+  nearLimit: (count: number) => {
+    if (count === 0) return "None near their limit";
+    return count === 1 ? "1 near its limit" : `${count} near their limit`;
+  },
   signedOutCount: (count: number) => `${count} signed out`,
   nextRefill: (at: string) => `Next refill ${at}`,
   seatsHeading: "Seats · worst first",
@@ -71,7 +75,7 @@ export const teamWords = {
     clearsByItself: "Clears by itself",
     queueHeld: "Runners busy · pushes are on hold",
     queueHeldLine: (minutes: number, pullRequests: number) =>
-      `Longest wait ${minutes} min · ${pullRequests} PRs in the queue`,
+      `Longest wait ${minutes} min · ${pullRequests === 1 ? "1 PR" : `${pullRequests} PRs`} in the queue`,
   },
   problem: {
     full: (seat: string, until: string) => `${seat} is full until ${until}`,
