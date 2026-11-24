@@ -38,6 +38,17 @@ verifies("cli.local-engine", () => {
       });
     });
 
+    it("gives a budget whose only limit is the run token limit, so the engine keeps to it", async () => {
+      const workspace = await workspaceOf(
+        "id: acme\nname: Acme\nbudget:\n  perRunTokens: 1000000\n",
+      );
+
+      expect(await workspaceBudget(() => workspace)()).toEqual({
+        currency: "EUR",
+        perRunTokens: 1000000,
+      });
+    });
+
     it("gives none for a budget with only a currency, no budget or no workspace.yaml", async () => {
       for (const text of [
         "id: acme\nname: Acme\nbudget: { currency: EUR }\n",

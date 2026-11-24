@@ -44,6 +44,18 @@ verifies("models.budget.budget-settings", () => {
       expect(edited).toEqual({ ok: true, value: "version: 1\nid: acme\nname: Acme\n" });
     });
 
+    it("keeps the budget block and its run token limit when both amounts are emptied", () => {
+      const edited = editBudget(
+        "version: 1\nid: acme\nname: Acme\nbudget:\n  perRun: 5\n  perRunTokens: 1000000\n",
+        { perRun: "", monthly: "" },
+      );
+
+      expect(edited).toEqual({
+        ok: true,
+        value: "version: 1\nid: acme\nname: Acme\nbudget:\n  perRunTokens: 1000000\n",
+      });
+    });
+
     it("writes nothing for an amount that isn't above 0", () => {
       for (const typed of ["0", "abc", "1.000,50", "-3"]) {
         expect(editBudget(withBudget, { perRun: typed, monthly: "" }), typed).toEqual({

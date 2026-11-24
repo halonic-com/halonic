@@ -36,7 +36,8 @@ export function budgetProblems(fields: BudgetFields): BudgetProblem[] {
 /**
  * Writes the budget amounts into the text of `workspace.yaml`: a filled field sets its amount, an
  * empty one removes it, and the currency stays as it is. Both empty removes the budget, and the
- * `budget` block with it unless it has a currency. A field that
+ * `budget` block with it only when nothing else is left in it, such as a currency or the run
+ * token limit (`perRunTokens`), which the editor doesn't show. A field that
  * isn't an amount above 0 writes nothing and comes back as the message for the field.
  *
  * @example
@@ -49,7 +50,7 @@ export function editBudget(text: string, fields: BudgetFields): Result<string, B
   const monthly = amountOf(fields.monthly) ?? undefined;
   const edited = editYaml(text, [amountEdit("perRun", perRun), amountEdit("monthly", monthly)]);
   if (!edited.ok) return err(yamlProblem);
-  if (perRun !== undefined || monthly !== undefined || hasCurrency(edited.value.text)) {
+  if (perRun !== undefined || monthly !== undefined || hasOtherSettings(edited.value.text)) {
     return ok(edited.value.text);
   }
   const removed = editYaml(edited.value.text, [{ kind: "delete", path: ["budget"] }]);
@@ -61,11 +62,15 @@ const yamlProblem: BudgetProblem = {
   message: "workspace.yaml could not be changed. Fix the file first.",
 };
 
-/** Whether `budget` in the text names a currency, so it is worth keeping with no amounts. */
-function hasCurrency(text: string): boolean {
+/**
+ * Whether `budget` in the text still holds anything once its amounts are gone, such as a
+ * currency or a run token limit, so it is worth keeping.
+ */
+function hasOtherSettings(text: string): boolean {
   const read = readYaml(text);
-  const data = read.ok ? (read.value.data as { budget?: { currency?: unknown } } | null) : null;
-  return data?.budget?.currency !== undefined;
+  const data = read.ok ? (read.value.data as { budget?: unknown } | null) : null;
+  const budget = data?.budget;
+  return typeof budget === "object" && budget !== null && Object.keys(budget).length > 0;
 }
 
 function amountEdit(name: string, amount: number | undefined): YamlEdit {
