@@ -1,4 +1,9 @@
-import { AgentOrb, type AgentOrbSize, type AgentOrbState } from "@halonicjs/studio-kit";
+import {
+  AgentOrb,
+  type AgentOrbSize,
+  type AgentOrbState,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import type { ChatAgent, ChatKind } from "../api.ts";
 import { toolInWords, buildChatWords as words } from "../chat/build-chat-words.ts";
 import type { ChatView } from "../chat/build-chats.ts";
@@ -70,17 +75,22 @@ export function agentStateOf(view: ChatView): {
 /**
  * The panel's empty chat (flow-assistant 6.1), at the top of the transcript, as the panel doesn't
  * centre: "What should we build?" with its line, or for an agent chat the agent's 64px character
- * above "Chat with Triage" and the agent's description.
+ * above "Chat with Triage" and the agent's description. On a phone the Build chat's start is in
+ * the middle of the transcript, its heading in `text-heading`, with no halo and no glow
+ * (flow-assistant 11.5): the composer stays at the bottom, on the keyboard.
  */
 export function PanelChatStart({ agent }: { readonly agent: ChatAgent | undefined }) {
+  const centred = usePresentation() === "phone" && agent === undefined;
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-1 px-4 py-3">
+    <div
+      className={`flex min-h-0 flex-1 flex-col gap-1 px-4 py-3 ${centred ? "justify-center text-center" : ""}`}
+    >
       {agent === undefined ? null : (
         <div className="mb-2">
           <ChatAgentOrb kind={agent.kind} agents={[agent]} size={64} />
         </div>
       )}
-      <h3 className="text-section text-fg">
+      <h3 className={`${centred ? "text-heading" : "text-section"} text-fg`}>
         {agent === undefined ? words.heading : agentWords.heading(agent.name)}
       </h3>
       <p className="text-body text-fg-muted">

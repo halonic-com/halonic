@@ -8,10 +8,9 @@ import {
   ChatText,
   ChatToolLine,
   ChatTranscript,
-  CloseIcon,
   EmptyState,
-  PlusIcon,
   SidePanel,
+  usePresentation,
 } from "@halonicjs/studio-kit";
 import {
   engineWords,
@@ -52,8 +51,10 @@ import {
   type ReadChoices,
   useChatChoices,
 } from "./chat-choices.tsx";
-import { ChatHeading, ChatMoreActions } from "./chat-header.tsx";
+import { ChatHeading, DesktopActions } from "./chat-header.tsx";
 import { openModelsCommand, useModelBox } from "./model-line.tsx";
+import { PhoneChatMenu, PhoneHeading } from "./phone-header.tsx";
+import { PhoneSheets, usePhoneChat } from "./phone-sheets.tsx";
 import { StripAboveBox } from "./review-strip.tsx";
 import { useAuthoringOnly, useEngineAnswering, useTrustCheck } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
@@ -72,7 +73,8 @@ const focusAsItIs: RefObject<HTMLElement | null> = {
  * and ✕, the status line, and the Build chat. It opens on the chat it showed last, else the most
  * recently used one, else a new Build chat, with focus in the box, or where it was when Show in
  * chat opened it (flow-assistant 2.2). The region is named "Assistant" whatever the chat's title
- * is (L12).
+ * is (L12). On a phone it's the full-page chat (flow-assistant 11.3): "Assistant" with the status
+ * line in the top bar, a ⋮ with the phone's sheets, and the focus on the title.
  */
 export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps) {
   const host = context.services.get(AssistantHostService);
@@ -92,42 +94,44 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
     void chats.open();
   }, [chats]);
 
-  // New chat puts focus in the box (flow-assistant 2.2); from the empty panel the box comes back.
-  const newChat = () => void chats.newChat().then(() => box.current?.focus());
+  const phone = usePhoneChat();
+  // New chat focuses the box (flow 2.2), on a phone the title (11.3); the empty panel's box too.
+  const newChat = () =>
+    void chats.newChat().then(phone.on ? phone.focusTitle : () => box.current?.focus());
   const view = shown.kind === "chat" ? shown.view : undefined;
   const heading = view === undefined || view.chat.draft ? title : view.chat.title;
   const header = { host, chats, view, title, box, onNewChat: newChat, agents: choices.agents };
 
-  return (
+  const panel = (
     <SidePanel
-      title={heading}
-      heading={<ChatHeading {...header} renaming={renaming} onRenamed={() => setRenaming(false)} />}
+      title={phone.on ? title : heading}
+      heading={
+        phone.on ? (
+          <PhoneHeading title={title} view={view} lookingAt={lookingAt} anchor={phone.anchor} />
+        ) : (
+          <ChatHeading {...header} renaming={renaming} onRenamed={() => setRenaming(false)} />
+        )
+      }
       label={title}
       halo
       initialFocus={keepFocus ? focusAsItIs : box}
       onClose={onClose}
       actions={
-        <>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<PlusIcon />}
-            label={words.newChat}
-            onClick={newChat}
+        phone.on ? (
+          <PhoneChatMenu
+            {...header}
+            onRecentChats={() => phone.open("recent-chats")}
+            onRename={() => phone.open("rename")}
+            afterDelete={() => newChatButton.current}
           />
-          <ChatMoreActions
+        ) : (
+          <DesktopActions
             {...header}
             onRename={() => setRenaming(true)}
             afterDelete={() => newChatButton.current}
+            onClose={onClose}
           />
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<CloseIcon />}
-            label={words.close}
-            onClick={onClose}
-          />
-        </>
+        )
       }
     >
       {/* The transcript and the box reach the panel's edges; the transcript scrolls by itself. */}
@@ -142,7 +146,8 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
           newChatButton={newChatButton}
           lookingAt={lookingAt}
           skillLink={(view: ChatView) =>
-            view.chat.kind === "build" ? (
+            // No customize skill on a phone: it opens the file editor (flow-assistant 11.2).
+            view.chat.kind === "build" && !phone.on ? (
               <SkillLink host={host} context={context} freshness={view.messages} />
             ) : null
           }
@@ -152,6 +157,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
       </div>
     </SidePanel>
   );
+  return <PhoneSheets {...header} phone={phone} panel={panel} />;
 }
 
 interface PanelBodyProps {
@@ -343,8 +349,10 @@ function StatusLine(props: {
   readonly lookingAt: string | undefined;
 }) {
   const { view, agent } = props;
+  const phone = usePresentation() === "phone";
   if (view !== undefined && agent !== undefined)
     return <AgentStatusLine agent={agent} view={view} />;
+  if (phone) return null; // It's in the top bar on a phone (flow-assistant 11.3).
   return <p className="px-4 text-caption text-fg-muted">{statusLine(view, props.lookingAt)}</p>;
 }
 
