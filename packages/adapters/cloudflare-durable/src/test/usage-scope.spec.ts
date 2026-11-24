@@ -31,7 +31,7 @@ function newScope(
     defaultReserve: { cost: 100 },
     maxRunning: 2,
   };
-  const cloud = { pulls: 0, answer: cloudAnswers ? limits : null };
+  const cloud = { pulls: 0, answer: cloudAnswers ? limits : null, errors: [] as unknown[] };
   const scope = new UsageScope({
     storage,
     alarm: { set: (atMs) => storage.setAlarm(atMs), clear: () => storage.deleteAlarm() },
@@ -40,6 +40,7 @@ function newScope(
       cloud.pulls++;
       return cloud.answer;
     },
+    onPullError: (error) => cloud.errors.push(error),
     ...options,
   });
   return { scope, clock, limits, cloud, alarmAt: () => storage.getAlarm() };
@@ -98,6 +99,46 @@ describe("usage object scope", () => {
     }));
 });
 
+describe("usage object nonces", () => {
+  it("refuses a key's nonce again until its time ends, then takes it", () =>
+    inObjectState(({ storage }) => {
+      const { scope, clock } = newScope(storage);
+      const keepUntilMs = clock.now().getTime() + 5 * minute;
+      expect(scope.rememberNonce("u/acme", "cloud-1", "n1", keepUntilMs)).toBe("new");
+      expect(scope.rememberNonce("u/acme", "cloud-1", "n1", keepUntilMs)).toBe("seen");
+      expect(scope.rememberNonce("u/acme", "cloud-2", "n1", keepUntilMs)).toBe("new");
+      // `verifyRequest` still takes a request signed `window` ago at exactly `keepUntilMs`.
+      clock.advance(5 * minute);
+      expect(scope.rememberNonce("u/acme", "cloud-1", "n1", keepUntilMs + minute)).toBe("seen");
+      clock.advance(1);
+      expect(scope.rememberNonce("u/acme", "cloud-1", "n1", keepUntilMs + minute)).toBe("new");
+    }));
+
+  it("drops nonces whose time has ended", () =>
+    inObjectState(({ storage }) => {
+      const { scope, clock } = newScope(storage);
+      const keepUntilMs = clock.now().getTime() + minute;
+      for (const nonce of ["n1", "n2", "n3"]) {
+        scope.rememberNonce("u/acme", "cloud-1", nonce, keepUntilMs);
+      }
+      clock.advance(minute);
+      scope.rememberNonce("u/acme", "cloud-1", "n4", keepUntilMs + minute);
+      expect([...storage.kv.list({ prefix: "nonce:" })]).toHaveLength(4);
+      clock.advance(1);
+      scope.rememberNonce("u/acme", "cloud-1", "n5", keepUntilMs + minute);
+      expect([...storage.kv.list({ prefix: "nonce:" })]).toHaveLength(2);
+      clock.advance(minute);
+      scope.rememberNonce("u/acme", "cloud-1", "n6", keepUntilMs + 3 * minute);
+      expect([...storage.kv.list({ prefix: "nonce:" })]).toHaveLength(1);
+    }));
+
+  it("refuses a nonce for another scope than the object's", () =>
+    inObjectState(({ storage }) => {
+      const { scope } = newScope(storage, false, { objectName: "u/acme" });
+      expect(() => scope.rememberNonce("o/acme", "cloud-1", "n1", Date.now())).toThrow(RangeError);
+    }));
+});
+
 describe("usage object limits", () => {
   it("refuses with no limits when Cloud can't be reached", () =>
     inObjectState(async ({ storage }) => {
@@ -105,6 +146,7 @@ describe("usage object limits", () => {
       expect(await scope.check(acme)).toEqual({ allowed: false, refusal: { code: "plan.none" } });
       expect(await scope.startRun(acme, "run_1")).toMatchObject({ allowed: false });
       expect(cloud.pulls).toBe(1);
+      expect(cloud.errors).toEqual([]);
     }));
 
   it("asks Cloud again only once a pull that found no limits is old enough", () =>

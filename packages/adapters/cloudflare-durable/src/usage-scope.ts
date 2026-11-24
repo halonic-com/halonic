@@ -7,6 +7,7 @@ import {
 } from "./usage-account.ts";
 import { checkScope } from "./usage-input.ts";
 import { usageLimitsKey } from "./usage-limits.ts";
+import { rememberNonce } from "./usage-nonces.ts";
 import { type KvStorageOwner, usageStorageOf } from "./usage-storage.ts";
 import type { UsageAmounts, UsageAnswer, UsageLimits, UsageStorage } from "./usage-types.ts";
 
@@ -37,8 +38,11 @@ export interface UsageScopeOptions {
    * `newUniqueId` or `idFromString` has no name, so only the noted scope is checked.
    */
   readonly objectName?: string | undefined;
-  /** Told of a pull that threw, which the step still sees as `plan.none`; ignored by default. */
-  readonly onPullError?: (error: unknown) => void;
+  /**
+   * Told of a pull that threw, which the step still sees as `plan.none`. Required, so the error a
+   * refused step doesn't carry is always reported somewhere.
+   */
+  readonly onPullError: (error: unknown) => void;
   /** How long a pull that found no limits is remembered before the next one; 30 s by default. */
   readonly pullRetryMs?: number;
   /** The account's outbox cap and run lease, when not its defaults. */
@@ -74,6 +78,16 @@ export class UsageScope {
   /** Keeps a pushed limits document unless the object has that version or a newer one. */
   applyLimits(scope: string, limits: UsageLimits): "applied" | "stale" {
     return this.#account(scope).applyLimits(limits);
+  }
+
+  /**
+   * Records the nonce of a signed request from Cloud to this scope, for the request's time window:
+   * `"seen"` when the key already used it in that window. The signed path names the scope, so a
+   * request replayed to another scope fails its signature, and one scope's nonces are enough.
+   */
+  rememberNonce(scope: string, keyId: string, nonce: string, keepUntilMs: number): "new" | "seen" {
+    this.#account(scope);
+    return rememberNonce(this.#storage, { keyId, nonce, keepUntilMs }, this.#nowMs());
   }
 
   /** Whether the principal may take a step now. */
@@ -182,13 +196,14 @@ export class UsageScope {
   /**
    * The pulled document, or `null` when the pull failed. A failed pull is Cloud being unreachable
    * for the step: it is refused with `plan.none`, the refusal a step gets with no limits, rather
-   * than failing the run with the transport's error. The error itself goes to `onPullError`.
+   * than failing the run with the transport's error. The error itself always goes to
+   * `onPullError`, so dropping it here never hides why Cloud couldn't be asked.
    */
   async #pullOrNull(scope: string): Promise<UsageLimits | null> {
     try {
       return await this.#options.pullLimits(scope);
     } catch (error) {
-      this.#options.onPullError?.(error);
+      this.#options.onPullError(error);
       return null;
     }
   }

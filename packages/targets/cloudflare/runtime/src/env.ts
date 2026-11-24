@@ -2,6 +2,7 @@ import type {
   CoordinationObject,
   RoutinesObject,
   RunObject,
+  UsageObject,
 } from "@halonicjs/adapter-cloudflare-durable";
 import { halonicSecretNames } from "@halonicjs/ports";
 
@@ -21,6 +22,11 @@ export interface RuntimeEnv {
   readonly BLOBS: R2Bucket;
   /** The workspace snapshots `halonic deploy` uploads. */
   readonly DEFINITIONS: R2Bucket;
+  /**
+   * Each scope's usage, limits and Cloud's nonces, named by the scope. Only a deployment Halonic
+   * Cloud sells through needs it, so it isn't in {@link requiredBindings}.
+   */
+  readonly USAGE?: DurableObjectNamespace<UsageObject>;
 }
 
 /** The bindings every deployment needs, by the name `wrangler.toml` gives them. */

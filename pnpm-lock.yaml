@@ -4703,6 +4703,9 @@ importers:
       '@halonicjs/host-server':
         specifier: workspace:*
         version: link:../../../host/server
+      '@halonicjs/host-signed-request':
+        specifier: workspace:*
+        version: link:../../../host/signed-request
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports
