@@ -98,6 +98,9 @@ verifies("remote.phone-app", () => {
     await mount(new FakePhoneTunnel());
     await press("Scan code");
     expect(document.querySelector("header")).toBeNull();
+    const title = document.querySelector("h1");
+    expect(title?.textContent).toBe("Pair with a computer");
+    expect(title?.className).toBe("sr-only");
     expect(document.body.textContent).toContain("Point the camera at the code on your computer");
     await press("Close scanner");
     expect(heading()).toBe("Pair with a computer");

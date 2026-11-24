@@ -141,7 +141,10 @@ function TopBar({
           )}
           <h1 className="px-2 text-heading text-fg">{title}</h1>
         </header>
-      ) : null}
+      ) : (
+        // Without the bar the screen keeps its title for screen readers (WCAG 1.3.1, 2.4.6).
+        <h1 className="sr-only">{title}</h1>
+      )}
       <div className="flex flex-1 flex-col">{children}</div>
     </div>
   );
