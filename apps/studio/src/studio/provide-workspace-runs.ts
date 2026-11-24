@@ -16,7 +16,11 @@ import {
   ProposalDecisionsService,
   SandboxRefusalsService,
 } from "@halonicjs/studio-feature-inbox/api";
-import { RunFilesService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import {
+  RunFileSaveService,
+  RunFilesService,
+  RunsSourceService,
+} from "@halonicjs/studio-feature-runs/api";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
@@ -27,6 +31,7 @@ import {
   hostProposalDecisionsOf,
   hostProposalsOf,
 } from "../runs/host-proposals.ts";
+import { shellFileSave } from "../runs/run-file-save.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { focusOf, storageOf } from "./page-window.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -89,6 +94,7 @@ export function provideWorkspaceRuns(
   // The files runs saved, read from the same blob folder the engine writes (HAL-17831).
   const blobs = new TauriBlobStore(ipc, location);
   services.provide(RunFilesService, { read: (hash) => blobs.get(hash) });
+  services.provide(RunFileSaveService, shellFileSave(ipc, location));
   services.provide(InboxRunsService, runs);
   services.provide(SandboxRefusalsService, new WorkspaceSandboxRefusals(runs));
   services.provide(

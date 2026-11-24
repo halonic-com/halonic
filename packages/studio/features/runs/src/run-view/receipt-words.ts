@@ -54,6 +54,13 @@ export const receiptWords = {
     `Created ${names.length === 1 ? "1 file" : `${names.length} files`}: ${namesInWords(names)}`,
   /** The button after the Items line, one per saved file, that opens it read-only (HAL-17831). */
   openFile: (name: string) => `Open ${name}`,
+  /** The button after **Open**, one per saved file, that opens the system save dialog (board, option A on HAL-12421; HAL-17832). */
+  saveFile: "Save…",
+  /** What a screen reader hears for one file's **Save…**: it starts with the words on the button. */
+  saveFileName: (name: string) => `Save… ${name}`,
+  savingFile: "Saving…",
+  fileSaved: (name: string) => `Saved ${name}.`,
+  fileNotSaved: (name: string) => `Couldn't save ${name}. Try again.`,
   /** The heading of the agent's own words after the receipt (RCPT-3.4). */
   agentSaysHeading: "What the agent says it did (its own words, not checked)",
   /** A step's answers in its side panel, named as the frame names them (HAL-17831). */

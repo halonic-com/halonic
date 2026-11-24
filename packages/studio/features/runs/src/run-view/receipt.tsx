@@ -1,5 +1,7 @@
 import { Button } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
+import type { RunFileSaveHost } from "../api.ts";
+import { SaveFile } from "./item-files.tsx";
 import type { ApprovalLine, SavedFile } from "./receipt-model.ts";
 import { receiptWords } from "./receipt-words.ts";
 import type { Rejecter } from "./run-ending.ts";
@@ -18,6 +20,10 @@ export interface ReceiptProps {
   readonly files?: readonly SavedFile[];
   /** Opens a saved file read-only in its own tab; without it the files have no **Open**. */
   readonly openFile?: ((name: string) => void) | undefined;
+  /** Saves a file this run saved, for **Save…** after **Open**; without it the files have no **Save…**. */
+  readonly saveFile?:
+    | { readonly runId: string; readonly save: RunFileSaveHost["save"] }
+    | undefined;
   /** The Messages section's lines from `messageLines`; none hides the section. */
   readonly messages?: readonly string[];
   /** The Read section's line from `readLines`; none hides the section. */
@@ -41,6 +47,7 @@ export function Receipt({
   items = [],
   files = [],
   openFile,
+  saveFile,
   messages = [],
   reads = [],
   models = [],
@@ -53,13 +60,18 @@ export function Receipt({
       <p className="text-section">{summary}</p>
       {ending === undefined ? null : <p className="text-small">{receiptWords.ending(ending)}</p>}
       <TextSection id="receipt-items" heading={receiptWords.itemsHeading} lines={items}>
-        {openFile === undefined
+        {openFile === undefined && saveFile === undefined
           ? null
           : files.map((file) => (
-              <li key={file.name}>
-                <Button variant="ghost" size="sm" onClick={() => openFile(file.name)}>
-                  {receiptWords.openFile(file.shown)}
-                </Button>
+              <li key={file.name} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {openFile === undefined ? null : (
+                  <Button variant="ghost" size="sm" onClick={() => openFile(file.name)}>
+                    {receiptWords.openFile(file.shown)}
+                  </Button>
+                )}
+                {saveFile === undefined ? null : (
+                  <SaveFile runId={saveFile.runId} file={file} save={saveFile.save} />
+                )}
               </li>
             ))}
       </TextSection>

@@ -43,6 +43,7 @@ fn main() {
         "run_events",
         "run_snapshot",
         "run_logs",
+        "run_file_save",
         "engine_lock_hold",
         "engine_lock_release",
         "agent_host_request",

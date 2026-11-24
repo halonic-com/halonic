@@ -20,6 +20,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use crate::git::GitState;
 use crate::profile::{ProfileProblem, cli_profile};
+use crate::workspace_data::DataRefusal;
 
 /// The shell's run folders, so its commands take turns on a run.
 #[derive(Debug, Default)]
@@ -77,6 +78,24 @@ impl From<RunStoreError> for RunRefusal {
             message: error.to_string(),
         }
     }
+}
+
+/// `run_file_save` answers in the blob commands' shape, with the same kinds.
+impl From<RunRefusal> for DataRefusal {
+    fn from(refusal: RunRefusal) -> Self {
+        DataRefusal::new(refusal.kind, refusal.message)
+    }
+}
+
+/// The whole lines of run `run_id`'s log in the run folder `root`, read
+/// under the run's lock as `run_events` reads them.
+pub(crate) fn run_log<R: Runtime>(
+    app: &AppHandle<R>,
+    root: &Path,
+    run_id: &str,
+) -> Result<String, RunRefusal> {
+    let state = app.state::<RunState>();
+    Ok(state.folders.folder(root)?.events(run_id)?)
 }
 
 /// What `run_append` answers: `{ ok: true, lastSeq, snapshotError? }`, or

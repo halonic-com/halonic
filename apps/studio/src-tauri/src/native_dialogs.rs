@@ -1,5 +1,5 @@
 //! The shell's native dialogs: the folder picker, the save dialog for the
-//! sandbox backup (HAL-10974), the two trust
+//! sandbox backup (HAL-10974) and for a file a run created (HAL-17832), the two trust
 //! questions, about a folder (HAL-2612) and about an agent's instructions,
 //! the question before Studio runs agents without a sandbox (HAL-16342), and
 //! the one before it saves the yes to run plugins and integrations without
@@ -134,6 +134,23 @@ pub fn pick_backup_file<R: Runtime>(app: &AppHandle<R>, suggested: &str) -> Opti
         let dialog = rfd::AsyncFileDialog::new()
             .set_file_name(suggested)
             .add_filter("Backup", &["tar"]);
+        match parent {
+            Some(window) => dialog.set_parent(window),
+            None => dialog,
+        }
+        .save_file()
+    })?;
+    picked.map(|file| file.path().to_owned())
+}
+
+/// Shows the save dialog for a file a run created, named `suggested`
+/// (HAL-17832); `None` when the person cancels it. The dialog asks before
+/// it replaces a file that is there.
+#[cfg(desktop)]
+pub fn pick_save_file<R: Runtime>(app: &AppHandle<R>, suggested: &str) -> Option<PathBuf> {
+    let suggested = suggested.to_owned();
+    let picked = show_and_wait(app, move |parent| {
+        let dialog = rfd::AsyncFileDialog::new().set_file_name(suggested);
         match parent {
             Some(window) => dialog.set_parent(window),
             None => dialog,
@@ -285,6 +302,11 @@ pub fn pick_folder<R: Runtime>(_app: &AppHandle<R>) -> Option<PathBuf> {
 
 #[cfg(mobile)]
 pub fn pick_backup_file<R: Runtime>(_app: &AppHandle<R>, _suggested: &str) -> Option<PathBuf> {
+    None
+}
+
+#[cfg(mobile)]
+pub fn pick_save_file<R: Runtime>(_app: &AppHandle<R>, _suggested: &str) -> Option<PathBuf> {
     None
 }
 
