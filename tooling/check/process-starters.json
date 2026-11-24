@@ -100,6 +100,10 @@
     "packages/adapters/system-node/src/run-program.ts": {
       "reason": "Reads the process table with /bin/ps or Windows PowerShell for halonic doctor's resource report.",
       "scriptsTest": "packages/adapters/system-node/src/run-program.test.ts"
+    },
+    "packages/adapters/tunnel-tailscale/src/tailscale-runner.ts": {
+      "reason": "The Tailscale tunnel provider's runner. It starts only the tailscale CLI (a program whose file name is tailscale, found on PATH or given as an absolute path outside any scripts folder) with execFile, no shell, a small environment and a time limit, and only status and serve commands. It never loads a skill.",
+      "scriptsTest": "packages/adapters/tunnel-tailscale/src/tailscale-runner.test.ts"
     }
   }
 }
