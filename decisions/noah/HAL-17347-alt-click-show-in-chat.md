@@ -2,6 +2,7 @@
 
 - Approval: flow-assistant 5.7 and 8, approved by the board (HAL-647); scoped on HAL-17347, where Liam reviews the pull request and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cTTtn2DR3+5XYpKsaq7Q3W83qkV7MOUFf7HpLmvlaoCoATppCmp/NuCujB6CeMyqIuZhHw2V7S1t+P8QYFC0Ag==
 
 Two requirements widen, and neither narrows a promise.
 
