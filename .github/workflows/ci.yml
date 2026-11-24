@@ -1439,16 +1439,17 @@ jobs:
         # run took 14 to 19 minutes (HAL-10774). The trace check reads only the
         # generated packages. Test timeout and workers: HAL-3852, a test that
         # passes in its own job can pass the default 5 s limit only barely.
-        # The cli leg runs the same four tasks `--also halonic` gave
-        # verify (nothing depends on halonic) and nothing else, so it can
-        # leave Vitest its own worker count on a GitHub runner.
+        # `--also halonic` gave verify four tasks (nothing depends on halonic):
+        # its tests run in the cli leg, alone, so it can leave Vitest its own
+        # worker count on a GitHub runner; typecheck, lint and build run here.
+        # The cli leg doing all four took 251 s, its tests about 3 min of it.
         env:
           HALONIC_TEST_TIMEOUT: "30000"
           HALONIC_TEST_WORKERS: ${{ (matrix.leg == 'generated' || runner.environment == 'self-hosted') && '2' || '' }}
           LEG: ${{ matrix.leg }}
         run: |
           if [ "$LEG" = cli ]; then
-            pnpm exec turbo run typecheck lint test build --filter=...halonic --output-logs=errors-only
+            pnpm exec turbo run test --filter=...halonic --output-logs=errors-only
             exit 0
           fi
           pnpm verify --full \
@@ -1458,6 +1459,7 @@ jobs:
             --only packages/targets/ci-example/runtime \
             --only packages/studio/features/ci-example \
             --also @halonicjs/app-studio
+          pnpm exec turbo run typecheck lint build --filter=...halonic --output-logs=errors-only
       # Peak memory and CPU time on our own CI server (HAL-14831).
       - if: always() && runner.environment == 'self-hosted'
         uses: $/.github/actions/runner-usage
