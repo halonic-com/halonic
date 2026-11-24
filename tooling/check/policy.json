@@ -17,7 +17,8 @@
     "@halonicjs/google-setup",
     "@halonicjs/test-runner",
     "@halonicjs/words",
-    "@halonicjs/assistant"
+    "@halonicjs/assistant",
+    "@halonicjs/openui-lang"
   ],
   "apiTypes": [
     "@halonicjs/events",
