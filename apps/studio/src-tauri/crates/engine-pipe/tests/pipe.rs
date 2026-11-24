@@ -97,7 +97,7 @@ fn control_pipe_takes_the_engines_messages_in_order() {
 #[test]
 fn control_pipe_faults_on_anything_else() {
     let now = Instant::now();
-    let bad_handshakes: [(&str, String, PipeFault); 6] = [
+    let bad_handshakes: [(&str, String, PipeFault); 7] = [
         ("not JSON", "{\"kind\":".into(), PipeFault::NotAMessage),
         ("not an object", "\"text\"".into(), PipeFault::NotAMessage),
         (
@@ -120,6 +120,11 @@ fn control_pipe_faults_on_anything_else() {
             handshake().replace("127.0.0.1:4100", "192.168.1.2:4000"),
             PipeFault::Handshake,
         ),
+        (
+            "handshake as an array",
+            format!(r#"["handshake",1,"http://127.0.0.1:4100","{TOKEN}"]"#),
+            PipeFault::NotAMessage,
+        ),
     ];
     for (name, json, fault) in bad_handshakes {
         let mut session = PipeSession::default();
@@ -132,7 +137,7 @@ fn control_pipe_faults_on_anything_else() {
     let invalid_utf8 = PipeSession::default().accept(b"{\"kind\":\"\xff\"}", now);
     assert_eq!(invalid_utf8.unwrap_err(), PipeFault::NotAMessage);
 
-    let after_handshake: [(&str, &str, PipeFault); 5] = [
+    let after_handshake: [(&str, &str, PipeFault); 7] = [
         (
             "unknown kind",
             r#"{"kind":"secret_set","id":1,"name":"a"}"#,
@@ -154,6 +159,16 @@ fn control_pipe_faults_on_anything_else() {
             PipeFault::Stopped,
         ),
         ("array", "[1,2]", PipeFault::NotAMessage),
+        (
+            "request as an array",
+            r#"["secret_get",5,"acme"]"#,
+            PipeFault::NotAMessage,
+        ),
+        (
+            "health without lastTick",
+            r#"{"kind":"health","scheduling":true,"activeRuns":0}"#,
+            PipeFault::NotAMessage,
+        ),
     ];
     for (name, json, fault) in after_handshake {
         let mut session = open_session(now);

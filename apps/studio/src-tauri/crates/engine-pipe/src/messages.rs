@@ -36,6 +36,9 @@ pub(crate) enum EngineFrame {
     Health {
         scheduling: bool,
         active_runs: u32,
+        // Required though nullable: serde would take a missing `Option` as
+        // `None`, and a missing field is a fault.
+        #[serde(deserialize_with = "Option::deserialize")]
         last_tick: Option<String>,
     },
     Stopped {
@@ -44,8 +47,15 @@ pub(crate) enum EngineFrame {
 }
 
 /// Parses one frame's JSON bytes. Bad UTF-8 is bad JSON to `serde_json`.
+/// Read as a value first: serde would also take an internally tagged enum
+/// written as an array, such as `["secret_get",5,"acme"]`.
 pub(crate) fn parse_frame(json: &[u8]) -> Result<EngineFrame, PipeFault> {
-    serde_json::from_slice(json).map_err(|_| PipeFault::NotAMessage)
+    let value: serde_json::Value =
+        serde_json::from_slice(json).map_err(|_| PipeFault::NotAMessage)?;
+    if !value.is_object() {
+        return Err(PipeFault::NotAMessage);
+    }
+    serde_json::from_value(value).map_err(|_| PipeFault::NotAMessage)
 }
 
 /// Where the sandbox host is: its loopback address and launch token. The
