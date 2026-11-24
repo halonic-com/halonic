@@ -11,6 +11,7 @@ export type {
   ActionKeptValue,
   ActionOutcome,
   ActionParameterValue,
+  ActionRecordEvent,
   ActionRequestedEvent,
   ActionRequester,
   ActionReviewedEvent,

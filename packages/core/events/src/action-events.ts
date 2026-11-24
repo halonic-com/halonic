@@ -38,10 +38,14 @@ export interface ActionRequestedEvent extends ActionEventBase {
   expect?: Readonly<Record<string, ActionParameterValue>>;
 }
 
-/** The user opened the request for review, or declined it. `digest`: the build-time digest of the definition's code they saw. */
+/**
+ * The user opened the request for review or declined it, or their requester
+ * policy blocked it. `digest`: the build-time hash of the definition's source
+ * they saw.
+ */
 export interface ActionReviewedEvent extends ActionEventBase {
   type: "action.reviewed";
-  decision: "opened" | "declined";
+  decision: "opened" | "declined" | "blocked";
   digest: string;
 }
 
@@ -106,9 +110,10 @@ export interface ActionFinishedEvent extends ActionEventBase {
 
 /**
  * One event of an action request (requirement `events.action-events`).
- * `action.requested` is written by the engine when a request is filed; the
- * others are written by Studio while the user reviews and runs it, into the
- * request's record outside every workspace, not into a run log.
+ * `action.requested` is written by the engine when a request is filed and
+ * joins the run log with that filing; the others are written by Studio while
+ * the user reviews and runs it, into the request's record outside every
+ * workspace, never into a run log.
  */
 export type ActionEvent =
   | ActionRequestedEvent
@@ -119,6 +124,12 @@ export type ActionEvent =
   | ActionStepFailedEvent
   | ActionStepSkippedEvent
   | ActionFinishedEvent;
+
+/**
+ * An event of a request's record, which Studio keeps outside every workspace
+ * through the `ActionRecords` port: every action event but `action.requested`.
+ */
+export type ActionRecordEvent = Exclude<ActionEvent, ActionRequestedEvent>;
 
 /** The name of an action event, such as `"action.step.started"`. */
 export type ActionEventType = ActionEvent["type"];

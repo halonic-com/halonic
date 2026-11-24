@@ -17,7 +17,8 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 
 | Port | File | Version | What it does | Contract suite |
 | --- | --- | --- | --- | --- |
-| `ActionSender` | `action-sender.ts` | 1 | sends one reviewed step of a stepper the user runs, with the user's own sign-in: a catalog step by reference, never an address; sign in, sign out, who am I; no call takes or gives a token | `action-sender` (`FakeActionSender` in `testing/contracts`) |
+| `ActionRecords` | `action-records.ts` | 1 | each action request's record outside every workspace: append an event and read a request's events; append-only, refuses an event the action events' allow-list refuses | `action-records` (`FakeActionRecords` in `testing/contracts`) |
+| `ActionSender` | `action-sender.ts` | 1 | runs one reviewed step of a stepper the user runs, with the user's own sign-in: a step from the generated route list by reference, never an address; send a call step, open a guided step's page, sign in, sign out, who am I; native dialogs for risky steps and secret values; no call takes or gives a token | `action-sender` (`FakeActionSender` in `testing/contracts`) |
 | `AgentMessaging` | `agent-messaging.ts` | 2 | how Studio's apps talk to agents, whoever runs them: sources, agents, conversations, messages, inbox items and answers, attachments read through the engine, work, search and changes, with opaque IDs and no provider types | `agent-messaging` (with first adapter; `FakeAgentMessaging` in `testing/contracts` until then) |
 | `AgentPlacementStore` | `agent-placement-store.ts` | 2 | each agent's "this computer" choice in the user's profile, keyed by workspace, hub and agent id; `AgentPlacement` decides | `agent-placement-store` |
 | `BlobStore` | `blob-store.ts` | 1 | content-addressed bytes: attachments, large payloads, exports | `blob-store` |

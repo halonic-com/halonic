@@ -1,3 +1,4 @@
+export { actionRecordsContract, type MakeActionRecords } from "./action-records.ts";
 export {
   type ActionSenderHarness,
   type ActionSenderSetup,
@@ -67,12 +68,13 @@ export {
   deployTargetContract,
   type MakeDeployTarget,
 } from "./deploy-target.ts";
+export { FakeActionRecords } from "./fake-action-records.ts";
 export {
   FakeActionSender,
   type FakeActionSenderOptions,
-  maxActionSendErrorLength,
   type SentActionCall,
   type StandInAnswer,
+  type StandInUser,
 } from "./fake-action-sender.ts";
 export {
   FakeAgentMessaging,

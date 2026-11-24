@@ -6,7 +6,7 @@ import type {
 } from "./action-events.ts";
 
 /** The longest service error message an event keeps; the rest is cut before it is written. */
-export const maxActionErrorLength = 500;
+export const maxActionErrorLength = 300;
 
 /** The longest `reason` a request may give. */
 export const maxActionReasonLength = 2000;
@@ -73,7 +73,7 @@ const schemas: { readonly [T in ActionEventType]: SpecsFor<Extract<ActionEvent, 
   },
   "action.reviewed": {
     ...base,
-    decision: { kind: "one-of", values: ["opened", "declined"] },
+    decision: { kind: "one-of", values: ["opened", "declined", "blocked"] },
     digest: { kind: "id" },
   },
   "action.signed-in": { ...base, service: { kind: "id" }, account: { kind: "id" } },

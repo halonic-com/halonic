@@ -1,9 +1,15 @@
+export { type ActionRecords, actionRecordsVersion } from "./action-records.ts";
 export {
   type ActionAccount,
-  type ActionCatalogStep,
-  type ActionJson,
+  type ActionBodyField,
+  type ActionBodyFieldKind,
+  type ActionCallRoute,
+  type ActionGuidedRoute,
   type ActionMethod,
+  type ActionOpenResult,
   type ActionRefusal,
+  type ActionRisk,
+  type ActionRoute,
   type ActionSender,
   type ActionSendRequest,
   type ActionSendResult,
