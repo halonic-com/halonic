@@ -3,6 +3,7 @@
 - Task: HAL-17204 (follow-up from Liam's review of #5424 on HAL-1457)
 - Approval: Liam approves this note in review on HAL-17204
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mq/p/ZIDUzFg2OXcCClFrnMYPfgHJZEYuswkzquDOLfA/8ItmOsgnNcQjfJpbnkfxwpnCp/k5mMUQ/TfXq7DCg==
 
 ## What changes
 
