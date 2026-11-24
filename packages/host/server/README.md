@@ -30,7 +30,8 @@ An agent in a harness (Claude Code or Codex) runs on the machine the server runs
 
 A deployment can cap how many requests its server answers per UTC day. Set `limits.dailyRequests` on the deployment in `deployments.yaml` (a whole number above zero). There is no default: with no `dailyRequests`, nothing is counted and nothing is capped. The ceiling is the same on `halonic serve` and on Cloudflare.
 
-- Every request that passes the `Host` and `Origin` checks counts, whether or not the caller has signed in. That includes `GET /api/hello` and the sign-in routes, so a caller who isn't signed in can use up the day.
+- Only a request that proved who sent it counts: a signed-in request (on a many-user server, one with a verified session) or a webhook delivery whose signature checks out. It counts once that proof passes.
+- `GET /api/hello`, the sign-in routes, requests with no session and unsigned webhooks don't count, so a caller who isn't signed in can't use up the day. The sign-in limiter still guards the sign-in.
 - A request refused by the `Host` or `Origin` check doesn't count.
 - A request past the ceiling gets status 429 with the code `daily_limit_reached` and a `Retry-After` header: the whole seconds until the next UTC midnight. It never reaches a route, so it never starts a run.
 
