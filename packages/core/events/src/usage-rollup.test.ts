@@ -100,6 +100,29 @@ verifies("events.usage-rollup", () => {
     });
   });
 
+  it("counts an agent's tokens as a sub-agent's only while it runs as one", () => {
+    const usage = usageOf(
+      runLog(
+        "run-1",
+        null,
+        { type: "agent.started", state: "draft", agent: "writer", prompt: "Reply" },
+        {
+          type: "agent.started",
+          state: "draft",
+          agent: "checker",
+          prompt: "Check",
+          parent: "writer",
+        },
+        response("checker", 30, 5),
+        { type: "agent.started", state: "review", agent: "checker", prompt: "Review" },
+        response("checker", 100, 20),
+      ),
+    );
+
+    expect(usage.usage).toEqual({ inputTokens: 130, outputTokens: 25 });
+    expect(usage.subAgentUsage).toEqual({ inputTokens: 30, outputTokens: 5 });
+  });
+
   it("counts fresh harness sessions by reason and resumed ones, and none without a session", () => {
     const usage = usageOf(
       runLog(

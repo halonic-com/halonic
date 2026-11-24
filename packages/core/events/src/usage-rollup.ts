@@ -14,7 +14,7 @@ import { upgradeEvent } from "./upgrade.ts";
 /** How a run's harness sessions began: how many were fresh, by reason, and how many resumed. */
 export interface SessionStarts {
   fresh: number;
-  /** Fresh starts by their reason code, such as `{ "no-session": 2 }`. */
+  /** Fresh starts by their reason code, such as `{ "no-resume": 2 }`. */
   freshReasons: Record<string, number>;
   resumed: number;
 }
@@ -60,8 +60,8 @@ export function runUsageOf(events: readonly RunEvent[]): RunUsage | null {
   const first = upgradeEvent(firstEvent);
   if (first.type !== "run.started") return null;
   const total = emptyTotal();
-  const subAgents = new Set<string>();
-  for (const event of events) countEvent(total, subAgents, event);
+  const startedAsSubAgent = new Map<string, boolean>();
+  for (const event of events) countEvent(total, startedAsSubAgent, event);
   return {
     runId: first.runId,
     parentRunId: first.parent?.runId ?? null,
@@ -70,10 +70,18 @@ export function runUsageOf(events: readonly RunEvent[]): RunUsage | null {
   };
 }
 
-/** Adds one event of a run to its total; `subAgents` collects the agents a parent started. */
-function countEvent(total: UsageTotal, subAgents: Set<string>, event: RunEvent): void {
+/**
+ * Adds one event of a run to its total. A model call belongs to its agent's
+ * latest start, kept in `startedAsSubAgent`: an agent that ran as a sub-agent
+ * in one state can run as a state's own agent later (HAL-17265).
+ */
+function countEvent(
+  total: UsageTotal,
+  startedAsSubAgent: Map<string, boolean>,
+  event: RunEvent,
+): void {
   if (event.type === "agent.started") {
-    if (event.parent !== undefined) subAgents.add(event.agent);
+    startedAsSubAgent.set(event.agent, event.parent !== undefined);
     return;
   }
   if (event.type === "harness.started") {
@@ -84,7 +92,7 @@ function countEvent(total: UsageTotal, subAgents: Set<string>, event: RunEvent):
   const charge = modelCallCharge(event);
   if (charge.usage === null) return;
   total.usage = addUsage(total.usage, charge.usage);
-  if (subAgents.has(event.agent)) {
+  if (startedAsSubAgent.get(event.agent) === true) {
     total.subAgentUsage = addUsage(total.subAgentUsage, charge.usage);
   }
   total.calls += 1;
