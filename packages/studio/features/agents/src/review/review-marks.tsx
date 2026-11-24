@@ -1,5 +1,5 @@
 import { ChangeMark, type ChangeMarkBusy, type ChangeMarkKind } from "@halonicjs/studio-shell";
-import { createContext, useContext } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import type { AgentRef } from "../api.ts";
 import type { ConfigurationPage } from "../configuration/configuration.tsx";
 import type { AgentChangeToReview, AgentReview } from "../review-api.ts";
@@ -71,18 +71,34 @@ function useMarksFor(agent: AgentRef): ReviewMarksValue | null {
 }
 
 /**
- * The mark for the assistant's change to `field`, if it changed it, put just above the field.
+ * The mark for the assistant's change to `field` around the field (`children`), as AI changes 1.2
+ * has it: the old value struck through, the field as it is now, then Accept and Reject. With no
+ * change to `field`, just the field.
  *
  * @example
- * <ReviewMark agent={settings} field="model" />
+ * <ReviewMark agent={settings} field="model">
+ *   <Field label="Model">…</Field>
+ * </ReviewMark>
  */
-export function ReviewMark({ agent, field }: { readonly agent: AgentRef; readonly field: string }) {
+export function ReviewMark({
+  agent,
+  field,
+  children,
+}: {
+  readonly agent: AgentRef;
+  readonly field: string;
+  readonly children: ReactNode;
+}) {
   const marks = useMarksFor(agent);
   const change = marks?.review.whole
     ? undefined
     : marks?.review.changes.find((each) => fieldOf(each) === field);
-  if (marks === null || change === undefined) return null;
-  return <Mark marks={marks} change={change} />;
+  if (marks === null || change === undefined) return children;
+  return (
+    <Mark marks={marks} change={change}>
+      {children}
+    </Mark>
+  );
 }
 
 /**
@@ -116,9 +132,11 @@ export function PageMarks({
 function Mark({
   marks,
   change,
+  children,
 }: {
   readonly marks: ReviewMarksValue;
   readonly change: AgentChangeToReview;
+  readonly children?: ReactNode;
 }) {
   const { review, decide, busy, held } = marks;
   return (
@@ -133,7 +151,9 @@ function Mark({
       deletesFile={review.created}
       busy={busy?.id === change.id ? busy.verb : undefined}
       waiting={held}
-    />
+    >
+      {children}
+    </ChangeMark>
   );
 }
 

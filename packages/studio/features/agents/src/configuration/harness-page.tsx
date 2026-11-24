@@ -130,26 +130,27 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
           check={checkAgain}
         />
       </div>
-      <ReviewMark agent={settings} field="harness" />
-      <div className="relative">
-        {/* With a strip, the strip's Check again is the only one (H2 on HAL-13120). */}
-        {!stripShown && (
-          <div ref={groupCorner} className="absolute end-0 top-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              busy={checking}
-              busyLabel={words.checking}
-              onClick={() => void checkAgain()}
-            >
-              {words.checkAgain}
-            </Button>
-          </div>
-        )}
-        <Field label={words.harness} hint={words.harnessHint}>
-          <RadioGroup options={options} value={harness} onChange={(next) => void pick(next)} />
-        </Field>
-      </div>
+      <ReviewMark agent={settings} field="harness">
+        <div className="relative">
+          {/* With a strip, the strip's Check again is the only one (H2 on HAL-13120). */}
+          {!stripShown && (
+            <div ref={groupCorner} className="absolute end-0 top-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                busy={checking}
+                busyLabel={words.checking}
+                onClick={() => void checkAgain()}
+              >
+                {words.checkAgain}
+              </Button>
+            </div>
+          )}
+          <Field label={words.harness} hint={words.harnessHint}>
+            <RadioGroup options={options} value={harness} onChange={(next) => void pick(next)} />
+          </Field>
+        </div>
+      </ReviewMark>
       <div className="mt-6">
         <WhereItRuns host={host} settings={settings} />
       </div>

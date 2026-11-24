@@ -84,42 +84,45 @@ export function ModelPage({
   if (model !== "" && !aliases.includes(model)) options.push({ value: model, label: model });
   return (
     <div className="flex flex-col gap-6">
-      <ReviewMark agent={settings} field="model" />
-      <Field
-        label={words.model}
-        hint={aliases.length === 0 ? words.noAliases : undefined}
-        error={modelCheck(model, aliases)}
-      >
-        <Select
-          ref={picker}
-          options={options}
-          value={model}
-          placeholder={
-            defaultModel === undefined ? words.chooseModel : words.workspaceDefault(defaultModel)
-          }
-          onChange={(next) => {
-            setModel(next);
-            void save({ model: next });
-          }}
-        />
-      </Field>
-      <ReviewMark agent={settings} field="maxSteps" />
-      <Field
-        label={words.turnLimit}
-        hint={words.turnLimitHint}
-        error={turnLimit.error}
-        announceWhileFocused
-      >
-        <Input
-          width="short"
-          inputMode="numeric"
-          value={turnLimit.value}
-          onChange={(event) => turnLimit.onChange(event.target.value)}
-          onBlur={turnLimit.flush}
-        />
-      </Field>
-      <ReviewMark agent={settings} field="params" />
-      <MoreSettings params={settings.params} save={save} reportNotSaved={setMoreNotSaved} />
+      <ReviewMark agent={settings} field="model">
+        <Field
+          label={words.model}
+          hint={aliases.length === 0 ? words.noAliases : undefined}
+          error={modelCheck(model, aliases)}
+        >
+          <Select
+            ref={picker}
+            options={options}
+            value={model}
+            placeholder={
+              defaultModel === undefined ? words.chooseModel : words.workspaceDefault(defaultModel)
+            }
+            onChange={(next) => {
+              setModel(next);
+              void save({ model: next });
+            }}
+          />
+        </Field>
+      </ReviewMark>
+      <ReviewMark agent={settings} field="maxSteps">
+        <Field
+          label={words.turnLimit}
+          hint={words.turnLimitHint}
+          error={turnLimit.error}
+          announceWhileFocused
+        >
+          <Input
+            width="short"
+            inputMode="numeric"
+            value={turnLimit.value}
+            onChange={(event) => turnLimit.onChange(event.target.value)}
+            onBlur={turnLimit.flush}
+          />
+        </Field>
+      </ReviewMark>
+      <ReviewMark agent={settings} field="params">
+        <MoreSettings params={settings.params} save={save} reportNotSaved={setMoreNotSaved} />
+      </ReviewMark>
     </div>
   );
 }
