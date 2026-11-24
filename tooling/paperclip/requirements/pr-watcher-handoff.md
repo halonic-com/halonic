@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17675; the board's decision on HAL-10 (24 Nov) to hand a ready, green pull request to its reviewer without waiting for the author; the reviewer split of HAL-14809
+- Source: HAL-17675; the board's decision on HAL-10 (24 Nov) to hand a ready, green pull request to its reviewer without waiting for the author; the reviewer split of HAL-14809; the board's addition on HAL-10 (24 Nov 16:58 UTC) after Julian's refused approval on #5653 waited 70 minutes (HAL-17680)
 
-When the PR watcher checks an open task whose author holds it and has no run going, and every open pull request of the task is out of draft, mergeable, without an open review finding, and either has a green `ci-ok` on its head or is approved on it, and at least one is not approved on its head, the PR watcher shall comment once per head ("PR watcher: ready for review: #N, head `abc1234`."), give the task to its reviewer with status `todo` and wake them: Julian when the path rules (`reviewerFor`) say Julian for every such pull request, otherwise Liam; Julian for a pull request Liam wrote, and Liam for one Julian wrote. It shall leave the task with its author when the task has an open child task, or when the author's newest comment on the task has the line `PR watcher: own review task` (a security or release pull request, which has a review task of its own). The host adapter shall refuse any handoff other than to one agent with status `todo`.
+When the PR watcher checks an open task whose author holds it and has no run going, and every open pull request of the task is out of draft, mergeable, without an open review finding, and either has a green `ci-ok` on its head or is approved on it, and at least one is not approved on its head, the PR watcher shall comment once per head ("PR watcher: ready for review: #N, head `abc1234`."), give the task to its reviewer with status `todo` and wake them: Julian when the path rules (`reviewerFor`) say Julian for every such pull request, otherwise Liam; Julian for a pull request Liam wrote, and Liam for one Julian wrote. When Julian's approval is the only one on a pull request's head and it doesn't count by the HAL-14809 rules (the pull request is Liam's by its paths, neither Liam nor Julian wrote it, and it isn't a re-approval after a rebase-only push Liam approved), the PR watcher shall treat that pull request as not approved and give the task to Liam on the same pass, once per head, saying why. It shall leave the task with its author when the task has an open child task, or when the author's newest comment on the task has the line `PR watcher: own review task` (a security or release pull request, which has a review task of its own). The host adapter shall refuse any handoff other than to one agent with status `todo`.
 
 ## Examples
 
@@ -32,6 +32,12 @@ When the PR watcher checks an open task whose author holds it and has no run goi
 - Given the reviewer gave the task back without a new push,
   when the watcher runs,
   then it doesn't hand it over again; after a push to a new head it does.
+- Given pull request 5701 with Julian's approval on its head `5701aaa`, the path rules saying Liam, and the watcher having handed `5701aaa` to Julian before,
+  when the watcher runs twice,
+  then it gives the task to Liam once, with the line "Julian's approval on #5701 doesn't count: it touches Liam's paths (HAL-14809), so Liam reviews it."
+- Given Julian's approval on the head and the path rules saying Julian, or Liam's approval beside it, or Julian's re-approval after a rebase-only push naming a head Liam approved, or a pull request Liam wrote,
+  when the watcher runs,
+  then it leaves the task with its author.
 - Given the author handed the task on, closed it or started a run on it while the pass ran,
   when the host adapter is asked to hand it to the reviewer,
   then it writes nothing.

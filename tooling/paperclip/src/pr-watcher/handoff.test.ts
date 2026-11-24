@@ -1,73 +1,10 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import type { PullFacts } from "./decide.ts";
-import { agentComment, agents, type FakeTask, fakePaperclip, task } from "./fakes.test-helper.ts";
-import type { Reviewer } from "./handoff.ts";
-import { tick } from "./watch.ts";
+import { agentComment, agents, type FakeTask, task } from "./fakes.test-helper.ts";
+import { head, mateoBranch, oldHead, open, repo, setup } from "./handoff.test-helper.ts";
 
 /** The review handoff and the push-after-approval warning (HAL-17675), on facts given directly. */
-
-const repo = "halonic-com/halonic";
-const head = "5701aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const oldHead = "4999bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-
-/** An open pull request on `branch`, out of draft, green and mergeable, unless `extra` says otherwise. */
-function open(number: number, branch: string, extra: Partial<PullFacts> = {}): PullFacts {
-  return {
-    repo,
-    number,
-    url: `https://github.com/${repo}/pull/${number}`,
-    state: "open",
-    branch,
-    head,
-    ciOkOnHead: "success",
-    draft: false,
-    conflicting: false,
-    inQueue: false,
-    retargeted: false,
-    latestReview: undefined,
-    approvals: [],
-    landed: false,
-    mergedAt: undefined,
-    ...extra,
-  };
-}
-
-interface Setup {
-  readonly tasks: FakeTask[];
-  readonly pulls: PullFacts[];
-  readonly comments?: Parameters<typeof fakePaperclip>[1];
-  readonly byPaths?: Reviewer;
-}
-
-function setup({ tasks, pulls, comments = {}, byPaths = "julian" }: Setup) {
-  const paperclip = fakePaperclip(tasks, comments);
-  const routed: number[] = [];
-  const lines: string[] = [];
-  const run = () =>
-    tick({
-      paperclip: paperclip.paperclip,
-      discover: paperclip.discover,
-      facts: async (refs) =>
-        new Map(
-          refs.flatMap((ref) =>
-            pulls
-              .filter((pull) => pull.number === ref.number)
-              .map((pull) => [`${repo}#${ref.number}`, pull] as const),
-          ),
-        ),
-      dryRun: false,
-      log: (line) => lines.push(line),
-      now: new Date("2026-11-24T17:00:00Z"),
-      route: async (pull) => {
-        routed.push(pull.number);
-        return byPaths;
-      },
-    });
-  return { ...paperclip, routed, lines, run };
-}
-
-const mateoBranch = "mateo/HAL-5701-work";
 
 verifies("paperclip.pr-watcher-handoff", () => {
   test("hands a ready, green pull request's task to Julian once, with a one-line comment", async () => {

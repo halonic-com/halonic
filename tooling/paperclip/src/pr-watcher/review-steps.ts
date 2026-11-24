@@ -1,8 +1,14 @@
 import { branchOwner, type Memory, type PullFacts, type WatchedTask } from "./decide.ts";
 import {
   handoffMessage,
+  julianOnlyOnHead,
+  julianRefused,
+  outsideKey,
+  pullId,
   pushedAfterApproval,
   pushedMessage,
+  type Refused,
+  type Reviewer,
   type ReviewerRoute,
   readyKey,
   reviewerOf,
@@ -53,34 +59,64 @@ async function warn(
   return options.dryRun || (await options.paperclip.note(task.id, body)) === "written";
 }
 
+/** Each pull request's reviewer by its paths, read once per pass and task. */
+function routes(route: ReviewerRoute): (pull: PullFacts) => Promise<Reviewer> {
+  const read = new Map<string, Promise<Reviewer>>();
+  return (pull) => {
+    const known = read.get(pullId(pull));
+    if (known !== undefined) {
+      return known;
+    }
+    const reviewer = route(pull);
+    read.set(pullId(pull), reviewer);
+    return reviewer;
+  };
+}
+
+/** The pull requests whose only approvals on the head are Julian's outside his limits. */
+async function refusedOf(
+  pulls: readonly PullFacts[],
+  memory: Memory,
+  routeOf: (pull: PullFacts) => Promise<Reviewer>,
+): Promise<Refused> {
+  const suspects = pulls.filter((pull) => julianOnlyOnHead(pull, memory));
+  const refused = await Promise.all(
+    suspects.map(async (pull) => (julianRefused(pull, await routeOf(pull)) ? [pullId(pull)] : [])),
+  );
+  return new Set(refused.flat());
+}
+
 async function handOff(
   options: ReviewStepOptions,
   task: WatchedTask,
-  waiting: readonly PullFacts[],
+  pulls: readonly PullFacts[],
+  memory: Memory,
 ): Promise<boolean> {
-  const [first] = waiting;
-  if (first === undefined || task.assigneeAgentId === null) {
-    return false;
-  }
   if (options.route === undefined) {
     options.log(`${task.identifier}: ready for review, but no reviewer route is set`);
     return false;
   }
-  const reviewer = reviewerOf(
-    branchOwner(first.branch),
-    await Promise.all(waiting.map(options.route)),
-  );
+  const routeOf = routes(options.route);
+  const refused = await refusedOf(pulls, memory, routeOf);
+  const waiting = waitingForReview(task, pulls, memory, refused);
+  const [first] = waiting;
+  if (first === undefined || task.assigneeAgentId === null) {
+    return false;
+  }
+  const reviewer = reviewerOf(branchOwner(first.branch), await Promise.all(waiting.map(routeOf)));
   const to = options.owners.get(reviewer);
   if (to === undefined) {
     options.log(`${task.identifier}: ready for review, but Paperclip has no agent ${reviewer}`);
     return false;
   }
-  const body = handoffMessage(waiting, reviewer);
+  const body = handoffMessage(waiting, reviewer, refused);
   options.log(`${task.identifier}: to ${reviewer}${options.dryRun ? " (dry run)" : ""}\n${body}`);
   if (options.dryRun) {
     return true;
   }
-  const key = waiting.map(readyKey).join(" | ");
+  const key = waiting
+    .map((pull) => (refused.has(pullId(pull)) ? outsideKey(pull) : readyKey(pull)))
+    .join(" | ");
   const outcome = await options.paperclip.handOff(
     task.id,
     { from: task.assigneeAgentId, to },
@@ -105,14 +141,17 @@ export async function reviewSteps(
   pulls: readonly PullFacts[],
   readMemory: () => Promise<Memory>,
 ): Promise<ReviewStepOutcome> {
+  // Before the comments are read: every Julian-only approval counts as refused, the widest case.
+  const suspects: Refused = new Set(
+    pulls.filter((pull) => julianOnlyOnHead(pull, noMemory)).map(pullId),
+  );
   const mayWarn = pushedAfterApproval(pulls, noMemory).length > 0;
-  const mayHandOff = waitingForReview(task, pulls, noMemory).length > 0;
+  const mayHandOff = waitingForReview(task, pulls, noMemory, suspects).length > 0;
   if (!(mayWarn || mayHandOff)) {
     return nothing;
   }
   const memory = await readMemory();
   const warned = mayWarn && (await warn(options, task, pulls, memory));
-  const handedOff =
-    mayHandOff && (await handOff(options, task, waitingForReview(task, pulls, memory)));
+  const handedOff = mayHandOff && (await handOff(options, task, pulls, memory));
   return { handedOff, warned };
 }

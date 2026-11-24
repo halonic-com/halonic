@@ -62,7 +62,9 @@ function openPullFacts(ref: PullRef, pull: SnapshotPull, open: OpenFacts): PullF
     inQueue: open.inQueue,
     retargeted: open.baseChangedSincePush === true,
     latestReview: open.finding ?? undefined,
-    approvals: open.approvals.map(({ by, head }) => ({ by, head })),
+    approvals: open.approvals.map(({ by, head, rebaseOf }) =>
+      rebaseOf === undefined ? { by, head } : { by, head, rebaseOf },
+    ),
     landed: false,
     mergedAt: undefined,
   };

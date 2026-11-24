@@ -50,7 +50,9 @@ reviewer with status `todo`. The reviewer is Julian when `reviewerFor` says
 Julian for each of them (it reads the changed files, as `pr_status` does),
 otherwise Liam; Liam's own pull requests go to Julian and Julian's to Liam.
 Once per head: a task the reviewer gives back without a new push stays with
-its author. It never hands over a task with an open child task. A security or
+its author. When Julian's approval is the only one on the head and doesn't
+count by the HAL-14809 rules (the queue gate refuses it as outside his
+limits), the task goes to Liam on the same pass, once per head, saying why. It never hands over a task with an open child task. A security or
 release pull request has a review task of its own; its author keeps the task
 by ending their newest task comment with this line:
 

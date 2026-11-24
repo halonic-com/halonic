@@ -28,7 +28,12 @@ export interface PullFacts {
   /** Open only: the newest review or inline comment made on the current head. */
   readonly latestReview: { readonly id: string; readonly at: string } | undefined;
   /** Open only: our reviewers' signed approvals, oldest first, each with the head it names. */
-  readonly approvals?: readonly { readonly by: string; readonly head: string }[];
+  readonly approvals?: readonly {
+    readonly by: string;
+    readonly head: string;
+    /** The head Liam approved, when this is a re-approval after a rebase-only push. */
+    readonly rebaseOf?: string;
+  }[];
   /** Merged only: `ci-ok` passed on the merge commit, or a later base-branch commit is green. */
   readonly landed: boolean;
   /** Merged only: when it merged. */
