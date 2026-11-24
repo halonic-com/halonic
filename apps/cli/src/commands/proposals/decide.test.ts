@@ -71,7 +71,7 @@ verifies("cli.commands.proposals.decide", () => {
       expect(code).toBe(exitCode.conflict);
       expect(io.stdout).toEqual([
         "Wrote 1 file: notes/new.md.",
-        "notes/today.md changed since the run, so it wasn't written. To keep it as it is now, reject it with halonic proposals reject 01jd8q notes/today.md.",
+        "notes/today.md changed since the run, so it wasn't written. Compare it in Halonic Studio, or reject it with halonic proposals reject 01jd8q notes/today.md to keep it as it is now.",
         "1 file is still to decide: halonic proposals show 01jd8q.",
       ]);
       expect(await savedFile(acmeRuns, "notes/today.md")).toBe("Four tickets.\n");
@@ -85,7 +85,7 @@ verifies("cli.commands.proposals.decide", () => {
 
       expect(code).toBe(exitCode.conflict);
       expect(io.stdout[1]).toBe(
-        "notes/new.md and notes/today.md changed since the run, so they weren't written. To keep them as they are now, reject each with halonic proposals reject --dir . 01jd8q <file>.",
+        "notes/new.md and notes/today.md changed since the run, so they weren't written. Compare them in Halonic Studio, or reject each with halonic proposals reject --dir . 01jd8q <file> to keep them as they are now.",
       );
     });
 
