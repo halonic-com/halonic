@@ -1,4 +1,11 @@
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import type { PairingView, PhonePairingFlow } from "./pairing-flow.ts";
 import {
   CheckStep,
@@ -24,6 +31,7 @@ export function PairingScreens({
   onOpenSettings,
   onOpenAgents,
   onCamera,
+  onFocusTitle,
 }: {
   readonly flow: PhonePairingFlow;
   /** The typed route, until its screen with the computer picker is in this package. */
@@ -36,8 +44,12 @@ export function PairingScreens({
    * meanwhile, so the camera behind the web view shows (Priya, HAL-12246).
    */
   readonly onCamera: (showing: boolean) => void;
+  /** Moves focus to the screen's title, for a step whose pressed button has gone (C48 PF1). */
+  readonly onFocusTitle?: () => void;
 }) {
   const view = useSyncExternalStore(flow.subscribe, () => flow.view);
+  const scanButton = useRef<HTMLButtonElement>(null);
+  useStepFocus(view.step, scanButton, onFocusTitle);
   const onAction = (action: ProblemAction) => {
     if (action === "tryAgain") flow.tryAgain();
     else if (action === "openSettings") onOpenSettings();
@@ -68,6 +80,7 @@ export function PairingScreens({
       return (
         <StartStep
           scanner={view.scanner}
+          scanRef={scanButton}
           onScan={() => flow.scan()}
           onTypeInstead={() => flow.typeInstead()}
         />
@@ -120,4 +133,32 @@ export function PairingScreens({
         />
       );
   }
+}
+
+/** The steps without focus of their own: their title takes it when they show. */
+const titledSteps: ReadonlySet<PairingView["step"]> = new Set(["start", "typed", "connecting"]);
+
+/**
+ * Where focus goes when a step shows whose pressed button has gone: Scan code after the scanner
+ * closes, else the title. The scanner, Camera off, Check the code, Paired and the problem
+ * screens set their own (C48 PF1).
+ */
+function useStepFocus(
+  step: PairingView["step"],
+  scanButton: RefObject<HTMLButtonElement | null>,
+  onFocusTitle: (() => void) | undefined,
+): void {
+  const shown = useRef<PairingView["step"]>(undefined);
+  const focusTitle = useRef(onFocusTitle);
+  useLayoutEffect(() => {
+    focusTitle.current = onFocusTitle;
+  });
+  useEffect(() => {
+    const from = shown.current;
+    shown.current = step;
+    // StrictMode runs this twice on mount; the step hasn't changed the second time.
+    if (from === step || !titledSteps.has(step)) return;
+    if (from === "scanning" && scanButton.current !== null) scanButton.current.focus();
+    else focusTitle.current?.();
+  }, [step, scanButton]);
 }

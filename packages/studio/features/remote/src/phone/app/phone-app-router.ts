@@ -50,6 +50,11 @@ export interface PhoneAppView {
   readonly statuses: ReadonlyMap<ComputerId, PhoneStatus>;
   /** False on the first screen: Android back then leaves the app. */
   readonly canGoBack: boolean;
+  /**
+   * The computer forgotten last from its own screen (Removed or Can't confirm), whose screen has
+   * gone: the app says it is forgotten. Paired computers says so itself.
+   */
+  readonly forgotten?: ListedComputer;
 }
 
 export interface PhoneAppRouterOptions {
@@ -78,6 +83,7 @@ export class PhoneAppRouter {
   readonly #held = new Map<ComputerId, HeldComputer>();
   readonly #reaches: FirstReaches;
   readonly #listeners = new Set<() => void>();
+  #forgotten: ListedComputer | undefined;
   #view: PhoneAppView;
   #unwatch: (() => void) | undefined;
 
@@ -164,8 +170,12 @@ export class PhoneAppRouter {
 
   /** The Connected sheet's Paired computers row. */
   openComputers(): void {
-    this.#setSheet("none");
-    this.#push({ screen: "computers" });
+    // One change: closing the sheet on its own first would take the page's history entry away,
+    // and opening the screen would add it again (C48 HB1).
+    const top = this.#top();
+    const under = top.screen === "computer" ? { ...top, sheet: "none" as const } : top;
+    this.#stack = [...this.#stack.slice(0, -1), under, { screen: "computers" }];
+    this.#changed();
     void this.#list().then(() => this.#changed());
   }
 
@@ -226,6 +236,7 @@ export class PhoneAppRouter {
       const kept = this.#stack.filter(
         (screen) => screen.screen !== "computer" || screen.computer !== computer.id,
       );
+      if (this.#top().screen !== "computers") this.#forgotten = computer;
       this.#stack = kept.some((screen) => screen.screen === "computer")
         ? kept
         : [this.#fallback(), ...kept];
@@ -235,8 +246,8 @@ export class PhoneAppRouter {
   }
 
   /**
-   * Android back: closes the sheet, else the run detail, else goes back a screen. False when
-   * there's nowhere to go.
+   * Android back: closes the sheet, else the run detail, else goes back a screen. A pairing
+   * under way on the first screen goes back to its start. False when there's nowhere to go.
    */
   back(): boolean {
     const top = this.#top();
@@ -248,7 +259,7 @@ export class PhoneAppRouter {
       this.closeRun();
       return true;
     }
-    if (this.#stack.length < 2) return false;
+    if (this.#stack.length < 2) return top.screen === "pair" && top.flow.backToStart();
     // Leaving Check the code or a problem screen ends the pairing on both sides.
     if (top.screen === "pair") top.flow.cancel();
     this.#stack = this.#stack.slice(0, -1);
@@ -292,10 +303,13 @@ export class PhoneAppRouter {
 
   #pairScreen(again?: ComputerId): PhoneAppScreen {
     const options = again === undefined ? {} : { again };
-    return {
-      screen: "pair",
-      flow: new PhonePairingFlow(this.#options.tunnel, this.#options.scanner, options),
-    };
+    const flow = new PhonePairingFlow(this.#options.tunnel, this.#options.scanner, options);
+    // Whether Back has somewhere to go can change with the pairing's step (C48 BK1).
+    flow.subscribe(() => {
+      const top = this.#top();
+      if (top.screen === "pair" && top.flow === flow) this.#changed();
+    });
+    return { screen: "pair", flow };
   }
 
   /** Drops what the page held from `computer`, and closes its run details, which showed it. */
@@ -333,12 +347,15 @@ export class PhoneAppRouter {
       screen: this.#top(),
       computers: this.#computers,
       statuses: new Map(this.#statuses),
-      canGoBack: this.#stack.length > 1 || this.#sheetOrRunOpen(),
+      canGoBack: this.#stack.length > 1 || this.#somewhereOnScreen(),
+      ...(this.#forgotten === undefined ? {} : { forgotten: this.#forgotten }),
     };
   }
 
-  #sheetOrRunOpen(): boolean {
+  /** A sheet or run detail is open, or a pairing is under way: Back has a step on this screen. */
+  #somewhereOnScreen(): boolean {
     const top = this.#top();
+    if (top.screen === "pair") return top.flow.underway;
     return top.screen === "computer" && (top.sheet !== "none" || top.run !== undefined);
   }
 

@@ -83,6 +83,31 @@ verifies("remote.phone-app", () => {
     expect(router.back()).toBe(false);
   });
 
+  it("Paired computers closes the sheet and opens in one change (C48 HB1)", async () => {
+    const { router, events } = setUp(paired(laptop, "Tim's laptop"));
+    await router.start();
+    router.openSheet();
+    events.length = 0;
+    router.openComputers();
+    expect(events).toEqual(["shows computers"]);
+    expect(router.view.canGoBack).toBe(true);
+    expect(router.back()).toBe(true);
+    expect(router.view.screen).toEqual({ screen: "computer", computer: laptop, sheet: "none" });
+  });
+
+  it("Back on a pairing step of the first screen goes back to its start (C48 BK1)", async () => {
+    const { router } = setUp();
+    await router.start();
+    const { screen } = router.view;
+    if (screen.screen !== "pair") throw new Error("Pair with a computer isn't showing.");
+    screen.flow.typeInstead();
+    expect(router.view.canGoBack).toBe(true);
+    expect(router.back()).toBe(true);
+    expect(screen.flow.view.step).toBe("start");
+    expect(router.view.canGoBack).toBe(false);
+    expect(router.back()).toBe(false);
+  });
+
   it("Removed drops what was held before any screen hears of it", async () => {
     const { tunnel, router, events } = setUp(paired(laptop, "Tim's laptop"));
     await router.start();
@@ -140,6 +165,8 @@ verifies("remote.phone-app", () => {
     if (shown === undefined) throw new Error("The laptop isn't listed.");
     await router.forget(shown);
     expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: "none" });
+    // The app says it, since the screen that asked has gone (C48 ST1).
+    expect(router.view.forgotten).toBe(shown);
     const next = tunnel.computers.get(desktop);
     if (next === undefined) throw new Error("The desktop isn't listed.");
     await router.forget(next);
@@ -158,6 +185,8 @@ verifies("remote.phone-app", () => {
     if (shown === undefined) throw new Error("The laptop isn't listed.");
     await router.forget(shown);
     expect(router.view.screen.screen).toBe("computers");
+    // Paired computers says it itself.
+    expect(router.view.forgotten).toBeUndefined();
     expect(router.back()).toBe(true);
     expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: "none" });
     expect(router.back()).toBe(false);

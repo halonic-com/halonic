@@ -116,6 +116,38 @@ verifies("remote.phone-app", () => {
     expect(document.querySelector("header")?.textContent).toContain("Connected · Tim's laptop");
   });
 
+  it("keeps one history entry while a sheet or Paired computers is open (C48 HB1, PC1)", async () => {
+    const tunnel = withLaptop();
+    await mount(tunnel);
+    await act(async () => tunnel.push(laptop, { state: "connected" }));
+    // Counts the calls, not history.length: jsdom shares one history between the tests.
+    const back = vi.spyOn(window.history, "back");
+    const push = vi.spyOn(window.history, "pushState");
+    await press("Connected to Tim's laptop. Details");
+    await press("Paired computers");
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(back).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(document.querySelector("h1"));
+    back.mockRestore();
+    push.mockRestore();
+  });
+
+  it("says a computer forgotten on Removed after its screen has gone (C48 ST1)", async () => {
+    const tunnel = withLaptop();
+    await mount(tunnel);
+    await act(async () => tunnel.push(laptop, { state: "removed" }));
+    await press("Forget this computer");
+    const confirm = [...document.querySelectorAll("dialog button")].find((each) =>
+      each.textContent?.startsWith("Forget"),
+    );
+    await act(async () => (confirm as HTMLButtonElement | undefined)?.click());
+    await settle();
+    expect(heading()).toBe("Pair with a computer");
+    expect(document.querySelector("[aria-live=polite]")?.textContent).toBe(
+      "Tim's laptop forgotten.",
+    );
+  });
+
   it("shows the stale banner while a computer it reached isn't answering", async () => {
     const tunnel = withLaptop();
     await mount(tunnel);

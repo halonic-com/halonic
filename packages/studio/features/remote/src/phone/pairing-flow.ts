@@ -169,6 +169,22 @@ export class PhonePairingFlow {
     else this.scan();
   }
 
+  /** Past the start and not yet paired: Back has a step to go back to (C48 BK1). */
+  get underway(): boolean {
+    return this.current.step !== "start" && this.current.step !== "paired";
+  }
+
+  /**
+   * Back while the pairing is under way: back to the start, closing the camera or ending the
+   * pairing on both sides. False when there's no step to go back to.
+   */
+  backToStart(): boolean {
+    if (!this.underway) return false;
+    if (this.current.step === "scanning") this.closeScanner();
+    else this.cancel();
+    return true;
+  }
+
   /** Cancel on Check the code or a problem screen: ends the pairing on both sides. */
   cancel(): void {
     const pairing = this.pairing;
