@@ -1,5 +1,5 @@
 # Checks on every pull request. The only required check is
-# `ci-ok`: it runs unless the run was cancelled, waits for every other job and fails if any of
+# `ci-ok`: it runs unless the run was cancelled with no failed job, waits for every other job and fails if any of
 # them failed. Jobs that only run for some changes can then be skipped
 # without blocking the merge.
 #
@@ -3349,7 +3349,7 @@ jobs:
           echo "::error::This merge group changes a cloud path, but the live suites didn't pass on its commit $sha: see the Live cloud run for that commit. Fix the pull request and push; the queue session queues it again once ci-ok is green."
           exit 1
 
-  # Merge queue only: a queue entry that has already failed keeps its place,
+  # Merge queue: a queue entry that has already failed keeps its place,
   # and everything behind it waits, until the slowest job ends (HAL-4253). This
   # job watches the run's other jobs and cancels the run as soon as one fails,
   # so ci-ok fails within a minute. It also cancels the run once its merge
@@ -3358,12 +3358,21 @@ jobs:
   # the old ones, but the old groups' runs keep going and hold runners.
   # It also cancels the group's live suites (live-cloud.yml, a run of its own),
   # so a dropped group doesn't hold the one test account (HAL-15970).
-  # Pull requests don't use it: the author should see every failure at once.
+  # Pull requests (board decision, HAL-17684, 24 Nov): the author learns of a
+  # failure when ci-ok turns red, which was up to 25 minutes after the first
+  # failed job (#5692). Here too the first failed job cancels the run and ci-ok
+  # fails at once; "Re-run failed jobs" runs the failed and cancelled jobs
+  # again, this one included. Four jobs don't cancel a pull request's run, as
+  # another workflow re-runs them alone once the author fixed the cause:
+  # "Fast gates" (the title), "Leak guard" and "Coverage floors don't go down"
+  # (pr-details.yml, after an edit or a label) and "Live cloud suites passed"
+  # (live-cloud-gate.yml, once the live suites pass). A cancelled run would
+  # leave ci-ok red after that re-run, so their failure shows when the run ends.
   # It runs no repository code (no checkout), so the write permission below
   # is only used by the `gh` calls here.
   fail-fast:
     name: Cancel the run on the first failure
-    if: github.event_name == 'merge_group'
+    if: github.event_name == 'merge_group' || github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 90 # costs nothing when the run ends early; ci-ok doesn't wait for it
     permissions:
@@ -3373,36 +3382,65 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
       RUN_ID: ${{ github.run_id }}
+      EVENT: ${{ github.event_name }}
       HEAD_REF: ${{ github.event.merge_group.head_ref }} # refs/heads/gh-readonly-queue/main/pr-N-<sha>
       HEAD_SHA: ${{ github.event.merge_group.head_sha }}
     steps:
       - name: Watch the other jobs
         shell: bash
         run: |
-          # Every merge group polls the API for its whole run, so the interval
-          # counts against the token's hourly limit: 30 s, and a growing wait
-          # (up to 5 min) after an error such as a rate limit (HAL-5146).
-          pause=30
+          # Every run polls the API for its whole length, so the interval
+          # counts against the token's hourly limit: 30 s in a merge group,
+          # 60 s on a pull request (more of them run at once, and nothing
+          # waits behind them), and a growing wait (up to 5 min) after an
+          # error such as a rate limit (HAL-5146).
+          interval=30
+          ignored='[]'
+          if [ "$EVENT" = pull_request ]; then
+            interval=60
+            ignored='["Fast gates", "Leak guard", "Coverage floors don'"'"'t go down", "Live cloud suites passed"]'
+          fi
+          pause=$interval
           cancel() {
-            # The group's live run first: once this run is cancelled, this step stops.
-            live=$(gh api "repos/$REPO/actions/workflows/live-cloud.yml/runs?head_sha=$HEAD_SHA&event=merge_group&per_page=20" \
-              --jq '.workflow_runs[] | select(.status != "completed") | .id') || live=""
-            for run in $live; do
-              gh run cancel "$run" --repo "$REPO" || true
-            done
+            # The group's live run first: once this run is cancelled, this step
+            # stops. A pull request's live run (live-cloud.yml) runs once per
+            # head and isn't cancelled: the gate re-runs when it passes.
+            if [ "$EVENT" = merge_group ]; then
+              live=$(gh api "repos/$REPO/actions/workflows/live-cloud.yml/runs?head_sha=$HEAD_SHA&event=merge_group&per_page=20" \
+                --jq '.workflow_runs[] | select(.status != "completed") | .id') || live=""
+              for run in $live; do
+                gh run cancel "$run" --repo "$REPO" || true
+              done
+            fi
             gh run cancel "$RUN_ID" --repo "$REPO"
+            # On a pull request, wait to be cancelled with the run: a job that
+            # ended as cancelled is one "Re-run failed jobs" starts again, so
+            # the re-run is watched too. A job that ended green would not be.
+            if [ "$EVENT" = pull_request ]; then
+              sleep 300
+            fi
           }
           while true; do
             jobs=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '.jobs[]' | jq -s .) || { sleep "$pause"; pause=$((pause * 2 > 300 ? 300 : pause * 2)); continue; }
-            # Our own job and ci-ok don't count; a job that hasn't finished yet has no conclusion.
-            failed=$(echo "$jobs" | jq -r '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", ")')
+            # Our own job and ci-ok (a draft's too) don't count; a job that
+            # hasn't finished yet has no conclusion.
+            failed=$(echo "$jobs" | jq -r --argjson ignored "$ignored" '[.[] | select((.name | startswith("ci-ok") | not) and (.name | startswith("Cancel the run") | not)) | select(.conclusion == "failure" or .conclusion == "timed_out") | select(.name | IN($ignored[]) | not) | .name] | join(", ")')
             if [ -n "$failed" ]; then
-              echo "::error::Failed: $failed. Cancelling the run so the queue moves on."
+              if [ "$EVENT" = pull_request ]; then
+                echo "::error::Failed: $failed. Cancelling the run so ci-ok fails now. Fix it and push, or use \"Re-run failed jobs\" for a flaky failure."
+              else
+                echo "::error::Failed: $failed. Cancelling the run so the queue moves on."
+              fi
               cancel
               exit 0
             fi
-            open=$(echo "$jobs" | jq '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.status != "completed")] | length')
+            open=$(echo "$jobs" | jq '[.[] | select((.name | startswith("ci-ok") | not) and (.name | startswith("Cancel the run") | not)) | select(.status != "completed")] | length')
             [ "$open" = "0" ] && exit 0
+            if [ "$EVENT" = pull_request ]; then
+              pause=$interval
+              sleep "$interval"
+              continue
+            fi
             # A job is still open, so ci-ok hasn't run and the group can't have
             # merged: a missing ref means GitHub dropped or rebuilt the group.
             # Only a 404 counts as gone; any other error takes the backoff.
@@ -3505,9 +3543,12 @@ jobs:
     # required check, unlike skipped. In any other run a cancelled or failed
     # job still fails it. In a merge-queue run nothing replaces the run, but
     # fail-fast (above) cancels it when a job fails. There ci-ok runs
-    # anyway and reports that failure at once. ci-ok doesn't need fail-fast:
+    # anyway and reports that failure at once. So it does in a pull request
+    # run that fail-fast cancelled, which always has a failed job (HAL-17684);
+    # a run a newer push cancelled with a failed job in it fails on its own,
+    # older head. ci-ok doesn't need fail-fast:
     # a watcher that timed out or errored must not fail a green run.
-    if: ${{ github.event_name == 'merge_group' || !cancelled() }}
+    if: ${{ github.event_name == 'merge_group' || !cancelled() || contains(needs.*.result, 'failure') }}
     needs:
       [
         changes,
@@ -3550,8 +3591,16 @@ jobs:
           NEEDS: ${{ toJSON(needs) }}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          failed=$(echo "$NEEDS" | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped")] | length')
-          if [ "$failed" != "0" ]; then
-            echo "::error::$failed required job(s) failed or were cancelled."
+          # The failed jobs first: after fail-fast cancelled the run, the
+          # cancelled ones only stopped because of them.
+          failed=$(echo "$NEEDS" | jq -r '[to_entries[] | select(.value.result == "failure") | .key] | join(", ")')
+          cancelled=$(echo "$NEEDS" | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped" and .value.result != "failure") | .key] | join(", ")')
+          if [ -n "$failed" ]; then
+            echo "::error::Failed: $failed. Fix it and push, or use \"Re-run failed jobs\" for a flaky failure."
+            [ -z "$cancelled" ] || echo "Cancelled after the first failure: $cancelled."
+            exit 1
+          fi
+          if [ -n "$cancelled" ]; then
+            echo "::error::Cancelled: $cancelled. Use \"Re-run failed jobs\"."
             exit 1
           fi
