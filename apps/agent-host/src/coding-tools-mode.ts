@@ -39,7 +39,9 @@ export function ownPayloadFolder(
 
 /**
  * How a harness program starts the server through this executable, for
- * the profile builder; `undefined` when the host runs from source.
+ * the profile builder; `undefined` when the host runs from source, and on
+ * Windows, where `halonic-agent-host.exe` is a Windows program a harness
+ * never starts (the server there is the Linux executable in the WSL distro).
  *
  * @param profileFolder - the profile the host runs on, which `main.ts` finds the payload in
  */
@@ -47,8 +49,9 @@ export function agentHostCodingToolsServer(
   profileFolder: string,
   payload: string | undefined = ownPayloadFolder(),
   execPath: string = process.execPath,
+  platform: NodeJS.Platform = process.platform,
 ): CodingToolsServer | undefined {
-  if (payload === undefined) return undefined;
+  if (platform === "win32" || payload === undefined) return undefined;
   return {
     program: execPath,
     args: ["--profile-folder", profileFolder, codingToolsMode],

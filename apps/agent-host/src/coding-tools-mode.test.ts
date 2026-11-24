@@ -30,7 +30,7 @@ verifies("agent-host.coding-tools-mode", () => {
     it("starts this executable in the coding-tools mode, its code the executable and the payload", () => {
       const executable = join("/", "opt", "halonic", "halonic-agent-host");
 
-      expect(agentHostCodingToolsServer(profile, payload, executable)).toEqual({
+      expect(agentHostCodingToolsServer(profile, payload, executable, "linux")).toEqual({
         program: executable,
         args: ["--profile-folder", profile, "coding-tools"],
         codePaths: [executable, payload],
@@ -38,8 +38,14 @@ verifies("agent-host.coding-tools-mode", () => {
     });
 
     it("names no server for a host running from source", () => {
-      expect(agentHostCodingToolsServer(profile, undefined)).toBeUndefined();
+      expect(agentHostCodingToolsServer(profile, undefined, undefined, "linux")).toBeUndefined();
       expect(agentHostCodingToolsServer(profile)).toBeUndefined();
+    });
+
+    it("names no server for the Windows executable, even from its payload", () => {
+      const executable = join("C:", "halonic", "halonic-agent-host.exe");
+
+      expect(agentHostCodingToolsServer(profile, payload, executable, "win32")).toBeUndefined();
     });
   });
 });
