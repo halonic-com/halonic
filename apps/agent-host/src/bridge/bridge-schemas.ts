@@ -1,5 +1,10 @@
 import type { Placement, ProgramHarness } from "@halonicjs/engine";
-import type { BridgeProvider, BridgeProviderAccess, ModelPrice } from "@halonicjs/ports";
+import {
+  type BridgeProvider,
+  type BridgeProviderAccess,
+  type ModelPrice,
+  maxBridgeFallbacks,
+} from "@halonicjs/ports";
 import { type Schema, s } from "@halonicjs/schema-kit";
 import type { ChannelAnswer } from "../server/call-channel.ts";
 import { portSchema } from "../server/port-schema.ts";
@@ -9,7 +14,7 @@ const efforts = s.record(s.string().min(1), s.enum(["low", "medium", "high"])).o
 
 // The alias's OpenRouter host pin (HAL-16834): only OpenRouter's routing keys, each of its type.
 const names = s.array(s.string().min(1)).optional();
-const routing = s
+const pin = s
   .object({
     order: names,
     only: names,
@@ -19,7 +24,13 @@ const routing = s
     zdr: s.boolean().optional(),
     quantizations: names,
   })
-  .strict()
+  .strict();
+const routing = pin.optional();
+
+// The host pins of the same model a call may move on to (HAL-17001): an alias and its pin, nothing else.
+const fallbacks = s
+  .array(s.object({ alias: s.string().min(1), routing: pin }).strict())
+  .max(maxBridgeFallbacks)
   .optional();
 
 const access = portSchema<BridgeProviderAccess>(
@@ -36,6 +47,8 @@ const access = portSchema<BridgeProviderAccess>(
         models: s.array(s.string().min(1)).optional(),
         efforts,
         routing,
+        alias: s.string().min(1).optional(),
+        fallbacks,
       })
       .strict(),
     s.object({ kind: s.literal("sign-in"), efforts }).strict(),

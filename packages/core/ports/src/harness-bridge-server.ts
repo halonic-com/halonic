@@ -60,6 +60,15 @@ export type BridgeProviderAccess =
    * (HAL-16834). The bridge sends it as the request's `provider` only when
    * `baseUrl`'s host is exactly `openrouter.ai`, in place of any the
    * program wrote (requirement `harness-bridge.openrouter-routing`).
+   *
+   * `alias` is the model alias the run started on, such as `fast`, which
+   * the bridge names on each call's `llm.request`. `fallbacks` are the host
+   * pins of the same model the bridge may move a call on to, in order, when
+   * OpenRouter is busy or down (requirement `harness-bridge.host-fallback`).
+   * A hop has no model, key or address of its own, so it can only change
+   * the pin; the bridge drops one whose pin keeps the data less safe than
+   * `routing` does ({@link keepsDataTerms}) and uses at most
+   * {@link maxBridgeFallbacks}.
    */
   | {
       kind: "key";
@@ -69,6 +78,8 @@ export type BridgeProviderAccess =
       models?: readonly string[];
       efforts?: Readonly<Record<string, BridgeEffort>>;
       routing?: ProviderRouting;
+      alias?: string;
+      fallbacks?: readonly BridgeFallbackHop[];
     }
   /**
    * With the person's own subscription: the bridge passes the program's own
@@ -81,14 +92,43 @@ export type BridgeProviderAccess =
   | { kind: "sign-in"; efforts?: Readonly<Record<string, BridgeEffort>> };
 
 /**
+ * One host pin a keyed call may move on to: the model alias it comes from,
+ * and that alias's OpenRouter routing. The call keeps its model, key and
+ * address (HAL-16992, Q3: within a run, only the same model and data class).
+ */
+export interface BridgeFallbackHop {
+  alias: string;
+  routing: ProviderRouting;
+}
+
+/** The most fallback hops a keyed access may name; the bridge uses no more. */
+export const maxBridgeFallbacks = 3;
+
+/**
+ * True when `hop` keeps the data at least as safe as `first`: a
+ * `data_collection: "deny"` stays `deny`, a `zdr: true` stays `true`, and an
+ * `allow_fallbacks: false` stays `false`. The host builds the hops by it, and
+ * the bridge checks each hop by it again.
+ */
+export function keepsDataTerms(first: ProviderRouting, hop: ProviderRouting): boolean {
+  if (first.data_collection === "deny" && hop.data_collection !== "deny") return false;
+  if (first.zdr === true && hop.zdr !== true) return false;
+  return !(first.allow_fallbacks === false && hop.allow_fallbacks !== false);
+}
+
+/**
  * What is recorded of the bridge: the model calls and Halonic tool calls that
- * go through it, the failures it told the program the run log has the
- * details of (`bridge.failed`, from {@link HarnessBridgeOptions.reportError}),
- * and the program's own calls its approvals let through without asking
+ * go through it, a call it moved on to the next host pin (`llm.fallback`),
+ * the failures it told the program the run log has the details of
+ * (`bridge.failed`, from {@link HarnessBridgeOptions.reportError}), and the
+ * program's own calls its approvals let through without asking
  * (`harness.allowed`, HAL-14992).
  */
 export type BridgeEvent =
-  | Extract<HarnessEvent, { type: "llm.request" | "llm.response" | "tool.called" | "tool.result" }>
+  | Extract<
+      HarnessEvent,
+      { type: "llm.request" | "llm.response" | "llm.fallback" | "tool.called" | "tool.result" }
+    >
   | Extract<RunEventBody, { type: "bridge.failed" | "harness.allowed" }>;
 
 /** Writes the bridge's events to the run's log. The engine adds `runId`, `seq`, `at` and the `state`. */

@@ -10,6 +10,8 @@ import {
   bridgeRouting,
   type HarnessBridgeOptions,
   type HarnessBridgeServer,
+  keepsDataTerms,
+  maxBridgeFallbacks,
   type OpenHarnessBridge,
 } from "./harness-bridge-server.ts";
 
@@ -197,5 +199,31 @@ verifies("harness-bridge.openrouter-routing", () => {
       quantizations: ["fp8"],
     });
     expect(Object.keys(bridgeRouting({ ignore: ["acme-host"] }))).toEqual(["ignore"]);
+  });
+});
+
+verifies("harness-bridge.host-fallback", () => {
+  it("records a call that moved on to the next host pin", () => {
+    const movedOn: BridgeEvent = {
+      type: "llm.fallback",
+      agent: "writer",
+      from: "fast",
+      to: "fast-backup",
+      provider: "openrouter",
+      model: "acme/flash",
+      alias: "fast-backup",
+      error: "unavailable: OpenRouter answered 503.",
+    };
+    expect(movedOn.type).toBe("llm.fallback");
+  });
+
+  it("keeps a hop only when it keeps the data at least as safe as the first pin", () => {
+    const strict = { data_collection: "deny", zdr: true, allow_fallbacks: false } as const;
+    expect(keepsDataTerms(strict, { ...strict, order: ["acme-host/fp8"] })).toBe(true);
+    expect(keepsDataTerms(strict, { ...strict, data_collection: "allow" })).toBe(false);
+    expect(keepsDataTerms(strict, { data_collection: "deny", allow_fallbacks: false })).toBe(false);
+    expect(keepsDataTerms(strict, { data_collection: "deny", zdr: true })).toBe(false);
+    expect(keepsDataTerms({}, { order: ["acme-host/fp8"] })).toBe(true);
+    expect(maxBridgeFallbacks).toBe(3);
   });
 });

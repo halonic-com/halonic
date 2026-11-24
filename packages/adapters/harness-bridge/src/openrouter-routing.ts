@@ -14,8 +14,14 @@ const openRouterHost = "openrouter.ai";
  */
 export function routingFor(access: BridgeProviderAccess): ProviderRouting | undefined {
   if (access.kind !== "key" || access.routing === undefined) return undefined;
-  if (access.baseUrl === undefined || !isOpenRouter(access.baseUrl)) return undefined;
+  if (!isAtOpenRouter(access)) return undefined;
   return bridgeRouting(access.routing);
+}
+
+/** True for a keyed access whose `baseUrl` host is exactly `openrouter.ai`. */
+export function isAtOpenRouter(access: BridgeProviderAccess): boolean {
+  if (access.kind !== "key" || access.baseUrl === undefined) return false;
+  return isOpenRouter(access.baseUrl);
 }
 
 /**

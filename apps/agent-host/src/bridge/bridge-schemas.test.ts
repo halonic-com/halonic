@@ -130,3 +130,46 @@ verifies("harness-host.bridge-routing", () => {
     });
   });
 });
+
+verifies("harness-bridge.host-fallback", () => {
+  describe("openBridgeBody", () => {
+    const body = (anthropic: unknown) => ({
+      runId: "run_1",
+      agentId: "coder",
+      providers: { anthropic },
+      prices: {},
+    });
+    const keyed = {
+      kind: "key",
+      secret: "openrouter-key",
+      baseUrl: "https://openrouter.ai/api",
+      alias: "fast",
+      routing: { order: ["deepinfra/fp8"], data_collection: "deny" },
+    };
+    const hop = {
+      alias: "fast-backup",
+      routing: { order: ["acme-host/fp8"], data_collection: "deny" },
+    };
+
+    it("takes the alias and up to three fallback hops of a key", () => {
+      const access = { ...keyed, fallbacks: [hop, hop, hop] };
+      expect(parse(openBridgeBody, body(access))).toEqual({ ok: true, value: body(access) });
+    });
+
+    it.each([
+      ["more than three hops", [hop, hop, hop, hop]],
+      ["a hop with a model of its own", [{ ...hop, model: "acme/other" }]],
+      ["a hop with a key of its own", [{ ...hop, secret: "other-key" }]],
+      ["a hop with an address of its own", [{ ...hop, baseUrl: "https://models.acme.example" }]],
+      ["a hop without a routing", [{ alias: "fast-backup" }]],
+      ["a hop whose routing has another key", [{ ...hop, routing: { sort: "price" } }]],
+    ])("refuses %s", (_case, fallbacks) => {
+      expect(parse(openBridgeBody, body({ ...keyed, fallbacks })).ok).toBe(false);
+    });
+
+    it("refuses fallbacks on the program's own sign-in", () => {
+      const access = { kind: "sign-in", fallbacks: [hop] };
+      expect(parse(openBridgeBody, body(access)).ok).toBe(false);
+    });
+  });
+});

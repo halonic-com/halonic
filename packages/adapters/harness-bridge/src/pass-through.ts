@@ -93,31 +93,99 @@ export async function passThrough(
   upstream: UpstreamRequest,
   caller: UpstreamCaller,
 ): Promise<PassedReply> {
+  const started = await startCall(context, upstream, caller);
+  return started.pass();
+}
+
+/**
+ * The first half of {@link passThrough}: sends the request and waits for the
+ * provider's status and headers, without handing anything to the program
+ * yet, so the caller can still try another host pin (requirement
+ * `harness-bridge.host-fallback`). The caller then either passes the reply
+ * on or discards it.
+ *
+ * @throws KindedError `unavailable` when the provider can't be reached or doesn't start its reply in time
+ */
+export async function startCall(
+  context: BridgeRequestContext,
+  upstream: UpstreamRequest,
+  caller: UpstreamCaller,
+): Promise<StartedReply> {
   const { limits } = caller;
   const deadline = new Deadline();
   const signal = AbortSignal.any([context.signal, deadline.signal]);
-  let reply: Response;
   try {
     deadline.start(limits.responseTimeoutMs, didNotAnswer(upstream, limits));
-    reply = await callProvider(upstream, caller.fetch, signal);
+    const reply = await callProvider(upstream, caller.fetch, signal);
+    return new StartedCall(reply, upstream, limits, deadline, signal);
   } catch (error) {
     deadline.clear();
     throw deadline.signal.aborted ? deadline.signal.reason : error;
   }
-  upstream.watch?.started(reply.status, reply.headers);
-  const headers = replyHeaders(reply.headers, upstream.replyHeader);
-  if (reply.body === null) {
-    deadline.clear();
+}
+
+/** A provider's reply whose status and headers have arrived, and nothing of it has gone to the program. */
+export interface StartedReply {
+  /** The provider's status, such as 200 or 503. */
+  readonly status: number;
+  /**
+   * Drops the reply without reading it: the body is cancelled, so the
+   * connection is let go before another host pin is tried.
+   */
+  discard(): Promise<void>;
+  /** The second half of {@link passThrough}: hands the reply on for the program. */
+  pass(): PassedReply;
+}
+
+/** A {@link StartedReply}, with the time limit of the call it belongs to. */
+class StartedCall implements StartedReply {
+  readonly #reply: Response;
+  readonly #upstream: UpstreamRequest;
+  readonly #limits: UpstreamLimits;
+  readonly #deadline: Deadline;
+  readonly #signal: AbortSignal;
+
+  constructor(
+    reply: Response,
+    upstream: UpstreamRequest,
+    limits: UpstreamLimits,
+    deadline: Deadline,
+    signal: AbortSignal,
+  ) {
+    this.#reply = reply;
+    this.#upstream = upstream;
+    this.#limits = limits;
+    this.#deadline = deadline;
+    this.#signal = signal;
+  }
+
+  get status(): number {
+    return this.#reply.status;
+  }
+
+  async discard(): Promise<void> {
+    this.#deadline.clear();
+    await this.#reply.body?.cancel();
+  }
+
+  pass(): PassedReply {
+    const reply = this.#reply;
+    const upstream = this.#upstream;
+    upstream.watch?.started(reply.status, reply.headers);
+    const headers = replyHeaders(reply.headers, upstream.replyHeader);
+    if (reply.body === null) {
+      this.#deadline.clear();
+      return {
+        response: new Response(null, { status: reply.status, headers }),
+        ended: Promise.resolve(),
+      };
+    }
+    const body = new CopiedBody(reply.body, upstream, this.#limits, this.#deadline, this.#signal);
     return {
-      response: new Response(null, { status: reply.status, headers }),
-      ended: Promise.resolve(),
+      response: new Response(body.stream, { status: reply.status, headers }),
+      ended: body.ended,
     };
   }
-  const body = new CopiedBody(reply.body, upstream, limits, deadline, signal);
-  return {
-    response: new Response(body.stream, { status: reply.status, headers }),
-    ended: body.ended,
-  };
 }
 
 /**

@@ -1,12 +1,14 @@
+import type { ProviderRouting } from "@halonicjs/events";
 import type { Secrets } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { type KnownRequest, refuseUnknownAtCompatible } from "./compatible-request.ts";
 import { openAiEffort, withEffort } from "./effort.ts";
+import { sendModelCall } from "./host-fallback.ts";
 import { refuseModelsNotGiven } from "./keyed-model.ts";
 import { OpenAiReplyReader } from "./openai-reply.ts";
 import { refuseStoredPrompt, refuseUrlInputs } from "./openai-sources.ts";
 import { withRouting } from "./openrouter-routing.ts";
-import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
+import { type Fetch, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
 import { type ProviderApi, providerTarget } from "./provider-address.ts";
 import { providerAccess, providerAuthorization } from "./provider-key.ts";
 import {
@@ -18,7 +20,7 @@ import {
   withoutProviderReach,
 } from "./provider-reach.ts";
 import type { BridgeRoute } from "./route.ts";
-import { readModelCall, recordModelCall } from "./spend.ts";
+import { readModelCall } from "./spend.ts";
 import { withSubagent } from "./subagent.ts";
 
 /** The one host the bridge sends OpenAI requests to. */
@@ -169,7 +171,9 @@ export interface OpenAiRouteDependencies {
  * from a URL, and a stored prompt, are refused. A model the host set an
  * effort for gets it as `reasoning.effort` (requirement
  * `harness-bridge.effort`), and a call to OpenRouter gets the alias's host
- * pin as `provider` (requirement `harness-bridge.openrouter-routing`). Each call is recorded
+ * pin as `provider` (requirement `harness-bridge.openrouter-routing`); when OpenRouter is busy or down, the
+ * call moves on to the alias's next host pin (requirement
+ * `harness-bridge.host-fallback`). Each call is recorded
  * with its usage and cost (requirement `harness-bridge.spend`).
  */
 export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute {
@@ -200,25 +204,29 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
         "openai",
         (key) => ({ authorization: `Bearer ${key}` }),
       );
-      const body = withoutProviderReach(
-        withRouting(withEffort(request, call.effort, openAiEffort), call.routing),
-        openAiReach,
-      );
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
-      const reply = new OpenAiReplyReader();
-      return recordModelCall(context, call, reply, () =>
-        passThrough(
-          context,
-          {
-            provider: "OpenAI",
-            url: target.url,
-            headers: { ...headers, ...authorization },
-            body,
-            replyHeader: isForwardedReplyHeader,
-            watch: reply,
-          },
-          { fetch: target.fetch, limits: dependencies.limits },
-        ),
+      // Each host pin gets the same request, built from the body read once; only `provider` differs.
+      const attempt = (routing: ProviderRouting | undefined) => {
+        const reply = new OpenAiReplyReader();
+        const body = withoutProviderReach(
+          withRouting(withEffort(request, call.effort, openAiEffort), routing),
+          openAiReach,
+        );
+        const upstream = {
+          provider: "OpenAI",
+          url: target.url,
+          headers: { ...headers, ...authorization },
+          body,
+          replyHeader: isForwardedReplyHeader,
+          watch: reply,
+        };
+        return { upstream, reply };
+      };
+      return sendModelCall(
+        context,
+        call,
+        { fetch: target.fetch, limits: dependencies.limits },
+        attempt,
       );
     },
   };

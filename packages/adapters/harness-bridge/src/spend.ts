@@ -25,6 +25,8 @@ export interface ModelCall {
   subagent?: string;
   /** The alias's OpenRouter host pin, which the bridge sends as the request's `provider`. */
   routing?: ProviderRouting;
+  /** The model alias whose host pin serves the call, when the host named one (`harness-bridge.host-fallback`). */
+  alias?: string;
 }
 
 /** What a reply reader found in a provider's reply. */
@@ -105,6 +107,7 @@ export async function recordModelCall(
     agent: run.agentId,
     provider,
     model,
+    ...(call.alias === undefined ? {} : { alias: call.alias }),
     ...(call.effort === undefined ? {} : { effort: call.effort }),
     ...subagent,
     ...(call.routing === undefined ? {} : { routing: call.routing }),
@@ -142,7 +145,7 @@ export async function recordModelCall(
  * comes from, such as `zai`, when the host names it, else the API's own
  * name (requirement `harness-bridge.provider-base-url`).
  */
-function providerNamed(run: HarnessBridgeOptions, call: ModelCall): string {
+export function providerNamed(run: HarnessBridgeOptions, call: ModelCall): string {
   const access = run.providers[call.provider];
   return access?.kind === "key" && access.providerId !== undefined
     ? access.providerId

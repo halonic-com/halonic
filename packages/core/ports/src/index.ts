@@ -139,6 +139,7 @@ export {
   type BridgeCallCharge,
   type BridgeEffort,
   type BridgeEvent,
+  type BridgeFallbackHop,
   type BridgeProvider,
   type BridgeProviderAccess,
   type BridgeRecorder,
@@ -152,6 +153,8 @@ export {
   type HarnessBridgeOptions,
   type HarnessBridgeServer,
   harnessBridgeServerVersion,
+  keepsDataTerms,
+  maxBridgeFallbacks,
   type OpenHarnessBridge,
   type ProviderRouting,
 } from "./harness-bridge-server.ts";
