@@ -76,17 +76,18 @@ export const proposalsMessages = defineMessages("proposals", {
   /** `accept` that wrote nothing. */
   wroteNothing: () => phrase`No file was written.`,
   /**
-   * Files the person changed since the run: they stay undecided. Reject keeps them, as Studio's
-   * line for such a file says (C682 2), and the line names the command (C681 37).
+   * Files the person changed since the run: they stay undecided. The line points to Compare in
+   * Studio, as Studio's line for such a file says "Accept opens Compare" (HAL-16075 §3, C782 9),
+   * and names the reject command that keeps them (C681 37).
    */
   changedOnDisk: (paths: readonly string[], runId: string, dir?: string) => {
     const [only, ...others] = paths;
     if (only !== undefined && others.length === 0) {
       const reject = suggestedCommand("proposals reject", dir, `${runId} ${shellWord(only)}`);
-      return phrase`${only} changed since the run, so it wasn't written. To keep it as it is now, reject it with ${reject}.`;
+      return phrase`${only} changed since the run, so it wasn't written. Compare it in Halonic Studio, or reject it with ${reject} to keep it as it is now.`;
     }
     const reject = suggestedCommand("proposals reject", dir, `${runId} <file>`);
-    return phrase`${listInWords(paths)} changed since the run, so they weren't written. To keep them as they are now, reject each with ${reject}.`;
+    return phrase`${listInWords(paths)} changed since the run, so they weren't written. Compare them in Halonic Studio, or reject each with ${reject} to keep them as they are now.`;
   },
   /** The `--json` error when a file changed since the run (`conflict`). */
   changedOnDiskFailure: () => phrase`Some files changed since the run, so they weren't written.`,
