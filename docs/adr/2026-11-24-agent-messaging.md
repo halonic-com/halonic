@@ -108,11 +108,16 @@ the polling limits below. If A3 finds a company-wide or filtered card read on
 our server's version, it uses that instead.
 
 **The provider's requests** are the whole list. It may list agents, projects,
-tasks, comments, cards and pending approvals, answer a card, and comment on a
-chat task. Sign-in
+tasks, comments, cards and pending approvals, read one approval and the tasks
+it is linked to, answer a card, approve or reject an approval, and comment on
+one of the person's own chat tasks. It approves, rejects, answers or comments
+only when the person does so in Halonic, and shows an approval's type (what
+approving does) next to the asking agent's title (Julian's review of the
+provider, HAL-17437). Sign-in
 and disconnect may also start, poll and cancel a sign-in, read
 `/api/cli-auth/me` and revoke the current key. It makes nothing else, even
-though the key could: no hiring, budgets, settings or deleting, and no route
+though the key could: it never hires, sets budgets, changes settings or deletes
+on its own, and no route
 that makes, lists or deletes keys. A board key can make more board keys that
 never expire, and Disconnect doesn't revoke those (HAL-17423). A new request
 needs a security review. The list's file goes on the reviewer paths.
