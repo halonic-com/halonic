@@ -1,7 +1,7 @@
 import type { SearchProviderContribution } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
-import { AgentsHostService } from "./api.ts";
+import { AgentReviewService, AgentsHostService } from "./api.ts";
 import { agentsFeature } from "./feature.ts";
 import { memoryAgentsHost } from "./memory-host.ts";
 
@@ -101,5 +101,11 @@ verifies("agents.page.rename", () => {
     stop?.();
 
     expect(labels.at(-1)).toBe("Reply writer");
+  });
+});
+
+verifies("agents.page.changes-to-review", () => {
+  it("asks for the app's changes to review, so the page finds them where the app has them", () => {
+    expect(agentsFeature.wants).toContain(AgentReviewService);
   });
 });
