@@ -1,21 +1,5 @@
 import type { Readable } from "node:stream";
-import { KindedError } from "@halonicjs/std";
-
-/** How much of a request the bridge accepts, and how long it waits for it. */
-export interface BodyLimits {
-  /** The largest body the bridge reads, in bytes. */
-  maxBytes: number;
-  /** How long the whole body may take to arrive, in milliseconds. */
-  timeoutMs: number;
-}
-
-/** The error for a body over {@link BodyLimits.maxBytes}. */
-export function bodyTooLarge(limits: BodyLimits): KindedError {
-  return new KindedError(
-    "invalid_input",
-    `The request is larger than the Halonic bridge accepts (${limits.maxBytes} bytes).`,
-  );
-}
+import { type BodyLimits, bodyTooLarge, bodyTooSlow } from "./web-body.ts";
 
 /**
  * Reads a request's body, within the limits (failure-path rule 1: every wait
@@ -48,12 +32,7 @@ export function readRequestBody(request: Readable, limits: BodyLimits): Promise<
       resolve(Buffer.concat(chunks));
     };
     const onError = (error: Error) => stop(error);
-    const timer = setTimeout(() => {
-      const seconds = limits.timeoutMs / 1000;
-      stop(
-        new KindedError("invalid_input", `The request didn't arrive within ${seconds} seconds.`),
-      );
-    }, limits.timeoutMs);
+    const timer = setTimeout(() => stop(bodyTooSlow(limits)), limits.timeoutMs);
 
     function cleanUp() {
       clearTimeout(timer);

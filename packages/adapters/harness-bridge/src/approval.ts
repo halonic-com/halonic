@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { BridgeApprovals } from "@halonicjs/ports";
 
 /**
@@ -32,7 +31,7 @@ export async function askForApproval(
   question: ApprovalQuestion,
   signal: AbortSignal,
 ): Promise<ApprovalAnswer> {
-  const callId = `bridge-${randomUUID()}`;
+  const callId = `bridge-${crypto.randomUUID()}`;
   try {
     const decision = await approvals.request({ callId, ...question }, { signal });
     if (decision.approved) return { kind: "approved" };
