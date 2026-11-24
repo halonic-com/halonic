@@ -1,11 +1,19 @@
 import { createHash } from "node:crypto";
 import { readdir, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import type { MessagingId } from "@halonicjs/ports";
+import type { MessagingId, SpendRange } from "@halonicjs/ports";
 import { privateFileAt } from "../remote/private-file.ts";
 
 /** A list a source's cache keeps in a file of its own; a conversation's messages each get one too. */
 export type CachedList = "agents" | "conversations" | "inbox" | "work";
+
+/** A `TeamStatus` read whose last answer a team status provider's cache keeps, one file each. */
+export type TeamStatusRoute =
+  | "parts"
+  | "seats"
+  | "pull-requests"
+  | "merge-queue"
+  | `spend-${SpendRange}`;
 
 /** What one cache file holds: the items of one live read, and the time the source gave them. */
 export interface CachedRead<Item> {
@@ -110,6 +118,32 @@ export class MessagingCacheFolder {
     return record.asOf;
   }
 
+  /**
+   * Replaces a team status provider's last answer to one read. It is kept
+   * under the provider's name, not a source's, because an engine that starts
+   * offline knows its providers but not yet their sources.
+   */
+  async saveTeamStatus<Item>(
+    provider: string,
+    route: TeamStatusRoute,
+    read: CachedRead<Item>,
+  ): Promise<void> {
+    await privateFileAt(join(this.#teamFolder(provider), `${route}.json`)).write(
+      `${JSON.stringify(read)}\n`,
+    );
+  }
+
+  /** A team status provider's last answer to one read, or `undefined` when none was saved or its file is broken. */
+  async loadTeamStatus<Item extends { source: MessagingId }>(
+    provider: string,
+    route: TeamStatusRoute,
+  ): Promise<CachedRead<Item> | undefined> {
+    return this.#readAt<Item>(
+      join(this.#teamFolder(provider), `${route}.json`),
+      (item) => typeof item["source"] === "string",
+    );
+  }
+
   /** Deletes everything cached for the source. */
   async clear(source: MessagingId): Promise<void> {
     await rm(this.#sourceFolder(source), { recursive: true, force: true });
@@ -124,12 +158,18 @@ export class MessagingCacheFolder {
   }
 
   /** The file's read, keeping only the items `belongs` accepts; a broken file counts as missing. */
-  async #read<Item>(
+  #read<Item>(
     source: MessagingId,
     file: string,
     belongs: (item: Record<string, unknown>) => boolean,
   ): Promise<CachedRead<Item> | undefined> {
-    const path = join(this.#sourceFolder(source), file);
+    return this.#readAt(join(this.#sourceFolder(source), file), belongs);
+  }
+
+  async #readAt<Item>(
+    path: string,
+    belongs: (item: Record<string, unknown>) => boolean,
+  ): Promise<CachedRead<Item> | undefined> {
     const read = await this.#readJson(path);
     if (read === undefined) return undefined;
     if (!hasAsOf(read)) return this.#missing(path, "it has no asOf time");
@@ -165,6 +205,11 @@ export class MessagingCacheFolder {
 
   #sourceFolder(source: MessagingId): string {
     return join(this.#folder, hashOf(source));
+  }
+
+  /** A folder of its own, so a provider's name can never share one with a source's ID. */
+  #teamFolder(provider: string): string {
+    return join(this.#folder, "team-status", hashOf(provider));
   }
 }
 

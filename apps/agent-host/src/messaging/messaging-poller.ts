@@ -14,6 +14,10 @@ export interface MessagingPollerOptions {
   clock: Clock;
   /** Reads every provider again, such as `MessagingHub.refresh`. It reports its own failures and never rejects. */
   poll: () => Promise<void>;
+  /** The scheduler key and timer ID; {@link messagingPollTimer} unless told otherwise. */
+  timer?: { key: string; timerId: string };
+  /** The waits in front and in the background; {@link pollInFrontMs} and {@link pollInBackgroundMs} unless told otherwise. */
+  every?: { inFrontMs: number; inBackgroundMs: number };
 }
 
 /**
@@ -34,6 +38,8 @@ export class MessagingPoller {
   readonly #scheduler: Scheduler;
   readonly #clock: Clock;
   readonly #poll: () => Promise<void>;
+  readonly #timer: { key: string; timerId: string };
+  readonly #every: { inFrontMs: number; inBackgroundMs: number };
   #inFront = true;
   /** The time the poll's timer is set for; a delivery for any other time is late or repeated, and dropped. */
   #dueAt: string | undefined;
@@ -42,6 +48,11 @@ export class MessagingPoller {
     this.#scheduler = options.scheduler;
     this.#clock = options.clock;
     this.#poll = options.poll;
+    this.#timer = options.timer ?? messagingPollTimer;
+    this.#every = options.every ?? {
+      inFrontMs: pollInFrontMs,
+      inBackgroundMs: pollInBackgroundMs,
+    };
   }
 
   /** Starts polling, with Studio's window in front unless told otherwise. */
@@ -66,9 +77,7 @@ export class MessagingPoller {
    * poll's, so the host's listener passes it on.
    */
   async onTimer(timer: ScheduledTimer): Promise<boolean> {
-    if (timer.key !== messagingPollTimer.key || timer.timerId !== messagingPollTimer.timerId) {
-      return false;
-    }
+    if (timer.key !== this.#timer.key || timer.timerId !== this.#timer.timerId) return false;
     if (timer.at !== this.#dueAt) return true;
     await this.#poll();
     // The next wait starts after this poll, unless the window came to the front meanwhile.
@@ -79,16 +88,16 @@ export class MessagingPoller {
   /** Stops polling: the timer is removed and later deliveries are dropped. */
   async stop(): Promise<void> {
     this.#dueAt = undefined;
-    await this.#scheduler.cancel(messagingPollTimer.key, messagingPollTimer.timerId);
+    await this.#scheduler.cancel(this.#timer.key, this.#timer.timerId);
   }
 
   #interval(): number {
-    return this.#inFront ? pollInFrontMs : pollInBackgroundMs;
+    return this.#inFront ? this.#every.inFrontMs : this.#every.inBackgroundMs;
   }
 
   async #scheduleIn(ms: number): Promise<void> {
     const at = new Date(this.#clock.now().getTime() + ms).toISOString();
     this.#dueAt = at;
-    await this.#scheduler.schedule(messagingPollTimer.key, messagingPollTimer.timerId, at);
+    await this.#scheduler.schedule(this.#timer.key, this.#timer.timerId, at);
   }
 }
