@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-17792 asks for this change. It narrows which providers count as local, so it changes what a run may do; Elena wrote it, so Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:rVZnPFeX3m9gCJ2x+9By9JY2/XAYLiPvQQaDR5CMKtoAzL6slkQ9DhDrr9053uinN9VTh/fXoepNhxKJf6PSDA==
 
 ## What changes
 
