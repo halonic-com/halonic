@@ -4,6 +4,7 @@ import {
   Facet,
   StateEffect,
   StateField,
+  type Transaction,
 } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemirror/view";
 
@@ -145,6 +146,16 @@ const reviewActions = Facet.define<EditorReviewActions, EditorReviewActions | un
   combine: (values) => values[0],
 });
 
+/**
+ * Where a part's first line starts after an edit. Text typed at the very start of its added lines
+ * goes before the part, so a new line typed there isn't marked green; the start stays at the
+ * start of a line. A part that only removed lines keeps its place before typed text.
+ */
+function mapStart(part: Placed, transaction: Transaction): number {
+  if (!part.added) return transaction.changes.mapPos(part.from, -1);
+  return transaction.state.doc.lineAt(transaction.changes.mapPos(part.from, 1)).from;
+}
+
 const partsField = StateField.define<readonly Placed[]>({
   create: () => [],
   update(placed, transaction) {
@@ -152,7 +163,7 @@ const partsField = StateField.define<readonly Placed[]>({
     if (transaction.docChanged)
       next = next.map((p) => ({
         ...p,
-        from: transaction.changes.mapPos(p.from, -1),
+        from: mapStart(p, transaction),
         to: transaction.changes.mapPos(p.to, 1),
       }));
     for (const effect of transaction.effects)
