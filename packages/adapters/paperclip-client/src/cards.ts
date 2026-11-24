@@ -126,12 +126,16 @@ export function cardToItem(
 /**
  * The request that gives `answer` to card `record`, or `undefined` when the
  * card can't take that answer here: a written reply to a confirmation, an
- * option the card doesn't offer, or a kind answered only in Paperclip.
+ * option the card doesn't offer, an `action-result`, or a kind answered only
+ * in Paperclip.
  */
 export function cardAnswerRequest(
   record: JsonRecord,
   answer: InboxAnswer,
 ): AnswerRequest | undefined {
+  if (answer.kind === "action-result") {
+    return undefined;
+  }
   const kind = text(record, "kind");
   const payload = asRecord(field(record, "payload"));
   if (kind === "request_confirmation" && answer.kind === "option") {

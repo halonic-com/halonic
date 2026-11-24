@@ -43,6 +43,7 @@ const item: InboxItem = {
   from: { kind: "agent", agent: "agent-1", name: "Release bot" },
   question: "The release run waits for a reviewer.",
   options: [],
+  attachments: [],
   createdAt: "2026-11-24T13:00:00.000Z",
   state: { kind: "open" },
 };

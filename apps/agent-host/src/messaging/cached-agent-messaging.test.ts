@@ -186,6 +186,31 @@ verifies("agent-host.agent-messaging-cache", () => {
       }
     });
 
+    it("keeps an action item and its action-result answer for an offline read", async () => {
+      const { source } = await readAcme();
+      const action = {
+        definition: "github.approve-run",
+        version: 1,
+        parameters: { owner: "acme", repo: "app", runId: 123456 },
+        expect: { headSha: "abc1234" },
+        expires: "2026-11-25T13:00:00.000Z",
+      };
+      const item = fake.addInboxItem(source.id, { question: "The release run waits.", action });
+      const result = {
+        kind: "action-result",
+        outcome: "succeeded",
+        steps: [{ step: 1, outcome: "succeeded", status: 201, kept: { state: "approved" } }],
+      } as const;
+      expect((await messaging.answer(item.id, result)).outcome).toBe("answered");
+      const live = await messaging.listInboxItems();
+
+      fake.goOffline(source.id);
+      const offline = (await messaging.listInboxItems()).find((kept) => kept.id === item.id);
+      expect(offline).toEqual(live.find((kept) => kept.id === item.id));
+      expect(offline?.action).toEqual(action);
+      expect(offline?.state).toMatchObject({ kind: "answered", answer: result });
+    });
+
     it("keeps no key, Authorization header or request in any cache file", async () => {
       await readAcme();
       const files = await filesUnder(cacheFolder);
