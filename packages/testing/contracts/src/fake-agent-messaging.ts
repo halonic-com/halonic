@@ -1,13 +1,16 @@
 import {
   type AgentMessaging,
   type AnswerResult,
-  type Attachment,
   type AttachmentRead,
+  addresseesFit,
   answerFitsItem,
+  type ChannelResult,
   type Conversation,
+  channelMembersFit,
   type InboxAnswer,
   type InboxItem,
   type Message,
+  type MessageSendOptions,
   type MessagingAgent,
   type MessagingAuthor,
   type MessagingId,
@@ -18,6 +21,8 @@ import {
   type SendResult,
   type WorkItem,
 } from "@halonicjs/ports";
+import { FakeAgentFiles, type FakeAttachment } from "./fake-agent-files.ts";
+import { searchHits } from "./fake-agent-search.ts";
 import { Feed } from "./feed.ts";
 
 /** What a {@link FakeAgentMessaging} stamps its times with. */
@@ -34,6 +39,8 @@ export interface FakeAgentMessagingOptions {
   attachmentLimit?: number;
   /** The file types `send` takes; any unless told otherwise. */
   attachmentTypes?: readonly string[];
+  /** `false` plays a source without channels: every channel call is refused with `not-supported`. */
+  channels?: boolean;
 }
 
 /** Everything a source holds, live or as it was when its line was cut. */
@@ -44,9 +51,6 @@ interface Held {
   inbox: InboxItem[];
   work: WorkItem[];
 }
-
-/** A file to put on an item or a message: its bytes, which only `readAttachment` gives back. */
-export type FakeAttachment = OutgoingAttachment;
 
 const me: MessagingAuthor = { kind: "me" };
 
@@ -64,7 +68,9 @@ const bySource = (item: { source: MessagingId }): MessagingId => item.source;
  * `answerElsewhere`, and cuts a source's line with `goOffline`. Items and messages take files
  * (`attachments`), whose bytes only `readAttachment` gives. Offline, that
  * source's items read as they were when the line was cut, and writes to it
- * are refused with `offline`, never queued.
+ * are refused with `offline`, never queued. A channel is a conversation with
+ * `members` (`startChannel`, or `addConversation` with `members`); the person
+ * leaves and joins it (requirement `contracts.fake-agent-messaging-channels`).
  *
  * @example
  * const messaging = new FakeAgentMessaging();
@@ -75,8 +81,7 @@ const bySource = (item: { source: MessagingId }): MessagingId => item.source;
 export class FakeAgentMessaging implements AgentMessaging {
   private readonly now: () => Date;
   private readonly idPrefix: string;
-  private readonly attachmentLimit: number;
-  private readonly attachmentTypes: readonly string[] | undefined;
+  private readonly files: FakeAgentFiles;
   private readonly sources: MessagingSource[] = [];
   private readonly live: Held = {
     agents: [],
@@ -87,15 +92,16 @@ export class FakeAgentMessaging implements AgentMessaging {
   };
   private readonly frozen = new Map<MessagingId, Held>();
   private readonly readers = new Set<Feed<MessagingId>>();
-  /** Each attachment's bytes and the source that holds it. */
-  private readonly files = new Map<MessagingId, { source: MessagingId; file: FakeAttachment }>();
+  /** Channels the person isn't in: `browseChannels` lists them, `listConversations` doesn't. */
+  private readonly notIn = new Set<MessagingId>();
+  private readonly hasChannels: boolean;
   private made = 0;
 
   constructor(options: FakeAgentMessagingOptions = {}) {
     this.now = options.now ?? (() => new Date("2026-11-24T10:00:00.000Z"));
     this.idPrefix = options.idPrefix ?? "fake";
-    this.attachmentLimit = options.attachmentLimit ?? 10 * 1024 * 1024;
-    this.attachmentTypes = options.attachmentTypes;
+    this.files = new FakeAgentFiles(options, () => this.newId());
+    this.hasChannels = options.channels ?? true;
   }
 
   listSources(): Promise<readonly MessagingSource[]> {
@@ -107,7 +113,9 @@ export class FakeAgentMessaging implements AgentMessaging {
   }
 
   listConversations(): Promise<readonly Conversation[]> {
-    const conversations = this.read((held) => held.conversations, bySource);
+    const conversations = this.read((held) => held.conversations, bySource).filter(
+      (each) => !this.notIn.has(each.id),
+    );
     return Promise.resolve(conversations.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
   }
 
@@ -126,34 +134,14 @@ export class FakeAgentMessaging implements AgentMessaging {
   }
 
   search(text: string): Promise<readonly SearchHit[]> {
-    const wanted = text.toLowerCase();
-    const hit = (
-      kind: SearchHit["kind"],
-      id: MessagingId,
-      source: MessagingId,
-      title: string,
-      excerpt: string,
-    ) =>
-      excerpt.toLowerCase().includes(wanted) || title.toLowerCase().includes(wanted)
-        ? [{ kind, id, source, title, excerpt }]
-        : [];
-    const hits: SearchHit[] = [
-      ...this.read((held) => held.agents, bySource).flatMap((a) =>
-        hit("agent", a.id, a.source, a.name, a.title ?? ""),
-      ),
-      ...this.read((held) => held.conversations, bySource).flatMap((c) =>
-        hit("conversation", c.id, c.source, c.title, ""),
-      ),
-      ...this.readMessages().flatMap((m) =>
-        hit("message", m.id, this.sourceOfConversation(m.conversation), "", m.body),
-      ),
-      ...this.read((held) => held.inbox, bySource).flatMap((i) =>
-        hit("inbox-item", i.id, i.source, "", i.question),
-      ),
-      ...this.read((held) => held.work, bySource).flatMap((w) =>
-        hit("work", w.id, w.source, w.label, w.title),
-      ),
-    ];
+    const hits = searchHits(text, {
+      agents: this.read((held) => held.agents, bySource),
+      conversations: this.read((held) => held.conversations, bySource),
+      messages: this.readMessages(),
+      inbox: this.read((held) => held.inbox, bySource),
+      work: this.read((held) => held.work, bySource),
+      sourceOfConversation: (conversation) => this.sourceOfConversation(conversation),
+    });
     return Promise.resolve(hits);
   }
 
@@ -176,7 +164,7 @@ export class FakeAgentMessaging implements AgentMessaging {
   }
 
   readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
-    const found = this.files.get(attachment);
+    const found = this.files.find(attachment);
     if (found === undefined) return Promise.resolve({ outcome: "refused", reason: "not-found" });
     const refusal = this.refusal(found.source);
     if (refusal !== undefined) return Promise.resolve({ outcome: "refused", reason: refusal });
@@ -188,14 +176,71 @@ export class FakeAgentMessaging implements AgentMessaging {
     conversation: MessagingId,
     body: string,
     attachments: readonly OutgoingAttachment[] = [],
+    options: MessageSendOptions = {},
   ): Promise<SendResult> {
     const found = this.live.conversations.find((each) => each.id === conversation);
     if (found === undefined) return Promise.resolve({ outcome: "refused", reason: "not-found" });
-    const refusal = this.refusal(found.source) ?? this.fileRefusal(attachments);
+    const refusal = this.refusal(found.source) ?? this.files.refusal(attachments);
     if (refusal !== undefined) return Promise.resolve({ outcome: "refused", reason: refusal });
-    const message = this.addMessage(found.id, { author: me, body, attachments });
+    // Only `to` is read from the options, so nothing an app passes can change the author.
+    const to = [...(options.to ?? [])];
+    if (!addresseesFit(found, to))
+      return Promise.resolve({ outcome: "refused", reason: "not-found" });
+    const message = this.addMessage(found.id, {
+      author: me,
+      body,
+      attachments,
+      ...(to.length > 0 && { to }),
+    });
     found.waitingForMe = false;
     return Promise.resolve({ outcome: "sent", message: copy(message) });
+  }
+
+  startChannel(
+    title: string,
+    members: readonly MessagingId[],
+    lead: MessagingId,
+  ): Promise<ChannelResult> {
+    if (!this.hasChannels) return refused("not-supported");
+    if (!channelMembersFit(members, lead, this.live.agents)) return refused("bad-members");
+    const source = this.live.agents.find((each) => each.id === lead)?.source ?? "";
+    const refusal = this.refusal(source);
+    if (refusal !== undefined) return refused(refusal);
+    const conversation = this.addConversation(lead, { title, members: [...members] });
+    return Promise.resolve({ outcome: "done", conversation });
+  }
+
+  setMembers(
+    channel: MessagingId,
+    members: readonly MessagingId[],
+    lead: MessagingId,
+  ): Promise<ChannelResult> {
+    return this.changeChannel(channel, (found) => {
+      const sameSource = this.live.agents.find((each) => each.id === lead)?.source === found.source;
+      if (!sameSource || !channelMembersFit(members, lead, this.live.agents)) return "bad-members";
+      found.members = [...members];
+      found.agent = lead;
+      return undefined;
+    });
+  }
+
+  browseChannels(): Promise<readonly Conversation[]> {
+    const channels = this.read((held) => held.conversations, bySource);
+    return Promise.resolve(channels.filter((each) => this.notIn.has(each.id)));
+  }
+
+  joinChannel(channel: MessagingId): Promise<ChannelResult> {
+    return this.changeChannel(channel, (found) => {
+      this.notIn.delete(found.id);
+      return undefined;
+    });
+  }
+
+  leaveChannel(channel: MessagingId): Promise<ChannelResult> {
+    return this.changeChannel(channel, (found) => {
+      this.notIn.add(found.id);
+      return undefined;
+    });
   }
 
   changes(): AsyncIterable<MessagingId> {
@@ -240,18 +285,21 @@ export class FakeAgentMessaging implements AgentMessaging {
   /** Adds a message to a conversation, from its agent unless told otherwise; an agent's message waits for the person. */
   addMessage(
     conversation: MessagingId,
-    message: { body: string; author?: MessagingAuthor; attachments?: readonly FakeAttachment[] },
+    message: { body: string; attachments?: readonly FakeAttachment[] } & Partial<
+      Pick<Message, "author" | "to" | "work">
+    >,
   ): Message {
     const found = this.live.conversations.find((each) => each.id === conversation);
     if (found === undefined) throw new Error(`no conversation has the id ${conversation}`);
-    const author = message.author ?? this.agentAuthor(found.agent);
+    const { attachments, ...rest } = message;
+    const author = rest.author ?? this.agentAuthor(found.agent);
     const added: Message = {
       id: this.newId(),
       conversation,
-      author,
-      body: message.body,
-      attachments: this.keep(found.source, message.attachments),
       sentAt: this.stamp(),
+      ...rest,
+      author,
+      attachments: this.files.keep(found.source, attachments),
     };
     found.updatedAt = added.sentAt;
     found.waitingForMe = author.kind === "agent";
@@ -279,7 +327,7 @@ export class FakeAgentMessaging implements AgentMessaging {
       createdAt: this.stamp(),
       state: { kind: "open" },
       ...rest,
-      attachments: rest.attachments ?? this.keep(source, files),
+      attachments: rest.attachments ?? this.files.keep(source, files),
     };
     return this.add("inbox", source, added);
   }
@@ -366,12 +414,21 @@ export class FakeAgentMessaging implements AgentMessaging {
     this.changed(source, true);
   }
 
-  /** Why `send` won't take these files, as the engine checks them whatever a screen did. */
-  private fileRefusal(files: readonly OutgoingAttachment[]): MessagingRefusal | undefined {
-    if (files.some((file) => file.bytes.byteLength > this.attachmentLimit)) return "too-large";
-    const types = this.attachmentTypes;
-    if (types === undefined) return undefined;
-    return files.every((file) => types.includes(file.type)) ? undefined : "unsupported-type";
+  /**
+   * Changes a live channel unless refused: `not-supported` without channels,
+   * `not-found` for no channel by that ID, the source's state, or `change`'s own refusal.
+   */
+  private changeChannel(
+    channel: MessagingId,
+    change: (found: Conversation) => MessagingRefusal | undefined,
+  ): Promise<ChannelResult> {
+    if (!this.hasChannels) return refused("not-supported");
+    const found = this.live.conversations.find((each) => each.id === channel);
+    if (found?.members === undefined) return refused("not-found");
+    const refusal = this.refusal(found.source) ?? change(found);
+    if (refusal !== undefined) return refused(refusal);
+    this.changed(found.source);
+    return Promise.resolve({ outcome: "done", conversation: copy(found) });
   }
 
   private refusal(source: MessagingId): "offline" | "signed-out" | undefined {
@@ -405,18 +462,14 @@ export class FakeAgentMessaging implements AgentMessaging {
     return `${this.idPrefix}-${this.made}`;
   }
 
-  /** Keeps each file's bytes for `readAttachment` and gives the attachments an item lists. */
-  private keep(source: MessagingId, files: readonly FakeAttachment[] = []): Attachment[] {
-    return files.map((file) => {
-      const id = this.newId();
-      this.files.set(id, { source, file: { ...file, bytes: file.bytes.slice() } });
-      return { id, name: file.name, type: file.type, size: file.bytes.byteLength };
-    });
-  }
-
   private stamp(): string {
     return this.now().toISOString();
   }
+}
+
+/** A channel call's refusal. */
+function refused(reason: MessagingRefusal): Promise<ChannelResult> {
+  return Promise.resolve({ outcome: "refused", reason });
 }
 
 /** A deep copy of plain data, so a test can't change the fake's items through what a read gave. */

@@ -1,18 +1,21 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
-import type {
-  AgentMessaging,
-  AnswerResult,
-  Attachment,
-  AttachmentRead,
-  InboxAnswer,
-  InboxItem,
-  Message,
-  MessagingId,
-  MessagingRefusal,
-  MessagingSource,
-  OutgoingAttachment,
-  SendResult,
+import {
+  type AgentMessaging,
+  type AnswerResult,
+  type Attachment,
+  type AttachmentRead,
+  channelMembersFit,
+  type InboxAnswer,
+  type InboxItem,
+  type Message,
+  type MessageSendOptions,
+  type MessagingAgent,
+  type MessagingId,
+  type MessagingRefusal,
+  type MessagingSource,
+  type OutgoingAttachment,
+  type SendResult,
 } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
@@ -31,6 +34,11 @@ verifies("ports.agent-messaging", () => {
       | "answer"
       | "readAttachment"
       | "send"
+      | "startChannel"
+      | "setMembers"
+      | "browseChannels"
+      | "joinChannel"
+      | "leaveChannel"
       | "changes"
     >();
     expectTypeOf<AgentMessaging["answer"]>().parameters.toEqualTypeOf<
@@ -45,8 +53,11 @@ verifies("ports.agent-messaging", () => {
         conversation: MessagingId,
         body: string,
         attachments?: readonly OutgoingAttachment[],
+        options?: MessageSendOptions,
       ) => Promise<SendResult>
     >();
+    // Who is addressed is a list of IDs; nothing names an author.
+    expectTypeOf<keyof MessageSendOptions>().toEqualTypeOf<"to">();
     expectTypeOf<AgentMessaging["send"]>().returns.toEqualTypeOf<Promise<SendResult>>();
     expectTypeOf<AgentMessaging["changes"]>().returns.toEqualTypeOf<AsyncIterable<MessagingId>>();
   });
@@ -62,6 +73,25 @@ verifies("ports.agent-messaging", () => {
     const unknownAge: MessagingSource = { ...offline, state: { kind: "offline" } };
     expect(offline.state.kind).toBe("offline");
     expect(unknownAge).toBeDefined();
+  });
+
+  it("fits a channel of 2 to 8 agents of one source with the lead among them", () => {
+    const agents: MessagingAgent[] = ["a", "b", "c", "d", "e", "f", "g", "h", "i"].map((id) => ({
+      id,
+      source: id === "i" ? "globex" : "acme",
+      name: id,
+      activity: "idle",
+    }));
+    const eight = ["a", "b", "c", "d", "e", "f", "g", "h"];
+
+    expect(channelMembersFit(["a", "b"], "a", agents)).toBe(true);
+    expect(channelMembersFit(eight, "h", agents)).toBe(true);
+    expect(channelMembersFit(["a"], "a", agents)).toBe(false);
+    expect(channelMembersFit([...eight, "i"], "a", agents)).toBe(false);
+    expect(channelMembersFit(["a", "i"], "a", agents)).toBe(false);
+    expect(channelMembersFit(["a", "b"], "c", agents)).toBe(false);
+    expect(channelMembersFit(["a", "a"], "a", agents)).toBe(false);
+    expect(channelMembersFit(["a", "unknown"], "a", agents)).toBe(false);
   });
 
   it("refuses a write rather than queueing it", () => {

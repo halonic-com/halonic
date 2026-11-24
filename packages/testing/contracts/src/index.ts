@@ -76,11 +76,8 @@ export {
   type StandInAnswer,
   type StandInUser,
 } from "./fake-action-sender.ts";
-export {
-  FakeAgentMessaging,
-  type FakeAgentMessagingOptions,
-  type FakeAttachment,
-} from "./fake-agent-messaging.ts";
+export type { FakeAttachment } from "./fake-agent-files.ts";
+export { FakeAgentMessaging, type FakeAgentMessagingOptions } from "./fake-agent-messaging.ts";
 export {
   type AccountsFailureCode,
   FakeDeployTarget,

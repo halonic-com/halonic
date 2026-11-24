@@ -223,3 +223,45 @@ itself, whatever the screen checked, and refuses the whole message with
   security changes. Phase 2 (b) gets its own security review. The maintainer
   approves the new package and the notification dependency before they are
   added.
+
+## Version 4: channels (24 Nov 2026)
+
+Version 2 added attachments (above). Version 3 added action items
+([its ADR](2026-11-24-agent-messaging-port-version-3.md)). Version 4 adds
+channels: one conversation with several agents. The board
+approved them with the phase 2 card (HAL-17544); the shape is section 1.2 of
+the phase 2 architecture note (HAL-17511), with Julian's security read
+(HAL-17540). `agentMessagingVersion` is 4 (`ports.agent-messaging`).
+
+- **A channel is a conversation with `members`**: 2 to 8 agents of one source,
+  its lead among them. `agent` stays and is the lead, the agent who answers
+  when the person names no one, so a version 1 app shows a channel as a
+  conversation with its lead. `channelMembersFit` is the one check, used by
+  every provider and the fake; anything else is refused with `bad-members`.
+- **Who a message is for is a field, never text.** `send` takes
+  `options.to`, after its files, filled only from the person's picks in the app. Halonic
+  never parses `@name` out of a message, so text can't wake an agent (M1). A
+  `to` naming anyone outside the conversation is refused with `not-found`
+  and sent to no one. `Message.to` shows who was addressed.
+- **The author comes from the source** (M2). The port has no way for an app
+  to say who wrote a message: what `send` records is always `me`. No call
+  lets one agent address another.
+- **`Message.work`** gives one line per agent a message went to (starting,
+  working, answered, asks you, failed, passed on), and **`InboxItem.risk`**
+  marks an approval that spends money or changes who may do what. Only the
+  provider sets `risk`.
+- **New calls:** `startChannel` and `setMembers`, which only the person makes;
+  `browseChannels` for the channels the person isn't in; `joinChannel` and
+  `leaveChannel` for the person only, since agents are members only through
+  `setMembers`. They are writes, so offline they are refused, never queued
+  (`ports.agent-messaging-offline` is unchanged). None of them is reachable
+  from the phone.
+- **`not-supported`** lets a source without channels refuse cleanly. The
+  engine's hub and the desktop client use it until the hub joins channels
+  across providers, and the Paperclip provider until it maps them to tasks (a channel is a parent task;
+  each agent in `to` gets its own child task, because in Paperclip only an
+  assignment wakes an agent).
+
+The new methods and the two new refusals break every implementer and every
+exhaustive `switch` on `MessagingRefusal`, so this is a version bump; the
+optional fields alone wouldn't be.

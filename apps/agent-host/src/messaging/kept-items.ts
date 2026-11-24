@@ -8,6 +8,7 @@ import type {
   InboxItem,
   InboxItemState,
   Message,
+  MessageWork,
   MessagingAgent,
   MessagingAuthor,
   WorkItem,
@@ -31,7 +32,7 @@ export function keptAgent(agent: MessagingAgent): MessagingAgent {
 
 /** The conversation's port fields only. */
 export function keptConversation(conversation: Conversation): Conversation {
-  return {
+  const kept: Conversation = {
     id: conversation.id,
     source: conversation.source,
     agent: conversation.agent,
@@ -39,11 +40,13 @@ export function keptConversation(conversation: Conversation): Conversation {
     updatedAt: conversation.updatedAt,
     waitingForMe: conversation.waitingForMe,
   };
+  if (conversation.members !== undefined) kept.members = [...conversation.members];
+  return kept;
 }
 
 /** The message's port fields only. */
 export function keptMessage(message: Message): Message {
-  return {
+  const kept: Message = {
     id: message.id,
     conversation: message.conversation,
     author: keptAuthor(message.author),
@@ -51,6 +54,9 @@ export function keptMessage(message: Message): Message {
     sentAt: message.sentAt,
     attachments: message.attachments.map(keptAttachment),
   };
+  if (message.to !== undefined) kept.to = [...message.to];
+  if (message.work !== undefined) kept.work = message.work.map(keptMessageWork);
+  return kept;
 }
 
 /** The inbox item's port fields only. */
@@ -68,6 +74,7 @@ export function keptInboxItem(item: InboxItem): InboxItem {
   if (item.action !== undefined) kept.action = keptAction(item.action);
   if (item.project !== undefined) kept.project = { id: item.project.id, name: item.project.name };
   if (item.work !== undefined) kept.work = item.work;
+  if (item.risk !== undefined) kept.risk = item.risk;
   return kept;
 }
 
@@ -94,6 +101,13 @@ function keptAttachment(attachment: Attachment): Attachment {
     type: attachment.type,
     size: attachment.size,
   };
+}
+
+function keptMessageWork(line: MessageWork): MessageWork {
+  const kept: MessageWork = { agent: line.agent, state: line.state, since: line.since };
+  if (line.work !== undefined) kept.work = line.work;
+  if (line.passedTo !== undefined) kept.passedTo = line.passedTo;
+  return kept;
 }
 
 function keptAuthor(author: MessagingAuthor): MessagingAuthor {

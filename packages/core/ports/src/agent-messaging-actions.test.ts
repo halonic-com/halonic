@@ -60,8 +60,8 @@ const actionItem: InboxItem = {
 };
 
 verifies("ports.agent-messaging-actions", () => {
-  it("is version 3 of the port", () => {
-    expect(agentMessagingVersion).toBe(3);
+  it("is version 3 or later of the port, where action items came in", () => {
+    expect(agentMessagingVersion).toBeGreaterThanOrEqual(3);
   });
 
   it("takes a succeeded, a failed and a declined answer as they are", () => {

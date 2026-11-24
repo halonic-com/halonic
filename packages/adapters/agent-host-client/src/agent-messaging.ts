@@ -2,14 +2,17 @@ import type {
   AgentMessaging,
   AnswerResult,
   AttachmentRead,
+  ChannelResult,
   Conversation,
   InboxAnswer,
   InboxItem,
   Message,
+  MessageSendOptions,
   MessagingAgent,
   MessagingId,
   MessagingRefusal,
   MessagingSource,
+  OutgoingAttachment,
   SearchHit,
   SendResult,
   WorkItem,
@@ -110,7 +113,17 @@ export class AgentHostMessaging implements AgentMessaging {
     return readAnswer(route, reply, resultAnswer).result as AnswerResult;
   }
 
-  async send(conversation: MessagingId, body: string): Promise<SendResult> {
+  /**
+   * Sends to the conversation's lead. The host's route carries no `to` yet, so a message that
+   * names agents is refused with `not-supported` rather than sent to the lead alone.
+   */
+  async send(
+    conversation: MessagingId,
+    body: string,
+    _attachments?: readonly OutgoingAttachment[],
+    options?: MessageSendOptions,
+  ): Promise<SendResult> {
+    if ((options?.to?.length ?? 0) > 0) return { outcome: "refused", reason: "not-supported" };
     const route = "POST /v1/messaging/send";
     const reply = await this.#transport.request(route, {
       workspace: this.#workspace,
@@ -118,6 +131,37 @@ export class AgentHostMessaging implements AgentMessaging {
       body,
     });
     return readAnswer(route, reply, resultAnswer).result as SendResult;
+  }
+
+  // The host's hub has no channels yet (AgentMessaging version 4): it lists none and refuses
+  // every channel call, so these answer the same without asking it.
+
+  startChannel(
+    _title: string,
+    _members: readonly MessagingId[],
+    _lead: MessagingId,
+  ): Promise<ChannelResult> {
+    return noChannels();
+  }
+
+  setMembers(
+    _channel: MessagingId,
+    _members: readonly MessagingId[],
+    _lead: MessagingId,
+  ): Promise<ChannelResult> {
+    return noChannels();
+  }
+
+  browseChannels(): Promise<readonly Conversation[]> {
+    return Promise.resolve([]);
+  }
+
+  joinChannel(_channel: MessagingId): Promise<ChannelResult> {
+    return noChannels();
+  }
+
+  leaveChannel(_channel: MessagingId): Promise<ChannelResult> {
+    return noChannels();
   }
 
   /** An attachment's bytes, which the host reads from the source or its cache and sends as base64url. */
@@ -180,6 +224,11 @@ function bytesOf(route: string, base64url: string): Uint8Array {
     );
   }
   return bytes;
+}
+
+/** A channel call the host doesn't serve yet. */
+function noChannels(): Promise<ChannelResult> {
+  return Promise.resolve({ outcome: "refused", reason: "not-supported" });
 }
 
 function waitFor(ms: number): Promise<void> {

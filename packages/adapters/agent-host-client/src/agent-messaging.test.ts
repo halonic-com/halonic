@@ -129,3 +129,19 @@ verifies("agent-host-client.agent-messaging", () => {
     });
   });
 });
+
+verifies("ports.agent-messaging", () => {
+  it("refuses channel calls and a message that names agents, without asking the host", async () => {
+    const host = new FakeHost();
+    const messaging = new AgentHostMessaging(host, workspace);
+    const notSupported = { outcome: "refused", reason: "not-supported" };
+
+    expect(await messaging.startChannel("Launch", [ada.id], ada.id)).toEqual(notSupported);
+    expect(await messaging.setMembers("c1", [ada.id], ada.id)).toEqual(notSupported);
+    expect(await messaging.joinChannel("c1")).toEqual(notSupported);
+    expect(await messaging.leaveChannel("c1")).toEqual(notSupported);
+    expect(await messaging.browseChannels()).toEqual([]);
+    expect(await messaging.send("c1", "Ship it", [], { to: [ada.id] })).toEqual(notSupported);
+    expect(host.calls).toEqual([]);
+  });
+});

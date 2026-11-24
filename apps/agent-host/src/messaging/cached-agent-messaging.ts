@@ -2,10 +2,12 @@ import type {
   AgentMessaging,
   AnswerResult,
   AttachmentRead,
+  ChannelResult,
   Conversation,
   InboxAnswer,
   InboxItem,
   Message,
+  MessageSendOptions,
   MessagingAgent,
   MessagingId,
   MessagingSource,
@@ -127,10 +129,43 @@ export class CachedAgentMessaging implements AgentMessaging {
     conversation: MessagingId,
     body: string,
     attachments?: readonly OutgoingAttachment[],
+    options?: MessageSendOptions,
   ): Promise<SendResult> {
+    if (options !== undefined) return this.#live.send(conversation, body, attachments, options);
     return attachments === undefined
       ? this.#live.send(conversation, body)
       : this.#live.send(conversation, body, attachments);
+  }
+
+  // Channel calls go straight to the source too: they change a channel, and the cache keeps only
+  // what a read gave.
+
+  startChannel(
+    title: string,
+    members: readonly MessagingId[],
+    lead: MessagingId,
+  ): Promise<ChannelResult> {
+    return this.#live.startChannel(title, members, lead);
+  }
+
+  setMembers(
+    channel: MessagingId,
+    members: readonly MessagingId[],
+    lead: MessagingId,
+  ): Promise<ChannelResult> {
+    return this.#live.setMembers(channel, members, lead);
+  }
+
+  browseChannels(): Promise<readonly Conversation[]> {
+    return this.#live.browseChannels();
+  }
+
+  joinChannel(channel: MessagingId): Promise<ChannelResult> {
+    return this.#live.joinChannel(channel);
+  }
+
+  leaveChannel(channel: MessagingId): Promise<ChannelResult> {
+    return this.#live.leaveChannel(channel);
   }
 
   changes(): AsyncIterable<MessagingId> {

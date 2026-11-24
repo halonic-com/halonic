@@ -38,6 +38,11 @@ export const messengerWords = {
     "too-large": () => filesNotSent,
     "unsupported-type": () => filesNotSent,
     "bad-answer": () => "This can't be sent here. Your message stays here.",
+    // Sending from this box can't get these two yet: it sends no `to` and has no channels.
+    // The channels composer (phase 2, S4) gives them their own words.
+    "bad-members": () => "A channel needs at least 2 agents. Your message stays here.",
+    "not-supported": (source: string) =>
+      `${source} doesn't have channels. Your message stays here and isn't sent.`,
   } satisfies Record<MessagingRefusal, (source: string) => string>,
   you: "You",
   /** An agent's open card in its chat (HAL-17421 render 4e, approved by the board, 24 Nov). */
@@ -75,5 +80,8 @@ export const messengerWords = {
     "too-large": () => filesNotSent,
     "unsupported-type": () => filesNotSent,
     "bad-answer": () => "This can't be sent here, so nothing was sent.",
+    // A quick action sends no `to` and starts no channel, so it can't get these two yet.
+    "bad-members": () => "A channel needs at least 2 agents, so nothing was sent.",
+    "not-supported": (source: string) => `${source} doesn't have channels, so nothing was sent.`,
   } satisfies Record<MessagingRefusal, (source: string) => string>,
 } as const;
