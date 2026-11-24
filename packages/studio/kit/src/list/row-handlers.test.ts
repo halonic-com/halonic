@@ -78,6 +78,15 @@ verifies("kit.list", () => {
     expect(withAlt.calls.onOpenInNewTab).not.toHaveBeenCalled();
   });
 
+  it("does nothing on a Shift+Alt click or Shift+Alt Enter", () => {
+    const { handlers, calls } = handlersWith();
+    handlers.onClick(clickOf({ shiftKey: true, altKey: true }));
+    handlers.onKeyDown(enterOf({ shiftKey: true, altKey: true }));
+    expect(calls.onAltOpen).not.toHaveBeenCalled();
+    expect(calls.onOpen).not.toHaveBeenCalled();
+    expect(calls.onOpenInNewTab).not.toHaveBeenCalled();
+  });
+
   it("does nothing on an Alt-click on an unavailable row", () => {
     const { handlers, calls } = handlersWith({ isUnavailable: true });
     handlers.onClick(clickOf({ altKey: true }));
