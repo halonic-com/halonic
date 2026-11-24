@@ -208,6 +208,7 @@ verifies("paperclip.pr-watcher-cloud", () => {
     const unread: string[] = [];
     const now = new Date("2026-11-24T18:20:00Z");
     const snapshot = await takeSnapshot({
+      token: "shared",
       query: tokenForHalonicOnly(),
       repos: [halonic, cloud],
       now,
@@ -216,11 +217,21 @@ verifies("paperclip.pr-watcher-cloud", () => {
     });
     expect(snapshot.repos.map(({ repo }) => repo)).toEqual([halonic]);
     expect(unread).toEqual([cloud]);
-    const first = { query: tokenForHalonicOnly(), repos: [cloud, halonic], now };
+    const first = {
+      token: "shared" as const,
+      query: tokenForHalonicOnly(),
+      repos: [cloud, halonic],
+      now,
+    };
     await expect(takeSnapshot({ ...first, fallback: noFallback })).rejects.toThrow(
       "Could not resolve to a Repository",
     );
-    const broken = { query: tokenForHalonicOnly(cloud), repos: [halonic, cloud], now };
+    const broken = {
+      token: "shared" as const,
+      query: tokenForHalonicOnly(cloud),
+      repos: [halonic, cloud],
+      now,
+    };
     await expect(takeSnapshot({ ...broken, fallback: noFallback })).rejects.toThrow("502");
   });
 
@@ -238,6 +249,7 @@ verifies("paperclip.pr-watcher-cloud", () => {
     const unread: string[] = [];
     const now = new Date("2026-11-24T19:50:00Z");
     const snapshot = await takeSnapshot({
+      token: "shared",
       query: checksForbidden,
       repos: [halonic, cloud],
       now,
@@ -306,6 +318,7 @@ verifies("paperclip.pr-watcher-cloud", () => {
           }
         : { repository: { ...emptyRepository.repository, isPrivate: true } };
     const snapshot = await takeSnapshot({
+      token: "shared",
       query,
       repos: [cloud],
       now: new Date("2026-11-24T18:20:00Z"),

@@ -14,6 +14,7 @@ import { closedPullsQuery, commitBatchSize, commitChecksQuery, openPullsQuery } 
 import { missingRequired } from "./required-checks.ts";
 import { capped, severityCounts } from "./severity.ts";
 import {
+  type GitHubTokenKind,
   type OpenFacts,
   type QueueEntry,
   type Snapshot,
@@ -410,6 +411,8 @@ export async function takeSnapshot(options: {
   repos: readonly string[];
   now: Date;
   fallback: CheckFallback;
+  /** Which token `query` and `fallback` send. */
+  token: GitHubTokenKind;
   unread?: (repo: string, reason: string) => void;
 }): Promise<Snapshot> {
   const since = options.now.getTime() - closedWindowDays * 24 * 60 * 60 * 1000;
@@ -441,6 +444,7 @@ export async function takeSnapshot(options: {
     closedWindowDays,
     repos,
     githubCalls,
+    githubToken: options.token,
   };
 }
 

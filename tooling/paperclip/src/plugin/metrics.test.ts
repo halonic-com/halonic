@@ -95,18 +95,21 @@ verifies("paperclip.github-call-counts", () => {
     const { ctx, logs, metrics, sent } = setUp();
     await runWatcher(ctx, now);
     const line = logs.map((log) => log.message).find((message) => message.includes("GitHub calls"));
-    const counts = /(\d+) GitHub calls \(snapshot (\d+), watcher (\d+), thin-spec (\d+)\)/
-      .exec(line ?? "")
-      ?.slice(1)
-      .map(Number);
+    const counts =
+      /(\d+) GitHub calls on the shared token \(snapshot (\d+), watcher (\d+), thin-spec (\d+)\)/
+        .exec(line ?? "")
+        ?.slice(1)
+        .map(Number);
     expect(counts).toHaveLength(4);
     const [total, snapshot, watcher, thinSpec] = counts ?? [];
     expect(total).toBe(sent.length);
     expect((snapshot ?? 0) + (watcher ?? 0) + (thinSpec ?? 0)).toBe(sent.length);
     expect(snapshot).toBeGreaterThan(0);
-    expect((await loadSnapshot(ctx, "acme"))?.githubCalls).toBe(snapshot);
-    const saved = metrics.find((metric) => metric.name === "pr_watcher.github_requests_snapshot");
-    expect(saved?.value).toBe(snapshot);
+    const saved = await loadSnapshot(ctx, "acme");
+    expect(saved?.githubCalls).toBe(snapshot);
+    expect(saved?.githubToken).toBe("shared");
+    const metric = metrics.find((each) => each.name === "pr_watcher.github_requests_snapshot");
+    expect(metric?.value).toBe(snapshot);
   });
 });
 

@@ -28,7 +28,12 @@ export interface Snapshot {
    * snapshot saved before it has none.
    */
   readonly githubCalls?: number;
+  /** Which token made those calls, so a move to the read-only GitHub App shows. Added like `githubCalls`. */
+  readonly githubToken?: GitHubTokenKind;
 }
+
+/** The read-only GitHub App's token (`halonic-pr-reader`), or the older token the jobs share. */
+export type GitHubTokenKind = "app" | "shared";
 
 /** One watched repository. */
 export interface SnapshotRepo {

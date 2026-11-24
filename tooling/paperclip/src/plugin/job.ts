@@ -20,7 +20,7 @@ import { snapshotSummary } from "../pr-watcher/wake-status.ts";
 import { type TickSummary, tick } from "../pr-watcher/watch.ts";
 import { gitHubQueryReader } from "../snapshot/graphql.ts";
 import { takeSnapshot } from "../snapshot/read.ts";
-import type { Snapshot } from "../snapshot/shape.ts";
+import type { GitHubTokenKind, Snapshot } from "../snapshot/shape.ts";
 import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
@@ -113,8 +113,9 @@ async function companySettings(
   return config === undefined ? undefined : readSettings(config);
 }
 
-/** The pass's GitHub calls, by the step that made them (HAL-17933). */
+/** The pass's GitHub calls, by the step that made them, and the token they went out on (HAL-17933). */
 export interface CallCounts {
+  readonly token: GitHubTokenKind;
   readonly snapshot: number;
   /** The watcher's own reads beyond the snapshot: merge commits' checks, base runs, routes, rebases. */
   readonly watcher: number;
@@ -129,10 +130,11 @@ interface PassCounts {
   readonly durationMs: number;
 }
 
-/** `42 GitHub calls (snapshot 20, watcher 21, thin-spec 1)`. */
+/** `42 GitHub calls on the shared token (snapshot 20, watcher 21, thin-spec 1)`. */
 export function callsText(calls: CallCounts): string {
   const total = calls.snapshot + calls.watcher + calls.thinSpec;
-  return `${total} GitHub calls (snapshot ${calls.snapshot}, watcher ${calls.watcher}, thin-spec ${calls.thinSpec})`;
+  const token = calls.token === "app" ? "the GitHub App's token" : "the shared token";
+  return `${total} GitHub calls on ${token} (snapshot ${calls.snapshot}, watcher ${calls.watcher}, thin-spec ${calls.thinSpec})`;
 }
 
 /**
@@ -222,6 +224,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
   }
   // Read at run time and never logged or kept (the SDK's secrets rule).
   const token = await ctx.secrets.resolve(settings.token, { companyId });
+  const tokenKind: GitHubTokenKind = "shared";
   const { fetch, requests } = countingFetch((url, init) =>
     ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
   );
@@ -230,6 +233,8 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
   const fallback = (repo: string, sha: string, name: string) => ciOk(get, repo, sha, name);
   const started = Date.now();
   const snapshot = await takeSnapshot({
+    // Only the shared token today; the read-only GitHub App's token replaces it here (HAL-16003).
+    token: tokenKind,
     query,
     repos: settings.repos,
     now,
@@ -294,6 +299,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
       now,
     ),
     calls: {
+      token: tokenKind,
       snapshot: snapshotCalls,
       watcher: watcherCalls,
       thinSpec: requests() - snapshotCalls - watcherCalls,
