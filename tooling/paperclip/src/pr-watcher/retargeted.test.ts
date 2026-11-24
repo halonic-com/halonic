@@ -5,7 +5,8 @@ import { takeSnapshot } from "../snapshot/read.ts";
 import { decide, type Memory, type PullFacts, type WatchedTask } from "./decide.ts";
 import { type PullFactsReader, pullKey, snapshotFacts } from "./facts.ts";
 import { agentComment, agents, type FakeTask, fakePaperclip } from "./fakes.test-helper.ts";
-import { tick, wakeMessage } from "./watch.ts";
+import { wakeMessage } from "./messages.ts";
+import { tick } from "./watch.ts";
 
 /**
  * A stacked pull request that GitHub moved to `main` when the one below it
