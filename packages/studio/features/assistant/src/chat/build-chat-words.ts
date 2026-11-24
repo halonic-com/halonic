@@ -70,6 +70,8 @@ export const buildChatWords = {
   /** H16: the toast after Not now in the trust check, with Review to open it again. */
   notTrusted: (workspace: string) => `Not started: ${workspace} isn't trusted yet`,
   review: "Review",
+  /** H17: under the box of a Build chat on the person's own model while the workspace isn't trusted. */
+  authoringOnly: "Not trusted yet · it can read and propose, but not run anything.",
   /** H29: a message that looks like it holds a key isn't sent (flow-assistant 5.9, HAL-1625). */
   keyInMessage:
     "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",

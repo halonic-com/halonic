@@ -79,6 +79,7 @@ export function fakeHost(chats: Chat[] = []) {
   let trusted = true;
   let trustAnswer: "trusted" | "declined" = "declined";
   let trustChecks = 0;
+  let authoringOnly = false;
   const listeners = new Set<(change: AssistantChange) => void>();
   const find = (chatId: string) => {
     const chat = chats.find((each) => each.id === chatId);
@@ -149,6 +150,7 @@ export function fakeHost(chats: Chat[] = []) {
       return () => listeners.delete(listener);
     },
     engineAnswering: () => engineAnswering,
+    authoringOnly: async () => authoringOnly,
     workspaceName: () => "Acme",
     askTrust: async () => {
       trustChecks += 1;
@@ -170,6 +172,13 @@ export function fakeHost(chats: Chat[] = []) {
     untrusted: (answer: "trusted" | "declined") => {
       trusted = false;
       trustAnswer = answer;
+    },
+    /** Whether chats answer with the authoring tools only (H17), told as a change of trust. */
+    setAuthoringOnly: async (value: boolean) => {
+      authoringOnly = value;
+      await act(async () => {
+        for (const listener of listeners) listener({ kind: "trust" });
+      });
     },
     /** How often the trust check opened. */
     trustChecks: () => trustChecks,

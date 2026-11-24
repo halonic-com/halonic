@@ -38,9 +38,12 @@ while the window is open. When Halonic's engine stops mid-answer, the reply ends
 when Halonic's engine stopped." (`assistant.chat.engine-stopped`). While the engine isn't
 answering, the chat says so at the top and Send waits (`assistant.chat.engine-not-answering`). A
 model from a workspace that isn't trusted opens the trust check instead of sending
-(`assistant.chat.trust-check`), and a message that looks like it holds a key stays in the box
-(`assistant.chat.key-in-message`). The chat tab, the chat menu and the model's own lines under
-the box (no model, no key, local only, budget) come later.
+(`assistant.chat.trust-check`). Before trust, a Build chat on the person's own Settings ›
+Assistant model answers with the authoring tools only, on no engine
+(`studio.assistant-authoring-turn`), under the line "Not trusted yet · it can read and propose, but
+not run anything." with **Review** (`assistant.chat.authoring-only`). A message that looks like it
+holds a key stays in the box (`assistant.chat.key-in-message`). The chat tab, the chat menu and the
+model's own lines under the box (no model, no key, local only, budget) come later.
 
 ## Example
 

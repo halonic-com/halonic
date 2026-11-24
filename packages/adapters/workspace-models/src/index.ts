@@ -2,6 +2,7 @@ export { providerTypes } from "@halonicjs/format";
 export { abortOnStop } from "./abort-on-stop.ts";
 export { defaultLocalAddress, defaultLocalBaseUrl } from "./default-addresses.ts";
 export { defaultModelProblems, workspaceProblemsOf } from "./default-model-problems.ts";
+export { type DeviceModelContext, deviceModel } from "./device-model.ts";
 export { engineLockFile, routineStateCollection, runTimerCollection } from "./engine-names.ts";
 export {
   type HarnessAccessChecks,

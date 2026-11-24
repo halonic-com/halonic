@@ -251,6 +251,12 @@ export function provideFolderServices(
     location,
     trust,
     answerChat: answerChatOn(chatExecutorOf(engine), refusals),
+    authoring: {
+      secrets: shellKeychain(ipc),
+      keyOrigins: shellKeyOrigins(ipc),
+      http: new ShellHttpClient(ipc),
+      clock: systemClock,
+    },
     engine: engineConnection,
     name,
     askTrust,

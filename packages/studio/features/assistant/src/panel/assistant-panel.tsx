@@ -36,7 +36,7 @@ import {
 import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../chat/turns.ts";
 import { BuildComposer } from "./build-composer.tsx";
 import { ChatHeading, ChatMoreActions } from "./chat-header.tsx";
-import { useEngineAnswering, useTrustCheck } from "./send-gate.ts";
+import { useAuthoringOnly, useEngineAnswering, useTrustCheck } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
 import { SkillLink } from "./skill-link.tsx";
 
@@ -164,6 +164,7 @@ function PanelBody(props: PanelBodyProps) {
   const runCommand = context.runCommand;
   const engineAnswering = useEngineAnswering(host);
   const askTrust = useTrustCheck(host);
+  const authoringOnly = useAuthoringOnly(host, chatIdOf(shown));
   const noticeId = useId();
   const send = (message: string | undefined, putBack: (message: string) => void) =>
     void chats.send(message, announce, () => {
@@ -220,10 +221,17 @@ function PanelBody(props: PanelBodyProps) {
         onStop={() => chats.stop()}
         sendUnavailable={engineAnswering || view === undefined ? undefined : { reason: noticeId }}
         onGoToKeyField={runCommand && (() => void runCommand(openModelsCommand))}
+        authoringOnly={authoringOnly}
+        onReviewTrust={host.askTrust && (() => void host.askTrust?.())}
       />
       {view === undefined ? null : skillLink(view)}
     </>
   );
+}
+
+/** The id of the chat the panel shows, once it has loaded. */
+function chatIdOf(shown: Shown): string | undefined {
+  return shown.kind === "chat" ? shown.view.chat.id : undefined;
 }
 
 /**

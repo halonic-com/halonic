@@ -80,6 +80,8 @@ function setup(
       if (options.refuse !== undefined) throw options.refuse;
       return new ChatService(executor).answer(request);
     },
+    // Before trust a Build chat on the Settings model answers here, on no engine.
+    answerAuthoring: (request) => new ChatService(executor).answer(request),
     settings,
     engine: {
       answering: () => engineAnswering,

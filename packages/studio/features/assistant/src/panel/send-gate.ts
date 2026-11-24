@@ -1,5 +1,5 @@
 import { useToastStore } from "@halonicjs/studio-kit";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { AssistantHost } from "../api.ts";
 import { buildChatWords as words } from "../chat/build-chat-words.ts";
 
@@ -13,6 +13,42 @@ export function useEngineAnswering(host: AssistantHost): boolean {
     [host],
   );
   return useSyncExternalStore(subscribe, () => host.engineAnswering());
+}
+
+/**
+ * Whether the chat answers with the authoring tools only (states H17), asked again each time the
+ * workspace's trust or the chat's model changes. `false` while it is asked, so the line never says
+ * more than the host does.
+ */
+export function useAuthoringOnly(host: AssistantHost, chatId: string | undefined): boolean {
+  const [authoringOnly, setAuthoringOnly] = useState(false);
+  useEffect(() => {
+    if (chatId === undefined) {
+      setAuthoringOnly(false);
+      return;
+    }
+    let current = true;
+    const ask = () => {
+      host.authoringOnly(chatId).then(
+        (answer) => {
+          if (current) setAuthoringOnly(answer);
+        },
+        // A chat that is gone has no line.
+        () => {
+          if (current) setAuthoringOnly(false);
+        },
+      );
+    };
+    ask();
+    const stop = host.onDidChange((change) => {
+      if (change.kind === "trust" || (change.kind === "chat" && change.chatId === chatId)) ask();
+    });
+    return () => {
+      current = false;
+      stop();
+    };
+  }, [host, chatId]);
+  return authoringOnly;
 }
 
 /**
