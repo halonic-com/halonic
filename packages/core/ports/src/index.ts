@@ -2,6 +2,8 @@ export {
   type AgentActivity,
   type AgentMessaging,
   type AnswerResult,
+  type Attachment,
+  type AttachmentRead,
   agentMessagingVersion,
   type Conversation,
   type InboxAnswer,
