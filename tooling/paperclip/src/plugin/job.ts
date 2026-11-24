@@ -21,6 +21,7 @@ import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
 import { type HostApi, paperclipHost } from "./host.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
+import { recordThinSpecOutcomes } from "./thin-spec-outcome.ts";
 
 /** The part of the plugin context the job uses, so tests can fake it. */
 export interface JobApi extends HostApi, MetricsApi, StateApi {
@@ -227,6 +228,14 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     now,
     summary: snapshotSummary(snapshot),
   });
+  // After the watcher's own work, so a failure here never holds up a task.
+  await recordThinSpecOutcomes(ctx, { companyId, snapshot, found, get, now }).catch(
+    (error: unknown) => {
+      ctx.logger.error(`Thin-spec outcome: couldn't run: ${(error as Error).message}`, {
+        companyId,
+      });
+    },
+  );
   const prTasks = new Set([...found].filter(([, pulls]) => pulls.length > 0).map(([id]) => id));
   await recordPass(ctx, companyId, settings.dryRun, {
     summary,
