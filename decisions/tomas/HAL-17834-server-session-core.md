@@ -13,6 +13,10 @@ The source line names HAL-17834. Nothing else in the requirement changes, and no
 file is weakened, skipped or removed: the existing tests of `validateStepperRequest` all still
 run unchanged.
 
+It also adds one golden file, `server-session-cases.json`: the shared valid and refused cases for
+the task id, host, user and port, read by the TypeScript tests here and later by the Rust tests
+of the `server_session_open` command (HAL-17843), so both sides check the same cases.
+
 ## Why
 
 The board asked for a "Run with Claude" button on server-session Inbox items (HAL-10, 24 Nov).
@@ -25,3 +29,4 @@ name and the document key stay the same, so there is no version bump.
 ## Covers
 
 - action-steppers.stepper-request
+- packages/core/action-steppers/src/golden/server-session-cases.json
