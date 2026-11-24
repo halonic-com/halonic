@@ -131,6 +131,8 @@ verifies("studio.assistant-authoring-turn", () => {
       expect(await store.read("models.yaml")).toBe(models);
       const changed = (await review.itemsWithChangesToReview()).map((item) => item.path).sort();
       expect(changed).toEqual(["models.yaml", "providers/elsewhere.yaml"]);
+      const files = [...Object.keys(acme), "providers/elsewhere.yaml"].sort();
+      expect([...(await store.list())].sort()).toEqual(files);
       const kept = await records.list();
       expect(kept).toHaveLength(2);
       for (const path of kept) {

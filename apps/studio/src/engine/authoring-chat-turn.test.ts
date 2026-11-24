@@ -17,13 +17,26 @@ interface Sent {
   readonly body: { model: string; tools?: { function: { name: string } }[] };
 }
 
-/** An OpenAI-style model server that streams "Done." and keeps what each call sent. */
-function modelServer() {
+const answersDone = { choices: [{ delta: { content: "Done." }, finish_reason: "stop" }] };
+
+/** A model answer that calls `name`, which the turn didn't offer. */
+const callsTool = (name: string) => ({
+  choices: [
+    {
+      delta: {
+        tool_calls: [{ index: 0, id: "c1", type: "function", function: { name, arguments: "{}" } }],
+      },
+      finish_reason: "tool_calls",
+    },
+  ],
+});
+
+/** An OpenAI-style model server that streams `chunk` (by default "Done.") and keeps what each call sent. */
+function modelServer(chunk: object = answersDone) {
   const sent: Sent[] = [];
   const http: HttpClient = {
     fetch: async (url, init) => {
       sent.push({ url, init, body: JSON.parse(String(init?.body)) });
-      const chunk = { choices: [{ delta: { content: "Done." }, finish_reason: "stop" }] };
       const events = `data: ${JSON.stringify(chunk)}\n\ndata: [DONE]\n\n`;
       return new Response(events, { headers: { "content-type": "text/event-stream" } });
     },
@@ -110,6 +123,13 @@ verifies("studio.assistant-authoring-turn", () => {
         });
       }
       expect(sent).toEqual([]);
+    });
+
+    it("makes one model call when the model calls only a tool it wasn't offered", async () => {
+      const { http, sent } = modelServer(callsTool("run_workflow"));
+      await expect(executor(http).chatTurn(turn)).rejects.toMatchObject({ kind: "denied" });
+      // One answer is one model call, so the chat's limit bounds the turn (Liam, HAL-17335).
+      expect(sent).toHaveLength(1);
     });
 
     it("refuses a key name of Halonic's own, before any model call", async () => {

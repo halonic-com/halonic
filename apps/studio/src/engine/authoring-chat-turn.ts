@@ -6,7 +6,7 @@
 // (`ChatService`), where they keep to the untrusted rules (`assistant.build.read-limits`).
 
 import { deviceModel } from "@halonicjs/adapter-workspace-models";
-import { noListedToolApproval, runModelTurn } from "@halonicjs/engine";
+import { type ModelTurnInput, noListedToolApproval, runModelTurn } from "@halonicjs/engine";
 import type {
   ChatTurnRequest,
   ChatTurnResponse,
@@ -43,6 +43,20 @@ export interface AuthoringTurnParts {
 const assistantAgent = "assistant";
 
 /**
+ * Refuses every model call after a turn's first, so one answer before trust is one model call
+ * and the chat's limit bounds them all: an answer that calls only tools it wasn't offered ends
+ * the turn instead of asking the model again.
+ */
+const oneModelCall: NonNullable<ModelTurnInput["budget"]> = {
+  keep: async () => {
+    throw new KindedError(
+      "denied",
+      "Before trust, the assistant called a tool it can't use, so it stopped.",
+    );
+  },
+};
+
+/**
  * The executor of a Build chat's turns before trust. Each turn is refused as `denied`, before
  * any model call, unless it is on the Settings › Assistant model (`agent`, no alias, no agent of
  * the workspace, no params) and offers exactly the authoring tools. A caller tool is handed back
@@ -69,9 +83,11 @@ export function authoringChatExecutor(parts: AuthoringTurnParts): Pick<RunExecut
         connectors: [],
         listedToolApproval: noListedToolApproval,
         // Every tool is the caller's, so a turn hands its calls back after its first model call,
-        // and the chat counts the answer's calls against its own limit. The loop checks the limit
-        // before it hands calls back, so 1 would drop them.
+        // and the chat counts each turn against its own limit. The loop checks the limit before
+        // it hands calls back, so 1 would drop them; the budget stops the second call instead,
+        // which only an answer calling no offered tool would reach (Liam, HAL-17335).
         maxRounds: 2,
+        budget: oneModelCall,
         agent: assistantAgent,
         clock,
         localOnly,
