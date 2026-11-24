@@ -63,7 +63,12 @@ function context(): { ctx: GitHubRoutesApi; reads: string[] } {
     snapshot,
     "dequeue-reasons": {
       version: 1,
-      reasons: [{ repo, number: 5641, at: "2026-11-24T09:30:00Z", reason: long }],
+      reasons: [
+        { repo, number: 5641, at: "2026-11-24T09:30:00Z", reason: long },
+        // Malformed entries are skipped, even when they would sort as the newest.
+        { repo, number: 5641, at: "9".repeat(300), reason: "bad time" },
+        { repo: `${long}/x`, number: 5641, at: "2026-11-24T09:40:00Z", reason: "bad repo" },
+      ],
     },
   };
   const ctx: GitHubRoutesApi = {
@@ -160,12 +165,13 @@ verifies("paperclip.github-routes", () => {
     expect(response.status).toBe(200);
     const body = response.body as {
       takenAt: string;
-      pull: { failedCheck: string; dequeued: { reason: string } };
+      pull: { failedCheck: string; dequeued: { at: string; reason: string } };
       failingChecks: string[];
     };
     expect(body.takenAt).toBe("2026-11-24T10:05:00Z");
     expect(body.pull.failedCheck).toHaveLength(120);
     expect(body.pull.dequeued.reason).toHaveLength(120);
+    expect(body.pull.dequeued).toMatchObject({ at: "2026-11-24T09:30:00Z" });
     expect(body.failingChecks.map((name) => name.length)).toEqual([120, 4]);
   });
 

@@ -27,12 +27,21 @@ function key(companyId: string) {
   } as const;
 }
 
+/** `owner/name`, as GitHub allows it. */
+const repoPattern = /^[\w.-]{1,100}\/[\w.-]{1,100}$/;
+
+/** An ISO time as `Date.toISOString` writes it, with or without milliseconds. */
+const timePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+
 function valid(entry: unknown): entry is DequeueReason {
   const value = entry as Partial<Record<keyof DequeueReason, unknown>> | null;
   return (
     typeof value?.repo === "string" &&
+    repoPattern.test(value.repo) &&
     Number.isInteger(value.number) &&
     typeof value.at === "string" &&
+    timePattern.test(value.at) &&
+    !Number.isNaN(Date.parse(value.at)) &&
     typeof value.reason === "string"
   );
 }
