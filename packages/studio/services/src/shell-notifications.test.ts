@@ -29,9 +29,9 @@ const shown = {
 
 /** The callback argument the notifier passed to `plugin:event|listen` for `event`. */
 function listenerOf(shell: FakeShell, event: string): number {
-  const call = shell.callsOf("plugin:event|listen").find((args) => args.event === event);
+  const call = shell.callsOf("plugin:event|listen").find((args) => args["event"] === event);
   if (call === undefined) throw new Error(`nobody listens to ${event}`);
-  return Number(call.handler);
+  return Number(call["handler"]);
 }
 
 /** A shell that lets the page listen to events, and sends one as Tauri does. */
@@ -95,6 +95,10 @@ verifies("services.agent-notifications", () => {
       emit(shell, "notification-clicked", { messagingId: "card", kind: "conversation" });
       emit(shell, "notification-clicked", { messagingId: "other", kind: "inbox-item" });
       emit(shell, "notification-clicked", "not an item");
+      emit(shell, "notification-clicked", { messagingId: 7 });
+      emit(shell, "notification-clicked", { messagingId: "chat", kind: 7 });
+      shell.send(`__CHANNEL__:${listenerOf(shell, "notification-clicked")}`, null);
+      shell.send(`__CHANNEL__:${listenerOf(shell, "notification-clicked")}`, { event: "x" });
       expect(clicked).toEqual(["chat"]);
       // A click only opens: the notifier calls nothing else in the shell.
       expect(shell.calls.map((call) => call.command)).toEqual([
@@ -167,6 +171,52 @@ verifies("services.agent-notification-permission", () => {
         .answer("plugin:notification|request_permission", () => "denied");
       await new ShellNotifier(shell, fail).show(notice, never);
       await new ShellNotifier(shell, fail).show(notice, never);
+      expect(shell.callsOf("plugin:notification|request_permission")).toHaveLength(2);
+    });
+
+    it("asks only once after a no, however often the window gets focus", async () => {
+      const shell = listeningShell()
+        .answer("plugin:notification|is_permission_granted", () => false)
+        .answer("plugin:notification|request_permission", () => "denied");
+      const notifier = new ShellNotifier(shell, fail);
+      await notifier.show(notice, never);
+      emit(shell, "tauri://focus", null);
+      await Promise.resolve();
+      emit(shell, "tauri://focus", null);
+      await notifier.show(notice, never);
+      expect(shell.callsOf("plugin:notification|request_permission")).toHaveLength(2);
+    });
+
+    it("asks again on focus after the ask itself failed", async () => {
+      let refuse = true;
+      const shell = listeningShell()
+        .answer("plugin:notification|is_permission_granted", () => {
+          if (refuse) throw new Error("no shell");
+          return true;
+        })
+        .answer("plugin:notification|notify", () => null);
+      const notifier = new ShellNotifier(shell, () => undefined);
+      await notifier.show(notice, never).catch(() => undefined);
+      refuse = false;
+      emit(shell, "tauri://focus", null);
+      await Promise.resolve();
+      await Promise.resolve();
+      await notifier.show(notice, never);
+      expect(shell.callsOf("plugin:notification|is_permission_granted")).toHaveLength(2);
+      expect(shell.callsOf("plugin:notification|notify")).toHaveLength(1);
+    });
+
+    it("keeps a newer ask that started before an older no was forgotten", async () => {
+      const shell = listeningShell()
+        .answer("plugin:notification|is_permission_granted", () => false)
+        .answer("plugin:notification|request_permission", () => "denied");
+      const notifier = new ShellNotifier(shell, fail);
+      await notifier.show(notice, never);
+      emit(shell, "tauri://focus", null);
+      emit(shell, "tauri://focus", null);
+      await Promise.resolve();
+      await Promise.resolve();
+      await notifier.show(notice, never);
       expect(shell.callsOf("plugin:notification|request_permission")).toHaveLength(2);
     });
   });
