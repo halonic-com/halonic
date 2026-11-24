@@ -27,7 +27,13 @@ async function show(
   const settings = new HostSettings(store);
   await settings.load();
   const view = render(
-    <AgentSandboxHostView host={host} place={place} settings={settings} announce={() => {}} />,
+    <AgentSandboxHostView
+      host={host}
+      place={place}
+      settings={settings}
+      announce={() => {}}
+      showUnfinished
+    />,
   );
   await act(async () => {});
   const select = view.querySelector("select") as HTMLSelectElement;

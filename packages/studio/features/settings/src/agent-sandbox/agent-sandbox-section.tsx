@@ -24,6 +24,7 @@ import {
   type UnfencedYesHost,
   UnfencedYesService,
 } from "../api.ts";
+import { showUnfinishedSettings } from "../unfinished.ts";
 import { NewAgentsRunControl } from "./new-agents-run.tsx";
 import { NotAvailableFix, NotAvailableLines } from "./not-available-lines.tsx";
 import {
@@ -72,6 +73,8 @@ export interface AgentSandboxHostViewProps {
    */
   readonly unfencedYes?: UnfencedYesHost | undefined;
   readonly surface?: SettingsSectionProps["surface"] | undefined;
+  /** Shows **New agents run**, hidden until it works (`unfinished.ts`). */
+  readonly showUnfinished?: boolean;
 }
 
 /** The section over a host: its state, its buttons and the Remove dialog. */
@@ -83,6 +86,7 @@ export function AgentSandboxHostView({
   startCheck,
   unfencedYes,
   surface,
+  showUnfinished = showUnfinishedSettings,
 }: AgentSandboxHostViewProps) {
   const sandbox = useAgentSandbox(host, place, announce);
   const start = useSandboxStart(startCheck, !sandbox.facts.available);
@@ -108,18 +112,20 @@ export function AgentSandboxHostView({
       () => setReloading(false),
     );
   };
+  // While New agents run is hidden, so is its Try again.
+  const newAgentsSettings = showUnfinished ? settings : undefined;
   let newAgents: ReactNode = null;
-  if (settings?.loaded) {
+  if (newAgentsSettings?.loaded) {
     newAgents = (
       <div className="max-w-90">
         <NewAgentsRunControl
-          settings={settings}
+          settings={newAgentsSettings}
           viewOnly={place === "served"}
           studioStartsUnfenced={host?.studioStartsUnfenced ?? false}
         />
       </div>
     );
-  } else if (settings) {
+  } else if (newAgentsSettings) {
     newAgents = (
       <div className="flex max-w-90 flex-col items-start gap-2">
         <p className="text-small text-fg-muted">{text.NEW_AGENTS_NOT_LOADED}</p>

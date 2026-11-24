@@ -221,8 +221,7 @@ access back and a user can check that it ran.
 You can choose to run an agent on this computer, without the sandbox. You make
 the choice in the desktop app, on the agent's Harness page under **Where it
 runs**: **On this computer** opens a warning, and nothing is saved until you
-confirm with **Run on this computer**. Settings › Agent sandbox › **New agents
-run** makes the same choice for each agent the desktop app creates. Studio in a
+confirm with **Run on this computer**. Studio in a
 browser can't make it, and the CLI has no command that makes it; the CLI only
 reads it.
 

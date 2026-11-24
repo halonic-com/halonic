@@ -5,6 +5,7 @@ import { DisplaySettingsService } from "../api.ts";
 import type { DisplaySettings } from "../display-settings.ts";
 import type { SaveFailedText } from "../save-failed.ts";
 import { saveSetting } from "../save-setting.ts";
+import { showUnfinishedSettings } from "../unfinished.ts";
 import { useDisplaySetting } from "../use-display-setting.ts";
 import { settingsWhere } from "../where.ts";
 import {
@@ -61,11 +62,13 @@ export interface AppearanceViewProps {
   readonly surface?: SettingsSurface;
   /** Where the values are kept, for the toast's words; served unless said. */
   readonly place?: SettingsPlace;
+  /** Shows Panel opacity and Agent characters, hidden until they work (`unfinished.ts`). */
+  readonly showUnfinished?: boolean;
 }
 
 /**
  * Settings → Appearance (flow-settings 5, UX checklist 3.7): Theme, Frame colours, Panel opacity
- * and Agent characters, each applied to the whole window at once and saved by itself. A failed
+ * and Agent characters (the last two only with `showUnfinished`), each applied to the whole window at once and saved by itself. A failed
  * save puts the value from before back, says so under the control until it next saves, and says
  * it in the dialog, never in a toast while the dialog is open; a save that fails after the section
  * is gone says it in a toast, which waits for a modal to close (`settings.failed-save`).
@@ -78,6 +81,7 @@ export function AppearanceView({
   announce,
   place = "served",
   surface = "window",
+  showUnfinished = showUnfinishedSettings,
 }: AppearanceViewProps) {
   const phone = surface === "phone";
   const theme = useDisplaySetting(settings, themePref);
@@ -121,7 +125,7 @@ export function AppearanceView({
         />
       </Field>
       {phone ? null : <FrameColoursField settings={settings} save={save} />}
-      {phone ? null : (
+      {phone || !showUnfinished ? null : (
         <Field
           label={PANEL_OPACITY}
           hint={PANEL_OPACITY_HINT}
@@ -137,14 +141,16 @@ export function AppearanceView({
           />
         </Field>
       )}
-      <Field label={AGENT_CHARACTERS} error={failed(characters, AGENT_CHARACTERS_NOT_SAVED)}>
-        <Switch
-          checked={characters.value}
-          onChange={(on) => save(agentCharactersPref, on, AGENT_CHARACTERS_NOT_SAVED, onOrOff)}
-        >
-          {AGENT_CHARACTERS_SENTENCE}
-        </Switch>
-      </Field>
+      {showUnfinished ? (
+        <Field label={AGENT_CHARACTERS} error={failed(characters, AGENT_CHARACTERS_NOT_SAVED)}>
+          <Switch
+            checked={characters.value}
+            onChange={(on) => save(agentCharactersPref, on, AGENT_CHARACTERS_NOT_SAVED, onOrOff)}
+          >
+            {AGENT_CHARACTERS_SENTENCE}
+          </Switch>
+        </Field>
+      ) : null}
     </div>
   );
 }

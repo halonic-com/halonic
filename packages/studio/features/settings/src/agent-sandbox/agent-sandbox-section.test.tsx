@@ -454,6 +454,7 @@ it("offers Try again when the host settings aren't loaded, and shows New agents 
       place="app"
       settings={settings as never}
       announce={vi.fn()}
+      showUnfinished
     />,
   );
   await act(async () => {});

@@ -17,68 +17,81 @@ import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts
 import { onOrOff, themeNames } from "./appearance/appearance-text.ts";
 import * as assistantText from "./assistant/assistant-text.ts";
 import { agentSandboxSummary, assistantSummary } from "./section-summaries.ts";
+import { showUnfinishedSettings, unfinishedSectionIds } from "./unfinished.ts";
 import { createRestartFlow, RestartFlowService } from "./updater/restart-flow.ts";
 import { updateCommands } from "./updater/update-commands.ts";
 
 /**
  * The sections this feature adds to Settings, in no particular order: the shell lists them by
- * scope, then `order` (`shell.frame-points`). A new section goes into this list.
+ * scope, then `order` (`shell.frame-points`). A new section goes into this list. Without
+ * `showUnfinished` it leaves out the sections hidden until they work, and Appearance's summary
+ * leaves out Agent characters (`unfinished.ts`).
  */
-export const settingsSections: readonly SettingsSectionContribution[] = [
-  {
-    id: "appearance",
-    icon: "appearance",
-    title: "Appearance",
-    scope: "display",
-    order: 10,
-    summary(context) {
-      const settings = context.services.get(DisplaySettingsService);
-      return `${themeNames[settings.get(themePref)]} theme · characters ${onOrOff(settings.get(agentCharactersPref))}`;
+export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionContribution[] {
+  const sections: SettingsSectionContribution[] = [
+    {
+      id: "appearance",
+      icon: "appearance",
+      title: "Appearance",
+      scope: "display",
+      order: 10,
+      summary(context) {
+        const settings = context.services.get(DisplaySettingsService);
+        const theme = `${themeNames[settings.get(themePref)]} theme`;
+        if (!showUnfinished) return theme;
+        return `${theme} · characters ${onOrOff(settings.get(agentCharactersPref))}`;
+      },
+      view: "AppearanceSection",
+      load: () => import("./appearance/appearance-section.tsx"),
     },
-    view: "AppearanceSection",
-    load: () => import("./appearance/appearance-section.tsx"),
-  },
-  {
-    id: "formats",
-    icon: "formats",
-    title: "Formats",
-    scope: "display",
-    order: 20,
-    view: "FormatsSection",
-    load: () => import("./formats/formats-section.tsx"),
-  },
-  {
-    id: "assistant",
-    icon: "assistant",
-    title: "Assistant",
-    scope: "host",
-    order: 10,
-    description: (_context, place) => assistantText.FIRST_LINE[place],
-    summary: assistantSummary,
-    view: "AssistantSection",
-    load: () => import("./assistant/assistant-section.tsx"),
-  },
-  {
-    id: "agent-sandbox",
-    icon: "agent-sandbox",
-    title: "Agent sandbox",
-    scope: "host",
-    order: 30,
-    description: sandboxText.FIRST_LINE,
-    summary: agentSandboxSummary,
-    view: "AgentSandboxSection",
-    load: () => import("./agent-sandbox/agent-sandbox-section.tsx"),
-  },
-  {
-    id: "about",
-    icon: "about",
-    title: "About Halonic",
-    scope: "host",
-    order: 60,
-    view: "AboutSection",
-    load: () => import("./updater/about-section.tsx"),
-  },
-];
+    {
+      id: "formats",
+      icon: "formats",
+      title: "Formats",
+      scope: "display",
+      order: 20,
+      view: "FormatsSection",
+      load: () => import("./formats/formats-section.tsx"),
+    },
+    {
+      id: "assistant",
+      icon: "assistant",
+      title: "Assistant",
+      scope: "host",
+      order: 10,
+      description: (_context, place) => assistantText.FIRST_LINE[place],
+      summary: assistantSummary,
+      view: "AssistantSection",
+      load: () => import("./assistant/assistant-section.tsx"),
+    },
+    {
+      id: "agent-sandbox",
+      icon: "agent-sandbox",
+      title: "Agent sandbox",
+      scope: "host",
+      order: 30,
+      description: sandboxText.FIRST_LINE,
+      summary: agentSandboxSummary,
+      view: "AgentSandboxSection",
+      load: () => import("./agent-sandbox/agent-sandbox-section.tsx"),
+    },
+    {
+      id: "about",
+      icon: "about",
+      title: "About Halonic",
+      scope: "host",
+      order: 60,
+      view: "AboutSection",
+      load: () => import("./updater/about-section.tsx"),
+    },
+  ];
+  if (showUnfinished) return sections;
+  return sections.filter((section) => !unfinishedSectionIds.includes(section.id));
+}
+
+/** The sections Settings shows: {@link settingsSectionsFor} with the unfinished ones hidden. */
+export const settingsSections: readonly SettingsSectionContribution[] =
+  settingsSectionsFor(showUnfinishedSettings);
 
 /**
  * The sections Ctrl K opens by their name (flow-settings 12), whichever feature adds them. Models
@@ -93,7 +106,13 @@ export const sectionsByName: readonly string[] = [
 ];
 
 /**
- * The Settings feature (`settings.feature`). It adds its sections to the settings container,
+ * The Settings feature (`settings.feature`), as {@link createSettingsFeature} makes it with the
+ * unfinished controls hidden.
+ */
+export const settingsFeature = createSettingsFeature();
+
+/**
+ * Makes the Settings feature (`settings.feature`). It adds its sections to the settings container,
  * which the shell owns, the command **Settings** (`settings.open`), which opens it through the
  * window's `openSettings`, and a command per section in `sectionsByName` that a feature added
  * (`settings.section-commands`), named as its row, which opens Settings on it. It reads the
@@ -101,72 +120,76 @@ export const sectionsByName: readonly string[] = [
  * settings (`HostSettingsService`). It reads the updater, the agent sandbox and the Assistant's
  * workspace only if the app gives them. For updates it adds the status bar's Restart to update,
  * the restart dialog and update toasts (`settings.restart-flow`), and the Ctrl K commands Check for
- * Halonic updates, About Halonic and Restart to update Halonic.
+ * Halonic updates, About Halonic and Restart to update Halonic. Only with `showUnfinished` does
+ * it add the sections hidden until they work (`unfinished.ts`).
  */
-export const settingsFeature = defineFeature({
-  id: "settings",
-  title: "Settings",
-  needs: [DisplaySettingsService, HostSettingsService],
-  // Only the desktop app gives these; served Studio and the demo show the sections without them.
-  provides: [RestartFlowService, SandboxFlowService],
-  wants: [
-    HalonicVersionService,
-    UpdaterService,
-    RestartRunsService,
-    AgentSandboxService,
-    // Settings › Agent sandbox's "Plugins and integrations" and its Take back (R16).
-    UnfencedYesService,
-    AssistantWorkspaceService,
-    // Says why the sandbox can't start, under Settings › Agent sandbox's Not available.
-    sandboxStartCheckKey,
-  ],
-  register(studio) {
-    studio.services.provide(RestartFlowService, createRestartFlow);
-    studio.services.provide(SandboxFlowService, createSandboxFlow);
-    studio.statusBar.add({
-      id: "settings.restart-item",
-      order: 1000,
-      view: "RestartStatusItem",
-      load: () => import("./updater/restart-status-item.tsx"),
-    });
-    studio.dialogs.add({
-      id: "settings.restart-host",
-      order: 10,
-      view: "RestartHost",
-      load: () => import("./updater/restart-host.tsx"),
-    });
-    studio.dialogs.add({
-      id: "settings.sandbox-host",
-      order: 20,
-      view: "SandboxHost",
-      load: () => import("./agent-sandbox/sandbox-host.tsx"),
-    });
-    for (const section of settingsSections) {
-      studio.settings.add(section);
-    }
-    studio.commands.add({
-      id: "settings.open",
-      title: "Settings",
-      run: (context) => context.openSettings?.(),
-    });
-    studio.commands.addSource({
-      id: "settings.sandbox",
-      commands: (context) => sandboxCommands(context),
-    });
-    studio.commands.addSource({
-      id: "settings.update",
-      commands: (context) => updateCommands(context),
-    });
-    studio.commands.addSource({
-      id: "settings.section",
-      commands: (context) =>
-        (context?.settingsSections ?? [])
-          .filter((section) => sectionsByName.includes(section.id))
-          .map((section) => ({
-            id: `settings.section.${section.id}`,
-            title: section.title,
-            run: (runContext) => runContext.openSettings?.(section.id),
-          })),
-    });
-  },
-});
+export function createSettingsFeature(showUnfinished = showUnfinishedSettings) {
+  const sections = settingsSectionsFor(showUnfinished);
+  return defineFeature({
+    id: "settings",
+    title: "Settings",
+    needs: [DisplaySettingsService, HostSettingsService],
+    // Only the desktop app gives these; served Studio and the demo show the sections without them.
+    provides: [RestartFlowService, SandboxFlowService],
+    wants: [
+      HalonicVersionService,
+      UpdaterService,
+      RestartRunsService,
+      AgentSandboxService,
+      // Settings › Agent sandbox's "Plugins and integrations" and its Take back (R16).
+      UnfencedYesService,
+      AssistantWorkspaceService,
+      // Says why the sandbox can't start, under Settings › Agent sandbox's Not available.
+      sandboxStartCheckKey,
+    ],
+    register(studio) {
+      studio.services.provide(RestartFlowService, createRestartFlow);
+      studio.services.provide(SandboxFlowService, createSandboxFlow);
+      studio.statusBar.add({
+        id: "settings.restart-item",
+        order: 1000,
+        view: "RestartStatusItem",
+        load: () => import("./updater/restart-status-item.tsx"),
+      });
+      studio.dialogs.add({
+        id: "settings.restart-host",
+        order: 10,
+        view: "RestartHost",
+        load: () => import("./updater/restart-host.tsx"),
+      });
+      studio.dialogs.add({
+        id: "settings.sandbox-host",
+        order: 20,
+        view: "SandboxHost",
+        load: () => import("./agent-sandbox/sandbox-host.tsx"),
+      });
+      for (const section of sections) {
+        studio.settings.add(section);
+      }
+      studio.commands.add({
+        id: "settings.open",
+        title: "Settings",
+        run: (context) => context.openSettings?.(),
+      });
+      studio.commands.addSource({
+        id: "settings.sandbox",
+        commands: (context) => sandboxCommands(context),
+      });
+      studio.commands.addSource({
+        id: "settings.update",
+        commands: (context) => updateCommands(context),
+      });
+      studio.commands.addSource({
+        id: "settings.section",
+        commands: (context) =>
+          (context?.settingsSections ?? [])
+            .filter((section) => sectionsByName.includes(section.id))
+            .map((section) => ({
+              id: `settings.section.${section.id}`,
+              title: section.title,
+              run: (runContext) => runContext.openSettings?.(section.id),
+            })),
+      });
+    },
+  });
+}

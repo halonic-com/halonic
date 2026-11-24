@@ -3,12 +3,17 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { DisplaySettingsService, HostSettingsService } from "./api.ts";
 import { DisplaySettings } from "./display-settings.ts";
-import { sectionsByName, settingsFeature, settingsSections } from "./feature.ts";
+import {
+  createSettingsFeature,
+  sectionsByName,
+  settingsFeature,
+  settingsSections,
+} from "./feature.ts";
 
 describe("settingsFeature", () => {
   it("sums Appearance up in one line for the phone's list", () => {
     const shell = createShell({
-      features: [settingsFeature],
+      features: [createSettingsFeature(true)],
       hostServices: [DisplaySettingsService, HostSettingsService],
     });
     const appearance = shell.contributions.settings.list().find(({ id }) => id === "appearance");
@@ -46,7 +51,7 @@ describe("settingsFeature", () => {
 
   it("adds Assistant to the settings saved on this computer, before Agent sandbox", async () => {
     const shell = createShell({
-      features: [settingsFeature],
+      features: [createSettingsFeature(true)],
       hostServices: [DisplaySettingsService, HostSettingsService],
     });
     const host = shell.contributions.settings.list().filter(({ scope }) => scope === "host");
