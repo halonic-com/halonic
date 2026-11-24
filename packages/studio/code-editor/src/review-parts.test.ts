@@ -1,0 +1,108 @@
+// @vitest-environment jsdom
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { EditorReviewActions } from "./review-parts.ts";
+import { cleanup, createCodeEditorForTest, type TestEditor } from "./test-support.ts";
+
+afterEach(cleanup);
+
+const text = "name: Triage\nmodel: large\nsteps: 5\nlast: ok";
+
+function editorWith(onDecide: EditorReviewActions["onDecide"] = () => {}): TestEditor {
+  return createCodeEditorForTest(text, {
+    review: {
+      accept: "Accept",
+      reject: "Reject",
+      rejectAndDelete: "Reject and delete file",
+      partLabel: (at, count) => `Change ${at} of ${count}`,
+      onDecide,
+    },
+  });
+}
+
+function markedLines(editor: TestEditor): string[] {
+  return [...editor.view.dom.querySelectorAll(".cm-line.cm-review-added")].map(
+    (line) => line.textContent ?? "",
+  );
+}
+
+function groups(editor: TestEditor): HTMLElement[] {
+  return [...editor.view.dom.querySelectorAll<HTMLElement>(".cm-review-part")];
+}
+
+describe("the assistant's changes to review in the editor", () => {
+  verifies("code-editor.review-parts", () => {
+    it("marks the added lines green and shows the removed ones struck through above", () => {
+      const editor = editorWith();
+      editor.setReviewParts([{ line: 2, added: 1, removed: ["model: small"] }]);
+
+      expect(markedLines(editor)).toEqual(["model: large"]);
+      const [group] = groups(editor);
+      expect(group?.getAttribute("role")).toBe("group");
+      expect(group?.getAttribute("aria-label")).toBe("Change 1 of 1");
+      expect(group?.querySelector("del")?.textContent).toBe("model: small");
+      expect([...(group?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
+        "Accept",
+        "Reject",
+      ]);
+      editor.destroy();
+    });
+
+    it("says Reject and delete file on the only part of a file the assistant created", () => {
+      const editor = editorWith();
+      editor.setReviewParts([{ line: 1, added: 4, removed: [], deletesFile: true }]);
+      expect(groups(editor)[0]?.querySelectorAll("button")[1]?.textContent).toBe(
+        "Reject and delete file",
+      );
+      editor.destroy();
+    });
+
+    it("tells the owner which part and which decision", () => {
+      const onDecide = vi.fn();
+      const editor = editorWith(onDecide);
+      editor.setReviewParts([
+        { line: 1, added: 1, removed: [] },
+        { line: 3, added: 2, removed: [] },
+      ]);
+
+      expect(markedLines(editor)).toEqual(["name: Triage", "steps: 5", "last: ok"]);
+      groups(editor)[1]?.querySelectorAll("button")[1]?.click();
+      expect(onDecide).toHaveBeenCalledWith(1, "reject");
+      editor.destroy();
+    });
+
+    it("keeps the mark on its text while the user types above it, and clears it on request", () => {
+      const editor = editorWith();
+      editor.setReviewParts([{ line: 3, added: 1, removed: [] }]);
+      editor.view.dispatch({ changes: { from: 0, insert: "# note\n" } });
+      expect(markedLines(editor)).toEqual(["steps: 5"]);
+
+      editor.setReviewParts([]);
+      expect(markedLines(editor)).toEqual([]);
+      expect(groups(editor)).toEqual([]);
+      editor.destroy();
+    });
+
+    it("shows lines removed at the end after the text", () => {
+      const editor = editorWith();
+      editor.setReviewParts([{ line: 5, added: 0, removed: ["extra: yes"] }]);
+      const [group] = groups(editor);
+      expect(group?.querySelector("del")?.textContent).toBe("extra: yes");
+      expect(group?.previousElementSibling?.textContent).toBe("last: ok");
+      editor.destroy();
+    });
+
+    it("goes to a part's first line and takes focus", () => {
+      const editor = editorWith();
+      editor.setReviewParts([
+        { line: 1, added: 1, removed: [] },
+        { line: 3, added: 1, removed: [] },
+      ]);
+      editor.goToReviewPart(1);
+      const { state } = editor.view;
+      expect(state.doc.lineAt(state.selection.main.head).number).toBe(3);
+      expect(editor.view.hasFocus).toBe(true);
+      editor.destroy();
+    });
+  });
+});
