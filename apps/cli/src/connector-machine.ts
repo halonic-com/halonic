@@ -144,6 +144,11 @@ function sessionFactory(
         onUndeclaredTool: () => undefined,
       }),
     unfenced,
+    // The person sees on standard error that this program runs with their own rights.
+    onUnfencedStart: (connectorId, reason) =>
+      void process.stderr.write(
+        `Connector "${connectorId}" started without the sandbox, because this computer has none: ${reason}\n`,
+      ),
     folders: nodeLaunchFolders,
     runners,
     deniedPaths: fence.deniedPaths,

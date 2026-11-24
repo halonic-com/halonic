@@ -30,8 +30,12 @@ const mail: ConnectorConfig = {
 /** A sandbox that opens fake sessions, and keeps them. */
 class FakeSandbox implements Sandbox {
   checked: SandboxCheck = { ok: true, reason: null, missing: [] };
+  checks = 0;
   readonly sessions: FakeSandboxSession[] = [];
-  check = async () => this.checked;
+  check = async () => {
+    this.checks += 1;
+    return this.checked;
+  };
   capabilities = (): SandboxCapabilities => {
     throw new Error("not used");
   };
@@ -47,6 +51,7 @@ verifies("connector-stdio-sandbox.workspace-connector-session", () => {
   let made: string[];
   let removed: string[];
   let unfenced: ConnectorConfig[];
+  let toldUnfenced: [string, string][];
   let factory: SessionWorkspaceFactory;
   let context: ConnectorFactoryContext;
 
@@ -55,6 +60,7 @@ verifies("connector-stdio-sandbox.workspace-connector-session", () => {
     made = [];
     removed = [];
     unfenced = [];
+    toldUnfenced = [];
     factory = new SessionWorkspaceFactory({
       sandbox,
       sandboxed: (setupOf) =>
@@ -77,6 +83,7 @@ verifies("connector-stdio-sandbox.workspace-connector-session", () => {
           } as ConnectorClient;
         },
       },
+      onUnfencedStart: (connectorId, reason) => toldUnfenced.push([connectorId, reason]),
       folders: {
         create: async () => {
           const folder = `/halonic/folder-${made.length}`;
@@ -129,6 +136,46 @@ verifies("connector-stdio-sandbox.workspace-connector-session", () => {
     await factory.create(mail, context).listTools();
     expect(sandbox.sessions).toEqual([]);
     expect(unfenced).toEqual([mail]);
+    expect(toldUnfenced).toEqual([["mail", "bubblewrap is not installed"]]);
+  });
+
+  it("starts nothing and fails with the reason when the check fails for another reason", async () => {
+    sandbox.checked = {
+      ok: false,
+      reason: "other",
+      missing: ["srt can't start a sandbox: timed out"],
+    };
+    await expect(factory.create(mail, context).listTools()).rejects.toThrow(
+      /isn't fenced: srt can't start a sandbox: timed out/,
+    );
+    expect(sandbox.checks).toBe(2);
+    expect(sandbox.sessions).toEqual([]);
+    expect(unfenced).toEqual([]);
+    expect(toldUnfenced).toEqual([]);
+  });
+
+  it("starts nothing and fails when the check throws", async () => {
+    sandbox.check = async () => {
+      sandbox.checks += 1;
+      throw new Error("the machine is busy");
+    };
+    await expect(factory.create(mail, context).listTools()).rejects.toThrow(/the machine is busy/);
+    expect(sandbox.checks).toBe(2);
+    expect(sandbox.sessions).toEqual([]);
+    expect(unfenced).toEqual([]);
+  });
+
+  it("starts in a session when a check that failed for another reason passes the second time", async () => {
+    const answers: SandboxCheck[] = [
+      { ok: false, reason: "other", missing: ["srt can't start a sandbox: timed out"] },
+      { ok: true, reason: null, missing: [] },
+    ];
+    sandbox.check = async () => answers.shift() ?? { ok: true, reason: null, missing: [] };
+    const client = factory.create(mail, context);
+    await client.listTools();
+    expect(sandbox.sessions).toHaveLength(1);
+    expect(unfenced).toEqual([]);
+    await client.close();
   });
 
   it("opens a new session with new folders once the last one has ended", async () => {

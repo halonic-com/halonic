@@ -7,8 +7,10 @@ import type {
   ConnectorFactoryContext,
   ConnectorTool,
   Sandbox,
+  SandboxCheck,
   SandboxSession,
 } from "@halonicjs/ports";
+import { SandboxNotFencedError } from "./errors.ts";
 import { localToolLaunch, type PinnedRunner, type StdioConfig } from "./local-tool-launch.ts";
 import { pinnedStart } from "./pinned-runner.ts";
 import { readSecretEnv } from "./plan-launch.ts";
@@ -32,6 +34,11 @@ export interface SessionWorkspaceOptions {
   ) => ConnectorFactory;
   /** Starts the program on this computer, for a host whose sandbox doesn't work: today's start and trust line. */
   readonly unfenced: ConnectorFactory;
+  /**
+   * Told each time a connector starts on this computer without a session,
+   * with the sandbox's reason, so the host can show it where the person sees it.
+   */
+  readonly onUnfencedStart: (connectorId: string, reason: string) => void;
   /** Where a session's working and temp folders are made, one new folder each. */
   readonly folders: LaunchFolders;
   /** Where a pinned package's runner is looked for. */
@@ -55,8 +62,12 @@ export interface SessionWorkspaceOptions {
  *   built here, by Halonic, from the connector file and the context: its
  *   own folders, the file's `env` and secrets, the workspace read-only,
  *   every agent working folder denied, and only the sites it names.
- * - When it doesn't, the connector starts on this computer as before
- *   (`unfenced`), under the connector file's trust line.
+ * - When it says this computer has no sandbox, the connector starts on
+ *   this computer as before (`unfenced`), under the connector file's trust
+ *   line, and `onUnfencedStart` is told.
+ * - When the check fails for another reason (`other`) or throws, it is
+ *   asked once more; if it fails again, nothing starts and the call fails
+ *   with {@link SandboxNotFencedError}.
  * - A session that ended is closed, and the next call opens a new one with
  *   new folders.
  *
@@ -186,9 +197,10 @@ class SessionWorkspaceConnector implements ConnectorClient {
 
   async #start(): Promise<Running> {
     const { sandbox, unfenced } = this.#options;
-    const check = await sandbox.check();
-    // Without a working sandbox the program starts as before; a failing fence proof later refuses it instead.
+    const check = await this.#check();
+    // Without a sandbox on this computer the program starts as before; a failing fence proof later refuses it instead.
     if (!check.ok) {
+      this.#options.onUnfencedStart(this.id, check.missing.join(" "));
       return {
         client: unfenced.create(this.#config, this.#context),
         session: undefined,
@@ -223,6 +235,25 @@ class SessionWorkspaceConnector implements ConnectorClient {
       await Promise.allSettled(folders.map((path) => this.#options.folders.remove(path)));
       throw error;
     }
+  }
+
+  /**
+   * The sandbox's answer, where only "no sandbox on this computer" may start
+   * the program unfenced. A check that fails otherwise, such as a timeout on
+   * a busy machine, is asked once more, then refuses the start.
+   */
+  async #check(): Promise<SandboxCheck> {
+    let reason = "";
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const check = await this.#options.sandbox.check();
+        if (check.ok || check.reason !== "other") return check;
+        reason = check.missing.join(" ");
+      } catch (error) {
+        reason = `the sandbox check failed: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    }
+    throw new SandboxNotFencedError(this.id, reason);
   }
 
   /** Where this session runs: new folders, the workspace and the agents' folders from the context. */
