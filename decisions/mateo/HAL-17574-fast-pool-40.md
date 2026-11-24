@@ -3,6 +3,7 @@
 - Task: HAL-17574 (the board's decision on the task, 24 Nov)
 - Approval: the board decided on HAL-17574 (24 Nov) on fast-25..40 with 4 CPUs each and a CPU placement that spreads the fast slots; Liam signs this note in review, Julian checks C1–C8 on the task
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jJtsRR6B4cCbev0Knq8vb//yyutEAeovB6hAiexoGsWx3IniFyCjNQHs+CwrKupjphXQht9hp1iMTt8g8PFvDA==
 
 ## What changes
 
