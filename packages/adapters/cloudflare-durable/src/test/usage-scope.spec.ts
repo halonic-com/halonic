@@ -107,7 +107,10 @@ describe("usage object nonces", () => {
       expect(scope.rememberNonce("u/acme", "cloud-1", "n1", keepUntilMs)).toBe("new");
       expect(scope.rememberNonce("u/acme", "cloud-1", "n1", keepUntilMs)).toBe("seen");
       expect(scope.rememberNonce("u/acme", "cloud-2", "n1", keepUntilMs)).toBe("new");
+      // `verifyRequest` still takes a request signed `window` ago at exactly `keepUntilMs`.
       clock.advance(5 * minute);
+      expect(scope.rememberNonce("u/acme", "cloud-1", "n1", keepUntilMs + minute)).toBe("seen");
+      clock.advance(1);
       expect(scope.rememberNonce("u/acme", "cloud-1", "n1", keepUntilMs + minute)).toBe("new");
     }));
 
@@ -120,6 +123,12 @@ describe("usage object nonces", () => {
       }
       clock.advance(minute);
       scope.rememberNonce("u/acme", "cloud-1", "n4", keepUntilMs + minute);
+      expect([...storage.kv.list({ prefix: "nonce:" })]).toHaveLength(4);
+      clock.advance(1);
+      scope.rememberNonce("u/acme", "cloud-1", "n5", keepUntilMs + minute);
+      expect([...storage.kv.list({ prefix: "nonce:" })]).toHaveLength(2);
+      clock.advance(minute);
+      scope.rememberNonce("u/acme", "cloud-1", "n6", keepUntilMs + 3 * minute);
       expect([...storage.kv.list({ prefix: "nonce:" })]).toHaveLength(1);
     }));
 

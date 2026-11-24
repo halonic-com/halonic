@@ -79,13 +79,8 @@ export async function answerLimitsPush(
       { status: 405, headers: { ...noStore, allow: "POST" } },
     );
   }
-  // The declared length is checked before reading, so an unsigned caller can't make the Worker hold
-  // a large body; the bytes read are checked again, since the header can lie.
-  if (Number(request.headers.get("content-length") ?? 0) > maxLimitsBytes) {
-    return refusal(413, "too_large", "The limits document is too large.");
-  }
-  const body = new Uint8Array(await request.arrayBuffer());
-  if (body.byteLength > maxLimitsBytes) {
+  const body = await readCappedBody(request, maxLimitsBytes);
+  if (body === undefined) {
     return refusal(413, "too_large", "The limits document is too large.");
   }
   const name = scopeName(scope);
@@ -106,6 +101,37 @@ export async function answerLimitsPush(
   const { endUser } = verified.value;
   if (endUser !== undefined && endUser !== name) return notSigned();
   return applyPushed(usage, name, body);
+}
+
+/**
+ * The body's bytes, or `undefined` once it goes over `maxBytes`, so an unsigned caller can't make
+ * the Worker hold a large body. A declared length over the limit is refused before a byte is read;
+ * without one (a chunked body) or with a false one, the read stops at the first byte over. A local
+ * copy of `readBody` in `host-server`, whose public interface doesn't export it.
+ */
+async function readCappedBody(request: Request, maxBytes: number): Promise<Uint8Array | undefined> {
+  if (Number(request.headers.get("content-length") ?? 0) > maxBytes) return undefined;
+  if (request.body === null) return new Uint8Array();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return undefined;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
 }
 
 function trustedCommandKey(context: LimitsPushContext, keyId: string): TrustedKey | undefined {
@@ -192,7 +218,10 @@ export async function answerLimitsPushOf(
   request: Request,
   env: RuntimeEnv,
 ): Promise<Response | undefined> {
-  if (!new URL(request.url).pathname.startsWith(limitsPushPrefix)) return undefined;
+  const { pathname } = new URL(request.url);
+  if (!pathname.startsWith(limitsPushPrefix)) return undefined;
+  // A path that isn't a scope gets the usual 404 before the key set is read.
+  if (parseScope(pathname.slice(limitsPushPrefix.length)) === null) return undefined;
   let context: LimitsPushContext | undefined;
   try {
     context = await limitsPushContextOf(env);

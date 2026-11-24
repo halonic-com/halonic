@@ -22,17 +22,20 @@ export function rememberNonce(
   return storage.transactionSync(() => {
     dropRunOut(storage, nowMs);
     const keptUntil = storage.get<number>(key);
-    if (keptUntil !== undefined && keptUntil > nowMs) return "seen";
+    // `verifyRequest` takes a request up to and including `keepUntilMs`, so the nonce holds then too.
+    if (keptUntil !== undefined && keptUntil >= nowMs) return "seen";
     storage.put(key, entry.keepUntilMs);
     return "new";
   });
 }
 
+// Walks every live nonce, since the list is ordered by key, not by time; at Cloud's push rate that
+// is about one time window of pushes.
 function dropRunOut(storage: UsageStorage, nowMs: number): void {
   let dropped = 0;
   for (const [key, keepUntilMs] of storage.list<number>(noncePrefix)) {
     if (dropped >= maxDroppedPerCall) return;
-    if (keepUntilMs > nowMs) continue;
+    if (keepUntilMs >= nowMs) continue;
     storage.delete(key);
     dropped += 1;
   }

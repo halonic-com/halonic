@@ -201,6 +201,24 @@ verifies("runtime.limits-push", () => {
         },
       );
       expect((await answerLimitsPush(large, context)).status).toBe(413);
+      // A chunked body has no length to check first, so the read itself stops over the limit.
+      const chunk = new TextEncoder().encode("x".repeat(16_384));
+      let sent = 0;
+      const streamed = new Request(
+        "https://halonic.example.com/cloud/limits/u/eu_acme0123456789abcdef",
+        {
+          method: "POST",
+          body: new ReadableStream<Uint8Array>({
+            pull(controller) {
+              sent += 1;
+              controller.enqueue(chunk);
+            },
+          }),
+          duplex: "half",
+        } as RequestInit,
+      );
+      expect((await answerLimitsPush(streamed, context)).status).toBe(413);
+      expect(sent).toBeLessThan(10);
       const notScope = new Request("https://halonic.example.com/cloud/limits/acme", {
         method: "POST",
       });
