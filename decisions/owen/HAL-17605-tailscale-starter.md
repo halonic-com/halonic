@@ -2,6 +2,7 @@
 
 - Approval: HAL-17605 (plan approved on HAL-17607)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PEJ3mT2jZi26WUw0zL/QmntdMilDJVYjLancUkXpYk9YfGQK+f2u9gxamum3WO69pYcTGIi+LW3ys8O3Dd4XBg==
 
 The Tailscale tunnel provider (`@halonicjs/adapter-tunnel-tailscale`, pull request 5675) runs
 the `tailscale` CLI. CI checks `process-starts` against the base commit's
