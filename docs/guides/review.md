@@ -50,6 +50,26 @@ approval, never in a separate round: review, then
 approve the head it prints. If you request changes, don't sign yet. Details:
 [checks.md, "Signing with the review"](checks.md#requirement-guard-nothing-that-works-may-break).
 
+## After approval
+
+An approval names the head it was given on. Once a pull request is
+approved, its author leaves the branch alone:
+
+- **Don't rebase or push** unless the pull request conflicts with `main`, or
+  the merge queue asks for it in a comment on the pull request.
+- **Being behind `main` is not a reason.** The merge queue tests the pull
+  request on top of current `main` before it lands, so an extra rebase
+  checks nothing new.
+- **Every push costs a round.** It starts a new CI run and needs a new
+  approval on the new head. About one approved pull request in six was
+  rebased anyway (HAL-17891), each costing 35 to 90 minutes.
+- **When you must push**, push only the fix for the conflict or for what the
+  queue asked, and send the pull request back to the reviewer who approved
+  it.
+
+Reviewers: don't ask for a rebase after you approve, unless the pull request
+conflicts.
+
 ## Checklist
 
 Check these on every pull request. The guides for
