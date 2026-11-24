@@ -5,6 +5,14 @@
 set -euo pipefail
 SLOT=${1:?slot, e.g. large-1}
 PAUSED=/etc/halonic-ci/paused
+STATES=/run/halonic-ci
+# --cleanup (ExecStopPost) removes this slot's state first, before anything below that can fail
+# (pool.env, the App key, a GitHub token): a state left behind would count as promised memory for
+# the fast slots (HAL-17558), as large-10's did for two days after it was disabled. If that fails, the
+# rest of the cleanup (stale registrations) still runs.
+if [ "${2:-}" = "--cleanup" ]; then
+  rm -f "$STATES/$SLOT.state" || echo "slot $SLOT: could not remove $STATES/$SLOT.state" >&2
+fi
 # Paused: register no runner. systemd checks the units' ConditionPathExists only on a manual start,
 # not on a Restart=always restart, so without this a slot kept taking jobs while the weekly cleanup
 # and the hourly cache check waited for it. The sleep keeps a paused slot from restarting every 5 s.
@@ -106,11 +114,14 @@ unmount_caches() {
 # written before it's released, so two slots can't both count the same memory. Large and small
 # slots are never held back: merge groups keep the memory first. A fast slot that waits registers
 # nothing, so its jobs wait in GitHub's queue for a fast runner that can take them.
-STATES=/run/halonic-ci; MEMINFO=/proc/meminfo; RESERVE_B=4294967296
+# A running slot rewrites its state every 2 s, so a state not updated for STALE_S seconds, or with no
+# updated_at, belongs to a slot that is gone and promises nothing (HAL-17558).
+MEMINFO=/proc/meminfo; RESERVE_B=4294967296; STALE_S=120
 fast_room() {
   local avail promised
   avail=$(awk '$1=="MemAvailable:"{print $2*1024}' "$MEMINFO")
-  promised=$(cat "$STATES"/*.state 2>/dev/null | jq -s --arg me "$SLOT" '[.[] | select(.slot != $me)
+  promised=$(cat "$STATES"/*.state 2>/dev/null | jq -s --arg me "$SLOT" --argjson now "$(date +%s)" --argjson stale "$STALE_S" '[.[]
+      | select(.slot != $me and (.updated_at | type) == "number" and $now - .updated_at <= $stale)
       | if .busy then (.mem_limit // 0) - (.mem_peak // 0) elif .label == "halonic-ci-fast" then .mem_limit // 0 else 0 end
       | if . > 0 then . else 0 end] | add // 0') || return 1
   [[ "$avail" =~ ^[0-9]+$ ]] && [[ "$promised" =~ ^[0-9]+$ ]] || return 1
@@ -153,8 +164,9 @@ api -H "Authorization: Bearer $TOKEN" \
       curl -sS -o /dev/null -X DELETE -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
         "https://api.github.com/orgs/$ORG/actions/runners/$id" && echo "slot $SLOT: removed stale runner $id"
     done || true
-# A cycle that ended before its own clean-up ran leaves no promise behind (memory admission, above).
-[ "${2:-}" = "--cleanup" ] && { rm -f "/run/halonic-ci/$SLOT.state"; exit 0; }
+# --cleanup removed this slot's state at the top, so a cycle that ended before its own clean-up ran
+# leaves no promise behind (memory admission, above).
+[ "${2:-}" = "--cleanup" ] && exit 0
 
 NAME="hci-$SLOT-$(date +%Y%m%d%H%M%S)"
 RESP=$(api -X POST -H "Authorization: Bearer $TOKEN" \
@@ -211,7 +223,7 @@ fi
   xfs_quota -x -c "limit -p bhard=$TRUSTED_QUOTA $TRUSTED_PROJ" /cache >/dev/null
 ) 9>/run/halonic-ci/trusted-quota.lock
 
-STATE=/run/halonic-ci/$SLOT.state; JOBLOG=/var/log/halonic-ci/jobs.jsonl
+STATE=$STATES/$SLOT.state; JOBLOG=/var/log/halonic-ci/jobs.jsonl
 install -d -m 0755 /var/log/halonic-ci
 cleanup() {
   docker rm -f "hci-$SLOT" >/dev/null 2>&1 || true
