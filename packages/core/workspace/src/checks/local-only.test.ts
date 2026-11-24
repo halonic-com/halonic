@@ -76,6 +76,29 @@ verifies("workspace.local-only", () => {
   it("allows local providers, the mock model and local connectors", async () => {
     expect(await issuesIn(true, local)).toEqual([]);
   });
+
+  it("doesn't count local: true for a provider at a public address, and says so", async () => {
+    const issues = await issuesIn(true, {
+      ...local,
+      "providers/relay.yaml":
+        "id: relay\ntype: openai\nbaseUrl: https://api.example.com\nlocal: true\n",
+      "models.yaml": "aliases:\n  relay: { provider: relay, model: gpt-5 }\n",
+    });
+    expect(issues).toEqual([
+      `error models.yaml aliases.relay.provider: Alias "relay" uses provider "relay", which isn't local, and the workspace is local only: point it at a local provider, ${turnOff}`,
+      `error providers/relay.yaml local: Provider "relay" says local: true, but it calls https://api.example.com, which isn't on this computer or its network, and the workspace is local only: point baseUrl at a local address, ${turnOff}`,
+    ]);
+  });
+
+  it("counts local: true for a provider at a loopback or private address", async () => {
+    for (const baseUrl of ["http://127.0.0.1:11434/v1", "http://192.168.1.20:11434/v1"]) {
+      const relay = `id: relay\ntype: openai\nbaseUrl: ${baseUrl}\nlocal: true\n`;
+      const aliases = "aliases:\n  relay: { provider: relay, model: gpt-5 }\n";
+      expect(
+        await issuesIn(true, { ...local, "providers/relay.yaml": relay, "models.yaml": aliases }),
+      ).toEqual([]);
+    }
+  });
 });
 
 verifies("workspace.local-only-harness", () => {

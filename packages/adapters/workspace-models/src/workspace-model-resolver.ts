@@ -25,6 +25,7 @@ import {
   type LoadedWorkspace,
   type ModelTarget,
   modelPrice,
+  providerIsLocal,
   type ResolvedModelTarget,
 } from "@halonicjs/workspace";
 import { modelTexts } from "./model-texts.ts";
@@ -357,7 +358,10 @@ export async function requireKeyMayGo(
 
 /**
  * The model a provider file and a target make, with its alias's params. The
- * mock model runs on this computer whatever its file says, so its calls cost nothing.
+ * mock model runs on this computer whatever its file says, so its calls cost
+ * nothing; any other counts as local only as `providerIsLocal` says, so a
+ * `local: true` with a public address is not, and the engine skips it in a
+ * local-only run.
  */
 export function resolvedModel(
   provider: LlmProvider,
@@ -369,7 +373,7 @@ export function resolvedModel(
   return {
     provider,
     model: target.model,
-    local: file.local || file.type === "mock",
+    local: providerIsLocal(file),
     ...(target.alias === undefined ? {} : { alias: target.alias }),
     ...(address === undefined ? {} : { address }),
     ...(file.secret === undefined ? {} : { secret: file.secret }),

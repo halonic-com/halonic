@@ -97,6 +97,7 @@ export {
   MAX_TIMEOUT_MS,
   placedSecrets,
 } from "./kinds/integration/schema.ts";
+export { isLocalUrl } from "./kinds/integration/url-host.ts";
 export type { KnowledgeSource } from "./kinds/knowledge/schema.ts";
 export type { ModelAlias, Models, ProviderRouting } from "./kinds/models/schema.ts";
 export { backendSheet, pluginFromIntegrationSheet } from "./kinds/plugin/backend.ts";

@@ -8,6 +8,7 @@ import {
   sheetHostsOf,
 } from "@halonicjs/format";
 import type { WorkspaceIssue } from "../load-workspace.ts";
+import { isOnThisNetwork, providerAddress } from "../provider-cost.ts";
 import type { CheckContext } from "./check-context.ts";
 import { isAliasName } from "./model-aliases.ts";
 import { aliasFiles, modelSettings } from "./model-settings.ts";
@@ -22,8 +23,11 @@ const turnOff = "or set privacy.localOnly: false in workspace.yaml";
  * as an error each model alias, each `provider/model` setting and each
  * connector that would reach past it, and each agent that runs in a harness
  * program (Claude Code or Codex), because such a program sends the work to
- * its own cloud model. A provider is local when its file says `local: true`,
- * or when it is the mock model, as the engine counts it; a connector as
+ * its own cloud model. A provider is local when it is the mock model, or
+ * when its file says `local: true` and the address it calls is on this
+ * computer or its network ({@link providerIsLocal}), as the engine counts it;
+ * a provider whose `local: true` its address contradicts is reported too. A
+ * connector is local as
  * `connectorIsLocalWith` says, with the sheets' hosts the loader was given.
  * A provider no file has is left to the reference checks.
  */
@@ -40,11 +44,25 @@ export function checkLocalOnly(context: CheckContext): WorkspaceIssue[] {
     return file !== undefined && !providerIsLocal(file);
   };
   return [
+    ...providerIssues(context),
     ...aliasIssues(context, cloud),
     ...modelSettingIssues(context, cloud),
     ...connectorIssues(context),
     ...harnessIssues(context),
   ];
+}
+
+/** The providers whose file says `local: true` but whose address is away from this computer and its network. */
+function providerIssues(context: CheckContext): WorkspaceIssue[] {
+  return context
+    .filesOf("provider", null)
+    .filter((file) => file.value.local && !providerIsLocal(file.value))
+    .map((file) => {
+      const address = providerAddress(file.value);
+      const calls = address === undefined ? "its address can't be read" : `it calls ${address}`;
+      const message = `Provider "${file.value.id}" says local: true, but ${calls}, which isn't on this computer or its network, and the workspace is local only: point baseUrl at a local address, ${turnOff}`;
+      return context.error(file.path, ["local"], "local-only-provider", message);
+    });
 }
 
 /** The model aliases whose provider isn't local. */
@@ -198,7 +216,15 @@ function harnessIssues(context: CheckContext): WorkspaceIssue[] {
     });
 }
 
-/** Whether a provider runs on this computer; the mock model always does. */
-export function providerIsLocal(provider: Provider): boolean {
-  return provider.local || provider.type === "mock";
+/**
+ * Whether a provider runs on this computer or its network: the mock model
+ * always does; any other only when its file says `local: true` and the
+ * address it calls, `baseUrl` or its type's default, is loopback or a private
+ * address ({@link isOnThisNetwork}). A public address is never local,
+ * whatever the file says.
+ */
+export function providerIsLocal(
+  provider: Pick<Provider, "type" | "baseUrl" | "secret" | "options" | "local">,
+): boolean {
+  return provider.type === "mock" || (provider.local && isOnThisNetwork(provider));
 }

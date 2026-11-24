@@ -108,6 +108,21 @@ export function isLoopback(hostname: string): boolean {
   return hostname === "localhost" || hostname === "[::1]" || ipv4(hostname)?.[0] === 127;
 }
 
+/**
+ * Whether an absolute `http` or `https` URL's host is this computer or its
+ * network, as {@link isLocalAddress} counts it. A URL {@link parseUrlHost}
+ * refuses, or a host name other than `localhost`, is not: a name can resolve
+ * anywhere.
+ *
+ * @example
+ * isLocalUrl("http://192.168.1.20:11434/v1"); // true
+ * isLocalUrl("https://api.example.com/v1"); // false
+ */
+export function isLocalUrl(url: string): boolean {
+  const found = parseUrlHost(url);
+  return found !== undefined && isLocalAddress(found.hostname);
+}
+
 /** Loopback, or `10/8`, `172.16/12`, `192.168/16`, `100.64/10` or IPv6 `fc00::/7`. */
 export function isLocalAddress(hostname: string): boolean {
   if (isLoopback(hostname)) {
