@@ -254,12 +254,17 @@ fn first_frame(output: &mut impl Read, session: &mut PipeSession) -> Result<Hand
 struct Answers {
     queue: SyncSender<(u64, BrokerRequest)>,
     input: Input,
+    /// Whether an answer that couldn't be sent was logged: once per link,
+    /// so an engine that stops reading but keeps asking can't flood the log.
+    unsent_logged: Arc<AtomicBool>,
 }
 
 impl Answers {
     fn start(broker: SecretBroker, input: Input) -> Self {
         let (queue, requests) = mpsc::sync_channel::<(u64, BrokerRequest)>(MAX_OUTSTANDING - 1);
         let writer = Arc::clone(&input);
+        let unsent_logged = Arc::new(AtomicBool::new(false));
+        let writer_logged = Arc::clone(&unsent_logged);
         let spawned = thread::Builder::new()
             .name("engine-secrets".to_owned())
             .spawn(move || {
@@ -268,7 +273,7 @@ impl Answers {
                     if lock(&writer).is_none() {
                         continue;
                     }
-                    write_answer(&writer, id, &broker.answer(&request));
+                    write_answer(&writer, &writer_logged, id, &broker.answer(&request));
                 }
             });
         if spawned.is_err() {
@@ -276,7 +281,11 @@ impl Answers {
             // is answered `unavailable` below.
             halonic_shell_log::record("engine", "the secret answering thread didn't start");
         }
-        Self { queue, input }
+        Self {
+            queue,
+            input,
+            unsent_logged,
+        }
     }
 
     fn queue(&self, id: u64, request: BrokerRequest) {
@@ -285,13 +294,22 @@ impl Answers {
             Err(TrySendError::Full(_)) => BrokerRefusal::Busy,
             Err(TrySendError::Disconnected(_)) => BrokerRefusal::Unavailable,
         };
-        write_answer(&self.input, id, &BrokerAnswer::Refused { reason: refused });
+        let answer = BrokerAnswer::Refused { reason: refused };
+        write_answer(&self.input, &self.unsent_logged, id, &answer);
     }
 }
 
-fn write_answer(input: &Input, id: u64, answer: &BrokerAnswer) {
-    if let Err(fault) = send(input, secret_answer_json(id, answer)) {
-        halonic_shell_log::record("engine", format_args!("an answer wasn't sent: {fault}"));
+/// Queues one answer. One that can't go (the input is closed, or its queue
+/// is full because the engine stopped reading) is logged only the first
+/// time on this link.
+fn write_answer(input: &Input, unsent_logged: &AtomicBool, id: u64, answer: &BrokerAnswer) {
+    if let Err(fault) = send(input, secret_answer_json(id, answer))
+        && !unsent_logged.swap(true, Ordering::SeqCst)
+    {
+        halonic_shell_log::record(
+            "engine",
+            format_args!("an answer wasn't sent, and later ones aren't logged: {fault}"),
+        );
     }
 }
 
@@ -338,4 +356,37 @@ fn close(input: &Input) {
 /// optional sender and two plain fields.
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::AtomicBool;
+    use std::sync::{Arc, Mutex};
+
+    use halonic_secret_broker::{BrokerAnswer, BrokerRefusal};
+
+    use super::{Input, write_answer};
+
+    /// The only test in this binary that writes the shell's log, which is
+    /// one per process.
+    #[test]
+    fn engine_process_logs_unsent_answers_once_per_link() {
+        let folder = std::env::temp_dir().join(format!("acme-unsent-{}", std::process::id()));
+        std::fs::create_dir_all(&folder).unwrap();
+        let log = folder.join("shell.log");
+        halonic_shell_log::start(log.clone());
+        let closed: Input = Arc::new(Mutex::new(None));
+        let logged = AtomicBool::new(false);
+        let busy = BrokerAnswer::Refused {
+            reason: BrokerRefusal::Busy,
+        };
+
+        for id in 1..=20 {
+            write_answer(&closed, &logged, id, &busy);
+        }
+
+        let text = std::fs::read_to_string(&log).unwrap();
+        std::fs::remove_dir_all(&folder).unwrap();
+        assert_eq!(text.matches("an answer wasn't sent").count(), 1, "{text}");
+    }
 }
