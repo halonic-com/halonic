@@ -2307,6 +2307,16 @@ jobs:
       - name: Build the integration runner
         working-directory: packages/adapters/integration-runner
         run: pnpm build
+      - name: Install Claude Code (pinned, this job only)
+        # The CLI's coding tools test starts a real `claude` against a fake
+        # bridge (HAL-17187). The board approved Claude Code for CI only, at
+        # one exact version, never as a package.json dependency (HAL-17188).
+        # Bump it by pull request, like the srt pin. No secret is passed.
+        env:
+          CLAUDE_CODE_VERSION: "2.1.325"
+        run: |
+          npm install --global "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" # zizmor: ignore[adhoc-packages]
+          claude --version | grep -F "$CLAUDE_CODE_VERSION"
       - name: CLI runs through the fence
         # A run starts a local integration in the built runner and the real
         # sandbox (HAL-8089), and a stand-in program run by the CLI's harness
