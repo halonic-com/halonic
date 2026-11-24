@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-14305, on the plan Liam approved there (20 Nov), the G5 and G6 answers on that task, and Julian's condition 2 on HAL-14332; the reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:F0frsuDEQtUFZGiQ0H5wTsePkQbmwB0NTtyg5ahmYue1SMOGizGClg9kH8jPx2OaVVLfbRrdntX8fX//jpxgDA==
 
 ## What changes
 
