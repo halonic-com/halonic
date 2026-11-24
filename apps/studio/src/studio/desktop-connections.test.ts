@@ -1,4 +1,7 @@
 import { ServiceRegistry } from "@halonicjs/app";
+import { MessengerService } from "@halonicjs/studio-feature-messenger/api";
+import { OverviewService, RecapService } from "@halonicjs/studio-feature-overview/api";
+import { SearchService } from "@halonicjs/studio-feature-search/api";
 import { BrowserDisplayPrefs, DisplaySettings } from "@halonicjs/studio-feature-settings";
 import { AgentConnectionsService } from "@halonicjs/studio-services";
 import { createShell } from "@halonicjs/studio-shell";
@@ -65,5 +68,28 @@ verifies("studio.desktop-connections", () => {
     provideAgentConnections(services, undefined, "/work/acme");
 
     expect(services.has(AgentConnectionsService)).toBe(false);
+  });
+});
+
+verifies("studio.desktop-agent-messaging", () => {
+  it("registers Messenger, Search and the overview in the desktop app", () => {
+    const shell = createShell({ ...desktopFeatures, host: "desktop-app", platform: "windows" });
+
+    expect(shell.features.map((feature) => feature.id)).toEqual(
+      expect.arrayContaining(["inbox", "messenger", "search", "overview"]),
+    );
+  });
+
+  it("gives a folder opened with the agent host Messenger, Search, the overview and the recap", async () => {
+    const shell = createShell({ ...desktopFeatures, host: "desktop-app", platform: "windows" });
+
+    const opened = await openFolder(shell, acmeWebview(), "/work/acme", displaySettings());
+    const { services } = opened.workspace;
+
+    expect(services.get(MessengerService)).toBeDefined();
+    expect(services.get(SearchService)).toBeDefined();
+    expect(services.get(OverviewService)).toBeDefined();
+    expect(services.get(RecapService)).toBeDefined();
+    await opened.dispose();
   });
 });
