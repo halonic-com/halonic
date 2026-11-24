@@ -16,7 +16,7 @@ When the assistant has changes to review in a workflow's file, the workflow page
   then a toast "Accepted 1 change in Support reply" has **Undo**.
 - Given the assistant made `start` go to a step `check` it added,
   when `start`'s mark shows,
-  then it says "Accept also accepts: Step added: Check", and its Accept says "Accepted 2 changes in Support reply".
+  then it says "Accepting this also accepts “Step added: Check”", and its Accept says "Accepted 2 changes in Support reply".
 - Given the assistant created the workflow, then its one mark "New" has **Reject and delete file**.
 - Given the file changed outside Halonic, when the person presses **Accept all**, then **Compare** opens the workflow's file.
 - Given the person renames the workflow the assistant renamed, when that accepts the change, then "Change accepted by your edit" is said politely.

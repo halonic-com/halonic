@@ -294,12 +294,6 @@ function ProblemLine({ id, problems }: { readonly id: string; readonly problems:
   );
 }
 
-/**
- * A failed step shows the danger ring over the selection's: the run's outcome is the news (D8). A
- * step with a problem has a border in its colour, which the selection's ring covers while it's picked.
- * An outlined step that isn't picked and has no problem has a dashed accent border, so it doesn't
- * read as the selection.
- */
 /** The edge on the card's start side for the assistant's change, by kind, as `ChangeMark` draws it. */
 const changeEdges = {
   added: "border-s-4 border-s-success",
@@ -308,6 +302,12 @@ const changeEdges = {
   none: "",
 } as const;
 
+/**
+ * A failed step shows the danger ring over the selection's: the run's outcome is the news (D8). A
+ * step with a problem has a border in its colour, which the selection's ring covers while it's picked.
+ * An outlined step that isn't picked and has no problem has a dashed accent border, so it doesn't
+ * read as the selection.
+ */
 function ringOf(
   failed: boolean,
   selected: boolean,
