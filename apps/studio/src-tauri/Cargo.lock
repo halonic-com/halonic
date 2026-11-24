@@ -1659,6 +1659,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-engine-supervisor"
+version = "0.1.0"
+dependencies = [
+ "halonic-agent-host",
+ "halonic-engine-pipe",
+ "halonic-secret-broker",
+ "halonic-secrets",
+ "halonic-shell-log",
+]
+
+[[package]]
 name = "halonic-file-identity"
 version = "0.1.0"
 dependencies = [

@@ -12,6 +12,7 @@
 mod bundled_runtime;
 mod console_window;
 mod default_distro;
+mod engine_command;
 mod error;
 mod handshake;
 #[cfg(test)]
@@ -40,6 +41,7 @@ pub use bundled_runtime::{
 };
 use console_window::{new_command, without_console_window};
 pub use default_distro::halonic_is_default;
+pub use engine_command::engine_command;
 pub use error::{AgentHostError, StartCause};
 use halonic_secrets::SecretBackend;
 pub use handshake::{Handshake, read_handshake};
@@ -49,7 +51,7 @@ pub use route_kinds::{Answer, Method, Route};
 pub use routes::find_route;
 pub use runtime_status::{current_runtime, runtime_installed};
 pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates};
-use stderr_log::log_stderr;
+pub use stderr_log::log_stderr;
 pub use stream_lines::{LineSplitter, LineTooLong};
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
