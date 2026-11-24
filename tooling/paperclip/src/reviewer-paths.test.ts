@@ -59,10 +59,10 @@ verifies("paperclip.reviewer-paths", () => {
     expect(isLiamPath(path)).toBe(false);
   });
 
-  test("more than 800 lines, or a security or release change, goes to Liam", () => {
+  test("more than 1200 lines, or a security or release change, goes to Liam", () => {
     const files = ["packages/core/app/src/a.ts"];
-    expect(reviewerFor({ files, changedLines: 801, sensitive: false })).toBe("liam");
-    expect(reviewerFor({ files, changedLines: 800, sensitive: false })).toBe("julian");
+    expect(reviewerFor({ files, changedLines: 1201, sensitive: false })).toBe("liam");
+    expect(reviewerFor({ files, changedLines: 1200, sensitive: false })).toBe("julian");
     expect(reviewerFor({ files, changedLines: 5, sensitive: true })).toBe("liam");
   });
 

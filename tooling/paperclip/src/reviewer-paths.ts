@@ -46,7 +46,7 @@ export const liamWords: readonly string[] = [
 ];
 
 /** Julian approves at most this many changed lines, unless it's only tests and Markdown. */
-export const julianLineLimit = 800;
+export const julianLineLimit = 1200;
 
 /**
  * Top-level `package.json` fields that publish, install or pin something: a
