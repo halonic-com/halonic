@@ -1,6 +1,7 @@
 import type { MessagingId, Seat, SpendSummary, TeamStatus } from "@halonicjs/ports";
 import { type SeatProblem, seatProblems } from "./seat-problems.ts";
 import type { TeamClock } from "./team-format.ts";
+import { watchTeamStatus } from "./team-watch.ts";
 
 /** Everything the Spend and seats screen shows, for one source, as read now. */
 export interface SpendAndSeatsState {
@@ -75,26 +76,6 @@ export class SpendAndSeats {
 
   /** Calls `listener` whenever a source says its team status changed. Returns a function that stops it. */
   watch(listener: () => void): () => void {
-    if (this.team === undefined) return () => {};
-    const changes = this.team.changes()[Symbol.asyncIterator]();
-    let stopped = false;
-    const next = (): void => {
-      changes.next().then(
-        (change) => {
-          if (stopped || change.done === true) return;
-          listener();
-          next();
-        },
-        (error: unknown) => {
-          // A broken change feed ends the watch; the screen still shows its last read.
-          if (!stopped) console.error("Spend and seats stopped hearing changes:", error);
-        },
-      );
-    };
-    next();
-    return () => {
-      stopped = true;
-      void changes.return?.();
-    };
+    return watchTeamStatus(this.team, listener, "Spend and seats");
   }
 }
