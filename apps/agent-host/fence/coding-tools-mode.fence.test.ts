@@ -39,7 +39,6 @@ beforeEach(async () => {
   for (const folder of [workspace, join(top, "home"), join(profileRoot, "tmp", "run_1")]) {
     await mkdir(folder, { recursive: true });
   }
-  await writeFile(join(workspace, "hello.txt"), "hello from acme\n");
   await writeFile(join(profileRoot, "private.txt"), "not for the program");
 });
 
@@ -188,6 +187,9 @@ describe("the packed agent host's coding tools mode in the real srt sandbox", ()
     const payload = await unpackedPayload();
     const built = await coderProfile(payload);
     expect(built.codingTools?.codePaths).toEqual([executable, payload]);
+    // The agent's own folder in the workspace, which the builder resolves; the run doesn't write it.
+    await mkdir(built.profile.workingFolder, { recursive: true });
+    await writeFile(join(built.profile.workingFolder, "hello.txt"), "hello from acme\n");
 
     const session = await new SrtSandbox().open(built.profile);
     try {
