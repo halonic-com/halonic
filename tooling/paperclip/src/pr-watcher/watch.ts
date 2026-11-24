@@ -1,4 +1,10 @@
 import {
+  type ConflictFileMap,
+  type ConflictFiles,
+  conflictFilesOf,
+  conflictFilesText,
+} from "./conflict-files.ts";
+import {
   branchesOwner,
   candidates,
   closedOutcome,
@@ -39,6 +45,8 @@ export interface TickOptions {
   readonly route?: ReviewerRoute;
   /** Whether only a rebase changed a pull request since its approval (HAL-17759); without it, never. */
   readonly rebaseOnly?: RebaseOnly;
+  /** The files a conflicting pull request conflicts in, for the wake comment (HAL-17922); none when unset. */
+  readonly conflictFiles?: ConflictFiles;
 }
 
 /** How a tick went: counts, and the tasks it couldn't check. */
@@ -171,14 +179,19 @@ function statusLines(reasons: readonly Reason[], summary: PullSummary | undefine
 }
 
 /**
- * The comment that wakes the author: one line per new state, then each pull
- * request's status from the same pass, then the markers.
+ * The comment that wakes the author: one line per new state, a conflict with
+ * its files, then each pull request's status from the same pass, then the
+ * markers.
  */
-export function wakeMessage(reasons: readonly Reason[], summary?: PullSummary): string {
-  const lines = reasons.map(
-    ({ pull, kind }) =>
-      `- [#${pull.number}](${pull.url}): ${reasonText[kind](pull.head.slice(0, 7))}`,
-  );
+export function wakeMessage(
+  reasons: readonly Reason[],
+  summary?: PullSummary,
+  conflicts: ConflictFileMap = new Map(),
+): string {
+  const lines = reasons.map(({ pull, kind }) => {
+    const files = kind === "conflict" ? conflictFilesText(conflicts.get(pullKey(pull))) : "";
+    return `- [#${pull.number}](${pull.url}): ${reasonText[kind](pull.head.slice(0, 7))}${files}`;
+  });
   return [
     "PR watcher: this needs you.",
     "",
@@ -292,7 +305,11 @@ async function act(options: TickOptions, task: TaskRow, decision: Decision): Pro
   const body =
     decision.kind === "done"
       ? doneMessage(decision.pulls)
-      : wakeMessage(decision.reasons, options.summary);
+      : wakeMessage(
+          decision.reasons,
+          options.summary,
+          await conflictFilesOf(decision.reasons, options.conflictFiles, options.log),
+        );
   options.log(`${task.identifier}: ${decision.kind}${options.dryRun ? " (dry run)" : ""}\n${body}`);
   if (options.dryRun) {
     return true;
