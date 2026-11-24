@@ -35,6 +35,14 @@ export const toolTexts = {
   moreFiles: (more: number) => `… and ${more} more. Pass "under" to list one folder.`,
   /** `validate` found nothing to fix (`assistant.build.validate-with-proposals`). */
   noProblems: "No problems.",
+  /** `show` showed the item (flow-assistant 3.8 and 5.7). */
+  shown: (item: { kind: string; id: string }) =>
+    `Showed ${item.kind} ${item.id} in the main view, next to the chat.`,
+  /** `show` was asked for an item that isn't there, or one from another workspace's hub. */
+  noItem: (item: { kind: string; hub: string; id: string }) =>
+    `Error: there is no ${item.kind} "${item.id}" in hub ${item.hub}.`,
+  /** `show` in a chat with nowhere to show items, such as on a phone. */
+  nowhereToShow: "Error: there's nowhere to show items in this chat.",
   /** `schema` was asked for a kind that doesn't exist. */
   unknownKind: (kind: string, kinds: readonly string[]) =>
     `Error: there is no kind "${kind}". The kinds are: ${kinds.join(", ")}.`,

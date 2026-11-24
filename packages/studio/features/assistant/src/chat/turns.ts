@@ -11,6 +11,8 @@ export type ReplyStep =
       readonly callId: string;
       readonly name: string;
       readonly state: ChatToolState;
+      /** The item a `show` call showed, for its line "Showed run r42". */
+      readonly shown?: { readonly kind: string; readonly id: string };
     }
   /** A `propose_file` or `propose_delete` that wrote changes to review (flow-assistant 3.1). */
   | {
@@ -97,7 +99,14 @@ function addStep(
   if (step?.kind !== "tool") return;
   const call = calls.get(step.callId);
   const card = call === undefined ? undefined : proposalOf(call, message.content);
-  steps[index] = card ?? { ...step, state };
+  const shown = state === "done" && call?.name === "show" ? shownBy(call) : undefined;
+  steps[index] = card ?? (shown === undefined ? { ...step, state } : { ...step, state, shown });
+}
+
+/** The item a `show` call names, when it names its kind and id. */
+function shownBy(call: ToolCall): { kind: string; id: string } | undefined {
+  const { kind, id } = call.arguments;
+  return typeof kind === "string" && typeof id === "string" ? { kind, id } : undefined;
 }
 
 /** The card of a write the tool made, told by its result; `undefined` for any other call. */

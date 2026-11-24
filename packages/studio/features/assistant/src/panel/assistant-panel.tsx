@@ -189,13 +189,16 @@ function PanelBody(props: PanelBodyProps) {
   const view = shown.kind === "chat" ? shown.view : undefined;
   const modelBox = useModelBox(view?.chat, choices, context, box);
   const send = (message: string | undefined, putBack: (message: string) => void) =>
-    void chats.send(message, announce, () => {
-      void askTrust(
-        () => send(message, putBack),
-        () => {
-          if (message !== undefined) putBack(message);
-        },
-      );
+    void chats.send(message, announce, {
+      refused: () => {
+        void askTrust(
+          () => send(message, putBack),
+          () => {
+            if (message !== undefined) putBack(message);
+          },
+        );
+      },
+      showItem: context.showItem,
     });
   if (shown.kind === "none") return <NoChat onNewChat={onNewChat} button={props.newChatButton} />;
   if (shown.kind === "failed") {
@@ -465,7 +468,9 @@ function Step({ step, place }: { readonly step: ReplyStep; readonly place: CardP
     const proposal = { chatId: place.chatId, callId, path, content };
     return <ProposalCard proposal={proposal} why={why} context={place.context} />;
   }
-  return (
-    <ChatToolLine state={step.state}>{words.tool[step.state](toolInWords(step.name))}</ChatToolLine>
-  );
+  const line =
+    step.shown === undefined
+      ? words.tool[step.state](toolInWords(step.name))
+      : words.showed(step.shown.kind, step.shown.id);
+  return <ChatToolLine state={step.state}>{line}</ChatToolLine>;
 }

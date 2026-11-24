@@ -93,6 +93,8 @@ export const buildChatWords = {
     "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
   goToKeyField: "Go to the key field ›",
   sendAnyway: "Send anyway",
+  /** The line of a `show` call that showed its item (UX checklist T14, flow-assistant 3.8). */
+  showed: (kind: string, id: string) => `Showed ${kind} ${id}`,
   /** A tool call's line, with the tool's name in words: "read file". */
   tool: {
     running: (tool: string) => `Using ${tool}…`,

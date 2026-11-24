@@ -14,6 +14,7 @@ import type {
   ReviewStep,
   ReviewTarget,
 } from "@halonicjs/app";
+import type { ShowOutcome } from "@halonicjs/assistant";
 import type { ChatMessage } from "@halonicjs/ports";
 import {
   type ItemRef,
@@ -134,6 +135,11 @@ export interface AssistantAnswerRequest {
    * message; the chat doesn't keep or show them, as the cards already say it.
    */
   readonly notes?: readonly string[] | undefined;
+  /**
+   * Shows an item next to the chat for the Build chat's `show` tool during this answer
+   * (`assistant.build.show-tool`), and says how it went. Absent: there is nowhere to show it.
+   */
+  readonly show?: ((item: ItemRef) => Promise<ShowOutcome>) | undefined;
   /** Aborted when the person clicks Stop. */
   readonly signal?: AbortSignal | undefined;
   /** Told how the answer goes, for the status line and the transcript. */

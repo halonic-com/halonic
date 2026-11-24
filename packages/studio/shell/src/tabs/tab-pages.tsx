@@ -115,7 +115,11 @@ export function TabPages({ tabs, renderPage, goneItem, cardTakers }: TabPagesPro
       return;
     }
     const kept = memory.current.get(now.tabId);
-    giveBack(page, kept?.locationKey === now.locationKey ? kept : undefined, state.keepsFocus);
+    // A page that goes hidden turns inert, so focus inside it would fall to `body`: then the page
+    // switched to takes it, even when the tab was made active next to what the user is doing.
+    const left = before === undefined ? undefined : pages.current.get(before.tabId);
+    const keepsFocus = state.keepsFocus === true && !hasFocus(left);
+    giveBack(page, kept?.locationKey === now.locationKey ? kept : undefined, keepsFocus);
   }, [state]);
 
   const remember = (tab: WindowTab, change: Partial<Omit<PageMemory, "locationKey">>) => {
@@ -207,6 +211,12 @@ function giveBack(page: HTMLElement, kept: PageMemory | undefined, keepsFocus = 
   } else {
     focusPageHeading(page);
   }
+}
+
+/** Whether the focus is inside `page`. */
+function hasFocus(page: HTMLElement | undefined): boolean {
+  const focused = document.activeElement;
+  return page !== undefined && focused !== null && page.contains(focused);
 }
 
 /**

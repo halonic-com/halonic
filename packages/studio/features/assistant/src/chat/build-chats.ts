@@ -1,7 +1,13 @@
 import type { ChatAnswerEnd } from "@halonicjs/app";
+import type { ShowOutcome } from "@halonicjs/assistant";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
-import { EngineNotAnswering, isUntrustedRefusal } from "@halonicjs/studio-shell";
+import {
+  EngineNotAnswering,
+  type ItemRef,
+  isUntrustedRefusal,
+  type ShownInWindow,
+} from "@halonicjs/studio-shell";
 import type { AssistantHost, Chat, ChatKind, ChatModel, ShownItem } from "../api.ts";
 import { cardReviewsOf } from "../cards/card-reviews.ts";
 import { buildChatWords } from "./build-chat-words.ts";
@@ -23,6 +29,14 @@ export interface ChatView {
   readonly stoppedByYou: boolean;
   /** What Show in chat put in this chat, oldest first; kept for this session (flow 5.7). */
   readonly shown: readonly ShownItem[];
+}
+
+/** What else {@link BuildChats.send} is given. */
+export interface SendOptions {
+  /** Gets the message when the host refused it because the workspace isn't trusted (H16). */
+  readonly refused?: ((message: string | undefined) => void) | undefined;
+  /** The window's `showItem`, for the Build chat's `show` tool; absent where there is none. */
+  readonly showItem?: ((item: ItemRef) => ShownInWindow) | undefined;
 }
 
 /** What the panel shows: a chat, its first load, a chat that can't load, or none (H3). */
@@ -112,9 +126,7 @@ export class BuildChats {
   async showItem(shown: ShownItem): Promise<void> {
     if (this.currentId === undefined || !this.views.has(this.currentId)) await this.newChat();
     if (this.currentId === undefined) return;
-    this.update(this.currentId, (view) =>
-      view.shown.some((each) => isSameItem(each, shown)) ? {} : { shown: [...view.shown, shown] },
-    );
+    this.update(this.currentId, (view) => withShown(view, shown));
   }
 
   /** Asks the panel, as it opens next, to leave focus where it is: Show in chat opened it. */
@@ -141,12 +153,13 @@ export class BuildChats {
    * Sends `message` in the chat shown, or, without one, continues the answer that reached the
    * model call limit (flow-assistant 3.6) or tries a failed one again. Says once how it ended.
    * When the host refuses it because the workspace isn't trusted, nothing was sent (H16): the chat
-   * goes back to how it was, nothing is announced, and `refused` gets the message.
+   * goes back to how it was, nothing is announced, and `refused` gets the message. The model's
+   * `show` shows items with `showItem` (`assistant.build.show-tool`).
    */
   async send(
     message: string | undefined,
     announce: Announce,
-    refused?: (message: string | undefined) => void,
+    { refused, showItem }: SendOptions = {},
   ): Promise<void> {
     const view = this.state.kind === "chat" ? this.state.view : undefined;
     if (view === undefined || view.answering) return;
@@ -174,6 +187,7 @@ export class BuildChats {
         message,
         shown: view.shown,
         notes: cardReviewsOf(this.host).takeNotes(chatId),
+        show: showItem && (async (item) => this.showFor(chatId, item, showItem)),
         signal: stopper.signal,
         listener: {
           onToolCall: (tool) => this.update(chatId, () => ({ tool })),
@@ -203,6 +217,21 @@ export class BuildChats {
     }));
     await this.refresh(chatId);
     await this.announceEnd(chatId, end, announce);
+  }
+
+  /**
+   * Shows an item the model's `show` asked for next to the chat, without moving the focus, and
+   * puts it in that chat's shown items once (flow-assistant 5.7).
+   */
+  private showFor(
+    chatId: string,
+    item: ItemRef,
+    showItem: (item: ItemRef) => ShownInWindow,
+  ): ShowOutcome {
+    const placed = showItem(item);
+    if (placed.placed === "unknown") return "unknown";
+    this.update(chatId, (view) => withShown(view, { item, name: placed.name }));
+    return "shown";
   }
 
   /** Puts a chat back as it was before a message the host refused, which sent nothing. */
@@ -326,6 +355,13 @@ function viewOf(chat: Chat): ChatView {
     stoppedByYou: false,
     shown: [],
   };
+}
+
+/** The chat's shown items with `shown` at the end, unless it is there already. */
+function withShown(view: ChatView, shown: ShownItem): Partial<ChatView> {
+  return view.shown.some((each) => isSameItem(each, shown))
+    ? {}
+    : { shown: [...view.shown, shown] };
 }
 
 function isSameItem(one: ShownItem, other: ShownItem): boolean {
