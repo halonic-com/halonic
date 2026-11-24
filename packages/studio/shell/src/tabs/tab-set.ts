@@ -40,6 +40,12 @@ export interface TabSetState {
   readonly canGoBack: boolean;
   /** Whether the active tab has a place ahead of it. */
   readonly canGoForward: boolean;
+  /**
+   * Whether the active tab was made active without taking the focus, as `openInNewTab` with
+   * `activate` does, so the pages leave the focus where it is. Only the change that made it active
+   * sets it; the next change clears it.
+   */
+  readonly keepsFocus?: boolean;
 }
 
 /** What `openInNewTab` did: the tab showing the place, and whether it is a new one. */
@@ -47,6 +53,15 @@ export interface OpenedTab {
   readonly tab: WindowTab;
   /** `false` when a tab already showed the place, so the strip can say it is already open. */
   readonly added: boolean;
+}
+
+/** What else `openInNewTab` can do. */
+export interface OpenInNewTabOptions {
+  /**
+   * Make the tab that shows the place active, the new one or one that showed it already, without
+   * taking the focus: the window's `showItem` shows an item next to what the user is doing.
+   */
+  readonly activate?: boolean;
 }
 
 /** The tabs and the active one; `TabSet` works out the rest of the state from them. */
@@ -77,7 +92,7 @@ export class TabSet {
 
   constructor() {
     const first = this.createTab(homeLocation);
-    this.current = stateOf({ tabs: [first], activeId: first.id });
+    this.current = stateOf({ tabs: [first], activeId: first.id }, false);
   }
 
   /** The tabs now. */
@@ -131,14 +146,21 @@ export class TabSet {
    * Opens `location` in a new tab right after the active one, which stays active (a Ctrl-click
    * or a middle-click). If a tab already shows it, nothing opens. Returns the tab showing it, and
    * whether it was added, so the strip can announce a place that is already open.
+   *
+   * With `activate`, the tab that shows the place, new or not, becomes active instead, and the
+   * state says it `keepsFocus`.
    */
-  openInNewTab(location: TabLocation): OpenedTab {
+  openInNewTab(location: TabLocation, options: OpenInNewTabOptions = {}): OpenedTab {
     const open = this.tabShowing(location.key);
     if (open !== undefined) {
+      if (options.activate === true && open.id !== this.current.activeId) {
+        this.update({ ...this.current, activeId: open.id }, true);
+      }
       return { tab: open, added: false };
     }
     const tab = this.createTab(location);
-    this.insert(tab, this.indexOf(this.current.activeId) + 1, this.current.activeId);
+    const activeId = options.activate === true ? tab.id : this.current.activeId;
+    this.insert(tab, this.indexOf(this.current.activeId) + 1, activeId, options.activate === true);
     return { tab, added: true };
   }
 
@@ -309,10 +331,10 @@ export class TabSet {
     return { id: `tab-${this.nextId++}`, history: [location], position: 0 };
   }
 
-  private insert(tab: WindowTab, index: number, activeId: string): void {
+  private insert(tab: WindowTab, index: number, activeId: string, keepsFocus = false): void {
     const tabs = [...this.current.tabs];
     tabs.splice(index, 0, tab);
-    this.update({ tabs, activeId });
+    this.update({ tabs, activeId }, keepsFocus);
   }
 
   /** Points the tab's current place at the step `location` asks for and counts the ask, without a new history entry. */
@@ -357,8 +379,9 @@ export class TabSet {
     return this.current.tabs.findIndex((tab) => tab.id === tabId);
   }
 
-  private update(state: TabsAndActive): void {
-    this.current = stateOf(state);
+  /** Makes the new state; `keepsFocus` only for the change that activates a tab without focus. */
+  private update(state: TabsAndActive, keepsFocus = false): void {
+    this.current = stateOf(state, keepsFocus);
     for (const listener of this.listeners) {
       listener();
     }
@@ -366,13 +389,14 @@ export class TabSet {
 }
 
 /** The full state for `tabs` with `activeId` active. */
-function stateOf({ tabs, activeId }: TabsAndActive): TabSetState {
+function stateOf({ tabs, activeId }: TabsAndActive, keepsFocus: boolean): TabSetState {
   const active = tabs.find((tab) => tab.id === activeId) ?? (tabs[0] as WindowTab);
   return {
     tabs,
     activeId,
     canGoBack: active.position > 0,
     canGoForward: active.position < active.history.length - 1,
+    ...(keepsFocus ? { keepsFocus } : {}),
   };
 }
 

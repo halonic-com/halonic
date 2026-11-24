@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from "react";
+import type { ItemCardTakers } from "./item-card-takers.ts";
 
 /**
  * Which view each tab's item page shows (UX checklist 1.10, req-shell `panels.one-view-at-a-time`),
@@ -42,6 +43,8 @@ export interface TabPage {
   readonly tabId: string;
   readonly locationKey: string;
   readonly views: ViewMemory;
+  /** The window's pages that take items as cards, which `useItemCardTaker` adds the page to. */
+  readonly cardTakers?: ItemCardTakers;
 }
 
 export const TabPageContext = createContext<TabPage | undefined>(undefined);

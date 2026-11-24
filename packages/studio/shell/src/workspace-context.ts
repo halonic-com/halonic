@@ -84,6 +84,15 @@ export interface WorkspaceContext {
    */
   readonly openItemInNewTab?: (item: ItemRef) => void;
   /**
+   * Shows an item next to what the user is doing and leaves the focus where it is
+   * (`shell.panels.show-replaces-windows`), as the Build chat's `show` does: as a stacked card on
+   * the active tab's page when that page takes it (`useItemCardTaker`), else in its own tab, which
+   * becomes active; a tab that shows it already just becomes active. Says where it went and the name
+   * its kind gives it (`tab.describe`), or `unknown` for a kind no feature added or an item its
+   * `tab.exists` says isn't there. The window gives it to the views it draws on the desktop only.
+   */
+  readonly showItem?: (item: ItemRef) => ShownInWindow;
+  /**
    * Opens Settings (`settings.open`) on the section asked for, such as `agent-sandbox` from the
    * Harness page's **Open Settings ›**, else on the one `settingsSectionToOpen` picks. The window
    * gives it to the views and commands it draws; a context built without a window has none.
@@ -143,6 +152,14 @@ export interface WorkspaceContext {
    */
   readonly panelWindow?: PanelWindowControl;
 }
+
+/**
+ * Where `showItem` showed an item: as a card on the active page or in its own tab, with its name,
+ * or nowhere, because the window doesn't know the item.
+ */
+export type ShownInWindow =
+  | { readonly placed: "card" | "tab"; readonly name: string }
+  | { readonly placed: "unknown" };
 
 /** Opens and closes the window's side panel; one per window. */
 export interface PanelWindowControl {

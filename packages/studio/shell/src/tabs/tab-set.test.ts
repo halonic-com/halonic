@@ -343,3 +343,39 @@ verifies("shell.tab-set", () => {
     expect(tabs.state).not.toBe(before);
   });
 });
+
+verifies("shell.panels.show-replaces-windows", () => {
+  it("opens a place in a new tab that becomes active, and says it keeps the focus", () => {
+    const tabs = tabsOn(agents, workflows);
+    tabs.activateAt(0);
+
+    const { added } = tabs.openInNewTab(sorter, { activate: true });
+
+    expect(added).toBe(true);
+    expect(strip(tabs)).toEqual(["Agents", "*Sorter", "Workflows"]);
+    expect(tabs.state.keepsFocus).toBe(true);
+  });
+
+  it("makes a tab that shows the place active instead of opening a second one", () => {
+    const tabs = tabsOn(agents, sorter);
+    tabs.activateAt(0);
+
+    const { added } = tabs.openInNewTab(sorter, { activate: true });
+
+    expect(added).toBe(false);
+    expect(strip(tabs)).toEqual(["Agents", "*Sorter"]);
+    expect(tabs.state.keepsFocus).toBe(true);
+  });
+
+  it("keeps the focus only for the change that made the tab active", () => {
+    const tabs = tabsOn(agents);
+    tabs.openInNewTab(sorter, { activate: true });
+
+    tabs.activateAt(0);
+
+    expect(tabs.state.keepsFocus).toBeUndefined();
+    tabs.openInNewTab(writer);
+    expect(strip(tabs)).toEqual(["*Agents", "Writer", "Sorter"]);
+    expect(tabs.state.keepsFocus).toBeUndefined();
+  });
+});
