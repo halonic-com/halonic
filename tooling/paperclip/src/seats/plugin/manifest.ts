@@ -254,6 +254,14 @@ export const manifest: PaperclipPluginManifestV1 = {
       companyResolution: { from: "query", key: "companyId" },
     },
     {
+      routeKey: "seats.summary",
+      method: "GET",
+      path: "/seats/summary",
+      auth: "board",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
+    },
+    {
       routeKey: "seats.manual-reset",
       method: "POST",
       path: "/seats/:seatId/manual-reset",

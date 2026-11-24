@@ -1,9 +1,11 @@
 import type { PluginApiRequestInput, PluginApiResponse } from "@paperclipai/plugin-sdk";
 import { defaultPlacementRules, proposePlacements } from "../placement-rules.ts";
+import { proposalText } from "../proposal-text.ts";
 import type { SeatEvent } from "../records.ts";
 import type { SeatsNow } from "./seats-now.ts";
 import { type SeatsPage, seatsPage } from "./seats-page.ts";
 import type { SeatReadStatus } from "./seats-reader.ts";
+import { type SeatsSummary, seatsSummary } from "./seats-summary.ts";
 import { publicSeat, type SeatSetting, type SeatsSettings } from "./settings.ts";
 import type { SeatsStore } from "./store.ts";
 
@@ -51,6 +53,8 @@ export async function handleSeatsRequest(
       };
     case "seats.page":
       return { status: 200, body: await seatsPageData(input.companyId, settings, deps) };
+    case "seats.summary":
+      return { status: 200, body: await seatsSummaryData(input.companyId, settings, deps) };
     case "seats.manual-reset":
       return await recordManualReset(input.params["seatId"], boardUserId, settings, deps);
     default:
@@ -64,23 +68,50 @@ export async function seatsPageData(
   settings: SeatsSettings,
   deps: SeatsRouteDeps,
 ): Promise<SeatsPage> {
+  return (await pageParts(companyId, settings, deps)).page;
+}
+
+/**
+ * The trimmed summary for Studio and the phone (phase 2, section 1.5): the
+ * page's seats and windows plus the proposal in words, nothing else.
+ */
+export async function seatsSummaryData(
+  companyId: string,
+  settings: SeatsSettings,
+  deps: SeatsRouteDeps,
+): Promise<SeatsSummary> {
+  const { page, seatsNowState, proposal } = await pageParts(companyId, settings, deps);
+  const text = proposalText({
+    proposal,
+    seats: seatsNowState.seats,
+    placements: seatsNowState.placements,
+    agentNames: seatsNowState.agentNames,
+    rules: defaultPlacementRules,
+    at: page.at,
+  });
+  return seatsSummary(page, text);
+}
+
+async function pageParts(companyId: string, settings: SeatsSettings, deps: SeatsRouteDeps) {
   const now = deps.now();
   const at = now.toISOString();
   const seatsNowState = await deps.seatsNow(companyId, settings, now);
   const reads = deps.reads(settings.seats);
-  return seatsPage({
+  const proposal = proposePlacements(
+    seatsNowState.seats,
+    seatsNowState.placements,
+    at,
+    defaultPlacementRules,
+  );
+  const page = seatsPage({
     now: seatsNowState,
-    proposal: proposePlacements(
-      seatsNowState.seats,
-      seatsNowState.placements,
-      at,
-      defaultPlacementRules,
-    ),
+    proposal,
     statuses: reads.seats,
     readerStartedAt: reads.readerStartedAt,
     movesEnabled: settings.movesEnabled,
     at,
   });
+  return { page, seatsNowState, proposal };
 }
 
 /** Records a manual reset by a board user; refuses a seat not in the settings or a group's second. */
