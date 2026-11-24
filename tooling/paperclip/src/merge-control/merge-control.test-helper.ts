@@ -14,6 +14,15 @@ import {
  * passes every gate rule, so each test changes only the fact its rule reads.
  */
 
+/** A stand-in for the board's login from the `fastTrackLabelAdder` setting. */
+export const boardLogin = "board-member";
+
+/** Today's settings with the board's login set. */
+export const testSettings: MergeSettings = {
+  ...defaultSettings,
+  fastTrackLabellers: [boardLogin, ...defaultSettings.fastTrackLabellers],
+};
+
 /** The time every merge-control test runs at. */
 export const now = new Date("2026-11-24T12:00:00Z");
 
@@ -140,7 +149,7 @@ export function stateWith(changes: Partial<MergeState> = {}): MergeState {
 export function pass(
   facts: MergeSnapshot,
   state: MergeState = emptyMergeState,
-  settings: MergeSettings = defaultSettings,
+  settings: MergeSettings = testSettings,
 ): Decision {
   return decide(facts, state, settings, now);
 }

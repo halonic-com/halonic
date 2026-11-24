@@ -85,7 +85,10 @@ export interface MergeSettings {
   readonly owner: string;
   /** The shared account every agent posts as: only its texts can be signed approvals. */
   readonly teamLogin: string;
-  /** Logins whose `fast-track` label counts (HAL-15971 rule 3). */
+  /**
+   * Logins whose `fast-track` label counts (HAL-15971 rule 3). The board's
+   * login is added from the plugin setting `fastTrackLabelAdder`, never written here.
+   */
   readonly fastTrackLabellers: readonly string[];
   readonly fillTarget: number;
   /** A fast-track pull request jumps only with more than this many entries queued. */
@@ -102,7 +105,7 @@ export interface MergeSettings {
 export const defaultSettings: MergeSettings = {
   owner: "halonic-com",
   teamLogin: "halonic-dev",
-  fastTrackLabellers: ["timothy-halonic", "halonic-dev"],
+  fastTrackLabellers: ["halonic-dev"],
   fillTarget: 15,
   jumpAhead: 8,
   rerunsPerPass: 8,
