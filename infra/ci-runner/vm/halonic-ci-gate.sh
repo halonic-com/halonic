@@ -2,11 +2,12 @@
 # halonic-ci queue gate (C7, HAL-15355). Runs on the CI VM, never in a job container: systemd
 # starts one copy per connection to /run/halonic-ci-gate/gate.sock (halonic-ci-gate.socket),
 # with the socket as stdin and stdout. It answers one of two fixed queries, as plain HTTP:
-# "GET /pr/<number>" gets that pull request's state, owner, head commit and author (the fast pool,
-# HAL-15972, HAL-17463); anything else gets main's merge queue. The number, 1-9 digits, is the only input that
-# reaches a query; the rest of the request is read and dropped. The job-started hook in the
-# container decides from the answer. With --pr-only (the fast slots' own socket,
-# halonic-ci-gate-fast.socket) it answers pull request queries only and refuses anything else.
+# "GET /pr/<number>" gets that pull request's state, owner, head commit, labels and author (the fast
+# pool, HAL-15972, HAL-17616); anything else gets main's merge queue. The number, 1-9 digits, is
+# the only input that reaches a query; the rest of the request is read and dropped. The
+# job-started hook in the container decides from the answer. With --pr-only (the fast slots' own
+# socket, halonic-ci-gate-fast.socket) it answers pull request queries only and refuses anything
+# else.
 # The token (read-only, halonic-com/halonic only) reaches this script only as a systemd
 # credential, and goes to curl through a config on a pipe, never on a command line.
 set -euo pipefail
@@ -38,7 +39,7 @@ TOKEN=$(head -c 512 "$TOKEN_FILE" | tr -d '\r\n')
 [[ "$TOKEN" =~ ^[A-Za-z0-9_]+$ ]] || fail "github-token credential is not a token"
 
 if [ -n "$PR" ]; then
-  QUERY="query { repository(owner: \"halonic-com\", name: \"halonic\") { pullRequest(number: $PR) { number state isCrossRepository headRefOid headRepositoryOwner { login } author { __typename login } } } }"
+  QUERY="query { repository(owner: \"halonic-com\", name: \"halonic\") { pullRequest(number: $PR) { number state isCrossRepository headRefOid headRepositoryOwner { login } labels(first: 100) { nodes { name } } author { __typename login } } } }"
 else
   QUERY='query { repository(owner: "halonic-com", name: "halonic") { mergeQueue(branch: "main") { entries(first: 100) { pageInfo { hasNextPage } nodes { position headCommit { oid } pullRequest { number isCrossRepository headRepositoryOwner { login } } } } } } }'
 fi
