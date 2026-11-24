@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { compileResultPattern, maxResultLength } from "./result-pattern.ts";
+import { compileResultPattern, countMatchChecks, maxResultLength } from "./result-pattern.ts";
 
 function matcher(pattern: string): (value: string) => boolean {
   const compiled = compileResultPattern(pattern);
@@ -34,11 +34,15 @@ verifies("action-steppers.stepper-request", () => {
       },
     );
 
-    it("stays fast on a value built to backtrack, and refuses values over the limit", () => {
-      const greedy = matcher(`^${"[a-z]*".repeat(30)}b$`);
-      const started = performance.now();
-      expect(greedy("a".repeat(maxResultLength))).toBe(false);
-      expect(performance.now() - started).toBeLessThan(1000);
+    it("stays within atoms × length × (length + 1) checks on a value built to backtrack, and refuses values over the limit", () => {
+      const atomCount = 30;
+      const pattern = `^${"[a-z]*".repeat(atomCount)}b$`;
+      const value = "a".repeat(maxResultLength);
+      expect(matcher(pattern)(value)).toBe(false);
+      const checks = countMatchChecks(pattern, value);
+      expect(checks.ok && checks.value).toBeLessThanOrEqual(
+        (atomCount + 1) * maxResultLength * (maxResultLength + 1),
+      );
       expect(matcher("^a*$")("a".repeat(maxResultLength + 1))).toBe(false);
     });
   });

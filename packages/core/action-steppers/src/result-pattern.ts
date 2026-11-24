@@ -127,6 +127,24 @@ function count(reader: Reader): Result<{ min: number; max: number }, string> {
  * pattern.ok && pattern.value.matches("acme-prod"); // true
  */
 export function compileResultPattern(pattern: string): Result<ResultPattern, string> {
+  const atoms = compileAtoms(pattern);
+  if (!atoms.ok) return atoms;
+  return ok({ matches: (value) => matchAtoms(atoms.value, value, { checks: 0 }) });
+}
+
+/**
+ * How many single-character checks matching `value` against `pattern` makes.
+ * Tests use it to pin the bound without timing the match, which would be flaky.
+ */
+export function countMatchChecks(pattern: string, value: string): Result<number, string> {
+  const atoms = compileAtoms(pattern);
+  if (!atoms.ok) return atoms;
+  const counter = { checks: 0 };
+  matchAtoms(atoms.value, value, counter);
+  return ok(counter.checks);
+}
+
+function compileAtoms(pattern: string): Result<Atom[], string> {
   if (!pattern.startsWith("^") || !pattern.endsWith("$") || pattern.length < 3) {
     return err("it must start with ^ and end with $");
   }
@@ -139,14 +157,26 @@ export function compileResultPattern(pattern: string): Result<ResultPattern, str
     if (!counted.ok) return counted;
     atoms.push({ takes: takes.value, ...counted.value });
   }
-  return ok({ matches: (value) => matchAtoms(atoms, value) });
+  return ok(atoms);
+}
+
+/** Counts the character checks a match makes. */
+interface CheckCounter {
+  checks: number;
 }
 
 /** Adds every position an atom can end at when it starts at `start`. */
-function addEnds(atom: Atom, value: string, start: number, ends: Set<number>): void {
+function addEnds(
+  atom: Atom,
+  value: string,
+  start: number,
+  ends: Set<number>,
+  counter: CheckCounter,
+): void {
   if (atom.min === 0) ends.add(start);
   let end = start;
   for (let taken = 1; taken <= atom.max && end < value.length; taken += 1) {
+    counter.checks += 1;
     if (!atom.takes(value.charAt(end))) return;
     end += 1;
     if (taken >= atom.min) ends.add(end);
@@ -154,12 +184,12 @@ function addEnds(atom: Atom, value: string, start: number, ends: Set<number>): v
 }
 
 /** Which end positions each prefix of the atoms can reach: at most atoms × length × count steps. */
-function matchAtoms(atoms: readonly Atom[], value: string): boolean {
+function matchAtoms(atoms: readonly Atom[], value: string, counter: CheckCounter): boolean {
   if (value.length > maxResultLength) return false;
   let reachable = new Set<number>([0]);
   for (const atom of atoms) {
     const next = new Set<number>();
-    for (const start of reachable) addEnds(atom, value, start, next);
+    for (const start of reachable) addEnds(atom, value, start, next, counter);
     if (next.size === 0) return false;
     reachable = next;
   }
