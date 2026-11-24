@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17479 (split from HAL-17334 in Liam's review; states H22 in HAL-5896, microcopy 14.1 "Model unreachable" revision 96 and 22 F7, F8)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ks2po9dNXqyv/1eLu6S4GTe8Sd6VX0NFfSZ4NjJUgmyAQnrMfsTSNl4hpWOtG9rrsSnCS8T7b1mdCob9CtwPBQ==
 
 `assistant.chat.failed` said every failed answer ends with "Couldn't reach the model: *reason*.".
 Microcopy 14.1's "Model unreachable" row gives both chats the run page's sentence for the
