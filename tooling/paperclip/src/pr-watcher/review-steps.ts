@@ -1,5 +1,6 @@
 import { branchOwner, type Memory, type PullFacts, type WatchedTask } from "./decide.ts";
 import {
+  approvedBefore,
   handoffMessage,
   julianOnlyOnHead,
   julianRefused,
@@ -11,16 +12,22 @@ import {
   type Reviewer,
   type ReviewerRoute,
   readyKey,
+  reviewerAfter,
   reviewerOf,
+  type SinceApproval,
+  type SinceApprovals,
   waitingForReview,
 } from "./handoff.ts";
 import type { Paperclip } from "./paperclip.ts";
+import type { RebaseOnly } from "./rebase-only.ts";
 
 /** What the review steps need from the pass. */
 export interface ReviewStepOptions {
   readonly paperclip: Paperclip;
   /** The reviewer by the path rules; without one, no task goes to review. */
   readonly route: ReviewerRoute | undefined;
+  /** Whether only a rebase changed a pull request since its approval; without it, never. */
+  readonly rebaseOnly?: RebaseOnly | undefined;
   /** Agents by the short name their branches start with. */
   readonly owners: ReadonlyMap<string, string>;
   readonly dryRun: boolean;
@@ -86,6 +93,34 @@ async function refusedOf(
   return new Set(refused.flat());
 }
 
+/**
+ * What changed since the older approval of each waiting pull request. A
+ * failed read counts as a real change, so the reviewer of the paths gets it.
+ */
+async function sinceOf(
+  options: ReviewStepOptions,
+  task: WatchedTask,
+  pulls: readonly PullFacts[],
+): Promise<SinceApprovals> {
+  const entries = await Promise.all(
+    pulls.map(async (pull): Promise<[string, SinceApproval][]> => {
+      const before = approvedBefore(pull);
+      if (before === undefined) {
+        return [];
+      }
+      const check = options.rebaseOnly ?? (async () => false);
+      const rebaseOnly = await check(pull, before.head).catch((error: unknown) => {
+        options.log(
+          `${task.identifier}: couldn't compare #${pull.number}: ${(error as Error).message}`,
+        );
+        return false;
+      });
+      return [[pullId(pull), { by: before.by, approvedHead: before.head, rebaseOnly }]];
+    }),
+  );
+  return new Map(entries.flat());
+}
+
 async function handOff(
   options: ReviewStepOptions,
   task: WatchedTask,
@@ -103,13 +138,17 @@ async function handOff(
   if (first === undefined || task.assigneeAgentId === null) {
     return false;
   }
-  const reviewer = reviewerOf(branchOwner(first.branch), await Promise.all(waiting.map(routeOf)));
+  const since = await sinceOf(options, task, waiting);
+  const byPull = await Promise.all(
+    waiting.map(async (pull) => reviewerAfter(await routeOf(pull), since.get(pullId(pull)))),
+  );
+  const reviewer = reviewerOf(branchOwner(first.branch), byPull);
   const to = options.owners.get(reviewer);
   if (to === undefined) {
     options.log(`${task.identifier}: ready for review, but Paperclip has no agent ${reviewer}`);
     return false;
   }
-  const body = handoffMessage(waiting, reviewer, refused);
+  const body = handoffMessage(waiting, reviewer, refused, since);
   options.log(`${task.identifier}: to ${reviewer}${options.dryRun ? " (dry run)" : ""}\n${body}`);
   if (options.dryRun) {
     return true;

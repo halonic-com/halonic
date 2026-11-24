@@ -12,6 +12,7 @@ import { baseGreenSince, snapshotFacts } from "../pr-watcher/facts.ts";
 import { ciOk, gitHubReader } from "../pr-watcher/github.ts";
 import { countMonitors, type MonitorCounts } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
+import { gitHubRebaseOnly } from "../pr-watcher/rebase-only.ts";
 import { gitHubRoute } from "../pr-watcher/route.ts";
 import { unblockPass } from "../pr-watcher/unblock.ts";
 import { snapshotSummary } from "../pr-watcher/wake-status.ts";
@@ -242,6 +243,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     now,
     summary: snapshotSummary(snapshot),
     route: gitHubRoute(get),
+    rebaseOnly: gitHubRebaseOnly(get),
   });
   // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.
   const unblocked = await unblockPass({

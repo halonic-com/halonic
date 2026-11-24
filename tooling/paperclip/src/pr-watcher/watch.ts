@@ -14,6 +14,7 @@ import { type PullFactsReader, pullKey } from "./facts.ts";
 import type { ReviewerRoute } from "./handoff.ts";
 import { postponeUntil } from "./monitors.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
+import type { RebaseOnly } from "./rebase-only.ts";
 import { reviewSteps } from "./review-steps.ts";
 import type { PullSummary } from "./wake-status.ts";
 
@@ -34,6 +35,8 @@ export interface TickOptions {
   readonly summary?: PullSummary;
   /** The reviewer by the path rules, to hand a ready task to; without it, no task goes to review. */
   readonly route?: ReviewerRoute;
+  /** Whether only a rebase changed a pull request since its approval (HAL-17759); without it, never. */
+  readonly rebaseOnly?: RebaseOnly;
 }
 
 /** How a tick went: counts, and the tasks it couldn't check. */
@@ -326,7 +329,7 @@ function reviewStepsOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
     return Promise.resolve({ handedOff: false, warned: false });
   }
   return reviewSteps(
-    { ...options, route: options.route, owners: refs.owners },
+    { ...options, route: options.route, rebaseOnly: options.rebaseOnly, owners: refs.owners },
     task,
     pulls,
     async () => readMemory(await options.paperclip.comments(task.id), ownerId),

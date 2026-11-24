@@ -69,6 +69,15 @@ draft, and not when the watcher had reported a conflict or a base change on
 the approved head: then the push was the fix. The token is read-only, so the
 warning goes on the task, not on the pull request.
 
+**Re-review after a push** (HAL-17759). When the watcher hands over a pull
+request that was approved on an older head, it compares the pull request's
+own changes at the approved head and at the current head on GitHub (3 GET
+requests). Equal changes, line numbers aside, mean only a rebase: the comment
+says so, and a pull request Liam approved goes to Julian with the line he
+posts after his own `git range-diff` check (HAL-14809). Any other difference,
+or a failed comparison, names both heads and goes to the reviewer of the
+paths. The watcher never approves anything itself.
+
 A wake comment also carries, for each open pull request it names, the head
 lines `pr_status` would give, from the same pass: the head, `ci-ok` on it
 (with up to five failing checks by name when it failed), mergeable, the merge
