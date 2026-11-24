@@ -91,8 +91,22 @@ Its errors and logs never hold the key, request headers or the body of a
 failed answer. Settings says: "This key can do everything the board can in
 Paperclip".
 
+**Every waiting item shows in the Inbox** (`inbox.every-waiting-item`, the
+board's requirement of 24 Nov 10:35 UTC). Whatever made it (a run, a workflow,
+a hub, a chat or a task), an item that waits on the person is in Halonic
+Inbox. A chat or a task may show it too, but never only there. So the
+Paperclip provider lists every open card addressed to the board across the
+whole company, not only those on chat tasks, and each item's `work` links
+back to its task. Paperclip has a company-wide read for approvals
+(`GET /api/companies/{id}/approvals?status=pending`), but none that we found
+for cards on tasks: those live under `GET /api/issues/{id}/interactions`. So
+the provider reads the company's open tasks and then each one's cards, within
+the polling limits below. If A3 finds a company-wide or filtered card read on
+our server's version, it uses that instead.
+
 **The provider's requests** are the whole list. It may list agents, projects,
-tasks, comments and cards, answer a card, and comment on a chat task. Sign-in
+tasks, comments, cards and pending approvals, answer a card, and comment on a
+chat task. Sign-in
 and disconnect may also start, poll and cancel a sign-in, read
 `/api/cli-auth/me` and revoke the current key. It makes nothing else, even
 though the key could: no hiring, budgets, settings or deleting, and no route
