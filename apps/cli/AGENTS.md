@@ -13,7 +13,8 @@ everything else is internal.
 
 | Command | What it does |
 | --- | --- |
-| `pnpm exec turbo run test --filter=halonic -- --maxWorkers=2` | runs this package's tests (and the codegen they need) |
+| `pnpm exec turbo run test --filter=halonic` | runs this package's tests (and the codegen they need) as two parts at once, `test:part-1` and `test:part-2`, then merges them in `test` (HAL-17930, see `vitest.part.config.ts`) |
+| `pnpm --filter halonic test:all` | runs all of this package's tests in one Vitest run, without Turbo; `pnpm --filter halonic test` alone only merges the parts' last results |
 | `pnpm exec turbo run lint --filter=...[origin/main] --concurrency=2` | lints the packages your change touches and the ones that depend on them |
 | `pnpm exec turbo run test --filter=...[origin/main] --concurrency=2 -- --maxWorkers=2` | tests the packages your change touches and the ones that depend on them |
 | `pnpm exec turbo run typecheck --concurrency=2` | typechecks all packages (HAL-2950); unchanged ones come from Turbo's cache |

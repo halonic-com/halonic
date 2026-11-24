@@ -131,6 +131,17 @@ function percentProblem(
 }
 
 /**
+ * The `test` script of a package whose tests Turbo runs as parts at once
+ * (`test:part-1`, `test:part-2`, …, HAL-17930): it merges the parts' blob
+ * reports with `vitest.merge.config.ts`, which builds on the package's
+ * `vitest.config.ts`, so the merged run checks the shared floor.
+ */
+export const mergedPartsTestScript =
+  "vitest run --config vitest.merge.config.ts --merge-reports=test-results/blob";
+
+const allowedTestScripts: readonly string[] = ["vitest run", mergedPartsTestScript];
+
+/**
  * Checks that a package's tests run through the shared Vitest preset with
  * coverage on, so its floor is enforced and can't be switched off.
  *
@@ -143,9 +154,11 @@ function percentProblem(
  */
 export function testSetupProblems(testScript: unknown, configText: string | undefined): string[] {
   const problems: string[] = [];
-  if (typeof testScript !== "string" || testScript.trim() !== "vitest run") {
+  if (typeof testScript !== "string" || !allowedTestScripts.includes(testScript.trim())) {
     problems.push(
-      'The "test" script must be exactly "vitest run": coverage and its floor come from the shared preset, so no flags such as --coverage.enabled=false.',
+      'The "test" script must be exactly "vitest run", or "' +
+        mergedPartsTestScript +
+        '" for tests split into parts: coverage and its floor come from the shared preset, so no flags such as --coverage.enabled=false.',
     );
   }
   if (configText === undefined) {

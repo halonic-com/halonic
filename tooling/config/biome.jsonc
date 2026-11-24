@@ -101,6 +101,8 @@
       "includes": [
         "**/vitest.config.ts",
         "**/vitest.fence.config.ts",
+        "**/vitest.merge.config.ts",
+        "**/vitest.part.config.ts",
         "**/vitest.fence-windows.config.ts",
         "**/vitest.fence-mxc.config.ts",
         "**/vitest.remove-windows.config.ts",

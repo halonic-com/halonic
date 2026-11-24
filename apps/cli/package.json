@@ -12,7 +12,10 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.merge.config.ts --merge-reports=test-results/blob",
+    "test:part-1": "vitest run --config vitest.part.config.ts --shard=1/2 --outputFile.blob=test-results/blob/part-1.json --coverage.reportsDirectory=coverage/part-1",
+    "test:part-2": "vitest run --config vitest.part.config.ts --shard=2/2 --outputFile.blob=test-results/blob/part-2.json --coverage.reportsDirectory=coverage/part-2",
+    "test:all": "vitest run",
     "test:fence": "vitest run --config vitest.fence.config.ts"
   },
   "dependencies": {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { coverageFloorProblems, testSetupProblems } from "../lib/coverage.ts";
+import {
+  coverageFloorProblems,
+  mergedPartsTestScript,
+  testSetupProblems,
+} from "../lib/coverage.ts";
 import { manifestFor, runChecks } from "./fixture-repo.ts";
 
 describe("tooling/check: coverage floors", () => {
@@ -84,6 +88,13 @@ describe("tooling/check: floors can't be bypassed", () => {
       expect(messages(std({ scripts: { test: script } }))).toHaveLength(1);
     }
     expect(messages(std({ scripts: {} }))).toHaveLength(1);
+  });
+
+  it("accepts the merge of tests split into parts, and nothing else on that command", () => {
+    expect(messages(std({ scripts: { test: mergedPartsTestScript } }))).toEqual([]);
+    expect(
+      messages(std({ scripts: { test: `${mergedPartsTestScript} --coverage.enabled=false` } })),
+    ).toHaveLength(1);
   });
 
   it("rejects a vitest config that opts out or is missing", () => {
