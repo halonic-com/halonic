@@ -2,7 +2,7 @@ import type { ChatAnswer, SandboxStartCheck } from "@halonicjs/app";
 import { act } from "react";
 import type { AgentChatRequest, AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
-import { memoryAgentsHost } from "../memory-host.ts";
+import { type MemoryAgentsHostOptions, memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, typeIntoArea } from "../test-support.tsx";
 import { TryItChatView, type TryItChatViewProps } from "./try-it-chat.tsx";
 import { useTryItChat } from "./use-try-it-chat.ts";
@@ -14,13 +14,17 @@ export const sorter = {
   description: "Sorts incoming mail by topic",
 };
 
-/** A host whose answers the test gives one by one, and what each request held. */
-export function scriptedHost() {
+/**
+ * A host whose answers the test gives one by one, and what each request held; `savedChats` is
+ * where it keeps Try it chats, if anywhere.
+ */
+export function scriptedHost({ savedChats }: Pick<MemoryAgentsHostOptions, "savedChats"> = {}) {
   const requests: AgentChatRequest[] = [];
   const pending: ((answer: ChatAnswer | Error) => void)[] = [];
   const host = memoryAgentsHost({
     hubs: [{ id: "acme", name: "Acme" }],
     agents: [sorter],
+    savedChats,
     answer: (_ref, request) => {
       // A copy, since the chat's conversation grows after the request.
       requests.push({ ...request, messages: [...request.messages] });

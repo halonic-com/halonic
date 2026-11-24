@@ -4,7 +4,7 @@
  * dialogs and page read it, and the Workflows feature reads `referencesTo` for its "used by" line.
  */
 import type { ChatAnswer, ChatAnswerListener } from "@halonicjs/app";
-import type { ChatMessage } from "@halonicjs/ports";
+import type { ChatMessage, ChatSessions } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { TryItChanges } from "./chat/try-it-changes.ts";
 import type { AgentPlacementState, ThisComputerChoice } from "./placement-api.ts";
@@ -288,6 +288,12 @@ export {
 export { selectStepsStep, stepsToSelect } from "./select-steps.ts";
 export { WHERE_IT_RUNS_STEP } from "./where-it-runs-step.ts";
 
+/** Where one workspace's chats are saved: the store, and the workspace's resolved real path in it. */
+export interface SavedChatsPlace {
+  readonly sessions: ChatSessions;
+  readonly location: string;
+}
+
 /**
  * The workspace's agents, as the app reads and changes them. The app saves to the workspace's files
  * itself, so listing and creating work while the engine is stopped.
@@ -391,6 +397,12 @@ export interface AgentsHost {
   watchTryItChanges?(ref: AgentRef, listener: (changes: TryItChanges) => void): () => void;
   /** The workspace's name, for "Not started: *Acme* isn't trusted yet"; `undefined` before it's read. */
   workspaceName?(): string | undefined;
+  /**
+   * Where the workspace's chats are saved, so a Try it chat joins the Build chats' list
+   * (flow-assistant 5.4) and comes back when the agent's page opens again. Absent where chats
+   * aren't kept, so a Try it chat lives as long as its page.
+   */
+  readonly savedChats?: SavedChatsPlace | undefined;
   /**
    * Where the agent runs on this computer, from its saved file; `undefined` where Studio can't
    * choose it (no agent host, as in the browser). A choice is kept on this computer only, so it

@@ -21,6 +21,7 @@ import type {
   AgentUser,
   HarnessReadiness,
   HarnessSignIn,
+  SavedChatsPlace,
   SavedFilePlacement,
 } from "./api.ts";
 import { loopRefusal } from "./api.ts";
@@ -76,6 +77,8 @@ export interface MemoryAgentsHostOptions {
         readonly workspaceName?: string | undefined;
       }
     | undefined;
+  /** Where Try it chats are saved; left out, they aren't kept. */
+  readonly savedChats?: SavedChatsPlace | undefined;
   /** `false` for a Studio that can't choose where agents run, such as the browser's; it can when left out. */
   readonly placement?: boolean | undefined;
   /** Gives the time a person chose On this computer, as ISO text; a fixed day when left out. */
@@ -263,6 +266,7 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       request.listener?.onMessage?.(message);
       return { messages: [message], end: { reason: "answered" } };
     },
+    ...(options.savedChats && { savedChats: options.savedChats }),
     ...(options.trust && {
       mayStart: options.trust.mayStart,
       ...(options.trust.ask && { askTrust: options.trust.ask }),

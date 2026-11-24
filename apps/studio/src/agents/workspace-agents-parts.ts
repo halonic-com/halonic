@@ -5,6 +5,7 @@ import type {
   AgentRef,
   HarnessReadiness,
   HarnessSignIn,
+  SavedChatsPlace,
 } from "@halonicjs/studio-feature-agents/api";
 import type { WatchItemTryItChanges } from "../changes/try-it-changes.ts";
 import type { AgentPlacementChoices } from "./agent-placement-choices.ts";
@@ -84,4 +85,6 @@ export interface WorkspaceAgentsParts {
    * where the workspace has no review service, so no line shows.
    */
   readonly tryItChanges?: WatchItemTryItChanges;
+  /** Where the workspace's chats are saved, so Try it chats are kept with the Build chats. */
+  readonly savedChats?: SavedChatsPlace;
 }

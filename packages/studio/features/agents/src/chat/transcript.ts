@@ -146,6 +146,31 @@ export function withoutLastTurn(transcript: Transcript): {
   };
 }
 
+/**
+ * The transcript of a saved conversation, turn by turn, as it showed when each reply ended: the
+ * person's messages, the replies' text, and each tool call done or failed. Only the conversation
+ * is saved, so every reopened turn reads as answered.
+ */
+export function transcriptOf(conversation: readonly ChatMessage[]): Transcript {
+  let transcript = emptyTranscript;
+  for (const message of conversation) {
+    if (message.role === "user") {
+      transcript = startTurn(endLastTurn(transcript), message.content);
+      continue;
+    }
+    transcript = withMessage(transcript, message);
+    if (message.role !== "assistant") continue;
+    for (const call of message.toolCalls ?? []) transcript = withToolCall(transcript, call);
+  }
+  return endLastTurn(transcript);
+}
+
+function endLastTurn(transcript: Transcript): Transcript {
+  const last = transcript.turns.at(-1);
+  if (last === undefined || last.end !== undefined) return transcript;
+  return endTurn(transcript, { kind: "answered" });
+}
+
 function withLastTurn(transcript: Transcript, change: (turn: ChatTurn) => ChatTurn): Transcript {
   const last = transcript.turns.at(-1);
   if (last === undefined) return transcript;

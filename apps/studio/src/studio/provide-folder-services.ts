@@ -218,6 +218,8 @@ export function provideFolderServices(
     );
   provideEngineAutoOpen(services, { ipc, files, trust, location, scope, remoteEngine });
   // Settings › New agents run and the Harness page share the agent host's choices.
+  // One store for the workspace's chats: the Assistant's Build chats and the agents' Try it chats.
+  const chatSessions = new TauriChatSessions(ipc);
   const placed =
     transport === undefined ? undefined : agentHostPlacement(transport, files, location, changes);
   const agents = services.provide(
@@ -245,6 +247,7 @@ export function provideFolderServices(
       // Send checks first, so the trust check opens; the engine still refuses with `denied`.
       trust: { mayStart: () => trust.mayStartNow(), askTrust, workspaceName: name },
       tryItChanges,
+      savedChats: { sessions: chatSessions, location },
     }),
   );
   provideAssistantHost(services, {
@@ -261,7 +264,7 @@ export function provideFolderServices(
     engine: engineConnection,
     name,
     askTrust,
-    chatSessions: new TauriChatSessions(ipc),
+    chatSessions,
   });
   // The assistant's changes to an agent, for its page's item bar and marks (AI changes 1.2).
   services.provide(

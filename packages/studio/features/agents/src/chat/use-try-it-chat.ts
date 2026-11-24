@@ -22,6 +22,7 @@ import {
   withToolCall,
 } from "./transcript.ts";
 import { tryItWords } from "./try-it-words.ts";
+import { useSavedTryIt } from "./use-saved-try-it.ts";
 
 /** What {@link useTryItChat} needs. */
 export interface TryItChatOptions {
@@ -79,7 +80,9 @@ export interface TryItChat {
  * ends is announced once: "Sorter replied.", "Stopped by you.", and a failure assertively. Nothing
  * is announced while it streams in (a11y A6).
  *
- * The chat lives as long as the page: closing the agent's tab ends it, and stops a reply.
+ * Where the host keeps the workspace's chats ({@link AgentsHost.savedChats}), the chat is saved at
+ * the end of each turn and the agent's most recent one comes back when its page opens again;
+ * elsewhere it lives as long as the page. Closing the agent's tab stops a reply.
  */
 export function useTryItChat({ host, agent, name, announce }: TryItChatOptions): TryItChat {
   // The ref is what the next request reads at once; the state is what the page shows.
@@ -91,6 +94,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
   const toasts = useToastStore();
   const said = useRef({ name, announce });
   said.current = { name, announce };
+  const saved = useSavedTryIt(host, agent, current, setShown);
 
   // Text the model writes is drawn on the next frame, with whatever else came before it.
   const frame = useRef<number | undefined>(undefined);
@@ -133,6 +137,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
         if (!open.current) return;
         update((transcript) => endTurn(transcript, end));
         setAnswering(false);
+        saved.save();
         announceEnd(end, said.current.name, said.current.announce);
       };
       host
@@ -160,7 +165,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
           finish(failureOf(error, toolsRanInLastTurn(current.current), said.current.name));
         });
     },
-    [host, agent, update, engineLost],
+    [host, agent, update, engineLost, saved],
   );
 
   const askTrust = useCallback(async () => {
