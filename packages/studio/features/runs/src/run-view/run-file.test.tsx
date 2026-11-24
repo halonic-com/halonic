@@ -152,7 +152,7 @@ verifies("runs.run-view.open-file", () => {
       },
     };
     const file = await openFileView(weeklyReport(report), files, "weekly-report.md");
-    expect(file.textContent).toContain("Couldn't read weekly-report.md");
+    expect(file.textContent).toContain("Couldn't load weekly-report.md");
     fail = false;
     act(() => button(file, "Try again")?.click());
     await settled();

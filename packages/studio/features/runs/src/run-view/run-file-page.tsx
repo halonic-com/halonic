@@ -105,10 +105,10 @@ function FileBody({
         <EmptyState
           tone="error"
           align="start"
-          title={runFileWords.readFailed(name)}
+          title={runFileWords.loadFailed(name)}
           description={
             <FailureReason
-              what={runFileWords.readFailed(name)}
+              what={runFileWords.loadFailed(name)}
               error={read.error}
               engine={engine}
             />
