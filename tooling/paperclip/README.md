@@ -279,6 +279,14 @@ scrubbed; scores only for live-shadow runs).
   characters. 400 and 404 come back with the service's reason; 401 or 403
   and other failures say to tell the board, and are logged with their
   status only.
+- `action: "findings"` (HAL-17317) reads the service's latest summaries,
+  `/v1/findings?kind=<kind>`, with `kind` one of `live_daily`,
+  `lab_decisions`, `seat_calibration`, `seat_burn`, `learnings`, `seat_lane`
+  or `all` (the default); no other parameter goes on. It has its own reader
+  list, `trialFindingsAgents` (Tomas, Elena, Liam, Chief and Seat Supervisor
+  by default), so Chief and Seat Supervisor get the summaries but no run
+  data: every other action stays limited to `trialResultsAgents`. Its
+  answer is cut at 120,000 characters, since `all` runs to about 100 KB.
 
 ## gh guard
 
