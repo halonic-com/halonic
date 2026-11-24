@@ -1,4 +1,4 @@
-import { Button } from "../button/button.tsx";
+import { Button, type ButtonUnavailable } from "../button/button.tsx";
 import { standaloneLinkClasses } from "../external-link/external-link.tsx";
 
 /** One thing a chat line offers: "Try again", "Open Models ›", "Sign in with Google". */
@@ -11,6 +11,11 @@ export interface ChatAction {
    * "Try again". `link` is an inline link, for a way to another place: "Open Models ›".
    */
   readonly look?: "button" | "link";
+  /**
+   * A `button` that waits, pointing at the visible reason, such as the engine's line over the
+   * chat (states D5): it stays in its place and ignores clicks until the reason goes.
+   */
+  readonly unavailable?: ButtonUnavailable | undefined;
 }
 
 /** The props of `ChatActions`. */
@@ -39,7 +44,13 @@ export function ChatActions({ actions }: ChatActionsProps) {
             {action.label}
           </button>
         ) : (
-          <Button key={action.label} variant="secondary" size="sm" onClick={action.onClick}>
+          <Button
+            key={action.label}
+            variant="secondary"
+            size="sm"
+            unavailable={action.unavailable}
+            onClick={action.onClick}
+          >
             {action.label}
           </Button>
         ),

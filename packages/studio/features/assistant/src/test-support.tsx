@@ -70,6 +70,14 @@ export function chatOf(
   };
 }
 
+/** The Settings › Assistant model, ready to use: what a test's chat answers on unless it says. */
+export const settingsModel: ModelOption = {
+  model: { kind: "assistant" },
+  label: "claude-sonnet-5-5",
+  from: "settings",
+  problem: null,
+};
+
 /**
  * An Assistant host that keeps chats in memory and whose answers the test gives one by one. A
  * chat's messages grow as the answer adds them, as the app's host keeps them.
@@ -144,7 +152,7 @@ export function fakeHost(
       chats = chats.filter((each) => each.id !== chatId);
     },
     setModel: async (chatId, model) => keep({ ...find(chatId), model }),
-    models: async () => choices.models ?? [],
+    models: async () => choices.models ?? [settingsModel],
     agents: async () => choices.agents ?? [],
     itemsToReview: async () => Array.from({ length: items }, () => ({}) as never),
     changesForCard: async () => [],

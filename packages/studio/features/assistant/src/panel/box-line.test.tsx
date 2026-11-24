@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, engineWords, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -13,13 +13,18 @@ afterEach(unmount);
 const routine = chatOf("c1", [{ role: "user", content: "Add a routine" }], "Add a routine");
 const key = `sk-ant-${"Ab3x".repeat(6)}`;
 
-function panel(fake: ReturnType<typeof fakeHost>, runCommand = vi.fn(() => true)) {
+function panel(
+  fake: ReturnType<typeof fakeHost>,
+  runCommand = vi.fn(() => true),
+  where: Partial<WorkspaceContext> = {},
+) {
   const toasts = createToastStore();
   const services = { get: () => fake.host, find: () => fake.host };
   const context = {
     services,
     announcer: { announce: vi.fn() },
     runCommand,
+    ...where,
   } as unknown as WorkspaceContext;
   const node = (
     <ToastStoreProvider store={toasts}>
@@ -61,6 +66,39 @@ verifies("assistant.chat.engine-not-answering", () => {
       await act(async () => buttonNamed(page, "Send")?.click());
       expect(fake.requests[0]?.message).toBe("Also add a test");
     });
+
+    it("keeps Try again in its place, waiting on the line, until the engine answers (D5)", async () => {
+      const fake = fakeHost();
+      const page = await show(panel(fake).node);
+      await sendMessage(page, "Add a routine");
+      await fake.finish(new EngineNotAnswering());
+      await fake.setEngineAnswering(false);
+      const tryAgain = buttonNamed(page, "Try again");
+      const reason = tryAgain?.getAttribute("aria-describedby") ?? "";
+      expect(document.getElementById(reason)?.textContent).toContain(
+        "The engine isn't answering. Showing what it said last.",
+      );
+      await act(async () => tryAgain?.click());
+      expect(fake.requests).toHaveLength(1);
+      await fake.setEngineAnswering(true);
+      await act(async () => buttonNamed(page, "Try again")?.click());
+      expect(fake.requests[1]?.message).toBeUndefined();
+    });
+
+    it.each([
+      ["served", "Halonic on the server isn't answering."],
+      ["phone", "Halonic on your computer isn't answering."],
+    ] as const)(
+      "says in a %s Studio that the reply carries on there (H15)",
+      async (where, line) => {
+        const fake = fakeHost([routine]);
+        const page = await show(panel(fake, undefined, { engineWords: engineWords[where] }).node);
+        await fake.setEngineAnswering(false);
+        expect(page.textContent).toContain(
+          `${line} The reply carries on there, and shows here when it's back.`,
+        );
+      },
+    );
   });
 });
 

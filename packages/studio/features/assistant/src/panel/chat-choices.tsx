@@ -6,37 +6,56 @@ import {
   type MenuTriggerProps,
   SparkIcon,
 } from "@halonicjs/studio-kit";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AssistantHost, Chat, ChatAgent, ChatKind, ChatModel, ModelOption } from "../api.ts";
 import { chatWithWords as words } from "../chat/chat-with-words.ts";
 
-/** What the chips offer: the Build chat's models and the workspace's agents. */
+/**
+ * What the chips offer: the Build chat's models and the workspace's agents. `read` is false until
+ * they are read, so an empty list means the workspace has none only once it is true.
+ */
 export interface ChatChoices {
   readonly models: readonly ModelOption[];
   readonly agents: readonly ChatAgent[];
+  readonly read: boolean;
 }
 
-const none: ChatChoices = { models: [], agents: [] };
+const none: ChatChoices = { models: [], agents: [], read: false };
+
+/** {@link ChatChoices} as the panel follows them, with `again` to read them once more. */
+export interface ReadChoices extends ChatChoices {
+  /** Reads the models and agents again, as after the person set a key elsewhere, and gives them. */
+  readonly again: () => Promise<ChatChoices>;
+}
 
 /**
  * The models and agents of the open workspace, read again for each chat shown, so an alias or an
  * agent added since shows. Until they are read, the chips show the chat's own choice.
  */
-export function useChatChoices(host: AssistantHost, chatId: string | undefined): ChatChoices {
+export function useChatChoices(host: AssistantHost, chatId: string | undefined): ReadChoices {
   const [choices, setChoices] = useState<ChatChoices>(none);
   useEffect(() => {
     if (chatId === undefined) return;
     let current = true;
-    void Promise.all([host.models(), host.agents()]).then(
-      ([models, agents]) => current && setChoices({ models, agents }),
-      // The chips keep the chat's own choice; picking another waits for the next read.
-      () => current && setChoices(none),
-    );
+    void readChoices(host).then((read) => current && setChoices(read));
     return () => {
       current = false;
     };
   }, [host, chatId]);
-  return choices;
+  const again = useCallback(async () => {
+    const read = await readChoices(host);
+    setChoices(read);
+    return read;
+  }, [host]);
+  return { ...choices, again };
+}
+
+function readChoices(host: AssistantHost): Promise<ChatChoices> {
+  return Promise.all([host.models(), host.agents()]).then(
+    ([models, agents]) => ({ models, agents, read: true }),
+    // The chips keep the chat's own choice; picking another waits for the next read.
+    () => none,
+  );
 }
 
 /** The agent a chat talks to, or `undefined` for a Build chat or an agent no longer there. */
@@ -122,7 +141,8 @@ function modelLabel(model: ChatModel, choices: ChatChoices): string {
   return choices.models.find((option) => option.model.kind === "assistant")?.label ?? "";
 }
 
-function sameModel(a: ChatModel, b: ChatModel): boolean {
+/** Whether two chat models are the same: the Assistant model, or one alias by name. */
+export function sameModel(a: ChatModel, b: ChatModel): boolean {
   if (a.kind === "alias" && b.kind === "alias") return a.name === b.name;
   return a.kind === b.kind;
 }

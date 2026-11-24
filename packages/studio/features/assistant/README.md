@@ -36,14 +36,18 @@ The desktop app provides the host for each open folder (`apps/studio/src/assista
 from `@halonicjs/assistant`. Until the sessions store lands (T14 PR 2 and 3), its chats last
 while the window is open. When Halonic's engine stops mid-answer, the reply ends with "Stopped
 when Halonic's engine stopped." (`assistant.chat.engine-stopped`). While the engine isn't
-answering, the chat says so at the top and Send waits (`assistant.chat.engine-not-answering`). A
+answering, the chat says so at the top, in the window's words, and Send, Continue and Try again
+wait (`assistant.chat.engine-not-answering`). When the chat's model can't be used (no model at
+all, a missing key, a cloud model in a local-only workspace), a line under the box says why
+(`assistant.chat.model-line`). A
 model from a workspace that isn't trusted opens the trust check instead of sending
 (`assistant.chat.trust-check`). Before trust, a Build chat on the person's own Settings ›
 Assistant model answers with the authoring tools only, on no engine
 (`studio.assistant-authoring-turn`), under the line "Not trusted yet · it can read and propose, but
 not run anything." with **Review** (`assistant.chat.authoring-only`). A message that looks like it
-holds a key stays in the box (`assistant.chat.key-in-message`). The chat tab, the chat menu and the
-model's own lines under the box (no model, no key, local only, budget) come later.
+holds a key stays in the box (`assistant.chat.key-in-message`). The chat tab, the chat menu, a
+card's states after a decision (T14 PR 8b) and a failed model call's own sentence (F7, F8) come
+later.
 
 ## Example
 

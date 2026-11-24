@@ -2,6 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { click, render, unmountAll } from "../test/render.tsx";
+import { ChatBoxLine } from "./chat-box-line.tsx";
 import { ChatEndLine } from "./chat-end-line.tsx";
 import { ChatMessage } from "./chat-message.tsx";
 import { ChatText } from "./chat-text.tsx";
@@ -149,5 +150,51 @@ verifies("kit.chat-end-line", () => {
     const { container } = render(<ChatEndLine tone="plain">Stopped by you.</ChatEndLine>);
     expect(container.querySelector("p span")?.className).toContain("wrap-break-word");
     expect(container.querySelector("[aria-live], [role]")).toBeNull();
+  });
+});
+
+verifies("kit.chat-action-waits", () => {
+  it("keeps a waiting action in its place, pointing at its reason, and ignores its clicks", async () => {
+    const tryAgain = vi.fn();
+    const { container } = render(
+      <>
+        <p id="engine-line">The engine isn't answering. Showing what it said last.</p>
+        <ChatEndLine
+          tone="danger"
+          actions={[
+            { label: "Try again", onClick: tryAgain, unavailable: { reason: "engine-line" } },
+          ]}
+        >
+          Stopped when Halonic's engine stopped.
+        </ChatEndLine>
+      </>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.textContent).toBe("Try again");
+    expect(button.getAttribute("aria-describedby")).toContain("engine-line");
+    await click(button);
+    expect(tryAgain).not.toHaveBeenCalled();
+  });
+
+  it("keeps a waiting action in its place under the box too", async () => {
+    const setKey = vi.fn();
+    const { container } = render(
+      <>
+        <p id="engine-line">The engine isn't answering. Showing what it said last.</p>
+        <ChatBoxLine
+          tone="warning"
+          actions={[
+            { label: "Set the key", onClick: setKey, unavailable: { reason: "engine-line" } },
+          ]}
+        >
+          The assistant has no model it can use.
+        </ChatBoxLine>
+      </>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.textContent).toBe("Set the key");
+    expect(button.getAttribute("aria-describedby")).toContain("engine-line");
+    await click(button);
+    expect(setKey).not.toHaveBeenCalled();
   });
 });
