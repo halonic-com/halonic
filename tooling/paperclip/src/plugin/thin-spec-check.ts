@@ -1,6 +1,12 @@
 import type { PluginEvent } from "@paperclipai/plugin-sdk";
 import { type MonthSpend, overLimit, spendFor, spendMonth } from "../difficulty-tagger/spend.ts";
-import { clarifyDescription, clarifyTitle, isClarifyTask } from "../thin-spec/clarify.ts";
+import {
+  type ClarifyReasons,
+  clarifyDescription,
+  clarifyTitle,
+  isClarifyTask,
+} from "../thin-spec/clarify.ts";
+import { doneWhenComment, doneWhenMissing } from "../thin-spec/done-when.ts";
 import { taskText } from "../thin-spec/reading.ts";
 import { flagThreshold, thinSpecScore } from "../thin-spec/score.ts";
 import {
@@ -14,6 +20,7 @@ import { manifest } from "./manifest.ts";
 import { writeMetrics } from "./metrics.ts";
 import {
   addClarifyStep,
+  addComment,
   askReading,
   type ThinSpecApi,
   type ThinSpecDeps,
@@ -25,7 +32,10 @@ import {
  * likely the text leaves out the expected result. A flagged task gets a
  * "Clarify acceptance criteria" task for its requester, and waits for it. The
  * check is additive: it never rewrites or reassigns the writer's task, and an
- * unflagged task is left alone. Every check is logged by day for the week's
+ * unflagged task is left alone. Next to the score, a no-AI lint (HAL-17403)
+ * looks for a checkable "Done when" line; a task without one gets a comment
+ * linking the spec template and the same clarify task (one clarify task when
+ * both fire). Every check is logged by day for the week's
  * read-out. Logs and metrics name task identifiers and scores, never task text.
  */
 
@@ -44,6 +54,8 @@ export interface CheckRecord {
   readonly checkedAt: string;
   readonly flagged: boolean;
   readonly score: number;
+  /** The task has no checkable "Done when" line (HAL-17403); absent on records logged before it. */
+  readonly doneWhenMissing?: boolean;
   /** The clarify task, when one was added. */
   readonly clarifyId?: string;
   /** Why a flagged task got no clarify task (`writer_started` when its run had already begun). */
@@ -119,7 +131,7 @@ async function clarify(
   deps: ThinSpecDeps,
   settings: ActiveThinSpecSettings,
   issue: Issue,
-  score: number,
+  reasons: ClarifyReasons,
 ): Promise<Pick<CheckRecord, "clarifyId" | "clarifyFailure">> {
   const name = issue.identifier ?? issue.id;
   const assigneeAgentId = await clarifierFor(ctx, settings, issue);
@@ -129,7 +141,7 @@ async function clarify(
       : await addClarifyStep(ctx, deps, settings, issue.companyId, {
           parentId: issue.id,
           title: clarifyTitle({ identifier: name, title: issue.title }),
-          description: clarifyDescription({ identifier: name }, score),
+          description: clarifyDescription({ identifier: name }, reasons),
           assigneeAgentId,
           ...(typeof issue.projectId === "string" ? { projectId: issue.projectId } : {}),
           ...(typeof issue.goalId === "string" ? { goalId: issue.goalId } : {}),
@@ -157,8 +169,9 @@ async function logCheck(ctx: ThinSpecApi, companyId: string, record: CheckRecord
   const logged = ((await ctx.state.get(day)) as CheckRecord[] | null) ?? [];
   await ctx.state.set(day, [...logged, record]);
   const result = record.flagged ? "flagged" : "clear";
+  const doneWhen = record.doneWhenMissing ? ", no checkable Done when" : "";
   ctx.logger.info(
-    `Thin-spec check: ${record.identifier} ${result}, score ${record.score.toFixed(2)}.`,
+    `Thin-spec check: ${record.identifier} ${result}, score ${record.score.toFixed(2)}${doneWhen}.`,
     { companyId },
   );
   await writeMetrics(ctx, { "thin_spec.checked": 1 }, { companyId, result });
@@ -234,11 +247,42 @@ async function handle(ctx: ThinSpecApi, deps: ThinSpecDeps, taskId: string, comp
   }
   const score = thinSpecScore(settings.model, asked.reading);
   const flagged = score > flagThreshold;
-  const base = { taskId, identifier: name, checkedAt: now.toISOString(), flagged, score };
+  const missing = doneWhenMissing(issue.description);
+  const base = {
+    taskId,
+    identifier: name,
+    checkedAt: now.toISOString(),
+    flagged,
+    score,
+    doneWhenMissing: missing,
+  };
   // Saved before the clarify step, so the task changes it causes never start a second check.
   await ctx.state.set(recordKey(taskId), base);
-  const clarified = flagged ? await clarify(ctx, deps, settings, issue, score) : {};
+  if (missing) {
+    await commentDoneWhen(ctx, deps, settings, issue);
+  }
+  const reasons = { ...(flagged ? { score } : {}), doneWhenMissing: missing };
+  const clarified = flagged || missing ? await clarify(ctx, deps, settings, issue, reasons) : {};
   await logCheck(ctx, companyId, { ...base, ...clarified });
+}
+
+/** The one comment on a task without a checkable "Done when" line. */
+async function commentDoneWhen(
+  ctx: ThinSpecApi,
+  deps: ThinSpecDeps,
+  settings: ActiveThinSpecSettings,
+  issue: Issue,
+) {
+  const added = await addComment(ctx, deps, settings, issue.companyId, issue.id, doneWhenComment());
+  if (added !== true) {
+    const name = issue.identifier ?? issue.id;
+    await reportFailure(
+      ctx,
+      issue.companyId,
+      `couldn't comment on ${name} (${added.failure}).`,
+      added.failure,
+    );
+  }
 }
 
 /** The thin-spec check for one plugin worker. */

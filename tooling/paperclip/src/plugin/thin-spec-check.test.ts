@@ -40,7 +40,7 @@ verifies("paperclip.thin-spec-check", () => {
       });
       expect(body.messages[0]?.content).toContain(readingInstruction);
       expect(body.messages[0]?.content).toContain(
-        "<task>\nMake the export faster\n\nIt is slow.\n</task>",
+        "<task>\nMake the export faster\n\nIt is slow.\n\nDone when: `pnpm test` passes.\n</task>",
       );
       expect(asked[0]?.headers).toMatchObject({ "x-api-key": anthropicKey });
     });
@@ -56,7 +56,10 @@ verifies("paperclip.thin-spec-check", () => {
           body: {
             parentId: "task-1",
             title: "Clarify acceptance criteria: HAL-1 Make the export faster",
-            description: clarifyDescription({ identifier: "HAL-1" }, 0.8808),
+            description: clarifyDescription(
+              { identifier: "HAL-1" },
+              { score: 0.8808, doneWhenMissing: false },
+            ),
             assigneeAgentId: "agent-chief",
             projectId: "project-studio",
             goalId: "goal-1",
@@ -135,6 +138,7 @@ verifies("paperclip.thin-spec-check", () => {
           checkedAt: "2026-11-23T12:00:00.000Z",
           flagged: false,
           score: expect.any(Number),
+          doneWhenMissing: false,
         },
       ]);
       expect(logs).toEqual([{ level: "info", line: "Thin-spec check: HAL-1 clear, score 0.00." }]);
