@@ -15,6 +15,8 @@ import {
 } from "./github-routes.ts";
 import { handoffLimit } from "./handoff-limit.ts";
 import { runWatcher } from "./job.ts";
+import { mergeControlPass } from "./merge-control-job.ts";
+import { mergeFactsReader } from "./merge-control-reader.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
@@ -31,8 +33,8 @@ import {
 
 /**
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
- * (bundled by `pnpm run build:plugin`), runs the `pr-watch` and
- * `board-check` jobs on their schedules, looks at each new comment for a
+ * (bundled by `pnpm run build:plugin`), runs the `pr-watch`,
+ * `board-check` and `merge-control` jobs on their schedules, looks at each new comment for a
  * board ask, keeps each failed run, labels a created or changed task's
  * difficulty, sets its effort from its tags, assigns a channel's child task
  * back after 3 hand-offs, asks for acceptance criteria on a
@@ -56,6 +58,12 @@ export const plugin = definePlugin({
       board.run(now, async () => [companyId]),
     );
     ctx.jobs.register("board-check", () => boardJob.dispatch());
+    // Off unless the board sets a mode: the pass then returns before reading anything.
+    const readFacts = mergeFactsReader(ctx, (url, init) => fetch(url, init));
+    const mergeJob = scheduledPerCompany(ctx, roster, "merge-control", (companyId, now) =>
+      mergeControlPass(ctx, companyId, now, readFacts),
+    );
+    ctx.jobs.register("merge-control", () => mergeJob.dispatch());
     ctx.events.on("issue.comment.created", async (event) => {
       roster.remember(event.companyId);
       await board.onCommentCreated(event, new Date());

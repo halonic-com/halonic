@@ -1,6 +1,7 @@
 import type { PaperclipPluginManifestV1, PluginCapability } from "@paperclipai/plugin-sdk";
 import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { workerReadTables } from "../worker-agents/tables.ts";
+import { mergeControlJob } from "./merge-control-declaration.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
 import { taskToolDeclarations } from "./task-tool-declarations.ts";
 import {
@@ -64,7 +65,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // api.anthropic.com/v1/messages per new code task, and for a flagged one creates the clarify
     // task and sets the task's blocker through Paperclip's API (src/plugin/thin-spec-calls.ts).
     // trial_results sends GET requests to the trial results service at the address in the
-    // settings (src/plugin/trial-results.ts).
+    // settings (src/plugin/trial-results.ts). Merge control's facts reader uses the two GitHub
+    // readers, and GETs the CI status file and Prometheus at the addresses in the settings
+    // (src/plugin/merge-control-reader.ts).
     "http.outbound",
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
@@ -290,6 +293,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         "Every 10 minutes: finds agents' comments that ask the board and wakes the Board Checker once for them, and lists new pending approvals. Hourly: lists what waits on the board and the team load. Writes only comments, its two documents and wake-ups, and nothing while its switch is off.",
       schedule: "*/10 * * * *",
     },
+    mergeControlJob,
   ],
   apiRoutes: [
     {

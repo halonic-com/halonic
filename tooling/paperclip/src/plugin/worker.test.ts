@@ -13,6 +13,7 @@ verifies("paperclip.pr-watcher-plugin", () => {
     expect(manifest.jobs).toEqual([
       expect.objectContaining({ jobKey: "pr-watch", schedule: "*/10 * * * *" }),
       expect.objectContaining({ jobKey: "board-check", schedule: "*/10 * * * *" }),
+      expect.objectContaining({ jobKey: "merge-control", schedule: "* * * * *" }),
     ]);
     // Without a token set, the job skips the company and touches nothing.
     await harness.runJob("pr-watch");

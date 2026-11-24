@@ -34,6 +34,24 @@ export const mergeControlConfigProperties = {
         description:
           "The id of the task the daily shadow diff is posted on (HAL-17700). Empty: the diff is only logged.",
       },
+      mergerLogin: {
+        type: "string",
+        title: "The Merger's GitHub login",
+        description:
+          "The account the Merger queues, dequeues, reruns, cancels and comments as; shadow mode compares with what it did. Empty: the diff lists only merge control's side.",
+      },
+      ciStatusUrl: {
+        type: "string",
+        title: "CI status file",
+        description:
+          "The address the CI server's status file (ci-status.json) is served at, as Paperclip's server reaches it. Free merge-queue slots come from it. Empty: capacity is unknown and merge control never jumps.",
+      },
+      prometheusUrl: {
+        type: "string",
+        title: "Prometheus",
+        description:
+          "Prometheus' address, scheme, host and port only, as Paperclip's server reaches it. Jobs waiting for a runner come from its halonic_ci_live metrics. Empty: capacity is unknown and merge control never jumps.",
+      },
     },
   },
 };
