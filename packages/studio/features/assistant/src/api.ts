@@ -15,7 +15,12 @@ import type {
   ReviewTarget,
 } from "@halonicjs/app";
 import type { ChatMessage } from "@halonicjs/ports";
-import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+import {
+  type ItemRef,
+  type ServiceKey,
+  serviceKey,
+  type WorkspaceContext,
+} from "@halonicjs/studio-shell";
 
 /**
  * Who a chat talks to (flow 5.3): `build`, the Build assistant with its authoring tools, or
@@ -85,6 +90,16 @@ export interface Chat extends ChatSummary {
   readonly stoppedWhenClosed: boolean;
 }
 
+/**
+ * An item put in a Build chat with **Show in chat** (flow 5.7): an agent or a workflow, with the
+ * name its chip shows.
+ */
+export interface ShownItem {
+  readonly item: ItemRef;
+  /** The agent's name or the workflow's, as its page shows it. */
+  readonly name: string;
+}
+
 /** One answer in a chat. */
 export interface AssistantAnswerRequest {
   readonly chatId: string;
@@ -93,6 +108,11 @@ export interface AssistantAnswerRequest {
    * limit (flow 3.6), without a new message.
    */
   readonly message?: string | undefined;
+  /**
+   * The items shown in the chat. The model is told them with this answer only: they aren't kept
+   * as a message (flow 5.7).
+   */
+  readonly shown?: readonly ShownItem[] | undefined;
   /** Aborted when the person clicks Stop. */
   readonly signal?: AbortSignal | undefined;
   /** Told how the answer goes, for the status line and the transcript. */
@@ -171,3 +191,21 @@ export interface AssistantHost {
 /** The open workspace's Assistant, provided by the app (`assistant.host`). */
 export const AssistantHostService: ServiceKey<AssistantHost> =
   serviceKey<AssistantHost>("assistant.host");
+
+/**
+ * **Show in chat** for the agents and workflows features (`assistant.chat.show-in-chat`): their
+ * rows' and pages' ⋮ offer it when the service is there.
+ */
+export interface ShowInChat {
+  /** The ⋮ entry's words. */
+  readonly label: string;
+  /**
+   * Puts the item in the Build chat the panel shows, else in a new Build chat, once. A closed
+   * panel opens on that chat, and focus stays where it was.
+   */
+  show(shown: ShownItem, context: WorkspaceContext): Promise<void>;
+}
+
+/** Show in chat, provided by the Assistant feature while the app gives it a host. */
+export const ShowInChatService: ServiceKey<ShowInChat> =
+  serviceKey<ShowInChat>("assistant.show-in-chat");

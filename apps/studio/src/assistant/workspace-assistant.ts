@@ -30,6 +30,7 @@ import type {
   ChatModel,
   ChatSummary,
   ModelOption,
+  ShownItem,
 } from "@halonicjs/studio-feature-assistant/api";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { type LoadedWorkspace, loadWorkspace, modelAliases } from "@halonicjs/workspace";
@@ -247,7 +248,11 @@ export class WorkspaceAssistant implements AssistantHost {
       if (message !== undefined) this.#add(chat.id, message);
     };
     const own = request.listener;
-    const messages = sent === undefined ? chat.messages : [...chat.messages, sent];
+    const messages = [
+      ...chat.messages,
+      ...shownNote(request.shown),
+      ...(sent === undefined ? [] : [sent]),
+    ];
     // The Build chat follows the workspace's own authoring skill, else the built-in one. It isn't
     // kept in the chat, so an edited skill counts from the next answer on.
     const skill: ChatMessage = { role: "system", content: authoringInstructions(loaded) };
@@ -302,4 +307,14 @@ export class WorkspaceAssistant implements AssistantHost {
   #changed(change: AssistantChange): void {
     for (const listener of [...this.#listeners]) listener(change);
   }
+}
+
+/**
+ * What Show in chat put in the chat, told to the model with this answer only (flow-assistant 5.7):
+ * a note before the person's message, never kept, so a removed chip is gone from the next one.
+ */
+function shownNote(shown: readonly ShownItem[] | undefined): ChatMessage[] {
+  if (shown === undefined || shown.length === 0) return [];
+  const items = shown.map(({ item, name }) => `${item.kind} "${name}" (${item.hub}/${item.id})`);
+  return [{ role: "system", content: `The person showed you these items: ${items.join(", ")}.` }];
 }

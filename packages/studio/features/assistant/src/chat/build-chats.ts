@@ -2,7 +2,7 @@ import type { ChatAnswerEnd } from "@halonicjs/app";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
-import type { AssistantHost, Chat } from "../api.ts";
+import type { AssistantHost, Chat, ShownItem } from "../api.ts";
 import { buildChatWords } from "./build-chat-words.ts";
 import { endLine, type ReplyEnd } from "./turns.ts";
 
@@ -20,6 +20,8 @@ export interface ChatView {
   readonly ends: ReadonlyMap<number, ReplyEnd>;
   /** The last answer was stopped by the person: the status line says so until the next one. */
   readonly stoppedByYou: boolean;
+  /** What Show in chat put in this chat, oldest first; kept for this session (flow 5.7). */
+  readonly shown: readonly ShownItem[];
 }
 
 /** What the panel shows: a chat, its first load, a chat that can't load, or none (H3). */
@@ -41,6 +43,7 @@ export class BuildChats {
   private readonly listeners = new Set<() => void>();
   private currentId: string | undefined;
   private state: Shown = { kind: "loading" };
+  private keepFocus = false;
 
   constructor(host: AssistantHost) {
     this.host = host;
@@ -74,6 +77,38 @@ export class BuildChats {
   }
 
   /**
+   * Puts `shown` in the chat the panel shows, else in a new Build chat; an item already there
+   * isn't added twice (`assistant.chat.show-in-chat`).
+   */
+  async showItem(shown: ShownItem): Promise<void> {
+    if (this.currentId === undefined || !this.views.has(this.currentId)) await this.newChat();
+    if (this.currentId === undefined) return;
+    this.update(this.currentId, (view) =>
+      view.shown.some((each) => isSameItem(each, shown)) ? {} : { shown: [...view.shown, shown] },
+    );
+  }
+
+  /** Asks the panel, as it opens next, to leave focus where it is: Show in chat opened it. */
+  keepFocusOnOpen(): void {
+    this.keepFocus = true;
+  }
+
+  /** Whether the panel opening now leaves focus where it is; asks only once. */
+  takeKeepFocus(): boolean {
+    const keep = this.keepFocus;
+    this.keepFocus = false;
+    return keep;
+  }
+
+  /** Takes `shown` out of the chat the panel shows: its chip's ×. */
+  removeShown(shown: ShownItem): void {
+    if (this.state.kind !== "chat") return;
+    this.update(this.state.view.chat.id, (view) => ({
+      shown: view.shown.filter((each) => !isSameItem(each, shown)),
+    }));
+  }
+
+  /**
    * Sends `message` in the chat shown, or, without one, continues the answer that reached the
    * model call limit (flow-assistant 3.6). Says once how it ended.
    */
@@ -102,6 +137,7 @@ export class BuildChats {
       const answer = await this.host.answer({
         chatId,
         message,
+        shown: view.shown,
         signal: stopper.signal,
         listener: {
           onToolCall: (tool) => this.update(chatId, () => ({ tool })),
@@ -209,7 +245,13 @@ function viewOf(chat: Chat): ChatView {
     tool: undefined,
     ends,
     stoppedByYou: false,
+    shown: [],
   };
+}
+
+function isSameItem(one: ShownItem, other: ShownItem): boolean {
+  const [a, b] = [one.item, other.item];
+  return a.kind === b.kind && a.hub === b.hub && a.id === b.id;
 }
 
 function endOf(end: ChatAnswerEnd): ReplyEnd | undefined {

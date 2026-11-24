@@ -11,7 +11,7 @@ import {
   PlusIcon,
   SidePanel,
 } from "@halonicjs/studio-kit";
-import type { PanelWindowViewProps, WorkspaceContext } from "@halonicjs/studio-shell";
+import type { ItemRef, PanelWindowViewProps, WorkspaceContext } from "@halonicjs/studio-shell";
 import {
   Fragment,
   type ReactNode,
@@ -19,6 +19,7 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useState,
   useSyncExternalStore,
 } from "react";
 import { AssistantHostService } from "../api.ts";
@@ -32,13 +33,23 @@ import {
 } from "../chat/build-chats.ts";
 import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../chat/turns.ts";
 import { BuildComposer } from "./build-composer.tsx";
+import { ShownItems } from "./shown-items.tsx";
 import { SkillLink } from "./skill-link.tsx";
+
+/** Focus as it is: the panel "moves" focus to what has it, so Show in chat leaves it there. */
+const focusAsItIs: RefObject<HTMLElement | null> = {
+  get current() {
+    const focused = document.activeElement;
+    return focused instanceof HTMLElement ? focused : document.body;
+  },
+};
 
 /**
  * The Assistant's side panel (flow-assistant 2.2): the header with the chat's title, **New chat**
  * and ✕, the status line, and the Build chat. It opens on the chat it showed last, else the most
- * recently used one, else a new Build chat, with focus in the box. The region is named
- * "Assistant" whatever the chat's title is (L12).
+ * recently used one, else a new Build chat, with focus in the box, or where it was when Show in
+ * chat opened it (flow-assistant 2.2). The region is named "Assistant" whatever the chat's title
+ * is (L12).
  */
 export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps) {
   const host = context.services.get(AssistantHostService);
@@ -46,6 +57,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
   const shown = useSyncExternalStore(chats.subscribe, chats.shown);
   const lookingAt = useShownTitle(context);
   const box = useRef<HTMLTextAreaElement>(null);
+  const [keepFocus] = useState(() => chats.takeKeepFocus());
   const announce = useCallback<Announce>(
     (text, politeness) => context.announcer.announce(text, politeness),
     [context],
@@ -64,7 +76,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
       title={heading}
       label={title}
       halo
-      initialFocus={box}
+      initialFocus={keepFocus ? focusAsItIs : box}
       onClose={onClose}
       actions={
         <>
@@ -99,6 +111,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
               <SkillLink host={host} context={context} freshness={view.messages} />
             ) : null
           }
+          onOpenItem={(item) => context.openItem?.(item)}
         />
       </div>
     </SidePanel>
@@ -115,6 +128,7 @@ interface PanelBodyProps {
   readonly lookingAt: string | undefined;
   /** The link under the box for a chat: "customize skill" or "edit skill" in a Build chat. */
   readonly skillLink: (view: ChatView) => ReactNode;
+  readonly onOpenItem: (item: ItemRef) => void;
 }
 
 /** The chat, its first load (H7), a chat that can't load, or no chat (H3). */
@@ -136,6 +150,11 @@ function PanelBody(props: PanelBodyProps) {
   return (
     <>
       <p className="px-4 text-caption text-fg-muted">{statusLine(view, lookingAt)}</p>
+      <ShownItems
+        shown={view?.shown ?? []}
+        onOpen={props.onOpenItem}
+        onRemove={(item) => chats.removeShown(item)}
+      />
       {view === undefined ? (
         // Fills the transcript's place, so the box is at the bottom from the start (H7).
         <div className="flex min-h-0 flex-1 flex-col">

@@ -119,6 +119,28 @@ verifies("studio.workspace-assistant", () => {
       expect(kept.messages.map((message) => message.content)).toEqual(["Add a routine", "Done."]);
     });
 
+    it("tells the model what Show in chat put in the chat, with this answer only", async () => {
+      const { assistant, requests } = setup();
+      const chat = await assistant.newChat("build");
+      const triage = { item: { kind: "workflow", hub: "support", id: "triage" }, name: "Triage" };
+      await assistant.answer({ chatId: chat.id, message: "Add a step", shown: [triage] });
+      await assistant.answer({ chatId: chat.id, message: "Thanks" });
+      // The first message is the Build chat's authoring skill (assistant.build.authoring-skill-override).
+      expect(requests[0]?.messages.slice(1)).toEqual([
+        {
+          role: "system",
+          content: 'The person showed you these items: workflow "Triage" (support/triage).',
+        },
+        { role: "user", content: "Add a step" },
+      ]);
+      expect(requests[1]?.messages.map((message) => message.role)).toEqual([
+        "system",
+        "user",
+        "assistant",
+        "user",
+      ]);
+    });
+
     it("takes the model call limit of workspace.yaml over Settings", async () => {
       const files = { "workspace.yaml": "id: acme\nname: Acme\nassistant:\n  maxSteps: 3\n" };
       const { assistant, requests } = setup({ files, settings: { "assistant.turn-limit": 9 } });

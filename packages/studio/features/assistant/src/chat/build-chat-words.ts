@@ -37,6 +37,11 @@ export const buildChatWords = {
   using: (tool: string) => `Running · using ${tool}`,
   /** The status line while it waits: the page the window shows, as its tab names it. */
   lookingAt: (page: string) => `Looking at: ${page}`,
+  /** Show in chat and the shown items under the status line (flow-assistant 5.7, AS 2.2). */
+  showInChat: "Show in chat",
+  shown: "Shown:",
+  removeShown: (name: string) => `Remove ${name} from this chat`,
+  moreShown: (count: number) => `+${count}`,
   /** The status line after Stop, without the line's full stop (flow-assistant 2.2). */
   stopped: "Stopped by you",
   stoppedByYou: "Stopped by you.",
