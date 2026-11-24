@@ -6,6 +6,7 @@
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17254 (token phase 1e; the board's yes on
   HAL-16897 to the direction on HAL-16892)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JcG42xtAeXFW1kSGCAfpxA3aZMnCPQz1PQ1FZzzSc71upq8jMyGjZLfPshhAGnSXwCbF7rX2ma4c4ruqqWO8BA==
 
 ## What changes
 
