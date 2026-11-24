@@ -2,7 +2,7 @@
   "name": "@halonicjs/action-steppers",
   "private": true,
   "type": "module",
-  "description": "Pure stepper code for user-only actions. This first step holds the requester policy; the stepper-request format and its validator follow.",
+  "description": "Pure stepper code for user-only actions: the stepper-request format, its validator, strict parameters and the requester policy.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -10,6 +10,10 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
