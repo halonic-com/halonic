@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17334 (Liam's review of halonic#5614 on HAL-16797 asked for it; states D5 and D6 in HAL-5896)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fjaeuqnDZS5PezNbSn1npajLrF/XHvOCJlI8mB4mJDCkjGQUW5GkGM/YCQ1WmXSp6aP+CNXgVGmhNqXp7EKRBQ==
 
 `assistant.chat.engine-not-answering` said Continue and Try again "shall not be offered" while the
 engine isn't answering. States D5 and D6 say an action that needs the engine waits, with the line
