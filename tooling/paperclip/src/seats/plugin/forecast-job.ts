@@ -68,8 +68,13 @@ function pointsOf(run: ForecastRun): StoredForecastPoint[] {
   );
 }
 
-/** Loads everything one run reads, as of `now`. */
-async function forecastInput(deps: ForecastJobDeps, owner: SeatsOwner, now: Date) {
+/** What one forecast run reads, so `seats.plan` forecasts from the same data as `seats.forecast`. */
+export type ForecastInputDeps = Pick<ForecastJobDeps, "readings" | "history" | "store"> & {
+  readonly forecast: Pick<ForecastStore, "usageSince" | "calibrationsSince" | "latestActivity">;
+};
+
+/** Loads everything one run reads, as of `now`: the forecast's input and each agent's newest activity. */
+export async function forecastInput(deps: ForecastInputDeps, owner: SeatsOwner, now: Date) {
   const at = now.toISOString();
   const activity = await deps.forecast.latestActivity(before(now, activityMs));
   const usage = await deps.forecast.usageSince(before(now, profileDays * dayMs));
