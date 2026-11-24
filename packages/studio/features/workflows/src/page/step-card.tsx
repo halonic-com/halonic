@@ -294,11 +294,15 @@ function ProblemLine({ id, problems }: { readonly id: string; readonly problems:
   );
 }
 
-/** The edge on the card's start side for the assistant's change, by kind, as `ChangeMark` draws it. */
+/**
+ * The edge on the card's start side for the assistant's change, by kind, as `ChangeMark` draws it:
+ * 2px, so a change looks the same wherever it's marked (AI changes 1.2). A wider edge would wedge
+ * at the card's rounded corners and, in accent, read as half the selection's ring.
+ */
 const changeEdges = {
-  added: "border-s-4 border-s-success",
-  removed: "border-s-4 border-s-danger",
-  changed: "border-s-4 border-s-accent",
+  added: "border-s-2 border-s-success",
+  removed: "border-s-2 border-s-danger",
+  changed: "border-s-2 border-s-accent",
   none: "",
 } as const;
 
