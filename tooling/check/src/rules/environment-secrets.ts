@@ -9,6 +9,13 @@ const expression = /\$\{\{([^}]*)\}\}/g;
 /** A secret read inside an expression: `secrets.NAME` or `secrets[…]`. */
 const secretRead = /\bsecrets\s*(?:\.\s*([A-Za-z_][\w-]*)|\[)/g;
 
+/**
+ * A same-line comment that allows a read outside an environment, with its
+ * reason. For a secret a pull request's own run must read, which an
+ * environment limited to `main` or tags would never reach.
+ */
+const allowComment = /#\s*environment-secrets:\s*allow\s+\S/;
+
 /** One job of a workflow, by its lines. */
 interface Job {
   readonly id: string;
@@ -66,25 +73,28 @@ function hasEnvironment(job: Job): boolean {
   return keys.some(({ text }) => indentOf(text) === keyIndent && /^\s*environment\s*:/.test(text));
 }
 
-/** The secrets a job reads, other than `GITHUB_TOKEN`, as written, with the line of each. */
-function secretsReadBy(job: Job): { name: string; line: number }[] {
-  const reads: { name: string; line: number }[] = [];
-  for (const { text, line } of job.body) {
-    if (isBlankOrComment(text)) {
-      continue;
-    }
-    if (/^\s*secrets\s*:\s*inherit\b/.test(text)) {
-      reads.push({ name: "secrets: inherit", line });
-    }
-    for (const [, inside = ""] of text.matchAll(expression)) {
-      for (const [, name] of inside.matchAll(secretRead)) {
-        if (name !== "GITHUB_TOKEN") {
-          reads.push({ name: `secrets.${name ?? "[…]"}`, line });
-        }
+/** The secrets one line reads, other than `GITHUB_TOKEN`, as written. */
+function secretsReadOn(text: string): string[] {
+  if (isBlankOrComment(text) || allowComment.test(text)) {
+    return [];
+  }
+  const names: string[] = [];
+  if (/^\s*secrets\s*:\s*inherit\b/.test(text)) {
+    names.push("secrets: inherit");
+  }
+  for (const [, inside = ""] of text.matchAll(expression)) {
+    for (const [, name] of inside.matchAll(secretRead)) {
+      if (name !== "GITHUB_TOKEN") {
+        names.push(`secrets.${name ?? "[…]"}`);
       }
     }
   }
-  return reads;
+  return names;
+}
+
+/** The secrets a job reads, other than `GITHUB_TOKEN`, as written, with the line of each. */
+function secretsReadBy(job: Job): { name: string; line: number }[] {
+  return job.body.flatMap(({ text, line }) => secretsReadOn(text).map((name) => ({ name, line })));
 }
 
 /**
@@ -94,7 +104,9 @@ function secretsReadBy(job: Job): { name: string; line: number }[] {
  * of the workflow decides what it does with it; a secret kept in an
  * environment limited to `main` or release tags reaches only those.
  * Whether the environment really is limited is a repository setting this
- * check can't see.
+ * check can't see. A read that a pull request's own run needs carries
+ * `# environment-secrets: allow <reason>` on its line, so a reviewer sees
+ * each exception and why.
  */
 export function checkEnvironmentSecrets(context: CheckContext): Report {
   const report = new Report("environment-secrets");
@@ -106,7 +118,7 @@ export function checkEnvironmentSecrets(context: CheckContext): Report {
       for (const { name, line } of secretsReadBy(job)) {
         report.error(
           file,
-          `Job "${job.id}" reads ${name} without an environment. Give the job an \`environment:\` limited to the branches or tags that need the secret, and keep the secret in that environment, not in the repository.`,
+          `Job "${job.id}" reads ${name} without an environment. Give the job an \`environment:\` limited to the branches or tags that need the secret, and keep the secret in that environment, not in the repository. If a pull request's own run must read it, add \`# environment-secrets: allow <reason>\` on that line.`,
           line,
         );
       }

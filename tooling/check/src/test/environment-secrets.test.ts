@@ -81,6 +81,20 @@ describe("tooling/check: secrets only in environment jobs", () => {
     ]);
   });
 
+  it("allows a read whose line says why, and only with a reason", () => {
+    const workflow = `${header}jobs:
+  pick:
+    runs-on: ubuntu-24.04
+    steps:
+      - with:
+          key: \${{ secrets.ACME_KEY }} # environment-secrets: allow read-only, the pull request's own run needs it
+          other: \${{ secrets.ACME_OTHER }} # environment-secrets: allow
+`;
+    expect(findings({ ".github/workflows/acme.yml": workflow })).toEqual([
+      ".github/workflows/acme.yml:10",
+    ]);
+  });
+
   it("reads only workflow files", () => {
     expect(
       findings({
