@@ -1,7 +1,7 @@
-// The fast pool (HAL-15972, HAL-17463): a pull request runs on our CI server only on a fast slot,
-// only from a halonic-com/halonic branch, only while it's open, at the event's commit and opened by
-// a person, not a bot, at job start (the VM's gate says so, not the event), with or without a label,
-// and only with the shared caches read-only. These tests run the
+// The fast pool (HAL-15972, HAL-17463, HAL-17616): a pull request runs on our CI server only on a
+// fast slot, only from a halonic-com/halonic branch, only while it's open, at the event's commit,
+// labelled fast-track and opened by a person, not a bot, at job start (the VM's gate says so, not
+// the event), and only with the shared caches read-only. These tests run the
 // hook as shipped (hook-run.mjs) and the gate's script against a stub curl.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -40,6 +40,7 @@ const livePr = (patch = {}) =>
           isCrossRepository: false,
           headRefOid: SHA,
           headRepositoryOwner: { login: "halonic-com" },
+          labels: { nodes: [{ name: "fast-track" }] },
           author: { __typename: "User", login: "halonic-dev" },
           ...patch,
         },
@@ -57,14 +58,30 @@ const forkEvent = {
 const fast = ({ pool = POOL_FAST, event = events.fastPr, env = PR_ENV, gate, mountinfo } = {}) =>
   run({ pool, event, env, gate: gate ?? { status: 200, body: livePr() }, mountinfo });
 
-test("fast pool: accepts an open own-branch pull request a person opened, without a label, checked at job start", () => {
+test("fast pool: accepts an open own-branch fast-track pull request a person opened, checked at job start", () => {
   const res = fast();
   assert.equal(res.ok, true, res.out);
   assert.match(res.out, /halonic-ci: accepted pull_request/);
   assert.deepEqual(res.asked, ["/pr/42"]);
-  // A label neither helps nor hurts (HAL-17463).
-  const labelled = { labels: { nodes: [{ name: "fast-track" }] } };
-  assert.equal(fast({ gate: { status: 200, body: livePr(labelled) } }).ok, true);
+  // Other labels next to it don't matter.
+  const more = { labels: { nodes: [{ name: "ci" }, { name: "fast-track" }] } };
+  assert.equal(fast({ gate: { status: 200, body: livePr(more) } }).ok, true);
+});
+
+test("fast pool: refuses a same-repo pull request without the fast-track label (HAL-17616)", () => {
+  // The label is read from the gate's answer at job start, never from the event.
+  for (const labels of [
+    { nodes: [] },
+    { nodes: [{ name: "ci" }, { name: "fast-track-later" }, { name: "Fast-Track " }] },
+    { nodes: null },
+    null,
+    undefined,
+  ]) {
+    refused(
+      fast({ gate: { status: 200, body: livePr({ labels }) } }),
+      /#42 has no fast-track label/,
+    );
+  }
 });
 
 test("fast pool: refuses a fork pull request, whatever its event says", () => {
@@ -83,7 +100,8 @@ test("fast pool: refuses a fork pull request, whatever its event says", () => {
 
 const author = (__typename, login) => livePr({ author: { __typename, login } });
 
-test("fast pool: refuses a pull request a bot opened, whatever its event or ci.yml says (HAL-17463)", () => {
+test("fast pool: refuses a fast-track pull request a bot opened, whatever its event or ci.yml says (HAL-17463)", () => {
+  // Every answer below carries the fast-track label (livePr's default): the label never admits a bot.
   // GraphQL gives a GitHub App's login without "[bot]" and its type as Bot; either refuses.
   for (const login of ["dependabot", "renovate", "github-actions", "halonic-dev"]) {
     refused(fast({ gate: { status: 200, body: author("Bot", login) } }), /by a Bot account/);
@@ -353,8 +371,8 @@ const gateQuery = (first, args = []) => {
 test("fast pool: the gate asks about the pull request only for a plain number", () => {
   const asked = gateQuery("GET /pr/42 HTTP/1.1");
   assert.match(asked, /pullRequest\(number: 42\) \{ number state isCrossRepository headRefOid /);
-  assert.match(asked, /author \{ __typename login \}/);
-  assert.doesNotMatch(asked, /labels/);
+  // The label and the author both decide (HAL-17616); 100 labels, and a missing one refuses.
+  assert.match(asked, /labels\(first: 100\) \{ nodes \{ name \} \} author \{ __typename login \}/);
   assert.doesNotMatch(asked, /mergeQueue/);
   // Anything else gets the merge queue's fixed query: nothing else reaches it.
   for (const first of [

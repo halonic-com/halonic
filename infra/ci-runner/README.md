@@ -2,11 +2,12 @@
 
 Linux jobs of `ci.yml` for `halonic-com/halonic`, run on our own server instead of
 GitHub-hosted runners, **only for our own reviewed runs**: pushes to `main` now, merge groups
-later. The one exception is the **fast pool** (HAL-15972): open pull requests a person opened
-from our own branches, with or without a label since HAL-17463, on their own slots, with the shared
-caches read-only. Fork pull requests and bots' pull requests never run here. Plan and security
-review: HAL-14831 (Julian's changes C1–C8 and the fork test T1); the fast pool: HAL-15972 and
-HAL-17463.
+later. The one exception is the **fast pool** (HAL-15972): open pull requests labelled
+`fast-track` that a person opened from our own branches (HAL-17616; from HAL-17463 until then every
+person's pull request ran here), on their own slots, with the shared caches read-only. Fork pull
+requests and bots' pull requests never run here, labelled or not. Plan and security review:
+HAL-14831 (Julian's changes C1–C8 and the fork test T1); the fast pool: HAL-15972, HAL-17463,
+HAL-17574 and HAL-17616.
 
 This folder is the server's setup **as built** (21 Nov 2026). A change here is deployed to the
 server by the board supervisor after it merges; the server doesn't pull from the repo.
@@ -16,9 +17,10 @@ server by the board supervisor after it merges; the server doesn't pull from the
 1. **Routing** (`.github/workflows/ci.yml`): a job uses `vars.CI_RUNNER_LARGE` or
    `vars.CI_RUNNER_SMALL` only for a merge group or a push to `main`, and only while the event is
    listed in `vars.CI_SELF_HOSTED_EVENTS`. Empty variables send everything to `ubuntu-24.04`.
-   A pull request a person opened from our own branch uses `vars.CI_RUNNER_FAST` when it is set;
-   forks and bots (a `Bot` account, a login ending in `[bot]`, `dependabot`, `renovate`,
-   `renovate-bot`) stay on `ubuntu-24.04`. This is routing, not security: a pull request runs its
+   A pull request a person opened from our own branch and labelled `fast-track` uses
+   `vars.CI_RUNNER_FAST` when it is set; every other pull request stays on `ubuntu-24.04`: no label,
+   a fork, or a bot (a `Bot` account, a login ending in `[bot]`, `dependabot`, `renovate`,
+   `renovate-bot`), labelled or not. Adding the label starts no run; the next push does. This is routing, not security: a pull request runs its
    own copy of `ci.yml`.
 2. **The runner group** `halonic-ci` serves only `halonic-com/halonic`.
 3. **The hook** (`vm/job-started.sh`) is the boundary. It is baked into the image, runs before
@@ -34,10 +36,10 @@ server by the board supervisor after it merges; the server doesn't pull from the
      and go into `halonic-com/halonic`, run `ci.yml@refs/pull/<n>/merge`, and see the three cache
      mounts as overlays or read-only. Then the hook asks the VM's gate about pull request `<n>`
      **now**, not as the event saw it: it must be open, not cross-repository, with a head
-     repository owned by `halonic-com`, still at the event's head commit, and opened by a person:
-     its author a `User` (not a `Bot`) whose login doesn't end in `[bot]` and isn't `dependabot`,
-     `renovate` or `renovate-bot` (HAL-17463; a label no longer counts). A gate or API failure, a
-     missing field or author or a pull request not found is a refusal;
+     repository owned by `halonic-com`, still at the event's head commit, labelled `fast-track`
+     (HAL-17616), and opened by a person: its author a `User` (not a `Bot`) whose login doesn't end
+     in `[bot]` and isn't `dependabot`, `renovate` or `renovate-bot` (HAL-17463). A gate or API
+     failure, a missing field, label list or author, or a pull request not found is a refusal;
    - a push must be to `main` and run `ci.yml@refs/heads/main`; a merge group must target `main`
      and run `ci.yml` from its own `gh-readonly-queue/main/pr-<n>-<sha>` ref;
    - **a merge group must hold only our own pull requests (C7):** the hook asks the VM's queue
@@ -124,13 +126,18 @@ for it to exit and cleans up. systemd starts the next cycle.
 | `fast-1` … `fast-3` | `halonic-ci-fast` | 6 | those of `large-11`, `large-10`, `large-9` | 4 GB → 16 GB | 20 GB |
 | `fast-4` … `fast-8` | `halonic-ci-fast` | 6 | those of `large-15` … `large-19` (shared) | 4 GB → 16 GB | 20 GB |
 | `fast-9`, `fast-10` | `halonic-ci-fast` | 6 | 15-20, 39-44 (shared with two large slots each) | 4 GB → 16 GB | 20 GB |
-| `fast-11` … `fast-40` | `halonic-ci-fast` | 4 (quota) | float over 0-65 and 72-101 while `runsc` runs with `--cpu-num-from-quota`; without it a fixed 4-vCPU set each (`FAST4_FROM`; `fast-11` … `fast-24` keep 0-3, 4-7, 8-11, 22-25, 26-29, 30-33, 34-37, 50-53, 56-59, 62-65, 74-77, 80-83, 86-89, 92-95) | 4 GB → 12 GB | 20 GB |
+| `fast-11` … `fast-16` (normal pool); `fast-17` … `fast-40` stopped | `halonic-ci-fast` | 4 (quota) | float over 0-65 and 72-101 while `runsc` runs with `--cpu-num-from-quota`; without it a fixed 4-vCPU set each (`FAST4_FROM`; `fast-11` … `fast-24` keep 0-3, 4-7, 8-11, 22-25, 26-29, 30-33, 34-37, 50-53, 56-59, 62-65, 74-77, 80-83, 86-89, 92-95) | 4 GB → 12 GB | 20 GB |
 
 The VM has 112 vCPUs (56 cores) and 128 GB. Each slot is pinned to its own vCPUs
 (`--cpuset-cpus`), so a job sees only those (`nproc`, Node's `availableParallelism`) and test
 runners don't start a worker for each of the VM's 112. The eleven large slots take vCPUs 0-65, the
 three small slots share 66-71 (capped at 2 CPUs each), large-15..19 take 72-101, and 102-111 are left
 for the VM itself.
+
+**The normal fast pool is fast-1 … fast-16** (HAL-17616). With every person's pull request on 40
+fast slots (HAL-17463, HAL-17574) the VM's CPUs were full on 24 Nov (80 % busy, CPU pressure 63 %,
+run queue 316) and a 1-minute typecheck took 4-8 minutes; with only `fast-track` pull requests 16
+slots are enough. The units for fast-17 … fast-40 stay installed but stopped (Operating, below).
 
 **fast-11 … fast-40 float** (HAL-17574). With 40 fast slots the pinned sets would ask for 276 vCPUs
 on the 96 outside the small slots' and the VM's, so a fixed map puts three or four slots on most
@@ -262,6 +269,21 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   reload Docker (slots pick it up on their next cycle). Back to 24 slots: stop and disable
   `fast-25` … `fast-40` and remove them from `/etc/halonic-ci/slots`. The `halonic-ci-fast` network
   must be a /26 or wider (the network step above); the board recreated it as a /24 on 24 Nov. Full: restore the copies.
+- **Fast-track pull requests only, 16 fast slots** (HAL-17616, after Liam's and Julian's OK). Keep
+  copies of the live gate script and the current image (it holds the hook) first. The new hook
+  asks the gate for the labels, so deploy the gate first: the new `vm/halonic-ci-gate.sh` (no
+  restart; the next connection runs it). It answers the old hook too, which ignores the labels.
+  Then rebuild the image with the new hook and restart the fast slots while idle (or let them
+  pick it up on their next cycle); from then on they admit only labelled pull requests, a subset
+  of what they admitted before. After the pull request merges, stop and disable `fast-17` …
+  `fast-40` and remove them from `/etc/halonic-ci/slots`; keep their units installed. Keep
+  everything else as it is: memory admission, the floating CPU sets, `--cpu-shares`, the OOM
+  priority and the /24 `halonic-ci-fast` network. Then set `CI_RUNNER_FAST` again, and a
+  `fast-track` pull request's next push should show its Linux checks on `hci-fast-*`; one
+  without the label stays on GitHub's runners (and if its own `ci.yml` sends it here anyway, the
+  hook refuses it with "has no fast-track label"). Off at once: clear `CI_RUNNER_FAST`. Back to
+  every person's pull request: restore the gate script and the image, start `fast-17` … `fast-40`
+  again, and merge a revert of the `ci.yml` change.
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,
   set `IMAGE=` in `pool.env`, restart the slots.
 - **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images, stale work dirs and Turbo

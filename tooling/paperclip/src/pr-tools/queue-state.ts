@@ -9,7 +9,10 @@ import type { Snapshot, SnapshotPull, SnapshotRepo } from "../snapshot/shape.ts"
  * GitHub request of its own.
  */
 
-/** The label that puts a pull request first for review and in the merge queue (HAL-15971). */
+/**
+ * The label that puts a pull request first for review and in the merge queue (HAL-15971), and
+ * sends its Linux checks to the fast pool (HAL-17616).
+ */
 export const fastTrackLabel = "fast-track";
 
 /** A snapshot older than this missed at least two 10-minute passes. */
