@@ -3,7 +3,7 @@
 - Task: HAL-17762
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17762 (Liam's decisions from his review of #5723 on HAL-17703; Liam approves this note in review)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LhRHykPtSE1pUH+Vd7T9+AVJ0FJ8XIaqzf/jWJOhweNT+X8ATyHxuOzJYdaPOh0dc04nf/TUhfQML+Foq69eCA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2PWrVXB5YkRzvme/+M5JwwhFUwvfupD06XIT6JzPvY7a+ZR/dA7pH+3rMs4MdFvnoBrJ1TAIxgwToUxvyEr0Bg==
 
 Five merge-control requirements change, as Liam decided in his review of #5723:
 
