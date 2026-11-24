@@ -2,8 +2,17 @@ import { execFileSync } from "node:child_process";
 import { gitObjects } from "../guard/git-objects.ts";
 import { signNote } from "../guard/sign-note.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
+import { isSignableBase } from "./decision-base.ts";
 
 const usage = "Usage: pnpm decision sign <pull request number>";
+
+type Run = (command: string, ...args: string[]) => string;
+
+/** Fetches a base branch other than main and returns its commit. */
+function fetchBranch(run: Run, branch: string): string {
+  run("git", "fetch", "--quiet", "--no-tags", "origin", `refs/heads/${branch}`);
+  return run("git", "rev-parse", "FETCH_HEAD");
+}
 
 /**
  * pnpm decision sign <pull request number>
@@ -11,7 +20,8 @@ const usage = "Usage: pnpm decision sign <pull request number>";
  * Signs a pull request's decision note with the key in
  * PAPERCLIP_AGENT_PRIVATE_KEY (HAL-1337) and prints the `- Signature:` line
  * to add under the note's `- Kind:` line. A change to the guard's trust roots needs two guardians: the second adds their line under the first. When the signer's own line no longer matches, it says the new line replaces it. It runs only in a clean checkout
- * of origin/main and reads the pull request from git's objects, so none of
+ * of origin/main, signs for a pull request into main or a release branch,
+ * and reads the pull request from git's objects, so none of
  * the pull request's code, hooks or config runs while the key is loaded. It
  * never writes the key anywhere.
  */
@@ -29,11 +39,14 @@ function main(argv: readonly string[]): number {
     return 1;
   }
   const root = findRepoRoot();
-  const run = (command: string, ...args: string[]): string =>
+  const run: Run = (command, ...args) =>
     execFileSync(command, args, { cwd: root, encoding: "utf8" }).trim();
   run("git", "fetch", "--quiet", "--no-tags", "origin", "main");
-  const base = run("git", "rev-parse", "origin/main");
-  if (run("git", "rev-parse", "HEAD") !== base || run("git", "status", "--porcelain") !== "") {
+  const mainCommit = run("git", "rev-parse", "origin/main");
+  if (
+    run("git", "rev-parse", "HEAD") !== mainCommit ||
+    run("git", "status", "--porcelain") !== ""
+  ) {
     console.error(
       "decision: sign only from a clean worktree of origin/main: git worktree add --detach ../sign origin/main",
     );
@@ -43,10 +56,13 @@ function main(argv: readonly string[]): number {
     run("gh", "pr", "view", String(number), "--json", "headRefName,headRefOid,baseRefName,url"),
   ) as { headRefName: string; headRefOid: string; baseRefName: string; url: string };
   const repo = /^https:\/\/github\.com\/([^/]+\/[^/]+)\/pull\/\d+$/.exec(pr.url)?.[1];
-  if (pr.baseRefName !== "main" || repo === undefined) {
-    console.error(`decision: pull request ${number} doesn't merge into main of a GitHub repo.`);
+  if (!isSignableBase(pr.baseRefName) || repo === undefined) {
+    console.error(
+      `decision: pull request ${number} doesn't merge into main or a release branch of a GitHub repo.`,
+    );
     return 1;
   }
+  const base = pr.baseRefName === "main" ? mainCommit : fetchBranch(run, pr.baseRefName);
   run("git", "fetch", "--quiet", "--no-tags", "origin", `refs/pull/${number}/head`);
   const git = gitObjects(root, (line) => console.error(`decision: ${line}...`));
   if (!git.hasCommit(pr.headRefOid)) {
