@@ -1,4 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { ItemCardTakers } from "../item-page/item-card-takers.ts";
 import { TabPageContext, ViewMemory } from "../item-page/remembered-view.ts";
 import { ItemGone } from "../page/item-gone.tsx";
 import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
@@ -24,6 +25,11 @@ export interface TabPagesProps {
    * workspace's items change, so an open tab whose item goes away shows that it has.
    */
   readonly goneItem?: (location: TabLocation) => GoneItem | undefined;
+  /**
+   * The window's pages that take items as cards (`useItemCardTaker`), so its `showItem` can ask the
+   * active tab's page. Without it the pages keep a registry of their own that nothing asks.
+   */
+  readonly cardTakers?: ItemCardTakers;
 }
 
 /** An item a tab shows that isn't in the workspace any more. */
@@ -52,8 +58,9 @@ interface PageMemory {
  *
  * When the active tab changes, its page gets back its scroll and the focus it last had, or else
  * focus goes to its `h1`, as it does for a tab whose page wasn't mounted any more. While the focus
- * is in the tab strip it stays there, as in any tab list. A tab whose place changes draws a fresh
- * page.
+ * is in the tab strip it stays there, as in any tab list, and a tab made active next to what the
+ * user is doing (the state's `keepsFocus`) leaves it where it is. A tab whose place changes draws a
+ * fresh page. Each page can take items as cards (`useItemCardTaker`) into `cardTakers`.
  *
  * A page that throws while it draws stops alone, as "This page stopped working" in its own area
  * (`PageErrorBoundary`). A tab whose item isn't in the workspace any more shows `ItemGone`, whose
@@ -64,7 +71,7 @@ interface PageMemory {
  *   <TabPages tabs={workspace.tabs} renderPage={(location) => <PageFor location={location} />} />
  * </ShellFrame>
  */
-export function TabPages({ tabs, renderPage, goneItem }: TabPagesProps) {
+export function TabPages({ tabs, renderPage, goneItem, cardTakers }: TabPagesProps) {
   const state = useSyncExternalStore(
     (listener) => tabs.subscribe(listener),
     () => tabs.state,
@@ -74,6 +81,7 @@ export function TabPages({ tabs, renderPage, goneItem }: TabPagesProps) {
   const pages = useRef(new Map<string, HTMLDivElement>());
   const memory = useRef(new Map<string, PageMemory>());
   const views = useRef(new ViewMemory());
+  const ownCardTakers = useRef(new ItemCardTakers());
   const shown = useRef(shownPlace(state));
 
   useLayoutEffect(() => {
@@ -107,7 +115,7 @@ export function TabPages({ tabs, renderPage, goneItem }: TabPagesProps) {
       return;
     }
     const kept = memory.current.get(now.tabId);
-    giveBack(page, kept?.locationKey === now.locationKey ? kept : undefined);
+    giveBack(page, kept?.locationKey === now.locationKey ? kept : undefined, state.keepsFocus);
   }, [state]);
 
   const remember = (tab: WindowTab, change: Partial<Omit<PageMemory, "locationKey">>) => {
@@ -145,7 +153,12 @@ export function TabPages({ tabs, renderPage, goneItem }: TabPagesProps) {
             // Keyed by the place, so a tab that moves on to another place draws a fresh page.
             <PageErrorBoundary pageKey={location.key} pageName={location.title}>
               <TabPageContext
-                value={{ tabId: tab.id, locationKey: location.key, views: views.current }}
+                value={{
+                  tabId: tab.id,
+                  locationKey: location.key,
+                  views: views.current,
+                  cardTakers: cardTakers ?? ownCardTakers.current,
+                }}
               >
                 {renderPage(location, tab)}
               </TabPageContext>
@@ -181,11 +194,12 @@ function isSamePlace(a: ShownPlace | undefined, b: ShownPlace): boolean {
 /**
  * Gives a page that was switched to back its scroll and focus from `kept`, or starts it at the top
  * with the focus on its `h1` when nothing was kept for the place it shows. The focus stays where it
- * is while it is in the tab strip.
+ * is while it is in the tab strip, and when the tab was made active next to what the user is doing
+ * (`keepsFocus`, the window's `showItem`).
  */
-function giveBack(page: HTMLElement, kept: PageMemory | undefined) {
+function giveBack(page: HTMLElement, kept: PageMemory | undefined, keepsFocus = false) {
   page.scrollTop = kept?.scrollTop ?? 0;
-  if (focusIsInTabStrip()) {
+  if (keepsFocus || focusIsInTabStrip()) {
     return;
   }
   if (kept?.focus !== undefined && page.contains(kept.focus)) {

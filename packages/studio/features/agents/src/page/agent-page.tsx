@@ -192,11 +192,11 @@ export function AgentScreen({
     modelRequest,
   );
   const [configurationPage, setConfigurationPage] = useState<ConfigurationPage>("behaviour");
-  const cards = useAgentCards(host, { hubId, id }, announce);
   // The page an add button on the map opens Configuration on; picking a view by hand forgets it.
   const [configurationStart, setConfigurationStart] = useState<ConfigurationStart>();
   // On a desktop the shell's item page keeps the view, so the page learns it as each view is drawn.
   const shownView = useRef<AgentView>(view);
+  const cards = useAgentCards(host, { hubId, id }, announce, () => shownView.current !== "runs");
   const viewBox = useRef<HTMLDivElement>(null);
   const itemPage = useRef<ItemPageHandle<AgentView>>(null);
   // Picking another view closes the stack: cards belong to the view they opened over (flow-agents 7).

@@ -143,6 +143,11 @@ export { type StripProps, Strips, type StripsProps } from "./frame/strips.tsx";
 export { firstLoad, type HomeCardSource } from "./home/first-load.ts";
 export type { HomeCardProps } from "./home/home-page.tsx";
 export { HomeSectionEmpty } from "./home/home-section.tsx";
+export {
+  type ItemCardTaker,
+  ItemCardTakers,
+  useItemCardTaker,
+} from "./item-page/item-card-takers.ts";
 export { ItemHeader, type ItemHeaderProps } from "./item-page/item-header.tsx";
 export {
   ItemPage,
@@ -362,6 +367,7 @@ export {
   currentLocation,
   homeLocation,
   type OpenedTab,
+  type OpenInNewTabOptions,
   reopenableTabs,
   type TabLocation,
   TabSet,
@@ -433,6 +439,7 @@ export { StudioWorkspace, type StudioWorkspaceOptions } from "./window/studio-wo
 export type {
   PanelWindowControl,
   SettingsSectionName,
+  ShownInWindow,
   ShownPage,
   WorkspaceContext,
 } from "./workspace-context.ts";

@@ -1,6 +1,13 @@
-import { type CardStack, dropGoneCards, noCards, openCard } from "@halonicjs/studio-shell";
+import {
+  type CardStack,
+  dropGoneCards,
+  noCards,
+  openCard,
+  useItemCardTaker,
+} from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentListing, AgentRef, AgentStep, AgentsHost } from "../api.ts";
+import { type AgentTeamMember, handOffPath } from "../team.ts";
 import { agentStepCardKey, agentStepOfCard } from "./agent-step-card.tsx";
 import { pageWords } from "./page-words.ts";
 import { subagentCardKey, subagentOfCard } from "./subagent-card.tsx";
@@ -18,12 +25,14 @@ export interface AgentCards {
  * The cards stacked on the agent page's panel (flow-agents 7): a subagent and an agent step open
  * as cards, and a card whose agent or agent step is gone drops with every card above it, saying
  * so to screen readers. The stack is the page's state, so it stays across tab switches while the
- * page stays mounted.
+ * page stays mounted. An agent of its team that the window shows (`showItem`) opens as a subagent's
+ * card too (`useTeamCardTaker`), while `showsCards` says the view the page shows draws the cards.
  */
 export function useAgentCards(
   host: AgentsHost,
   agent: AgentRef,
   announce: ((text: string) => void) | undefined,
+  showsCards: () => boolean = () => true,
 ): AgentCards {
   const [stack, setStack] = useState<CardStack>(noCards);
   const latest = useRef(stack);
@@ -67,5 +76,49 @@ export function useAgentCards(
       stop();
     };
   }, [host, hubId, id, announce]);
+  useTeamCardTaker(host, agent, (sub) => {
+    if (!showsCards()) return false;
+    openSubagent(sub);
+    return true;
+  });
   return { stack, set, openSubagent, openAgentStep, close };
+}
+
+/**
+ * Takes an agent the window shows (`showItem`) as a subagent's card when it is in the page's team
+ * (an agent of the same hub this agent hands work to, itself or through others) and `openSubagent`
+ * opens it. The team is read when the page is drawn and each time the host says the agents
+ * changed, so the answer is ready when the window asks.
+ */
+function useTeamCardTaker(
+  host: AgentsHost,
+  { hubId, id }: AgentRef,
+  openSubagent: (agent: AgentListing) => boolean,
+): void {
+  const team = useRef<readonly AgentTeamMember[]>([]);
+  useEffect(() => {
+    let live = true;
+    const read = () =>
+      host.team({ hubId, id }).then(
+        (members) => {
+          if (live) team.current = members;
+        },
+        // A team that can't be read takes nothing: the agent opens in its own tab instead.
+        () => {
+          if (live) team.current = [];
+        },
+      );
+    void read();
+    const stop = host.subscribe(() => void read());
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [host, hubId, id]);
+  useItemCardTaker((item) => {
+    if (item.kind !== "agent" || item.hub !== hubId || item.id === id) return false;
+    const member = team.current.find((each) => each.id === item.id);
+    if (member === undefined || handOffPath(team.current, id, item.id) === undefined) return false;
+    return openSubagent(member);
+  });
 }

@@ -9,7 +9,7 @@ import { ShellFrame } from "../frame/shell-frame.tsx";
 import { StatusBarItems } from "../frame/status-bar.tsx";
 import { StatusBarSaveNote } from "../frame/status-bar-save-note.tsx";
 import { Strips } from "../frame/strips.tsx";
-import { itemLocation } from "../palette/palette-groups.ts";
+import { ItemCardTakers } from "../item-page/item-card-takers.ts";
 import { usePaletteOpening } from "../palette/palette-opening.ts";
 import { runWithToast, ShellPalette } from "../palette/shell-palette.tsx";
 import { usePanelWindow } from "../panels/panel-window.ts";
@@ -19,7 +19,7 @@ import { usePhoneBackButton } from "../phone/phone-back.ts";
 import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import { placeNames, type SidebarPlace } from "../points/frame.ts";
-import type { ItemRef, OpenItemOptions } from "../points/item-kinds.ts";
+import type { ItemRef } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { ResourceWatch } from "../resources/resource-watch.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
@@ -44,6 +44,7 @@ import { DesktopResourceItem } from "./desktop-resource-item.tsx";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
 import { useOpenPageAcrossLayouts } from "./layout-crossing.ts";
 import { placeStackMoves } from "./place-stack-moves.ts";
+import { itemLocationOf, showItemInWindow } from "./show-item.ts";
 import { useShownPlaces } from "./shown-places.ts";
 import { tabReadersOf } from "./shown-title.ts";
 import { StudioPage } from "./studio-page.tsx";
@@ -208,6 +209,8 @@ function StudioWindowBody(props: StudioWindowProps) {
     ? (location) => openLocation(tabs, announcer, location, true)
     : (location) => phone.open(location);
   const tabReaders = useMemo(() => tabReadersOf(tabs), [tabs]);
+  // The pages that take items as cards, which `showItem` asks first.
+  const cardTakers = useMemo(() => new ItemCardTakers(), []);
   // The phone's page, read when a feature asks what shows, so the context stays the same.
   const phonePage = useRef(phone.page);
   phonePage.current = phone.page;
@@ -232,7 +235,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   const contextFor = useCallback(
     (featureId: string): WorkspaceContext => ({
       ...shell.services.contextFor(featureId, workspace.services),
-      ...(onDesktop.current ? { ...tabReaders, showSidebarView } : {}),
+      ...(onDesktop.current ? { ...tabReaders, showSidebarView, showItem } : {}),
       host,
       shown: shownPage,
       openPlace: (place) => openPlaceHere.current(place),
@@ -241,8 +244,8 @@ function StudioWindowBody(props: StudioWindowProps) {
       saving: workspace.saving,
       closeStack: shell.closeStack,
       panelWindow: panelWindow.control,
-      openItem: (item, options) => openHere.current(locationOfItem(item, options)),
-      openItemInNewTab: (item) => openItemInNewTab.current(locationOfItem(item)),
+      openItem: (item, options) => openHere.current(itemLocationOf(item, windowItems, options)),
+      openItemInNewTab: (item) => openItemInNewTab.current(itemLocationOf(item, windowItems)),
       openSettings,
       settingsSections,
       // Called later, once `runCommand` below is defined; it runs the command with this context.
@@ -263,6 +266,11 @@ function StudioWindowBody(props: StudioWindowProps) {
       panelWindow.control,
     ],
   );
+  // Read later, once `contextFor` is defined: a kind names its items with its feature's context.
+  const windowItems = { kinds: contributions.itemKinds, contextFor };
+  function showItem(item: ItemRef) {
+    return showItemInWindow(item, tabs, cardTakers, windowItems);
+  }
   const runCommand = (commandId: string): boolean => {
     const command = contributions.commands.get(commandId, contextFor);
     if (command === undefined) {
@@ -272,13 +280,6 @@ function StudioWindowBody(props: StudioWindowProps) {
     return true;
   };
   const sidebarSwitcher = withActions(props.switcher, { runCommand });
-  /** The item's place, named as its kind's tab names it, as Ctrl K opens a found item. */
-  function locationOfItem(item: ItemRef, options?: OpenItemOptions): TabLocation {
-    const kind = contributions.itemKinds.get(item.kind);
-    const label = kind?.tab?.describe(item, contextFor(kind.featureId)).label ?? item.id;
-    const location = itemLocation(item, label, contributions.itemKinds);
-    return options?.step === undefined ? location : { ...location, step: options.step };
-  }
   // The same list each render, so the sidebar subscribes to the places' signals only once.
   const places = useMemo(() => contributions.places.list(), [contributions]);
   const sidebarViews = useMemo(() => contributions.sidebarViews.list(), [contributions]);
@@ -404,6 +405,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       {desktop ? (
         <TabPages
           tabs={tabs}
+          cardTakers={cardTakers}
           renderPage={(location) => (
             <StudioPage
               location={location}
