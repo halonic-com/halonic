@@ -2,6 +2,7 @@
 
 - Approval: HAL-17810, from the board's decision on HAL-12716 (24 Nov); Liam reviews and signs as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8lCII0FJRytb3b+qkZGq4zh27PD27n4Er3Tlw1eT8whHkTMUG6giDw8VflmRyfE4GviGRNczWK+lW0t7OmgSDg==
 
 The board decided against an outside legal review of the installer's licence
 page. Instead, the page shows Microsoft's own licence for `vcruntime140.dll`,
