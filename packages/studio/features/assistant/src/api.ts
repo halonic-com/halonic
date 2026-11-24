@@ -61,6 +61,16 @@ export interface ModelOption {
   readonly problem: ModelProblem | null;
 }
 
+/** One agent of the Chat with menu (flow 5.3). */
+export interface ChatAgent {
+  /** The kind of a chat with this agent: `agent:<hub>/<id>`. */
+  readonly kind: `agent:${string}`;
+  readonly name: string;
+  readonly description: string | undefined;
+  /** The alias the agent answers with: its own `model`, else `default`. */
+  readonly model: string;
+}
+
 /** One row of the chat menu (flow 5.5). */
 export interface ChatSummary {
   readonly id: string;
@@ -190,6 +200,8 @@ export interface AssistantHost {
   setModel(chatId: string, model: ChatModel): Promise<void>;
   /** A Build chat's Model menu, in order: the Assistant model first when one is set, then the aliases by name. */
   models(): Promise<readonly ModelOption[]>;
+  /** The workspace's agents for the Chat with menu, by name. An agent chat has no authoring tools. */
+  agents(): Promise<readonly ChatAgent[]>;
   /** The files with changes to review from the chat, or from every chat without one. */
   itemsToReview(chatId?: string): Promise<readonly ItemToReview[]>;
   /** The changes to review a proposal card wrote, one entry per file. */

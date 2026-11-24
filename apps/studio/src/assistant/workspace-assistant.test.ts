@@ -214,6 +214,21 @@ verifies("studio.workspace-assistant", () => {
       expect((await assistant.newChat("build")).model).toEqual({ kind: "alias", name: "smart" });
     });
 
+    it("answers an agent chat as the agent, with no authoring tools (5.3)", async () => {
+      const files = { "hubs/support/agents/triage.agent.yaml": "id: triage\nname: Triage\n" };
+      const { assistant, requests } = setup({ files });
+      const chat = await assistant.newChat("agent:support/triage");
+      await assistant.answer({ chatId: chat.id, message: "Sort this mail" });
+      expect(requests[0]).toMatchObject({
+        settings: { hubId: "support", agentId: "triage" },
+        tools: [],
+        turnLimit: 6,
+      });
+      expect((await assistant.agents()).map((agent) => agent.kind)).toEqual([
+        "agent:support/triage",
+      ]);
+    });
+
     it("keeps nothing of a message the engine refused before any model turn", async () => {
       const refused = new Error("This workspace isn't trusted yet, so nothing was started.");
       const { assistant } = setup({ refuse: refused });

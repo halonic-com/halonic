@@ -42,8 +42,12 @@ function panel(fake: ReturnType<typeof fakeHost>) {
   return <AssistantPanel context={context} title="Assistant" onClose={() => {}} />;
 }
 
+// The chat menu is the panel's first menu; the Model and Chat with menus above the box come after.
 const rows = (page: HTMLElement) =>
-  [...page.querySelectorAll<HTMLElement>("[role=menuitemradio]")].map((row) => ({
+  [
+    ...(page.querySelector("[role=menu]")?.querySelectorAll<HTMLElement>("[role=menuitemradio]") ??
+      []),
+  ].map((row) => ({
     name: row.getAttribute("aria-label"),
     checked: row.getAttribute("aria-checked"),
   }));

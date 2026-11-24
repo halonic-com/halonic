@@ -1,16 +1,17 @@
-import type {
-  ChatAnswer,
-  ChatAnswerRequest,
-  ChatSettings,
-  ChatTool,
-  FileReview,
-  HostSettings,
-  ItemToReview,
-  ReviewCard,
-  ReviewOutcome,
-  ReviewService,
-  ReviewStep,
-  ReviewTarget,
+import {
+  type ChatAnswer,
+  type ChatAnswerRequest,
+  type ChatSettings,
+  type ChatTool,
+  type FileReview,
+  type HostSettings,
+  type ItemToReview,
+  maxTurnLimit,
+  type ReviewCard,
+  type ReviewOutcome,
+  type ReviewService,
+  type ReviewStep,
+  type ReviewTarget,
 } from "@halonicjs/app";
 import {
   authoringInstructions,
@@ -26,6 +27,7 @@ import type {
   AssistantChange,
   AssistantHost,
   Chat,
+  ChatAgent,
   ChatKind,
   ChatModel,
   ChatSummary,
@@ -33,8 +35,9 @@ import type {
   ShownItem,
 } from "@halonicjs/studio-feature-assistant/api";
 import { EngineNotAnswering, WorkspaceUntrusted } from "@halonicjs/studio-shell";
-import { type LoadedWorkspace, loadWorkspace, modelAliases } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
+import { agentOfKind, chatAgentsOf, type HasKey, modelOptionsOf } from "./chat-models.ts";
 import { type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
   assistantModelOf,
@@ -80,6 +83,8 @@ export interface WorkspaceAssistantParts {
   readonly workspaceName: string;
   /** Opens the window's trust check; absent where there is none. */
   readonly askTrust?: (() => Promise<"trusted" | "declined">) | undefined;
+  /** Whether a key is stored under a secret's name, for the Model menu's reasons. */
+  readonly hasKey?: HasKey | undefined;
   readonly now?: (() => Date) | undefined;
 }
 
@@ -87,6 +92,13 @@ export interface WorkspaceAssistantParts {
 export interface WorkspaceAssistantEngine {
   readonly answering: () => boolean;
   readonly onChange: (listener: (answering: boolean) => void) => () => void;
+}
+
+/** One answer's model and tools; an agent chat also brings its own model call limit. */
+interface ChatModelParts {
+  readonly settings: ChatSettings;
+  readonly tools: readonly ChatTool[];
+  readonly turnLimit?: number | undefined;
 }
 
 /**
@@ -213,32 +225,14 @@ export class WorkspaceAssistant implements AssistantHost {
     this.#changed({ kind: "chat", chatId });
   }
 
-  /** The Assistant model first when one is set, then the aliases by name; reasons come later (T14 PR 11). */
+  /** The Assistant model first when one is set, then the aliases by name, each with its problem. */
   async models(): Promise<readonly ModelOption[]> {
     const loaded = await loadWorkspace(this.#parts.files);
-    const own = assistantModelOf(loaded);
-    const device = deviceModelOf(this.#parts.settings);
-    const assistant: ModelOption[] = [];
-    if (own !== null) {
-      assistant.push({
-        model: { kind: "assistant" },
-        label: own,
-        from: "workspace",
-        problem: null,
-      });
-    } else if (device !== undefined) {
-      const label = device.model;
-      assistant.push({ model: { kind: "assistant" }, label, from: "settings", problem: null });
-    }
-    const aliases = [...modelAliases(loaded, null).keys()].sort().map(
-      (name): ModelOption => ({
-        model: { kind: "alias", name },
-        label: name,
-        from: "workspace",
-        problem: null,
-      }),
-    );
-    return [...assistant, ...aliases];
+    return modelOptionsOf(loaded, this.#parts.settings, this.#parts.hasKey ?? (async () => true));
+  }
+
+  async agents(): Promise<readonly ChatAgent[]> {
+    return chatAgentsOf(await loadWorkspace(this.#parts.files));
   }
 
   async itemsToReview(chatId?: string): Promise<readonly ItemToReview[]> {
@@ -308,18 +302,19 @@ export class WorkspaceAssistant implements AssistantHost {
       if (message !== undefined) this.#add(chat.id, message);
     };
     const own = request.listener;
-    const settings: ChatSettings = chatSettingsOf(chat.model, loaded, this.#parts.settings);
-    const answerOn = this.#answererOf(chat, settings, loaded);
+    // Trust first: an untrusted workspace refuses an agent chat before its file is read.
+    const buildSettings = chatSettingsOf(chat.model, loaded, this.#parts.settings);
+    const answerOn = this.#answererOf(chat, buildSettings, loaded);
+    const model = this.#modelOf(chat, loaded);
     const messages = forTheModel(
       [...chat.messages, ...shownNote(request.shown)],
       sent,
       request.notes ?? [],
     );
     const answer = await answerOn.answer({
-      settings,
+      ...model,
       messages: chat.kind === "build" ? [await this.#skillOf(loaded), ...messages] : messages,
-      tools: this.#toolsOf(chat.id),
-      turnLimit: answerOn.turnLimit,
+      turnLimit: model.turnLimit ?? answerOn.turnLimit,
       signal,
       listener: {
         onTurn: (turn) => {
@@ -380,6 +375,33 @@ export class WorkspaceAssistant implements AssistantHost {
         ? loaded
         : await loadWorkspace(await acceptedFiles(this.#parts.files, this.#parts.review, proposed));
     return { role: "system", content: authoringInstructions(accepted) };
+  }
+
+  /**
+   * The model and tools of one answer, and an agent chat's model call limit. An agent chat answers as the agent's Try
+   * it chat does (flow-assistant 5.3): its own model, instructions and skills, no authoring tools.
+   */
+  #modelOf(chat: KeptChat, loaded: LoadedWorkspace): ChatModelParts {
+    const agent = agentOfKind(chat.kind);
+    if (agent === undefined) {
+      // The Build chat's model call limit depends on trust, so `#answererOf` picks it.
+      return {
+        settings: chatSettingsOf(chat.model, loaded, this.#parts.settings),
+        tools: this.#toolsOf(chat.id),
+      };
+    }
+    const file = filesOf(loaded, "agent").find(
+      (each) => each.hub === agent.hubId && each.value.id === agent.agentId,
+    );
+    if (file === undefined) {
+      throw new KindedError("not_found", "This agent isn't in this workspace any more.");
+    }
+    return {
+      settings: { hubId: agent.hubId, agentId: agent.agentId },
+      tools: [],
+      // The file allows up to 200 model calls; a chat answer stops at 64 turns.
+      turnLimit: Math.min(file.value.maxSteps, maxTurnLimit),
+    };
   }
 
   /** The chat's tools, made once, so they remember what the model read in it. */

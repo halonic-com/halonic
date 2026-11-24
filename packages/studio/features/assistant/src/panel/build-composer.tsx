@@ -27,6 +27,9 @@ export interface BuildComposerProps {
   readonly authoringOnly?: boolean | undefined;
   /** **Review** on that line: opens the window's trust check. */
   readonly onReviewTrust?: (() => void) | undefined;
+  /** An agent chat's own name and placeholder: "Message Triage" and "Message Triage…". */
+  readonly label?: string;
+  readonly placeholder?: string;
 }
 
 /**
@@ -40,6 +43,7 @@ export interface BuildComposerProps {
  */
 export function BuildComposer(props: BuildComposerProps) {
   const { answering, box, onSend } = props;
+  const { label = words.boxLabel, placeholder = words.placeholder } = props;
   const [draft, setDraft] = useState("");
   const [heldForKey, setHeldForKey] = useState(false);
   const putBack = (message: string) => setDraft((current) => (current === "" ? message : current));
@@ -71,8 +75,8 @@ export function BuildComposer(props: BuildComposerProps) {
   return (
     <div className="px-4 pt-2 pb-3">
       <ChatComposer
-        label={words.boxLabel}
-        placeholder={words.placeholder}
+        label={label}
+        placeholder={placeholder}
         value={draft}
         onChange={edit}
         onSend={() => send()}

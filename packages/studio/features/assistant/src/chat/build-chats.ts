@@ -2,7 +2,7 @@ import type { ChatAnswerEnd } from "@halonicjs/app";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
 import { EngineNotAnswering, isUntrustedRefusal } from "@halonicjs/studio-shell";
-import type { AssistantHost, Chat, ShownItem } from "../api.ts";
+import type { AssistantHost, Chat, ChatKind, ChatModel, ShownItem } from "../api.ts";
 import { cardReviewsOf } from "../cards/card-reviews.ts";
 import { buildChatWords } from "./build-chat-words.ts";
 import { endLine, type ReplyEnd } from "./turns.ts";
@@ -77,9 +77,32 @@ export class BuildChats {
     await this.load(() => this.host.chat(chatId));
   }
 
-  /** Shows a new Build chat, or the empty draft there is already. */
-  async newChat(): Promise<void> {
-    await this.load(() => this.host.newChat("build"));
+  /** Shows a new chat of `kind`, a Build chat unless named, or the empty draft there is already. */
+  async newChat(kind: ChatKind = "build"): Promise<void> {
+    await this.load(() => this.host.newChat(kind));
+  }
+
+  /**
+   * Chat with: talks to `kind` from now on (`assistant.chat.switch-build-or-agent`). A chat's kind
+   * never changes, so this shows a new chat of `kind`, and the chat shown stays in the recent chats
+   * when it has messages.
+   */
+  async chatWith(kind: ChatKind): Promise<void> {
+    if (this.state.kind === "chat" && this.state.view.chat.kind === kind) return;
+    await this.newChat(kind);
+  }
+
+  /** Changes the model of the chat shown, and only of it (`assistant.chat.model-per-chat`). */
+  async setModel(model: ChatModel, announce: Announce): Promise<void> {
+    if (this.state.kind !== "chat") return;
+    const chatId = this.state.view.chat.id;
+    try {
+      await this.host.setModel(chatId, model);
+    } catch (error) {
+      announce(error instanceof Error ? error.message : String(error), "assertive");
+      return;
+    }
+    this.update(chatId, (now) => ({ chat: { ...now.chat, model } }));
   }
 
   /**
