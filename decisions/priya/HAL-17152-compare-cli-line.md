@@ -3,6 +3,7 @@
 - Task: HAL-17152
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17152 (a team decision with no board card, HAL-2282 rule: wording on the approved proposal flow; row 9 of words check C782 on HAL-17146, following HAL-16075 §3)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hFWUS5t4d9Rg02AbmvVHm2/smBo1ylAX0sFdURCH76GOM61dbTPPhtS5c2fEN4R9T33Cn3LrDl/t83ucMgB+Bw==
 
 ## What changes
 
