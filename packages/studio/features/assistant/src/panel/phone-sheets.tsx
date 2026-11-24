@@ -72,7 +72,7 @@ export function PhoneSheets(
           kindName={words.phone.kindName}
           name={kept.title}
           // A rename the host refuses keeps the old title, as the rename field does on a computer.
-          onRename={(name) => void chats.rename(name).catch(() => {})}
+          onRename={(name) => void chats.rename(kept.id, name).catch(() => {})}
           onClose={phone.close}
         />
       ) : null}

@@ -26,7 +26,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { AssistantHostService, type ChatAgent } from "../api.ts";
+import { AssistantHostService, type ChatAgent, type ChatKind } from "../api.ts";
 import { buildChatWords as words } from "../chat/build-chat-words.ts";
 import {
   type Announce,
@@ -35,26 +35,19 @@ import {
   type ChatView,
   type Shown,
 } from "../chat/build-chats.ts";
-import { chatWithWords as agentWords } from "../chat/chat-with-words.ts";
+import { chatTabItem } from "../chat/chat-tab-item.ts";
 import { runningLine, turnsOf } from "../chat/turns.ts";
 import { AgentStatusLine, PanelChatStart } from "./agent-chat.tsx";
-import { BuildComposer } from "./build-composer.tsx";
-import {
-  agentOf,
-  ChatChips,
-  type ChatChoices,
-  type ReadChoices,
-  useChatChoices,
-} from "./chat-choices.tsx";
+import { ChatBox, useSend } from "./chat-box.tsx";
+import { agentOf, type ChatChoices, type ReadChoices, useChatChoices } from "./chat-choices.tsx";
 import { ChatHeading, DesktopActions } from "./chat-header.tsx";
-import { openModelsCommand, useModelBox } from "./model-line.tsx";
 import { PhoneChatMenu, PhoneHeading } from "./phone-header.tsx";
 import { PhoneSheets, usePhoneChat } from "./phone-sheets.tsx";
 import { Reply } from "./reply.tsx";
-import { StripAboveBox } from "./review-strip.tsx";
-import { useAuthoringOnly, useEngineAnswering, useTrustCheck } from "./send-gate.ts";
+import { useEngineAnswering } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
 import { SkillLink } from "./skill-link.tsx";
+import { StartScreen, useFocusAfterStart } from "./start-screen.tsx";
 
 /** Focus as it is: the panel "moves" focus to what has it, so Show in chat leaves it there. */
 const focusAsItIs: RefObject<HTMLElement | null> = {
@@ -96,7 +89,26 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
     void chats.newChat().then(phone.on ? phone.focusTitle : () => box.current?.focus());
   const view = shown.kind === "chat" ? shown.view : undefined;
   const heading = view === undefined || view.chat.draft ? title : view.chat.title;
-  const header = { host, chats, view, title, box, onNewChat: newChat, agents: choices.agents };
+  const openTab = (chatId: string) => context.openItem?.(chatTabItem(chatId));
+  const header = {
+    host,
+    chats,
+    view,
+    title,
+    box,
+    onNewChat: newChat,
+    onOpenTab: openTab,
+    agents: choices.agents,
+  };
+  // Open as tab moves the chat to its tab and closes the panel: one chat in one place (2.3).
+  const openAsTab =
+    view === undefined || context.openItem === undefined || context.host === "phone"
+      ? undefined
+      : () => {
+          chats.moveToTab(view.chat.id);
+          openTab(view.chat.id);
+          onClose();
+        };
 
   const panel = (
     <SidePanel
@@ -123,6 +135,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
         ) : (
           <DesktopActions
             {...header}
+            onOpenAsTab={openAsTab}
             onRename={() => setRenaming(true)}
             afterDelete={() => newChatButton.current}
             onClose={onClose}
@@ -132,7 +145,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
     >
       {/* The transcript and the box reach the panel's edges; the transcript scrolls by itself. */}
       <div className="-mx-4 -my-3 flex h-[calc(100%+1.5rem)] flex-col">
-        <PanelBody
+        <ChatBody
           context={context}
           shown={shown}
           chats={chats}
@@ -149,6 +162,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
           }
           onOpenItem={(item) => context.openItem?.(item)}
           choices={choices}
+          onChatWith={(kind) => void chats.chatWith(kind).then(() => box.current?.focus())}
         />
       </div>
     </SidePanel>
@@ -156,7 +170,8 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
   return <PhoneSheets {...header} phone={phone} panel={panel} />;
 }
 
-interface PanelBodyProps {
+/** The props of {@link ChatBody}. */
+export interface ChatBodyProps {
   readonly context: WorkspaceContext;
   readonly shown: Shown;
   readonly chats: BuildChats;
@@ -170,38 +185,33 @@ interface PanelBodyProps {
   /** The link under the box for a chat: "customize skill" or "edit skill" in a Build chat. */
   readonly skillLink: (view: ChatView) => ReactNode;
   readonly onOpenItem: (item: ItemRef) => void;
+  /** The models and agents the Model and Chat with chips offer. */
   readonly choices: ReadChoices;
+  /** Chat with: a new chat of that kind, where this one is. */
+  readonly onChatWith: (kind: ChatKind) => void;
+  /** Reads the chat again after it couldn't load; the panel's own chat by default. */
+  readonly onRetry?: (() => void) | undefined;
+  /** An empty chat shows the start screen, as in a chat tab (flow-assistant 6). */
+  readonly startScreen?: boolean;
 }
 
 /**
- * The chat, its first load (H7), a chat that can't load, or no chat (H3). While the engine doesn't
- * answer, the chat says so at the top, in the window's words (H12, H15), and Send, Try again and
- * Continue wait with that line as their reason (D5). The chat's model may put its line under the
- * box (H18 to H20). A message the host refused because the workspace isn't trusted opens the trust
- * check (H16).
+ * The chat, its first load (H7), a chat that can't load, or no chat (H3), in the panel or a chat
+ * tab. While the engine doesn't answer, the chat says so at the top, in the window's words (H12,
+ * H15), and Send, Try again and Continue wait with that line as their reason (D5). The chat's model
+ * may put its line under the box (H18 to H20). A message the host refused because the workspace
+ * isn't trusted opens the trust check (H16).
  */
-function PanelBody(props: PanelBodyProps) {
-  const { context, shown, chats, box, announce, onNewChat, lookingAt, skillLink, choices } = props;
+export function ChatBody(props: ChatBodyProps) {
+  const { context, shown, chats, box, announce, onNewChat, lookingAt, skillLink } = props;
   const host = context.services.get(AssistantHostService);
-  const runCommand = context.runCommand;
   const engineAnswering = useEngineAnswering(host);
-  const askTrust = useTrustCheck(host);
-  const authoringOnly = useAuthoringOnly(host, chatIdOf(shown));
+  const send = useSend(chats, announce, host, context);
   const noticeId = useId();
   const view = shown.kind === "chat" ? shown.view : undefined;
-  const modelBox = useModelBox(view?.chat, choices, context, box);
-  const send = (message: string | undefined, putBack: (message: string) => void) =>
-    void chats.send(message, announce, {
-      refused: () => {
-        void askTrust(
-          () => send(message, putBack),
-          () => {
-            if (message !== undefined) putBack(message);
-          },
-        );
-      },
-      showItem: context.showItem,
-    });
+  const onStartScreen = props.startScreen === true && isEmpty(view) && engineAnswering;
+  useFocusAfterStart(onStartScreen, box);
+  const retry = props.onRetry ?? (() => void chats.open());
   if (shown.kind === "none") return <NoChat onNewChat={onNewChat} button={props.newChatButton} />;
   if (shown.kind === "failed") {
     return (
@@ -210,23 +220,41 @@ function PanelBody(props: PanelBodyProps) {
         align="start"
         title={words.cantLoad}
         description={shown.reason}
-        action={{ label: words.tryAgain, onClick: () => void chats.open() }}
+        action={{ label: words.tryAgain, onClick: retry }}
       />
     );
   }
-  const agent = view === undefined ? undefined : agentOf(view.chat, choices);
+  const composer = (
+    <ChatBox
+      view={view}
+      chats={chats}
+      box={box}
+      send={send}
+      waitsOn={engineAnswering ? undefined : noticeId}
+      context={context}
+      glow={onStartScreen}
+      host={host}
+      choices={props.choices}
+      onChatWith={props.onChatWith}
+      announce={announce}
+    />
+  );
+  const agent = agentOfView(view, props.choices);
+  if (view !== undefined && onStartScreen) {
+    return <StartScreen composer={composer} link={skillLink(view)} />;
+  }
   return (
     <>
       <StatusLine view={view} agent={agent} lookingAt={lookingAt} />
       <ShownItems
         shown={view?.shown ?? []}
         onOpen={props.onOpenItem}
-        onRemove={(item) => chats.removeShown(item)}
+        onRemove={(item) => view !== undefined && chats.removeShown(view.chat.id, item)}
       />
       {view === undefined ? (
         // Fills the transcript's place, so the box is at the bottom from the start (H7).
         <div className="flex min-h-0 flex-1 flex-col">
-          <ChatLoading label={words.loading} onRetry={() => void chats.open()} />
+          <ChatLoading label={words.loading} onRetry={retry} />
         </div>
       ) : (
         <Transcript
@@ -235,65 +263,27 @@ function PanelBody(props: PanelBodyProps) {
           agent={agent}
           notice={engineAnswering ? undefined : notAnsweringLine(context)}
           noticeId={noticeId}
-          onContinue={() => send(undefined, () => {})}
+          onContinue={() => send(view.chat.id, undefined, () => {})}
           continueWaits={engineAnswering ? undefined : { reason: noticeId }}
         />
       )}
-      <StripAboveBox view={view} host={host} box={box} announce={announce} />
-      <ChipsAboveBox view={view} chats={chats} choices={choices} box={box} announce={announce} />
-      <BuildComposer
-        {...agentBox(agent)}
-        answering={view?.answering === true}
-        box={box}
-        onSend={(message, putBack) => {
-          if (view === undefined || !engineAnswering) return false;
-          send(message, putBack);
-          return true;
-        }}
-        onStop={() => chats.stop()}
-        sendUnavailable={sendWait(
-          view === undefined,
-          engineAnswering ? modelBox.waitsOn : noticeId,
-        )}
-        line={modelBox.line}
-        onSendHeld={engineAnswering ? modelBox.onSendHeld : undefined}
-        onGoToKeyField={runCommand && (() => void runCommand(openModelsCommand))}
-        authoringOnly={authoringOnly}
-        onReviewTrust={host.askTrust && (() => void host.askTrust?.())}
-      />
+      {composer}
       {view === undefined ? null : skillLink(view)}
     </>
   );
 }
 
-/** The Model and Chat with chips above the box, once the chat has loaded. */
-function ChipsAboveBox(props: {
-  readonly view: ChatView | undefined;
-  readonly chats: BuildChats;
-  readonly choices: ChatChoices;
-  readonly box: PanelBodyProps["box"];
-  readonly announce: Announce;
-}) {
-  const { view, chats, box, announce } = props;
-  if (view === undefined) return null;
+/**
+ * A Build chat with nothing sent yet, nor being answered: the start screen's (flow-assistant 6.1).
+ * An agent chat starts with the agent's own heading instead.
+ */
+function isEmpty(view: ChatView | undefined): view is ChatView {
   return (
-    <ChatChips
-      chat={view.chat}
-      choices={props.choices}
-      onChatWith={(kind) => void chats.chatWith(kind).then(() => box.current?.focus())}
-      onModel={(model) => void chats.setModel(model, announce)}
-    />
+    view !== undefined &&
+    view.chat.kind === "build" &&
+    view.messages.length === 0 &&
+    !view.answering
   );
-}
-
-/** The id of the chat the panel shows, once it has loaded. */
-function chatIdOf(shown: Shown): string | undefined {
-  return shown.kind === "chat" ? shown.view.chat.id : undefined;
-}
-
-/** Send waits on the line it names, except while there is no chat to send in. */
-function sendWait(loading: boolean, reason: string | undefined): ButtonUnavailable | undefined {
-  return loading || reason === undefined ? undefined : { reason };
 }
 
 /**
@@ -305,15 +295,6 @@ function notAnsweringLine(context: WorkspaceContext): string {
   if (own === engineWords.served) return words.serverNotAnswering;
   if (own === engineWords.phone) return words.computerNotAnswering;
   return words.engineNotAnswering;
-}
-
-/** An agent chat's box is named for the agent: "Message Triage", with "Message Triage…". */
-function agentBox(agent: ChatAgent | undefined) {
-  if (agent === undefined) return {};
-  return {
-    label: agentWords.boxLabel(agent.name),
-    placeholder: agentWords.placeholder(agent.name),
-  };
 }
 
 /**
@@ -339,6 +320,11 @@ function NoChat({
       </div>
     </div>
   );
+}
+
+/** The agent a chat talks to, if it's an agent chat. */
+function agentOfView(view: ChatView | undefined, choices: ChatChoices): ChatAgent | undefined {
+  return view === undefined ? undefined : agentOf(view.chat, choices);
 }
 
 /** The line at the top: an agent chat's orb, name and state, else the status line. */

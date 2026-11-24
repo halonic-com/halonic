@@ -34,6 +34,8 @@ export interface BuildComposerProps {
   /** An agent chat's own name and placeholder: "Message Triage" and "Message Triage…". */
   readonly label?: string;
   readonly placeholder?: string;
+  /** The start screen's glow round the box (`assistant.start-screen.halo`). */
+  readonly glow?: boolean | undefined;
 }
 
 /**
@@ -83,28 +85,31 @@ export function BuildComposer(props: BuildComposerProps) {
       : [{ label: words.goToKeyField, onClick: goToKeyField, look: "link" as const }]),
     { label: words.sendAnyway, onClick: sendAnyway },
   ];
+  // The glow goes on a wrapper, since the box's focus look is its own shadow (flow-assistant 6.2).
   return (
     <div className="px-4 pt-2 pb-3">
-      <ChatComposer
-        label={label}
-        placeholder={placeholder}
-        value={draft}
-        onChange={edit}
-        onSend={() => send()}
-        onStop={props.onStop}
-        answering={answering}
-        sendUnavailable={props.sendUnavailable}
-        textRef={box}
-        line={
-          held !== undefined ? (
-            <ChatBoxLine tone="warning" actions={offers}>
-              {held.line}
-            </ChatBoxLine>
-          ) : (
-            (props.line ?? <AuthoringLine {...props} />)
-          )
-        }
-      />
+      <div className={props.glow === true ? "rounded-lg shadow-halo-glow" : undefined}>
+        <ChatComposer
+          label={label}
+          placeholder={placeholder}
+          value={draft}
+          onChange={edit}
+          onSend={() => send()}
+          onStop={props.onStop}
+          answering={answering}
+          sendUnavailable={props.sendUnavailable}
+          textRef={box}
+          line={
+            held !== undefined ? (
+              <ChatBoxLine tone="warning" actions={offers}>
+                {held.line}
+              </ChatBoxLine>
+            ) : (
+              (props.line ?? <AuthoringLine {...props} />)
+            )
+          }
+        />
+      </div>
     </div>
   );
 }

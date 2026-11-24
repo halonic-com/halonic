@@ -14,13 +14,16 @@ The Assistant feature of the Studio: the Build chat, its sessions and its change
   answer in a chat, the model per chat and the Model menu, and Accept, Reject and Undo of the
   changes to review, and the workspace's own authoring skill (`authoringSkill`, `customizeSkill`).
   `onDidChange` says when any of it changed.
-- `src/panel`: the Assistant's side panel (flow-assistant 2.2): the chat's title, **New chat** and
-  ✕, the status line, the transcript, the strip "*n* items to review" with **Accept all** and
-  **Reject all** for the whole chat (flow-assistant 3.5, two or more items), the box with Send and
-  Stop, and under a Build chat's box
+- `src/panel`: the Assistant's side panel (flow-assistant 2.2): the chat's title, **New chat**,
+  **Open as tab** and ✕, the status line, the transcript, the strip "*n* items to review" with
+  **Accept all** and **Reject all** for the whole chat (flow-assistant 3.5, two or more items), the
+  box with Send and Stop, and under a Build chat's box
   **customize skill** or **edit skill** (flow-assistant 5.10), not on a phone.
+- `src/tab`: a chat open as a tab (flow-assistant 2.3): the chat on the left, on the start screen
+  with the halo and glow while it's empty (flow-assistant 6), and a side panel for the items it
+  shows, closed until it shows one. **Continue in the side panel** moves the chat back.
 - `src/chat`: the Build chats of a workspace in this session (`BuildChats`): which chat the panel
-  shows, each chat shown so far (so going back to one shows it at once), the answer being written
+  shows, which ones are open as tabs (one chat in one place), each chat shown so far (so going back to one shows it at once), the answer being written
   and how each reply ended, with the words the panel says.
 - `src/cards`: the proposal card (flow-assistant 3.2 to 3.4): the tag and the sentence Changes
   uses, the path, the why, **Show the diff**, **Review**, **Accept all** and **Reject all**, each
@@ -31,7 +34,8 @@ The Assistant feature of the Studio: the Build chat, its sessions and its change
   elsewhere by the baseline (an Accept moves it) or, for the last changes, by the saved file. A
   file that changed outside Halonic waits for **Compare**. The state lives for the session: a card
   decided before Studio started says **Accepted** only when its file is just as the model wrote it.
-- `src/feature.ts`: the panel window, Ctrl+Alt+I and Ctrl K's **Assistant** and **New chat**.
+- `src/feature.ts`: the panel window, the chat tab's item kind (`assistant-chat`), Ctrl+Alt+I and
+  Ctrl K's **Assistant** and **New chat**.
 
 The desktop app provides the host for each open folder (`apps/studio/src/assistant`,
 `studio.workspace-assistant`): answers on the engine's chat service with the Build chat's tools
@@ -50,8 +54,8 @@ not run anything." with **Review** (`assistant.chat.authoring-only`). A message 
 holds a key stays in the box (`assistant.chat.key-in-message`). A failed model call says the
 provider's own sentence, as the run page does but ending "then try again.", with **Open Models ›**
 (F7, F8, `assistant.chat.failed`); the app gives its facts on the answer (`AssistantAnswer.failure`)
-and the Runs feature words them (`chatFailureLine`). The chat tab, the chat menu and a card's
-states after a decision (T14 PR 8b) come later.
+and the Runs feature words them (`chatFailureLine`). The chat menu and a card's states after a
+decision (T14 PR 8b) come later.
 
 ## Example
 

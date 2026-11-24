@@ -199,6 +199,7 @@ export { LockIcon } from "./icons/lock-icon.tsx";
 export { MaximiseIcon } from "./icons/maximise-icon.tsx";
 export { MenuIcon } from "./icons/menu-icon.tsx";
 export { MoreIcon } from "./icons/more-icon.tsx";
+export { OpenAsTabIcon } from "./icons/open-as-tab-icon.tsx";
 export { PeopleIcon } from "./icons/people-icon.tsx";
 export {
   PlaceIcon,

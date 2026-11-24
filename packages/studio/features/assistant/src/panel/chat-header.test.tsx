@@ -2,7 +2,8 @@
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildChatsOf } from "../chat/build-chats.ts";
 import { chatTime } from "../chat/chat-menu-words.ts";
 import {
   buttonNamed,
@@ -188,5 +189,17 @@ verifies("assistant.chat.delete", () => {
 
     const draft = await show(panel(fakeHost()));
     expect(buttonNamed(draft, "More actions for New chat")).toBeUndefined();
+  });
+
+  it("says nothing more about an answer whose chat was deleted while it answered", async () => {
+    const fake = fakeHost([alias]);
+    const chats = buildChatsOf(fake.host);
+    await chats.open();
+    const announce = vi.fn();
+    const answer = chats.send("c2", "Carry on", announce);
+    await chats.deleteChat("c2");
+    await fake.finish(new Error("The chat is gone"));
+    await answer;
+    expect(announce).not.toHaveBeenCalled();
   });
 });

@@ -25,6 +25,12 @@ export interface ItemPageChat {
   /** Open from the start (agents, workflows); otherwise the header offers "Ask about this <kind>…". */
   readonly startsOpen: boolean;
   /**
+   * The panel starts hidden beside the open chat, with the button that shows it again, as after
+   * its ✕: a chat that starts with nothing to show, such as the Assistant's start screen. The page
+   * shows it with `handle.show` (`shell.item-page-panel-starts-closed`).
+   */
+  readonly panelStartsClosed?: boolean;
+  /**
    * Draws the chat. `close` hides it again, back to "Ask about this <kind>…". `panelShown` says
    * whether the panel shows beside the chat, so a chat can leave a state the panel already shows,
    * such as the item's loading, to the panel.
@@ -154,7 +160,7 @@ export function ItemPage<Id extends string>({
   // Until the user opens or closes the chat, it follows `startsOpen`, so a chat that arrives after
   // the first render still starts open.
   const [choices, setChoices] = useState<ChosenLayout>({
-    panelClosed: false,
+    panelClosed: chat?.panelStartsClosed ?? false,
     panelScreen: false,
     maximised: false,
   });
