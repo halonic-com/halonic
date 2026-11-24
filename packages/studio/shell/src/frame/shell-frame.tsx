@@ -272,9 +272,11 @@ function DesktopStatusBar(props: Pick<ShellFrameProps, "badges" | "statusBar" | 
 /**
  * While the save note is a problem, the whole bar takes the soft fill of its mark's tone, fading in
  * 120ms (none under reduced motion). The badges never colour the bar: they are standing states.
+ * `box-content` keeps the 24px inside the top border, so the 24px badges and Problems pill sit
+ * between the divider and the frame's bottom edge instead of 1px over it (C794).
  */
 const statusBarClasses = [
-  "group/bar flex h-statusbar shrink-0 items-center gap-4 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted",
+  "group/bar box-content flex h-statusbar shrink-0 items-center gap-4 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted",
   "transition-colors has-[[data-problem=warning]]:bg-warning-soft has-[[data-problem=danger]]:bg-danger-soft",
 ].join(" ");
 

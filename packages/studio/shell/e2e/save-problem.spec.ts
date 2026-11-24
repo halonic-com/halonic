@@ -51,18 +51,35 @@ for (const [state, fill] of [
   });
 }
 
+/**
+ * Expects the item to sit inside the status bar: under its 1px top border (the divider) and above
+ * its bottom edge, which is the frame's bottom border (C794).
+ */
+async function expectInsideBar(page: Page, item: ReturnType<Page["locator"]>): Promise<void> {
+  const bar = await page.locator("footer").boundingBox();
+  const box = await item.boundingBox();
+  // 24px inside, plus the 1px top border.
+  expect(bar?.height).toBe(25);
+  expect(box?.y).toBeGreaterThanOrEqual((bar?.y ?? Number.POSITIVE_INFINITY) + 1);
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
+    (bar?.y ?? 0) + (bar?.height ?? 0),
+  );
+}
+
 test("Try again fits inside the 24px status bar", async ({ page }) => {
   await page.setViewportSize(desktop);
   await page.goto("/save-problem.html?state=failed");
-  const bar = await page.locator("footer").boundingBox();
   // The failed-save toast has its own Try again; this is the status bar's.
-  const button = await page
-    .locator("footer")
-    .getByRole("button", { name: "Try again" })
-    .boundingBox();
-  expect(bar?.height).toBe(24);
-  expect(button?.y).toBeGreaterThanOrEqual(bar?.y ?? Number.POSITIVE_INFINITY);
-  expect((button?.y ?? 0) + (button?.height ?? 0)).toBeLessThanOrEqual((bar?.y ?? 0) + 24);
+  await expectInsideBar(page, page.locator("footer").getByRole("button", { name: "Try again" }));
+});
+
+test("a 24px header badge fits inside the status bar, under its divider", async ({ page }) => {
+  await page.setViewportSize(desktop);
+  await page.goto("/save-problem.html?badges=on");
+  const badge = page.locator("footer").getByRole("button", { name: /Not trusted yet/ });
+  await expect(badge).toBeVisible();
+  expect((await badge.boundingBox())?.height).toBe(24);
+  await expectInsideBar(page, badge);
 });
 
 test("a phone shows no strip while everything is saved", async ({ page }) => {
