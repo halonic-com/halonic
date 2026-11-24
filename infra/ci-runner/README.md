@@ -150,7 +150,9 @@ reserve check stops the rest from growing past what the VM has. Start sizes aren
 check, so a fast slot also waits before it registers a runner (memory admission, HAL-17463): it
 registers only while the VM's available memory, less the start size of every idle fast runner and
 the room every busy job still has under its limit, is at least its start size plus the 4 GB reserve;
-otherwise it logs `waiting for memory` and checks again every 15 s. Large and small slots never
+otherwise it logs `waiting for memory` and checks again every 15 s. A slot's state not updated for
+120 s (a running slot rewrites it every 2 s), or with no `updated_at`, counts as gone and promises
+nothing, and a stopped slot's `--cleanup` removes its state first (HAL-17558). Large and small slots never
 wait. **When the VM is short**, then: no new fast job starts (fast jobs wait in GitHub's queue), a
 running job's limit isn't raised, and a job that needs more than its limit is slowed at `memory.high`
 and, past the limit, killed inside its own container (its job fails); the VM itself isn't

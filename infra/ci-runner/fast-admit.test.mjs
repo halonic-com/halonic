@@ -4,16 +4,18 @@
 // script's fast_room as shipped against a stand-in /proc/meminfo and state folder.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { dir, read } from "./hook-run.mjs";
 
 const GiB = 1024 ** 3;
 const slot = read("vm/halonic-runner-slot.sh");
+const now = () => Math.floor(Date.now() / 1000);
 
 // Runs fast_room for `me` with MemAvailable `availGiB` (null: no such line) and `states` as the
-// slots' state files, by slot name (a string is written as it is).
+// slots' state files, by slot name (a string is written as it is). A state object gets
+// updated_at = now, as a running slot's has, unless it sets its own (undefined: none).
 const room = ({ me = "fast-11", availGiB, states = {} }) => {
   const fn = slot.match(/^fast_room\(\) \{\n[\s\S]*?\n\}$/m);
   assert.ok(fn, "fast_room() in vm/halonic-runner-slot.sh");
@@ -22,12 +24,23 @@ const room = ({ me = "fast-11", availGiB, states = {} }) => {
   const kib = availGiB === null ? "" : `MemAvailable:   ${(availGiB * GiB) / 1024} kB\n`;
   writeFileSync(meminfo, `MemTotal:       75497472 kB\n${kib}`);
   for (const [name, state] of Object.entries(states)) {
-    const text = typeof state === "string" ? state : JSON.stringify({ slot: name, ...state });
+    const text =
+      typeof state === "string"
+        ? state
+        : JSON.stringify({ slot: name, updated_at: now(), ...state });
     writeFileSync(join(base, `${name}.state`), text);
   }
   const res = spawnSync(
     "/bin/bash",
-    ["-c", `${fn[0]}\nSLOT=$1 STATES=$2 MEMINFO=$3 fast_room`, "x", me, base, meminfo],
+    [
+      "-c",
+      `${fn[0]}\nSLOT=$1 STATES=$2 MEMINFO=$3 STALE_S=$4 fast_room`,
+      "x",
+      me,
+      base,
+      meminfo,
+      "120",
+    ],
     { encoding: "utf8" },
   );
   return { ok: res.status === 0, bytes: Number(res.stdout.trim()), out: res.stderr };
@@ -90,9 +103,49 @@ test("fast admission: only fast slots wait, under one lock, and a stopped slot l
   assert.ok(slot.includes('NEED_B=$(( $(numfmt --from=iec "${MEM_START^^}") + RESERVE_B ))'));
   // A paused VM stops the wait as it stops a cycle.
   assert.ok(slot.includes('[ ! -e "$PAUSED" ] || exit 0'));
-  assert.ok(
-    slot.includes('[ "${2:-}" = "--cleanup" ] && { rm -f "/run/halonic-ci/$SLOT.state"; exit 0; }'),
-  );
+  assert.ok(slot.includes('  rm -f "$STATES/$SLOT.state" || echo'));
   // Admission comes before the runner is registered.
   assert.ok(slot.indexOf("fast-admit.lock") < slot.indexOf("generate-jitconfig"));
+});
+
+test("fast admission: a state not updated for 120 s, or with no updated_at, promises nothing (HAL-17558)", () => {
+  assert.ok(slot.includes("RESERVE_B=4294967296; STALE_S=120"));
+  const busy = { label: "halonic-ci-large", busy: true, mem_limit: 10 * GiB, mem_peak: 3 * GiB };
+  // large-10, disabled two days ago as fast-2's twin, whose state was never removed.
+  const stale = room({
+    availGiB: 40,
+    states: { "large-10": { ...busy, updated_at: now() - 170196 } },
+  });
+  assert.equal(stale.ok, true, stale.out);
+  assert.equal(stale.bytes, 40 * GiB);
+  // A running slot rewrote its state 2 s ago: its job's room still counts.
+  const fresh = room({ availGiB: 40, states: { "large-1": { ...busy, updated_at: now() - 2 } } });
+  assert.equal(fresh.bytes, (40 - 7) * GiB);
+  // No updated_at (or not a number): ignored, like a stale one.
+  const none = room({ availGiB: 40, states: { "large-1": { ...busy, updated_at: undefined } } });
+  assert.equal(none.bytes, 40 * GiB);
+  const text = room({ availGiB: 40, states: { "fast-12": { ...fastIdle, updated_at: "now" } } });
+  assert.equal(text.bytes, 40 * GiB);
+});
+
+test("--cleanup removes any slot's state before anything that can fail (HAL-17558)", () => {
+  const STATES_LINE = "STATES=/run/halonic-ci";
+  assert.equal(slot.split(`${STATES_LINE}\n`).length, 2);
+  for (const name of ["large-10", "fast-2", "small-1"]) {
+    const base = mkdtempSync(join(dir, "slot-cleanup-"));
+    const state = join(base, `${name}.state`);
+    writeFileSync(state, JSON.stringify({ slot: name, busy: true, updated_at: now() }));
+    const script = join(base, "slot.sh");
+    writeFileSync(script, slot.replace(`${STATES_LINE}\n`, `STATES=${base}\n`));
+    // No pool.env or App key here, so the cycle fails right after: the state must already be gone.
+    const res = spawnSync("/bin/bash", [script, name, "--cleanup"], {
+      encoding: "utf8",
+      env: { PATH: "/usr/bin:/bin" },
+    });
+    assert.notEqual(res.status, 0);
+    assert.equal(existsSync(state), false, `${name}: ${res.stderr}`);
+  }
+  assert.ok(
+    slot.indexOf('  rm -f "$STATES/$SLOT.state" ||') < slot.indexOf("/etc/halonic-ci/pool.env"),
+  );
 });
