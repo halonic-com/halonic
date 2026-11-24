@@ -10,7 +10,6 @@ import type { LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
 import { WorkflowRuns } from "@halonicjs/app";
 import { type Harness, noKeyOrigins, type SandboxProcess } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
-import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openLocalEngine } from "../src/cli-local-engine.ts";
@@ -251,59 +250,57 @@ function standIn(root: string, seen: Seen): Harness {
   };
 }
 
-verifies("cli.coding-tools-mode", () => {
-  describe("the coding tools server in the real srt sandbox", () => {
-    it(
-      "starts as the harness names it, reads the working folder, refuses outside it and runs node -e",
-      async () => {
-        const commit = await commitWorkspace();
-        const root = profileFolder(profile).root;
-        const seen: Seen = {
-          tools: [],
-          readFile: null,
-          readOutside: null,
-          runNode: null,
-          readProfileFromTest: null,
-          stderr: "",
-        };
-        const reported: unknown[] = [];
-        const engine = await openLocalEngine({
-          keyOrigins: noKeyOrigins,
-          workspace: await loadWorkspace(new FolderDefinitionStore(acme, "./acme")),
-          workspaceRoot: acme,
-          trusted: true,
-          secrets: { get: async () => null },
-          http: { fetch: () => Promise.reject(new TypeError("The run calls no server.")) },
-          environment: profile,
-          harnessParts: { harnesses: { "claude-code": standIn(root, seen) } },
-          git: { git: await testGit() },
-          reportError: (error) => reported.push(error),
-        });
-        opened.push(engine);
+describe("the coding tools server in the real srt sandbox", () => {
+  it(
+    "starts as the harness names it, reads the working folder, refuses outside it and runs node -e",
+    async () => {
+      const commit = await commitWorkspace();
+      const root = profileFolder(profile).root;
+      const seen: Seen = {
+        tools: [],
+        readFile: null,
+        readOutside: null,
+        runNode: null,
+        readProfileFromTest: null,
+        stderr: "",
+      };
+      const reported: unknown[] = [];
+      const engine = await openLocalEngine({
+        keyOrigins: noKeyOrigins,
+        workspace: await loadWorkspace(new FolderDefinitionStore(acme, "./acme")),
+        workspaceRoot: acme,
+        trusted: true,
+        secrets: { get: async () => null },
+        http: { fetch: () => Promise.reject(new TypeError("The run calls no server.")) },
+        environment: profile,
+        harnessParts: { harnesses: { "claude-code": standIn(root, seen) } },
+        git: { git: await testGit() },
+        reportError: (error) => reported.push(error),
+      });
+      opened.push(engine);
 
-        const started = await engine.executor.start({
-          hubId: "lab",
-          workflowId: "code",
-          input: { note: "Read the code" },
-          version: { reads: "live-version", commit, versionDate: "2026-11-24T09:00:00.000Z" },
-        });
-        const run = await new WorkflowRuns(engine.executor).follow(started.id, {});
-        await engine.close();
+      const started = await engine.executor.start({
+        hubId: "lab",
+        workflowId: "code",
+        input: { note: "Read the code" },
+        version: { reads: "live-version", commit, versionDate: "2026-11-24T09:00:00.000Z" },
+      });
+      const run = await new WorkflowRuns(engine.executor).follow(started.id, {});
+      await engine.close();
 
-        expect({
-          status: run.summary.status,
-          error: run.summary.error,
-          stderr: seen.stderr,
-        }).toEqual({ status: "completed", error: null, stderr: "" });
-        expect(seen.tools.sort()).toEqual(["read_ranges", "repo_map", "run_tests", "search"]);
-        expect(seen.readFile).toMatchObject({ isError: false });
-        expect(seen.readFile?.text).toContain("hello from acme");
-        expect(seen.readOutside?.text).not.toContain("not for the program");
-        expect(seen.runNode?.text).toContain("ran 42");
-        expect(seen.readProfileFromTest?.text).not.toContain("not for the program");
-        expect(reported).toEqual([]);
-      },
-      runTimeout,
-    );
-  });
+      expect({
+        status: run.summary.status,
+        error: run.summary.error,
+        stderr: seen.stderr,
+      }).toEqual({ status: "completed", error: null, stderr: "" });
+      expect(seen.tools.sort()).toEqual(["read_ranges", "repo_map", "run_tests", "search"]);
+      expect(seen.readFile).toMatchObject({ isError: false });
+      expect(seen.readFile?.text).toContain("hello from acme");
+      expect(seen.readOutside?.text).not.toContain("not for the program");
+      expect(seen.runNode?.text).toContain("ran 42");
+      expect(seen.readProfileFromTest?.text).not.toContain("not for the program");
+      expect(reported).toEqual([]);
+    },
+    runTimeout,
+  );
 });

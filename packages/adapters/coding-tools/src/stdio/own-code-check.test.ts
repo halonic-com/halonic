@@ -65,23 +65,21 @@ verifies("coding-tools.stdio", () => {
   );
 
   // A workspace package in `node_modules` is a link to its folder (HAL-17183: EISDIR on macOS).
-  it.skipIf(process.platform === "win32")(
-    "probes a link to a folder as a folder, where it leads",
-    async () => {
-      const { code } = await codeFolder();
-      await symlink(join(code, "lib"), join(code, "linked-lib"));
-      const probed: string[] = [];
-      const probe: WriteProbe = async (path, kind) => {
-        probed.push(`${kind} ${relative(code, path)}`);
-        return false;
-      };
-      await refuseChangeableCode([code], probe);
-      expect(probed).toContain("folder linked-lib");
-      await expect(refuseChangeableCode([join(code, "linked-lib")])).rejects.toThrow(
-        ChangeableCodeError,
-      );
-    },
-  );
+  // A junction on Windows, which needs no administrator; other systems ignore the type.
+  it("probes a link to a folder as a folder, where it leads", async () => {
+    const { code } = await codeFolder();
+    await symlink(join(code, "lib"), join(code, "linked-lib"), "junction");
+    const probed: string[] = [];
+    const probe: WriteProbe = async (path, kind) => {
+      probed.push(`${kind} ${relative(code, path)}`);
+      return false;
+    };
+    await refuseChangeableCode([code], probe);
+    expect(probed).toContain("folder linked-lib");
+    await expect(refuseChangeableCode([join(code, "linked-lib")])).rejects.toThrow(
+      ChangeableCodeError,
+    );
+  });
 
   // Linux refuses to open a running program for writing (HAL-17183: ETXTBSY on the runtime itself).
   it("answers for the running runtime instead of failing on it", async () => {
