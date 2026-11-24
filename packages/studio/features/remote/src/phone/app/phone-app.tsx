@@ -1,12 +1,20 @@
 import { BackIcon, Button } from "@halonicjs/studio-kit";
-import { type ReactNode, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { computersWords } from "../computers-words.ts";
+import { forgottenWords } from "../forget-dialog.tsx";
 import { pairWords } from "../pair-words.ts";
 import { PairedComputers } from "../paired-computers.tsx";
 import type { PairingView, PhonePairingFlow } from "../pairing-flow.ts";
 import { PairingScreens } from "../pairing-screens.tsx";
 import { ComputerScreen, type PhoneOutside } from "./computer-screen.tsx";
-import type { PhoneAppRouter } from "./phone-app-router.ts";
+import type { PhoneAppRouter, PhoneAppView } from "./phone-app-router.ts";
 
 /** What the phone app needs from the page round it. */
 export interface PhoneAppProps extends PhoneOutside {
@@ -18,11 +26,31 @@ export interface PhoneAppProps extends PhoneOutside {
 /**
  * The phone's tunnel screens, one at a time, as `router` picks them: Pair with a computer, a
  * paired computer's screen with its sheet, and Paired computers. The 0.1 connect screen is drawn
- * by the page, not here.
+ * by the page, not here. A computer forgotten on its own screen is said from a region that
+ * outlives that screen (C48 ST1).
  */
 export function PhoneApp(props: PhoneAppProps) {
   const { router } = props;
   const view = useSyncExternalStore(router.subscribe, () => router.view);
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    if (view.forgotten === undefined) return;
+    // The same words twice in a row would change nothing, so a screen reader wouldn't say them.
+    const words = forgottenWords(view.forgotten);
+    setSaid((before) => (before === words ? `${words}\u00a0` : words));
+  }, [view.forgotten]);
+  return (
+    <>
+      <p className="sr-only" aria-live="polite">
+        {said}
+      </p>
+      <PhoneScreen {...props} view={view} />
+    </>
+  );
+}
+
+function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
+  const { router, view } = props;
   const back = view.canGoBack ? () => router.back() : undefined;
   const { screen } = view;
   switch (screen.screen) {
@@ -33,7 +61,7 @@ export function PhoneApp(props: PhoneAppProps) {
       return <PairScreen {...props} flow={screen.flow} onBack={back} />;
     case "computers":
       return (
-        <TopBar title={computersWords.title} onBack={back}>
+        <TopBar title={computersWords.title} onBack={back} focusOnOpen>
           <PairedComputers
             computers={view.computers ?? []}
             statuses={view.statuses}
@@ -69,11 +97,13 @@ function PairScreen({
   onCamera,
 }: PhoneAppProps & { readonly flow: PhonePairingFlow; readonly onBack: (() => void) | undefined }) {
   const step = useSyncExternalStore(flow.subscribe, () => flow.view);
+  const title = useRef<HTMLHeadingElement>(null);
   // The scanner is full-bleed, with only its Close scanner (p-m2). The bar only goes: the same
   // tree stays, since unmounting the pairing screens closes the scanner.
   return (
-    <TopBar title={pairTitle(step)} onBack={onBack} bar={step.step !== "scanning"}>
+    <TopBar title={pairTitle(step)} onBack={onBack} bar={step.step !== "scanning"} titleRef={title}>
       <PairingScreens
+        onFocusTitle={() => title.current?.focus()}
         flow={flow}
         typed={() => <TypedStep onEnterAddress={() => router.enterAddress()} />}
         onOpenSettings={onOpenSettings}
@@ -112,19 +142,32 @@ function TypedStep({ onEnterAddress }: { readonly onEnterAddress: () => void }) 
   );
 }
 
-/** A screen's top bar, with Back while there's somewhere to go back to, over the screen. */
+/**
+ * A screen's top bar, with Back while there's somewhere to go back to, over the screen. Its title
+ * takes focus when the screen opens with `focusOnOpen`, as Paired computers does, since the
+ * sheet's row that opened it is gone (C48 PC1).
+ */
 function TopBar({
   title,
   onBack,
   bar = true,
+  focusOnOpen = false,
+  titleRef,
   children,
 }: {
   readonly title: string;
   readonly onBack: (() => void) | undefined;
   /** False leaves the screen alone, without the bar. */
   readonly bar?: boolean;
+  readonly focusOnOpen?: boolean;
+  readonly titleRef?: RefObject<HTMLHeadingElement | null>;
   readonly children: ReactNode;
 }) {
+  const ownTitle = useRef<HTMLHeadingElement>(null);
+  const heading = titleRef ?? ownTitle;
+  useEffect(() => {
+    if (focusOnOpen) heading.current?.focus();
+  }, [focusOnOpen, heading]);
   return (
     // Fills the page's tunnel screen, so the screens in it centre or dock at the foot.
     <div className="flex grow flex-col">
@@ -139,7 +182,13 @@ function TopBar({
               onClick={onBack}
             />
           )}
-          <h1 className="px-2 text-heading text-fg">{title}</h1>
+          <h1
+            ref={heading}
+            tabIndex={-1}
+            className="rounded-md px-2 text-heading text-fg focus-ring"
+          >
+            {title}
+          </h1>
         </header>
       ) : null}
       <div className="flex flex-1 flex-col">{children}</div>

@@ -1,13 +1,14 @@
 import {
   Button,
   Callout,
+  type CalloutHandle,
   CloseIcon,
   CodeDisplay,
   IconTile,
   ShieldIcon,
   TickIcon,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, type Ref, useEffect, useRef } from "react";
 import { MarkedText } from "./marked-text.tsx";
 import { pairWords } from "./pair-words.ts";
 import type { PairedComputer } from "./phone-tunnel.ts";
@@ -28,11 +29,14 @@ function StepLayout({ children, actions }: { children: ReactNode; actions: React
 /** `p-m1`: what to do on the computer, what the phone may do, and the two routes. */
 export function StartStep({
   scanner,
+  scanRef,
   onScan,
   onTypeInstead,
 }: {
   /** False on a build without a scanner: only the typed route is offered. */
   readonly scanner: boolean;
+  /** Scan code, which takes focus when the scanner closes. */
+  readonly scanRef: Ref<HTMLButtonElement>;
   readonly onScan: () => void;
   readonly onTypeInstead: () => void;
 }) {
@@ -41,7 +45,7 @@ export function StartStep({
       actions={
         scanner ? (
           <>
-            <Button variant="primary" size="touch" block onClick={onScan}>
+            <Button ref={scanRef} variant="primary" size="touch" block onClick={onScan}>
               {pairWords.scan}
             </Button>
             <Button variant="ghost" size="touch" block onClick={onTypeInstead}>
@@ -73,6 +77,7 @@ export function StartStep({
  * under it, through `PairingScreens`' `onCamera`); the X, the corner marks and the hint are
  * drawn over the camera. The X is always there, also while Android asks for the camera: on a
  * phone without one the plugin never answers, and the X is the only way out (Priya, HAL-12246).
+ * Focus starts on the hint, since Scan code that opened it is gone (C48 PF1).
  */
 export function ScannerStep({
   notHalonic,
@@ -86,6 +91,8 @@ export function ScannerStep({
   // always-white scanning colour, not a theme colour that turns dark in a light theme. The X
   // carries it on its icon, since a ghost button sets its own text colour.
   const corner = "absolute size-10 border-qr-light";
+  const hint = useRef<HTMLParagraphElement>(null);
+  useEffect(() => hint.current?.focus(), []);
   return (
     <div className="relative grid flex-1 place-items-center bg-transparent text-qr-light">
       <div className="absolute start-3 top-3">
@@ -110,7 +117,12 @@ export function ScannerStep({
           <span className={`${corner} end-0 bottom-0 rounded-ee-md border-e-4 border-b-4`} />
         </div>
         {/* Polite, so "not a Halonic code" is read once per code that isn't ours (G7). */}
-        <p role="status" className="max-w-empty text-center text-body">
+        <p
+          ref={hint}
+          role="status"
+          tabIndex={-1}
+          className="max-w-empty rounded-md text-center text-body focus-ring"
+        >
           {notHalonic ? pairWords.scanner.notHalonic : pairWords.scanner.hint}
         </p>
       </div>
@@ -118,7 +130,10 @@ export function ScannerStep({
   );
 }
 
-/** G8: the camera is off for Halonic. Settings always works, so it shows whatever Android allows. */
+/**
+ * G8: the camera is off for Halonic. Settings always works, so it shows whatever Android allows.
+ * The Callout takes focus when the step shows, so it is read (C48 PF2).
+ */
 export function NoCameraStep({
   onOpenSettings,
   onTypeInstead,
@@ -126,6 +141,8 @@ export function NoCameraStep({
   readonly onOpenSettings: () => void;
   readonly onTypeInstead: () => void;
 }) {
+  const callout = useRef<CalloutHandle>(null);
+  useEffect(() => callout.current?.focus(), []);
   return (
     <StepLayout
       actions={
@@ -139,7 +156,7 @@ export function NoCameraStep({
         </>
       }
     >
-      <Callout tone="attention" title={pairWords.camera.title} announce="polite">
+      <Callout tone="attention" title={pairWords.camera.title} announce="focus" ref={callout}>
         {pairWords.camera.body}
       </Callout>
     </StepLayout>

@@ -44,6 +44,7 @@ function setUp() {
   const flow = new PhonePairingFlow(tunnel, scanner, { setTimer: () => () => undefined });
   const onOpenAgents = vi.fn();
   const onOpenSettings = vi.fn();
+  const onFocusTitle = vi.fn();
   const camera: boolean[] = [];
   const onCamera = (showing: boolean) => camera.push(showing);
   const screen = render(
@@ -53,9 +54,10 @@ function setUp() {
       onOpenSettings={onOpenSettings}
       onOpenAgents={onOpenAgents}
       onCamera={onCamera}
+      onFocusTitle={onFocusTitle}
     />,
   );
-  return { tunnel, scanner, screen, camera, onOpenAgents, onOpenSettings };
+  return { tunnel, scanner, screen, camera, onOpenAgents, onOpenSettings, onFocusTitle };
 }
 
 const button = (screen: HTMLElement, name: string) =>
@@ -173,6 +175,22 @@ verifies("remote.phone-pairing", () => {
     await other.scanner.read({ kind: "noScanner" });
     expect(button(other.screen, "Scan code")).toBeUndefined();
     expect(button(other.screen, "Type a code instead")).toBeDefined();
+  });
+
+  it("moves focus to each step whose pressed button has gone (C48 PF1, PF2)", async () => {
+    const { scanner, screen, onFocusTitle } = setUp();
+    expect(onFocusTitle).toHaveBeenCalledTimes(1);
+    await press(screen, "Scan code");
+    expect(document.activeElement?.textContent).toBe(
+      "Point the camera at the code on your computer",
+    );
+    await press(screen, "Close scanner");
+    expect(document.activeElement).toBe(button(screen, "Scan code"));
+    await press(screen, "Scan code");
+    await scanner.read({ kind: "noCamera", askAgain: false });
+    expect(document.activeElement?.textContent).toContain("Halonic can't use the camera");
+    await press(screen, "Type a code instead");
+    expect(onFocusTitle).toHaveBeenCalledTimes(2);
   });
 
   it("ends the pairing on both sides with Cancel on Check the code", async () => {
