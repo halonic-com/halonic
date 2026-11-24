@@ -41,6 +41,7 @@ function setup(
     turns?: Turn[];
     /** Refuses every answer before any model turn, as the engine refuses an untrusted start. */
     refuse?: Error;
+    now?: () => Date;
   } = {},
 ) {
   const store = new MemoryDefinitionStore({ ...acme, ...options.files }, "memory:acme");
@@ -80,7 +81,7 @@ function setup(
       engineStopped.add(listener);
       return () => engineStopped.delete(listener);
     },
-    now: () => new Date("2026-11-23T10:00:00.000Z"),
+    now: options.now ?? (() => new Date("2026-11-23T10:00:00.000Z")),
   });
   const stopEngine = () => {
     for (const listener of engineStopped) listener();
@@ -206,6 +207,26 @@ verifies("studio.workspace-assistant", () => {
       const answer = await engine.assistant.answer({ chatId: chat.id, message: "Look around" });
       expect(answer.end).toMatchObject({ reason: "failed", toolsRan: true });
       expect(answer.end.reason === "failed" && answer.end.error).toBeInstanceOf(EngineNotAnswering);
+    });
+
+    it("lets go of the oldest chat and its tools once a 41st chat answers", async () => {
+      let seconds = 0;
+      const { assistant, requests } = setup({
+        now: () => new Date(Date.UTC(2026, 10, 24, 8, 0, seconds++)),
+      });
+      const ids: string[] = [];
+      for (let index = 0; index < 41; index++) {
+        const chat = await assistant.newChat("build");
+        await assistant.answer({ chatId: chat.id, message: `Chat ${index}` });
+        ids.push(chat.id);
+      }
+      expect(requests).toHaveLength(41);
+      const kept = (await assistant.chats()).map((chat) => chat.id);
+      expect(kept).toHaveLength(40);
+      expect(kept).not.toContain(ids[0]);
+      await expect(assistant.chat(ids[0] ?? "")).rejects.toSatisfy(
+        (error) => errorKindOf(error) === "not_found",
+      );
     });
 
     it("refuses a second answer while the chat answers, and a chat that isn't there", async () => {

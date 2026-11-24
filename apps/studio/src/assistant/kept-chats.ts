@@ -25,10 +25,13 @@ const kept = 40;
 export class KeptChats {
   readonly #chats = new Map<string, KeptChat>();
   readonly #now: () => Date;
+  readonly #onGone: (chatId: string) => void;
   #made = 0;
 
-  constructor(now: () => Date) {
+  /** `onGone` hears of every chat that goes, deleted or past the 40, so its holder can let go of it. */
+  constructor(now: () => Date, onGone: (chatId: string) => void = () => {}) {
     this.#now = now;
+    this.#onGone = onGone;
   }
 
   /** The kept chats, most recently used first, drafts left out. */
@@ -74,7 +77,7 @@ export class KeptChats {
       messages: [...chat.messages, message],
       draft: chat.draft && !first,
     });
-    for (const old of this.list().slice(kept)) this.#chats.delete(old.id);
+    for (const old of this.list().slice(kept)) this.#remove(old.id);
   }
 
   /** Changes what the person may change: the title or the model. */
@@ -85,7 +88,12 @@ export class KeptChats {
   /** Removes the chat; rejects with `not_found` when it isn't there. */
   delete(chatId: string): void {
     this.get(chatId);
+    this.#remove(chatId);
+  }
+
+  #remove(chatId: string): void {
     this.#chats.delete(chatId);
+    this.#onGone(chatId);
   }
 }
 

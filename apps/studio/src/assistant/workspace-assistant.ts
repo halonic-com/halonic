@@ -68,7 +68,10 @@ export class WorkspaceAssistant implements AssistantHost {
 
   constructor(parts: WorkspaceAssistantParts) {
     this.#parts = parts;
-    this.#chats = new KeptChats(parts.now ?? (() => new Date()));
+    // A chat's tools go with the chat, deleted or dropped past the 40 (HAL-17294).
+    this.#chats = new KeptChats(parts.now ?? (() => new Date()), (chatId) =>
+      this.#tools.delete(chatId),
+    );
     this.#stopReview = parts.review.onDidChange((paths) =>
       this.#changed({ kind: "review", paths }),
     );
@@ -138,7 +141,6 @@ export class WorkspaceAssistant implements AssistantHost {
 
   async deleteChat(chatId: string): Promise<void> {
     this.#chats.delete(chatId);
-    this.#tools.delete(chatId);
     this.#changed({ kind: "chats" });
   }
 
