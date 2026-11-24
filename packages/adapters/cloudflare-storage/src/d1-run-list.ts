@@ -54,7 +54,8 @@ export interface D1RunListOptions {
 
 const eraseRuns = "DELETE FROM run_list WHERE scope = ?";
 
-const openRunScopes = `SELECT DISTINCT scope FROM run_list
+/** The scopes with a running or waiting run; exported so a test can check it uses its index. */
+export const openRunScopes = `SELECT DISTINCT scope FROM run_list
   WHERE scope != '' AND status IN ('running', 'waiting') ORDER BY scope`;
 
 interface ScopeRow {
