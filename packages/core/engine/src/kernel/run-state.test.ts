@@ -52,6 +52,7 @@ verifies("engine.run-state-fold", () => {
       effort: "default",
       cantTry: [],
       version: null,
+      task: null,
       status: "running",
       state: "draft",
       enteredAt: "2026-11-09T09:00:01.000Z",

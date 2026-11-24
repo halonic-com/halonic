@@ -1,6 +1,7 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectTypeOf } from "vitest";
 import type { AgentResume } from "./agent-resume.ts";
+import type { AgentSessionStart } from "./agent-started.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
@@ -23,6 +24,7 @@ import type {
   Usage,
 } from "./run-basics.ts";
 import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
+import type { RunTask } from "./run-task.ts";
 
 // These are type tests: `tsc -p tsconfig.test.json` fails if a run log event
 // gains, loses or changes a field. The expected shapes are copied from
@@ -132,6 +134,8 @@ verifies("events.run-log-contract", () => {
       cantTry?: CantTryStep[];
       // Added after the reference by events.run-started-version (HAL-5173).
       version?: RunVersion;
+      // Added after the reference by events.run-started-task (HAL-17254).
+      task?: RunTask;
     }>();
     expectTypeOf<EventOf<"state.entered">>().toEqualTypeOf<{
       type: "state.entered";
@@ -207,6 +211,8 @@ verifies("events.run-log-contract", () => {
       agent: string;
       prompt: string;
       parent?: string;
+      // Added after the reference by events.agent-started-session (HAL-17254).
+      session?: AgentSessionStart;
     }>();
     expectTypeOf<EventOf<"llm.request">>().toEqualTypeOf<{
       type: "llm.request";

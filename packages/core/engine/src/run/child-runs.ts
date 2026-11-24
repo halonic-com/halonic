@@ -52,6 +52,7 @@ export async function childStart(
     ...(parent.harness === null ? {} : { harness: parent.harness }),
     ...(parent.effort === "low" ? { effort: parent.effort } : {}),
     ...(parent.version === null ? {} : { version: parent.version }),
+    ...(parent.task === null ? {} : { task: parent.task }),
   };
 }
 

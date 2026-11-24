@@ -1,5 +1,6 @@
 export { addUsage } from "./add-usage.ts";
 export type { AgentResume, LoggedToolCall } from "./agent-resume.ts";
+export type { AgentSessionStart, AgentStartedEvent } from "./agent-started.ts";
 export {
   type AnswerChoices,
   answerChoicesOf,
@@ -58,6 +59,7 @@ export type {
   RunSummary,
   SentSignal,
 } from "./run-summary.ts";
+export type { RunTask } from "./run-task.ts";
 export type { LoggedSandboxBlock, SandboxBlock } from "./sandbox-blocked.ts";
 export { maxBlockedTargetsPerStep, sandboxBlockedView } from "./sandbox-blocked.ts";
 export type {
@@ -77,3 +79,12 @@ export { entryOf } from "./timeline-entry.ts";
 export { maxCauseNameLength, toolFailureCauseOf } from "./tool-failure-cause.ts";
 export type { ToolRefusalReason, ToolRefusedEvent } from "./tool-refused.ts";
 export { parseEventLine, upgradeEvent } from "./upgrade.ts";
+export {
+  type RunUsage,
+  runUsageOf,
+  type SessionStarts,
+  type UsageRollup,
+  type UsageTotal,
+  usageByBranch,
+  usageByTask,
+} from "./usage-rollup.ts";

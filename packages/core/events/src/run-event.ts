@@ -1,5 +1,6 @@
 import type { AgentAnswerRetriedEvent } from "./agent-answer-retried.ts";
 import type { AgentResume } from "./agent-resume.ts";
+import type { AgentStartedEvent } from "./agent-started.ts";
 import type { BridgeFailedEvent, HarnessAllowedEvent } from "./bridge-events.ts";
 import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts";
 import type { ConnectorPartOffEvent } from "./connector-part-off.ts";
@@ -31,6 +32,7 @@ import type {
   ToolVerb,
   Usage,
 } from "./run-basics.ts";
+import type { RunTask } from "./run-task.ts";
 import type { SandboxBlockedEvent } from "./sandbox-blocked.ts";
 import type { SandboxOpenedView } from "./sandbox-opened.ts";
 import type { ToolRefusedEvent } from "./tool-refused.ts";
@@ -95,10 +97,11 @@ export type RunEventBody =
        * recorded", never as the saved files.
        */
       version?: RunVersion;
+      /** The task the run worked on (requirement `events.run-started-task`); a child run has its parent's. */
+      task?: RunTask;
     }
   | { type: "state.entered"; state: string }
-  /** `parent`: the agent that delegated this one (subagents); absent for the state's own agent. */
-  | { type: "agent.started"; state: string; agent: string; prompt: string; parent?: string }
+  | AgentStartedEvent
   /**
    * `alias`: the model alias the call went to, such as `fast`; absent in
    * older logs and when the model has none (requirement

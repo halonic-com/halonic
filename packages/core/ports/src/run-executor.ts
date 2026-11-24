@@ -5,6 +5,7 @@ import type {
   RunEvent,
   RunKind,
   RunSummary,
+  RunTask,
   RunTrigger,
   RunVersion,
 } from "@halonicjs/events";
@@ -57,6 +58,13 @@ export interface StartRunRequest {
    * host gives the run that version's files; it doesn't check them against it.
    */
   version?: RunVersion;
+  /**
+   * The task the run works on, and the branch that stands for its pull
+   * request, so its tokens add up per task and per pull request. It goes on
+   * `run.started`, and the run's child runs record it too. The id is the
+   * caller's own string; nothing looks it up. Not recorded when absent.
+   */
+  task?: RunTask;
   /**
    * The id the run gets, for a start that may be repeated: a routine fire, a
    * mail or a signal. When a run with this id already exists, `start` returns
