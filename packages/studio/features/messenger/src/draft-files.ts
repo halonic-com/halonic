@@ -1,9 +1,5 @@
-import {
-  type AttachmentRefusal,
-  attachmentRefusal,
-  type MessagingId,
-  type OutgoingAttachment,
-} from "@halonicjs/ports";
+import type { MessagingId, OutgoingAttachment } from "@halonicjs/ports";
+import { type FileRefusal, fileRefusal } from "./file-limits.ts";
 
 /**
  * A file the person picked or pasted into a chat's box and hasn't sent yet.
@@ -27,7 +23,7 @@ export function isPicture(type: string): boolean {
 
 /**
  * The files waiting in each chat's box (requirement `messenger.files`). A
- * file the port's limits refuse is never added, so the person hears at once,
+ * file the Messenger's limits refuse is never added, so the person hears at once,
  * before anything is read or sent.
  */
 export class DraftFiles {
@@ -39,9 +35,9 @@ export class DraftFiles {
   }
 
   /** Adds a file to a chat's box, or says why the message can't take it. */
-  add(conversation: MessagingId, file: DraftFile): AttachmentRefusal | undefined {
+  add(conversation: MessagingId, file: DraftFile): FileRefusal | undefined {
     const files = [...this.of(conversation), file];
-    const refusal = attachmentRefusal(files);
+    const refusal = fileRefusal(files);
     if (refusal !== undefined) return refusal;
     this.files.set(conversation, files);
     return undefined;

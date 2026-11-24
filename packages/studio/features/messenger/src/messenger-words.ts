@@ -1,5 +1,10 @@
-import type { AgentActivity, AttachmentRefusal, MessagingRefusal } from "@halonicjs/ports";
+import type { AgentActivity, MessagingRefusal } from "@halonicjs/ports";
+import type { FileRefusal } from "./file-limits.ts";
 import type { MessengerTab } from "./messenger.ts";
+
+/** Why the engine refused a message's files; it sends none of the message then. Approved on HAL-17459. */
+const filesNotSent =
+  "These files can't be sent. Up to 5 files of 10 MB each can: PNG, JPEG, GIF or WebP pictures, PDFs and text files.";
 
 /**
  * The Messenger's words. "Messenger", "All" and "Waiting for me" are the
@@ -30,6 +35,8 @@ export const messengerWords = {
     "signed-out": (source: string) =>
       `You're signed out of ${source}. Sign in again to send; your message stays here.`,
     "not-found": () => "This chat is gone. Your message stays here and isn't sent.",
+    "too-large": () => filesNotSent,
+    "unsupported-type": () => filesNotSent,
   } satisfies Record<MessagingRefusal, (source: string) => string>,
   you: "You",
   /** An agent's open card in its chat (HAL-17421 render 4e, approved by the board, 24 Nov). */
@@ -45,15 +52,14 @@ export const messengerWords = {
   files: {
     attach: "Attach a file",
     remove: (name: string) => `Remove ${name}`,
-    /** Why a file wasn't added to the box; the limits are the port's (`sendableAttachments`). */
+    /** Why a file wasn't added to the box; the limits are `messengerFileLimits`. */
     refused: {
       "too-large": (name: string) => `${name} is over 10 MB, so it wasn't added.`,
       "too-many": () => "A message takes at most 5 files.",
       "unsupported-type": (name: string) =>
         `${name} can't be sent. PNG, JPEG, GIF and WebP pictures, PDFs and text files can.`,
-    } satisfies Record<AttachmentRefusal, (name: string) => string>,
-    notSent:
-      "These files can't be sent. Up to 5 files of 10 MB each can: PNG, JPEG, GIF or WebP pictures, PDFs and text files.",
+    } satisfies Record<FileRefusal, (name: string) => string>,
+    notSent: filesNotSent,
     pastedName: "Screenshot.png",
     show: (name: string) => `Show ${name}`,
     notShown: "This picture can't be shown.",
@@ -64,5 +70,7 @@ export const messengerWords = {
     "signed-out": (source: string) =>
       `You're signed out of ${source}, so nothing was sent. Sign in again first.`,
     "not-found": () => "This is gone, so nothing was sent.",
+    "too-large": () => filesNotSent,
+    "unsupported-type": () => filesNotSent,
   } satisfies Record<MessagingRefusal, (source: string) => string>,
 } as const;

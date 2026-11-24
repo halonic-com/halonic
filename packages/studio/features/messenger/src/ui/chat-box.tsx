@@ -1,4 +1,4 @@
-import type { AttachmentRefusal, MessagingRefusal } from "@halonicjs/ports";
+import type { MessagingRefusal } from "@halonicjs/ports";
 import { Button, ChatBoxLine, ChatComposer } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import type { DraftFile } from "../draft-files.ts";
@@ -98,8 +98,7 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
     async send() {
       const outcome = await messenger.sendDraft(id, row);
       if (outcome.outcome === "kept") {
-        if (isFileRefusal(outcome.reason)) setNotice(messengerWords.files.notSent);
-        else if (outcome.reason !== "blank") setKept(outcome.reason);
+        if (outcome.reason !== "blank") setKept(outcome.reason);
         return;
       }
       setKept(undefined);
@@ -114,8 +113,7 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
       if (outcome.outcome === "sent") {
         setNotice(undefined);
         await onSent();
-      } else if (isFileRefusal(outcome.reason)) setNotice(messengerWords.files.notSent);
-      else setNotice(messengerWords.notSent[outcome.reason](source));
+      } else setNotice(messengerWords.notSent[outcome.reason](source));
     },
   };
 }
@@ -123,11 +121,4 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
 /** Why a message would stay in the box, or nothing while the source takes messages. */
 function keptLine(source: string, refusal: MessagingRefusal | undefined): string | undefined {
   return refusal === undefined ? undefined : messengerWords.kept[refusal](source);
-}
-
-const fileRefusals: readonly string[] = ["too-large", "too-many", "unsupported-type"];
-
-/** Whether a send was refused for its files, not for its source. */
-function isFileRefusal(reason: string): reason is AttachmentRefusal {
-  return fileRefusals.includes(reason);
 }

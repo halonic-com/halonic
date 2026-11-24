@@ -2,7 +2,6 @@ import type {
   AgentActivity,
   AgentMessaging,
   AttachmentRead,
-  AttachmentRefusal,
   Conversation,
   Message,
   MessagingAgent,
@@ -36,7 +35,7 @@ export type DraftOutcome =
   | { readonly outcome: "sent"; readonly message: Message }
   | {
       readonly outcome: "kept";
-      readonly reason: MessagingRefusal | AttachmentRefusal | "blank";
+      readonly reason: MessagingRefusal | "blank";
     };
 
 /**

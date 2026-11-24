@@ -1,7 +1,7 @@
-import { sendableAttachments } from "@halonicjs/ports";
 import { Button } from "@halonicjs/studio-kit";
 import { useRef } from "react";
 import type { DraftFile } from "../draft-files.ts";
+import { messengerFileLimits } from "../file-limits.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { sizeOf } from "./file-size.ts";
 
@@ -29,7 +29,7 @@ export function DraftFilesBar({ files, onAdd, onRemove }: DraftFilesBarProps) {
         type="file"
         multiple
         hidden
-        accept={sendableAttachments.types.join(",")}
+        accept={messengerFileLimits.types.join(",")}
         aria-label={messengerWords.files.attach}
         onChange={(event) => {
           onAdd([...(event.target.files ?? [])]);
