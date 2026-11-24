@@ -109,6 +109,12 @@ export interface OpenFacts {
     readonly rebaseOf?: string;
   }[];
   /**
+   * Approving GitHub reviews still standing, by accounts other than the
+   * agents' shared one, oldest first, each with the head it reviewed
+   * (`githubApprovals`). Added like `baseChangedSincePush`.
+   */
+  readonly githubApprovals?: readonly { readonly by: string; readonly head: string }[];
+  /**
    * Its base changed to the default branch after it was last reopened or
    * pushed to, so GitHub keeps it blocked until it is reopened or pushed to
    * again. Added after version 1 shipped: a snapshot saved before it has none.

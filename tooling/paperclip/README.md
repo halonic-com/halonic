@@ -37,6 +37,7 @@ has a run going, it does nothing and logs why.
 | It conflicts with its base branch and isn't in the merge queue | Comments and wakes the author |
 | Its base changed to the default branch after it was last reopened or pushed to (a stacked pull request whose lower one merged), and it is neither a draft nor in the merge queue. GitHub never runs a ruleset's required workflow on a base change, so it stays blocked with green checks | Comments and wakes the author to close and reopen it or push |
 | A review comment newer than the watcher's and the author's last comment on the task: a GitHub review that requests changes, an inline comment on the head, or a review or conversation comment with a `[blocker]`, `[major]` or `[minor]` finding or a "changes requested" verdict ("No changes requested" and approvals don't count), by the repository's owner, an organization member or a collaborator | Comments and wakes the author |
+| On `cloud` only: an approving GitHub review on the head, by an organization member or collaborator other than the agents' shared account, and the pull request is out of draft. `cloud`'s `main` rule asks for such a review (the board's, so far), and nobody queues there (HAL-17730) | Comments and wakes the author to merge it, once per head; the review also counts as the approval, so the task isn't handed to a reviewer again |
 
 Any open pull request keeps the task open, a stacked one included; one
 closed without merging is ignored.
@@ -133,7 +134,10 @@ webhooks, files or processes.
   states, names and times, no comment text.
 - **Settings per company:** `githubToken` (the secret
   `PR_WATCHER_GITHUB_TOKEN`, a read-only fine-grained token), `repos`
-  (default `halonic-com/halonic`) and `dryRun`. **Dry run is on unless it is
+  (default `halonic-com/halonic` and `halonic-com/cloud`; tools without a
+  `repo` answer for the first) and `dryRun`. A repository after the first
+  that the token doesn't reach is left out of the pass with a logged error,
+  so the others are still watched. **Dry run is on unless it is
   set to `false`**: the job then only logs what it would do. A company
   without a token is skipped, and so is one with no saved settings: a
   scheduled job runs outside any company, so the host lets it read only the
@@ -689,7 +693,7 @@ version they don't know. Each pass replaces the whole snapshot.
 | `repos[].repo`, `.defaultBranch` | `owner/name`, its default branch |
 | `repos[].queue[]` | `number`, `position`, `state`, `enqueuedAt`, `enqueuedBy`, `groupHead`, `estimatedSeconds`, `solo`; added later, so possibly absent: `groupCiOk` (null before the group forms), `jobsWaiting`, `waitingSince` (when the longest-waiting job was queued) |
 | `repos[].pulls[]` | `number`, `url`, `state` (`open`, `merged`, `closed`), `branch`, `headRepo` (a fork when it isn't `repo`), `base`, `head`, `updatedAt`, `mergedAt`, `mergeCommit`; added later, so possibly absent: `title` (cut to 200 characters) |
-| `repos[].pulls[].open` | null when closed; else `draft`, `mergeable` (`yes`, `no`, `unknown`), `ciOk`, `draftCiOk`, `inQueue`, `labels[]` (`name`, `addedBy` who added it last, `addedAt`), `finding` (`id`, `at`), `approvals[]` (`by`, `head`); added later, so possibly absent: `baseChangedSincePush`, `author` (login, null when the account is gone), `failingChecks[]` and `pendingChecks[]` (check names on the head, by their newest run, of the first 100), `reviewCounts` (reviewers' findings per severity tag, counts only) |
+| `repos[].pulls[].open` | null when closed; else `draft`, `mergeable` (`yes`, `no`, `unknown`), `ciOk`, `draftCiOk`, `inQueue`, `labels[]` (`name`, `addedBy` who added it last, `addedAt`), `finding` (`id`, `at`), `approvals[]` (`by`, `head`); added later, so possibly absent: `githubApprovals[]` (`by` login, `head`: standing approving GitHub reviews by accounts other than the agents' shared one), `baseChangedSincePush`, `author` (login, null when the account is gone), `failingChecks[]` and `pendingChecks[]` (check names on the head, by their newest run, of the first 100), `reviewCounts` (reviewers' findings per severity tag, counts only) |
 
 ### The board's GitHub routes
 

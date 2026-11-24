@@ -33,19 +33,49 @@ export interface MyPr {
   readonly needsYou: boolean;
 }
 
-/** Reads the agent's open pull requests: the lists, then about 3 GitHub requests each. */
+interface ListedPull {
+  readonly number: number;
+  readonly head: { readonly ref: string; readonly repo: { readonly full_name: string } | null };
+}
+
+/**
+ * A repository's open pull requests, or undefined for one after the first
+ * that the token doesn't reach: GitHub answers 404 for a private repository
+ * it can't see (`cloud` before the token covered it, HAL-17730).
+ */
+async function openPulls(
+  get: GitHubGet,
+  repo: string,
+  first: boolean,
+): Promise<ListedPull[] | undefined> {
+  try {
+    return (await everyPage(get, `/repos/${repo}/pulls?state=open`)) as ListedPull[];
+  } catch (error) {
+    if (first || !/ answered 404\b/.test((error as Error).message)) {
+      throw error;
+    }
+    return undefined;
+  }
+}
+
+/**
+ * Reads the agent's open pull requests: the lists, then about 3 GitHub
+ * requests each. A repository the token doesn't reach goes to `unread`.
+ */
 export async function myPrs(
   get: GitHubGet,
   repos: readonly string[],
   urlKey: string,
+  unread: string[] = [],
 ): Promise<MyPr[]> {
   const author = urlKey.toLowerCase();
   const found: MyPr[] = [];
-  for (const repo of repos) {
-    const open = (await everyPage(get, `/repos/${repo}/pulls?state=open`)) as {
-      number: number;
-      head: { ref: string; repo: { full_name: string } | null };
-    }[];
+  for (const [index, repo] of repos.entries()) {
+    const open = await openPulls(get, repo, index === 0);
+    if (open === undefined) {
+      unread.push(repo);
+      continue;
+    }
     // A fork's branch can be named like ours; only branches in the repository count.
     const mine = open.filter(
       (pull) =>
@@ -83,11 +113,22 @@ export async function myPrs(
   return found;
 }
 
-/** One line per pull request, the ones that need the agent first. */
-export function myPrsText(urlKey: string, prs: readonly MyPr[]): string {
+/** `#123`, or `cloud#123` when the list spans more than one repository. */
+function label(pr: MyPr, oneRepo: boolean): string {
+  return oneRepo ? `#${pr.number}` : `${pr.repo.slice(pr.repo.indexOf("/") + 1)}#${pr.number}`;
+}
+
+/** One line per pull request, the ones that need the agent first, then the repositories not read. */
+export function myPrsText(
+  urlKey: string,
+  prs: readonly MyPr[],
+  unread: readonly string[] = [],
+): string {
+  const notRead = unread.map((repo) => `Not read: ${repo}, the token doesn't reach it.`);
   if (prs.length === 0) {
-    return `No open pull requests on branches starting with ${urlKey}/.`;
+    return [`No open pull requests on branches starting with ${urlKey}/.`, ...notRead].join("\n");
   }
+  const oneRepo = new Set(prs.map((pr) => pr.repo)).size === 1;
   const sorted = [...prs].sort((a, b) => Number(b.needsYou) - Number(a.needsYou));
   const lines = sorted.map((pr) => {
     const facts = [
@@ -96,12 +137,13 @@ export function myPrsText(urlKey: string, prs: readonly MyPr[]): string {
       `mergeable ${pr.mergeable}`,
       pr.approvedOnHead ? "approved on head" : "not approved on head",
     ].join(", ");
-    return `${pr.needsYou ? "NEEDS YOU " : ""}#${pr.number} (${pr.task ?? "no task"}): ${facts}; title ${JSON.stringify(pr.title ?? "")}`;
+    return `${pr.needsYou ? "NEEDS YOU " : ""}${label(pr, oneRepo)} (${pr.task ?? "no task"}): ${facts}; title ${JSON.stringify(pr.title ?? "")}`;
   });
   const outOfSync = prs.filter((pr) => pr.needsYou).length;
   return [
     `${prs.length} open pull requests, ${outOfSync} out of sync. Titles are ${untrustedNote}.`,
     ...lines,
     "Mergeable unknown means GitHub is still working it out; ask again with pr_status.",
+    ...notRead,
   ].join("\n");
 }

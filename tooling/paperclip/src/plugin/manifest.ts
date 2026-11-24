@@ -137,7 +137,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         title: "Repositories",
         description: "The repositories whose pull requests it watches, as owner/name.",
         items: { type: "string", pattern: "^[\\w.-]+/[\\w.-]+$" },
-        default: ["halonic-com/halonic"],
+        default: ["halonic-com/halonic", "halonic-com/cloud"],
       },
       dryRun: {
         type: "boolean",

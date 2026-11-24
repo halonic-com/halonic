@@ -8,6 +8,7 @@ import {
   newestFinding,
   type Review,
 } from "../pr-watcher/github.ts";
+import { githubApprovals } from "./github-approvals.ts";
 import type { GitHubQuery } from "./graphql.ts";
 import { closedPullsQuery, commitBatchSize, commitChecksQuery, openPullsQuery } from "./queries.ts";
 import { capped, severityCounts } from "./severity.ts";
@@ -104,6 +105,8 @@ interface OpenNode extends PullNode {
     readonly nodes: readonly (Comment & {
       readonly state: string;
       readonly submittedAt: string | null;
+      /** Null when the account is gone. Absent in recordings made before the field. */
+      readonly author?: { readonly login: string } | null;
       readonly comments: { readonly nodes: readonly Comment[] };
     })[];
   };
@@ -270,6 +273,7 @@ async function openFacts(
         node.headRefOid,
       ) ?? null,
     approvals: signedApprovals(conversation),
+    githubApprovals: githubApprovals(reviews),
     baseChangedSincePush: baseChangedSincePush(node, defaultBranch),
     ...(node.author === undefined ? {} : { author: node.author?.login ?? null }),
     ...checksOf(rollup),
@@ -377,17 +381,35 @@ async function readRepo(
   return { repo, defaultBranch, queue, pulls };
 }
 
-/** One snapshot of every repository. A failed call fails the whole snapshot: no partial views. */
+/** GitHub's answer for a repository the token doesn't reach: it says the repository doesn't exist. */
+const unseenRepository = /Could not resolve to a Repository/;
+
+/**
+ * One snapshot of every repository. A failed call fails the whole snapshot:
+ * no partial views. The one exception is a repository after the first that
+ * the token doesn't reach (`cloud` was added before the token covered it,
+ * HAL-17730): it is left out and reported to `unread`, so the others are
+ * still watched.
+ */
 export async function takeSnapshot(options: {
   query: GitHubQuery;
   repos: readonly string[];
   now: Date;
   fallback: CheckFallback;
+  unread?: (repo: string, reason: string) => void;
 }): Promise<Snapshot> {
   const since = options.now.getTime() - closedWindowDays * 24 * 60 * 60 * 1000;
   const repos: SnapshotRepo[] = [];
-  for (const repo of options.repos) {
-    repos.push(await readRepo(options.query, repo, since, options.fallback));
+  for (const [index, repo] of options.repos.entries()) {
+    try {
+      repos.push(await readRepo(options.query, repo, since, options.fallback));
+    } catch (error) {
+      const reason = (error as Error).message;
+      if (index === 0 || !unseenRepository.test(reason)) {
+        throw error;
+      }
+      options.unread?.(repo, reason);
+    }
   }
   return {
     version: snapshotVersion,
