@@ -150,12 +150,23 @@ pub(crate) fn check_refused_keys(entries: &[ConfigEntry]) -> Result<(), GitError
 /// - `extensions.partialClone` and `remote.<name>.promisor`: with them git
 ///   fetches a missing object from that remote while it only reads, before
 ///   anyone chose to reach it. git before 2.44 ignores `GIT_NO_LAZY_FETCH`.
+/// - `credential.<name>` and `credential.<url>.<name>`, but for the names in
+///   [`configures_credential_helper`]: the user's own credential helper,
+///   such as Git Credential Manager, reads them from every config file, the
+///   repository's included. They make it write the token to a file, run a
+///   sign-in program or send a token refresh to another server. A per-URL
+///   key beats the runner's own value, so it can't be overridden.
+/// - Every `trace2.*` key: git reads them only from the user's own config,
+///   but a credential helper reads them from the repository's too, and
+///   writes its trace where they say.
 fn is_refused_key(key: &str) -> bool {
     let lower = key.to_ascii_lowercase();
     if lower.starts_with("hook.")
+        || lower.starts_with("trace2.")
         || lower == "extensions.partialclone"
         || weakens_certificate_check(&lower)
         || names_lfs_program(&lower)
+        || configures_credential_helper(&lower)
     {
         return true;
     }
@@ -182,6 +193,18 @@ fn weakens_certificate_check(key: &str) -> bool {
     }
     let name = key.rsplit('.').next().unwrap_or_default();
     matches!(name, "sslverify" | "sslcainfo" | "sslcapath")
+}
+
+/// `credential.<name>` or `credential.<url>.<name>` for any name but
+/// `helper`, which is neutralised, and `username` and `useHttpPath`, which
+/// only pick which stored credential answers for the remote's host; `key` in
+/// lower case.
+fn configures_credential_helper(key: &str) -> bool {
+    if !key.starts_with("credential.") {
+        return false;
+    }
+    let name = key.rsplit('.').next().unwrap_or_default();
+    !matches!(name, "helper" | "username" | "usehttppath")
 }
 
 /// A git-lfs key that names a program; `key` in lower case.
