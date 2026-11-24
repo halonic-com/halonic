@@ -18,6 +18,7 @@
     "@halonicjs/adapter-password-pbkdf2": "workspace:*",
     "@halonicjs/adapter-token-store": "workspace:*",
     "@halonicjs/adapter-workspace-models": "workspace:*",
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/engine": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/host-server": "workspace:*",
