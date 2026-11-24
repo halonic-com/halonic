@@ -2314,8 +2314,8 @@ jobs:
         # Bump it by pull request, like the srt pin. No secret is passed.
         env:
           CLAUDE_CODE_VERSION: "2.1.325"
-        run: |
-          npm install --global "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" # zizmor: ignore[adhoc-packages]
+        run: | # zizmor: ignore[adhoc-packages]
+          npm install --global "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
           claude --version | grep -F "$CLAUDE_CODE_VERSION"
       - name: CLI runs through the fence
         # A run starts a local integration in the built runner and the real
