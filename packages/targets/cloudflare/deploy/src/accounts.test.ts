@@ -95,12 +95,31 @@ verifies("deploy.target-accounts", () => {
     expect(await failureOf(inactive.make().accounts())).toMatchObject({
       code: "token-inactive",
       kind: "unauthenticated",
+      message:
+        "Cloudflare doesn't accept the saved token any more. It may have expired or been removed. Nothing changed on Cloudflare.",
+      fix: "Make a new one and save it: halonic deploy login cloudflare",
     });
 
     const unpermitted = setup({ listAccountsFails: refused });
-    const failure = await failureOf(unpermitted.make().accounts());
-    expect(failure).toMatchObject({ code: "missing-permission", kind: "denied" });
-    expect(failure.fix).toContain("Account Settings Read");
+    expect(await failureOf(unpermitted.make().accounts())).toMatchObject({
+      code: "missing-permission",
+      kind: "denied",
+      message:
+        "The token can't list the Cloudflare accounts it reaches. Nothing changed on Cloudflare.",
+      fix: "Add Account · Account Settings · Read to the token in the Cloudflare dashboard, then run again.",
+    });
+  });
+
+  it("names the variable, not login, when the inactive token came from the environment", async () => {
+    const inactive = setup({ listAccountsFails: refused, userToken: { active: false } });
+    expect(
+      await failureOf(inactive.make({ environmentToken: "ci-token" }).accounts()),
+    ).toMatchObject({
+      code: "token-inactive",
+      message:
+        "Cloudflare doesn't accept the token in HALONIC_CLOUDFLARE_API_TOKEN. It may have expired or been removed. Nothing changed on Cloudflare.",
+      fix: "Make a new one and put it in HALONIC_CLOUDFLARE_API_TOKEN.",
+    });
   });
 
   it("keeps the list's own failure when Cloudflare is down, or the token can't be verified", async () => {

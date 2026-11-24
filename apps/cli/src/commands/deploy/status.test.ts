@@ -219,6 +219,16 @@ verifies("cli.commands.deploy.status", () => {
     ]);
   });
 
+  it("says a name that isn't in deployments.yaml isn't there, not that a name is missing", async () => {
+    const { code, io } = await deploy(setupWith(live), ["status", "nope"]);
+
+    expect(code).toBe(exitCode.notFound);
+    expect(io.stderr).toEqual([
+      "✕ Couldn't show nope's status: Acme has no deployment named nope.",
+      "  Check the name in deployments.yaml.",
+    ]);
+  });
+
   it("needs the deployment's name", async () => {
     const { code, io } = await deploy(setupWith(live), ["status"]);
 
