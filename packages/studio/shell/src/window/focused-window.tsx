@@ -29,11 +29,11 @@ import { appName } from "./window-title.ts";
  * The approved frame of a focused app (HAL-17358): slate-50 behind a white panel in light, slate-950
  * behind a slate-900 panel in dark. Exported for a view that draws its own panel on the frame.
  */
-export const focusedFrameClass = "bg-[light-dark(#f8fafc,#020617)]";
+export const focusedFrameClass = "bg-app-frame";
 
 /** The focused app's one content panel on {@link focusedFrameClass}. */
 export const focusedPanelClass =
-  "overflow-hidden rounded-lg border border-border bg-[light-dark(#ffffff,#0f172a)]";
+  "overflow-hidden rounded-lg border border-border bg-app-panel";
 
 /** What a focused app's window says while Halonic has no workspace to open in it. */
 export const focusedWindowWords = {
