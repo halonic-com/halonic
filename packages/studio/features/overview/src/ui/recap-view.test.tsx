@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 import { memoryRecapMark, RecapStore } from "../recap-store.ts";
@@ -13,12 +13,13 @@ import { RecapView, waitingWords } from "./recap-view.tsx";
 const now = new Date("2026-11-24T10:00:00.000Z");
 
 /** Draws the recap of `messaging` and gives its text and container. */
-async function drawRecap(messaging: FakeAgentMessaging) {
+async function drawRecap(messaging: FakeAgentMessaging, options: { strict?: boolean } = {}) {
   const store = new RecapStore(messaging, memoryRecapMark("2026-11-23T10:00:00.000Z"), () => now);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  await act(async () => root.render(<RecapView store={store} />));
+  const view = <RecapView store={store} />;
+  await act(async () => root.render(options.strict === true ? <StrictMode>{view}</StrictMode> : view));
   const text = container.textContent ?? "";
   const hasImage = container.querySelector("img") !== null;
   act(() => root.unmount());
@@ -44,6 +45,17 @@ verifies("overview.daily-recap", () => {
     expect(text).toContain("Newly blocked");
     expect(text).toContain("ACME-2 Print the flyers");
     expect(hasImage).toBe(false);
+  });
+
+  it("keeps what changed when StrictMode opens the recap twice", async () => {
+    const messaging = new FakeAgentMessaging({ now: () => now });
+    const acme = messaging.addSource({ label: "Paperclip · Acme" });
+    messaging.addWork(acme.id, { label: "ACME-2", title: "Print the flyers", state: "blocked" });
+
+    const { text } = await drawRecap(messaging, { strict: true });
+
+    expect(text).toContain("ACME-2 Print the flyers");
+    expect(text).not.toContain("Nothing changed");
   });
 
   it("says nothing changed when the recap is empty", async () => {

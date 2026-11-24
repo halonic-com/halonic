@@ -36,7 +36,10 @@ export function storageRecapMark(storage: Storage): RecapMark {
 
 /**
  * Builds the recap when the person opens it, then marks it opened, so the
- * next recap covers only what changed after this one.
+ * next Studio session's recap covers only what changed after this one.
+ * The store reads the mark once, at its first opening: opening it again
+ * (a remount, React's StrictMode, coming back to the screen) rebuilds the
+ * recap from that same mark, so the person never loses what changed.
  */
 export class RecapStore {
   private state: RecapState = { kind: "loading" };
@@ -45,6 +48,8 @@ export class RecapStore {
   private readonly messaging: AgentMessaging;
   private readonly mark: RecapMark;
   private readonly now: () => Date;
+  /** The mark this store's recaps count from, read at the first opening. */
+  private since: { readonly openedAt: string | undefined } | undefined;
 
   constructor(messaging: AgentMessaging, mark: RecapMark, now: () => Date = () => new Date()) {
     this.messaging = messaging;
@@ -63,13 +68,15 @@ export class RecapStore {
 
   /** Reads inbox items and work, builds the recap since the last one, and marks this one opened. */
   async open(): Promise<void> {
+    this.since ??= { openedAt: this.mark.read() };
+    const since = this.since.openedAt;
     try {
       const [items, work] = await Promise.all([
         this.messaging.listInboxItems(),
         this.messaging.listWork(),
       ]);
       const now = this.now();
-      const recap = buildRecap({ items, work, since: this.mark.read(), now });
+      const recap = buildRecap({ items, work, since, now });
       this.mark.write(now.toISOString());
       this.set({ kind: "ready", recap });
     } catch (error) {

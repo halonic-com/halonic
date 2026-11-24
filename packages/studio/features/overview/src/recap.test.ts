@@ -74,16 +74,26 @@ verifies("overview.daily-recap", () => {
     expect(recap).toMatchObject({ answered: 0, open: [], done: [], newlyBlocked: [], empty: true });
   });
 
-  it("covers only what changed after the recap opened last", async () => {
+  it("covers only what changed after the recap opened last, in the next session", async () => {
+    const messaging = acmeSinceLastRecap();
     const mark = memoryRecapMark(lastRecap);
-    const store = new RecapStore(acmeSinceLastRecap(), mark, () => now);
+
+    await openRecap(new RecapStore(messaging, mark, () => now));
+    const nextSession = await openRecap(new RecapStore(messaging, mark, () => now));
+
+    expect(mark.read()).toBe(now.toISOString());
+    expect(nextSession.answered).toBe(0);
+    expect(nextSession.newlyBlocked).toEqual([]);
+  });
+
+  it("keeps what changed when the same recap opens again", async () => {
+    const store = new RecapStore(acmeSinceLastRecap(), memoryRecapMark(lastRecap), () => now);
 
     await openRecap(store);
     const again = await openRecap(store);
 
-    expect(mark.read()).toBe(now.toISOString());
-    expect(again.answered).toBe(0);
-    expect(again.newlyBlocked).toEqual([]);
+    expect(again.answered).toBe(1);
+    expect(again.newlyBlocked.map((work) => work.label)).toEqual(["ACME-2"]);
   });
 
   it("keeps the mark when the read fails, so the next recap misses nothing", async () => {

@@ -23,6 +23,7 @@ export interface Recap {
   /** Open items, the one waiting longest first. */
   readonly open: readonly RecapOpenItem[];
   readonly done: readonly RecapWork[];
+  /** Work that is blocked and changed since, whether or not it was blocked before. */
   readonly newlyBlocked: readonly RecapWork[];
   /** True when nothing was answered, finished or blocked since, and nothing is open. */
   readonly empty: boolean;
@@ -39,8 +40,8 @@ export interface RecapInput {
 /**
  * Builds the daily recap (requirement `overview.daily-recap`) from
  * `AgentMessaging` reads only: items answered, items still open with how
- * long each has waited, work done and work newly blocked, each since the
- * last recap the person opened. With no earlier recap, everything counts.
+ * long each has waited, and work that is done or blocked and changed, each
+ * since the last recap the person opened. With no earlier recap, everything counts.
  */
 export function buildRecap(input: RecapInput): Recap {
   const after = (at: string) =>
