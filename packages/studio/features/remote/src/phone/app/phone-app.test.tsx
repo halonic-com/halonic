@@ -121,6 +121,7 @@ verifies("remote.phone-app", () => {
     const tunnel = withLaptop();
     await mount(tunnel);
     await act(async () => tunnel.push(laptop, { state: "removed" }));
-    expect(heading()).toBe("Removed from Tim's laptop");
+    expect(document.querySelector("h2")?.textContent).toBe("Removed from Tim's laptop");
+    expect(document.querySelector("h1")?.textContent).toBe("Tim's laptop");
   });
 });

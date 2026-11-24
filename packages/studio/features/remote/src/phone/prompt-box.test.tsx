@@ -140,7 +140,9 @@ verifies("remote.phone-prompt-box", () => {
         onAnswer={onAnswer}
       />,
     );
-    const approve = [...agents.querySelectorAll("button")].find((b) => b.textContent === "Approve");
+    const approve = [...agents.querySelectorAll("button")].find(
+      (b) => b.textContent === "Approve Sorter",
+    );
     await act(async () => approve?.click());
     expect(onAnswer).toHaveBeenCalledOnce();
     expect(agents.querySelector('[role="status"]')?.textContent).toBe(
@@ -190,7 +192,9 @@ verifies("remote.phone-prompt-box", () => {
     });
     const onAnswer = vi.fn(async (): Promise<RemoteSendOutcome> => ({ kind: "cut-off" }));
     const screen = render(<AgentsList view={view} onOpen={vi.fn()} onAnswer={onAnswer} />);
-    const approve = [...screen.querySelectorAll("button")].find((b) => b.textContent === "Approve");
+    const approve = [...screen.querySelectorAll("button")].find(
+      (b) => b.textContent === "Approve Sorter",
+    );
     await act(async () => approve?.click());
     expect(screen.querySelector('[role="status"]')?.textContent).toBe(
       sendOutcomeLine("answer", { kind: "cut-off" }),

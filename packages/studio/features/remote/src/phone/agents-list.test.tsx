@@ -14,7 +14,7 @@ import { render, unmountAll } from "../test-support/render.tsx";
 import { agentLine, agentRowLine } from "./agent-line.ts";
 import { AgentsList } from "./agents-list.tsx";
 import { type HostText, hostShown } from "./host-text.ts";
-import type { RemoteEvent, RemoteView } from "./remote-view.ts";
+import type { RemoteEvent, RemoteSendOutcome, RemoteView } from "./remote-view.ts";
 import { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";
 
 afterEach(unmountAll);
@@ -104,7 +104,7 @@ verifies("remote.phone-agents", () => {
 
   it("keeps Approve and Reject off with the reason under them, and sends nothing", () => {
     const { button, onAnswer } = show(staleView(live, "reconnecting"));
-    const approve = button("Approve");
+    const approve = button("Approve Sorter");
     expect(approve?.getAttribute("aria-disabled")).toBe("true");
     const reason = document.getElementById(approve?.getAttribute("aria-describedby") ?? "");
     expect(reason?.textContent).toBe("You can answer once your phone reconnects.");
@@ -124,8 +124,8 @@ verifies("remote.phone-agents", () => {
       staleView({ ...live, openApprovals: [risky] }, "unreachable"),
     ]) {
       const { rows, button } = show(view);
-      expect(button("Approve")).toBeUndefined();
-      expect(button("Reject")).toBeUndefined();
+      expect(button("Approve Sorter")).toBeUndefined();
+      expect(button("Reject Sorter")).toBeUndefined();
       expect(rows[1]?.textContent).toContain("Answer this on your computer.");
       expect(rows[1]?.textContent).not.toContain("once your phone reconnects");
       unmountAll();
@@ -142,18 +142,38 @@ verifies("remote.phone-agents", () => {
 
   it("sends an answer while it can, and not again while it is on its way", () => {
     const { button, onAnswer } = show(live);
-    act(() => button("Reject")?.click());
+    act(() => button("Reject Sorter")?.click());
     expect(onAnswer).toHaveBeenCalledWith("sorter", "send-replies", "deny");
 
     unmountAll();
     const sent = remoteApproval({ ...sorterAsks, canAnswer: false, sent: "deny" });
     const again = show({ ...live, openApprovals: [sent] });
-    expect(again.button("Approve")).toBeUndefined();
+    expect(again.button("Approve Sorter")).toBeUndefined();
     // The one answer button left, under Sorter's row: busy, and sends nothing.
     const busy = again.rows[1]?.querySelector<HTMLButtonElement>(":scope > div button");
     expect(busy?.textContent).toContain("Reject");
     act(() => busy?.click());
     expect(again.onAnswer).not.toHaveBeenCalled();
+  });
+
+  it("names Approve and Reject after the agent they answer", () => {
+    const { rows } = show(live);
+    const names = [...(rows[1]?.querySelectorAll(":scope > div button") ?? [])].map(
+      (each) => each.textContent,
+    );
+    expect(names).toEqual(["Approve Sorter", "Reject Sorter"]);
+  });
+
+  it("says what was answered and keeps focus on the agent's row once the computer takes it", async () => {
+    const onAnswer = vi.fn(async (): Promise<RemoteSendOutcome> => ({ kind: "done" }));
+    const screen = render(<AgentsList view={live} onOpen={vi.fn()} onAnswer={onAnswer} />);
+    const reject = [...screen.querySelectorAll("button")].find(
+      (each) => each.textContent === "Reject Sorter",
+    );
+    await act(async () => reject?.click());
+    expect(document.activeElement?.getAttribute("data-session")).toBe("sorter");
+    const said = [...screen.querySelectorAll('[role="status"]')].map((each) => each.textContent);
+    expect(said).toContain("Rejected: Sorter.");
   });
 
   it("shows nothing without agents", () => {
