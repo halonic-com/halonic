@@ -1,0 +1,54 @@
+import type { TailscaleReply, TailscaleRunner } from "./tailscale-runner.ts";
+
+/** The `tailscale status --json` of a node that is signed in and online. */
+export const onlineStatus = JSON.stringify({
+  BackendState: "Running",
+  Self: { DNSName: "studio.tail1234.ts.net.", Online: true },
+});
+
+/** The node's tailnet name in {@link onlineStatus}. */
+export const nodeName = "studio.tail1234.ts.net";
+
+/** Answers for each command, by its first words; a command with none answers like a healthy node. */
+export type Script = Partial<
+  Record<"status" | "serve-status" | "serve-add" | "serve-off", TailscaleReply>
+>;
+
+const done = (stdout = ""): TailscaleReply => ({ kind: "done", code: 0, stdout, stderr: "" });
+
+/**
+ * A {@link TailscaleRunner} that answers from a script and records every
+ * argument list it was given, so a test can check what the provider ran.
+ */
+export class ScriptedRunner implements TailscaleRunner {
+  readonly calls: string[][] = [];
+  script: Script;
+  /** When set, `serve --bg` waits for this before it answers. */
+  holdAdd: Promise<void> | undefined;
+
+  constructor(script: Script = {}) {
+    this.script = script;
+  }
+
+  async run(args: readonly string[]): Promise<TailscaleReply> {
+    this.calls.push([...args]);
+    const kind = kindOf(args);
+    if (kind === "serve-add" && this.holdAdd !== undefined) await this.holdAdd;
+    return this.script[kind] ?? defaults[kind];
+  }
+}
+
+const defaults: Record<keyof Script, TailscaleReply> = {
+  status: done(onlineStatus),
+  "serve-status": done("{}"),
+  "serve-add": done(),
+  "serve-off": done(),
+};
+
+function kindOf(args: readonly string[]): keyof Script {
+  if (args[0] === "status") return "status";
+  if (args[1] === "status") return "serve-status";
+  if (args.includes("off")) return "serve-off";
+  if (args.includes("--bg")) return "serve-add";
+  throw new Error(`the scripted runner has no answer for: ${args.join(" ")}`);
+}
