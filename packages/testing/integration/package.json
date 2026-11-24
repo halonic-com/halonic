@@ -15,7 +15,8 @@
     "@halonicjs/adapter-integration-kit": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
-    "@halonicjs/schema-kit": "workspace:*"
+    "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/std": "workspace:*"
   },
   "peerDependencies": {
     "vitest": "catalog:"

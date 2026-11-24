@@ -1,5 +1,8 @@
+import { setImmediate } from "node:timers";
 import type { RequestLogEntry } from "@halonicjs/adapter-integration-kit";
 import type { Integration, TokenStore } from "@halonicjs/ports";
+import { onTestFinished, TestRunner } from "vitest";
+import { fail } from "./failure.ts";
 import { fakeWait } from "./fake-wait.ts";
 import { loadSubject } from "./load.ts";
 import { type RecordingFile, type ReplayedRequest, replayTransport } from "./recording.ts";
@@ -33,8 +36,17 @@ export interface ConformanceSubject {
   readonly cases: readonly ToolCase[];
   /** Its settings, such as the URL a `{ fromSetting }` host reads. */
   readonly settings?: Readonly<Record<string, unknown>>;
-  /** Its source files by path, scanned for what integration code may not use. */
+  /**
+   * Its source files by path, scanned for what integration code may not
+   * use. Left out, `describeIntegrationConformance` scans the code beside
+   * the test file, tests left out.
+   */
   readonly sources?: Readonly<Record<string, string>>;
+  /**
+   * Packages the build bundles into it that it imports by name, such as a
+   * shared helper package; `sources` must hold their files too.
+   */
+  readonly bundled?: readonly string[];
 }
 
 /** Everything one tool call did. */
@@ -54,7 +66,7 @@ export interface CaseRun {
 
 /**
  * Runs one tool call through the kit's real loader and host, on recordings, with canary
- * secrets and the network globals tripped. Its `wait` is a {@link fakeWait}.
+ * secrets and the network globals tripped until the test ends. Its `wait` is a {@link fakeWait}.
  */
 export async function runCase(
   subject: ConformanceSubject,
@@ -79,14 +91,17 @@ export async function runCase(
   } catch (thrown) {
     error = thrown;
   } finally {
-    restore();
+    // Work the integration left behind gets its turn, so a call it makes
+    // right after answering is in this run.
+    await new Promise((resolve) => setImmediate(resolve));
+    keepTrippedUntilTestEnds(restore, globalCalls);
   }
   return {
     ...(result === undefined ? {} : { result }),
     ...(error === undefined ? {} : { error }),
     seen: replay.seen,
     log: log.entries(),
-    globalCalls,
+    globalCalls: [...globalCalls],
     unusedExchanges: replay.unused(),
     waits: [...pauses.waits],
   };
@@ -123,6 +138,32 @@ export function tripNetworkGlobals(calls: string[]): () => void {
       else Object.defineProperty(globals, name, descriptor);
     }
   };
+}
+
+/**
+ * Leaves the tripwires in place until the running test ends, then puts the
+ * real globals back and fails the test if the integration used one after
+ * its call returned: a promise it didn't wait for must not find the real
+ * `fetch` again. Outside a test there is no end to wait for, so it restores
+ * at once. Vitest runs these hooks last first, so cases in one test unwind in order.
+ * `atTestEnd` is Vitest's `onTestFinished`; a test passes its own to run the hook itself.
+ */
+export function keepTrippedUntilTestEnds(
+  restore: () => void,
+  calls: string[],
+  atTestEnd: (hook: () => void) => void = onTestFinished,
+): void {
+  if (TestRunner.getCurrentTest() === undefined) {
+    restore();
+    return;
+  }
+  const callsByReturn = calls.length;
+  atTestEnd(() => {
+    restore();
+    const late = calls.slice(callsByReturn);
+    if (late.length > 0)
+      fail(`the integration used the global ${late.join(", ")} after it answered; use host.http`);
+  });
 }
 
 function memoryTokens(): TokenStore {
