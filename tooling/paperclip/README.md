@@ -76,16 +76,26 @@ unless they pushed since. The pass reads no changed files, so Julian's
 approval shows as counting only within his limits; `pr_status` checks them.
 
 **More PRs to come.** A task that delivers several pull requests one after
-another would otherwise be closed after its first merge. To hold it open,
-put this line in your task comment when a pull request isn't the last one:
+another would otherwise be closed after its first merge. The simplest way to
+keep it open is to open the next pull request, a draft is fine, before the
+first one merges. Otherwise, after the merge, put this line in a task comment:
 
 ```text
 PR watcher: more PRs to come
 ```
 
 The watcher reads only your newest comment on the task: the hold lasts until
-you comment again without the line. Leave it out of the comment for the last
-pull request.
+you comment again without the line. A hold line written before the last merge
+doesn't count (HAL-17692): HAL-17445 had it under every comment, so its merged
+task, and the task it blocked, stayed open for 4 hours.
+
+**Unblocking.** After the tick, the watcher sweeps every `blocked` task an
+agent holds with no run going. When everything in its "blocked by" is done or
+cancelled, it sets the task to `todo`, comments which tasks it waited on and
+wakes the agent, once per set of blockers. A blocked task with nothing in
+"blocked by" waits on a person or the board, so it stays blocked. This belongs
+in Paperclip itself, when a blocker closes; until then the sweep also catches
+blockers that someone else closed, within 10 minutes.
 
 A failed merge group isn't the author's: the queue session finds the
 culprit. Each comment starts with `PR watcher:` and carries a hidden marker

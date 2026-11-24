@@ -119,7 +119,7 @@ function memory(reported: readonly string[] = []): Memory {
   return {
     reported: new Set(reported),
     seenUntil: undefined,
-    held: false,
+    heldAt: undefined,
     lastCommentAt: undefined,
   };
 }

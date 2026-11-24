@@ -6,12 +6,19 @@ import type {
   TaskRow,
   WriteOutcome,
 } from "../pr-watcher/paperclip.ts";
+import {
+  type BlockedRow,
+  type BlockerRow,
+  readyToUnblock,
+  type UnblockPaperclip,
+} from "../pr-watcher/unblock.ts";
 
 /**
  * The PR watcher's Paperclip, on top of the plugin host's API. This is the
  * only file that changes a task through the SDK: `doneOnly` lets the watcher
  * set `done`, `handoffOnly` lets it give a task to one agent with status
- * `todo` (its reviewer, HAL-17675), and nothing else; `setTaskLabels` lets the difficulty tagger
+ * `todo` (its reviewer, HAL-17675), `todoOnly` lets its unblock sweep set `todo`
+ * on a blocked task (HAL-17692), and nothing else; `setTaskLabels` lets the difficulty tagger
  * set labels and nothing else, and `assignTaskBack` lets the hand-off limit
  * set the task's agent and nothing else, because the manifest can't narrow
  * `issues.update`.
@@ -22,7 +29,7 @@ export interface HostApi {
   readonly issues: Pick<
     PluginIssuesClient,
     "list" | "get" | "listComments" | "createComment" | "update" | "requestWakeup" | "monitors"
-  >;
+  > & { readonly relations: Pick<PluginIssuesClient["relations"], "get"> };
   readonly agents: Pick<PluginAgentsClient, "list">;
 }
 
@@ -234,4 +241,73 @@ async function wakeAssignee(
 async function stillWatched(host: HostApi, taskId: string, companyId: string): Promise<boolean> {
   const issue = await host.issues.get(taskId, companyId);
   return issue !== null && watchedStatuses.has(issue.status);
+}
+
+/** The only status change the sweep may make. Anything else throws before it reaches the host. */
+export function todoOnly(patch: Readonly<Record<string, unknown>>): { status: "todo" } {
+  const keys = Object.keys(patch);
+  if (keys.length !== 1 || keys[0] !== "status" || patch["status"] !== "todo") {
+    throw new Error(`Unblock: refusing a task change other than todo (${keys.join(", ")}).`);
+  }
+  return { status: "todo" };
+}
+
+async function blockersOf(host: HostApi, taskId: string, companyId: string) {
+  const relations = await host.issues.relations.get(taskId, companyId);
+  return relations.blockedBy.map(
+    (blocker): BlockerRow => ({
+      id: blocker.id,
+      identifier: blocker.identifier,
+      status: blocker.status,
+    }),
+  );
+}
+
+/** A sweep's Paperclip for one company. */
+export function unblockHost(host: HostApi, companyId: string): UnblockPaperclip {
+  return {
+    async blockedTasks() {
+      const tasks: BlockedRow[] = [];
+      for (let offset = 0; ; offset += pageSize) {
+        const page = await host.issues.list({
+          companyId,
+          status: "blocked",
+          limit: pageSize,
+          offset,
+        });
+        tasks.push(
+          ...page
+            .filter((issue) => issue.identifier !== null)
+            .map(
+              (issue): BlockedRow => ({
+                id: issue.id,
+                identifier: issue.identifier ?? "",
+                assigneeAgentId: issue.assigneeAgentId,
+                running: issue.activeRun != null,
+              }),
+            ),
+        );
+        if (page.length < pageSize) {
+          return tasks;
+        }
+      }
+    },
+    blockers: (taskId) => blockersOf(host, taskId, companyId),
+    async unblock(taskId, body, key) {
+      // Re-read right before the write: someone may have moved it, or added a blocker, during the pass.
+      const issue = await host.issues.get(taskId, companyId);
+      const blockers = await blockersOf(host, taskId, companyId);
+      if (issue?.status !== "blocked" || !readyToUnblock(blockers)) {
+        return "closed";
+      }
+      await host.issues.update(taskId, todoOnly({ status: "todo" }), companyId);
+      await host.issues.createComment(taskId, body, companyId);
+      // A plugin's comment and status change wake nobody, so the wake-up is its own call.
+      await host.issues.requestWakeup(taskId, companyId, {
+        reason: "blockers_finished",
+        idempotencyKey: `pr-watcher ${taskId} ${key}`,
+      });
+      return "written";
+    },
+  };
 }

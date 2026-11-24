@@ -63,8 +63,8 @@ export interface Memory {
   readonly reported: ReadonlySet<string>;
   /** The newest of the watcher's last comment and the author's last comment. */
   readonly seenUntil: string | undefined;
-  /** The author's newest comment on the task says more pull requests are coming. */
-  readonly held: boolean;
+  /** When the author's newest comment, saying more pull requests are coming, was written; undefined without one. */
+  readonly heldAt: string | undefined;
   /** The newest comment on the task by anyone but the watcher. */
   readonly lastCommentAt: string | undefined;
   /** The author's newest comment on the task says its pull request has a review task of its own. */
@@ -158,6 +158,32 @@ export function closedOutcome(pulls: readonly PullFacts[]): Decision | undefined
   return { kind: "done", pulls: merged };
 }
 
+/** When the newest of these pull requests merged. */
+function lastMergeAt(pulls: readonly PullFacts[]): string | undefined {
+  return pulls.reduce<string | undefined>(
+    (last, pull) =>
+      pull.mergedAt !== undefined && (last === undefined || pull.mergedAt > last)
+        ? pull.mergedAt
+        : last,
+    undefined,
+  );
+}
+
+/**
+ * The hold line counts only when the author wrote it after the last merge.
+ * One written before it (HAL-17445 had it under every comment) is the
+ * author's plan from before the merge, and kept the task and the tasks it
+ * blocks open for hours (HAL-17692). More pull requests still to come keep
+ * the task open by being open, even as drafts.
+ */
+function heldAfterMerge(pulls: readonly PullFacts[], memory: Memory): boolean {
+  const merged = lastMergeAt(pulls);
+  return (
+    memory.heldAt !== undefined &&
+    (merged === undefined || Date.parse(memory.heldAt) > Date.parse(merged))
+  );
+}
+
 /**
  * A task whose pull requests all landed but which got a comment after the
  * last one merged: someone may have added work that isn't a pull request (a
@@ -204,7 +230,7 @@ export function decide(
     return { kind: "skip", why: "its author is already running on it" };
   }
   const closed = closedOutcome(pulls);
-  if (closed?.kind === "done" && memory.held) {
+  if (closed?.kind === "done" && heldAfterMerge(closed.pulls, memory)) {
     return { kind: "skip", why: "its author said more pull requests are coming" };
   }
   if (closed?.kind === "done" && task.openChildren) {

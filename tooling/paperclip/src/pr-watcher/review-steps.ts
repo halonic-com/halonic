@@ -38,7 +38,7 @@ const nothing: ReviewStepOutcome = { handedOff: false, warned: false };
 const noMemory: Memory = {
   reported: new Set<string>(),
   seenUntil: undefined,
-  held: false,
+  heldAt: undefined,
   lastCommentAt: undefined,
 };
 

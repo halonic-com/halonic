@@ -13,6 +13,7 @@ import { ciOk, gitHubReader } from "../pr-watcher/github.ts";
 import { countMonitors, type MonitorCounts } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
 import { gitHubRoute } from "../pr-watcher/route.ts";
+import { unblockPass } from "../pr-watcher/unblock.ts";
 import { snapshotSummary } from "../pr-watcher/wake-status.ts";
 import { type TickSummary, tick } from "../pr-watcher/watch.ts";
 import { gitHubQueryReader } from "../snapshot/graphql.ts";
@@ -20,7 +21,7 @@ import { takeSnapshot } from "../snapshot/read.ts";
 import type { Snapshot } from "../snapshot/shape.ts";
 import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
-import { type HostApi, paperclipHost } from "./host.ts";
+import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
 import { recordThinSpecOutcomes } from "./thin-spec-outcome.ts";
 
@@ -232,6 +233,12 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     summary: snapshotSummary(snapshot),
     route: gitHubRoute(get),
   });
+  // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.
+  const unblocked = await unblockPass({
+    paperclip: unblockHost(ctx, companyId),
+    dryRun: settings.dryRun,
+    log: (line) => ctx.logger.info(line, { companyId }),
+  });
   // After the watcher's own work, so a failure here never holds up a task.
   await recordThinSpecOutcomes(ctx, { companyId, snapshot, found, get, now }).catch(
     (error: unknown) => {
@@ -247,7 +254,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     requests: requests(),
     durationMs: Date.now() - started,
   });
-  return summary.failed.length;
+  return summary.failed.length + unblocked.failed.length;
 }
 
 /**
