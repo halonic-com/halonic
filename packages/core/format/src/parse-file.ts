@@ -75,6 +75,20 @@ export function parseFile<Name extends KindName>(
   options: ParseFileOptions = {},
 ): Result<ParsedFile<KindValues[Name]>, FileProblem[]> {
   const fileKind: FileKind<KindValues[Name]> = fileKinds[kind];
+  return parseWithKind(fileKind, text, options);
+}
+
+/**
+ * Reads and checks one file with a kind's rules, registered or not. A file
+ * that sits outside the registry's places, such as a Paperclip connection,
+ * gets the same syntax, schema and check problems, with lines and columns,
+ * as {@link parseFile} gives a registered kind. Not exported from the package.
+ */
+export function parseWithKind<Value>(
+  fileKind: FileKind<Value>,
+  text: string,
+  options: ParseFileOptions = {},
+): Result<ParsedFile<Value>, FileProblem[]> {
   const read = readSource(fileKind.syntax, text);
   if (!read.ok) {
     return err([syntaxProblem(read.error)]);

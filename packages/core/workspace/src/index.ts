@@ -77,6 +77,12 @@ export {
   unpricedAgents,
 } from "./many-users-unpriced.ts";
 export { misplacedFileCode } from "./misplaced-files.ts";
+export {
+  PAPERCLIP_CONNECTIONS_FOLDER,
+  type PaperclipConnectionFile,
+  type PaperclipConnections,
+  readPaperclipConnections,
+} from "./paperclip-connections.ts";
 export { type PlaceMatch, placeOf, settingsPath } from "./places.ts";
 export {
   isNoCostOnThisMachine,

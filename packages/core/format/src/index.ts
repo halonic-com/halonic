@@ -1,6 +1,11 @@
 // The public API of @halonicjs/format. Internal code imports by relative path.
 
 export { compact } from "./compact.ts";
+export {
+  paperclipConnectionKey,
+  parsePaperclipConnection,
+} from "./connections/paperclip/kind.ts";
+export type { PaperclipConnection } from "./connections/paperclip/schema.ts";
 export { jsonSchemaOf } from "./json-schema.ts";
 export type { FileKind, FilePlace, KindCheckProblem, KindSyntax } from "./kind.ts";
 export {
