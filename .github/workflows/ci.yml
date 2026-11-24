@@ -850,7 +850,9 @@ jobs:
             echo "::notice title=Affected tests::No merge commit, so every package is tested."
             echo "all=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Run every task through the cache
+      # Lint runs in the next step, as one Biome run for the whole shard.
+      - id: tasks
+        name: Run every task through the cache
         env:
           TURBO_API: ${{ vars.TURBO_API }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
@@ -892,12 +894,12 @@ jobs:
           read -ra words <<< "$rest"
           shard=("${words[@]/#/--filter=}")
           if [ "$AFFECTED" != true ]; then
-            pnpm exec turbo run typecheck lint test build "${shard[@]}" "${flags[@]}"
+            pnpm exec turbo run typecheck test build "${shard[@]}" "${flags[@]}"
             exit 0
           fi
           # With affected tests, the shard tests only its affected packages.
           status=0
-          pnpm exec turbo run typecheck lint build "${shard[@]}" "${flags[@]}" || status=$?
+          pnpm exec turbo run typecheck build "${shard[@]}" "${flags[@]}" || status=$?
           mine=" $(pnpm exec turbo run test --dry=json "${shard[@]}" | jq -r '.packages[]' | tr '\n' ' ') "
           read -ra filters <<< "$TEST_FILTERS"
           tests=()
@@ -910,6 +912,40 @@ jobs:
             echo "::notice title=Affected tests::No package's tests in this shard are needed for this change."
           fi
           exit "$status"
+      # Every package's `lint` script is `biome check .`, and each Biome run
+      # first reads the whole repo: as a Turbo task, lint cost about 34 s per
+      # package, about a third of a shard's work (HAL-17928). One run over
+      # the shard's package folders checks the same files with the same
+      # config, nested ones (packages/studio/kit) included, in seconds. It
+      # always lints the whole shard: there is no cache entry to skip with.
+      # It runs after a failed task step too, so a run shows both. Outside CI,
+      # `turbo run lint` and a package's `pnpm lint` still lint per package.
+      - name: Lint the shard's packages (one Biome run)
+        if: ${{ !cancelled() && (steps.tasks.outcome == 'success' || steps.tasks.outcome == 'failure') }}
+        run: |
+          read -ra words <<< "$(awk -v shard="$SHARD" '$1 == shard { $1 = ""; print }' <<< "$BUILD_SHARDS")"
+          if [ "${#words[@]}" = 0 ]; then
+            echo "::error::Unknown shard $SHARD: it has no line in BUILD_SHARDS."
+            exit 1
+          fi
+          mapfile -t lints < <(pnpm exec turbo run lint --dry=json "${words[@]/#/--filter=}" \
+            | jq -r '.tasks[] | select(.command != "<NONEXISTENT>") | "\(.directory)\t\(.command)"')
+          folders=()
+          for lint in "${lints[@]}"; do
+            folder=${lint%%$'\t'*} command=${lint#*$'\t'}
+            # Anything else would need its own run: fail rather than skip it.
+            if [ "$command" != "biome check ." ]; then
+              echo "::error::$folder's lint script is \"$command\"; this step runs only \"biome check .\". Change the script or this step."
+              exit 1
+            fi
+            folders+=("$folder")
+          done
+          if [ "${#folders[@]}" = 0 ]; then
+            echo "::error::The $SHARD shard has no package with a lint script."
+            exit 1
+          fi
+          echo "Linting ${#folders[@]} packages in one Biome run."
+          pnpm exec biome check --max-diagnostics=none "${folders[@]}"
       # The guard job (pull requests) and the trace job (merge queue and
       # pushes) read these, one archive per shard. They come from the
       # change's own code: the guard only compares them, never trusts them to
