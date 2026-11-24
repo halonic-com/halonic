@@ -3,6 +3,7 @@
 - Task: HAL-17599 (blocks the 0.1.1 release, HAL-16760)
 - Approval: Liam wrote it; Mateo checks it on HAL-17599 and Julian signs as the security reviewer
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:jxX4oRHGdhCdyKQzPBHXGjoN4trjMluFNl4+JZNR+cAOvIx7Q9S2/+iWxBmyTfRc75mdHPFWDabpAxiH3TZgAw==
 
 ## What changes
 
