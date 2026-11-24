@@ -386,7 +386,7 @@ jobs:
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ vars.CI_PICK_APP_CLIENT_ID }}
-          private-key: ${{ secrets.CI_PICK_APP_KEY }}
+          private-key: ${{ secrets.CI_PICK_APP_KEY }} # environment-secrets: allow read-only runner list, needed in the pull request's own run
           owner: ${{ github.repository_owner }}
           permission-organization-self-hosted-runners: read
       - id: pick

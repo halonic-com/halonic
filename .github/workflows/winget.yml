@@ -14,10 +14,11 @@
 #   placeholder installer and validates. Nothing is submitted and no secret
 #   is read.
 #
-# The token is the repository secret WINGET_TOKEN: a classic token of the
-# shared halonic-dev account with the public_repo scope (user decision on
-# HAL-1456). wingetcreate reads it from its environment, never from the
-# command line, and only the submit step gets it.
+# The token is WINGET_TOKEN, a secret of the `winget` environment, which is
+# limited to `main` and `v*` tags (HAL-17794): a run from any other branch
+# can't read it. Only the submit job runs in that environment; it gets the
+# filled-in manifests from the first job as an artifact. wingetcreate reads
+# the token from its environment, never from the command line.
 
 name: winget
 
@@ -61,11 +62,14 @@ env:
 
 jobs:
   winget:
-    name: Fill in, validate and submit the winget manifests
+    name: Fill in and validate the winget manifests
     runs-on: windows-2025
     timeout-minutes: 20
     permissions:
       contents: read
+    outputs:
+      submit: ${{ steps.decide.outputs.submit }}
+      version: ${{ steps.decide.outputs.version }}
     defaults:
       run:
         shell: pwsh
@@ -78,6 +82,7 @@ jobs:
             apps/studio/src-tauri/tauri.conf.json
           sparse-checkout-cone-mode: false
       - name: Decide the tag, the version and whether to submit
+        id: decide
         env:
           EVENT: ${{ github.event_name }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
@@ -95,6 +100,7 @@ jobs:
           $version = $tag.Substring(1)
           "TAG=$tag", "VERSION=$version", "SUBMIT=$($submit.ToString().ToLower())",
             "INSTALLER=Halonic-$version-windows-x64-setup.exe" | Add-Content $env:GITHUB_ENV
+          "version=$version", "submit=$($submit.ToString().ToLower())" | Add-Content $env:GITHUB_OUTPUT
       # The runner image's Defender signatures are as old as the image, so the
       # scan below would miss anything newer. This also runs on pull
       # requests, so a change to this file shows the update still works.
@@ -178,14 +184,38 @@ jobs:
           & $winget --version
           & $winget validate --manifest $env:MANIFESTS --disable-interactivity
           if ($LASTEXITCODE -ne 0) { throw "winget validate exited $LASTEXITCODE" }
-      - name: Submit to microsoft/winget-pkgs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: env.SUBMIT == 'true'
+        with:
+          name: winget-manifests
+          path: ${{ env.MANIFESTS }}
+          if-no-files-found: error
+          retention-days: 1
+
+  submit:
+    name: Submit to microsoft/winget-pkgs
+    needs: winget
+    if: needs.winget.outputs.submit == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 15
+    environment: winget
+    permissions: {}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: winget-manifests
+          path: ${{ runner.temp }}/manifests
+      - name: Submit to microsoft/winget-pkgs
         env:
+          VERSION: ${{ needs.winget.outputs.version }}
           WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
-          if (-not $env:WINGET_CREATE_GITHUB_TOKEN) { throw 'The repository secret WINGET_TOKEN is not set (HAL-1457)' }
+          if (-not $env:WINGET_CREATE_GITHUB_TOKEN) { throw 'The winget environment has no WINGET_TOKEN secret (HAL-1457)' }
           $exe = Join-Path $env:RUNNER_TEMP 'wingetcreate.exe'
           Invoke-WebRequest $env:WINGETCREATE_URL -OutFile $exe
           if ((Get-FileHash $exe -Algorithm SHA256).Hash -ne $env:WINGETCREATE_SHA256) { throw 'wingetcreate.exe is not the pinned build' }
-          & $exe submit --prtitle "New version: Halonic.Halonic version $env:VERSION" --no-open $env:MANIFESTS
+          & $exe submit --prtitle "New version: Halonic.Halonic version $env:VERSION" --no-open (Join-Path $env:RUNNER_TEMP 'manifests')
           if ($LASTEXITCODE -ne 0) { throw "wingetcreate submit exited $LASTEXITCODE" }
