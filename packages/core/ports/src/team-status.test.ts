@@ -1,12 +1,13 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
-import type {
-  MessagingId,
-  PullRequestDetail,
-  Seat,
-  SpendRange,
-  SpendSummary,
-  TeamStatus,
+import {
+  type MessagingId,
+  type PullRequestDetail,
+  type Seat,
+  type SpendRange,
+  type SpendSummary,
+  type TeamStatus,
+  teamStatusVersion,
 } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
@@ -60,5 +61,37 @@ verifies("ports.team-status", () => {
     // @ts-expect-error: every answer carries its source's time
     const unknownAge: Seat = undated;
     expect(unknownAge).toBeDefined();
+  });
+
+  it("keeps the table 1.6 fields optional, so an older source is still whole", () => {
+    const spend: SpendSummary = {
+      source: "source-1",
+      range: "today",
+      paid: { cents: 4120, currency: "USD" },
+      tokens: { input: 0, cached: 0, output: 0 },
+      unpricedRuns: 0,
+      asOf: "2026-11-24T13:00:00.000Z",
+    };
+    expect(seat.failedRead).toBeUndefined();
+    expect(seat.fromCache).toBeUndefined();
+    expect(spend.unknownSeatRuns).toBeUndefined();
+    expect(teamStatusVersion).toBe(1);
+  });
+
+  it("names why a seat's newest reading failed, beside its last good reading", () => {
+    const rateLimited: Seat = {
+      ...seat,
+      state: "not-read",
+      asOf: "2026-11-24T12:20:00.000Z",
+      failedRead: { cause: "rate-limited", at: "2026-11-24T12:30:00.000Z" },
+      fromCache: true,
+    };
+    const unknownCause: Seat = {
+      ...rateLimited,
+      // @ts-expect-error: a cause the port doesn't name reads as `other`
+      failedRead: { cause: "timed-out", at: "2026-11-24T12:30:00.000Z" },
+    };
+    expect(rateLimited.windows).toEqual(seat.windows);
+    expect(unknownCause).toBeDefined();
   });
 });
