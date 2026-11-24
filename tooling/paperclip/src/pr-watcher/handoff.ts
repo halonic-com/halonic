@@ -19,8 +19,14 @@ import {
 /** Who reviews a pull request on `halonic` (HAL-14809). */
 export type Reviewer = "julian" | "liam";
 
-/** The reviewer by the path rules (`reviewerFor`), read from GitHub for one pull request. */
-export type ReviewerRoute = (pull: PullFacts) => Promise<Reviewer>;
+/** What a pull request's paths say: its reviewer, and whether they make it a security one. */
+export interface PathReview {
+  readonly reviewer: Reviewer;
+  readonly security: boolean;
+}
+
+/** The path rules (`reviewerFor`, `isSecurityPath`), read from GitHub for one pull request. */
+export type ReviewerRoute = (pull: PullFacts) => Promise<PathReview>;
 
 function at(pull: { readonly repo: string; readonly number: number }, head: string): string {
   return `${pull.repo}#${pull.number} ${short(head)}`;
@@ -158,11 +164,16 @@ export function approvedBefore(pull: PullFacts): { by: string; head: string } | 
   return approvedOnHead(pull) ? undefined : othersApprovals(pull).at(-1);
 }
 
-/** What changed since a pull request's last approval: only a rebase, or more (HAL-17759). */
+/**
+ * What changed since a pull request's last approval: only a rebase, or more
+ * (HAL-17759). A security pull request by its paths is never compared, so
+ * never rebase-only: it keeps its own gate (HAL-17901).
+ */
 export interface SinceApproval {
   readonly by: string;
   readonly approvedHead: string;
   readonly rebaseOnly: boolean;
+  readonly security?: boolean;
 }
 
 /** `SinceApproval` by `pullId`, for the pull requests approved on an older head. */
@@ -186,6 +197,11 @@ function sinceLine(
     return [];
   }
   const old = short(since.approvedHead);
+  if (since.security === true) {
+    return [
+      `#${pull.number}: a security pull request by its paths, so no rebase-only re-approval (HAL-14809); review \`${old}\`..\`${short(pull.head)}\`.`,
+    ];
+  }
   if (!since.rebaseOnly) {
     return [
       `#${pull.number}: changed since ${since.by}'s approval on \`${old}\`; review \`${old}\`..\`${short(pull.head)}\`.`,

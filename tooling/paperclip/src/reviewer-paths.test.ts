@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import {
   isLiamPath,
+  isSecurityPath,
   type ManifestChange,
   reviewerFor,
   touchesPackageFields,
@@ -80,6 +81,15 @@ verifies("paperclip.reviewer-paths", () => {
 
   test("a word in a messages/ folder outside the CLI still counts", () => {
     expect(isLiamPath("packages/adapters/x/src/sandbox/messages/ipc.ts")).toBe(true);
+  });
+
+  test("security paths are the words on code, docs/security/ and SECURITY.md", () => {
+    for (const path of ["packages/x/src/sandbox/fence.ts", "docs/security/a.md", "SECURITY.md"]) {
+      expect(isSecurityPath(path)).toBe(true);
+    }
+    for (const path of ["packages/x/src/sandbox.test.ts", ".github/workflows/ci.yml", "a.ts"]) {
+      expect(isSecurityPath(path)).toBe(false);
+    }
   });
 
   test("a package.json goes to Julian only without lockfile or publish changes", () => {

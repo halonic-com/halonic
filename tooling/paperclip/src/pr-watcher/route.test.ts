@@ -29,9 +29,11 @@ const pull = { repo, number: 5701, head } as PullFacts;
 verifies("paperclip.pr-watcher-handoff", () => {
   test("routes by the changed files the way pr_status does, sending only GET requests", async () => {
     const julians = fakeGitHub(answers(["tooling/paperclip/src/pr-watcher/watch.ts"]));
-    expect(await gitHubRoute(julians.get)(pull)).toBe("julian");
+    expect(await gitHubRoute(julians.get)(pull)).toEqual({ reviewer: "julian", security: false });
     expect(julians.calls.every(({ method }) => method === "GET")).toBe(true);
     const liams = fakeGitHub(answers([".github/workflows/ci.yml"]));
-    expect(await gitHubRoute(liams.get)(pull)).toBe("liam");
+    expect(await gitHubRoute(liams.get)(pull)).toEqual({ reviewer: "liam", security: false });
+    const fence = fakeGitHub(answers(["packages/x/src/sandbox/fence.ts"]));
+    expect(await gitHubRoute(fence.get)(pull)).toEqual({ reviewer: "liam", security: true });
   });
 });

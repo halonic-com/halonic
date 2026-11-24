@@ -80,7 +80,10 @@ requests). Equal changes, line numbers aside, mean only a rebase: the comment
 says so, and a pull request Liam approved goes to Julian with the line he
 posts after his own `git range-diff` check (HAL-14809). Any other difference,
 or a failed comparison, names both heads and goes to the reviewer of the
-paths. The watcher never approves anything itself.
+paths. A security pull request by its paths (a code path with one of the
+reviewer path words, `docs/security/` or `SECURITY.md`) keeps its own gate:
+it isn't compared, and goes to Liam with both heads named (HAL-17901). The
+watcher never approves anything itself.
 
 **Waiting for review** (HAL-17760). While the reviewer (Liam or Julian, not
 the author) holds the task with no run going, the watcher reads its pull

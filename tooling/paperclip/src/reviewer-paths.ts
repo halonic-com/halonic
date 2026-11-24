@@ -103,16 +103,32 @@ function isWordsOnly(path: string): boolean {
   );
 }
 
-/** Whether a changed file is on Liam's paths. */
-export function isLiamPath(path: string): boolean {
-  if (liamFiles.includes(path) || liamFolders.some((folder) => path.startsWith(folder))) {
-    return true;
-  }
+/** A code path with one of `liamWords` in it. */
+function hasLiamWord(path: string): boolean {
   if (isWordsOnly(path)) {
     return false;
   }
   const lower = path.toLowerCase();
   return liamWords.some((word) => lower.includes(word));
+}
+
+/** Whether a changed file is on Liam's paths. */
+export function isLiamPath(path: string): boolean {
+  return (
+    liamFiles.includes(path) ||
+    liamFolders.some((folder) => path.startsWith(folder)) ||
+    hasLiamWord(path)
+  );
+}
+
+/**
+ * Whether a changed file makes a pull request a security one by its paths
+ * (HAL-14809): a code path with one of `liamWords`, `docs/security/` or
+ * `SECURITY.md`. Such a pull request keeps its own gate, so Julian's
+ * rebase-only re-approval doesn't apply to it (HAL-17901).
+ */
+export function isSecurityPath(path: string): boolean {
+  return path === "SECURITY.md" || path.startsWith("docs/security/") || hasLiamWord(path);
 }
 
 /** A `package.json`'s text at the pull request's merge base and head; `null` where it doesn't exist. */

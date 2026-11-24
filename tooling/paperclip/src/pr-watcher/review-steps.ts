@@ -5,11 +5,11 @@ import {
   julianOnlyOnHead,
   julianRefused,
   outsideKey,
+  type PathReview,
   pullId,
   pushedAfterApproval,
   pushedMessage,
   type Refused,
-  type Reviewer,
   type ReviewerRoute,
   readyKey,
   reviewerAfter,
@@ -66,9 +66,9 @@ async function warn(
   return options.dryRun || (await options.paperclip.note(task.id, body)) === "written";
 }
 
-/** Each pull request's reviewer by its paths, read once per pass and task. */
-function routes(route: ReviewerRoute): (pull: PullFacts) => Promise<Reviewer> {
-  const read = new Map<string, Promise<Reviewer>>();
+/** Each pull request's path review, read once per pass and task. */
+function routes(route: ReviewerRoute): (pull: PullFacts) => Promise<PathReview> {
+  const read = new Map<string, Promise<PathReview>>();
   return (pull) => {
     const known = read.get(pullId(pull));
     if (known !== undefined) {
@@ -84,29 +84,41 @@ function routes(route: ReviewerRoute): (pull: PullFacts) => Promise<Reviewer> {
 async function refusedOf(
   pulls: readonly PullFacts[],
   memory: Memory,
-  routeOf: (pull: PullFacts) => Promise<Reviewer>,
+  routeOf: (pull: PullFacts) => Promise<PathReview>,
 ): Promise<Refused> {
   const suspects = pulls.filter((pull) => julianOnlyOnHead(pull, memory));
   const refused = await Promise.all(
-    suspects.map(async (pull) => (julianRefused(pull, await routeOf(pull)) ? [pullId(pull)] : [])),
+    suspects.map(async (pull) =>
+      julianRefused(pull, (await routeOf(pull)).reviewer) ? [pullId(pull)] : [],
+    ),
   );
   return new Set(refused.flat());
 }
 
 /**
  * What changed since the older approval of each waiting pull request. A
- * failed read counts as a real change, so the reviewer of the paths gets it.
+ * failed read counts as a real change, so the reviewer of the paths gets it,
+ * and a security pull request by its paths isn't compared (HAL-17901).
  */
 async function sinceOf(
   options: ReviewStepOptions,
   task: WatchedTask,
   pulls: readonly PullFacts[],
+  routeOf: (pull: PullFacts) => Promise<PathReview>,
 ): Promise<SinceApprovals> {
   const entries = await Promise.all(
     pulls.map(async (pull): Promise<[string, SinceApproval][]> => {
       const before = approvedBefore(pull);
       if (before === undefined) {
         return [];
+      }
+      if ((await routeOf(pull)).security) {
+        return [
+          [
+            pullId(pull),
+            { by: before.by, approvedHead: before.head, rebaseOnly: false, security: true },
+          ],
+        ];
       }
       const check = options.rebaseOnly ?? (async () => false);
       const rebaseOnly = await check(pull, before.head).catch((error: unknown) => {
@@ -138,9 +150,11 @@ async function handOff(
   if (first === undefined || task.assigneeAgentId === null) {
     return false;
   }
-  const since = await sinceOf(options, task, waiting);
+  const since = await sinceOf(options, task, waiting, routeOf);
   const byPull = await Promise.all(
-    waiting.map(async (pull) => reviewerAfter(await routeOf(pull), since.get(pullId(pull)))),
+    waiting.map(async (pull) =>
+      reviewerAfter((await routeOf(pull)).reviewer, since.get(pullId(pull))),
+    ),
   );
   const reviewer = reviewerOf(branchOwner(first.branch), byPull);
   const to = options.owners.get(reviewer);
