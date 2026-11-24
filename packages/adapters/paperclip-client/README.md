@@ -134,6 +134,13 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `updateChannel` | `PATCH /api/issues/{task}` with exactly `{ description }` | change a channel's members line: members, lead, who follows it |
 | `listTaskActivity` | `GET /api/issues/{task}/activity` | a channel child task's history: who passed it to whom |
 
+**Live check of `TeamStatus`.** `pnpm test:live` reads a real server with every `TeamStatus` method and
+fails unless each of the rows from `spendSummary` to `pullRequestDetail` answers 200 and maps. It never runs
+in `pnpm test` or CI. The seats and GitHub routes answer only a board key, so a board user runs it, with
+the key in the environment, never on the command line: `HALONIC_PAPERCLIP_LIVE_ADDRESS` (the server's
+address), `HALONIC_PAPERCLIP_LIVE_KEY` and `HALONIC_PAPERCLIP_LIVE_COMPANY` (the company ID). Its log names
+the Paperclip version, each request with its status, and how many items mapped; it prints nothing it read.
+
 **No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
 main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's
 keys, setup or gateway tokens, secrets, or the sign-in challenge (`POST /api/cli-auth/challenges`), which
