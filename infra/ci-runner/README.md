@@ -213,8 +213,10 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
      `--host-uds=open` lets a job reach the gate socket mounted into it (nothing else is
      mounted); `--overlay2=root:self` keeps the container's own writes on disk instead of in its
      memory limit.
-  2. **Network:** `docker network create -o com.docker.network.bridge.enable_icc=false
-     halonic-ci-fast`.
+  2. **Network:** `docker network create --subnet 192.168.241.0/24 -o
+     com.docker.network.bridge.enable_icc=false halonic-ci-fast`. Pin the subnet: from Docker's
+     default pools it gets a /28, 13 addresses, and every fast container needs one (HAL-17574). A
+     fast slot refuses to start on a network smaller than a /26.
   3. **Gate:** deploy the new `vm/halonic-ci-gate.sh` and the two `vm/halonic-ci-gate-fast*`
      units like the merge queue's, then `systemctl enable --now halonic-ci-gate-fast.socket`.
      `PollLimitBurst` needs systemd 255 or later (older ones ignore it).
@@ -258,7 +260,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   `halonic-runner@fast-25` … `halonic-runner@fast-40` to `/etc/halonic-ci/slots` and start them;
   memory admission holds those the VM has no room for. Back to fixed CPU sets: remove the flag and
   reload Docker (slots pick it up on their next cycle). Back to 24 slots: stop and disable
-  `fast-25` … `fast-40` and remove them from `/etc/halonic-ci/slots`. Full: restore the copies.
+  `fast-25` … `fast-40` and remove them from `/etc/halonic-ci/slots`. The `halonic-ci-fast` network
+  must be a /26 or wider (the network step above); the board recreated it as a /24 on 24 Nov. Full: restore the copies.
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,
   set `IMAGE=` in `pool.env`, restart the slots.
 - **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images, stale work dirs and Turbo

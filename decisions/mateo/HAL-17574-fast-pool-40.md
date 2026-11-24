@@ -22,6 +22,10 @@ stays as it is.
   limit. `fast-1` … `fast-10` start at 4 GB instead of 6 GB, so an idle runner promises 4 GB like
   the others. Fast containers get `--oom-score-adj 500`, so if the VM runs out anyway the kernel
   kills a fast job before a merge-group job.
+- The fast slots' Docker network: a fast slot refuses to start unless `halonic-ci-fast` has an IPv4
+  subnet of /26 or wider, and the README's setup step pins it to a /24. Created from Docker's
+  default pools it was a /28 with 13 addresses, which held the pool at 13 containers on 24 Nov
+  (found live by the board). Isolation stays the same (`enable_icc=false`).
 - `vm/halonic-ci-gate-fast.socket`: 40 connections (one per fast slot), still at most 48 a minute.
 - Tests and the runner README follow.
 
@@ -54,7 +58,7 @@ count and the placement come first, and the CPU weight already protects the merg
 ## Tests
 
 No test was skipped or weakened. The gate socket test now expects 40 connections; the sizes and
-no-twin tests cover `fast-25` and `fast-40`; two admission tests expect a busy job's smaller count (2 GB, not 7), two new ones check the new count and the board's 96 GB snapshot; a new test checks the floating set for `fast-11` …
+no-twin tests cover `fast-25` and `fast-40`; two admission tests expect a busy job's smaller count (2 GB, not 7), two new ones check the new count and the board's 96 GB snapshot; the gVisor and network test checks the subnet size; a new test checks the floating set for `fast-11` …
 `fast-40`, the fixed fallback sets, that only the 4-CPU slots float, the `runsc` flag check and the
 CPU weights. `node --test infra/ci-runner/*.test.mjs`: 108 pass.
 

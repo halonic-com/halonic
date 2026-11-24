@@ -37,8 +37,13 @@ fi
 if [[ "$SLOT" == fast-* ]] && [ "${2:-}" != "--cleanup" ]; then
   rts=" $(docker info --format '{{range $k, $v := .Runtimes}}{{$k}} {{end}}' 2>/dev/null || true) "
   [[ "$rts" == *" runsc "* ]] || fail "Docker has no runsc runtime (gVisor); fast slots run only under it"
-  icc=$(docker network inspect -f '{{index .Options "com.docker.network.bridge.enable_icc"}}' "$FAST_NET" 2>/dev/null || true)
+  read -r icc subnet _ <<<"$(docker network inspect -f '{{index .Options "com.docker.network.bridge.enable_icc"}} {{range .IPAM.Config}}{{.Subnet}} {{end}}' "$FAST_NET" 2>/dev/null || true)"
   [ "$icc" = false ] || fail "Docker network $FAST_NET missing or lets containers reach each other"
+  # One address per fast container plus the gateway. Created from Docker's default pools it was a /28
+  # (13 addresses), which held the pool at 13 jobs on 24 Nov (HAL-17574): /26 is the least for 40.
+  if ! [[ "$subnet" =~ ^[0-9.]+/([0-9]+)$ ]] || [ "${BASH_REMATCH[1]}" -gt 26 ]; then
+    fail "Docker network $FAST_NET has ${subnet:-no IPv4 subnet}, too small for 40 fast containers; recreate it with --subnet <a /24>"
+  fi
   # gVisor tells the job it has as many CPUs as its --cpus quota, not its CPU set (HAL-17574, below).
   rargs=$(docker info --format '{{json (index .Runtimes "runsc")}}' 2>/dev/null || true)
   if [[ "$rargs" =~ \"--cpu-num-from-quota(=true)?\" ]]; then FAST_FLOAT=1; fi

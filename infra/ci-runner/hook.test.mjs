@@ -292,17 +292,25 @@ test("a fast slot starts only under gVisor and on its own network without contai
   // `docker info` lists the runtimes; `docker network inspect` the network's enable_icc option.
   const docker = ({ runtimes, icc }) =>
     `case "$1" in info) echo "${runtimes}";; network) [ -n "${icc}" ] && echo "${icc}" || exit 1;; esac`;
+  const net = "192.168.241.0/24";
   const fast = (setup) => slotCycle({ paused: false, args: ["fast-1"], docker: docker(setup) });
   const noRunsc = fast({ runtimes: "io.containerd.runc.v2 runc ", icc: "false" });
   assert.equal(noRunsc.status, 1);
   assert.match(noRunsc.stderr, /Docker has no runsc runtime \(gVisor\)/);
   for (const icc of ["", "true"]) {
-    const res = fast({ runtimes: "runc runsc ", icc });
+    const res = fast({ runtimes: "runc runsc ", icc: icc && `${icc} ${net}` });
     assert.equal(res.status, 1);
     assert.match(res.stderr, /Docker network halonic-ci-fast missing or lets containers reach/);
   }
   // Both in place, the cycle goes on (and stops at the VM's pool.env, which the test has none of).
-  const ok = fast({ runtimes: "runc runsc ", icc: "false" });
+  // One address per fast container (HAL-17574): Docker's default /28 held the pool at 13 jobs.
+  for (const icc of ["false 172.30.0.0/28", "false 172.30.0.0/27", "false ", "false fd00::/64"]) {
+    const res = fast({ runtimes: "runc runsc ", icc });
+    assert.equal(res.status, 1, icc);
+    assert.match(res.stderr, /too small for 40 fast containers/, icc);
+  }
+  assert.match(fast({ runtimes: "runc runsc ", icc: "false 172.30.0.0/26" }).stderr, /pool\.env/);
+  const ok = fast({ runtimes: "runc runsc ", icc: `false ${net}` });
   assert.doesNotMatch(ok.stderr, /runsc|halonic-ci-fast/);
   assert.match(ok.stderr, /pool\.env/);
   // A large slot doesn't ask.
@@ -310,7 +318,7 @@ test("a fast slot starts only under gVisor and on its own network without contai
 });
 
 test("a fast slot and the large slot whose CPUs it takes never run at once", () => {
-  const ready = 'case "$1" in info) echo "runsc ";; network) echo false;; esac';
+  const ready = 'case "$1" in info) echo "runsc ";; network) echo false 192.168.241.0/24;; esac';
   const both = { paused: false, docker: ready, systemctl: "exit 0" };
   const fast = slotCycle({ ...both, args: ["fast-1"] });
   assert.equal(fast.status, 1);
