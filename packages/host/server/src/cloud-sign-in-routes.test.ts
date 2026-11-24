@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { RequestLogEntry, Server } from "./api.ts";
 import type { CloudSignInPorts, CodeExchangeOutcome } from "./cloud-sign-in-api.ts";
+import { createCloudSignInRoutes } from "./cloud-sign-in-routes.ts";
 import { ids, personalClaims, StubSessionVerifier } from "./stub-session-verifier.test-helper.ts";
 import { testServer, unusedPort } from "./test-server.ts";
 
@@ -72,6 +73,26 @@ function stateOf(response: Response): string {
   return state;
 }
 
+/**
+ * A failed return: the fixed error, naming `refusal` when given, with the state cookie cleared
+ * and no new one set, so the browser isn't sent back to Cloud.
+ */
+async function expectSignInFailed(response: Response, refusal?: string): Promise<void> {
+  expect(response.status).toBe(400);
+  expect(response.headers.get("location")).toBeNull();
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+  expect(setCookies(response)).toEqual([
+    `${stateCookieName}=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0`,
+  ]);
+  const message = "Sign-in didn't finish. Start it again.";
+  expect(await response.json()).toEqual(
+    refusal === undefined
+      ? { code: "sign_in_failed", message }
+      : { code: "sign_in_failed", message, refusal },
+  );
+}
+
 async function returnWith(
   server: Server,
   query: Record<string, string>,
@@ -121,7 +142,7 @@ describe("cloud sign-in routes", () => {
       ]);
     });
 
-    it("never exchanges the code without a matching state, and starts over with a new one", async () => {
+    it("never exchanges the code without a matching state, and answers the fixed error", async () => {
       const kept = "A".repeat(43);
       const cases: [Record<string, string>, string | undefined][] = [
         [{ code: "c", state: kept }, undefined],
@@ -136,20 +157,15 @@ describe("cloud sign-in routes", () => {
         const { server, exchanges } = setup();
         const response = await returnWith(server, query, cookie);
         expect(exchanges).toEqual([]);
-        expect(response.status).toBe(303);
-        expect(new URL(response.headers.get("location") ?? "").origin).toBe(signInOrigin);
-        expect(stateOf(response)).not.toBe(kept);
+        await expectSignInFailed(response);
       }
     });
 
-    it("sends a refused sign-in back to Cloud with a reason only from its fixed list", async () => {
-      const refusals: [string, string | null][] = [
+    it("sends a refusal Cloud words itself back to Cloud's page with its reason", async () => {
+      const refusals: [string, string][] = [
         ["signin.user_suspended", "user_suspended"],
         ["signin.product_paused", "product_paused"],
         ["signin.user_deleted", "user_deleted"],
-        ["signin.link_expired", null],
-        ["signin.product_not_live", null],
-        ["<b>Cloud says no</b>", null],
       ];
       for (const [refusal, ended] of refusals) {
         const { server, exchanges } = setup(async () => ({ ok: false, refusal }));
@@ -167,7 +183,26 @@ describe("cloud sign-in routes", () => {
       }
     });
 
-    it("logs a failed exchange, never retries it, and starts over", async () => {
+    it("answers any other refusal with the fixed error, naming only codes from Cloud's list", async () => {
+      const refusals: [string, string | undefined][] = [
+        ["signin.link_expired", "signin.link_expired"],
+        ["signin.product_not_live", "signin.product_not_live"],
+        ["<b>Cloud says no</b>", undefined],
+      ];
+      for (const [refusal, named] of refusals) {
+        const { server, exchanges } = setup(async () => ({ ok: false, refusal }));
+        const state = "S".repeat(43);
+        const response = await returnWith(
+          server,
+          { code: "c", state },
+          `${stateCookieName}=${state}`,
+        );
+        expect(exchanges).toHaveLength(1);
+        await expectSignInFailed(response, named);
+      }
+    });
+
+    it("logs a failed exchange, never retries it, and answers the fixed error", async () => {
       const { server, exchanges, errors } = setup(async () => {
         throw new Error("Cloud unreachable");
       });
@@ -179,7 +214,7 @@ describe("cloud sign-in routes", () => {
       );
       expect(exchanges).toHaveLength(1);
       expect(errors).toEqual([new Error("Cloud unreachable")]);
-      expect(new URL(response.headers.get("location") ?? "").origin).toBe(signInOrigin);
+      await expectSignInFailed(response);
     });
 
     it("refuses to write a token or credential that would break out of its cookie", async () => {
@@ -192,7 +227,21 @@ describe("cloud sign-in routes", () => {
         `${stateCookieName}=${state}`,
       );
       expect(errors).toHaveLength(1);
-      expect(setCookies(response).every((line) => line.startsWith(stateCookieName))).toBe(true);
+      await expectSignInFailed(response);
+    });
+
+    it("refuses a sign-in origin that isn't https and a session cookie that isn't host-only", () => {
+      const ports: CloudSignInPorts = { signInOrigin, product, exchange: unusedPort("exchange") };
+      const errorLog = { record: () => undefined };
+      const build = (signIn: string, cookieName: string) => () =>
+        createCloudSignInRoutes(
+          { ...ports, signInOrigin: signIn },
+          { sessionCookieName: cookieName, errorLog },
+        );
+      expect(build(signInOrigin, sessionCookieName)).not.toThrow();
+      expect(build("http://signin.acme.example", sessionCookieName)).toThrow(/https origin/);
+      expect(build(`${signInOrigin}/start`, sessionCookieName)).toThrow(/https origin/);
+      expect(build(signInOrigin, "acme-session")).toThrow(/__Host-/);
     });
 
     it("keeps the return route out of the request log, and answers only GET", async () => {

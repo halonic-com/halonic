@@ -229,6 +229,11 @@ export const serverErrors = {
     code: "secret_name_refused",
     message: "That isn't a name a provider key can have.",
   },
+  signInFailed: {
+    status: 400,
+    code: "sign_in_failed",
+    message: "Sign-in didn't finish. Start it again.",
+  },
   internal: {
     status: 500,
     code: "internal_error",

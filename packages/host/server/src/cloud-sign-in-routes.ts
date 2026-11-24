@@ -1,6 +1,8 @@
 import { constantTimeEqual, encodeBase64url } from "@halonicjs/std";
-import type { ErrorLog } from "./api.ts";
+import type { ErrorLog, ServerErrorBody } from "./api.ts";
 import type { CloudAppSession, CloudSignInPorts } from "./cloud-sign-in-api.ts";
+import { serverErrors } from "./errors.ts";
+import { isHttpsOrigin } from "./https-origin.ts";
 import { cookieValues } from "./session-verifier.ts";
 
 /** Sends a browser to Cloud's sign-in page for this product. */
@@ -20,8 +22,8 @@ const stateByteCount = 32;
 /** Where a signed-in browser lands. Fixed, so no request can choose it. */
 const afterSignInPath = "/";
 /**
- * Cloud's refusals that end in a reason its sign-in page words itself, as `ended`. Every other
- * refusal, or an answer that isn't on Cloud's list, sends the browser to the plain sign-in.
+ * Cloud's refusals that end in a reason its sign-in page words itself, as `ended`. Cloud's page
+ * shows that reason and doesn't send the browser back, so these may redirect.
  */
 const endedReasonByRefusal: ReadonlyMap<string, string> = new Map([
   ["signin.user_suspended", "user_suspended"],
@@ -32,6 +34,16 @@ const endedReasonByRefusal: ReadonlyMap<string, string> = new Map([
  * What a token or refresh credential may hold to be written into a cookie: the base64url and
  * token characters, at most 8 KiB, so Cloud's answer can never add an attribute or a header.
  */
+/**
+ * The other refusals on Cloud's fixed list, which the error answer may name. Anything else from
+ * Cloud stays out of the answer.
+ */
+const namedRefusals: ReadonlySet<string> = new Set([
+  "signin.link_expired",
+  "signin.product_not_live",
+]);
+/** Host-only cookies need this prefix; without it a sibling host could set the session cookie. */
+const hostOnlyCookiePrefix = "__Host-";
 const cookieValuePattern = /^[A-Za-z0-9\-._~+/]{1,8192}=*$/;
 /** Every cookie this flow sets is host-only, on every path, over HTTPS, out of scripts' reach. */
 const cookieAttributes = "Path=/; Secure; HttpOnly";
@@ -51,6 +63,12 @@ export function createCloudSignInRoutes(
   ports: CloudSignInPorts,
   options: { readonly sessionCookieName: string; readonly errorLog: ErrorLog },
 ): CloudSignInRoutes {
+  if (!isHttpsOrigin(ports.signInOrigin)) {
+    throw new Error("The sign-in origin must be an https origin with no path.");
+  }
+  if (!options.sessionCookieName.startsWith(hostOnlyCookiePrefix)) {
+    throw new Error(`The session cookie's name must start with ${hostOnlyCookiePrefix}.`);
+  }
   const now = ports.now ?? Date.now;
 
   /** A fresh start: a new `state`, which also makes any older one useless. */
@@ -93,6 +111,21 @@ export function createCloudSignInRoutes(
     return response;
   }
 
+  /**
+   * A failed return answers an error instead of a new redirect: a person already signed in at
+   * Cloud would be sent straight back, so a redirect would loop. Starting again takes a click.
+   */
+  function signInFailed(refusal?: string): Response {
+    const { status, code, message } = serverErrors.signInFailed;
+    const body: ServerErrorBody & { readonly refusal?: string } =
+      refusal !== undefined && namedRefusals.has(refusal)
+        ? { code, message, refusal }
+        : { code, message };
+    const response = Response.json(body, { status });
+    response.headers.append("Set-Cookie", stateCookie("", 0));
+    return response;
+  }
+
   async function finishSignIn(request: Request): Promise<Response> {
     const query = new URL(request.url).searchParams;
     const code = query.get("code");
@@ -102,23 +135,23 @@ export function createCloudSignInRoutes(
     // The code is never touched unless the state matches: a code from another browser's sign-in
     // can't start a session here.
     if (code === null || code === "" || !statesMatch(keptState, sentState)) {
-      return sendToSignIn();
+      return signInFailed();
     }
     let outcome: Awaited<ReturnType<CloudSignInPorts["exchange"]>>;
     try {
       outcome = await ports.exchange(code, sentState);
     } catch (error) {
-      // Cloud used nothing up that a new sign-in needs, so the person starts again.
       options.errorLog.record(error);
-      return sendToSignIn();
+      return signInFailed();
     }
     if (!outcome.ok) {
-      return sendToSignIn(endedReasonByRefusal.get(outcome.refusal));
+      const endedReason = endedReasonByRefusal.get(outcome.refusal);
+      return endedReason === undefined ? signInFailed(outcome.refusal) : sendToSignIn(endedReason);
     }
     const { token, refreshCredential } = outcome.session;
     if (!cookieValuePattern.test(token) || !cookieValuePattern.test(refreshCredential)) {
       options.errorLog.record(new Error("Cloud's session answer can't be kept in a cookie."));
-      return sendToSignIn();
+      return signInFailed();
     }
     return signedIn(outcome.session);
   }
