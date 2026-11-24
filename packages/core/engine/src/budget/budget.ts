@@ -1,6 +1,6 @@
 // The run and monthly budgets: when one is reached, and the message the run
 // ends with. The amounts are in the budget's currency, the one the prices in
-// `models.yaml` are written in.
+// `models.yaml` are written in. The run token limit counts tokens, not money.
 
 import type { RunFailureCause, Usage } from "@halonicjs/events";
 import type { WorkspaceSettings } from "@halonicjs/format";
@@ -17,8 +17,8 @@ export interface Spend {
   /**
    * The tokens the same runs used, next to their cost (requirement
    * `engine.budget-tokens`). Calls a subscription paid for count here, as
-   * they used tokens even though they cost nothing. Tracked only: no limit
-   * stops a run on them yet.
+   * they used tokens even though they cost nothing. The run's tokens stop
+   * a run at `perRunTokens` (requirement `engine.budget-token-stops`).
    */
   readonly tokens: SpentTokens;
 }
@@ -29,15 +29,20 @@ export interface SpentTokens {
   readonly month: Usage;
 }
 
+/** What {@link budgetStopOf} reads of a {@link Spend}: the run and month cost, and the run's tokens. */
+export type BudgetSpend = Pick<Spend, "run" | "month"> & {
+  readonly tokens: Pick<SpentTokens, "run">;
+};
+
 /** Why the budget lets no more paid calls happen: the run's error, and the cause its `run.failed` carries. */
 export interface BudgetStop {
   /** The message the run ends with, such as `Run budget reached: 5.08 of 5.00 EUR spent.` */
   readonly error: string;
   /**
    * The typed cause for a screen to read instead of `error` (requirement
-   * `events.run-failed-cause`): kind `limit_reached`, the code `budget.run`
-   * or `budget.month`, and the limit, the spend and the currency in `detail`,
-   * unrounded.
+   * `events.run-failed-cause`): kind `limit_reached`, the code `budget.run`,
+   * `budget.run-tokens` or `budget.month`, and the limit and the spend in
+   * `detail`, unrounded, with the currency for the two money limits.
    */
   readonly cause: RunFailureCause;
 }
@@ -45,16 +50,25 @@ export interface BudgetStop {
 /**
  * Why the budget lets no more paid calls happen, or `null` while it allows
  * them. A limit is reached once the spend is at it, so the call that would
- * go past it never starts. The run budget is checked first.
+ * go past it never starts. The run budget is checked first, then the run
+ * token limit, then the monthly budget.
  */
-export function budgetStopOf(
-  budget: Budget,
-  spend: Pick<Spend, "run" | "month">,
-): BudgetStop | null {
+export function budgetStopOf(budget: Budget, spend: BudgetSpend): BudgetStop | null {
   if (budget.perRun !== undefined && spend.run >= budget.perRun) {
     return {
       error: runBudgetReached(budget.perRun, spend.run, budget.currency),
       cause: budgetCause("budget.run", budget.perRun, spend.run, budget.currency),
+    };
+  }
+  const runTokens = allTokensOf(spend.tokens.run);
+  if (budget.perRunTokens !== undefined && runTokens >= budget.perRunTokens) {
+    return {
+      error: runTokenLimitReached(budget.perRunTokens, runTokens),
+      cause: {
+        kind: "limit_reached",
+        code: "budget.run-tokens",
+        detail: { limit: String(budget.perRunTokens), spent: String(runTokens) },
+      },
     };
   }
   if (budget.monthly !== undefined && spend.month >= budget.monthly) {
@@ -84,9 +98,29 @@ export function runBudgetReached(limit: number, spent: number, currency: string)
   return `Run budget reached: ${amount(spent)} of ${amount(limit)} ${currency} spent.`;
 }
 
+/** The error of a run its run token limit stopped, such as `Run token limit reached: 1,204,331 of 1,000,000 tokens used.` */
+export function runTokenLimitReached(limit: number, used: number): string {
+  return `Run token limit reached: ${tokenCount(used)} of ${tokenCount(limit)} tokens used.`;
+}
+
+/**
+ * Every token in `usage`, cache reads and writes included: what the run token
+ * limit counts, since the provider processed them all.
+ */
+export function allTokensOf(usage: Usage): number {
+  const cached =
+    (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0) + (usage.cacheWrite1hTokens ?? 0);
+  return usage.inputTokens + usage.outputTokens + cached;
+}
+
 /** The error of a run the monthly budget stopped, such as `Monthly budget reached: 50.10 of 50.00 EUR spent this month.` */
 export function monthlyBudgetReached(limit: number, spent: number, currency: string): string {
   return `Monthly budget reached: ${amount(spent)} of ${amount(limit)} ${currency} spent this month.`;
+}
+
+/** A whole number of tokens with a comma every three digits, whatever the machine's locale: 1204331 is `1,204,331`. */
+function tokenCount(value: number): string {
+  return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 /**
