@@ -318,7 +318,7 @@ export class SrtSandbox implements Sandbox {
     if (machine.platform === "win32") return firstWindowsUnavailable(machine);
     if (machine.platform === "darwin") {
       if (!(await machine.hasSeatbelt())) {
-        return { reason: "other", missing: "sandbox-exec is not installed" };
+        return { reason: "not-supported", missing: "sandbox-exec is not installed" };
       }
       if (await machine.hasRipgrep()) return null;
       return {
@@ -328,7 +328,7 @@ export class SrtSandbox implements Sandbox {
       };
     }
     if (machine.platform !== "linux") {
-      return { reason: "other", missing: `${machine.platform} has no sandbox` };
+      return { reason: "not-supported", missing: `${machine.platform} has no sandbox` };
     }
     return this.#firstLinuxUnavailable();
   }
