@@ -375,6 +375,31 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/paperclip/key",
         route(Method::Post, "/v1/paperclip/key", Answer::Json),
     ),
+    // Disconnect and the desktop engine's AgentMessaging (HAL-17438); no key comes back.
+    (
+        "POST /v1/paperclip/disconnect",
+        route(Method::Post, "/v1/paperclip/disconnect", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/read",
+        route(Method::Post, "/v1/messaging/read", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/answer",
+        route(Method::Post, "/v1/messaging/answer", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/send",
+        route(Method::Post, "/v1/messaging/send", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/changes",
+        route(Method::Post, "/v1/messaging/changes", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/focus",
+        route(Method::Post, "/v1/messaging/focus", Answer::Json),
+    ),
     // Whether a plugin's runner stopped because the sandbox failed while it
     // ran, and Check again (HAL-15113): codes only, kept in the host's
     // memory; the page sends only the plugin's id, and nothing starts.

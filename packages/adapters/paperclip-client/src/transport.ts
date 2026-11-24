@@ -24,7 +24,7 @@ export type PaperclipAnswer =
  * Thrown when the client can't go on: a redirect, an unsafe ID or address,
  * or a read that failed. Its message names the request and the HTTP status
  * only, never the address's key, a request header or the body of a failed
- * answer (`ports.paperclip-key`).
+ * answer (`agent-host.paperclip-key`).
  */
 export class PaperclipClientError extends Error {
   readonly reason: PaperclipFailure | "redirect" | "bad-answer" | "bad-key";
@@ -36,10 +36,20 @@ export class PaperclipClientError extends Error {
   }
 }
 
+/**
+ * Hands the key to one request, or answers `signed-out` and runs nothing. The
+ * engine's guard compares the connection file with the address and company
+ * the key was made for before every request (`agent-host.paperclip-key`).
+ */
+export type PaperclipKeyGuard = (
+  request: (key: string) => Promise<PaperclipAnswer>,
+) => Promise<PaperclipAnswer>;
+
 /** Where to send requests and with which key. The engine hands these in and keeps the key in memory. */
 export interface TransportOptions {
   address: string;
-  key: string;
+  /** The key, or the guard that hands it to each request. */
+  key: string | PaperclipKeyGuard;
   /** The `fetch` to use; the global one by default. */
   fetch?: typeof fetch;
 }
@@ -65,19 +75,14 @@ const statusFailures: ReadonlyMap<number, PaperclipFailure> = new Map([
  */
 export class PaperclipTransport {
   readonly #origin: string;
-  readonly #key: string;
+  readonly #guard: PaperclipKeyGuard;
   readonly #fetch: typeof fetch;
 
   constructor(options: TransportOptions) {
     this.#origin = checkedOrigin(options.address);
-    // A header can't carry a line break or a control character; fetch would fail as if offline.
-    if (!/^[\x21-\x7e]+$/.test(options.key)) {
-      throw new PaperclipClientError(
-        "The Paperclip key can't be sent: it holds a character a header can't carry.",
-        "bad-key",
-      );
-    }
-    this.#key = options.key;
+    const { key } = options;
+    if (typeof key === "string") checkKey(key);
+    this.#guard = typeof key === "string" ? (request) => request(key) : key;
     this.#fetch = options.fetch ?? fetch;
   }
 
@@ -96,11 +101,22 @@ export class PaperclipTransport {
     if (!matchesRequest(name, method, url.pathname)) {
       throw new PaperclipClientError(`${method} ${name} isn't on the request list.`, "refused");
     }
+    return this.#guard((key) => this.#sendWith(key, name, url, details.body));
+  }
+
+  async #sendWith(
+    key: string,
+    name: PaperclipRequestName,
+    url: URL,
+    body: unknown,
+  ): Promise<PaperclipAnswer> {
+    checkKey(key);
+    const { method } = paperclipRequests[name];
     const headers: Record<string, string> = {
       accept: "application/json",
-      authorization: `Bearer ${this.#key}`,
+      authorization: `Bearer ${key}`,
     };
-    if (details.body !== undefined) {
+    if (body !== undefined) {
       headers["content-type"] = "application/json";
     }
     let response: Response;
@@ -108,7 +124,7 @@ export class PaperclipTransport {
       response = await this.#fetch(url, {
         method,
         headers,
-        body: details.body === undefined ? null : JSON.stringify(details.body),
+        body: body === undefined ? null : JSON.stringify(body),
         redirect: "manual",
       });
     } catch {
@@ -143,6 +159,16 @@ export class PaperclipTransport {
     }
     await response.body?.cancel();
     return { kind: "failed", failure };
+  }
+}
+
+/** A header can't carry a line break or a control character; fetch would fail as if offline. */
+function checkKey(key: string): void {
+  if (!/^[\x21-\x7e]+$/.test(key)) {
+    throw new PaperclipClientError(
+      "The Paperclip key can't be sent: it holds a character a header can't carry.",
+      "bad-key",
+    );
   }
 }
 

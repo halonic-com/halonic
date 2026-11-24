@@ -17,6 +17,7 @@
     "test:fence": "vitest run --config vitest.fence.config.ts"
   },
   "devDependencies": {
+    "@halonicjs/adapter-agent-host-client": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-sign-in": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
@@ -49,6 +50,7 @@
     "@halonicjs/adapter-integration-kit": "workspace:*",
     "@halonicjs/adapter-integration-runner": "workspace:*",
     "@halonicjs/adapter-mcp": "workspace:*",
+    "@halonicjs/adapter-paperclip-client": "workspace:*",
     "@halonicjs/adapter-model-mock": "workspace:*",
     "@halonicjs/adapter-model-openai": "workspace:*",
     "@halonicjs/adapter-paperclip-client": "workspace:*",
@@ -57,6 +59,7 @@
     "@halonicjs/adapter-remote-gateway": "workspace:*",
     "@halonicjs/adapter-sandbox-host": "workspace:*",
     "@halonicjs/adapter-sandbox-srt": "workspace:*",
+    "@halonicjs/adapter-scheduler-node": "workspace:*",
     "@halonicjs/adapter-secrets-file": "workspace:*",
     "@halonicjs/adapter-system-node": "workspace:*",
     "@halonicjs/adapter-token-store": "workspace:*",

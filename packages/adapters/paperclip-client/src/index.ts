@@ -4,6 +4,7 @@
  */
 export { UnsafeAddressError } from "./address.ts";
 export { PaperclipMessaging, type PaperclipMessagingOptions } from "./client.ts";
+export { paperclipSourceId } from "./ids.ts";
 export {
   findRequest,
   type PaperclipRequestName,
@@ -25,4 +26,9 @@ export {
   paperclipSignInRequests,
 } from "./sign-in-requests.ts";
 export { PaperclipTeamStatus, type PaperclipTeamStatusOptions } from "./team-status.ts";
-export { PaperclipClientError, type PaperclipFailure } from "./transport.ts";
+export {
+  type PaperclipAnswer,
+  PaperclipClientError,
+  type PaperclipFailure,
+  type PaperclipKeyGuard,
+} from "./transport.ts";

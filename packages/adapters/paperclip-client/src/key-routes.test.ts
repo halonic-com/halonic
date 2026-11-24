@@ -15,7 +15,7 @@ beforeEach(() => {
   paperclip = new FakePaperclip();
 });
 
-verifies("ports.paperclip-key", () => {
+verifies("agent-host.paperclip-key", () => {
   describe("routes that make keys", () => {
     // Every route on our server's Paperclip that makes a key or a token (commit c0f1328).
     const keyRoutes: readonly (readonly [string, string])[] = [

@@ -94,7 +94,7 @@ async function callEverything(messaging: PaperclipMessaging): Promise<void> {
   await messaging.refresh();
 }
 
-verifies("ports.paperclip-key", () => {
+verifies("agent-host.paperclip-key", () => {
   describe("the fixed request list", () => {
     it("matches every request the client makes, and none touches keys", async () => {
       paperclip

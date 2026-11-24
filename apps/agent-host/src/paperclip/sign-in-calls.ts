@@ -82,7 +82,7 @@ export interface PaperclipKeyStore {
   save(entry: StoredPaperclipKey): Promise<void>;
 }
 
-/** A keychain entry: the key and the connection it was made for (`ports.paperclip-key`). */
+/** A keychain entry: the key and the connection it was made for (`agent-host.paperclip-key`). */
 export interface StoredPaperclipKey {
   /** The connection's address: scheme, host and port. */
   address: string;

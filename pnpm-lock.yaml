@@ -378,6 +378,9 @@ importers:
       '@halonicjs/adapter-sandbox-srt':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-srt
+      '@halonicjs/adapter-scheduler-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/scheduler-node
       '@halonicjs/adapter-secrets-file':
         specifier: workspace:*
         version: link:../../packages/adapters/secrets-file
@@ -445,6 +448,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core/workspace
     devDependencies:
+      '@halonicjs/adapter-agent-host-client':
+        specifier: workspace:*
+        version: link:../../packages/adapters/agent-host-client
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../packages/testing/contracts

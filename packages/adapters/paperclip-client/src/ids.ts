@@ -70,3 +70,15 @@ export class PaperclipIds {
     }
   }
 }
+
+/**
+ * The ID of connection `connection`'s source, as its provider lists it. The
+ * engine clears the source's cache by it on Disconnect, also when no provider
+ * runs for the connection.
+ *
+ * @example
+ * paperclipSourceId("halonic"); // "paperclip:halonic"
+ */
+export function paperclipSourceId(connection: string): MessagingId {
+  return new PaperclipIds(connection).source();
+}

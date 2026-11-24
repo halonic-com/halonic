@@ -3,9 +3,20 @@ import { inPlainWords } from "./plugins.ts";
 import { AgentHostError, type AgentHostTransport, readAnswer } from "./transport.ts";
 
 const answerSchema = s.object({ kept: s.literal(true) }).strict();
+const disconnectAnswer = s.object({ revoked: s.boolean() }).strict();
+
+/** One Paperclip connection: the workspace that holds its file, and the file's name. */
+export interface PaperclipConnectionRef {
+  /** The workspace's real path; the host binds the key to it. */
+  readonly workspace: string;
+  /** The connection's name: its file name without `.yaml`. */
+  readonly connection: string;
+}
 
 /** One Paperclip connection's key, with the address and company it was made for. */
 export interface PaperclipKeyHandOver {
+  /** The workspace's real path; the host binds the key to it. */
+  readonly workspace: string;
   /** The connection's name: its file name without `.yaml`. */
   readonly connection: string;
   readonly key: string;
@@ -33,8 +44,14 @@ export class AgentHostPaperclipKey {
    */
   async handOver(entry: PaperclipKeyHandOver): Promise<void> {
     const route = "POST /v1/paperclip/key";
-    const { connection, key, address, company } = entry;
-    const answer = await this.#transport.request(route, { connection, key, address, company });
+    const { workspace, connection, key, address, company } = entry;
+    const answer = await this.#transport.request(route, {
+      workspace,
+      connection,
+      key,
+      address,
+      company,
+    });
     try {
       readAnswer(route, answer, answerSchema);
     } catch (error) {
@@ -47,5 +64,19 @@ export class AgentHostPaperclipKey {
       }
       throw inPlainWords(error);
     }
+  }
+
+  /**
+   * Disconnects `ref`: the host asks Paperclip to revoke the key, then forgets
+   * it and deletes the connection's cache, also when the revoke failed.
+   *
+   * @returns whether Paperclip revoked the key; when not, it stays valid until its expiry
+   * @throws {@link AgentHostError} when the host refuses (`unknown_workspace`…) or can't be reached
+   */
+  async disconnect(ref: PaperclipConnectionRef): Promise<{ revoked: boolean }> {
+    const route = "POST /v1/paperclip/disconnect";
+    const { workspace, connection } = ref;
+    const answer = await this.#transport.request(route, { workspace, connection });
+    return readAnswer(route, answer, disconnectAnswer);
   }
 }

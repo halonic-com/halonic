@@ -8,6 +8,7 @@ import { connectPaperclip, paperclipKeyEntryText, paperclipKeyTokenName } from "
 // A fake key only these tests use, so its absence from answers means something.
 const fakeKey = "pcp_board_fake-key-for-tests-only";
 const entry = { key: fakeKey, address: "https://paperclip.acme.test", company: "acme-company" };
+const halonic = { workspace: "/work/acme", connection: "halonic" };
 
 /** The keychain's tokens, kept in memory. */
 function tokensWith(stored: Record<string, string>) {
@@ -25,18 +26,18 @@ verifies("services.paperclip-connect", () => {
       const tokens = tokensWith({ "paperclip-halonic": paperclipKeyEntryText(entry) });
       const host = fakeHost();
 
-      const result = await connectPaperclip(tokens, host, "halonic");
+      const result = await connectPaperclip(tokens, host, halonic);
 
       expect(result).toBe("connected");
       expect(JSON.stringify(result)).not.toContain(fakeKey);
       expect(tokens.get).toHaveBeenCalledWith("paperclip-halonic");
-      expect(host.handOver).toHaveBeenCalledWith({ connection: "halonic", ...entry });
+      expect(host.handOver).toHaveBeenCalledWith({ ...halonic, ...entry });
     });
 
     it("hands nothing over when the keychain holds no key for the connection", async () => {
       const host = fakeHost();
 
-      expect(await connectPaperclip(tokensWith({}), host, "halonic")).toBe("sign-in-needed");
+      expect(await connectPaperclip(tokensWith({}), host, halonic)).toBe("sign-in-needed");
       expect(host.handOver).not.toHaveBeenCalled();
     });
 
@@ -44,7 +45,7 @@ verifies("services.paperclip-connect", () => {
       const host = fakeHost();
       for (const text of ["not json", "null", JSON.stringify({ key: fakeKey }), '"text"']) {
         const tokens = tokensWith({ "paperclip-halonic": text });
-        expect(await connectPaperclip(tokens, host, "halonic")).toBe("sign-in-needed");
+        expect(await connectPaperclip(tokens, host, halonic)).toBe("sign-in-needed");
       }
       expect(host.handOver).not.toHaveBeenCalled();
     });
