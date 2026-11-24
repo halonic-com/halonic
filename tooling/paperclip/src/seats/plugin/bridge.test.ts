@@ -34,6 +34,7 @@ function setup() {
     now: () => new Date("2026-11-22T11:00:00.000Z"),
     reads: () => ({ readerStartedAt: "2026-11-22T10:00:00.000Z", seats: [] }),
     seatsNow: async () => ({ seats: [], placements: new Map(), agentNames: new Map() }),
+    unknownSeatRuns: async () => 0,
   };
   const harness = createTestHarness({ manifest });
   registerSeatsBridge(harness.ctx, deps);

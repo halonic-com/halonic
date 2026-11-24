@@ -1,7 +1,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import type { Placement } from "./records.ts";
-import { bucketStart, type CostRow, seatAt, usageBuckets } from "./usage-buckets.ts";
+import {
+  bucketStart,
+  type CostRow,
+  seatAt,
+  unknownSeatRunCount,
+  usageBuckets,
+} from "./usage-buckets.ts";
 
 function row(time: string, overrides: Partial<CostRow> = {}): CostRow {
   return {
@@ -88,5 +94,22 @@ verifies("paperclip.seats-usage-buckets", () => {
       ["08:30", "agent-1", "seat-a", "claude-model-b"],
       ["08:40", "agent-2", undefined, "claude-model-a"],
     ]);
+  });
+});
+
+verifies("paperclip.seats-summary-fields", () => {
+  test("counts each run with no seat once, by its distinct run id", () => {
+    const rows = [
+      row("07:50", { runId: "run-early" }),
+      row("07:55", { runId: "run-early", model: "claude-model-b" }),
+      row("08:30", { agentId: "agent-2", runId: "run-other" }),
+      row("08:30", { runId: "run-seated" }),
+    ];
+    expect(unknownSeatRunCount(rows, placements)).toBe(2);
+  });
+
+  test("a run with one row on a seat counts as seated", () => {
+    const rows = [row("07:59", { runId: "run-1" }), row("08:00", { runId: "run-1" })];
+    expect(unknownSeatRunCount(rows, placements)).toBe(0);
   });
 });

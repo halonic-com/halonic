@@ -4,7 +4,7 @@ import type { SeatEvent } from "../records.ts";
 import type { SeatsNow } from "./seats-now.ts";
 import { type SeatsPage, seatsPage } from "./seats-page.ts";
 import type { SeatReadStatus } from "./seats-reader.ts";
-import { seatsSummaryData } from "./seats-summary.ts";
+import { seatsSummaryData, summaryFrom } from "./seats-summary.ts";
 import { publicSeat, type SeatSetting, type SeatsSettings } from "./settings.ts";
 import type { SeatsStore } from "./store.ts";
 
@@ -16,6 +16,8 @@ export interface SeatsRouteDeps {
   readonly reads: (seats: readonly SeatSetting[]) => SeatsReadView;
   /** Where the seats and their agents stand, from the stored readings and Paperclip's agents. */
   readonly seatsNow: (companyId: string, settings: SeatsSettings, now: Date) => Promise<SeatsNow>;
+  /** How many runs since `since` have cost rows but no seat, from Paperclip's cost rows and the placements. */
+  readonly unknownSeatRuns: (companyId: string, since: string) => Promise<number>;
 }
 
 /** What the seat list shows about the reads: since the worker started, each seat's state. */
@@ -52,8 +54,13 @@ export async function handleSeatsRequest(
       };
     case "seats.page":
       return { status: 200, body: await seatsPageData(input.companyId, settings, deps) };
-    case "seats.summary":
-      return { status: 200, body: await seatsSummaryData(input.companyId, settings, deps) };
+    case "seats.summary": {
+      const from = summaryFrom(input.query["from"], deps.now());
+      if (from === "invalid") {
+        return refuse(400, "`from` must be an ISO time between 31 days ago and now.");
+      }
+      return { status: 200, body: await seatsSummaryData(input.companyId, settings, deps, from) };
+    }
     case "seats.manual-reset":
       return await recordManualReset(input.params["seatId"], boardUserId, settings, deps);
     default:

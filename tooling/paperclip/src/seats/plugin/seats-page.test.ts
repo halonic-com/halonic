@@ -86,6 +86,7 @@ function setup(now: SeatsNow = twoAgents) {
       asked.push(companyId);
       return now;
     },
+    unknownSeatRuns: async () => 0,
   };
   return { deps, events, asked };
 }

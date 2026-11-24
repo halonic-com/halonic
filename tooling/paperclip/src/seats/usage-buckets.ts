@@ -42,6 +42,24 @@ export function seatAt(
   return holding?.seatId;
 }
 
+/**
+ * How many distinct runs in `rows` have no seat: no placement holds any of
+ * their rows. A run with one row on a seat counts as seated, so a run that
+ * spans a placement change is never counted as unknown.
+ */
+export function unknownSeatRunCount(
+  rows: readonly CostRow[],
+  placements: readonly Placement[],
+): number {
+  const seated = new Set<string>();
+  const unseated = new Set<string>();
+  for (const row of rows) {
+    const runs = seatAt(placements, row.agentId, row.occurredAt) === undefined ? unseated : seated;
+    runs.add(row.runId);
+  }
+  return [...unseated].filter((runId) => !seated.has(runId)).length;
+}
+
 interface Bucket {
   usage: AgentUsage;
   readonly runIds: Set<string>;
