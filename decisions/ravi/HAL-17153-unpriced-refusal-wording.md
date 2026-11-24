@@ -3,6 +3,7 @@
 - Task: HAL-17153, from words check C782 rows 14 and 15 (HAL-17146) on #5518 (HAL-16880)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17153 (a team decision on approved wording, HAL-2282; the reviewer compares the PR with the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G99pkyd4pe8MA+QWsSqjyM7KVGIyKZnZqd/ALykk3XWyFqVpAgmaiLRJygwbOdsmt59X0kWVarzpyupqoqboBg==
 
 ## What changes
 
