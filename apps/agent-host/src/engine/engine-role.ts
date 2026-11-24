@@ -33,6 +33,8 @@ export interface RunningEngine {
   health(): EngineHealth;
   /** Takes the sandbox host's newest connection, for harness steps and the bridge. */
   useSandboxHost(connection: SandboxHostConnection): void;
+  /** Pauses routines, or resumes them: while paused, their due times are skipped. */
+  pauseRoutines(paused: boolean): void;
   /** Calls `listener` whenever its health changes, until the returned function is called. */
   followHealth(listener: () => void): () => void;
   /** Stops the routine scheduler: no new run starts after it. */
@@ -87,14 +89,20 @@ export async function runEngineRole(
   const stopReason = new Promise<StopReason>((resolve) => {
     stopRequested = resolve;
   });
-  // The shell sends the connection after the handshake, so normally to an
-  // open engine; one that comes sooner is kept and handed over on opening.
+  // The shell sends the connection and the pause after the handshake, so
+  // normally to an open engine; one that comes sooner is kept and handed over
+  // on opening.
   let engine: RunningEngine | undefined;
   let earlySandboxHost: SandboxHostConnection | undefined;
+  let earlyPause: boolean | undefined;
   const pipe = new ControlPipe(input, output, {
     sandboxHost: (connection) => {
       if (engine === undefined) earlySandboxHost = connection;
       else engine.useSandboxHost(connection);
+    },
+    pauseRoutines: (paused) => {
+      if (engine === undefined) earlyPause = paused;
+      else engine.pauseRoutines(paused);
     },
     stop: () => stopRequested({ kind: "stop" }),
     end: () => stopRequested({ kind: "end" }),
@@ -108,6 +116,7 @@ export async function runEngineRole(
     return 1;
   }
   if (earlySandboxHost !== undefined) engine.useSandboxHost(earlySandboxHost);
+  if (earlyPause !== undefined) engine.pauseRoutines(earlyPause);
   pipe.send({
     kind: "handshake",
     protocol: controlProtocolVersion,

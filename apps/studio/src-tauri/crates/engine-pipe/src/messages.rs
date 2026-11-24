@@ -35,6 +35,7 @@ pub(crate) enum EngineFrame {
     #[serde(rename_all = "camelCase")]
     Health {
         scheduling: bool,
+        paused: bool,
         active_runs: u32,
         // Required though nullable: serde would take a missing `Option` as
         // `None`, and a missing field is a fault.
@@ -80,6 +81,7 @@ struct Connection<'a> {
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum ShellFrame<'a> {
     SandboxHost { connection: Option<Connection<'a>> },
+    PauseRoutines { paused: bool },
     Stop,
 }
 
@@ -102,6 +104,12 @@ pub fn sandbox_host_json(host: Option<SandboxHost<'_>>) -> Vec<u8> {
             token: host.token,
         }),
     })
+}
+
+/// The `pause_routines` frame's JSON: pause the engine's routines, or
+/// resume them.
+pub fn pause_routines_json(paused: bool) -> Vec<u8> {
+    to_json(&ShellFrame::PauseRoutines { paused })
 }
 
 /// The `stop` frame's JSON.

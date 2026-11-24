@@ -105,6 +105,11 @@ export interface HealthMessage {
   readonly kind: "health";
   /** Whether the routine scheduler ticks; `false` once a stop began. */
   readonly scheduling: boolean;
+  /**
+   * Whether routines are paused: by the shell's `pause_routines`, or because
+   * none has come yet since this launch. Paused routines start no run.
+   */
+  readonly paused: boolean;
   /** The runs that are going now (running or waiting). */
   readonly activeRuns: number;
   /** When the scheduler last ticked, as an ISO time, or `null` before its first tick. */
@@ -152,6 +157,19 @@ export interface SandboxHostMessage {
  */
 export interface StopMessage {
   readonly kind: "stop";
+}
+
+/**
+ * Pauses or resumes the routine scheduler (the tray's Pause routines). The
+ * engine starts with routines paused and starts no routine run until the
+ * shell's first `pause_routines`, which the shell sends after every
+ * handshake, so an engine started again after a crash never resumes routines
+ * the user paused. While paused, the times routines fall due are skipped, not
+ * caught up after the resume. The newest one counts.
+ */
+export interface PauseRoutinesMessage {
+  readonly kind: "pause_routines";
+  readonly paused: boolean;
 }
 
 /** How long the engine lets running steps end after `stop`. */
@@ -222,4 +240,8 @@ export type SecretAnswerMessage = {
 } & BrokerAnswer;
 
 /** Every frame the shell may send. The engine stops on any other. */
-export type ShellMessage = SandboxHostMessage | StopMessage | SecretAnswerMessage;
+export type ShellMessage =
+  | SandboxHostMessage
+  | PauseRoutinesMessage
+  | StopMessage
+  | SecretAnswerMessage;

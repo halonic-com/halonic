@@ -18,12 +18,15 @@
 //! - Anything else is a [`PipeFault`], which never holds the frame's content.
 //!   On a fault the shell closes the engine's standard input, kills it and
 //!   counts it as a crash.
+//! - [`RoutinePause`] keeps the user's Pause routines for one workspace and
+//!   gives the `pause_routines` frame to send after every handshake.
 //!
 //! This crate holds no Tauri types and starts no process.
 
 mod fault;
 mod frame;
 mod messages;
+mod pause;
 mod session;
 
 pub use fault::PipeFault;
@@ -31,6 +34,8 @@ pub use frame::{
     FRAME_LENGTH_BYTES, MAX_ENGINE_FRAME_BYTES, MAX_SHELL_FRAME_BYTES, read_frame, write_frame,
 };
 pub use messages::{
-    PROTOCOL_VERSION, SandboxHost, sandbox_host_json, secret_answer_json, stop_json,
+    PROTOCOL_VERSION, SandboxHost, pause_routines_json, sandbox_host_json, secret_answer_json,
+    stop_json,
 };
+pub use pause::RoutinePause;
 pub use session::{EngineEvent, EngineHealth, HEALTH_EVERY, PipeSession};
