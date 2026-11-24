@@ -34,12 +34,13 @@ const room = ({ me = "fast-11", availGiB, states = {} }) => {
     "/bin/bash",
     [
       "-c",
-      `${fn[0]}\nSLOT=$1 STATES=$2 MEMINFO=$3 STALE_S=$4 fast_room`,
+      `${fn[0]}\nSLOT=$1 STATES=$2 MEMINFO=$3 STALE_S=$4 BUSY_ROOM_B=$5 fast_room`,
       "x",
       me,
       base,
       meminfo,
       "120",
+      String(2 * GiB),
     ],
     { encoding: "utf8" },
   );
@@ -54,7 +55,8 @@ test("fast admission: an idle fast runner's start size and a busy job's room cou
     availGiB: 40,
     states: {
       "fast-12": fastIdle,
-      // 10 GB limit, 3 GB used: it may still take 7 GB without asking.
+      // 10 GB limit, 3 GB used: it may still take 7 GB without asking, but counts for 2 GB
+      // (HAL-17574).
       "large-1": { label: "halonic-ci-large", busy: true, mem_limit: 10 * GiB, mem_peak: 3 * GiB },
       // Above its limit (file cache in the peak): it promises nothing more, never less than nothing.
       "fast-1": { label: "halonic-ci-fast", busy: true, mem_limit: 4 * GiB, mem_peak: 5 * GiB },
@@ -65,7 +67,7 @@ test("fast admission: an idle fast runner's start size and a busy job's room cou
     },
   });
   assert.equal(res.ok, true, res.out);
-  assert.equal(res.bytes, (40 - 4 - 7) * GiB);
+  assert.equal(res.bytes, (40 - 4 - 2) * GiB);
 });
 
 test("fast admission: 24 fast slots on a 72 GB VM register only as many runners as fit", () => {
@@ -120,7 +122,7 @@ test("fast admission: a state not updated for 120 s, or with no updated_at, prom
   assert.equal(stale.bytes, 40 * GiB);
   // A running slot rewrote its state 2 s ago: its job's room still counts.
   const fresh = room({ availGiB: 40, states: { "large-1": { ...busy, updated_at: now() - 2 } } });
-  assert.equal(fresh.bytes, (40 - 7) * GiB);
+  assert.equal(fresh.bytes, (40 - 2) * GiB);
   // No updated_at (or not a number): ignored, like a stale one.
   const none = room({ availGiB: 40, states: { "large-1": { ...busy, updated_at: undefined } } });
   assert.equal(none.bytes, 40 * GiB);
@@ -148,4 +150,53 @@ test("--cleanup removes any slot's state before anything that can fail (HAL-1755
   assert.ok(
     slot.indexOf('  rm -f "$STATES/$SLOT.state" ||') < slot.indexOf("/etc/halonic-ci/pool.env"),
   );
+});
+
+test("fast admission: a busy job counts for its use now plus at most 2 GB (HAL-17574)", () => {
+  assert.ok(slot.includes("RESERVE_B=4294967296; STALE_S=120; BUSY_ROOM_B=2147483648"));
+  const busy = (anon, limit = 8) => ({
+    label: "halonic-ci-fast",
+    busy: true,
+    mem_limit: limit * GiB,
+    mem_peak: 7 * GiB,
+    ...(anon === undefined ? {} : { mem_anon: anon * GiB }),
+  });
+  // Its use now (anon + shmem), not memory.peak with the file cache: 8 - 3 = 5, capped at 2.
+  assert.equal(room({ availGiB: 40, states: { "fast-1": busy(3) } }).bytes, 38 * GiB);
+  // Less than 2 GB left under its limit: only that counts.
+  assert.equal(room({ availGiB: 40, states: { "fast-1": busy(7.5) } }).bytes, 39.5 * GiB);
+  // A state from before mem_anon falls back to memory.peak: 8 - 7 = 1.
+  assert.equal(room({ availGiB: 40, states: { "fast-1": busy(undefined) } }).bytes, 39 * GiB);
+  // Over its limit: nothing, never less than nothing.
+  assert.equal(room({ availGiB: 40, states: { "fast-1": busy(9) } }).bytes, 40 * GiB);
+  // Fast jobs go first if the VM runs out anyway.
+  assert.ok(slot.includes('OOM_ADJ=0; [ "$LABEL" != halonic-ci-fast ] || OOM_ADJ=500'));
+  assert.ok(slot.includes('--oom-score-adj "$OOM_ADJ"'));
+  assert.ok(slot.includes("mem_peak:$peak, mem_anon:$anon, mem_limit:$memlimit,"));
+});
+
+test("fast admission: the board's 96 GB snapshot of 24 Nov now fits 22 fast runners, not 16 (HAL-17574)", () => {
+  // 15:00 Spain: 68 GB available, 12 busy fast jobs (limits grown to 8 GB, about 3.3 GB used) and
+  // 4 idle runners. Before, the busy jobs held 32 GB back and idle fast-1..10 runners 6 GB each, so 6
+  // slots waited. Now each busy job counts 2 GB and every idle runner 4 GB: 68 - 24 - 16 = 28 GB, so
+  // 6 more runners register (each needs its 4 GB start plus the 4 GB reserve free).
+  const states = {};
+  for (let n = 1; n <= 12; n++) {
+    states[`fast-${n}`] = {
+      label: "halonic-ci-fast",
+      busy: true,
+      mem_limit: 8 * GiB,
+      mem_peak: 4 * GiB,
+      mem_anon: 3.3 * GiB,
+    };
+  }
+  for (let n = 13; n <= 16; n++) states[`fast-${n}`] = fastIdle;
+  let registered = 0;
+  for (let n = 17; n <= 40; n++) {
+    const me = `fast-${n}`;
+    if (room({ me, availGiB: 68, states }).bytes < 8 * GiB) continue;
+    states[me] = fastIdle;
+    registered++;
+  }
+  assert.equal(registered, 6);
 });

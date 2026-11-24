@@ -1,4 +1,4 @@
-# Decision: the fast pool grows to 40 slots, and its 4-CPU slots float over the CI VM's cores instead of a fixed set each
+# Decision: the fast pool grows to 40 slots, and its 4-CPU slots float over the CI VM's cores instead of a fixed set each, and memory admission counts busy jobs less strictly
 
 - Task: HAL-17574 (the board's decision on the task, 24 Nov)
 - Approval: the board decided on HAL-17574 (24 Nov) on fast-25..40 with 4 CPUs each and a CPU placement that spreads the fast slots; Liam signs this note in review, Julian checks C1–C8 on the task
@@ -16,6 +16,12 @@ stays as it is.
   `docker info`), so the job sees 4 CPUs. Without that flag they keep a fixed 4-vCPU set each,
   `fast-11` … `fast-24` the ones they have today. `fast-1` … `fast-10`, the large and the small
   slots keep their sets. Large slots get `--cpu-shares 2048`, every other slot 1024.
+- Memory admission (the board on the task, 24 Nov 15:00 Spain: it, not the slot count, capped the
+  pool at 96 GB): a busy job counts for at most 2 GB beyond what it uses now (anon + shmem, a new
+  `mem_anon` field in the slot's state; `memory.peak` from an older state), not all the way to its
+  limit. `fast-1` … `fast-10` start at 4 GB instead of 6 GB, so an idle runner promises 4 GB like
+  the others. Fast containers get `--oom-score-adj 500`, so if the VM runs out anyway the kernel
+  kills a fast job before a merge-group job.
 - `vm/halonic-ci-gate-fast.socket`: 40 connections (one per fast slot), still at most 48 a minute.
 - Tests and the runner README follow.
 
@@ -34,17 +40,26 @@ The gate's rate stays at 48 a minute (2880 an hour against the read-only token's
 follow the pull request jobs, about 540 an hour, not the number of slots, and 48 still lets all 40
 slots start a job in the same minute.
 
+Memory admission was counting each busy job up to its limit, which grows 4 GB at a time: on 24 Nov
+12 busy fast jobs used about 3.3 GB each but held 32 GB back, so at 96 GB the pool stopped at
+16-18 jobs and fast-25..40 would have waited. Capping a job at one growth step (4 GB) would not have
+changed that (their headroom was 2.7 GB on average); 2 GB is the margin the growth loop keeps under
+the limit anyway. With the board's snapshot 22 fast runners fit instead of 16. This counts less
+than the worst case on purpose, since fast jobs rarely all grow at once; the 4 GB reserve stays, and
+the OOM priority decides who goes if they do.
+
 A CPU admission check for fast slots (the cpu-proposal on HAL-17463) is left for later: the slot
 count and the placement come first, and the CPU weight already protects the merge groups.
 
 ## Tests
 
 No test was skipped or weakened. The gate socket test now expects 40 connections; the sizes and
-no-twin tests cover `fast-25` and `fast-40`; a new test checks the floating set for `fast-11` …
+no-twin tests cover `fast-25` and `fast-40`; two admission tests expect a busy job's smaller count (2 GB, not 7), two new ones check the new count and the board's 96 GB snapshot; a new test checks the floating set for `fast-11` …
 `fast-40`, the fixed fallback sets, that only the 4-CPU slots float, the `runsc` flag check and the
-CPU weights. `node --test infra/ci-runner/*.test.mjs`: 104 pass.
+CPU weights. `node --test infra/ci-runner/*.test.mjs`: 108 pass.
 
 ## Covers
 
 - infra/ci-runner/fast-pool.test.mjs
 - infra/ci-runner/hook.test.mjs
+- infra/ci-runner/fast-admit.test.mjs

@@ -196,11 +196,12 @@ test("each job container is capped and unprivileged (C5)", () => {
 
 test("a job container starts at MEM_START and grows only up to MEM, with swap kept equal", () => {
   const slot = read("vm/halonic-runner-slot.sh");
-  // Large and fast slots start at 6 GB and grow 4 GB every 2 s up to 16 GB: no OOM since 22 Nov 08:07
+  // Large slots start at 6 GB (fast-1..10 at 4 GB since HAL-17574, fast jobs peak at 4.4 GB) and grow
+  // 4 GB every 2 s up to 16 GB: no OOM since 22 Nov 08:07
   // UTC with this, and #4976 cut the biggest job (Fast gates) to under 1 GB. A fixed 10 GB start on
   // 19 large slots would allow 190 GB on a 128 GB VM with no free-memory check below 10 GB.
   assert.match(slot, /^ {2}large-\*\).* MEM=16g; MEM_START=6g; /m);
-  assert.match(slot, /^ {2}fast-\[1-9\]\|fast-10\).* MEM=16g; MEM_START=6g; /m);
+  assert.match(slot, /^ {2}fast-\[1-9\]\|fast-10\).* MEM=16g; MEM_START=4g; /m);
   // fast-11..40 (HAL-17463, HAL-17574): GitHub's runner size, 4 CPUs, starting at 4 GB (fast jobs
   // peaked at 4.4 GB over 24 h) and growing to 12 GB at most.
   assert.match(

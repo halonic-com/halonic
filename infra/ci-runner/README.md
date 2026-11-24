@@ -121,9 +121,9 @@ for it to exit and cleans up. systemd starts the next cycle.
 | `large-12` … `large-14` | `halonic-ci-large` | 6 | 3-8, 27-32, 51-56 (shared with two other large slots each) | 6 GB → 16 GB | 20 GB |
 | `large-15` … `large-19` | `halonic-ci-large` | 6 | 72-77, 78-83, … 96-101 | 6 GB → 16 GB | 20 GB |
 | `small-1` … `small-3` | `halonic-ci-small` | 2 each | 66-71 (shared) | 2 GB → 3 GB | 6 GB |
-| `fast-1` … `fast-3` | `halonic-ci-fast` | 6 | those of `large-11`, `large-10`, `large-9` | 6 GB → 16 GB | 20 GB |
-| `fast-4` … `fast-8` | `halonic-ci-fast` | 6 | those of `large-15` … `large-19` (shared) | 6 GB → 16 GB | 20 GB |
-| `fast-9`, `fast-10` | `halonic-ci-fast` | 6 | 15-20, 39-44 (shared with two large slots each) | 6 GB → 16 GB | 20 GB |
+| `fast-1` … `fast-3` | `halonic-ci-fast` | 6 | those of `large-11`, `large-10`, `large-9` | 4 GB → 16 GB | 20 GB |
+| `fast-4` … `fast-8` | `halonic-ci-fast` | 6 | those of `large-15` … `large-19` (shared) | 4 GB → 16 GB | 20 GB |
+| `fast-9`, `fast-10` | `halonic-ci-fast` | 6 | 15-20, 39-44 (shared with two large slots each) | 4 GB → 16 GB | 20 GB |
 | `fast-11` … `fast-40` | `halonic-ci-fast` | 4 (quota) | float over 0-65 and 72-101 while `runsc` runs with `--cpu-num-from-quota`; without it a fixed 4-vCPU set each (`FAST4_FROM`; `fast-11` … `fast-24` keep 0-3, 4-7, 8-11, 22-25, 26-29, 30-33, 34-37, 50-53, 56-59, 62-65, 74-77, 80-83, 86-89, 92-95) | 4 GB → 12 GB | 20 GB |
 
 The VM has 112 vCPUs (56 cores) and 128 GB. Each slot is pinned to its own vCPUs
@@ -154,20 +154,25 @@ cgroup's `memory.high` sits 512 MB under the limit, so the kernel reclaims cache
 before the hard limit kills it, which gives the loop time to grow it. All slots start at
 19×6 + 3×2 = 120 GB and could grow to 19×16 + 3×3 = 313 GB, far more than the VM's 128 GB. The
 VM-wide reserve check (`MemAvailable` above the 4 GB step plus 4 GB) is the only thing that stops
-growth from overcommitting it. The 40 fast slots add 10×6 + 30×4 = 180 GB of start size: fast jobs
+growth from overcommitting it. The 40 fast slots add 40×4 = 160 GB of start size (fast-1..10 start at 4 GB too since HAL-17574): fast jobs
 peaked at 4.4 GB (p90 4.35 GB) over 24 h on 23–24 Nov, so most stay at their start size, and the same
 reserve check stops the rest from growing past what the VM has. Start sizes aren't covered by that
 check, so a fast slot also waits before it registers a runner (memory admission, HAL-17463): it
 registers only while the VM's available memory, less the start size of every idle fast runner and
-the room every busy job still has under its limit, is at least its start size plus the 4 GB reserve;
+what every busy job may still take without asking, is at least its start size plus the 4 GB reserve;
 otherwise it logs `waiting for memory` and checks again every 15 s. A slot's state not updated for
 120 s (a running slot rewrites it every 2 s), or with no `updated_at`, counts as gone and promises
-nothing, and a stopped slot's `--cleanup` removes its state first (HAL-17558). Large and small slots never
-wait. **When the VM is short**, then: no new fast job starts (fast jobs wait in GitHub's queue), a
+nothing, and a stopped slot's `--cleanup` removes its state first (HAL-17558). A busy job counts for
+at most 2 GB beyond what it uses now (anon + shmem), not all the way to its limit (HAL-17574): its
+limit grows 4 GB at a time, so a job that peaks at 3-4 GB used to hold 4-5 GB back, and 24 fast
+slots on 96 GB topped out at 16-18 jobs; with the board's 24 Nov snapshot (68 GB available, 12 busy,
+4 idle) 22 fast runners now fit instead of 16, and about 7 more on 128 GB. That is an overcommit on
+purpose: fast jobs rarely all grow at once. If they do and the VM runs out, fast containers have
+`--oom-score-adj 500`, so the kernel kills a fast job (its PR re-runs) before a merge-group job.
+Large and small slots never wait. **When the VM is short**, then: no new fast job starts (fast jobs wait in GitHub's queue), a
 running job's limit isn't raised, and a job that needs more than its limit is slowed at `memory.high`
 and, past the limit, killed inside its own container (its job fails); the VM itself isn't
-overcommitted by fast slots. On a 72 GB VM that is about 15 idle fast runners with the large pool
-idle, and about 8 fast jobs at once at their 4.4 GB peak next to the large pool's normal load.
+overcommitted by idle fast runners.
 
 Every container: all capabilities dropped, `no-new-privileges`, Docker's default seccomp and
 AppArmor profiles, `--pids-limit 8192`, no host devices, no Docker socket. The image

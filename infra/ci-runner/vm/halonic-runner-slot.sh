@@ -52,12 +52,15 @@ TRUSTED=/cache/trusted; TRUSTED_PROJ=300; TRUSTED_QUOTA=20g
 case "$SLOT" in
   large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
-  fast-[1-9]|fast-10) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
+  fast-[1-9]|fast-10) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
   fast-1[1-9]|fast-[23][0-9]|fast-40) LABEL=halonic-ci-fast; CPUS=4; MEM=12g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
 SHARES=1024; [ "$LABEL" != halonic-ci-large ] || SHARES=2048
+# Fast jobs' memory is counted less strictly than their limits (memory admission, below), so if the
+# VM ever runs out, the kernel kills a fast job (its PR re-runs) before a merge-group job.
+OOM_ADJ=0; [ "$LABEL" != halonic-ci-fast ] || OOM_ADJ=500
 case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PROJ=$((400+N));; esac
 # Each slot gets its own CPUs, so a job sees only those (nproc, Node's availableParallelism).
 # With --cpus alone it saw all of the VM's, and test runners started a worker per CPU and ran
@@ -131,13 +134,20 @@ unmount_caches() {
 # nothing, so its jobs wait in GitHub's queue for a fast runner that can take them.
 # A running slot rewrites its state every 2 s, so a state not updated for STALE_S seconds, or with no
 # updated_at, belongs to a slot that is gone and promises nothing (HAL-17558).
-MEMINFO=/proc/meminfo; RESERVE_B=4294967296; STALE_S=120
+# A busy job promises at most BUSY_ROOM_B beyond what it uses now (anon + shmem; memory.peak from an
+# older state), not all the way to its limit (HAL-17574): the limit grows 4 GB at a time, so after a
+# raise a job that peaks at 3-4 GB held 4-5 GB back, and 24 fast slots on 96 GB topped out at 16-18
+# jobs. 2 GB is the margin the growth loop keeps under the limit anyway (HEAD_B). Jobs that do grow
+# past it are covered by the reserve, and by the OOM priority above if not.
+MEMINFO=/proc/meminfo; RESERVE_B=4294967296; STALE_S=120; BUSY_ROOM_B=2147483648
 fast_room() {
   local avail promised
   avail=$(awk '$1=="MemAvailable:"{print $2*1024}' "$MEMINFO")
-  promised=$(cat "$STATES"/*.state 2>/dev/null | jq -s --arg me "$SLOT" --argjson now "$(date +%s)" --argjson stale "$STALE_S" '[.[]
+  promised=$(cat "$STATES"/*.state 2>/dev/null | jq -s --arg me "$SLOT" --argjson now "$(date +%s)" --argjson stale "$STALE_S" \
+      --argjson busyroom "$BUSY_ROOM_B" '[.[]
       | select(.slot != $me and (.updated_at | type) == "number" and $now - .updated_at <= $stale)
-      | if .busy then (.mem_limit // 0) - (.mem_peak // 0) elif .label == "halonic-ci-fast" then .mem_limit // 0 else 0 end
+      | if .busy then [(.mem_limit // 0) - (.mem_anon // .mem_peak // 0), $busyroom] | min
+        elif .label == "halonic-ci-fast" then .mem_limit // 0 else 0 end
       | if . > 0 then . else 0 end] | add // 0') || return 1
   [[ "$avail" =~ ^[0-9]+$ ]] && [[ "$promised" =~ ^[0-9]+$ ]] || return 1
   echo $((avail - promised))
@@ -249,7 +259,7 @@ trap cleanup EXIT
 echo "slot $SLOT: runner $NAME (id $RUNNER_ID) waiting for a job"
 STARTED=$(date +%s)
 docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
-  --cpus "$CPUS" --cpuset-cpus "$CPUSET" --cpu-shares "$SHARES" --memory "$MEM_START" --memory-swap "$MEM_START" --pids-limit 8192 \
+  --cpus "$CPUS" --cpuset-cpus "$CPUSET" --cpu-shares "$SHARES" --oom-score-adj "$OOM_ADJ" --memory "$MEM_START" --memory-swap "$MEM_START" --pids-limit 8192 \
   --cap-drop ALL --security-opt no-new-privileges "${SANDBOX[@]}" \
   --tmpfs "/tmp:rw,exec,nosuid,nodev,size=$TMPFS" \
   -v "$RUN:/run/halonic-ci:ro" \
@@ -264,7 +274,7 @@ DPID=$!
 
 # Sample the container every 2 s for the status feed: busy (a job's Runner.Worker is running),
 # peak memory and CPU time from its cgroup. The only thing it changes is the job's memory limit (below).
-JOB_START=0; PEAK=0; CPU_US=0; EV=""; REF=""; SHA=""
+JOB_START=0; PEAK=0; ANON=0; CPU_US=0; EV=""; REF=""; SHA=""
 # memory.peak also counts file cache, which the kernel drops under pressure. ANON_PEAK is the highest
 # sampled anon + shmem (process memory plus the /tmp tmpfs): what the job can't give back, so the
 # number that decides how small a slot may be. Sampled every 2 s, so short spikes can be missed.
@@ -279,12 +289,12 @@ STEP_B=4294967296; HEAD_B=2147483648; GROWS=0; HIGH_SET=""  # RESERVE_B: memory 
 write_state() {
   local now; now=$(date +%s)
   jq -nc --arg slot "$SLOT" --arg runner "$NAME" --arg label "$LABEL" --argjson up "$STARTED" \
-    --argjson js "$JOB_START" --argjson peak "$PEAK" --argjson cpu "$CPU_US" --argjson now "$now" \
+    --argjson js "$JOB_START" --argjson peak "$PEAK" --argjson anon "$ANON" --argjson cpu "$CPU_US" --argjson now "$now" \
     --arg ev "$EV" --arg ref "$REF" --arg sha "$SHA" --argjson memlimit "$LIMIT_B" \
     '{slot:$slot, runner:$runner, label:$label, registered_at:$up, busy:($js>0),
       job_started_at:(if $js>0 then $js else null end), job_seconds:(if $js>0 then $now-$js else null end),
       event:(if $ev=="" then null else $ev end), ref:(if $ref=="" then null else $ref end), sha:(if $sha=="" then null else $sha end),
-      mem_peak:$peak, mem_limit:$memlimit, cpu_seconds:($cpu/1000000|floor), updated_at:$now}' > "$STATE.tmp" \
+      mem_peak:$peak, mem_anon:$anon, mem_limit:$memlimit, cpu_seconds:($cpu/1000000|floor), updated_at:$now}' > "$STATE.tmp" \
     && mv -f "$STATE.tmp" "$STATE"
 }
 while kill -0 "$DPID" 2>/dev/null; do
@@ -294,7 +304,7 @@ while kill -0 "$DPID" 2>/dev/null; do
     PEAK=$(cat "$cg/memory.peak" 2>/dev/null || echo "$PEAK")
     CPU_US=$(awk '$1=="usage_usec"{print $2}' "$cg/cpu.stat" 2>/dev/null || echo "$CPU_US")
     anon=$(awk '$1=="anon"||$1=="shmem"{s+=$2} END{print s+0}' "$cg/memory.stat" 2>/dev/null || echo 0)
-    [ "$anon" -gt "$ANON_PEAK" ] && ANON_PEAK=$anon
+    ANON=$anon; [ "$anon" -gt "$ANON_PEAK" ] && ANON_PEAK=$anon
     if [ -z "$HIGH_SET" ]; then echo $((LIMIT_B - 536870912)) > "$cg/memory.high" 2>/dev/null && HIGH_SET=1; fi
     if [ $((anon + HEAD_B)) -gt "$LIMIT_B" ] && [ "$LIMIT_B" -lt "$MAX_B" ]; then
       avail=$(awk '$1=="MemAvailable:"{print $2*1024}' /proc/meminfo)
