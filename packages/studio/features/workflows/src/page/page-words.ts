@@ -222,9 +222,10 @@ export const pageWords = {
     changeIn: (agent: string) => `To run ${agent} without the sandbox, change it in`,
     agentSettings: (agent: string) => `${agent}'s settings ›`,
     onYourComputer: (agent: string) => `To change where ${agent} runs, use your computer.`,
-    programs: { "claude-code": "Claude Code", codex: "Codex" } satisfies Record<
-      WorkflowStepProgram["harness"],
-      string
-    >,
+    programs: {
+      "claude-code": "Claude Code",
+      codex: "Codex",
+      opencode: "OpenCode",
+    } satisfies Record<WorkflowStepProgram["harness"], string>,
   },
 } as const;

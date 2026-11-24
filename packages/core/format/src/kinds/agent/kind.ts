@@ -13,30 +13,27 @@ export const agentKind: FileKind<Agent> = {
 };
 
 /**
- * The program an agent runs in, as the CLI and Studio name it, for the
+ * Halonic's own loop, as the CLI and Studio name it, for the
  * message below: never the lower-case id (HAL-15117).
  */
-const programNames: Readonly<Record<"halonic", string>> = {
-  halonic: "Halonic's own loop",
-};
+const halonicLoopName = "Halonic's own loop";
 
 /**
- * `asks` only on an agent that runs a program, Claude Code or Codex
+ * `asks` only on an agent that runs a program, Claude Code, Codex or OpenCode
  * (requirement `format.agent-asks`). Halonic's own loop has no program tools
  * to ask about, so there the field would promise something that isn't true.
  * Even `always` is refused there, so nobody reads it as a promise.
  */
 function checkAsks(agent: Agent): KindCheckProblem[] {
-  if (agent.asks === undefined || agent.harness === "claude-code" || agent.harness === "codex") {
+  if (agent.asks === undefined || (agent.harness !== undefined && agent.harness !== "halonic")) {
     return [];
   }
-  const harness = programNames[agent.harness ?? "halonic"];
   return [
     {
       severity: "error",
       code: "asks-needs-a-program-harness",
       path: ["asks"],
-      message: `asks works only for an agent with harness: claude-code or harness: codex, and this one runs in ${harness}. Remove asks, or set harness: claude-code or harness: codex.`,
+      message: `asks works only for an agent with harness: claude-code, codex or opencode, and this one runs in ${halonicLoopName}. Remove asks, or set one of those harnesses.`,
     },
   ];
 }

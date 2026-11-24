@@ -180,7 +180,9 @@ verifies("engine.run-harness-override", () => {
     const start = executor.start({ ...replyStart, harness: "claude" });
 
     await expect(start).rejects.toThrow(
-      new RangeError('"claude" isn\'t a harness. The harnesses are halonic, claude-code, codex.'),
+      new RangeError(
+        '"claude" isn\'t a harness. The harnesses are halonic, claude-code, codex, opencode.',
+      ),
     );
     expect(runs.logs.size).toBe(0);
     expect(blobs.blobs.size).toBe(0);

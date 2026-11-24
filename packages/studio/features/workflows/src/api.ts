@@ -156,7 +156,7 @@ export interface WorkflowStepProgram {
   readonly agent: string;
   /** The agent's name, as its page shows it. */
   readonly agentName: string;
-  readonly harness: "claude-code" | "codex";
+  readonly harness: "claude-code" | "codex" | "opencode";
 }
 
 /** One arrow between two steps. */

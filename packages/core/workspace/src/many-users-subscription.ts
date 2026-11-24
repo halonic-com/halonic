@@ -27,6 +27,7 @@ const keyTypes: Record<
 > = {
   "claude-code": { own: "anthropic", alias: ["anthropic"] },
   codex: { own: "openai", alias: ["openai", "openai-compatible"] },
+  opencode: { own: "anthropic", alias: ["anthropic"] },
 };
 
 /** A harness agent whose runs would use its program's own sign-in. */

@@ -29,7 +29,7 @@ export interface AgentListing extends AgentRef {
 }
 
 /** The programs an agent can run in: Halonic's own loop, Claude Code or Codex (the file's `harness`). */
-export type AgentHarnessId = "halonic" | "claude-code" | "codex";
+export type AgentHarnessId = "halonic" | "claude-code" | "codex" | "opencode";
 
 /** The harnesses in the order the Harness page lists them. */
 export const agentHarnessIds: readonly AgentHarnessId[] = ["halonic", "claude-code", "codex"];

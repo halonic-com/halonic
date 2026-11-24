@@ -88,6 +88,13 @@ export interface HarnessTask {
    */
   modelForEveryCall?: true;
   /**
+   * The most tokens one model reply may hold, from the alias's
+   * `params.maxTokens`. Absent when the alias doesn't set it; each harness
+   * then keeps its own default (OpenCode's adapter uses 32,000, not its
+   * program's 256,000).
+   */
+  maxOutputTokens?: number;
+  /**
    * `in-sandbox` when the agent's file says `asks: in-sandbox`: its program
    * may run commands inside Halonic's fence without asking a person first.
    * Absent for `asks: always` and for a file without `asks`, which ask. The
