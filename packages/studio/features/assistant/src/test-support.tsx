@@ -72,6 +72,8 @@ export function fakeHost(chats: Chat[] = []) {
   let reads = 0;
   let readFails: Error | undefined;
   let items = 0;
+  let skill: string | null = null;
+  let customized = 0;
   const find = (chatId: string) => {
     const chat = chats.find((each) => each.id === chatId);
     if (chat === undefined) throw new KindedError("not_found", `No chat ${chatId}`);
@@ -122,6 +124,12 @@ export function fakeHost(chats: Chat[] = []) {
     accept: async () => ({}) as never,
     reject: async () => ({}) as never,
     undo: async () => ({}) as never,
+    authoringSkill: async () => skill,
+    customizeSkill: async () => {
+      customized += 1;
+      skill ??= "library/skills/halonic-authoring/SKILL.md";
+      return skill;
+    },
     onDidChange: () => () => {},
   };
   return {
@@ -137,6 +145,12 @@ export function fakeHost(chats: Chat[] = []) {
     failReads: (error: Error | undefined) => {
       readFails = error;
     },
+    /** Gives the workspace its own authoring skill at `path`, or takes it away with `null`. */
+    ownSkill: (path: string | null) => {
+      skill = path;
+    },
+    /** How often "customize skill" asked the host to write the skill. */
+    customized: () => customized,
     /** How many items the next answers leave to review. */
     leaveToReview: (count: number) => {
       items = count;

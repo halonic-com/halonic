@@ -153,6 +153,17 @@ export interface AssistantHost {
   reject(target: ReviewTarget): Promise<ReviewOutcome>;
   /** Takes back an Accept or Reject, for the toast's **Undo**: files and records go back to `before`. */
   undo(step: ReviewStep): Promise<ReviewOutcome>;
+  /**
+   * The path of the workspace's own `halonic-authoring` skill, which the Build chat follows instead
+   * of the built-in one; `null` when it has none (`assistant.build.authoring-skill-override`).
+   */
+  authoringSkill(): Promise<string | null>;
+  /**
+   * Writes the built-in skill to `library/skills/halonic-authoring/SKILL.md` as an ordinary
+   * change, the person's own, not one to review, and gives its path. A file already there is kept
+   * as it is, whatever it holds.
+   */
+  customizeSkill(): Promise<string>;
   /** Calls `listener` after each change. Returns the function that stops it. */
   onDidChange(listener: (change: AssistantChange) => void): () => void;
 }

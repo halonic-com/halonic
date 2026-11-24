@@ -256,3 +256,45 @@ verifies("studio.workspace-assistant", () => {
     });
   });
 });
+
+verifies("assistant.build.authoring-skill-override", () => {
+  const skillPath = "library/skills/halonic-authoring/SKILL.md";
+  const dutch =
+    "---\nname: halonic-authoring\ndescription: Ours.\n---\n\nAlways answer in Dutch.\n";
+
+  it("tells a Build chat's model the workspace's own skill before the messages", async () => {
+    const { assistant, requests } = setup({ files: { [skillPath]: dutch } });
+    const chat = await assistant.newChat("build");
+    await assistant.answer({ chatId: chat.id, message: "Add a routine" });
+    expect(requests[0]?.messages[0]).toEqual({
+      role: "system",
+      content: "Always answer in Dutch.",
+    });
+    expect((await assistant.chat(chat.id)).messages.map((message) => message.role)).toEqual([
+      "user",
+      "assistant",
+    ]);
+  });
+
+  it("writes the built-in skill once as the person's own file, and then has one", async () => {
+    const { assistant, store, requests } = setup();
+    expect(await assistant.authoringSkill()).toBeNull();
+    expect(await assistant.customizeSkill()).toBe(skillPath);
+    expect(await assistant.authoringSkill()).toBe(skillPath);
+    expect(await assistant.itemsToReview()).toEqual([]);
+    const written = await store.read(skillPath);
+    expect(written).toContain("name: halonic-authoring");
+    expect(await assistant.customizeSkill()).toBe(skillPath);
+    expect(await store.read(skillPath)).toBe(written);
+    const chat = await assistant.newChat("build");
+    await assistant.answer({ chatId: chat.id, message: "Hi" });
+    expect(requests[0]?.messages[0]?.role).toBe("system");
+  });
+
+  it("keeps a skill file the workspace can't load as it is", async () => {
+    const broken = "---\nname: halonic-authoring\n---\nMine.\n";
+    const { assistant, store } = setup({ files: { [skillPath]: broken } });
+    expect(await assistant.customizeSkill()).toBe(skillPath);
+    expect(await store.read(skillPath)).toBe(broken);
+  });
+});
