@@ -40,7 +40,7 @@ export class RoutinesObject extends AdapterRoutinesObject {
   protected override tickListener(): Pick<SchedulerListener, "onTick"> {
     return {
       onTick: async () => {
-        if (!this.#isDeployments()) return;
+        if (!this.#isDeploymentObject()) return;
         const scheduler = await this.#routineScheduler();
         throwFailedStarts(await scheduler.tick());
       },
@@ -52,7 +52,7 @@ export class RoutinesObject extends AdapterRoutinesObject {
     return workerEngine(runtime);
   }
 
-  #isDeployments(): boolean {
+  #isDeploymentObject(): boolean {
     const { ROUTINES } = this.env as unknown as Pick<RuntimeEnv, "ROUTINES">;
     return this.ctx.id.equals(ROUTINES.idFromName(defaultRoutinesObjectName));
   }
