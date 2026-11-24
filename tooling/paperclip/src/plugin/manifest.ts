@@ -80,7 +80,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // Task effort (HAL-16876): a created or changed task's tags and effort.
     // Difficulty tagger (HAL-16901): a created task, or one whose title or description changed.
     "events.subscribe",
-    // Each job emits only its own `pr-watch` or `board-check` event, once per company, so its
+    // Each job emits only its own `pr-watch`, `board-check` or `merge-control` event, once per company, so its
     // pass runs in a call the host scopes to that company (HAL-16941, src/plugin/scheduled.ts).
     "events.emit",
     // Only `board-waiting` and `board-asks` on the Board Checker's task.
