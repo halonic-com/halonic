@@ -43,8 +43,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     "companies.read",
     "agents.read",
     "issues.read",
-    // Only `done`, or `todo` with the reviewer as assignee: src/plugin/host.ts is the one place
-    // that writes a status, through doneOnly and handoffOnly.
+    // Only `done`, `todo` with the reviewer as assignee, and `todo` on a blocked task whose
+    // blockers all finished (HAL-17692): src/plugin/host.ts is the one place that writes a
+    // status, through doneOnly, handoffOnly and todoOnly.
     // A task's effort goes through Paperclip's own API instead (src/plugin/task-effort.ts),
     // because the SDK's update leaves that field out. The difficulty tagger sends only a task's
     // labelIds, through setTaskLabels in the same file, changing only its D1–D4 and opus-only labels.
@@ -91,7 +92,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "approvals.read",
     // Part (a): runs piling up in a queue for one agent.
     "issue.subtree.read",
-    // Part (b): how many tasks each task waiting on the board blocks.
+    // Part (b): how many tasks each task waiting on the board blocks. The PR watcher's
+    // unblock sweep reads a blocked task's blockers (HAL-17692).
     "issue.relations.read",
     // Part (b): whether a task in review waits on a pending board card.
     "issue.interactions.read",

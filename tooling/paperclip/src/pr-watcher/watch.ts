@@ -63,7 +63,7 @@ interface TickRefs {
 const emptyMemory: Memory = {
   reported: new Set<string>(),
   seenUntil: undefined,
-  held: false,
+  heldAt: undefined,
   lastCommentAt: undefined,
 };
 
@@ -123,7 +123,7 @@ export function readMemory(comments: readonly CommentRow[], ownerId: string): Me
   return {
     reported,
     seenUntil,
-    held: holdPattern.test(authorLast?.body ?? ""),
+    heldAt: holdPattern.test(authorLast?.body ?? "") ? authorLast?.createdAt : undefined,
     ownReview: ownReviewPattern.test(authorLast?.body ?? ""),
     lastCommentAt: newestAt(comments.filter((comment) => !isSelf(comment))),
   };

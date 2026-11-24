@@ -29,14 +29,23 @@ export type HostWrite =
   | { readonly kind: "wake"; readonly issueId: string; readonly options: unknown }
   | { readonly kind: "postpone"; readonly issueId: string; readonly until: string };
 
+/** A task in another's "blocked by", as the fake host lists it. */
+export interface FakeBlocker {
+  readonly id: string;
+  readonly identifier: string;
+  readonly status: string;
+}
+
 /**
- * A plugin host with issues, comments and agents in memory, recording every
- * write. With `wakeRefusal`, every wake-up is refused with that message.
+ * A plugin host with issues, comments, agents and blockers in memory,
+ * recording every write. With `wakeRefusal`, every wake-up is refused with
+ * that message.
  */
 export function fakeHost(
   issues: FakeIssue[],
   comments: Record<string, FakeComment[]> = {},
   wakeRefusal?: string,
+  blockedBy: Record<string, FakeBlocker[]> = {},
 ) {
   const writes: HostWrite[] = [];
   const fake = {
@@ -68,6 +77,9 @@ export function fakeHost(
         }
         writes.push({ kind: "wake", issueId, options });
         return {};
+      },
+      relations: {
+        get: async (issueId: string) => ({ blockedBy: blockedBy[issueId] ?? [], blocks: [] }),
       },
       monitors: {
         postpone: async (issueId: string, _companyId: string, options: { until: string }) => {

@@ -79,10 +79,11 @@ verifies("paperclip.pr-watcher-done", () => {
     expect(paperclip.comments).toEqual({});
   });
 
-  test("keeps the task open while the author's newest comment says more PRs are coming", async () => {
+  test("keeps the task open while the author's newest comment, after the merge, says more PRs are coming", async () => {
+    // #4485 merged at 20:48.
     const hold = agentComment(
       agents.priya,
-      "2026-11-21T20:00:00Z",
+      "2026-11-21T21:00:00Z",
       "First PR is in.\n\nPR watcher: more PRs to come",
     );
     const paperclip = fakePaperclip([task(4485, agents.priya)], { "task-4485": [hold] });
@@ -99,11 +100,24 @@ verifies("paperclip.pr-watcher-done", () => {
       failed: [],
     });
     expect(lines[0]).toContain("more pull requests are coming");
-    // A newer comment from the author without the line lifts the hold.
+    // A newer comment from the author without the line lifts the hold; written after the merge, it asks the author once.
     paperclip.comments["task-4485"]?.push(
-      agentComment(agents.priya, "2026-11-21T20:30:00Z", "Last PR is linked."),
+      agentComment(agents.priya, "2026-11-21T21:30:00Z", "Nothing else comes."),
     );
-    expect((await run(github, paperclip).summary).done).toBe(1);
+    expect((await run(github, paperclip).summary).woken).toBe(1);
+  });
+
+  // HAL-17445: the hold line under every comment kept a merged task, and the one it blocked, open for 4 hours.
+  test("closes the task when the author wrote the hold line before the merge", async () => {
+    const before = agentComment(
+      agents.priya,
+      "2026-11-21T20:00:00Z",
+      "Waiting for the queue session.\n\nPR watcher: more PRs to come",
+    );
+    const paperclip = fakePaperclip([task(4485, agents.priya)], { "task-4485": [before] });
+    const { summary } = run(fakeGitHub(recording("merged-green")), paperclip);
+    expect((await summary).done).toBe(1);
+    expect(paperclip.done).toEqual(["task-4485"]);
   });
 
   test("leaves a task alone until every pull request found for it is closed", async () => {
