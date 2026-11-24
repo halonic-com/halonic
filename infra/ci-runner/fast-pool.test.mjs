@@ -39,6 +39,7 @@ const livePr = (patch = {}) =>
           state: "OPEN",
           isCrossRepository: false,
           headRefOid: SHA,
+          headRefName: "mateo/HAL-1-x",
           headRepositoryOwner: { login: "halonic-com" },
           labels: { nodes: [{ name: "fast-track" }] },
           author: { __typename: "User", login: "halonic-dev" },
@@ -117,6 +118,22 @@ test("fast pool: refuses a fast-track pull request a bot opened, whatever its ev
   }
   // A person whose login only contains a bot's name is a person.
   assert.equal(fast({ gate: { status: 200, body: author("User", "renovate-fan") } }).ok, true);
+});
+
+test("fast pool: refuses a person's pull request from a bot's branch, or with no head branch (HAL-17473)", () => {
+  for (const branch of ["dependabot/npm/x", "renovate/foo", "Dependabot/npm/x", "RENOVATE/foo"]) {
+    const res = fast({ gate: { status: 200, body: livePr({ headRefName: branch }) } });
+    refused(res, /#42 comes from a bot branch/);
+  }
+  for (const missing of [{ headRefName: null }, { headRefName: undefined }, { headRefName: "" }]) {
+    refused(fast({ gate: { status: 200, body: livePr(missing) } }), /no head branch we can check/);
+  }
+  refused(fast({ gate: { status: 200, body: livePr({ headRefName: 7 }) } }), /no head branch/);
+  // A person's own branch, or one that only mentions a bot, is admitted.
+  for (const branch of ["mateo/HAL-1-x", "mateo/HAL-2-bump-renovate", "dependabot-config"]) {
+    const res = fast({ gate: { status: 200, body: livePr({ headRefName: branch }) } });
+    assert.equal(res.ok, true, `${branch}: ${res.out}`);
+  }
 });
 
 test("fast pool: refuses a pull request whose author is missing (a deleted account, an old gate)", () => {
@@ -238,7 +255,7 @@ test("fast pool: fast slots run under gVisor, on their own network, with their o
   const slot = read("vm/halonic-runner-slot.sh");
   assert.ok(
     slot.includes(
-      'SANDBOX=(--runtime=runsc --network="$FAST_NET" -v "$RUN/resolv.conf:/etc/resolv.conf:ro"); GATE_DIR=/run/halonic-ci-gate-fast',
+      'SANDBOX=(--runtime=runsc --network="$FAST_NET" -v "$RUN/resolv.conf:/etc/resolv.conf:ro"); GATE_DIR=$FAST_GATES/$SLOT',
     ),
   );
   // gVisor can't reach Docker's embedded DNS (127.0.0.11), so the container gets the two
@@ -250,13 +267,16 @@ test("fast pool: fast slots run under gVisor, on their own network, with their o
   assert.ok(
     slot.includes('[ "$(findmnt -n -o FSTYPE --mountpoint "$OVL_MNT/$c")" = overlay ] || fail'),
   );
-  const socket = read("vm/halonic-ci-gate-fast.socket");
-  assert.match(socket, /^ListenStream=\/run\/halonic-ci-gate-fast\/gate\.sock$/m);
-  // One connection per fast slot (40 since HAL-17574); 48 a minute caps it at 2880 of the token's
-  // 5000 calls an hour, the same as for 24 slots: the calls follow the pull request jobs.
-  assert.match(socket, /^MaxConnections=40$/m);
-  assert.match(socket, /^PollLimitIntervalSec=60s$/m);
-  assert.match(socket, /^PollLimitBurst=48$/m);
+  // One socket per fast slot (HAL-17473), so one job can't hold another slot's connections; the
+  // slot refuses to start without its own.
+  const socket = read("vm/halonic-ci-gate-fast@.socket");
+  assert.match(socket, /^ListenStream=\/run\/halonic-ci-gate-fast\/%i\/gate\.sock$/m);
+  assert.match(slot, /^FAST_GATES=\/run\/halonic-ci-gate-fast /m);
+  assert.ok(slot.includes('[ -S "$FAST_GATES/$SLOT/gate.sock" ] || fail'));
+  // A job's three tries; 3 per 150 s on each of 40 slots caps it at 2880 of the token's 5000 an hour.
+  assert.match(socket, /^MaxConnections=3$/m);
+  assert.match(socket, /^PollLimitIntervalSec=150s$/m);
+  assert.match(socket, /^PollLimitBurst=3$/m);
   const unit = read("vm/halonic-ci-gate-fast@.service");
   assert.match(unit, /^ExecStart=\/usr\/local\/sbin\/halonic-ci-gate\.sh --pr-only$/m);
   // The same sandboxing as the merge queue's gate, apart from the description and the mode.
@@ -373,6 +393,7 @@ test("fast pool: the gate asks about the pull request only for a plain number", 
   assert.match(asked, /pullRequest\(number: 42\) \{ number state isCrossRepository headRefOid /);
   // The label and the author both decide (HAL-17616); 100 labels, and a missing one refuses.
   assert.match(asked, /labels\(first: 100\) \{ nodes \{ name \} \} author \{ __typename login \}/);
+  assert.match(asked, / headRefName /);
   assert.doesNotMatch(asked, /mergeQueue/);
   // Anything else gets the merge queue's fixed query: nothing else reaches it.
   for (const first of [

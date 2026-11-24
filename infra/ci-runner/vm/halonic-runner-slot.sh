@@ -29,6 +29,7 @@ fail() { echo "slot ${SLOT}: $1" >&2; exit 1; }
 # other or the merge-group jobs on the default bridge. Checked first: without both, no fast runner.
 FAST_NET=halonic-ci-fast
 FAST_FLOAT=""  # set below when fast-11..40 may float over the free cores (HAL-17574)
+FAST_GATES=/run/halonic-ci-gate-fast  # one gate socket per fast slot, in a folder named after it
 # fast-N and large-(12-N) share CPUs (below), so one never starts while the other runs.
 case "$SLOT" in fast-[1-3]) TWIN=large-$((12-${SLOT#fast-}));; large-9|large-10|large-11) TWIN=fast-$((12-${SLOT#large-}));; *) TWIN="";; esac
 if [ -n "$TWIN" ] && [ "${2:-}" != "--cleanup" ] && systemctl is-active -q "halonic-runner@$TWIN.service"; then
@@ -47,6 +48,7 @@ if [[ "$SLOT" == fast-* ]] && [ "${2:-}" != "--cleanup" ]; then
   # gVisor tells the job it has as many CPUs as its --cpus quota, not its CPU set (HAL-17574, below).
   rargs=$(docker info --format '{{json (index .Runtimes "runsc")}}' 2>/dev/null || true)
   if [[ "$rargs" =~ \"--cpu-num-from-quota(=true)?\" ]]; then FAST_FLOAT=1; fi
+  [ -S "$FAST_GATES/$SLOT/gate.sock" ] || fail "no gate socket of its own; enable halonic-ci-gate-fast@$SLOT.socket"
 fi
 . /etc/halonic-ci/pool.env   # APP_ID INSTALLATION_ID ORG RUNNER_GROUP_ID IMAGE
 KEY=/etc/halonic-ci/app.pem
@@ -235,14 +237,15 @@ if [ "$LABEL" = halonic-ci-fast ]; then
   CACHE_SRC=$OVL_MNT
 fi
 # What only a fast slot's container gets: gVisor, its own network and its own gate socket, which
-# answers pull request queries only, so its jobs can't hold the merge queue's gate (HAL-15972).
+# answers pull request queries only, so its jobs can't hold the merge queue's gate (HAL-15972), nor
+# another fast slot's (halonic-ci-gate-fast@<slot>.socket, HAL-17473).
 SANDBOX=(); GATE_DIR=/run/halonic-ci-gate
 if [ "$LABEL" = halonic-ci-fast ]; then
   # Docker's embedded DNS (127.0.0.11, which a user-defined network writes into resolv.conf) is
   # unreachable from gVisor's network stack, so a fast container gets a resolv.conf of its own naming
   # the two resolvers the VM's firewall already allows.
   printf 'nameserver 1.1.1.1\nnameserver 1.0.0.1\n' > "$RUN/resolv.conf"; chown "$RUID:$RUID" "$RUN/resolv.conf"; chmod 0444 "$RUN/resolv.conf"
-  SANDBOX=(--runtime=runsc --network="$FAST_NET" -v "$RUN/resolv.conf:/etc/resolv.conf:ro"); GATE_DIR=/run/halonic-ci-gate-fast
+  SANDBOX=(--runtime=runsc --network="$FAST_NET" -v "$RUN/resolv.conf:/etc/resolv.conf:ro"); GATE_DIR=$FAST_GATES/$SLOT
 fi
 # The shared caches get one project quota too (set once: new files inherit the project).
 (

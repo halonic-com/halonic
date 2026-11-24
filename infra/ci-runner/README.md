@@ -73,8 +73,8 @@ it in the `fast` job).
 | Host | `host/halonic-ci-status.*`: a read-only status feed, fetched from the VM every minute over SSH with a key that can run only the status command. |
 | VM | Docker with `userns-remap`. One systemd unit per slot (`vm/halonic-runner@.service`). |
 | VM | `/etc/halonic-ci/app.pem`: the GitHub App's key (only permission: self-hosted runners), root-only `0400`. Never in the image, a container or a backup that leaves the VM. |
-| VM | Queue gate (C7): `vm/halonic-ci-gate.socket` listens on `/run/halonic-ci-gate/gate.sock`, which every container gets read-only. Each connection starts `vm/halonic-ci-gate@.service` (`vm/halonic-ci-gate.sh`), which answers one of two fixed GraphQL queries: one pull request's state, owner, head commit and author for `GET /pr/<n>` (1-9 digits, the only input that reaches a query), `main`'s merge queue for anything else. Its token is `/etc/halonic-ci/queue-token`, root-only `0400`, handed to the service as a systemd credential under a throwaway user. |
-| VM | Fast pool (HAL-15972): fast slots' containers run under gVisor (`runsc`) on the Docker network `halonic-ci-fast` (no traffic between its containers, and none to the merge-group jobs on the default bridge), and get the gate as `vm/halonic-ci-gate-fast.socket` (`/run/halonic-ci-gate-fast/gate.sock`, 40 connections, at most 48 a minute, pull request queries only) instead of the merge queue's. |
+| VM | Queue gate (C7): `vm/halonic-ci-gate.socket` listens on `/run/halonic-ci-gate/gate.sock`, which every container gets read-only. Each connection starts `vm/halonic-ci-gate@.service` (`vm/halonic-ci-gate.sh`), which answers one of two fixed GraphQL queries: one pull request's state, owner, head commit, head branch and author for `GET /pr/<n>` (1-9 digits, the only input that reaches a query), `main`'s merge queue for anything else. Its token is `/etc/halonic-ci/queue-token`, root-only `0400`, handed to the service as a systemd credential under a throwaway user. |
+| VM | Fast pool (HAL-15972): fast slots' containers run under gVisor (`runsc`) on the Docker network `halonic-ci-fast` (no traffic between its containers, and none to the merge-group jobs on the default bridge), and each gets a gate socket of its own, `vm/halonic-ci-gate-fast@.socket` (`/run/halonic-ci-gate-fast/<slot>/gate.sock`, 3 connections, at most 3 per 150 s, so 48 a minute over 40 slots, pull request queries only; HAL-17473) instead of the merge queue's. |
 | VM | `/cache/trusted/{pnpm-store,turbo,ms-playwright}`: package, Turbo and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
 
 Site data stays out of this repo: `/etc/halonic-ci/pool.env` (see `vm/pool.env.example`),
@@ -225,7 +225,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
      default pools it gets a /28, 13 addresses, and every fast container needs one (HAL-17574). A
      fast slot refuses to start on a network smaller than a /26.
   3. **Gate:** deploy the new `vm/halonic-ci-gate.sh` and the two `vm/halonic-ci-gate-fast*`
-     units like the merge queue's, then `systemctl enable --now halonic-ci-gate-fast.socket`.
+     units like the merge queue's, then `systemctl enable --now halonic-ci-gate-fast@fast-1.socket`
+     (one per fast slot; a fast slot refuses to start without its own).
      `PollLimitBurst` needs systemd 255 or later (older ones ignore it).
   4. **Snapshot:** install `vm/halonic-ci-fast-lower.sh` to `/usr/local/sbin/` (root, `0755`)
      with the new `vm/halonic-ci-maint.sh`. `/cache` must be XFS with reflinks
@@ -284,6 +285,16 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   hook refuses it with "has no fast-track label"). Off at once: clear `CI_RUNNER_FAST`. Back to
   every person's pull request: restore the gate script and the image, start `fast-17` … `fast-40`
   again, and merge a revert of the `ci.yml` change.
+- **One gate socket per fast slot, bot branches refused** (HAL-17473, only after Julian's OK on
+  that task). Keep copies of the live slot script, gate script and units, and the current image,
+  first. Deploy the new `vm/halonic-ci-gate.sh` (it also asks for the head branch) and
+  `vm/halonic-ci-gate-fast@.socket`, then `systemctl daemon-reload`, `systemctl disable --now
+  halonic-ci-gate-fast.socket`, delete its old unit file, and `systemctl enable --now
+  halonic-ci-gate-fast@fast-N.socket` for every fast slot in `/etc/halonic-ci/slots`
+  (`ls /run/halonic-ci-gate-fast/` should list each slot). Then deploy `vm/halonic-runner-slot.sh`,
+  rebuild the image with the new hook, and restart the fast slots. The gate first: the new hook
+  refuses every pull request while the gate doesn't send the head branch. Back: restore the copies,
+  disable the per-slot sockets and enable the old one.
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,
   set `IMAGE=` in `pool.env`, restart the slots.
 - **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images, stale work dirs and Turbo

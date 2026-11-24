@@ -3,7 +3,7 @@
 // events (hook-run.mjs); C7's queue checks are in queue-gate.test.mjs.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
@@ -243,8 +243,19 @@ test("the slot script reads the job's event file inside the container, never as 
 // command it could call replaced by a stub that logs, so a test sees whether it went on to
 // register a runner. systemd doesn't re-check the unit's ConditionPathExists on a restart.
 const PAUSED_LINE = "PAUSED=/etc/halonic-ci/paused";
-const slotCycle = ({ paused, args = ["large-1"], docker = "", systemctl = "exit 3" }) => {
+// Fast slots' gate sockets live in a temporary folder too; each slot gets one unless `noGate`.
+const GATES_LINE = "FAST_GATES=/run/halonic-ci-gate-fast";
+const slotCycle = ({ paused, args = ["large-1"], docker = "", systemctl = "exit 3", noGate }) => {
   const bin = mkdtempSync(join(dir, "slot-bin-"));
+  const gates = join(bin, "gates");
+  if (!noGate) {
+    mkdirSync(join(gates, args[0]), { recursive: true });
+    // Bound by a relative name from its own folder: a full temporary path can pass the 108 bytes
+    // a Unix socket's path may have. The socket file stays after the process exits.
+    const listen = "require('net').createServer().listen('gate.sock', () => process.exit(0))";
+    const res = spawnSync(process.execPath, ["-e", listen], { cwd: join(gates, args[0]) });
+    assert.equal(res.status, 0, String(res.stderr));
+  }
   const log = join(bin, "calls.log");
   const pausedFile = join(bin, "paused");
   writeFileSync(log, "");
@@ -267,8 +278,12 @@ const slotCycle = ({ paused, args = ["large-1"], docker = "", systemctl = "exit 
   }
   const slot = read("vm/halonic-runner-slot.sh");
   assert.equal(slot.split(PAUSED_LINE).length, 2);
+  assert.equal(slot.split(GATES_LINE).length, 2);
   const script = join(bin, "slot.sh");
-  writeFileSync(script, slot.replace(PAUSED_LINE, `PAUSED=${pausedFile}`));
+  const patched = slot
+    .replace(PAUSED_LINE, `PAUSED=${pausedFile}`)
+    .replace(GATES_LINE, `FAST_GATES=${gates}`);
+  writeFileSync(script, patched);
   const res = spawnSync("/bin/bash", [script, ...args], { encoding: "utf8", env: { PATH: bin } });
   return { ...res, calls: readFileSync(log, "utf8") };
 };
@@ -302,13 +317,25 @@ test("a fast slot starts only under gVisor and on its own network without contai
     assert.equal(res.status, 1);
     assert.match(res.stderr, /Docker network halonic-ci-fast missing or lets containers reach/);
   }
-  // Both in place, the cycle goes on (and stops at the VM's pool.env, which the test has none of).
+  // Without its own gate socket (HAL-17473), a fast slot doesn't start either.
+  const ready = {
+    paused: false,
+    args: ["fast-1"],
+    docker: docker({ runtimes: "runsc ", icc: `false ${net}` }),
+  };
+  const noGate = slotCycle({ ...ready, noGate: true });
+  assert.equal(noGate.status, 1);
+  assert.match(
+    noGate.stderr,
+    /no gate socket of its own; enable halonic-ci-gate-fast@fast-1\.socket/,
+  );
   // One address per fast container (HAL-17574): Docker's default /28 held the pool at 13 jobs.
   for (const icc of ["false 172.30.0.0/28", "false 172.30.0.0/27", "false ", "false fd00::/64"]) {
     const res = fast({ runtimes: "runc runsc ", icc });
     assert.equal(res.status, 1, icc);
     assert.match(res.stderr, /too small for 40 fast containers/, icc);
   }
+  // All in place, the cycle goes on (and stops at the VM's pool.env, which the test has none of).
   assert.match(fast({ runtimes: "runc runsc ", icc: "false 172.30.0.0/26" }).stderr, /pool\.env/);
   const ok = fast({ runtimes: "runc runsc ", icc: `false ${net}` });
   assert.doesNotMatch(ok.stderr, /runsc|halonic-ci-fast/);
