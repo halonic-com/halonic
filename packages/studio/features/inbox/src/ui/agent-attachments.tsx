@@ -46,9 +46,13 @@ export function attachmentLine(attachment: Attachment): string {
 }
 
 function sizeText(bytes: number): string {
+  if (bytes === 1) return "1 byte";
   if (bytes < 1024) return `${bytes} bytes`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const kilobytes = Math.round(bytes / 1024);
+  // Just under 1 MB rounds to 1024 KB, which reads as 1 MB (Noah, HAL-17457).
+  if (kilobytes < 1024) return `${kilobytes} KB`;
+  const megabytes = (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, "");
+  return `${megabytes} MB`;
 }
 
 type Shown =
@@ -83,6 +87,7 @@ function ImageAttachment({
     }
   };
   const line = <span dir="auto">{attachmentLine(attachment)}</span>;
+  const action = shown.kind === "failed" ? "Try again" : "Show image";
 
   if (shown.kind === "shown") {
     return (
@@ -100,9 +105,11 @@ function ImageAttachment({
         variant="secondary"
         size="sm"
         busy={shown.kind === "loading"}
+        // A card with two pictures has two of these; the file name tells them apart by ear.
+        name={`${action}: ${markHiddenName(attachment.name)}`}
         onClick={() => void show()}
       >
-        {shown.kind === "failed" ? "Try again" : "Show image"}
+        {action}
       </Button>
     </div>
   );

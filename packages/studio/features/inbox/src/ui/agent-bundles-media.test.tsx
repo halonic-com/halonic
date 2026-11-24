@@ -8,6 +8,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { attachmentLine } from "./agent-attachments.tsx";
 import { InboxView } from "./inbox-page.tsx";
 
 afterEach(() => {
@@ -202,5 +203,38 @@ verifies("inbox.agent-item-media", () => {
     expect(root.querySelector("section")?.textContent).toContain("chart.svg · 2 KB");
     expect(buttons(root, "Show image")).toHaveLength(0);
     expect(decode).not.toHaveBeenCalled();
+  });
+
+  it("says a file's size in words that read right at every edge (HAL-17457)", () => {
+    const line = (size: number) => attachmentLine({ id: "a1", name: "f.png", type: "", size });
+    expect(line(1)).toBe("f.png · 1 byte");
+    expect(line(512)).toBe("f.png · 512 bytes");
+    expect(line(120 * 1024)).toBe("f.png · 120 KB");
+    expect(line(1_048_064)).toBe("f.png · 1 MB");
+    expect(line(2 * 1024 * 1024)).toBe("f.png · 2 MB");
+    expect(line(1.2 * 1024 * 1024)).toBe("f.png · 1.2 MB");
+  });
+
+  it("names each picture's button after its file, so two of them sound apart", async () => {
+    fakePictures();
+    const { messaging, source, chief } = acme();
+    const before = { ...screenshot, name: "before.png" };
+    messaging.addInboxItem(source.id, {
+      question: "Which?",
+      from: chief,
+      files: [screenshot, before],
+    });
+    vi.spyOn(messaging, "readAttachment").mockResolvedValueOnce({
+      outcome: "refused",
+      reason: "offline",
+    });
+    const root = await openInbox(messaging);
+    await openFirstRow(root);
+
+    const names = () => buttons(root, "").map((button) => button.getAttribute("aria-label"));
+    expect(names()).toContain("Show image: login.png");
+    expect(names()).toContain("Show image: before.png");
+    await click(buttons(root, "Show image")[0]);
+    expect(names()).toContain("Try again: login.png");
   });
 });
