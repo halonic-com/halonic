@@ -147,6 +147,7 @@ function GoogleSetupBody({ item, answering, close, accounts, focus }: GoogleSetu
         steps={steps}
         signInEntry={accounts.signInEntry}
         served={accounts.readOnly === true}
+        underTopBar={phone}
       />
     );
 
