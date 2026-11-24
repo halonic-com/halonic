@@ -67,6 +67,7 @@ export {
   type FakeDeployTargetOptions,
   fakeDeployTargetEntry,
 } from "./fake-deploy-target.ts";
+export { FakePaperclipSource, type FakePaperclipSourceOptions } from "./fake-paperclip-source.ts";
 export {
   type FakePhone,
   FakeRemoteControl,

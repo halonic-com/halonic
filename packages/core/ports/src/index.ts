@@ -248,6 +248,25 @@ export {
   readCheckCode,
   readPairingCode,
 } from "./pairing-codes.ts";
+export {
+  type PaperclipAgent,
+  type PaperclipAgentStatus,
+  type PaperclipAnswerResult,
+  type PaperclipAuthor,
+  type PaperclipCard,
+  type PaperclipCardAnswer,
+  type PaperclipCardOption,
+  type PaperclipCardState,
+  type PaperclipComment,
+  type PaperclipCommentResult,
+  type PaperclipItemId,
+  type PaperclipProject,
+  type PaperclipRead,
+  type PaperclipRefusal,
+  type PaperclipSource,
+  type PaperclipTask,
+  paperclipSourceVersion,
+} from "./paperclip-source.ts";
 export { type PasswordHasher, passwordHasherVersion } from "./password-hasher.ts";
 export {
   checkPluginFiles,
