@@ -64,9 +64,10 @@ export function AgentsList({
   readonly now?: () => Date;
 }) {
   const list = useRef<HTMLUListElement>(null);
-  const [answered, setAnswered] = useState("");
+  // Counted, so a second answer with the same words is a new line the region says again (HAL-17278).
+  const [answered, setAnswered] = useState({ words: "", count: 0 });
   const onAnswered = (sessionId: string, agent: string, decision: "approve" | "deny") => {
-    setAnswered(answeredWords[decision](agent));
+    setAnswered((last) => ({ words: answeredWords[decision](agent), count: last.count + 1 }));
     // Approve and Reject go once the approval settles: the row's own button keeps the focus.
     rowButtonOf(list.current, sessionId)?.focus();
   };
@@ -97,7 +98,7 @@ export function AgentsList({
         </ul>
       )}
       <p role="status" className="sr-only">
-        {answered}
+        <span key={answered.count}>{answered.words}</span>
       </p>
     </>
   );

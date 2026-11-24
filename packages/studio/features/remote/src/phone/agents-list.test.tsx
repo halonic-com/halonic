@@ -186,6 +186,25 @@ verifies("remote.phone-agents", () => {
     expect(said).toContain("Rejected: Sorter.");
   });
 
+  it("says a second answer with the same words again", async () => {
+    const onAnswer = vi.fn(async (): Promise<RemoteSendOutcome> => ({ kind: "done" }));
+    const screen = render(<AgentsList view={live} onOpen={vi.fn()} onAnswer={onAnswer} />);
+    const region = screen.querySelector(":scope > p[role='status']");
+    const added: string[] = [];
+    const watch = new MutationObserver((changes) => {
+      for (const change of changes) {
+        for (const node of change.addedNodes) added.push(node.textContent ?? "");
+      }
+    });
+    if (region !== null) watch.observe(region, { childList: true, subtree: true });
+    const approve = () =>
+      [...screen.querySelectorAll("button")].find((each) => each.textContent === "Approve Sorter");
+    await act(async () => approve()?.click());
+    await act(async () => approve()?.click());
+    watch.disconnect();
+    expect(added.filter((text) => text === "Approved: Sorter.")).toHaveLength(2);
+  });
+
   it("shows nothing without agents", () => {
     const { screen } = show(remoteView());
     expect(screen.querySelector("ul")).toBeNull();
