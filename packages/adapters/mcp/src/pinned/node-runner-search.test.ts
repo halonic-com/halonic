@@ -86,12 +86,11 @@ verifies("mcp.runner-lookup", () => {
       expect(await search.isFile(plainFile)).toBe(true);
     });
 
-    it.skipIf(process.platform === "win32")(
-      "doesn't take a file it may not run as a program on macOS and Linux",
-      async () => {
-        expect(await createRunnerSearch({}, "linux").isProgram(plainFile)).toBe(false);
-      },
-    );
+    it("doesn't take a file it may not run as a program on macOS and Linux", async () => {
+      // Windows has no run permission, so there every file this test writes may run.
+      const mayRun = process.platform === "win32";
+      expect(await createRunnerSearch({}, "linux").isProgram(plainFile)).toBe(mayRun);
+    });
 
     it("takes any existing file as a program on Windows, where no file has a run permission", async () => {
       expect(await createRunnerSearch({}, "win32").isProgram(plainFile)).toBe(true);
