@@ -2,6 +2,8 @@
 
 - Approval: Liam approved the new package on HAL-17645 (OpenUI A1: "a new core package made with `pnpm new package core/openui-lang`", Liam approves the new package there), from the OpenUI plan the board approved on HAL-17107. It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:T/A4fyPC6aMNux373e7RSNDVjYNyBJClms1dr7c0LNdkn7jKfRd3kem84wYeM8SbnK2AlqAVN23omiaVmHbuCg==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:vfLtZ4K7XplyBOx4fC/jtmmAfbLqtUBzWuO0qA3fD8CjwRlrqRIYfJs1T4IB5Swt562iRntNDlBpyzAUMLHvCg==
 
 ## What changes
 
