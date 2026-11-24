@@ -1,8 +1,11 @@
+import type { ActionResultAnswer, InboxActionRequest } from "./agent-messaging-actions.ts";
+
 /**
  * Version of the {@link AgentMessaging} port. A breaking change bumps it and comes with an ADR.
- * Version 2 adds attachments, `readAttachment` and files sent with a message.
+ * Version 2 adds attachments, `readAttachment` and files sent with a message. Version 3 adds action
+ * items and the `action-result` answer (ADR 2026-11-24, AgentMessaging version 3).
  */
-export const agentMessagingVersion = 2;
+export const agentMessagingVersion = 3;
 
 /**
  * An item's ID, opaque to apps: only the provider that made it reads it. It
@@ -117,10 +120,15 @@ export interface InboxItemOption {
   label: string;
 }
 
-/** The person's answer to an inbox item: one of its options, or a written reply. */
+/**
+ * The person's answer to an inbox item: one of its options or a written reply
+ * to a question, or for an action item the result of the stepper the person
+ * ran, which only Studio's stepper sends.
+ */
 export type InboxAnswer =
   | { kind: "option"; option: string; note?: string }
-  | { kind: "reply"; text: string };
+  | { kind: "reply"; text: string }
+  | ActionResultAnswer;
 
 /** Whether an inbox item still waits, and if not, who answered it and how. */
 export type InboxItemState =
@@ -133,13 +141,22 @@ export interface MessagingProject {
   name: string;
 }
 
-/** A card or a question an agent put to the person. `question` is agent-written Markdown, as {@link Message}'s body. */
+/**
+ * A card or a question an agent put to the person. `question` is agent-written Markdown, as {@link Message}'s body.
+ *
+ * An item with `action` is an action item: a request that the person run a
+ * user-only action stepper (ADR 2026-11-24, action sender). It offers no
+ * options, `question` is the requester's reason, and it takes only an
+ * `action-result` answer. Any other item takes only an option or a reply.
+ */
 export interface InboxItem {
   id: MessagingId;
   source: MessagingId;
   from: MessagingAuthor;
   question: string;
   options: readonly InboxItemOption[];
+  /** For an action item, the request: a reviewed definition and its parameters, never a call. */
+  action?: InboxActionRequest;
   /** The project it belongs to (for Paperclip, its task's project). Without one, apps show it under "No project". */
   project?: MessagingProject;
   /** Files the agent put on it, such as a screenshot, in the order they were added; often none. */
@@ -176,13 +193,16 @@ export interface WorkItem {
 /**
  * Why a write or a read was refused before it was sent. Offline, nothing is queued to send later.
  * `too-large` and `unsupported-type` refuse a file sent with a message, whole: nothing of it is sent.
+ * `bad-answer`: the answer doesn't fit the item: an option or a reply to an action item, an
+ * `action-result` to any other, or an `action-result` that fails its allow-list.
  */
 export type MessagingRefusal =
   | "offline"
   | "signed-out"
   | "not-found"
   | "too-large"
-  | "unsupported-type";
+  | "unsupported-type"
+  | "bad-answer";
 
 /** What answering an inbox item did. An item is answered once; the source decides who was first. */
 export type AnswerResult =
@@ -236,6 +256,7 @@ export interface AgentMessaging {
   /** Work, newest change first. */
   listWork(): Promise<readonly WorkItem[]>;
   search(text: string): Promise<readonly SearchHit[]>;
+  /** Answers an item once, or refuses with `bad-answer` an answer that doesn't fit it (`answerFitsItem`). */
   answer(item: MessagingId, answer: InboxAnswer): Promise<AnswerResult>;
   /**
    * An attachment's bytes, read through the engine only when the person asks to see it: apps

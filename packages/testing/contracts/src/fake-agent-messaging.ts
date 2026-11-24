@@ -1,21 +1,22 @@
-import type {
-  AgentMessaging,
-  AnswerResult,
-  Attachment,
-  AttachmentRead,
-  Conversation,
-  InboxAnswer,
-  InboxItem,
-  Message,
-  MessagingAgent,
-  MessagingAuthor,
-  MessagingId,
-  MessagingRefusal,
-  MessagingSource,
-  OutgoingAttachment,
-  SearchHit,
-  SendResult,
-  WorkItem,
+import {
+  type AgentMessaging,
+  type AnswerResult,
+  type Attachment,
+  type AttachmentRead,
+  answerFitsItem,
+  type Conversation,
+  type InboxAnswer,
+  type InboxItem,
+  type Message,
+  type MessagingAgent,
+  type MessagingAuthor,
+  type MessagingId,
+  type MessagingRefusal,
+  type MessagingSource,
+  type OutgoingAttachment,
+  type SearchHit,
+  type SendResult,
+  type WorkItem,
 } from "@halonicjs/ports";
 import { Feed } from "./feed.ts";
 
@@ -165,6 +166,9 @@ export class FakeAgentMessaging implements AgentMessaging {
       const { by, answeredAt } = found.state;
       return Promise.resolve({ outcome: "already-answered", by, answeredAt });
     }
+    if (!answerFitsItem(found, answer)) {
+      return Promise.resolve({ outcome: "refused", reason: "bad-answer" });
+    }
     const answeredAt = this.stamp();
     found.state = { kind: "answered", by: me, answer, answeredAt };
     this.changed(found.source);
@@ -254,20 +258,24 @@ export class FakeAgentMessaging implements AgentMessaging {
     return this.add("messages", found.source, added);
   }
 
-  /** Adds an open inbox item with the options Yes and No and no files unless told otherwise. */
+  /**
+   * Adds an open inbox item with the options Yes and No and no files unless told otherwise. Given
+   * `action`, it is an action item, with no options unless told otherwise.
+   */
   addInboxItem(
     source: MessagingId,
     item: { question: string; files?: readonly FakeAttachment[] } & Partial<InboxItem>,
   ): InboxItem {
     const { files, ...rest } = item;
+    const yesNo = [
+      { id: "yes", label: "Yes" },
+      { id: "no", label: "No" },
+    ];
     const added: InboxItem = {
       id: this.newId(),
       source,
       from: { kind: "person", name: "Someone" },
-      options: [
-        { id: "yes", label: "Yes" },
-        { id: "no", label: "No" },
-      ],
+      options: item.action === undefined ? yesNo : [],
       createdAt: this.stamp(),
       state: { kind: "open" },
       ...rest,
