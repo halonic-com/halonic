@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-17252
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YC2v2k2+FbRctlvSaDfwASD4GoVRPWBFh4f3V43ZQtagK4CmzLc4+Yzkexn5TmLSSV744cxQs+Va8tYzrdnhAA==
 
 A run can now be started with less thinking for its harness agents (token
 phase 1c). The run's `low` effort is kept on `run.started` as a new optional
