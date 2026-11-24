@@ -1,0 +1,33 @@
+{
+  "name": "@halonicjs/adapter-sandbox-cloudflare-container",
+  "private": true,
+  "type": "module",
+  "description": "The Sandbox port on a Cloudflare Container: one container per run, with egress only to the bridge and the allow list.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "owen",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "workers"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  }
+}
