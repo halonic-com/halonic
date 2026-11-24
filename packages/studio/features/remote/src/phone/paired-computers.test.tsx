@@ -195,6 +195,12 @@ verifies("remote.phone-paired-computers", () => {
     );
   });
 
+  it("keeps Pair with a computer clear of the home bar with the kit's pb-safe", () => {
+    show([laptop]);
+    const foot = named("Pair with a computer")?.parentElement;
+    expect(foot?.className).toBe("px-4 pb-safe");
+  });
+
   it("doesn't say a computer that removed this phone still lists it", async () => {
     show([{ ...laptop, standing: "removed" }]);
     await press("Forget Tim's laptop");

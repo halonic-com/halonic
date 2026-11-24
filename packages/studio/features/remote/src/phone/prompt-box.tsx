@@ -41,7 +41,7 @@ export function PromptBox({
     // Drawn as off, but reachable: focus lands on it and it points at the reason written under
     // it, in text that stays readable (decision 6), like the reason under Approve and Reject.
     return (
-      <div className="flex flex-col gap-1 border-t border-border px-3 py-2">
+      <div className="flex flex-col gap-1 border-t border-border px-3 pt-2 pb-safe">
         <TextArea
           aria-label={promptWords.label}
           readOnly
@@ -86,7 +86,7 @@ export function PromptBox({
   }
 
   return (
-    <div className="flex flex-col gap-1 border-t border-border px-3 py-2">
+    <div className="flex flex-col gap-1 border-t border-border px-3 pt-2 pb-safe">
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
           <TextArea

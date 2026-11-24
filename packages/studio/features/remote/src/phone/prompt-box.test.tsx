@@ -65,6 +65,16 @@ verifies("remote.phone-prompt-box", () => {
     expect(screen.textContent).toBe("You can send a prompt once your phone reconnects.");
   });
 
+  it("keeps its line clear of the home bar with the kit's pb-safe, off or live", () => {
+    for (const view of [staleView(remoteView(), "unreachable"), remoteView()]) {
+      const { screen } = show(view);
+      const wrapper = screen.firstElementChild;
+      expect(wrapper?.className).toContain("pt-2 pb-safe");
+      expect(wrapper?.className).not.toContain("py-2");
+      unmountAll();
+    }
+  });
+
   it("shows nothing while live with no agent in view", () => {
     const screen = render(<PromptBox view={remoteView()} agent={undefined} onSend={vi.fn()} />);
     expect(screen.innerHTML).toBe("");

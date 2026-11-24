@@ -101,6 +101,13 @@ verifies("remote.phone-pairing", () => {
     expect(onOpenAgents).toHaveBeenCalledWith(expect.objectContaining({ name: "Tim's laptop" }));
   });
 
+  it("keeps the bottom buttons clear of the home bar with the kit's pb-safe", () => {
+    const { screen } = setUp();
+    const actions = button(screen, "Scan code")?.parentElement;
+    expect(actions?.className).toContain("pb-safe");
+    expect(actions?.className).not.toContain("--safe-bottom");
+  });
+
   it("says a code isn't ours in place of the hint", async () => {
     const { scanner, screen } = setUp();
     await press(screen, "Scan code");

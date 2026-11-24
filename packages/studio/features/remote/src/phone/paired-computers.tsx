@@ -151,8 +151,8 @@ export function PairedComputers({
             </ul>
             <p className="text-small text-fg-muted">{computersWords.note}</p>
           </div>
-          {/* In thumb reach at the foot: 16px from the sides and the bottom, plus the home bar. */}
-          <div className="px-4 pb-[calc(1rem+var(--safe-bottom))]">
+          {/* In thumb reach at the foot: 16px from the sides; pb-safe clears the home bar. */}
+          <div className="px-4 pb-safe">
             <Button
               variant="primary"
               size="touch"
