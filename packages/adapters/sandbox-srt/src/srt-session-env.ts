@@ -1,5 +1,5 @@
 import { realpathSync } from "node:fs";
-import { delimiter, isAbsolute, relative, resolve } from "node:path";
+import { delimiter, isAbsolute, relative, resolve, sep } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
 
 /**
@@ -187,5 +187,5 @@ export function reachesNoNetwork(profile: SandboxProfile): boolean {
 /** Whether `child` is `parent` or inside it. */
 export function isInside(parent: string, child: string): boolean {
   const path = relative(parent, child);
-  return path === "" || (!path.startsWith("..") && !isAbsolute(path));
+  return path === "" || (!isAbsolute(path) && path !== ".." && !path.startsWith(`..${sep}`));
 }

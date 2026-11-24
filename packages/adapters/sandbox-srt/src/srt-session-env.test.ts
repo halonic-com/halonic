@@ -42,6 +42,12 @@ verifies("sandbox-srt.session", () => {
       expect(launcherEnv(profile(), host, folder)["PATH"]).toBe(`/usr/bin${delimiter}/bin`);
     });
 
+    it("counts a folder inside it whose name starts with two dots as inside", () => {
+      const folder = join(tmpdir(), "halonic-srt-x");
+      const host = { PATH: ["/usr/bin", join(folder, "..x"), "/bin"].join(delimiter) };
+      expect(launcherEnv(profile(), host, folder)["PATH"]).toBe(`/usr/bin${delimiter}/bin`);
+    });
+
     it("is not on the PATH any request of a session carries", async () => {
       const { runner, runs, probes } = fakeRunner();
       const sandbox = new SrtSandbox(linux, runner);
