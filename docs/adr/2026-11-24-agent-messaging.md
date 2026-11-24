@@ -151,7 +151,7 @@ sent later, because an approval sent hours late can be wrong by then. When two
 clients answer the same item, the source decides: the second answer gets
 `already-answered` with who answered and how.
 
-**Polling** (`ports.paperclip-polling`). The engine polls about every 30
+**Polling** (`agent-host.paperclip-polling`). The engine polls about every 30
 seconds while the window is in front, every 5 minutes in the background, and
 at once when the window comes back to the front. Timers go through the
 `Scheduler` port. Apps don't poll: they read again when `changes` names a

@@ -19,6 +19,12 @@ import { Feed } from "./feed.ts";
 export interface FakeAgentMessagingOptions {
   /** Defaults to 24 Nov 2026, 10:00 UTC, always. */
   now?: () => Date;
+  /**
+   * What every ID it makes starts with; `fake` unless told otherwise. Two
+   * fakes joined into one, as the engine joins providers, each take their
+   * own, so their IDs never collide, as two real providers' never do.
+   */
+  idPrefix?: string;
 }
 
 /** Everything a source holds, live or as it was when its line was cut. */
@@ -55,6 +61,7 @@ const bySource = (item: { source: MessagingId }): MessagingId => item.source;
  */
 export class FakeAgentMessaging implements AgentMessaging {
   private readonly now: () => Date;
+  private readonly idPrefix: string;
   private readonly sources: MessagingSource[] = [];
   private readonly live: Held = {
     agents: [],
@@ -69,6 +76,7 @@ export class FakeAgentMessaging implements AgentMessaging {
 
   constructor(options: FakeAgentMessagingOptions = {}) {
     this.now = options.now ?? (() => new Date("2026-11-24T10:00:00.000Z"));
+    this.idPrefix = options.idPrefix ?? "fake";
   }
 
   listSources(): Promise<readonly MessagingSource[]> {
@@ -341,7 +349,7 @@ export class FakeAgentMessaging implements AgentMessaging {
 
   private newId(): MessagingId {
     this.made += 1;
-    return `fake-${this.made}`;
+    return `${this.idPrefix}-${this.made}`;
   }
 
   private stamp(): string {

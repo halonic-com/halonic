@@ -25,6 +25,15 @@ verifies("contracts.fake-agent-messaging", () => {
     expect(acmeChief.id).not.toBe(globexChief.id);
   });
 
+  it("makes IDs that never collide with another fake's when each has its own prefix", () => {
+    const first = new FakeAgentMessaging({ idPrefix: "first" });
+    const second = new FakeAgentMessaging({ idPrefix: "second" });
+
+    const ids = [first.addSource({ label: "A" }).id, second.addSource({ label: "B" }).id];
+
+    expect(ids).toEqual(["first-1", "second-1"]);
+  });
+
   it("answers an open item once and reports one answered elsewhere", async () => {
     const { messaging, acme } = makeFake();
     const first = messaging.addInboxItem(acme.id, { question: "Ship it?" });
