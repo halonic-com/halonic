@@ -20,8 +20,11 @@ server by the board supervisor after it merges; the server doesn't pull from the
    A pull request a person opened from our own branch and labelled `fast-track` uses
    `vars.CI_RUNNER_FAST` when it is set; every other pull request stays on `ubuntu-24.04`: no label,
    a fork, or a bot (a `Bot` account, a login ending in `[bot]`, `dependabot`, `renovate`,
-   `renovate-bot`), labelled or not. Adding the label starts no run; the next push does. This is routing, not security: a pull request runs its
-   own copy of `ci.yml`.
+   `renovate-bot`), labelled or not. Adding the label starts a run (HAL-17672), which lands on
+   `hci-fast-*` like a push's; adding any other label starts a run that skips every job and cancels
+   nothing. The hook and the gate need nothing for it: they read the pull request as it is when the
+   job starts, whatever event started the run. This is routing, not security: a pull request runs
+   its own copy of `ci.yml`.
 2. **The runner group** `halonic-ci` serves only `halonic-com/halonic`.
 3. **The hook** (`vm/job-started.sh`) is the boundary. It is baked into the image, runs before
    the job's first step and fails the job unless every check passes. It trusts nothing a

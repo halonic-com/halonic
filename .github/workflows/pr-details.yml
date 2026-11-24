@@ -1,8 +1,10 @@
-# A title, body or label change on a pull request. CI (ci.yml) doesn't start
+# A title, body or label change on a pull request. CI (ci.yml) tests nothing
 # on these: a new CI run would cancel the one in progress and build
-# everything again. This workflow checks the new title instead and, when one
-# of CI's title, leak or coverage-floor jobs failed, re-runs CI's failed jobs.
-# Those jobs read the pull request's current text and labels, so a fixed title
+# everything again. The one exception is the `fast-track` label (HAL-17672);
+# any other label gets a CI run that skips every job, named "A label was
+# added: nothing to run", which this workflow passes over. This workflow
+# checks the new title instead and, when one of CI's title, leak or
+# coverage-floor jobs failed, re-runs CI's failed jobs. Those jobs read the pull request's current text and labels, so a fixed title
 # or an added `coverage-floor-lowered` label turns `ci-ok` green. The merge
 # queue checks the title and runs the leak guard again before anything merges.
 #
@@ -61,8 +63,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          run=$(gh run list --workflow ci.yml --commit "$HEAD_SHA" --event pull_request --limit 1 \
-            --json databaseId --jq '.[0].databaseId // empty')
+          # The newest run that tests something: a label's empty run (HAL-17672) doesn't.
+          run=$(gh run list --workflow ci.yml --commit "$HEAD_SHA" --event pull_request --limit 20 \
+            --json databaseId,displayTitle \
+            --jq '[.[] | select(.displayTitle != "A label was added: nothing to run")][0].databaseId // empty')
           if [ -z "$run" ]; then
             echo "No CI run for this commit yet; it will read the current details."
             exit 0
