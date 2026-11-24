@@ -3,6 +3,7 @@
 - Task: HAL-17892 (item 1 of the merge-time report on HAL-17891; Chief's go, 24 Nov)
 - Approval: Chief decided on HAL-17891 / HAL-17892 (24 Nov) to move the guard's file-only checks into an early CI job; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jrnKkYbX3r/vcm99JIrqT+jKn+uQ/Lb0UMuBJaFOEcr6XFwlUJXc3HN7wLAl1/+mqKbstCw/e1Gl0xs0PKm2BA==
 
 ## What changes
 
