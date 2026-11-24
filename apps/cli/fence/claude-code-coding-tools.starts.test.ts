@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -128,7 +128,7 @@ async function addLab(): Promise<void> {
       "id: claude\ntype: anthropic\nsecret: anthropic-key\nbaseUrl: http://127.0.0.1:47013/anthropic\n",
     "hubs/lab/hub.yaml": "id: lab\nname: Lab\ndescription: Where the coder reads code.\n",
     "hubs/lab/agents/coder.agent.yaml":
-      "id: coder\nname: Coder\nharness: claude-code\nmodel: claude/claude-sonnet-5-5\ninstructions: Code.\n",
+      "id: coder\nname: Coder\nharness: claude-code\nmodel: lab-coder\ninstructions: Code.\n",
     "hubs/lab/workflows/code.workflow.yaml": [
       "id: code",
       "name: Code",
@@ -151,7 +151,17 @@ async function addLab(): Promise<void> {
   for (const [path, text] of Object.entries(files)) {
     await mkdir(dirname(join(acme, path)), { recursive: true });
     await writeFile(join(acme, path), text);
-  }
+  } // An alias, not "claude/<model>": only an alias makes the harness ask
+  // Claude Code for this one model on every call, its background calls too,
+  // and the bridge sends no other model.
+  const models = await readFile(join(acme, "models.yaml"), "utf8");
+  await writeFile(
+    join(acme, "models.yaml"),
+    models.replace(
+      /^aliases:\n/,
+      "aliases:\n  lab-coder:\n    provider: claude\n    model: claude-sonnet-5-5\n",
+    ),
+  );
 }
 
 async function commitWorkspace(): Promise<string> {
