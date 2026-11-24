@@ -35,6 +35,11 @@ export interface RoutineTickResult {
   queued: RoutineTime[];
   /** Due times dropped because a run of the routine was going (`overlap: skip`) or its queue was full. */
   skipped: RoutineTime[];
+  /**
+   * Signal starts the loop guard refused (`signal-loop` skips): the signal
+   * came from a loop of routines, or the guard couldn't check its chain.
+   */
+  refusedLoops: RoutineTime[];
   /** Due times whose target can't be started (`targetUnavailable`), recorded as `target-unavailable` skips. */
   unavailable: UnavailableTime[];
   /** Routines whose skip records this tick added to, so a host can tell a page that shows them. */
@@ -50,6 +55,7 @@ export const nothing = (): RoutineTickResult => ({
   lastRunNotSaved: [],
   queued: [],
   skipped: [],
+  refusedLoops: [],
   unavailable: [],
   skipsSaved: [],
   skipsNotSaved: [],

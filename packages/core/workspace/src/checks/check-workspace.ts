@@ -12,6 +12,7 @@ import { checkManyUsersSubscription } from "./many-users.ts";
 import { checkManyUsersUnpriced } from "./many-users-unpriced.ts";
 import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
 import { checkModelProviders } from "./model-providers.ts";
+import { checkRoutineSignalLoops } from "./routine-signal-loops.ts";
 import { checkRoutines } from "./routines.ts";
 import { checkWorkflowTests } from "./workflow-tests.ts";
 import { checkSubflowLoops, checkWorkflows } from "./workflows.ts";
@@ -38,6 +39,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkSubflowLoops,
   checkForEachWaits,
   checkRoutines,
+  checkRoutineSignalLoops,
   checkLocalOnly,
   checkManyUsersSubscription,
   checkManyUsersUnpriced,

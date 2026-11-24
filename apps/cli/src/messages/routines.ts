@@ -284,6 +284,18 @@ export const routinesMessages = defineMessages("routines", {
   started: (name: string, runId: string, due: StartedAt) =>
     phrase`${markPart("done")} Started ${name} ${markPart("separator")} run ${runId} ${markPart("separator")} due ${startedInWords(due)}`,
   /**
+   * A routine run a signal started (HAL-14305): "✓ Started On paid · run 01jd8q · signal paid 09:02",
+   * with the time the signal was sent where a timed start has its due time.
+   */
+  startedOnSignal: (name: string, runId: string, signal: string, sent: StartedAt) =>
+    phrase`${markPart("done")} Started ${name} ${markPart("separator")} run ${runId} ${markPart("separator")} signal ${signal} ${startedInWords(sent)}`,
+  /**
+   * The dim line for a signal start the loop guard refused (`routines.signal-loop`): the
+   * signal may come from routines starting each other, or the guard couldn't check that.
+   */
+  refusedLoop: (name: string, signal: string) =>
+    phrase`${dim(`${name} didn't start on signal ${signal}: it may come from routines starting each other. Add a "when" that stops the loop.`)}`,
+  /**
    * The watch's line when a routine that couldn't start has its file fixed
    * (HAL-15664), so a server's log shows the fix was picked up.
    */

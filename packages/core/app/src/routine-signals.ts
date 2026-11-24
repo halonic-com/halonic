@@ -132,7 +132,7 @@ export class SignalStarts implements SignalTick<PlacedRoutine> {
     const going = await this.goingRuns();
     const busy = new Set(going.map((run) => run.trigger?.routineId));
     for (const [key, list] of waiting) {
-      const allowed = await this.guard(key, list, next, skips);
+      const allowed = await this.guard(key, list, next, skips, result);
       const first = allowed[0];
       if (first === undefined) continue;
       const decision = applyOverlap(first.placed.routine.overlap, busy.has(key), allowed);
@@ -179,6 +179,7 @@ export class SignalStarts implements SignalTick<PlacedRoutine> {
     runs: readonly SignalRun[],
     next: SignalState,
     skips: TickSkips,
+    result: RoutineTickResult,
   ): Promise<SignalRun[]> {
     const read = (runId: string) => this.options.runs.get(runId);
     const allowed: SignalRun[] = [];
@@ -186,7 +187,10 @@ export class SignalStarts implements SignalTick<PlacedRoutine> {
       // A store that can't be read is a chain the guard can't follow: refused.
       const loop = await signalLoop(key, run.sentBy, read).catch(() => ({ kind: "unknown" }));
       if (loop === null) allowed.push(run);
-      else this.decide(run, next, skips, "signal-loop");
+      else {
+        this.decide(run, next, skips, "signal-loop");
+        result.refusedLoops.push(timeOf(run));
+      }
     }
     return allowed;
   }
