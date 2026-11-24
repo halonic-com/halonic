@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import {
   actionsOf,
   ago,
+  boardLogin,
   check,
   entry,
   greenChecks,
@@ -66,7 +67,7 @@ verifies("paperclip.merge-control-flake-reruns", () => {
   function flaky(run: Partial<CiOkRun>, changes: Parameters<typeof pull>[1] = {}) {
     return pull(1, {
       labels: ["built-on:paperclip", "fast-track"],
-      fastTrackBy: "timothy-halonic",
+      fastTrackBy: boardLogin,
       checks: redOk,
       ciOkRun: {
         runId: 555,
