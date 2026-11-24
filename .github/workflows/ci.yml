@@ -90,8 +90,8 @@ on:
 
 # A label run that does nothing (see `on:`), so the workflows that look for
 # a pull request's newest CI run can pass it over. Blank otherwise, which
-# keeps GitHub's own name.
-run-name: ${{ github.event.action == 'labeled' && github.event.label.name != 'fast-track' && 'A label was added: nothing to run' || '' }}
+# keeps GitHub's own name. Quoted: the name holds ": ".
+run-name: "${{ github.event.action == 'labeled' && github.event.label.name != 'fast-track' && 'A label was added: nothing to run' || '' }}"
 
 permissions: {}
 

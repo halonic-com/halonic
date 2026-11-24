@@ -185,7 +185,7 @@ verifies("check.ci-self-hosted-routing", () => {
       expect(triggers).toContain(
         "  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review, labeled]\n",
       );
-      expect(triggers).toContain(`run-name: \${{ ${NOOP} && '${NOOP_TITLE}' || '' }}\n`);
+      expect(triggers).toContain(`run-name: "\${{ ${NOOP} && '${NOOP_TITLE}' || '' }}"\n`);
       // Any other label gets a group of its own run, so it cancels nothing; fast-track joins the
       // pull request's group and replaces the run in progress, like a push.
       expect(triggers).toContain(
