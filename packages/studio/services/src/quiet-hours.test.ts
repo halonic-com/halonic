@@ -50,9 +50,30 @@ verifies("services.agent-quiet-hours", () => {
       expect(shown).toEqual([]);
       await vi.advanceTimersByTimeAsync(1);
       expect(shown).toEqual([
-        { reason: "summary", title: "3 new", body: "", target: { kind: "inbox", id: "" } },
+        {
+          reason: "summary",
+          title: "3 new during quiet hours",
+          body: "",
+          target: { kind: "inbox", id: "" },
+        },
       ]);
       expect(errors).toEqual([]);
+    });
+
+    it("counts a single held card as 1 new during quiet hours", async () => {
+      vi.setSystemTime(new Date(2026, 10, 24, 23, 0));
+      const { notifier, shown } = notifierAt(night);
+      await notifier.show(card("a"), () => undefined);
+
+      await vi.advanceTimersByTimeAsync(8 * 60 * 60_000);
+      expect(shown).toEqual([
+        {
+          reason: "summary",
+          title: "1 new during quiet hours",
+          body: "",
+          target: { kind: "inbox", id: "" },
+        },
+      ]);
     });
 
     it("shows a card outside quiet hours at once", async () => {

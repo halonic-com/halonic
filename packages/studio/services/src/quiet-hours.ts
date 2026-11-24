@@ -24,7 +24,7 @@ const millisecondsPerMinute = 60_000;
 /**
  * Holds notifications back during quiet hours (requirement
  * `services.agent-quiet-hours`). A notice that comes in during them shows
- * nothing; when they end, one summary counts what came in, such as "3 new".
+ * nothing; when they end, one summary counts what came in, such as "3 new during quiet hours".
  * Outside quiet hours every notice shows at once.
  *
  * It uses the page's clock and timers, so tests drive it with a fake clock.
@@ -64,7 +64,7 @@ export class QuietHoursNotifier implements Notifier {
     this.stop();
     const summary: AgentNotice = {
       reason: "summary",
-      title: `${count} new`,
+      title: `${count} new during quiet hours`,
       body: "",
       target: { kind: "inbox", id: "" },
     };
