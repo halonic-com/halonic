@@ -44,8 +44,9 @@ export class Feed<T> implements AsyncIterableIterator<T> {
 
   /** The reader left early, with `break` or `return`. */
   return(): Promise<IteratorResult<T>> {
-    this.ended = true;
     this.queued = [];
+    // end() also settles a next() that is already waiting, so stopping an idle watch doesn't hang.
+    this.end();
     this.onLeave(this);
     return Promise.resolve({ done: true, value: undefined });
   }
