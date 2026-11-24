@@ -3,6 +3,7 @@
 - Task: HAL-17130
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17130 (Liam's go on the shape, HAL-17601); security review on the same task
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:r0C+q217PGJb5I36MJYni7Fd7sldxNoE58sVP3CkcQV+tgcwbR/Sj79xzUw9tNxhtCYak16Azj06AbybxOh1CA==
 
 ## What changes
 
