@@ -25,8 +25,10 @@ fn events_after(click: impl FnOnce(&tauri::AppHandle<tauri::test::MockRuntime>))
             .push(event.payload().to_owned());
     });
     click(app.handle());
-    let payloads = seen.lock().expect("not poisoned").clone();
-    payloads
+    // The guard is dropped inside `map`, before `seen` goes out of scope.
+    seen.lock()
+        .map(|payloads| payloads.clone())
+        .expect("not poisoned")
 }
 
 #[test]
