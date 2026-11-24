@@ -120,7 +120,10 @@ function sizeCases(make: MakeToolScriptIsolate): void {
 
 /** An own `__proto__` key reaches the host as a plain key, in an argument and in the output. */
 function protoKeyCases(make: MakeToolScriptIsolate): void {
-  const forms = [`JSON.parse('{"__proto__": {"admin": true}}')`, `({ ["__proto__"]: { admin: true } })`];
+  const forms = [
+    `JSON.parse('{"__proto__": {"admin": true}}')`,
+    `({ ["__proto__"]: { admin: true } })`,
+  ];
 
   it("keeps an own __proto__ key in an argument a plain key", async () => {
     for (const form of forms) {
