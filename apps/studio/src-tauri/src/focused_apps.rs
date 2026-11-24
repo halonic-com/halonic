@@ -47,7 +47,9 @@ impl FocusedApp {
     }
 
     /// Its AppUserModelID: the app's identifier and its name, as the
-    /// installer sets it on its shortcut (`${BUNDLEID}.inbox`).
+    /// installer sets it on its shortcut (`${BUNDLEID}.inbox`). Only Windows
+    /// has one.
+    #[cfg_attr(not(any(windows, test)), expect(dead_code))]
     pub fn app_user_model_id(self, identifier: &str) -> String {
         format!("{identifier}.{}", self.name())
     }
