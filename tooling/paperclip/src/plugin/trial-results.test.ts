@@ -14,7 +14,8 @@ const tokenRef = { type: "secret_ref", secretId: "secret-trial" };
 const agents: Record<string, string> = { "agent-tomas": "tomas", "agent-priya": "priya" };
 
 type Handler = (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>;
-type Answer = { status: number; body?: unknown } | Error;
+/** `raw` is sent as it is, for answers that aren't JSON. */
+type Answer = { status: number; body?: unknown; raw?: string } | Error;
 
 const runCtxFor = (agentId: string): ToolRunContext => ({
   agentId,
@@ -27,8 +28,9 @@ const runCtxFor = (agentId: string): ToolRunContext => ({
 function fakeTrialService(
   answers: Answer[],
   config: Record<string, unknown> = { trialResultsTokenRef: tokenRef },
+  secret = token,
 ) {
-  const sent: { url: string; headers: Record<string, string> }[] = [];
+  const sent: { url: string; headers: Record<string, string>; redirect: string | undefined }[] = [];
   const logs: string[] = [];
   let resolved = 0;
   const handlers = new Map<string, Handler>();
@@ -42,7 +44,7 @@ function fakeTrialService(
     secrets: {
       resolve: async () => {
         resolved += 1;
-        return token;
+        return secret;
       },
     },
     agents: {
@@ -51,11 +53,16 @@ function fakeTrialService(
     logger: { warn: (message: string, meta?: unknown) => logs.push(message, JSON.stringify(meta)) },
   };
   registerTrialResults(ctx as unknown as TrialResultsApi, async (input, init) => {
-    sent.push({ url: String(input), headers: init?.headers as Record<string, string> });
+    sent.push({
+      url: String(input),
+      headers: init?.headers as Record<string, string>,
+      redirect: init?.redirect,
+    });
     const answer = answers.shift();
     if (answer === undefined) throw new Error("no answer left");
     if (answer instanceof Error) throw answer;
-    return new Response(JSON.stringify(answer.body ?? {}), { status: answer.status });
+    const text = answer.raw ?? JSON.stringify(answer.body ?? {});
+    return new Response(text, { status: answer.status });
   });
   const call = (params: unknown, agentId = "agent-tomas") => {
     const handler = handlers.get("trial_results");
@@ -75,6 +82,7 @@ verifies("paperclip.trial-results", () => {
         {
           url: "http://trial-results:8095/v1/summary?variant=V12&stage=s2",
           headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+          redirect: "error",
         },
       ]);
       expect(result.error).toBeUndefined();
@@ -113,6 +121,14 @@ verifies("paperclip.trial-results", () => {
       expect(service.resolved()).toBe(0);
     });
 
+    test("is off when the token resolves to an empty string: no request", async () => {
+      const service = fakeTrialService([], { trialResultsTokenRef: tokenRef }, "");
+      expect(await service.call({ action: "variants" })).toEqual({
+        error: "trial_results is off: the plugin has no trial results token set.",
+      });
+      expect(service.sent).toEqual([]);
+    });
+
     test("refuses an agent outside the list, and bad input, without a request", async () => {
       const service = fakeTrialService([]);
       expect((await service.call({ action: "variants" }, "agent-priya")).error).toBe(
@@ -145,6 +161,14 @@ verifies("paperclip.trial-results", () => {
         [
           { status: 503 },
           "trial_results: the service answered 503; try again later, or tell the board on your task.",
+        ],
+        [
+          { status: 200, raw: "<html>proxy error</html>" },
+          "trial_results: the service's answer wasn't valid JSON; tell the board on your task.",
+        ],
+        [
+          { status: 200, raw: "" },
+          "trial_results: the service's answer wasn't valid JSON; tell the board on your task.",
         ],
         [
           new TypeError("fetch failed"),
