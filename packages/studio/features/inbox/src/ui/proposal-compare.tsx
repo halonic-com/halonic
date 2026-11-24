@@ -26,13 +26,15 @@ export interface ProposalCompareViewProps {
  * the run's side by side, with **Keep mine**, **Use the run's** and, when the two don't change the
  * same lines, **Combine both**. Keep mine counts as Rejected, the others as Accepted, each one undo
  * step with its toast. Nothing is written over a text Compare didn't show: if the file was saved
- * again meanwhile, Compare says so and shows it as it is now. It takes focus when it opens.
+ * again meanwhile, Compare says so and shows it as it is now. It takes focus when it opens and whenever it
+ * shows the texts again.
  */
 export function ProposalCompareView({ runId, comparing, state }: ProposalCompareViewProps) {
   const [attempt, setAttempt] = useState(0);
   const root = useRef<HTMLElement>(null);
-  useEffect(() => root.current?.focus(), []);
   const { path, failure, round } = comparing;
+  // A new round replaces the texts and the button just pressed, so focus goes back to the top.
+  useEffect(() => root.current?.focus(), [round]);
   return (
     <section
       ref={root}

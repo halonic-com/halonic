@@ -159,6 +159,19 @@ verifies("inbox.proposal-compare", () => {
       expect(compare).toHaveBeenCalledTimes(2);
     });
 
+    it("takes focus back to Compare when it shows a file saved again, since the pressed button is gone", async () => {
+      const { root } = await openCompare({
+        compare: vi.fn(async () => texts),
+        choose: vi.fn(async () => leftAlone("notes/a.md")),
+      });
+      const useRuns = buttons(root, "Use the run's")[0];
+      useRuns?.focus();
+
+      await press(useRuns);
+
+      expect(document.activeElement).toBe(compareView(root));
+    });
+
     it("says why a choice failed, keeps Compare open, and sends it again on Try again", async () => {
       const choose = vi
         .fn<ProposalDecisions["choose"]>()
