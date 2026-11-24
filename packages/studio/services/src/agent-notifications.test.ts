@@ -9,8 +9,6 @@ import {
   watchAgentNotifications,
 } from "./agent-notifications.ts";
 
-const requirement = "services.agent-notifications";
-
 /** Keeps every notice with its click, and lets a test wait for the next one. */
 class RecordingNotifier implements Notifier {
   readonly shown: { notice: AgentNotice; click: () => void }[] = [];
@@ -54,7 +52,7 @@ async function started() {
   return { messaging, source, chief, notifier, opened, errors, answer, send, watch };
 }
 
-verifies(requirement, () => {
+verifies("services.agent-notifications", () => {
   describe("watchAgentNotifications", () => {
     it("shows one notification for a new card", async () => {
       const { messaging, source, notifier, watch } = await started();
