@@ -48,6 +48,23 @@ verifies("contracts.fake-agent-messaging", () => {
     ]);
   });
 
+  it("keeps each item's project, so a list can be kept to one project", async () => {
+    const { messaging, acme } = makeFake();
+    const website = { id: "project-website", name: "Website" };
+    messaging.addInboxItem(acme.id, { question: "Ship the page?", project: website });
+    messaging.addInboxItem(acme.id, {
+      question: "Raise the price?",
+      project: { id: "project-billing", name: "Billing" },
+    });
+    messaging.addInboxItem(acme.id, { question: "Hire Ana?" });
+
+    const items = await messaging.listInboxItems();
+    const inWebsite = items.filter((item) => item.project?.id === website.id);
+
+    expect(inWebsite.map((item) => item.question)).toEqual(["Ship the page?"]);
+    expect(items.find((item) => item.question === "Hire Ana?")?.project).toBeUndefined();
+  });
+
   it("sends a message into a conversation, which no longer waits for me", async () => {
     const { messaging, acme } = makeFake();
     const chief = messaging.addAgent(acme.id, { name: "Chief" });

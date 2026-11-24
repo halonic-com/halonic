@@ -12,6 +12,7 @@ export {
   type MessagingAgent,
   type MessagingAuthor,
   type MessagingId,
+  type MessagingProject,
   type MessagingRefusal,
   type MessagingSource,
   type MessagingSourceState,

@@ -97,7 +97,10 @@ a hub, a chat or a task), an item that waits on the person is in Halonic
 Inbox. A chat or a task may show it too, but never only there. So the
 Paperclip provider lists every open card addressed to the board across the
 whole company, not only those on chat tasks, and each item's `work` links
-back to its task. Paperclip has a company-wide read for approvals
+back to its task. Each item also carries its task's `project`, so the Inbox
+can keep its list to one project in one click (`inbox.project-filter`, the
+board's requirement of 24 Nov 11:05 UTC); an item without one shows under "No
+project". Paperclip has a company-wide read for approvals
 (`GET /api/companies/{id}/approvals?status=pending`), but none that we found
 for cards on tasks: those live under `GET /api/issues/{id}/interactions`. So
 the provider reads the company's open tasks and then each one's cards, within

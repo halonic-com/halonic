@@ -90,6 +90,12 @@ export type InboxItemState =
   | { kind: "open" }
   | { kind: "answered"; by: MessagingAuthor; answer: InboxAnswer; answeredAt: string };
 
+/** A project in a source, such as a Paperclip project. Apps filter the Inbox by it. */
+export interface MessagingProject {
+  id: MessagingId;
+  name: string;
+}
+
 /** A card or a question an agent put to the person. `question` is agent-written Markdown, as {@link Message}'s body. */
 export interface InboxItem {
   id: MessagingId;
@@ -97,6 +103,8 @@ export interface InboxItem {
   from: MessagingAuthor;
   question: string;
   options: readonly InboxItemOption[];
+  /** The project it belongs to (for Paperclip, its task's project). Without one, apps show it under "No project". */
+  project?: MessagingProject;
   /** The work it belongs to, when the source has one. */
   work?: MessagingId;
   createdAt: string;
