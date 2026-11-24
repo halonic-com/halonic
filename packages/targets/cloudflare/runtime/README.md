@@ -56,8 +56,8 @@ name, such as a preview address, or with an `Origin`, never reaches a route. A m
 
 | Route | Request | Answer |
 | --- | --- | --- |
-| `GET /admin/export` | none | 200 JSON: the manifest of `@halonicjs/format/runtime-export` (`formatVersion`, `deployment`, `exportedAt`, `files` with `path`, `bytes`, `sha256`) |
-| `GET /admin/export/files/<path>` | `<path>` is one of the manifest's paths (`runs/<run id>.jsonl`, `records/<hash>.jsonl`, `blobs/<xx>/<sha256>`) | 200 the file's bytes as `application/octet-stream`; 404 for a path the manifest doesn't list |
+| `GET /admin/export` | optional `?scope=u/<id>` or `?scope=o/<id>` | 200 JSON: the manifest of `@halonicjs/format/runtime-export` (`formatVersion`, `deployment`, `exportedAt`, `files` with `path`, `bytes`, `sha256`) |
+| `GET /admin/export/files/<path>` | `<path>` is one of the manifest's paths (`runs/<run id>.jsonl`, `records/<hash>.jsonl`, `blobs/<xx>/<sha256>`), with the manifest's `?scope=` | 200 the file's bytes as `application/octet-stream`; 404 for a path the manifest doesn't list |
 | `PUT /admin/import/files/<path>` | the file's bytes as the body, `<path>` in the same three shapes | 204; the file is only staged |
 | `POST /admin/import` | the manifest as JSON | 200 `{"imported":{"runs":n,"records":n,"blobs":n}}` once every staged file matches the manifest's size and SHA-256 and is applied; 409 `{"code":"files_missing" or "files_differ","paths":[...]}` and nothing applied otherwise |
 | `POST /admin/sessions/revoke` | none | 204 once every browser signed in to the deployment is signed out (requirement `runtime.session-revoke`); it takes no lock |
@@ -69,6 +69,10 @@ secret stops the export: the manifest and that file answer 409 `{"code":"secret_
 naming the file and the kind, never the text (requirement `runtime.export-data`). The check knows only common
 key formats (`sk-`, `GOCSPX-`, `AIza`, `ghp_`, `github_pat_`, `xoxb-`), so a clean export is not proof that
 it holds no secret; binary blobs are not scanned.
+
+With `?scope=`, both export routes answer from that person's or organisation's stores alone: the whole
+scope, private runs included, since the admin key is the operator's. A scope that isn't `u/<id>` or
+`o/<id>` answers 400 `{"code":"bad_scope"}` (requirement `runtime.scope-export`).
 
 **Importing.** Send each file with `PUT /admin/import/files/<path>` (up to 50 MiB; it is staged in the blobs
 bucket under `import-staging/`), then the manifest with `POST /admin/import`. Nothing is written until every

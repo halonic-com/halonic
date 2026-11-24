@@ -8,6 +8,32 @@ interface ListRow {
   summary: string;
 }
 
+interface MetadataRow {
+  run_id: string;
+  started_by: string;
+  visibility: string;
+  status: RunSummary["status"];
+  started_at_ms: number;
+}
+
+const selectMetadata = `SELECT run_id, started_by, visibility, status, started_at_ms FROM run_list
+  WHERE scope = ? ORDER BY started_at_ms DESC, run_id`;
+
+/**
+ * What the run list says about a run besides its events: who started it, who may see it, its
+ * status and its start. It is all an organisation's admin may export of a run (design 13.7).
+ */
+export interface RunMetadata {
+  readonly id: string;
+  /** The id of whoever started the run; empty while nobody is named in the scope. */
+  readonly startedBy: string;
+  /** `private` or `organisation`. */
+  readonly visibility: string;
+  readonly status: RunSummary["status"];
+  /** An ISO time in UTC. */
+  readonly startedAt: string;
+}
+
 const upsertRun = `INSERT INTO run_list (scope, run_id, seq, hub_id, workflow_id, kind, status, started_at_ms, summary, started_by, visibility)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'private')
   ON CONFLICT (scope, run_id) DO UPDATE SET
@@ -107,6 +133,19 @@ export class D1RunList {
       .map((row) => JSON.parse(row.summary) as RunSummary)
       .filter((summary) => matchesRunFilter(summary, filter))
       .sort(compareRunSummaries);
+  }
+
+  /** Every run of the scope as {@link RunMetadata}, newest start first, then by id. */
+  async metadata(): Promise<RunMetadata[]> {
+    await this.#migrated();
+    const { results } = await this.#db.prepare(selectMetadata).bind(this.#scope).all<MetadataRow>();
+    return results.map((row) => ({
+      id: row.run_id,
+      startedBy: row.started_by,
+      visibility: row.visibility,
+      status: row.status,
+      startedAt: new Date(row.started_at_ms).toISOString(),
+    }));
   }
 
   #migrated(): Promise<void> {

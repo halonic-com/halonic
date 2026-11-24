@@ -6,7 +6,12 @@
 export type { SqlDatabase, SqlStatement } from "./d1-database.ts";
 export { type Migration, runMigrations } from "./d1-migrations.ts";
 export { D1RecordStore, type D1RecordStoreOptions } from "./d1-record-store.ts";
-export { D1RunList, type D1RunListOptions, listOpenRunScopes } from "./d1-run-list.ts";
+export {
+  D1RunList,
+  type D1RunListOptions,
+  listOpenRunScopes,
+  type RunMetadata,
+} from "./d1-run-list.ts";
 export { DefinitionSnapshotError } from "./definition-snapshot.ts";
 export {
   type SnapshotIndexes,
