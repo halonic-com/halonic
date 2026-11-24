@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultRunLeaseMs } from "../run-slots.ts";
 import { reservationMarginMs } from "../usage-account.ts";
-import { UsageScope } from "../usage-scope.ts";
+import { defaultPullRetryMs, UsageScope, type UsageScopeOptions } from "../usage-scope.ts";
 import { usageStorageOf } from "../usage-storage.ts";
 import type { UsageLimits } from "../usage-types.ts";
 import { inObjectState } from "./state-host.ts";
@@ -16,7 +16,11 @@ const acme = { actor: "u_acme", scope: "u/acme" };
 const minute = 60_000;
 
 /** A scope over the object's storage and alarm; Cloud answers its limits or can't be reached. */
-function newScope(storage: DurableObjectStorage, cloudAnswers = false) {
+function newScope(
+  storage: DurableObjectStorage,
+  cloudAnswers = false,
+  options: Partial<UsageScopeOptions> = {},
+) {
   const clock = new SuiteClock();
   const start = clock.now().getTime();
   const limits: UsageLimits = {
@@ -36,6 +40,7 @@ function newScope(storage: DurableObjectStorage, cloudAnswers = false) {
       cloud.pulls++;
       return cloud.answer;
     },
+    ...options,
   });
   return { scope, clock, limits, cloud, alarmAt: () => storage.getAlarm() };
 }
@@ -77,6 +82,14 @@ describe("usage object scope", () => {
       expect(await scope.reserve(acme, step)).toEqual({ allowed: true });
     }));
 
+  it("refuses a scope other than the object's name, even on the first call", () =>
+    inObjectState(({ storage }) => {
+      const { scope, limits } = newScope(storage, false, { objectName: "u/acme" });
+      expect(() => scope.applyLimits("o/acme", limits)).toThrow(RangeError);
+      expect(storage.kv.get("scope")).toBeUndefined();
+      expect(scope.applyLimits("u/acme", limits)).toBe("applied");
+    }));
+
   it("refuses a scope that isn't a person's or an organisation's", () =>
     inObjectState(({ storage }) => {
       const { scope, limits } = newScope(storage);
@@ -91,7 +104,26 @@ describe("usage object limits", () => {
       const { scope, cloud } = newScope(storage);
       expect(await scope.check(acme)).toEqual({ allowed: false, refusal: { code: "plan.none" } });
       expect(await scope.startRun(acme, "run_1")).toMatchObject({ allowed: false });
+      expect(cloud.pulls).toBe(1);
+    }));
+
+  it("asks Cloud again only once a pull that found no limits is old enough", () =>
+    inObjectState(async ({ storage }) => {
+      const { scope, clock, cloud } = newScope(storage);
+      await scope.check(acme);
+      clock.advance(defaultPullRetryMs - 1);
+      await scope.check(acme);
+      expect(cloud.pulls).toBe(1);
+      clock.advance(1);
+      await scope.check(acme);
       expect(cloud.pulls).toBe(2);
+    }));
+
+  it("refuses with no limits when the pull throws", () =>
+    inObjectState(async ({ storage }) => {
+      const pullLimits = () => Promise.reject(new Error("Cloud is down"));
+      const { scope } = newScope(storage, false, { pullLimits });
+      expect(await scope.check(acme)).toEqual({ allowed: false, refusal: { code: "plan.none" } });
     }));
 
   it("pulls limits once for parallel steps, then allows them", () =>

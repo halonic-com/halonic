@@ -37,4 +37,12 @@ describe("UsageObject", () => {
     await usage.stopRunning(acme.scope, "run_1");
     expect(await usage.outboxSize(acme.scope)).toBe(2);
   });
+
+  it("refuses a call for a scope other than the one it is named for", async () => {
+    const { USAGE } = env as unknown as TestEnv;
+    const usage = USAGE.get(USAGE.idFromName("u/acme-named"));
+    await expect(usage.check({ actor: "u_acme", scope: "o/acme" })).rejects.toThrow(
+      /named for another scope/,
+    );
+  });
 });
