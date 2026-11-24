@@ -1,6 +1,7 @@
 import { Button, CloseIcon, EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import type { WorkflowProblem } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
+import { ReviewMarksBand } from "../review/workflow-review.tsx";
 import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { pageWords } from "./page-words.ts";
@@ -85,6 +86,7 @@ export function FlowView({
           <span className="text-fg-muted">{pageWords.outlineClears}</span>
         </p>
       )}
+      <ReviewMarksBand picked={pickedStep} />
       {load.kind === "ready" && load.value.id === id && load.value.hubId === hubId && (
         <WorkflowCanvas
           key={`${workflowKey}/${openStep}`}

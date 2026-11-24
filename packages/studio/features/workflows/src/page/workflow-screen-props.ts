@@ -4,6 +4,7 @@ import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import type { FilesWithErrorsSource, SaveState } from "@halonicjs/studio-shell";
 import type { WorkflowGuide, WorkflowsHost } from "../api.ts";
+import type { WorkflowReviewHost } from "../review-api.ts";
 import type { AnnounceState } from "../start/run-announcement.ts";
 
 /** Props for `WorkflowScreen`. */
@@ -78,6 +79,8 @@ export interface WorkflowScreenProps {
   readonly openFileAt?: (path: string, line: number) => void;
   /** The workspace's files with errors, which the problems band names another file from; none when absent. */
   readonly filesWithErrors?: FilesWithErrorsSource | undefined;
+  /** The assistant's changes to review; without it the page shows no item bar and no marks. */
+  readonly review?: WorkflowReviewHost | undefined;
   /** Another feature's guide card, such as the first run's; without it the page shows none. */
   readonly guide?: WorkflowGuide | undefined;
   /** The page ⋮'s **Show in chat** (`assistant.chat.show-in-chat`); none without the Assistant. */

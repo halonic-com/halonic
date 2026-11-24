@@ -12,7 +12,12 @@ import {
   RunsSourceService,
 } from "@halonicjs/studio-feature-runs/api";
 import { engineWordsOf, FilesWithErrorsService, type ItemViewProps } from "@halonicjs/studio-shell";
-import { RUN_FORM_STEP, WorkflowGuideService, WorkflowsHostService } from "../api.ts";
+import {
+  RUN_FORM_STEP,
+  WorkflowGuideService,
+  WorkflowReviewService,
+  WorkflowsHostService,
+} from "../api.ts";
 import { openFileAtLine } from "./blocking-file.ts";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
@@ -43,6 +48,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
       agents={context.services.find(AgentsHostService)}
       guide={context.services.find(WorkflowGuideService)}
+      review={context.services.find(WorkflowReviewService)}
       {...(context.runCommand && {
         openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}

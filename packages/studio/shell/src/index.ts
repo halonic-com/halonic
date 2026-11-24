@@ -159,6 +159,11 @@ export {
   type ChangeMarkProps,
   changeMarkSelector,
 } from "./item-review/change-mark.tsx";
+export { changesDecided } from "./item-review/changes-decided.ts";
+export {
+  changeMarkKindOf,
+  ItemChangeMark,
+} from "./item-review/item-change-mark.tsx";
 export type {
   ItemChangeToReview,
   ItemReview,
@@ -173,6 +178,14 @@ export {
 } from "./item-review/item-review-bar.tsx";
 export { itemReviewWords } from "./item-review/item-review-words.ts";
 export { positionWithin, steppedPosition } from "./item-review/review-position.ts";
+export {
+  type ItemReviewBusyOn,
+  type ItemReviewMarks,
+  type ItemReviewParts,
+  type ItemReviewState,
+  type ReviewedItem,
+  useItemReview,
+} from "./item-review/use-item-review.tsx";
 export {
   allFilter,
   type OverviewChip,

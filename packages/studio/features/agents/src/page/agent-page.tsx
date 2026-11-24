@@ -9,6 +9,7 @@ import {
   type ItemPageHandle,
   type ItemViewProps,
   StackedCards,
+  useItemReview,
 } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -32,7 +33,6 @@ import { useConfigurationLoads } from "../configuration/use-configuration-loads.
 import { PlacementProvider } from "../configuration/use-placement.ts";
 import { FlowView } from "../map/flow-view.tsx";
 import { pageOfChange, ReviewMarksContext } from "../review/review-marks.tsx";
-import { useAgentReview } from "../review/use-agent-review.tsx";
 import { AgentReviewService } from "../review-api.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
@@ -242,9 +242,9 @@ export function AgentScreen({
   // While the agent is read, the name the host already knows, as the tab shows it.
   const name = load.kind === "ready" ? load.value.name : (host.nameOf({ hubId, id }) ?? id);
   // The assistant's changes: Previous and Next open a change's page and focus its mark.
-  const changes = useAgentReview({
+  const changes = useItemReview({
     host: review,
-    agent: { hubId, id },
+    item: { hubId, id },
     name,
     openFile,
     announce,
@@ -315,7 +315,9 @@ export function AgentScreen({
     shownView.current = shown;
     return (
       <div ref={viewBox} className="contents">
-        <ReviewMarksContext value={changes.marks}>{drawViewContent(shown)}</ReviewMarksContext>
+        <ReviewMarksContext value={changes.marks && { ...changes.marks, agent: { hubId, id } }}>
+          {drawViewContent(shown)}
+        </ReviewMarksContext>
       </div>
     );
   };
