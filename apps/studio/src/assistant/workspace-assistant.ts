@@ -24,6 +24,7 @@ import {
 import type { ChatMessage, DefinitionStore, Digest } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type {
+  AssistantAnswer,
   AssistantAnswerRequest,
   AssistantChange,
   AssistantHost,
@@ -38,6 +39,7 @@ import type {
 import { EngineNotAnswering, type ItemRef, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
+import { answerWithFailure } from "./chat-failure.ts";
 import { agentOfKind, chatAgentsOf, type HasKey, modelOptionsOf } from "./chat-models.ts";
 import { type ChatStore, type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
@@ -187,7 +189,7 @@ export class WorkspaceAssistant implements AssistantHost {
    * anything is sent (flow-assistant 5.9, HAL-720). A Build chat on the Settings › Assistant model
    * answers then with the authoring tools only, on no engine (states H17).
    */
-  async answer(request: AssistantAnswerRequest): Promise<ChatAnswer> {
+  async answer(request: AssistantAnswerRequest): Promise<AssistantAnswer> {
     const chat = await this.#chats.get(request.chatId);
     if (this.#answering.has(chat.id)) {
       throw new KindedError("conflict", "This chat is already answering.");
@@ -349,7 +351,7 @@ export class WorkspaceAssistant implements AssistantHost {
       },
     });
     keep();
-    return answer;
+    return answerWithFailure(answer, model.settings, loaded);
   }
 
   /**

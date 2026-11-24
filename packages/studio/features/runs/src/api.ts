@@ -9,6 +9,7 @@ import type { WorkspaceModels } from "@halonicjs/app/run-failure";
 import type { LoggedInstructionPin, RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
+export { chatFailureLine } from "./chat-failure-line.ts";
 export {
   type RunModelPath,
   runModelPath,

@@ -53,6 +53,9 @@ function proxyFixInWords(provider: string, failure: ProxyFailure): string {
   }
 }
 
+/** How a sentence that sends the person back ends: a run page's "run again", a chat's "try again" (microcopy 14.1). */
+export type Again = "run again" | "try again";
+
 /** F7's "the model alias `smart`", or "the model gpt-4o" when the log doesn't give the alias. */
 function modelOrAlias(model: string, alias: string | undefined): string {
   return alias === undefined ? `the model ${model}` : `the model alias ${alias}`;
@@ -145,8 +148,9 @@ export const failureWords = {
     host: string | undefined,
     model: string,
     alias: string | undefined,
+    again: Again = "run again",
   ) =>
-    `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. This computer may be offline. Check your internet connection, then run again.`,
+    `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. This computer may be offline. Check your internet connection, then ${again}.`,
   /**
    * F7 when the call failed at the proxy (`proxy.*`, HAL-13725): the shell's own sentence says
    * what to change, after a colon; without one the sentence ends at the proxy. An unreachable
@@ -168,8 +172,9 @@ export const failureWords = {
     host: string | undefined,
     model: string,
     alias: string | undefined,
+    again: Again = "run again",
   ) =>
-    `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. ${provider} may not be running on this computer. Start ${provider}, then run again.`,
+    `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. ${provider} may not be running on this computer. Start ${provider}, then ${again}.`,
   /** `run.failed` named an empty host: the address in the provider's file has none, such as one without `http://`. */
   modelAddressWithoutHost: (provider: string, model: string, alias: string | undefined) =>
     `Halonic couldn't reach ${provider} for ${modelOrAlias(model, alias)}: its address has no host. Check ${provider}'s address in Models. It starts with http:// or https://, such as http://localhost:11434.`,

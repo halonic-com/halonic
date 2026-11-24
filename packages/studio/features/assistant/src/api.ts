@@ -14,6 +14,7 @@ import type {
   ReviewStep,
   ReviewTarget,
 } from "@halonicjs/app";
+import type { RunFailure } from "@halonicjs/app/run-failure";
 import type { ShowOutcome } from "@halonicjs/assistant";
 import type { ChatMessage } from "@halonicjs/ports";
 import {
@@ -147,6 +148,13 @@ export interface AssistantAnswerRequest {
 }
 
 /**
+ * How an answer went, as the chat service says it. A failed model call the app can name, such as
+ * a model it couldn't reach, also gives its facts as a failed run would (`chatFailureOf`), so the
+ * chat says the provider's own sentence (states H22, microcopy 22 F7, F8).
+ */
+export type AssistantAnswer = ChatAnswer & { readonly failure?: RunFailure | undefined };
+
+/**
  * What changed, for {@link AssistantHost.onDidChange}: the list of chats (one added, renamed,
  * deleted, or its answering or to-review state), one chat's messages or model, or the changes to
  * review in some files, whoever made them.
@@ -184,7 +192,7 @@ export interface AssistantHost {
    * with `not_found` for a chat that is gone, and with `conflict` while the chat is already
    * answering.
    */
-  answer(request: AssistantAnswerRequest): Promise<ChatAnswer>;
+  answer(request: AssistantAnswerRequest): Promise<AssistantAnswer>;
   /**
    * Whether the workspace's engine answers now. While it doesn't, an open chat says so at the top
    * and Send waits (states H12, D5); {@link onDidChange} tells when it changes.

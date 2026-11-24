@@ -1,5 +1,7 @@
+import type { RunFailure } from "@halonicjs/app/run-failure";
 import { toolTexts } from "@halonicjs/assistant";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
+import { chatFailureLine } from "@halonicjs/studio-feature-runs/api";
 import type { ChatToolState } from "@halonicjs/studio-kit";
 import { buildChatWords, toolInWords } from "./build-chat-words.ts";
 
@@ -32,7 +34,13 @@ export type ReplyEnd =
   /** The engine stopped mid-answer (states H13); Try again only when no tool ran. */
   | { readonly kind: "engine-stopped"; readonly toolsRan: boolean }
   | { readonly kind: "model-call-limit"; readonly calls: number }
-  | { readonly kind: "failed"; readonly reason: string; readonly toolsRan: boolean };
+  /** A failed answer; `failure` holds the facts when the model call failed for a reason a run names. */
+  | {
+      readonly kind: "failed";
+      readonly reason: string;
+      readonly toolsRan: boolean;
+      readonly failure?: RunFailure | undefined;
+    };
 
 /** A message the person sent and the reply to it, as far as it got. */
 export interface Turn {
@@ -169,8 +177,18 @@ export function endLine(end: ReplyEnd): string {
     case "model-call-limit":
       return buildChatWords.modelCallLimit(end.calls);
     case "failed": {
-      const cause = buildChatWords.failed(end.reason);
+      const cause = providerSentence(end) ?? buildChatWords.failed(end.reason);
       return end.toolsRan ? `${cause} ${buildChatWords.toolsRan}` : cause;
     }
   }
+}
+
+/**
+ * The provider's own sentence for a failed answer, as the run page says it (microcopy 14.1 "Model
+ * unreachable", 22 F7, F8), ending "then try again."; `undefined` without one, when the chat says
+ * "Couldn't reach the model: *reason*." instead.
+ */
+export function providerSentence(end: ReplyEnd): string | undefined {
+  if (end.kind !== "failed" || end.failure === undefined) return undefined;
+  return chatFailureLine(end.failure);
 }

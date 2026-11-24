@@ -1,10 +1,10 @@
-import type { ChatAnswer } from "@halonicjs/app";
 import type { ChatMessage } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type {
+  AssistantAnswer,
   AssistantAnswerRequest,
   AssistantChange,
   AssistantHost,
@@ -87,7 +87,7 @@ export function fakeHost(
   choices: { models?: readonly ModelOption[]; agents?: readonly ChatAgent[] } = {},
 ) {
   const requests: AssistantAnswerRequest[] = [];
-  const pending: ((answer: ChatAnswer | Error) => void)[] = [];
+  const pending: ((answer: AssistantAnswer | Error) => void)[] = [];
   let reads = 0;
   let readFails: Error | undefined;
   let items = 0;
@@ -205,7 +205,7 @@ export function fakeHost(
     /** How often the trust check opened. */
     trustChecks: () => trustChecks,
     /** Ends the oldest answer still being written. */
-    finish: async (answer: ChatAnswer | Error) => {
+    finish: async (answer: AssistantAnswer | Error) => {
       await act(async () => pending.shift()?.(answer));
     },
     /** The chats as the host keeps them now, drafts too, most recently used first. */
