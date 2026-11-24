@@ -190,6 +190,7 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     effort,
     cantTry = [],
     version,
+    task,
     ...fields
   } = input;
   const started: DecidedEvent = {
@@ -201,6 +202,7 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     ...(effort === undefined ? {} : { effort }),
     ...(cantTry.length === 0 ? {} : { cantTry: [...cantTry] }),
     ...(version === undefined ? {} : { version }),
+    ...(task === undefined ? {} : { task }),
   };
   const draft: Draft = {
     run: evolve(null, { ...started, runId, seq: 1, at }),

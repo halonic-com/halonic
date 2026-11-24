@@ -49,7 +49,17 @@ export function startInputOf(
   definitionsVersion: string,
   at: string,
 ): StartInput {
-  const { hubId, workflowId, input, trigger, harness, effort, cantTry = [], version } = request;
+  const {
+    hubId,
+    workflowId,
+    input,
+    trigger,
+    harness,
+    effort,
+    cantTry = [],
+    version,
+    task,
+  } = request;
   return {
     type: "start",
     at,
@@ -65,5 +75,6 @@ export function startInputOf(
     ...(effort === "low" ? { effort } : {}),
     cantTry,
     ...(version === undefined ? {} : { version }),
+    ...(task === undefined ? {} : { task }),
   };
 }

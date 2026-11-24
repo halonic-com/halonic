@@ -11,6 +11,7 @@ import type {
   RunFailureReason,
   RunKind,
   RunParent,
+  RunTask,
   RunTrigger,
   RunVersion,
   ToolFailureCause,
@@ -64,6 +65,8 @@ export interface StartInput extends InputBase {
   readonly cantTry?: readonly CantTryStep[];
   /** Which version of the workspace the run read: the live version or the saved files. */
   readonly version?: RunVersion;
+  /** The task the run works on, with the branch that stands for its pull request. */
+  readonly task?: RunTask;
 }
 
 /** An event sent to a waiting run, such as `approve`. */

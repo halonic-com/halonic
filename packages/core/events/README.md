@@ -61,6 +61,11 @@ optional and come with a requirement.
   (requirement `run-failed-cause`). A screen reads it, never `error`.
 - `summarize(events)`: folds a run's events into a `RunSummary`. Every run
   store uses it.
+- `runUsageOf(events)`: one run's tokens, by the summary's rule, with the
+  part its sub-agents used, its calls, its fresh harness sessions by reason
+  and its resumed ones (`harness.started.session`), and the task its `run.started` names.
+  `usageByTask(runs)` and `usageByBranch(runs)` add runs up per task and per
+  branch, which stands for a pull request (requirement `usage-rollup`).
 - `upgradeEvent(raw)` and `parseEventLine(line)`: read stored events,
   renaming the fields of older logs (`projectId`, `flowId`).
 - `entryOf(events)`: the timeline entry of each event, the `seq` of the event
@@ -79,6 +84,9 @@ optional and come with a requirement.
   was made, or `{ reads: "saved-files" }` (`RunVersion`). A child run has its
   parent's. Older logs have none, which means "not recorded", not the saved
   files (requirement `run-started-version`).
+- `run.started.task`: the task the run worked on, `{ id, branch? }`
+  (`RunTask`). The id is the caller's own string; nothing looks it up. A
+  child run has its parent's (requirement `run-started-task`).
 - `sandbox.off`: a step ran without the sandbox because a person chose to run
   the agent on this computer, with `chosenAt`, when they chose it
   (requirement `sandbox-off`).

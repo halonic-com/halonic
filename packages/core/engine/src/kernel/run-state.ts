@@ -5,6 +5,7 @@ import type {
   RunKind,
   RunParent,
   RunStatus,
+  RunTask,
   RunVersion,
 } from "@halonicjs/events";
 import type { RunEffort } from "@halonicjs/ports";
@@ -109,6 +110,8 @@ export interface RunState {
    * it, or `null` when it wasn't recorded, as in older logs.
    */
   readonly version: RunVersion | null;
+  /** The task `run.started` names, or `null` when it names none. Its child runs record it too. */
+  readonly task: RunTask | null;
   readonly status: RunStatus;
   /** The state the run is in, or `null` before the first `state.entered`. */
   readonly state: string | null;
@@ -216,6 +219,7 @@ function startedState(event: RunEvent): RunState {
     effort: event.effort ?? "default",
     cantTry: event.cantTry ?? [],
     version: event.version ?? null,
+    task: event.task ?? null,
     status: "running",
     state: null,
     enteredAt: null,

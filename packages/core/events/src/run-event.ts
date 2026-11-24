@@ -31,6 +31,7 @@ import type {
   ToolVerb,
   Usage,
 } from "./run-basics.ts";
+import type { RunTask } from "./run-task.ts";
 import type { SandboxBlockedEvent } from "./sandbox-blocked.ts";
 import type { SandboxOpenedView } from "./sandbox-opened.ts";
 import type { ToolRefusedEvent } from "./tool-refused.ts";
@@ -95,6 +96,8 @@ export type RunEventBody =
        * recorded", never as the saved files.
        */
       version?: RunVersion;
+      /** The task the run worked on (requirement `events.run-started-task`); a child run has its parent's. */
+      task?: RunTask;
     }
   | { type: "state.entered"; state: string }
   /** `parent`: the agent that delegated this one (subagents); absent for the state's own agent. */
