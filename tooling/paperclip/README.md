@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
 
 ## PR watcher
 
@@ -571,6 +571,23 @@ effort in the issue properties (the handler then leaves that task alone).
 `task_effort.foreign_change`. Log lines and metrics carry task identifiers,
 effort words (anything else shows as `other`) and actor types, never task
 text or the key.
+
+## Hand-off limit
+
+Keeps K3 from the phase 2 card (HAL-17628): an agent may pass a channel's
+child task on at most 3 times. A channel is a parent task tagged `channel`
+(the Paperclip provider sets the tag); it gets one child task per agent a
+message goes to. On every `issue.created` and `issue.updated` of a task under
+such a parent, the handler counts each change from one agent to another that
+an agent made. Paperclip has no hook that refuses an assignment, so on the
+fourth it assigns the task back to the agent who held it before and comments
+"Stopped after 3 hand-offs". A change by the board or another person, the
+system or a plugin is never counted, and neither is a change to or from no
+agent. The count lives in the plugin's state, per task (`handoffs` namespace).
+It needs no setting: tasks outside a channel are never touched.
+
+**Metrics** (tag `companyId`): `handoff_limit.reverted`. Log lines name the
+task's identifier, never task text.
 
 ## Difficulty tagger
 
