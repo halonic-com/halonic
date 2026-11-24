@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import {
   RUNTIME_EXPORT_MANIFEST,
@@ -8,12 +8,13 @@ import {
 } from "@halonicjs/format/runtime-export";
 import { isBlobHash, parseLogLines, parseRecordLines } from "@halonicjs/ports";
 import {
+  DeployError,
   exportFromWorker,
   importToWorker,
   type WorkerTransferOptions,
 } from "@halonicjs/target-cloudflare-deploy";
 import { eventually } from "./eventually.ts";
-import { caller, type WorkerTarget } from "./worker-call.ts";
+import { type Call, caller, type WorkerTarget } from "./worker-call.ts";
 
 /** The four admin routes, with a path that no import or export would find anything at. */
 const adminRoutes = [
@@ -57,6 +58,25 @@ function expectStatus(what: string, got: StatusAnswer, want: number) {
   if (got.status !== want) throw new UnexpectedStatus(what, got, want);
 }
 
+/** One pass of the closed check: each admin route, with and without a key, against an unknown path. */
+async function closedSweep(call: Call, someKey: string): Promise<void> {
+  for (const [method, route] of adminRoutes) {
+    const unknown = await call("/no-such-path", {}, method);
+    // A 5xx here is the edge's, not the Worker's neutral answer: name it, rather than the route.
+    if (unknown.status >= 500) expectStatus(`${method} /no-such-path`, unknown, 404);
+    for (const [what, headers] of [
+      ["without a key", {}],
+      ["with a key", { authorization: `Bearer ${someKey}` }],
+    ] as const) {
+      const answer = await call(route, headers, method);
+      expectStatus(`${method} ${route} ${what}`, answer, unknown.status);
+      if (answer.text !== unknown.text) {
+        throw new Error(`${method} ${route} ${what} answered differently from an unknown path.`);
+      }
+    }
+  }
+}
+
 /** Checks of a deployed Worker that need no key. Each throws an `Error` naming what differed, never a key or a body. */
 export const workerChecks = {
   /**
@@ -77,23 +97,18 @@ export const workerChecks = {
 
   /**
    * With no admin key set (a normal deployment), each of the four admin routes is the same neutral
-   * 404 as an unknown path with that method, even for a caller that sends a key.
+   * 404 as an unknown path with that method, even for a caller that sends a key. Cloudflare's edge
+   * can give one of the calls a 5xx while the others get the Worker's 404 (HAL-17705), so a 5xx on
+   * either side starts the sweep again, as `smoke` does; any other difference fails at once.
    */
   async adminClosed(target: WorkerTarget, someKey: string): Promise<void> {
     const call = caller(target);
-    for (const [method, route] of adminRoutes) {
-      const unknown = await call("/no-such-path", {}, method);
-      for (const [what, headers] of [
-        ["without a key", {}],
-        ["with a key", { authorization: `Bearer ${someKey}` }],
-      ] as const) {
-        const answer = await call(route, headers, method);
-        expectStatus(`${method} ${route} ${what}`, answer, unknown.status);
-        if (answer.text !== unknown.text) {
-          throw new Error(`${method} ${route} ${what} answered differently from an unknown path.`);
-        }
-      }
-    }
+    await eventually(() => closedSweep(call, someKey), {
+      attempts: 4,
+      passesInARow: 1,
+      retryIf: (error) => error instanceof UnexpectedStatus && error.status >= 500,
+      ...(target.sleep ? { sleep: target.sleep } : {}),
+    });
   },
 
   /** The admin key has taken effect: a call without a key is refused as a 401, not the closed 404. */
@@ -145,6 +160,19 @@ export interface RoundTripOptions extends Pick<WorkerTransferOptions, "baseUrl" 
   readonly source: string;
   /** An empty folder the Worker's export is written to. */
   readonly work: string;
+  /** Tests inject this; defaults to a timer. */
+  readonly sleep?: (ms: number) => Promise<void>;
+}
+
+/** The transfer's answer for a 404 with or without the Worker's code: an older version without the key. */
+const workerNotFound = /^The Worker answered 404\b/;
+
+function olderVersionAnswered(error: unknown): boolean {
+  return (
+    error instanceof DeployError &&
+    error.code === "transfer-failed" &&
+    workerNotFound.test(error.message)
+  );
 }
 
 /** What a round trip carried. */
@@ -229,7 +257,9 @@ async function filesUnder(folder: string, prefix = ""): Promise<string[]> {
 /**
  * Puts the `source` export into the Worker (twice, since sending an import again is safe), exports
  * what the Worker now holds into `work`, and checks that every source file came back byte for byte
- * and that the result reads as a Node import would read it.
+ * and that the result reads as a Node import would read it. Even after the key wait passed, a call
+ * can still reach an older Worker version without the key, which answers 404 (HAL-17705): the
+ * transfer is then started again, up to 4 tries in all. Any other refusal fails at once.
  *
  * @throws Error naming the path that differs, never a key or file content
  */
@@ -240,9 +270,21 @@ export async function roundTrip(options: RoundTripOptions): Promise<RoundTripRes
     ...(options.fetch ? { fetch: options.fetch } : {}),
   };
   const source = await readManifest(options.source);
-  await importToWorker({ ...transfer, folder: options.source });
-  await importToWorker({ ...transfer, folder: options.source });
-  await exportFromWorker({ ...transfer, folder: options.work });
+  await eventually(
+    async () => {
+      // A try that stopped in the export leaves files behind; the export wants an empty folder.
+      await rm(options.work, { recursive: true, force: true });
+      await importToWorker({ ...transfer, folder: options.source });
+      await importToWorker({ ...transfer, folder: options.source });
+      await exportFromWorker({ ...transfer, folder: options.work });
+    },
+    {
+      attempts: 4,
+      passesInARow: 1,
+      retryIf: olderVersionAnswered,
+      ...(options.sleep ? { sleep: options.sleep } : {}),
+    },
+  );
   const back = new Map((await readManifest(options.work)).files.map((f) => [f.path, f.sha256]));
   const differing = source.files
     .filter((file) => back.get(file.path) !== file.sha256)
