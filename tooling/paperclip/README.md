@@ -704,8 +704,11 @@ front of each name. A metric that doesn't save is logged and changes nothing.
 
 - **Each pass, per company** (tags `companyId`, `dryRun`):
   `pr_watcher.tasks_with_pr`, `.done`, `.woken`, `.failed`,
-  `.github_requests`, `.duration_ms`. In a dry run `done` and `woken` count
-  what it would have done.
+  `.github_requests`, `.github_requests_snapshot`, `.duration_ms`. In a dry
+  run `done` and `woken` count what it would have done. The pass's log line
+  also gives its GitHub calls by step ("42 GitHub calls (snapshot 20,
+  watcher 21, thin-spec 1)"), and the saved snapshot keeps its own count as
+  `githubCalls` (HAL-17933).
 - **Monitors, each pass:** `monitors.set` (a Paperclip monitor due later on an
   open task), `monitors.fired` (one that fired in the last 10 minutes), and
   both again for tasks with a pull request (`*_on_pr_tasks`). Each fired
