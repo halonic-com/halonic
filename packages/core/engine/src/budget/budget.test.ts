@@ -30,30 +30,36 @@ verifies("engine.budget-stop-message", () => {
   });
 });
 
+/** A run that has used no tokens yet. */
+const noTokens = { run: { inputTokens: 0, outputTokens: 0 } };
+
 describe("budgetStopOf", () => {
   const budget = { currency: "EUR", perRun: 1, monthly: 10 };
 
   it("lets a call happen below both limits", () => {
-    expect(budgetStopOf(budget, { run: 0.99, month: 9.99 })).toBeNull();
+    expect(budgetStopOf(budget, { run: 0.99, month: 9.99, tokens: noTokens })).toBeNull();
   });
 
   it("stops once a limit is reached, the run budget first", () => {
-    expect(budgetStopOf(budget, { run: 1, month: 10 })?.error).toBe(
+    expect(budgetStopOf(budget, { run: 1, month: 10, tokens: noTokens })?.error).toBe(
       "Run budget reached: 1.00 of 1.00 EUR spent.",
     );
-    expect(budgetStopOf(budget, { run: 0.5, month: 10 })?.error).toBe(
+    expect(budgetStopOf(budget, { run: 0.5, month: 10, tokens: noTokens })?.error).toBe(
       "Monthly budget reached: 10.00 of 10.00 EUR spent this month.",
     );
   });
 
   it("gives the typed cause, with the figures unrounded", () => {
-    expect(budgetStopOf(budget, { run: 1.2345678, month: 10 })?.cause).toEqual({
+    expect(budgetStopOf(budget, { run: 1.2345678, month: 10, tokens: noTokens })?.cause).toEqual({
       kind: "limit_reached",
       code: "budget.run",
       detail: { limit: "1", spent: "1.2345678", currency: "EUR" },
     });
     expect(
-      budgetStopOf({ currency: "USD", monthly: 0.00001 }, { run: 0, month: 0.0001 })?.cause,
+      budgetStopOf(
+        { currency: "USD", monthly: 0.00001 },
+        { run: 0, month: 0.0001, tokens: noTokens },
+      )?.cause,
     ).toEqual({
       kind: "limit_reached",
       code: "budget.month",
@@ -62,6 +68,8 @@ describe("budgetStopOf", () => {
   });
 
   it("never stops for a limit the budget doesn't set", () => {
-    expect(budgetStopOf({ currency: "EUR" }, { run: 100, month: 1000 })).toBeNull();
+    expect(
+      budgetStopOf({ currency: "EUR" }, { run: 100, month: 1000, tokens: noTokens }),
+    ).toBeNull();
   });
 });

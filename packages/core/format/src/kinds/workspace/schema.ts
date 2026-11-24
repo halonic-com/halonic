@@ -38,13 +38,16 @@ export const WorkspaceSettings = s
      * Spending limits in `currency`, counted from model prices. The engine
      * stops a run (`run.failed` with the reason `budget`) before a model call
      * once the run has spent `perRun` or the month has spent `monthly`
-     * (`engine.budget-stops`). `currency` names the currency the prices in
+     * (`engine.budget-stops`), or once the run has used `perRunTokens` tokens:
+     * all tokens, cache reads and writes included, which are usually most of
+     * a long run's tokens (`engine.budget-token-stops`). `currency` names the currency the prices in
      * `models.yaml` are written in; Halonic doesn't convert between currencies.
      */
     budget: s
       .object({
         currency: s.string().min(1).default("EUR"),
         perRun: s.number().positive().optional(),
+        perRunTokens: s.number().int().positive().optional(),
         monthly: s.number().positive().optional(),
       })
       .strict()
