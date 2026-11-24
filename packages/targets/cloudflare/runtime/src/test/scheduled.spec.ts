@@ -1,6 +1,6 @@
 /**
  * The Worker's `scheduled()` inside workerd, against real D1, R2 and Durable
- * Object bindings (HAL-8635). The routines object is the real one with a
+ * Object bindings (HAL-8635). The routines object is the adapter's, with a
  * listener that records its ticks. Run by `worker-scheduled.test.ts`.
  */
 
@@ -15,7 +15,7 @@ export { CoordinationObject, RunObject } from "../index.ts";
 /** The times the routines object ticked for; the suite and the object share one workerd isolate. */
 const ticks: string[] = [];
 
-/** The real routines object, with the routine scheduler of `host/server` (HAL-195) replaced by a record. */
+/** The adapter's routines object, with a listener that records its ticks instead of the Worker's routine scheduler. */
 export class TickedRoutinesObject extends RoutinesObject {
   protected override tickListener() {
     return {

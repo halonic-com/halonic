@@ -4252,6 +4252,9 @@ importers:
       '@halonicjs/adapter-workspace-models':
         specifier: workspace:*
         version: link:../../../adapters/workspace-models
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../../core/engine

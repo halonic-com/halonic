@@ -116,10 +116,16 @@ the requirement `runtime.configuration`.
 to tick for the cron's scheduled time, then sweeps the watchdog; the two are
 independent, so one failing never skips the other. A failed tick or a run the
 watchdog couldn't check makes `scheduled()` reject, with a message that names what
-failed and never a value, so Cloudflare shows the cron run as failed. Until
-`host/server` is wired to run workflows the routines object has no routine scheduler to
-call: its `tickListener()` still throws until the Worker overrides it. The rule is the
+failed and never a value, so Cloudflare shows the cron run as failed. The rule is the
 requirement `runtime.scheduled`.
+
+The Worker's routines object (`src/routines-object.ts`) runs the routine scheduler of
+`@halonicjs/app` on each tick: it reads the routines from the snapshot's routine index,
+works out which are due in UTC, and starts their runs on the Worker's engine, each due
+minute once. Scheduled routines belong to the deployment, because every scope reads the
+deployment's definitions, so only the deployment's routines object ticks; a scope's starts
+nothing. A due run that can't start, such as an agent routine, fails the cron run with the
+routine's name. The rule is the requirement `runtime.scheduled-routines`.
 
 ## The password limit
 
@@ -130,7 +136,7 @@ rule is the requirement `runtime.password-limit`.
 
 ## Tests
 
-`routes.test.ts`, `serve.test.ts`, `admin.test.ts` and `worker.node.test.ts` run in Node. `serve-workerd.test.ts` runs the API in workerd with real Durable Objects. `worker-scheduled.test.ts` runs the cron in workerd with a recording routines object. `worker.test.ts` runs
+`routes.test.ts`, `serve.test.ts`, `admin.test.ts` and `worker.node.test.ts` run in Node. `serve-workerd.test.ts` runs the API in workerd with real Durable Objects. `worker-scheduled.test.ts` runs the cron in workerd with a recording routines object. `worker-scheduled-routines.test.ts` runs the cron in workerd with the Worker's routines object and a snapshot of routines. `worker.test.ts` runs
 `src/test/worker.spec.ts` inside workerd through the part 1 harness
 (`@halonicjs/target-cloudflare-testing`), against the real Worker and real
 Durable Objects.
