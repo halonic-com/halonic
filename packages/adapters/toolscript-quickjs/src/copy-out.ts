@@ -124,7 +124,14 @@ class Walker {
     const copy: Record<string, ToolScriptIsolateValue> = {};
     for (const key of keys.strings) {
       this.item(key.length);
-      copy[key] = this.property(handle, key, depth, true);
+      // Defined, never assigned: an own "__proto__" key from the script would
+      // otherwise run the host's __proto__ setter and swap the copy's prototype.
+      Object.defineProperty(copy, key, {
+        value: this.property(handle, key, depth, true),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
     return Object.freeze(copy);
   }

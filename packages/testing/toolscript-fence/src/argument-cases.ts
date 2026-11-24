@@ -44,6 +44,7 @@ export function argumentCases(make: MakeToolScriptIsolate): void {
   verifies("toolscript-fence.plain-arguments", () => {
     refusalCases(make);
     copyCases(make);
+    protoKeyCases(make);
     sizeCases(make);
   });
 }
@@ -114,5 +115,32 @@ function sizeCases(make: MakeToolScriptIsolate): void {
     expect((await callWith(make, `"a".repeat(8190)`)).result.ok).toBe(true);
     const over = await callWith(make, `"a".repeat(8191)`);
     expect(over.result).toMatchObject({ ok: false, reason: "toolscript.bad-argument" });
+  });
+}
+
+/** An own `__proto__` key reaches the host as a plain key, in an argument and in the output. */
+function protoKeyCases(make: MakeToolScriptIsolate): void {
+  const forms = [`JSON.parse('{"__proto__": {"admin": true}}')`, `({ ["__proto__"]: { admin: true } })`];
+
+  it("keeps an own __proto__ key in an argument a plain key", async () => {
+    for (const form of forms) {
+      const { result, calls } = await callWith(make, form);
+      expect(result.ok, form).toBe(true);
+      const [copy] = calls as [Record<string, unknown>];
+      expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+      expect(copy["admin"]).toBeUndefined();
+      expect(Object.keys(copy)).toEqual(["__proto__"]);
+    }
+  });
+
+  it("keeps an own __proto__ key in the output a plain key", async () => {
+    for (const form of forms) {
+      const result = await runScript(make, script(`return ${form};`));
+      expect(result.ok, form).toBe(true);
+      const output = (result.ok ? result.output : {}) as Record<string, unknown>;
+      expect(Object.getPrototypeOf(output)).toBe(Object.prototype);
+      expect(output["admin"]).toBeUndefined();
+      expect(Object.keys(output)).toEqual(["__proto__"]);
+    }
   });
 }

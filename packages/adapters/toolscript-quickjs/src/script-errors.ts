@@ -59,6 +59,12 @@ function isBuiltinError(
  * recursion as a `RangeError`; anything else the script threw is
  * `toolscript.script-error` with its own message, never a stack. Reads
  * only own data properties and captured prototypes, so no script code runs.
+ * This QuickJS build gives the host no sign of its own that a limit
+ * tripped: an engine's error and a copy the script builds are alike in
+ * every way the host can read, and the heap is already freed when the
+ * error arrives. So a script can label its own failure `limit.memory` or
+ * `limit.stack` by throwing such an error itself. The run ends all the same;
+ * only the label of the script's own failure changes.
  */
 export function classifyThrown(
   vm: QuickJSContext,

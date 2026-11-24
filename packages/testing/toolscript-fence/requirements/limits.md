@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: ADR "Halonic ToolScript" (`docs/adr/2026-11-24-toolscript.md`, the T4 fence list in section 6), accepted by the board on HAL-10 on 24 Nov; task HAL-17569
 
-Where an isolate implements `ToolScriptIsolate`, a run shall stop with `limit.cpu`, `limit.memory`, `limit.stack`, `limit.promises` (the 33rd pending host call), `limit.calls` (the 51st host call for an agent), `limit.input`, `limit.output`, `limit.log` (the 201st line) or `limit.wall-clock` when that limit is passed, shall cut a log line to 300 characters, shall not count time spent waiting on a host function as CPU, and shall stop with a host function's `ToolScriptStop` reason, or with `toolscript.cancelled` when the caller cancels, without running the script at all when the signal is already aborted.
+Where an isolate implements `ToolScriptIsolate`, a run shall stop with `limit.cpu`, `limit.memory` (also for a script that holds far more than its memory limit in large strings, as a hard limit), `limit.stack`, `limit.promises` (the 33rd pending host call), `limit.calls` (the 51st host call for an agent), `limit.input`, `limit.output`, `limit.log` (the 201st line) or `limit.wall-clock` when that limit is passed, shall cut a log line to 300 characters, shall not count time spent waiting on a host function as CPU, and shall stop with a host function's `ToolScriptStop` reason, or with `toolscript.cancelled` when the caller cancels, without running the script at all when the signal is already aborted.
 
 ## Examples
 

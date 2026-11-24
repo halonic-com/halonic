@@ -20,7 +20,7 @@ Runs a Halonic ToolScript in a fresh QuickJS-ng isolate, compiled to WebAssembly
 - **Plain data only.** A host function's argument is copied out through built-ins captured before any
   script code ran, reading each property from its descriptor, so no getter, `toJSON` or `valueOf` runs.
   Secret handles become per-run random ids.
-- **Limits.** Memory, stack and CPU (only time inside the isolate) are QuickJS's own limits; calls,
+- **Limits.** Each run's WASM memory has a fixed size, the module's own 16 MiB plus the run's memory limit, which is the hard memory limit: QuickJS's own memory limit doesn't count large strings. A WASM trap ends the run with `limit.memory`. Stack and CPU (only time inside the isolate) are QuickJS's own limits; calls,
   pending promises, input, output, log and the wall clock are counted by the host.
 
 Every isolate passes `@halonicjs/testing-toolscript-fence`. The worker wrappers that keep the isolate

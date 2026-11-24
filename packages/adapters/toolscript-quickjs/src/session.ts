@@ -106,6 +106,13 @@ export class RunSession implements RunState {
     try {
       const output = await this.#execute();
       return this.#result(output);
+    } catch (error) {
+      // A WASM trap (memory out of bounds, an abort near the fixed memory's
+      // end) means the run's memory is spent. The module is the run's alone and
+      // is dropped, so the trap ends this run with a fixed reason, never raw.
+      if (!isWasmTrap(error)) throw error;
+      this.fail("limit.memory");
+      return this.#result(undefined);
     } finally {
       this.#closed = true;
       stopWatching();
@@ -248,4 +255,9 @@ export class RunSession implements RunState {
       if (timer !== undefined) clearTimeout(timer);
     };
   }
+}
+
+/** Whether `error` is a WebAssembly trap or an Emscripten abort, both `RuntimeError`s. */
+export function isWasmTrap(error: unknown): boolean {
+  return error instanceof Error && error.name === "RuntimeError";
 }

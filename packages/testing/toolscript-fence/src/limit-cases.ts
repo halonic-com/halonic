@@ -34,11 +34,13 @@ function isolateLimitCases(make: MakeToolScriptIsolate): void {
     expect(result).toMatchObject({ ok: false, reason: "limit.cpu" });
   });
 
-  it("stops a script that fills its memory", async () => {
-    // One megabyte more on each step, so the heap fills long before the CPU limit.
-    const code = script(
-      `const block = "x".repeat(1 << 20); const all = []; for (;;) all.push(block + all.length);`,
-    );
+  it("stops a script that holds far more than its memory limit", async () => {
+    // 64 separate 1 MB strings, held at once, under an 8 MB limit. The loop is
+    // finite, so only a hard limit can stop it: a soft one lets it finish.
+    const code = script(`
+      const all = [];
+      for (let i = 0; i < 64; i += 1) all.push("x".repeat(1 << 20));
+      return all.length;`);
     const result = await runScript(make, code, { limits: { memoryBytes: 8 * 1024 * 1024 } });
     expect(result).toMatchObject({ ok: false, reason: "limit.memory" });
   });
