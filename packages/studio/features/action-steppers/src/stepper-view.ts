@@ -135,7 +135,7 @@ export interface StepperView {
   readonly reason: string;
   /** Empty when the installed Halonic doesn't know the request's definition. */
   readonly steps: readonly StepView[];
-  /** The service's API is down, so the manual guide opens by itself. */
+  /** The service's API is down: the screen says so, and the whole manual guide opens by itself. */
   readonly serviceDown: boolean;
   readonly stage: StepperStage;
 }
@@ -194,9 +194,22 @@ export function needsConfirmation(step: StepView): boolean {
   return step.risk === "irreversible";
 }
 
-/** Whether "Do it by hand" opens by itself: the step failed, or the service is down. */
-export function showsManualFirst(view: StepperView, step: StepView): boolean {
-  return step.outcome.kind === "failed" || (view.serviceDown && !isDone(step));
+/**
+ * Whether a step's "Do it by hand" opens by itself: only when that step failed. While the service
+ * is down, the whole guide opens instead, under a line that says why, so the same steps don't show
+ * twice.
+ */
+export function showsManualFirst(step: StepView): boolean {
+  return step.outcome.kind === "failed";
+}
+
+/**
+ * The irreversible steps still to do, which the review warns about while the request can still
+ * run them (HAL-17491 6.4). Empty once it is declined, expired or finished.
+ */
+export function irreversibleStepsAhead(view: StepperView): readonly StepView[] {
+  if (!canDecline(view.stage)) return [];
+  return view.steps.filter((step) => step.risk === "irreversible" && !isDone(step));
 }
 
 /**

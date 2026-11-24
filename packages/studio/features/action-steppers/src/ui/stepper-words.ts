@@ -126,12 +126,29 @@ export function instructionsText(
   return [...(label === null ? [] : [label]), address, ...numbered].join("\n");
 }
 
-/** A browser step's controls. */
+/** A browser step's controls. `copied` and `notCopied` are the kit's CopyButton's own words. */
 export const browserWords = {
   open: "Open the page",
   copy: "Copy instructions",
+  copied: "Copied",
+  notCopied: "Couldn't copy. Select the text and copy it yourself.",
   done: (number: number) => `Step ${number} is done`,
 } as const;
+
+/** The hint under a paste-back field the requester named (HAL-17491 7.1). */
+export function resultHintText(requester: StepperRequester): string {
+  return `From ${requesterText(requester)}, not checked by Halonic`;
+}
+
+/** The line above the steps while the service's API is down. */
+export function serviceDownText(service: StepperService): string {
+  return `${serviceNames[service]} isn't answering right now, so the steps may fail. You can do them all by hand below.`;
+}
+
+/** The warning under the facts for a step that can't be undone (HAL-17491 6.4). */
+export function irreversibleTitle(number: number): string {
+  return `Step ${number} can't be undone`;
+}
 
 /** The manual guide and Done by hand (HAL-17491 7.8). */
 export const manualWords = {

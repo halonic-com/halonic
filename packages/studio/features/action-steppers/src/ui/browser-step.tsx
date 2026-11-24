@@ -1,7 +1,13 @@
-import { Button, type ButtonUnavailable, CopyButton, Field, Input } from "@halonicjs/studio-kit";
+import {
+  Button,
+  type ButtonUnavailable,
+  Field,
+  Input,
+  useWriteClipboard,
+} from "@halonicjs/studio-kit";
 import { useState } from "react";
 import type { StepAction, StepperActions, StepperRequester } from "../stepper-view.ts";
-import { browserWords, instructionsText, sourceText } from "./stepper-words.ts";
+import { browserWords, instructionsText, resultHintText, sourceText } from "./stepper-words.ts";
 
 type BrowserAction = Extract<StepAction, { readonly kind: "browser" }>;
 
@@ -35,6 +41,36 @@ export function BrowserInstructions({ action, requester }: BrowserInstructionsPr
   );
 }
 
+/**
+ * **Copy instructions**, written out and as big as **Open the page** beside it (HAL-17491 8.4).
+ * The kit's CopyButton only ever shows "Copy", so this is a Button with the same words for
+ * "Copied" and for a clipboard that refuses, said in a status line under the row.
+ */
+function CopyInstructions({ text }: { readonly text: string }) {
+  const writeClipboard = useWriteClipboard();
+  const [copied, setCopied] = useState<boolean>();
+  // A new copy is announced again, even when it says the same as the last one.
+  const [attempt, setAttempt] = useState(0);
+  let said = "";
+  if (copied !== undefined) said = copied ? browserWords.copied : browserWords.notCopied;
+  return (
+    <>
+      <Button
+        onClick={async () => {
+          setCopied(await writeClipboard(text));
+          setAttempt((previous) => previous + 1);
+        }}
+      >
+        {browserWords.copy}
+      </Button>
+      {/* Empty, it stays as a live region but takes no line of the row. */}
+      <p role="status" className={said === "" ? "sr-only" : "basis-full text-small text-fg-muted"}>
+        <span key={attempt}>{said}</span>
+      </p>
+    </>
+  );
+}
+
 /** Props for {@link BrowserControls}. */
 export interface BrowserControlsProps {
   readonly number: number;
@@ -58,18 +94,19 @@ export function BrowserControls({
   waits,
 }: BrowserControlsProps) {
   const [result, setResult] = useState("");
-  const label = action.source.kind === "requester" ? sourceText(action.source, requester) : null;
+  const fromRequester = action.source.kind === "requester";
+  const label = fromRequester ? sourceText(action.source, requester) : null;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => actions.openPage(action.address)}>{browserWords.open}</Button>
-        <CopyButton
-          text={instructionsText(label, action.address, action.instructions)}
-          label={browserWords.copy}
-        />
+        <CopyInstructions text={instructionsText(label, action.address, action.instructions)} />
       </div>
       {action.resultLabel === undefined ? null : (
-        <Field label={action.resultLabel}>
+        <Field
+          label={action.resultLabel}
+          hint={fromRequester ? resultHintText(requester) : undefined}
+        >
           <Input
             autoComplete="off"
             spellCheck={false}

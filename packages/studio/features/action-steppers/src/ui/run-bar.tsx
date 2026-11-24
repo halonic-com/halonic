@@ -42,7 +42,8 @@ export function RunBar({ view, actions, runningId }: RunBarProps) {
     <div className="flex flex-wrap gap-2 border-t border-border p-4">
       {step === undefined || step.action.kind !== "call" ? null : (
         <Button
-          variant="primary"
+          // While the service is down the run will likely fail, so it isn't the suggested action.
+          variant={view.serviceDown ? "secondary" : "primary"}
           busy={step.outcome.kind === "running"}
           busyLabel={runWords.busy(step.number)}
           onClick={() => run(step)}

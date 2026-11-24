@@ -16,7 +16,8 @@ function ManualSteps({
     <div className="flex flex-col gap-2 px-4 pb-4">
       {address === undefined ? null : (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-small text-fg wrap-break-word">{address}</span>
+          {/* An address has no spaces: in a flex row only `wrap-anywhere` lets it shrink and wrap. */}
+          <span className="min-w-0 font-mono text-small text-fg wrap-anywhere">{address}</span>
           <Button size="sm" onClick={() => openPage(address)}>
             {manualWords.open}
           </Button>
@@ -48,13 +49,13 @@ export interface StepByHandProps {
 
 /**
  * A step's **Do it by hand** (`action-steppers.by-hand`): its manual form, open by itself when the
- * step failed or the service is down, and **Mark done by hand**, which runs the step's check where
+ * step failed, and **Mark done by hand**, which runs the step's check where
  * it has one and otherwise records it as not checked (HAL-17491 7.8).
  */
 export function StepByHand({ view, number, actions, waits }: StepByHandProps) {
   const step = view.steps.find((candidate) => candidate.number === number);
   if (step === undefined || isDone(step)) return null;
-  const openFirst = showsManualFirst(view, step);
+  const openFirst = showsManualFirst(step);
   // Any step running, not only this one: steps run one at a time (`action-steppers.run`).
   const running = isRunning(view);
   return (
@@ -83,7 +84,7 @@ export function StepByHand({ view, number, actions, waits }: StepByHandProps) {
   );
 }
 
-/** **Do it all by hand**: the whole request's manual guide, step by step. */
+/** **Do it all by hand**: the whole request's manual guide, step by step, open while the service is down. */
 export function ManualGuide({
   view,
   actions,

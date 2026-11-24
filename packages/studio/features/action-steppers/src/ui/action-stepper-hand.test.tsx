@@ -81,13 +81,15 @@ verifies("action-steppers.browser", () => {
       if (first === undefined) throw new Error("no step");
       await click(button(first, "Open the page"));
       expect(actions.calls).toEqual([`open ${projectPage}`]);
-      // The kit's CopyButton shows "Copy"; its name says what it copies.
-      const copy = first.querySelector<HTMLButtonElement>('button[aria-label="Copy instructions"]');
-      if (copy === null) throw new Error("no Copy instructions");
+      const copy = button(first, "Copy instructions");
+      // The words show, not only a screen reader's name (HAL-17491 8.4).
+      expect(copy.textContent).toBe("Copy instructions");
+      expect(copy.getAttribute("aria-label")).toBeNull();
       await click(copy);
       expect(copied).toEqual([
         `Instructions from Chief on Paperclip · Acme, not checked by Halonic\n${projectPage}\n1. Type acme-prod as the name`,
       ]);
+      expect(first.querySelector('[role="status"]')?.textContent).toBe("Copied");
     });
 
     it("confirms the step with what was pasted back, in a plain field", async () => {
@@ -97,6 +99,9 @@ verifies("action-steppers.browser", () => {
       const field = first.querySelector("input");
       if (field === null) throw new Error("no result field");
       expect(field.type).toBe("text");
+      // The field's name is the requester's, so its hint says so.
+      const hint = document.getElementById(field.getAttribute("aria-describedby") ?? "");
+      expect(hint?.textContent).toBe("From Chief on Paperclip · Acme, not checked by Halonic");
       await type(field, " acme-prod ");
       await click(button(first, "Step 1 is done"));
       expect(actions.calls).toEqual(["done 1 acme-prod"]);
@@ -132,13 +137,30 @@ verifies("action-steppers.by-hand", () => {
       expect(steps(root)[1]?.querySelector("details")?.open).toBe(false);
     });
 
-    it("opens every guide by itself while the service is down", () => {
+    it("says the service is down above the steps and opens only the whole guide", () => {
       const { root } = show(routineRequest({ serviceDown: true }));
+      const outage = [...root.querySelectorAll("div")].find(
+        (div) =>
+          div.textContent ===
+          "GitHub isn't answering right now, so the steps may fail. You can do them all by hand below.",
+      );
+      const stepsHeading = [...root.querySelectorAll("h3")].find((h) => h.textContent === "Steps");
+      expect(outage?.compareDocumentPosition(stepsHeading as Node)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      const open = [...root.querySelectorAll("details")].filter((details) => details.open);
+      expect(open).toHaveLength(1);
+      expect(open[0]?.querySelector("summary")?.textContent).toContain("Do it all by hand");
       expect(steps(root).map((step) => step.querySelector("details")?.open)).toEqual([
-        true,
-        true,
-        true,
+        false,
+        false,
+        false,
       ]);
+    });
+
+    it("says nothing about the service while it answers", () => {
+      const { root } = show(routineRequest());
+      expect(root.textContent).not.toContain("isn't answering");
     });
 
     it("runs a step's check when it is marked done by hand", async () => {
