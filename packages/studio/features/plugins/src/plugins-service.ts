@@ -16,6 +16,11 @@ import type {
   PluginSettingsReader,
 } from "./settings/plugin-settings-section.tsx";
 import type { PluginSignIns } from "./sign-in/plugin-sign-ins-section.tsx";
+import {
+  type PluginToolsInBuild,
+  type PluginToolsState,
+  pluginToolsState,
+} from "./tools-in-build.ts";
 
 /**
  * What the app gives the plugins feature for an open workspace: the installed plugins as they
@@ -39,6 +44,8 @@ export interface PluginsHost {
   readonly installer?: PluginInstaller;
   /** The plugins that come with Halonic, listed under "Built in". */
   readonly builtIn?: readonly BuiltInPlugin[];
+  /** Whether this build runs plugin tools; without it they count as on. */
+  readonly toolsInThisBuild?: PluginToolsInBuild;
 }
 
 /**
@@ -56,6 +63,8 @@ export interface StudioPlugins {
   readonly place?: "app" | "served";
   readonly installer?: PluginInstaller;
   readonly builtIn?: readonly BuiltInPlugin[];
+  /** Whether plugin tools are off in this build: then there are no cards and no commands. Without it they count as on. */
+  readonly tools?: PluginToolsState;
 }
 
 /** The plugins of a workspace, built from what the app gives. */
@@ -67,6 +76,7 @@ export function studioPlugins(host: PluginsHost): StudioPlugins {
     settings: host.settings,
     secrets: host.secrets,
     actions: host.actions,
+    tools: pluginToolsState(host.toolsInThisBuild),
     ...(host.signIns === undefined ? {} : { signIns: host.signIns }),
     ...(host.place === undefined ? {} : { place: host.place }),
     ...(host.installer === undefined ? {} : { installer: host.installer }),

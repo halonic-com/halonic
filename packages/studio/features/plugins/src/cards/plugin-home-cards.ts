@@ -1,5 +1,6 @@
 import type { HomeCardContribution, WorkspaceContext } from "@halonicjs/studio-shell";
 import type { PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
+import type { PluginToolsState } from "../tools-in-build.ts";
 import type { PluginCardStatus, PluginCardUi } from "./plugin-card.tsx";
 
 /**
@@ -35,6 +36,8 @@ export interface PluginHomeCardsOptions {
   readonly details: (plugin: string) => void;
   /** **Hide on Home** in a card's ⋮ menu: the app keeps the card out of Home from now on. */
   readonly hide?: (plugin: string, card: string) => void;
+  /** Whether this build runs plugin tools: without them Home has no Cards section. */
+  readonly tools?: PluginToolsState;
 }
 
 /**

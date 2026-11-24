@@ -76,3 +76,19 @@ verifies("agent-host.unfenced-runs-routes", () => {
     });
   });
 });
+
+verifies("agent-host.plugin-tools-in-build", () => {
+  it("tells Studio the single executable has no plugin tools", async () => {
+    const profile = { platform: "linux" as const, root };
+    const plugins = hostPlugins("0.0.0", inContainer as SrtSandbox, profile, () => undefined);
+    server = await startHostServer(
+      token,
+      hostPluginRoutes(plugins, () => undefined),
+    );
+    const response = await fetch(`${server.url}/v1/plugins/tools`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(await response.json()).toEqual({ inThisBuild: false });
+  });
+});

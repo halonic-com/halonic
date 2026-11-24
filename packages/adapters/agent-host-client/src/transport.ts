@@ -83,6 +83,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/messaging/focus",
   "POST /v1/plugins/run-state",
   "POST /v1/plugins/run-state/check-again",
+  "GET /v1/plugins/tools",
   "GET /v1/unfenced-runs",
   "POST /v1/unfenced-runs/allow",
   "POST /v1/unfenced-runs/take-back",

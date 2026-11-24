@@ -391,6 +391,12 @@ const ROUTES: &[(&str, Route)] = &[
             Answer::Json,
         ),
     ),
+    // Whether this build runs plugin tools at all (HAL-17815): a code only,
+    // so Studio leaves out plugin cards and commands the host would refuse.
+    (
+        "GET /v1/plugins/tools",
+        route(Method::Get, "/v1/plugins/tools", Answer::Json),
+    ),
     // The yes to run plugins without the sandbox (HAL-3384): the host saves it
     // only for the reason that holds now; the page sends only that reason.
     (

@@ -24,6 +24,7 @@ import { PluginRunStates } from "./plugin-run-states.ts";
 import { PluginSecretValues } from "./plugin-secret-values.ts";
 import { pluginSignIns } from "./plugin-sign-ins.ts";
 import { PluginTable } from "./plugin-table.ts";
+import { pluginToolsRoute } from "./plugin-tools-route.ts";
 import { type UnfencedRunsSource, unfencedRunsRoutes } from "./unfenced-runs-routes.ts";
 
 /**
@@ -39,6 +40,8 @@ const nodeTimers: SaveTimers = {
 /** The host's plugins: their runners, the secrets Studio handed over for them, and the yes for running without the sandbox. */
 export interface HostPlugins {
   readonly table: PluginTable;
+  /** `false` in the shipped single executable, whose table refuses every call with `not_in_this_build`. */
+  readonly toolsInThisBuild: boolean;
   /** Kept in memory only; the backends read them, and `POST /v1/plugins/secrets` replaces them. */
   readonly secretValues: PluginSecretValues;
   readonly unfenced: UnfencedRunsSource;
@@ -101,6 +104,7 @@ export function hostPlugins(
   if (isSea()) {
     return {
       table: new PluginTable(unavailablePluginBackends()),
+      toolsInThisBuild: false,
       secretValues,
       unfenced,
       runStates,
@@ -149,6 +153,7 @@ export function hostPlugins(
   });
   return {
     table,
+    toolsInThisBuild: true,
     secretValues,
     unfenced,
     runStates,
@@ -170,6 +175,7 @@ export function hostPluginRoutes(
     ...pluginRoutes({ plugins: plugins.table, secretValues: plugins.secretValues, log }),
     ...unfencedRunsRoutes(plugins.unfenced, log),
     ...pluginRunStateRoutes(plugins.runStates),
+    pluginToolsRoute(plugins.toolsInThisBuild),
   ];
 }
 
