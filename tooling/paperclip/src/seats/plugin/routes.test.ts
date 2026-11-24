@@ -67,6 +67,7 @@ verifies("paperclip.seats-routes", () => {
     expect(manifest.apiRoutes?.map((route) => [route.routeKey, route.auth])).toEqual([
       ["seats.list", "board"],
       ["seats.page", "board"],
+      ["seats.summary", "board"],
       ["seats.manual-reset", "board"],
     ]);
   });

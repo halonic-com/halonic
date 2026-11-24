@@ -754,7 +754,12 @@ jobs, the `seat_usage` tool and the board's "AI seats" page.
 - **Routes**, board users only (the worker checks again), under
   `/api/plugins/<plugin id>/api/`: `GET /seats` lists the seats with their
   id, role and reset group only, `GET /seats/page` gives the "AI seats"
-  page's data (below), and `POST /seats/:seatId/manual-reset`
+  page's data (below), `GET /seats/summary` gives Halonic's `TeamStatus`
+  provider each seat's label, role, newest reading time, windows (used %,
+  reset, when they reach 90%), agents by name and whether its manual reset
+  is used, plus the proposal `seats.check` would post now as plain text,
+  built field by field so a folder, account, connection id or sign-in
+  expiry never leaves, and `POST /seats/:seatId/manual-reset`
   records a manual reset by the board user. Seats in one reset group share
   one manual reset, so a second one in the group is refused (409); a seat
   without a group is a group of its own. Manual resets stay when old rows go.

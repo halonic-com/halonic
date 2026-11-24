@@ -4,6 +4,7 @@ import type { SeatEvent } from "../records.ts";
 import type { SeatsNow } from "./seats-now.ts";
 import { type SeatsPage, seatsPage } from "./seats-page.ts";
 import type { SeatReadStatus } from "./seats-reader.ts";
+import { seatsSummaryData } from "./seats-summary.ts";
 import { publicSeat, type SeatSetting, type SeatsSettings } from "./settings.ts";
 import type { SeatsStore } from "./store.ts";
 
@@ -51,6 +52,8 @@ export async function handleSeatsRequest(
       };
     case "seats.page":
       return { status: 200, body: await seatsPageData(input.companyId, settings, deps) };
+    case "seats.summary":
+      return { status: 200, body: await seatsSummaryData(input.companyId, settings, deps) };
     case "seats.manual-reset":
       return await recordManualReset(input.params["seatId"], boardUserId, settings, deps);
     default:
