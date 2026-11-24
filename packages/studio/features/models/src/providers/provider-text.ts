@@ -5,6 +5,8 @@ export const NO_PROVIDERS_LINE =
 export const PROVIDERS_LOADING_LINE = "Loading providers";
 export const PROVIDER_KIND = "model-provider";
 export const PROVIDER_KIND_LABEL = "Model provider";
+/** The step that opens a provider's tab at its key, as `openItem(provider, { step: "key" })`. */
+export const KEY_STEP = "key";
 
 /** The warning on a cloud provider's page when the workspace is local only. */
 export function blockedLocalOnlyLine(workspaceName: string | undefined): string {

@@ -6,11 +6,14 @@ import {
   KeyAddressQuestionsService,
   ModelKeysService,
   ModelsFilesService,
+  ModelsService,
   NoLimitMemoryService,
   ProviderCheckService,
 } from "./api.ts";
 import { KeyAddressQueue } from "./key-address/key-address-queue.ts";
 import { KeyAddressQueueService } from "./key-address/key-address-service.ts";
+import { PageRequests, PageRequestsService } from "./open-pages/page-requests.ts";
+import { createWorkspaceModels } from "./open-pages/workspace-models.ts";
 import { providerTabTitle } from "./providers/provider-names.ts";
 import {
   PROVIDER_KIND,
@@ -34,20 +37,41 @@ async function modelsLine(context: WorkspaceContext) {
  * **Providers** section with the provider page (`models.providers.list-and-show`), and the month
  * spend in the status bar (`models.spend.month-line`), and the **Models** section of Settings
  * (`models.settings.settings-summary`), and "Allow this address?" over any page
- * (`models.key-address.allow-address`).
+ * (`models.key-address.allow-address`). Other features open its pages through `ModelsService`
+ * (`models.api-keys.open-by-secret`).
  */
 export const modelsFeature = defineFeature({
   id: "models",
   title: "Models",
   needs: [ModelsFilesService],
   wants: [ModelKeysService, NoLimitMemoryService, ProviderCheckService, RunsListService],
-  provides: [KeyAddressQueueService, KeyAddressQuestionsService],
+  provides: [
+    KeyAddressQueueService,
+    KeyAddressQuestionsService,
+    PageRequestsService,
+    ModelsService,
+  ],
   register(studio) {
     // One queue per open folder: its engine asks, and the dialog host draws the first question.
     studio.services.provide(KeyAddressQueueService, () => new KeyAddressQueue());
     studio.services.provide(KeyAddressQuestionsService, (services) =>
       services.get(KeyAddressQueueService),
     );
+    // A service has no window, so `ModelsService` asks for pages and each window's opener opens them.
+    studio.services.provide(PageRequestsService, () => new PageRequests());
+    studio.services.provide(ModelsService, (services) =>
+      createWorkspaceModels({
+        files: services.get(ModelsFilesService),
+        keys: services.find(ModelKeysService),
+        requests: services.get(PageRequestsService),
+      }),
+    );
+    studio.dialogs.add({
+      id: "models.open-pages",
+      order: 90,
+      view: "PageOpenerHost",
+      load: () => import("./open-pages/page-opener-host.tsx"),
+    });
     studio.dialogs.add({
       id: "models.allow-address",
       order: 20,

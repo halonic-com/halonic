@@ -21,6 +21,7 @@ import { ProviderFields } from "./provider-fields.tsx";
 import { providerName, providerPlace } from "./provider-rows.ts";
 import {
   blockedLocalOnlyLine,
+  KEY_STEP,
   PROVIDER_CAPTION,
   PROVIDER_FILE_UNREADABLE_TITLE,
   PROVIDER_GONE_LINE,
@@ -29,9 +30,6 @@ import {
   providerFileUnreadableLine,
   TRY_AGAIN,
 } from "./provider-text.ts";
-
-/** The step that opens a provider's tab at its key, as `openItem(provider, { step: "key" })`. */
-export const KEY_STEP = "key";
 
 /**
  * A provider's tab (`models.providers.list-and-show`): its type, base URL and secret name,
