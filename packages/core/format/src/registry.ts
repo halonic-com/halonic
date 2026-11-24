@@ -25,6 +25,8 @@ import { runtimeKind } from "./kinds/runtime/kind.ts";
 import type { Runtime } from "./kinds/runtime/schema.ts";
 import { skillKind } from "./kinds/skill/kind.ts";
 import type { Skill } from "./kinds/skill/schema.ts";
+import { toolKind } from "./kinds/tool/kind.ts";
+import type { Tool } from "./kinds/tool/schema.ts";
 import { workflowKind } from "./kinds/workflow/kind.ts";
 import type { Workflow } from "./kinds/workflow/schema.ts";
 import { workflowTestKind } from "./kinds/workflow-test/kind.ts";
@@ -50,6 +52,7 @@ export interface KindValues {
   routine: Routine;
   integration: IntegrationSheet;
   plugin: Plugin;
+  tool: Tool;
 }
 
 /** The name of a file kind: `workspace`, `agent`, `workflowTest`, … */
@@ -77,12 +80,13 @@ export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]
   routine: routineKind,
   integration: integrationKind,
   plugin: pluginKind,
+  tool: toolKind,
 };
 
 /**
  * The names of every file kind, workspace-level kinds first and the
- * integration sheet and the plugin manifest, which sit outside workspaces,
- * last, in a fixed order.
+ * integration sheet, the plugin manifest and the tool definition, which have
+ * no place in the loader's layout, last, in a fixed order.
  *
  * @example
  * for (const name of kindNames()) console.log(name, fileKinds[name].about);

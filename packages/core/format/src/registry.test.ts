@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 import { fileKinds, isKindName, isReservedPath, kindNames, RESERVED_FOLDER } from "./index.ts";
 
 verifies("format.kind-registry", () => {
-  it("lists the 14 kinds the old schema and loader read, workspace-level first, then the integration sheet and the plugin manifest", () => {
+  it("lists the 14 kinds the old schema and loader read, workspace-level first, then the integration sheet, the plugin manifest and the tool definition", () => {
     expect(kindNames()).toEqual([
       "workspace",
       "deployments",
@@ -21,6 +21,7 @@ verifies("format.kind-registry", () => {
       "routine",
       "integration",
       "plugin",
+      "tool",
     ]);
   });
 
@@ -29,7 +30,7 @@ verifies("format.kind-registry", () => {
       const kind = fileKinds[name];
       expect(kind.name).toBe(name);
       expect(kind.about).not.toBe("");
-      expect(kind.places.length > 0).toBe(name !== "integration" && name !== "plugin");
+      expect(kind.places.length > 0).toBe(!["integration", "plugin", "tool"].includes(name));
     }
   });
 

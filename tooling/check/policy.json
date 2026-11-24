@@ -90,7 +90,8 @@
       "./integration",
       "./recording",
       "./routine",
-      "./runtime-export"
+      "./runtime-export",
+      "./snapshot"
     ],
     "@halonicjs/std": [
       "./error-kind"

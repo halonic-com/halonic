@@ -11,7 +11,8 @@
     "./integration": "./src/integration/index.ts",
     "./recording": "./src/recording/index.ts",
     "./routine": "./src/routine/index.ts",
-    "./runtime-export": "./src/runtime-export/index.ts"
+    "./runtime-export": "./src/runtime-export/index.ts",
+    "./snapshot": "./src/snapshot/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

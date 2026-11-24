@@ -65,9 +65,11 @@ don't make the file fail.
 | `routine` | `workflows/routines/<id>.routine.yaml` |
 | `integration` | `integration.yaml`, next to the integration's code (not in a workspace) |
 | `plugin` | `plugin.yaml`, at the root of a plugin folder (not in a workspace) |
+| `tool` | `<name>.tool.yaml`, a tool definition the snapshot builder reads (no place in the loader yet) |
 
 Most kinds can also sit inside a hub folder; `fileKinds[kind].places` has the
-exact places (`integration` and `plugin` have none: they live outside workspaces).
+exact places (`integration`, `plugin` and `tool` have none: the first two live outside
+workspaces, and the plugin builder names the folder it reads tools from).
 `kindNames()` lists the kinds and `isKindName(text)` tells whether a text names one. Each kind's
 folder in `src/kinds/` holds its schema and its tests. Checks between files belong to the loader,
 not here.
@@ -129,7 +131,37 @@ not here.
 - Plugin settings and `ui`: `PluginSettingField`, `PluginSettingValue` and `settingValueProblem(field,
   value)` check a setting's value; a `ui` command or card must name a declared tool whose `risk` is
   `read` (`tool-not-read`, requirement `plugin-ui-read-tools`).
+- Tools and the snapshot: see below.
 - The types of each kind's value (`Agent`, `Workflow`, `Routine` and so on) and `Guard`.
+
+## Tool definitions and the workspace snapshot
+
+A tool definition says what an agent sees of one tool, who may call it and which Halonic action
+runs it (requirement `tool-file`). It is data only: the action is code in Halonic, so a workspace
+can rename, reword and rearrange tools but never give one a new power.
+
+```yaml
+name: pr_status                       # what agents call it
+description: Show a pull request's checks and whether it can merge.
+action: github.pull-request-status    # an action this Halonic version has
+callers:                              # left out: nobody may call it
+  agents: [reviewer, clerk]           # or everyone: true
+parameters:
+  pr: { type: integer, description: The pull request number., required: true }
+  view: { type: string, description: How much to show., choices: [short, full] }
+```
+
+Unknown keys, a description with a line break or a text-direction mark, and a key pasted into any
+field fail the file.
+
+`buildSnapshot({ commit, toolFiles, actions })` turns a workspace commit's tool files into a
+snapshot, `{ snapshot: 1, commit, tools }`, plain data with nothing engine-specific in it
+(requirement `workspace-snapshot`). `actions` is the set of actions the runtime that will serve it
+has. One bad file, an unknown action or a name used twice refuses the whole build and names every
+problem with its file. `snapshotJson(snapshot)` writes it as canonical JSON, so the same files in
+any order give the same bytes and the same checksum. `readSnapshot(text, actions)` is the
+runtime's side: it refuses anything the build would refuse, and any text not written exactly as
+`snapshotJson` writes it.
 
 ## Subpath exports
 
@@ -150,6 +182,9 @@ the YAML parser. `@halonicjs/format` doesn't re-export `./recording` or `./runti
   (`halonic-export.json`). A file is under `runs/`, `records/` or `blobs/`, and the manifest and
   each entry refuse any key they don't list, so no secret store has a place in an export
   (requirement `runtime-export`). It imports only schema-kit and ports.
+- `@halonicjs/format/snapshot` is the workspace snapshot for a runtime that serves one:
+  `readSnapshot`, `snapshotJson`, `WorkspaceSnapshot`, `SnapshotTool` and `SNAPSHOT_FORMAT`.
+  Building one from tool files is `@halonicjs/format`'s `buildSnapshot`.
 
 ## Spec files
 

@@ -139,6 +139,18 @@ export {
   skillScriptsRefusal,
   touchesSkillScripts,
 } from "./kinds/skill/scripts-folder.ts";
+export { checkTool } from "./kinds/tool/kind.ts";
+export {
+  ACTION_NAME_PATTERN,
+  MAX_TOOL_DESCRIPTION_LENGTH,
+  MAX_TOOL_NAME_LENGTH,
+  MAX_TOOL_PARAMETERS,
+  TOOL_NAME_PATTERN,
+  Tool,
+  type ToolCallers,
+  type ToolEntry,
+  type ToolParameter,
+} from "./kinds/tool/schema.ts";
 export type {
   Branch,
   StateType,
@@ -161,3 +173,4 @@ export { SCHEMA_VERSION } from "./shared/fields.ts";
 export { type Guard, isGuard } from "./shared/guard.ts";
 export { type NamedPath, type ProgramStart, pathsNamedBy } from "./shared/program-start.ts";
 export { foldName } from "./shared/relative-path.ts";
+export { buildSnapshot, type SnapshotInput, type ToolFile } from "./snapshot/build.ts";

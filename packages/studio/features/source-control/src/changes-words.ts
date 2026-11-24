@@ -80,6 +80,7 @@ export const itemWords = {
     connector: "Connector",
     integration: "Integration",
     plugin: "Plugin",
+    tool: "Tool",
     workspace: "Workspace settings",
     deployments: "Deployments",
     models: "Models",
