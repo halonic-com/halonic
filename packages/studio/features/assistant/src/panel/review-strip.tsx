@@ -137,7 +137,7 @@ function useDecideChat({ host, chatId, box, announce }: DecideChatProps) {
     undoChatDecision(host, done).then(
       () => announce(words.undone(decision, done.changes), "polite"),
       (error: unknown) =>
-        toasts?.show({ tone: "danger", title: words.cantUndo, text: reasonOf(error) }),
+        toasts?.show({ tone: "danger", title: words.cantUndo(done.items), text: reasonOf(error) }),
     );
   const run = async (decision: "accept" | "reject", items: number) => {
     if (busy !== undefined) return;
@@ -169,7 +169,9 @@ function toastOf(
 ): { readonly tone: "info" | "warning"; readonly title: string } | undefined {
   const waiting = done.waiting.length === 0 ? undefined : words.waiting(done.waiting);
   if (done.items === 0)
-    return waiting === undefined ? undefined : { tone: "warning", title: waiting };
+    return waiting === undefined
+      ? undefined
+      : { tone: "warning", title: `${words.nothing(decision)} ${waiting}` };
   const said = (decision === "accept" ? words.accepted : words.rejected)(done.changes, done.items);
   if (waiting === undefined) return { tone: "info", title: said };
   return { tone: "warning", title: `${said}. ${waiting}` };

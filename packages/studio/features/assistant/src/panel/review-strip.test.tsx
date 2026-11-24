@@ -6,6 +6,7 @@ import { act, createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AssistantChange } from "../api.ts";
 import { cardReviewsOf } from "../cards/card-reviews.ts";
+import { stripWords } from "../cards/card-words.ts";
 import { buttonNamed, fakeHost, show, unmount } from "../test-support.tsx";
 import { ReviewStrip } from "./review-strip.tsx";
 
@@ -169,6 +170,39 @@ verifies("assistant.chat.apply-all", () => {
       expect(shown.toasts.list()[0]).toMatchObject({
         tone: "warning",
         title: "Accepted 4 changes in 2 items. triage waits for Compare.",
+      });
+    });
+
+    it("says nothing was decided when every item waits for Compare", async () => {
+      const both = ["models.yaml", "hubs/sales/agents/billing.agent.yaml"] as const;
+      const shown = strip(stripHost(both, both));
+      const page = await show(shown.node);
+      await press(page, "Reject all");
+      const [toast] = shown.toasts.list();
+      expect(toast).toMatchObject({
+        tone: "warning",
+        title: "Nothing rejected. models and billing wait for Compare.",
+      });
+      expect(toast?.action).toBeUndefined();
+    });
+
+    it("lists three waiting items, then how many more", () => {
+      expect(stripWords.waiting(["A", "B", "C"])).toBe("A, B and C wait for Compare.");
+      expect(stripWords.waiting(["A", "B", "C", "D", "E"])).toBe(
+        "A, B, C and 2 more wait for Compare.",
+      );
+    });
+
+    it("names the items when Undo fails", async () => {
+      const host = stripHost(["models.yaml", "hubs/sales/agents/billing.agent.yaml"]);
+      Object.assign(host.fake.host, { undo: async () => Promise.reject(new Error("Disk full")) });
+      const shown = strip(host);
+      const page = await show(shown.node);
+      await press(page, "Accept all");
+      await act(async () => shown.toasts.list()[0]?.action?.onClick());
+      expect(shown.toasts.list().find((toast) => toast.tone === "danger")).toMatchObject({
+        title: "Couldn't undo the changes in 2 items",
+        text: "Disk full",
       });
     });
 

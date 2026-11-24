@@ -93,13 +93,16 @@ export const stripWords = {
   /** After the toast's title when items were left out, so a partial result never reads as done. */
   waiting: (names: readonly string[]) =>
     `${listed(names)} ${names.length === 1 ? "waits" : "wait"} for Compare.`,
+  /** New (HAL-17455): nothing was decided, as every item waits for Compare. */
+  nothing: (decision: "accept" | "reject") =>
+    decision === "accept" ? "Nothing accepted." : "Nothing rejected.",
   undo: "Undo",
   undone: (decision: "accept" | "reject", changes: number) =>
     `Undone: ${decision === "accept" ? "accepted" : "rejected"} ${changes} ${changesWord(changes)}`,
   /** New (HAL-16800): the strip's decision or its undo failed, with the reason under it. */
   cantAccept: (items: number) => `Couldn't accept the changes in ${items} ${itemsWord(items)}`,
   cantReject: (items: number) => `Couldn't reject the changes in ${items} ${itemsWord(items)}`,
-  cantUndo: "Couldn't undo it",
+  cantUndo: (items: number) => `Couldn't undo the changes in ${items} ${itemsWord(items)}`,
 } as const;
 
 function changesWord(count: number): string {
@@ -110,8 +113,9 @@ function itemsWord(count: number): string {
   return count === 1 ? "item" : "items";
 }
 
-/** "Support triage", "Support triage and Billing", "A, B and C". */
+/** "A", "A and B", "A, B and C", then "A, B, C and 2 more" (HAL-17455). */
 function listed(names: readonly string[]): string {
   if (names.length < 2) return names.join("");
+  if (names.length > 3) return `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`;
   return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
