@@ -23,7 +23,8 @@ const ownMembers = new Set(["input", "log"]);
 export function buildCtx(state: RunState): QuickJSHandle | undefined {
   const { vm } = state;
   const ctx = vm.newObject(vm.null);
-  const input = copyIn(vm, state.builtins, state.table, state.request.input);
+  const input = copyInput(state);
+  if (input === undefined) return undefined;
   define(state, ctx, "input", input);
   define(
     state,
@@ -47,6 +48,17 @@ export function buildCtx(state: RunState): QuickJSHandle | undefined {
     define(state, ctx, name, freeze(state, namespace));
   }
   return freeze(state, ctx);
+}
+
+/** The input, copied in; `undefined` and a `toolscript.bad-input` failure for data that isn't plain. */
+function copyInput(state: RunState): QuickJSHandle | undefined {
+  try {
+    return copyIn(state.vm, state.builtins, state.table, state.request.input);
+  } catch {
+    // copyIn throws a TypeError for a value that isn't plain data, and a
+    // RangeError for one nested too deep to walk; either way the caller's input is bad.
+    return state.fail("toolscript.bad-input", "the input isn't plain data");
+  }
 }
 
 function define(state: RunState, owner: QuickJSHandle, key: string, value: QuickJSHandle): void {
@@ -89,7 +101,8 @@ function argumentRules(state: RunState): CopyOutRules {
  * A host function on `ctx`. It copies the argument out (S15), counts the
  * call and the pending promises against the limits, and calls the host
  * outside the isolate, on a later host tick, so host code never runs while
- * the isolate does.
+ * the isolate does. The run may have ended by that tick (a limit tripped
+ * while the script kept running): then the host is never called.
  */
 function capability(
   state: RunState,
@@ -111,7 +124,7 @@ function capability(
     state.pending += 1;
     const context = { runId: state.request.runId, signal: state.signal };
     Promise.resolve()
-      .then(() => implementation(copied.value, context))
+      .then(() => (state.closed() ? null : implementation(copied.value, context)))
       .then(
         (value) => settle(state, deferred, { ok: true, value }),
         (error: unknown) => settle(state, deferred, { ok: false, error }),

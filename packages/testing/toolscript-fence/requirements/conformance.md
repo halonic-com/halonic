@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: ADR "Halonic ToolScript" (`docs/adr/2026-11-24-toolscript.md`, the T4 fence list in section 6), accepted by the board on HAL-10 on 24 Nov; task HAL-17569
 
-Where an isolate implements `ToolScriptIsolate`, every result shall report the limits the run really had (the host's declared ones included), every failure shall carry a reason from the `ToolScriptHost` list, a script's error shall carry only its message, cut to 300 characters and with no stack frames, and a host function's own error message shall never be passed on.
+Where an isolate implements `ToolScriptIsolate`, input that isn't plain data (a function, a cycle, a `Date`) shall end the run with `toolscript.bad-input` before the script runs, every result shall report the limits the run really had (the host's declared ones included), every failure shall carry a reason from the `ToolScriptHost` list, a script's error shall carry only its message, cut to 300 characters and with no stack frames, and a host function's own error message shall never be passed on.
 
 ## Examples
 

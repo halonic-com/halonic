@@ -151,4 +151,14 @@ function afterEndCases(make: MakeToolScriptIsolate): void {
     await settleHost();
     expect(acme.calls).toEqual([]);
   });
+
+  it("never calls a host function the script called just before a limit tripped", async () => {
+    const acme = recorder();
+    const code = script("ctx.acme.ping({ beforeTheLoop: true }); for (;;) {}");
+    const functions = { acme: { ping: acme.fn } };
+    const result = await runScript(make, code, { functions, limits: { cpuMs: 100 } });
+    expect(result).toMatchObject({ ok: false, reason: "limit.cpu" });
+    await settleHost();
+    expect(acme.calls).toEqual([]);
+  });
 }

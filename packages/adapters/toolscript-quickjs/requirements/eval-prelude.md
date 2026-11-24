@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: ADR "Halonic ToolScript" (`docs/adr/2026-11-24-toolscript.md`, section 2.1), with the security conditions on HAL-17650; task HAL-17569
 
-The QuickJS adapter shall run its fixed eval prelude as its own evaluation before the script, shall check through the QuickJS API that `eval`, `Function` and the `constructor` of the four function prototypes each hold one frozen thrower as a non-writable, non-configurable property and that `Function.prototype` is frozen, shall not run the script when the prelude throws or the check fails, and shall check the slots again after the run.
+The QuickJS adapter shall run its fixed eval prelude as its own evaluation before the script, shall check through the QuickJS API that `eval`, `Function` and the `constructor` of the four function prototypes each hold one frozen thrower as a non-writable, non-configurable property that `Function.prototype` is frozen, and that `Error.prepareStackTrace` is pinned to a non-writable, non-configurable `undefined` (so a script's stack hook never runs, not even for an error the engine makes during the host's own calls), shall not run the script when the prelude throws or the check fails, and shall check the slots again after the run.
 
 ## Examples
 

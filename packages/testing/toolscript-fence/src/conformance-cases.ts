@@ -1,5 +1,6 @@
 import {
   effectiveToolScriptLimits,
+  type ToolScriptIsolateValue,
   type ToolScriptLimits,
   toolScriptDefaultLimits,
   toolScriptMessageCharacters,
@@ -52,21 +53,37 @@ export function conformanceCases(
       expect(JSON.stringify(result)).not.toContain("acme-internal-host");
     });
 
-    it("answers every failure with a listed reason", async () => {
-      const acme = recorder();
-      const failures = [
-        script("throw 1;"),
-        script("return undefinedName;"),
-        script("return () => 1;"),
-        "export const notRun = 1;",
-        "this is not JavaScript",
-        script("await new Promise(() => {});"),
-      ];
-      for (const code of failures) {
-        const result = await runScript(make, code, { functions: { acme: { ping: acme.fn } } });
-        expect(result.ok, code).toBe(false);
-        if (!result.ok) expect(toolScriptReasons).toContain(result.reason);
-      }
-    });
+    failureCases(make);
+  });
+}
+
+/** Bad input and every kind of failure end with a listed reason. */
+function failureCases(make: MakeToolScriptIsolate): void {
+  it("answers input that isn't plain data with toolscript.bad-input", async () => {
+    const cycle: { self?: unknown } = {};
+    cycle.self = cycle;
+    for (const input of [{ run: () => 1 }, cycle, { when: new Date(0) }]) {
+      const result = await runScript(make, script("return 1;"), {
+        input: input as unknown as ToolScriptIsolateValue,
+      });
+      expect(result).toMatchObject({ ok: false, reason: "toolscript.bad-input" });
+    }
+  });
+
+  it("answers every failure with a listed reason", async () => {
+    const acme = recorder();
+    const failures = [
+      script("throw 1;"),
+      script("return undefinedName;"),
+      script("return () => 1;"),
+      "export const notRun = 1;",
+      "this is not JavaScript",
+      script("await new Promise(() => {});"),
+    ];
+    for (const code of failures) {
+      const result = await runScript(make, code, { functions: { acme: { ping: acme.fn } } });
+      expect(result.ok, code).toBe(false);
+      if (!result.ok) expect(toolScriptReasons).toContain(result.reason);
+    }
   });
 }

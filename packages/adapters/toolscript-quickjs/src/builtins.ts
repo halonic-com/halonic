@@ -60,7 +60,12 @@ export function same(
   return equal;
 }
 
-/** Calls a captured built-in and gives its result, or `undefined` if it threw. */
+/**
+ * Calls a captured built-in and gives its result, or `undefined` if it threw.
+ * The thrown error is disposed of here; every caller turns `undefined` into a
+ * refusal (a failed check, a refused value or an unknown reason), never into
+ * a pass.
+ */
 export function callBuiltin(
   vm: QuickJSContext,
   builtin: QuickJSHandle,

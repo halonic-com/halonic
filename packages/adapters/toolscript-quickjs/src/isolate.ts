@@ -58,7 +58,10 @@ export async function runInQuickJs(
 ): Promise<ToolScriptIsolateResult> {
   if (request.signal?.aborted)
     return { ok: false, reason: "toolscript.cancelled", log: [], limits };
-  const inputBytes = new TextEncoder().encode(JSON.stringify(request.input)).length;
+  const inputBytes = jsonBytes(request.input);
+  if (inputBytes === undefined) {
+    return { ok: false, reason: "toolscript.bad-input", log: [], limits };
+  }
   if (inputBytes > limits.inputBytes) {
     return { ok: false, reason: "limit.input", log: [], limits };
   }
@@ -75,4 +78,13 @@ export async function runInQuickJs(
   const vm = runtime.newContext({ intrinsics: quickJsIntrinsics });
   const builtins = captureBuiltins(vm);
   return new RunSession({ runtime, vm, builtins, meter, request, limits, prelude }).run();
+}
+
+/** The size of `value` as UTF-8 JSON, or `undefined` when it can't be written as JSON (a cycle, a BigInt). */
+function jsonBytes(value: unknown): number | undefined {
+  try {
+    return new TextEncoder().encode(JSON.stringify(value)).length;
+  } catch {
+    return undefined;
+  }
 }

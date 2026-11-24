@@ -108,6 +108,33 @@ verifies("toolscript-quickjs.eval-prelude", () => {
     expect(calls).toEqual([]);
   });
 
+  it("pins Error.prepareStackTrace, so a script's stack hook never runs", async () => {
+    const { result } = await run(`
+      let hits = 0;
+      const hook = () => { hits += 1; return "hooked"; };
+      try { Error.prepareStackTrace = hook; } catch {}
+      try { Object.defineProperty(Error, "prepareStackTrace", { value: hook }); } catch {}
+      try { delete Error.prepareStackTrace; } catch {}
+      const stack = new Error("acme").stack;
+      try { null.x; } catch {}
+      const slot = Object.getOwnPropertyDescriptor(Error, "prepareStackTrace");
+      return [hits, stack === "hooked", slot.value === undefined, slot.writable, slot.configurable];`);
+    expect(result.ok && result.output).toEqual([0, false, true, false, false]);
+  });
+
+  it("never runs the script when the stack hook isn't pinned", async () => {
+    const statement = preludeSource.slice(
+      preludeSource.indexOf('define(Error, "prepareStackTrace"'),
+      preludeSource.indexOf("Object.freeze(thrower);"),
+    );
+    const { result, calls } = await run(
+      "await ctx.acme.ping('ran'); return 1;",
+      preludeWithout(statement),
+    );
+    expect(result).toMatchObject({ ok: false, reason: "toolscript.failed" });
+    expect(calls).toEqual([]);
+  });
+
   it("runs a script with top-level await under the real prelude", async () => {
     const { result, calls } = await run("await ctx.acme.ping('ran'); return 'done';");
     expect(result).toMatchObject({ ok: true, output: "done" });

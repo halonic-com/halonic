@@ -30,8 +30,12 @@ export const quickJsIntrinsics = Object.freeze({
  * The fixed prelude, run as its own `evalCode` before the script and never
  * joined to it (condition 1). It replaces each path to the compiler with
  * one frozen thrower, non-writable and non-configurable, and freezes the
- * thrower and `Function.prototype`. It returns the thrower and the four
- * function prototypes so the host can check every slot.
+ * thrower and `Function.prototype`. It also pins `Error.prepareStackTrace`
+ * to `undefined`: QuickJS-ng calls it for every error the engine makes,
+ * including errors from the host's own calls after the script has stopped,
+ * so a script's hook would run outside the script's time. It returns the
+ * thrower, the four function prototypes and `Error` so the host can check
+ * every slot.
  */
 export const preludeSource = `(() => {
   "use strict";
@@ -56,10 +60,17 @@ export const preludeSource = `(() => {
   ]) {
     define(prototype, "constructor", slot);
   }
+  define(Error, "prepareStackTrace", {
+    value: undefined,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
   Object.freeze(thrower);
   Object.freeze(functionPrototype);
   return Object.freeze({
     thrower,
+    errorConstructor: Error,
     functionPrototype,
     asyncFunctionPrototype,
     generatorFunctionPrototype,
@@ -77,13 +88,13 @@ export const preludeSlots = [
   ["asyncGeneratorFunctionPrototype", "constructor"],
 ] as const;
 
-/** Whether one slot holds the thrower as a non-writable, non-configurable data property. */
-function slotHoldsThrower(
+/** Whether one slot holds `expected` as a non-writable, non-configurable data property. */
+function slotHolds(
   vm: QuickJSContext,
   builtins: Builtins,
   owner: QuickJSHandle,
   key: string,
-  thrower: QuickJSHandle,
+  expected: QuickJSHandle,
 ): boolean {
   const keyHandle = vm.newString(key);
   const descriptor = callBuiltin(vm, builtins.getOwnPropertyDescriptor, owner, keyHandle);
@@ -99,7 +110,7 @@ function slotHoldsThrower(
   const configurable = ownDataField(vm, builtins, descriptor, "configurable");
   const holds =
     value !== undefined &&
-    same(vm, builtins, value, thrower) &&
+    same(vm, builtins, value, expected) &&
     writable !== undefined &&
     !isTrue(vm, writable) &&
     configurable !== undefined &&
@@ -119,7 +130,8 @@ function isFrozen(vm: QuickJSContext, builtins: Builtins, object: QuickJSHandle)
 /**
  * The host's own check of the prelude (condition 3): every slot holds the
  * one thrower, non-writable and non-configurable, and the thrower and
- * `Function.prototype` are frozen. Read through the QuickJS API with
+ * `Function.prototype` are frozen, and `Error.prepareStackTrace` is pinned to
+ * `undefined`. Read through the QuickJS API with
  * built-ins captured before any script ran, so a library bump that changes
  * the intrinsics fails closed. Run before the script and again after it.
  */
@@ -133,17 +145,44 @@ export function preludeHolds(
     thrower?.dispose();
     return false;
   }
-  let holds = isFrozen(vm, builtins, thrower) && isFrozen(vm, builtins, preludeResult);
-  for (const [ownerName, key] of preludeSlots) {
-    if (!holds) break;
-    const owner =
-      ownerName === "globalThis" ? vm.global : ownDataField(vm, builtins, preludeResult, ownerName);
-    holds = owner !== undefined && slotHoldsThrower(vm, builtins, owner, key, thrower);
-    if (ownerName === "functionPrototype" && owner !== undefined) {
-      holds = holds && isFrozen(vm, builtins, owner);
-    }
-    if (ownerName !== "globalThis") owner?.dispose();
-  }
+  const holds =
+    isFrozen(vm, builtins, thrower) &&
+    isFrozen(vm, builtins, preludeResult) &&
+    preludeSlots.every(([ownerName, key]) =>
+      throwerSlotHolds(vm, builtins, preludeResult, ownerName, key, thrower),
+    );
   thrower.dispose();
+  return holds && stackHookPinned(vm, builtins, preludeResult);
+}
+
+/** One of {@link preludeSlots}; `Function.prototype` must also be frozen. */
+function throwerSlotHolds(
+  vm: QuickJSContext,
+  builtins: Builtins,
+  preludeResult: QuickJSHandle,
+  ownerName: (typeof preludeSlots)[number][0],
+  key: string,
+  thrower: QuickJSHandle,
+): boolean {
+  if (ownerName === "globalThis") return slotHolds(vm, builtins, vm.global, key, thrower);
+  const owner = ownDataField(vm, builtins, preludeResult, ownerName);
+  if (owner === undefined) return false;
+  const holds =
+    slotHolds(vm, builtins, owner, key, thrower) &&
+    (ownerName !== "functionPrototype" || isFrozen(vm, builtins, owner));
+  owner.dispose();
   return holds;
+}
+
+/** Whether `Error.prepareStackTrace` is a non-writable, non-configurable `undefined`. */
+function stackHookPinned(
+  vm: QuickJSContext,
+  builtins: Builtins,
+  preludeResult: QuickJSHandle,
+): boolean {
+  const errorConstructor = ownDataField(vm, builtins, preludeResult, "errorConstructor");
+  if (errorConstructor === undefined) return false;
+  const pinned = slotHolds(vm, builtins, errorConstructor, "prepareStackTrace", vm.undefined);
+  errorConstructor.dispose();
+  return pinned;
 }
