@@ -19,7 +19,9 @@ async function drawRecap(messaging: FakeAgentMessaging, options: { strict?: bool
   document.body.append(container);
   const root = createRoot(container);
   const view = <RecapView store={store} />;
-  await act(async () => root.render(options.strict === true ? <StrictMode>{view}</StrictMode> : view));
+  await act(async () =>
+    root.render(options.strict === true ? <StrictMode>{view}</StrictMode> : view),
+  );
   const text = container.textContent ?? "";
   const hasImage = container.querySelector("img") !== null;
   act(() => root.unmount());
