@@ -5,6 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { AgentsHost, HarnessReadiness } from "../api.ts";
+import { memorySessions, said } from "../chat/try-it-test-support.tsx";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, show, unmount, viewPanel } from "../test-support.tsx";
 import { AgentScreen } from "./agent-page.tsx";
@@ -130,6 +131,32 @@ verifies("agents.chat.first-load", () => {
     failing.now = false;
     await act(async () => buttonNamed(viewPanel(page), "Try again")?.click());
     expect(chat(page)?.querySelector("textarea")).not.toBeNull();
+    expect(document.activeElement).toBe(page.querySelector("h1"));
+  });
+
+  it("shows the saved Try it chat, not the empty draft, once Try again reads the agent", async () => {
+    const sessions = memorySessions();
+    const location = "/acme";
+    await sessions.save(location, {
+      id: "c-1",
+      kind: "agent:acme/sorter",
+      title: "Sort today's mail",
+      lastUsedAt: "2026-11-01T10:00:00.000Z",
+      answering: false,
+      model: { kind: "assistant" },
+      messages: [
+        { role: "user", content: "Sort today's mail" },
+        { role: "assistant", content: "Sorted 3 messages." },
+      ],
+    });
+    const failing = { now: true };
+    const host = { ...hostFailingWhile(failing), savedChats: { sessions, location } };
+    const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
+    expect(chat(page)?.textContent).toBe("");
+
+    failing.now = false;
+    await act(async () => buttonNamed(viewPanel(page), "Try again")?.click());
+    await vi.waitFor(() => expect(said(page)).toEqual(["Sort today's mail", "Sorted 3 messages."]));
     expect(document.activeElement).toBe(page.querySelector("h1"));
   });
 

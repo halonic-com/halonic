@@ -47,14 +47,15 @@ export interface KeptChatsParts {
  * `@halonicjs/assistant`'s: a draft until its first message and never saved, its title from that
  * message, the 40 most recently used, and a chat that was answering comes back stopped.
  *
- * The chats are read from the store once, on first use. Every change is saved in the order it
- * happened; {@link KeptChats.saved} waits for the saves started so far.
+ * The store is shared with the agents' Try it chats, which save to it on their own. So the chats
+ * are read from the store again on every {@link KeptChats.list} and {@link KeptChats.get}, taking
+ * any saved copy newer than the window's, and the 40 are counted on the store's list. Every change
+ * is saved in the order it happened; {@link KeptChats.saved} waits for the saves started so far.
  */
 export class KeptChats {
   readonly #parts: KeptChatsParts;
   readonly #chats = new Map<string, KeptChat>();
   readonly #answering = new Set<string>();
-  #read: Promise<void> | undefined;
   #saving: Promise<void> = Promise.resolve();
   #made = 0;
 
@@ -113,6 +114,7 @@ export class KeptChats {
       stoppedWhenClosed: false,
     });
     for (const old of chatsToDrop(this.#listed().map(summaryOf))) this.#remove(old);
+    this.#store((sessions, location) => this.#dropPast40(sessions, location));
   }
 
   /** Changes what the person may change: the title or the model. */
@@ -139,20 +141,19 @@ export class KeptChats {
     return this.#saving;
   }
 
-  #readSaved(): Promise<void> {
-    this.#read ??= this.#restore();
-    return this.#read;
-  }
-
-  async #restore(): Promise<void> {
+  /** Takes in every saved chat the window doesn't have, or has an older copy of. */
+  async #readSaved(): Promise<void> {
+    // The window's own saves and deletes land first, so a chat it just let go doesn't come back.
+    await this.#saving;
     const { sessions, location } = this.#parts.store;
     for (const summary of await sessions.list(location)) {
+      if (!this.#savedIsNewer(summary)) continue;
       const saved = await sessions.load(location, summary.id);
       if (saved === null) continue;
       const { chat, stoppedWhenClosed } = restoredChat(saved);
       const { id, kind, title, lastUsedAt, model, messages } = chat;
-      // A chat made in this window before the store answered wins over its saved copy.
-      if (this.#chats.has(id)) continue;
+      // A chat changed in this window while the store answered wins over its saved copy.
+      if (!this.#savedIsNewer(summary)) continue;
       this.#chats.set(id, {
         id,
         kind,
@@ -163,6 +164,25 @@ export class KeptChats {
         draft: false,
         stoppedWhenClosed,
       });
+    }
+  }
+
+  /**
+   * Whether the saved copy was used after the window's, as when a Try it chat had turns added
+   * outside this window's sight. A chat answering here is the window's own.
+   */
+  #savedIsNewer(summary: SavedChatSummary): boolean {
+    const kept = this.#chats.get(summary.id);
+    if (kept === undefined) return true;
+    if (this.#answering.has(summary.id)) return false;
+    return Date.parse(summary.lastUsedAt) > Date.parse(kept.lastUsedAt);
+  }
+
+  /** Deletes the chats past the 40 on the store's list, which holds the Try it chats too. */
+  async #dropPast40(sessions: ChatSessions, location: string): Promise<void> {
+    for (const old of chatsToDrop(await sessions.list(location))) {
+      await sessions.delete(location, old);
+      this.#forget(old);
     }
   }
 
@@ -191,9 +211,13 @@ export class KeptChats {
   }
 
   #remove(chatId: string): void {
+    this.#store((sessions, location) => sessions.delete(location, chatId));
+    this.#forget(chatId);
+  }
+
+  #forget(chatId: string): void {
     this.#chats.delete(chatId);
     this.#answering.delete(chatId);
-    this.#store((sessions, location) => sessions.delete(location, chatId));
     this.#parts.onGone?.(chatId);
   }
 

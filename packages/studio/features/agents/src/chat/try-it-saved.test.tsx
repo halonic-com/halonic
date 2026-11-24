@@ -1,33 +1,13 @@
 // @vitest-environment jsdom
-import type { ChatSessions, SavedChat } from "@halonicjs/ports";
+import type { SavedChat } from "@halonicjs/ports";
 import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { show, unmount } from "../test-support.tsx";
-import { Chat, said, scriptedHost, sendMessage } from "./try-it-test-support.tsx";
+import { Chat, memorySessions, said, scriptedHost, sendMessage } from "./try-it-test-support.tsx";
 
 afterEach(() => unmount());
-
-/** A store that keeps chats in memory, one list per workspace. */
-function memorySessions(): ChatSessions {
-  const chats = new Map<string, SavedChat>();
-  const keyOf = (location: string, id: string) => `${location}\n${id}`;
-  return {
-    list: async (location) =>
-      [...chats.entries()]
-        .filter(([key]) => key.startsWith(`${location}\n`))
-        .map(([, { messages: _messages, model: _model, ...summary }]) => summary)
-        .sort((left, right) => right.lastUsedAt.localeCompare(left.lastUsedAt)),
-    load: async (location, id) => chats.get(keyOf(location, id)) ?? null,
-    save: async (location, chat) => {
-      chats.set(keyOf(location, chat.id), structuredClone(chat));
-    },
-    delete: async (location, id) => {
-      chats.delete(keyOf(location, id));
-    },
-  };
-}
 
 const buildChat: SavedChat = {
   id: "c-1",
