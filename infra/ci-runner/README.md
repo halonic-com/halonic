@@ -317,6 +317,9 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
      `CI_PICK_APP_CLIENT_ID` to its client ID and the repo secret `CI_PICK_APP_KEY` to a private
      key (Actions secrets, not Dependabot's: fork and bot pull requests never get it). The job
      mints a one-hour token with only that read permission and GitHub revokes it when the job ends.
+     **Never give this App a second permission or repository access** (Julian, HAL-17693): any
+     workflow on our own branches can read its key, so every permission added later goes to
+     every writer.
   2. **Merge.** Nothing on the VM changes while `CI_FAST_SCOPE` stays `fast-track`. A
      `fast-track` pull request's run shows "Runners for this run" in `pick-runner`'s summary,
      and its Linux checks on `hci-fast-*` when the pool is free, on GitHub's runners when it isn't.
@@ -329,7 +332,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
      moves between pools. A re-run of failed jobs reuses its run's answer, so it can wait too.
   5. **Every person's pull request** (only after the board's yes): rebuild the image with this
      hook (the one before it ignores `PR_SCOPE`), then set `PR_SCOPE="all"` in the VM's
-     `/etc/halonic-ci/pool-fast/pool.conf` (the hook reads it at each job's start), then set the repo variable `CI_FAST_SCOPE` to `all`. Back: `CI_FAST_SCOPE` to
+     `/etc/halonic-ci/pool-fast/pool.conf` (the hook reads it at each job's start; quotes are
+     dropped, so `PR_SCOPE=all` counts too), then set the repo variable `CI_FAST_SCOPE` to `all`. Back: `CI_FAST_SCOPE` to
      `fast-track` first, then `PR_SCOPE="fast-track"`. The VM's setting is the control: with the
      variable on `all` and the VM on `fast-track`, an unlabelled pull request the picker sends
      here is refused by the hook ("has no fast-track label"), never run.

@@ -30,8 +30,8 @@ This builds on HAL-17616 (`decisions/mateo/HAL-17616-fast-track-only.md`), which
   it answers. Two examples change the same way and two are new (an unlabelled pull request under
   `fast-track` never asks GitHub; 13 idle runners or a failed call answers GitHub's runners).
 - `infra/ci-runner/vm/job-started.sh` (the hook, the real boundary): the `fast-track` label is
-  still required unless the fast pool's own `pool.conf` says exactly `PR_SCOPE="all"`. A missing
-  line or any other value keeps it required. Every other check stays, bots and forks included.
+  still required unless the fast pool's own `pool.conf` says `PR_SCOPE="all"` (the hook drops
+  quotes, so `PR_SCOPE=all` counts too). A missing line or any other value keeps it required. Every other check stays, bots and forks included.
   `vm/pool-fast.conf` ships `PR_SCOPE="fast-track"`.
 
 **Which control follows the scope:** a VM-side setting, not the repo variable. The hook never sees
@@ -43,7 +43,9 @@ request the picker sent.
 **The token:** not the runners' own App (`halonic-ci-runners`), whose key can register runners
 and so take our jobs; a repository secret can be read by any workflow on our own branches. A new
 App, `halonic-ci-pick`, with one permission, Organization → Self-hosted runners: Read-only, no
-repository permissions. The board creates it and sets `CI_PICK_APP_CLIENT_ID` (a variable, the
+repository permissions. It must never get a second permission or repository access (Julian,
+HAL-17693): its key is readable by any workflow on our own branches, so a permission added later
+goes to every writer. The board creates it and sets `CI_PICK_APP_CLIENT_ID` (a variable, the
 client ID isn't secret) and `CI_PICK_APP_KEY` (an Actions secret, so fork and Dependabot runs never
 get it). The minted token lasts at most an hour and is revoked when the job ends. Until both exist,
 every pull request runs on GitHub's runners, so they come before the merge.
