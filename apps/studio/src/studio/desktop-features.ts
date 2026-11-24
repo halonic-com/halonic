@@ -1,5 +1,5 @@
 import { agentsFeature } from "@halonicjs/studio-feature-agents";
-import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
+import { AgentReviewService, AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { checkComputerFeature } from "@halonicjs/studio-feature-check-computer";
 import { filesFeature } from "@halonicjs/studio-feature-files";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
@@ -102,6 +102,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     ChangesSourceService,
     ShareChoiceService,
     AgentsHostService,
+    AgentReviewService,
     WorkflowsHostService,
     RoutinesHostService,
     ModelsFilesService,

@@ -3,6 +3,7 @@ import { Field, Input, TextArea } from "@halonicjs/studio-kit";
 import { useAutoSaved, useReportNotSaved } from "@halonicjs/studio-shell";
 import { useState } from "react";
 import type { AgentChange, AgentSettings } from "../api.ts";
+import { ReviewMark } from "../review/review-marks.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
 import { OutputField } from "./output-field.tsx";
 
@@ -45,6 +46,7 @@ export function BehaviourPage({
   useReportNotSaved(reportNotSaved, [description, instructions], outputNotSaved);
   return (
     <div className="flex flex-col gap-6">
+      <ReviewMark agent={settings} field="description" />
       <Field label={words.description} error={description.error} announceWhileFocused>
         <Input
           value={description.value}
@@ -52,6 +54,7 @@ export function BehaviourPage({
           onBlur={description.flush}
         />
       </Field>
+      <ReviewMark agent={settings} field="instructions" />
       <Field
         label={words.instructions}
         hint={instructions.value === "" ? words.instructionsHint : undefined}
@@ -67,6 +70,7 @@ export function BehaviourPage({
           onBlur={instructions.flush}
         />
       </Field>
+      <ReviewMark agent={settings} field="output" />
       <OutputField output={settings.output} save={save} reportNotSaved={setOutputNotSaved} />
     </div>
   );
