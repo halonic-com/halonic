@@ -3,6 +3,7 @@
 - Task: HAL-17834
 - Approval: Liam approved the plan's architecture on HAL-17834 (https://paperclip.halonic.com/HAL/issues/HAL-17834#comment-b42e8edb-b18b-4d13-aee1-0b5b600c3c9f), including this additive block kind, and Julian gave the security OK on HAL-17837; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KE0i+tJF4GM/U3uEIJCyuu0RGz1zcpFoMScrz8BSh+C0YOvDRwOLiOWEVHZctY+nSS4LR9sO1deQSYH9CKggBQ==
 
 ## What changes
 
