@@ -1,5 +1,6 @@
 import { planTrend, readMergeSpeedRecord, trackQueue } from "../board-check/merge-speed.ts";
 import type { BoardWrite } from "../board-check/writes.ts";
+import { readAgentMergeRecord, trackAgentMerges } from "../snapshot/agent-merges.ts";
 import { loadSnapshot } from "../snapshot/store.ts";
 import { type BoardCheckApi, errorCode, type PartPlan, stateKey } from "./board-check-api.ts";
 
@@ -32,6 +33,10 @@ export async function planMergeSpeed(
   }
   const key = stateKey(companyId, "merge-speed");
   const tracked = trackQueue(readMergeSpeedRecord(await ctx.state.get(key)), snapshot);
+  // Merges per agent for the board's `github/summary` route: the snapshot
+  // keeps a few days, the record 30.
+  const mergesKey = stateKey(companyId, "agent-merges");
+  const merges = trackAgentMerges(readAgentMergeRecord(await ctx.state.get(mergesKey)), snapshot);
   const plan = hourly ? planTrend(tracked, snapshot, now) : { comment: undefined, record: tracked };
   const comment: BoardWrite | undefined =
     plan.comment === undefined
@@ -41,12 +46,14 @@ export async function planMergeSpeed(
     writes: comment === undefined ? [] : [comment],
     // A trend comment only logged while writes are off doesn't count as
     // reported: the next hour compares with the figures that last went out.
-    save: (sent) =>
-      ctx.state.set(
+    save: async (sent) => {
+      await ctx.state.set(
         key,
         comment === undefined || sent.has(comment)
           ? plan.record
           : { ...plan.record, reported: tracked.reported },
-      ),
+      );
+      await ctx.state.set(mergesKey, merges);
+    },
   };
 }

@@ -6,6 +6,7 @@ import type {
   PluginStateClient,
 } from "@paperclipai/plugin-sdk";
 import { readMergeSpeedRecord } from "../board-check/merge-speed.ts";
+import { agentMergeCounts, readAgentMergeRecord } from "../snapshot/agent-merges.ts";
 import { loadDequeueReasons } from "../snapshot/dequeue.ts";
 import { loadSnapshot } from "../snapshot/store.ts";
 import { githubPull, githubSummary, type SummaryInputs } from "../snapshot/summary.ts";
@@ -81,8 +82,15 @@ export async function handleGitHubSummary(
   const record = readMergeSpeedRecord(
     await ctx.state.get(stateKey(input.companyId, "merge-speed")),
   );
+  const merges = readAgentMergeRecord(
+    await ctx.state.get(stateKey(input.companyId, "agent-merges")),
+  );
+  const mergedByAgent =
+    merges === undefined || read.snapshot === undefined
+      ? null
+      : agentMergeCounts(merges, new Date(read.snapshot.takenAt));
   const inputs = await inputsOf(ctx, input.companyId);
-  return { status: 200, body: githubSummary(read.snapshot, record, inputs) };
+  return { status: 200, body: githubSummary(read.snapshot, record, inputs, mergedByAgent) };
 }
 
 /**

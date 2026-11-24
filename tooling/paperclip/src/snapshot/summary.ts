@@ -78,6 +78,19 @@ export interface GitHubSummary {
   readonly repos: readonly RepoSummary[];
   /** The last 24 hours' merge speed, when the board check has tracked the queue. */
   readonly mergeSpeed: MergeSpeed | null;
+  /** Merges per agent, when the board check has counted them. */
+  readonly mergedByAgent: MergedByAgent | null;
+}
+
+/** Pull requests each agent merged into a default branch in the last 7 and 30 days. */
+export interface MergedByAgent {
+  /** Since when merges are counted; until it is 30 days back, the counts are short. */
+  readonly countingSince: string;
+  readonly agents: readonly {
+    readonly agent: string;
+    readonly days7: number;
+    readonly days30: number;
+  }[];
 }
 
 /** The `github/pr/{number}` answer. */
@@ -99,7 +112,8 @@ export interface SummaryInputs {
   readonly dequeues: readonly DequeueReason[];
 }
 
-function openerOf(pull: SnapshotPull, repo: string, boardLogin: string): Opener {
+/** Who opened `pull` in `repo`, named without a login; `boardLogin` is empty when unset. */
+export function openerOf(pull: SnapshotPull, repo: string, boardLogin: string): Opener {
   const login = pull.open?.author ?? null;
   if (boardLogin !== "" && login?.toLowerCase() === boardLogin.toLowerCase()) {
     return { kind: "person", name: "the board" };
@@ -177,15 +191,17 @@ export function githubSummary(
   snapshot: Snapshot | undefined,
   record: MergeSpeedRecord | undefined,
   inputs: SummaryInputs,
+  mergedByAgent: MergedByAgent | null = null,
 ): GitHubSummary {
   if (snapshot === undefined) {
-    return { takenAt: null, repos: [], mergeSpeed: null };
+    return { takenAt: null, repos: [], mergeSpeed: null, mergedByAgent: null };
   }
   return {
     takenAt: snapshot.takenAt,
     repos: snapshot.repos.map((repo) => repoSummary(repo, inputs)),
     mergeSpeed:
       record === undefined ? null : mergeSpeed(record, snapshot, 24, new Date(snapshot.takenAt)),
+    mergedByAgent,
   };
 }
 

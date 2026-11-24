@@ -3,6 +3,7 @@ import type { ToolResult, ToolRunContext } from "@paperclipai/plugin-sdk";
 import { afterEach, expect, test, vi } from "vitest";
 import { at, pull, snapshot } from "../board-check/merge-speed.test-helper.ts";
 import type { MergeSpeedRecord } from "../board-check/merge-speed.ts";
+import type { AgentMergeRecord } from "../snapshot/agent-merges.ts";
 import { checkerTask, fakeBoardContext } from "./board-check.test-helper.ts";
 import { boardCheck } from "./board-check.ts";
 import { type BoardToolsApi, registerBoardTools } from "./board-tools.ts";
@@ -147,5 +148,23 @@ verifies("paperclip.merge-speed-tool", () => {
     expect((await tool({ hours: 0 }, runCtx)).error).toBe(
       "merge_speed: hours must be a whole number from 1 to 168.",
     );
+  });
+});
+
+verifies("paperclip.agent-merge-counts", () => {
+  test("keeps each agent's merges from the snapshot on every pass", async () => {
+    const fake = setUp();
+    const board = boardCheck(fake.ctx);
+    fake.state.set("snapshot", snapshot(at("14:30"), [], [pull(11, at("14:25"))]));
+    await board.run(clock("14:30"));
+    fake.state.set(
+      "snapshot",
+      snapshot(at("14:40"), [], [pull(11, at("14:25")), pull(12, at("14:35"))]),
+    );
+    await board.run(clock("14:40"));
+    expect((fake.state.get("agent-merges") as AgentMergeRecord).merges).toEqual([
+      { pull: "acme/app#11", agent: "mateo", at: at("14:25") },
+      { pull: "acme/app#12", agent: "mateo", at: at("14:35") },
+    ]);
   });
 });
