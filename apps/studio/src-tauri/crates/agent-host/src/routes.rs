@@ -368,6 +368,13 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/plugins/secrets",
         route(Method::Post, "/v1/plugins/secrets", Answer::Json),
     ),
+    // A Paperclip connection's key, handed over when the person connects
+    // (HAL-17495): the host keeps it in memory only, with the address and
+    // company it was made for, and answers no key.
+    (
+        "POST /v1/paperclip/key",
+        route(Method::Post, "/v1/paperclip/key", Answer::Json),
+    ),
     // Whether a plugin's runner stopped because the sandbox failed while it
     // ran, and Check again (HAL-15113): codes only, kept in the host's
     // memory; the page sends only the plugin's id, and nothing starts.

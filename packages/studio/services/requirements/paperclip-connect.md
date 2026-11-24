@@ -1,0 +1,19 @@
+# services.paperclip-connect
+
+- Status: active
+- Since: unreleased
+- Source: HAL-17495; ADR `docs/adr/2026-11-24-agent-messaging.md` (the key, Julian's finding 6 on HAL-17436); `agent-host.paperclip-key-hand-over`
+
+The Studio services shall keep a Paperclip connection's key in the OS keychain as a token named `paperclip-<connection>`, whose text holds the key with the address and company it was made for, so a workspace's secrets can't name it. When the person connects a connection, `connectPaperclip` shall read that token and hand the key, the address and the company to the agent host, and shall answer `connected` without the key. If the keychain holds no such token, or one it can't read, then it shall hand nothing over and answer `sign-in-needed`. Nothing shall hand a key over when a workspace opens.
+
+## Examples
+
+- Given a keychain token `paperclip-halonic` made for `https://paperclip.acme.test` and `acme-company`,
+  when the person connects `halonic`,
+  then the host gets that key, address and company, and the answer is `connected`.
+- Given no token `paperclip-halonic`, or one that isn't a key entry,
+  when the person connects `halonic`,
+  then nothing is handed over and the answer is `sign-in-needed`.
+- Given a key kept as the token `paperclip-halonic`,
+  when a workspace's secrets ask for `halonic_token_paperclip-halonic`, the name the keychain keeps it under,
+  then they are refused without asking the keychain.

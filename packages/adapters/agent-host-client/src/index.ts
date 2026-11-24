@@ -48,6 +48,7 @@ export {
   type IntegrationSignInStatus,
   type IntegrationSignOutResult,
 } from "./integration-sign-in.ts";
+export { AgentHostPaperclipKey, type PaperclipKeyHandOver } from "./paperclip-key.ts";
 export { AgentHostPlacementStore } from "./placement-store.ts";
 export { AgentHostPluginRunStates, type PluginRunState } from "./plugin-run-state.ts";
 export { AgentHostPluginSecrets } from "./plugin-secrets.ts";
