@@ -153,17 +153,66 @@ export function reviewerOf(author: string | undefined, byPaths: readonly Reviewe
   return byPaths.includes("liam") ? "liam" : "julian";
 }
 
+/** The newest approval by someone else, on an older head, of a pull request not approved on its head. */
+export function approvedBefore(pull: PullFacts): { by: string; head: string } | undefined {
+  return approvedOnHead(pull) ? undefined : othersApprovals(pull).at(-1);
+}
+
+/** What changed since a pull request's last approval: only a rebase, or more (HAL-17759). */
+export interface SinceApproval {
+  readonly by: string;
+  readonly approvedHead: string;
+  readonly rebaseOnly: boolean;
+}
+
+/** `SinceApproval` by `pullId`, for the pull requests approved on an older head. */
+export type SinceApprovals = ReadonlyMap<string, SinceApproval>;
+
+/**
+ * The reviewer of one pull request: by its paths, except that a rebase-only
+ * push after Liam's approval goes to Julian, who may re-approve it on any
+ * path (HAL-14809).
+ */
+export function reviewerAfter(byPaths: Reviewer, since: SinceApproval | undefined): Reviewer {
+  return since?.rebaseOnly === true && since.by === "Liam" ? "julian" : byPaths;
+}
+
+function sinceLine(
+  pull: PullFacts,
+  since: SinceApproval | undefined,
+  reviewer: Reviewer,
+): string[] {
+  if (since === undefined) {
+    return [];
+  }
+  const old = short(since.approvedHead);
+  if (!since.rebaseOnly) {
+    return [
+      `#${pull.number}: changed since ${since.by}'s approval on \`${old}\`; review \`${old}\`..\`${short(pull.head)}\`.`,
+    ];
+  }
+  const line =
+    reviewer === "julian"
+      ? ` If so: "Julian: re-approved on head \`${short(pull.head)}\` (rebase only, range-diff vs \`${old}\`)".`
+      : "";
+  return [
+    `#${pull.number}: only a rebase since ${since.by}'s approval on \`${old}\` (same changes on GitHub); check with \`git range-diff\`.${line}`,
+  ];
+}
+
 /** The comment that hands the task to its reviewer. */
 export function handoffMessage(
   pulls: readonly PullFacts[],
   reviewer: Reviewer,
   refused: Refused = none,
+  since: SinceApprovals = new Map(),
 ): string {
   const name = reviewer === "julian" ? "Julian" : "Liam";
   const lines = pulls.map(
     (pull) =>
       `PR watcher: ready for review: [#${pull.number}](${pull.url}), head \`${short(pull.head)}\`.`,
   );
+  const changed = pulls.flatMap((pull) => sinceLine(pull, since.get(pullId(pull)), reviewer));
   const outside = pulls
     .filter((pull) => refused.has(pullId(pull)))
     .map(
@@ -173,6 +222,7 @@ export function handoffMessage(
   return [
     ...lines,
     "",
+    ...changed,
     ...outside,
     `Out of draft with a green \`ci-ok\`, so the task goes to ${name}.`,
     ...pulls.map((pull) => marker(handoffKey(pull, refused))),
@@ -199,10 +249,10 @@ export function pushedAfterApproval(
   memory: Memory,
 ): PushAfterApproval[] {
   return pulls.flatMap((pull): PushAfterApproval[] => {
-    if (pull.state !== "open" || pull.draft || pull.conflicting || approvedOnHead(pull)) {
+    if (pull.state !== "open" || pull.draft || pull.conflicting) {
       return [];
     }
-    const newest = othersApprovals(pull).at(-1);
+    const newest = approvedBefore(pull);
     if (newest === undefined) {
       return [];
     }

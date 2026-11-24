@@ -1,6 +1,7 @@
 import type { PullFacts } from "./decide.ts";
 import { type FakeTask, fakePaperclip } from "./fakes.test-helper.ts";
 import type { Reviewer } from "./handoff.ts";
+import type { RebaseOnly } from "./rebase-only.ts";
 import { tick } from "./watch.ts";
 
 /** Facts and a watcher pass for the review handoff tests (HAL-17675), with facts given directly. */
@@ -40,10 +41,12 @@ export interface Setup {
   readonly pulls: PullFacts[];
   readonly comments?: Parameters<typeof fakePaperclip>[1];
   readonly byPaths?: Reviewer;
+  /** What the rebase check answers (HAL-17759); none when unset. */
+  readonly rebaseOnly?: RebaseOnly;
 }
 
 /** A fake Paperclip and a `run` that does one watcher pass with a fixed reviewer route. */
-export function setup({ tasks, pulls, comments = {}, byPaths = "julian" }: Setup) {
+export function setup({ tasks, pulls, comments = {}, byPaths = "julian", rebaseOnly }: Setup) {
   const paperclip = fakePaperclip(tasks, comments);
   const routed: number[] = [];
   const lines: string[] = [];
@@ -66,6 +69,7 @@ export function setup({ tasks, pulls, comments = {}, byPaths = "julian" }: Setup
         routed.push(pull.number);
         return byPaths;
       },
+      ...(rebaseOnly === undefined ? {} : { rebaseOnly }),
     });
   return { ...paperclip, routed, lines, run };
 }
