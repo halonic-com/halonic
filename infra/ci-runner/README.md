@@ -7,7 +7,7 @@ later. The one exception is the **fast pool** (HAL-15972): open pull requests la
 person's pull request ran here), on their own slots, with the shared caches read-only. Fork pull
 requests and bots' pull requests never run here, labelled or not. Plan and security review:
 HAL-14831 (Julian's changes C1–C8 and the fork test T1); the fast pool: HAL-15972, HAL-17463,
-HAL-17574 and HAL-17616.
+HAL-17574, HAL-17616 and HAL-17654 (used only while it has room).
 
 This folder is the server's setup **as built** (21 Nov 2026). A change here is deployed to the
 server by the board supervisor after it merges; the server doesn't pull from the repo.
@@ -17,14 +17,17 @@ server by the board supervisor after it merges; the server doesn't pull from the
 1. **Routing** (`.github/workflows/ci.yml`): a job uses `vars.CI_RUNNER_LARGE` or
    `vars.CI_RUNNER_SMALL` only for a merge group or a push to `main`, and only while the event is
    listed in `vars.CI_SELF_HOSTED_EVENTS`. Empty variables send everything to `ubuntu-24.04`.
-   A pull request a person opened from our own branch and labelled `fast-track` uses
-   `vars.CI_RUNNER_FAST` when it is set; every other pull request stays on `ubuntu-24.04`: no label,
-   a fork, or a bot (a `Bot` account, a login ending in `[bot]`, `dependabot`, `renovate`,
-   `renovate-bot`), labelled or not. Adding the label starts a run (HAL-17672), which lands on
-   `hci-fast-*` like a push's; adding any other label starts a run that skips every job and cancels
-   nothing. The hook and the gate need nothing for it: they read the pull request as it is when the
-   job starts, whatever event started the run. This is routing, not security: a pull request runs
-   its own copy of `ci.yml`.
+   A pull request a person opened from our own branch uses `vars.CI_RUNNER_FAST` only when the
+   run's first job, `pick-runner` (`pick-runner.mjs`, HAL-17654), answers `fast`: the pull
+   request is in `vars.CI_FAST_SCOPE` (`fast-track`, the default: labelled ones only; or `all`)
+   and the pool has at least `vars.CI_FAST_MIN_IDLE` (14 when unset) online, idle runners right
+   now. Otherwise the whole run stays on `ubuntu-24.04`, and so does every fork's and bot's pull
+   request (a `Bot` account, a login ending in `[bot]`, `dependabot`, `renovate`,
+   `renovate-bot`), labelled or not. Adding the label starts a run (HAL-17672), which the picker
+   routes like a push's; adding any other label starts a run that skips every job, `pick-runner`
+   too, and cancels nothing. The hook and the gate need nothing for it: they read the pull request
+   as it is when the job starts, whatever event started the run. This is routing, not security: a
+   pull request runs its own copy of `ci.yml`.
 2. **The runner group** `halonic-ci` serves only `halonic-com/halonic`.
 3. **The hook** (`vm/job-started.sh`) is the boundary. It is baked into the image, runs before
    the job's first step and fails the job unless every check passes. It trusts nothing a
@@ -40,7 +43,8 @@ server by the board supervisor after it merges; the server doesn't pull from the
      mounts as overlays or read-only. Then the hook asks the VM's gate about pull request `<n>`
      **now**, not as the event saw it: it must be open, not cross-repository, with a head
      repository owned by `halonic-com`, still at the event's head commit, labelled `fast-track`
-     (HAL-17616), and opened by a person: its author a `User` (not a `Bot`) whose login doesn't end
+     (HAL-17616; not asked when the fast pool's `pool.conf` says `PR_SCOPE="all"`, HAL-17654),
+     and opened by a person: its author a `User` (not a `Bot`) whose login doesn't end
      in `[bot]` and isn't `dependabot`, `renovate` or `renovate-bot` (HAL-17463). A gate or API
      failure, a missing field, label list or author, or a pull request not found is a refusal;
    - a push must be to `main` and run `ci.yml@refs/heads/main`; a merge group must target `main`
@@ -66,7 +70,9 @@ right after the test.
 
 `node --test infra/ci-runner/hook.test.mjs` runs the hook as shipped against sample events and a
 stand-in queue gate, and the gate against a stub API (`queue-gate.test.mjs`, imported; CI runs
-it in the `fast` job).
+it in the `fast` job). `node --test infra/ci-runner/pick-runner.test.mjs` runs the picker against
+a stub of GitHub's runners API; it is a file of its own, because `hook-run.mjs` waits at the top
+level and the picker's tests would end the run before the hook's start.
 
 ## Layout
 
@@ -298,6 +304,38 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   rebuild the image with the new hook, and restart the fast slots. The gate first: the new hook
   refuses every pull request while the gate doesn't send the head branch. Back: restore the copies,
   disable the per-slot sockets and enable the old one.
+- **Pick by room** (HAL-17654, after Liam's and Julian's OK). `pick-runner` asks GitHub how many
+  of the fast pool's runners are online and idle before a pull request's run creates its Linux
+  jobs, and sends the whole run to the fast pool only when at least `CI_FAST_MIN_IDLE` are. An
+  idle registered runner is real room: a fast slot registers only when memory admission lets it.
+  1. **Its token, before the merge.** Without it every pull request, `fast-track` ones too, runs
+     on GitHub's runners (the picker never guesses). The board creates a GitHub App owned by
+     `halonic-com`, `halonic-ci-pick`, with one permission, **Organization → Self-hosted runners:
+     Read-only**, no repository permissions, no webhook, installed on the organisation only. Not
+     the runners' `halonic-ci-runners` App: its key can register runners, and a repository
+     secret is readable by any workflow on our own branches. Set the repo variable
+     `CI_PICK_APP_CLIENT_ID` to its client ID and the repo secret `CI_PICK_APP_KEY` to a private
+     key (Actions secrets, not Dependabot's: fork and bot pull requests never get it). The job
+     mints a one-hour token with only that read permission and GitHub revokes it when the job ends.
+  2. **Merge.** Nothing on the VM changes while `CI_FAST_SCOPE` stays `fast-track`. A
+     `fast-track` pull request's run shows "Runners for this run" in `pick-runner`'s summary,
+     and its Linux checks on `hci-fast-*` when the pool is free, on GitHub's runners when it isn't.
+  3. **Tuning:** `CI_FAST_MIN_IDLE` (a whole number from 1 to 100; anything else sends every run
+     to GitHub's runners). A run has about 11 Linux jobs; 14 leaves a margin. Lower it to use the
+     pool more, raise it to keep runs off a crowded VM. It applies to the next run.
+  4. **Two runs at once:** runs that start within the same few seconds can each see the same
+     idle runners. The margin covers one; in the worst case some of their jobs wait in GitHub's
+     queue for a fast slot to free up (a minute or two per job). Nothing fails, and a run never
+     moves between pools. A re-run of failed jobs reuses its run's answer, so it can wait too.
+  5. **Every person's pull request** (only after the board's yes): rebuild the image with this
+     hook (the one before it ignores `PR_SCOPE`), then set `PR_SCOPE="all"` in the VM's
+     `/etc/halonic-ci/pool-fast/pool.conf` (the hook reads it at each job's start), then set the repo variable `CI_FAST_SCOPE` to `all`. Back: `CI_FAST_SCOPE` to
+     `fast-track` first, then `PR_SCOPE="fast-track"`. The VM's setting is the control: with the
+     variable on `all` and the VM on `fast-track`, an unlabelled pull request the picker sends
+     here is refused by the hook ("has no fast-track label"), never run.
+  6. **Off:** clear `CI_PICK_APP_CLIENT_ID` (every pull request runs on GitHub's runners) or
+     `CI_RUNNER_FAST` (the picker also skips). Back to the label alone, whatever the pool's load:
+     merge a revert of the `ci.yml` change.
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,
   set `IMAGE=` in `pool.env`, restart the slots.
 - **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images, stale work dirs and Turbo

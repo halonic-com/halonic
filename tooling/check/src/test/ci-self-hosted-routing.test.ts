@@ -9,11 +9,14 @@ const workflow = read("ci.yml");
 /** The bots whose pull requests stay off our server (HAL-17463), besides any `[bot]` login. */
 const BOTS = ["dependabot", "renovate", "renovate-bot"];
 
-/** The fast pool's part (HAL-15972, HAL-17616): a fast-track pull request a person opened. */
+/**
+ * The fast pool's part (HAL-15972, HAL-17616, HAL-17654): a pull request a person opened from our
+ * own branch, while `pick-runner` found room on the pool (and, by default, the fast-track label).
+ */
 const FAST =
   "github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != ''" +
   " && github.event.pull_request.head.repo.full_name == github.repository" +
-  " && contains(github.event.pull_request.labels.*.name, 'fast-track')" +
+  " && needs.pick-runner.outputs.fast == 'true'" +
   " && github.event.pull_request.user.type == 'User'" +
   " && !endsWith(github.event.pull_request.user.login, '[bot]')" +
   BOTS.map((bot) => ` && github.event.pull_request.user.login != '${bot}'`).join("") +
@@ -94,6 +97,14 @@ function whyItSkips(block: string, guarded: Set<string>): string {
   return asksForChanges ? "it asks for an output of changes, which skipped" : "";
 }
 
+/** The lines of one job in ci.yml, from its key to the next job's. */
+function jobBlock(text: string, job: string): string {
+  const start = text.indexOf(`\n  ${job}:\n`);
+  if (start < 0) return "";
+  const next = text.slice(start + 1).search(/\n {2}[a-z][a-z0-9-]*:\n/);
+  return next < 0 ? text.slice(start) : text.slice(start, start + 1 + next);
+}
+
 /** Every job's `runs-on` value in ci.yml, by job key. */
 function runsOnByJob(text: string): Map<string, string> {
   const result = new Map<string, string>();
@@ -122,6 +133,7 @@ const kept = [
   "live-cloud",
   "fail-fast",
   "merged",
+  "pick-runner",
   "ci-ok",
 ];
 
@@ -168,7 +180,7 @@ verifies("check.ci-self-hosted-routing", () => {
         "github.event_name == 'pull_request'",
         "vars.CI_RUNNER_FAST != ''",
         "github.event.pull_request.head.repo.full_name == github.repository",
-        "contains(github.event.pull_request.labels.*.name, 'fast-track')",
+        "needs.pick-runner.outputs.fast == 'true'",
         "github.event.pull_request.user.type == 'User'",
         "!endsWith(github.event.pull_request.user.login, '[bot]')",
         "github.event.pull_request.user.login != 'dependabot'",
@@ -176,8 +188,37 @@ verifies("check.ci-self-hosted-routing", () => {
         "github.event.pull_request.user.login != 'renovate-bot'",
         "fromJSON(vars.CI_RUNNER_FAST)",
       ]);
-      // The label and the author both decide (HAL-17616): a labelled bot's pull request stays on
-      // GitHub's runners, and so does a person's without the label.
+      // The picker and the author both decide (HAL-17616, HAL-17654): a bot's pull request stays
+      // on GitHub's runners whatever the picker says, and so does a person's the picker didn't send.
+    });
+
+    test("every job on the server waits for pick-runner and still runs when it skipped", () => {
+      for (const job of [...large, ...small]) {
+        const block = jobBlock(workflow, job);
+        expect(block, job).toMatch(
+          /^ {4}needs: (pick-runner|\[[a-z, -]*\bpick-runner\b[a-z, -]*\])$/m,
+        );
+        expect(block, job).toMatch(/^ {4}if: \$\{\{ !cancelled\(\) && /m);
+      }
+    });
+
+    test("pick-runner runs only for a pull request a person opened from our own branch", () => {
+      const block = jobBlock(workflow, "pick-runner");
+      const condition = /^ {4}if: \$\{\{ (.+) \}\}$/m.exec(block)?.[1] ?? "";
+      expect(condition.split(" && ")).toEqual([
+        "github.event_name == 'pull_request'",
+        "vars.CI_RUNNER_FAST != ''",
+        "github.event.pull_request.head.repo.full_name == github.repository",
+        "github.event.pull_request.user.type == 'User'",
+        "!endsWith(github.event.pull_request.user.login, '[bot]')",
+        ...BOTS.map((bot) => `github.event.pull_request.user.login != '${bot}'`),
+        GUARD,
+      ]);
+      expect(runsOn.get("pick-runner")).toBe("ubuntu-24.04");
+      // Only a read-only runners token: the App's one permission, never a write.
+      expect(block).toContain("permission-organization-self-hosted-runners: read");
+      expect(block).not.toMatch(/permission-[a-z-]+: write/);
+      expect(block).toContain("continue-on-error: true");
     });
 
     test("a label starts a run only for fast-track; removing one starts none (HAL-17672)", () => {
