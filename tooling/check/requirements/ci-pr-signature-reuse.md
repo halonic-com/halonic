@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-17896 (the CI part of HAL-17893, Liam's flow for signing with the review)
 
-When a pull request's new commit only adds, removes or replaces `- Signature: ed25519:` lines in the branch's own decision note, is the only commit on top of the previous head, and the previous head's full run of `.github/workflows/ci.yml` passed every job but `ci-ok`, the fail-fast watcher and the requirement guard, the run shall skip the build shards, the merge base's tests and every area job, and the requirement guard shall run on the new head with the previous run's test results and merge base; any other push, a re-run, a draft, any doubt or the repo variable `CI_PR_SIGNATURE_REUSE` set to `off` shall run every job as before.
+When a pull request's new commit only adds, removes or replaces `- Signature: ed25519:` lines in the branch's own decision note, is the only commit on top of the previous head, and the previous head's full run of `.github/workflows/ci.yml` passed every job but `ci-ok`, the fail-fast watcher and the requirement guard's two jobs (its file checks and the full guard), the run shall skip the build shards, the merge base's tests and every area job, and the requirement guard shall run on the new head with the previous run's test results and merge base; any other push, a re-run, a draft, any doubt or the repo variable `CI_PR_SIGNATURE_REUSE` set to `off` shall run every job as before.
 
 ## Examples
 

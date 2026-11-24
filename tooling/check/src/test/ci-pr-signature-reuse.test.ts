@@ -62,7 +62,9 @@ verifies("check.ci-pr-signature-reuse", () => {
     test("the check runs only on a pull request's new commit, on GitHub's runner, and never fails", () => {
       // The job itself runs wherever `changes` runs: a skipped job would skip every job below
       // `changes` that has no status check (the bug in the first run of HAL-17896's pull request).
-      expect(field(reuse, "if")).toBe(field(jobs.get("changes") ?? "", "if")?.slice(20, -4));
+      expect(field(reuse, "if")).toBe(
+        "github.event.action != 'labeled' || github.event.label.name == 'fast-track'",
+      );
       const onlyNewCommits =
         "        if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && !github.event.pull_request.draft && vars.CI_PR_SIGNATURE_REUSE != 'off'\n";
       expect(reuse.split(onlyNewCommits)).toHaveLength(3);

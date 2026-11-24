@@ -74,7 +74,8 @@
 # (infra/ci-runner/signature-reuse.mjs) answers a run id when the push is one
 # commit on top of the previous head that changes only the
 # branch's note's `- Signature:` lines, and the previous head's run passed
-# every job but ci-ok, the fail-fast watcher and the requirement guard. Then
+# every job but ci-ok, the fail-fast watcher and the requirement guard's two
+# jobs (its file checks and the full guard). Then
 # the build shards, the merge base's tests and every area job (scaffold,
 # end-to-end, docs, Tauri, sandbox, installer, Android) skip, and the
 # requirement guard runs in full on the new head with that run's test results
