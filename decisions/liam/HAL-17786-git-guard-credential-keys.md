@@ -2,6 +2,7 @@
 
 - Approval: HAL-17786 (Liam wrote it; Julian signs as the security reviewer)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:cYj6mvDGVB8nFvtt2B6dWu/ctE6zdeJf6ouYh/jvs+f3H+GVfw89k4VkYxsMeBZWFbIZtiARdu+bmk/idVeJDA==
 
 Requirement `repo-config` gains a refusal: when a repository's own config
 (`local` or `worktree`, included files counted) sets a `credential.<name>` or
