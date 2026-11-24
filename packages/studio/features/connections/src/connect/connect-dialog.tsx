@@ -1,16 +1,22 @@
 import { Dialog, Field, Input, useOpenExternal } from "@halonicjs/studio-kit";
 import type { AgentConnection, AgentConnections } from "@halonicjs/studio-services";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as words from "../connections-words.ts";
-import { ConnectedStep, EndedStep, WaitingStep } from "./connect-steps.tsx";
-import { type SignIn, type StartProblem, useSignIn } from "./sign-in-flow.ts";
+import { EndedStep, useLeftMs, WaitingStep } from "./connect-steps.tsx";
+import {
+  type EndedResult,
+  type SignIn,
+  type SignInView,
+  type StartProblem,
+  useSignIn,
+} from "./sign-in-flow.ts";
 
 /** The props of {@link ConnectDialog}. */
 export interface ConnectDialogProps {
   readonly connections: AgentConnections;
   /** The signed-out connection to sign in again, or none for a new one. */
   readonly again?: AgentConnection | undefined;
-  /** Runs once the dialog has cancelled its sign-in; the opener unmounts it. */
+  /** Runs once the dialog has cancelled its sign-in, or once it connected; the opener unmounts it. */
   readonly onClose: () => void;
   /** Runs after `onClose` when the engine failed to cancel the sign-in, so the opener can say so. */
   readonly onCancelFailed: () => void;
@@ -18,50 +24,77 @@ export interface ConnectDialogProps {
   readonly now?: () => number;
 }
 
-/** Whether `address` is a web address the engine could sign in at. The engine checks it again. */
-function isWebAddress(address: string): boolean {
+const thisComputer = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Whether the engine could sign in at `address`: https, or plain http on this computer only. */
+function isAllowedAddress(address: string): boolean {
   try {
     const url = new URL(address);
-    return url.protocol === "https:" || url.protocol === "http:";
+    if (url.protocol === "https:") return true;
+    return url.protocol === "http:" && thisComputer.has(url.hostname);
   } catch {
     return false;
   }
 }
 
-/** The address step's error line: a refusal's title and line, or that nothing answered. */
-function problemLine(problem: StartProblem | undefined): string | undefined {
-  if (problem === undefined) return undefined;
-  if (problem === "failed") return words.START_FAILED;
-  const refusal = words.refusals[problem];
-  return `${refusal.title}. ${refusal.line}`;
+/** The field's error for a refused start; an engine that didn't answer goes to the Dialog's alert. */
+function fieldProblem(problem: StartProblem | undefined): string | undefined {
+  switch (problem) {
+    case undefined:
+    case "failed":
+      return undefined;
+    case "unreachable":
+      return words.ADDRESS_UNREACHABLE;
+    case "address-not-allowed":
+      return words.ADDRESS_NOT_PAPERCLIP;
+    case "other-company":
+      return words.companyMismatch(undefined).text;
+  }
+}
+
+/**
+ * How the sign-in ended, if it has: as the engine said, or expired once its 10 minutes ran out on
+ * this clock. The engine ends an expired one by itself, so the dialog has nothing to cancel.
+ */
+function endedOf(view: SignInView, leftMs: number): EndedResult | undefined {
+  if (view.stage === "ended") return view.result;
+  if (view.stage === "waiting" && leftMs <= 0) return { outcome: "expired" };
+  return undefined;
 }
 
 /**
  * Connect Paperclip, or Sign in again for a signed-out connection (`connections.connect-dialog`).
  * It asks for the address the board opens Paperclip at, starts a sign-in there and opens the
  * approval page, then shows the words the page shows too and the 10 minutes left to approve.
- * Closing it cancels a waiting sign-in.
+ * Closing it cancels a waiting sign-in, silently; once approved it closes by itself.
  */
 export function ConnectDialog(props: ConnectDialogProps) {
-  const { connections, again } = props;
+  const { connections, again, onClose } = props;
   const signIn = useSignIn(connections, again?.id);
   const title = again === undefined ? words.CONNECT : words.SIGN_IN_AGAIN;
   // Kept here, so Start again shows the address the last sign-in went to.
   const [address, setAddress] = useState(again?.address ?? "");
+  const view = signIn.view;
+  const leftMs = useLeftMs(view.stage === "waiting" ? view.challenge : undefined, props.now);
+
+  // The Settings row says Connected; the dialog has nothing left to say.
+  useEffect(() => {
+    if (view.stage === "connected") onClose();
+  }, [view.stage, onClose]);
 
   // The dialog goes either way; a failed cancel is said by the opener, which stays on screen.
   const close = () => {
-    signIn.cancel().then(props.onClose, () => {
-      props.onClose();
+    signIn.cancel().then(onClose, () => {
+      onClose();
       props.onCancelFailed();
     });
   };
 
-  const view = signIn.view;
   if (view.stage === "address" || view.stage === "starting") {
     return (
       <AddressStep
         title={title}
+        again={again}
         signIn={signIn}
         address={address}
         onAddressChange={setAddress}
@@ -71,29 +104,22 @@ export function ConnectDialog(props: ConnectDialogProps) {
       />
     );
   }
-  return (
-    <Dialog size="md" title={title} closeLabel={`Close ${title}`} onCancel={close}>
-      {view.stage === "waiting" ? (
-        <WaitingStep
-          challenge={view.challenge}
-          now={props.now ?? Date.now}
-          onCancel={close}
-          onStartAgain={signIn.again}
-        />
-      ) : null}
-      {view.stage === "ended" ? (
-        <EndedStep result={view.result} challenge={view.challenge} onStartAgain={signIn.again} />
-      ) : null}
-      {view.stage === "connected" ? (
-        <ConnectedStep connection={view.connection} onDone={props.onClose} />
-      ) : null}
-    </Dialog>
-  );
+  const ended = endedOf(view, leftMs);
+  if (ended !== undefined) {
+    return <EndedStep title={title} result={ended} onClose={close} onStartAgain={signIn.again} />;
+  }
+  if (view.stage === "waiting") {
+    return (
+      <WaitingStep title={title} challenge={view.challenge} leftMs={leftMs} onCancel={close} />
+    );
+  }
+  return null;
 }
 
-/** The address field, with Connect, which starts the sign-in and opens the approval page. */
+/** The address field, with Continue, which starts the sign-in and opens the approval page. */
 function AddressStep({
   title,
+  again,
   signIn,
   address,
   onAddressChange,
@@ -102,6 +128,7 @@ function AddressStep({
   onClose,
 }: {
   readonly title: string;
+  readonly again: AgentConnection | undefined;
   readonly signIn: SignIn;
   readonly address: string;
   readonly onAddressChange: (address: string) => void;
@@ -111,11 +138,11 @@ function AddressStep({
 }) {
   const [invalid, setInvalid] = useState(false);
   const openExternal = useOpenExternal();
-  const error = problemLine(problem);
+  const fieldError = invalid ? words.ADDRESS_HTTPS_ONLY : fieldProblem(problem);
 
-  const connect = () => {
+  const start = () => {
     const trimmed = address.trim();
-    if (!isWebAddress(trimmed)) {
+    if (!isAllowedAddress(trimmed)) {
       setInvalid(true);
       return;
     }
@@ -131,47 +158,26 @@ function AddressStep({
       title={title}
       closeLabel={`Close ${title}`}
       form
-      confirm={{ label: words.START, busyLabel: words.STARTING }}
+      confirm={{ label: words.CONTINUE, busyLabel: words.STARTING }}
       busy={busy}
-      onConfirm={connect}
+      onConfirm={start}
       onCancel={onClose}
-      {...(error === undefined ? {} : { error })}
+      {...(problem === "failed" ? { error: words.START_FAILED } : {})}
     >
-      <AddressField
-        address={address}
-        invalid={invalid}
-        busy={busy}
-        onAddressChange={onAddressChange}
-      />
+      <div className="flex flex-col gap-4">
+        <p className="m-0 text-fg">
+          {again === undefined ? words.CONNECT_LEAD : words.signInAgainLead(again.label)}
+        </p>
+        <Field label={words.ADDRESS_LABEL} hint={words.ADDRESS_HINT} error={fieldError ?? null}>
+          <Input
+            mono
+            readOnly={busy || again !== undefined}
+            value={address}
+            placeholder={words.ADDRESS_PLACEHOLDER}
+            onChange={(event) => onAddressChange(event.target.value)}
+          />
+        </Field>
+      </div>
     </Dialog>
-  );
-}
-
-/** The address field, with its hint and its error. */
-function AddressField({
-  address,
-  invalid,
-  busy,
-  onAddressChange,
-}: {
-  readonly address: string;
-  readonly invalid: boolean;
-  readonly busy: boolean;
-  readonly onAddressChange: (address: string) => void;
-}) {
-  return (
-    <Field
-      label={words.ADDRESS_LABEL}
-      hint={words.ADDRESS_HINT}
-      error={invalid ? words.ADDRESS_INVALID : null}
-    >
-      <Input
-        mono
-        readOnly={busy}
-        value={address}
-        placeholder={words.ADDRESS_PLACEHOLDER}
-        onChange={(event) => onAddressChange(event.target.value)}
-      />
-    </Field>
   );
 }

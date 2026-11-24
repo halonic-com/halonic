@@ -1,4 +1,4 @@
-import { Button, Callout } from "@halonicjs/studio-kit";
+import { Button, Callout, EmptyState, useOpenExternal } from "@halonicjs/studio-kit";
 import {
   type AgentConnection,
   type AgentConnections,
@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { ConnectDialog } from "../connect/connect-dialog.tsx";
 import * as words from "../connections-words.ts";
 import { ConnectionRow } from "./connection-row.tsx";
+import { DisconnectDialog, type DisconnectNote } from "./disconnect-dialog.tsx";
 
 /** Settings › Connections as the settings container shows it, over the engine's connections. */
 export function ConnectionsSection({ context }: SettingsSectionProps) {
@@ -61,61 +62,81 @@ export interface ConnectionsViewProps {
   readonly now?: () => number;
 }
 
+/** What the last Disconnect or a failed cancel said, until the next one. */
+function NoteCallout({ note }: { readonly note: DisconnectNote }) {
+  const openExternal = useOpenExternal();
+  if (note.kind === "line") return <Callout tone={note.tone}>{note.line}</Callout>;
+  return (
+    <Callout
+      tone="attention"
+      title={note.ending.heading}
+      action={{ label: words.OPEN_PAPERCLIP, onClick: () => void openExternal(note.address) }}
+    >
+      {note.ending.text}
+    </Callout>
+  );
+}
+
 /** The section's view: what happened last, a row per connection, and Connect Paperclip. */
 export function ConnectionsView({ connections, announce, now }: ConnectionsViewProps) {
   const list = useConnectionList(connections);
   const [connecting, setConnecting] = useState<Connecting>();
-  // What the last Disconnect or a failed cancel said, until the next one.
-  const [note, setNote] = useState<{
-    readonly line: string;
-    readonly tone: "info" | "attention";
-  }>();
+  const [disconnecting, setDisconnecting] = useState<AgentConnection>();
+  const [note, setNote] = useState<DisconnectNote>();
 
-  const tell = (line: string, tone: "info" | "attention") => {
-    setNote({ line, tone });
-    announce(line);
+  const tell = (next: DisconnectNote) => {
+    setNote(next);
+    announce(next.kind === "line" ? next.line : `${next.ending.heading} ${next.ending.text}`);
   };
-
-  const disconnect = (connection: AgentConnection): Promise<void> =>
-    connections.disconnect(connection.id).then(
-      (result) =>
-        tell(
-          words.disconnectedLine(connection.label, result),
-          result.revoked ? "info" : "attention",
-        ),
-      () => tell(words.disconnectFailed(connection.label), "attention"),
-    );
 
   if (list === undefined) return null;
   if (list === "failed") return <p className="m-0 text-danger">{words.LIST_FAILED}</p>;
   return (
-    <div className="flex flex-col gap-6">
-      {note === undefined ? null : <Callout tone={note.tone}>{note.line}</Callout>}
+    <div className="flex flex-col gap-4">
+      {note === undefined ? null : <NoteCallout note={note} />}
       {list.length === 0 ? (
-        <p className="m-0 text-fg-muted">{words.NONE_YET}</p>
+        <EmptyState
+          title={words.NONE_TITLE}
+          description={words.NONE_LINE}
+          action={{ label: words.CONNECT, onClick: () => setConnecting({}) }}
+        />
       ) : (
-        <ul className="m-0 flex list-none flex-col divide-y divide-border rounded-lg border border-border p-0">
-          {list.map((connection) => (
-            <ConnectionRow
-              key={connection.id}
-              connection={connection}
-              onSignInAgain={() => setConnecting({ again: connection })}
-              onDisconnect={() => disconnect(connection)}
-            />
-          ))}
-        </ul>
+        <>
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
+            {list.map((connection) => (
+              <ConnectionRow
+                key={connection.id}
+                connection={connection}
+                onSignInAgain={() => setConnecting({ again: connection })}
+                onDisconnect={() => setDisconnecting(connection)}
+              />
+            ))}
+          </ul>
+          <div>
+            <Button variant="secondary" onClick={() => setConnecting({})}>
+              {words.CONNECT}
+            </Button>
+          </div>
+        </>
       )}
-      <div>
-        <Button variant="secondary" onClick={() => setConnecting({})}>
-          {words.CONNECT}
-        </Button>
-      </div>
+      {disconnecting === undefined ? null : (
+        <DisconnectDialog
+          connections={connections}
+          connection={disconnecting}
+          onDone={(result) => {
+            setDisconnecting(undefined);
+            if (result !== undefined) tell(result);
+          }}
+        />
+      )}
       {connecting === undefined ? null : (
         <ConnectDialog
           connections={connections}
           again={connecting.again}
           onClose={() => setConnecting(undefined)}
-          onCancelFailed={() => tell(words.CANCEL_FAILED, "attention")}
+          onCancelFailed={() =>
+            tell({ kind: "line", line: words.CANCEL_FAILED, tone: "attention" })
+          }
           {...(now === undefined ? {} : { now })}
         />
       )}

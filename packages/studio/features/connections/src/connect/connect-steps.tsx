@@ -1,142 +1,144 @@
-import { Button, Callout, useOpenExternal } from "@halonicjs/studio-kit";
-import type { AgentConnection, SignInChallenge } from "@halonicjs/studio-services";
+import { Dialog, IconTile, Spinner, useOpenExternal, WarningIcon } from "@halonicjs/studio-kit";
+import type { SignInChallenge } from "@halonicjs/studio-services";
 import { useEffect, useState } from "react";
 import * as words from "../connections-words.ts";
 import type { EndedResult } from "./sign-in-flow.ts";
 
-/** Re-renders once a second while mounted, for a timer written as text. */
-function useSecondTick(): void {
+/** How long a sign-in waits for approval, for the countdown's bar. */
+const signInMs = 10 * 60 * 1000;
+
+/**
+ * The time left on `challenge`, read again once a second while there is one, for a timer written
+ * as text. Without a challenge it doesn't tick.
+ */
+export function useLeftMs(
+  challenge: SignInChallenge | undefined,
+  now: () => number = Date.now,
+): number {
   const [, setTick] = useState(0);
   useEffect(() => {
+    if (challenge === undefined) return;
     const timer = setInterval(() => setTick((tick) => tick + 1), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [challenge]);
+  return challenge === undefined ? signInMs : Date.parse(challenge.expiresAt) - now();
 }
 
-/** The words the approval page shows too; faded once the sign-in has ended. */
-function Phrase({ phrase, faded }: { readonly phrase: string; readonly faded: boolean }) {
+/** The words the approval page shows too, in a row. */
+function Phrase({ phrase }: { readonly phrase: string }) {
   return (
-    <p
-      className={`m-0 rounded-lg border border-border px-4 py-3 text-center font-mono text-heading text-fg ${faded ? "opacity-30" : ""}`}
-      data-phrase
-    >
-      {phrase}
-    </p>
+    <div>
+      <span className="sr-only">{words.WORDS_LABEL}</span>
+      <p
+        className="m-0 rounded-lg border border-border bg-surface-subtle px-4 py-3 text-center text-heading font-semibold text-fg [word-spacing:18px]"
+        data-phrase
+      >
+        {phrase}
+      </p>
+    </div>
   );
 }
 
-/** "Time left to approve: 9:59", never below 0:00. */
-function TimeLeft({ leftMs }: { readonly leftMs: number }) {
+/** "9:42 left", and a bar that empties over the 10 minutes. */
+function Countdown({ leftMs }: { readonly leftMs: number }) {
+  const share = Math.max(0, Math.min(1, leftMs / signInMs));
   return (
-    <p className="m-0 text-small text-fg-muted" role="timer">
-      {words.timeLeft(leftMs)}
-    </p>
+    <div className="flex flex-col gap-1">
+      <div aria-hidden="true" className="h-1 overflow-hidden rounded-full bg-surface-subtle">
+        <div className="h-full bg-accent" style={{ width: `${share * 100}%` }} />
+      </div>
+      <p className="m-0 text-small text-fg-muted" role="timer">
+        {words.timeLeft(leftMs)}
+      </p>
+    </div>
   );
 }
 
 /**
- * A sign-in waiting for the board: the words to compare, the time left and the approval page.
- * When the time runs out it shows the ending at 0:00 by itself, without waiting for the engine.
+ * A sign-in waiting for the board: the words to compare, the time left, the key note, and the
+ * approval page, which opens in the browser while the dialog stays open.
  */
 export function WaitingStep({
+  title,
   challenge,
-  now,
+  leftMs,
   onCancel,
-  onStartAgain,
 }: {
+  readonly title: string;
   readonly challenge: SignInChallenge;
-  readonly now: () => number;
+  readonly leftMs: number;
   readonly onCancel: () => void;
-  readonly onStartAgain: () => void;
 }) {
-  useSecondTick();
   const openExternal = useOpenExternal();
-  const leftMs = Date.parse(challenge.expiresAt) - now();
-  if (leftMs <= 0) {
-    return (
-      <EndedStep
-        result={{ outcome: "expired" }}
-        challenge={challenge}
-        onStartAgain={onStartAgain}
-      />
-    );
-  }
   return (
-    <div className="flex flex-col gap-4">
-      <p className="m-0 text-fg">{words.PHRASE_LINE}</p>
-      <Phrase phrase={challenge.phrase} faded={false} />
-      <TimeLeft leftMs={leftMs} />
-      <div className="flex flex-wrap gap-2">
-        <Button variant="primary" onClick={() => void openExternal(challenge.approvalUrl)}>
-          {words.OPEN_APPROVAL}
-        </Button>
-        <Button variant="ghost" onClick={onCancel}>
-          {words.CANCEL}
-        </Button>
+    <Dialog
+      size="md"
+      title={title}
+      closeLabel={`Close ${title}`}
+      confirm={{ label: words.OPEN_APPROVAL, busyLabel: words.OPEN_APPROVAL }}
+      onConfirm={() => void openExternal(challenge.approvalUrl)}
+      onCancel={onCancel}
+    >
+      <div className="flex flex-col gap-4">
+        <p className="m-0 text-fg">{words.WORDS_LEAD}</p>
+        <Phrase phrase={challenge.phrase} />
+        <p className="m-0 flex items-center gap-2 text-fg-muted">
+          <span className="inline-grid size-4">
+            <Spinner />
+          </span>
+          {words.WAITING}
+        </p>
+        <Countdown leftMs={leftMs} />
+        <p className="m-0 text-small text-fg-muted">{words.KEY_NOTE}</p>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
-/** Why the sign-in ended, in a title and a line. */
-function endedWords(result: EndedResult): { readonly title: string; readonly line: string } {
+/** Why the sign-in ended, in a heading and a text. */
+function endingOf(result: EndedResult): words.Ending {
   switch (result.outcome) {
     case "expired":
-      return { title: words.EXPIRED_TITLE, line: words.EXPIRED_LINE };
+      return words.EXPIRED;
     case "cancelled":
-      return { title: words.CANCELLED_TITLE, line: words.CANCELLED_LINE };
+      return words.CANCELLED;
     case "refused":
-      return words.refusals[result.reason];
+      return words.companyMismatch(result.company);
   }
 }
 
-/** A sign-in that ended without connecting: why, its words faded, and Start again. */
+/** A sign-in that ended without connecting: an icon tile, why, and Close or Start again. */
 export function EndedStep({
+  title,
   result,
-  challenge,
+  onClose,
   onStartAgain,
 }: {
+  readonly title: string;
   readonly result: EndedResult;
-  readonly challenge: SignInChallenge;
+  readonly onClose: () => void;
   readonly onStartAgain: () => void;
 }) {
-  const ended = endedWords(result);
+  const ending = endingOf(result);
   return (
-    <div className="flex flex-col gap-4">
-      <Callout
-        tone="attention"
-        title={ended.title}
-        announce="focus"
-        action={{ label: words.START_AGAIN, onClick: onStartAgain }}
-      >
-        {ended.line}
-      </Callout>
-      <div aria-hidden="true" className="flex flex-col gap-2">
-        <Phrase phrase={challenge.phrase} faded />
-        {result.outcome === "expired" ? <TimeLeft leftMs={0} /> : null}
+    <Dialog
+      size="md"
+      title={title}
+      closeLabel={`Close ${title}`}
+      confirm={{ label: words.START_AGAIN, busyLabel: words.START_AGAIN }}
+      cancelLabel={words.CLOSE}
+      onConfirm={onStartAgain}
+      onCancel={onClose}
+    >
+      <div className="flex items-start gap-4" role="status">
+        <IconTile>
+          <WarningIcon />
+        </IconTile>
+        <div className="flex flex-col gap-1">
+          <h3 className="m-0 text-section text-fg">{ending.heading}</h3>
+          <p className="m-0 text-fg-muted">{ending.text}</p>
+        </div>
       </div>
-    </div>
-  );
-}
-
-/** The sign-in worked: which connection, and Done. */
-export function ConnectedStep({
-  connection,
-  onDone,
-}: {
-  readonly connection: AgentConnection;
-  readonly onDone: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      <p className="m-0 text-fg" role="status">
-        {words.connectedTo(connection.label)}
-      </p>
-      <div>
-        <Button variant="primary" onClick={onDone}>
-          {words.DONE}
-        </Button>
-      </div>
-    </div>
+    </Dialog>
   );
 }

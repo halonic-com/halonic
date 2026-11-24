@@ -122,9 +122,13 @@ export class FakeAgentConnections implements AgentConnections {
     this.changed();
   }
 
-  /** Ends the waiting sign-in as refused, such as by someone outside the company. */
-  refuse(reason: SignInRefusal): void {
-    this.end({ outcome: "refused", reason });
+  /** Ends the waiting sign-in as refused: someone outside the company, `company`, approved it. */
+  refuse(reason: "other-company", company?: string): void {
+    this.end(
+      company === undefined
+        ? { outcome: "refused", reason }
+        : { outcome: "refused", reason, company },
+    );
   }
 
   /** Ends the waiting sign-in as the server does after its 10 minutes. */

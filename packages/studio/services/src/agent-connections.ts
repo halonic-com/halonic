@@ -16,6 +16,8 @@ export interface AgentConnection {
   /** The address its sign-in goes to, such as `https://paperclip.acme.test`. */
   readonly address: string;
   readonly state: MessagingSourceState;
+  /** When its key expires, as ISO text, when the engine knows it. */
+  readonly keyExpiresAt?: string;
 }
 
 /** Why a sign-in was refused, before it started or once it was approved. */
@@ -34,7 +36,13 @@ export type SignInResult =
   | { readonly outcome: "expired" }
   /** It was cancelled, here or at the approval page. */
   | { readonly outcome: "cancelled" }
-  | { readonly outcome: "refused"; readonly reason: SignInRefusal };
+  | {
+      readonly outcome: "refused";
+      /** Only the approver can be refused once the sign-in started. */
+      readonly reason: "other-company";
+      /** The connection's company, from the workspace's connection file, when the engine knows it. */
+      readonly company?: string;
+    };
 
 /**
  * A sign-in that waits for the board's approval. The engine holds its key in memory and drops it

@@ -1,15 +1,18 @@
 import type { MessagingSourceState } from "@halonicjs/ports";
-import type { SignInRefusal } from "@halonicjs/studio-services";
 
-// Every string the Connect dialog and Settings › Connections show. The two fixed lines come from
-// HAL-17497; the rest is a first draft until Noah's screens (HAL-17498) replace it.
+// Every string the Connect dialog and Settings › Connections show, from Noah's wording table on
+// HAL-17498. "This key can do everything the board can in Paperclip", "Sign in again" and
+// "Offline, as of <HH:MM>" were fixed before it (HAL-17497).
 
 /** The section's name in Settings. */
 export const SECTION_TITLE = "Connections";
 /** The line under the section's name. */
-export const SECTION_LINE = "Where Halonic reads your agents, their cards and their chats.";
+export const SECTION_LINE =
+  "Where this workspace reads agents, cards and chats from. Nothing from them is saved in the workspace; Halonic keeps a small cache on this computer.";
 /** The section with no connection yet. */
-export const NONE_YET = "No connections yet.";
+export const NONE_TITLE = "No connections";
+export const NONE_LINE =
+  "Connect Paperclip to answer your agents’ cards and chat with them from Inbox and Messenger.";
 
 /** The button that opens the dialog, and the dialog's title for a new connection. */
 export const CONNECT = "Connect Paperclip";
@@ -20,93 +23,128 @@ export const SIGN_IN_AGAIN = "Sign in again";
 export const KEY_POWER = "This key can do everything the board can in Paperclip";
 /** The section when the engine couldn't list the connections. */
 export const LIST_FAILED =
-  "Halonic couldn't read the connections. Close Settings and open it again.";
+  "Halonic couldn’t read the connections. Close Settings and open it again.";
 /** After closing the dialog, when the engine couldn't cancel its sign-in. */
 export const CANCEL_FAILED =
-  "Halonic couldn't cancel the sign-in. Don't approve it in Paperclip: it ends by itself within 10 minutes.";
-/** "Halonic couldn't disconnect Paperclip · Halonic. Try again." */
+  "Halonic couldn’t cancel the sign-in. Don’t approve it in Paperclip: it ends by itself within 10 minutes.";
+/** "Halonic couldn’t disconnect Paperclip · Halonic. Try again." */
 export const disconnectFailed = (label: string): string =>
-  `Halonic couldn't disconnect ${label}. Try again.`;
+  `Halonic couldn’t disconnect ${label}. Try again.`;
 
-/** The row's button. */
-export const DISCONNECT = "Disconnect";
-/** The row's button while it runs. */
-export const DISCONNECTING = "Disconnecting…";
-
+/** The address step for a new connection, above the field. */
+export const CONNECT_LEAD =
+  "Answer your agents’ cards and chat with them from Halonic Inbox and Messenger. Everything stays in Paperclip; Halonic reads it live.";
+/** The address step when signing in again, above the field. */
+export const signInAgainLead = (label: string): string =>
+  `The key for ${label} has expired or was revoked. Sign in again to keep reading and answering.`;
 /** The address field. */
 export const ADDRESS_LABEL = "Paperclip address";
 /** Under the address field. */
 export const ADDRESS_HINT = "The address you open Paperclip at in your browser.";
 /** The address field's example. */
 export const ADDRESS_PLACEHOLDER = "https://paperclip.example.com";
-/** An address that isn't a web address. */
-export const ADDRESS_INVALID = "Enter a web address that starts with https://.";
-/** The confirming button of the address step, and while it runs. */
-export const START = "Connect";
+/** An address that isn't https, nor plain http on this computer. */
+export const ADDRESS_HTTPS_ONLY =
+  "Use an https address. Plain http works only for this computer (localhost).";
+/** Nothing answered at the address. */
+export const ADDRESS_UNREACHABLE =
+  "Halonic couldn’t reach Paperclip at this address. Check it and try again.";
+/** The engine may not sign in there, or what answered isn't Paperclip. */
+export const ADDRESS_NOT_PAPERCLIP =
+  "This address didn’t answer like Paperclip. Use the address you open Paperclip at in your browser.";
+/** The address step's confirming button, and while it runs. */
+export const CONTINUE = "Continue";
 export const STARTING = "Starting sign-in…";
+/** The engine couldn't be asked at all. */
+export const START_FAILED = "Halonic couldn’t start the sign-in. Try again.";
 
-/** The waiting step's lines. */
-export const PHRASE_LINE = "Approve the sign-in in Paperclip only if it shows these words:";
+/** The waiting step. */
+export const WORDS_LEAD = "Open the approval page. Approve only if Paperclip shows these words:";
+export const WORDS_LABEL = "Sign-in words";
+export const WAITING = "Waiting for you to approve in Paperclip…";
+export const KEY_NOTE =
+  "The key Halonic gets can do everything the board can in Paperclip. It is kept in this computer’s keychain.";
 export const OPEN_APPROVAL = "Open the approval page";
-export const CANCEL = "Cancel";
 
-/** "9:59": minutes and seconds left, never below 0:00. */
-export function clockOf(leftMs: number): string {
+/** "9:42 left": minutes and seconds, never below 0:00. */
+export function timeLeft(leftMs: number): string {
   const seconds = Math.max(0, Math.ceil(leftMs / 1000));
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} left`;
 }
 
-/** "Time left to approve: 9:59". A timer read as text, not a ticking announcement. */
-export const timeLeft = (leftMs: number): string => `Time left to approve: ${clockOf(leftMs)}`;
-
-/** The ending steps. */
-export const EXPIRED_TITLE = "The sign-in ended";
-export const EXPIRED_LINE = "Nobody approved it within 10 minutes. Start again for new words.";
-export const CANCELLED_TITLE = "The sign-in was cancelled";
-export const CANCELLED_LINE = "Start again to sign in.";
+/** The ending steps' buttons. */
+export const CLOSE = "Close";
 export const START_AGAIN = "Start again";
-export const DONE = "Done";
-export const START_FAILED = "Halonic couldn't start the sign-in. Try again.";
 
-/** "Connected to Paperclip · Halonic." */
-export const connectedTo = (label: string): string => `Connected to ${label}.`;
+/** Why a sign-in ended without connecting, in a heading and a text. */
+export interface Ending {
+  readonly heading: string;
+  readonly text: string;
+}
 
-/** Why a sign-in was refused, in a title and a line. */
-export const refusals: Record<SignInRefusal, { readonly title: string; readonly line: string }> = {
-  "address-not-allowed": {
-    title: "Halonic can't sign in at this address",
-    line: "Use the address you open Paperclip at in your browser.",
-  },
-  unreachable: {
-    title: "Paperclip didn't answer",
-    line: "Check the address and your connection, then start again.",
-  },
-  "other-company": {
-    title: "That account isn't in this company",
-    line: "Approve with an account of the company this connection is for.",
-  },
+export const EXPIRED: Ending = {
+  heading: "The sign-in expired",
+  text: "It wasn’t approved within 10 minutes, so nothing was connected. Start again to get new words.",
+};
+export const CANCELLED: Ending = {
+  heading: "The sign-in was cancelled in Paperclip",
+  text: "Nothing was connected. If you didn’t cancel it yourself, start again and check the words before you approve.",
+};
+/** The approver isn't in the connection's company; "this company" when the engine didn't say. */
+export function companyMismatch(company: string | undefined): Ending {
+  const name = company ?? "this company";
+  return {
+    heading: `This account isn’t in ${name}`,
+    text: `The account that approved isn’t a member of ${name} in Paperclip, so Halonic revoked the key and kept nothing. Start again and approve with an account in ${name}.`,
+  };
+}
+
+/** The row's parts. */
+export const READ_ONLY = "Read-only";
+export const DISCONNECT = "Disconnect";
+export const DISCONNECTING = "Disconnecting…";
+export const OFFLINE_CALLOUT =
+  "Paperclip isn’t answering. Inbox and Messenger show what was read last; answering is off until it’s back.";
+export const SIGNED_OUT_CALLOUT =
+  "Sign in again to keep reading and answering. Until then, Inbox and Messenger show what was read last.";
+
+/** A connection's state chip. */
+export const stateChips: Record<MessagingSourceState["kind"], string> = {
+  online: "Connected",
+  offline: "Offline",
+  "signed-out": "Signed out",
 };
 
-/** A connection's state in a word or two: "Connected", "Offline, as of 14:02", "Signed out". */
-export function stateWords(state: MessagingSourceState): string {
+/** What follows the host on the address line: "Checked 14:02 · key expires 24 Dec 2026". */
+export function stateMeta(state: MessagingSourceState, keyExpiresAt: string | undefined): string {
   switch (state.kind) {
-    case "online":
-      return "Connected";
+    case "online": {
+      const checked = `Checked ${timeOfDay(state.asOf)}`;
+      return keyExpiresAt === undefined ? checked : `${checked} · key expires ${day(keyExpiresAt)}`;
+    }
     case "offline":
       return `Offline, as of ${timeOfDay(state.asOf)}`;
     case "signed-out":
-      return "Signed out";
+      return "key expired or revoked";
   }
 }
 
-/** What the section says after Disconnect: the revoke worked, or the key stays valid a while. */
-export function disconnectedLine(
-  label: string,
-  result: { readonly revoked: true } | { readonly revoked: false; readonly validUntil: string },
-): string {
-  if (result.revoked) return `Disconnected ${label}. Paperclip has revoked its key.`;
-  return `Disconnected ${label}. Its key stays valid until ${day(result.validUntil)}; you can revoke it in Paperclip.`;
+/** The Disconnect confirmation. */
+export const disconnectTitle = (label: string): string => `Disconnect ${label}?`;
+export const DISCONNECT_TEXT =
+  "Halonic revokes its key in Paperclip and deletes the key and the cache from this computer. Your cards, tasks and chats stay in Paperclip.";
+
+/** After Disconnect, when Paperclip revoked the key. */
+export const disconnectedRevoked = (label: string): string =>
+  `Disconnected ${label}. Its key is revoked in Paperclip and deleted from this computer.`;
+/** After Disconnect, when the revoke failed: a bold first sentence, then the rest. */
+export function disconnectedStillValid(label: string, validUntil: string): Ending {
+  return {
+    heading: `Disconnected ${label}, but its key is still valid.`,
+    text: `Halonic deleted the key and the cache from this computer but couldn’t reach Paperclip to revoke it. The key stays valid until ${day(validUntil)}; revoke it in Paperclip to end it sooner.`,
+  };
 }
+export const OPEN_PAPERCLIP = "Open Paperclip";
 
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
