@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-17730; the board's ask on HAL-10 (24 Nov) after an approval of cloud#103 went unnoticed, which kept HAL-16864 and the tasks behind it blocked
 
-When the Agent tools plugin watches `halonic-com/cloud`, whose `main` rule asks for an approving GitHub review by an account other than the agents' shared one, the PR watcher shall count such a standing review on a pull request's head as its approval, shall comment on the task and ask Paperclip to wake its author once per head to merge it, shall mark the task done once it merged with `ci-ok` green as on `halonic`, and shall leave out of a pass, with a logged error, a watched repository after the first that its token doesn't reach.
+When the Agent tools plugin watches `halonic-com/cloud`, whose `main` rule asks for an approving GitHub review by an account other than the agents' shared one, the PR watcher shall count such a standing review on a pull request's head as its approval, shall comment on the task and ask Paperclip to wake its author once per head to merge it, shall mark the task done once it merged with `ci-ok` green as on `halonic`, shall keep and show no title of a private repository's pull request (Julian's condition for the token, HAL-17743), and shall leave out of a pass, with a logged error, a watched repository after the first that its token doesn't reach.
 
 ## Examples
 
@@ -26,6 +26,9 @@ When the Agent tools plugin watches `halonic-com/cloud`, whose `main` rule asks 
 - Given a token that reaches `halonic` but not `cloud`,
   when the watcher takes its snapshot,
   then it reads `halonic`, leaves `cloud` out and logs why; when the token doesn't reach `halonic`, the pass fails.
+- Given a private repository's pull request titled "feat: acme private plan",
+  when the snapshot is taken or `pr_status` and `my_prs` describe it,
+  then the snapshot keeps no title and the tools print "title not shown (private repository)".
 - Given no `repos` setting,
   when the plugin reads its settings,
   then it watches `halonic-com/halonic` and `halonic-com/cloud`, in that order.

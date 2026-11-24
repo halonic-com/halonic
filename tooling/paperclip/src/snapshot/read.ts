@@ -127,6 +127,8 @@ interface QueueNode {
 interface OpenPage {
   readonly repository: {
     readonly defaultBranchRef: { readonly name: string } | null;
+    /** Absent in recordings made before the field. */
+    readonly isPrivate?: boolean;
     /** Only on the first page, which asks for it. */
     readonly mergeQueue?: { readonly entries: { readonly nodes: readonly QueueNode[] } } | null;
     readonly pullRequests: Page<OpenNode>;
@@ -283,7 +285,11 @@ async function openFacts(
   };
 }
 
-function pullOf(node: PullNode, open: OpenFacts | null): SnapshotPull {
+/**
+ * A pull request's facts. A private repository's titles are left out: no text
+ * of its pull requests leaves it (Julian's condition for `cloud`, HAL-17743).
+ */
+function pullOf(node: PullNode, open: OpenFacts | null, keepTitle: boolean): SnapshotPull {
   let state: SnapshotPull["state"] = node.state === "MERGED" ? "merged" : "closed";
   if (open !== null) {
     state = "open";
@@ -291,7 +297,7 @@ function pullOf(node: PullNode, open: OpenFacts | null): SnapshotPull {
   return {
     number: node.number,
     url: node.url,
-    ...(node.title === undefined ? {} : { title: capped(node.title, titleCap) }),
+    ...(node.title === undefined || !keepTitle ? {} : { title: capped(node.title, titleCap) }),
     state,
     branch: node.headRefName,
     headRepo: node.headRepository?.nameWithOwner ?? null,
@@ -356,14 +362,16 @@ async function readRepo(
   const pulls: SnapshotPull[] = [];
   let defaultBranch = "main";
   let queue: QueueEntry[] = [];
+  let keepTitles = true;
   for (let after: string | null = null, first = true; first || after !== null; first = false) {
     const page = (await query(openPullsQuery, { ...names, after, withQueue: first })) as OpenPage;
     if (first) {
       defaultBranch = page.repository.defaultBranchRef?.name ?? defaultBranch;
       queue = await queueOf(page, repo, fallback);
+      keepTitles = page.repository.isPrivate !== true;
     }
     for (const node of page.repository.pullRequests.nodes) {
-      pulls.push(pullOf(node, await openFacts(node, repo, defaultBranch, fallback)));
+      pulls.push(pullOf(node, await openFacts(node, repo, defaultBranch, fallback), keepTitles));
     }
     const { hasNextPage, endCursor } = page.repository.pullRequests.pageInfo;
     after = hasNextPage ? endCursor : null;
@@ -374,7 +382,7 @@ async function readRepo(
     };
     const { nodes, pageInfo } = page.repository.pullRequests;
     const recent = nodes.filter((node) => Date.parse(node.updatedAt) >= since);
-    pulls.push(...recent.map((node) => pullOf(node, null)));
+    pulls.push(...recent.map((node) => pullOf(node, null, keepTitles)));
     more = pageInfo.hasNextPage && recent.length === nodes.length;
     after = pageInfo.endCursor;
   }

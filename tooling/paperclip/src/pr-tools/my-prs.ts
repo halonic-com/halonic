@@ -7,6 +7,8 @@ import {
   mergeableOf,
   type PrStatus,
   type PullDetails,
+  shownTitle,
+  titleText,
   untrustedNote,
 } from "./pr-status.ts";
 
@@ -20,7 +22,8 @@ import {
 export interface MyPr {
   readonly repo: string;
   readonly number: number;
-  readonly title: string;
+  /** Left out for a private repository's pull request (`shownTitle`). */
+  readonly title?: string;
   readonly url: string;
   readonly task: string | undefined;
   readonly draft: boolean;
@@ -91,10 +94,11 @@ export async function myPrs(
           everyPage(get, `/repos/${repo}/issues/${number}/comments`) as Promise<PullComment[]>,
         ]);
         const mergeable = mergeableOf(pull);
+        const title = shownTitle(pull);
         return {
           repo,
           number,
-          title: pull.title,
+          ...(title === undefined ? {} : { title }),
           url: pull.html_url,
           task: taskOfBranch(pull.head.ref),
           draft: pull.draft === true,
@@ -137,7 +141,7 @@ export function myPrsText(
       `mergeable ${pr.mergeable}`,
       pr.approvedOnHead ? "approved on head" : "not approved on head",
     ].join(", ");
-    return `${pr.needsYou ? "NEEDS YOU " : ""}${label(pr, oneRepo)} (${pr.task ?? "no task"}): ${facts}; title ${JSON.stringify(pr.title ?? "")}`;
+    return `${pr.needsYou ? "NEEDS YOU " : ""}${label(pr, oneRepo)} (${pr.task ?? "no task"}): ${facts}; ${titleText(pr.title)}`;
   });
   const outOfSync = prs.filter((pr) => pr.needsYou).length;
   return [

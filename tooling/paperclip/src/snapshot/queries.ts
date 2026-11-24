@@ -29,6 +29,7 @@ const checkRuns = `contexts(first: 100) {
 export const openPullsQuery = `query OpenPulls($owner: String!, $name: String!, $after: String, $withQueue: Boolean!) {
   repository(owner: $owner, name: $name) {
     defaultBranchRef { name }
+    isPrivate
     mergeQueue @include(if: $withQueue) {
       entries(first: 100) {
         nodes {

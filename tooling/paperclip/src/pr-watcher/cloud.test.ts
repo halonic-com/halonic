@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { readSettings } from "../plugin/job.ts";
 import { type MyPr, myPrs, myPrsText } from "../pr-tools/my-prs.ts";
+import { type PullDetails, shownTitle, titleText } from "../pr-tools/pr-status.ts";
 import { githubApprovals } from "../snapshot/github-approvals.ts";
 import type { GitHubQuery } from "../snapshot/graphql.ts";
 import { type CheckFallback, takeSnapshot } from "../snapshot/read.ts";
@@ -251,6 +252,71 @@ verifies("paperclip.pr-watcher-cloud", () => {
       "halonic#5701",
       "cloud#103",
     ]);
+  });
+
+  test("keeps and shows no title of a private repository's pull request", async () => {
+    const privateTitle = "feat: acme private plan";
+    const query: GitHubQuery = async (document) =>
+      document.includes("ClosedPulls")
+        ? {
+            repository: {
+              pullRequests: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [
+                  {
+                    number: 102,
+                    url: `https://github.com/${cloud}/pull/102`,
+                    title: privateTitle,
+                    state: "MERGED",
+                    updatedAt: "2026-11-24T18:00:00Z",
+                    mergedAt: "2026-11-24T18:00:00Z",
+                    headRefName: branch,
+                    headRefOid: head,
+                    baseRefName: "main",
+                    headRepository: { nameWithOwner: cloud },
+                    mergeCommit: { oid: older },
+                  },
+                ],
+              },
+            },
+          }
+        : { repository: { ...emptyRepository.repository, isPrivate: true } };
+    const snapshot = await takeSnapshot({
+      query,
+      repos: [cloud],
+      now: new Date("2026-11-24T18:20:00Z"),
+      fallback: noFallback,
+    });
+    expect(snapshot.repos[0]?.pulls.map(({ number }) => number)).toEqual([102]);
+    expect(JSON.stringify(snapshot)).not.toContain(privateTitle);
+    const details = (isPrivate: boolean): PullDetails => ({
+      html_url: `https://github.com/${cloud}/pull/103`,
+      title: privateTitle,
+      state: "open",
+      merged_at: null,
+      mergeable: true,
+      head: { sha: head, ref: branch, repo: { full_name: cloud } },
+      base: { ref: "main", repo: { private: isPrivate } },
+    });
+    expect(shownTitle(details(true))).toBeUndefined();
+    expect(shownTitle(details(false))).toBe(privateTitle);
+    expect(titleText(undefined)).toBe("title not shown (private repository)");
+    const { title: _shown, ...untitled } = {
+      repo: cloud,
+      number: 103,
+      title: "",
+      url: `https://github.com/${cloud}/pull/103`,
+      task: "HAL-103",
+      draft: false,
+      head,
+      ciOk: "success" as const,
+      mergeable: "yes" as const,
+      approvedOnHead: true,
+      needsYou: false,
+    };
+    expect(myPrsText("mateo", [untitled])).toContain(
+      "#103 (HAL-103): ready, ci-ok success, mergeable yes, approved on head; title not shown (private repository)",
+    );
   });
 
   test("watches halonic and cloud when no repos are set", () => {

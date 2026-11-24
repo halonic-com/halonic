@@ -22,7 +22,8 @@ export interface PrStatus {
   readonly repo: string;
   readonly number: number;
   readonly url: string;
-  readonly title: string;
+  /** Left out for a private repository's pull request (`shownTitle`). */
+  readonly title?: string;
   readonly state: "open" | "merged" | "closed";
   readonly draft: boolean;
   readonly branch: string;
@@ -60,7 +61,24 @@ export interface PullDetails {
     readonly ref: string;
     readonly repo?: { readonly full_name: string } | null;
   };
-  readonly base: { readonly ref: string };
+  readonly base: { readonly ref: string; readonly repo?: { readonly private?: boolean } | null };
+}
+
+/**
+ * The title, or undefined for a private repository's pull request: no text of
+ * a private repository's pull requests leaves it (Julian's condition for the
+ * `cloud` token, HAL-17743).
+ */
+export function shownTitle(pull: PullDetails): string | undefined {
+  // Older recordings have no title: an empty one, as before.
+  return pull.base.repo?.private === true ? undefined : (pull.title ?? "");
+}
+
+/** How the tools print a title: JSON-quoted, or a note when it isn't shown. */
+export function titleText(title: string | undefined): string {
+  return title === undefined
+    ? "title not shown (private repository)"
+    : `title ${JSON.stringify(title)}`;
 }
 
 /** `yes`, `conflict`, or `unknown` while GitHub is still working it out. */
@@ -128,11 +146,12 @@ export async function prStatus(get: GitHubGet, repo: string, number: number): Pr
     manifests,
   });
   const found = approvals(comments, { head, author, reviewer });
+  const title = shownTitle(pull);
   return {
     repo,
     number,
     url: pull.html_url,
-    title: pull.title,
+    ...(title === undefined ? {} : { title }),
     state,
     draft: pull.draft === true,
     branch: pull.head.ref,
@@ -224,7 +243,7 @@ export function statusText(status: PrStatus): string {
   const steps = nextSteps(status);
   return [
     `#${status.number} (${status.repo})`,
-    `${untrustedNote}; title ${JSON.stringify(status.title ?? "")}; branch ${JSON.stringify(status.branch)}`,
+    `${untrustedNote}; ${titleText(status.title)}; branch ${JSON.stringify(status.branch)}`,
     `${status.state}${status.draft ? ", draft" : ""}; task ${status.task ?? "none"}; author ${status.author ?? "unknown"}`,
     ...headFactsText({ ...status, behindBase: status.behindBase ?? "n/a" }),
     `${status.changedLines} changed lines; reviewer by the path rules: ${status.reviewer}`,
