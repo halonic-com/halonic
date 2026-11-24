@@ -1,6 +1,6 @@
 # @halonicjs/assistant
 
-The Build chat's tools: what the Assistant may read, check and change in a workspace. It runs
+The Build chat's tools and the rules of its chats: what the Assistant may read, check and change in a workspace. It runs
 anywhere `ChatService` runs: the desktop app, a served window and later the CLI.
 
 - **Layer:** core
@@ -24,6 +24,12 @@ anywhere `ChatService` runs: the desktop app, a served window and later the CLI.
   "<severity> <path>: <message>" lines or "No problems." (`assistant.build.validate-with-proposals`).
 - **`toolTexts`**: what the tools tell the model as tool results (flow-assistant 3.1 and 3.7, AI
   changes 1.11), for the chat's tool line to show in its details.
+- **The session rules** (`sessions/session-rules.ts`), pure functions over the `ChatSessions`
+  port's `SavedChat`: a draft (no message yet) is never saved, `titleFromFirstMessage` cuts at 57
+  characters plus "…", `chatsToDrop` keeps each workspace's newest 40, `recentFirst` orders them,
+  `chatToSave` cuts tool results over 4,000 characters, and `restoredChat` brings a chat that was
+  answering back stopped, for "Stopped when Halonic closed." (`assistant.sessions.*`, H14). The
+  memory store is `MemoryChatSessions` in `@halonicjs/adapter-memory`.
 
 ## Example
 

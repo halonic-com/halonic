@@ -19,6 +19,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | --- | --- | --- | --- | --- |
 | `AgentPlacementStore` | `agent-placement-store.ts` | 2 | each agent's "this computer" choice in the user's profile, keyed by workspace, hub and agent id; `AgentPlacement` decides | `agent-placement-store` |
 | `BlobStore` | `blob-store.ts` | 1 | content-addressed bytes: attachments, large payloads, exports | `blob-store` |
+| `ChatSessions` | `chat-sessions.ts` | 1 | each workspace's Build and agent chats in the user's profile on this computer; `core/assistant` decides what is kept | `chat-sessions` |
 | `Clock` | `clock.ts` | 1 | the current time | `clock` |
 | `ConnectionSettingsStore` | `connection-settings-store.ts` | 1 | each connector's "allow sending" setting in the user's profile; `ConnectionSettings` decides | `connection-settings-store` |
 | `ConnectorClient` | `connector-client.ts` | 1 | connector tools (MCP over HTTP or stdio, built-in Google), and their factory | `connector-client` |
@@ -127,6 +128,7 @@ next to the ports:
 | `foldRecords`, `compactedChanges` | fold record changes into the current records, and into one `seed` each when compacting | `record-fold` |
 | `checkCommitId` | refuses any `Vcs` version that is not a full commit id, with a `RangeError` | `vcs-commit-ref` |
 | `isAgentPlacementFor` | whether a stored agent placement is valid for its key | `agent-placement-store` |
+| `isSavedChat`, `savedChatIdPattern` | whether a stored chat is valid; the id rule that lets an adapter use the id as a file name | `chat-sessions` |
 | `isInstructionTrustFor` | whether a stored trusted-instructions record is valid for its key | `instruction-trust-store` |
 | `isUnreadableToolApprovalError`, `maxWaitingVersions` | recognise an unreadable tool approval without `instanceof`, and how many waiting versions of a tool are kept | `listed-tool-approval` |
 | `priceOf` | what a model call costs from a `ModelPrice` and the tokens used | `model-price` |

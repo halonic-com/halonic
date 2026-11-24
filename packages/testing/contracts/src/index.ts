@@ -5,6 +5,12 @@ export {
   type MakeAgentPlacementStore,
 } from "./agent-placement-store.ts";
 export { blobStoreContract, type MakeBlobStore } from "./blob-store.ts";
+export {
+  type ChatSessionsHarness,
+  chatSessionsContract,
+  type MakeChatSessions,
+  savedChat,
+} from "./chat-sessions.ts";
 export { type ControlledClock, clockContract, type MakeClock } from "./clock.ts";
 export {
   type ConnectionSettingsStoreHarness,
