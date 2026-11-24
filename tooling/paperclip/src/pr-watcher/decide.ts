@@ -25,6 +25,8 @@ export interface PullFacts {
   readonly inQueue: boolean;
   /** Open only: its base changed after its last reopen or push, so GitHub keeps it blocked. */
   readonly retargeted: boolean;
+  /** Open only: checks the merge queue requires with no run on the head, such as `Guard notes`. */
+  readonly missingChecks?: readonly string[];
   /** Open only: the newest review or inline comment made on the current head. */
   readonly latestReview: { readonly id: string; readonly at: string } | undefined;
   /** Open only: our reviewers' signed approvals, oldest first, each with the head it names. */

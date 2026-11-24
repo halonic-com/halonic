@@ -129,6 +129,8 @@ export interface OpenFacts {
   readonly failingChecks?: readonly string[];
   /** The checks on the head still running, by name, sorted (a cancelled or skipped run counts as still to come). Added like `failingChecks`. */
   readonly pendingChecks?: readonly string[];
+  /** Required checks with no run on the head, by workflow name, such as `Guard notes` (HAL-17760). Added like `failingChecks`. */
+  readonly missingChecks?: readonly string[];
   /** Reviewers' findings by severity tag, counts only, of the newest 50 reviews and 100 comments. Added like `failingChecks`. */
   readonly reviewCounts?: SeverityCounts;
 }

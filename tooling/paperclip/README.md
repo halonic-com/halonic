@@ -84,7 +84,10 @@ requests too. When one is out of draft, not in the merge queue, green on its
 head and not approved on it, and the watcher's "ready for review" comment for
 that head is more than an hour old, it comments once per head on the task,
 "PR watcher: waiting for review for over 1 h: #N, head `abc1234`, handed over
-at <time>.", and wakes nobody. The pass summary and the metric
+at <time>.", and wakes nobody. When a check the merge queue requires has no
+run on that head (today `Guard notes`, the organisation's required workflow,
+which GitHub runs only on some events), the note adds "; no `Guard notes` run
+on this head". The pass summary and the metric
 `pr_watcher.review_waits` count these notes, so Chief's team check can list
 them.
 

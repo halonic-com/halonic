@@ -43,6 +43,14 @@ verifies("paperclip.pr-watcher-review-wait", () => {
     expect(run.handoffs).toEqual([]);
   });
 
+  test("names a required check with no run on the head next to the missing approval", async () => {
+    const run = watcher({ extra: { missingChecks: ["Guard notes"] } });
+    expect(await run.run()).toMatchObject({ reviewWaits: 1 });
+    expect(notes(run)[0]?.split("\n")[0]).toBe(
+      "PR watcher: waiting for review for over 1 h: #5701, head `5701aaa`, handed over at 2026-11-24 15:59 UTC; no `Guard notes` run on this head.",
+    );
+  });
+
   test("notes it for Julian too", async () => {
     const run = watcher({ held: task(5701, agents.julian, { branch: mateoBranch }) });
     expect(await run.run()).toMatchObject({ reviewWaits: 1 });

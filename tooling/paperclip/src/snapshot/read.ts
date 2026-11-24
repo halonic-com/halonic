@@ -11,6 +11,7 @@ import {
 import { githubApprovals } from "./github-approvals.ts";
 import type { GitHubQuery } from "./graphql.ts";
 import { closedPullsQuery, commitBatchSize, commitChecksQuery, openPullsQuery } from "./queries.ts";
+import { missingRequired } from "./required-checks.ts";
 import { capped, severityCounts } from "./severity.ts";
 import {
   type OpenFacts,
@@ -279,6 +280,7 @@ async function openFacts(
     baseChangedSincePush: baseChangedSincePush(node, defaultBranch),
     ...(node.author === undefined ? {} : { author: node.author?.login ?? null }),
     ...checksOf(rollup),
+    missingChecks: missingRequired(rollup),
     reviewCounts: severityCounts(
       [...reviews.map(rest), ...conversation].filter(byReviewer).map((item) => item.body),
     ),

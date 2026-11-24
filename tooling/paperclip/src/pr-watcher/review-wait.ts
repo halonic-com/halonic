@@ -74,12 +74,21 @@ function utcMinute(iso: string): string {
   return `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
+/** What else the queue will miss on the head: `; no \`Guard notes\` run on this head`, or nothing. */
+function missingText(pull: PullFacts): string {
+  const missing = pull.missingChecks ?? [];
+  if (missing.length === 0) {
+    return "";
+  }
+  return `; no ${missing.map((name) => `\`${name}\``).join(" or ")} run on this head`;
+}
+
 /** The note on the task: one line per pull request, then the markers. */
 export function reviewWaitMessage(waits: readonly ReviewWait[]): string {
   return [
     ...waits.map(
       ({ pull, handedAt }) =>
-        `PR watcher: waiting for review for over 1 h: #${pull.number}, head \`${short(pull.head)}\`, handed over at ${utcMinute(handedAt)}.`,
+        `PR watcher: waiting for review for over 1 h: #${pull.number}, head \`${short(pull.head)}\`, handed over at ${utcMinute(handedAt)}${missingText(pull)}.`,
     ),
     ...waits.map(({ pull }) => marker(reviewWaitKey(pull))),
   ].join("\n");
