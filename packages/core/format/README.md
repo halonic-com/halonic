@@ -348,3 +348,24 @@ those sites without anyone seeing it first. Keep `allowedSites` to the sites
 you would let the agent send your files to. Each Claude Code call Halonic
 answers is in the run log as `harness.allowed`, and the run's changes still
 come back as a proposal you accept or reject.
+
+## Components in chat replies
+
+An optional `chatUi` block lets an agent draw components in its Studio chat
+replies instead of text only (requirement `agent-chat-ui`). Its one field,
+`components`, names the ones it may use: `card`, `table`, `form` and
+`buttons`, at least one, each once.
+
+```yaml
+id: helper
+name: Helper
+chatUi:
+  components: [card, table, form, buttons]
+```
+
+Left out, components are off and the agent replies in text. An unknown name,
+such as `chart`, fails with a message that names it and lists the four known
+ones. `chatUi` only says how a reply may be shown; `output` still says what
+the answer's data is, and neither changes the other. A component never
+changes what a run may do: a button or a form sends a chat message the user
+can see, as if they had typed it.

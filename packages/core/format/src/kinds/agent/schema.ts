@@ -1,5 +1,6 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { agentId, collectionId, id, ModelParams, version } from "../../shared/fields.ts";
+import { ChatUi } from "./chat-ui.ts";
 import { HarnessLimits } from "./harness-limits.ts";
 import {
   AgentAsks,
@@ -129,6 +130,8 @@ export const Agent = s
      * in its working folder while it runs inside Halonic's sandbox.
      */
     asks: AgentAsks.optional(),
+    /** Components the agent may draw in its Studio chat replies; text only when left out. */
+    chatUi: ChatUi.optional(),
   })
   .strict();
 
