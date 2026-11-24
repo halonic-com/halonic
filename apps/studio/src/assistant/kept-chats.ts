@@ -1,4 +1,13 @@
-import type { ChatMessage } from "@halonicjs/ports";
+import {
+  chatsToDrop,
+  chatToSave,
+  draftTitle,
+  isDraft,
+  recentFirst,
+  restoredChat,
+  titleAfterSend,
+} from "@halonicjs/assistant";
+import type { ChatMessage, ChatSessions, SavedChatSummary } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { ChatKind, ChatModel } from "@halonicjs/studio-feature-assistant/api";
 
@@ -11,98 +20,192 @@ export interface KeptChat {
   readonly model: ChatModel;
   readonly messages: readonly ChatMessage[];
   readonly draft: boolean;
+  /** True when it was answering as Halonic closed, until its next message (H14). */
+  readonly stoppedWhenClosed: boolean;
 }
 
-const newChatTitle = "New chat";
-const kept = 40;
+/** Where the chats of one workspace are saved. */
+export interface ChatStore {
+  readonly sessions: ChatSessions;
+  /** The workspace's resolved real path, which names it in the store. */
+  readonly location: string;
+}
+
+/** What {@link KeptChats} works with. */
+export interface KeptChatsParts {
+  readonly store: ChatStore;
+  readonly now: () => Date;
+  /** Hears of every chat that goes, deleted or past the 40, so its holder can let go of it. */
+  readonly onGone?: ((chatId: string) => void) | undefined;
+  /** Hears of a chat the store couldn't save or delete; the chat stays in the window. */
+  readonly onSaveFailed?: ((error: unknown) => void) | undefined;
+}
 
 /**
- * The chats of one open workspace, in memory while the window is open (flow-assistant 5.4): a
- * draft until its first message, its title from that message, the 40 most recently used. The
- * sessions port of T14 PR 2 and its store on disk (PR 3) take its place; until then a chat goes
- * when the window closes.
+ * The chats of one open workspace (flow-assistant 5.4), kept in the window and saved in the
+ * {@link ChatSessions} store, so they come back when the workspace opens again. The rules are
+ * `@halonicjs/assistant`'s: a draft until its first message and never saved, its title from that
+ * message, the 40 most recently used, and a chat that was answering comes back stopped.
+ *
+ * The chats are read from the store once, on first use. Every change is saved in the order it
+ * happened; {@link KeptChats.saved} waits for the saves started so far.
  */
 export class KeptChats {
+  readonly #parts: KeptChatsParts;
   readonly #chats = new Map<string, KeptChat>();
-  readonly #now: () => Date;
-  readonly #onGone: (chatId: string) => void;
+  readonly #answering = new Set<string>();
+  #read: Promise<void> | undefined;
+  #saving: Promise<void> = Promise.resolve();
   #made = 0;
 
-  /** `onGone` hears of every chat that goes, deleted or past the 40, so its holder can let go of it. */
-  constructor(now: () => Date, onGone: (chatId: string) => void = () => {}) {
-    this.#now = now;
-    this.#onGone = onGone;
+  constructor(parts: KeptChatsParts) {
+    this.#parts = parts;
   }
 
   /** The kept chats, most recently used first, drafts left out. */
-  list(): readonly KeptChat[] {
-    return [...this.#chats.values()]
-      .filter((chat) => !chat.draft)
-      .sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt));
+  async list(): Promise<readonly KeptChat[]> {
+    await this.#readSaved();
+    return this.#listed();
   }
 
   /** One chat, draft or kept; rejects with `not_found` when it isn't there. */
-  get(chatId: string): KeptChat {
-    const chat = this.#chats.get(chatId);
-    if (chat === undefined) throw new KindedError("not_found", "This chat isn't there any more.");
-    return chat;
+  async get(chatId: string): Promise<KeptChat> {
+    await this.#readSaved();
+    return this.#got(chatId);
   }
 
   /** A new draft of `kind` on `model`, or the empty draft of that kind there is already. */
-  newChat(kind: ChatKind, model: ChatModel): KeptChat {
+  async newChat(kind: ChatKind, model: ChatModel): Promise<KeptChat> {
+    await this.#readSaved();
     const empty = [...this.#chats.values()].find((chat) => chat.draft && chat.kind === kind);
     if (empty !== undefined) return empty;
     this.#made += 1;
     const chat: KeptChat = {
-      id: `chat-${this.#now().getTime()}-${this.#made}`,
+      id: `chat-${this.#parts.now().getTime()}-${this.#made}`,
       kind,
-      title: newChatTitle,
-      lastUsedAt: this.#now().toISOString(),
+      title: draftTitle,
+      lastUsedAt: this.#parts.now().toISOString(),
       model,
       messages: [],
       draft: true,
+      stoppedWhenClosed: false,
     };
     this.#chats.set(chat.id, chat);
     return chat;
   }
 
-  /** Adds a message sent or received: the chat is kept from now on, and the oldest past 40 goes. */
+  /**
+   * Adds a message sent or received to a chat already read with {@link KeptChats.get}: the chat is
+   * saved from its first message from the person on, and the oldest past 40 is deleted.
+   */
   add(chatId: string, message: ChatMessage): void {
-    const chat = this.get(chatId);
-    const first = chat.draft && message.role === "user";
-    this.#chats.set(chatId, {
+    const chat = this.#got(chatId);
+    const messages = [...chat.messages, message];
+    this.#set({
       ...chat,
-      title: first ? titleOf(message.content) : chat.title,
-      lastUsedAt: this.#now().toISOString(),
-      messages: [...chat.messages, message],
-      draft: chat.draft && !first,
+      title:
+        message.role === "user" && chat.draft
+          ? titleAfterSend(chat.title, message.content)
+          : chat.title,
+      lastUsedAt: this.#parts.now().toISOString(),
+      messages,
+      draft: isDraft(messages),
+      stoppedWhenClosed: false,
     });
-    for (const old of this.list().slice(kept)) this.#remove(old.id);
+    for (const old of chatsToDrop(this.#listed().map(summaryOf))) this.#remove(old);
   }
 
   /** Changes what the person may change: the title or the model. */
-  change(chatId: string, change: Partial<Pick<KeptChat, "title" | "model">>): void {
-    this.#chats.set(chatId, { ...this.get(chatId), ...change });
+  async change(chatId: string, change: Partial<Pick<KeptChat, "title" | "model">>): Promise<void> {
+    this.#set({ ...(await this.get(chatId)), ...change });
+  }
+
+  /** Marks whether the chat is answering, saved so a chat cut off by closing comes back stopped. */
+  answering(chatId: string, answering: boolean): void {
+    if (answering) this.#answering.add(chatId);
+    else this.#answering.delete(chatId);
+    const chat = this.#chats.get(chatId);
+    if (chat !== undefined) this.#set(chat);
   }
 
   /** Removes the chat; rejects with `not_found` when it isn't there. */
-  delete(chatId: string): void {
-    this.get(chatId);
+  async delete(chatId: string): Promise<void> {
+    await this.get(chatId);
     this.#remove(chatId);
+  }
+
+  /** Waits for every save and delete started so far. */
+  saved(): Promise<void> {
+    return this.#saving;
+  }
+
+  #readSaved(): Promise<void> {
+    this.#read ??= this.#restore();
+    return this.#read;
+  }
+
+  async #restore(): Promise<void> {
+    const { sessions, location } = this.#parts.store;
+    for (const summary of await sessions.list(location)) {
+      const saved = await sessions.load(location, summary.id);
+      if (saved === null) continue;
+      const { chat, stoppedWhenClosed } = restoredChat(saved);
+      const { id, kind, title, lastUsedAt, model, messages } = chat;
+      // A chat made in this window before the store answered wins over its saved copy.
+      if (this.#chats.has(id)) continue;
+      this.#chats.set(id, {
+        id,
+        kind,
+        title,
+        lastUsedAt,
+        model,
+        messages,
+        draft: false,
+        stoppedWhenClosed,
+      });
+    }
+  }
+
+  #listed(): readonly KeptChat[] {
+    return [...this.#chats.values()]
+      .filter((chat) => !chat.draft)
+      .sort((left, right) => recentFirst(summaryOf(left), summaryOf(right)));
+  }
+
+  #got(chatId: string): KeptChat {
+    const chat = this.#chats.get(chatId);
+    if (chat === undefined) throw new KindedError("not_found", "This chat isn't there any more.");
+    return chat;
+  }
+
+  /** Keeps the chat and saves it, unless it is a draft. */
+  #set(chat: KeptChat): void {
+    this.#chats.set(chat.id, chat);
+    const toSave = chatToSave({
+      ...summaryOf(chat),
+      answering: this.#answering.has(chat.id),
+      model: chat.model,
+      messages: [...chat.messages],
+    });
+    if (toSave !== null) this.#store((sessions, location) => sessions.save(location, toSave));
   }
 
   #remove(chatId: string): void {
     this.#chats.delete(chatId);
-    this.#onGone(chatId);
+    this.#answering.delete(chatId);
+    this.#store((sessions, location) => sessions.delete(location, chatId));
+    this.#parts.onGone?.(chatId);
+  }
+
+  #store(change: (sessions: ChatSessions, location: string) => Promise<void>): void {
+    const { sessions, location } = this.#parts.store;
+    this.#saving = this.#saving
+      .then(() => change(sessions, location))
+      .catch((error: unknown) => this.#parts.onSaveFailed?.(error));
   }
 }
 
-/**
- * A chat's title from its first message: the first line, spaces collapsed, cut at 57 characters
- * and "…" when longer than 60 (`assistant.sessions.title-from-first-message`).
- */
-function titleOf(message: string): string {
-  const line = (message.trim().split("\n")[0] ?? "").replace(/\s+/g, " ").trim();
-  if (line === "") return newChatTitle;
-  return line.length > 60 ? `${line.slice(0, 57)}…` : line;
+function summaryOf(chat: KeptChat): SavedChatSummary {
+  const { id, kind, title, lastUsedAt } = chat;
+  return { id, kind, title, lastUsedAt, answering: false };
 }

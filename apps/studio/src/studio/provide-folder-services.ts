@@ -1,6 +1,7 @@
 import { AgentHostChat } from "@halonicjs/adapter-agent-host-client";
 import {
   type EngineLockLostKind,
+  TauriChatSessions,
   TauriDefinitionStore,
   type TauriFileShell,
   TauriInstructionTrustStore,
@@ -260,6 +261,7 @@ export function provideFolderServices(
     engine: engineConnection,
     name,
     askTrust,
+    chatSessions: new TauriChatSessions(ipc),
   });
   // The assistant's changes to an agent, for its page's item bar and marks (AI changes 1.2).
   services.provide(

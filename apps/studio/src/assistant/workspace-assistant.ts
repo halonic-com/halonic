@@ -38,7 +38,7 @@ import { EngineNotAnswering, WorkspaceUntrusted } from "@halonicjs/studio-shell"
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
 import { agentOfKind, chatAgentsOf, type HasKey, modelOptionsOf } from "./chat-models.ts";
-import { type KeptChat, KeptChats } from "./kept-chats.ts";
+import { type ChatStore, type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
   assistantModelOf,
   authoringTurnLimitOf,
@@ -81,6 +81,8 @@ export interface WorkspaceAssistantParts {
   readonly engine?: WorkspaceAssistantEngine | undefined;
   /** The workspace's name, as the window shows it. */
   readonly workspaceName: string;
+  /** Where the workspace's chats are saved, so they come back when it opens again. */
+  readonly chats: ChatStore;
   /** Opens the window's trust check; absent where there is none. */
   readonly askTrust?: (() => Promise<"trusted" | "declined">) | undefined;
   /** Whether a key is stored under a secret's name, for the Model menu's reasons. */
@@ -120,9 +122,12 @@ export class WorkspaceAssistant implements AssistantHost {
   constructor(parts: WorkspaceAssistantParts) {
     this.#parts = parts;
     // A chat's tools go with the chat, deleted or dropped past the 40 (HAL-17294).
-    this.#chats = new KeptChats(parts.now ?? (() => new Date()), (chatId) =>
-      this.#tools.delete(chatId),
-    );
+    this.#chats = new KeptChats({
+      store: parts.chats,
+      now: parts.now ?? (() => new Date()),
+      onGone: (chatId) => this.#tools.delete(chatId),
+      onSaveFailed: (error) => console.error("Saving a chat", error),
+    });
     this.askTrust = parts.askTrust;
     this.#stopReview = parts.review.onDidChange((paths) =>
       this.#changed({ kind: "review", paths }),
@@ -143,7 +148,7 @@ export class WorkspaceAssistant implements AssistantHost {
 
   async authoringOnly(chatId: string): Promise<boolean> {
     if (this.#parts.isTrusted() || this.#parts.answerAuthoring === undefined) return false;
-    const chat = this.#chats.get(chatId);
+    const chat = await this.#chats.get(chatId);
     const loaded = await loadWorkspace(this.#parts.files);
     const settings = chatSettingsOf(chat.model, loaded, this.#parts.settings);
     return chat.kind === "build" && settings.agent !== undefined;
@@ -151,24 +156,24 @@ export class WorkspaceAssistant implements AssistantHost {
 
   async chats(): Promise<readonly ChatSummary[]> {
     const items = await this.#parts.review.itemsWithChangesToReview();
-    return this.#chats.list().map((chat) => this.#summaryOf(chat, items));
+    return (await this.#chats.list()).map((chat) => this.#summaryOf(chat, items));
   }
 
   async chat(chatId: string): Promise<Chat> {
-    const chat = this.#chats.get(chatId);
+    const chat = await this.#chats.get(chatId);
     const items = await this.#parts.review.itemsWithChangesToReview();
-    return { ...this.#summaryOf(chat, items), ...chat, stoppedWhenClosed: false };
+    return { ...this.#summaryOf(chat, items), ...chat };
   }
 
   /** A new chat starts on the model of flow-assistant 5.2's order. */
   async newChat(kind: ChatKind): Promise<Chat> {
     const loaded = await loadWorkspace(this.#parts.files);
-    const recent = this.#chats.list().find((chat) => chat.kind === "build");
+    const recent = (await this.#chats.list()).find((chat) => chat.kind === "build");
     const model: ChatModel =
       assistantModelOf(loaded) !== null || deviceModelOf(this.#parts.settings) !== undefined
         ? { kind: "assistant" }
         : (recent?.model ?? { kind: "alias", name: "default" });
-    return this.chat(this.#chats.newChat(kind, model).id);
+    return this.chat((await this.#chats.newChat(kind, model)).id);
   }
 
   /**
@@ -180,7 +185,7 @@ export class WorkspaceAssistant implements AssistantHost {
    * answers then with the authoring tools only, on no engine (states H17).
    */
   async answer(request: AssistantAnswerRequest): Promise<ChatAnswer> {
-    const chat = this.#chats.get(request.chatId);
+    const chat = await this.#chats.get(request.chatId);
     if (this.#answering.has(chat.id)) {
       throw new KindedError("conflict", "This chat is already answering.");
     }
@@ -195,6 +200,7 @@ export class WorkspaceAssistant implements AssistantHost {
       stop();
     });
     this.#answering.add(chat.id);
+    this.#chats.answering(chat.id, true);
     this.#changed({ kind: "chats" });
     try {
       const answer = await this.#answerOn(chat, request, stopper.signal);
@@ -205,23 +211,24 @@ export class WorkspaceAssistant implements AssistantHost {
       request.signal?.removeEventListener("abort", stop);
       stopWatching?.();
       this.#answering.delete(chat.id);
+      this.#chats.answering(chat.id, false);
       this.#changed({ kind: "chats" });
     }
   }
 
   async rename(chatId: string, title: string): Promise<void> {
     if (title.trim() === "") throw new KindedError("invalid_input", "A chat needs a title.");
-    this.#chats.change(chatId, { title: title.trim() });
+    await this.#chats.change(chatId, { title: title.trim() });
     this.#changed({ kind: "chats" });
   }
 
   async deleteChat(chatId: string): Promise<void> {
-    this.#chats.delete(chatId);
+    await this.#chats.delete(chatId);
     this.#changed({ kind: "chats" });
   }
 
   async setModel(chatId: string, model: ChatModel): Promise<void> {
-    this.#chats.change(chatId, { model });
+    await this.#chats.change(chatId, { model });
     this.#changed({ kind: "chat", chatId });
   }
 
@@ -281,6 +288,11 @@ export class WorkspaceAssistant implements AssistantHost {
   onDidChange(listener: (change: AssistantChange) => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
+  }
+
+  /** Waits for the chats' saves and deletes started so far, as before the window closes. */
+  saved(): Promise<void> {
+    return this.#chats.saved();
   }
 
   /** Stops listening to the review service; the registry calls it as the workspace closes. */

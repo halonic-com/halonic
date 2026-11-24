@@ -9,6 +9,7 @@ import {
   reviewServiceKey,
   type ServiceRegistry,
 } from "@halonicjs/app";
+import type { ChatSessions } from "@halonicjs/ports";
 import { AssistantHostService } from "@halonicjs/studio-feature-assistant/api";
 import { ModelKeysService } from "@halonicjs/studio-feature-models/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
@@ -34,6 +35,8 @@ export interface AssistantHostParts {
   readonly engine?: Pick<ShellEngine, "on" | "connection"> | undefined;
   /** The workspace's name, as the window shows it. */
   readonly name: string;
+  /** Where the workspace's chats are saved: the profile on the desktop, memory in the demo. */
+  readonly chatSessions: ChatSessions;
   /** Opens the window's trust check for a message it refused. */
   readonly askTrust?: (() => Promise<"trusted" | "declined">) | undefined;
 }
@@ -72,6 +75,7 @@ export function provideAssistantHost(services: ServiceRegistry, parts: Assistant
                 engine.on("engine.connection", (event) => listener(event.state === "connected")),
             },
       workspaceName: parts.name,
+      chats: { sessions: parts.chatSessions, location: parts.location },
       askTrust: parts.askTrust,
     }),
   );

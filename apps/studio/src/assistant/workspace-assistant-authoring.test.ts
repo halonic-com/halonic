@@ -1,5 +1,5 @@
 import { webCryptoDigest } from "@halonicjs/adapter-fs-tauri";
-import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { MemoryChatSessions, MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import { type HostSettings, ReviewService } from "@halonicjs/app";
 import { type HttpClient, noKeyOrigins } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
@@ -93,6 +93,7 @@ function setup(replies: (string | ToolCallReply[])[], trust = { trusted: false }
       )(request),
     settings,
     workspaceName: "Acme",
+    chats: { sessions: new MemoryChatSessions(), location: "memory:acme" },
     onTrustChange: (listener) => {
       trustListeners.add(listener);
       return () => trustListeners.delete(listener);

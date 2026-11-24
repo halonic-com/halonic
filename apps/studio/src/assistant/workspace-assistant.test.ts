@@ -1,113 +1,42 @@
-import { webCryptoDigest } from "@halonicjs/adapter-fs-tauri";
-import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
-import {
-  type ChatAnswerRequest,
-  ChatService,
-  type HostSettings,
-  ReviewService,
-} from "@halonicjs/app";
+import { MemoryChatSessions } from "@halonicjs/adapter-memory";
 import { builtInAuthoringInstructions } from "@halonicjs/assistant";
-import type { ChatTurnRequest, ChatTurnResponse, ToolCall } from "@halonicjs/ports";
+import type { ChatTurnResponse, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
 import { EngineNotAnswering, isUntrustedRefusal } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { WorkspaceAssistant } from "./workspace-assistant.ts";
-
-const acme = {
-  "workspace.yaml": "id: acme\nname: Acme\n",
-  "models.yaml": [
-    "aliases:",
-    "  smart: { provider: mock, model: echo }",
-    "  default: { provider: mock, model: echo }",
-  ].join("\n"),
-  "providers/mock.yaml": "id: mock\nname: Test model\ntype: mock\nlocal: true\n",
-  "hubs/support/hub.yaml": "id: support\nname: Support\n",
-};
-
-const answered = (content: string, toolCalls: ToolCall[] = []): ChatTurnResponse => ({
-  content,
-  toolCalls,
-  usage: { inputTokens: 10, outputTokens: 5 },
-  finishReason: toolCalls.length === 0 ? "stop" : "tool_calls",
-  model: "echo",
-});
-
-type Turn = ChatTurnResponse | ((request: ChatTurnRequest) => Promise<ChatTurnResponse>);
-
-function setup(
-  options: {
-    files?: Record<string, string>;
-    settings?: Record<string, unknown>;
-    turns?: Turn[];
-    /** Refuses every answer before any model turn, as the engine refuses an untrusted start. */
-    refuse?: Error;
-    now?: () => Date;
-    /** Whether this computer trusts the workspace; it does unless told otherwise. */
-    trusted?: boolean;
-  } = {},
-) {
-  const store = new MemoryDefinitionStore({ ...acme, ...options.files }, "memory:acme");
-  const review = new ReviewService({
-    store,
-    records: new MemoryDefinitionStore({}, "memory:review"),
-    digest: webCryptoDigest,
-    isTrusted: () => options.trusted ?? true,
-  });
-  const turns = [...(options.turns ?? [])];
-  const requests: ChatAnswerRequest[] = [];
-  const turnRequests: ChatTurnRequest[] = [];
-  const executor = {
-    chatTurn: async (request: ChatTurnRequest) => {
-      turnRequests.push(request);
-      const next = turns.shift() ?? answered("Done.");
-      return typeof next === "function" ? next(request) : next;
-    },
-  };
-  const values = new Map(Object.entries(options.settings ?? {}));
-  const settings = {
-    get: (setting) => (values.has(setting.key) ? values.get(setting.key) : setting.fallback),
-  } as Pick<HostSettings, "get">;
-  const engineListeners = new Set<(answering: boolean) => void>();
-  let engineAnswering = true;
-  const assistant = new WorkspaceAssistant({
-    files: store,
-    review,
-    digest: webCryptoDigest,
-    isTrusted: () => options.trusted ?? true,
-    answerChat: async (request) => {
-      requests.push(request);
-      if (options.refuse !== undefined) throw options.refuse;
-      return new ChatService(executor).answer(request);
-    },
-    // Before trust a Build chat on the Settings model answers here, on no engine.
-    answerAuthoring: (request) => new ChatService(executor).answer(request),
-    settings,
-    engine: {
-      answering: () => engineAnswering,
-      onChange: (listener) => {
-        engineListeners.add(listener);
-        return () => engineListeners.delete(listener);
-      },
-    },
-    workspaceName: "Acme",
-    now: options.now ?? (() => new Date("2026-11-23T10:00:00.000Z")),
-  });
-  const stopEngine = () => {
-    engineAnswering = false;
-    for (const listener of engineListeners) listener(false);
-  };
-  return { assistant, store, requests, turnRequests, stopEngine };
-}
-
-const device = {
-  "assistant.provider": "anthropic",
-  "assistant.model": "claude-sonnet-5-5",
-  "assistant.secret-name": "ANTHROPIC_API_KEY",
-};
+import { acme, answered, device, setup } from "./workspace-assistant.test-helper.ts";
 
 verifies("studio.workspace-assistant", () => {
   describe("WorkspaceAssistant", () => {
+    it("Build chats are kept in the chat sessions store and come back", async () => {
+      const sessions = new MemoryChatSessions();
+      let second = 0;
+      const now = () => new Date(Date.UTC(2026, 10, 24, 8, 0, second++));
+      const first = setup({ sessions, now });
+      const kept = await first.assistant.newChat("build");
+      await first.assistant.answer({ chatId: kept.id, message: "Add a routine" });
+      await first.assistant.newChat("agent:support/triage");
+      await first.assistant.saved();
+      expect((await sessions.list("memory:acme")).map((chat) => chat.id)).toEqual([kept.id]);
+
+      const reopened = setup({ sessions, now }).assistant;
+      expect((await reopened.chats()).map((chat) => chat.title)).toEqual(["Add a routine"]);
+      expect((await reopened.chat(kept.id)).messages.map((message) => message.content)).toEqual([
+        "Add a routine",
+        "Done.",
+      ]);
+
+      for (let index = 0; index < 40; index++) {
+        const chat = await reopened.newChat("build");
+        await reopened.answer({ chatId: chat.id, message: `Chat ${index}` });
+      }
+      await reopened.saved();
+      const saved = await sessions.list("memory:acme");
+      expect(saved).toHaveLength(40);
+      expect(saved.map((chat) => chat.id)).not.toContain(kept.id);
+    });
+
     it("answers on the chat service with the Build chat's tools and the Settings model call limit", async () => {
       const { assistant, requests, turnRequests } = setup({
         settings: { "assistant.turn-limit": 9 },
