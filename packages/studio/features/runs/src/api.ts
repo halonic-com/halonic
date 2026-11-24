@@ -266,6 +266,17 @@ export interface VersionHistoryHost {
   readonly hasVersions: () => Promise<boolean>;
 }
 
+/**
+ * The files the open workspace's runs saved, read by the `hash` their `artifact.created` names
+ * (HAL-17831): the bytes, or `null` when the workspace no longer has them. Only reads.
+ */
+export interface RunFiles {
+  readonly read: (hash: string) => Promise<Uint8Array | null>;
+}
+
+/** The open workspace's saved run files. Absent where the app can't read them; Items then has no **Open**. */
+export const RunFilesService: ServiceKey<RunFiles> = serviceKey<RunFiles>("runs.files");
+
 /** The open workspace's version history. Absent where the app can't read it; Ran on then shows. */
 export const VersionHistoryHostService: ServiceKey<VersionHistoryHost> =
   serviceKey<VersionHistoryHost>("runs.version-history-host");

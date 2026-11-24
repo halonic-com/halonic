@@ -4,6 +4,7 @@
 
 import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import {
+  TauriBlobStore,
   TauriDefinitionStore,
   type TauriFileShell,
   TauriRunStore,
@@ -15,7 +16,7 @@ import {
   ProposalDecisionsService,
   SandboxRefusalsService,
 } from "@halonicjs/studio-feature-inbox/api";
-import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import { RunFilesService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
@@ -32,7 +33,7 @@ import type { WorkspaceTrust } from "./workspace-trust.ts";
 
 /**
  * Gives the workspace in `location` its runs, read through the shell, as both the Runs
- * feature's and the Inbox's source.
+ * feature's and the Inbox's source, and the files its runs saved.
  */
 export function provideWorkspaceRuns(
   services: ServiceRegistry,
@@ -85,6 +86,9 @@ export function provideWorkspaceRuns(
     );
   }
   services.provide(RunsSourceService, runs);
+  // The files runs saved, read from the same blob folder the engine writes (HAL-17831).
+  const blobs = new TauriBlobStore(ipc, location);
+  services.provide(RunFilesService, { read: (hash) => blobs.get(hash) });
   services.provide(InboxRunsService, runs);
   services.provide(SandboxRefusalsService, new WorkspaceSandboxRefusals(runs));
   services.provide(
