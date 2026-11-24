@@ -3,6 +3,7 @@
 - Task: HAL-17856
 - Approval: Noah's Stage C visual check on HAL-17841 (document `visual-check`), a design fix on a screen the board approved (HAL-10, 24 Nov) under the HAL-2282 rule; Liam reviews the pull request on HAL-17856 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SW3A7lrZDZNdSXAT7zmnLCSf7rO1V9c6l61dPJeMjYGp0s9VouXXd74r529D70w+oeL3IlbTBHL2jzqpwQ0FDg==
 
 ## What changes
 
