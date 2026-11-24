@@ -49,5 +49,7 @@ export async function logHarnessStart(
     agent: agentId,
     harness: harness.id,
     timeoutMs,
+    // Halonic doesn't resume a harness session yet (requirement `engine.harness-session-start`).
+    session: { start: "fresh", reason: "no-resume" },
   });
 }

@@ -53,6 +53,7 @@ verifies("engine.run-harness", () => {
       agent: "writer",
       harness: "claude-code",
       timeoutMs: 60_000,
+      session: { start: "fresh", reason: "no-resume" },
     });
     expect(written[4]).toMatchObject({ type: "agent.started", state: "draft", parent: "writer" });
     expect(ports.harness.tasks).toEqual([
