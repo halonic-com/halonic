@@ -78,7 +78,10 @@ HAL-17697), reruns (cancelled `ci-ok`, known infra flakes once per head,
 HAL-17685, stalled front groups), stale-run cancels, the runner brake, and
 the board's switches (hold a PR, pause filling, main-red freeze, priority
 boost). **Capacity gates jumps:** with too few free merge-queue slots or
-jobs already waiting, the core doesn't jump. Each rule has a requirement
+jobs already waiting, the core doesn't jump. The one exception is the fix
+PR while `main` is red (its title or branch matches the freeze pattern): it
+jumps even when capacity is short or unknown, because every PR waits on it,
+and its enqueue still carries its cost (Liam, HAL-17762). Each rule has a requirement
 file under `requirements/merge-control-*` and a test that feeds it a fixture
 snapshot. Shared code is imported, not copied: `reviewerFor`,
 `approvals.ts`, `queue-prio.ts` and the fast-track jump log.
