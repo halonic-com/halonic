@@ -2,6 +2,7 @@ import type {
   InboxItem as AgentItem,
   AgentMessaging,
   AnswerResult,
+  AttachmentRead,
   InboxAnswer,
   MessagingId,
   MessagingSource,
@@ -81,6 +82,11 @@ export class AgentInbox {
     } finally {
       void this.refresh();
     }
+  }
+
+  /** An attachment's bytes, read through the engine only when the person asks to see it. */
+  readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
+    return this.messaging.readAttachment(attachment);
   }
 
   private start(): void {
