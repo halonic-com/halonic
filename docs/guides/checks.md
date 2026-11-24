@@ -280,7 +280,9 @@ checks come from one of these:
    Markdown as well, and the signature covers the note's final text.
 6. Push and wait for CI. The only guard error left should be
    "the note has no signature line".
-7. Only then ask the approver to sign. They sign last, because the signature
+7. Then ask for review: a red `ci-ok` whose only failure is that line counts
+   as ready for review. Don't ask for the signature on its own first. The
+   reviewer signs in the same run as the review, last, because the signature
    covers the note and the covered files at that head. Any later edit to
    either needs a new signature (the signed text is listed below).
 
@@ -411,7 +413,8 @@ runs on, against that base's `approvers.json`. It reads the note and the
 covered files from git's objects at the pull request's head (as
 `git show <head>:decisions/<branch>.md` would), prints exactly the text it
 signs and then the `- Signature:` line. The author adds that line under
-`- Kind:` and pushes. The second guardian of a trust-root change runs it again
+`- Kind:` and pushes, or the reviewer runs `pnpm decision sign <number> --push`
+(below). The second guardian of a trust-root change runs it again
 on the pushed head and adds their line under the first; the text they sign is the
 same, because it leaves out every signature line. The key comes from `PAPERCLIP_AGENT_PRIVATE_KEY`, and
 the tool never writes it anywhere. It refuses a note that already has two
@@ -420,6 +423,26 @@ note or one already on `main`, and a key that `approvers.json` pins neither for 
 note's kind nor as a guardian. When your own line no longer matches (a rebase
 changed a covered file), it prints a new line and says it replaces your old one:
 swap the line in the same push, without removing the old one first.
+
+**Signing with the review (HAL-17893).** The reviewer signs in the same run
+as the review, so the note costs no extra round:
+
+1. Review the pull request's head.
+2. If it is good, sign from the clean `origin/main` worktree with
+   `pnpm decision sign <number> --push`. The tool adds the line to the note at
+   the head you signed (under `- Kind:`, under the first guardian's line, or in
+   place of your own old line), commits only that as `halonic-dev`, without
+   checking the pull request out, and pushes it to the pull request's branch
+   without force. If the author pushed in the meantime, the push fails: review
+   the new head and run it again. A pull request from a fork can't be pushed
+   to: sign without `--push` and give the author the line.
+3. Approve the head the tool printed, the one with the signature, in the same
+   run. That commit changes only the signature line, so it needs no new review.
+4. If you request changes instead, don't sign: the author's next push would
+   break the signature anyway.
+
+The second guardian of a trust-root change does the same on the head with the
+first signature, and approves that head.
 
 A pull request that adds a file under `decisions/` with any other name than
 `decisions/<branch-name>.md` fails the note check ("isn't this branch's note;
