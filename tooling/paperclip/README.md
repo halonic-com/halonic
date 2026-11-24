@@ -734,12 +734,13 @@ compares it with the monitor session for 2 days before it writes anything.
 | Stage | When (each once per key) |
 | --- | --- |
 | `new` | a pass sees the `fast-track` label for the first time |
-| `wrong_label:<adder>` | the label's last adder isn't the board's login from the `fastTrackLabelAdder` setting (unset: no label counts; `halonic-dev` counts only if Chief or the board allowed it on the task; unknown never counts): queued without a jump |
+| `wrong_label:<adder>` | the label's last adder is neither `halonic-dev` (the board and Chief label through it, the Merger's rule 3) nor the board's login from the `fastTrackLabelAdder` setting (unset: only `halonic-dev` counts; unknown never counts): queued without a jump |
 | `bot_label` | the pull request's author is a `[bot]` (HAL-16033) |
-| `review_nudge:<head>` | ready, no check running, not approved on the head by Liam (Julian on Liam's own) 30 min after the label |
+| `review_nudge:<head>` | ready for review (no draft, no check running) and not approved on the head by Liam (Julian on Liam's own): at once, to the task |
+| `review_escalate:<head>` | still not approved on the same head 15 min after `review_nudge`: to the board |
 | `check_fail:<check>:<head>` | ready and the check fails; not `Live cloud suites passed`, not a decision note (nor the requirement guard with it) before approval, not `ci-ok` while it is red only through those or another check still runs |
-| `enqueue_ask:<head>` | approved and green on the same head for 10 min, base the default branch, not queued, and no other `fast-track` pull request in the queue. A jump only when the board added the label and more than 8 are queued, or its number is in the `fastTrackUnblocks` setting (HAL-15971 point 3); otherwise first among those waiting |
-| `queue_slow:<enqueuedAt>` | 30 min in the merge queue |
+| `enqueue_ask:<head>` | approved and green on the same head for 10 min, base the default branch, not queued. A jump only when no other `fast-track` pull request is queued (it jumps only pull requests without the label, HAL-17697), the label counts, and more than 8 are queued or its number is in the `fastTrackUnblocks` setting; with another one queued, queued normally without a jump; otherwise first among those waiting |
+| `queue_slow:<enqueuedAt>` | 30 min first in the merge queue (waiting behind others is normal) |
 | `group_fail:<enqueuedAt>` | its group's `ci-ok` fails or the entry is `UNMERGEABLE` |
 | `group_fail:removed:<enqueuedAt>` | it left the queue without merging |
 | `merged` | it merged: the minutes from the label; then it stops being tracked |

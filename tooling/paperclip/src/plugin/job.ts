@@ -42,7 +42,7 @@ export interface WatcherSettings {
   readonly dryRun: boolean;
   /** Fast-track pull requests the board or Chief said unblock the queue or CI for everyone (HAL-15971 point 3). */
   readonly fastTrackUnblocks: ReadonlySet<number>;
-  /** The board's GitHub login, whose `fast-track` label counts for a jump; empty: none counts. */
+  /** The board's GitHub login, whose `fast-track` label counts for a jump next to `halonic-dev`'s; empty: only `halonic-dev`'s counts. */
   readonly fastTrackLabelAdder: string;
 }
 

@@ -42,19 +42,25 @@ verifies("paperclip.fast-track-rules", () => {
     expect(stages(snapshot)).toEqual([]);
   });
 
-  test("flags a label nobody allowed: halonic-dev, an unknown adder, a bot's pull request", () => {
+  test("flags a label nobody allowed: someone else, an unknown adder, a bot's pull request", () => {
     const keys = stages(
       repo([
-        pull(102, { ...liamApproved, ...labelBy("halonic-dev") }, { base: "x" }),
+        pull(102, { ...liamApproved, ...labelBy("stranger") }, { base: "x" }),
         pull(103, { ...liamApproved, ...labelBy(null) }, { base: "x" }),
         pull(104, { ...liamApproved, author: "dependabot[bot]" }, { base: "x" }),
       ]),
     );
     expect(keys).toEqual([
-      "acme/tools#102 wrong_label:halonic-dev",
+      "acme/tools#102 wrong_label:stranger",
       "acme/tools#103 wrong_label:unknown",
       "acme/tools#104 bot_label",
     ]);
+  });
+
+  test("counts a label added as halonic-dev, with or without the board's login set", () => {
+    const shared = pull(121, { ...liamApproved, ...labelBy("halonic-dev") }, { base: "x" });
+    expect(stages(repo([shared]))).toEqual([]);
+    expect(run(repo([shared]), undefined, new Set(), "").events).toEqual([]);
   });
 
   test("counts no label while the board's login isn't set", () => {
@@ -68,24 +74,40 @@ verifies("paperclip.fast-track-rules", () => {
     expect(events[0]?.text).toMatch(/^the board's login isn't set/);
   });
 
-  test("asks the reviewer 30 minutes after the label, Julian for Liam's own pull request", () => {
-    const events = run(
-      repo([
-        pull(105),
-        pull(106, {}, { branch: "liam/HAL-106-x" }),
-        pull(107, labelBy(boardLogin), {}),
-      ]),
-    ).events;
-    expect(events.map((event) => event.key)).toContain("acme/tools#105 review_nudge:abc1234def56");
-    expect(events.find((event) => event.number === 106)?.text).toMatch(/^Julian, please review/);
-    const fresh = run(
-      repo([
-        pull(108, {
-          labels: [{ name: "fast-track", addedBy: boardLogin, addedAt: ago(10) }],
-        }),
-      ]),
-    );
-    expect(fresh.events).toEqual([]);
+  test("asks the reviewer on the task as soon as it is ready, Julian for Liam's own pull request", () => {
+    const events = run(repo([pull(105), pull(106, {}, { branch: "liam/HAL-106-x" })])).events;
+    expect(events.map((event) => [event.key, event.to])).toEqual([
+      ["acme/tools#105 review_nudge:abc1234def56", ["task"]],
+      ["acme/tools#106 review_nudge:abc1234def56", ["task"]],
+    ]);
+    expect(events[1]?.text).toMatch(/^Julian, please review/);
+    const running = pull(108, { pendingChecks: ["Build"] });
+    expect(stages(repo([running]))).toEqual([]);
+    expect(stages(repo([pull(109, { draft: true })]))).toEqual([]);
+  });
+
+  test("tells the board 15 minutes after it was ready if still not approved on the same head", () => {
+    const ready = pull(122);
+    const first = run(repo([ready]));
+    expect(first.events.map((event) => event.stage)).toEqual(["review_nudge"]);
+    expect(first.tracked.get(122)?.reviewSince).toEqual({
+      head: ready.head,
+      at: now.toISOString(),
+    });
+    const later = (minutes: number, head = ready.head) =>
+      new Map([[122, { ...seen, reviewSince: { head, at: ago(minutes) } }]]);
+    expect(run(repo([ready]), later(14)).events.map((event) => event.stage)).toEqual([
+      "review_nudge",
+    ]);
+    const escalated = run(repo([ready]), later(15)).events;
+    expect(escalated.map((event) => [event.key, event.to])).toEqual([
+      ["acme/tools#122 review_nudge:abc1234def56", ["task"]],
+      ["acme/tools#122 review_escalate:abc1234def56", ["board"]],
+    ]);
+    expect(run(repo([ready]), later(20, "0ld")).events.map((event) => event.stage)).toEqual([
+      "review_nudge",
+    ]);
+    expect(run(repo([pull(122, liamApproved)]), later(20)).events).toEqual([]);
   });
 
   test("names each failing check once per head, but not a decision note before approval", () => {
@@ -157,15 +179,34 @@ verifies("paperclip.fast-track-rules", () => {
     expect(stages(repo([unreviewed]))).toEqual(["acme/tools#119 review_nudge:abc1234def56"]);
   });
 
-  test("doesn't ask while another fast-track pull request is queued, or for a stacked one", () => {
+  test("asks without a jump while another fast-track pull request is queued, and not for a stacked one", () => {
     const ready = pull(114, liamApproved);
     const later = new Map([[114, { ...seen, readySince: { head: ready.head, at: ago(20) } }]]);
     const other = pull(115, { ...liamApproved, inQueue: true });
-    const snapshot = repo([ready, other], [entry(115, 1)]);
-    expect(
-      run(snapshot, new Map([...later, [115, seen]])).events.map((e) => e.stage),
-    ).not.toContain("enqueue_ask");
+    const queue = [entry(115, 1), ...Array.from({ length: 9 }, (_, i) => entry(900 + i, i + 2))];
+    const tracked = new Map([...later, [115, seen]]);
+    const asks = (snapshot: SnapshotRepo, unblocks = new Set<number>()) =>
+      run(snapshot, tracked, unblocks).events.filter((event) => event.stage === "enqueue_ask");
+    for (const snapshot of [repo([ready, other], [entry(115, 1)]), repo([ready, other], queue)]) {
+      const [ask] = asks(snapshot);
+      expect(ask?.key).toBe("acme/tools#114 enqueue_ask:abc1234def56");
+      expect(ask?.text).toMatch(
+        /queue it normally, without a jump: fast-track #115 is already queued/,
+      );
+    }
+    expect(asks(repo([ready, other], queue), new Set([114]))[0]?.text).toMatch(/without a jump/);
     expect(run(repo([{ ...ready, base: "mateo/HAL-1-base" }]), later).events).toEqual([]);
+  });
+
+  test("names a jump only with 9 or more ahead and no fast-track pull request queued", () => {
+    const ready = pull(123, liamApproved);
+    const later = new Map([[123, { ...seen, readySince: { head: ready.head, at: ago(11) } }]]);
+    const queueOf = (length: number) => Array.from({ length }, (_, i) => entry(900 + i, i + 1));
+    const ask = (length: number) =>
+      run(repo([ready], queueOf(length)), later).events.find((e) => e.stage === "enqueue_ask")
+        ?.text;
+    expect(ask(8)).toMatch(/without a jump \(8 in the queue\)/);
+    expect(ask(9)).toMatch(/with a jump: 9 pull requests are ahead/);
   });
 
   test("restarts the 10 minutes when the head changes", () => {
@@ -174,10 +215,30 @@ verifies("paperclip.fast-track-rules", () => {
     expect(run(repo([ready]), old).tracked.get(116)?.readySince?.at).toBe(now.toISOString());
   });
 
+  test("calls it slow only after 30 minutes first in the queue, not while it waits behind others", () => {
+    const queued = pull(124, { ...liamApproved, inQueue: true });
+    const behind = entry(124, 3, { enqueuedAt: ago(45) });
+    const wasBehind = new Map([[124, { ...seen, queuedAt: ago(45) }]]);
+    const third = run(repo([queued], [behind]), wasBehind);
+    expect(third.events).toEqual([]);
+    expect(third.tracked.get(124)?.firstInQueueSince).toBeNull();
+    const front = entry(124, 1, { enqueuedAt: ago(45) });
+    expect(run(repo([queued], [front]), wasBehind).tracked.get(124)?.firstInQueueSince).toBe(
+      now.toISOString(),
+    );
+    const firstFor = (minutes: number) =>
+      new Map([[124, { ...seen, queuedAt: ago(45), firstInQueueSince: ago(minutes) }]]);
+    expect(stages(repo([queued], [front]), firstFor(29))).toEqual([]);
+    expect(stages(repo([queued], [front]), firstFor(31))).toEqual([
+      `acme/tools#124 queue_slow:${ago(45)}`,
+    ]);
+  });
+
   test("follows it through the queue: slow, failing group, removed, merged", () => {
     const queued = pull(117, { ...liamApproved, inQueue: true });
     const slow = entry(117, 1, { enqueuedAt: ago(31), groupCiOk: "failure" });
-    expect(stages(repo([queued], [slow]))).toEqual([
+    const firstSince = new Map([[117, { ...seen, queuedAt: ago(31), firstInQueueSince: ago(31) }]]);
+    expect(stages(repo([queued], [slow]), firstSince)).toEqual([
       `acme/tools#117 queue_slow:${ago(31)}`,
       `acme/tools#117 group_fail:${ago(31)}`,
     ]);
