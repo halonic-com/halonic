@@ -51,6 +51,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `SandboxSettingStore` | `sandbox-setting-store.ts` | 1 | the person's sandbox choice (a backend or none) in the user's profile; `SandboxChoiceService` decides | `sandbox-setting-store` |
 | `Scheduler` | `scheduler.ts` | 1 | run timers and the routine tick; timers may arrive late or twice | `scheduler` |
 | `Secrets` | `secrets.ts` | 1 | configured secrets, read-only; `SecretStore` (same file and version) adds `set`, `remove` and `names` for a store the person owns | `secrets`, `secret-store` |
+| `TeamStatus` | `team-status.ts` | 1 | read-only spend, seat use, pull requests and the merge queue for Studio's Team screens, with each source's "as of" time; no write of any kind | `team-status` (`FakeTeamStatus` in `testing/contracts` until the first adapter) |
 | `TokenStore` | `token-store.ts` | 1 | secrets the server writes itself, such as refresh tokens | `token-store` |
 | `ToolApprovalStore` | `tool-approval-store.ts` | 1 | approved listed tools in the user's profile, by workspace, source, name; `approveListedTools` decides | `tool-approval-store` (with first adapter) |
 | `TrustStore` | `trust-store.ts` | 1 | trust records in the user's profile, by location and fingerprint; `TrustService` decides | `trust-store` |
@@ -138,6 +139,7 @@ next to the ports:
 | `bridgeCallCharge` | what a bridged call costs and who paid (`paidBy: "subscription"` for a sign-in call); `bridgeCallCost` is deprecated in its favour | `harness-bridge-server` |
 | `maxIntegrationWaitMs` | the longest `IntegrationHost.wait`, 30 seconds | `integration-host` |
 | `gatewayErrorCodes`, `gatewayClosingErrorCodes`, `gatewayRefusalCodes` | the remote gateway's error codes: those that close the connection and those that leave it open | `remote-gateway-protocol` |
+| `isAllowedWebLink` | whether a web page a provider gave may open in the system browser: `https:` only, no user name or password, a GitHub pull request page or the connection's own origin, port included | `web-link` |
 | `gatewayMaxMessageBytes`, `gatewayMaxPromptLength`, `gatewayMaxIdLength`, `gatewayMaxWatches`, `gatewayMaxBufferedBytes` | the remote gateway's limits: 65,519 bytes per message, 10,000-unit prompts, 128-character ids, 16 watches and 1 MiB unsent per connection | `remote-gateway-protocol` |
 | `encodeCleartextFrame`, `decodeCleartextFrame`, `gatewayFrameKinds` | the session's frame kinds, and the two cleartext refusals (`handshake-failed`, `pair-refused`) as bytes | `remote-gateway-session` |
 | `pairCommitInput`, `pairCommitLabel`, `pairCommitNonceBytes` | the bytes the phone's commitment to pairing message 3 hashes, and the size of the nonce that keeps message 3 unpredictable | `remote-gateway-session` |
