@@ -1,6 +1,6 @@
 // The fake lives in @halonicjs/testing-contracts, whose code is measured in
 // this package's run (its "measuredIn"), so its tests run here.
-import { FakeTeamStatus } from "@halonicjs/testing-contracts";
+import { FakeTeamStatus, teamStatusContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 
@@ -12,6 +12,34 @@ function makeFake() {
   const globex = team.addSource({ seats: false }).source;
   return { team, acme, globex, setTime: (iso: string) => (now = new Date(iso)) };
 }
+
+/** A fake with a source that serves every part and one that serves no seats. */
+function makeFilled() {
+  const status = new FakeTeamStatus();
+  const acme = status.addSource().source;
+  const globex = status.addSource({ seats: false }).source;
+  status.setSpend(acme, { range: "month", paid: { cents: 4120, currency: "USD" } });
+  status.setSpend(globex, { range: "month" });
+  status.addAgentSpend(acme, { agent: "agent-chief", range: "month" });
+  status.addSeat(acme, { label: "Pool 1" });
+  status.addPullRequest(acme, {
+    label: "#12",
+    title: "Faster launch",
+    webLink: "https://github.com/acme/app/pull/12",
+  });
+  status.addPullRequest(acme, {
+    label: "#13",
+    title: "Pointed elsewhere",
+    webLink: "https://github.com.evil.io/acme/app/pull/13",
+  });
+  status.setMergeQueue(acme, { health: "running" });
+  return status;
+}
+
+teamStatusContract("fake", async () => ({
+  status: makeFilled(),
+  connectionOrigin: "https://paperclip.acme.test",
+}));
 
 verifies("contracts.fake-team-status", () => {
   it("says which parts each source serves and refuses to fill one it doesn't", async () => {

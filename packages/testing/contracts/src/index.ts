@@ -254,6 +254,11 @@ export {
 } from "./target-capabilities.ts";
 export { type TargetPorts, targetPortContracts } from "./target-ports.ts";
 export {
+  type MakeTeamStatus,
+  type TeamStatusHarness,
+  teamStatusContract,
+} from "./team-status.ts";
+export {
   listedToolFingerprint,
   type MakeToolApprovalStore,
   type ToolApprovalStoreHarness,
