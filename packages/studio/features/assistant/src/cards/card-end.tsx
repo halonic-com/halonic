@@ -99,7 +99,7 @@ function LinkButton({
   return (
     <button
       type="button"
-      className="rounded-xs text-accent-text underline focus-ring"
+      className="rounded-xs font-medium text-accent-text underline focus-ring"
       onClick={onClick}
     >
       {children}
