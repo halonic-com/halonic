@@ -1,4 +1,4 @@
-import type { RunEventBody, ToolOutcome, Usage } from "@halonicjs/events";
+import type { ProviderRouting, RunEventBody, ToolOutcome, Usage } from "@halonicjs/events";
 import type { ToolDefinition } from "./chat.ts";
 import type { HarnessBridge, HarnessEvent } from "./harness.ts";
 import { type ModelPrice, priceOf } from "./model-price.ts";
@@ -54,6 +54,12 @@ export type BridgeProviderAccess =
    * empty, since a compatible provider can serve models that reach the
    * network from its own side. Without a `baseUrl`, a missing list still
    * lets any model through, until every host sends one (HAL-12488).
+   *
+   * `routing` is the model alias's OpenRouter host pin, its
+   * `params.extra.provider`, which the models file has already checked
+   * (HAL-16834). The bridge sends it as the request's `provider` only when
+   * `baseUrl`'s host is exactly `openrouter.ai`, in place of any the
+   * program wrote (requirement `harness-bridge.openrouter-routing`).
    */
   | {
       kind: "key";
@@ -62,6 +68,7 @@ export type BridgeProviderAccess =
       providerId?: string;
       models?: readonly string[];
       efforts?: Readonly<Record<string, BridgeEffort>>;
+      routing?: ProviderRouting;
     }
   /**
    * With the person's own subscription: the bridge passes the program's own
@@ -208,6 +215,35 @@ export function bridgeKeyProviders(
 ): BridgeProvider[] {
   const all: readonly BridgeProvider[] = ["anthropic", "openai"];
   return all.filter((provider) => providers[provider]?.kind === "key");
+}
+
+/** OpenRouter's routing, the host pin the bridge sends; the events package defines it. */
+export type { ProviderRouting };
+
+/** A routing as a schema reads it, where a key left out may also be `undefined`. */
+export type LooseProviderRouting = {
+  readonly [Key in keyof ProviderRouting]?: ProviderRouting[Key] | undefined;
+};
+
+/**
+ * Only OpenRouter's routing keys of `routing`, each one that is set, and
+ * nothing else the object holds (HAL-16834). The host gives the bridge an
+ * alias's pin through it, and the bridge sends it through it again, so a key
+ * a type let through never goes out with a call.
+ */
+export function bridgeRouting(routing: LooseProviderRouting): ProviderRouting {
+  const { order, only, ignore, quantizations, zdr } = routing;
+  const fallbacks = routing.allow_fallbacks;
+  const dataCollection = routing.data_collection;
+  return {
+    ...(order === undefined ? {} : { order }),
+    ...(only === undefined ? {} : { only }),
+    ...(ignore === undefined ? {} : { ignore }),
+    ...(fallbacks === undefined ? {} : { allow_fallbacks: fallbacks }),
+    ...(dataCollection === undefined ? {} : { data_collection: dataCollection }),
+    ...(zdr === undefined ? {} : { zdr }),
+    ...(quantizations === undefined ? {} : { quantizations }),
+  };
 }
 
 /**

@@ -15,12 +15,39 @@ export const ModelPrice = s
   })
   .strict();
 
+/** A list of names, such as hosts or precisions, for OpenRouter's routing. */
+const names = s.array(s.string().min(1)).optional();
+
+/**
+ * OpenRouter's `provider` routing field, the host pin an alias sets in
+ * `params.extra.provider` (HAL-16834): only these keys, each of its own
+ * type, so the harness bridge, which sends it in place of the program's, can
+ * trust it as it loads. A mistake fails when the file loads, not on the
+ * first call.
+ */
+const ProviderRouting = s
+  .object({
+    order: names,
+    only: names,
+    ignore: names,
+    allow_fallbacks: s.boolean().optional(),
+    data_collection: s.enum(["allow", "deny"]).optional(),
+    zdr: s.boolean().optional(),
+    quantizations: names,
+  })
+  .strict();
+
+/** An alias's tuning: the shared params, with `extra.provider` checked as OpenRouter's routing. */
+const AliasParams = ModelParams.extend({
+  extra: s.object({ provider: ProviderRouting.optional() }).passthrough().optional(),
+});
+
 /** A model at a provider, with its tuning and price. */
 export const ModelTarget = s
   .object({
     provider: id,
     model: s.string().min(1),
-    params: ModelParams.default({}),
+    params: AliasParams.default({}),
     /** What the model costs, so runs know their cost and budgets can stop them. */
     price: ModelPrice.optional(),
   })
@@ -41,6 +68,8 @@ export const Models = s
   })
   .strict();
 
+/** OpenRouter's `provider` routing, as an alias's `params.extra.provider` sets it. */
+export type ProviderRouting = Infer<typeof ProviderRouting>;
 /** A model alias, with defaults filled in. */
 export type ModelAlias = Infer<typeof ModelAlias>;
 /** The content of `models.yaml`, with defaults filled in. */

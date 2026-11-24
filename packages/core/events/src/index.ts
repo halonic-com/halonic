@@ -17,6 +17,7 @@ export type { HarnessSessionStart, HarnessStartedEvent } from "./harness-started
 export { type ChargedCall, type ModelCallCharge, modelCallCharge } from "./model-call-charge.ts";
 export { endedWithParent, parentEndedCause, parentEndedCode } from "./parent-ended.ts";
 export { providerNotes } from "./provider-notes.ts";
+export type { ProviderRouting } from "./provider-routing.ts";
 export type {
   ApprovalResolver,
   CantTryReason,

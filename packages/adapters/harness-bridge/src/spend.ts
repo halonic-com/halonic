@@ -1,4 +1,4 @@
-import type { Usage } from "@halonicjs/events";
+import type { ProviderRouting, Usage } from "@halonicjs/events";
 import {
   type BridgeEffort,
   type BridgeProvider,
@@ -8,6 +8,7 @@ import {
 } from "@halonicjs/ports";
 import { isPlainObject, KindedError } from "@halonicjs/std";
 import { effortFor } from "./effort.ts";
+import { routingFor } from "./openrouter-routing.ts";
 import type { ReplyWatcher } from "./pass-through.ts";
 
 /** What the bridge knows of a model call before it goes out. */
@@ -21,6 +22,8 @@ export interface ModelCall {
   effort?: BridgeEffort;
   /** Set when a sub-agent of the program made the call, as `withSubagent` finds it. */
   subagent?: string;
+  /** The alias's OpenRouter host pin, which the bridge sends as the request's `provider`. */
+  routing?: ProviderRouting;
 }
 
 /** What a reply reader found in a provider's reply. */
@@ -42,7 +45,8 @@ export interface ReplyReader extends ReplyWatcher {
  * Anthropic's `messages` or OpenAI's `input`, where a plain text prompt
  * counts as one message. `request` is the body already parsed, as
  * `parseModelRequest` gives it. The effort is the one `access` names for
- * the model, if any (requirement `harness-bridge.effort`).
+ * the model, if any (requirement `harness-bridge.effort`), and the routing
+ * the one it names for OpenRouter (requirement `harness-bridge.openrouter-routing`).
  *
  * @throws KindedError `invalid_input` when the request names no model
  */
@@ -57,11 +61,13 @@ export function readModelCall(
   }
   const model = request["model"];
   const effort = effortFor(access, model);
+  const routing = routingFor(access);
   return {
     provider,
     model,
     messages: countMessages(request[messagesField]),
     ...(effort === undefined ? {} : { effort }),
+    ...(routing === undefined ? {} : { routing }),
   };
 }
 
@@ -96,6 +102,7 @@ export async function recordModelCall(
     model,
     ...(call.effort === undefined ? {} : { effort: call.effort }),
     ...subagent,
+    ...(call.routing === undefined ? {} : { routing: call.routing }),
     messages: call.messages,
   });
   const started = performance.now();

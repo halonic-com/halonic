@@ -1,6 +1,7 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectTypeOf } from "vitest";
 import type { AgentResume } from "./agent-resume.ts";
+import type { ProviderRouting } from "./provider-routing.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
@@ -224,6 +225,8 @@ verifies("events.run-log-contract", () => {
       effort?: "low" | "medium" | "high";
       // Added after the reference by events.llm-subagent (HAL-17263).
       subagent?: string;
+      // Added after the reference by events.llm-request-routing (HAL-16834).
+      routing?: ProviderRouting;
       messages: number;
     }>();
     expectTypeOf<EventOf<"llm.response">>().toEqualTypeOf<{

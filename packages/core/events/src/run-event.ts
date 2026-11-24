@@ -8,6 +8,7 @@ import type { HarnessStartedEvent } from "./harness-started.ts";
 import type { HarnessStoppedEvent } from "./harness-stopped.ts";
 import type { KeyOriginAnsweredEvent } from "./key-origin-answered.ts";
 import type { KeyOriginAskedEvent } from "./key-origin-asked.ts";
+import type { ProviderRouting } from "./provider-routing.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
@@ -112,6 +113,7 @@ export type RunEventBody =
    * on the call in place of the program's (requirement `events.llm-request-effort`).
    * `subagent`: set, on the request and its response alike, when a sub-agent of
    * the program made the call; absent for the agent itself (requirement `events.llm-subagent`).
+   * `routing`: the OpenRouter host pin the bridge sent (`events.llm-request-routing`).
    */
   | {
       type: "llm.request";
@@ -122,6 +124,7 @@ export type RunEventBody =
       address?: string;
       effort?: "low" | "medium" | "high";
       subagent?: string;
+      routing?: ProviderRouting;
       messages: number;
     }
   | {

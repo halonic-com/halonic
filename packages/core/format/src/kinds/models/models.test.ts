@@ -66,3 +66,46 @@ verifies("format.models-file", () => {
     expect(summary(problemsOf("models", yaml("- fast")))).toEqual([" invalid_type 1"]);
   });
 });
+
+verifies("format.models-provider-routing", () => {
+  /** A `models.yaml` whose alias `pinned` has `extra` as given, in YAML's flow form. */
+  const withExtra = (extra: string) =>
+    yaml(
+      "aliases:",
+      "  pinned:",
+      "    provider: openrouter",
+      "    model: deepseek/deepseek-v4.1-flash",
+      `    params: { extra: ${extra} }`,
+    );
+
+  it("keeps a host pin of OpenRouter's routing keys, and the other extras", () => {
+    const routing = {
+      order: ["deepinfra/fp8"],
+      only: ["deepinfra"],
+      ignore: ["acme-host"],
+      allow_fallbacks: false,
+      data_collection: "deny",
+      zdr: true,
+      quantizations: ["fp8"],
+    };
+    const text = withExtra(`{ provider: ${JSON.stringify(routing)}, top_k: 40 }`);
+    const alias = parsedValue("models", text).aliases["pinned"];
+    expect(alias?.params.extra).toEqual({ provider: routing, top_k: 40 });
+  });
+
+  it.each([
+    ["a key OpenRouter's routing doesn't have", "{ sort: price }", "unrecognized_keys"],
+    ["a host that isn't in a list", "{ order: deepinfra }", "invalid_type"],
+    ["fallbacks that aren't true or false", "{ allow_fallbacks: no-thanks }", "invalid_type"],
+    ["data collection other than allow or deny", "{ data_collection: some }", "invalid_value"],
+    ["a zero data retention that isn't true or false", "{ zdr: 1 }", "invalid_type"],
+    ["a precision that isn't text", "{ quantizations: [8] }", "invalid_type"],
+    ["a routing that isn't a map", "deepinfra", "invalid_type"],
+  ])("refuses %s when the file loads", (_case, provider, code) => {
+    const problems = summary(problemsOf("models", withExtra(`{ provider: ${provider} }`)));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(
+      new RegExp(`^aliases\\.pinned\\.params\\.extra\\.provider\\S* ${code} 5$`),
+    );
+  });
+});

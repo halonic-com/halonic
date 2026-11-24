@@ -77,6 +77,19 @@ priced, and every call counts towards the run's cost limit and budget. A
 keyed access to an own host without `models` still lets any model through
 until every host sends the list.
 
+### OpenRouter's host pin
+
+OpenRouter picks the host that serves a model unless the request's
+`provider` field says which. The program may not choose: a `provider` it
+sends is refused like any unknown field. Instead, a keyed access may carry
+`routing`, the model alias's `params.extra.provider`, which the models file
+checks as it loads (only `order`, `only`, `ignore`, `quantizations`,
+`allow_fallbacks`, `data_collection` and `zdr`, each of its type). When the
+access's `baseUrl` host is exactly `openrouter.ai`, the bridge sends that
+routing as `provider` on every call of the agent, on both routes, and records
+it as the `routing` of the call's `llm.request`. To any other host it sends
+none.
+
 ## GitHub read tools
 
 `GitHubReadTools` is a `BridgeTools` with four read-only tools on one repository fixed when it is made

@@ -138,10 +138,12 @@ export {
   bridgeCallCharge,
   bridgeCallCost,
   bridgeKeyProviders,
+  bridgeRouting,
   type HarnessBridgeOptions,
   type HarnessBridgeServer,
   harnessBridgeServerVersion,
   type OpenHarnessBridge,
+  type ProviderRouting,
 } from "./harness-bridge-server.ts";
 export { type SignInShell, signInCommandText } from "./harness-sign-in-command.ts";
 export {
