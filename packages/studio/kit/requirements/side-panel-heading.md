@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16801 (T14 PR 10); flow-assistant 2.2 and 5.5 (HAL-647)
 
-A Side panel given a heading shall show it in the title's place, and shall keep the title as a heading that only screen readers read, so a menu that opens from the heading isn't read as part of the title.
+The Side panel, when given a heading, shall show it in the title's place, and shall keep the title as a heading that only screen readers read, so a menu that opens from the heading isn't read as part of the title.
 
 ## Examples
 

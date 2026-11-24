@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16801 (T14 PR 10); component specs 21.5 (HAL-175); flow-assistant 5.5 (HAL-647)
 
-A Menu item shall show, when given, its last-used time after the label in caption size, a `neutral` chip with a count ("2 to review"), and a still 6px `running` dot whose words are read after the label. An item given a name shall be named by it in place of its label. A Menu given a footer shall show it under the items, below a divider, as a line that isn't an item; with no items it shows the footer alone.
+The Menu shall show for an item, when given, its last-used time after the label in caption size, a `neutral` chip with a count ("2 to review"), and a still 6px `running` dot whose words are read after the label. The Menu shall name an item given a name by it in place of its label, and shall show a footer, when given, under the items, below a divider, as a line that isn't an item; with no items it shows the footer alone.
 
 ## Examples
 
