@@ -46,6 +46,9 @@ export const buildChatWords = {
   /** H28: the limit's line, with **Continue**, and what is announced. */
   modelCallLimit: (calls: number) => `Stopped after ${calls} model calls. Ask it to continue.`,
   continue: "Continue",
+  /** The link under a Build chat's box (flow-assistant 5.10): the workspace has no own skill, or has one. */
+  customizeSkill: "customize skill",
+  editSkill: "edit skill",
   /** Announced once when an answer ends; the count only when there are items to review. */
   answerFinished: (itemsToReview: number) =>
     itemsToReview === 0

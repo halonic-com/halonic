@@ -14,6 +14,7 @@ import {
 import type { PanelWindowViewProps, WorkspaceContext } from "@halonicjs/studio-shell";
 import {
   Fragment,
+  type ReactNode,
   type RefObject,
   useCallback,
   useEffect,
@@ -31,6 +32,7 @@ import {
 } from "../chat/build-chats.ts";
 import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../chat/turns.ts";
 import { BuildComposer } from "./build-composer.tsx";
+import { SkillLink } from "./skill-link.tsx";
 
 /**
  * The Assistant's side panel (flow-assistant 2.2): the header with the chat's title, **New chat**
@@ -39,7 +41,8 @@ import { BuildComposer } from "./build-composer.tsx";
  * "Assistant" whatever the chat's title is (L12).
  */
 export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps) {
-  const chats = buildChatsOf(context.services.get(AssistantHostService));
+  const host = context.services.get(AssistantHostService);
+  const chats = buildChatsOf(host);
   const shown = useSyncExternalStore(chats.subscribe, chats.shown);
   const lookingAt = useShownTitle(context);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -91,6 +94,11 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
           announce={announce}
           onNewChat={newChat}
           lookingAt={lookingAt}
+          skillLink={(view: ChatView) =>
+            view.chat.kind === "build" ? (
+              <SkillLink host={host} context={context} freshness={view.messages} />
+            ) : null
+          }
         />
       </div>
     </SidePanel>
@@ -105,10 +113,13 @@ interface PanelBodyProps {
   readonly onNewChat: () => void;
   /** The page the window shows, as its tab names it; none in a window without tabs. */
   readonly lookingAt: string | undefined;
+  /** The link under the box for a chat: "customize skill" or "edit skill" in a Build chat. */
+  readonly skillLink: (view: ChatView) => ReactNode;
 }
 
 /** The chat, its first load (H7), a chat that can't load, or no chat (H3). */
-function PanelBody({ shown, chats, box, announce, onNewChat, lookingAt }: PanelBodyProps) {
+function PanelBody(props: PanelBodyProps) {
+  const { shown, chats, box, announce, onNewChat, lookingAt, skillLink } = props;
   if (shown.kind === "none") return <NoChat onNewChat={onNewChat} />;
   if (shown.kind === "failed") {
     return (
@@ -143,6 +154,7 @@ function PanelBody({ shown, chats, box, announce, onNewChat, lookingAt }: PanelB
         }}
         onStop={() => chats.stop()}
       />
+      {view === undefined ? null : skillLink(view)}
     </>
   );
 }

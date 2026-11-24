@@ -24,6 +24,11 @@ anywhere `ChatService` runs: the desktop app, a served window and later the CLI.
   "<severity> <path>: <message>" lines or "No problems." (`assistant.build.validate-with-proposals`).
 - **`toolTexts`**: what the tools tell the model as tool results (flow-assistant 3.1 and 3.7, AI
   changes 1.11), for the chat's tool line to show in its details.
+- **The authoring skill** (`build/authoring-skill.ts`): `authoringInstructions(workspace)` is what
+  the Build chat is told before any message: the body of the workspace's own `halonic-authoring`
+  skill (`library/skills/halonic-authoring/SKILL.md`, the root's over a hub's), else the built-in
+  instructions. `builtInAuthoringSkill` is that text as a `SKILL.md`, which "customize skill"
+  writes at `authoringSkillPath` (`assistant.build.authoring-skill-override`).
 - **The session rules** (`sessions/session-rules.ts`), pure functions over the `ChatSessions`
   port's `SavedChat`: a draft (no message yet) is never saved, `titleFromFirstMessage` cuts at 57
   characters plus "…", `chatsToDrop` keeps each workspace's newest 40, `recentFirst` orders them,

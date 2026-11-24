@@ -12,8 +12,14 @@ import type {
   ReviewStep,
   ReviewTarget,
 } from "@halonicjs/app";
-import { buildChatTools } from "@halonicjs/assistant";
-import type { ChatMessage, DefinitionSource, Digest } from "@halonicjs/ports";
+import {
+  authoringInstructions,
+  authoringSkillPath,
+  buildChatTools,
+  builtInAuthoringSkill,
+  ownAuthoringSkill,
+} from "@halonicjs/assistant";
+import type { ChatMessage, DefinitionStore, Digest } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type {
   AssistantAnswerRequest,
@@ -37,8 +43,11 @@ import {
 
 /** What {@link WorkspaceAssistant} works on. */
 export interface WorkspaceAssistantParts {
-  /** The workspace's files as saved, changes to review included: what the tools read. */
-  readonly files: DefinitionSource;
+  /**
+   * The workspace's files as saved, changes to review included: what the tools read, and where
+   * "customize skill" writes the person's own skill.
+   */
+  readonly files: DefinitionStore;
   /** The open workspace's changes to review, where the tools write. */
   readonly review: ReviewService;
   readonly digest: Digest;
@@ -200,6 +209,20 @@ export class WorkspaceAssistant implements AssistantHost {
     return this.#parts.review.restore(step, "before");
   }
 
+  async authoringSkill(): Promise<string | null> {
+    return ownAuthoringSkill(await loadWorkspace(this.#parts.files))?.path ?? null;
+  }
+
+  /** Only writes where no file is: one the workspace can't load is still the person's. */
+  async customizeSkill(): Promise<string> {
+    const own = await this.authoringSkill();
+    if (own !== null) return own;
+    await this.#parts.files.write(authoringSkillPath, builtInAuthoringSkill, {
+      expected: "absent",
+    });
+    return authoringSkillPath;
+  }
+
   onDidChange(listener: (change: AssistantChange) => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
@@ -222,9 +245,13 @@ export class WorkspaceAssistant implements AssistantHost {
       if (message !== undefined) this.#add(chat.id, message);
     };
     const own = request.listener;
+    const messages = sent === undefined ? chat.messages : [...chat.messages, sent];
+    // The Build chat follows the workspace's own authoring skill, else the built-in one. It isn't
+    // kept in the chat, so an edited skill counts from the next answer on.
+    const skill: ChatMessage = { role: "system", content: authoringInstructions(loaded) };
     const answer = await this.#parts.answerChat({
       settings: chatSettingsOf(chat.model, loaded, this.#parts.settings) satisfies ChatSettings,
-      messages: sent === undefined ? chat.messages : [...chat.messages, sent],
+      messages: chat.kind === "build" ? [skill, ...messages] : messages,
       tools: this.#toolsOf(chat.id),
       turnLimit: turnLimitOf(loaded, this.#parts.settings),
       signal,
