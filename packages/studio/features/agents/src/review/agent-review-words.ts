@@ -10,5 +10,6 @@ export const agentReviewWords = {
   /** Said politely when an edit inside a change accepted it (note 2). */
   acceptedByEdit: "Change accepted by your edit",
   /** A change that overlaps another can only be decided with the rest of the file. */
-  cantSeparate: "This change can't be decided on its own. Use Accept all or Reject all.",
+  cantSeparate:
+    "This change overlaps another, so you can't accept or reject it on its own. Use Accept all or Reject all.",
 };
