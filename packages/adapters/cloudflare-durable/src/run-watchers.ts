@@ -96,13 +96,13 @@ export class RunWatchers {
     }
   }
 
-  /** How many streams are open. */
   /** Breaks every open stream with `error`, so its client sees the stream fail, and forgets them. */
   breakAll(error: Error): void {
     for (const watcher of this.#watchers) watcher.controller.error(error);
     this.#watchers.clear();
   }
 
+  /** How many streams are open. */
   get count(): number {
     return this.#watchers.size;
   }
