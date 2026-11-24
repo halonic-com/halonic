@@ -108,6 +108,16 @@ verifies("messenger.conversations", () => {
       expect(shown).not.toContain("Morning");
     });
 
+    it("says so when no message in the chat matches the search", async () => {
+      const { messaging } = twoChiefs();
+      const page = await openMessenger(messaging);
+      await openAcmeChat(page);
+      await searchFor(page, "invoice");
+      const transcript = page.querySelector("main ol");
+      expect(transcript?.textContent).not.toContain("Shall I merge #12?");
+      expect(transcript?.querySelector("li")?.textContent).toBe("No message in this chat matches.");
+    });
+
     it("never lets a search's late answer replace a newer one's", async () => {
       const { messaging, acmeChat } = twoChiefs();
       messaging.addMessage(acmeChat.id, { body: "Morning" });
