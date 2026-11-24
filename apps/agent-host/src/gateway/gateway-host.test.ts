@@ -86,7 +86,7 @@ async function eventually(check: () => Promise<boolean>): Promise<void> {
 
 verifies("agent-host.remote-gateway", () => {
   describe("the host's switch for the remote gateway", () => {
-    it("listens on no port for the gateway without a tunnel provider, as every launch of the executable", async () => {
+    it("listens on no port for the gateway without a tunnel provider, as the executable where tailscale isn't installed", async () => {
       const port = await freePort();
       const host = startHost(["--profile-folder", await profileWithRemote(true)]);
       await host.handshake;

@@ -38,7 +38,7 @@ declare const HALONIC_AGENT_HOST_PAYLOAD: PayloadManifest | undefined;
 
 /** What the host module (host.ts) offers the entry point. */
 interface HostModule {
-  run(args: readonly string[], version: string): Promise<number>;
+  runExecutable(args: readonly string[], version: string): Promise<number>;
   serveCodingTools(args: readonly string[], payload: string): Promise<number>;
 }
 
@@ -372,7 +372,7 @@ async function start(version: string, manifest: PayloadManifest): Promise<number
   // The host gets --profile-folder too: --sandbox-cleanup reads it, the host
   // takes the profile's host lock there before it sweeps kept grants, and
   // HALONIC_HOME can put the profile anywhere (HAL-6214, HAL-6256).
-  return host.run(args, version);
+  return host.runExecutable(args, version);
 }
 
 /**

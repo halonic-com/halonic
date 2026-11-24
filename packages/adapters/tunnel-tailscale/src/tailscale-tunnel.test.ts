@@ -151,6 +151,28 @@ verifies("tunnel-tailscale.provider", () => {
       expect(await currentStatus(tunnel)).toMatchObject({ state: "down", reason: "stopped" });
     });
 
+    it("leaves an entry the person put on its port since alone on stop", async () => {
+      const runner = new ScriptedRunner();
+      const tunnel = new TailscaleTunnel({ runner });
+      await tunnel.start(config);
+      runner.served = { hostPort: `${nodeName}:8443`, target: "http://127.0.0.1:3000" };
+      await tunnel.stop();
+      expect(runner.calls.some((call) => call.includes("off"))).toBe(false);
+      expect(runner.served).toEqual({
+        hostPort: `${nodeName}:8443`,
+        target: "http://127.0.0.1:3000",
+      });
+    });
+
+    it("removes nothing, and says so, when the serve config can't be read at stop", async () => {
+      const runner = new ScriptedRunner();
+      const tunnel = new TailscaleTunnel({ runner });
+      await tunnel.start(config);
+      runner.script = { "serve-status": failedExit };
+      await expect(tunnel.stop()).rejects.toThrow("couldn't be read");
+      expect(runner.calls.some((call) => call.includes("off"))).toBe(false);
+    });
+
     it("says so when its entry couldn't be removed", async () => {
       const runner = new ScriptedRunner({ "serve-off": failedExit });
       const tunnel = new TailscaleTunnel({ runner });
@@ -165,6 +187,42 @@ verifies("tunnel-tailscale.provider", () => {
       await expect(tunnel.start(config)).rejects.toThrow("not-installed");
       runner.script = {};
       await expect(tunnel.start(config)).resolves.toMatchObject({ providerId: "tailscale" });
+    });
+  });
+});
+
+verifies("tunnel-tailscale.tailnet-host", () => {
+  describe("TailscaleTunnel for the host", () => {
+    it("is installed when the program runs, signed in or not, and not without it", async () => {
+      expect(await new TailscaleTunnel({ runner: new ScriptedRunner() }).installed()).toBe(true);
+      const signedOut = new ScriptedRunner({ status: failedExit });
+      expect(await new TailscaleTunnel({ runner: signedOut }).installed()).toBe(true);
+      const missing = new ScriptedRunner({ status: { kind: "missing" } });
+      expect(await new TailscaleTunnel({ runner: missing }).installed()).toBe(false);
+      const hung = new ScriptedRunner({ status: { kind: "failed", why: "timed out" } });
+      expect(await new TailscaleTunnel({ runner: hung }).installed()).toBe(false);
+    });
+
+    it("gives the Host a phone's request carries through the tunnel", async () => {
+      const runner = new ScriptedRunner();
+      expect(await new TailscaleTunnel({ runner }).tailnetHosts()).toEqual([`${nodeName}:8443`]);
+      expect(await new TailscaleTunnel({ runner, servePort: 443 }).tailnetHosts()).toEqual([
+        nodeName,
+        `${nodeName}:443`,
+      ]);
+    });
+
+    it("gives no name when the node isn't usable", async () => {
+      const offline = JSON.stringify({ BackendState: "Stopped" });
+      for (const status of [
+        { kind: "missing" } as const,
+        failedExit,
+        { kind: "done", code: 0, stdout: offline, stderr: "" } as const,
+      ]) {
+        expect(
+          await new TailscaleTunnel({ runner: new ScriptedRunner({ status }) }).tailnetHosts(),
+        ).toEqual([]);
+      }
     });
   });
 });

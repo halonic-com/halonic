@@ -9,7 +9,14 @@ import {
   type TunnelStatus,
 } from "@halonicjs/ports";
 import { AsyncFeed } from "@halonicjs/std";
-import { endpointUrl, readNodeState, readServePort, tailscaleCommands } from "./tailscale-cli.ts";
+import {
+  endpointUrl,
+  gatewayTarget,
+  readNodeState,
+  readServePort,
+  servesTarget,
+  tailscaleCommands,
+} from "./tailscale-cli.ts";
 import type { TailscaleReply, TailscaleRunner } from "./tailscale-runner.ts";
 
 /** What a {@link TailscaleTunnel} is given. */
@@ -20,6 +27,21 @@ export interface TailscaleTunnelOptions {
   servePort?: number;
   /** Where `at` in each status comes from. Defaults to the system clock. */
   clock?: Clock;
+}
+
+/**
+ * The header Tailscale's serve proxy sets on every request that came in
+ * through Funnel, from the public internet, and strips from any request
+ * that carries its own (`addTailscaleIdentityHeaders` in tailscaled). The
+ * gateway refuses a request with it, so Funnel turned on later can't make
+ * the gateway public.
+ */
+export const tailscaleFunnelHeader = "Tailscale-Funnel-Request";
+
+/** The serve entry the provider added: where it serves, and what it proxies to. */
+interface ServeEntry {
+  readonly hostPort: string;
+  readonly target: string;
 }
 
 const capabilities: TunnelCapabilities = { id: "tailscale", public: false, encryptsPath: true };
@@ -53,14 +75,38 @@ export class TailscaleTunnel implements TunnelProvider {
   #tunnel: Tunnel | undefined;
   /** Counts starts and stops, so a start that a stop overtook knows it lost. */
   #run = 0;
-  /** Whether the serve entry on `servePort` is ours, so `stop` removes it. */
-  #added = false;
+  /** The serve entry on `servePort` the provider added, so `stop` removes it and nothing else. */
+  #added: ServeEntry | undefined;
 
   constructor(options: TailscaleTunnelOptions) {
     this.#runner = options.runner;
     this.#servePort = options.servePort ?? 8443;
     this.#clock = options.clock ?? systemClock;
     this.#current = { state: "down", reason: "stopped", at: this.#stamp() };
+  }
+
+  /**
+   * Whether a `tailscale` program is there to run, signed in or not: the
+   * host offers remote only when it is (requirement `tunnel-tailscale.tailnet-host`).
+   */
+  async installed(): Promise<boolean> {
+    const reply = await this.#runner.run(tailscaleCommands.status());
+    return reply.kind === "done";
+  }
+
+  /**
+   * The `Host` a phone's request carries when it comes through this tunnel:
+   * the node's tailnet name with the serve port, and also without it on 443.
+   * Empty when the node isn't usable now; the gateway then accepts only
+   * loopback names.
+   */
+  async tailnetHosts(): Promise<readonly string[]> {
+    const reply = await this.#runner.run(tailscaleCommands.status());
+    if (reply.kind !== "done" || reply.code !== 0) return [];
+    const node = readNodeState(reply.stdout);
+    if (!node.usable) return [];
+    const withPort = `${node.dnsName}:${this.#servePort}`;
+    return this.#servePort === 443 ? [node.dnsName, withPort] : [withPort];
   }
 
   capabilities(): Promise<TunnelCapabilities> {
@@ -94,8 +140,8 @@ export class TailscaleTunnel implements TunnelProvider {
   async stop(): Promise<void> {
     this.#run += 1;
     this.#tunnel = undefined;
-    const removal = this.#added ? this.#removeEntry() : Promise.resolve(undefined);
-    this.#added = false;
+    const removal = this.#added ? this.#removeEntry(this.#added) : Promise.resolve(undefined);
+    this.#added = undefined;
     const failure = await removal;
     this.#report("down", "stopped");
     for (const reader of this.#readers) reader.end();
@@ -118,21 +164,34 @@ export class TailscaleTunnel implements TunnelProvider {
     this.#assertCurrent(run);
     const added = await this.#runner.run(tailscaleCommands.serveAdd(this.#servePort, config));
     if (added.kind !== "done" || added.code !== 0) return this.#fail(run, reasonFor(added));
+    const entry = {
+      hostPort: `${nodeState.dnsName}:${this.#servePort}`,
+      target: gatewayTarget(config),
+    };
     if (run !== this.#run) {
       // A stop came while the entry was being added: take it away again.
-      const failure = await this.#removeEntry();
+      const failure = await this.#removeEntry(entry);
       throw new Error(
         `the Tailscale tunnel was stopped before it was ready${failure ? `; ${failure}` : ""}`,
       );
     }
-    this.#added = true;
+    this.#added = entry;
     this.#report("ready");
     const url = endpointUrl(nodeState.dnsName, this.#servePort);
     return { providerId: capabilities.id, url, public: capabilities.public };
   }
 
-  /** Removes the serve entry on `servePort`; says why when that failed. */
-  async #removeEntry(): Promise<string | undefined> {
+  /**
+   * Removes the serve entry on `servePort` when it is still the one the
+   * provider added; one the person put there since is left alone. Says why
+   * when that failed.
+   */
+  async #removeEntry(entry: ServeEntry): Promise<string | undefined> {
+    const config = await this.#runner.run(tailscaleCommands.serveStatus());
+    if (config.kind !== "done" || config.code !== 0) {
+      return `the Tailscale serve config couldn't be read to remove the entry on port ${this.#servePort}: ${describe(config)}`;
+    }
+    if (!servesTarget(config.stdout, entry.hostPort, entry.target)) return undefined;
     const reply = await this.#runner.run(tailscaleCommands.serveRemove(this.#servePort));
     if (reply.kind === "done" && reply.code === 0) return undefined;
     return `the Tailscale serve entry on port ${this.#servePort} couldn't be removed: ${describe(reply)}`;

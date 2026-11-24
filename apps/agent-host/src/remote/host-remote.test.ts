@@ -59,17 +59,37 @@ verifies("agent-host.remote-gateway", () => {
       const logged: string[] = [];
       const log = (text: string) => logged.push(text);
       const serving = { overStdio: false, profile, holdsLock: true };
-      expect(remoteHomeFor(undefined, serving, log)).toBeUndefined();
+      expect(await remoteHomeFor(undefined, serving, log)).toBeUndefined();
       expect(logged).toEqual([]);
-      expect(remoteHomeFor(offer, serving, log)).toEqual({ offer, profile });
-      expect(remoteHomeFor(offer, { ...serving, overStdio: true }, log)).toBeUndefined();
-      expect(remoteHomeFor(offer, { ...serving, profile: undefined }, log)).toBeUndefined();
-      expect(remoteHomeFor(offer, { ...serving, holdsLock: false }, log)).toBeUndefined();
+      expect(await remoteHomeFor(offer, serving, log)).toEqual({ offer, profile });
+      expect(await remoteHomeFor(offer, { ...serving, overStdio: true }, log)).toBeUndefined();
+      expect(await remoteHomeFor(offer, { ...serving, profile: undefined }, log)).toBeUndefined();
+      expect(await remoteHomeFor(offer, { ...serving, holdsLock: false }, log)).toBeUndefined();
       expect(logged).toEqual([
         "Remote isn't offered: the remote gateway needs a port, and over --stdio the host listens on none.\n",
         "Remote isn't offered: there is no profile folder to keep paired phones in.\n",
         "Remote isn't offered: another agent host serves this profile's phones.\n",
       ]);
+    });
+
+    it("runs a probe only when the rest lets the host offer remote, and offers what it finds", async () => {
+      const profile = await newProfile();
+      const serving = { overStdio: false, profile, holdsLock: true };
+      let probes = 0;
+      const probe = (found: typeof offer | undefined) => async () => {
+        probes += 1;
+        return found;
+      };
+      expect(
+        await remoteHomeFor(probe(offer), { ...serving, overStdio: true }, () => {}),
+      ).toBeUndefined();
+      expect(
+        await remoteHomeFor(probe(offer), { ...serving, holdsLock: false }, () => {}),
+      ).toBeUndefined();
+      expect(probes).toBe(0);
+      expect(await remoteHomeFor(probe(offer), serving, () => {})).toEqual({ offer, profile });
+      expect(await remoteHomeFor(probe(undefined), serving, () => {})).toBeUndefined();
+      expect(probes).toBe(2);
     });
   });
 });

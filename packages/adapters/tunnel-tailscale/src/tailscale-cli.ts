@@ -18,7 +18,8 @@ export const tailscaleCommands = {
   serveRemove: (servePort: number) => ["serve", `--https=${servePort}`, "off"],
 } as const;
 
-function gatewayTarget({ gateway }: TunnelConfig): string {
+/** The address `tailscale serve` proxies to: the gateway on loopback, over plain HTTP. */
+export function gatewayTarget({ gateway }: TunnelConfig): string {
   const host = gateway.host === "::1" ? "[::1]" : gateway.host;
   return `http://${host}:${gateway.port}`;
 }
@@ -68,6 +69,18 @@ export function readServePort(stdout: string, dnsName: string, servePort: number
   if (hasKey(config["AllowFunnel"], hostPort)) return { free: false, reason: "public-refused" };
   const taken = hasKey(config["TCP"], String(servePort)) || hasKey(config["Web"], hostPort);
   return taken ? { free: false, reason: "provider-error" } : { free: true };
+}
+
+/**
+ * Whether the serve config still sends `hostPort` to `target`: the entry
+ * the provider added, not one the person put there since. A config that
+ * can't be read counts as not ours, so nothing is removed on a guess.
+ */
+export function servesTarget(stdout: string, hostPort: string, target: string): boolean {
+  const config = parseObject(stdout);
+  const site = asObject(asObject(config?.["Web"])?.[hostPort]);
+  const root = asObject(asObject(site?.["Handlers"])?.["/"]);
+  return root?.["Proxy"] === target;
 }
 
 /** The endpoint a phone dials: `wss:`, with the port written out only when it isn't 443. */

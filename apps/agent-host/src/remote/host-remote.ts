@@ -18,15 +18,22 @@ import { systemTime } from "./remote-time.ts";
 
 /**
  * What lets the host offer remote: a tunnel provider, the only way a phone
- * reaches the gateway. It is not a launch argument: only code that calls
- * `run` itself passes one, which the executable doesn't until phase C brings
- * the real providers (requirement `agent-host.remote-gateway`).
+ * reaches the gateway. It is not a launch argument: the executable gives the
+ * Tailscale provider when `tailscale` is installed (`tailscale-offer.ts`),
+ * and tests give their own (requirement `agent-host.remote-gateway`).
  */
 export interface RemoteOffer {
   readonly tunnel: TunnelProvider;
   /** The gateway's loopback port; a free one each time remote turns on when not given. */
   readonly gatewayPort?: number;
+  /** The `Host` a request through the tunnel carries, read each time the gateway starts; loopback names only when not given. */
+  readonly tunnelHosts?: () => Promise<readonly string[]>;
+  /** Headers the tunnel adds only to a request from the public internet; the gateway refuses such a request. */
+  readonly publicHeaders?: readonly string[];
 }
+
+/** Finds out, once the host serves, whether it may offer remote: `undefined` when it may not. */
+export type RemoteProbe = () => Promise<RemoteOffer | undefined>;
 
 /** How the host serves, which decides whether it may offer remote. */
 export interface RemoteServing {
@@ -47,20 +54,25 @@ export interface RemoteHome {
 /**
  * Where the host offers remote, or `undefined` when it offers none: without
  * a provider, over `--stdio`, without a profile folder, or while another
- * host holds the profile's lock. Says why when it was given a provider.
+ * host holds the profile's lock. Says why when it was given a provider. A
+ * probe runs only when the rest would let the host offer remote, so a
+ * launch that can't offer it never runs `tailscale`.
  */
-export function remoteHomeFor(
-  offer: RemoteOffer | undefined,
+export async function remoteHomeFor(
+  remote: RemoteOffer | RemoteProbe | undefined,
   serving: RemoteServing,
   log: (text: string) => void,
-): RemoteHome | undefined {
-  if (offer === undefined) return undefined;
+): Promise<RemoteHome | undefined> {
+  if (remote === undefined) return undefined;
   const { overStdio, profile, holdsLock } = serving;
   let why: string;
   if (overStdio) why = "the remote gateway needs a port, and over --stdio the host listens on none";
   else if (profile === undefined) why = "there is no profile folder to keep paired phones in";
   else if (!holdsLock) why = "another agent host serves this profile's phones";
-  else return { offer, profile };
+  else {
+    const offer = typeof remote === "function" ? await remote() : remote;
+    return offer === undefined ? undefined : { offer, profile };
+  }
   log(`Remote isn't offered: ${why}.\n`);
   return undefined;
 }
@@ -136,6 +148,8 @@ async function offered(parts: HostRemoteParts): Promise<HostRemote> {
     ownPorts: parts.ownPorts,
     log,
     ...(offer.gatewayPort === undefined ? {} : { port: offer.gatewayPort }),
+    ...(offer.tunnelHosts === undefined ? {} : { tunnelHosts: offer.tunnelHosts }),
+    ...(offer.publicHeaders === undefined ? {} : { publicHeaders: offer.publicHeaders }),
   });
   const control = await HostRemoteControl.open({
     available: true,
