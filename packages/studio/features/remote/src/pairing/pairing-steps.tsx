@@ -12,6 +12,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { reasonWords } from "../tunnel-words.ts";
 import type { CheckEvent, CodeEvent, EndedEvent } from "./pairing-flow.ts";
 import * as words from "./pairing-words.ts";
+import { PhoneName, phoneNameText } from "./phone-name.tsx";
 
 /** Focus that fell to the page, because the step that held it went away. */
 const focusLost = (): boolean =>
@@ -119,7 +120,9 @@ export function CheckStep({
     <div className="flex flex-col gap-4">
       <p className="text-fg">{words.CHECK_QUESTION}</p>
       <div className="flex flex-col gap-0.5">
-        <p className="text-body-strong text-fg">{check.phoneName}</p>
+        <p className="text-body-strong break-words text-fg">
+          <PhoneName name={check.phoneName} />
+        </p>
         <p className="text-small text-fg-muted">{words.checkPhoneLine(check.platform, provider)}</p>
       </div>
       {/* Focus starts here (decision 11), so a screen reader reads the code before anything else. */}
@@ -145,7 +148,7 @@ export function PairedStep({
   useEffect(() => done.current?.focus(), []);
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-title text-fg">{words.pairedTitle(phone.name)}</h3>
+      <h3 className="text-title text-fg">{words.pairedTitle(phoneNameText(phone.name))}</h3>
       <p className="text-fg">{allowRisky ? words.PAIRED_CAN_RISKY : words.PAIRED_CAN}</p>
       <p className="text-fg-muted">{words.PAIRED_REVOKE}</p>
       <div className="flex justify-end">
