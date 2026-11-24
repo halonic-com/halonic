@@ -3,7 +3,6 @@
 - Task: HAL-17672 (the board's request on the task, 24 Nov)
 - Approval: the board asked on HAL-17672 (24 Nov ~17:35 Spain) for a `labeled` trigger in `ci.yml` that starts a run only for `fast-track`; Liam signs this note in review. The hook and the gate don't change, so Julian's C1–C8 check isn't needed
 - Kind: internal
-- Signature:
 
 ## What changes
 
