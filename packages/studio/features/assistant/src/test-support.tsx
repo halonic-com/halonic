@@ -85,7 +85,6 @@ export function fakeHost(chats: Chat[] = []) {
     if (chat === undefined) throw new KindedError("not_found", `No chat ${chatId}`);
     return chat;
   };
-  const listeners = new Set<(change: AssistantChange) => void>();
   const keep = (chat: Chat) => {
     chats = [chat, ...chats.filter((each) => each.id !== chat.id)];
     for (const listener of listeners) listener({ kind: "chats" });
