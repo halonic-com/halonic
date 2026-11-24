@@ -3,6 +3,7 @@
 - Task: HAL-17923 (from the merge-time report on HAL-17891, section 7.2; Chief's go, 24 Nov)
 - Approval: Chief gave the board server session this item on HAL-17891 (24 Nov); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6CUcsHpo/A35NLyzq7pJf/EUnHr5mpmIP4hnPA4M3GH/Fw86KG9+ALibwL/jdauzha5in+GDhCNFMoKU346HCA==
 
 ## What changes
 
