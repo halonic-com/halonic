@@ -41,7 +41,9 @@ export {
 } from "./open-messaging-item.ts";
 export {
   connectPaperclip,
+  disconnectPaperclip,
   type PaperclipConnectResult,
+  type PaperclipDisconnectResult,
   type PaperclipKeyEntry,
   paperclipKeyEntryText,
   paperclipKeyTokenName,

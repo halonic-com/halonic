@@ -1,22 +1,16 @@
 import type { Readable, Writable } from "node:stream";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
-import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
-import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { resolveRealPath } from "@halonicjs/adapter-harness-kit";
-import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
   keptGrantsRecordFolder,
   removalAfterHelper,
   removalBeforeHelper,
   SrtSandbox,
   setupAfterHelper,
-  WSL_SHARED_FOLDERS,
 } from "@halonicjs/adapter-sandbox-srt";
-import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
 import type { SandboxChoiceService } from "@halonicjs/app";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
-import type { Harness, SecretStore } from "@halonicjs/ports";
-import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
+import type { ProfileFolder } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeProviderFetches } from "./bridge/provider-fetches.ts";
 import {
@@ -38,13 +32,21 @@ import { hostProgramCopies } from "./harness/host-program-copies.ts";
 import { programCopyRoutes } from "./harness/program-copy-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
+import {
+  argumentAfter,
+  connectorPlaces,
+  hostHarnesses,
+  hostSecretsOf,
+  logToError,
+  sharedFoldersOf,
+  wslRemoverOf,
+} from "./host-parts.ts";
 import { stopHost } from "./host-stop.ts";
+import { hostMessaging } from "./messaging/host-messaging.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
 import { modelRoutes } from "./model/model-routes.ts";
-import { paperclipKeyRoutes } from "./paperclip/paperclip-key-routes.ts";
-import { PaperclipKeys } from "./paperclip/paperclip-keys.ts";
 import { hostPluginRoutes, hostPlugins } from "./plugin/host-plugins.ts";
-import { optionalProfileOf, profileGoogleSetup, profileTrustStore } from "./profile-folder.ts";
+import { optionalProfileOf, profileGoogleSetup } from "./profile-folder.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import {
   openHostRemote,
@@ -62,8 +64,8 @@ import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
 import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
 import { sweepRoots, takeHostLock } from "./sandbox/sweep-lock.ts";
-import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
-import { type HostKeychain, hostKeychainOf } from "./secrets/host-keychain.ts";
+import type { WslRemover } from "./sandbox/wsl-remove-host.ts";
+import { hostKeychainOf } from "./secrets/host-keychain.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostServices, relayPortForServing, serveHost } from "./serving-modes.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
@@ -124,7 +126,7 @@ export type FramedHandshake = Pick<Handshake, "token">;
  * - `--sandbox-cleanup` removes what sessions added to the user's access lists, for the uninstaller (see {@link SrtSandbox.cleanUp}), and prints whether it worked, as JSON. It reads the profile folder from `--profile-folder`, which the executable passes on;
  * - `--sandbox-setting-copy` saves the sandbox choice on standard input in the profile, and `--sandbox-setting-remove` removes it: Studio's shell keeps the copy in Halonic's WSL distro equal to the choice on Windows (see {@link copySandboxSetting}). Both print whether it worked, as JSON;
  * - `--wsl-setup` sets up Halonic's WSL distro from the Windows side, for Studio's shell, with the image (`--wsl-image`) and the `RunOnce` command (`--wsl-resume`) the shell gives, and leaves the runtime to the shell (see `wslSetupCommand` in `sandbox/wsl-setup-command.ts`). It prints the setup's result as JSON and exits with 0 only when it is `done`;
- * - `--wsl-shared-folders` (with serving) is how Studio's launcher says the host runs in Halonic's WSL distro: every session then denies the distro's shared folders (see {@link WSL_SHARED_FOLDERS}, security review W1);
+ * - `--wsl-shared-folders` (with serving) is how Studio's launcher says the host runs in Halonic's WSL distro: every session then denies the distro's shared folders (see `WSL_SHARED_FOLDERS`, security review W1);
  * - `--keychain-relay` (with serving) is how Studio says it keeps the host's own secrets in the OS keychain and answers for them on connection id 0 (see {@link hostKeychainOf});
  * - `--engine --profile-folder <folder> --workspace <folder>` runs the workspace's engine for Studio's shell (see {@link engineCommand});
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see `serveOverFrames` in `serving-modes.ts`);
@@ -245,38 +247,6 @@ function roleCommand(
   return engineCommand(args, version, io) ?? sandboxCommand(args, profileFolder, io, sandbox);
 }
 
-/** Removes the WSL setup; not served without a profile, nor inside the distro, which has no `wsl.exe`. */
-function wslRemoverOf(
-  profileFolder: string | undefined,
-  sharedFolders: readonly string[],
-): WslRemover | undefined {
-  if (profileFolder === undefined || sharedFolders.length > 0) return undefined;
-  return hostWslRemover(profileFolder);
-}
-
-/** The folders every session denies: the WSL distro's shared ones when the launcher says the host runs there. */
-function sharedFoldersOf(args: readonly string[]): readonly string[] {
-  return args.includes("--wsl-shared-folders") ? WSL_SHARED_FOLDERS : [];
-}
-
-/**
- * What workspace connectors may use and never reach: Halonic's own profile folder is never a workspace, and is denied.
- * The host checks every connector's trust grant against the trust records of that same folder.
- */
-function connectorPlaces(roots: readonly string[], profileFolder: string | undefined) {
-  return {
-    workspaceRoots: roots.filter((root) => root !== profileFolder),
-    deniedPaths: profileFolder === undefined ? [] : [profileFolder],
-    trustStore: profileFolder === undefined ? undefined : profileTrustStore(profileFolder),
-  };
-}
-
-/** The value after `name` in `args`, when there is one. */
-function argumentAfter(args: readonly string[], name: string): string | undefined {
-  const at = args.indexOf(name);
-  return at === -1 ? undefined : args[at + 1];
-}
-
 /**
  * @param socketFolder - where each bridge serves a Unix socket (see {@link bridgeSocketFolder});
  *   `undefined` for bridges on loopback ports
@@ -362,6 +332,7 @@ async function hostServices(
   const setupJobs = new SetupJobs(sandbox, undefined, wslRemover, (exitCode) =>
     setupAfterHelper(exitCode, () => sandbox.check()),
   );
+  const messaging = hostMessaging(profile, connectors.workspaceRoots, logToError);
   const routes = [
     healthRoute(version),
     // A session's temp folder, made with its harness profile, goes when the session closes.
@@ -434,7 +405,7 @@ async function hostServices(
           ...(relayPort === undefined ? {} : { relayPort }),
         })),
     ...hostPluginRoutes(plugins, logToError),
-    ...paperclipKeyRoutes({ keys: new PaperclipKeys(), log: logToError }),
+    ...messaging.routes,
     ...signIns.routes,
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
     ...hostDoctorRoutes({
@@ -450,8 +421,9 @@ async function hostServices(
     }),
     ...remoteRoutes(hostRemote.control),
   ];
-  const stop = () =>
-    stopHost({
+  const stop = async () => {
+    await messaging.stop();
+    await stopHost({
       remote: hostRemote,
       runs,
       connectors: connectorTable,
@@ -461,20 +433,6 @@ async function hostServices(
       bridges,
       folders,
     });
+  };
   return { routes, stop, listeningOn: (port) => listeningPorts.add(port) };
-}
-
-/** Where the host's own secrets are kept: the keychain when Studio answers for them, the profile's secrets file otherwise. */
-function hostSecretsOf(keychain: HostKeychain | undefined, profile: ProfileFolder): SecretStore {
-  return keychain?.secrets ?? new FileSecretStore(secretsFile(profile));
-}
-
-function logToError(text: string): void {
-  process.stderr.write(text);
-}
-
-/** The harnesses the host runs: Claude Code and Codex, found with this computer's launcher. */
-function hostHarnesses(version: string): Harness[] {
-  const probe = createProgramProbe();
-  return [claudeCodeHarness({ probe }), codexHarness({ probe, halonicVersion: version })];
 }

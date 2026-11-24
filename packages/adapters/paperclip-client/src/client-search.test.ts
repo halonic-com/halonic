@@ -84,7 +84,7 @@ verifies("ports.agent-messaging", () => {
   });
 });
 
-verifies("ports.paperclip-key", () => {
+verifies("agent-host.paperclip-key", () => {
   describe("search's requests", () => {
     it("go only to the connection's host and company", async () => {
       await client().search("launch");

@@ -80,7 +80,12 @@ carries all of the board's powers. A key from the sign-in route expires after
 records the address (scheme, host and port) and the company it was made for.
 Before every call, the provider compares them with the connection file. If
 they differ, it makes no call and Studio asks to connect again, so a pull or a
-branch switch that changes the address can't send the key elsewhere.
+branch switch that changes the address can't send the key elsewhere. The
+engine also binds the key to the workspace it was handed over for (Liam's
+review of HAL-17495): a second workspace with a file of the same name, address
+and company, such as a clone, gets no call until the person connects it there
+too. The keychain entry stays one per connection name, so that second Connect
+reuses it.
 
 The provider sends the key only in the `Authorization` header, uses `https`
 (plain `http` only to `localhost`, `127.0.0.1` and `::1`), never turns off

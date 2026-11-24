@@ -13,6 +13,19 @@ export interface PaperclipConnectionNow {
   readonly company: string;
 }
 
+/**
+ * Which connection a key is for: the workspace that holds the connection
+ * file, and the file's name. A key is bound to both, so a second workspace
+ * with a file of the same name, address and company gets no key until the
+ * person connects it too (`agent-host.paperclip-key`).
+ */
+export interface PaperclipBinding {
+  /** The workspace's folder, as the launcher named it. */
+  readonly workspace: string;
+  /** The connection's name, its file name without `.yaml`. */
+  readonly connection: string;
+}
+
 /** What a request may use: the key, and the origin it may be sent to. */
 export interface PaperclipKeyUse {
   readonly key: string;
@@ -46,30 +59,36 @@ export class PaperclipKeys {
   readonly #entries = new Map<string, { key: string; origin: string; company: string }>();
 
   /**
-   * Keeps `entry` for `connection`, replacing the one held before.
+   * Keeps `entry` for `binding`, replacing the one held before.
    *
-   * @throws RangeError when the entry's address isn't an `http` or `https` address; nothing is changed then
+   * @throws RangeError when the entry's address isn't `https`, or plain `http` to this computer; nothing is changed then
    */
-  replace(connection: string, entry: PaperclipKeyEntry): void {
+  replace(binding: PaperclipBinding, entry: PaperclipKeyEntry): void {
     const origin = originOf(entry.address);
     if (origin === undefined) {
       throw new RangeError("A Paperclip key is kept only with the address it was made for.");
     }
-    this.#entries.set(connection, { key: entry.key, origin, company: entry.company });
+    this.#entries.set(nameOf(binding), { key: entry.key, origin, company: entry.company });
   }
 
-  /** Drops the key held for `connection`. */
-  forget(connection: string): void {
-    this.#entries.delete(connection);
+  /** Drops the key held for `binding`. */
+  forget(binding: PaperclipBinding): void {
+    this.#entries.delete(nameOf(binding));
   }
 
-  /** Whether a key is held for `connection`; never the key. */
-  has(connection: string): boolean {
-    return this.#entries.has(connection);
+  /** Whether a key is held for `binding`; never the key. */
+  has(binding: PaperclipBinding): boolean {
+    return this.#entries.has(nameOf(binding));
+  }
+
+  /** The address (scheme, host and port) and company the key held for `binding` was made for; never the key. */
+  madeFor(binding: PaperclipBinding): PaperclipConnectionNow | undefined {
+    const entry = this.#entries.get(nameOf(binding));
+    return entry === undefined ? undefined : { address: entry.origin, company: entry.company };
   }
 
   /**
-   * The guard the provider calls before every request (`ports.paperclip-key`):
+   * The guard the provider calls before every request (`agent-host.paperclip-key`):
    * it compares the address (scheme, host and port) and the company the key
    * was made for with the connection file as the workspace holds it now. Only
    * when both match does it run `request` with the key; otherwise, or with no
@@ -77,28 +96,39 @@ export class PaperclipKeys {
    * a pull, a branch or a clone that changes the file can't send the key to
    * another server or use it for another company.
    *
-   * @param connection - the connection's name, its file name without `.yaml`
+   * @param binding - the workspace and the connection's name
    * @param now - the connection file as read right before this request
    * @param request - sends the request; it gets the key and the origin the key was made for
    */
   async callWith<T>(
-    connection: string,
+    binding: PaperclipBinding,
     now: PaperclipConnectionNow,
     request: (use: PaperclipKeyUse) => Promise<T>,
   ): Promise<T | SignedOut> {
-    const entry = this.#entries.get(connection);
+    const entry = this.#entries.get(nameOf(binding));
     if (entry === undefined) return signedOut;
     if (originOf(now.address) !== entry.origin || now.company !== entry.company) return signedOut;
     return await request({ key: entry.key, origin: entry.origin });
   }
 }
 
+/** Hosts a key may reach over plain `http`: this computer only, as the ADR allows. */
+const loopbackHosts: readonly string[] = ["localhost", "127.0.0.1", "[::1]"];
+
+/** One text per binding; JSON keeps a workspace path with any character apart from the name. */
+function nameOf(binding: PaperclipBinding): string {
+  return JSON.stringify([binding.workspace, binding.connection]);
+}
+
 /**
  * The address's scheme, host and port, as the browser writes them: `https://Acme.test:443/` is
- * `https://acme.test`. Anything but an `http` or `https` address has none.
+ * `https://acme.test`. Anything but an `https` address, or a plain `http` one to this computer,
+ * has none: a second safeguard next to the client's own check, so a key never crosses a network
+ * in the clear.
  */
 function originOf(address: string): string | undefined {
   if (!URL.canParse(address)) return undefined;
   const url = new URL(address);
-  return url.protocol === "https:" || url.protocol === "http:" ? url.origin : undefined;
+  if (url.protocol === "https:") return url.origin;
+  return url.protocol === "http:" && loopbackHosts.includes(url.hostname) ? url.origin : undefined;
 }

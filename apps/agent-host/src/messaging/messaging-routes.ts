@@ -1,0 +1,185 @@
+import type { ServerResponse } from "node:http";
+import type { AgentMessaging, AttachmentRead, InboxAnswer } from "@halonicjs/ports";
+import { type Infer, type Schema, s } from "@halonicjs/schema-kit";
+import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
+import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
+import { readCheckedBody } from "../server/json-body.ts";
+import type { DesktopMessaging } from "./desktop-messaging.ts";
+import type { MessagingPoller } from "./messaging-poller.ts";
+import type { WorkspaceMessaging } from "./workspace-messaging.ts";
+
+const workspace = s.string().min(1).max(4096);
+const id = s.string().min(1).max(1024);
+
+const readBody = s
+  .object({
+    workspace,
+    list: s.enum(["sources", "agents", "conversations", "messages", "inbox", "work", "search"]),
+    conversation: id.optional(),
+    text: s.string().max(1024).optional(),
+  })
+  .strict();
+
+const answerBody = s
+  .object({
+    workspace,
+    item: id,
+    answer: s.discriminatedUnion("kind", [
+      s
+        .object({
+          kind: s.literal("option"),
+          option: s.string().min(1).max(256),
+          note: s.string().max(20_000).optional(),
+        })
+        .strict(),
+      s.object({ kind: s.literal("reply"), text: s.string().min(1).max(20_000) }).strict(),
+    ]),
+  })
+  .strict();
+
+const sendBody = s
+  .object({ workspace, conversation: id, body: s.string().min(1).max(20_000) })
+  .strict();
+const attachmentBody = s.object({ workspace, attachment: id }).strict();
+const changesBody = s.object({ workspace, after: s.number().int().min(0) }).strict();
+const focusBody = s.object({ inFront: s.boolean() }).strict();
+const disconnectBody = s
+  .object({ workspace, connection: s.string().regex(paperclipConnectionNamePattern) })
+  .strict();
+
+/** What the messaging routes reach. */
+export interface MessagingRouteDeps {
+  messaging: DesktopMessaging;
+  poller: MessagingPoller;
+  /** Where the host writes what failed; never a key. */
+  log: (text: string) => void;
+}
+
+type ReadBody = Infer<typeof readBody>;
+
+/**
+ * The desktop engine's `AgentMessaging` for Studio over loopback (ADR
+ * 2026-11-24, agent messaging, deployment (a)). Every body names the
+ * workspace by its real path; another folder is 404 `unknown_workspace`.
+ *
+ * - `POST /v1/messaging/read` with `{ list }` (and `conversation` for
+ *   `messages`, `text` for `search`) answers `{ items }`.
+ * - `POST /v1/messaging/answer` with `{ item, answer }` and
+ *   `POST /v1/messaging/send` with `{ conversation, body }` answer
+ *   `{ result }`: the source answers or refuses, and offline nothing is kept
+ *   to send later.
+ * - `POST /v1/messaging/attachment` with `{ attachment }` answers
+ *   `{ result }`: the bytes as base64url with their type, or why they were
+ *   refused (offline, the cache may not hold them).
+ * - `POST /v1/messaging/changes` with `{ after }` answers `{ next, sources }`:
+ *   the sources that changed since Studio's last look.
+ * - `POST /v1/messaging/focus` with `{ inFront }` tells the poller whether
+ *   Studio's window is in front.
+ * - `POST /v1/paperclip/disconnect` with `{ connection }` revokes the key,
+ *   then forgets it and deletes the cache even if the revoke failed, and
+ *   answers `{ revoked }`.
+ *
+ * A read that fails for every source is 502 `messaging_failed` with no
+ * detail; the log says which error it was.
+ */
+export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
+  const route = <T>(
+    path: string,
+    schema: Schema<T>,
+    run: (body: T, response: ServerResponse) => Promise<void>,
+  ): HostRoute => ({
+    method: "POST",
+    path,
+    handle: async (request, response) => {
+      const body = await readCheckedBody(request, response, schema);
+      if (body === undefined) return;
+      try {
+        await run(body, response);
+      } catch (error) {
+        deps.log(`Agent messaging failed at ${path}: ${describe(error)}\n`);
+        sendError(response, 502, "messaging_failed", "The agents' sources couldn't be read.");
+      }
+    },
+  });
+  const inWorkspace = <T extends { workspace: string }>(
+    path: string,
+    schema: Schema<T>,
+    run: (messaging: WorkspaceMessaging, body: T) => Promise<unknown>,
+  ) =>
+    route<T>(path, schema, async (body, response) => {
+      const messaging = await deps.messaging.of(body.workspace);
+      if (messaging === undefined) {
+        sendError(response, 404, "unknown_workspace", "The host serves no such workspace.");
+        return;
+      }
+      sendJson(response, 200, await run(messaging, body));
+    });
+  return [
+    inWorkspace("/v1/messaging/read", readBody, async (messaging, body) => ({
+      items: await readList(messaging.messaging, body),
+    })),
+    inWorkspace("/v1/messaging/answer", answerBody, async (messaging, body) => ({
+      result: await messaging.messaging.answer(body.item, inboxAnswerOf(body.answer)),
+    })),
+    inWorkspace("/v1/messaging/send", sendBody, async (messaging, body) => ({
+      result: await messaging.messaging.send(body.conversation, body.body),
+    })),
+    inWorkspace("/v1/messaging/attachment", attachmentBody, async (messaging, body) => ({
+      result: attachmentAnswer(await messaging.messaging.readAttachment(body.attachment)),
+    })),
+    inWorkspace("/v1/messaging/changes", changesBody, async (messaging, body) =>
+      messaging.changesSince(body.after),
+    ),
+    inWorkspace("/v1/paperclip/disconnect", disconnectBody, (messaging, body) =>
+      messaging.disconnect(body.connection),
+    ),
+    route("/v1/messaging/focus", focusBody, async (body, response) => {
+      await deps.poller.setInFront(body.inFront);
+      sendJson(response, 200, {});
+    }),
+  ];
+}
+
+/** The port's answer, without a `note` the body left out. */
+function inboxAnswerOf(answer: Infer<typeof answerBody>["answer"]): InboxAnswer {
+  if (answer.kind === "reply") return answer;
+  const { option, note } = answer;
+  return note === undefined ? { kind: "option", option } : { kind: "option", option, note };
+}
+
+/** One of the port's lists; `messages` without a conversation and `search` without text are empty. */
+function readList(messaging: AgentMessaging, body: ReadBody): Promise<readonly unknown[]> {
+  switch (body.list) {
+    case "sources":
+      return messaging.listSources();
+    case "agents":
+      return messaging.listAgents();
+    case "conversations":
+      return messaging.listConversations();
+    case "messages":
+      return body.conversation === undefined
+        ? Promise.resolve([])
+        : messaging.listMessages(body.conversation);
+    case "inbox":
+      return messaging.listInboxItems();
+    case "work":
+      return messaging.listWork();
+    case "search":
+      return body.text === undefined ? Promise.resolve([]) : messaging.search(body.text);
+  }
+}
+
+/** The error's name and message: the client's errors name the request and status only, never a key. */
+function describe(error: unknown): string {
+  return error instanceof Error ? `${error.name}: ${error.message}` : "an unknown error";
+}
+
+/** An attachment's read as JSON: its bytes as base64url, which an answer body can carry. */
+function attachmentAnswer(read: AttachmentRead) {
+  if (read.outcome === "refused") return read;
+  return {
+    outcome: "read",
+    type: read.type,
+    base64url: Buffer.from(read.bytes).toString("base64url"),
+  };
+}

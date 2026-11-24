@@ -25,7 +25,7 @@ function pollAnswers(status: string): FakePaperclip {
   return paperclip.on("GET", challengePath, { body: { id: challengeId, status } });
 }
 
-verifies("ports.paperclip-key", () => {
+verifies("agent-host.paperclip-key", () => {
   describe("the sign-in request list", () => {
     it("holds exactly start, poll and cancel, and no other key route", () => {
       expect(paperclipSignInRequests).toEqual({

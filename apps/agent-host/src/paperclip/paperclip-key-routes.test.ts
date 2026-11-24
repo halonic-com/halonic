@@ -1,4 +1,6 @@
-import { readdir, readFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, realpath, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { readPaperclipConnections } from "@halonicjs/workspace";
@@ -6,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { paperclipKeyRoutes } from "./paperclip-key-routes.ts";
-import { PaperclipKeys } from "./paperclip-keys.ts";
+import { type PaperclipBinding, PaperclipKeys } from "./paperclip-keys.ts";
 
 // A fake key only these tests use, so its absence from answers and logs means something.
 const fakeKey = "pcp_board_fake-key-for-tests-only";
@@ -16,6 +18,10 @@ const token = randomLaunchToken();
 interface Setup {
   url: string;
   keys: PaperclipKeys;
+  /** The workspace the launcher named, by its real path. */
+  workspace: string;
+  /** Every binding the route said it kept. */
+  kept: PaperclipBinding[];
   /** Every line the host's log got: the fake logger. */
   logged: string[];
   close(): Promise<void>;
@@ -34,16 +40,38 @@ afterEach(async () => {
 async function started(): Promise<Setup> {
   const keys = new PaperclipKeys();
   const logged: string[] = [];
+  const kept: PaperclipBinding[] = [];
+  const workspace = await realpath(await mkdtemp(join(tmpdir(), "acme-paperclip-")));
   const server: HostServer = await startHostServer(
     token,
-    paperclipKeyRoutes({ keys, log: (text) => logged.push(text) }),
+    paperclipKeyRoutes({
+      keys,
+      workspaceRoots: [workspace],
+      kept: async (binding) => {
+        kept.push(binding);
+      },
+      log: (text) => logged.push(text),
+    }),
   );
-  setup = { url: server.url, keys, logged, close: () => server.close() };
+  const close = async () => {
+    await server.close();
+    await rm(workspace, { recursive: true, force: true });
+  };
+  setup = { url: server.url, keys, workspace, kept, logged, close };
   return setup;
 }
 
-/** Hands over `body`, with the page's `Sec-Fetch-Site` when one is given. */
-function handOver(url: string, body: unknown, site?: string): Promise<Response> {
+/** The set-up workspace's `halonic` connection. */
+function halonic(): PaperclipBinding {
+  return { workspace: setup?.workspace ?? "", connection: "halonic" };
+}
+
+/**
+ * Hands over `body` for the set-up workspace (unless it names one), with the
+ * page's `Sec-Fetch-Site` when one is given.
+ */
+function handOver(url: string, fields: object, site?: string): Promise<Response> {
+  const body = { workspace: setup?.workspace, ...fields };
   return fetch(`${url}/v1/paperclip/key`, {
     method: "POST",
     headers: {
@@ -57,7 +85,7 @@ function handOver(url: string, body: unknown, site?: string): Promise<Response> 
 
 /** What the provider does for one request: the guard, then a fetch to the origin the key was made for. */
 function guardedRead(keys: PaperclipKeys, now: { address: string; company: string }) {
-  return keys.callWith("halonic", now, ({ key, origin }) =>
+  return keys.callWith(halonic(), now, ({ key, origin }) =>
     paperclipFetch(`${origin}/api/agents/me`, { headers: { authorization: `Bearer ${key}` } }),
   );
 }
@@ -85,8 +113,23 @@ verifies("agent-host.paperclip-key-hand-over", () => {
       expect(kept.status).toBe(200);
       expect(JSON.parse(text)).toEqual({ kept: true });
       expect(text).not.toContain(fakeKey);
-      expect(keys.has("halonic")).toBe(true);
+      expect(keys.has(halonic())).toBe(true);
+      expect(setup?.kept).toEqual([halonic()]);
       expect(paperclipFetch).not.toHaveBeenCalled();
+    });
+
+    it("keeps no key for a folder the launcher didn't name", async () => {
+      const { url, keys, kept } = await started();
+      const refused = await handOver(url, {
+        workspace: tmpdir(),
+        connection: "halonic",
+        key: fakeKey,
+        ...acme,
+      });
+      expect(refused.status).toBe(404);
+      expect(await refused.text()).toContain("unknown_workspace");
+      expect(keys.has({ workspace: tmpdir(), connection: "halonic" })).toBe(false);
+      expect(kept).toEqual([]);
     });
 
     it("refuses a page of another site before it reads the body", async () => {
@@ -98,7 +141,7 @@ verifies("agent-host.paperclip-key-hand-over", () => {
       );
       expect(refused.status).toBe(403);
       expect(await refused.text()).toContain("secret_from_other_site");
-      expect(keys.has("halonic")).toBe(false);
+      expect(keys.has(halonic())).toBe(false);
     });
 
     it("refuses a body that doesn't fit with no detail, so the answer can't repeat the key", async () => {
@@ -108,6 +151,7 @@ verifies("agent-host.paperclip-key-hand-over", () => {
         { connection: "halonic", key: `${fakeKey}\nx`, ...acme },
         { connection: "halonic", key: fakeKey, ...acme, extra: fakeKey },
         { connection: "halonic", key: fakeKey, ...acme, address: "ftp://paperclip.acme.test" },
+        { connection: "halonic", key: fakeKey, ...acme, address: "http://paperclip.acme.test" },
       ];
       for (const body of bodies) {
         const refused = await handOver(url, body);
@@ -116,7 +160,7 @@ verifies("agent-host.paperclip-key-hand-over", () => {
         expect(text).toContain("body_invalid");
         expect(text).not.toContain(fakeKey);
       }
-      expect(keys.has("halonic")).toBe(false);
+      expect(keys.has(halonic())).toBe(false);
     });
 
     it("never writes the key to its log, whatever it is handed", async () => {

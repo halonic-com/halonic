@@ -1,3 +1,4 @@
+export { AgentHostMessaging } from "./agent-messaging.ts";
 export type {
   BridgeCallServices,
   RemoteDecision,
@@ -48,7 +49,11 @@ export {
   type IntegrationSignInStatus,
   type IntegrationSignOutResult,
 } from "./integration-sign-in.ts";
-export { AgentHostPaperclipKey, type PaperclipKeyHandOver } from "./paperclip-key.ts";
+export {
+  AgentHostPaperclipKey,
+  type PaperclipConnectionRef,
+  type PaperclipKeyHandOver,
+} from "./paperclip-key.ts";
 export { AgentHostPlacementStore } from "./placement-store.ts";
 export { AgentHostPluginRunStates, type PluginRunState } from "./plugin-run-state.ts";
 export { AgentHostPluginSecrets } from "./plugin-secrets.ts";

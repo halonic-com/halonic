@@ -1,8 +1,9 @@
 import { s } from "@halonicjs/schema-kit";
 import { type HostRoute, sendError, sendErrorAndHangUp, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
+import { namedWorkspace } from "../server/named-workspace.ts";
 import { isFromOtherSite } from "../server/other-site.ts";
-import type { PaperclipKeys } from "./paperclip-keys.ts";
+import type { PaperclipBinding, PaperclipKeys } from "./paperclip-keys.ts";
 
 /**
  * A connection's name: its file name without `.yaml`. Studio keeps the key in
@@ -13,6 +14,7 @@ export const paperclipConnectionNamePattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
 /** What Studio hands over. A key is what a header can carry, so a line break can't split it. */
 const handOverBody = s
   .object({
+    workspace: s.string().min(1).max(4096),
     connection: s.string().regex(paperclipConnectionNamePattern),
     key: s
       .string()
@@ -27,6 +29,10 @@ const handOverBody = s
 /** What the hand-over route reaches. */
 export interface PaperclipKeyRouteDeps {
   keys: PaperclipKeys;
+  /** The workspace folders the launcher named; a key is kept only for one of them. */
+  workspaceRoots: readonly string[];
+  /** Hears each key kept, so the host starts the connection's provider; it calls nobody either. */
+  kept?: ((binding: PaperclipBinding) => Promise<void>) | undefined;
   /** Where the host writes what failed; never a key. */
   log?: ((text: string) => void) | undefined;
 }
@@ -35,17 +41,19 @@ export interface PaperclipKeyRouteDeps {
  * The route Studio hands a Paperclip key over with, when the person connects
  * (ADR 2026-11-24, agent messaging; `agent-host.paperclip-key-hand-over`).
  *
- * `POST /v1/paperclip/key` with `{ connection, key, address, company }`
+ * `POST /v1/paperclip/key` with `{ workspace, connection, key, address, company }`
  * answers `{ kept: true }` and keeps the key in memory only, with the address
- * and company it was made for, replacing the one held for the connection.
- * Keeping it calls nobody: only a request the provider sends through the
- * guard does.
+ * and company it was made for, replacing the one held for that workspace's
+ * connection. Keeping it calls nobody: only a request the provider sends
+ * through the guard does.
  *
  * It refuses, keeping nothing: a `Sec-Fetch-Site` other than `same-origin`
- * (403 `secret_from_other_site`, before the body is read), and a body that
- * doesn't fit or an address that isn't `http` or `https` (400 `body_invalid`,
- * with no detail, as the body holds the key). No answer and no log line holds
- * the key.
+ * (403 `secret_from_other_site`, before the body is read), a body that
+ * doesn't fit or an address that isn't `https` or plain `http` to this
+ * computer (400 `body_invalid`, with no detail, as the body holds the key),
+ * and a folder that isn't the real path of a workspace the launcher named
+ * (404 `unknown_workspace`). No
+ * answer and no log line holds the key.
  */
 export function paperclipKeyRoutes(deps: PaperclipKeyRouteDeps): HostRoute[] {
   return [
@@ -67,13 +75,20 @@ export function paperclipKeyRoutes(deps: PaperclipKeyRouteDeps): HostRoute[] {
           describeProblems: false,
         });
         if (body === undefined) return;
+        const workspace = await namedWorkspace(deps.workspaceRoots, body.workspace);
+        if (workspace === undefined) {
+          sendError(response, 404, "unknown_workspace", "The host serves no such workspace.");
+          return;
+        }
+        const binding = { workspace, connection: body.connection };
         try {
-          deps.keys.replace(body.connection, body);
+          deps.keys.replace(binding, body);
         } catch (error) {
           deps.log?.(`A Paperclip key wasn't kept (${errorName(error)}).\n`);
           sendError(response, 400, "body_invalid", "The request body is not valid.");
           return;
         }
+        await deps.kept?.(binding);
         sendJson(response, 200, { kept: true });
       },
     },

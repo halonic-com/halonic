@@ -1,4 +1,7 @@
-import type { PaperclipKeyHandOver } from "@halonicjs/adapter-agent-host-client";
+import type {
+  PaperclipConnectionRef,
+  PaperclipKeyHandOver,
+} from "@halonicjs/adapter-agent-host-client";
 import type { TokenStore } from "@halonicjs/ports";
 
 /** A Paperclip key as the keychain keeps it: with the address and company it was made for. */
@@ -61,20 +64,57 @@ export type PaperclipConnectResult = "connected" | "sign-in-needed";
  * calls this, so a connection file alone sends nothing anywhere. The key
  * never comes back from it.
  *
+ * The host binds the key to the workspace it is handed over for, so
+ * another workspace with a file of the same name gets no key until the
+ * person connects it there too.
+ *
  * @param tokens - the keychain's tokens, from `tokenStoreKey`
  * @param host - the agent host's hand-over, an `AgentHostPaperclipKey`
- * @param connection - the connection's name, its file name without `.yaml`
+ * @param ref - the workspace's real path and the connection's name, its file name without `.yaml`
  * @returns `sign-in-needed` when the keychain holds no key for the connection, or one it can't read
  * @throws AgentHostError when the host refuses the key or can't be reached; KeychainError when the keychain can't be read
  */
 export async function connectPaperclip(
   tokens: Pick<TokenStore, "get">,
   host: { handOver(entry: PaperclipKeyHandOver): Promise<void> },
-  connection: string,
+  ref: PaperclipConnectionRef,
 ): Promise<PaperclipConnectResult> {
-  const text = await tokens.get(paperclipKeyTokenName(connection));
+  const text = await tokens.get(paperclipKeyTokenName(ref.connection));
   const entry = text === null ? undefined : entryOf(text);
   if (entry === undefined) return "sign-in-needed";
-  await host.handOver({ connection, ...entry });
+  await host.handOver({ workspace: ref.workspace, connection: ref.connection, ...entry });
   return "connected";
+}
+
+/** What Disconnect did. When Paperclip didn't revoke the key, it stays valid until its expiry. */
+export interface PaperclipDisconnectResult {
+  readonly revoked: boolean;
+}
+
+/**
+ * Disconnect, the person's own action (`services.paperclip-disconnect`): the
+ * agent host asks Paperclip to revoke the key, then forgets it and deletes
+ * the connection's cache, and this deletes the keychain entry. The entry is
+ * deleted also when the revoke fails or Paperclip can't be reached, and also
+ * when the host can't be asked at all, so Disconnect never leaves the key
+ * behind on this computer.
+ *
+ * @param tokens - the keychain's tokens, from `tokenStoreKey`
+ * @param host - the agent host's disconnect, an `AgentHostPaperclipKey`
+ * @param ref - the workspace's real path and the connection's name
+ * @returns whether Paperclip revoked the key; when not, Studio says it stays valid until its expiry
+ * @throws AgentHostError when the host refuses or can't be reached, after the keychain entry is deleted; KeychainError when it can't be deleted
+ */
+export async function disconnectPaperclip(
+  tokens: Pick<TokenStore, "remove">,
+  host: { disconnect(ref: PaperclipConnectionRef): Promise<PaperclipDisconnectResult> },
+  ref: PaperclipConnectionRef,
+): Promise<PaperclipDisconnectResult> {
+  const asked = await host.disconnect(ref).then(
+    (result) => ({ ok: true as const, result }),
+    (error: unknown) => ({ ok: false as const, error }),
+  );
+  await tokens.remove(paperclipKeyTokenName(ref.connection));
+  if (!asked.ok) throw asked.error;
+  return { revoked: asked.result.revoked };
 }

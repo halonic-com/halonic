@@ -241,6 +241,16 @@ export class PaperclipMessaging implements AgentMessaging {
     }
   }
 
+  /**
+   * Revokes the key in Paperclip (`POST /api/cli-auth/revoke-current`), as
+   * Disconnect does. Answers whether Paperclip revoked it: offline, signed
+   * out or refused, it didn't, and the key stays valid until its expiry.
+   */
+  async revoke(): Promise<boolean> {
+    const answer = await this.#reader.send("revokeKey");
+    return answer.kind === "ok";
+  }
+
   #changedAfter(wrote: boolean): void {
     if (wrote) {
       this.#lastSeen = undefined;

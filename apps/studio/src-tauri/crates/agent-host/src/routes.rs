@@ -4,35 +4,7 @@
 //! `packages/adapters/agent-host-client`, and its `shell-routes.test.ts` fails
 //! when the two drift apart. A stream's lines are split in `stream_lines.rs`.
 
-/// How a route is called.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Method {
-    Get,
-    Post,
-}
-
-/// Whether a route answers once with JSON or with an NDJSON stream.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Answer {
-    Json,
-    Stream,
-}
-
-/// One route of the host's table (`apps/agent-host/README.md`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Route {
-    pub method: Method,
-    pub path: &'static str,
-    pub answer: Answer,
-}
-
-const fn route(method: Method, path: &'static str, answer: Answer) -> Route {
-    Route {
-        method,
-        path,
-        answer,
-    }
-}
+use crate::route_kinds::{Answer, Method, Route, route};
 
 /// Every route a page may call, by its name.
 const ROUTES: &[(&str, Route)] = &[
@@ -374,6 +346,35 @@ const ROUTES: &[(&str, Route)] = &[
     (
         "POST /v1/paperclip/key",
         route(Method::Post, "/v1/paperclip/key", Answer::Json),
+    ),
+    // Disconnect and the desktop engine's AgentMessaging (HAL-17438); no key comes back.
+    (
+        "POST /v1/paperclip/disconnect",
+        route(Method::Post, "/v1/paperclip/disconnect", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/read",
+        route(Method::Post, "/v1/messaging/read", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/answer",
+        route(Method::Post, "/v1/messaging/answer", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/send",
+        route(Method::Post, "/v1/messaging/send", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/attachment",
+        route(Method::Post, "/v1/messaging/attachment", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/changes",
+        route(Method::Post, "/v1/messaging/changes", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/focus",
+        route(Method::Post, "/v1/messaging/focus", Answer::Json),
     ),
     // Whether a plugin's runner stopped because the sandbox failed while it
     // ran, and Check again (HAL-15113): codes only, kept in the host's

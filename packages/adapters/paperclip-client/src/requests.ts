@@ -1,6 +1,6 @@
 /**
  * The whole list of requests the Paperclip provider may make
- * (`ports.paperclip-key`, ADR 2026-11-24 agent messaging). A board key can do
+ * (`agent-host.paperclip-key`, ADR 2026-11-24 agent messaging). A board key can do
  * everything the board can, so the client sends nothing that isn't here. A
  * new entry needs a security review, and no entry may touch a route that
  * makes, lists or deletes keys or tokens (`/api/board-api-keys`, an agent's
