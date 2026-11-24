@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-14220; decisions D2 and D7 of the B1 design note (HAL-14206) with the security review's changes (HAL-14212)
 
-When the shell starts the background engine, it shall read the engine's control pipe on a thread of its own, wait up to 60 seconds for the handshake, and answer the engine's secret requests through the secret broker on another thread, from a queue of at most 16 requests, answering a request beyond that `busy` at once. If the engine sends no valid handshake in time, closes its output first, or breaks the protocol at any point, then the shell shall close the engine's input and kill it, and report how the link ended. When the shell stops the engine, it shall send `stop`, and if the engine hasn't exited 15 seconds later, close its input and kill it. When a crashed engine is to start again, the shell shall allow at most 3 restarts in any 5 minutes.
+When the shell starts the background engine, it shall read the engine's control pipe on a thread of its own, wait up to 60 seconds for the handshake, and answer the engine's secret requests through the secret broker on another thread, with at most 16 requests open, answering a request beyond that `busy` at once. If the engine sends no valid handshake in time, closes its output first, or breaks the protocol at any point, then the shell shall close the engine's input and kill it, and report how the link ended. When the shell stops the engine, it shall send `stop`, and if the engine hasn't exited 15 seconds later, close its input and kill it. When a crashed engine is to start again, the shell shall allow at most 3 restarts in any 5 minutes.
 
 ## Examples
 
@@ -17,8 +17,11 @@ When the shell starts the background engine, it shall read the engine's control 
 - Given an engine that answers `stop` with `stopped` and exits,
   when the shell stops it,
   then the stop ends as exited.
-- Given an engine whose keychain call waits and 17 more requests,
-  when the shell reads the 17th,
+- Given an engine that has stopped reading its input,
+  when the shell stops it,
+  then it is killed once the wait is over.
+- Given an engine whose keychain call waits and 16 more requests,
+  when the shell reads the 16th,
   then it answers `busy` at once.
 - Given 3 restarts in the last 4 minutes,
   when the engine crashes again,

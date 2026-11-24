@@ -2,7 +2,7 @@
 //! Each name starts with `engine_process_` until the trace check reads
 //! `cargo test`. The engine is a test thread on in-memory pipes.
 
-use std::io::{PipeReader, PipeWriter, Write, pipe};
+use std::io::{self, PipeReader, PipeWriter, Write, pipe};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -18,6 +18,7 @@ use halonic_secrets::{MemoryBackend, SecretBackend, SecretError, SecretName};
 
 const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
 const WAIT: Duration = Duration::from_secs(5);
+const HEALTH: &str = r#"{"kind":"health","scheduling":true,"activeRuns":0,"lastTick":null}"#;
 
 /// The test's end of the engine's pipes.
 struct FakeEngine {
@@ -72,13 +73,40 @@ impl WorkspaceTrust for Trusted {
     }
 }
 
-/// Hands each way a link ended to the test.
-struct Ends(Mutex<Sender<LinkEnd>>);
+/// Hands each way a link ended, and each new health, to the test.
+struct Ends {
+    ends: Mutex<Sender<LinkEnd>>,
+    healths: Mutex<Sender<()>>,
+}
 
 impl LinkWatcher for Ends {
+    fn health_changed(&self) {
+        let sender = self.healths.lock().unwrap_or_else(PoisonError::into_inner);
+        let _test_may_have_ended = sender.send(());
+    }
+
     fn ended(&self, end: LinkEnd) {
-        let sender = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        let sender = self.ends.lock().unwrap_or_else(PoisonError::into_inner);
         let _test_may_have_ended = sender.send(end);
+    }
+}
+
+/// An engine's input that takes no write, as from an engine that stopped
+/// reading, until the test drops `gate`.
+struct UnreadInput {
+    entered: Sender<()>,
+    gate: Receiver<()>,
+}
+
+impl Write for UnreadInput {
+    fn write(&mut self, _buffer: &[u8]) -> io::Result<usize> {
+        let _test_may_have_ended = self.entered.send(());
+        let _gate_dropped = self.gate.recv();
+        Err(io::ErrorKind::BrokenPipe.into())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 
@@ -94,19 +122,35 @@ fn acme_broker() -> SecretBroker {
     broker_over(Arc::new(backend))
 }
 
+/// A started link, and what the test hears from it.
+struct Attached {
+    started: Result<EngineProcess, StartError>,
+    engine_done: Receiver<FakeEngine>,
+    ended: Receiver<LinkEnd>,
+    healths: Receiver<()>,
+}
+
 /// Starts a link to a fake engine, which `before` drives until the shell
 /// has read what it needs.
 fn attach(
     broker: SecretBroker,
     wait: Duration,
     before: impl FnOnce(&mut FakeEngine) + Send + 'static,
-) -> (
-    Result<EngineProcess, StartError>,
-    Receiver<FakeEngine>,
-    Receiver<LinkEnd>,
-) {
-    let (output_reader, output) = pipe().unwrap();
+) -> Attached {
     let (input, input_writer) = pipe().unwrap();
+    attach_writing_to(input_writer, input, broker, wait, before)
+}
+
+/// [`attach`], with the shell writing to `shell_input` rather than to the
+/// pipe the fake engine reads.
+fn attach_writing_to(
+    shell_input: impl Write + Send + 'static,
+    input: PipeReader,
+    broker: SecretBroker,
+    wait: Duration,
+    before: impl FnOnce(&mut FakeEngine) + Send + 'static,
+) -> Attached {
+    let (output_reader, output) = pipe().unwrap();
     let (exited, killed) = (Arc::default(), Arc::<AtomicBool>::default());
     let child = FakeChild {
         exited: Arc::clone(&exited),
@@ -124,21 +168,30 @@ fn attach(
         let _test_may_have_ended = engine_back.send(engine);
     });
     let (ends, ended) = channel();
-    let watcher = Arc::new(Ends(Mutex::new(ends)));
+    let (health_sender, healths) = channel();
+    let watcher = Arc::new(Ends {
+        ends: Mutex::new(ends),
+        healths: Mutex::new(health_sender),
+    });
     let started = EngineProcess::attach(
         Box::new(child),
         output_reader,
-        input_writer,
+        shell_input,
         broker,
         wait,
         watcher,
     );
-    (started, engine_done, ended)
+    Attached {
+        started,
+        engine_done,
+        ended,
+        healths,
+    }
 }
 
 #[test]
 fn engine_process_opens_on_the_handshake_and_answers_a_secret() {
-    let (started, engine_done, _ended) = attach(acme_broker(), WAIT, |engine| {
+    let attached = attach(acme_broker(), WAIT, |engine| {
         engine.handshake();
         engine.send(r#"{"kind":"secret_get","id":1,"name":"acme_key"}"#);
         let answer = engine.read();
@@ -147,30 +200,33 @@ fn engine_process_opens_on_the_handshake_and_answers_a_secret() {
             Some(r#"{"kind":"secret_answer","id":1,"result":"value","value":"acme-value"}"#)
         );
     });
-    let process = started.unwrap();
+    let process = attached.started.unwrap();
     assert_eq!(process.link().handshake().url(), "http://127.0.0.1:4100");
-    let engine = engine_done.recv_timeout(WAIT).unwrap();
+    let engine = attached.engine_done.recv_timeout(WAIT).unwrap();
     engine.exited.store(true, Ordering::SeqCst);
 }
 
 #[test]
 fn engine_process_gives_up_without_a_handshake_and_kills_the_engine() {
-    let (started, engine_done, _ended) = attach(acme_broker(), Duration::from_millis(50), |_| {});
-    let engine = engine_done.recv_timeout(WAIT).unwrap();
-    assert!(matches!(started, Err(StartError::Open(OpenError::Timeout))));
+    let attached = attach(acme_broker(), Duration::from_millis(50), |_| {});
+    let engine = attached.engine_done.recv_timeout(WAIT).unwrap();
+    assert!(matches!(
+        attached.started,
+        Err(StartError::Open(OpenError::Timeout))
+    ));
     assert!(engine.killed.load(Ordering::SeqCst));
 }
 
 #[test]
 fn engine_process_kills_the_engine_on_a_fault() {
-    let (started, engine_done, ended) = attach(acme_broker(), WAIT, |engine| {
+    let attached = attach(acme_broker(), WAIT, |engine| {
         engine.handshake();
-        engine.send(r#"{"kind":"health","scheduling":true,"activeRuns":0,"lastTick":null}"#);
+        engine.send(HEALTH);
         engine.send(r#"{"kind":"secret_set","id":1,"name":"acme_key","value":"x"}"#);
     });
-    let _process = started.unwrap();
-    let mut engine = engine_done.recv_timeout(WAIT).unwrap();
-    let end = ended.recv_timeout(WAIT).unwrap();
+    let _process = attached.started.unwrap();
+    let mut engine = attached.engine_done.recv_timeout(WAIT).unwrap();
+    let end = attached.ended.recv_timeout(WAIT).unwrap();
     assert_eq!(end, LinkEnd::Fault(PipeFault::NotAMessage));
     assert!(engine.killed.load(Ordering::SeqCst));
     assert_eq!(engine.read(), None, "the engine's input is closed");
@@ -178,25 +234,55 @@ fn engine_process_kills_the_engine_on_a_fault() {
 
 #[test]
 fn engine_process_stops_on_stop() {
-    let (started, _engine_done, ended) = attach(acme_broker(), WAIT, |engine| {
+    let attached = attach(acme_broker(), WAIT, |engine| {
         engine.handshake();
+        engine.send(HEALTH);
         assert_eq!(engine.read().as_deref(), Some(r#"{"kind":"stop"}"#));
         engine.send(r#"{"kind":"stopped","interrupted":2}"#);
         engine.exited.store(true, Ordering::SeqCst);
     });
-    let process = started.unwrap();
+    let process = attached.started.unwrap();
+    // After its health the shell waits for the next frame, which is when a
+    // Quit comes: `stop` is sent while the reader waits.
+    attached.healths.recv_timeout(WAIT).unwrap();
     assert_eq!(process.stop(WAIT), Stopped::Exited);
-    let end = ended.recv_timeout(WAIT).unwrap();
+    let end = attached.ended.recv_timeout(WAIT).unwrap();
     assert_eq!(end, LinkEnd::Stopped { interrupted: 2 });
 }
 
 #[test]
+fn engine_process_kills_an_engine_that_has_stopped_reading() {
+    let (entered, writing) = channel();
+    let (gate, gate_receiver) = channel::<()>();
+    let unread = UnreadInput {
+        entered,
+        gate: gate_receiver,
+    };
+    let (input, _input_writer) = pipe().unwrap();
+    let attached = attach_writing_to(unread, input, acme_broker(), WAIT, |engine| {
+        engine.handshake();
+        engine.send(r#"{"kind":"secret_get","id":1,"name":"acme_key"}"#);
+    });
+    let process = attached.started.unwrap();
+    // The answer's write waits on the engine for good.
+    writing.recv_timeout(WAIT).unwrap();
+    let (stopped_sender, stopped) = channel();
+    std::thread::spawn(move || {
+        let _test_may_have_ended = stopped_sender.send(process.stop(Duration::from_millis(100)));
+    });
+    assert_eq!(stopped.recv_timeout(WAIT).unwrap(), Stopped::Killed);
+    let engine = attached.engine_done.recv_timeout(WAIT).unwrap();
+    assert!(engine.killed.load(Ordering::SeqCst));
+    drop(gate);
+}
+
+#[test]
 fn engine_process_kills_an_engine_that_doesnt_stop() {
-    let (started, engine_done, _ended) = attach(acme_broker(), WAIT, |engine| {
+    let attached = attach(acme_broker(), WAIT, |engine| {
         engine.handshake();
     });
-    let process = started.unwrap();
-    let engine = engine_done.recv_timeout(WAIT).unwrap();
+    let process = attached.started.unwrap();
+    let engine = attached.engine_done.recv_timeout(WAIT).unwrap();
     let asked = Instant::now();
     assert_eq!(process.stop(Duration::from_millis(100)), Stopped::Killed);
     assert!(asked.elapsed() >= Duration::from_millis(100));
@@ -206,12 +292,12 @@ fn engine_process_kills_an_engine_that_doesnt_stop() {
 #[test]
 fn engine_process_answers_busy_beyond_the_queue() {
     let (backend, entered, gate) = GatedBackend::closed();
-    let (started, engine_done, _ended) = attach(broker_over(backend), WAIT, move |engine| {
+    let attached = attach(broker_over(backend), WAIT, move |engine| {
         engine.handshake();
         engine.send(r#"{"kind":"secret_get","id":1,"name":"acme_key"}"#);
-        // The first request is in the keychain; 16 fill the queue.
+        // The first request is in the keychain; 15 more make 16 open.
         entered.recv_timeout(WAIT).unwrap();
-        for id in 2..=18 {
+        for id in 2..=17 {
             engine.send(&format!(
                 r#"{{"kind":"secret_get","id":{id},"name":"acme_key"}}"#
             ));
@@ -219,11 +305,11 @@ fn engine_process_answers_busy_beyond_the_queue() {
         let first_answer = engine.read();
         assert_eq!(
             first_answer.as_deref(),
-            Some(r#"{"kind":"secret_answer","id":18,"result":"refused","reason":"busy"}"#)
+            Some(r#"{"kind":"secret_answer","id":17,"result":"refused","reason":"busy"}"#)
         );
     });
-    let _process = started.unwrap();
-    let engine = engine_done.recv_timeout(WAIT).unwrap();
+    let _process = attached.started.unwrap();
+    let engine = attached.engine_done.recv_timeout(WAIT).unwrap();
     engine.exited.store(true, Ordering::SeqCst);
     drop(gate);
 }

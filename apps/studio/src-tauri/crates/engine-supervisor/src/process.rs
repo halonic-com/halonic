@@ -173,8 +173,8 @@ impl EngineProcess {
             }
             std::thread::sleep(EXIT_POLL);
         }
-        // Killed before its input closes: a write to an engine that
-        // stopped reading can hold the input's lock until it is gone.
+        // Killed first: closing the input reaches no engine that stopped
+        // reading, since the frames queued before the close still wait.
         lock(&self.child).kill();
         self.link.close_input();
         Stopped::Killed

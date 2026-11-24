@@ -7,8 +7,8 @@ use std::time::{Duration, Instant};
 
 use halonic_agent_host::Handshake;
 use halonic_engine_pipe::{
-    EngineEvent, EngineHealth, PipeFault, PipeSession, SandboxHost, read_frame, sandbox_host_json,
-    secret_answer_json, stop_json, write_frame,
+    EngineEvent, EngineHealth, MAX_SHELL_FRAME_BYTES, PipeFault, PipeSession, SandboxHost,
+    read_frame, sandbox_host_json, secret_answer_json, stop_json, write_frame,
 };
 use halonic_secret_broker::{
     BrokerAnswer, BrokerRefusal, BrokerRequest, MAX_OUTSTANDING, SecretBroker,
@@ -41,11 +41,19 @@ pub enum OpenError {
 pub trait LinkWatcher: Send + Sync + 'static {
     /// The engine sent a new `health`.
     fn health_changed(&self) {}
-    /// The link ended. On a fault the engine's input is closed right after.
+    /// The link ended. The engine's input is closed by then.
     fn ended(&self, _end: LinkEnd) {}
 }
 
-type Input = Arc<Mutex<Option<Box<dyn Write + Send>>>>;
+/// Frames for the engine wait here for the thread that writes them: the
+/// answers to the most requests it may have open, with room for `busy`,
+/// `stop` and `sandbox_host` beside them.
+const INPUT_QUEUE: usize = 2 * MAX_OUTSTANDING;
+
+/// The way to the thread that owns the engine's input. Sending never
+/// blocks, so this lock is never held while a write waits on an engine
+/// that stopped reading; `None` once the input is closed.
+type Input = Arc<Mutex<Option<SyncSender<Vec<u8>>>>>;
 
 #[derive(Default)]
 struct Status {
@@ -65,8 +73,9 @@ pub struct EngineLink {
 impl EngineLink {
     /// Reads the engine's `output` on a thread of its own and waits up to
     /// `wait` for its handshake. After it, broker requests are answered from
-    /// `broker` on one more thread, in a queue of at most
-    /// [`MAX_OUTSTANDING`]; a request beyond it is answered `busy`.
+    /// `broker` on one more thread, with at most [`MAX_OUTSTANDING`] open; a
+    /// request beyond them is answered `busy`. One more thread writes to
+    /// `input`.
     ///
     /// # Errors
     ///
@@ -78,7 +87,7 @@ impl EngineLink {
         wait: Duration,
         watcher: Arc<dyn LinkWatcher>,
     ) -> Result<Self, OpenError> {
-        let input: Input = Arc::new(Mutex::new(Some(Box::new(input))));
+        let input = start_writer(input);
         let reader = Reader {
             input: Arc::clone(&input),
             status: Arc::default(),
@@ -129,24 +138,25 @@ impl EngineLink {
     ///
     /// # Errors
     ///
-    /// [`PipeFault::Write`] when the input is closed or writing fails.
+    /// [`PipeFault::Write`] when the input is closed or its queue is full.
     pub fn send_stop(&self) -> Result<(), PipeFault> {
         // Noted before the frame goes, so the reader takes the `stopped`
         // that answers it.
         self.stop_sent.store(true, Ordering::SeqCst);
-        send(&self.input, &stop_json())
+        send(&self.input, stop_json())
     }
 
     /// Sends where the sandbox host is now, or that none runs.
     ///
     /// # Errors
     ///
-    /// [`PipeFault::Write`] when the input is closed or writing fails.
+    /// [`PipeFault::Write`] when the input is closed or its queue is full.
     pub fn send_sandbox_host(&self, host: Option<SandboxHost<'_>>) -> Result<(), PipeFault> {
-        send(&self.input, &sandbox_host_json(host))
+        send(&self.input, sandbox_host_json(host))
     }
 
     /// Closes the engine's input: it stops, and exits, when it reads the end.
+    /// Frames already queued are still written first.
     pub fn close_input(&self) {
         close(&self.input);
     }
@@ -176,17 +186,15 @@ impl Reader {
         }
         let answers = Answers::start(broker, Arc::clone(&self.input));
         let end = self.read_on(&mut output, &mut session, &answers);
+        // Closed before the queue goes, so the requests left in it aren't
+        // taken to the keychain for an engine that is gone or faulty.
+        close(&self.input);
         drop(answers);
         if let LinkEnd::Fault(fault) = end {
             halonic_shell_log::record("engine", fault);
         }
         lock(&self.status).end = Some(end);
-        // The watcher kills a faulty engine first: a write to an engine
-        // that stopped reading can hold the input's lock until then.
         self.watcher.ended(end);
-        if matches!(end, LinkEnd::Fault(_)) {
-            close(&self.input);
-        }
     }
 
     fn read_on(
@@ -196,14 +204,17 @@ impl Reader {
         answers: &Answers,
     ) -> LinkEnd {
         loop {
-            if self.stop_sent.load(Ordering::SeqCst) {
-                session.stop_sent();
-            }
             let json = match read_frame(output) {
                 Ok(Some(json)) => json,
                 Ok(None) => return LinkEnd::Closed,
                 Err(fault) => return LinkEnd::Fault(fault),
             };
+            // Read after the frame came, not before the wait for it: `stop`
+            // is usually sent while this thread waits, and the flag is set
+            // before `stop` goes, so it is set when `stopped` arrives.
+            if self.stop_sent.load(Ordering::SeqCst) {
+                session.stop_sent();
+            }
             match session.accept(&json, Instant::now()) {
                 Ok(EngineEvent::Request { id, request }) => answers.queue(id, request),
                 Ok(EngineEvent::Health(health)) => {
@@ -238,7 +249,8 @@ fn first_frame(output: &mut impl Read, session: &mut PipeSession) -> Result<Hand
 }
 
 /// The broker's queue: one thread answers in order, since the keychain takes
-/// one call at a time anyway.
+/// one call at a time anyway. The one it answers and those waiting make at
+/// most [`MAX_OUTSTANDING`].
 struct Answers {
     queue: SyncSender<(u64, BrokerRequest)>,
     input: Input,
@@ -246,12 +258,16 @@ struct Answers {
 
 impl Answers {
     fn start(broker: SecretBroker, input: Input) -> Self {
-        let (queue, requests) = mpsc::sync_channel::<(u64, BrokerRequest)>(MAX_OUTSTANDING);
+        let (queue, requests) = mpsc::sync_channel::<(u64, BrokerRequest)>(MAX_OUTSTANDING - 1);
         let writer = Arc::clone(&input);
         let spawned = thread::Builder::new()
             .name("engine-secrets".to_owned())
             .spawn(move || {
                 for (id, request) in requests {
+                    // Once the link ended nobody reads the answer.
+                    if lock(&writer).is_none() {
+                        continue;
+                    }
                     write_answer(&writer, id, &broker.answer(&request));
                 }
             });
@@ -274,14 +290,42 @@ impl Answers {
 }
 
 fn write_answer(input: &Input, id: u64, answer: &BrokerAnswer) {
-    if let Err(fault) = send(input, &secret_answer_json(id, answer)) {
+    if let Err(fault) = send(input, secret_answer_json(id, answer)) {
         halonic_shell_log::record("engine", format_args!("an answer wasn't sent: {fault}"));
     }
 }
 
-fn send(input: &Input, json: &[u8]) -> Result<(), PipeFault> {
-    match lock(input).as_mut() {
-        Some(writer) => write_frame(writer, json),
+/// Starts the thread that owns the engine's input. It ends, and closes the
+/// input, when the queue's senders are gone and the queue is written, or
+/// when a write fails because the engine is gone.
+fn start_writer(mut input: impl Write + Send + 'static) -> Input {
+    let (frames, queued) = mpsc::sync_channel::<Vec<u8>>(INPUT_QUEUE);
+    let spawned = thread::Builder::new()
+        .name("engine-input".to_owned())
+        .spawn(move || {
+            for json in queued {
+                if let Err(fault) = write_frame(&mut input, &json) {
+                    halonic_shell_log::record("engine", format_args!("its input ended: {fault}"));
+                    return;
+                }
+            }
+        });
+    if spawned.is_err() {
+        // The input went with the closure: the engine reads its end, and
+        // every send below is refused.
+        halonic_shell_log::record("engine", "the thread for its input didn't start");
+    }
+    Arc::new(Mutex::new(Some(frames)))
+}
+
+/// Queues `json` for the engine without waiting. Its length is checked here,
+/// so the writing thread meets only write errors.
+fn send(input: &Input, json: Vec<u8>) -> Result<(), PipeFault> {
+    if json.is_empty() || json.len() > MAX_SHELL_FRAME_BYTES {
+        return Err(PipeFault::Length);
+    }
+    match lock(input).as_ref() {
+        Some(frames) => frames.try_send(json).map_err(|_| PipeFault::Write),
         None => Err(PipeFault::Write),
     }
 }
@@ -291,7 +335,7 @@ fn close(input: &Input) {
 }
 
 /// The data behind these locks stays whole if a holder panicked: an
-/// optional writer and two plain fields.
+/// optional sender and two plain fields.
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
