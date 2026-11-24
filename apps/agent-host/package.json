@@ -13,7 +13,8 @@
     "lint": "biome check .",
     "test": "vitest run",
     "build:sea": "pnpm --filter @halonicjs/adapter-integration-runner build && node scripts/build.ts",
-    "smoke:sea": "node scripts/smoke.ts"
+    "smoke:sea": "node scripts/smoke.ts",
+    "test:fence": "vitest run --config vitest.fence.config.ts"
   },
   "devDependencies": {
     "@halonicjs/testing-contracts": "workspace:*",
