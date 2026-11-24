@@ -17,6 +17,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 
 | Port | File | Version | What it does | Contract suite |
 | --- | --- | --- | --- | --- |
+| `AgentMessaging` | `agent-messaging.ts` | 1 | how Studio's apps talk to agents, whoever runs them: sources, agents, conversations, messages, inbox items and answers, work, search and changes, with opaque IDs and no provider types | `agent-messaging` (with first adapter; `FakeAgentMessaging` in `testing/contracts` until then) |
 | `AgentPlacementStore` | `agent-placement-store.ts` | 2 | each agent's "this computer" choice in the user's profile, keyed by workspace, hub and agent id; `AgentPlacement` decides | `agent-placement-store` |
 | `BlobStore` | `blob-store.ts` | 1 | content-addressed bytes: attachments, large payloads, exports | `blob-store` |
 | `ChatSessions` | `chat-sessions.ts` | 1 | each workspace's Build and agent chats in the user's profile on this computer; `core/assistant` decides what is kept | `chat-sessions` |
@@ -38,7 +39,6 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `KnowledgeProvider` | `knowledge-provider.ts` | 1 | knowledge sources agents search and read, and their factory | `knowledge-provider` |
 | `LlmCache` | `llm-cache.ts` | 1 | model answers reused by simulation re-runs | `llm-cache` (with first adapter) |
 | `LlmProvider` | `llm-provider.ts` | 1 | model providers, and their factory | `llm-provider`, `llm-stream` |
-| `PaperclipSource` | `paperclip-source.ts` | 1 | how Studio reads one Paperclip connection: list agents, projects, tasks, comments and cards, answer a card and comment on a chat task, and nothing else | `paperclip-source` (with first adapter; `FakePaperclipSource` in `testing/contracts` until then) |
 | `PasswordHasher` | `password-hasher.ts` | 1 | hash and check the sign-in password: scrypt for `serve`, chained PBKDF2 for cloud targets (both planned, not in 0.1.0) | `password-hasher` (with first adapter) |
 | `PluginFolderWriter` | `plugin-folder-writer.ts` | 1 | places and removes whole plugin folders in the profile's plugins folder, never through a link | `plugin-folder-writer` |
 | `ProgramProbe` | `program-probe.ts` | 2 | finds a harness's program and asks it something short, such as its version | `program-probe` (with first adapter) |

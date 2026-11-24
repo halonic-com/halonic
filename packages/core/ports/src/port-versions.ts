@@ -1,3 +1,4 @@
+import { agentMessagingVersion } from "./agent-messaging.ts";
 import { agentPlacementStoreVersion } from "./agent-placement-store.ts";
 import { blobStoreVersion } from "./blob-store.ts";
 import { chatSessionsVersion } from "./chat-sessions.ts";
@@ -19,7 +20,6 @@ import { integrationVersion } from "./integration.ts";
 import { knowledgeProviderVersion } from "./knowledge-provider.ts";
 import { llmCacheVersion } from "./llm-cache.ts";
 import { llmProviderVersion } from "./llm-provider.ts";
-import { paperclipSourceVersion } from "./paperclip-source.ts";
 import { passwordHasherVersion } from "./password-hasher.ts";
 import { pluginFolderWriterVersion } from "./plugin-folder-writer.ts";
 import { programProbeVersion } from "./program-probe.ts";
@@ -49,6 +49,7 @@ import { vcsVersion } from "./vcs.ts";
  * if (portVersions.RunStore !== 1) throw new Error("this adapter implements RunStore 1");
  */
 export const portVersions = {
+  AgentMessaging: agentMessagingVersion,
   AgentPlacementStore: agentPlacementStoreVersion,
   BlobStore: blobStoreVersion,
   ChatSessions: chatSessionsVersion,
@@ -70,7 +71,6 @@ export const portVersions = {
   KnowledgeProvider: knowledgeProviderVersion,
   LlmCache: llmCacheVersion,
   LlmProvider: llmProviderVersion,
-  PaperclipSource: paperclipSourceVersion,
   PasswordHasher: passwordHasherVersion,
   PluginFolderWriter: pluginFolderWriterVersion,
   ProgramProbe: programProbeVersion,

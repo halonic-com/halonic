@@ -1,4 +1,26 @@
 export {
+  type AgentActivity,
+  type AgentMessaging,
+  type AnswerResult,
+  agentMessagingVersion,
+  type Conversation,
+  type InboxAnswer,
+  type InboxItem,
+  type InboxItemOption,
+  type InboxItemState,
+  type Message,
+  type MessagingAgent,
+  type MessagingAuthor,
+  type MessagingId,
+  type MessagingRefusal,
+  type MessagingSource,
+  type MessagingSourceState,
+  type SearchHit,
+  type SendResult,
+  type WorkItem,
+  type WorkState,
+} from "./agent-messaging.ts";
+export {
   type AgentPlacementKey,
   type AgentPlacementRecord,
   type AgentPlacementStore,
@@ -248,25 +270,6 @@ export {
   readCheckCode,
   readPairingCode,
 } from "./pairing-codes.ts";
-export {
-  type PaperclipAgent,
-  type PaperclipAgentStatus,
-  type PaperclipAnswerResult,
-  type PaperclipAuthor,
-  type PaperclipCard,
-  type PaperclipCardAnswer,
-  type PaperclipCardOption,
-  type PaperclipCardState,
-  type PaperclipComment,
-  type PaperclipCommentResult,
-  type PaperclipItemId,
-  type PaperclipProject,
-  type PaperclipRead,
-  type PaperclipRefusal,
-  type PaperclipSource,
-  type PaperclipTask,
-  paperclipSourceVersion,
-} from "./paperclip-source.ts";
 export { type PasswordHasher, passwordHasherVersion } from "./password-hasher.ts";
 export {
   checkPluginFiles,

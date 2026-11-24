@@ -62,12 +62,15 @@ export {
   type MakeDeployTarget,
 } from "./deploy-target.ts";
 export {
+  FakeAgentMessaging,
+  type FakeAgentMessagingOptions,
+} from "./fake-agent-messaging.ts";
+export {
   type AccountsFailureCode,
   FakeDeployTarget,
   type FakeDeployTargetOptions,
   fakeDeployTargetEntry,
 } from "./fake-deploy-target.ts";
-export { FakePaperclipSource, type FakePaperclipSourceOptions } from "./fake-paperclip-source.ts";
 export {
   type FakePhone,
   FakeRemoteControl,
