@@ -262,7 +262,12 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
   const prTasks = new Set([...found].filter(([, pulls]) => pulls.length > 0).map(([id]) => id));
   await recordPass(ctx, companyId, settings.dryRun, {
     summary,
-    monitors: countMonitors(tasks, prTasks, now),
+    // Parked tasks are read only for a retargeted pull request (HAL-17869); their monitors aren't the watcher's.
+    monitors: countMonitors(
+      tasks.filter((task) => task.parked !== true),
+      prTasks,
+      now,
+    ),
     requests: requests(),
     durationMs: Date.now() - started,
   });
