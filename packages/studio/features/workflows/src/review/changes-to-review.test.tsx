@@ -102,7 +102,7 @@ const mark = (page: HTMLElement, id: string) =>
 const card = (page: HTMLElement, step: string) => page.querySelector(`[data-step="${step}"]`);
 const accept = (page: HTMLElement, id: string) => mark(page, id)?.querySelector("button");
 
-verifies("workflows.page.changes-to-review", () => {
+verifies("workflows.review.changes-to-review", () => {
   it("shows the bar, and Next picks the change's step with the focus on its mark", async () => {
     const { page } = await showPage(fakeReview(reviewOf([nameChange, writeChange])).host);
     expect(page.textContent).toContain("The assistant changed 2 things here");

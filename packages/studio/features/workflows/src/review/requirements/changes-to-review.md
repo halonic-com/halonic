@@ -1,4 +1,4 @@
-# workflows.page.changes-to-review
+# workflows.review.changes-to-review
 
 - Status: active
 - Since: unreleased
