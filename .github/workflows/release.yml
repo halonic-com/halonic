@@ -606,6 +606,9 @@ jobs:
     with:
       dry_run: false
       version: ${{ needs.build.outputs.version }}
+    # Without it the called sign job saw the `release` environment's upload
+    # key as empty on the v0.1.1 run (HAL-16760). Only that job reads it.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
 
   draft-release:
     name: Create draft release
