@@ -14,3 +14,19 @@ reader doesn't use are shortened.
 When you add lines from a real run, replace every id, path, address, name and
 token with a made-up one first, and check the file with `pnpm check` before you
 commit it.
+
+## Starting-context recordings
+
+`starting-context/claude-code-<version>.json` holds the sizes of a pinned
+Claude Code version's first model call, for each `ENABLE_TOOL_SEARCH` value
+the harness sets: the characters of `system`, of `messages` and of each tool
+definition, with the tool's name. Never the prompt's text.
+`starting-context.test.ts` fails when the call with the setting for Claude's
+own models goes over the target (requirement
+`harness-claude-code.starting-context`).
+
+To record a new version, point `ANTHROPIC_BASE_URL` at a local server that
+saves each `/v1/messages` body and answers with a short `end_turn` message,
+set a made-up `ANTHROPIC_API_KEY`, an empty `CLAUDE_CONFIG_DIR` and
+`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, run `claude -p "hi"` once per
+`ENABLE_TOOL_SEARCH` value, and write down the sizes of the first body.

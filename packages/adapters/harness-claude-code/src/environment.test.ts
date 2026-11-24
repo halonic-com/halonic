@@ -56,7 +56,7 @@ verifies("harness-claude-code.environment", () => {
         CLAUDE_CONFIG_DIR: "/agents/writer/settings",
         CLAUDE_CODE_TMPDIR: "/sessions/one/temp",
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
-        ENABLE_TOOL_SEARCH: "false",
+        ENABLE_TOOL_SEARCH: "true",
         HALONIC_RUN_TOKEN: bridge.token,
       });
     });
@@ -123,11 +123,13 @@ verifies("harness-claude-code.model-variables", () => {
 });
 
 verifies("harness-claude-code.mcp-tools-listed", () => {
-  it("turns Claude Code's tool search off, so the MCP tools are listed in every request", async () => {
-    expect(await environmentInSession()).toHaveProperty("ENABLE_TOOL_SEARCH", "false");
+  it("turns Claude Code's tool search on for Claude's own models, so tools load on demand", async () => {
+    expect(await environmentInSession()).toHaveProperty("ENABLE_TOOL_SEARCH", "true");
+    const sonnet = claudeCodeEnvironment(bridge, engineProfile, { model: "claude-sonnet-5-5" });
+    expect(sonnet["ENABLE_TOOL_SEARCH"]).toBe("true");
   });
 
-  it("turns it off for every model, the ones for every call included", () => {
+  it("turns it off for a model for every call, so the MCP tools are listed in every request", () => {
     const everyCall = claudeCodeEnvironment(bridge, engineProfile, {
       model: "glm-5.3",
       modelForEveryCall: true,
