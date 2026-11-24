@@ -3,7 +3,7 @@ import { changeKinds, type Reading, riskAreas, uiOrLogic } from "./reading.ts";
 /**
  * The thin-spec score (HAL-17076): the chance that a task's text leaves out
  * the result it will be checked against, from Haiku's reading. A port of
- * halonic-com/variant-router `thin_spec.py`: the same 24 features, scaled and
+ * halonic-com/variant-router `thin_spec.py`: the same 25 features, scaled and
  * weighted by a logistic regression fitted on the trial's 460 tasks.
  */
 
@@ -21,7 +21,7 @@ export interface ThinSpecModel {
 }
 
 /** The number of features `featureRow` makes; a model must have this many of each. */
-export const featureCount = 24;
+export const featureCount = 25;
 
 function flag(value: boolean): number {
   return value ? 1 : 0;
