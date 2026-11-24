@@ -8,6 +8,13 @@ export {
   engineBaseUrl,
   tauriEngineFetch,
 } from "./engine-fetch.ts";
+export {
+  connectPaperclip,
+  type PaperclipConnectResult,
+  type PaperclipKeyEntry,
+  paperclipKeyEntryText,
+  paperclipKeyTokenName,
+} from "./paperclip-key.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";
 export { ShellHttpClient, shellHttpClient } from "./shell-http-client.ts";
 export {

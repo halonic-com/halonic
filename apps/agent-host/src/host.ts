@@ -41,6 +41,8 @@ import { signInRoute } from "./harness/sign-in-route.ts";
 import { stopHost } from "./host-stop.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
 import { modelRoutes } from "./model/model-routes.ts";
+import { paperclipKeyRoutes } from "./paperclip/paperclip-key-routes.ts";
+import { PaperclipKeys } from "./paperclip/paperclip-keys.ts";
 import { hostPluginRoutes, hostPlugins } from "./plugin/host-plugins.ts";
 import { optionalProfileOf, profileGoogleSetup, profileTrustStore } from "./profile-folder.ts";
 import { proxySetting } from "./proxy-setting.ts";
@@ -432,6 +434,7 @@ async function hostServices(
           ...(relayPort === undefined ? {} : { relayPort }),
         })),
     ...hostPluginRoutes(plugins, logToError),
+    ...paperclipKeyRoutes({ keys: new PaperclipKeys(), log: logToError }),
     ...signIns.routes,
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
     ...hostDoctorRoutes({
