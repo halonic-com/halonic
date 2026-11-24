@@ -7,6 +7,7 @@ import {
   type AgentsHost,
   agentHarnessIds,
 } from "../api.ts";
+import { ReviewMark } from "../review/review-marks.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
 import { type HarnessCheck, harnessSetupPages, harnessStrip } from "./harness-strip.ts";
 import { HarnessStripCallout } from "./harness-strip-callout.tsx";
@@ -129,6 +130,7 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
           check={checkAgain}
         />
       </div>
+      <ReviewMark agent={settings} field="harness" />
       <div className="relative">
         {/* With a strip, the strip's Check again is the only one (H2 on HAL-13120). */}
         {!stripShown && (

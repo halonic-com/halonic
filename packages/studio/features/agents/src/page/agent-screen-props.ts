@@ -7,6 +7,7 @@ import type {
 } from "@halonicjs/studio-shell";
 import type { ComponentType } from "react";
 import type { AgentRef, AgentRoutine, AgentsHost, AgentToolList, AgentUser } from "../api.ts";
+import type { AgentReviewHost } from "../review-api.ts";
 
 /** Props for `AgentScreen`. */
 export interface AgentScreenProps extends AgentRef {
@@ -52,4 +53,6 @@ export interface AgentScreenProps extends AgentRef {
   readonly harnessRequest?: string | undefined;
   /** Checks that the sandbox can start a program, for the Try it chat of an agent that starts one. */
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
+  /** The assistant's changes to the agent, for the item bar and the marks; none where absent. */
+  readonly review?: AgentReviewHost | undefined;
 }

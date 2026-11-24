@@ -27,6 +27,7 @@ import type {
   AgentToolList,
 } from "../api.ts";
 import type { Load } from "../page/use-load.ts";
+import { PageMarks } from "../review/review-marks.tsx";
 import { AgentStepsPage } from "./agent-steps-page.tsx";
 import { BehaviourPage } from "./behaviour-page.tsx";
 import { type ConfigurationErrors, noConfigurationErrors } from "./configuration-errors.ts";
@@ -283,6 +284,7 @@ export function Configuration({
       <PagePanel narrow={narrow} ids={ids} pages={pages} page={page}>
         {load.kind === "ready" ? (
           <div className="max-w-column">
+            <PageMarks agent={load.value} page={page} />
             {page === "behaviour" && (
               <BehaviourPage
                 settings={load.value}

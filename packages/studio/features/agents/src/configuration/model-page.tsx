@@ -2,6 +2,7 @@ import { Field, Input, Select, type SelectOption } from "@halonicjs/studio-kit";
 import { useAutoSaved, useReportNotSaved } from "@halonicjs/studio-shell";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AgentChange, AgentSettings } from "../api.ts";
+import { ReviewMark } from "../review/review-marks.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
 import { MoreSettings } from "./more-settings.tsx";
 
@@ -83,6 +84,7 @@ export function ModelPage({
   if (model !== "" && !aliases.includes(model)) options.push({ value: model, label: model });
   return (
     <div className="flex flex-col gap-6">
+      <ReviewMark agent={settings} field="model" />
       <Field
         label={words.model}
         hint={aliases.length === 0 ? words.noAliases : undefined}
@@ -101,6 +103,7 @@ export function ModelPage({
           }}
         />
       </Field>
+      <ReviewMark agent={settings} field="maxSteps" />
       <Field
         label={words.turnLimit}
         hint={words.turnLimitHint}
@@ -115,6 +118,7 @@ export function ModelPage({
           onBlur={turnLimit.flush}
         />
       </Field>
+      <ReviewMark agent={settings} field="params" />
       <MoreSettings params={settings.params} save={save} reportNotSaved={setMoreNotSaved} />
     </div>
   );

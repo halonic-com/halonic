@@ -41,6 +41,8 @@ export interface ItemReview {
    * "Changed", with no parts.
    */
   readonly whole: boolean;
+  /** The assistant created the file, so rejecting its one change deletes it (review panel note 3). */
+  readonly created: boolean;
   /** In the order the item's describer lists them. */
   readonly changes: readonly ItemChangeToReview[];
   /**

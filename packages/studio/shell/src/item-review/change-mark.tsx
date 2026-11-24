@@ -66,12 +66,14 @@ export function ChangeMark({
   waiting = false,
   children,
 }: ChangeMarkProps) {
+  // A fieldset's min-inline-size defaults to min-content and Tailwind's preflight keeps it, so
+  // without min-w-0 a long unbroken value inside the mark widens the page instead of wrapping.
   return (
     <fieldset
       aria-label={sentence}
       tabIndex={-1}
       data-change-id={id}
-      className={`focus-ring flex flex-col gap-2 rounded-md border-s-2 py-1 ps-3 ${edgeClasses[kind]}`}
+      className={`focus-ring flex min-w-0 flex-col gap-2 rounded-md border-s-2 py-1 ps-3 ${edgeClasses[kind]}`}
     >
       <p className="flex flex-wrap items-center gap-x-2 text-small text-fg-muted">
         {important && (

@@ -108,7 +108,7 @@ export class WorkspaceItemReview<Ref, Kind extends KindName> implements ItemRevi
     const changes = whole
       ? [wholeFileChange(baseline, current)]
       : lines.map((line) => changeOf(line, baseline));
-    return { path, whole, changes, seen };
+    return { path, whole, created: baseline === null, changes, seen };
   }
 
   /** The item a text holds, `undefined` for no text, or `unreadable`. */

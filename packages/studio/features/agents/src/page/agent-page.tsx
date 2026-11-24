@@ -1,6 +1,7 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
 import { PlaceIcon, usePresentation } from "@halonicjs/studio-kit";
 import {
+  changeMarkSelector,
   createCloseStack,
   ItemGone,
   ItemPage,
@@ -29,6 +30,9 @@ import { errorTotal, useConfigurationErrors } from "../configuration/configurati
 import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
 import { PlacementProvider } from "../configuration/use-placement.ts";
 import { FlowView } from "../map/flow-view.tsx";
+import { pageOfChange, ReviewMarksContext } from "../review/review-marks.tsx";
+import { useAgentReview } from "../review/use-agent-review.tsx";
+import { AgentReviewService } from "../review-api.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
 import { WHERE_IT_RUNS_STEP } from "../where-it-runs-step.ts";
@@ -104,6 +108,7 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
         closeStack={closeStack}
         announce={announce}
         sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
+        review={context.services.find(AgentReviewService)}
         {...(openItem && {
           openAgent: (agent: AgentRef) =>
             openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
@@ -149,6 +154,7 @@ export function AgentScreen({
   modelRequest,
   harnessRequest,
   sandboxStartCheck,
+  review,
 }: AgentScreenProps) {
   // After a Try again reads, or the not-live line goes, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -223,8 +229,25 @@ export function AgentScreen({
   const ownCloseStack = useMemo(() => createCloseStack(), []);
   const cardsCloseStack = closeStack ?? ownCloseStack;
   const [saveFailed, setSaveFailed] = useState<string>();
+  // While the agent is read, the name the host already knows, as the tab shows it.
+  const name = load.kind === "ready" ? load.value.name : (host.nameOf({ hubId, id }) ?? id);
+  // The assistant's changes: Previous and Next open a change's page and focus its mark.
+  const changes = useAgentReview({
+    host: review,
+    agent: { hubId, id },
+    name,
+    openFile,
+    announce,
+    goTo: (change) =>
+      openView(
+        "configuration",
+        () => viewBox.current?.querySelector<HTMLElement>(changeMarkSelector(change.id)) ?? null,
+        { page: pageOfChange(change) },
+      ),
+  });
   // Resolves to whether the change was written, so a page can put its control back when it wasn't.
   const save = async (change: AgentChange): Promise<boolean> => {
+    changes.editing();
     try {
       await host.update({ hubId, id }, change);
       setSaveFailed(undefined);
@@ -234,8 +257,6 @@ export function AgentScreen({
       return false;
     }
   };
-  // While the agent is read, the name the host already knows, as the tab shows it.
-  const name = load.kind === "ready" ? load.value.name : (host.nameOf({ hubId, id }) ?? id);
   const reportNotSaved = useCallback(
     (count: number) =>
       saving?.setFieldsNotSaved({ key: `agent/${hubId}/${id}`, title: name }, count),
@@ -263,6 +284,7 @@ export function AgentScreen({
   const ready = load.kind === "ready";
   const notice = (
     <>
+      {ready && changes.bar}
       {ready && (
         <NotLiveLine
           host={host}
@@ -283,7 +305,7 @@ export function AgentScreen({
     shownView.current = shown;
     return (
       <div ref={viewBox} className="contents">
-        {drawViewContent(shown)}
+        <ReviewMarksContext value={changes.marks}>{drawViewContent(shown)}</ReviewMarksContext>
       </div>
     );
   };

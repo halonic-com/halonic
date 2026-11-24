@@ -15,7 +15,7 @@ import {
   workspaceFilesKey,
 } from "@halonicjs/app";
 import { systemClock } from "@halonicjs/std";
-import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
+import { AgentReviewService, AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import {
   HeldAgentsService,
@@ -59,6 +59,7 @@ import {
 import { loadWorkspace } from "@halonicjs/workspace";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { agentHostPlacement } from "../agents/agent-host-placement.ts";
+import { WorkspaceAgentReview } from "../agents/workspace-agent-review.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { provideAssistantHost } from "../assistant/provide-assistant-host.ts";
 import { provideChangesServices } from "../changes/provide-changes-services.ts";
@@ -248,6 +249,14 @@ export function provideFolderServices(
     answerChat: answerChatOn(chatExecutorOf(engine), refusals),
     engine: engineConnection,
   });
+  // The assistant's changes to an agent, for its page's item bar and marks (AI changes 1.2).
+  services.provide(
+    AgentReviewService,
+    new WorkspaceAgentReview({
+      review: services.get(reviewServiceKey),
+      pathOf: (ref) => agents.filePath(ref),
+    }),
+  );
   // An agent on hold gets its own Inbox row; without the agent host nothing can be on hold.
   if (placed !== undefined) {
     services.provide(
