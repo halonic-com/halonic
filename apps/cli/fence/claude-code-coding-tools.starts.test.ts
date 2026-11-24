@@ -236,7 +236,8 @@ function fakeProvider(): { requests: MessagesRequest[]; http: HttpClient } {
       const path = new URL(String(url)).pathname;
       if (path.endsWith("/count_tokens")) return Response.json({ input_tokens: 1 });
       if (!path.endsWith("/messages")) return Response.json({}, { status: 404 });
-      const body = JSON.parse(String(init?.body ?? "{}")) as MessagesRequest;
+      // The bridge may send the body as bytes or a stream; a Response reads any of them.
+      const body = JSON.parse((await new Response(init?.body).text()) || "{}") as MessagesRequest;
       requests.push(body);
       const model = body.model ?? "claude-sonnet-5-5";
       if (body.stream === true) return endTurn(model);
@@ -274,7 +275,11 @@ verifies("cli.claude-code-coding-tools", () => {
           environment: profile,
           git: { git: await testGit() },
           reportError: (error) => reported.push(error),
-          harnessParts: { harnesses: { "claude-code": keepingFailures(failures) } },
+          harnessParts: {
+            harnesses: { "claude-code": keepingFailures(failures) },
+            // The bridge reaches a compatible provider's own address through this client, not `http`.
+            compatibleHttp: provider.http,
+          },
         });
         opened.push(engine);
 
