@@ -30,4 +30,14 @@ verifies("kit.agent-orb", () => {
     expect(ruleOf('&[data-state="sleep"]::before')).toContain("opacity: 0.4;");
     expect(css).not.toContain("--color-accent");
   });
+
+  it("keeps idle and asleep orbs without a ring in high contrast", () => {
+    // Forced colours draw every border, a transparent one too, so an idle orb looked busy (C-next F1).
+    const forced = css.slice(css.indexOf("@media (forced-colors: active)"));
+    expect(forced).toContain("forced-color-adjust: none;");
+    expect(forced).toContain("background: CanvasText;");
+    expect(forced).toContain(
+      '&:not([data-state="idle"], [data-state="sleep"])::after {\n      border-color: CanvasText;',
+    );
+  });
 });
