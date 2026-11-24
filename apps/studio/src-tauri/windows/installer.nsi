@@ -104,6 +104,13 @@ Var RollbackMode
 ; sets both and refuses to pack without them.
 !define SRTSETUPVERSION "$%HALONIC_SRT_SETUP_VERSION%"
 !define SETUPGUARD "$%HALONIC_SETUP_GUARD%"
+; Halonic change (HAL-17810, board decision on HAL-12716): the vcruntime140.dll
+; srt-win needs, and Microsoft's own licence for it, the license.rtf of the
+; same Visual C++ Redistributable (both pinned in windows/vcruntime.json,
+; fetched by fetch-vcruntime.ps1). build-installer.ps1 sets both. Only an
+; install that sets the sandbox up shows the licence and gets the file.
+!define VCRUNTIME "$%HALONIC_VCRUNTIME%"
+!define VCRUNTIMELICENCE "$%HALONIC_VCRUNTIME_LICENCE%"
 ; Halonic change (HAL-16342): a signed release's publisher, built in as for
 ; Studio and the helper (halonic-publisher's SIGNER). The installer starts the
 ; helper only when Windows trusts its signature and it names this publisher.
@@ -131,6 +138,10 @@ Var SandboxState
 Var ShortcutState
 Var SandboxOutcome
 Var SandboxReason
+; 1 when a silent install was given /SANDBOX=1, even where the step itself is
+; skipped for want of administrator rights: Microsoft's runtime is copied
+; then, so the sandbox can be set up later (HAL-17810).
+Var SandboxAsked
 Var LineCopy
 Var LineSetup
 Var LineCheck
@@ -239,8 +250,8 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 !define MUI_LANGDLL_REGISTRY_VALUENAME "Installer Language"
 
 ; Halonic change (HAL-1202, flow 2.2): one page instead of Tauri's welcome,
-; install mode, folder and Start menu pages, after the licence page (HAL-12506).
-; The Start menu entry is
+; install mode, folder and Start menu pages. Microsoft's licence page follows
+; it only when the sandbox box is ticked (HAL-17810). The Start menu entry is
 ; always added, in the "Halonic" folder. The reinstall page below is
 ; Tauri's for passive and update installs, and our run-again page otherwise.
 !define MUI_ABORTWARNING
@@ -494,23 +505,22 @@ Function PageLeaveReinstall
   reinst_done:
 FunctionEnd
 
-; Halonic change (HAL-12506): the licence page. Microsoft's terms for the
-; vcruntime140.dll the installer ships ask that people accept terms that
-; protect it before installing (windows/licence.txt, set as `licenseFile` in
-; tauri.installer.conf.json). Run again, passive and update installs skip it.
-!if "${LICENSE}" == ""
-  !error "No licence page: set bundle.licenseFile in tauri.installer.conf.json (HAL-12506)"
-!endif
-!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipLicence
-!define MUI_PAGE_HEADER_TEXT "Licence terms"
-!define MUI_PAGE_HEADER_SUBTEXT ""
-!define MUI_LICENSEPAGE_TEXT_TOP "${PRODUCTNAME} includes a Microsoft runtime file. Please read the terms."
-!define MUI_LICENSEPAGE_TEXT_BOTTOM "Press I Agree to accept the terms. ${PRODUCTNAME} can't be installed without them."
-!insertmacro MUI_PAGE_LICENSE "${LICENSE}"
-
 ; 5. Halonic's one page (flow 2.2)
 Var AppStartMenuFolder
 Page custom PageInstall PageInstallLeave
+
+; Halonic change (HAL-17810, board decision on HAL-12716): the licence page
+; shows Microsoft's own licence for vcruntime140.dll, unchanged, and only when
+; the sandbox step is chosen, because only that step installs the file
+; (SkipLicence). Back returns to the page with the box.
+!ifdef SANDBOX_STEP
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipLicence
+  !define MUI_PAGE_HEADER_TEXT "Microsoft's licence terms"
+  !define MUI_PAGE_HEADER_SUBTEXT ""
+  !define MUI_LICENSEPAGE_TEXT_TOP "The agent sandbox needs vcruntime140.dll, a Microsoft file. Its terms:"
+  !define MUI_LICENSEPAGE_TEXT_BOTTOM "Press I Agree to accept them and set up the agent sandbox. To install ${PRODUCTNAME} without the sandbox, press Back and clear its box."
+  !insertmacro MUI_PAGE_LICENSE "${VCRUNTIMELICENCE}"
+!endif
 
 ; 6. Installation page (flow 2.3): the step lines are the page, so they show
 ; at once, under the title
@@ -601,6 +611,7 @@ Function .onInit
     ${GetOptions} $CMDLINE "/SANDBOX=" $R0
     ${IfNot} ${Errors}
     ${AndIf} $R0 == "1"
+      StrCpy $SandboxAsked 1
       ; Halonic change (HAL-7414): a silent install can't let anyone answer
       ; Windows' prompt, so it sets the sandbox up only from an elevated
       ; prompt, as a silent uninstall removes it (HAL-7385, S-8).
@@ -1142,6 +1153,24 @@ Section Install
   !insertmacro SetStep $LineCopy "✓ Copied Halonic"
   copy_done:
 
+  ; Halonic change (HAL-17810): Microsoft's vcruntime140.dll, under a name
+  ; nothing loads, only for the sandbox step, whose helper puts it beside
+  ; srt-win (crates/sandbox-elevate). With pages, the box was ticked and
+  ; Microsoft's licence accepted; silently, /SANDBOX=1 asked for the step. Run
+  ; again without Repair needs it too, and so does /SANDBOX=1 without
+  ; administrator rights, where the step is skipped but can run later. An
+  ; install over one that has the file replaces it, so an update can set the
+  ; sandbox up again.
+  !ifdef SANDBOX_STEP
+    ${If} $SandboxState == ${BST_CHECKED}
+    ${OrIf} $SandboxAsked = 1
+    ${OrIf} ${FileExists} "$INSTDIR\vcruntime140.dll.pinned"
+      SetDetailsPrint none
+      File /a "/oname=vcruntime140.dll.pinned" "${VCRUNTIME}"
+      SetDetailsPrint both
+    ${EndIf}
+  !endif
+
   ; Auto close this page for passive mode
   ${If} $PassiveMode = 1
     SetAutoClose true
@@ -1597,6 +1626,8 @@ Section Uninstall
   {{#each resources}}
     Delete "$INSTDIR\\{{this.[1]}}"
   {{/each}}
+  ; Halonic change (HAL-17810): not a resource, as only the sandbox step installs it.
+  Delete "$INSTDIR\vcruntime140.dll.pinned"
 
   ; Delete external binaries
   {{#each binaries}}
@@ -1738,16 +1769,18 @@ Function SkipIfPassive
   ${IfThen} $PassiveMode = 1  ${|} Abort ${|}
 FunctionEnd
 
-; Halonic change (HAL-12506): the licence page is for a first install and for
-; a newer version over an older one. Run again (flow 2.5) installs the version
-; whose terms were accepted, and passive and update installs have no pages.
+; Halonic change (HAL-17810): Microsoft's licence page only when the sandbox
+; box is ticked, on the install page or the run-again page. Passive and update
+; installs have no pages.
+!ifdef SANDBOX_STEP
 Function SkipLicence
   ${If} $PassiveMode = 1
   ${OrIf} $UpdateMode = 1
-  ${OrIf} $RunAgain = 1
+  ${OrIf} $SandboxState != ${BST_CHECKED}
     Abort
   ${EndIf}
 FunctionEnd
+!endif
 
 Function CreateOrUpdateStartMenuShortcut
   ; We used to use product name as MAINBINARYNAME
@@ -2082,6 +2115,7 @@ Function PageInstall
     ${NSD_CreateCheckbox} 0 54u 100% 10u "Set up the agent sandbox (recommended)"
     Pop $SandboxCheckbox
     ${NSD_Check} $SandboxCheckbox
+    ${NSD_OnClick} $SandboxCheckbox PageInstallButton
     ${NSD_CreateLabel} 12u 66u 96% 32u "Agents then run in a fence: they can only change their own folder and can't reach the internet unless you allow a site. Windows asks for administrator rights once for this step."
     Pop $0
     ${NSD_CreateCheckbox} 0 102u 100% 10u "Add a desktop shortcut"
@@ -2094,14 +2128,27 @@ Function PageInstall
   ${NSD_CreateLabel} 0 -12u 60% 10u "Uses about ${SIZE_MB} MB."
   Pop $0
 
-  ; The buttons say what they do, and Install is the default button.
-  GetDlgItem $0 $HWNDPARENT 1
-  SendMessage $0 ${WM_SETTEXT} 0 "STR:&Install"
+  Push 0
+  Call PageInstallButton
   ; Nothing comes before this page, so no Back button.
   GetDlgItem $0 $HWNDPARENT 3
   ShowWindow $0 ${SW_HIDE}
   Call PageInstallCheckFolder
   nsDialogs::Show
+FunctionEnd
+
+; The buttons say what they do: Install is the default button, and Next while
+; the sandbox box is ticked, as Microsoft's licence page comes first then
+; (HAL-17810).
+Function PageInstallButton
+  Pop $0 ; the clicked box, from NSD_OnClick, or the 0 PageInstall pushes
+  StrCpy $1 "&Install"
+  !ifdef SANDBOX_STEP
+    ${NSD_GetState} $SandboxCheckbox $0
+    ${IfThen} $0 == ${BST_CHECKED} ${|} StrCpy $1 "&Next >" ${|}
+  !endif
+  GetDlgItem $0 $HWNDPARENT 1
+  SendMessage $0 ${WM_SETTEXT} 0 "STR:$1"
 FunctionEnd
 
 ; "You can't install to this folder" and Install disabled until it can be written.

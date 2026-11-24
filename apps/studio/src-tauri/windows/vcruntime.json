@@ -13,5 +13,9 @@
       "name": "vcruntime140.dll_arm64",
       "sha256": "d8a8513921544569837e400d37cc71302819967ae6defa932266a7ecb41dbaf9"
     }
+  },
+  "licence": {
+    "name": "license.rtf",
+    "sha256": "8099dc3cf9502c335da829e5c755948a12e3e6de490eb492a99deb673d883d8b"
   }
 }

@@ -2903,6 +2903,10 @@ jobs:
         run: pwsh windows/build-installer.ps1 -Runtime (Join-Path $env:RUNNER_TEMP 'wsl-runtime') -Image (Join-Path $env:RUNNER_TEMP 'wsl-image')
       - name: Walk the installer's pages and take a picture of each
         run: pwsh apps/studio/src-tauri/windows/screenshot-installer.ps1 -Setup (Resolve-Path "dist/Halonic-*-windows-x64-setup.exe") -InstallFolder (Join-Path $env:RUNNER_TEMP 'Halonic-pages') -OutFolder installer-pages
+      # Microsoft's licence page and vcruntime140.dll only with srt as the
+      # sandbox (HAL-17810): the walk above has them, this one neither.
+      - name: Walk the pages without the sandbox, with no licence page and no Microsoft runtime
+        run: pwsh apps/studio/src-tauri/windows/screenshot-installer.ps1 -NoSandbox -Setup (Resolve-Path "dist/Halonic-*-windows-x64-setup.exe") -InstallFolder (Join-Path $env:RUNNER_TEMP 'Halonic-pages') -OutFolder installer-pages
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -2932,6 +2936,9 @@ jobs:
           foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'halonic-sandbox-elevate.exe', 'srt-win.exe', 'uninstall.exe', 'sandbox-step.ps1', 'sandbox-remove.ps1', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt', 'halonic-runtime.tar.gz', 'halonic-runtime.json', 'halonic-wsl.tar.gz') {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "$f is missing from the install folder" }
           }
+          # Without /SANDBOX=1, no Microsoft runtime (HAL-17810).
+          $runtime = @(Get-ChildItem $dir -Recurse -File -Filter 'vcruntime140*')
+          if ($runtime.Count -gt 0) { throw "A silent install without the sandbox installed $($runtime.FullName -join ', ')" }
           # Per user: the uninstall entry is in HKCU, none in HKLM.
           if (-not (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic')) { throw 'No uninstall entry for the current user' }
           if (Test-Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic') { throw 'The install wrote a machine-wide uninstall entry' }
@@ -3089,6 +3096,8 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
           & net.exe user srt-sandbox *> $null
           if ($LASTEXITCODE -ne 0) { throw 'The installer did not set the sandbox up: no srt-sandbox account' }
+          # /SANDBOX=1 asks for srt, so the install has the runtime it needs (HAL-17810).
+          if (-not (Test-Path (Join-Path $env:HALONIC_TEST_DIR 'vcruntime140.dll.pinned'))) { throw 'A silent install with /SANDBOX=1 left no vcruntime140.dll.pinned' }
           # This build is unsigned, and an unsigned helper adds no Installed
           # apps entry (sandbox-elevate's SIGNER).
           if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\HalonicAgentSandbox') { throw 'an unsigned install got an Installed apps entry' }

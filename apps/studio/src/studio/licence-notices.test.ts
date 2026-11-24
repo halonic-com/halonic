@@ -143,48 +143,96 @@ verifies("studio.installer-third-party-notices", () => {
 
 verifies("studio.installer-licence-page", () => {
   const template = () => readFileSync(join(shellFolder, "windows/installer.nsi"), "utf8");
+  const windowsFile = (name: string) => readFileSync(join(shellFolder, "windows", name), "utf8");
+  /** The text of one NSIS function, from its `Function` line to its `FunctionEnd`. */
+  const nsisFunction = (name: string) => {
+    const text = template();
+    const start = text.indexOf(`Function ${name}\n`);
+    expect(start, name).toBeGreaterThan(-1);
+    return text.slice(start, text.indexOf("FunctionEnd", start));
+  };
 
-  it("gives the bundler windows/licence.txt, which covers Microsoft's runtime", () => {
+  it("pins Microsoft's license.rtf of the same redistributable, and the fetch writes it unchanged", () => {
+    const pin = JSON.parse(windowsFile("vcruntime.json")) as {
+      licence?: { name?: string; sha256?: string };
+    };
+    expect(pin.licence?.name).toBe("license.rtf");
+    expect(pin.licence?.sha256).toMatch(/^[0-9a-f]{64}$/);
+    const fetch = windowsFile("fetch-vcruntime.ps1");
+    expect(fetch).toContain("-ne $pin.licence.sha256");
+    expect(fetch).toContain("$licenceOut = Join-Path $bin 'vcruntime-licence.rtf'");
+    expect(fetch).toContain("Copy-Item $licence $licenceOut -Force");
+  });
+
+  it("has no licence text of its own and no unconditional runtime resource", () => {
     const config = JSON.parse(
       readFileSync(join(shellFolder, "tauri.installer.conf.json"), "utf8"),
     ) as { bundle?: { licenseFile?: string } };
-    expect(config.bundle?.licenseFile).toBe("windows/licence.txt");
-    const terms = readFileSync(join(shellFolder, "windows/licence.txt"), "utf8");
-    expect(terms).toContain("vcruntime140.dll");
-    expect(terms).toContain("MICROSOFT VISUAL C++ RUNTIME");
-    expect(terms).toContain('"I Agree"');
+    expect(config.bundle?.licenseFile).toBeUndefined();
+    expect(Object.keys(installerResources()).join("\n")).not.toContain("vcruntime140");
+    expect(existsSync(join(shellFolder, "windows/licence.txt"))).toBe(false);
   });
 
-  it("stops the build when there is no licence file", () => {
-    expect(template()).toMatch(/!if "\$\{LICENSE\}" == ""\s+!error /);
+  it("gives NSIS the fetched runtime and licence, and shows that licence on the page", () => {
+    const script = windowsFile("build-installer.ps1");
+    expect(script).toContain("$env:HALONIC_VCRUNTIME = Join-Path $bin 'vcruntime140.dll'");
+    expect(script).toContain(
+      "$env:HALONIC_VCRUNTIME_LICENCE = Join-Path $bin 'vcruntime-licence.rtf'",
+    );
+    const text = template();
+    expect(text).toContain('!define VCRUNTIMELICENCE "$%HALONIC_VCRUNTIME_LICENCE%"');
+    expect(text).toContain('!insertmacro MUI_PAGE_LICENSE "${VCRUNTIMELICENCE}"');
   });
 
-  it("shows the page after the reinstall page and before the install page", () => {
+  it("shows the page after the install page and before the steps", () => {
     const text = template();
     const licence = text.indexOf("!insertmacro MUI_PAGE_LICENSE");
-    expect(licence).toBeGreaterThan(text.indexOf("Page custom PageReinstall PageLeaveReinstall"));
-    expect(licence).toBeLessThan(text.indexOf("Page custom PageInstall PageInstallLeave"));
+    expect(licence).toBeGreaterThan(text.indexOf("Page custom PageInstall PageInstallLeave"));
+    expect(licence).toBeLessThan(text.indexOf("!insertmacro MUI_PAGE_INSTFILES"));
     const pre = text.lastIndexOf("!define MUI_PAGE_CUSTOMFUNCTION_PRE", licence);
     expect(text.slice(pre, text.indexOf("\n", pre))).toContain("SkipLicence");
   });
 
-  it("skips the page for run again, passive and update installs", () => {
-    const text = template();
-    const start = text.indexOf("Function SkipLicence");
-    const body = text.slice(start, text.indexOf("FunctionEnd", start));
-    for (const mode of ["$PassiveMode = 1", "$UpdateMode = 1", "$RunAgain = 1"]) {
-      expect(body).toContain(mode);
+  it("skips the page unless the sandbox box is ticked, and for passive and update installs", () => {
+    const body = nsisFunction("SkipLicence");
+    for (const condition of [
+      "$PassiveMode = 1",
+      "$UpdateMode = 1",
+      "$SandboxState != ${BST_CHECKED}",
+    ]) {
+      expect(body).toContain(condition);
     }
     expect(body).toContain("Abort");
   });
 
-  it("walks the page in the installer job before Install", () => {
-    const walk = readFileSync(join(shellFolder, "windows/screenshot-installer.ps1"), "utf8");
+  it("copies the runtime only for the sandbox step, and the uninstaller deletes it", () => {
+    const text = template();
+    const copy = text.indexOf('File /a "/oname=vcruntime140.dll.pinned" "${VCRUNTIME}"');
+    expect(copy).toBeGreaterThan(text.indexOf("Section Install"));
+    const condition = text.slice(text.lastIndexOf("${If}", copy), copy);
+    expect(condition).toContain("${If} $SandboxState == ${BST_CHECKED}");
+    expect(condition).toContain('${OrIf} ${FileExists} "$INSTDIR\\vcruntime140.dll.pinned"');
+    expect(text.slice(text.indexOf("Section Uninstall"))).toContain(
+      'Delete "$INSTDIR\\vcruntime140.dll.pinned"',
+    );
+  });
+
+  it("says Next on the install page while the sandbox box is ticked", () => {
+    const body = nsisFunction("PageInstallButton");
+    expect(body).toContain('StrCpy $1 "&Install"');
+    expect(body).toContain('${IfThen} $0 == ${BST_CHECKED} ${|} StrCpy $1 "&Next >" ${|}');
+    expect(nsisFunction("PageInstall")).toContain("Call PageInstallButton");
+  });
+
+  it("walks both paths in the installer job", () => {
+    const walk = windowsFile("screenshot-installer.ps1");
     const agree = walk.indexOf("Wait-Button $h 'I &Agree'");
-    expect(agree).toBeGreaterThan(-1);
-    expect(walk.indexOf("Save-Picture $h '0-licence'")).toBeGreaterThan(agree);
-    expect(walk.indexOf("Wait-Button $h '&Install'")).toBeGreaterThan(agree);
-    // A sent press would block on the Install page's own message loop.
-    expect(walk.slice(agree, walk.indexOf("Wait-Button $h '&Install'"))).toContain("PostMessage");
+    expect(agree).toBeGreaterThan(walk.indexOf("Save-Picture $h '0-install'"));
+    expect(walk).toContain("'MICROSOFT VISUAL C++ 2015 - 2022 RUNTIME'");
+    expect(walk).toContain("if ($text -eq 'I &Agree')");
+    expect(walk).toContain("$found = Runtime-Files");
+    const job = readFileSync(resolve(process.cwd(), "../../.github/workflows/ci.yml"), "utf8");
+    expect(job).toContain("windows/screenshot-installer.ps1 -Setup");
+    expect(job).toContain("windows/screenshot-installer.ps1 -NoSandbox -Setup");
   });
 });

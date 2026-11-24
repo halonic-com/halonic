@@ -121,8 +121,16 @@ What it shows (design: the install flow, sections 2.2 to 2.7):
 
 - One page (folder, sandbox box, desktop shortcut box), the step lines, and a
   finish page that says whether the sandbox is ready, or why not.
+- **Microsoft's licence page, only with the sandbox:** srt-win, the Windows
+  sandbox, needs Microsoft's `vcruntime140.dll`. While the sandbox box is
+  ticked, the page's button says **Next**, and the next page shows Microsoft's
+  own licence for that file, unchanged (the `license.rtf` of the pinned Visual
+  C++ Redistributable, `windows/vcruntime.json`). **I Agree** installs, with the
+  file; **Back** goes back to the box. With the box cleared there is no licence
+  page and the file isn't installed (HAL-17810, board decision on HAL-12716).
 - Run again with the same version: one page with the sandbox box (or "The agent
-  sandbox is set up.") and **Repair Halonic**. Without Repair it copies nothing.
+  sandbox is set up.") and **Repair Halonic**. Without Repair it copies nothing
+  but, with the sandbox box ticked, the Microsoft file, after its licence page.
 - A newer Halonic already installed: a message, and nothing is installed.
 - Halonic open: a message with **Retry** and **Cancel**. The installer never
   closes Halonic itself.
@@ -149,7 +157,10 @@ What it shows (design: the install flow, sections 2.2 to 2.7):
 Silent (`/S`) and passive installs show none of this and skip the sandbox step;
 `/S /SANDBOX=1` from an elevated prompt runs it. Without administrator rights
 a silent install can't let anyone answer Windows' prompt, so it skips the step
-even with `/SANDBOX=1`.
+even with `/SANDBOX=1`. `/SANDBOX=1` also installs Microsoft's
+`vcruntime140.dll` for the step, without the licence page; a silent install
+without it installs no such file. An update keeps the file where an earlier
+install has it.
 
 **With administrator rights** (an elevated prompt, or "Run as administrator")
 the installer and uninstaller start nothing from the install folder, which the

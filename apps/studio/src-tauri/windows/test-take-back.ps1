@@ -90,7 +90,9 @@ try {
   # 1. The user's install, the sandbox, and a kept write grant on the user's folder.
   $local = Invoke-AsUser '$env:LOCALAPPDATA'
   $dir = Join-Path $local 'Programs\Halonic'
-  Invoke-AsUser "`$p = Start-Process '$setupCopy' -ArgumentList '/S' -Wait -PassThru; exit `$p.ExitCode" | Out-Null
+  # /SANDBOX=1 copies Microsoft's runtime the sandbox needs (HAL-17810); without
+  # administrator rights the installer skips the step itself.
+  Invoke-AsUser "`$p = Start-Process '$setupCopy' -ArgumentList '/S', '/SANDBOX=1' -Wait -PassThru; exit `$p.ExitCode" | Out-Null
   $hostExe = Join-Path $dir 'halonic-agent-host.exe'
   $srtWin = Join-Path $dir 'srt-win.exe'
   if (-not (Test-Path $hostExe)) { throw "The user's install has no agent host in $dir" }
