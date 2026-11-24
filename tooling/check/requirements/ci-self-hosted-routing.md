@@ -26,6 +26,6 @@ Where a job in `.github/workflows/ci.yml` can run on our own CI server, its `run
 - Given a pull request from a `halonic-com/halonic` branch whose author is a `User` account whose login doesn't end in `[bot]` and isn't `dependabot`, `renovate` or `renovate-bot`, and `CI_RUNNER_FAST` is set,
   when the expression is evaluated,
   then the job runs on the fast pool.
-- Given a pull request without the label, or from a fork, or `CI_RUNNER_FAST` is empty,
+- Given a pull request a bot opened (a `Bot` account, a login ending in `[bot]`, `dependabot`, `renovate` or `renovate-bot`), or from a fork, or `CI_RUNNER_FAST` is empty,
   when the expression is evaluated,
   then the job runs on `ubuntu-24.04`.
