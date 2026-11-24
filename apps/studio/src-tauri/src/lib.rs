@@ -21,7 +21,8 @@
 //! command (capabilities/desktop-resources.json) and the `lite_check` command, which
 //! makes and removes a probe file in the profile (capabilities/desktop-lite-check.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json) and the page's close request
-//! (capabilities/desktop-window.json) and the `wsl_*` commands of the sandbox
+//! (capabilities/desktop-window.json), its notifications
+//! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
 //! backup (capabilities/desktop-sandbox-backup.json) and, on Windows,
 //! `sandbox_elevate` (capabilities/desktop-sandbox-elevate.json) and the WSL setup's
 //! `sandbox_wsl_*` commands (capabilities/desktop-sandbox-wsl-setup.json), and on Android the
@@ -147,7 +148,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(updates::Updates::default())
         // Registered only so the shell can use it from Rust: no capability
         // grants its commands, so no page can call them.
-        .plugin(tauri_plugin_updater::Builder::new().build());
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        // Notifications for the Inbox and the Messenger (HAL-17448): only
+        // the app's own page is granted its commands.
+        .plugin(tauri_plugin_notification::init());
     // Asked from Rust only, for Android's local network permission: no
     // capability grants its command, so no page can call it.
     #[cfg(target_os = "android")]
