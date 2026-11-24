@@ -34,10 +34,15 @@ export function ChatTabPage({ item, context }: ItemViewProps) {
   const [shown, retry] = useTabChat(chats, chatId);
   const choices = useChatChoices(host, chatId);
   // Chat with starts a new chat of that kind; this chat stays in its tab, the new one gets its own.
+  // A chat that can't be started is announced, like the panel's other failed actions.
   const chatWith = async (kind: ChatKind) => {
-    const next = await host.newChat(kind);
-    chats.moveToTab(next.id);
-    context.openItem?.(chatTabItem(next.id));
+    try {
+      const next = await host.newChat(kind);
+      chats.moveToTab(next.id);
+      context.openItem?.(chatTabItem(next.id));
+    } catch (error) {
+      announce(error instanceof Error ? error.message : String(error), "assertive");
+    }
   };
   const view = shown.kind === "chat" ? shown.view : undefined;
   const box = useRef<HTMLTextAreaElement>(null);

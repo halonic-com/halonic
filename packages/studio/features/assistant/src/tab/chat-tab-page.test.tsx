@@ -3,7 +3,7 @@ import type { ItemViewProps, WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ShownItem } from "../api.ts";
+import type { ChatAgent, ShownItem } from "../api.ts";
 import { buildChatsOf } from "../chat/build-chats.ts";
 import { chatTabItem } from "../chat/chat-tab-item.ts";
 import { showInChat } from "../chat/show-in-chat.ts";
@@ -57,6 +57,22 @@ function contextOf(fake: ReturnType<typeof fakeHost>, active?: string) {
 function tab(context: WorkspaceContext, chatId: string) {
   const props = { item: chatTabItem(chatId), context, Sections: () => null } as ItemViewProps;
   return <ChatTabPage {...props} />;
+}
+
+const agent: ChatAgent = {
+  kind: "agent:support/triage",
+  name: "Triage",
+  description: "Sorts incoming mail by topic",
+  model: "smart",
+};
+
+/** The menu items under the chip whose text starts with `chip`. */
+function chipItems(page: HTMLElement, chip: string) {
+  const trigger = [...page.querySelectorAll("button")].find((button) =>
+    button.textContent?.startsWith(chip),
+  );
+  const menu = document.getElementById(trigger?.getAttribute("popovertarget") ?? "");
+  return [...(menu?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])];
 }
 
 const sidePanel = (page: HTMLElement) => page.querySelector<HTMLElement>('[role="tabpanel"]');
@@ -131,6 +147,32 @@ verifies("assistant.chat.open-as-tab", () => {
     expect(context.openItem).toHaveBeenCalledWith(chatTabItem("c2"));
   });
 
+  it("opens Chat with's new chat in a tab of its own, and keeps this one", async () => {
+    const fake = fakeHost([routine], { agents: [agent] });
+    const context = contextOf(fake);
+    const page = await show(tab(context, "c1"));
+    await act(async () => chipItems(page, "Chat with:")[1]?.click());
+    const next = fake.kept().find((chat) => chat.kind === agent.kind);
+    expect(next).toBeDefined();
+    expect(context.openItem).toHaveBeenCalledWith(chatTabItem(next?.id ?? ""));
+    const chats = buildChatsOf(fake.host);
+    expect(chats.inTab(next?.id ?? "")).toBe(true);
+    expect(chats.inTab("c1")).toBe(true);
+  });
+
+  it("says why Chat with couldn't start a chat", async () => {
+    const fake = fakeHost([routine], { agents: [agent] });
+    fake.host.newChat = () => Promise.reject(new Error("The workspace is closed."));
+    const context = contextOf(fake);
+    const page = await show(tab(context, "c1"));
+    await act(async () => chipItems(page, "Chat with:")[1]?.click());
+    expect(context.announcer.announce).toHaveBeenCalledWith(
+      "The workspace is closed.",
+      "assertive",
+    );
+    expect(context.openItem).not.toHaveBeenCalled();
+  });
+
   it("closes the tab when the chat is deleted, and the panel opens on another chat", async () => {
     const alias = chatOf("c2", [{ role: "user", content: "Fix the alias" }], "Fix the alias");
     const fake = fakeHost([routine, alias]);
@@ -172,6 +214,16 @@ describe("the start screen", () => {
       expect(halo?.className).toContain("bg-halo-spot");
       expect(halo?.className).toContain("pointer-events-none");
       expect(page.querySelector(".shadow-halo-glow textarea")).not.toBeNull();
+      await sendMessage(page, "Add a routine");
+      expect(page.querySelector(".shadow-halo-glow")).toBeNull();
+      const box = page.querySelector("textarea");
+      const chips = [...page.querySelectorAll("button")].find((button) =>
+        button.textContent?.startsWith("Model:"),
+      );
+      expect(chips !== undefined && box !== null).toBe(true);
+      // After the first message the chips sit above the box again, as in the panel.
+      expect(chips?.compareDocumentPosition(box as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      await fake.finish({ messages: [], end: { reason: "answered" } } as never);
       unmount();
       const panel = await show(
         <AssistantPanel context={contextOf(fake)} title="Assistant" onClose={() => {}} />,
