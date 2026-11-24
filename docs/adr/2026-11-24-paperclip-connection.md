@@ -43,7 +43,10 @@ the whole list: list agents, projects and tasks; read a task's comments; read
 cards; answer a card; comment on a chat task. Studio has no other call to
 Paperclip, even though the board's key could make one, so nothing can hire,
 change budgets or settings, or delete. A new call needs a new port version and
-a security review. Inbox and Messenger build against `FakePaperclipSource`
+a security review. Outside the port, only the host's sign-in and disconnect
+make calls, and only to the sign-in routes: start, poll and cancel a challenge,
+read `/api/cli-auth/me`, and revoke the current key. Inbox and Messenger build
+against `FakePaperclipSource`
 (`contracts.fake-paperclip-source`) until the client lands.
 
 **The key** (`ports.paperclip-key`). We accept for now that a board key
@@ -53,8 +56,8 @@ already hands a plugin its secrets (ADR of 19 Nov). The Studio page never sees
 it, and no file, log line or answer holds it. The host uses a connection's key
 only at that connection's address and refuses a redirect to another host.
 Disconnecting revokes the key in Paperclip and deletes its keychain entry.
-We ask Paperclip upstream for keys limited to these calls, with an expiry and
-a list of devices the board can revoke.
+We ask Paperclip upstream for keys limited to these calls, with an expiry we
+choose, a list of devices the board can revoke, and no power to make more keys.
 
 **Several instances.** An item's ID is its connection, its company and its
 Paperclip ID, because task keys such as `HAL-10` repeat across instances.
@@ -81,10 +84,35 @@ desktop agent host. Studio features reach the connection only through
 `studio/services`. Inbox gets a Paperclip source (`inbox.paperclip-cards`).
 Messenger becomes a new feature (`studio.messenger`).
 
-**Sign-in: open.** How Studio gets the key is still open until the sign-in
-test on HAL-17423 reports. That test tries Paperclip's CLI sign-in route end to
-end. This section then records the flow, or the workaround we take, and
-returns for Julian's review. Nothing else in this record waits on it.
+**Sign-in.** Studio uses Paperclip's CLI sign-in route, tested against our
+server on HAL-17423 (only the board's own Approve click is still to be tried
+live):
+
+1. Studio starts a challenge (`POST /api/cli-auth/challenges`) at the address
+   the board uses for Paperclip's page, which must be on Paperclip's hostname
+   allow-list. The answer already holds the key, which only works once the
+   board approves. The host keeps it in memory and drops it if the challenge
+   is cancelled or expires.
+2. Studio opens the approval page in the browser and shows a short random
+   phrase that it also put in the challenge's `command` text, so the board
+   approves only the request Studio just opened. Studio tells the board to
+   approve nothing else. It shows the 10 minutes the challenge lasts and
+   cancels the challenge (`/cancel`) when the dialog closes.
+3. Once a poll says `approved`, the host moves the key to the keychain and
+   reads `/api/cli-auth/me` to check that the key's user belongs to the
+   connection's company.
+
+The key expires after 30 days, a fixed value on this route. An expired or
+revoked key gets a 401, and Studio then asks the board to sign in again.
+Disconnecting calls `POST /api/cli-auth/revoke-current`. If that fails because
+Paperclip can't be reached, Studio says the key stays valid until its expiry
+and can be revoked in Paperclip.
+
+**A board key can make more board keys** (`POST /api/board-api-keys`), and
+those keys can be set to never expire. Disconnect doesn't revoke them. The
+client therefore never calls a route that makes, lists or deletes keys. The
+fixed call list already rules that out, and the client's tests check it. We
+add "a board key can't make keys" to the upstream request.
 
 ## Threat model
 
@@ -92,6 +120,9 @@ returns for Julian's review. Nothing else in this record waits on it.
 | --- | --- |
 | A stolen key acts as the board in Paperclip | The key is only in the keychain and the host's memory, never in a file, log or the page. Disconnecting revokes it. We ask Paperclip for limited, expiring keys. Until then, a full-power key is a risk the board accepted |
 | Studio, or code in the page, makes a call beyond reading, answering and commenting | The port has no other call. The client only implements the fixed list, and a new call needs a new port version and a security review |
+| A stolen key makes a second key that never expires | The client never calls a key-making route, which its tests check. Upstream request: a board key can't make keys. Until then the board can list and delete keys in Paperclip |
+| Someone sends the board an approval link for their own sign-in | Studio shows a random phrase that the approval page also shows, and tells the board to approve only that one. A challenge lasts 10 minutes and is cancelled when the dialog closes |
+| A key outlives its use | It expires after 30 days. Disconnect revokes it, and offline Studio says until when it stays valid |
 | The key goes to another server | Each key is bound to its connection's address. The host refuses redirects to another host and never sends one connection's key to another |
 | Private Paperclip data lands in git | The connection file holds no data. The cache is in the app data folder, outside every workspace, and a test checks that caching changes no workspace file |
 | A late approval does harm | Offline, writes are refused and never queued |
