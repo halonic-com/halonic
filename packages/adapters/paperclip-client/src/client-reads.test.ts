@@ -116,7 +116,7 @@ verifies("ports.agent-messaging", () => {
         [
           `${source}:approval:${approvalId}`,
           `${source}:task:${plainTask}`,
-          "Hire a designer\n\nOne more seat",
+          "Approval: hire_agent\n\nHire a designer\n\nOne more seat",
         ],
       ]);
       expect(items[0]?.options).toEqual([
@@ -134,6 +134,19 @@ verifies("ports.agent-messaging", () => {
       expect(
         paperclip.seen.find((request) => request.path.endsWith("/approvals"))?.query.get("status"),
       ).toBe("pending");
+    });
+
+    it("always shows what an approval does, whatever title the asking agent gave it", async () => {
+      const data = acmeData();
+      const [approval] = data.approvals;
+      if (approval !== undefined) {
+        approval.payload = { title: "Tidy a typo", summary: "Nothing to see" };
+      }
+      paperclip.serveAcme(data);
+      const item = (await client().listInboxItems()).find((entry) =>
+        entry.id.includes(":approval:"),
+      );
+      expect(item?.question).toBe("Approval: hire_agent\n\nTidy a typo\n\nNothing to see");
     });
 
     it("leaves the project out when the card's task has none", async () => {
@@ -156,6 +169,8 @@ verifies("ports.agent-messaging", () => {
       paperclip.seen.length = 0;
       expect(await messaging.listInboxItems()).toHaveLength(1);
       expect(seenRoutes().filter((route) => route.endsWith("/interactions"))).toEqual([]);
+      // An approval's linked task is read once, not on every poll.
+      expect(seenRoutes().filter((route) => route.startsWith("GET /api/approvals/"))).toEqual([]);
 
       data.cards = acmeData().cards;
       const [task] = data.tasks;
@@ -167,6 +182,28 @@ verifies("ports.agent-messaging", () => {
       expect(seenRoutes().filter((route) => route.endsWith("/interactions"))).toEqual([
         `GET /api/issues/${plainTask}/interactions`,
       ]);
+    });
+
+    it("reads a task's cards again on every list when Paperclip gives no updatedAt", async () => {
+      const data = acmeData();
+      for (const task of data.tasks) {
+        delete (task as { updatedAt?: string }).updatedAt;
+      }
+      paperclip.serveAcme(data);
+      const messaging = client();
+      await messaging.listInboxItems();
+      paperclip.seen.length = 0;
+      await messaging.listInboxItems();
+      expect(seenRoutes().filter((route) => route.endsWith("/interactions"))).toHaveLength(2);
+    });
+
+    it("reads the open tasks once per poll, for both the Inbox and the work list", async () => {
+      paperclip.serveAcme();
+      await client().refresh();
+      const taskReads = seenRoutes().filter((route) =>
+        route.startsWith(`GET /api/companies/${company}/issues`),
+      );
+      expect(taskReads).toEqual([`GET /api/companies/${company}/issues`]);
     });
 
     it("lists open tasks as work, newest change first", async () => {

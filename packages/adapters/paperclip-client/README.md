@@ -34,6 +34,15 @@ await messaging.refresh(); // the engine's poll; `changes()` then names the sour
 - An ID that isn't one path segment (`/`, `\`, `.`, `..`, empty, or anything outside `A-Z a-z 0-9 . _ ~ -`):
   nothing is sent.
 - Writes while offline: `refused` with `offline`, never queued.
+- A message to a task that isn't one of the person's chats: it checks the chat list first and sends
+  nothing.
+- A key with a character a header can't carry (a line break, a control character): refused when the
+  client is made, so it never reads as `offline`.
+
+**Writes follow the person.** The provider answers a card, approves or rejects an approval, or comments
+on a chat only when the person does so in Halonic (`answer` and `send`). It never writes on a poll or a
+retry. An approval always shows its type, which says what approving does (such as `hire_agent`), above
+the title the asking agent wrote.
 
 The key goes only in the `Authorization` header. Errors name the request and why it failed, never the key,
 a header or the body of a failed answer.
@@ -64,7 +73,13 @@ exist on our version, and `GET /api/companies/{company}/attention` is a board-on
 haven't tested with a board key yet. So the provider reads the open tasks and then each one's cards, but
 reads a task's cards again only when the task's `updatedAt` changed: Paperclip touches a task whenever a
 card on it is made or answered. The first read of a company with about 400 open tasks makes about 400 card
-reads, 4 at a time; later polls read only the tasks that changed.
+reads, 4 at a time; later polls read only the tasks that changed. A task without `updatedAt` has its cards
+read on every poll. Each poll reads the open tasks once, for both the Inbox and the work list, and an
+approval's linked task is read once while it is pending.
+
+**At most 1000 open tasks.** The provider reads one page of `listTasks`, Paperclip's largest. Open tasks
+past the first 1000 are missing from work and the Inbox, without an error. Paging comes when a company
+gets near that; ours has about 400.
 
 **Card kinds:** confirmations and one-question cards can be answered here. Cards with several questions,
 task suggestions, checklists and verdicts show in the Inbox with no options and are answered in Paperclip.

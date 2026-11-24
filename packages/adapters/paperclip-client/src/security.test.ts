@@ -164,10 +164,27 @@ verifies("ports.paperclip-key", () => {
       expect(() => client("http://127.0.0.1")).not.toThrow();
       expect(() => client("http://localhost:3100")).not.toThrow();
       expect(() => client("http://[::1]:3100")).not.toThrow();
+      expect(() => client("http://[::1]")).not.toThrow();
+      expect(() => client("http://127.1")).not.toThrow();
       expect(() => client("https://paperclip.acme.test")).not.toThrow();
       expect(() => client("ftp://paperclip.acme.test")).toThrow(/https/);
       expect(() => client("https://user:pw@paperclip.acme.test")).toThrow(/user name/);
       expect(() => client("https://paperclip.acme.test/api?x=1")).toThrow(/scheme, host and port/);
+    });
+
+    it("refuses a key a header can't carry, without showing it", () => {
+      const options = { address: paperclip.address, connection: "acme", company, label: "Acme" };
+      for (const key of [`${testKey}\r\nx-evil: 1`, `${testKey}\n`, ""]) {
+        let message = "";
+        try {
+          new PaperclipMessaging({ ...options, key });
+        } catch (error) {
+          message = (error as Error).message;
+          expect(error).toMatchObject({ reason: "bad-key" });
+        }
+        expect(message).not.toBe("");
+        expect(message).not.toContain(testKey);
+      }
     });
 
     it("refuses a redirect to the same host", async () => {

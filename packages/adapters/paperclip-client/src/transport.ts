@@ -26,9 +26,9 @@ export type PaperclipAnswer =
  * answer (`ports.paperclip-key`).
  */
 export class PaperclipClientError extends Error {
-  readonly reason: PaperclipFailure | "redirect" | "bad-answer";
+  readonly reason: PaperclipFailure | "redirect" | "bad-answer" | "bad-key";
 
-  constructor(message: string, reason: PaperclipFailure | "redirect" | "bad-answer") {
+  constructor(message: string, reason: PaperclipFailure | "redirect" | "bad-answer" | "bad-key") {
     super(message);
     this.name = "PaperclipClientError";
     this.reason = reason;
@@ -69,6 +69,13 @@ export class PaperclipTransport {
 
   constructor(options: TransportOptions) {
     this.#origin = checkedOrigin(options.address);
+    // A header can't carry a line break or a control character; fetch would fail as if offline.
+    if (!/^[\x21-\x7e]+$/.test(options.key)) {
+      throw new PaperclipClientError(
+        "The Paperclip key can't be sent: it holds a character a header can't carry.",
+        "bad-key",
+      );
+    }
     this.#key = options.key;
     this.#fetch = options.fetch ?? fetch;
   }

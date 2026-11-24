@@ -165,8 +165,19 @@ verifies("ports.agent-messaging", () => {
       });
     });
 
+    it("sends nothing to a task that isn't one of the person's chats", async () => {
+      paperclip.serveAcme();
+      expect(await client().send(`${source}:chat:${plainTask}`, "hi")).toEqual({
+        outcome: "refused",
+        reason: "not-found",
+      });
+      expect(paperclip.seen.filter((request) => request.method === "POST")).toEqual([]);
+    });
+
     it("refuses a write to a task Paperclip doesn't know or after sign-out", async () => {
-      paperclip.on("POST", `/api/issues/${chatTask}/comments`, { status: 401, body: {} });
+      paperclip
+        .serveAcme()
+        .on("POST", `/api/issues/${chatTask}/comments`, { status: 401, body: {} });
       expect(await client().send(`${source}:chat:${chatTask}`, "hi")).toEqual({
         outcome: "refused",
         reason: "signed-out",

@@ -45,7 +45,10 @@ function unexpected(name: string): PaperclipClientError {
 }
 
 /**
- * Answers cards and approvals and sends chat messages. A write is sent once
+ * Answers cards and approvals and sends chat messages. It writes only when
+ * the person answers or sends in Halonic: `answer` and `send` are its only
+ * callers, and nothing in the provider approves, rejects or comments on its
+ * own, on a poll or a retry. A write is sent once
  * or refused: offline it is `refused` with `offline` and never queued to try
  * later, because an answer sent late can be wrong by then. An unsafe ID is
  * refused before any request.

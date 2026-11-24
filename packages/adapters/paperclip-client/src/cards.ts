@@ -180,7 +180,11 @@ export function approvalToItem(
     return undefined;
   }
   const payload = asRecord(field(record, "payload"));
-  const title = text(payload, "title") ?? `Approval: ${text(record, "type") ?? "request"}`;
+  // The type comes from Paperclip and says what approving does (hire an agent, change a budget).
+  // The title and summary come from the agent that asks, so they never stand in for the type.
+  const kind = `Approval: ${text(record, "type") ?? "request"}`;
+  const agentTitle = text(payload, "title");
+  const title = agentTitle === undefined ? kind : `${kind}\n\n${agentTitle}`;
   const summary = text(payload, "summary");
   const status = text(record, "status");
   const decided = status === "approved" || status === "rejected";

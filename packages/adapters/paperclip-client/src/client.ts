@@ -7,6 +7,7 @@ import type {
   Message,
   MessagingAgent,
   MessagingId,
+  MessagingRefusal,
   MessagingSource,
   SearchHit,
   SendResult,
@@ -15,9 +16,10 @@ import type {
 import { ChangeFeed } from "./changes.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
-import { asRecords, text } from "./json.ts";
+import { asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst, toAgent, toConversation, toMessage, toWork } from "./map.ts";
 import { PaperclipReader } from "./reader.ts";
+import { isSafeSegment } from "./requests.ts";
 import { searchAll } from "./search.ts";
 import {
   bodyOf,
@@ -129,14 +131,11 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   async listInboxItems(): Promise<readonly InboxItem[]> {
-    await this.#knowAgents();
-    return this.#inbox.list(this.#context());
+    return this.#inboxFrom(undefined);
   }
 
   async listWork(): Promise<readonly WorkItem[]> {
-    const context = this.#context();
-    const work = (await this.#inbox.openTasks()).flatMap((record) => toWork(context, record) ?? []);
-    return newestFirst(work, (item) => item.updatedAt);
+    return this.#workFrom(await this.#inbox.openTasks());
   }
 
   async search(query: string): Promise<readonly SearchHit[]> {
@@ -160,8 +159,15 @@ export class PaperclipMessaging implements AgentMessaging {
 
   async send(conversation: MessagingId, body: string): Promise<SendResult> {
     const [task] = this.#ids.read(conversation, "chat") ?? [];
-    if (task === undefined) {
+    // An unsafe ID is refused before any request, the chat check's read included.
+    if (task === undefined || !isSafeSegment(task)) {
       return { outcome: "refused", reason: "not-found" };
+    }
+    // The key may comment only on the person's own chats (ADR: "comment on a chat task"),
+    // so a stale or made-up chat ID never turns into a comment on some other task.
+    const notAChat = await this.#refusalUnlessChat(task);
+    if (notAChat !== undefined) {
+      return { outcome: "refused", reason: notAChat };
     }
     const sent = await this.#writer.send(task, body);
     if (sent.kind === "refused") {
@@ -187,10 +193,12 @@ export class PaperclipMessaging implements AgentMessaging {
    * show changed. The engine calls it on its schedule (`ports.paperclip-polling`).
    */
   async refresh(): Promise<void> {
+    // One read of the open tasks serves both the Inbox and the work list.
+    const tasks = await this.#inbox.openTasks();
     const seen = JSON.stringify([
-      await this.listInboxItems(),
+      await this.#inboxFrom(tasks),
       await this.listConversations(),
-      await this.listWork(),
+      this.#workFrom(tasks),
     ]);
     const changed = this.#lastSeen !== undefined && seen !== this.#lastSeen;
     this.#lastSeen = seen;
@@ -204,6 +212,30 @@ export class PaperclipMessaging implements AgentMessaging {
       this.#lastSeen = undefined;
       this.#feed.push(this.#ids.source());
     }
+  }
+
+  /** Why `task` can't take a message: offline, signed out, or not one of the person's chats. */
+  async #refusalUnlessChat(task: string): Promise<MessagingRefusal | undefined> {
+    const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
+    if (answer.kind === "failed") {
+      const { failure } = answer;
+      if (failure === "offline" || failure === "signed-out" || failure === "not-found") {
+        return failure;
+      }
+    }
+    const chats = asRecords(bodyOf("listChats", answer));
+    return chats.some((chat) => text(chat, "id") === task) ? undefined : "not-found";
+  }
+
+  async #inboxFrom(tasks: readonly JsonRecord[] | undefined): Promise<InboxItem[]> {
+    await this.#knowAgents();
+    return this.#inbox.list(this.#context(), tasks);
+  }
+
+  #workFrom(tasks: readonly JsonRecord[]): WorkItem[] {
+    const context = this.#context();
+    const work = tasks.flatMap((record) => toWork(context, record) ?? []);
+    return newestFirst(work, (item) => item.updatedAt);
   }
 
   async #knowAgents(): Promise<void> {
