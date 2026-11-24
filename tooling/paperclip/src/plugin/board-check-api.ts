@@ -51,7 +51,15 @@ export type Trigger = "event" | "job";
 /** Where the board check keeps `key` for a company in plugin state. */
 export const stateKey = (
   companyId: string,
-  key: "asks" | "failed-runs" | "piles" | "waiting" | "approvals" | "merge-speed" | "rule-checks",
+  key:
+    | "asks"
+    | "failed-runs"
+    | "piles"
+    | "waiting"
+    | "approvals"
+    | "merge-speed"
+    | "agent-merges"
+    | "rule-checks",
 ) =>
   ({
     scopeKind: "company",

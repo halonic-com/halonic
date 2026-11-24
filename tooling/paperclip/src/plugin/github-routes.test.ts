@@ -70,6 +70,15 @@ function context(): { ctx: GitHubRoutesApi; reads: string[] } {
         { repo: `${long}/x`, number: 5641, at: "2026-11-24T09:40:00Z", reason: "bad repo" },
       ],
     },
+    "agent-merges": {
+      version: 1,
+      countingSince: "2026-11-01T10:00:00.000Z",
+      merges: [
+        { pull: `${repo}#5500`, agent: "mateo", at: "2026-11-04T10:00:00.000Z" },
+        { pull: `${repo}#5600`, agent: "mateo", at: "2026-11-20T10:00:00.000Z" },
+        { pull: `${repo}#5610`, agent: "liam", at: "2026-11-23T10:00:00.000Z" },
+      ],
+    },
   };
   const ctx: GitHubRoutesApi = {
     state: {
@@ -192,8 +201,23 @@ verifies("paperclip.github-routes", () => {
       takenAt: null,
       repos: [],
       mergeSpeed: null,
+      mergedByAgent: null,
     });
     const other = { ...ctx, state: { get: async () => ({ version: 99 }) } };
     expect((await handleGitHubSummary(request(board), other)).status).toBe(503);
+  });
+});
+
+verifies("paperclip.agent-merge-counts", () => {
+  test("the summary counts each agent's merges in the 7 and 30 days before the snapshot", async () => {
+    const { ctx } = context();
+    const response = await handleGitHubSummary(request(board), ctx);
+    expect((response.body as { mergedByAgent: unknown }).mergedByAgent).toEqual({
+      countingSince: "2026-11-01T10:00:00.000Z",
+      agents: [
+        { agent: "mateo", days7: 1, days30: 2 },
+        { agent: "liam", days7: 1, days30: 1 },
+      ],
+    });
   });
 });
