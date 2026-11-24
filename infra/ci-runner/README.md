@@ -253,8 +253,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   runtimes on a reload; running containers keep theirs). Deploy `vm/halonic-ci-gate-fast.socket`
   (`systemctl daemon-reload && systemctl restart halonic-ci-gate-fast.socket`) and
   `vm/halonic-runner-slot.sh`, restart `fast-11` and `large-1` while idle, and check
-  `docker inspect -f '{{.HostConfig.CpusetCpus}} {{.HostConfig.CpuShares}}'` on their containers
-  (`0-65,72-101 1024` and `0-5 2048`) and `nproc` in a fast job (4). Then add
+  `docker inspect -f '{{.HostConfig.CpusetCpus}} {{.HostConfig.CpuShares}} {{.HostConfig.OomScoreAdj}}'`
+  on their containers (`0-65,72-101 1024 500` and `0-5 2048 0`) and `nproc` in a fast job (4). Then add
   `halonic-runner@fast-25` … `halonic-runner@fast-40` to `/etc/halonic-ci/slots` and start them;
   memory admission holds those the VM has no room for. Back to fixed CPU sets: remove the flag and
   reload Docker (slots pick it up on their next cycle). Back to 24 slots: stop and disable
