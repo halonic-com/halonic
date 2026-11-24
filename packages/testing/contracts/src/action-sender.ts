@@ -58,6 +58,7 @@ export function actionSenderContract(name: string, make: MakeActionSender): void
     describe(`ActionSender contract: ${name}`, () => {
       signInCases(make);
       refusalCases(make);
+      bodyRefusalCases(make);
       dialogCases(make);
       sendCases(make);
     });
@@ -124,7 +125,9 @@ function refusalCases(make: MakeActionSender): void {
     expect(await sender.openGuided(page)).toEqual(badValue);
     expect([...sent(), ...opened()]).toEqual([]);
   });
+}
 
+function bodyRefusalCases(make: MakeActionSender): void {
   it("refuses a body with a field missing, extra, mistyped, or that only it may fill", async () => {
     const { sender, sent } = await ready(make);
     // A page could send any JSON, so the mistyped body is typed only as the port's.
