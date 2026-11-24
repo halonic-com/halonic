@@ -3,3 +3,8 @@ Halonic, Copyright 2026 The Halonic Authors
 This product includes a copy of the Public Suffix List
 (https://publicsuffix.org/), in packages/core/std/src/public-suffixes.generated.ts,
 under the Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/).
+
+This product includes a copy of the OpenUI Lang conformance fixtures
+(https://github.com/thesysdev/openui, spec/fixtures), in
+packages/core/openui-lang/fixtures/spec-1.1/, under the MIT License,
+Copyright (c) 2011-2024 Thesys Inc.

@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/openui-lang",
+  "private": true,
+  "type": "module",
+  "description": "Reads the display part of OpenUI Lang 1.1 (components, references, plain values and the send-a-message and open-a-link actions) into a component tree checked against a component list, whole or as it streams in.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "owen",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
