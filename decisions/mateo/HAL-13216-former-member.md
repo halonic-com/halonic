@@ -22,3 +22,7 @@ Requirement edited, none weakened:
 The README's row for the route now gives the new answer and suggests
 `POST /admin/sessions/revoke` first when nobody may write to the scope
 between the two runs.
+
+## Covers
+
+- runtime.delete-scope
