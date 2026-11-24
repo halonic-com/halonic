@@ -82,6 +82,9 @@ verifies("integration.source-scan-imports", () => {
       'import type { Integration } from "@halonicjs/ports";',
       'export type { IntegrationHost } from "@halonicjs/ports";',
       'import type { IntegrationPolicy } from /* the sheet */ "@halonicjs/format";',
+      'export type * from "./types.ts";',
+      'import type * as Ports from "@halonicjs/ports";',
+      'import type Default from "@halonicjs/ports";',
     ].join("\n");
     expect(scanIntegrationSource({ "src/a.ts": source }, { bundled: ["@acme/shared"] })).toEqual(
       [],
@@ -92,6 +95,13 @@ verifies("integration.source-scan-imports", () => {
     const source = 'export type Name = string\nimport { readFileSync } from "fs"\n';
     expect(scanIntegrationSource({ "src/a.ts": source })).toEqual([
       { file: "src/a.ts", line: 2, rule: importRule },
+    ]);
+  });
+
+  it("doesn't let a type-only list without a semicolon cover the import after it", () => {
+    const source = 'type A = string\nexport type { A }\nimport fs from "fs"\n';
+    expect(scanIntegrationSource({ "src/a.ts": source })).toEqual([
+      { file: "src/a.ts", line: 3, rule: importRule },
     ]);
   });
 });

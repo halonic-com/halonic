@@ -122,12 +122,14 @@ export function sourceImports(text: string): SourceImport[] {
 const gap = String.raw`(?:\s|/\*[\s\S]*?\*/|//[^\n]*\n)*`;
 
 /**
- * A plain `import type` or `export type` clause up to its quote: `type` is
- * followed by a name, `{` or `*`, never by `from` or `,`, which would make
- * `type` itself the default import's name.
+ * A plain `import type` or `export type` clause up to its quote. After `type`
+ * comes exactly one name, `*`, `* as name` or one `{ … }` list, never `from`
+ * or `,`, which would make `type` itself the default import's name. The exact
+ * shape keeps the match from running past a `}` into the next statement.
  */
+const typeOnlyClause = String.raw`(?:[\w$]+|\*(?:\s+as\s+[\w$]+)?|\{[\w$,\s]*\})`;
 const typeOnlyImport = new RegExp(
-  String.raw`\b(?:import|export)\s+type\s+(?!from\b)(?=[{*\w$])[\w$*{},\s]*?\bfrom${gap}["']`,
+  String.raw`\b(?:import|export)\s+type\s+(?!from\b)${typeOnlyClause}\s*from${gap}["']`,
   "g",
 );
 

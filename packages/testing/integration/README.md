@@ -36,7 +36,9 @@ when it ends.
 scans the code files in the test file's folder and below, other than tests
 (`*.test.*`, `*.spec.*`) and `node_modules`, and every file the test imports by
 a relative path, directly or through other files. It fails when the test
-imports code outside its package (the nearest folder with a `package.json`). A shared package the build bundles
+imports code outside its package (the nearest folder with a `package.json`).
+It doesn't follow an import by package name, so a test that imports its
+integration that way passes `sources`. A shared package the build bundles
 in and the code imports by name goes in `bundled`, with its files in `sources`.
 
 The suite never really waits: the integration's `host.wait` is a `fakeWait`
