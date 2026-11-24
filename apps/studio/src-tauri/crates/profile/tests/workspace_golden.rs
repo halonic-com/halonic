@@ -61,13 +61,14 @@ fn workspace_folders_match_every_golden_case() {
         assert_eq!(folders.runs_folder(None).ok(), text(case, "runs"), "{name}");
         let staging = folders.runs_folder(Some("staging")).ok();
         assert_eq!(staging, text(case, "stagingRuns"), "{name}");
-        // Beside the runs, as `blobsFolder`, `recordsFolder` and `reviewFolder` name them.
+        // Beside the runs, as `blobsFolder`, `recordsFolder`, `reviewFolder` and `chatsFolder` name them.
         let beside = |name: &str| {
             text(case, "runs").map(|runs| format!("{}{name}", &runs[..runs.len() - "runs".len()]))
         };
         assert_eq!(Some(folders.blobs_folder()), beside("blobs"), "{name}");
         assert_eq!(Some(folders.records_folder()), beside("records"), "{name}");
         assert_eq!(Some(folders.review_folder()), beside("review"), "{name}");
+        assert_eq!(Some(folders.chats_folder()), beside("chats"), "{name}");
     }
 }
 

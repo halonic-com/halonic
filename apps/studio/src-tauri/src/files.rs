@@ -10,7 +10,9 @@
 //! `fs_remove` also take an optional `folder`: `"review"` works in the
 //! workspace's review folder in the profile instead (HAL-1291), which the
 //! shell works out itself, as `reviewFolder` in `@halonicjs/profile` does,
-//! so the page never names a path outside an opened folder. `"tool-approvals"`
+//! so the page never names a path outside an opened folder. `"chats"` works
+//! in the workspace's chats folder in the profile the same way (HAL-17305),
+//! as `chatsFolder` names it. `"tool-approvals"`
 //! works in the approvals of one source in the workspace (HAL-8868): the
 //! `source` call argument names it, and the shell works out the folder (see
 //! `tool_approvals.rs`).
@@ -19,8 +21,8 @@
 //! opened, a workspace path could otherwise reach the trust records, the
 //! runs or the picked folders that open after a restart without a dialog.
 //! Every workspace call refuses a path in it as private, and lists and
-//! watches leave it out. The review folder, which is in the profile, is the
-//! shell's own and unaffected.
+//! watches leave it out. The review and chats folders, which are in the
+//! profile, are the shell's own and unaffected.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -62,6 +64,9 @@ pub enum FileFolder {
     /// The assistant's changes to review: one record per file, kept in the
     /// workspace's folder in the profile, never in the workspace (HAL-3417).
     Review,
+    /// The assistant's chats: one record per chat, kept in the workspace's
+    /// folder in the profile, never in the workspace (HAL-17305).
+    Chats,
     /// One source's approvals of listed tools in the opened workspace, kept
     /// in the profile and never in the workspace (HAL-8868). Needs `source`.
     ToolApprovals,
@@ -88,24 +93,6 @@ pub(crate) fn workspace_root(
 /// profile can't be found is refused, so the fence is never left off.
 pub(crate) fn profile_fence(profile: &ProfileFolder, root: &Path) -> Fence {
     Fence::around(root, Path::new(&profile.root))
-}
-
-/// The review folder of `workspace` in `profile`, as `reviewFolder` names
-/// it. `workspace` must be a folder the person opened in the shell, or
-/// inside one; its real path names the folder, as the CLI's `realpath` does.
-pub(crate) fn review_root(
-    opened: &OpenedFolders,
-    profile: &ProfileFolder,
-    workspace: &Path,
-) -> Result<PathBuf, FileRefusal> {
-    let real_path = workspace_root(opened, workspace)?;
-    let real_path = real_path
-        .to_str()
-        .ok_or_else(|| FileRefusal::io("the workspace's path isn't valid Unicode"))?;
-    let folders = profile
-        .workspace_folders(real_path)
-        .map_err(FileRefusal::io)?;
-    Ok(PathBuf::from(folders.review_folder()))
 }
 
 /// Whether a call may make the folder it works in when it isn't there yet:
@@ -146,10 +133,11 @@ where
             }
             FileFolder::Review => {
                 let root = review_root(&opened, &profile, &workspace)?;
-                if making == Making::Folder {
-                    std::fs::create_dir_all(&root).map_err(FileRefusal::io)?;
-                }
-                (root, Fence::Outside)
+                (made_for(root, making)?, Fence::Outside)
+            }
+            FileFolder::Chats => {
+                let root = chats_root(&opened, &profile, &workspace)?;
+                (made_for(root, making)?, Fence::Outside)
             }
             FileFolder::Discarded => {
                 let real = workspace_root(&opened, &workspace)?;
@@ -439,11 +427,18 @@ fn look_while_open(
 mod refusal;
 pub use refusal::FileRefusal;
 
+#[path = "shell_folders.rs"]
+mod shell_folders;
+pub(crate) use shell_folders::{chats_root, made_for, review_root};
+
 #[path = "kept_copies.rs"]
 mod kept_copies;
 #[path = "tool_approvals.rs"]
 mod tool_approvals;
 
+#[cfg(test)]
+#[path = "files_chats_tests.rs"]
+mod chats_tests;
 #[cfg(test)]
 #[path = "files_tests.rs"]
 mod tests;
