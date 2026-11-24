@@ -54,6 +54,7 @@ import {
 } from "./chat-choices.tsx";
 import { ChatHeading, ChatMoreActions } from "./chat-header.tsx";
 import { openModelsCommand, useModelBox } from "./model-line.tsx";
+import { StripAboveBox } from "./review-strip.tsx";
 import { useAuthoringOnly, useEngineAnswering, useTrustCheck } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
 import { SkillLink } from "./skill-link.tsx";
@@ -233,6 +234,7 @@ function PanelBody(props: PanelBodyProps) {
           continueWaits={engineAnswering ? undefined : { reason: noticeId }}
         />
       )}
+      <StripAboveBox view={view} host={host} box={box} announce={announce} />
       <ChipsAboveBox view={view} chats={chats} choices={choices} box={box} announce={announce} />
       <BuildComposer
         {...agentBox(agent)}

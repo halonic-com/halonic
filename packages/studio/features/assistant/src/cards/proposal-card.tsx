@@ -8,6 +8,9 @@ import { reviewPlaceOf } from "./card-facts.ts";
 import { type CardReview, cardReviewsOf, type Proposal } from "./card-reviews.ts";
 import { cardWords as words } from "./card-words.ts";
 
+/** The start of the `id` of an open card's **Review**, which the strip's count moves focus to. */
+export const cardReviewId = "card-review-";
+
 /** Props for {@link ProposalCard}. */
 export interface ProposalCardProps {
   readonly proposal: Proposal;
@@ -124,7 +127,13 @@ function OpenCard({
         </p>
       ) : null}
       <div className="mt-1 flex flex-wrap gap-2">
-        <Button variant="secondary" size="sm" aria-describedby={nameId} onClick={decide.review}>
+        <Button
+          id={`${cardReviewId}${nameId}`}
+          variant="secondary"
+          size="sm"
+          aria-describedby={nameId}
+          onClick={decide.review}
+        >
           {words.review}
         </Button>
         <Button

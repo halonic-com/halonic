@@ -73,3 +73,49 @@ export const notesToTheModel = {
 function changes(count: number): string {
   return count === 1 ? "change" : "changes";
 }
+
+/**
+ * The words of the strip above the box (microcopy 14.2 and 19.5, flow-assistant 3.5), for two or
+ * more items with changes to review from the chat.
+ */
+export const stripWords = {
+  count: (items: number) => `${items} items to review`,
+  /** The count is a button that moves focus to the next card's Review. */
+  countName: (items: number) => `${items} items to review, go to the next one`,
+  acceptAll: "Accept all",
+  rejectAll: "Reject all",
+  /** Written under the count while the chat answers: both buttons' reason, not only a tooltip. */
+  waitForAnswer: "Wait for the answer to finish.",
+  accepted: (changes: number, items: number) =>
+    `Accepted ${changes} ${changesWord(changes)} in ${items} ${itemsWord(items)}`,
+  rejected: (changes: number, items: number) =>
+    `Rejected ${changes} ${changesWord(changes)} in ${items} ${itemsWord(items)}`,
+  /** After the toast's title when items were left out, so a partial result never reads as done. */
+  waiting: (names: readonly string[]) =>
+    `${listed(names)} ${names.length === 1 ? "waits" : "wait"} for Compare.`,
+  /** New (HAL-17455): nothing was decided, as every item waits for Compare. */
+  nothing: (decision: "accept" | "reject") =>
+    decision === "accept" ? "Nothing accepted." : "Nothing rejected.",
+  undo: "Undo",
+  undone: (decision: "accept" | "reject", changes: number) =>
+    `Undone: ${decision === "accept" ? "accepted" : "rejected"} ${changes} ${changesWord(changes)}`,
+  /** New (HAL-16800): the strip's decision or its undo failed, with the reason under it. */
+  cantAccept: (items: number) => `Couldn't accept the changes in ${items} ${itemsWord(items)}`,
+  cantReject: (items: number) => `Couldn't reject the changes in ${items} ${itemsWord(items)}`,
+  cantUndo: (items: number) => `Couldn't undo the changes in ${items} ${itemsWord(items)}`,
+} as const;
+
+function changesWord(count: number): string {
+  return count === 1 ? "change" : "changes";
+}
+
+function itemsWord(count: number): string {
+  return count === 1 ? "item" : "items";
+}
+
+/** "A", "A and B", "A, B and C", then "A, B, C and 2 more" (HAL-17455). */
+function listed(names: readonly string[]): string {
+  if (names.length < 2) return names.join("");
+  if (names.length > 3) return `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`;
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
