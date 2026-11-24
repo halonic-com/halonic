@@ -20,7 +20,15 @@ export const signInClientName = "Halonic Studio";
 export interface SignInConnection {
   /** The address the board uses for Paperclip's page: scheme, host and port, no path. */
   address: string;
-  companyId: string;
+  /**
+   * The connection file's company. A new connection has none yet: it takes
+   * the approver's company, when `me` lists exactly one.
+   */
+  companyId?: string;
+  /** The workspace that holds, or will hold, the connection file; only passed to the key store. */
+  workspace: string;
+  /** The connection's name, its file name without `.yaml`; only passed to the key store. */
+  name: string;
 }
 
 /** What Studio gets when a sign-in starts. It never holds the key. */
@@ -37,13 +45,26 @@ export interface StartedSignIn {
 /** Where a sign-in stands after a step. */
 export type SignInState =
   | { status: "pending" }
-  | { status: "connected"; userId: string }
-  | { status: "cancelled" }
-  | { status: "expired" }
+  /**
+   * The key was stored for the connection's company. This answer is the only
+   * one that holds the key, and the sign-in ends with it, so no later poll
+   * gets it again (Liam's option 1, HAL-17439): Studio writes it to the
+   * keychain at once.
+   */
+  | { status: "connected"; userId: string; companyId: string; key: string }
+  | { status: "cancelled" | "expired"; keyMayWork?: KeyMayWork }
   /** The key's user isn't in the connection's company; the key was revoked. */
   | { status: "wrong-company" }
   /** No such sign-in: it ended already, or never started. */
   | { status: "unknown" };
+
+/**
+ * Set on a cancelled or expired sign-in when Paperclip couldn't say how its
+ * challenge ended and the key couldn't be revoked either. If the board
+ * approved it, the key works until it expires, and only Paperclip can revoke
+ * it; Studio says so, as Disconnect does (Julian, HAL-17733).
+ */
+export type KeyMayWork = true;
 
 /** What the sign-in flow needs. */
 export interface PaperclipSignInOptions {
@@ -92,7 +113,7 @@ export class PaperclipSignIn {
       command: phrase,
       clientName: signInClientName,
       requestedAccess: "board",
-      requestedCompanyId: connection.companyId,
+      ...(connection.companyId === undefined ? {} : { requestedCompanyId: connection.companyId }),
     });
     const challenge = { id: created.id, token: created.token };
     const signInId = crypto.randomUUID();
@@ -158,9 +179,7 @@ export class PaperclipSignIn {
   async cancel(signInId: string): Promise<SignInState> {
     const open = this.#take(signInId);
     if (open === undefined) return { status: "unknown" };
-    await this.#endChallenge(open);
-    await this.#endTimer(signInId);
-    return { status: "cancelled" };
+    return await this.#end(signInId, open, "cancelled");
   }
 
   /** The scheduler's timer: a sign-in still open at its limit ends as `expired`. */
@@ -173,9 +192,32 @@ export class PaperclipSignIn {
     const open = this.#take(signInId);
     if (open === undefined) return { status: "unknown" };
     // Paperclip ends the challenge too, but its clock may run behind ours.
-    await this.#endChallenge(open);
+    return await this.#end(signInId, open, "expired");
+  }
+
+  /**
+   * Ends a sign-in taken out of memory. The key is already dropped here, so a
+   * failed cancel can't be tried again later: the key is revoked instead, and
+   * when that fails too, the answer says the key may work.
+   */
+  async #end(
+    signInId: string,
+    open: OpenSignIn,
+    status: "cancelled" | "expired",
+  ): Promise<SignInState> {
     await this.#endTimer(signInId);
-    return { status: "expired" };
+    try {
+      await this.#endChallenge(open);
+      return { status };
+    } catch {
+      // Paperclip couldn't say how the challenge ended. A key the board never
+      // approved can't be revoked, so a failed revoke leaves it unknown.
+      const revoked = await open.calls.revokeCurrent(open.key).then(
+        () => true,
+        () => false,
+      );
+      return revoked ? { status } : { status, keyMayWork: true };
+    }
   }
 
   /**
@@ -195,13 +237,11 @@ export class PaperclipSignIn {
     try {
       await this.#endTimer(signInId);
       const owner = await calls.readMe(open.key);
-      if (owner.companyIds.includes(open.connection.companyId)) {
-        await keyStore.save({
-          address: open.connection.address,
-          companyId: open.connection.companyId,
-          key: open.key,
-        });
-        return { status: "connected", userId: owner.userId };
+      const companyId = companyOf(open.connection, owner.companyIds);
+      if (companyId !== undefined) {
+        const { address, workspace, name } = open.connection;
+        await keyStore.save({ address, companyId, key: open.key, workspace, name });
+        return { status: "connected", userId: owner.userId, companyId, key: open.key };
       }
     } catch (error) {
       // The key works but isn't stored: revoke it so no working key is left anywhere.
@@ -229,6 +269,21 @@ export class PaperclipSignIn {
   async #endTimer(signInId: string): Promise<void> {
     await this.#options.scheduler.cancel(signInTimerKey, signInId);
   }
+}
+
+/**
+ * The company the key is stored for: the connection file's, when the key's
+ * user belongs to it; for a new connection, the user's only company. A user
+ * in several companies gets none, as Studio can't ask which one yet.
+ */
+function companyOf(
+  connection: SignInConnection,
+  companyIds: readonly string[],
+): string | undefined {
+  if (connection.companyId !== undefined) {
+    return companyIds.includes(connection.companyId) ? connection.companyId : undefined;
+  }
+  return companyIds.length === 1 ? companyIds[0] : undefined;
 }
 
 /**

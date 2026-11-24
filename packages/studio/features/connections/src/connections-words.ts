@@ -90,6 +90,11 @@ export const CANCELLED: Ending = {
   heading: "The sign-in was cancelled in Paperclip",
   text: "Nothing was connected. If you didn't cancel it yourself, start again and check the words before you approve.",
 };
+/** The board approved, but the keychain didn't take the key; Halonic revoked it (HAL-17439). */
+export const KEY_NOT_SAVED: Ending = {
+  heading: "Halonic couldn't save the key",
+  text: "This computer's keychain didn't take it, so Halonic revoked the key and kept nothing. Start again.",
+};
 /** The approver isn't in the connection's company; "this company" when the engine didn't say. */
 export function companyMismatch(company: string | undefined): Ending {
   const name = company ?? "this company";

@@ -64,7 +64,7 @@ export class PaperclipKeys {
    * @throws RangeError when the entry's address isn't `https`, or plain `http` to this computer; nothing is changed then
    */
   replace(binding: PaperclipBinding, entry: PaperclipKeyEntry): void {
-    const origin = originOf(entry.address);
+    const origin = paperclipOrigin(entry.address);
     if (origin === undefined) {
       throw new RangeError("A Paperclip key is kept only with the address it was made for.");
     }
@@ -107,7 +107,8 @@ export class PaperclipKeys {
   ): Promise<T | SignedOut> {
     const entry = this.#entries.get(nameOf(binding));
     if (entry === undefined) return signedOut;
-    if (originOf(now.address) !== entry.origin || now.company !== entry.company) return signedOut;
+    if (paperclipOrigin(now.address) !== entry.origin || now.company !== entry.company)
+      return signedOut;
     return await request({ key: entry.key, origin: entry.origin });
   }
 }
@@ -126,7 +127,7 @@ function nameOf(binding: PaperclipBinding): string {
  * has none: a second safeguard next to the client's own check, so a key never crosses a network
  * in the clear.
  */
-function originOf(address: string): string | undefined {
+export function paperclipOrigin(address: string): string | undefined {
   if (!URL.canParse(address)) return undefined;
   const url = new URL(address);
   if (url.protocol === "https:") return url.origin;

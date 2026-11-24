@@ -82,6 +82,8 @@ export interface Desktop {
   studio: AgentHostMessaging;
   /** Studio's key hand-over and Disconnect. */
   paperclipKey: AgentHostPaperclipKey;
+  /** The page's calls to the host. */
+  transport: AgentHostTransport;
   /** Every answer body the host sent the page, as text. */
   answers: string[];
   /** Every line the host logged. */
@@ -151,6 +153,7 @@ export async function startDesktop(): Promise<Desktop> {
     profile,
     studio: new AgentHostMessaging(transport, workspace, async () => {}),
     paperclipKey: new AgentHostPaperclipKey(transport),
+    transport,
     answers,
     logged,
     writeConnection,

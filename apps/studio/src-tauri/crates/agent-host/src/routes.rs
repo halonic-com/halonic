@@ -352,6 +352,24 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/paperclip/disconnect",
         route(Method::Post, "/v1/paperclip/disconnect", Answer::Json),
     ),
+    // Settings › Connections and the Paperclip sign-in (HAL-17439, HAL-17897):
+    // only the first approved poll answers the key, once, for the keychain.
+    (
+        "POST /v1/paperclip/connections",
+        route(Method::Post, "/v1/paperclip/connections", Answer::Json),
+    ),
+    (
+        "POST /v1/paperclip/sign-in/start",
+        route(Method::Post, "/v1/paperclip/sign-in/start", Answer::Json),
+    ),
+    (
+        "POST /v1/paperclip/sign-in/poll",
+        route(Method::Post, "/v1/paperclip/sign-in/poll", Answer::Json),
+    ),
+    (
+        "POST /v1/paperclip/sign-in/cancel",
+        route(Method::Post, "/v1/paperclip/sign-in/cancel", Answer::Json),
+    ),
     (
         "POST /v1/messaging/read",
         route(Method::Post, "/v1/messaging/read", Answer::Json),

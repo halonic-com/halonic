@@ -106,6 +106,9 @@ verifies("services.agent-connections", () => {
     const expired = await started(fake);
     fake.expire();
     expect(await expired.result).toEqual({ outcome: "expired" });
+    const notSaved = await started(fake);
+    fake.failKeychain();
+    expect(await notSaved.result).toEqual({ outcome: "key-not-saved" });
   });
 
   it("refuses to start when told to", async () => {
