@@ -976,7 +976,8 @@ jobs:
   # job where no pull-request code runs and no cache is read: the checkout
   # switches to the merge base before anything runs, and neither the pnpm
   # store nor Turbo's cache is restored (a pull request's runs can write both).
-  # Pull requests only, like the guard job it feeds: the queue holds the
+  # Usually it runs no test at all and takes main's own results for the merge
+  # base instead (the reuse step below, HAL-17657). Pull requests only, like the guard job it feeds: the queue holds the
   # same change, and its base is main or the entry ahead, whose own run
   # tests it. Skipped for docs-only pull requests (the changes job's code output).
   base-tests:
@@ -984,8 +985,9 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-24.04
-    # A change to ci.yml tests every package, uncached, which took 13–19 min
-    # on 21 Nov and passed 20 on a slow runner (HAL-15369). A walk-back
+    # Without main's results, a change to ci.yml tests every package,
+    # uncached, which took 13–19 min on 21 Nov and passed 20 on a slow
+    # runner (HAL-15369). A walk-back
     # after the tests runs every package a second time; the red-base step
     # avoids that when main's push run already failed (HAL-17600).
     timeout-minutes: 45
@@ -997,13 +999,14 @@ jobs:
       HALONIC_TEST_TIMEOUT: "30000"
     permissions:
       contents: read
-      # The walk-back below looks up main's push CI runs.
+      # The reuse and the walk-backs below look up main's CI runs, and the
+      # reuse downloads their test results.
       actions: read
     # The guard downloads the archive by these, not by name: the build job
     # runs pull-request code that could upload an artifact with the same
     # name, but no other job can set this job's outputs.
     outputs:
-      sha: ${{ steps.walk-back.outputs.sha || steps.install.outputs.sha }}
+      sha: ${{ steps.reuse.outputs.sha || steps.walk-back.outputs.sha || steps.install.outputs.sha }}
       # The main commit the merge ref was built on. It differs from sha only
       # after a walk-back; the guard then compares files with this commit.
       built-on: ${{ steps.merge-base.outputs.sha }}
@@ -1034,6 +1037,100 @@ jobs:
           fi
           git checkout --quiet --detach "$sha"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      # Main's own CI has usually tested the merge base already: the merge
+      # queue's run for that exact commit tests every package, and main
+      # moves only once it passed. Testing the affected packages again took
+      # 15–26 min whenever a pull request touched a widely used package
+      # (HAL-17657), so take that run's test results instead. Only from a
+      # green push or merge-group run of ci.yml on main in this repository,
+      # for exactly that commit (event, workflow path, head branch and head
+      # SHA): a pull request's run can upload artifacts with the same names,
+      # but only to its own run, and those runs read only main's and the
+      # queue's Turbo caches, which only reviewed code writes (HAL-14149,
+      # HAL-15467). Without such a run for the merge base, the newest commit
+      # within 20 on main's first-parent history that has one is used, as in
+      # the walk-backs below. When none has, or a lookup or download fails,
+      # nothing is unpacked and the steps below test the merge base as
+      # before. A pull request into another branch (a stack, a release
+      # branch) always tests its merge base.
+      - id: reuse
+        name: Reuse main's test results for the merge base
+        env:
+          MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$BASE_REF" != main ]; then
+            echo "::notice title=Merge base's tests::The pull request is into $BASE_REF, not main, so the merge base is tested."
+            exit 0
+          fi
+          read -ra shards <<< "$(awk 'NF { printf "%s ", $1 }' <<< "$BUILD_SHARDS")"
+          trusted='.workflow_runs[]
+            | select(.head_sha == $sha and .status == "completed" and .conclusion == "success"
+              and .path == ".github/workflows/ci.yml"
+              and .repository.full_name == $repo and .head_repository.full_name == $repo
+              and ((.event == "push" and .head_branch == "main")
+                or (.event == "merge_group" and (.head_branch | startswith("gh-readonly-queue/main/")))))
+            | .id'
+          # "<shard> <artifact id>" for every shard of BUILD_SHARDS, or a
+          # failure when one is missing or expired.
+          artifacts() {
+            local run="$1" sha="$2" list shard id
+            list=$(gh api "repos/$REPO/actions/runs/$run/artifacts?per_page=100") || return 1
+            for shard in "${shards[@]}"; do
+              id=$(jq -r --arg name "test-results-$shard" --argjson run "$run" --arg sha "$sha" \
+                'first(.artifacts[] | select(.name == $name and .expired == false
+                  and .workflow_run.id == $run and .workflow_run.head_sha == $sha) | .id) // empty' <<< "$list")
+              [ -n "$id" ] || return 1
+              echo "$shard $id"
+            done
+          }
+          # Each archive holds only plain result files that land where their
+          # names say, as the guard checks for the pull request's own.
+          fetch() {
+            local into="$1" shard id entry
+            while read -r shard id; do
+              gh api "repos/$REPO/actions/artifacts/$id/zip" > "$into/$shard.zip" || return 1
+              unzip -p "$into/$shard.zip" test-results.tar > "$into/$shard.tar" || return 1
+              if tar -tvf "$into/$shard.tar" | grep -qv '^-'; then return 1; fi
+              while IFS= read -r entry; do
+                if ! grep -qE '^([A-Za-z0-9_@-][A-Za-z0-9._@-]*/)*test-results/vitest\.json$' <<< "$entry" \
+                  || grep -qE '(^|/)\.\.?(/|$)' <<< "$entry" \
+                  || [ "$(realpath -m "$PWD/$entry")" != "$PWD/$entry" ]; then
+                  echo "$shard's archive holds an unexpected entry: $entry"
+                  return 1
+                fi
+              done < <(tar -tf "$into/$shard.tar")
+            done
+          }
+          into=$(mktemp -d)
+          back=-1
+          for candidate in $(git rev-list --first-parent -n 21 "$MERGE_BASE"); do
+            back=$((back + 1))
+            if ! list=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$candidate&status=success&per_page=20"); then
+              echo "::warning title=Merge base's tests::Couldn't read main's CI runs, so the merge base is tested."
+              exit 0
+            fi
+            for run in $(jq -r --arg sha "$candidate" --arg repo "$REPO" "$trusted" <<< "$list"); do
+              found=$(artifacts "$run" "$candidate") || continue
+              if ! fetch "$into" <<< "$found"; then
+                echo "::warning title=Merge base's tests::Couldn't use the test results of run $run, so the merge base is tested."
+                exit 0
+              fi
+              for shard in "${shards[@]}"; do
+                tar -xf "$into/$shard.tar" --no-same-owner --no-same-permissions
+              done
+              if [ "$back" -gt 0 ]; then
+                echo "::warning title=baseline-walked-back::No run on main has test results for the merge base. Using ${candidate}, $back commit(s) back on main, and the results of its run $run, as the baseline."
+              else
+                echo "::notice title=Merge base's tests::Reused the test results of main's run $run for the merge base; no test runs here."
+              fi
+              echo "sha=$candidate" >> "$GITHUB_OUTPUT"
+              exit 0
+            done
+          done
+          echo "::notice title=Merge base's tests::No run on main within 20 commits of the merge base has test results to reuse, so the merge base is tested."
       # When the merge base's own push CI run already failed, main is red
       # there, and testing it only to walk back afterwards runs every package
       # twice, which passed the time limit (HAL-17600). So walk back first,
@@ -1044,6 +1141,7 @@ jobs:
       # tests still catches a red main. API and network errors fail.
       - id: red-base
         name: Walk back first if the merge base's push CI run failed
+        if: steps.reuse.outputs.sha == ''
         env:
           MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
           REPO: ${{ github.repository }}
@@ -1071,6 +1169,7 @@ jobs:
           echo "::error::The merge base's push CI run failed and no commit within 20 of it on main has a green push CI run. Fix main first (docs/guides/broken-main.md)."
           exit 1
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: steps.reuse.outputs.sha == ''
         with:
           cache: false
       # If the merge base's own lockfile is broken, every pull request would
@@ -1083,6 +1182,7 @@ jobs:
       # still fail the job.
       - id: install
         name: Install the merge base's dependencies
+        if: steps.reuse.outputs.sha == ''
         run: |
           set +e
           tried=0
@@ -1115,7 +1215,7 @@ jobs:
       # below.
       - id: affected
         name: Choose the packages to test
-        if: env.AFFECTED_TESTS == 'on'
+        if: steps.reuse.outputs.sha == '' && env.AFFECTED_TESTS == 'on'
         env:
           MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
           MERGE_REF: ${{ steps.merge-base.outputs.merge-ref }}
@@ -1138,6 +1238,7 @@ jobs:
       # every pull request, the one that repairs main included.
       - id: base-test-run
         name: Run the merge base's tests without reading any cache
+        if: steps.reuse.outputs.sha == ''
         continue-on-error: true
         env:
           AFFECTED: ${{ steps.affected.outputs.all == 'false' }}

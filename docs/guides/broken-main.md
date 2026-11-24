@@ -8,6 +8,19 @@ docs-only pull request. Both install with `pnpm install --frozen-lockfile`. If `
 install, or its own tests fail, every pull request would fail there,
 including the one that repairs it.
 
+## Main's own results come first
+
+Usually `Merge base's tests (no cache)` installs nothing and runs no test: it
+takes the merge base's test results from `main`'s own green run for that
+commit, the merge-group run whose shards tested every package before `main`
+moved (HAL-17657). It accepts them only from a `push` or `merge_group` run of
+`ci.yml` on `main` in this repository whose head commit is that commit, never
+from a pull request's run. If the merge base has no such run (its results
+expired after a day, say), the newest commit within 20 on `main`'s
+first-parent history that has one is the baseline, with a
+`baseline-walked-back` warning. Only when none has, or for a pull request into
+another branch, does the job test the merge base as described below.
+
 ## When main's lockfile doesn't install
 
 Only when the install fails with a pnpm lockfile error
