@@ -78,6 +78,16 @@ posts after his own `git range-diff` check (HAL-14809). Any other difference,
 or a failed comparison, names both heads and goes to the reviewer of the
 paths. The watcher never approves anything itself.
 
+**Waiting for review** (HAL-17760). While the reviewer (Liam or Julian, not
+the author) holds the task with no run going, the watcher reads its pull
+requests too. When one is out of draft, not in the merge queue, green on its
+head and not approved on it, and the watcher's "ready for review" comment for
+that head is more than an hour old, it comments once per head on the task,
+"PR watcher: waiting for review for over 1 h: #N, head `abc1234`, handed over
+at <time>.", and wakes nobody. The pass summary and the metric
+`pr_watcher.review_waits` count these notes, so Chief's team check can list
+them.
+
 A wake comment also carries, for each open pull request it names, the head
 lines `pr_status` would give, from the same pass: the head, `ci-ok` on it
 (with up to five failing checks by name when it failed), mergeable, the merge

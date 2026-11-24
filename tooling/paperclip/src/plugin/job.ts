@@ -139,6 +139,7 @@ async function recordPass(
       "pr_watcher.failed": summary.failed.length,
       "pr_watcher.handed_off": summary.handedOff,
       "pr_watcher.warned_after_approval": summary.warned,
+      "pr_watcher.review_waits": summary.reviewWaits,
       "pr_watcher.github_requests": requests,
       "pr_watcher.duration_ms": durationMs,
       "monitors.set": monitors.set,
@@ -154,7 +155,7 @@ async function recordPass(
     ctx.logger.error(`PR watcher: couldn't save its metrics: ${failure.message}`, { companyId });
   }
   ctx.logger.info(
-    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
+    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
     { companyId },
   );
 }

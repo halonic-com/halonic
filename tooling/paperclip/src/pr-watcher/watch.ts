@@ -16,6 +16,7 @@ import { postponeUntil } from "./monitors.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
 import type { RebaseOnly } from "./rebase-only.ts";
 import { reviewSteps } from "./review-steps.ts";
+import { noteReviewWait } from "./review-wait.ts";
 import type { PullSummary } from "./wake-status.ts";
 
 /**
@@ -52,6 +53,8 @@ export interface TickSummary {
   readonly handedOff: number;
   /** Tasks warned about a push after an approval. */
   readonly warned: number;
+  /** Tasks their reviewer holds, noted for a green head unapproved for over an hour (HAL-17760). */
+  readonly reviewWaits: number;
   readonly failed: readonly string[];
 }
 
@@ -59,7 +62,7 @@ export interface TickSummary {
 interface TickRefs {
   readonly owners: ReadonlyMap<string, string>;
   readonly found: FoundPulls;
-  /** The facts of every pull request whose author holds its task, or why they couldn't be read. */
+  /** The facts of every pull request whose author or reviewer holds its task, or why they couldn't be read. */
   readonly facts: ReadonlyMap<string, PullFacts> | Error;
 }
 
@@ -208,6 +211,26 @@ function watchedPulls(
   return owner !== undefined && owner === task.assigneeAgentId && !task.running ? pulls : [];
 }
 
+/**
+ * The pull requests of a task its reviewer (Liam or Julian, not its author)
+ * holds with no run going: read only for the review-wait note (HAL-17760).
+ */
+function reviewerHeldPulls(
+  task: TaskRow,
+  found: FoundPulls,
+  owners: ReadonlyMap<string, string>,
+): readonly PullRef[] {
+  const pulls = found.get(task.identifier) ?? [];
+  const holder = task.assigneeAgentId;
+  const reviewers = [owners.get("liam"), owners.get("julian")];
+  const author = ownerOf(
+    pulls.map((ref) => ref.branch),
+    owners,
+  );
+  const held = holder !== null && reviewers.includes(holder) && holder !== author;
+  return held && !task.running ? pulls : [];
+}
+
 function factsOf(ref: PullRef, facts: TickRefs["facts"]): PullFacts {
   if (facts instanceof Error) {
     throw facts;
@@ -336,6 +359,19 @@ function reviewStepsOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
   );
 }
 
+/** The review-wait note for a task its reviewer holds; false for any other task. */
+function reviewWaitOf(options: TickOptions, task: TaskRow, refs: TickRefs): Promise<boolean> {
+  const pulls = reviewerHeldPulls(task, refs.found, refs.owners).map((ref) =>
+    factsOf(ref, refs.facts),
+  );
+  if (pulls.length === 0) {
+    return Promise.resolve(false);
+  }
+  return noteReviewWait(options, task, pulls, async () =>
+    (await options.paperclip.comments(task.id)).filter(isSelf),
+  );
+}
+
 /** What one tick counts, apart from the tasks it couldn't check. */
 type Counts = Omit<TickSummary, "failed">;
 
@@ -347,6 +383,7 @@ const zero: Counts = {
   postponeRefused: 0,
   handedOff: 0,
   warned: 0,
+  reviewWaits: 0,
 };
 
 function one(yes: boolean): number {
@@ -364,6 +401,7 @@ async function checkTask(options: TickOptions, task: TaskRow, refs: TickRefs): P
     decision.kind === "skip"
       ? await reviewStepsOf(options, task, refs)
       : { handedOff: false, warned: false };
+  const waited = decision.kind === "skip" && (await reviewWaitOf(options, task, refs));
   const acted = await act(options, task, decision);
   return {
     checked: 1,
@@ -373,6 +411,7 @@ async function checkTask(options: TickOptions, task: TaskRow, refs: TickRefs): P
     postponeRefused: one(monitor === "refused"),
     handedOff: one(review.handedOff),
     warned: one(review.warned),
+    reviewWaits: one(waited),
   };
 }
 
@@ -387,7 +426,10 @@ export async function tick(options: TickOptions): Promise<TickSummary> {
   );
   const found = await options.discover();
   const tasks = await options.paperclip.openTasks();
-  const wanted = tasks.flatMap((task) => watchedPulls(task, found, owners));
+  const wanted = tasks.flatMap((task) => [
+    ...watchedPulls(task, found, owners),
+    ...reviewerHeldPulls(task, found, owners),
+  ]);
   // One read for every task; if it fails, each of those tasks reports it below.
   const facts = await options.facts(wanted).catch((error: unknown) => error as Error);
   const refs: TickRefs = { owners, found, facts };
