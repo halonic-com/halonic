@@ -91,7 +91,8 @@ export function ComputerScreen({
     run !== undefined && remote !== undefined && view !== undefined && !isStanding(state);
   useOpeningFocus(computer.id, showsRun ? run : undefined, heading, body);
   return (
-    <div className="flex min-h-full flex-col">
+    // Fills the page's tunnel screen, so the screens in it centre or dock at the foot.
+    <div className="flex grow flex-col">
       {showsRun ? (
         <RunDetail
           view={view}

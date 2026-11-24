@@ -12,12 +12,15 @@ import { MarkedText } from "./marked-text.tsx";
 import { pairWords } from "./pair-words.ts";
 import type { PairedComputer } from "./phone-tunnel.ts";
 
-/** A pairing screen's body over its bottom buttons, which sit at the foot of the phone. */
+/**
+ * A pairing screen's body at the top over its bottom buttons, which sit at the foot of the phone
+ * in thumb reach: 16px from the sides and the bottom, plus the home bar.
+ */
 function StepLayout({ children, actions }: { children: ReactNode; actions: ReactNode }) {
   return (
-    <div className="flex min-h-full flex-col gap-6 px-6 py-6">
-      <div className="flex flex-1 flex-col gap-6">{children}</div>
-      <div className="flex flex-col gap-2">{actions}</div>
+    <div className="flex flex-1 flex-col gap-6">
+      <div className="flex flex-1 flex-col gap-6 px-6 pt-6">{children}</div>
+      <div className="flex flex-col gap-2 px-4 pb-[calc(1rem+var(--safe-bottom))]">{actions}</div>
     </div>
   );
 }
@@ -84,7 +87,7 @@ export function ScannerStep({
   // carries it on its icon, since a ghost button sets its own text colour.
   const corner = "absolute size-10 border-qr-light";
   return (
-    <div className="relative grid min-h-full place-items-center bg-transparent text-qr-light">
+    <div className="relative grid flex-1 place-items-center bg-transparent text-qr-light">
       <div className="absolute start-3 top-3">
         <Button
           variant="ghost"
@@ -146,7 +149,7 @@ export function NoCameraStep({
 /** G9: the phone is waiting for the computer's first answer. */
 export function ConnectingStep() {
   return (
-    <div className="grid min-h-full place-items-center px-6">
+    <div className="grid flex-1 place-items-center px-6">
       <p role="status" className="text-body text-fg-muted">
         {pairWords.connecting}
       </p>
@@ -221,7 +224,7 @@ export function PairedStep({
             <TickIcon />
           </span>
         </span>
-        <h2 className="text-title text-fg">{pairWords.done.heading(computer.name)}</h2>
+        <h2 className="text-heading text-fg">{pairWords.done.heading(computer.name)}</h2>
       </div>
       <dl className="divide-y divide-border rounded-md border border-border">
         <div className={row}>

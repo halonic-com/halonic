@@ -198,7 +198,7 @@ function ProblemLayout({
   // A new problem is a new screen, so its title is read again.
   useEffect(() => heading.current?.focus(), [words.title]);
   return (
-    <div className="grid min-h-full place-items-center px-6 py-8">
+    <div className="grid flex-1 place-items-center px-6 py-8">
       <div className="flex max-w-empty flex-col items-center gap-3 text-center">
         <span
           aria-hidden="true"
@@ -208,7 +208,7 @@ function ProblemLayout({
             <WarningIcon />
           </span>
         </span>
-        <h2 ref={heading} tabIndex={-1} className="text-title text-fg focus-ring">
+        <h2 ref={heading} tabIndex={-1} className="text-heading text-fg focus-ring">
           {words.title}
         </h2>
         {words.lines.map((line) => (

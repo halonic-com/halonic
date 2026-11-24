@@ -94,6 +94,15 @@ verifies("remote.phone-app", () => {
     expect(container.hidden).toBe(true);
   });
 
+  it("shows the scanner full-bleed, without the top bar, and keeps it open (C49 G7)", async () => {
+    await mount(new FakePhoneTunnel());
+    await press("Scan code");
+    expect(document.querySelector("header")).toBeNull();
+    expect(document.body.textContent).toContain("Point the camera at the code on your computer");
+    await press("Close scanner");
+    expect(heading()).toBe("Pair with a computer");
+  });
+
   it("opens the status sheet from the label, then Paired computers, and Back comes back", async () => {
     const tunnel = withLaptop();
     await mount(tunnel);

@@ -87,6 +87,7 @@ export function AgentsList({
                 session={session}
                 line={agentRowLine(view, session, approval, today)}
                 approval={approval}
+                stale={!view.canAnswer && view.asOf !== undefined}
                 onOpen={() => onOpen(session.id)}
                 onAnswer={onAnswer}
                 onAnswered={(agent, decision) => onAnswered(session.id, agent, decision)}
@@ -119,6 +120,7 @@ function AgentRow({
   session,
   line,
   approval,
+  stale,
   onOpen,
   onAnswer,
   onAnswered,
@@ -126,6 +128,8 @@ function AgentRow({
   readonly session: RemoteSession;
   readonly line: HostText | undefined;
   readonly approval: RemoteApproval | undefined;
+  /** The view is stale: the chip goes grey, so the phone doesn't claim the state right now. */
+  readonly stale: boolean;
   readonly onOpen: () => void;
   readonly onAnswer: OnAnswer;
   /** The computer took an answer to this agent's approval. */
@@ -158,7 +162,7 @@ function AgentRow({
           )}
         </span>
         <span aria-hidden="true" className="shrink-0">
-          <StatusChip tone={stateTone[session.state]} dot>
+          <StatusChip tone={stale ? "neutral" : stateTone[session.state]} dot>
             {state}
           </StatusChip>
         </span>

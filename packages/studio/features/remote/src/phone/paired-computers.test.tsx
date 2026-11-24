@@ -131,6 +131,8 @@ verifies("remote.phone-paired-computers", () => {
       "Studio PC, Tailscale, paired 3 Nov. Can't reach",
     ]);
     expect(rows[0]?.textContent).toContain("Tailscale · Paired 14 Nov");
+    // The day never breaks inside itself; only the route before it may wrap (C49 G8).
+    expect(rows[0]?.querySelector(".whitespace-nowrap")?.textContent).toBe("Paired 14 Nov");
     // Each row starts with the laptop tile, hidden from screen readers. Only Can't reach dims,
     // and only its tile: the name, lines and Forget keep their contrast (C662 #1, HAL-16002).
     const tiles = rows.map((row) => row.firstElementChild);
