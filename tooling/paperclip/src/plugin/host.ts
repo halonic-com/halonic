@@ -12,7 +12,8 @@ import type {
  * only file that changes a task through the SDK: `doneOnly` lets the watcher
  * set `done`, `handoffOnly` lets it give a task to one agent with status
  * `todo` (its reviewer, HAL-17675), and nothing else; `setTaskLabels` lets the difficulty tagger
- * set labels and nothing else, because the manifest can't narrow
+ * set labels and nothing else, and `assignTaskBack` lets the hand-off limit
+ * set the task's agent and nothing else, because the manifest can't narrow
  * `issues.update`.
  */
 
@@ -73,6 +74,19 @@ export async function setTaskLabels(
   companyId: string,
 ): Promise<void> {
   await issues.update(taskId, { labelIds: [...labelIds] }, companyId);
+}
+
+/**
+ * The hand-off limit's only task change (HAL-17628): the task's agent, and no
+ * other field, so its status and everything else stay as the agent left them.
+ */
+export async function assignTaskBack(
+  issues: Pick<PluginIssuesClient, "update">,
+  taskId: string,
+  agentId: string,
+  companyId: string,
+): Promise<void> {
+  await issues.update(taskId, { assigneeAgentId: agentId }, companyId);
 }
 
 /** A host time (a `Date`, or a string over the wire) as ISO, or null when there is none. */

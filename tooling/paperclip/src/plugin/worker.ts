@@ -13,6 +13,7 @@ import {
   handleGitHubPull,
   handleGitHubSummary,
 } from "./github-routes.ts";
+import { handoffLimit } from "./handoff-limit.ts";
 import { runWatcher } from "./job.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
@@ -33,7 +34,8 @@ import {
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch` and
  * `board-check` jobs on their schedules, looks at each new comment for a
  * board ask, keeps each failed run, labels a created or changed task's
- * difficulty, sets its effort from its tags, asks for acceptance criteria on a
+ * difficulty, sets its effort from its tags, assigns a channel's child task
+ * back after 3 hand-offs, asks for acceptance criteria on a
  * new code task whose text looks thin, and answers the agent tools, the `gh` wrapper's route,
  * the board's Worker agents page and the board's GitHub summary routes.
  */
@@ -74,6 +76,7 @@ export const plugin = definePlugin({
       now: () => new Date(),
       model: fittedModel,
     });
+    const handoffs = handoffLimit(ctx);
     for (const eventType of ["issue.created", "issue.updated"] as const) {
       ctx.events.on(eventType, async (event) => {
         roster.remember(event.companyId);
@@ -81,6 +84,7 @@ export const plugin = definePlugin({
           tagger.onIssueEvent(event),
           effort.onIssueEvent(event),
           thinSpec.onIssueEvent(event),
+          handoffs.onIssueEvent(event),
         ]);
       });
     }
