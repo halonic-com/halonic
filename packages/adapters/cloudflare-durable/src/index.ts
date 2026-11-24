@@ -33,6 +33,17 @@ export { defaultRoutinesObjectName, RoutinesObject } from "./routines-object.ts"
 export { RunObject } from "./run-object.ts";
 export type { RunHealth, RunObjectApi } from "./run-object-api.ts";
 export type { RunListFailure, RunListSink } from "./run-state.ts";
+export type { SettleOutcome } from "./usage-account.ts";
+export { UsageObject } from "./usage-object.ts";
+export type { StepReservation, UsagePrincipal } from "./usage-scope.ts";
+export type {
+  MemberLimits,
+  UsageAmounts,
+  UsageAnswer,
+  UsageLimits,
+  UsageRefusal,
+  UsageUnit,
+} from "./usage-types.ts";
 export {
   defaultOverdueAfterMs,
   defaultQuietAfterMs,

@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
-import { type Clock, systemClock } from "@halonicjs/std";
+import type { Clock } from "@halonicjs/ports";
+import { systemClock } from "@halonicjs/std";
 import type { SettleOutcome } from "./usage-account.ts";
 import { type StepReservation, type UsagePrincipal, UsageScope } from "./usage-scope.ts";
 import type { UsageAmounts, UsageAnswer, UsageLimits } from "./usage-types.ts";
@@ -10,11 +11,12 @@ import type { UsageAmounts, UsageAnswer, UsageLimits } from "./usage-types.ts";
  * server, never from a request field. It does nothing itself: each method is a method of
  * {@link UsageScope}.
  *
- * The Worker subclasses it and overrides {@link UsageObject.pullLimits} to ask Cloud; until then
- * an object that was pushed no limits refuses every step.
+ * The Worker names it with `idFromName(scope)`, and the object refuses a call for any scope other
+ * than its name. The Worker may subclass it and override {@link UsageObject.pullLimits} to ask
+ * Cloud; until then an object that was pushed no limits refuses every step.
  *
- * Never rename or delete this class once it has been deployed: Cloudflare deletes a Durable Object
- * class's data with it. Its name joins `durableObjectClassNames` with the Worker's migration.
+ * Never rename or delete this class: Cloudflare deletes a Durable Object class's data with it.
+ * Its name is in `durableObjectClassNames`, with a migration in the Worker's configuration.
  */
 export class UsageObject extends DurableObject {
   /** The time reservations and leases run out by. Only a test replaces it. */
@@ -31,11 +33,18 @@ export class UsageObject extends DurableObject {
         clear: () => ctx.storage.deleteAlarm(),
       },
       clock: () => this.clock,
+      objectName: ctx.id.name,
       pullLimits: (scope) => this.pullLimits(scope),
+      // The step is refused with `plan.none`; the log keeps why Cloud couldn't be asked.
+      onPullError: (error) => console.error("The usage limits pull failed.", error),
     });
   }
 
-  /** Asks Cloud for the scope's limits; `null` when it can't be reached. None by default. */
+  /**
+   * Asks Cloud for the scope's limits; `null` when it can't be reached. None by default. An
+   * override returns only a document it has verified as Cloud's (signed with Cloud's key): the
+   * object keeps whatever this returns. A throw counts as `null` and is logged.
+   */
   protected async pullLimits(_scope: string): Promise<UsageLimits | null> {
     return null;
   }

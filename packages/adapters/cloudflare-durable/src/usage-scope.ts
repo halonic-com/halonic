@@ -27,14 +27,28 @@ export interface UsageScopeOptions {
   readonly clock: () => Clock;
   /**
    * Asks Cloud for the scope's limits: `null` when Cloud can't be reached, so the call is refused.
-   * Called when the object knows no limits, or only limits whose period has ended.
+   * Called when the object knows no limits, or only limits whose period has ended. The document
+   * must already be verified as Cloud's: the object keeps whatever this returns.
    */
   readonly pullLimits: (scope: string) => Promise<UsageLimits | null>;
+  /**
+   * The name the Worker gave the object (`idFromName(scope)`), when it has one. A call for any
+   * other scope is then refused even before the first call notes one. An object made from
+   * `newUniqueId` or `idFromString` has no name, so only the noted scope is checked.
+   */
+  readonly objectName?: string | undefined;
+  /** Told of a pull that threw, which the step still sees as `plan.none`; ignored by default. */
+  readonly onPullError?: (error: unknown) => void;
+  /** How long a pull that found no limits is remembered before the next one; 30 s by default. */
+  readonly pullRetryMs?: number;
   /** The account's outbox cap and run lease, when not its defaults. */
   readonly account?: Pick<UsageAccountOptions, "outboxCap" | "runLeaseMs">;
 }
 
 const scopeKey = "scope";
+
+/** How long a pull that found no limits is remembered, so a scope with no plan can't flood Cloud. */
+export const defaultPullRetryMs = 30_000;
 
 /** The answer while the object knows no limits for the period it is in. */
 const noLimits: UsageAnswer = { allowed: false, refusal: { code: "plan.none" } };
@@ -49,6 +63,8 @@ export class UsageScope {
   readonly #options: UsageScopeOptions;
   readonly #storage: UsageStorage;
   #pulling: Promise<void> | null = null;
+  /** Until when a pull that found no limits stands; in memory only, so a restarted object asks again. */
+  #noLimitsUntilMs = 0;
 
   constructor(options: UsageScopeOptions) {
     this.#options = options;
@@ -126,6 +142,10 @@ export class UsageScope {
   /** The account of `scope`, after noting it as this object's scope or checking it is. */
   #account(scope: string): UsageAccount {
     checkScope(scope);
+    const { objectName } = this.#options;
+    if (objectName !== undefined && objectName !== scope) {
+      throw new RangeError("This usage object is named for another scope.");
+    }
     this.#storage.transactionSync(() => {
       const noted = this.#storage.get<string>(scopeKey);
       if (noted === undefined) this.#storage.put(scopeKey, scope);
@@ -142,6 +162,7 @@ export class UsageScope {
    */
   async #hasCurrentLimits(scope: string): Promise<boolean> {
     if (this.#currentLimits()) return true;
+    if (this.#nowMs() < this.#noLimitsUntilMs) return false;
     // Parallel calls share one pull, so a burst of steps asks Cloud once.
     this.#pulling ??= this.#pull(scope).finally(() => {
       this.#pulling = null;
@@ -151,13 +172,36 @@ export class UsageScope {
   }
 
   async #pull(scope: string): Promise<void> {
-    const pulled = await this.#options.pullLimits(scope);
+    const pulled = await this.#pullOrNull(scope);
     if (pulled !== null) this.#account(scope).applyLimits(pulled);
+    if (!this.#currentLimits()) {
+      this.#noLimitsUntilMs = this.#nowMs() + (this.#options.pullRetryMs ?? defaultPullRetryMs);
+    }
+  }
+
+  /**
+   * The pulled document, or `null` when the pull failed. A failed pull is Cloud being unreachable
+   * for the step: it is refused with `plan.none`, the refusal a step gets with no limits, rather
+   * than failing the run with the transport's error. The error itself goes to `onPullError`.
+   */
+  async #pullOrNull(scope: string): Promise<UsageLimits | null> {
+    try {
+      return await this.#options.pullLimits(scope);
+    } catch (error) {
+      this.#options.onPullError?.(error);
+      return null;
+    }
   }
 
   #currentLimits(): boolean {
     const limits = this.#storage.get<UsageLimits>(usageLimitsKey);
-    return limits !== undefined && this.#options.clock().now().getTime() < limits.period.end;
+    // Only the end counts, not the start: the account starts a new period's spending when it is
+    // given a document with a later start, so a document sent early for the next period applies.
+    return limits !== undefined && this.#nowMs() < limits.period.end;
+  }
+
+  #nowMs(): number {
+    return this.#options.clock().now().getTime();
   }
 
   async #arm(account: UsageAccount): Promise<void> {

@@ -12,6 +12,7 @@ import * as adapter from "../index.ts";
 export { CoordinationObject } from "../coordination-object.ts";
 export { RoutinesObject } from "../routines-object.ts";
 export { RunObject } from "../run-object.ts";
+export { UsageObject } from "../usage-object.ts";
 
 /** What the runner binds for this suite (see `class-names.test.ts`). */
 interface TestEnv {
@@ -26,6 +27,7 @@ describe("Durable Object class names", () => {
       "CoordinationObject",
       "RunObject",
       "RoutinesObject",
+      "UsageObject",
     ]);
   });
 
