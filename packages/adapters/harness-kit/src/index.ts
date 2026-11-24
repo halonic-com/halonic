@@ -58,7 +58,11 @@ export {
   RunInstructions,
   type RunInstructionsOptions,
 } from "./run-instructions.ts";
-export type { SettingsFolderContents, SettingsFolderWriter } from "./settings-files.ts";
+export type {
+  SettingsFileOptions,
+  SettingsFolderContents,
+  SettingsFolderWriter,
+} from "./settings-files.ts";
 export { diskSettingsFolder, resetSettingsFolder, writeSettingsFiles } from "./settings-folder.ts";
 export {
   isInsideOrSame,

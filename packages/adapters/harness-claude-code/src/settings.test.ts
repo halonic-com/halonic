@@ -185,6 +185,19 @@ verifies("harness-claude-code.settings-reset-claude-json", () => {
     expect(await readJson(".claude.json")).toEqual(signIn);
   });
 
+  it("writes the cut-down .claude.json for its owner only", async () => {
+    await writeFile(join(folder, ".claude.json"), JSON.stringify({ ...signIn, projects: {} }), {
+      mode: 0o644,
+    });
+
+    await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
+
+    expect(await readJson(".claude.json")).toEqual(signIn);
+    // Windows has no POSIX file modes to check; the file still has to be cut down there.
+    if (process.platform === "win32") return;
+    expect((await stat(join(folder, ".claude.json"))).mode & 0o777).toBe(0o600);
+  });
+
   it("leaves a .claude.json that holds only sign-in keys as it is", async () => {
     const text = JSON.stringify(signIn);
     await writeFile(join(folder, ".claude.json"), text);

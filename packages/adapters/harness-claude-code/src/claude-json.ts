@@ -28,7 +28,8 @@ export const claudeJsonSignInKeys: readonly string[] = [
  * else goes, `projects` included: it holds a project's allowed tools, which
  * would let a later run's tool calls skip Halonic's approval. A file that
  * isn't a JSON object holds no sign-in Claude Code could read, so it goes
- * too. A file that already holds only those keys is left alone.
+ * too. A file that already holds only those keys is left alone. The
+ * rewritten file is the owner's alone, since it can hold a Console key.
  */
 export async function keepClaudeJsonSignIn(
   paths: Pick<HostPaths, "join">,
@@ -48,8 +49,11 @@ export async function keepClaudeJsonSignIn(
   const signIn = Object.fromEntries(
     Object.entries(settings).filter(([key]) => claudeJsonSignInKeys.includes(key)),
   );
-  await writer.write(path, `${JSON.stringify(signIn, null, 2)}\n`);
+  await writer.write(path, `${JSON.stringify(signIn, null, 2)}\n`, { mode: ownerOnly });
 }
+
+/** Read and write for the owner only. */
+const ownerOnly = 0o600;
 
 function parseObject(text: string): Record<string, unknown> | null {
   let value: unknown;

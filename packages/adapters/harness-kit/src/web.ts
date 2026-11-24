@@ -26,6 +26,7 @@ export { programEnvironment } from "./program-environment.ts";
 export { type ReadLinesOptions, readLines } from "./read-lines.ts";
 export {
   resetSettingsFolderWith,
+  type SettingsFileOptions,
   type SettingsFolderContents,
   type SettingsFolderWriter,
   writeSettingsFilesWith,

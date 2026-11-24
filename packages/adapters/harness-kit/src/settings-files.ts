@@ -12,14 +12,24 @@ import type { HostPaths } from "./host-paths.ts";
 export interface SettingsFolderWriter {
   /** The file's text, or `null` when there is no such file. */
   read(path: string): Promise<string | null>;
-  /** Writes `text` to the file, creating its folder. A reader sees the old text or the new, never a part. */
-  write(path: string, text: string): Promise<void>;
+  /**
+   * Writes `text` to the file, creating its folder. A reader sees the old
+   * text or the new, never a part. `mode` sets the new file's permissions,
+   * such as `0o600` for a file that holds a key; without it the system's default applies.
+   */
+  write(path: string, text: string, options?: SettingsFileOptions): Promise<void>;
   /** The names of everything in `folder`, hidden entries too; none when there is no such folder. */
   list(folder: string): Promise<string[]>;
   /** Removes the file, folder or link at `path`, with everything in a folder; a link's target stays. Nothing there is fine. */
   remove(path: string): Promise<void>;
   /** Whether anything is at `path`: a file, a folder, or a link, even one that points nowhere. */
   exists(path: string): Promise<boolean>;
+}
+
+/** How {@link SettingsFolderWriter.write} writes a file. */
+export interface SettingsFileOptions {
+  /** The file's permissions, such as `0o600`; on Windows only its read-only part counts. */
+  readonly mode?: number;
 }
 
 /** What {@link resetSettingsFolderWith} leaves in the agent's settings folder. */
