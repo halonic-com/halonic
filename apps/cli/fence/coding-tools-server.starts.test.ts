@@ -153,6 +153,68 @@ function answerOf(result: Record<string, unknown>): ToolAnswer {
   };
 }
 
+/** How long one step with the server may take before the test says where it stopped. */
+const stepLimitMs = 20_000;
+
+/** Reads the server's standard error as it comes, so a step that stops can show it. */
+function collectStderr(server: SandboxProcess, seen: Seen): Promise<void> {
+  const decoder = new TextDecoder();
+  return server.stderr.pipeTo(
+    new WritableStream({
+      write(chunk) {
+        seen.stderr += decoder.decode(chunk, { stream: true });
+      },
+    }),
+  );
+}
+
+/** Speaks MCP to the started server as a harness program would, one step at a time. */
+async function talkTo(server: SandboxProcess, root: string, seen: Seen): Promise<void> {
+  const stderr = collectStderr(server, seen);
+  let exit = "still running";
+  void server.exited.then((ended) => {
+    exit = `ended with ${ended.code ?? ended.signal} (${ended.reason})`;
+  });
+  const step = async <T>(name: string, work: Promise<T>): Promise<T> => {
+    let timer: NodeJS.Timeout | undefined;
+    const stopped = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `The server didn't finish "${name}" in ${stepLimitMs} ms; it is ${exit}. Its standard error: ${seen.stderr}`,
+            ),
+          ),
+        stepLimitMs,
+      );
+    });
+    try {
+      return await Promise.race([work, stopped]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const client = mcpClient(server);
+  await step("initialize", client.request("initialize", { protocolVersion: "2025-11-25" }));
+  await step("initialized", client.notify("notifications/initialized"));
+  const listed = await step("tools/list", client.request("tools/list"));
+  seen.tools = ((listed["tools"] ?? []) as { name: string }[]).map((tool) => tool.name);
+  const call = async (name: string, args: Record<string, unknown>) =>
+    answerOf(await step(name, client.request("tools/call", { name, arguments: args })));
+  seen.readFile = await call("read_ranges", { files: [{ path: "hello.txt" }] });
+  seen.readOutside = await call("read_ranges", { files: [{ path: join(root, "private.txt") }] });
+  const node = JSON.stringify(process.execPath);
+  seen.runNode = await call("run_tests", {
+    command: `${node} -e "console.log('ran ' + (6 * 7))"`,
+  });
+  seen.readProfileFromTest = await call("run_tests", {
+    command: `cat ${JSON.stringify(join(root, "private.txt"))}`,
+  });
+  await step("close", client.close());
+  await step("exit", server.exited);
+  await step("standard error", stderr);
+}
+
 /** A harness that starts the coding tools server in its session as Claude Code is told to, and calls it. */
 function standIn(root: string, seen: Seen): Harness {
   return {
@@ -174,28 +236,11 @@ function standIn(root: string, seen: Seen): Harness {
         });
         await wrote.exited;
         const server = await session.start({ program: command.command, args: [...command.args] });
-        const stderr = new Response(server.stderr).text();
-        const client = mcpClient(server);
-        await client.request("initialize", { protocolVersion: "2025-11-25" });
-        await client.notify("notifications/initialized");
-        const listed = await client.request("tools/list");
-        seen.tools = ((listed["tools"] ?? []) as { name: string }[]).map((tool) => tool.name);
-        const call = async (name: string, args: Record<string, unknown>) =>
-          answerOf(await client.request("tools/call", { name, arguments: args }));
-        seen.readFile = await call("read_ranges", { files: [{ path: "hello.txt" }] });
-        seen.readOutside = await call("read_ranges", {
-          files: [{ path: join(root, "private.txt") }],
-        });
-        const node = JSON.stringify(process.execPath);
-        seen.runNode = await call("run_tests", {
-          command: `${node} -e "console.log('ran ' + (6 * 7))"`,
-        });
-        seen.readProfileFromTest = await call("run_tests", {
-          command: `cat ${JSON.stringify(join(root, "private.txt"))}`,
-        });
-        await client.close();
-        await server.exited;
-        seen.stderr = await stderr;
+        try {
+          await talkTo(server, root, seen);
+        } finally {
+          await server.kill();
+        }
         yield { type: "agent.finished", agent: "coder", output: "done" };
       },
       send: async () => {
