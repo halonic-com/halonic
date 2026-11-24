@@ -97,7 +97,8 @@ function spansOf(pattern: RegExp, text: string): Span[] {
 
 /** Matches text against the protected terms. */
 export class TermMatcher {
-  private readonly patterns: readonly RegExp[];
+  /** One per term, in the list's order; undefined for a term with no letter or digit. */
+  private readonly patterns: readonly (RegExp | undefined)[];
   private readonly allowedPhrases: readonly RegExp[];
 
   /**
@@ -110,9 +111,8 @@ export class TermMatcher {
    *   silence a bare term.
    */
   constructor(terms: readonly string[], allowedPhrases: readonly string[] = []) {
-    const patterns = terms.map(termPattern).filter((pattern) => pattern !== undefined);
     const squashedTerms = new Set(terms.map(squash));
-    this.patterns = patterns;
+    this.patterns = terms.map(termPattern);
     this.allowedPhrases = allowedPhrases
       .filter((phrase) => squash(phrase).length >= minimumPhraseLength)
       .filter((phrase) => !squashedTerms.has(squash(phrase)))
@@ -121,22 +121,29 @@ export class TermMatcher {
 
   /** How many terms are loaded. Shown in the summary to confirm the list; never the terms. */
   get size(): number {
-    return this.patterns.length;
+    return this.patterns.filter((pattern) => pattern !== undefined).length;
   }
 
   /** True when there are no terms, which means the list isn't configured. */
   get isEmpty(): boolean {
-    return this.patterns.length === 0;
+    return this.size === 0;
   }
 
-  /** True when the text contains a protected term outside every allowed phrase. */
-  matches(text: string): boolean {
+  /**
+   * True when the text contains a protected term outside every allowed phrase.
+   *
+   * @param excused - positions in the list (from 0) of terms not to look for
+   */
+  matches(text: string, excused: ReadonlySet<number> = new Set()): boolean {
     const normalised = normalise(text);
     const allowed = this.allowedPhrases.flatMap((phrase) => spansOf(phrase, normalised));
     const insideAllowed = (term: Span): boolean =>
       allowed.some((phrase) => phrase.start <= term.start && term.end <= phrase.end);
-    return this.patterns.some((pattern) =>
-      spansOf(pattern, normalised).some((term) => !insideAllowed(term)),
+    return this.patterns.some(
+      (pattern, position) =>
+        pattern !== undefined &&
+        !excused.has(position) &&
+        spansOf(pattern, normalised).some((term) => !insideAllowed(term)),
     );
   }
 

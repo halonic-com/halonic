@@ -116,6 +116,55 @@ describe("leak guard command", () => {
     expect(run({}, "--allow-file", trusted).code).toBe(1);
   });
 
+  it("passes a later-added term in --all only in commits from before its cutoff", () => {
+    // Writes the commit object itself: a git wrapper may drop GIT_COMMITTER_DATE.
+    const commitAt = (date: string, message: string) => {
+      const git = (args: string[], input?: string) =>
+        execFileSync("git", args, { cwd: repo, encoding: "utf8", input }).trim();
+      const tree = git(["write-tree"]);
+      const parent = spawnSync("git", ["rev-parse", "--verify", "--quiet", "HEAD"], {
+        cwd: repo,
+        encoding: "utf8",
+      }).stdout.trim();
+      const identity = `t <t@example.com> ${Date.parse(date) / 1000} +0000`;
+      const parentLine = parent === "" ? "" : `parent ${parent}\n`;
+      const body = `tree ${tree}\n${parentLine}author ${identity}\ncommitter ${identity}\n\n${message}\n`;
+      git(["update-ref", "HEAD", git(["hash-object", "-t", "commit", "-w", "--stdin"], body)]);
+    };
+    writeAndStage("notes.md", "the walrus was here\n");
+    commitAt("2026-11-20T10:00:00Z", "docs: an old note");
+    const allowFile = join(repo, "allow.txt");
+    const cutoff = "term-cutoff entry:2 before:2026-11-21T00:00Z added later, history kept\n";
+    writeFileSync(allowFile, cutoff);
+    // The working tree is checked against every term, so the term leaves it first.
+    writeAndStage("notes.md", "A harmless note.\n");
+    commitAt("2026-11-22T10:00:00Z", "docs: reword the note");
+    const terms = { HALONIC_DENY_TERMS: "zebra\nwalrus" };
+
+    const old = run(terms, "--all", "--allow-file", allowFile);
+    expect(old.output).toContain("terms 2 pass in commits before their cutoff");
+    expect(old.code).toBe(0);
+    expect(run(terms, "--all").code).toBe(1);
+    expect(
+      run({ HALONIC_DENY_TERMS: "walrus\nzebra" }, "--all", "--allow-file", allowFile).code,
+    ).toBe(1);
+
+    writeAndStage("notes.md", "the walrus is back\n");
+    commitAt("2026-11-22T11:00:00Z", "docs: a new note");
+    expect(run(terms, "--all", "--allow-file", allowFile).code).toBe(1);
+  });
+
+  it("fails --all when a cutoff names a term past the end of the list", () => {
+    const allowFile = join(repo, "allow.txt");
+    writeFileSync(
+      allowFile,
+      "term-cutoff entry:3 before:2026-11-21T00:00Z added later, history kept\n",
+    );
+    const result = run({ HALONIC_DENY_TERMS: "zebra\nwalrus" }, "--all", "--allow-file", allowFile);
+    expect(result.code).toBe(1);
+    expect(result.output).toContain("names term 3, but the list has 2");
+  });
+
   it("fails @<agent name> in a pull request's commits and body, but not in --all", () => {
     execFileSync(
       "git",

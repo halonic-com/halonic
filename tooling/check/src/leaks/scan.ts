@@ -3,6 +3,7 @@ import { fileNameOf, fileRules } from "./files.ts";
 import { agentMentionRule, type MentionMatcher, mentionLabels } from "./mentions.ts";
 import { absolutePathRule, findAbsolutePaths } from "./paths.ts";
 import { findRuleMatches, fingerprint, isPlaceholder, maskSecret, secretRules } from "./secrets.ts";
+import { excusedTerms, type TermCutoff } from "./term-cutoffs.ts";
 import { personalTermRule, type TermMatcher } from "./terms.ts";
 
 /**
@@ -36,6 +37,8 @@ export interface ChangeText {
 export interface Change {
   /** The commit's short hash, when the change is a commit. */
   readonly commit: string | undefined;
+  /** The commit's committer date (ISO 8601), when the change is a commit. */
+  readonly committed?: string;
   readonly files: readonly ChangedFile[];
   readonly texts: readonly ChangeText[];
 }
@@ -63,6 +66,11 @@ export interface ScanSettings {
    * commits and the heads of closed pull requests are left as they are.
    */
   readonly mentions?: MentionMatcher;
+  /**
+   * History cutoffs for terms added later. Only for the full history scan:
+   * new work is always checked against every term.
+   */
+  readonly termCutoffs?: readonly TermCutoff[];
 }
 
 const termMessage = "Contains a personal term. Remove or reword it; the term is never shown.";
@@ -110,16 +118,18 @@ function findPaths(text: string, at: Location, settings: ScanSettings): Finding[
  * Runs one line through the term, secret and path rules.
  *
  * @param at - where the line is, with the real file path (the allow-list needs it)
+ * @param excused - positions of terms this commit predates the cutoff of
  */
 function scanLine(
   text: string,
   at: Location,
   settings: ScanSettings,
   termsOnly: boolean,
+  excused: ReadonlySet<number>,
 ): Finding[] {
   const findings: Finding[] = [];
   if (
-    settings.terms.matches(text) &&
+    settings.terms.matches(text, excused) &&
     !settings.allowList.allows(personalTermRule, at.file, undefined, { commit: at.commit })
   ) {
     findings.push({ ...at, rule: personalTermRule, message: termMessage });
@@ -143,12 +153,14 @@ function scanFile(
   file: ChangedFile,
   commit: string | undefined,
   settings: ScanSettings,
+  excused: ReadonlySet<number>,
 ): Finding[] {
-  // A path that contains a term would leak it, so its matching parts are withheld.
+  // A path that contains a term would leak it, so its matching parts are
+  // withheld, also for a term this commit is excused from.
   const shownPath = settings.terms.redactPath(file.path);
   const findings: Finding[] = [];
   const atFile: Location = { commit, file: shownPath, line: undefined };
-  if (shownPath !== file.path) {
+  if (shownPath !== file.path && settings.terms.matches(file.path, excused)) {
     findings.push({ ...atFile, rule: personalTermRule, message: `The file name ${termMessage}` });
   }
   for (const rule of fileRules) {
@@ -162,7 +174,7 @@ function scanFile(
   }
   for (const line of file.lines) {
     const at: Location = { commit, file: file.path, line: line.number };
-    for (const finding of scanLine(line.text, at, settings, false)) {
+    for (const finding of scanLine(line.text, at, settings, false, excused)) {
       findings.push({ ...finding, file: shownPath });
     }
   }
@@ -179,14 +191,15 @@ export function scanChanges(changes: readonly Change[], settings: ScanSettings):
     message: problem.message,
   }));
   for (const change of changes) {
+    const excused = excusedTerms(settings.termCutoffs ?? [], change.committed);
     for (const file of change.files) {
-      findings.push(...scanFile(file, change.commit, settings));
+      findings.push(...scanFile(file, change.commit, settings, excused));
     }
     for (const { label, text, termsOnly } of change.texts) {
       const at: Location = { commit: change.commit, file: label, line: undefined };
       const { mentions } = settings;
       for (const line of text.split("\n")) {
-        findings.push(...scanLine(line, at, settings, termsOnly));
+        findings.push(...scanLine(line, at, settings, termsOnly, excused));
         if (mentions !== undefined && mentionLabels.has(label)) {
           findings.push(...findMentions(line, at, mentions));
         }

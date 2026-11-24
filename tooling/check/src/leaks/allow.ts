@@ -1,6 +1,7 @@
 import { fileRules } from "./files.ts";
 import { absolutePathRule } from "./paths.ts";
 import { secretRules } from "./secrets.ts";
+import { parseTermCutoff, type TermCutoff, termCutoffKeyword } from "./term-cutoffs.ts";
 import { personalTermRule } from "./terms.ts";
 
 /**
@@ -17,7 +18,9 @@ import { personalTermRule } from "./terms.ts";
  *
  * A personal term is only allowed in history: an entry names the one
  * commit and the exact file it sits in, for old commits that can't be
- * reworded any more. Anything new must be reworded instead.
+ * reworded any more. Anything new must be reworded instead. A term added
+ * to the list later can get a `term-cutoff` entry instead, for the full
+ * history scan only (see `term-cutoffs.ts`).
  */
 
 /** Where the allow file lives, relative to the repo root. */
@@ -166,13 +169,28 @@ export class AllowList {
   private readonly entries: readonly AllowEntry[];
   /** Lines of the allow file that are wrong; each one fails the check. */
   readonly problems: readonly AllowFileProblem[];
+  /** History cutoffs for terms added later; only the full history scan applies them. */
+  readonly termCutoffs: readonly TermCutoff[];
 
-  constructor(text: string) {
+  /** @param now - the time a cutoff may not be after */
+  constructor(text: string, now: Date = new Date()) {
     const entries: AllowEntry[] = [];
     const problems: AllowFileProblem[] = [];
+    const termCutoffs: TermCutoff[] = [];
     text.split("\n").forEach((raw, index) => {
       const line = raw.replace(/#.*$/, "").trim();
       if (line === "") {
+        return;
+      }
+      if (line.split(/\s+/)[0] === termCutoffKeyword) {
+        const cutoff = parseTermCutoff(line, index + 1, now);
+        if (typeof cutoff === "string") {
+          problems.push({ line: index + 1, message: cutoff });
+        } else if (termCutoffs.some((other) => other.entry === cutoff.entry)) {
+          problems.push({ line: index + 1, message: "This term already has a cutoff." });
+        } else {
+          termCutoffs.push(cutoff);
+        }
         return;
       }
       const entry = parseEntry(line);
@@ -184,6 +202,7 @@ export class AllowList {
     });
     this.entries = entries;
     this.problems = problems;
+    this.termCutoffs = termCutoffs;
   }
 
   /**
