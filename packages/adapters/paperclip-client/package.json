@@ -1,0 +1,32 @@
+{
+  "name": "@halonicjs/adapter-paperclip-client",
+  "private": true,
+  "type": "module",
+  "description": "The Paperclip provider behind AgentMessaging: reads agents, chats, cards and tasks over plain fetch.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "ravi",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "any"
+  }
+}

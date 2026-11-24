@@ -1,0 +1,72 @@
+# @halonicjs/adapter-paperclip-client
+
+The Paperclip provider behind `AgentMessaging` (ADR `docs/adr/2026-11-24-agent-messaging.md`). It reads
+one Paperclip company's agents, chats, cards, approvals and tasks over plain `fetch`, answers cards and
+approvals, and sends chat messages. It makes only the requests on its fixed list (`src/requests.ts`).
+
+- **Layer:** adapters
+- **Owner:** ravi
+- **Runtime:** any
+- **Public API:** `@halonicjs/adapter-paperclip-client`
+
+## Example
+
+```ts
+import { PaperclipMessaging } from "@halonicjs/adapter-paperclip-client";
+
+// The engine hands in the address, the company and the key from the keychain; the key stays in memory.
+const messaging = new PaperclipMessaging({
+  address: "https://paperclip.acme.test",
+  key,
+  connection: "acme",
+  company: "c0000000-0000-4000-8000-000000000001",
+  label: "Paperclip · Acme",
+});
+const open = (await messaging.listInboxItems()).filter((item) => item.state.kind === "open");
+await messaging.refresh(); // the engine's poll; `changes()` then names the source if anything changed
+```
+
+## What it refuses
+
+- An address that isn't `https`, except plain `http` to `localhost`, `127.0.0.1` and `::1`; an address with
+  a user name, password, path or query.
+- Every redirect, to the same host or another. Certificate checks are the platform's and can't be turned off.
+- An ID that isn't one path segment (`/`, `\`, `.`, `..`, empty, or anything outside `A-Z a-z 0-9 . _ ~ -`):
+  nothing is sent.
+- Writes while offline: `refused` with `offline`, never queued.
+
+The key goes only in the `Authorization` header. Errors name the request and why it failed, never the key,
+a header or the body of a failed answer.
+
+## Paperclip endpoints used
+
+Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
+
+| Request | Route | What for |
+| --- | --- | --- |
+| `listAgents` | `GET /api/companies/{company}/agents` | agents, and authors' names |
+| `listTasks` | `GET /api/companies/{company}/issues?status=backlog,todo,in_progress,in_review,blocked&limit=1000` | work, and the tasks whose cards are read |
+| `listProjects` | `GET /api/companies/{company}/projects` | each inbox item's project, from its task |
+| `listChats` | `GET /api/companies/{company}/chats` | the signed-in user's chats; 404 when Agent Chat is off |
+| `listComments` | `GET /api/issues/{task}/comments?order=desc&limit=100` | a chat's newest messages |
+| `listTaskCards` | `GET /api/issues/{task}/interactions` | a task's cards |
+| `listApprovals` | `GET /api/companies/{company}/approvals?status=pending` | pending approvals, company-wide |
+| `getApproval` | `GET /api/approvals/{approval}` | who decided an approval first |
+| `listApprovalTasks` | `GET /api/approvals/{approval}/issues` | the task an approval belongs to |
+| `commentOnChat` | `POST /api/issues/{task}/comments` | send a message, with a `clientRequestId` |
+| `acceptCard`, `rejectCard` | `POST /api/issues/{task}/interactions/{card}/accept`, `/reject` | answer a confirmation |
+| `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a one-question card |
+| `approve`, `rejectApproval` | `POST /api/approvals/{approval}/approve`, `/reject` | decide an approval |
+| `startSignIn`, `pollSignIn`, `cancelSignIn`, `whoAmI`, `revokeKey` | `/api/cli-auth/…` | sign-in and disconnect (track A4) |
+
+**Every waiting item** (`inbox.every-waiting-item`): `GET /api/companies/{company}/interactions` doesn't
+exist on our version, and `GET /api/companies/{company}/attention` is a board-only feed whose shape we
+haven't tested with a board key yet. So the provider reads the open tasks and then each one's cards, but
+reads a task's cards again only when the task's `updatedAt` changed: Paperclip touches a task whenever a
+card on it is made or answered. The first read of a company with about 400 open tasks makes about 400 card
+reads, 4 at a time; later polls read only the tasks that changed.
+
+**Card kinds:** confirmations and one-question cards can be answered here. Cards with several questions,
+task suggestions, checklists and verdicts show in the Inbox with no options and are answered in Paperclip.
+Cards addressed to an agent aren't listed. A chat waits on the person when Paperclip marks it `waiting`.
+Tasks' blockers aren't read yet (`blockedBy` is empty).
