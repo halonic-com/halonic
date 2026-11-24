@@ -1,7 +1,7 @@
 import { createShell, type ServiceKey, type ServiceTarget } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { SpendAndSeatsService } from "./api.ts";
+import { PullRequestsService, SpendAndSeatsService } from "./api.ts";
 import { teamFeature } from "./feature.ts";
 
 /** One open workspace's services, as the shell fills them. */
@@ -30,5 +30,14 @@ verifies("team.spend-and-seats", () => {
     const workspace = new WorkspaceServices();
     shell.services.instantiate(workspace);
     expect(await workspace.get(SpendAndSeatsService).read()).toBeUndefined();
+  });
+});
+
+verifies("team.pull-request-stuck", () => {
+  it("opens a workspace where nothing serves TeamStatus, and says PR states aren't available", async () => {
+    const shell = createShell({ features: [teamFeature], hostServices: [] });
+    const workspace = new WorkspaceServices();
+    shell.services.instantiate(workspace);
+    expect(await workspace.get(PullRequestsService).read()).toEqual({ kind: "not-available" });
   });
 });
