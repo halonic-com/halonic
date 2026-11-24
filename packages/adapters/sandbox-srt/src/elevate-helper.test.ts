@@ -132,7 +132,7 @@ verifies("sandbox-srt.setup", () => {
     it("sends a person whose install skipped the sandbox's runtime back to the installer, rather than say something broke", () => {
       const reason = helperFailure("setup", 39, "");
       expect(reason).toBe(
-        "the sandbox needs a Microsoft file that wasn't installed with Halonic. Run the Halonic installer again with Set up the agent sandbox ticked",
+        'the sandbox needs a Microsoft file that wasn\'t installed with Halonic. Run the Halonic installer again with "Set up the agent sandbox" ticked',
       );
       expect(reason).not.toContain("Reinstall Halonic");
     });

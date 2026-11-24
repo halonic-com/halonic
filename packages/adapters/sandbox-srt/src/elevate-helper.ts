@@ -108,7 +108,7 @@ const reasons: Readonly<Record<number, string>> = {
   38: "Halonic's sandbox helper is missing. Reinstall Halonic",
   // The installer adds the runtime only with its sandbox box ticked (HAL-17810), so a missing one
   // usually means the sandbox was skipped at install, not that something broke (HAL-17872).
-  39: "the sandbox needs a Microsoft file that wasn't installed with Halonic. Run the Halonic installer again with Set up the agent sandbox ticked",
+  39: 'the sandbox needs a Microsoft file that wasn\'t installed with Halonic. Run the Halonic installer again with "Set up the agent sandbox" ticked',
   40: "Halonic's copy of the Visual C++ runtime for the sandbox has been changed, so it wasn't used. Reinstall Halonic",
 };
 
