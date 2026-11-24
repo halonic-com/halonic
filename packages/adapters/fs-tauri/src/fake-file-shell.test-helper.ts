@@ -62,6 +62,7 @@ export class FakeFileShell implements TauriFileShell {
   #review: FakeFileShell | undefined;
   #discarded: FakeFileShell | undefined;
   readonly #approvals = new Map<string, FakeFileShell>();
+  readonly #chats = new Map<string, FakeFileShell>();
 
   /**
    * @param options.opened - the folders the person opened in the shell
@@ -90,6 +91,16 @@ export class FakeFileShell implements TauriFileShell {
   get discarded(): FakeFileShell {
     this.#discarded ??= new FakeFileShell({ opened: this.#opened, granted: this.#granted });
     return this.#discarded;
+  }
+
+  /** The chats folder of `workspace` in the profile, which calls with `folder: "chats"` reach. */
+  chatsOf(workspace: string): FakeFileShell {
+    let chats = this.#chats.get(workspace);
+    if (chats === undefined) {
+      chats = new FakeFileShell({ opened: this.#opened, granted: this.#granted });
+      this.#chats.set(workspace, chats);
+    }
+    return chats;
   }
 
   /** One source's tool approvals in `workspace`, which calls with `folder: "tool-approvals"` and that `source` reach. */
@@ -214,6 +225,9 @@ export class FakeFileShell implements TauriFileShell {
     }
     if (folder === "review") {
       return { answer: await this.review.invoke(command, rest) };
+    }
+    if (folder === "chats") {
+      return { answer: await this.chatsOf(String(rest["workspace"])).invoke(command, rest) };
     }
     if (folder === "tool-approvals") {
       const { source, ...others } = rest;
