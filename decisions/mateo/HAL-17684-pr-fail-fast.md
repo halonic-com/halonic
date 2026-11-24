@@ -2,6 +2,7 @@
 
 - Approval: the board decided on HAL-10 (24 Nov 16:58 UTC, rule 2) that `ci-ok` on a pull request fails as soon as a required job fails; the work is HAL-17684, and Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7aC0yQooQ6d6oGJtrWEnSVHkz/cwTg/gFl9+Ok2SRWIfjaFxSw2YaawNmJ7CcI5w8gP56I2g+oklzzw1KhKLDg==
 
 Until now the "Cancel the run on the first failure" job ran only in the merge
 queue, so on a pull request `ci-ok` turned red only after every job had
