@@ -82,6 +82,11 @@ verifies("paperclip.merge-control-fast-track", () => {
     expect(enqueued(pass(snapshot({ pulls: [pull(1), fast(5, "halonic-dev")] })))).toEqual([5, 1]);
   });
 
+  test("a board boost above 50,000 doesn't put a normal pull request ahead of a fast-track one", () => {
+    const state = stateWith({ board: { ...emptyMergeState.board, prio: { "1": 60_000 } } });
+    expect(enqueued(pass(snapshot({ pulls: [pull(1), fast(2)] }), state))).toEqual([2, 1]);
+  });
+
   test("every ready fast-track pull request goes in during one pass, past the target", () => {
     const full = queuedPulls(15);
     const decision = pass(

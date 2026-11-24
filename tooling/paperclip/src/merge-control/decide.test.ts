@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
@@ -7,7 +8,11 @@ import { entry, pass, pull, snapshot, stateWith } from "./merge-control.test-hel
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** Every module `decide.ts` loads at run time, following value imports only. */
+/**
+ * Every module `start` loads at run time: value imports, re-exports
+ * (`export … from`) and side-effect imports, but not `import type` or
+ * `export type`.
+ */
 function runtimeGraph(start: string): Map<string, string> {
   const seen = new Map<string, string>();
   const visit = (file: string) => {
@@ -17,7 +22,7 @@ function runtimeGraph(start: string): Map<string, string> {
     const source = readFileSync(file, "utf8");
     seen.set(file, source);
     for (const [, kind, from] of source.matchAll(
-      /^import\s+(type\s+)?[^;]*?from\s+"([^"]+)";/gms,
+      /^(?:import|export)\s+(type\s+)?(?:[^;"]*?from\s+)?"([^"]+)";/gms,
     )) {
       if (kind === undefined && from !== undefined) {
         visit(from.startsWith(".") ? resolve(dirname(file), from) : from);
@@ -28,20 +33,37 @@ function runtimeGraph(start: string): Map<string, string> {
   return seen;
 }
 
+/** The modules `start` loads that lie outside `root` or read a clock, network, file or randomness. */
+function impure(start: string, root: string): string[] {
+  return [...runtimeGraph(start)]
+    .filter(([file, source]) => {
+      const code = source.replace(/^\s*(\/\/|\*|\/\*).*$/gm, "");
+      return (
+        !file.startsWith(root) ||
+        /\bfetch\(|Date\.now\(|new Date\(\)|Math\.random|process\.|require\(/.test(code)
+      );
+    })
+    .map(([file]) => file.slice(root.length + 1));
+}
+
 verifies("paperclip.merge-control-pure", () => {
   test("decide loads only relative modules that read no clock, network, file or randomness", () => {
     const graph = runtimeGraph(resolve(here, "decide.ts"));
-    expect([...graph.keys()].filter((file) => !file.startsWith(resolve(here, "..")))).toEqual([]);
-    for (const [file, source] of graph) {
-      const code = source.replace(/^\s*(\/\/|\*|\/\*).*$/gm, "");
-      expect({
-        file,
-        io: /\bfetch\(|Date\.now\(|new Date\(\)|Math\.random|process\.|require\(/.test(code),
-      }).toEqual({ file, io: false });
-    }
+    expect(impure(resolve(here, "decide.ts"), resolve(here, ".."))).toEqual([]);
     expect(
       [...graph.keys()].map((file) => file.slice(resolve(here, "..").length + 1)).sort(),
     ).toContain("rules/queue-prio.ts");
+  });
+
+  test("the check follows re-exports and side-effect imports into an I/O module", () => {
+    const root = mkdtempSync(join(tmpdir(), "merge-control-pure-"));
+    writeFileSync(join(root, "clock.ts"), "export const at = () => Date.now();\n");
+    writeFileSync(join(root, "types.ts"), 'export type { At } from "./typed.ts";\n');
+    writeFileSync(join(root, "reexport.ts"), 'export * from "./clock.ts";\n');
+    writeFileSync(join(root, "side.ts"), 'import "./clock.ts";\n');
+    expect(impure(join(root, "reexport.ts"), root)).toEqual(["clock.ts"]);
+    expect(impure(join(root, "side.ts"), root)).toEqual(["clock.ts"]);
+    expect(impure(join(root, "types.ts"), root)).toEqual([]);
   });
 
   test("the same snapshot, state and time give the same decision, and the caller's state is left as it was", () => {

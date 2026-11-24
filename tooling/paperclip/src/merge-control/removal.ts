@@ -87,7 +87,11 @@ export function removals(context: PassContext, rows: readonly GateRow[]): GateRo
     }
   }
   const removed: GateRow[] = [];
-  for (const row of queued) {
+  // Front of the queue first, so a group several removals cancel counts on the first.
+  const byPosition = [...queued].sort(
+    (a, b) => (a.entry?.position ?? 0) - (b.entry?.position ?? 0),
+  );
+  for (const row of byPosition) {
     const reason = reasonOf(context, row);
     if (reason === undefined) {
       continue;

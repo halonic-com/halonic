@@ -12,9 +12,6 @@ import { texts } from "./texts.ts";
  * target, past the holds; and when a fast-track pull request jumps.
  */
 
-/** Fast-track pull requests go before every other in the fill order. */
-export const fastTrackBonus = 50_000;
-
 /** Hotspots: two queued pull requests never share one (board, 20 Nov). */
 export function isHotspot(path: string): boolean {
   return (
@@ -56,7 +53,10 @@ export function trackReady(context: PassContext, rows: readonly GateRow[]): void
   }
 }
 
-/** Candidates, highest score first: fast-track, board boost, then `queue.prio`; ties go to the oldest. */
+/**
+ * Candidates, fast-track first whatever the board's boost, then highest
+ * score (board boost plus `queue.prio`); ties go to the oldest.
+ */
 export function fillOrder(
   context: PassContext,
   rows: readonly GateRow[],
@@ -77,12 +77,13 @@ export function fillOrder(
     tasks: snapshot.tasks,
     now,
   });
+  const tier = (row: GateRow) => (fast.has(row.pull.number) ? 1 : 0);
   const score = (row: GateRow) =>
-    (fast.has(row.pull.number) ? fastTrackBonus : 0) +
     (state.board.prio[String(row.pull.number)] ?? 0) +
     (ranked.find((each) => each.number === row.pull.number)?.score ?? 0);
   return candidates.sort(
-    (a, b) => score(b) - score(a) || a.pull.createdAt.localeCompare(b.pull.createdAt),
+    (a, b) =>
+      tier(b) - tier(a) || score(b) - score(a) || a.pull.createdAt.localeCompare(b.pull.createdAt),
   );
 }
 
@@ -176,14 +177,23 @@ function enqueue(
   }
 }
 
-/** A wanted jump goes only while runner capacity isn't short; a held one is logged. */
+/**
+ * A wanted jump goes only while runner capacity isn't short, except the fix
+ * under a main-red freeze, which jumps anyway (Liam, HAL-17762); a held one
+ * is logged.
+ */
 function jumps(
   context: PassContext,
   row: GateRow,
   wantsJump: boolean,
+  isFix: boolean,
   short: string | undefined,
 ): boolean {
   if (wantsJump && short !== undefined) {
+    if (isFix) {
+      logLine(context, "fill", `JUMP_SHORT #${row.pull.number} (main red; ${short})`);
+      return true;
+    }
     logLine(context, "fill", `NO_JUMP #${row.pull.number} (${short})`);
     return false;
   }
@@ -195,8 +205,8 @@ function jumps(
  * isn't held back by the target, so every ready one goes in during the same
  * pass. It jumps only with more than `jumpAhead` entries queued and no
  * fast-track pull request in the queue (HAL-17697); a queued one is never
- * taken out to jump again. A fix under a main-red freeze jumps too. No
- * pull request jumps while runner capacity is short or unknown (ADR).
+ * taken out to jump again. A fix under a main-red freeze jumps too, even
+ * while runner capacity is short or unknown; no other pull request does (ADR).
  */
 export function fill(
   context: PassContext,
@@ -227,10 +237,10 @@ export function fill(
       waiting.push(`#${row.pull.number}(${why})`);
       continue;
     }
+    const isFix = limits.freeze !== null && matches(limits.freeze, row);
     const wantsJump =
-      (limits.freeze !== null && matches(limits.freeze, row)) ||
-      (isFast && still.length + added.length > settings.jumpAhead && !fastQueued);
-    enqueue(context, row, jumps(context, row, wantsJump, short), isFast, queued);
+      isFix || (isFast && still.length + added.length > settings.jumpAhead && !fastQueued);
+    enqueue(context, row, jumps(context, row, wantsJump, isFix, short), isFast, queued);
     fastQueued ||= isFast;
     for (const path of row.pull.files) {
       held.add(path);

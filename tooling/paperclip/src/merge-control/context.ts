@@ -26,6 +26,8 @@ export interface PassContext {
   readonly state: WorkState;
   readonly actions: MergeAction[];
   readonly log: LogLine[];
+  /** Queue entries whose merge group an action of this pass already cancels, counted once. */
+  readonly cancelled: Set<number>;
 }
 
 /** A copy of the state the pass may change; the caller's stays as it was. */
