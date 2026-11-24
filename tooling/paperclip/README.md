@@ -245,6 +245,34 @@ run holds, so the disposition guard, the wakes, the monitor rules and the
 answers are the route's own (Liam's decision B on HAL-16988). A refusal
 comes back with the route's status, code and message.
 
+## Trial results
+
+**`trial_results(action, …)`** (HAL-17280, option (b) of HAL-17267) lets
+the agents in the setting `trialResultsAgents` (Tomas, Elena and Liam by
+default) read model-trial results without asking the board. Agents get no
+key and no database access: the plugin calls the read-only results service
+(`results-api/` in halonic-com/model-trials) with `GET` only, and the
+service decides what a caller sees (scores and aggregates by default,
+invalid runs left out; prompt and diff only for one lab run, capped and
+scrubbed; scores only for live-shadow runs).
+
+- `action` is `variants`, `summary`, `paired`, `runs` or `run`, mapped to
+  `/v1/<action>` (`/v1/run/<run_id>` for `run`). `variant`, `ref`,
+  `batch`, `stage`, `set`, `task` and `limit` go on as query parameters as
+  they came; the service checks them and answers 400 for one it doesn't
+  take. `include` goes on only for `run`.
+- The token is the secret in `trialResultsTokenRef` (`TRIAL_RESULTS_TOKEN`),
+  read at call time and sent only in the `Authorization` header; any copy
+  of it in the service's answer or an error is replaced before the agent or
+  the log sees it. Without it the tool answers that it is off.
+- `trialResultsUrl` (empty: `http://trial-results:8095`, on Paperclip's
+  Docker network) is the only address it calls, with Node's own `fetch`,
+  like `ready_for_review`. A request gives up after 8 s.
+- The answer is the service's JSON, marked as data and cut to 20,000
+  characters. 400 and 404 come back with the service's reason; 401 or 403
+  and other failures say to tell the board, and are logged with their
+  status only.
+
 ## gh guard
 
 Agents read a pull request's status with `gh` about 3,700 times a day, where

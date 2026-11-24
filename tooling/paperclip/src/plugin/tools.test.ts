@@ -84,6 +84,7 @@ verifies("paperclip.pr-tools", () => {
         "comment",
         "set_next_step",
         "finish_run",
+        "trial_results",
       ]);
       expect(await harness.executeTool("pr_status", { pr: 4588 })).toEqual({
         error: "pr_status: no GitHub token is set in the plugin's settings.",
