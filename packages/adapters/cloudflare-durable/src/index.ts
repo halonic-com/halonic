@@ -2,7 +2,7 @@
  * Public entry point of `@halonicjs/adapter-cloudflare-durable`: the
  * `Coordination` port in a Cloudflare Durable Object. The Worker exports
  * {@link CoordinationObject} under its class name and passes the bound
- * namespace to {@link DurableCoordination}.
+ * namespace to {@link DurableCoordination}. {@link UsageObject} keeps one scope's usage.
  */
 
 export { durableObjectClassNames } from "./class-names.ts";
