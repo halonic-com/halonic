@@ -3,17 +3,21 @@ Description=halonic-ci gate socket for the fast pool (HAL-15972), pull request q
 
 [Socket]
 # Mounted read-only into fast slots only, at /run/halonic-ci-gate in the container. A socket of its
-# own, so pull request jobs can't use up the merge-group jobs' 16 connections. A fast-track run
-# starts about 12 jobs at once on the 10 fast slots, each asking at its start (up to 3 tries).
+# own, so pull request jobs can't use up the merge-group jobs' 16 connections. Every person's pull
+# request runs here since HAL-17463: 24 fast slots, each asking once at its job's start (a second
+# and third time only when the gate failed), so one connection per slot.
 ListenStream=/run/halonic-ci-gate-fast/gate.sock
 DirectoryMode=0755
 SocketMode=0666
 Accept=yes
-MaxConnections=10
-# At most 30 new connections a minute (systemd 255+), so at most 1800 of the read-only token's
-# 5000 API calls an hour, which the merge queue's gate shares.
+MaxConnections=24
+# At most 48 new connections a minute (systemd 255+): every slot starting a job twice in the same
+# minute. Expected: 25-30 pull request runs an hour x about 18 Linux jobs = about 540 calls an hour
+# (9 a minute), 1620 if every job needed all 3 tries. The cap is 2880 an hour, which leaves at least
+# 2120 of the read-only token's 5000 an hour for the merge queue's gate (one call per merge-group
+# job, a few hundred an hour), even if a job does nothing but open connections here.
 PollLimitIntervalSec=60s
-PollLimitBurst=30
+PollLimitBurst=48
 
 [Install]
 WantedBy=sockets.target

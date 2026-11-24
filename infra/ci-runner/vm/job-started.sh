@@ -3,10 +3,10 @@
 # pull request can't change it. Runs before the job's first step; a non-zero exit fails the
 # job. This is the real boundary (HAL-14831, Julian's C1/C2): it trusts only the root-owned
 # pool config (mounted read-only), the event file the runner wrote and the VM's gate, and fails
-# closed. Pull requests run only on the fast pool, and only fast-track ones from our own branches
-# (HAL-15972).
+# closed. Pull requests run only on the fast pool, and only ones a person opened from our own
+# branches (HAL-15972; no label needed since HAL-17463, so this is where bots are refused).
 set -euo pipefail
-deny() { echo "::error title=halonic-ci refused this job::$1. These runners only take halonic-com/halonic's own reviewed runs (ci.yml on merge groups / pushes to main) and, on the fast pool, open pull requests from halonic-com/halonic branches labelled fast-track."; exit 1; }
+deny() { echo "::error title=halonic-ci refused this job::$1. These runners only take halonic-com/halonic's own reviewed runs (ci.yml on merge groups / pushes to main) and, on the fast pool, open pull requests a person opened from halonic-com/halonic branches (bots' pull requests run on GitHub's runners)."; exit 1; }
 REPO=halonic-com/halonic
 CONF=/etc/halonic-ci/pool.conf
 EVENT_FILE=/home/runner/actions-runner/_work/_temp/_github_workflow/event.json  # leak-guard: allow absolute-path written by the runner inside the image
@@ -92,8 +92,13 @@ case "$kind" in
           elif $p.isCrossRepository != false or $p.headRepositoryOwner.login != "halonic-com"
             then "pull request #\($pr) comes from outside halonic-com"
           elif $p.headRefOid != $sha then "pull request #\($pr) is no longer at \($sha)"
-          elif ([$p.labels.nodes[]?.name] | any(. == "fast-track")) | not
-            then "pull request #\($pr) has no fast-track label"
+          elif ($p.author | type) != "object" or ($p.author.login | type) != "string"
+            then "pull request #\($pr) has no author we can check"
+          elif $p.author.__typename != "User"
+            then "pull request #\($pr) was opened by a \($p.author.__typename // "non-User") account, not a person"
+          elif ($p.author.login | ascii_downcase) as $l
+            | ($l | endswith("[bot]")) or ($l == "dependabot" or $l == "renovate" or $l == "renovate-bot")
+            then "pull request #\($pr) was opened by the bot \($p.author.login)"
           else "ok" end
       end' <<<"$answer" 2>/dev/null) || deny "queue gate answer unreadable"
     [ "$verdict" = ok ] || deny "$verdict" ;;

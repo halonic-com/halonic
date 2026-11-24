@@ -1,6 +1,7 @@
-// The fast pool (HAL-15972): a pull request runs on our CI server only on a fast slot, only from a
-// halonic-com/halonic branch, only while it's open and labelled fast-track at job start (the VM's
-// gate says so, not the event), and only with the shared caches read-only. These tests run the
+// The fast pool (HAL-15972, HAL-17463): a pull request runs on our CI server only on a fast slot,
+// only from a halonic-com/halonic branch, only while it's open, at the event's commit and opened by
+// a person, not a bot, at job start (the VM's gate says so, not the event), with or without a label,
+// and only with the shared caches read-only. These tests run the
 // hook as shipped (hook-run.mjs) and the gate's script against a stub curl.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -39,13 +40,12 @@ const livePr = (patch = {}) =>
           isCrossRepository: false,
           headRefOid: SHA,
           headRepositoryOwner: { login: "halonic-com" },
-          labels: { nodes: [{ name: "area:ci" }, { name: "fast-track" }] },
+          author: { __typename: "User", login: "halonic-dev" },
           ...patch,
         },
       },
     },
   });
-const NO_LABEL = { labels: { nodes: [{ name: "area:ci" }] } };
 const FORK = { isCrossRepository: true, headRepositoryOwner: { login: "someone" } };
 const forkEvent = {
   ...events.fastPr,
@@ -57,14 +57,17 @@ const forkEvent = {
 const fast = ({ pool = POOL_FAST, event = events.fastPr, env = PR_ENV, gate, mountinfo } = {}) =>
   run({ pool, event, env, gate: gate ?? { status: 200, body: livePr() }, mountinfo });
 
-test("fast pool: accepts an open own-branch pull request labelled fast-track, checked at job start", () => {
+test("fast pool: accepts an open own-branch pull request a person opened, without a label, checked at job start", () => {
   const res = fast();
   assert.equal(res.ok, true, res.out);
   assert.match(res.out, /halonic-ci: accepted pull_request/);
   assert.deepEqual(res.asked, ["/pr/42"]);
+  // A label neither helps nor hurts (HAL-17463).
+  const labelled = { labels: { nodes: [{ name: "fast-track" }] } };
+  assert.equal(fast({ gate: { status: 200, body: livePr(labelled) } }).ok, true);
 });
 
-test("fast pool: refuses a fork pull request with the label, whatever its event says", () => {
+test("fast pool: refuses a fork pull request, whatever its event says", () => {
   refused(fast({ event: forkEvent }), /pull request from someone\/halonic/);
   // The event claims our own branch, the gate knows better.
   refused(
@@ -78,21 +81,37 @@ test("fast pool: refuses a fork pull request with the label, whatever its event 
   refused(fast({ gate: { status: 200, body: livePr(missing) } }), /comes from outside halonic-com/);
 });
 
-test("fast pool: refuses an own-branch pull request without the label", () => {
-  refused(fast({ gate: { status: 200, body: livePr(NO_LABEL) } }), /#42 has no fast-track label/);
-  refused(fast({ gate: { status: 200, body: livePr({ labels: null }) } }), /no fast-track label/);
+const author = (__typename, login) => livePr({ author: { __typename, login } });
+
+test("fast pool: refuses a pull request a bot opened, whatever its event or ci.yml says (HAL-17463)", () => {
+  // GraphQL gives a GitHub App's login without "[bot]" and its type as Bot; either refuses.
+  for (const login of ["dependabot", "renovate", "github-actions", "halonic-dev"]) {
+    refused(fast({ gate: { status: 200, body: author("Bot", login) } }), /by a Bot account/);
+  }
+  for (const login of ["dependabot[bot]", "renovate[bot]", "Some-App[BOT]"]) {
+    refused(fast({ gate: { status: 200, body: author("User", login) } }), /opened by the bot /);
+  }
+  for (const login of ["dependabot", "Renovate", "renovate-bot"]) {
+    refused(fast({ gate: { status: 200, body: author("User", login) } }), /opened by the bot /);
+  }
+  for (const type of ["Mannequin", "Organization", "EnterpriseUserAccount", null]) {
+    refused(fast({ gate: { status: 200, body: author(type, "someone") } }), /not a person/);
+  }
+  // A person whose login only contains a bot's name is a person.
+  assert.equal(fast({ gate: { status: 200, body: author("User", "renovate-fan") } }).ok, true);
 });
 
-test("fast pool: the label as it is at job start counts, not as it was when the run started", () => {
-  // A maintainer approved a fork's run, then someone added the label: still a fork.
+test("fast pool: refuses a pull request whose author is missing (a deleted account, an old gate)", () => {
+  for (const missing of [{ author: null }, { author: undefined }, { author: {} }]) {
+    refused(fast({ gate: { status: 200, body: livePr(missing) } }), /no author we can check/);
+  }
+  const noLogin = { author: { __typename: "User", login: null } };
+  refused(fast({ gate: { status: 200, body: livePr(noLogin) } }), /no author we can check/);
+  // The answer at job start counts: a fork's approved run stays refused.
   refused(
     fast({ event: forkEvent, gate: { status: 200, body: livePr(FORK) } }),
     /someone\/halonic/,
   );
-  // Labelled when the run started, removed before this job started: refused.
-  refused(fast({ gate: { status: 200, body: livePr(NO_LABEL) } }), /no fast-track label/);
-  // Added after the run started (the event has no labels at all): the gate's answer decides.
-  assert.equal(fast().ok, true);
 });
 
 test("fast pool: refuses a closed or moved-on pull request, or an answer about another one", () => {
@@ -215,8 +234,10 @@ test("fast pool: fast slots run under gVisor, on their own network, with their o
   );
   const socket = read("vm/halonic-ci-gate-fast.socket");
   assert.match(socket, /^ListenStream=\/run\/halonic-ci-gate-fast\/gate\.sock$/m);
-  assert.match(socket, /^MaxConnections=10$/m);
-  assert.match(socket, /^PollLimitBurst=30$/m);
+  // One connection per fast slot; 48 a minute caps it at 2880 of the token's 5000 calls an hour.
+  assert.match(socket, /^MaxConnections=24$/m);
+  assert.match(socket, /^PollLimitIntervalSec=60s$/m);
+  assert.match(socket, /^PollLimitBurst=48$/m);
   const unit = read("vm/halonic-ci-gate-fast@.service");
   assert.match(unit, /^ExecStart=\/usr\/local\/sbin\/halonic-ci-gate\.sh --pr-only$/m);
   // The same sandboxing as the merge queue's gate, apart from the description and the mode.
@@ -244,6 +265,37 @@ test("fast pool: fast slots get their own pool config and the shared caches only
   }
 });
 
+// The CPUs the slot script pins `slot` to, from its CPUSET table as shipped.
+const cpusOf = (slot) => {
+  const table = read("vm/halonic-runner-slot.sh").match(/^FAST4_FROM=[\s\S]*?\nesac$/m);
+  assert.ok(table, "FAST4_FROM and the CPUSET table in vm/halonic-runner-slot.sh");
+  const res = spawnSync("/bin/bash", ["-c", `${table[0]}\necho "$CPUSET"`], {
+    encoding: "utf8",
+    env: { SLOT: slot, N: slot.split("-")[1] },
+  });
+  const [from, to] = res.stdout.trim().split("-").map(Number);
+  return Array.from({ length: to - from + 1 }, (_, i) => from + i);
+};
+
+test("fast pool: fast-11..24 get 4 CPUs each, two whole cores, apart from each other (HAL-17463)", () => {
+  const taken = new Map();
+  for (let n = 11; n <= 24; n++) {
+    const cpus = cpusOf(`fast-${n}`);
+    assert.equal(cpus.length, 4, `fast-${n}`);
+    assert.equal(cpus[0] % 2, 0, `fast-${n} starts mid-core`);
+    for (const cpu of cpus) {
+      // 66-71 are the small slots', 102-111 the VM's own.
+      assert.ok(cpu <= 101 && (cpu < 66 || cpu > 71), `fast-${n} takes CPU ${cpu}`);
+      assert.equal(taken.get(cpu), undefined, `fast-${n} and ${taken.get(cpu)} share CPU ${cpu}`);
+      taken.set(cpu, `fast-${n}`);
+    }
+  }
+  // The older fast slots keep their CPUs.
+  assert.deepEqual(cpusOf("fast-1"), [60, 61, 62, 63, 64, 65]);
+  assert.deepEqual(cpusOf("fast-9"), [15, 16, 17, 18, 19, 20]);
+  assert.deepEqual(cpusOf("fast-10"), [39, 40, 41, 42, 43, 44]);
+});
+
 // Runs the VM's gate with a stub curl that logs the query it was sent, for request line `first`.
 // Returns "" when the gate asked GitHub nothing.
 const gateQuery = (first, args = []) => {
@@ -266,7 +318,8 @@ const gateQuery = (first, args = []) => {
 test("fast pool: the gate asks about the pull request only for a plain number", () => {
   const asked = gateQuery("GET /pr/42 HTTP/1.1");
   assert.match(asked, /pullRequest\(number: 42\) \{ number state isCrossRepository headRefOid /);
-  assert.match(asked, /labels\(first: 100\) \{ nodes \{ name \} \}/);
+  assert.match(asked, /author \{ __typename login \}/);
+  assert.doesNotMatch(asked, /labels/);
   assert.doesNotMatch(asked, /mergeQueue/);
   // Anything else gets the merge queue's fixed query: nothing else reaches it.
   for (const first of [

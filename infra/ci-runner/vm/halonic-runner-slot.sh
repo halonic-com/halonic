@@ -41,6 +41,7 @@ case "$SLOT" in
   large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
   fast-[1-9]|fast-10) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
+  fast-1[1-9]|fast-2[0-4]) LABEL=halonic-ci-fast; CPUS=4; MEM=12g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
@@ -56,6 +57,11 @@ case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PR
 # the CPUs of large-15..19, and fast-9 (15-20) and fast-10 (39-44) straddle two large slots each, as
 # large-12..14 do: on purpose, since fast slots sit idle between pull requests; when both are busy,
 # both run slower.
+# fast-11..24 (HAL-17463, every person's pull request) get 4 CPUs each, GitHub's runner size, as two
+# whole cores. Each shares them with one to three large slots and none with another new fast slot;
+# fast-11..17 share them with no older fast slot, fast-18..24 each with one (4 of its 6). No twin
+# rule for them, as for fast-4..10: a large slot and a fast slot on the same cores both run slower.
+FAST4_FROM=(0 4 8 22 26 30 34 50 56 62 74 80 86 92)
 case "$SLOT" in
   large-12) CPUSET="3-8" ;;
   large-13) CPUSET="27-32" ;;
@@ -66,6 +72,7 @@ case "$SLOT" in
   fast-[4-8]) CPUSET="$(( 72+(N-4)*6 ))-$(( 77+(N-4)*6 ))" ;;
   fast-9)  CPUSET="15-20" ;;
   fast-10) CPUSET="39-44" ;;
+  fast-1[1-9]|fast-2[0-4]) CPUSET="${FAST4_FROM[N-11]}-$(( FAST4_FROM[N-11]+3 ))" ;;
   fast-*)  CPUSET="$(( (11-N)*6 ))-$(( (12-N)*6-1 ))" ;;
 esac
 # Fast slots take pull requests (HAL-15972), so they get their own pool config, and the other
@@ -91,6 +98,41 @@ unmount_caches() {
 }
 [ "$LABEL" != halonic-ci-fast ] || unmount_caches
 
+# Memory admission (HAL-17463): the fast slots' start sizes add up to more than the VM has (24 slots,
+# 96 GB of limits on a 72 GB VM), and the reserve check further down only stops growth. So a fast
+# slot registers a runner only while the VM can still give it its start size plus the reserve, after
+# what it has already promised: the start size of every idle fast runner, and the room every busy job
+# still has under its limit (from the slots' state files). Under a lock, and this slot's own state is
+# written before it's released, so two slots can't both count the same memory. Large and small
+# slots are never held back: merge groups keep the memory first. A fast slot that waits registers
+# nothing, so its jobs wait in GitHub's queue for a fast runner that can take them.
+STATES=/run/halonic-ci; MEMINFO=/proc/meminfo; RESERVE_B=4294967296
+fast_room() {
+  local avail promised
+  avail=$(awk '$1=="MemAvailable:"{print $2*1024}' "$MEMINFO")
+  promised=$(cat "$STATES"/*.state 2>/dev/null | jq -s --arg me "$SLOT" '[.[] | select(.slot != $me)
+      | if .busy then (.mem_limit // 0) - (.mem_peak // 0) elif .label == "halonic-ci-fast" then .mem_limit // 0 else 0 end
+      | if . > 0 then . else 0 end] | add // 0') || return 1
+  [[ "$avail" =~ ^[0-9]+$ ]] && [[ "$promised" =~ ^[0-9]+$ ]] || return 1
+  echo $((avail - promised))
+}
+if [ "$LABEL" = halonic-ci-fast ] && [ "${2:-}" != "--cleanup" ]; then
+  install -d -m 0755 "$STATES"
+  NEED_B=$(( $(numfmt --from=iec "${MEM_START^^}") + RESERVE_B ))
+  until (
+    flock 8
+    room=$(fast_room) || exit 1
+    [ "$room" -ge "$NEED_B" ] || exit 1
+    jq -nc --arg slot "$SLOT" --arg label "$LABEL" --argjson limit "$((NEED_B - RESERVE_B))" --argjson now "$(date +%s)" \
+      '{slot:$slot, runner:null, label:$label, registered_at:$now, busy:false, mem_peak:0, mem_limit:$limit, updated_at:$now}' \
+      > "$STATES/$SLOT.state"
+  ) 8>"$STATES/fast-admit.lock"; do
+    [ ! -e "$PAUSED" ] || exit 0
+    echo "slot $SLOT: waiting for memory (needs $((NEED_B / 1048576)) MiB the VM hasn't promised yet)"
+    sleep 15
+  done
+fi
+
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 now=$(date +%s)
 hdr=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
@@ -111,7 +153,8 @@ api -H "Authorization: Bearer $TOKEN" \
       curl -sS -o /dev/null -X DELETE -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
         "https://api.github.com/orgs/$ORG/actions/runners/$id" && echo "slot $SLOT: removed stale runner $id"
     done || true
-[ "${2:-}" = "--cleanup" ] && exit 0
+# A cycle that ended before its own clean-up ran leaves no promise behind (memory admission, above).
+[ "${2:-}" = "--cleanup" ] && { rm -f "/run/halonic-ci/$SLOT.state"; exit 0; }
 
 NAME="hci-$SLOT-$(date +%Y%m%d%H%M%S)"
 RESP=$(api -X POST -H "Authorization: Bearer $TOKEN" \
@@ -205,7 +248,7 @@ ANON_PEAK=0
 # it, which gives this 2-second loop time to grow it. All slots at MEM would overcommit the VM, so
 # the reserve check is the only thing that stops growth from doing that.
 LIMIT_B=$(numfmt --from=iec "${MEM_START^^}"); MAX_B=$(numfmt --from=iec "${MEM^^}")
-STEP_B=4294967296; HEAD_B=2147483648; RESERVE_B=4294967296; GROWS=0; HIGH_SET=""
+STEP_B=4294967296; HEAD_B=2147483648; GROWS=0; HIGH_SET=""  # RESERVE_B: memory admission, above
 write_state() {
   local now; now=$(date +%s)
   jq -nc --arg slot "$SLOT" --arg runner "$NAME" --arg label "$LABEL" --argjson up "$STARTED" \

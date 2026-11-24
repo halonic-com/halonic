@@ -1,0 +1,98 @@
+// Memory admission (HAL-17463): 24 fast slots start at more memory than the CI VM has, so a fast
+// slot registers a runner only while the VM can still give it its start size plus the reserve,
+// after what idle fast runners and busy jobs were already promised. These tests run the slot
+// script's fast_room as shipped against a stand-in /proc/meminfo and state folder.
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { test } from "node:test";
+import { dir, read } from "./hook-run.mjs";
+
+const GiB = 1024 ** 3;
+const slot = read("vm/halonic-runner-slot.sh");
+
+// Runs fast_room for `me` with MemAvailable `availGiB` (null: no such line) and `states` as the
+// slots' state files, by slot name (a string is written as it is).
+const room = ({ me = "fast-11", availGiB, states = {} }) => {
+  const fn = slot.match(/^fast_room\(\) \{\n[\s\S]*?\n\}$/m);
+  assert.ok(fn, "fast_room() in vm/halonic-runner-slot.sh");
+  const base = mkdtempSync(join(dir, "fast-admit-"));
+  const meminfo = join(base, "meminfo");
+  const kib = availGiB === null ? "" : `MemAvailable:   ${(availGiB * GiB) / 1024} kB\n`;
+  writeFileSync(meminfo, `MemTotal:       75497472 kB\n${kib}`);
+  for (const [name, state] of Object.entries(states)) {
+    const text = typeof state === "string" ? state : JSON.stringify({ slot: name, ...state });
+    writeFileSync(join(base, `${name}.state`), text);
+  }
+  const res = spawnSync(
+    "/bin/bash",
+    ["-c", `${fn[0]}\nSLOT=$1 STATES=$2 MEMINFO=$3 fast_room`, "x", me, base, meminfo],
+    { encoding: "utf8" },
+  );
+  return { ok: res.status === 0, bytes: Number(res.stdout.trim()), out: res.stderr };
+};
+
+const fastIdle = { label: "halonic-ci-fast", busy: false, mem_limit: 4 * GiB, mem_peak: 0 };
+const largeIdle = { label: "halonic-ci-large", busy: false, mem_limit: 6 * GiB, mem_peak: 0 };
+
+test("fast admission: an idle fast runner's start size and a busy job's room count as promised", () => {
+  const res = room({
+    availGiB: 40,
+    states: {
+      "fast-12": fastIdle,
+      // 10 GB limit, 3 GB used: it may still take 7 GB without asking.
+      "large-1": { label: "halonic-ci-large", busy: true, mem_limit: 10 * GiB, mem_peak: 3 * GiB },
+      // Above its limit (file cache in the peak): it promises nothing more, never less than nothing.
+      "fast-1": { label: "halonic-ci-fast", busy: true, mem_limit: 4 * GiB, mem_peak: 5 * GiB },
+      // An idle large runner holds nothing back: merge groups keep the memory first.
+      "large-2": largeIdle,
+      // This slot's own state from its last cycle doesn't count against it.
+      "fast-11": fastIdle,
+    },
+  });
+  assert.equal(res.ok, true, res.out);
+  assert.equal(res.bytes, (40 - 4 - 7) * GiB);
+});
+
+test("fast admission: 24 fast slots on a 72 GB VM register only as many runners as fit", () => {
+  // About 66 GB available with the large pool idle: each runner needs its 4 GB start plus the
+  // 4 GB reserve free after the ones before it, so 15 register (fast-11..24 and one more) and the
+  // rest wait until jobs finish or the large pool frees memory.
+  const states = {};
+  let registered = 0;
+  for (let n = 11; n <= 24; n++) {
+    const me = `fast-${n}`;
+    if (room({ me, availGiB: 66, states }).bytes < 8 * GiB) continue;
+    states[me] = fastIdle;
+    registered++;
+  }
+  assert.equal(registered, 14);
+  const fifteenth = room({ me: "fast-1", availGiB: 66, states });
+  assert.equal(fifteenth.bytes, 10 * GiB);
+  states["fast-1"] = fastIdle;
+  assert.ok(room({ me: "fast-2", availGiB: 66, states }).bytes < 8 * GiB);
+});
+
+test("fast admission: fails closed on an unreadable state file or no MemAvailable", () => {
+  assert.equal(room({ availGiB: 40, states: { "fast-12": "{not json" } }).ok, false);
+  assert.equal(room({ availGiB: null }).ok, false);
+  // No state files at all: everything available is free.
+  assert.equal(room({ availGiB: 40 }).bytes, 40 * GiB);
+});
+
+test("fast admission: only fast slots wait, under one lock, and a stopped slot leaves no promise", () => {
+  assert.ok(
+    slot.includes('if [ "$LABEL" = halonic-ci-fast ] && [ "${2:-}" != "--cleanup" ]; then'),
+  );
+  assert.ok(slot.includes('[ "$room" -ge "$NEED_B" ] || exit 1'));
+  assert.ok(slot.includes(') 8>"$STATES/fast-admit.lock"; do'));
+  assert.ok(slot.includes('NEED_B=$(( $(numfmt --from=iec "${MEM_START^^}") + RESERVE_B ))'));
+  // A paused VM stops the wait as it stops a cycle.
+  assert.ok(slot.includes('[ ! -e "$PAUSED" ] || exit 0'));
+  assert.ok(
+    slot.includes('[ "${2:-}" = "--cleanup" ] && { rm -f "/run/halonic-ci/$SLOT.state"; exit 0; }'),
+  );
+  // Admission comes before the runner is registered.
+  assert.ok(slot.indexOf("fast-admit.lock") < slot.indexOf("generate-jitconfig"));
+});
