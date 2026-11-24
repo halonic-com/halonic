@@ -28,6 +28,7 @@ import type { DeviceMemory } from "./device-memory.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
 import { halonicVersion } from "./open-trusts.ts";
 import { startServedStudio } from "./served-studio.ts";
+import { focusedAppOf, startFocusedApp } from "./start-focused-app.ts";
 import { watchStart } from "./start-watch.ts";
 
 export { openFolder } from "./open-folder.ts";
@@ -75,7 +76,8 @@ export interface StartedStudio {
 /**
  * Starts the Studio in a page (`studio.entry`). The desktop app starts on the Welcome screen and
  * opens the folders the user picks, each with its own services, behind the workspace switcher
- * (`studio.open-folder`). The served Studio shows the one workspace the computer serves
+ * (`studio.open-folder`). A window the shell opened for a focused app, such as Halonic Inbox, shows
+ * only that app (`studio.focused-app-window`). The served Studio shows the one workspace the computer serves
  * (`studio.served-workspace`). The window is the shell's or the workspace feature's; the app only
  * starts it, as AGENTS.md asks of screens.
  *
@@ -94,6 +96,19 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
   const ipc = tauriIpc(page.window);
   if (ipc !== undefined) {
     const shell = createShell({ ...desktop, host, platform });
+    // Halonic Inbox and Halonic Messenger load this page too, in a window of their own.
+    const app = focusedAppOf(page.window, shell);
+    if (app !== undefined) {
+      const display = displaySettingsOf(page);
+      return startFocusedApp(page, {
+        shell,
+        ipc,
+        platform,
+        app,
+        language: studioLanguage,
+        display,
+      });
+    }
     return startDesktopApp(page, { shell, ipc, platform });
   }
   return startServedStudio(page, {

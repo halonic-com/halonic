@@ -3,6 +3,7 @@ import type {
   BarItemContribution,
   CardContribution,
   DialogHostContribution,
+  FocusedAppContribution,
   HelpContribution,
   PanelWindowContribution,
   PhoneBarContribution,
@@ -11,7 +12,7 @@ import type {
   SidebarViewContribution,
   StripContribution,
 } from "./frame.ts";
-import { sidebarPlaces } from "./frame.ts";
+import { focusedAppIds, sidebarPlaces } from "./frame.ts";
 import { type HomeCardContribution, type HomePoint, homeSections } from "./home.ts";
 import {
   byOrder,
@@ -54,6 +55,11 @@ export interface FramePoints {
    * `label` that is empty.
    */
   readonly sidebarViews: Point<SidebarViewContribution>;
+  /**
+   * Adds the feature's focused app, the view its own window shows. Throws a `ShellError` for an id
+   * that isn't one of `focusedAppIds`, or one another feature added.
+   */
+  readonly focusedApps: Point<FocusedAppContribution>;
 }
 
 /**
@@ -76,6 +82,8 @@ export interface FrameContributions {
   readonly home: { cards(): readonly Registered<HomeCardContribution>[] };
   /** The views features added next to the Studio's places, by `order`, then `id`; none while no feature adds one. */
   readonly sidebarViews: { list(): readonly Registered<SidebarViewContribution>[] };
+  /** The focused apps features added; a focused app's window shows the one its label names. */
+  readonly focusedApps: { list(): readonly Registered<FocusedAppContribution>[] };
 }
 
 /** The id the shell's own contributions carry as their `featureId`, such as the Home place. */
@@ -106,6 +114,7 @@ export class FrameStores {
     "id",
   ]);
   private readonly homeCards = new PointStore<HomeCardContribution>("home.addCard", ["id"]);
+  private readonly focusedApps = new PointStore<FocusedAppContribution>("focusedApps.add", ["id"]);
 
   constructor() {
     this.places.add(shellContributorId, homePlace);
@@ -149,6 +158,13 @@ export class FrameStores {
           checkViewLabel(featureId, view);
         },
       },
+      focusedApps: {
+        add: (app) => {
+          guard("focusedApps.add");
+          rejectUnknownFocusedApp(app, featureId);
+          this.focusedApps.add(featureId, app);
+        },
+      },
       home: {
         addCard: (card) => {
           guard("home.addCard");
@@ -181,6 +197,7 @@ export class FrameStores {
           ),
       },
       sidebarViews: { list: () => byOrder(this.sidebarViews.all()) },
+      focusedApps: { list: () => this.focusedApps.all() },
       home: {
         cards: () =>
           [...this.homeCards.all()].sort(
@@ -221,6 +238,15 @@ function rejectUnknownPlace(place: PlaceContribution, featureId: string): void {
   if (!(sidebarPlaces as readonly string[]).includes(place.id)) {
     throw new ShellError(
       `places.add: the feature "${featureId}" adds the place ${JSON.stringify(place.id)}, which isn't one of the sidebar's places (${sidebarPlaces.join(", ")}). Add a page to a place's view instead, or ask for a new place in the design.`,
+    );
+  }
+}
+
+/** The desktop shell opens only the focused apps it names, so a feature can't make up one. */
+function rejectUnknownFocusedApp(app: FocusedAppContribution, featureId: string): void {
+  if (!(focusedAppIds as readonly string[]).includes(app.id)) {
+    throw new ShellError(
+      `focusedApps.add: the feature "${featureId}" adds the focused app ${JSON.stringify(app.id)}, which isn't one of the apps Halonic starts (${focusedAppIds.join(", ")}). Add it to the desktop shell's apps first.`,
     );
   }
 }

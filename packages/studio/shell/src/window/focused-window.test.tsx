@@ -1,0 +1,107 @@
+// @vitest-environment jsdom
+
+import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { defineFeature } from "../feature.ts";
+import type { FocusedAppContribution } from "../points/frame.ts";
+import { createShell } from "../shell.ts";
+import { ShellError } from "../shell-error.ts";
+import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
+import { FakeTimers } from "../test-support/fake-timers.ts";
+import { MapTarget } from "../test-support/map-target.ts";
+import { focusedWindowTitle, mountFocusedWindow } from "./focused-window.tsx";
+import type { PlaceViewProps } from "./studio-page.tsx";
+import { StudioWorkspace } from "./studio-workspace.ts";
+
+let restoreMedia: () => void;
+let element: HTMLDivElement;
+
+beforeEach(() => {
+  restoreMedia = new FakeMediaQueries(1280).install();
+  element = document.createElement("div");
+  document.body.append(element);
+});
+
+afterEach(() => {
+  element.remove();
+  restoreMedia();
+});
+
+/** The Acme Inbox's view: it names the feature whose context it got. */
+function AcmeInbox({ context }: PlaceViewProps) {
+  return <h1>{`Inbox for ${String(context.host)}`}</h1>;
+}
+
+const inboxApp: FocusedAppContribution = {
+  id: "inbox",
+  title: "Inbox",
+  view: "AcmeInbox",
+  load: async () => ({ AcmeInbox }),
+  panel: true,
+};
+
+function shellWith(app: FocusedAppContribution) {
+  const feature = defineFeature({
+    id: "acme-inbox",
+    title: "Acme Inbox",
+    register: (studio) => studio.focusedApps.add(app),
+  });
+  return createShell({ features: [feature], timers: new FakeTimers() });
+}
+
+async function mount(name: string | undefined) {
+  const shell = shellWith(inboxApp);
+  const services = new MapTarget();
+  shell.services.instantiate(services);
+  const workspace =
+    name === undefined ? undefined : new StudioWorkspace({ toasts: shell.toasts, services, name });
+  const [app] = shell.contributions.focusedApps.list();
+  if (app === undefined) throw new Error("The Acme Inbox added no focused app.");
+  let focused: ReturnType<typeof mountFocusedWindow> | undefined;
+  await act(async () => {
+    focused = mountFocusedWindow(element, { shell, app, workspace, language: "en" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  return { unmount: () => act(() => focused?.unmount()) };
+}
+
+verifies("shell.focused-apps", () => {
+  it("shows only the app's view, in the frame's panel, with none of Studio's tabs or places", async () => {
+    const focused = await mount("Acme");
+
+    expect(element.querySelector("main h1")?.textContent).toBe("Inbox for desktop-app");
+    expect(element.querySelector('[data-focused-app="inbox"]')).not.toBeNull();
+    expect(element.querySelector('[role="tablist"]')).toBeNull();
+    expect(element.querySelector('nav[aria-label="Places"]')).toBeNull();
+    expect(document.title).toBe("Inbox · Acme · Halonic Inbox");
+    focused.unmount();
+    expect(element.childElementCount).toBe(0);
+  });
+
+  it("says to open Halonic while there is no workspace", async () => {
+    await mount(undefined);
+
+    expect(element.textContent).toContain("Open Halonic to choose a workspace.");
+    expect(document.title).toBe("Inbox · Halonic Inbox");
+  });
+
+  it("names the app's page, the workspace and the app in the title", () => {
+    expect(focusedWindowTitle("Messenger", "Acme")).toBe("Messenger · Acme · Halonic Messenger");
+    expect(focusedWindowTitle("Messenger", " ")).toBe("Messenger · Halonic Messenger");
+  });
+
+  it("refuses a focused app Halonic doesn't start, naming the feature", () => {
+    const runs = { ...inboxApp, id: "runs" } as unknown as FocusedAppContribution;
+
+    expect(() => shellWith(runs)).toThrow(ShellError);
+    expect(() => shellWith(runs)).toThrow(/"acme-inbox" adds the focused app "runs"/);
+  });
+
+  it("refuses the same focused app from two features", () => {
+    const twice = (id: string) =>
+      defineFeature({ id, title: id, register: (studio) => studio.focusedApps.add(inboxApp) });
+
+    expect(() => createShell({ features: [twice("one"), twice("two")] })).toThrow(ShellError);
+  });
+});

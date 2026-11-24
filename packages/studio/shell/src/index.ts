@@ -418,6 +418,16 @@ export {
 export { cantCreateSampleLine, type WelcomeSampleProblem } from "./welcome/welcome-sample.tsx";
 export { WelcomeWindow, type WelcomeWindowProps } from "./welcome/welcome-window.tsx";
 export {
+  FocusedWindow,
+  type FocusedWindowProps,
+  focusedFrameClass,
+  focusedPanelClass,
+  focusedWindowTitle,
+  focusedWindowWords,
+  type MountedFocusedWindow,
+  mountFocusedWindow,
+} from "./window/focused-window.tsx";
+export {
   type ItemPageSectionViewProps,
   SECTION_ADD_STEP,
   type SectionsProps,
