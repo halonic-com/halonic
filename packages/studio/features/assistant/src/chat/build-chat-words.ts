@@ -46,6 +46,11 @@ export const buildChatWords = {
   /** The status line after Stop, without the line's full stop (flow-assistant 2.2). */
   stopped: "Stopped by you",
   stoppedByYou: "Stopped by you.",
+  /**
+   * The phone's status line after the limit (flow-assistant 11.3): an expected stop, with
+   * **Continue** right there. "model call limit" is the glossary's word for "turn limit".
+   */
+  stoppedAtLimit: "Stopped · model call limit",
   stoppedWhenClosed: "Stopped when Halonic closed.",
   /** H13 (D4): the engine stopped mid-answer, with Try again unless a tool already ran. */
   engineStopped: "Stopped when Halonic's engine stopped.",

@@ -27,6 +27,15 @@ export const chatMenuWords = {
   deleteConfirm: "Delete chat",
   deleting: "Deleting…",
   cantDelete: (reason: string) => `Couldn't delete the chat: ${reason.trim().replace(/\.+$/, "")}.`,
+  /** The phone's ⋮ (flow-assistant 11.3), whose items carry no "…", and its two sheets. */
+  phone: {
+    recentChats: "Recent chats",
+    deleteChat: "Delete chat",
+    /** Recent chats' footer: "your computer" on a phone (microcopy 1.2, 14.3). */
+    footer: "Keeps your 40 most recent chats on your computer.",
+    /** The kind in the shell's rename sheet: "Rename chat". */
+    kindName: "chat",
+  },
 } as const;
 
 const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;

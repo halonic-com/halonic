@@ -1,6 +1,7 @@
 import {
   Button,
   ChevronDownIcon,
+  CloseIcon,
   Dialog,
   Menu,
   type MenuEntry,
@@ -86,6 +87,35 @@ export function ChatHeading(
   );
 }
 
+/** The desktop header's **New chat**, ⋮ and ✕. */
+export function DesktopActions(
+  props: ChatHeaderProps & {
+    readonly onRename: () => void;
+    readonly afterDelete: () => HTMLElement | null;
+    readonly onClose: () => void;
+  },
+) {
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<PlusIcon />}
+        label={buildChatWords.newChat}
+        onClick={props.onNewChat}
+      />
+      <ChatMoreActions {...props} />
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<CloseIcon />}
+        label={buildChatWords.close}
+        onClick={props.onClose}
+      />
+    </>
+  );
+}
+
 /** The header's ⋮ (Rename, Delete chat…) and the Delete dialog, for a kept chat only. */
 export function ChatMoreActions(
   props: ChatHeaderProps & {
@@ -94,17 +124,9 @@ export function ChatMoreActions(
     readonly afterDelete: () => HTMLElement | null;
   },
 ) {
-  const [deleting, setDeleting] = useState<"asking" | "busy" | { failed: string }>();
+  const [deleting, setDeleting] = useState(false);
   const chat = props.view?.chat;
   if (chat === undefined || chat.draft) return null;
-  const remove = () => {
-    setDeleting("busy");
-    props.chats.deleteShown().then(
-      () => setDeleting(undefined),
-      (error: unknown) =>
-        setDeleting({ failed: error instanceof Error ? error.message : String(error) }),
-    );
-  };
   return (
     <>
       <Menu
@@ -120,24 +142,55 @@ export function ChatMoreActions(
         )}
         entries={[
           { id: "rename", label: words.rename, onSelect: props.onRename },
-          { id: "delete", label: words.deleteChat, onSelect: () => setDeleting("asking") },
+          { id: "delete", label: words.deleteChat, onSelect: () => setDeleting(true) },
         ]}
       />
-      {deleting === undefined ? null : (
-        <Dialog
-          title={words.deleteTitle(chat.title)}
-          size="sm"
-          confirm={{ label: words.deleteConfirm, variant: "danger", busyLabel: words.deleting }}
-          busy={deleting === "busy"}
-          {...(typeof deleting === "object" ? { error: words.cantDelete(deleting.failed) } : {})}
-          onConfirm={remove}
-          onCancel={() => setDeleting(undefined)}
-          returnFocus={props.afterDelete}
-        >
-          {chat.itemsToReview > 0 ? <p>{words.deleteBody(chat.itemsToReview)}</p> : null}
-        </Dialog>
-      )}
+      {deleting ? (
+        <DeleteChatDialog
+          chats={props.chats}
+          chat={chat}
+          onClose={() => setDeleting(false)}
+          afterDelete={props.afterDelete}
+        />
+      ) : null}
     </>
+  );
+}
+
+/**
+ * "Delete the chat …?" (`assistant.chat.delete`), with the line about its changes to review when
+ * it left some. On a phone the kit's Dialog stacks it: **Delete chat** on top, Cancel under it.
+ */
+export function DeleteChatDialog(props: {
+  readonly chats: BuildChats;
+  readonly chat: ChatSummary;
+  readonly onClose: () => void;
+  /** Where focus goes once the chat is deleted: the empty panel's New chat (flow 2.2). */
+  readonly afterDelete: () => HTMLElement | null;
+}) {
+  const { chat, onClose } = props;
+  const [deleting, setDeleting] = useState<"asking" | "busy" | { failed: string }>("asking");
+  const remove = () => {
+    setDeleting("busy");
+    props.chats
+      .deleteShown()
+      .then(onClose, (error: unknown) =>
+        setDeleting({ failed: error instanceof Error ? error.message : String(error) }),
+      );
+  };
+  return (
+    <Dialog
+      title={words.deleteTitle(chat.title)}
+      size="sm"
+      confirm={{ label: words.deleteConfirm, variant: "danger", busyLabel: words.deleting }}
+      busy={deleting === "busy"}
+      {...(typeof deleting === "object" ? { error: words.cantDelete(deleting.failed) } : {})}
+      onConfirm={remove}
+      onCancel={onClose}
+      returnFocus={props.afterDelete}
+    >
+      {chat.itemsToReview > 0 ? <p>{words.deleteBody(chat.itemsToReview)}</p> : null}
+    </Dialog>
   );
 }
 
@@ -184,7 +237,7 @@ function RenameField({
 }
 
 /** The kept chats, read again whenever the list changes (one added, renamed, deleted, busy). */
-function useRecentChats(host: AssistantHost): readonly ChatSummary[] {
+export function useRecentChats(host: AssistantHost): readonly ChatSummary[] {
   const [recent, setRecent] = useState<readonly ChatSummary[]>([]);
   useEffect(() => {
     let live = true;
