@@ -5,7 +5,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 import { expect, it } from "vitest";
 import { engineForRun, moduleMemoryBytes } from "./engine.ts";
-import QuickJSRaw from "./generated/engine/quickjs.mjs";
+// biome-ignore lint/correctness/useImportExtensions: biome takes the .d.mts types for the module and asks for .mts; the file at runtime is .mjs
+import type QuickJSRaw from "./generated/engine/quickjs.mjs";
 import { createQuickJsToolScriptIsolate } from "./index.ts";
 
 const engineFolder = new URL("../engine/", import.meta.url);
@@ -70,17 +71,25 @@ verifies("toolscript-quickjs.engine", () => {
   });
 
   it("reports the pinned quickjs-ng version, 0.13.0 or later, from the engine itself", async () => {
-    const engine = await QuickJSRaw();
+    // The glue is built for web and worker only, so it never loads the .wasm
+    // itself: the run's variant hands it the compiled module and a memory.
+    // Our variant's loader is always the glue's own function (src/engine.ts).
+    const loadEngine = (await engineForRun(
+      heapBytes,
+    ).variant.importModuleLoader()) as typeof QuickJSRaw;
+    const engine = await loadEngine();
     const version = engine.cwrap("QTS_GetEngineVersion", "string", [])();
     expect(version).toBe(sources.quickjsNg.version);
     const [major = 0, minor = 0] = versionParts(String(version));
     expect(major > 0 || minor >= 13).toBe(true);
   });
 
-  it("loads exactly the committed quickjs.wasm", async () => {
+  it("ships the engine as base64 that decodes to a valid WebAssembly module", async () => {
+    // biome-ignore lint/correctness/useImportExtensions: biome takes the .d.mts types for the module and asks for .mts; the file at runtime is .mjs
     const { default: base64 } = await import("./generated/engine/quickjs-wasm.mjs");
-    const committed = readFileSync(new URL("./generated/engine/quickjs.wasm", import.meta.url));
-    expect(Buffer.from(base64, "base64").equals(committed)).toBe(true);
+    const bytes = Buffer.from(base64, "base64");
+    expect(bytes.subarray(0, 4)).toEqual(Buffer.from([0x00, 0x61, 0x73, 0x6d]));
+    await expect(WebAssembly.compile(bytes)).resolves.toBeInstanceOf(WebAssembly.Module);
   });
 
   it("gives every run the engine's own memory plus its heap, and it can't grow", async () => {

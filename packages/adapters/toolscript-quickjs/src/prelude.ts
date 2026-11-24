@@ -27,15 +27,31 @@ export const quickJsIntrinsics = Object.freeze({
 });
 
 /**
+ * Globals that QuickJS-ng 0.18 always adds and the intrinsics can't switch
+ * off: `BigInt` became part of the base objects, and explicit resource
+ * management brought the other three. The engine the fence was first run on
+ * had none of them, so the prelude takes them away again (HAL-17780).
+ */
+export const removedGlobals = Object.freeze([
+  "BigInt",
+  "DisposableStack",
+  "AsyncDisposableStack",
+  "SuppressedError",
+] as const);
+
+/**
  * The fixed prelude, run as its own `evalCode` before the script and never
  * joined to it (condition 1). It replaces each path to the compiler with
  * one frozen thrower, non-writable and non-configurable, and freezes the
  * thrower and `Function.prototype`. It also pins `Error.prepareStackTrace`
  * to `undefined`: QuickJS-ng calls it for every error the engine makes,
  * including errors from the host's own calls after the script has stopped,
- * so a script's hook would run outside the script's time. It returns the
- * thrower, the four function prototypes and `Error` so the host can check
- * every slot.
+ * so a script's hook would run outside the script's time. It deletes the
+ * {@link removedGlobals}, and the `constructor` backlinks through which a
+ * bigint literal or a failed `using` dispose would still hand a script
+ * `BigInt` or `SuppressedError`. It returns the thrower, the four function
+ * prototypes, `Error` and those two prototypes so the host can check every
+ * slot.
  */
 export const preludeSource = `(() => {
   "use strict";
@@ -66,11 +82,18 @@ export const preludeSource = `(() => {
     enumerable: false,
     configurable: false,
   });
+  const bigIntPrototype = getPrototypeOf(0n);
+  const suppressedErrorPrototype = SuppressedError.prototype;
+  delete bigIntPrototype.constructor;
+  delete suppressedErrorPrototype.constructor;
+  for (const name of ${JSON.stringify(removedGlobals)}) delete globalThis[name];
   Object.freeze(thrower);
   Object.freeze(functionPrototype);
   return Object.freeze({
     thrower,
     errorConstructor: Error,
+    bigIntPrototype,
+    suppressedErrorPrototype,
     functionPrototype,
     asyncFunctionPrototype,
     generatorFunctionPrototype,
@@ -185,4 +208,39 @@ function stackHookPinned(
   const pinned = slotHolds(vm, builtins, errorConstructor, "prepareStackTrace", vm.undefined);
   errorConstructor.dispose();
   return pinned;
+}
+
+/** Whether `owner` has no own property `key`, asked through the captured `getOwnPropertyDescriptor`. */
+function hasNoOwn(
+  vm: QuickJSContext,
+  builtins: Builtins,
+  owner: QuickJSHandle,
+  key: string,
+): boolean {
+  const keyHandle = vm.newString(key);
+  const descriptor = callBuiltin(vm, builtins.getOwnPropertyDescriptor, owner, keyHandle);
+  keyHandle.dispose();
+  const absent = descriptor !== undefined && vm.typeof(descriptor) === "undefined";
+  descriptor?.dispose();
+  return absent;
+}
+
+/**
+ * The host's check that the {@link removedGlobals} and the two `constructor`
+ * backlinks are gone before the script starts. Only before: a script that
+ * later names a global `BigInt` itself can only store values it already had.
+ */
+export function removedGlobalsAbsent(
+  vm: QuickJSContext,
+  builtins: Builtins,
+  preludeResult: QuickJSHandle,
+): boolean {
+  if (!removedGlobals.every((name) => hasNoOwn(vm, builtins, vm.global, name))) return false;
+  return ["bigIntPrototype", "suppressedErrorPrototype"].every((field) => {
+    const prototype = ownDataField(vm, builtins, preludeResult, field);
+    if (prototype === undefined) return false;
+    const absent = hasNoOwn(vm, builtins, prototype, "constructor");
+    prototype.dispose();
+    return absent;
+  });
 }

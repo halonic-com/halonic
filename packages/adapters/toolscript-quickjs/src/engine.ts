@@ -15,8 +15,10 @@ export const moduleMemoryBytes = 16 * 1024 * 1024;
 
 const engineVariant: QuickJSSyncVariant = {
   type: "sync",
+  // biome-ignore lint/correctness/useImportExtensions: biome takes the .d.mts types for the module and asks for .mts; the file at runtime is .mjs
   importFFI: () => import("./generated/engine/ffi.mjs").then((module) => module.QuickJSFFI),
   importModuleLoader: () =>
+    // biome-ignore lint/correctness/useImportExtensions: biome takes the .d.mts types for the module and asks for .mts; the file at runtime is .mjs
     import("./generated/engine/quickjs.mjs").then((module) => module.default),
 };
 
@@ -54,6 +56,7 @@ function compiledEngine(): Promise<WebAssembly.Module> {
 async function compileEngine(): Promise<WebAssembly.Module> {
   // The .wasm as base64 in a module of its own, so loading it needs no file
   // system or network on any runtime.
+  // biome-ignore lint/correctness/useImportExtensions: biome takes the .d.mts types for the module and asks for .mts; the file at runtime is .mjs
   const { default: base64 } = await import("./generated/engine/quickjs-wasm.mjs");
   const text = atob(base64);
   const bytes = new Uint8Array(text.length);

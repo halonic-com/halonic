@@ -5,7 +5,8 @@
   "files": {
     "includes": [
       "**",
-      "!engine/upstream"
+      "!engine/upstream",
+      "!src/generated"
     ]
   }
 }

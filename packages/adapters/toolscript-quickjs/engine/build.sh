@@ -36,8 +36,11 @@ flags=(
   -s AUTO_ARCHIVE_INDEXES=0
   -s DEFAULT_TO_CXX=0
   -s ALLOW_UNIMPLEMENTED_SYSCALLS=0
-  -s MIN_NODE_VERSION=160000
-  -s NODEJS_CATCH_EXIT=0
+  # Halonic: glue for web and worker only, without the Node branch (node:fs,
+  # createRequire, process). The adapter is runtime "any" and may hold no
+  # Node API, and it never needs one: the host hands the glue the compiled
+  # module and the memory, so it reads no file. Node runs it like a worker.
+  -s ENVIRONMENT=web,worker
   -s EXPORTED_RUNTIME_METHODS=@exported-runtime-methods.json
   --pre-js pre-extension.js
   --pre-js pre-wasm-memory.js

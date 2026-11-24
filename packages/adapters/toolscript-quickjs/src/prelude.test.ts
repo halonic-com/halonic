@@ -2,7 +2,7 @@ import { type ToolScriptIsolateValue, toolScriptDefaultLimits } from "@halonicjs
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { runInQuickJs } from "./isolate.ts";
-import { preludeSlots, preludeSource } from "./prelude.ts";
+import { preludeSlots, preludeSource, removedGlobals } from "./prelude.ts";
 
 /** Runs `body` as the script's `run(ctx)`, recording each `ctx.acme.ping` call. */
 async function run(body: string, prelude?: string) {
@@ -87,6 +87,21 @@ verifies("toolscript-quickjs.eval-prelude", () => {
       'define(globalThis, "Function", slot);',
       "Object.freeze(thrower);",
       "Object.freeze(functionPrototype);",
+    ]) {
+      const { result, calls } = await run(
+        "await ctx.acme.ping('ran'); return 1;",
+        preludeWithout(statement),
+      );
+      expect(result, statement).toMatchObject({ ok: false, reason: "toolscript.failed" });
+      expect(calls).toEqual([]);
+    }
+  });
+
+  it("never runs the script when a global the engine added is still there", async () => {
+    for (const statement of [
+      "delete bigIntPrototype.constructor;",
+      "delete suppressedErrorPrototype.constructor;",
+      `for (const name of ${JSON.stringify(removedGlobals)}) delete globalThis[name];`,
     ]) {
       const { result, calls } = await run(
         "await ctx.acme.ping('ran'); return 1;",

@@ -12,7 +12,7 @@ import { copyOut } from "./copy-out.ts";
 import type { CpuMeter } from "./cpu-meter.ts";
 import { buildCtx } from "./ctx.ts";
 import { HandleTable } from "./handles.ts";
-import { preludeHolds } from "./prelude.ts";
+import { preludeHolds, removedGlobalsAbsent } from "./prelude.ts";
 import { classifyThrown, type ScriptFailure } from "./script-errors.ts";
 
 /** What one run's parts share: the context, its built-ins, the handle table and the run's state. */
@@ -164,7 +164,10 @@ export class RunSession implements RunState {
       this.fail("toolscript.failed", "the eval prelude failed");
       return undefined;
     }
-    if (!preludeHolds(this.vm, this.builtins, installed.value)) {
+    if (
+      !preludeHolds(this.vm, this.builtins, installed.value) ||
+      !removedGlobalsAbsent(this.vm, this.builtins, installed.value)
+    ) {
       this.fail("toolscript.failed", "the eval prelude doesn't hold");
       return undefined;
     }
