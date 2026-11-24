@@ -2,6 +2,7 @@
 
 - Approval: HAL-17836
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6sGJ16Hew/Azv3nHiHJlUjQk7c1uPYtQ9Lh3LS04OZI1QeaIhaMdREYoJ7928JbmIX1QKupQC7A7K1bf8+iQDw==
 
 `paperclip.merge-control-fast-track` named the board's GitHub login as a
 verified fast-track labeller, and merge control's default settings and three
