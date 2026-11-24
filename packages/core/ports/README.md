@@ -55,6 +55,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `TokenStore` | `token-store.ts` | 1 | secrets the server writes itself, such as refresh tokens | `token-store` |
 | `ToolApprovalStore` | `tool-approval-store.ts` | 1 | approved listed tools in the user's profile, by workspace, source, name; `approveListedTools` decides | `tool-approval-store` (with first adapter) |
 | `ToolScriptHost` | `tool-script-host.ts` | 1 | runs a built Halonic ToolScript in an isolate for one audience, with a capability registry, inputs and limits; answers with the output or a listed reason (ADR "Halonic ToolScript") | `tool-script-host` (`FakeToolScriptHost` in `testing/contracts`; QuickJS with T5) |
+| `ToolScriptIsolate` | `tool-script-isolate.ts` | 1 | runs one ToolScript's code in a fresh isolate with an input, host functions and a run's limits; answers with the output or a listed reason, the log and the limits it applied. The `ctx` host builds on it (ADR "Halonic ToolScript") | `tool-script-isolate` (QuickJS and the fence suite with T4) |
 | `TrustStore` | `trust-store.ts` | 1 | trust records in the user's profile, by location and fingerprint; `TrustService` decides | `trust-store` |
 | `TunnelProvider` | `tunnel-provider.ts` | 1 | makes the remote gateway (and only it) reachable from a phone: capabilities, start, a status stream, stop | `tunnel-provider` (with the fake provider) |
 | `TunnelResolver` | `tunnel-resolver.ts` | 1 | on the phone, turns an endpoint into a transport that reconnects with `tunnelReconnectDelayMs` while in the foreground | `tunnel-resolver` (with the fake provider) |
@@ -136,6 +137,7 @@ next to the ports:
 | `isUnreadableToolApprovalError`, `maxWaitingVersions` | recognise an unreadable tool approval without `instanceof`, and how many waiting versions of a tool are kept | `listed-tool-approval` |
 | `isAllowedWebLink` | whether a `TeamStatus` web link may open in the system browser: a GitHub pull request page, or the connection's own Paperclip origin, port included | `team-status` |
 | `effectiveToolScriptLimits`, `toolScriptCapabilityPath`, `toolScriptDefaultLimits` | a run's limits, only ever lowered from the host's; where a capability id sits on `ctx`; each audience's default limits | `tool-script-host` |
+| `toolScriptSecretHandle`, `isToolScriptSecretHandle`, `isToolScriptStop` | make a secret handle a host function gives the script by reference, and recognise one or a `ToolScriptStop` without `instanceof` | `tool-script-isolate` |
 | `priceOf` | what a model call costs from a `ModelPrice` and the tokens used | `model-price` |
 | `addHarnessEnvironment`, `harnessBridgeTokenHeader` | add a harness's environment without replacing a variable that is set; the header that carries the run's bridge token | `harness-environment` |
 | `signInCommandText` | a harness's sign-in for one agent's settings folder, as a person types it into PowerShell or `sh`, making the folder first; Studio's sign-in by hand and `halonic doctor` both show it | `harness-sign-in-command` |

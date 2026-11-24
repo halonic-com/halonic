@@ -555,6 +555,22 @@ export {
   toolScriptReservedNamespaces,
 } from "./tool-script-host.ts";
 export {
+  isToolScriptSecretHandle,
+  isToolScriptStop,
+  type ToolScriptIsolate,
+  type ToolScriptIsolateFunction,
+  type ToolScriptIsolateFunctions,
+  type ToolScriptIsolateRequest,
+  type ToolScriptIsolateResult,
+  type ToolScriptIsolateTrace,
+  type ToolScriptIsolateValue,
+  type ToolScriptSecretHandle,
+  ToolScriptStop,
+  toolScriptIsolateVersion,
+  toolScriptSecretHandle,
+  toolScriptSecretHandleMark,
+} from "./tool-script-isolate.ts";
+export {
   type TrustOrigin,
   type TrustRecord,
   type TrustStore,
