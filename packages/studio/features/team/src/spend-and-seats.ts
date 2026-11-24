@@ -62,7 +62,9 @@ export class SpendAndSeats {
       month: ofSource(month)[0],
       seats: [...troubled, ...rest],
     };
-    const times = [shown.today, shown.month, ...seats].flatMap((each) =>
+    // A signed-out seat's stamp says since when it is signed out, not how fresh the read is.
+    const readSeats = seats.filter((seat) => seat.state !== "signed-out");
+    const times = [shown.today, shown.month, ...readSeats].flatMap((each) =>
       each === undefined ? [] : [each.asOf],
     );
     return {

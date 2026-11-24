@@ -19,7 +19,7 @@ export interface SpendAndSeatsPageProps {
  */
 type Shown =
   | { kind: "loading" }
-  | { kind: "read"; state: SpendAndSeatsState | undefined; failed: boolean }
+  | { kind: "read"; state: SpendAndSeatsState | undefined; readAt: string; failed: boolean }
   | { kind: "failed" };
 
 /**
@@ -42,7 +42,8 @@ export function SpendAndSeatsPage({ spendAndSeats, onLink }: SpendAndSeatsPagePr
     let current = true;
     spendAndSeats.read().then(
       (state) => {
-        if (current) setShown({ kind: "read", state, failed: false });
+        const readAt = spendAndSeats.timeClock.now().toISOString();
+        if (current) setShown({ kind: "read", state, readAt, failed: false });
       },
       (error: unknown) => {
         console.error("Spend and seats couldn't be read:", error);
@@ -87,6 +88,7 @@ export function SpendAndSeatsPage({ spendAndSeats, onLink }: SpendAndSeatsPagePr
     <ReadScreen
       state={state}
       failed={shown.failed}
+      readAt={shown.readAt}
       clock={clock}
       onLink={onLink}
       onTryAgain={readAgain}
@@ -116,12 +118,16 @@ function oldestOf(times: readonly string[]): string | undefined {
 function ReadScreen(props: {
   state: SpendAndSeatsState;
   failed: boolean;
+  /** When the last successful read landed: the offline banner's time. */
+  readAt: string;
   clock: TeamClock;
   onLink: (link: TeamLink) => void;
   onTryAgain: () => void;
 }) {
   const { state, failed, clock, onLink } = props;
-  const oldest = oldestOf(state.seats.map((seat) => seat.asOf));
+  // A signed-out seat's stamp is when it signed out, not a reading's age.
+  const readSeats = state.seats.filter((seat) => seat.state !== "signed-out");
+  const oldest = oldestOf(readSeats.map((seat) => seat.asOf));
   const seatsAreOld =
     oldest !== undefined && clock.now().getTime() - Date.parse(oldest) >= notReadAfterMs;
   return (
@@ -137,7 +143,7 @@ function ReadScreen(props: {
       </header>
       {failed ? (
         <p role="alert">
-          {teamWords.offline(formatTime(state.asOf ?? clock.now().toISOString(), clock))}{" "}
+          {teamWords.offline(formatTime(props.readAt, clock))}{" "}
           <TryAgain onPress={props.onTryAgain} />
         </p>
       ) : null}
@@ -159,7 +165,7 @@ function ReadScreen(props: {
             {teamWords.cantReadSpend} <LinkButton link="connect-again" onLink={onLink} />
           </p>
         )}
-        <SeatsTile seats={state.seats} clock={clock} />
+        <SeatsTile seats={state.seats} problems={state.problems} clock={clock} />
       </div>
       <SeatsSection state={state} clock={clock} onLink={onLink} />
     </main>
