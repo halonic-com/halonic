@@ -52,6 +52,14 @@ verifies("services.agent-connections", () => {
     expect(await challenge.result).toEqual({ outcome: "cancelled" });
   });
 
+  it("throws on cancel when told to, and keeps the sign-in waiting", async () => {
+    const fake = new FakeAgentConnections({ cancelFails: true });
+    const challenge = await started(fake);
+    await expect(challenge.cancel()).rejects.toThrow("The fake engine didn't answer.");
+    expect(fake.cancels).toBe(1);
+    expect(fake.waiting).toBe(true);
+  });
+
   it("connects only once the test approves, and lists the new connection", async () => {
     const fake = new FakeAgentConnections({ now: () => startedAt });
     const challenge = await started(fake);
