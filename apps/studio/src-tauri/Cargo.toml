@@ -91,6 +91,11 @@ rfd = { version = "=0.17.2", default-features = false, features = ["gtk3", "comm
 # src/updates_proxy.rs), not reqwest's own reading of the environment.
 # Never granted to a page.
 tauri-plugin-updater = { version = "=2.14.1", default-features = false, features = ["rustls-tls"] }
+# Desktop notifications for a new card, a new question and done work the
+# person asked for (HAL-17448, board approval HAL-17434). Pinned with tauri.
+# Granted to the app's own page only (`capabilities/desktop-notifications.json`),
+# never to the Studio the computer serves.
+tauri-plugin-notification = "=2.8.1"
 # The updater's own reqwest, named only so src/updates_proxy.rs can give its
 # client a proxy and a redirect policy; the bucket check for a Scoop install
 # uses the same client type on the same rules. Pinned to the version the updater
