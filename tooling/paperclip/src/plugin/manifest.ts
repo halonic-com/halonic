@@ -293,6 +293,23 @@ export const manifest: PaperclipPluginManifestV1 = {
       capability: "api.routes.register",
       companyResolution: { from: "query", key: "companyId" },
     },
+    {
+      // Pull requests and the merge queue for Halonic's TeamStatus provider, board only, from the stored snapshot (src/plugin/github-routes.ts).
+      routeKey: "github-summary",
+      method: "GET",
+      path: "/github/summary",
+      auth: "board",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
+    },
+    {
+      routeKey: "github-pull",
+      method: "GET",
+      path: "/github/pr/:number",
+      auth: "board",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
+    },
   ],
   ui: {
     slots: [

@@ -7,6 +7,12 @@ import { registerBoardTools } from "./board-tools.ts";
 import { companyRoster } from "./companies.ts";
 import { difficultyTagger } from "./difficulty-tagger.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
+import {
+  githubPullRouteKey,
+  githubSummaryRouteKey,
+  handleGitHubPull,
+  handleGitHubSummary,
+} from "./github-routes.ts";
 import { runWatcher } from "./job.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
@@ -28,8 +34,8 @@ import {
  * `board-check` jobs on their schedules, looks at each new comment for a
  * board ask, keeps each failed run, labels a created or changed task's
  * difficulty, sets its effort from its tags, asks for acceptance criteria on a
- * new code task whose text looks thin, and answers the agent tools, the `gh` wrapper's route
- * and the board's Worker agents page.
+ * new code task whose text looks thin, and answers the agent tools, the `gh` wrapper's route,
+ * the board's Worker agents page and the board's GitHub summary routes.
  */
 let context: PluginContext | undefined;
 /** The companies the jobs dispatch to, learnt from scoped calls (see companies.ts). */
@@ -95,6 +101,12 @@ export const plugin = definePlugin({
         input,
         workerAgentsDeps(context, databaseWorkerTables(context.db)),
       );
+    }
+    if (input.routeKey === githubSummaryRouteKey) {
+      return await handleGitHubSummary(input, context);
+    }
+    if (input.routeKey === githubPullRouteKey) {
+      return await handleGitHubPull(input, context);
     }
     if (input.routeKey !== "gh-guard") {
       return { status: 404, body: { error: "No such Agent tools route." } };

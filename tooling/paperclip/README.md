@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`
 
 ## PR watcher
 
@@ -660,8 +660,33 @@ version they don't know. Each pass replaces the whole snapshot.
 | `version`, `takenAt`, `closedWindowDays` | shape version, when the pass read it, how far back closed pull requests go |
 | `repos[].repo`, `.defaultBranch` | `owner/name`, its default branch |
 | `repos[].queue[]` | `number`, `position`, `state`, `enqueuedAt`, `enqueuedBy`, `groupHead`, `estimatedSeconds`, `solo`; added later, so possibly absent: `groupCiOk` (null before the group forms), `jobsWaiting`, `waitingSince` (when the longest-waiting job was queued) |
-| `repos[].pulls[]` | `number`, `url`, `state` (`open`, `merged`, `closed`), `branch`, `headRepo` (a fork when it isn't `repo`), `base`, `head`, `updatedAt`, `mergedAt`, `mergeCommit` |
-| `repos[].pulls[].open` | null when closed; else `draft`, `mergeable` (`yes`, `no`, `unknown`), `ciOk`, `draftCiOk`, `inQueue`, `labels[]` (`name`, `addedBy` who added it last, `addedAt`), `finding` (`id`, `at`), `approvals[]` (`by`, `head`); added later, so possibly absent: `baseChangedSincePush`, `author` (login, null when the account is gone), `failingChecks[]` and `pendingChecks[]` (check names on the head, by their newest run, of the first 100) |
+| `repos[].pulls[]` | `number`, `url`, `state` (`open`, `merged`, `closed`), `branch`, `headRepo` (a fork when it isn't `repo`), `base`, `head`, `updatedAt`, `mergedAt`, `mergeCommit`; added later, so possibly absent: `title` (cut to 200 characters) |
+| `repos[].pulls[].open` | null when closed; else `draft`, `mergeable` (`yes`, `no`, `unknown`), `ciOk`, `draftCiOk`, `inQueue`, `labels[]` (`name`, `addedBy` who added it last, `addedAt`), `finding` (`id`, `at`), `approvals[]` (`by`, `head`); added later, so possibly absent: `baseChangedSincePush`, `author` (login, null when the account is gone), `failingChecks[]` and `pendingChecks[]` (check names on the head, by their newest run, of the first 100), `reviewCounts` (reviewers' findings per severity tag, counts only) |
+
+### The board's GitHub routes
+
+`GET /api/plugins/halonic.agent-tools/api/github/summary?companyId=` and
+`…/github/pr/{number}?companyId=` (HAL-17604, D2 in the phase 2
+architecture on HAL-17511) give Halonic's `TeamStatus` provider pull
+requests and the merge queue. Requirement `paperclip.github-routes`.
+
+- **Board-only:** declared `auth: "board"` and checked again in
+  `src/plugin/github-routes.ts`; an agent's key gets 403 and reads nothing.
+- **No outbound request:** they read the stored snapshot, the board check's
+  merge-speed record and the dequeue reasons from plugin state, and the
+  board's login from the settings (`fastTrackLabelAdder`). The GitHub token
+  stays with the jobs.
+- **Trimmed** (`src/snapshot/summary.ts`): no login leaves them. The board's
+  becomes "the board", a pull request from an agent's branch names the agent,
+  anyone else is "outside contributor". No comment or review text; check
+  names and dequeue reasons are cut to 120 characters.
+- **`{number}`** must be a positive integer of at most 9 digits, else 404
+  before anything is read; it is only compared with the snapshot's numbers.
+- **Dequeue reasons:** the queue session writes them into plugin state,
+  namespace `github`, key `dequeue-reasons`, as
+  `{ version: 1, reasons: [{ repo, number, at, reason }] }`
+  (`src/snapshot/dequeue.ts`). Until it does, a dequeued pull request has no
+  reason.
 
 ## Fast-track rules
 

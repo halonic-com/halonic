@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { type GitHubQuery, gitHubGraphql, gitHubQueryReader, isReadOnly } from "./graphql.ts";
 import { closedPullsQuery } from "./queries.ts";
-import { type CheckFallback, checksOf, mergeCommitChecks, takeSnapshot } from "./read.ts";
+import { type CheckFallback, checksOf, mergeCommitChecks, takeSnapshot, titleCap } from "./read.ts";
 import { snapshotVersion } from "./shape.ts";
 
 /** Trimmed real answers from 22 Nov: comment text cut to the line that matters, checks to `ci-ok`. */
@@ -328,5 +328,46 @@ verifies("paperclip.queue-state", () => {
       jobsWaiting: 2,
       waitingSince: "2026-11-22T14:58:00Z",
     });
+  });
+});
+
+verifies("paperclip.github-routes", () => {
+  test("keeps a capped title and reviewers' findings as counts, never their text", async () => {
+    const answers = recording();
+    const page = answers.open.data as {
+      repository: {
+        pullRequests: {
+          nodes: { number: number; title?: string; comments: { nodes: object[] } }[];
+        };
+      };
+    };
+    const node = page.repository.pullRequests.nodes.find((each) => each.number === 4965);
+    if (node === undefined) throw new Error("the recording has no #4965");
+    node.title = "t".repeat(300);
+    node.comments.nodes.push(
+      {
+        databaseId: 1,
+        createdAt: "2026-11-22T11:00:00Z",
+        authorAssociation: "MEMBER",
+        body: "[major] secret one\n- [major] two\n[nit] three",
+      },
+      {
+        databaseId: 2,
+        createdAt: "2026-11-22T11:01:00Z",
+        authorAssociation: "NONE",
+        body: "[blocker] from a stranger",
+      },
+    );
+    const { query } = fakeQuery(answers);
+    const snapshot = await takeSnapshot({
+      query,
+      repos,
+      now: new Date("2026-11-22T14:10:00Z"),
+      fallback: noFallback,
+    });
+    const pull = snapshot.repos[0]?.pulls.find((each) => each.number === 4965);
+    expect(pull?.title).toHaveLength(titleCap);
+    expect(pull?.open?.reviewCounts).toEqual({ blocker: 0, major: 2, minor: 0, nit: 1 });
+    expect(JSON.stringify(snapshot)).not.toMatch(/secret one|stranger/);
   });
 });
