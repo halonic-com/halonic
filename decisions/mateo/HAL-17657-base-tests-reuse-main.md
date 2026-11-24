@@ -3,6 +3,7 @@
 - Task: HAL-17657 (the board made "Merge base's tests" its first part, fast-track)
 - Approval: HAL-17657; Liam reviews the CI design and signs this note as the CTO; Julian checks which runs' results are accepted
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hcKLV3+nCaezLFX1fDloj79uvsu72Byhz1asABYcT1qxDh2ur7lXQaTtYz7Jwdya9KvhM9GeBlOfn0jseIFxAg==
 
 ## What changes
 
