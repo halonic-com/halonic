@@ -6,15 +6,18 @@ import type {
   WorkItem,
 } from "@halonicjs/ports";
 
-/** What a notification opens in Studio: an inbox item, a conversation or a piece of work. */
+/**
+ * What a notification opens in Studio: an inbox item, a conversation, a piece
+ * of work, or the inbox as a whole (a quiet-hours summary, whose `id` is empty).
+ */
 export interface NoticeTarget {
-  kind: "inbox-item" | "conversation" | "work";
+  kind: "inbox-item" | "conversation" | "work" | "inbox";
   id: MessagingId;
 }
 
 /** One desktop notification: why it was shown, what it says and what clicking it opens. */
 export interface AgentNotice {
-  reason: "card" | "question" | "done";
+  reason: "card" | "question" | "done" | "summary";
   title: string;
   body: string;
   target: NoticeTarget;

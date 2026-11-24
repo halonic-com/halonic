@@ -23,6 +23,12 @@ export {
   paperclipKeyEntryText,
   paperclipKeyTokenName,
 } from "./paperclip-key.ts";
+export {
+  isQuiet,
+  type QuietHours,
+  QuietHoursNotifier,
+  type QuietHoursOptions,
+} from "./quiet-hours.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";
 export { ShellHttpClient, shellHttpClient } from "./shell-http-client.ts";
 export { ShellNotifier } from "./shell-notifications.ts";
