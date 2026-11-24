@@ -345,12 +345,14 @@ function failureCases(make: MakeToolScriptHost): void {
   );
 
   it(
-    "reports a capability that fails",
+    "reports a capability that fails by the code only, without its message",
     withBench(make, async ({ run }) => {
       const result = await run("callsBroken");
-      expect(result).toMatchObject({
+      expect(result).toEqual({
+        ok: false,
         reason: "toolscript.capability-failed",
-        message: "acme is down",
+        calls: ["acme.broken@1"],
+        log: [],
       });
     }),
   );

@@ -186,8 +186,9 @@ class FakeRun {
     let answer: unknown;
     try {
       answer = await capability.call(copy.value, context);
-    } catch (error) {
-      return this.#haltCall("toolscript.capability-failed", messageOf(error));
+    } catch {
+      // The code only: a capability's message may echo upstream text, such as a URL with a token (S13).
+      return this.#haltCall("toolscript.capability-failed");
     }
     if (this.#stopped) return never;
     const back = copyPlainData(answer, { ...uncapped, bytes: Number.POSITIVE_INFINITY });

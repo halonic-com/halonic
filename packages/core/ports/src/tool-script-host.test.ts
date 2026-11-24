@@ -70,6 +70,9 @@ verifies("ports.tool-script-host", () => {
       "github.set--x@1",
       "a.b@0",
       "a.b.c@1",
+      "input.secret@1",
+      "log.write@1",
+      "batch.run@1",
     ]) {
       expect(toolScriptCapabilityPath(bad), bad).toBeUndefined();
     }

@@ -550,6 +550,7 @@ export {
   toolScriptHostVersion,
   toolScriptMessageCharacters,
   toolScriptReasons,
+  toolScriptReservedNamespaces,
 } from "./tool-script-host.ts";
 export {
   type TrustOrigin,

@@ -141,16 +141,22 @@ function lowered(name: string, current: number | null, value: unknown): number |
 export const toolScriptCapabilityIdPattern =
   /^([a-z][a-z0-9]*)\.([a-z][a-z0-9]*(?:-[a-z0-9]+)*)@[1-9]\d*$/;
 
+/** `ctx`'s own members, which no capability namespace may take. */
+export const toolScriptReservedNamespaces = ["input", "log", "fail", "now", "batch"] as const;
+
 /**
  * Where a capability sits on `ctx`: `github.set-variable@1` is
  * `ctx.github.setVariable`. Returns `undefined` for an id that doesn't match
- * {@link toolScriptCapabilityIdPattern}.
+ * {@link toolScriptCapabilityIdPattern}, and for a namespace that is one of
+ * `ctx`'s own members ({@link toolScriptReservedNamespaces}), so a capability
+ * can never hide `ctx.input` or `ctx.log`.
  */
 export function toolScriptCapabilityPath(
   id: string,
 ): { namespace: string; method: string } | undefined {
   const match = toolScriptCapabilityIdPattern.exec(id);
   if (match?.[1] === undefined || match[2] === undefined) return undefined;
+  if ((toolScriptReservedNamespaces as readonly string[]).includes(match[1])) return undefined;
   const method = match[2].replace(/-([a-z0-9])/g, (_dash, letter: string) => letter.toUpperCase());
   return { namespace: match[1], method };
 }
@@ -264,7 +270,11 @@ export type ToolScriptRunResult =
  * Runs ToolScript artifacts in an isolate, for one audience only (ADR
  * "Halonic ToolScript"; requirement `ports.tool-script-host`).
  *
- * `run` never rejects: every failure is a result with a listed reason. Before
+ * `run` never rejects for anything the artifact, the script or a capability
+ * does: every such failure is a result with a listed reason. Only a request
+ * limit that `effectiveToolScriptLimits` refuses, the caller's own bug,
+ * rejects with its `RangeError`. A failing capability's own error message is
+ * never passed on, because it may echo upstream text (S13). Before
  * anything runs, the host refuses an artifact, registry or capability of the
  * other audience (`toolscript.wrong-audience`), code whose SHA-256 isn't
  * `codeHash`, and a `uses` entry the registry lacks. `ctx` holds only the

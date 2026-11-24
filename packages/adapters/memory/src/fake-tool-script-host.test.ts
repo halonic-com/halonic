@@ -65,6 +65,13 @@ verifies("contracts.fake-tool-script-host", () => {
       });
     });
 
+    it("rejects a request limit that isn't a positive whole number, the caller's bug", async () => {
+      const scripts = new Map([[await sha256Hex(code), async () => null]]);
+      const host = new FakeToolScriptHost({ audience: "agent", scripts });
+      const bad = { ...(await request("agent")), limits: { calls: 0 } };
+      await expect(host.run(bad)).rejects.toThrow(RangeError);
+    });
+
     it("answers ctx.now from the given clock", async () => {
       const scripts = new Map([
         [await sha256Hex(code), async (ctx: { now(): string }) => ctx.now()],
