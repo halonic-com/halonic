@@ -96,7 +96,7 @@ async function showPage(review: AgentReviewHost | undefined, more: { openFile?: 
 const click = (button: HTMLElement | undefined) => act(async () => button?.click());
 const mark = (page: HTMLElement, id: string) => page.querySelector(`[data-change-id="${id}"]`);
 
-verifies("agents.page.changes-to-review", () => {
+verifies("agents.review.changes-to-review", () => {
   it("shows the bar, and Next opens the change's page with the focus on its mark", async () => {
     const { page } = await showPage(fakeReview(reviewOf([nameChange, modelChange])).host);
     expect(page.textContent).toContain("The assistant changed 2 things here");

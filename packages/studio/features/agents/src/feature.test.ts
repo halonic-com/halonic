@@ -104,7 +104,7 @@ verifies("agents.page.rename", () => {
   });
 });
 
-verifies("agents.page.changes-to-review", () => {
+verifies("agents.review.changes-to-review", () => {
   it("asks for the app's changes to review, so the page finds them where the app has them", () => {
     expect(agentsFeature.wants).toContain(AgentReviewService);
   });
