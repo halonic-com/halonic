@@ -98,25 +98,29 @@ verifies("check.ci-pr-areas", () => {
       expect(areas.get("installer")).toBe("false");
     });
 
-    test("the installer area is the installer's own build, the updater and the workflow", () => {
-      for (const file of [
-        "apps/studio/src-tauri/windows/installer.nsi",
-        "apps/studio/src-tauri/src/updates_check.rs",
-        "apps/studio/src-tauri/tauri.installer.conf.json",
-        "apps/agent-host/scripts/build.ts",
-        "infra/wsl-image/runtime-archive.sh",
-        ".github/workflows/ci.yml",
-      ]) {
-        expect(areasOf([file], []).get("installer"), file).toBe("true");
-      }
-      for (const file of [
-        "apps/agent-host/src/routes.ts",
-        "apps/studio/src-tauri/src/engine.rs",
-        "apps/studio/src-tauri/crates/keychain/src/lib.rs",
-        "pnpm-lock.yaml",
-      ]) {
-        expect(areasOf([file], []).get("installer"), file).toBe("false");
-      }
+    // One test per file: each builds its own git repo, and ten of them in one
+    // test went past the 30 s limit on a busy CI shard (HAL-17655).
+    test.each([
+      "apps/studio/src-tauri/windows/installer.nsi",
+      "apps/studio/src-tauri/src/updates_check.rs",
+      "apps/studio/src-tauri/tauri.installer.conf.json",
+      "apps/agent-host/scripts/build.ts",
+      "infra/wsl-image/runtime-archive.sh",
+      ".github/workflows/ci.yml",
+    ])(
+      "the installer area includes the installer's build, the updater and the workflow: %s",
+      (file) => {
+        expect(areasOf([file], []).get("installer")).toBe("true");
+      },
+    );
+
+    test.each([
+      "apps/agent-host/src/routes.ts",
+      "apps/studio/src-tauri/src/engine.rs",
+      "apps/studio/src-tauri/crates/keychain/src/lib.rs",
+      "pnpm-lock.yaml",
+    ])("the installer area leaves out the rest of the shell and the lockfile: %s", (file) => {
+      expect(areasOf([file], []).get("installer")).toBe("false");
     });
 
     test("the Windows installer, Windows update and WSL runtime jobs run on the installer area", () => {
