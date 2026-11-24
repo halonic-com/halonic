@@ -66,6 +66,23 @@
 # does everything when there's no such run (a bypass merge, a direct push, a
 # failed or lost group), when the lookup fails, on a re-run, or when the repo
 # variable CI_MAIN_SKIP_MERGED is "off".
+#
+# A pull request's push that only signs its decision note doesn't build and
+# test again either (HAL-17896): the signature covers the note without its
+# signature lines and the covered files' git objects, not the head commit, so
+# nothing the build or the tests read changed. The `signature-reuse` job
+# (infra/ci-runner/signature-reuse.mjs) answers a run id when the push is one
+# commit on top of the previous head that changes only the
+# branch's note's `- Signature:` lines, and the previous head's run passed
+# every job but ci-ok, the fail-fast watcher and the requirement guard. Then
+# the build shards, the merge base's tests and every area job (scaffold,
+# end-to-end, docs, Tauri, sandbox, installer, Android) skip, and the
+# requirement guard runs in full on the new head with that run's test results
+# and merge base. The cheap GitHub-hosted gates still run. A re-run of all
+# jobs, a draft, any doubt, or the repo variable CI_PR_SIGNATURE_REUSE set to
+# "off" runs everything. This is not a trust boundary: a pull request runs its
+# own copy of this file anyway. The merge queue still runs every job, and
+# guard-notes.yml checks the note's signature from the base's code.
 
 name: CI
 
@@ -167,13 +184,18 @@ jobs:
     # small slots. On GitHub it starts within seconds. It runs no tests and
     # uses no cache.
     # Not for a label other than fast-track (HAL-17672): every job that
-    # needs this one skips with it.
-    if: github.event.action != 'labeled' || github.event.label.name == 'fast-track'
+    # needs this one skips with it. It passes on signature-reuse's answer,
+    # so the area jobs that need only this job skip on a reuse too.
+    # `!cancelled()`: a failed signature-reuse job mustn't skip the run; ci-ok
+    # reports it.
+    needs: signature-reuse
+    if: ${{ !cancelled() && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
     outputs:
+      reuse: ${{ needs.signature-reuse.outputs.run }}
       scaffold: ${{ steps.diff.outputs.scaffold }}
       tauri: ${{ steps.diff.outputs.tauri }}
       sandbox-fence: ${{ steps.diff.outputs.sandbox-fence }}
@@ -352,6 +374,54 @@ jobs:
           done <<< "$runs"
           full "No merge-group run of $SHA has a green ci-ok"
 
+  signature-reuse:
+    # A pull request's push that only signed its decision note (see the top of
+    # this file, HAL-17896). The job runs wherever `changes` runs, and only its
+    # steps are limited to a new commit of a pull request that isn't a draft:
+    # `changes` needs it, and a skipped job would skip every job below
+    # `changes` that has no status check, not only `changes` itself. Elsewhere
+    # it does nothing and answers nothing. Its step never fails: any error, a
+    # re-run or a missing previous head means no answer, and every job runs.
+    # ci-ok needs it, so a job that broke anyway fails the run. The job's name
+    # is the title of the notice a later push reads (REUSE_TITLE in the
+    # script): keep both.
+    name: Signature-only push
+    if: github.event.action != 'labeled' || github.event.label.name == 'fast-track'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read # to read the previous head's run, its jobs and its artifacts
+      checks: read # to read the notices its jobs wrote
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+      sha: ${{ steps.check.outputs.sha }}
+      built-on: ${{ steps.check.outputs.built-on }}
+      results-id: ${{ steps.check.outputs.results-id }}
+      results-sha256: ${{ steps.check.outputs.results-sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && !github.event.pull_request.draft && vars.CI_PR_SIGNATURE_REUSE != 'off'
+        with:
+          persist-credentials: false
+          sparse-checkout: infra/ci-runner/signature-reuse.mjs
+          sparse-checkout-cone-mode: false
+      - id: check
+        name: Reuse the previous head's results if only the note's signature changed
+        if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && !github.event.pull_request.draft && vars.CI_PR_SIGNATURE_REUSE != 'off'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          ATTEMPT: ${{ github.run_attempt }}
+          SWITCH: ${{ vars.CI_PR_SIGNATURE_REUSE }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: node infra/ci-runner/signature-reuse.mjs
+
   pick-runner:
     # Where a pull request's Linux jobs run (board decision, HAL-17654, 24 Nov): our fast pool
     # only while it has room, otherwise GitHub's runners. A job's runner is fixed when GitHub
@@ -487,8 +557,8 @@ jobs:
           pnpm check
       - name: Licences
         run: pnpm check:licences
-      - name: Infra tests (spend guard, turbo-cache, CI runner hook and picker)
-        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs infra/ci-runner/hook.test.mjs infra/ci-runner/pick-runner.test.mjs
+      - name: Infra tests (spend guard, turbo-cache, CI runner hook, picker and signature reuse)
+        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs infra/ci-runner/hook.test.mjs infra/ci-runner/pick-runner.test.mjs infra/ci-runner/signature-reuse.test.mjs
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files
@@ -681,9 +751,10 @@ jobs:
 
   build:
     name: Typecheck, lint, test, build (${{ matrix.shard }})
-    # Skips on a push to main when its merge group passed it (`merged`).
-    needs: [merged, pick-runner]
-    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' build ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') }}
+    # Skips on a push to main when its merge group passed it (`merged`), and
+    # on a pull request's signature-only push (`signature-reuse`).
+    needs: [merged, pick-runner, signature-reuse]
+    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' build ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'fast-track') && needs.signature-reuse.outputs.run == '' }}
     runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
     timeout-minutes: 15
@@ -1046,11 +1117,12 @@ jobs:
   # Usually it runs no test at all and takes main's own results for the merge
   # base instead (the reuse step below, HAL-17657). Pull requests only, like the guard job it feeds: the queue holds the
   # same change, and its base is main or the entry ahead, whose own run
-  # tests it. Skipped for docs-only pull requests (the changes job's code output).
+  # tests it. Skipped for docs-only pull requests (the changes job's code output),
+  # and on a signature-only push, whose guard reuses the previous run's.
   base-tests:
     name: Merge base's tests (no cache)
     needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.reuse == '' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-24.04
     # Without main's results, a change to ci.yml tests every package,
     # uncached, which took 13–19 min on 21 Nov and passed 20 on a slow
@@ -1384,48 +1456,73 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           overwrite: true
+      # The outputs above, as a notice: a later signature-only push reads them
+      # from this job (signature-reuse.mjs), since another run can't read a
+      # job's outputs. Keep the title and the field names in step with it.
+      - name: Report the merge base and its results
+        if: always() && steps.upload.outputs.artifact-id != ''
+        env:
+          SHA: ${{ steps.reuse.outputs.sha || steps.walk-back.outputs.sha || steps.install.outputs.sha }}
+          BUILT_ON: ${{ steps.merge-base.outputs.sha }}
+          RESULTS_ID: ${{ steps.upload.outputs.artifact-id }}
+          RESULTS_SHA256: ${{ steps.pack.outputs.sha256 }}
+        run: |
+          echo "::notice title=Merge base's results::sha=$SHA built-on=$BUILT_ON results-id=$RESULTS_ID results-sha256=$RESULTS_SHA256"
 
   # Trace and the requirement guard, run from the merge base's copy of
   # tooling/check. No pull-request code runs here: the pull
   # request's checkout is only read, only the merge base's dependencies are
   # installed, and Node comes from the merge base. Pull requests only: in
   # the merge queue the build job runs trace itself, as on main.
+  # On a signature-only push (signature-reuse) the build and the merge base's
+  # tests skip, and this job reads both from the run signature-reuse named,
+  # and tests the new head merged into that run's main commit, so it compares
+  # like with like when main has moved since.
   guard:
     name: Requirements and the requirement guard (merge base's copy)
-    needs: [changes, build, base-tests]
+    needs: [changes, build, base-tests, signature-reuse]
     if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
+      actions: read # to download a reused run's test results
     env:
       HEAD_DIR: ${{ github.workspace }}/head
       BASE_DIR: ${{ github.workspace }}/base
       BUILT_ON_DIR: ${{ github.workspace }}/built-on
+      REUSE_RUN: ${{ needs.signature-reuse.outputs.run }}
     steps:
       # Without it the base checkout below would fall back to the pull
       # request's own commit, and the guard would compare it with itself.
-      - name: Stop if the merge base or its results are unknown
+      - id: inputs
+        name: Stop if the merge base or its results are unknown
         env:
-          BASE_SHA: ${{ needs.base-tests.outputs.sha }}
-          BUILT_ON_SHA: ${{ needs.base-tests.outputs.built-on }}
-          RESULTS_ID: ${{ needs.base-tests.outputs.results-id }}
-          RESULTS_SHA256: ${{ needs.base-tests.outputs.results-sha256 }}
+          BASE_SHA: ${{ env.REUSE_RUN != '' && needs.signature-reuse.outputs.sha || needs.base-tests.outputs.sha }}
+          BUILT_ON_SHA: ${{ env.REUSE_RUN != '' && needs.signature-reuse.outputs.built-on || needs.base-tests.outputs.built-on }}
+          RESULTS_ID: ${{ env.REUSE_RUN != '' && needs.signature-reuse.outputs.results-id || needs.base-tests.outputs.results-id }}
+          RESULTS_SHA256: ${{ env.REUSE_RUN != '' && needs.signature-reuse.outputs.results-sha256 || needs.base-tests.outputs.results-sha256 }}
           BUILD_RESULT: ${{ needs.build.result }}
           BASE_TESTS_RESULT: ${{ needs.base-tests.result }}
         run: |
-          # A failed test still leaves its shard's results to compare; a
-          # skipped or cancelled shard may have left none.
-          if [ "$BUILD_RESULT" != success ] && [ "$BUILD_RESULT" != failure ]; then
-            echo "::error::The build job's shards ended as $BUILD_RESULT, so their test results may be missing."
-            exit 1
-          fi
-          # Its test step may fail without failing the job, so anything but
-          # success means it stopped early, most often at its time limit,
-          # and its results would be missing for the wrong reason (HAL-15369).
-          if [ "$BASE_TESTS_RESULT" != success ]; then
-            echo "::error::The merge base's tests job ended as $BASE_TESTS_RESULT (a time-out, or a failed walk-back), so its results are incomplete. Rerun the failed jobs."
-            exit 1
+          if [ -n "$REUSE_RUN" ]; then
+            # signature-reuse checked that run's build and merge base's tests
+            # passed and that their results are still there.
+            echo "::notice title=Signature-only push::The build's and the merge base's test results come from run $REUSE_RUN."
+          else
+            # A failed test still leaves its shard's results to compare; a
+            # skipped or cancelled shard may have left none.
+            if [ "$BUILD_RESULT" != success ] && [ "$BUILD_RESULT" != failure ]; then
+              echo "::error::The build job's shards ended as $BUILD_RESULT, so their test results may be missing."
+              exit 1
+            fi
+            # Its test step may fail without failing the job, so anything but
+            # success means it stopped early, most often at its time limit,
+            # and its results would be missing for the wrong reason (HAL-15369).
+            if [ "$BASE_TESTS_RESULT" != success ]; then
+              echo "::error::The merge base's tests job ended as $BASE_TESTS_RESULT (a time-out, or a failed walk-back), so its results are incomplete. Rerun the failed jobs."
+              exit 1
+            fi
           fi
           if [ -z "$BASE_SHA" ] || [ -z "$BUILT_ON_SHA" ]; then
             echo "::error::The merge base's tests job didn't report which commit it tested and which one the merge ref was built on."
@@ -1435,31 +1532,61 @@ jobs:
             echo "::error::The merge base's tests job didn't report its result archive's ID and sha256."
             exit 1
           fi
+          {
+            echo "sha=$BASE_SHA"
+            echo "built-on=$BUILT_ON_SHA"
+            echo "results-id=$RESULTS_ID"
+            echo "results-sha256=$RESULTS_SHA256"
+          } >> "$GITHUB_OUTPUT"
       # The same commit the build job tested, with its first parent, the
       # commit affected-tests compares it with, and the release tags trace
-      # reads `Since` against (HAL-13777).
+      # reads `Since` against (HAL-13777). On a signature-only push, the
+      # whole history without file contents, for the step below.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           path: head
-          fetch-depth: 2
+          fetch-depth: ${{ env.REUSE_RUN != '' && '0' || '2' }}
+          filter: ${{ env.REUSE_RUN != '' && 'blob:none' || '' }}
           fetch-tags: true
+      # The reused run tested the previous head merged into its main commit
+      # (built-on). Main may have moved since, and the new merge ref holds
+      # that too, so the guard would blame the pull request for main's
+      # changes. Instead, merge the new head into that same commit: the
+      # reused run's merge with only the note's signature lines changed.
+      - name: Merge the new head into the reused run's main commit
+        if: env.REUSE_RUN != ''
+        working-directory: head
+        env:
+          BUILT_ON_SHA: ${{ steps.inputs.outputs.built-on }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GIT_AUTHOR_NAME: CI
+          GIT_AUTHOR_EMAIL: ci@invalid
+          GIT_COMMITTER_NAME: CI
+          GIT_COMMITTER_EMAIL: ci@invalid
+        run: |
+          if ! tree=$(git merge-tree --write-tree "$BUILT_ON_SHA" "$PR_HEAD_SHA"); then
+            echo "::error::The new head doesn't merge cleanly into $BUILT_ON_SHA, the reused run's main commit. Use \"Re-run all jobs\" for a full run."
+            exit 1
+          fi
+          merge=$(git commit-tree "$tree" -p "$BUILT_ON_SHA" -p "$PR_HEAD_SHA" -m "Signature-only push: $PR_HEAD_SHA into $BUILT_ON_SHA")
+          git checkout --quiet --detach "$merge"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           path: base
-          ref: ${{ needs.base-tests.outputs.sha }}
+          ref: ${{ steps.inputs.outputs.sha }}
       # After a walk-back the tested commit is older than the main commit the
       # merge ref was built on, and the merge ref holds everything main
       # changed in between. The guard compares files with this commit, so it
       # doesn't blame the pull request for those changes (HAL-7660). Only
       # read, like the pull request's checkout.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.base-tests.outputs.built-on != needs.base-tests.outputs.sha
+        if: steps.inputs.outputs.built-on != steps.inputs.outputs.sha
         with:
           persist-credentials: false
           path: built-on
-          ref: ${{ needs.base-tests.outputs.built-on }}
+          ref: ${{ steps.inputs.outputs.built-on }}
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: false
@@ -1469,20 +1596,26 @@ jobs:
         run: pnpm install --frozen-lockfile
       # One archive per shard, each in a folder named after its artifact.
       # The unpack step reads them by the shard names in BUILD_SHARDS, so a
-      # missing one fails there.
+      # missing one fails there. On a signature-only push both downloads read
+      # the reused run (the token is only set then; without it the action
+      # reads this run).
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: test-results-*
           path: ${{ runner.temp }}/head-results
+          run-id: ${{ env.REUSE_RUN || github.run_id }}
+          github-token: ${{ env.REUSE_RUN != '' && github.token || '' }}
       # By the ID its own job reported, then checked against its sha256: an
       # artifact a pull request uploads under the same name is never read.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          artifact-ids: ${{ needs.base-tests.outputs.results-id }}
+          artifact-ids: ${{ steps.inputs.outputs.results-id }}
           path: ${{ runner.temp }}/base-results
+          run-id: ${{ env.REUSE_RUN || github.run_id }}
+          github-token: ${{ env.REUSE_RUN != '' && github.token || '' }}
       - name: Check the merge base's archive is the one its job packed
         env:
-          RESULTS_SHA256: ${{ needs.base-tests.outputs.results-sha256 }}
+          RESULTS_SHA256: ${{ steps.inputs.outputs.results-sha256 }}
         run: |
           echo "$RESULTS_SHA256  $RUNNER_TEMP/base-results/test-results.tar" | sha256sum --check --strict
       # The pull request's archive is its own code's output, so each entry
@@ -1535,7 +1668,7 @@ jobs:
         if: env.AFFECTED_TESTS == 'on'
         working-directory: head
         env:
-          BUILT_ON_SHA: ${{ needs.base-tests.outputs.built-on }}
+          BUILT_ON_SHA: ${{ steps.inputs.outputs.built-on }}
         run: |
           cli="$BASE_DIR/tooling/check/src/cli/affected-tests.ts"
           if [ -f "$cli" ]; then
@@ -1577,8 +1710,8 @@ jobs:
         if: ${{ !cancelled() }}
         working-directory: head
         env:
-          BASE_SHA: ${{ needs.base-tests.outputs.sha }}
-          BUILT_ON_SHA: ${{ needs.base-tests.outputs.built-on }}
+          BASE_SHA: ${{ steps.inputs.outputs.sha }}
+          BUILT_ON_SHA: ${{ steps.inputs.outputs.built-on }}
           HEAD_BRANCH: ${{ github.head_ref }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -1587,7 +1720,11 @@ jobs:
         run: |
           guard="tooling/check/src/cli/requirement-guard.ts"
           [ -n "$BASE_SHA" ] || exit 1
-          git fetch --quiet --no-tags --depth=1 origin "$PR_HEAD_SHA" "$PR_BASE_SHA"
+          # A signature-only push's checkout holds the whole history; a
+          # shallow fetch would cut it.
+          depth=(--depth=1)
+          [ -z "$REUSE_RUN" ] || depth=()
+          git fetch --quiet --no-tags "${depth[@]}" origin "$PR_HEAD_SHA" "$PR_BASE_SHA"
           # Asks the merge base commit itself, not a folder on disk.
           if ! git -C "$BASE_DIR" cat-file -e "$BASE_SHA:$guard" 2>/dev/null; then
             echo "::notice title=requirement-guard::The merge base has no requirement guard yet; it runs from the next pull request on."
@@ -1687,7 +1824,7 @@ jobs:
     # hands an agent a package that fails.
     name: Empty package and feature pass every check
     needs: [changes, merged, pick-runner]
-    if: ${{ !cancelled() && needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' scaffold ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
+    if: ${{ !cancelled() && needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' scaffold ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && needs.changes.outputs.reuse == '' }}
     runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 35
     # Two legs, each generating the same packages (HAL-17657). The CLI's
@@ -1755,7 +1892,7 @@ jobs:
     # tauri-windows.
     name: Tauri shell (Rust checks)
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.reuse == '' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -1949,7 +2086,7 @@ jobs:
     # so they run only in the Linux job.
     name: Tauri shell on Windows (build and tests)
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 40
     permissions:
@@ -2284,7 +2421,7 @@ jobs:
     # and its dependencies, so no cache is restored.
     name: Keychain contract on macOS
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: macos-15
     timeout-minutes: 15
     permissions:
@@ -2331,7 +2468,7 @@ jobs:
     # these tests fail on purpose (never skip). No cache is restored.
     name: Sandbox fence (bubblewrap)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.reuse == '' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -2408,7 +2545,7 @@ jobs:
     # in the fence, not a flaky test. No cache is restored.
     name: Sandbox fence (Seatbelt)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: macos-15
     timeout-minutes: 15
     permissions:
@@ -2478,7 +2615,7 @@ jobs:
     # script from passing silently. No cache: see the setup action.
     name: Sandbox fence (MXC on Windows 11)
     needs: changes
-    if: needs.changes.outputs.sandbox-mxc == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.sandbox-mxc == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-11-arm
     timeout-minutes: 30
     permissions:
@@ -2519,7 +2656,7 @@ jobs:
     # ruleset change.
     name: Sandbox packages on ${{ matrix.name }}
     needs: changes
-    if: (needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: (needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true') && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     permissions:
@@ -2669,7 +2806,7 @@ jobs:
     # the job summary.
     name: Sandbox fence on Windows (canary probes)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:
@@ -2743,7 +2880,7 @@ jobs:
     # and the build time in the job summary.
     name: Agent host executable (${{ matrix.name }})
     needs: changes
-    if: needs.changes.outputs.agent_host == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.agent_host == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     permissions:
@@ -2788,7 +2925,7 @@ jobs:
     # published.
     name: WSL runtime (Linux agent host, packed)
     needs: changes
-    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -2828,7 +2965,7 @@ jobs:
     # published.
     name: WSL image (for the installer)
     needs: changes
-    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -2857,7 +2994,7 @@ jobs:
     # and that the uninstaller removes the agent sandbox. Signing is later.
     name: Windows installer (build, install, uninstall)
     needs: [changes, wsl-runtime, wsl-image]
-    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 45
     permissions:
@@ -3123,7 +3260,7 @@ jobs:
     # only and are never uploaded.
     name: Windows update (0.1.0 to 0.1.1)
     needs: changes
-    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: needs.changes.outputs.installer == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 75
     permissions:
@@ -3191,7 +3328,7 @@ jobs:
     # Java 17. The signed release build is HAL-1203.
     name: Android shell (debug APK)
     needs: changes
-    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:
@@ -3340,7 +3477,7 @@ jobs:
     # details.
     name: Android device keys (emulator)
     needs: [changes, android]
-    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.reuse == '' && needs.changes.outputs.full == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     # GitHub's Ubuntu runners have /dev/kvm, which the emulator needs.
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -3379,7 +3516,7 @@ jobs:
     # builds the pages and serves them, and stops with the tests.
     name: Studio end-to-end (Playwright)
     needs: [changes, merged, pick-runner]
-    if: ${{ !cancelled() && needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' e2e ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
+    if: ${{ !cancelled() && needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' e2e ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && needs.changes.outputs.reuse == '' }}
     runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
@@ -3470,7 +3607,7 @@ jobs:
   docs:
     name: Docs build and link check
     needs: [changes, merged, pick-runner]
-    if: ${{ !cancelled() && needs.changes.outputs.docs == 'true' && !contains(needs.merged.outputs.passed, ' docs ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
+    if: ${{ !cancelled() && needs.changes.outputs.docs == 'true' && !contains(needs.merged.outputs.passed, ' docs ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && needs.changes.outputs.reuse == '' }}
     runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 2
     permissions: {}
@@ -3629,6 +3766,9 @@ jobs:
   # (pr-details.yml, after an edit or a label) and "Live cloud suites passed"
   # (live-cloud-gate.yml, once the live suites pass). A cancelled run would
   # leave ci-ok red after that re-run, so their failure shows when the run ends.
+  # Nor does the requirement guard (HAL-17896): it fails while the decision
+  # note waits for its signature, and the signature-only push reuses this
+  # run's results only if every other job finished green, not cancelled.
   # It runs no repository code (no checkout), so the write permission below
   # is only used by the `gh` calls here.
   fail-fast:
@@ -3659,7 +3799,7 @@ jobs:
           ignored='[]'
           if [ "$EVENT" = pull_request ]; then
             interval=60
-            ignored='["Fast gates", "Leak guard", "Coverage floors don'"'"'t go down", "Live cloud suites passed", "Requirement guard, file checks (merge base'"'"'s copy)"]'
+            ignored='["Fast gates", "Leak guard", "Coverage floors don'"'"'t go down", "Live cloud suites passed", "Requirement guard, file checks (merge base'"'"'s copy)", "Requirements and the requirement guard (merge base'"'"'s copy)"]'
           fi
           pause=$interval
           cancel() {
@@ -3817,6 +3957,7 @@ jobs:
     if: ${{ github.event_name == 'merge_group' || !cancelled() || contains(needs.*.result, 'failure') }}
     needs:
       [
+        signature-reuse,
         changes,
         fast,
         leaks,

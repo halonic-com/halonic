@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-17684 (board decision, HAL-10, 24 Nov)
 
-When a job of a pull request's run of `.github/workflows/ci.yml` fails, the `fail-fast` job shall cancel the run within about a minute and `ci-ok` shall fail with the failed job's name, unless that job is one another workflow re-runs alone once its cause is fixed (`Fast gates`, `Leak guard`, `Coverage floors don't go down`, `Live cloud suites passed`) or the requirement guard's early file checks (`Requirement guard, file checks (merge base's copy)`, `check.ci-guard-files-early`); a merge group's run shall keep cancelling at its first failed job and once its group is gone.
+When a job of a pull request's run of `.github/workflows/ci.yml` fails, the `fail-fast` job shall cancel the run within about a minute and `ci-ok` shall fail with the failed job's name, unless that job is one another workflow re-runs alone once its cause is fixed (`Fast gates`, `Leak guard`, `Coverage floors don't go down`, `Live cloud suites passed`) or the requirement guard's early file checks (`Requirement guard, file checks (merge base's copy)`, `check.ci-guard-files-early`), or the requirement guard itself, which a signature-only push runs again (`check.ci-pr-signature-reuse`); a merge group's run shall keep cancelling at its first failed job and once its group is gone.
 
 ## Examples
 
@@ -17,6 +17,9 @@ When a job of a pull request's run of `.github/workflows/ci.yml` fails, the `fai
 - Given a pull request whose decision note isn't signed yet, so `Requirement guard, file checks (merge base's copy)` fails,
   when the rest of the run is still going,
   then the run isn't cancelled, so the reviewer who signs the note still sees the tests' results.
+- Given a pull request whose requirement guard fails because its decision note has no signature yet,
+  when the rest of the run is still going,
+  then the run isn't cancelled, so every other job finishes and the signature-only push can reuse their results.
 - Given a pull request run that a newer push cancelled with no failed job,
   when the run ends,
   then `ci-ok` doesn't run, so it ends as cancelled and the newer run's result is the one that shows.

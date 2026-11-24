@@ -33,6 +33,8 @@ const rerunAlone = [
   "Live cloud suites passed",
   // Not re-run alone, but the guard job reports its finding again at the end (HAL-17892).
   "Requirement guard, file checks (merge base's copy)",
+  // A signature-only push runs it again on the previous run's results (HAL-17896).
+  "Requirements and the requirement guard (merge base's copy)",
 ];
 
 verifies("check.ci-pr-fail-fast", () => {
