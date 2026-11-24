@@ -3,6 +3,7 @@ import type {
   CodeEditorOptions,
   EditorLanguage,
   EditorProblem,
+  EditorReviewPart,
 } from "@halonicjs/studio-code-editor";
 
 /** One editor the stand-in opened: what it was opened with and what the tab did to it since. */
@@ -12,6 +13,9 @@ export interface OpenedEditor {
   loads: string[];
   shown: readonly EditorProblem[];
   goneTo: [number, number | undefined][];
+  /** The assistant's changes to review last marked, and the parts the bar stepped to. */
+  reviewParts: readonly EditorReviewPart[];
+  goneToParts: number[];
   focused: number;
   destroyed: boolean;
 }
@@ -43,6 +47,8 @@ export async function openCodeEditor(options: CodeEditorOptions): Promise<CodeEd
     loads: [],
     shown: [],
     goneTo: [],
+    reviewParts: [],
+    goneToParts: [],
     focused: 0,
     destroyed: false,
   };
@@ -62,6 +68,12 @@ export async function openCodeEditor(options: CodeEditorOptions): Promise<CodeEd
     },
     goTo: (line: number, column?: number) => {
       entry.goneTo.push([line, column]);
+    },
+    setReviewParts: (parts: readonly EditorReviewPart[]) => {
+      entry.reviewParts = parts;
+    },
+    goToReviewPart: (index: number) => {
+      entry.goneToParts.push(index);
     },
     undo: () => false,
     redo: () => false,

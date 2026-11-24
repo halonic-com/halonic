@@ -3,6 +3,7 @@ import type { CodeEditor, CodeEditorOptions } from "./editor.ts";
 export type { CodeEditor, CodeEditorOptions } from "./editor.ts";
 export { type EditorLanguage, languageFor } from "./language.ts";
 export type { EditorProblem } from "./problems.ts";
+export type { EditorReviewActions, EditorReviewPart } from "./review-parts.ts";
 
 /**
  * Loads the editor and makes one. CodeMirror is a large library, so it is fetched

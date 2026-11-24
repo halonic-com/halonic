@@ -63,6 +63,34 @@ const frame = EditorView.theme({
   },
   ".cm-problem-mark-error": { color: "var(--color-danger)" },
   ".cm-problem-mark-warning": { color: "var(--color-warning)", borderColor: "transparent" },
+  // The assistant's changes to review (AI changes 1.2): green and red lines in place.
+  ".cm-review-added": { backgroundColor: "var(--color-success-soft)" },
+  ".cm-review-part": { padding: "2px 0" },
+  ".cm-review-removed": {
+    display: "block",
+    whiteSpace: "pre",
+    color: "var(--color-danger)",
+    backgroundColor: "var(--color-danger-soft)",
+  },
+  ".cm-review-buttons": {
+    display: "flex",
+    gap: "8px",
+    padding: "4px 0",
+    fontFamily: "var(--font-sans)",
+  },
+  ".cm-review-button": {
+    padding: "0 8px",
+    fontSize: "var(--text-small)",
+    color: "var(--color-fg)",
+    backgroundColor: "var(--color-surface)",
+    border: "1px solid var(--color-border-strong)",
+    borderRadius: "var(--radius-sm)",
+    cursor: "pointer",
+  },
+  ".cm-review-button:focus-visible": {
+    outline: "2px solid var(--color-accent)",
+    outlineOffset: "1px",
+  },
   "&.cm-focused .cm-matchingBracket": {
     backgroundColor: "var(--color-surface-muted)",
     outline: "1px solid var(--color-border-strong)",

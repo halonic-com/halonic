@@ -20,6 +20,13 @@ import {
 } from "@codemirror/view";
 import type { EditorLanguage } from "./language.ts";
 import { type EditorProblem, jumpToProblem, problemMarks, showProblems } from "./problems.ts";
+import {
+  type EditorReviewActions,
+  type EditorReviewPart,
+  goToReviewPart,
+  reviewParts,
+  showReviewParts,
+} from "./review-parts.ts";
 import { theme } from "./theme.ts";
 import { canRedo, canUndo, forgetHistoryEffect, redo, undo, undoHistory } from "./undo-history.ts";
 
@@ -39,6 +46,8 @@ export type CodeEditorOptions = {
   readonly onProblemJump?: (problem: EditorProblem) => void;
   /** Called with the line when the user clicks a problem's icon in the gutter. */
   readonly onProblemMarkClick?: (line: number) => void;
+  /** The words and handler for Accept and Reject on the assistant's changes to review. */
+  readonly review?: EditorReviewActions | undefined;
 };
 
 export type CodeEditor = {
@@ -50,6 +59,10 @@ export type CodeEditor = {
   readonly setProblems: (problems: readonly EditorProblem[]) => void;
   /** Puts the cursor at a 1-based line and column (kept inside the text), scrolls to it and focuses the editor. */
   readonly goTo: (line: number, col?: number) => void;
+  /** Marks the assistant's changes to review in place, in place of the ones shown before. */
+  readonly setReviewParts: (parts: readonly EditorReviewPart[]) => void;
+  /** Puts the cursor on the first line of a part of the last list set, scrolls to it and focuses the editor. */
+  readonly goToReviewPart: (index: number) => void;
   readonly focus: () => void;
   readonly undo: () => boolean;
   readonly redo: () => boolean;
@@ -150,6 +163,7 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
         keymap.of([...keys, ...defaultKeymap]),
         lineNumbers(),
         problemMarks((line) => options.onProblemMarkClick?.(line)),
+        options.review === undefined ? [] : reviewParts(options.review),
         highlightActiveLine(),
         highlightActiveLineGutter(),
         drawSelection(),
@@ -191,6 +205,8 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
       view.dispatch({ selection: { anchor: at }, scrollIntoView: true });
       view.focus();
     },
+    setReviewParts: (parts) => showReviewParts(view, parts),
+    goToReviewPart: (index) => goToReviewPart(view, index),
     focus: () => view.focus(),
     undo: () => undo(view),
     redo: () => redo(view),
