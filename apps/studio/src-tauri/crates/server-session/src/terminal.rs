@@ -4,7 +4,10 @@
 //! brief can become part of a command.
 
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+#[cfg(unix)]
+use std::path::Path;
+use std::path::PathBuf;
+#[cfg(unix)]
 use std::process::Command;
 
 use halonic_command_paths::find_command;
