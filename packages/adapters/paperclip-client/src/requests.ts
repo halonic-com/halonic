@@ -3,7 +3,9 @@
  * (`ports.paperclip-key`, ADR 2026-11-24 agent messaging). A board key can do
  * everything the board can, so the client sends nothing that isn't here. A
  * new entry needs a security review, and no entry may touch a route that
- * makes, lists or deletes keys (`/api/board-api-keys`).
+ * makes, lists or deletes keys or tokens (`/api/board-api-keys`, an agent's
+ * keys, setup tokens, gateway tokens), because nothing goes to Paperclip
+ * upstream and this list is the main protection (board, HAL-10, 24 Nov).
  *
  * The routes are Paperclip's as of our server's version; the README lists
  * what each answers.
@@ -24,11 +26,9 @@ export const paperclipRequests = {
   respondToCard: { method: "POST", path: "/api/issues/:task/interactions/:card/respond" },
   approve: { method: "POST", path: "/api/approvals/:approval/approve" },
   rejectApproval: { method: "POST", path: "/api/approvals/:approval/reject" },
-  // Sign-in and disconnect (track A4): start, poll and cancel a sign-in,
-  // read who the key belongs to, and revoke the key in use.
-  startSignIn: { method: "POST", path: "/api/cli-auth/challenges" },
-  pollSignIn: { method: "GET", path: "/api/cli-auth/challenges/:challenge" },
-  cancelSignIn: { method: "POST", path: "/api/cli-auth/challenges/:challenge/cancel" },
+  // Disconnect (track A4): read who the key belongs to, and revoke the key in use.
+  // Starting a sign-in makes a key, so it isn't here: no route that makes keys is
+  // (board, HAL-10, 24 Nov). A4 brings sign-in with its own security review.
   whoAmI: { method: "GET", path: "/api/cli-auth/me" },
   revokeKey: { method: "POST", path: "/api/cli-auth/revoke-current" },
 } as const satisfies Record<string, { method: "GET" | "POST"; path: string }>;

@@ -1,6 +1,7 @@
 import { checkedOrigin } from "./address.ts";
 import {
   buildPath,
+  findRequest,
   type PaperclipRequestName,
   type PathValues,
   paperclipRequests,
@@ -82,10 +83,18 @@ export class PaperclipTransport {
 
   /** Sends request `name`. An unsafe ID throws before anything is sent. */
   async send(name: PaperclipRequestName, details: RequestDetails = {}): Promise<PaperclipAnswer> {
+    // A name from outside the list (only possible past the type checker) is refused here.
+    if (!Object.hasOwn(paperclipRequests, name)) {
+      throw new PaperclipClientError("That request isn't on the request list.", "refused");
+    }
     const { method } = paperclipRequests[name];
     const url = new URL(buildPath(name, details.path ?? {}), this.#origin);
     for (const [key, value] of Object.entries(details.query ?? {})) {
       url.searchParams.set(key, value);
+    }
+    // The last gate before the network: the exact method and path must match the list.
+    if (findRequest(method, url.pathname) !== name) {
+      throw new PaperclipClientError(`${method} ${name} isn't on the request list.`, "refused");
     }
     const headers: Record<string, string> = {
       accept: "application/json",

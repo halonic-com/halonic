@@ -66,7 +66,13 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `acceptCard`, `rejectCard` | `POST /api/issues/{task}/interactions/{card}/accept`, `/reject` | answer a confirmation |
 | `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a one-question card |
 | `approve`, `rejectApproval` | `POST /api/approvals/{approval}/approve`, `/reject` | decide an approval |
-| `startSignIn`, `pollSignIn`, `cancelSignIn`, `whoAmI`, `revokeKey` | `/api/cli-auth/…` | sign-in and disconnect (track A4) |
+| `whoAmI`, `revokeKey` | `GET /api/cli-auth/me`, `POST /api/cli-auth/revoke-current` | disconnect (track A4) |
+
+**No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
+main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's
+keys, setup or gateway tokens, secrets, or the sign-in challenge (`POST /api/cli-auth/challenges`), which
+makes a key. A4 brings sign-in with its own security review. Just before `fetch`, the client checks the
+exact method and path against the list again, and refuses a request off it before anything goes out.
 
 **Every waiting item** (`inbox.every-waiting-item`): `GET /api/companies/{company}/interactions` doesn't
 exist on our version, and `GET /api/companies/{company}/attention` is a board-only feed whose shape we
