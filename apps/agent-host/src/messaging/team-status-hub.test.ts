@@ -117,7 +117,9 @@ verifies("agent-host.team-status-hub", () => {
       wait(5 * 60_000);
 
       for (let read = 0; read < 6; read += 1) {
-        expect((await hub.seats()).map((seat) => seat.asOf)).toEqual(["2026-11-24T14:02:00.000Z"]);
+        expect((await hub.seats()).map((seat) => [seat.asOf, seat.fromCache])).toEqual([
+          ["2026-11-24T14:02:00.000Z", true],
+        ]);
         wait(10_000);
       }
       await hub.seats();
@@ -137,9 +139,44 @@ verifies("agent-host.team-status-hub", () => {
       const restarted = hubOver([{ name: "paperclip:acme", status: provider.status }]);
       const seats = await restarted.seats();
 
-      expect(seats.map((seat) => [seat.label, seat.asOf])).toEqual([
-        ["Pool 1", "2026-11-24T14:02:00.000Z"],
+      expect(seats.map((seat) => [seat.label, seat.asOf, seat.fromCache])).toEqual([
+        ["Pool 1", "2026-11-24T14:02:00.000Z", true],
       ]);
+    });
+
+    it("leaves fromCache out of a live answer, even one a provider marked, and again once the line is back", async () => {
+      const marked: TeamStatus = {
+        ...provider.status,
+        seats: async () =>
+          (await provider.status.seats()).map((seat) => ({ ...seat, fromCache: true })),
+      };
+      const hub = hubOver([{ name: "paperclip:acme", status: marked }]);
+      expect((await hub.seats()).map((seat) => seat.fromCache)).toEqual([undefined]);
+
+      provider.line.cut = true;
+      wait(5 * 60_000);
+      expect((await hub.seats()).map((seat) => seat.fromCache)).toEqual([true]);
+
+      provider.line.cut = false;
+      wait(60_000);
+      expect((await hub.seats()).map((seat) => seat.fromCache)).toEqual([undefined]);
+    });
+
+    it("keeps a seat's failedRead and the spend's unknownSeatRuns, live and from the cache", async () => {
+      const failedRead = { cause: "rate-limited", at: "2026-11-24T14:00:00.000Z" } as const;
+      fake.addSeat(source, { label: "Pool 2", failedRead });
+      fake.setSpend(source, { range: "today", unknownSeatRuns: 3 });
+      await hubOver([{ name: "paperclip:acme", status: provider.status }]).refresh();
+      provider.line.cut = true;
+      const restarted = hubOver([{ name: "paperclip:acme", status: provider.status }]);
+
+      const seats = await restarted.seats();
+      expect(seats.map((seat) => [seat.label, seat.failedRead])).toEqual([
+        ["Pool 1", undefined],
+        ["Pool 2", failedRead],
+      ]);
+      const spend = await restarted.spend("today");
+      expect(spend.map((each) => [each.unknownSeatRuns, each.fromCache])).toEqual([[3, true]]);
     });
 
     it("joins the providers, leaves out one that fails, and fails only when none has an answer", async () => {

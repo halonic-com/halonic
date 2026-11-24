@@ -64,6 +64,14 @@ interface RouteState<Item> {
 }
 
 /**
+ * The item marked `fromCache`, so the Studio's Offline banner shows, when it
+ * carries an "as of" time; the parts of a source carry none and stay as they are.
+ */
+function servedFromCache<Item extends object>(item: Item): Item {
+  return "asOf" in item ? { ...item, fromCache: true } : item;
+}
+
+/**
  * The engine's one {@link TeamStatus}: it joins every provider's sources
  * (requirement `agent-host.team-status-hub`, architecture note section 1.5).
  * Spend, seats, pull requests and the queue are read on the 5-minute tick
@@ -217,9 +225,13 @@ export class TeamStatusHub implements TeamStatus {
       return state.answer;
     }
     // Offline: the last answer stands, from memory or, after a restart, from the cache.
-    if (state.answer?.ok === true) return state.answer;
+    if (state.answer?.ok === true) {
+      state.answer = { ok: true, items: state.answer.items.map(servedFromCache) };
+      return state.answer;
+    }
     const cached = await this.#cache.loadTeamStatus<Item>(name, route);
-    state.answer = cached === undefined ? fetched : { ok: true, items: cached.items };
+    state.answer =
+      cached === undefined ? fetched : { ok: true, items: cached.items.map(servedFromCache) };
     return state.answer;
   }
 
