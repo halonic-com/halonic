@@ -6,9 +6,11 @@ import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
+import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
+import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import type { LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
 import { WorkflowRuns } from "@halonicjs/app";
-import { type HttpClient, noKeyOrigins } from "@halonicjs/ports";
+import { type Harness, type HttpClient, noKeyOrigins } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
@@ -45,6 +47,52 @@ function claudeInstalled(): boolean {
   }
 }
 const noClaude = !claudeInstalled();
+
+/**
+ * The real Claude Code harness, keeping why a run of it failed. The engine
+ * records only "Claude Code didn't start."; the error it drops says what
+ * Claude Code printed, which is the one clue when the real fence stops it.
+ */
+function keepingFailures(failures: string[]): Harness {
+  const real = claudeCodeHarness({ probe: createProgramProbe() });
+  const keep = (error: unknown): void => {
+    failures.push(causeChain(error));
+  };
+  return {
+    id: real.id,
+    name: real.name,
+    detect: (options) => real.detect(options),
+    ...(real.environment === undefined ? {} : { environment: real.environment.bind(real) }),
+    start: (task, session, bridge) => {
+      const run = real.start(task, session, bridge);
+      return {
+        send: (input) => run.send(input),
+        cancel: () => run.cancel(),
+        async *[Symbol.asyncIterator]() {
+          try {
+            yield* run;
+          } catch (error) {
+            keep(error);
+            throw error;
+          }
+        },
+      };
+    },
+  };
+}
+
+/** An error's message, followed by each of its causes'. */
+function causeChain(error: unknown): string {
+  const messages: string[] = [];
+  for (
+    let each = error;
+    each !== undefined;
+    each = each instanceof Error ? each.cause : undefined
+  ) {
+    messages.push(each instanceof Error ? each.message : String(each));
+  }
+  return messages.join(" <- ");
+}
 
 let folder: string;
 let acme: string;
@@ -203,6 +251,7 @@ verifies("cli.claude-code-coding-tools", () => {
         const commit = await commitWorkspace();
         const provider = fakeProvider();
         const reported: unknown[] = [];
+        const failures: string[] = [];
         const engine = await openLocalEngine({
           keyOrigins: noKeyOrigins,
           workspace: await loadWorkspace(new FolderDefinitionStore(acme, "./acme")),
@@ -213,6 +262,7 @@ verifies("cli.claude-code-coding-tools", () => {
           environment: profile,
           git: { git: await testGit() },
           reportError: (error) => reported.push(error),
+          harnessParts: { harnesses: { "claude-code": keepingFailures(failures) } },
         });
         opened.push(engine);
 
@@ -225,9 +275,10 @@ verifies("cli.claude-code-coding-tools", () => {
         const run = await new WorkflowRuns(engine.executor).follow(started.id, {});
         await engine.close();
 
-        expect({ status: run.summary.status, error: run.summary.error }).toEqual({
+        expect({ status: run.summary.status, error: run.summary.error, failures }).toEqual({
           status: "completed",
           error: null,
+          failures: [],
         });
         const first = provider.requests[0];
         const listed = (first?.tools ?? []).filter((tool) => codingTools.includes(tool.name));
