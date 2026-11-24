@@ -64,6 +64,10 @@ verifies("runtime.scoped-runtime", () => {
       expect(scopeOfNamePrefix(null)).toBeUndefined();
     });
 
+    it("refuses a name prefix that doesn't end in /", () => {
+      expect(() => scopeOfNamePrefix("u/eu_acme0000000000001")).toThrow("must end in /");
+    });
+
     it("builds a scoped run object's runtime with the deployment's definitions", () => {
       expect(runtimeOptionsOfNamePrefix("o/org_acme0000000000001/")).toEqual({
         scope: "o/org_acme0000000000001",

@@ -91,9 +91,14 @@ function definitionsVersionOf(env: object): string | undefined {
 /**
  * The scope a run object's name prefix stands for: the prefix without its last `/`, or none for
  * the empty prefix. An object written before prefixes were noted has `null`, and was unscoped.
+ *
+ * @throws Error when the prefix doesn't end in `/`, so a broken name never stands for another scope
  */
 export function scopeOfNamePrefix(namePrefix: string | null): string | undefined {
   if (namePrefix === null || namePrefix === "") return undefined;
+  if (!namePrefix.endsWith("/")) {
+    throw new Error("A run object's name prefix must end in /.");
+  }
   return namePrefix.slice(0, -1);
 }
 
