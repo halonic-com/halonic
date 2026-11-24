@@ -202,4 +202,4 @@ if (-not (Test-Path (Join-Path $profileFolder 'workspaces\k1\runs\r1.log'))) { t
 foreach ($name in $focusedApps.Keys) {
   if (Test-Path (Join-Path $startMenu "$name.lnk")) { throw "$name is still in the Start menu after uninstalling" }
 }
-Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, removed the focused apps' shortcuts, and said how to end the kept access'
+Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, removed the Inbox and Messenger shortcuts, and said how to end the kept access'
