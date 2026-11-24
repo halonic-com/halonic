@@ -25,7 +25,7 @@ When the PR watcher checks an open task whose author holds it and has no run goi
   then it does nothing.
 - Given a pull request with a green `ci-ok`, no conflict and no new review comment,
   when the watcher runs,
-  then it does nothing.
+  then it wakes nobody for it (it may hand the task to its reviewer, `paperclip.pr-watcher-handoff`).
 - Given a person's comment on the task that copies an earlier watcher report, marker included,
   when the watcher runs,
   then it still wakes the author, because only its own comments count as an earlier report.

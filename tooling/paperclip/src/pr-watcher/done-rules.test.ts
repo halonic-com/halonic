@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
+import { marker } from "./decide.ts";
 import {
   agentComment,
   agents,
@@ -9,7 +10,7 @@ import {
   restFacts,
   task,
 } from "./fakes.test-helper.ts";
-import { isSelf, marker, tick } from "./watch.ts";
+import { isSelf, tick } from "./watch.ts";
 
 /**
  * The rules that keep a task open now that the watcher finds pull requests
@@ -61,6 +62,8 @@ verifies("paperclip.pr-watcher-done", () => {
       woken: 0,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
     expect(paperclip.comments["task-4485"]?.[0]?.body).not.toContain("#9001");
@@ -116,6 +119,8 @@ verifies("paperclip.pr-watcher-done", () => {
       woken: 1,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
     expect(paperclip.wakes).toEqual([
@@ -129,6 +134,8 @@ verifies("paperclip.pr-watcher-done", () => {
       woken: 0,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
     expect(second.lines[0]).toContain("it got comments after its merge");

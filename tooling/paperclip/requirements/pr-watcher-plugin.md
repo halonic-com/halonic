@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15359; the board's decision of 22 Nov to run the PR watcher as the first job of the Agent tools plugin (HAL-15920, trigger A1), and Liam's plan approval there
 
-When the Agent tools plugin's PR watcher job runs for a company with a GitHub token set, the plugin shall find each task's pull requests by the task identifier their branch names (`<agent>/HAL-<n>-…`), counting only branches in the watched repository itself, not in forks, among the open pull requests and those updated in the last 3 days, change a task's status only to `done`, and, unless the company's `dryRun` setting is turned off, only log what it would do.
+When the Agent tools plugin's PR watcher job runs for a company with a GitHub token set, the plugin shall find each task's pull requests by the task identifier their branch names (`<agent>/HAL-<n>-…`), counting only branches in the watched repository itself, not in forks, among the open pull requests and those updated in the last 3 days, change a task only by setting its status to `done` or by giving it to its reviewer with status `todo` (`paperclip.pr-watcher-handoff`), and, unless the company's `dryRun` setting is turned off, only log what it would do.
 
 ## Examples
 
@@ -20,7 +20,7 @@ When the Agent tools plugin's PR watcher job runs for a company with a GitHub to
 - Given a company whose settings don't turn `dryRun` off and a task whose pull request merged green,
   when the job runs,
   then it logs that it would mark the task done and changes nothing.
-- Given any task change other than setting the status to `done`,
+- Given any task change other than setting the status to `done`, or giving the task to one agent with status `todo`,
   when the plugin's host adapter is asked to make it,
   then it refuses before it reaches Paperclip.
 - Given a company without a GitHub token,

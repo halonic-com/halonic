@@ -41,8 +41,13 @@ export function fakeGitHub(...answers: Record<string, unknown>[]) {
   return { get, calls };
 }
 
-/** The agents the fakes know: two authors and a reviewer. */
-export const agents = { mateo: "agent-mateo", priya: "agent-priya", liam: "agent-liam" };
+/** The agents the fakes know: two authors and two reviewers. */
+export const agents = {
+  mateo: "agent-mateo",
+  priya: "agent-priya",
+  liam: "agent-liam",
+  julian: "agent-julian",
+};
 
 /** An open task, with the pull requests a branch search would find for it. */
 export type FakeTask = TaskRow & { pulls: PullRef[] };
@@ -60,14 +65,16 @@ export function agentComment(authorAgentId: string, createdAt: string, body: str
  * with that message.
  */
 export function fakePaperclip(
-  tasks: FakeTask[],
+  listed: FakeTask[],
   comments: Record<string, CommentRow[]> = {},
   closedMeanwhile: ReadonlySet<string> = new Set(),
   postponeRefusal?: string,
 ) {
+  let tasks = listed;
   const done: string[] = [];
   const wakes: { taskId: string; key: string }[] = [];
   const postponed: { taskId: string; until: string }[] = [];
+  const handoffs: { taskId: string; from: string; to: string; key: string }[] = [];
   const append = (taskId: string, body: string) => {
     const createdAt = new Date(
       Date.parse("2026-11-21T22:00:00Z") + Object.keys(comments).length,
@@ -98,6 +105,24 @@ export function fakePaperclip(
       append(taskId, body);
       return "written";
     },
+    handOff: async (taskId, { from, to }, body, key) => {
+      const held = tasks.find((each) => each.id === taskId);
+      if (closedMeanwhile.has(taskId) || held?.assigneeAgentId !== from) {
+        return "closed";
+      }
+      append(taskId, body);
+      handoffs.push({ taskId, from, to, key });
+      // The task is the reviewer's from now on, as in Paperclip.
+      tasks = tasks.map((each) => (each.id === taskId ? { ...each, assigneeAgentId: to } : each));
+      return "written";
+    },
+    note: async (taskId, body) => {
+      if (closedMeanwhile.has(taskId)) {
+        return "closed";
+      }
+      append(taskId, body);
+      return "written";
+    },
     postponeMonitor: async (taskId, until) => {
       if (postponeRefusal !== undefined) {
         throw new Error(postponeRefusal);
@@ -108,7 +133,7 @@ export function fakePaperclip(
   };
   const discover = async (): Promise<FoundPulls> =>
     new Map(tasks.map((task) => [task.identifier, task.pulls]));
-  return { paperclip, discover, comments, done, wakes, postponed };
+  return { paperclip, discover, comments, done, wakes, postponed, handoffs };
 }
 
 /** An open task with one pull request on halonic, on a branch of `assignee` unless `branch` says otherwise. */

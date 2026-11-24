@@ -35,6 +35,8 @@ verifies("paperclip.pr-watcher-done", () => {
       woken: 0,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
     expect(paperclip.done).toEqual(["task-4485"]);
@@ -53,6 +55,8 @@ verifies("paperclip.pr-watcher-done", () => {
       woken: 0,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
   });
@@ -67,6 +71,8 @@ verifies("paperclip.pr-watcher-done", () => {
       woken: 0,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
     expect(lines[0]).toContain("waiting for a green ci-ok");
@@ -88,6 +94,8 @@ verifies("paperclip.pr-watcher-done", () => {
       woken: 0,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
     expect(lines[0]).toContain("more pull requests are coming");
@@ -116,6 +124,8 @@ verifies("paperclip.pr-watcher-done", () => {
       woken: 0,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
   });
@@ -148,6 +158,8 @@ verifies("paperclip.pr-watcher-wake", () => {
       woken: 0,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
     expect(lines.filter((line) => line.endsWith("closed during this pass, so left alone"))).toEqual(
@@ -260,7 +272,7 @@ verifies("paperclip.pr-watcher-wake", () => {
     expect(paperclip.comments).toEqual({});
   });
 
-  test("does nothing for a green pull request without findings", async () => {
+  test("wakes nobody for a green pull request without findings", async () => {
     const paperclip = fakePaperclip([task(4605, agents.mateo)]);
     const { summary, lines } = run(fakeGitHub(recording("green")), paperclip);
     expect(await summary).toEqual({
@@ -269,9 +281,16 @@ verifies("paperclip.pr-watcher-wake", () => {
       woken: 0,
       postponed: 0,
       postponeRefused: 0,
+      handedOff: 0,
+      warned: 0,
       failed: [],
     });
-    expect(lines).toEqual(["HAL-4605: nothing to do (nothing new)"]);
+    // Ready for review: without a reviewer route it stays with its author (paperclip.pr-watcher-handoff).
+    expect(lines).toEqual([
+      "HAL-4605: ready for review, but no reviewer route is set",
+      "HAL-4605: nothing to do (nothing new)",
+    ]);
+    expect(paperclip.wakes).toEqual([]);
   });
 });
 

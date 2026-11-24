@@ -5,13 +5,16 @@ import {
   type Decision,
   decide,
   type Memory,
+  marker,
   type PullFacts,
   type Reason,
 } from "./decide.ts";
 import type { FoundPulls, PullRef } from "./discover.ts";
 import { type PullFactsReader, pullKey } from "./facts.ts";
+import type { ReviewerRoute } from "./handoff.ts";
 import { postponeUntil } from "./monitors.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
+import { reviewSteps } from "./review-steps.ts";
 import type { PullSummary } from "./wake-status.ts";
 
 /**
@@ -29,6 +32,8 @@ export interface TickOptions {
   readonly now: Date;
   /** What `pr_status` would say about a pull request, for the wake comment; none when unset. */
   readonly summary?: PullSummary;
+  /** The reviewer by the path rules, to hand a ready task to; without it, no task goes to review. */
+  readonly route?: ReviewerRoute;
 }
 
 /** How a tick went: counts, and the tasks it couldn't check. */
@@ -40,6 +45,10 @@ export interface TickSummary {
   readonly postponed: number;
   /** Monitors Paperclip refused to move; the log says why. */
   readonly postponeRefused: number;
+  /** Tasks handed to their reviewer (HAL-17675). */
+  readonly handedOff: number;
+  /** Tasks warned about a push after an approval. */
+  readonly warned: number;
   readonly failed: readonly string[];
 }
 
@@ -63,10 +72,8 @@ const markerPattern = /<!-- pr-watcher: (.+?) -->/g;
 /** The line an author puts in a task comment to keep the task open after a merge. */
 const holdPattern = /^[ \t]*PR watcher: more PRs to come[ \t.]*$/im;
 
-/** The hidden line that lets the watcher recognise a state it already reported. */
-export function marker(key: string): string {
-  return `<!-- pr-watcher: ${key} -->`;
-}
+/** The line an author of a security or release pull request puts in a task comment: its review has a task of its own. */
+const ownReviewPattern = /^[ \t]*PR watcher: own review task[ \t.]*$/im;
 
 /**
  * A comment the watcher wrote. The host stores no plugin id on a plugin's
@@ -117,6 +124,7 @@ export function readMemory(comments: readonly CommentRow[], ownerId: string): Me
     reported,
     seenUntil,
     held: holdPattern.test(authorLast?.body ?? ""),
+    ownReview: ownReviewPattern.test(authorLast?.body ?? ""),
     lastCommentAt: newestAt(comments.filter((comment) => !isSelf(comment))),
   };
 }
@@ -305,6 +313,65 @@ async function keepMonitorBack(
 }
 
 /**
+ * The review steps for a task the watcher had nothing else to say about:
+ * only one its author holds with no run going, so a handoff never cancels
+ * the author's own run.
+ */
+function reviewStepsOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
+  const pulls = watchedPulls(task, refs.found, refs.owners).map((ref) => factsOf(ref, refs.facts));
+  const ownerId = task.assigneeAgentId;
+  if (pulls.length === 0 || ownerId === null) {
+    return Promise.resolve({ handedOff: false, warned: false });
+  }
+  return reviewSteps(
+    { ...options, route: options.route, owners: refs.owners },
+    task,
+    pulls,
+    async () => readMemory(await options.paperclip.comments(task.id), ownerId),
+  );
+}
+
+/** What one tick counts, apart from the tasks it couldn't check. */
+type Counts = Omit<TickSummary, "failed">;
+
+const zero: Counts = {
+  checked: 0,
+  done: 0,
+  woken: 0,
+  postponed: 0,
+  postponeRefused: 0,
+  handedOff: 0,
+  warned: 0,
+};
+
+function one(yes: boolean): number {
+  return yes ? 1 : 0;
+}
+
+/** Checks one task and carries out its decision; what it did, as counts. */
+async function checkTask(options: TickOptions, task: TaskRow, refs: TickRefs): Promise<Counts> {
+  const decision = await decideTask(options, task, refs);
+  if (decision === undefined) {
+    return zero;
+  }
+  const monitor = await keepMonitorBack(options, task, refs, decision);
+  const review =
+    decision.kind === "skip"
+      ? await reviewStepsOf(options, task, refs)
+      : { handedOff: false, warned: false };
+  const acted = await act(options, task, decision);
+  return {
+    checked: 1,
+    done: one(acted && decision.kind === "done"),
+    woken: one(acted && decision.kind === "wake"),
+    postponed: one(monitor === "postponed"),
+    postponeRefused: one(monitor === "refused"),
+    handedOff: one(review.handedOff),
+    warned: one(review.warned),
+  };
+}
+
+/**
  * One pass over every open task whose identifier a pull request's branch
  * names. A task that fails to read is reported and skipped, so one broken
  * pull request doesn't stop the others.
@@ -319,23 +386,14 @@ export async function tick(options: TickOptions): Promise<TickSummary> {
   // One read for every task; if it fails, each of those tasks reports it below.
   const facts = await options.facts(wanted).catch((error: unknown) => error as Error);
   const refs: TickRefs = { owners, found, facts };
-  const counts = { checked: 0, done: 0, woken: 0, postponed: 0, postponeRefused: 0 };
+  const counts = { ...zero };
   const failed: string[] = [];
   for (const task of tasks) {
     try {
-      const decision = await decideTask(options, task, refs);
-      if (decision === undefined) {
-        continue;
+      const add = await checkTask(options, task, refs);
+      for (const key of Object.keys(counts) as (keyof Counts)[]) {
+        counts[key] += add[key];
       }
-      counts.checked += 1;
-      const monitor = await keepMonitorBack(options, task, refs, decision);
-      counts.postponed += monitor === "postponed" ? 1 : 0;
-      counts.postponeRefused += monitor === "refused" ? 1 : 0;
-      if (!(await act(options, task, decision))) {
-        continue;
-      }
-      counts.done += decision.kind === "done" ? 1 : 0;
-      counts.woken += decision.kind === "wake" ? 1 : 0;
     } catch (error) {
       failed.push(task.identifier);
       options.log(`${task.identifier}: couldn't check it: ${(error as Error).message}`);

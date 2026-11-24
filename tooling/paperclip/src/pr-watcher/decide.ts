@@ -27,6 +27,8 @@ export interface PullFacts {
   readonly retargeted: boolean;
   /** Open only: the newest review or inline comment made on the current head. */
   readonly latestReview: { readonly id: string; readonly at: string } | undefined;
+  /** Open only: our reviewers' signed approvals, oldest first, each with the head it names. */
+  readonly approvals?: readonly { readonly by: string; readonly head: string }[];
   /** Merged only: `ci-ok` passed on the merge commit, or a later base-branch commit is green. */
   readonly landed: boolean;
   /** Merged only: when it merged. */
@@ -60,6 +62,8 @@ export interface Memory {
   readonly held: boolean;
   /** The newest comment on the task by anyone but the watcher. */
   readonly lastCommentAt: string | undefined;
+  /** The author's newest comment on the task says its pull request has a review task of its own. */
+  readonly ownReview?: boolean;
 }
 
 /** The outcome for one task. */
@@ -81,7 +85,13 @@ export function branchesOwner(branches: readonly string[]): string | undefined {
   return owners.size === 1 ? owner : undefined;
 }
 
-function short(sha: string): string {
+/** The hidden line that lets the watcher recognise a state it already reported. */
+export function marker(key: string): string {
+  return `<!-- pr-watcher: ${key} -->`;
+}
+
+/** A commit's first 7 characters, as the watcher's keys and comments name it. */
+export function short(sha: string): string {
   return sha.slice(0, 7);
 }
 

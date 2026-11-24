@@ -41,6 +41,31 @@ has a run going, it does nothing and logs why.
 Any open pull request keeps the task open, a stacked one included; one
 closed without merging is ignored.
 
+**Handing a ready task to its reviewer** (HAL-17675). When the watcher has
+nothing else to tell the author, every open pull request of the task is out
+of draft, mergeable, without an open review finding, and green or approved on
+its head, and at least one still needs an approval, the watcher comments
+"PR watcher: ready for review: #N, head `abc1234`." and gives the task to its
+reviewer with status `todo`. The reviewer is Julian when `reviewerFor` says
+Julian for each of them (it reads the changed files, as `pr_status` does),
+otherwise Liam; Liam's own pull requests go to Julian and Julian's to Liam.
+Once per head: a task the reviewer gives back without a new push stays with
+its author. It never hands over a task with an open child task. A security or
+release pull request has a review task of its own; its author keeps the task
+by ending their newest task comment with this line:
+
+```text
+PR watcher: own review task
+```
+
+**Pushing after an approval.** When an open pull request's newest approval
+names an older head and nothing approves the current one, the watcher
+comments once per approval on the task, "PR watcher: pushed after approval;
+this voids the approval.", and wakes nobody. Not while it conflicts or is a
+draft, and not when the watcher had reported a conflict or a base change on
+the approved head: then the push was the fix. The token is read-only, so the
+warning goes on the task, not on the pull request.
+
 A wake comment also carries, for each open pull request it names, the head
 lines `pr_status` would give, from the same pass: the head, `ci-ok` on it
 (with up to five failing checks by name when it failed), mergeable, the merge
@@ -94,9 +119,10 @@ page and a read of Paperclip's own tables (see Worker agents page below). No
 webhooks, files or processes.
 
 - **Status changes:** the manifest can't narrow `issues.update`, so
-  `host.ts` is the only file that changes a task's status, and its
-  `doneOnly` refuses anything but `{ status: "done" }`. A test fails if
-  another file calls `issues.update(`.
+  `host.ts` is the only file that changes a task's status: its
+  `doneOnly` refuses anything but `{ status: "done" }`, and its
+  `handoffOnly` anything but one agent as assignee with `{ status: "todo" }`.
+  A test fails if another file calls `issues.update(`.
 - **Outbound HTTP:** the manifest can't list allowed hosts, so the GitHub
   reader's origin guard keeps the token on `api.github.com`, and the
   GraphQL reader posts only to its `/graphql`, only a document that is a

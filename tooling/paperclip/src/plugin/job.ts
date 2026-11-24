@@ -12,6 +12,7 @@ import { baseGreenSince, snapshotFacts } from "../pr-watcher/facts.ts";
 import { ciOk, gitHubReader } from "../pr-watcher/github.ts";
 import { countMonitors, type MonitorCounts } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
+import { gitHubRoute } from "../pr-watcher/route.ts";
 import { snapshotSummary } from "../pr-watcher/wake-status.ts";
 import { type TickSummary, tick } from "../pr-watcher/watch.ts";
 import { gitHubQueryReader } from "../snapshot/graphql.ts";
@@ -133,6 +134,8 @@ async function recordPass(
       "pr_watcher.done": summary.done,
       "pr_watcher.woken": summary.woken,
       "pr_watcher.failed": summary.failed.length,
+      "pr_watcher.handed_off": summary.handedOff,
+      "pr_watcher.warned_after_approval": summary.warned,
       "pr_watcher.github_requests": requests,
       "pr_watcher.duration_ms": durationMs,
       "monitors.set": monitors.set,
@@ -148,7 +151,7 @@ async function recordPass(
     ctx.logger.error(`PR watcher: couldn't save its metrics: ${failure.message}`, { companyId });
   }
   ctx.logger.info(
-    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
+    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
     { companyId },
   );
 }
@@ -227,6 +230,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     log: (line) => ctx.logger.info(line, { companyId }),
     now,
     summary: snapshotSummary(snapshot),
+    route: gitHubRoute(get),
   });
   // After the watcher's own work, so a failure here never holds up a task.
   await recordThinSpecOutcomes(ctx, { companyId, snapshot, found, get, now }).catch(
