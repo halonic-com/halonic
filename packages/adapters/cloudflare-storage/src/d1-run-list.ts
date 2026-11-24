@@ -11,13 +11,16 @@ interface ListRow {
 interface MetadataRow {
   run_id: string;
   started_by: string;
-  visibility: string;
+  visibility: RunVisibility;
   status: RunSummary["status"];
   started_at_ms: number;
 }
 
 const selectMetadata = `SELECT run_id, started_by, visibility, status, started_at_ms FROM run_list
   WHERE scope = ? ORDER BY started_at_ms DESC, run_id`;
+
+/** Who may see a run: only whoever started it, or every member of the organisation. */
+export type RunVisibility = "private" | "organisation";
 
 /**
  * What the run list says about a run besides its events: who started it, who may see it, its
@@ -27,8 +30,7 @@ export interface RunMetadata {
   readonly id: string;
   /** The id of whoever started the run; empty while nobody is named in the scope. */
   readonly startedBy: string;
-  /** `private` or `organisation`. */
-  readonly visibility: string;
+  readonly visibility: RunVisibility;
   readonly status: RunSummary["status"];
   /** An ISO time in UTC. */
   readonly startedAt: string;
@@ -53,6 +55,19 @@ export interface D1RunListOptions {
 }
 
 const eraseRuns = "DELETE FROM run_list WHERE scope = ?";
+
+/**
+ * The id that stands for a person who was deleted, in place of their id in an organisation's
+ * runs. No end user's id can be it: those are `eu_` and letters or digits, with no `-`.
+ */
+export const formerMemberId = "former-member";
+
+/** Every organisation's rows whose starter is the given id; both values are bound. */
+const replaceOrganisationStarter = `UPDATE run_list SET started_by = ?
+  WHERE scope LIKE ? AND started_by = ? RETURNING scope`;
+
+/** Matches every organisation's scope, `o/<id>`, and no person's. */
+const organisationScopes = "o/%";
 
 /** The scopes with a running or waiting run; exported so a test can check it uses its index. */
 export const openRunScopes = `SELECT DISTINCT scope FROM run_list
@@ -181,6 +196,29 @@ export async function listOpenRunScopes(db: SqlDatabase): Promise<string[]> {
   await runMigrations(db, migrations);
   const { results } = await db.prepare(openRunScopes).all<ScopeRow>();
   return results.map((row) => row.scope);
+}
+
+/**
+ * Replaces a deleted person's id as the starter of every run in every organisation's scope with
+ * {@link formerMemberId}, so the organisation keeps its runs without naming the person. It is the
+ * run list's one statement across scopes, on purpose: a person belongs to many organisations. It
+ * leaves every person's own scope alone, which deleting that scope erases instead. Running it again
+ * changes nothing.
+ *
+ * @param db - the D1 binding from the Worker's `env`
+ * @param actor - the deleted person's id
+ * @returns how many runs it changed
+ *
+ * @example
+ * await replaceStarter(env.DB, "eu_0123456789abcdef");
+ */
+export async function replaceStarter(db: SqlDatabase, actor: string): Promise<number> {
+  await runMigrations(db, migrations);
+  const { results } = await db
+    .prepare(replaceOrganisationStarter)
+    .bind(formerMemberId, organisationScopes, actor)
+    .all<ScopeRow>();
+  return results.length;
 }
 
 /**

@@ -9,8 +9,11 @@ export { D1RecordStore, type D1RecordStoreOptions } from "./d1-record-store.ts";
 export {
   D1RunList,
   type D1RunListOptions,
+  formerMemberId,
   listOpenRunScopes,
   type RunMetadata,
+  type RunVisibility,
+  replaceStarter,
 } from "./d1-run-list.ts";
 export { DefinitionSnapshotError } from "./definition-snapshot.ts";
 export {

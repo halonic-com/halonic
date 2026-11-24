@@ -22,6 +22,7 @@ import {
   type StagingArea,
 } from "./import-data.ts";
 import { createRuntime } from "./runtime.ts";
+import { exportKindFor } from "./scope-export.ts";
 import { serverConfigOf } from "./serve-config.ts";
 import { type OpenSessions, sessionRoutes } from "./session-routes.ts";
 
@@ -120,6 +121,10 @@ function exportRoutes(open: OpenExportSource): readonly AdminRoute[] {
     answering(async () => {
       const scope = requestedScope(request);
       if (scope === null) return badScope();
+      // One place decides what a viewer gets of a scope; for the operator it is every file.
+      if (scope !== undefined && exportKindFor(scope, { operator: true }) !== "full") {
+        return refusal(403, { code: "forbidden", message: "This export isn't the operator's." });
+      }
       const { deploymentId } = serverConfigOf(env);
       const body = await buildManifest(await open(env, scope), deploymentId, new Date());
       return jsonAnswer(body);
