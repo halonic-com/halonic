@@ -46,7 +46,9 @@ know about today.
 Read or report known problems in the [open issues](https://github.com/halonic-com/halonic/issues).
 
 - Studio on macOS and Linux is in progress, with no date. On those, use the
-  command line. Approving from your phone is in progress too.
+  command line.
+- The Android app is in progress. Today, `halonic serve --network` lets your
+  phone's browser approve or reject a run that waits for you.
 - Cost estimates only for models with a price set in their file; none for
   subscriptions, local models or the test model. A `budget` in
   `workspace.yaml` counts only those estimates, so set a limit at your
