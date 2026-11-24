@@ -82,6 +82,7 @@ function openPullFacts(ref: PullRef, pull: SnapshotPull, open: OpenFacts): PullF
     conflicting: open.mergeable === "no",
     inQueue: open.inQueue,
     retargeted: open.baseChangedSincePush === true,
+    ...(open.missingChecks === undefined ? {} : { missingChecks: open.missingChecks }),
     latestReview: open.finding ?? undefined,
     approvals: githubApproval === undefined ? signed : [...signed, githubApproval],
     ...(githubApproval === undefined ? {} : { githubApproval }),

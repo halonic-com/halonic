@@ -37,6 +37,7 @@ verifies("paperclip.pr-watcher-done", () => {
       postponeRefused: 0,
       handedOff: 0,
       warned: 0,
+      reviewWaits: 0,
       failed: [],
     });
     expect(paperclip.done).toEqual(["task-4485"]);
@@ -57,6 +58,7 @@ verifies("paperclip.pr-watcher-done", () => {
       postponeRefused: 0,
       handedOff: 0,
       warned: 0,
+      reviewWaits: 0,
       failed: [],
     });
   });
@@ -73,6 +75,7 @@ verifies("paperclip.pr-watcher-done", () => {
       postponeRefused: 0,
       handedOff: 0,
       warned: 0,
+      reviewWaits: 0,
       failed: [],
     });
     expect(lines[0]).toContain("waiting for a green ci-ok");
@@ -97,6 +100,7 @@ verifies("paperclip.pr-watcher-done", () => {
       postponeRefused: 0,
       handedOff: 0,
       warned: 0,
+      reviewWaits: 0,
       failed: [],
     });
     expect(lines[0]).toContain("more pull requests are coming");
@@ -140,6 +144,7 @@ verifies("paperclip.pr-watcher-done", () => {
       postponeRefused: 0,
       handedOff: 0,
       warned: 0,
+      reviewWaits: 0,
       failed: [],
     });
   });
@@ -174,6 +179,7 @@ verifies("paperclip.pr-watcher-wake", () => {
       postponeRefused: 0,
       handedOff: 0,
       warned: 0,
+      reviewWaits: 0,
       failed: [],
     });
     expect(lines.filter((line) => line.endsWith("closed during this pass, so left alone"))).toEqual(
@@ -297,6 +303,7 @@ verifies("paperclip.pr-watcher-wake", () => {
       postponeRefused: 0,
       handedOff: 0,
       warned: 0,
+      reviewWaits: 0,
       failed: [],
     });
     // Ready for review: without a reviewer route it stays with its author (paperclip.pr-watcher-handoff).
