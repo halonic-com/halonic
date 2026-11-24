@@ -8,7 +8,7 @@ import type {
 import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
 import { isCloudSignInReturnPath } from "./cloud-sign-in-routes.ts";
 import { connectorCallPath, createConnectorRoutes } from "./connector-routes.ts";
-import { checkDailyRequests } from "./daily-requests.ts";
+import { type CountRequest, checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import {
   createGoogleReadOnlyRoutes,
@@ -64,8 +64,8 @@ function isWholeNumberAboveZero(value: number): boolean {
 
 /**
  * Builds the server. Every request passes the security layer first: the
- * `Host` check, the `Origin` check, the daily request ceiling, then the body
- * limit. Then `GET /api/hello` and the sign-in routes answer. A route behind the sign-in needs a session when a password is set. A route that starts a run asks the trust gate first.
+ * `Host` check, the `Origin` check, then the body limit. A signed-in request or
+ * a signed webhook delivery also counts against the daily request ceiling. Then `GET /api/hello` and the sign-in routes answer. A route behind the sign-in needs a session when a password is set. A route that starts a run asks the trust gate first.
  */
 /** The full Google routes, or the read-only ones when the host passed only `googleRead`; `null` with neither. */
 function googleRoutesOf(ports: ServerPorts): GoogleRoutes | null {
@@ -118,6 +118,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
   const chatTurnRoutes = createChatTurnRoutes(ports);
   const providerKeyRoutes = createProviderKeyRoutes(ports);
   const modelChoiceRoutes = createModelChoiceRoutes(ports);
+  const countRequest: CountRequest = () => checkDailyRequests(config, ports);
 
   /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
   async function runRoute(
@@ -213,6 +214,14 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     return null;
   }
 
+  /** Counts a signed-in request against the daily ceiling; one nobody signed isn't counted, so it can't use up the day. */
+  async function countIfSignedIn(
+    request: Request,
+    context: RequestContext,
+  ): Promise<Response | null> {
+    return (await signIn.isSignedIn(request, context)) ? countRequest() : null;
+  }
+
   async function route(
     request: Request,
     context: RequestContext,
@@ -221,11 +230,14 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     const { pathname } = new URL(request.url);
     // A sender signs its request instead of signing in, so this route sits before the sign-in routes.
     if (request.method === "POST" && pathname.startsWith(webhookPathPrefix)) {
-      return webhookRoutes.receive(request, pathname.slice(webhookPathPrefix.length), body);
+      const address = pathname.slice(webhookPathPrefix.length);
+      return webhookRoutes.receive(request, address, body, countRequest);
     }
-    const signedInRoute = await signedInOnlyRoute(request, context, body, pathname);
-    if (signedInRoute !== null) {
-      return signedInRoute;
+    const earlyAnswer =
+      (await countIfSignedIn(request, context)) ??
+      (await signedInOnlyRoute(request, context, body, pathname));
+    if (earlyAnswer !== null) {
+      return earlyAnswer;
     }
     if (request.method === "GET" && pathname === waitingRunsPath) {
       return whenSignedIn(request, context, () => runRoutes.waiting());
@@ -301,17 +313,13 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     if (refusal !== null) {
       return errorResponse(refusal);
     }
-    const overCeiling = await checkDailyRequests(config, ports);
-    if (overCeiling !== null) {
-      return overCeiling;
-    }
     const body = await readBody(request, config.maxBodyBytes);
     if (!body.ok) {
       return errorResponse(serverErrors.bodyTooLarge);
     }
     return manyUserRoutes === null
       ? route(request, context, body.bytes)
-      : manyUserRoutes.route(request, body.bytes);
+      : manyUserRoutes.route(request, body.bytes, countRequest);
   }
 
   /** Whether a path belongs to a route that can take a secret or a key, which the request log leaves out. */
