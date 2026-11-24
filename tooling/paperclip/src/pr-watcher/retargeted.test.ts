@@ -2,9 +2,10 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import type { GitHubQuery } from "../snapshot/graphql.ts";
 import { takeSnapshot } from "../snapshot/read.ts";
-import { decide, type Memory, type WatchedTask } from "./decide.ts";
-import { snapshotFacts } from "./facts.ts";
-import { wakeMessage } from "./watch.ts";
+import { decide, type Memory, type PullFacts, type WatchedTask } from "./decide.ts";
+import { type PullFactsReader, pullKey, snapshotFacts } from "./facts.ts";
+import { agentComment, agents, type FakeTask, fakePaperclip } from "./fakes.test-helper.ts";
+import { tick, wakeMessage } from "./watch.ts";
 
 /**
  * A stacked pull request that GitHub moved to `main` when the one below it
@@ -182,5 +183,98 @@ verifies("paperclip.pr-watcher-retargeted", () => {
     for (const shape of shapes) {
       expect(await decision(shape)).toEqual({ kind: "skip", why: "nothing new" });
     }
+  });
+});
+
+/** The task of #5007, parked as stacked pull requests' tasks often are (HAL-17869). */
+function parkedTask(): FakeTask {
+  return {
+    id: "task-5007",
+    identifier: "HAL-16026",
+    assigneeAgentId: agents.mateo,
+    running: false,
+    openChildren: false,
+    monitorNextCheckAt: null,
+    monitorLastTriggeredAt: null,
+    parked: true,
+    pulls: [{ repo, number: 5007, branch: "mateo/HAL-16026-02-seats" }],
+  };
+}
+
+/** Facts that answer every pull request with `pull`, on the branch the task names. */
+function factsFrom(pull: PullFacts): PullFactsReader {
+  return async (refs) =>
+    new Map(refs.map((ref) => [pullKey(ref), { ...pull, branch: ref.branch }] as const));
+}
+
+async function openPull(shape: Shape): Promise<PullFacts> {
+  const { pull } = await factsOf(shape);
+  if (pull === undefined) {
+    throw new Error("no facts for #5007");
+  }
+  return pull;
+}
+
+/** Two watcher passes over the parked task; what they did, and what the task got. */
+async function twoPasses(pull: PullFacts, comments: Parameters<typeof fakePaperclip>[1] = {}) {
+  const paperclip = fakePaperclip([parkedTask()], comments);
+  const pass = () =>
+    tick({
+      paperclip: paperclip.paperclip,
+      discover: paperclip.discover,
+      facts: factsFrom(pull),
+      dryRun: false,
+      log: () => undefined,
+      now: new Date("2026-11-22T17:00:00Z"),
+    });
+  const first = await pass();
+  const second = await pass();
+  const watcherComments = (paperclip.comments["task-5007"] ?? []).filter(
+    (comment) => comment.authorAgentId === null,
+  );
+  return { first, second, paperclip, watcherComments };
+}
+
+verifies("paperclip.pr-watcher-retargeted", () => {
+  test("wakes the holder of a parked task once per head for a retargeted pull request", async () => {
+    const { first, second, paperclip, watcherComments } = await twoPasses(
+      await openPull(retargeted),
+    );
+    expect([first.woken, second.woken]).toEqual([1, 0]);
+    expect(paperclip.wakes).toEqual([
+      { taskId: "task-5007", key: `${repo}#5007 9807761 retargeted` },
+    ]);
+    expect(watcherComments).toHaveLength(1);
+    expect(watcherComments[0]?.body).toContain("Close and reopen it (or push a commit)");
+    expect(paperclip.done).toEqual([]);
+  });
+
+  test("neither marks a parked task done nor wakes it for anything else", async () => {
+    const merged: PullFacts = {
+      ...(await openPull(retargeted)),
+      state: "merged",
+      landed: true,
+      mergedAt: "2026-11-22T10:30:00Z",
+    };
+    // A comment after the merge would wake the holder of a task in progress.
+    const later = { "task-5007": [agentComment(agents.liam, "2026-11-22T11:00:00Z", "Merged.")] };
+    const { first, second, paperclip } = await twoPasses(merged, later);
+    expect([first.done, first.woken, second.done, second.woken]).toEqual([0, 0, 0, 0]);
+    expect(paperclip.done).toEqual([]);
+    expect(paperclip.wakes).toEqual([]);
+    expect(paperclip.handoffs).toEqual([]);
+    expect(paperclip.postponed).toEqual([]);
+  });
+
+  test("does nothing for a parked task whose pull request wasn't retargeted, even when it is red", async () => {
+    const red: PullFacts = {
+      ...(await openPull({ noteCheckAt: "2026-11-22T10:09:38Z" })),
+      ciOkOnHead: "failure",
+      conflicting: true,
+    };
+    const { first, second, paperclip } = await twoPasses(red);
+    expect([first.woken, second.woken]).toEqual([0, 0]);
+    expect(paperclip.wakes).toEqual([]);
+    expect(paperclip.comments).toEqual({});
   });
 });

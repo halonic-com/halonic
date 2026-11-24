@@ -18,6 +18,8 @@ export interface TaskRow {
   readonly monitorNextCheckAt: string | null;
   /** When its monitor last fired, as an ISO time, or null. */
   readonly monitorLastTriggeredAt: string | null;
+  /** It is in `backlog` or `blocked`: only a retargeted pull request wakes its holder (HAL-17869). */
+  readonly parked?: boolean;
 }
 
 /** A task comment: who wrote it, when, and what it says. */
@@ -50,7 +52,11 @@ export interface Paperclip {
   openTasks(): Promise<TaskRow[]>;
   comments(taskId: string): Promise<CommentRow[]>;
   agents(): Promise<AgentRow[]>;
-  /** Comments and wakes the task's assignee. `key` makes a repeated wake-up a no-op. */
+  /**
+   * Comments and wakes the task's assignee. `key` makes a repeated wake-up a
+   * no-op. A parked task is moved to `todo` only when Paperclip won't wake it
+   * as it is.
+   */
   wake(taskId: string, body: string, key: string): Promise<WriteOutcome>;
   markDone(taskId: string, body: string): Promise<WriteOutcome>;
   /**

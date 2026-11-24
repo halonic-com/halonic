@@ -168,7 +168,7 @@ describe("the host adapter", () => {
     ).rejects.toThrow("Paperclip is down");
   });
 
-  test("watches open tasks and sees an unfinished child of any open status", async () => {
+  test("watches open tasks, blocked ones too, and sees an unfinished child of any open status", async () => {
     const { host } = fakeHost([
       { id: "a", identifier: "HAL-1", status: "in_review", assigneeAgentId: "agent-liam" },
       { id: "b", identifier: "HAL-2", status: "todo", assigneeAgentId: "agent-priya" },
@@ -189,6 +189,7 @@ describe("the host adapter", () => {
       ["HAL-2", false, false],
       ["HAL-4", false, true],
       ["HAL-1", true, false],
+      ["HAL-3", false, false],
     ]);
   });
 
