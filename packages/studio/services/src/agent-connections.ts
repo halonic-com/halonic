@@ -44,6 +44,9 @@ export type SignInResult =
       readonly company?: string;
     };
 
+/** How long a sign-in waits for approval: Paperclip's challenge lifetime (HAL-17423). */
+export const signInLimitMs = 10 * 60 * 1000;
+
 /**
  * A sign-in that waits for the board's approval. The engine holds its key in memory and drops it
  * when the sign-in is cancelled or expires.

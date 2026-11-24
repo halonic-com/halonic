@@ -65,7 +65,7 @@ verifies("connections.connection-row", () => {
     const { view } = await showSection(new FakeAgentConnections({ connections: [offline] }));
     const row = rowOf(view, "Paperclip · Halonic");
     expect(row?.textContent).toMatch(/Offline, as of \d\d:\d\d/);
-    expect(row?.textContent).toContain("Paperclip isn’t answering.");
+    expect(row?.textContent).toContain("Paperclip isn't answering.");
   });
 
   it("offers Sign in again on a signed-out connection, which opens the dialog for it", async () => {
@@ -129,7 +129,7 @@ verifies("connections.connection-row", () => {
   it("says when there is no connection yet", async () => {
     const { view } = await showSection(new FakeAgentConnections());
     expect(view.textContent).toContain("No connections");
-    expect(view.textContent).toContain("Connect Paperclip to answer your agents’ cards");
+    expect(view.textContent).toContain("Connect Paperclip to answer your agents' cards");
     expect(button("Connect Paperclip")).toBeDefined();
   });
 });

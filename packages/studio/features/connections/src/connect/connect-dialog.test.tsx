@@ -95,8 +95,36 @@ verifies("connections.connect-dialog", () => {
     expect(text()).toContain("The sign-in expired");
     expect(button("Start again")).toBeDefined();
     expect(button("Open the approval page")).toBeUndefined();
-    // The engine ends it by itself; the dialog only stopped offering it.
-    expect(fake.cancels).toBe(0);
+    // Cancelled as a best effort, once; Start again and Close then have nothing left to cancel.
+    await settle();
+    expect(fake.cancels).toBe(1);
+    expect(fake.waiting).toBe(false);
+  });
+
+  it("stays quiet when the cancel at 0:00 fails, and Close then cancels nothing", async () => {
+    const fake = new FakeAgentConnections({ cancelFails: true });
+    const { closed, cancelFailed } = await openDialog({ fake });
+    await connectTo("https://paperclip.acme.test");
+    act(() => vi.advanceTimersByTime(600_000));
+    await settle();
+    expect(text()).toContain("The sign-in expired");
+    expect(fake.cancels).toBe(1);
+    await press(button("Close Connect Paperclip"));
+    expect(fake.cancels).toBe(1);
+    expect(closed).toHaveBeenCalledOnce();
+    expect(cancelFailed).not.toHaveBeenCalled();
+  });
+
+  it("starts again after 0:00 without touching the expired sign-in", async () => {
+    const { fake } = await openDialog();
+    await connectTo("https://paperclip.acme.test");
+    act(() => vi.advanceTimersByTime(600_000));
+    await settle();
+    await press(button("Start again"));
+    await connectTo("https://paperclip.acme.test");
+    expect(fake.cancels).toBe(1);
+    expect(fake.signIns).toHaveLength(2);
+    expect(text()).toContain("10:00 left");
   });
 
   it("cancels the waiting sign-in once when the dialog closes", async () => {
@@ -143,7 +171,7 @@ verifies("connections.connect-dialog", () => {
     await connectTo("https://paperclip.acme.test");
     act(() => fake.refuse("other-company", "Halonic"));
     await settle();
-    expect(text()).toContain("This account isn’t in Halonic");
+    expect(text()).toContain("This account isn't in Halonic");
     await press(button("Start again"));
     expect(dialog()?.querySelector("input")?.value).toBe("https://paperclip.acme.test");
   });
@@ -161,7 +189,7 @@ verifies("connections.connect-dialog", () => {
     const fake = new FakeAgentConnections({ refuseStart: "address-not-allowed" });
     const { opened } = await openDialog({ fake });
     await connectTo("https://elsewhere.test");
-    expect(text()).toContain("This address didn’t answer like Paperclip.");
+    expect(text()).toContain("This address didn't answer like Paperclip.");
     expect(opened).toEqual([]);
   });
 
@@ -169,7 +197,7 @@ verifies("connections.connect-dialog", () => {
     const fake = new FakeAgentConnections({ refuseStart: "unreachable" });
     await openDialog({ fake });
     await connectTo("https://elsewhere.test");
-    expect(text()).toContain("Halonic couldn’t reach Paperclip at this address.");
+    expect(text()).toContain("Halonic couldn't reach Paperclip at this address.");
   });
 });
 
