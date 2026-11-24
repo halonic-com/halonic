@@ -1,0 +1,160 @@
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, test } from "vitest";
+import {
+  actionsOf,
+  ago,
+  enqueued,
+  entry,
+  headOf,
+  pass,
+  pull,
+  said,
+  snapshot,
+} from "./merge-control.test-helper.ts";
+
+const head = headOf(1);
+const old = headOf(1, 1);
+
+function reasonsOf(changes: Parameters<typeof pull>[1], patchIds = {}) {
+  const decision = pass(snapshot({ pulls: [pull(1, changes)], patchIds }));
+  return { added: enqueued(decision), decision };
+}
+
+verifies("paperclip.merge-control-signed-approval", () => {
+  test("Liam's signed approval of the head after the last push lets it in, by a 7-character prefix", () => {
+    expect(
+      reasonsOf({ texts: [said(`Liam: approved on head \`${head.slice(0, 7)}\``)] }).added,
+    ).toEqual([1]);
+  });
+
+  test("an approval from before the last push, of another head, or unsigned doesn't count", () => {
+    const early = said(`Liam: approved on head \`${head.slice(0, 7)}\``, 30);
+    expect(reasonsOf({ texts: [early], forcePushedAt: [ago(10)] }).added).toEqual([]);
+    expect(
+      reasonsOf({ texts: [said(`Liam: approved on head \`${old.slice(0, 7)}\``)] }).added,
+    ).toEqual([]);
+    expect(reasonsOf({ texts: [said(`Review of ${head.slice(0, 9)}: looks good`)] }).added).toEqual(
+      [],
+    );
+  });
+
+  test("a signed line from another account, or a queue manager comment naming Liam, doesn't count", () => {
+    const stranger = said(`Liam: approved on head \`${head.slice(0, 7)}\``, 30, { by: "someone" });
+    const echo = said(`Queue manager: Liam: approved on head ${head.slice(0, 7)}`);
+    expect(reasonsOf({ texts: [stranger] }).added).toEqual([]);
+    expect(reasonsOf({ texts: [echo] }).added).toEqual([]);
+  });
+
+  test("a GitHub approval review on the head that names Liam counts", () => {
+    const review = said("Liam: looks right", 30, {
+      kind: "review",
+      reviewState: "APPROVED",
+      commit: head,
+    });
+    expect(reasonsOf({ texts: [review] }).added).toEqual([1]);
+  });
+});
+
+verifies("paperclip.merge-control-carry-over", () => {
+  test("an approval of an older head carries over an identical diff, with one note", () => {
+    const texts = [said(`Liam: approved on head \`${old.slice(0, 7)}\``)];
+    const { added, decision } = reasonsOf({ texts }, { [old.slice(0, 7)]: "p1", [head]: "p1" });
+    expect(added).toEqual([1]);
+    expect(actionsOf(decision, "comment").map((each) => each.body)).toEqual([
+      `Approval of ${old.slice(0, 7)} carried to ${head.slice(0, 9)}: rebase only, identical diff.`,
+    ]);
+  });
+
+  test("any change to the diff needs a new review", () => {
+    const texts = [said(`Liam: approved on head \`${old.slice(0, 7)}\``)];
+    expect(reasonsOf({ texts }, { [old.slice(0, 7)]: "p1", [head]: "p2" }).added).toEqual([]);
+  });
+});
+
+verifies("paperclip.merge-control-julian-scope", () => {
+  const julian = said(`Julian: approved on head \`${head.slice(0, 7)}\``);
+
+  test("Julian's approval counts within reviewerFor's limits", () => {
+    expect(reasonsOf({ texts: [julian] }).added).toEqual([1]);
+  });
+
+  test("Julian's approval from before the last push doesn't count, unless the diff is identical", () => {
+    expect(reasonsOf({ texts: [julian], forcePushedAt: [ago(10)] }).added).toEqual([]);
+    const same = { [head.slice(0, 7)]: "p1", [head]: "p1" };
+    expect(reasonsOf({ texts: [julian], forcePushedAt: [ago(10)] }, same).added).toEqual([1]);
+  });
+
+  test("outside his limits, on his own branch or a release branch, it needs Liam", () => {
+    const decision = pass(
+      snapshot({ pulls: [pull(1, { texts: [julian], files: ["turbo.json"], fileNet: {} })] }),
+    );
+    expect(enqueued(decision)).toEqual([]);
+    expect(reasonsOf({ texts: [julian], branch: "julian/HAL-1-x" }).added).toEqual([]);
+    expect(reasonsOf({ texts: [julian], branch: "changeset-release/main" }).added).toEqual([]);
+  });
+
+  test("Liam's change request on the current head isn't overruled by Julian", () => {
+    const request = said("Liam: changes requested, please fix the guard", 20);
+    expect(
+      reasonsOf({ texts: [request, said(`Julian: approved on head \`${head.slice(0, 7)}\``, 10)] })
+        .added,
+    ).toEqual([]);
+  });
+});
+
+verifies("paperclip.merge-control-author-liam", () => {
+  test("Liam's own approval of his pull request doesn't count", () => {
+    expect(reasonsOf({ branch: "liam/HAL-1-x" }).added).toEqual([]);
+  });
+
+  test("Julian's approval with Author: Liam counts on any path", () => {
+    const signed = said(`Julian: approved on head \`${head.slice(0, 7)}\`\nAuthor: Liam`);
+    const files = ["turbo.json"];
+    expect(
+      reasonsOf({ branch: "liam/HAL-1-x", texts: [signed], files, fileNet: {} }).added,
+    ).toEqual([1]);
+    const unsigned = said(`Julian: approved on head \`${head.slice(0, 7)}\``);
+    expect(
+      reasonsOf({ branch: "liam/HAL-1-x", texts: [unsigned], files, fileNet: {} }).added,
+    ).toEqual([]);
+  });
+});
+
+verifies("paperclip.merge-control-change-request", () => {
+  test("a change request newer than the approval keeps it out", () => {
+    const texts = [
+      said(`Liam: approved on head \`${head.slice(0, 7)}\``, 30),
+      said("Julian: [blocker] needs a fix in the gate", 10),
+    ];
+    expect(reasonsOf({ texts }).added).toEqual([]);
+  });
+
+  test("an approval saying the blocking point is fixed, or a non-blocking note, doesn't hold it", () => {
+    const fixed = said(
+      `Liam: approved on head \`${head.slice(0, 7)}\`. The blocking point is fixed.`,
+    );
+    const note = [
+      said(`Liam: approved on head \`${head.slice(0, 7)}\``, 30),
+      said("Liam: non-blocking nit on the wording", 10),
+    ];
+    expect(reasonsOf({ texts: [fixed] }).added).toEqual([1]);
+    expect(reasonsOf({ texts: note }).added).toEqual([1]);
+  });
+
+  test("a signed line naming a head that rejects it holds it", () => {
+    const texts = [
+      said(`Liam: approved on head \`${head.slice(0, 7)}\``, 30),
+      said(`Liam: ${head.slice(0, 7)} not approved yet, reject`, 10),
+    ];
+    expect(reasonsOf({ texts }).added).toEqual([]);
+  });
+
+  test("a queued pull request with a new change request comes out", () => {
+    const texts = [
+      said(`Liam: approved on head \`${head.slice(0, 7)}\``, 30),
+      said("Liam: changes requested", 5),
+    ];
+    const decision = pass(snapshot({ pulls: [pull(1, { texts })], queue: [entry(1, 1)] }));
+    expect(actionsOf(decision, "dequeue").map((each) => each.reason)).toEqual(["change-request"]);
+  });
+});
