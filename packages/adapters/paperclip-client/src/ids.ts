@@ -9,7 +9,8 @@ export type PaperclipItemKind =
   | "approval"
   | "task"
   | "project"
-  | "seat";
+  | "seat"
+  | "pull";
 
 const provider = "paperclip";
 const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
@@ -21,6 +22,8 @@ const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
   task: 1,
   project: 1,
   seat: 1,
+  // A pull request: its repository (`owner/name`) and its number.
+  pull: 2,
 };
 
 /**

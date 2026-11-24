@@ -126,6 +126,9 @@ verifies("ports.paperclip-key", () => {
         "spendByAgentModel",
         "budgetsOverview",
         "seatsSummary",
+        // Pull requests and the merge queue (HAL-17681), pinned in team-pulls.test.ts.
+        "pullRequestsSummary",
+        "pullRequestDetail",
       ]);
     });
   });

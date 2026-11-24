@@ -6,7 +6,10 @@ approvals, and sends chat messages. It makes only the requests on its fixed list
 
 `PaperclipTeamStatus` serves `TeamStatus` for the same connection, read-only: spend from Paperclip's cost
 routes and seats from the `halonic.seats` plugin. Paid money is what Paperclip billed, so subscription work
-is 0 in money and shows in tokens. Pull requests and the merge queue follow in a second pull request.
+is 0 in money and shows in tokens. Pull requests and the merge queue come from the `halonic.agent-tools`
+plugin's stored GitHub snapshot, so Halonic holds no GitHub token. A pull request's author is an agent of
+the company, "the board" or "outside contributor", never a login, and its GitHub link is kept only when
+`isAllowedWebLink` passes it.
 
 - **Layer:** adapters
 - **Owner:** ravi
@@ -76,6 +79,8 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `spendByAgent`, `spendByAgentModel` | `GET /api/companies/{company}/costs/by-agent?from=`, `/costs/by-agent-model?from=` | each agent's spend and tokens by model |
 | `budgetsOverview` | `GET /api/companies/{company}/budgets/overview` | each agent's monthly budget |
 | `seatsSummary` | `GET /api/plugins/halonic.seats/api/seats/summary?companyId=` | seats by label, windows, the pool's proposal |
+| `pullRequestsSummary` | `GET /api/plugins/halonic.agent-tools/api/github/summary?companyId=` | pull requests and the merge queue |
+| `pullRequestDetail` | `GET /api/plugins/halonic.agent-tools/api/github/pr/{number}?repo=&companyId=` | one pull request; `{number}` a positive integer |
 
 **No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
 main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's
