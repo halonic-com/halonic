@@ -126,6 +126,8 @@ verifies("events.run-log-contract", () => {
       parent?: RunParent;
       // Added after the reference by events.run-started-harness (HAL-189).
       harness?: string;
+      // Added after the reference by events.run-started-effort (HAL-17252).
+      effort?: "low";
       // Added after the reference by events.run-cant-try (HAL-4285).
       cantTry?: CantTryStep[];
       // Added after the reference by events.run-started-version (HAL-5173).

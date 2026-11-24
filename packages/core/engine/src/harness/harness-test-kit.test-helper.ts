@@ -222,6 +222,7 @@ export function harnessPorts() {
   const steps: FakeStep[] = [];
   const recorders: BridgeRecorder[] = [];
   const bridgePlacements: Placement[] = [];
+  const bridgeAgents: HarnessAgent[] = [];
   const sandbox = new FakeSandbox("sandbox", steps);
   const thisComputer = new FakeSandbox("this-computer", steps);
   const harness = new FakeHarness(steps);
@@ -239,8 +240,9 @@ export function harnessPorts() {
     sandboxes: { sandbox, "this-computer": thisComputer },
     harnesses: { "claude-code": harness },
     bridges: {
-      open: async (_agent, recorder, runsOn) => {
+      open: async (agent, recorder, runsOn) => {
         steps.push("bridge.open");
+        bridgeAgents.push(agent);
         recorders.push(recorder);
         bridgePlacements.push(runsOn);
         return providers === undefined ? bridge : { ...bridge, providers };
@@ -272,6 +274,8 @@ export function harnessPorts() {
     recorders,
     /** The placement each bridge was opened for, in order. */
     bridgePlacements,
+    /** The agent each bridge was opened for, in order. */
+    bridgeAgents,
     sandbox,
     thisComputer,
     harness,

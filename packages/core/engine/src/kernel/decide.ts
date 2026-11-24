@@ -187,6 +187,7 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     trigger,
     parent,
     harness,
+    effort,
     cantTry = [],
     version,
     ...fields
@@ -197,6 +198,7 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     ...(trigger === undefined ? {} : { trigger }),
     ...(parent === undefined ? {} : { parent }),
     ...(harness === undefined ? {} : { harness }),
+    ...(effort === undefined ? {} : { effort }),
     ...(cantTry.length === 0 ? {} : { cantTry: [...cantTry] }),
     ...(version === undefined ? {} : { version }),
   };

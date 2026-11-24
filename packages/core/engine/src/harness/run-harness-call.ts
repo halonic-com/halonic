@@ -16,6 +16,7 @@ import {
   type HarnessRun,
   type HarnessTask,
   ModelCallError,
+  type RunEffort,
   RunFailureError,
   type Sandbox,
   type SandboxSession,
@@ -92,6 +93,8 @@ export interface HarnessCall {
   readonly agent: Agent;
   /** The version of the workspace the run read, as {@link HarnessAgent.version} says. */
   readonly version: RunVersion | null;
+  /** How hard the agent thinks, as {@link HarnessAgent.effort} says; the default when absent. */
+  readonly effort?: RunEffort;
   /** Where the agent writes workspace files, as {@link HarnessAgent.filesFolder} says. */
   readonly filesFolder: string | null;
   /** What the call's model calls keep to; a call without it has no budget. */
@@ -171,6 +174,7 @@ export async function runHarnessCall(
     harness: effect.harness,
     file: call.agent,
     version: call.version,
+    ...(call.effort === undefined ? {} : { effort: call.effort }),
     filesFolder: call.filesFolder,
   };
   const placement = await options.placement.where(agent);

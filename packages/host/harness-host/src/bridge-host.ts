@@ -20,6 +20,7 @@ import type {
   BridgeTools,
   HarnessBridgeServer,
   ModelPrice,
+  RunEffort,
 } from "@halonicjs/ports";
 import { type SandboxedAsksPaths, sandboxedAsks } from "./sandboxed-asks.ts";
 
@@ -46,6 +47,12 @@ export interface BridgeAgent {
    * `harness-host.bridge-effort`); `undefined` when the file sets none.
    */
   readonly effort?: BridgeEffort;
+  /**
+   * How hard the agent's run has it think: `low` wins over the file's and
+   * the alias's effort (requirement `harness-host.run-effort`); `default`
+   * or absent keeps them.
+   */
+  readonly runEffort?: RunEffort;
   /**
    * Where the agent runs for this call, as the engine started it: an agent on
    * this computer keeps the program's own sign-in, and one in the sandbox may
@@ -139,6 +146,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       hubId: agent.hubId,
       ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
       ...effortOf(agent.file),
+      ...(agent.effort === undefined ? {} : { runEffort: agent.effort }),
       runsOn,
     });
     const asks = sandboxedAsks(agent, {

@@ -50,6 +50,7 @@ export async function childStart(
     definitionsVersion,
     parent: { runId: parent.runId, state: effect.state, depth: effect.depth },
     ...(parent.harness === null ? {} : { harness: parent.harness }),
+    ...(parent.effort === "low" ? { effort: parent.effort } : {}),
     ...(parent.version === null ? {} : { version: parent.version }),
   };
 }

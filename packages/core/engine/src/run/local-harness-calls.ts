@@ -114,6 +114,7 @@ export class LocalHarnessCalls {
         hubId,
         agent,
         version: run.version,
+        effort: run.effort,
         filesFolder,
         ...(budget === undefined ? {} : { budget: new RunCallBudget(budget, run, clock) }),
       };
