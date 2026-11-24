@@ -11,7 +11,9 @@ import { AssistantPanel } from "./assistant-panel.tsx";
 afterEach(unmount);
 
 const routine = chatOf("c1", [{ role: "user", content: "Add a routine" }], "Add a routine");
+// Invented, shaped like the real thing: a prefix and random-looking characters.
 const key = `sk-ant-${"Ab3x".repeat(6)}`;
+const googleSecret = `GOCSPX-${"aB3".repeat(8)}`;
 
 function panel(
   fake: ReturnType<typeof fakeHost>,
@@ -178,6 +180,19 @@ verifies("assistant.chat.key-in-message", () => {
     await act(async () => buttonNamed(page, "Send anyway")?.click());
     expect(fake.requests[0]?.message).toBe(`My key is ${key}`);
     expect(box(page).value).toBe("");
+  });
+
+  it("holds a Google client secret with its own line and no way to the key field", async () => {
+    const fake = fakeHost();
+    const page = await show(panel(fake).node);
+    await sendMessage(page, `The secret is ${googleSecret}`);
+    expect(fake.requests).toEqual([]);
+    expect(page.querySelector('[role="status"]')?.textContent).toContain(
+      "This looks like a Google client secret. It goes in the Google setup or in a connector in the Library, so it stays out of chats and files.",
+    );
+    expect(buttonNamed(page, "Go to the key field ›")).toBeUndefined();
+    await act(async () => buttonNamed(page, "Send anyway")?.click());
+    expect(fake.requests[0]?.message).toBe(`The secret is ${googleSecret}`);
   });
 
   it("sends a message that only names a key's start, and drops the line when the text changes", async () => {

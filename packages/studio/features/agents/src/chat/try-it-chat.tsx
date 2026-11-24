@@ -1,5 +1,4 @@
 import type { SandboxStartCheck } from "@halonicjs/app";
-import { findSecretShape } from "@halonicjs/std";
 import {
   cantRunWords,
   SandboxCantRunCallout,
@@ -15,7 +14,12 @@ import {
   ChatToolLine,
   ChatTranscript,
 } from "@halonicjs/studio-kit";
-import { copyDetailsWords, useCopyDetails } from "@halonicjs/studio-shell";
+import {
+  type ChatSecretHold,
+  chatSecretHold,
+  copyDetailsWords,
+  useCopyDetails,
+} from "@halonicjs/studio-shell";
 import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
@@ -56,7 +60,7 @@ export function TryItChatView(props: TryItChatViewProps) {
   const { chat, name, description, figure } = props;
   const [draft, setDraft] = useState("");
   // A message that looks like it holds a key stays in the box until it changes (H29).
-  const [heldForKey, setHeldForKey] = useState(false);
+  const [held, setHeld] = useState<ChatSecretHold | undefined>(undefined);
   const box = useRef<HTMLTextAreaElement>(null);
   const lineId = useId();
   const noticeId = useId();
@@ -64,7 +68,7 @@ export function TryItChatView(props: TryItChatViewProps) {
   // Halonic's own loop starts no program, so only Claude Code and Codex need the sandbox.
   const sandbox = useSandboxStart(props.sandboxStartCheck, props.harness !== "halonic");
   const problem = boxProblem({
-    heldForKey,
+    held,
     harness: props.harness,
     strip: props.harnessStrip,
     sandboxRefused: sandbox.refused !== undefined,
@@ -73,7 +77,7 @@ export function TryItChatView(props: TryItChatViewProps) {
   const sendNow = (message = draft) => {
     chat.send(message, refused);
     setDraft("");
-    setHeldForKey(false);
+    setHeld(undefined);
   };
   // The engine found the workspace isn't trusted: the message goes back in the box, unless the
   // person already wrote another, and the trust gate opens; once trusted, it's sent (H16).
@@ -89,8 +93,9 @@ export function TryItChatView(props: TryItChatViewProps) {
   // it as it holds Send.
   const send = async ({ keyChecked = false } = {}) => {
     if (chat.engineQuiet) return;
-    if (!keyChecked && findSecretShape(draft) !== undefined) {
-      setHeldForKey(true);
+    const hold = keyChecked ? undefined : chatSecretHold(draft);
+    if (hold !== undefined) {
+      setHeld(hold);
       return;
     }
     // A workspace that isn't trusted keeps the message in the box (H16).
@@ -98,7 +103,7 @@ export function TryItChatView(props: TryItChatViewProps) {
   };
   const edit = (text: string) => {
     setDraft(text);
-    setHeldForKey(false);
+    setHeld(undefined);
   };
   // Try again puts focus in the box, as New chat does (a11y 6.2).
   const tryAgain = () => {

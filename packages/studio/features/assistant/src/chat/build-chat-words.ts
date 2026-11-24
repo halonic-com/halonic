@@ -88,9 +88,7 @@ export const buildChatWords = {
   review: "Review",
   /** H17: under the box of a Build chat on the person's own model while the workspace isn't trusted. */
   authoringOnly: "Not trusted yet · it can read and propose, but not run anything.",
-  /** H29: a message that looks like it holds a key isn't sent (flow-assistant 5.9, HAL-1625). */
-  keyInMessage:
-    "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
+  /** H29: the line itself comes with the held message, from `chatSecretHold` in the shell. */
   goToKeyField: "Go to the key field ›",
   sendAnyway: "Send anyway",
   /** A tool call's line, with the tool's name in words: "read file". */

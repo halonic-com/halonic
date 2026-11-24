@@ -1,10 +1,10 @@
-import { findSecretShape } from "@halonicjs/std";
 import {
   type ButtonUnavailable,
   type ChatAction,
   ChatBoxLine,
   ChatComposer,
 } from "@halonicjs/studio-kit";
+import { type ChatSecretHold, chatSecretHold } from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useState } from "react";
 import { buildChatWords as words } from "../chat/build-chat-words.ts";
 
@@ -41,7 +41,8 @@ export interface BuildComposerProps {
  * change…". Enter sends and empties it; while the chat answers, Stop takes Send's place and Enter
  * sends nothing, keeping the text (`assistant.chat.enter-sends`, `assistant.chat.stop`). A message
  * that looks like it holds a key isn't sent: it stays in the box under the key line, with **Send
- * anyway**, until the text changes (`assistant.chat.key-in-message`, H29). Otherwise the chat
+ * anyway**, until the text changes (`assistant.chat.key-in-message`, H29); a Google client secret
+ * gets its own line and no way to the key field, which is for other keys. Otherwise the chat
  * model's line shows under it, which may hold Send (`assistant.chat.model-line`, H18 to H20), or
  * else, before trust, the muted line says the chat can read and propose but not run anything, with
  * **Review** (`assistant.chat.authoring-only`, H17).
@@ -50,24 +51,25 @@ export function BuildComposer(props: BuildComposerProps) {
   const { answering, box, onSend } = props;
   const { label = words.boxLabel, placeholder = words.placeholder } = props;
   const [draft, setDraft] = useState("");
-  const [heldForKey, setHeldForKey] = useState(false);
+  const [held, setHeld] = useState<ChatSecretHold | undefined>(undefined);
   const putBack = (message: string) => setDraft((current) => (current === "" ? message : current));
   const send = ({ keyChecked = false } = {}) => {
     if (props.onSendHeld !== undefined) {
       props.onSendHeld();
       return;
     }
-    if (!keyChecked && findSecretShape(draft) !== undefined) {
-      setHeldForKey(true);
+    const hold = keyChecked ? undefined : chatSecretHold(draft);
+    if (hold !== undefined) {
+      setHeld(hold);
       return;
     }
     if (!onSend(draft, putBack)) return;
     setDraft("");
-    setHeldForKey(false);
+    setHeld(undefined);
   };
   const edit = (text: string) => {
     setDraft(text);
-    setHeldForKey(false);
+    setHeld(undefined);
   };
   // Send anyway takes its line away, so focus goes to the box rather than the page (C505-3).
   const sendAnyway = () => {
@@ -76,7 +78,7 @@ export function BuildComposer(props: BuildComposerProps) {
   };
   const goToKeyField = props.onGoToKeyField;
   const offers: ChatAction[] = [
-    ...(goToKeyField === undefined
+    ...(goToKeyField === undefined || held?.keyField !== true
       ? []
       : [{ label: words.goToKeyField, onClick: goToKeyField, look: "link" as const }]),
     { label: words.sendAnyway, onClick: sendAnyway },
@@ -94,9 +96,9 @@ export function BuildComposer(props: BuildComposerProps) {
         sendUnavailable={props.sendUnavailable}
         textRef={box}
         line={
-          heldForKey ? (
+          held !== undefined ? (
             <ChatBoxLine tone="warning" actions={offers}>
-              {words.keyInMessage}
+              {held.line}
             </ChatBoxLine>
           ) : (
             (props.line ?? <AuthoringLine {...props} />)

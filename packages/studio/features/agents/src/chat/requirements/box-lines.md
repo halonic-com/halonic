@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-13177; flow-agents 4.4; microcopy 8.3; states (HAL-5896) section 4, H27 and H29; harness-states rule 1; UX checklist part 2, section 6 (a key in a Try it message), HAL-1625, HAL-1844
+- Source: HAL-13177; flow-agents 4.4; microcopy 8.3; states (HAL-5896) section 4, H27 and H29; harness-states rule 1; UX checklist part 2, section 6 (a key in a Try it message), HAL-1625, HAL-1844; HAL-7864 (a Google client secret, google-setup-flow 4.2)
 
-When the person sends a Try it message that holds text shaped like a key (`findSecretShape`), the chat shall not send it, keep it in the box, and show under the box, in `warning`, "This looks like an API key. Keys go in the key field, so they stay out of chats and files." with **Go to the key field ›**, which opens where keys are kept, and **Send anyway**, which sends the message once as it is and puts focus in the box; the line shall go when the text changes. When the agent's harness isn't installed, is too old or isn't signed in, the chat shall show under the box the Harness page strip's sentence, "*Sorter* can't run until *Claude Code* is installed.", "…is updated." or "*Sorter* can't run until it's signed in to *Claude Code*.", with **Open Harness settings ›**, and Send shall wait with that line as its reason. Of these lines it shall show one at a time: the held message first, then the harness in harness-states rule 1's order.
+When the person sends a Try it message that holds text shaped like a key (`findSecretShape`), the chat shall not send it, keep it in the box, and show under the box, in `warning`, "This looks like an API key. Keys go in the key field, so they stay out of chats and files." with **Go to the key field ›**, which opens where keys are kept, and **Send anyway**, which sends the message once as it is and puts focus in the box; the line shall go when the text changes. A message that holds a Google client secret shall instead show "This looks like a Google client secret. It goes in the Google setup or in a connector in the Library, so it stays out of chats and files." with **Send anyway** and no **Go to the key field ›**, since the key field is for other keys. When the agent's harness isn't installed, is too old or isn't signed in, the chat shall show under the box the Harness page strip's sentence, "*Sorter* can't run until *Claude Code* is installed.", "…is updated." or "*Sorter* can't run until it's signed in to *Claude Code*.", with **Open Harness settings ›**, and Send shall wait with that line as its reason. Of these lines it shall show one at a time: the held message first, then the harness in harness-states rule 1's order.
 
 ## Examples
 
@@ -14,6 +14,9 @@ When the person sends a Try it message that holds text shaped like a key (`findS
 - Given that line,
   when they click Send anyway,
   then the message is sent once, as it is.
+- Given the person sends a message with a Google client secret in it,
+  when they press Send,
+  then nothing is sent and the Google line shows with Send anyway and no Go to the key field.
 - Given "my key starts with sk-abc",
   when they press Send,
   then it is sent.

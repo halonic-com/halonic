@@ -1,5 +1,6 @@
 import type { ChatAction } from "@halonicjs/studio-kit";
 import { ChatBoxLine } from "@halonicjs/studio-kit";
+import type { ChatSecretHold } from "@halonicjs/studio-shell";
 import type { AgentHarnessId } from "../api.ts";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
@@ -12,14 +13,14 @@ import { tryItWords } from "./try-it-words.ts";
  * land.
  */
 export type BoxProblem =
-  | { readonly kind: "key-in-message" }
+  | { readonly kind: "key-in-message"; readonly hold: ChatSecretHold }
   | { readonly kind: "harness"; readonly strip: HarnessStrip; readonly harness: AgentHarnessId }
   | { readonly kind: "sandbox" };
 
 /** What {@link boxProblem} weighs. */
 export interface BoxState {
-  /** The message was held because it looks like it holds a key. */
-  readonly heldForKey: boolean;
+  /** The message's hold, when it looks like it holds a key: its line and its ways. */
+  readonly held: ChatSecretHold | undefined;
   readonly harness: AgentHarnessId;
   /** The strip the harness check calls for, or `null` when the harness can run. */
   readonly strip: HarnessStrip | null;
@@ -29,7 +30,7 @@ export interface BoxState {
 
 /** The first problem that applies, or `undefined` when the message can go. */
 export function boxProblem(state: BoxState): BoxProblem | undefined {
-  if (state.heldForKey) return { kind: "key-in-message" };
+  if (state.held !== undefined) return { kind: "key-in-message", hold: state.held };
   if (state.strip !== null) return { kind: "harness", strip: state.strip, harness: state.harness };
   if (state.sandboxRefused) return { kind: "sandbox" };
   return undefined;
@@ -53,7 +54,8 @@ export interface BoxLineActions {
 /**
  * The line under the Try it box for `problem` (microcopy 8.3), in `warning`. A harness that isn't
  * ready also makes Send wait, with this line as its reason; a held key leaves Send as it is, so
- * pressing it again sends nothing until the text changes or **Send anyway**.
+ * pressing it again sends nothing until the text changes or **Send anyway**. A Google client
+ * secret has no way to the key field, which is for other keys.
  */
 export function TryItBoxLine({
   problem,
@@ -65,13 +67,16 @@ export function TryItBoxLine({
   readonly actions: BoxLineActions;
 }) {
   if (problem.kind === "key-in-message") {
+    const keyField: ChatAction[] = problem.hold.keyField
+      ? [{ label: tryItWords.goToKeyField, onClick: actions.goToKeyField, look: "link" }]
+      : [];
     const offers: ChatAction[] = [
-      { label: tryItWords.goToKeyField, onClick: actions.goToKeyField, look: "link" },
+      ...keyField,
       { label: tryItWords.sendAnyway, onClick: actions.sendAnyway },
     ];
     return (
       <ChatBoxLine tone="warning" actions={offers}>
-        {tryItWords.keyInMessage}
+        {problem.hold.line}
       </ChatBoxLine>
     );
   }

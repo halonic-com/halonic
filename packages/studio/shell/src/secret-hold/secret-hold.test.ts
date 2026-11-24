@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
-import { secretHold } from "./secret-hold.ts";
+import { describe, expect, it } from "vitest";
+import { chatSecretHold, secretHold } from "./secret-hold.ts";
 
 // Invented, shaped like the real thing: a prefix and random-looking characters.
 const googleSecret = `GOCSPX-${"aB3".repeat(8)}`;
@@ -50,5 +50,33 @@ verifies("inbox.secret-hold", () => {
   it("lets an ordinary note through", () => {
     expect(secretHold("Use the shorter title")).toBeUndefined();
     expect(secretHold("We use sk-learn for this")).toBeUndefined();
+  });
+});
+
+describe("chatSecretHold", () => {
+  it("points a key to the key field, with the line the chats already show (H29)", () => {
+    expect(chatSecretHold(`My key is ${providerKey}`)).toEqual({
+      shape: "ai-provider-key",
+      line: "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
+      keyField: true,
+    });
+  });
+
+  it("points a Google client secret to the Google setup or a connector, not the key field", () => {
+    expect(chatSecretHold(googleSecret)).toEqual({
+      shape: "google-client-secret",
+      line: "This looks like a Google client secret. It goes in the Google setup or in a connector in the Library, so it stays out of chats and files.",
+      keyField: false,
+    });
+  });
+
+  it("never repeats the text it found", () => {
+    expect(chatSecretHold(googleSecret)?.line).not.toContain("aB3");
+    expect(chatSecretHold(providerKey)?.line).not.toContain("Xy7");
+  });
+
+  it("lets an ordinary message through", () => {
+    expect(chatSecretHold("my key starts with sk-abc")).toBeUndefined();
+    expect(chatSecretHold("We use sk-learn for this")).toBeUndefined();
   });
 });
