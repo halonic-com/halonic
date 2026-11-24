@@ -56,7 +56,9 @@ export class FakePaperclip {
   serveAcme(data = acmeData()): this {
     return this.on("GET", `/api/companies/${company}/agents`, { body: data.agents })
       .on("GET", `/api/companies/${company}/chats`, { body: data.chats })
-      .on("GET", `/api/companies/${company}/issues`, () => ({ body: data.tasks }))
+      .on("GET", `/api/companies/${company}/issues`, ({ query }) => ({
+        body: matchingTasks(data.tasks, query.get("q")),
+      }))
       .on("GET", `/api/issues/${chatTask}/comments`, { body: data.comments })
       .on("GET", `/api/issues/${chatTask}/interactions`, { body: [] })
       .on("GET", `/api/issues/${plainTask}/interactions`, () => ({ body: data.cards }))
@@ -87,6 +89,20 @@ export class FakePaperclip {
       headers: { "content-type": "application/json", ...answer.headers },
     });
   }
+}
+
+/** The tasks Paperclip's `q=` would match: the query in the identifier, title or description, ignoring case. */
+function matchingTasks<T extends object>(tasks: readonly T[], query: string | null): readonly T[] {
+  if (query === null) {
+    return tasks;
+  }
+  const needle = query.toLowerCase();
+  return tasks.filter((task) =>
+    ["identifier", "title", "description"].some((field) => {
+      const value: unknown = (task as Record<string, unknown>)[field];
+      return typeof value === "string" && value.toLowerCase().includes(needle);
+    }),
+  );
 }
 
 /** The opaque ID of the Acme connection's source. */

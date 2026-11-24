@@ -13,6 +13,8 @@
 export const paperclipRequests = {
   listAgents: { method: "GET", path: "/api/companies/:company/agents" },
   listTasks: { method: "GET", path: "/api/companies/:company/issues" },
+  // Search (HAL-17501): the same route with `q=`, so it reads nothing listTasks can't.
+  searchTasks: { method: "GET", path: "/api/companies/:company/issues" },
   listChats: { method: "GET", path: "/api/companies/:company/chats" },
   listProjects: { method: "GET", path: "/api/companies/:company/projects" },
   listComments: { method: "GET", path: "/api/issues/:task/comments" },
@@ -83,22 +85,26 @@ export function buildPath(name: PaperclipRequestName, values: PathValues): strin
     .join("/");
 }
 
+/** Whether `method` and `path` are request `name`'s, each `:name` segment a safe one. */
+export function matchesRequest(name: PaperclipRequestName, method: string, path: string): boolean {
+  const request = paperclipRequests[name];
+  const parts = path.split("/");
+  const patternParts = request.path.split("/");
+  if (request.method !== method || patternParts.length !== parts.length) {
+    return false;
+  }
+  return patternParts.every((patternPart, index) => {
+    const part = parts[index] ?? "";
+    return patternPart.startsWith(":") ? isSafeSegment(part) : patternPart === part;
+  });
+}
+
 /**
- * The request on the list that `method` and `path` match, or `undefined`.
- * Tests use it to check that every request a fake server saw was allowed.
+ * The first request on the list that `method` and `path` match, or
+ * `undefined`. Tests use it to check that every request a fake server saw
+ * was allowed.
  */
 export function findRequest(method: string, path: string): PaperclipRequestName | undefined {
-  const parts = path.split("/");
   const names = Object.keys(paperclipRequests) as PaperclipRequestName[];
-  return names.find((name) => {
-    const request = paperclipRequests[name];
-    const patternParts = request.path.split("/");
-    if (request.method !== method || patternParts.length !== parts.length) {
-      return false;
-    }
-    return patternParts.every((patternPart, index) => {
-      const part = parts[index] ?? "";
-      return patternPart.startsWith(":") ? isSafeSegment(part) : patternPart === part;
-    });
-  });
+  return names.find((name) => matchesRequest(name, method, path));
 }
