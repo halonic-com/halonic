@@ -1,5 +1,7 @@
 import {
   Button,
+  type ButtonUnavailable,
+  type ChatAction,
   ChatEndLine,
   ChatLoading,
   ChatMessage,
@@ -11,7 +13,13 @@ import {
   PlusIcon,
   SidePanel,
 } from "@halonicjs/studio-kit";
-import type { ItemRef, PanelWindowViewProps, WorkspaceContext } from "@halonicjs/studio-shell";
+import {
+  engineWords,
+  engineWordsOf,
+  type ItemRef,
+  type PanelWindowViewProps,
+  type WorkspaceContext,
+} from "@halonicjs/studio-shell";
 import {
   Fragment,
   type ReactNode,
@@ -36,8 +44,15 @@ import {
 import { chatWithWords as agentWords } from "../chat/chat-with-words.ts";
 import { endLine, type ReplyStep, runningLine, type Turn, turnsOf } from "../chat/turns.ts";
 import { BuildComposer } from "./build-composer.tsx";
-import { agentOf, ChatChips, type ChatChoices, useChatChoices } from "./chat-choices.tsx";
+import {
+  agentOf,
+  ChatChips,
+  type ChatChoices,
+  type ReadChoices,
+  useChatChoices,
+} from "./chat-choices.tsx";
 import { ChatHeading, ChatMoreActions } from "./chat-header.tsx";
+import { openModelsCommand, useModelBox } from "./model-line.tsx";
 import { useAuthoringOnly, useEngineAnswering, useTrustCheck } from "./send-gate.ts";
 import { ShownItems } from "./shown-items.tsx";
 import { SkillLink } from "./skill-link.tsx";
@@ -151,17 +166,15 @@ interface PanelBodyProps {
   /** The link under the box for a chat: "customize skill" or "edit skill" in a Build chat. */
   readonly skillLink: (view: ChatView) => ReactNode;
   readonly onOpenItem: (item: ItemRef) => void;
-  readonly choices: ChatChoices;
+  readonly choices: ReadChoices;
 }
-
-/** Opens the workspace page's Models, where keys are kept (models flow 3.1). */
-const openModelsCommand = "workspace.open-models";
 
 /**
  * The chat, its first load (H7), a chat that can't load, or no chat (H3). While the engine doesn't
- * answer, the chat says so at the top and Send waits with that line as its reason (H12, D5); Try
- * again and Continue wait too. A message the host refused because the workspace isn't trusted
- * opens the trust check (H16).
+ * answer, the chat says so at the top, in the window's words (H12, H15), and Send, Try again and
+ * Continue wait with that line as their reason (D5). The chat's model may put its line under the
+ * box (H18 to H20). A message the host refused because the workspace isn't trusted opens the trust
+ * check (H16).
  */
 function PanelBody(props: PanelBodyProps) {
   const { context, shown, chats, box, announce, onNewChat, lookingAt, skillLink, choices } = props;
@@ -171,6 +184,8 @@ function PanelBody(props: PanelBodyProps) {
   const askTrust = useTrustCheck(host);
   const authoringOnly = useAuthoringOnly(host, chatIdOf(shown));
   const noticeId = useId();
+  const view = shown.kind === "chat" ? shown.view : undefined;
+  const modelBox = useModelBox(view?.chat, choices, context, box);
   const send = (message: string | undefined, putBack: (message: string) => void) =>
     void chats.send(message, announce, () => {
       void askTrust(
@@ -192,7 +207,6 @@ function PanelBody(props: PanelBodyProps) {
       />
     );
   }
-  const view = shown.kind === "chat" ? shown.view : undefined;
   const agent = view === undefined ? undefined : agentOf(view.chat, choices);
   return (
     <>
@@ -212,9 +226,10 @@ function PanelBody(props: PanelBodyProps) {
           view={view}
           context={context}
           agent={agent}
-          notice={engineAnswering ? undefined : words.engineNotAnswering}
+          notice={engineAnswering ? undefined : notAnsweringLine(context)}
           noticeId={noticeId}
-          onContinue={engineAnswering ? () => send(undefined, () => {}) : undefined}
+          onContinue={() => send(undefined, () => {})}
+          continueWaits={engineAnswering ? undefined : { reason: noticeId }}
         />
       )}
       <ChipsAboveBox view={view} chats={chats} choices={choices} box={box} announce={announce} />
@@ -228,7 +243,12 @@ function PanelBody(props: PanelBodyProps) {
           return true;
         }}
         onStop={() => chats.stop()}
-        sendUnavailable={engineAnswering || view === undefined ? undefined : { reason: noticeId }}
+        sendUnavailable={sendWait(
+          view === undefined,
+          engineAnswering ? modelBox.waitsOn : noticeId,
+        )}
+        line={modelBox.line}
+        onSendHeld={engineAnswering ? modelBox.onSendHeld : undefined}
         onGoToKeyField={runCommand && (() => void runCommand(openModelsCommand))}
         authoringOnly={authoringOnly}
         onReviewTrust={host.askTrust && (() => void host.askTrust?.())}
@@ -261,6 +281,22 @@ function ChipsAboveBox(props: {
 /** The id of the chat the panel shows, once it has loaded. */
 function chatIdOf(shown: Shown): string | undefined {
   return shown.kind === "chat" ? shown.view.chat.id : undefined;
+}
+
+/** Send waits on the line it names, except while there is no chat to send in. */
+function sendWait(loading: boolean, reason: string | undefined): ButtonUnavailable | undefined {
+  return loading || reason === undefined ? undefined : { reason };
+}
+
+/**
+ * The line at the top while the engine doesn't answer: the desktop app's says it shows what it
+ * said last (H12); a served Studio's and a phone's say the reply carries on there (H15).
+ */
+function notAnsweringLine(context: WorkspaceContext): string {
+  const own = engineWordsOf(context);
+  if (own === engineWords.served) return words.serverNotAnswering;
+  if (own === engineWords.phone) return words.computerNotAnswering;
+  return words.engineNotAnswering;
 }
 
 /** An agent chat's box is named for the agent: "Message Triage", with "Message Triage…". */
@@ -322,6 +358,7 @@ function Transcript({
   notice,
   noticeId,
   onContinue,
+  continueWaits,
 }: {
   readonly view: ChatView;
   readonly context: WorkspaceContext;
@@ -330,8 +367,10 @@ function Transcript({
   /** The engine's line at the top while it doesn't answer (H12). */
   readonly notice: string | undefined;
   readonly noticeId: string;
-  /** Continue or Try again on the last reply; absent while they would wait. */
-  readonly onContinue: (() => void) | undefined;
+  /** Continue or Try again on the last reply. */
+  readonly onContinue: () => void;
+  /** While the engine doesn't answer, Continue and Try again wait on its line (D5). */
+  readonly continueWaits: ButtonUnavailable | undefined;
 }) {
   const turns = turnsOf(view.messages, view.ends, view.answering);
   if (turns.length === 0 && notice === undefined) {
@@ -356,6 +395,7 @@ function Transcript({
             turn={turn}
             place={{ chatId: view.chat.id, context }}
             onContinue={index === turns.length - 1 ? onContinue : undefined}
+            waits={continueWaits}
           />
         </Fragment>
       ))}
@@ -373,16 +413,18 @@ function Reply({
   turn,
   place,
   onContinue,
+  waits,
 }: {
   readonly turn: Turn;
   readonly place: CardPlace;
   readonly onContinue: (() => void) | undefined;
+  readonly waits: ButtonUnavailable | undefined;
 }) {
   const end = turn.end;
   // Only the last reply offers Continue or Try again: each carries on that answer without a new
   // message (flow-assistant 3.6), which sends the last message again when nothing ran (H13, H22,
   // H23). After a tool ran there is no Try again, since a tool may have sent something (H24).
-  const actions = onContinue === undefined ? [] : endActions(end, onContinue);
+  const actions = onContinue === undefined ? [] : endActions(end, onContinue, waits);
   return (
     <ChatMessage from="reply" heading={words.said}>
       {turn.steps.map((step, index) => (
@@ -398,10 +440,16 @@ function Reply({
   );
 }
 
-function endActions(end: Turn["end"], onContinue: () => void) {
-  if (end?.kind === "model-call-limit") return [{ label: words.continue, onClick: onContinue }];
+function endActions(
+  end: Turn["end"],
+  onContinue: () => void,
+  unavailable: ButtonUnavailable | undefined,
+): ChatAction[] {
+  if (end?.kind === "model-call-limit") {
+    return [{ label: words.continue, onClick: onContinue, unavailable }];
+  }
   if ((end?.kind === "engine-stopped" || end?.kind === "failed") && !end.toolsRan) {
-    return [{ label: words.tryAgain, onClick: onContinue }];
+    return [{ label: words.tryAgain, onClick: onContinue, unavailable }];
   }
   return [];
 }

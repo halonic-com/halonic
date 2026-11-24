@@ -5,7 +5,7 @@ import {
   ChatBoxLine,
   ChatComposer,
 } from "@halonicjs/studio-kit";
-import { type RefObject, useState } from "react";
+import { type ReactNode, type RefObject, useState } from "react";
 import { buildChatWords as words } from "../chat/build-chat-words.ts";
 
 /** The props of {@link BuildComposer}. */
@@ -27,6 +27,10 @@ export interface BuildComposerProps {
   readonly authoringOnly?: boolean | undefined;
   /** **Review** on that line: opens the window's trust check. */
   readonly onReviewTrust?: (() => void) | undefined;
+  /** The chat model's line under the box (states H18 to H20), unless the key line shows. */
+  readonly line?: ReactNode;
+  /** Set while the model's line holds Send: pressing it calls this and sends nothing. */
+  readonly onSendHeld?: (() => void) | undefined;
   /** An agent chat's own name and placeholder: "Message Triage" and "Message Triage…". */
   readonly label?: string;
   readonly placeholder?: string;
@@ -37,9 +41,10 @@ export interface BuildComposerProps {
  * change…". Enter sends and empties it; while the chat answers, Stop takes Send's place and Enter
  * sends nothing, keeping the text (`assistant.chat.enter-sends`, `assistant.chat.stop`). A message
  * that looks like it holds a key isn't sent: it stays in the box under the key line, with **Send
- * anyway**, until the text changes (`assistant.chat.key-in-message`, H29). Otherwise, before trust,
- * the muted line says the chat can read and propose but not run anything, with **Review**
- * (`assistant.chat.authoring-only`, H17).
+ * anyway**, until the text changes (`assistant.chat.key-in-message`, H29). Otherwise the chat
+ * model's line shows under it, which may hold Send (`assistant.chat.model-line`, H18 to H20), or
+ * else, before trust, the muted line says the chat can read and propose but not run anything, with
+ * **Review** (`assistant.chat.authoring-only`, H17).
  */
 export function BuildComposer(props: BuildComposerProps) {
   const { answering, box, onSend } = props;
@@ -48,6 +53,10 @@ export function BuildComposer(props: BuildComposerProps) {
   const [heldForKey, setHeldForKey] = useState(false);
   const putBack = (message: string) => setDraft((current) => (current === "" ? message : current));
   const send = ({ keyChecked = false } = {}) => {
+    if (props.onSendHeld !== undefined) {
+      props.onSendHeld();
+      return;
+    }
     if (!keyChecked && findSecretShape(draft) !== undefined) {
       setHeldForKey(true);
       return;
@@ -90,7 +99,7 @@ export function BuildComposer(props: BuildComposerProps) {
               {words.keyInMessage}
             </ChatBoxLine>
           ) : (
-            <AuthoringLine {...props} />
+            (props.line ?? <AuthoringLine {...props} />)
           )
         }
       />

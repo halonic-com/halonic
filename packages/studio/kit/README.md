@@ -617,7 +617,7 @@ hold no chat logic: each feature turns its `ChatService` answer into these rows 
 | `ChatMessage` | One row: `from="you"` on the right in a tinted box, or `from="reply"` across the column under a hidden heading ("Sorter said"); `busy` marks a reply `aria-busy` while it is written |
 | `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks. Its Markdown never becomes HTML and loads no image. A link shows its words and its address as text that opens nothing; with `openLink` (such as `useOpenExternal()`, for an agent's message) the words are an `ExternalLink` that opens outside the app |
 | `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
-| `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place) |
+| `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place). A `button` given `unavailable` waits in its place with a visible reason, as Try again does while the engine isn't answering |
 | `ChatComposer` | The message box and its button. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box |
 | `ChatBoxLine` | The line under the box: `warning` (triangle) for what stops a message, such as no key or a key in the message, `muted` for a calm fact; its actions follow the sentence |
 

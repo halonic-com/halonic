@@ -1,6 +1,6 @@
 /**
- * The Build chat's words in the panel (microcopy 14.1 and 19.5; states H1, H3, H7, H9, H11 to H13,
- * H16, H22 to H24, H28, H29;
+ * The Build chat's words in the panel (microcopy 14.1, 14.3 and 19.5; states H1, H3, H7, H9, H11 to
+ * H13, H15, H16, H18 to H20, H22 to H24, H28, H29;
  * flow-assistant 2.2, 3.6 and 5.1). Where flow-assistant and the microcopy differ, the microcopy
  * wins: the limit is "model calls" since its revision 117 (HAL-14707).
  */
@@ -67,6 +67,22 @@ export const buildChatWords = {
   engineNotStarted: "The engine isn't answering. It may still be starting.",
   /** H12 (D5): the line at the top of an open chat while the engine doesn't answer. */
   engineNotAnswering: "The engine isn't answering. Showing what it said last.",
+  /** H15: the line at the top in a served Studio, and on a phone, while Halonic doesn't answer. */
+  serverNotAnswering:
+    "Halonic on the server isn't answering. The reply carries on there, and shows here when it's back.",
+  computerNotAnswering:
+    "Halonic on your computer isn't answering. The reply carries on there, and shows here when it's back.",
+  /** H18: neither an Assistant model nor a model alias, with **Settings ›**. */
+  noModel:
+    "The assistant has no model yet. Add a model alias or choose an Assistant model in Settings › Assistant.",
+  openSettings: "Settings ›",
+  /** H19: the chat's model needs a key; the model's name sits between the two, as code. */
+  noUsableModel: "The assistant has no model it can use:",
+  needsKey: (provider: string) => `needs an API key for ${provider}.`,
+  setTheKey: "Set the key ›",
+  /** H20: a cloud model in a local-only workspace; the Model chip is where to pick another. */
+  localOnly: (workspace: string, model: string) =>
+    `${workspace} is local only, so the assistant can't use ${model}. Pick a local model.`,
   /** H16: the toast after Not now in the trust check, with Review to open it again. */
   notTrusted: (workspace: string) => `Not started: ${workspace} isn't trusted yet`,
   review: "Review",
