@@ -8,12 +8,16 @@ import { gitHubRebaseOnly, sameChanges } from "./rebase-only.ts";
 
 const approvedByLiam = open(5701, mateoBranch, { approvals: [{ by: "Liam", head: "4999bbb" }] });
 
-function watcher(rebaseOnly: (pull: unknown, approved: string) => Promise<boolean>) {
+function watcher(
+  rebaseOnly: (pull: unknown, approved: string) => Promise<boolean>,
+  files: readonly string[] = [],
+) {
   const compared: string[] = [];
   const run = setup({
     tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
     pulls: [approvedByLiam],
     byPaths: "liam",
+    files,
     rebaseOnly: (pull, approved) => {
       compared.push(approved);
       return rebaseOnly(pull, approved);
@@ -44,6 +48,17 @@ verifies("paperclip.pr-watcher-rereview", () => {
     expect(body).toContain(
       '"Julian: re-approved on head `5701aaa` (rebase only, range-diff vs `4999bbb`)"',
     );
+  });
+
+  test("sends a rebase-only push after Liam's approval on a security path to Liam", async () => {
+    const security = watcher(async () => true, ["packages/x/src/sandbox/fence.ts"]);
+    expect(await security.run()).toMatchObject({ handedOff: 1, failed: [] });
+    expect(security.compared).toEqual([]);
+    expect(security.handoffs.map(({ to }) => to)).toEqual([agents.liam]);
+    const body = handoffBody(security.comments);
+    expect(body).toContain("#5701: a security pull request by its paths");
+    expect(body).toContain("review `4999bbb`..`5701aaa`.");
+    expect(body).not.toContain("Julian: re-approved");
   });
 
   test("sends a changed head to the reviewer of its paths once, naming both heads", async () => {

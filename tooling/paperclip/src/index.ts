@@ -62,6 +62,7 @@ export {
 } from "./pr-watcher/watch.ts";
 export {
   isLiamPath,
+  isSecurityPath,
   isTestPath,
   julianLineLimit,
   liamFiles,

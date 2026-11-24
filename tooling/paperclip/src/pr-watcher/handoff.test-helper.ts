@@ -1,3 +1,4 @@
+import { isSecurityPath } from "../reviewer-paths.ts";
 import type { PullFacts } from "./decide.ts";
 import { type FakeTask, fakePaperclip } from "./fakes.test-helper.ts";
 import type { Reviewer } from "./handoff.ts";
@@ -41,12 +42,21 @@ export interface Setup {
   readonly pulls: PullFacts[];
   readonly comments?: Parameters<typeof fakePaperclip>[1];
   readonly byPaths?: Reviewer;
+  /** The changed files, for the security path rule (HAL-17901); none when unset. */
+  readonly files?: readonly string[];
   /** What the rebase check answers (HAL-17759); none when unset. */
   readonly rebaseOnly?: RebaseOnly;
 }
 
 /** A fake Paperclip and a `run` that does one watcher pass with a fixed reviewer route. */
-export function setup({ tasks, pulls, comments = {}, byPaths = "julian", rebaseOnly }: Setup) {
+export function setup({
+  tasks,
+  pulls,
+  comments = {},
+  byPaths = "julian",
+  files = [],
+  rebaseOnly,
+}: Setup) {
   const paperclip = fakePaperclip(tasks, comments);
   const routed: number[] = [];
   const lines: string[] = [];
@@ -67,7 +77,7 @@ export function setup({ tasks, pulls, comments = {}, byPaths = "julian", rebaseO
       now: new Date("2026-11-24T17:00:00Z"),
       route: async (pull) => {
         routed.push(pull.number);
-        return byPaths;
+        return { reviewer: byPaths, security: files.some(isSecurityPath) };
       },
       ...(rebaseOnly === undefined ? {} : { rebaseOnly }),
     });

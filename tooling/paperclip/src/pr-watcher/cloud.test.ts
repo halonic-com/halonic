@@ -95,7 +95,7 @@ function watcher(repo: string, snapshotPull: SnapshotPull) {
       dryRun: false,
       log: () => undefined,
       now: new Date("2026-11-24T18:20:00Z"),
-      route: async () => "liam",
+      route: async () => ({ reviewer: "liam", security: false }),
     });
   const bodies = () => (paperclip.comments[`task-${number}`] ?? []).map(({ body }) => body);
   return { ...paperclip, run, bodies };
