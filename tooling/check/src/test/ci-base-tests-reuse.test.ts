@@ -217,6 +217,18 @@ function shards(folder: string, runId: number, sha: string): Artifact[] {
 
 verifies("check.base-tests-reuse-main", () => {
   describe("the merge base's tests reuse main's own results", () => {
+    // The step filters GitHub's answers with jq, as the runners do; GitHub's
+    // ubuntu image and our CI image both have it.
+    test("jq, tar and realpath are installed, as on CI's runners", () => {
+      for (const [tool, flag] of [
+        ["jq", "--version"],
+        ["tar", "--version"],
+        ["realpath", "--version"],
+      ] as const) {
+        expect(spawnSync(tool, [flag]).status, `${tool} isn't installed`).toBe(0);
+      }
+    });
+
     test("a green merge-group run for the merge base supplies every shard's results, and no test runs", () => {
       const fixtures = tempFolder();
       const step = reuse({ runs: { m0: [run(7, "m0")] }, artifacts: shards(fixtures, 7, "m0") });
