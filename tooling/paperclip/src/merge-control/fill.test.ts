@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import {
   actionsOf,
   ago,
+  boardLogin,
   enqueued,
   entry,
   logText,
@@ -21,7 +22,7 @@ function queuedPulls(count: number, from = 100) {
   };
 }
 
-function fast(number: number, by: string | null = "timothy-halonic") {
+function fast(number: number, by: string | null = boardLogin) {
   return pull(number, { labels: ["built-on:paperclip", "fast-track"], fastTrackBy: by });
 }
 
