@@ -224,6 +224,30 @@ verifies("paperclip.pr-watcher-cloud", () => {
     await expect(takeSnapshot({ ...broken, fallback: noFallback })).rejects.toThrow("502");
   });
 
+  test("leaves out a repository after the first whose checks the token doesn't reach (HAL-17883)", async () => {
+    // A token with pull request access on cloud but no checks access: GitHub
+    // answers 200 with `errors` on every head's `statusCheckRollup`.
+    const checksForbidden: GitHubQuery = async (document, variables) => {
+      if (variables["name"] !== "cloud") {
+        return tokenForHalonicOnly()(document, variables);
+      }
+      throw new Error(
+        "GitHub: the GraphQL query answered 200: Resource not accessible by personal access token.",
+      );
+    };
+    const unread: string[] = [];
+    const now = new Date("2026-11-24T19:50:00Z");
+    const snapshot = await takeSnapshot({
+      query: checksForbidden,
+      repos: [halonic, cloud],
+      now,
+      fallback: noFallback,
+      unread: (repo) => unread.push(repo),
+    });
+    expect(snapshot.repos.map(({ repo }) => repo)).toEqual([halonic]);
+    expect(unread).toEqual([cloud]);
+  });
+
   test("my_prs says which repository it couldn't read and names the repository when there are several", async () => {
     const github = fakeGitHub({ [`/repos/${halonic}/pulls?state=open&per_page=100&page=1`]: [] });
     const unread: string[] = [];

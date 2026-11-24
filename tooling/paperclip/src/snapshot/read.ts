@@ -391,8 +391,12 @@ async function readRepo(
   return { repo, defaultBranch, queue, pulls };
 }
 
-/** GitHub's answer for a repository the token doesn't reach: it says the repository doesn't exist. */
-const unseenRepository = /Could not resolve to a Repository/;
+/**
+ * GitHub's answers for a repository the token doesn't reach: it says the
+ * repository doesn't exist, or, when the token reaches its pull requests but
+ * not their checks, that a field isn't accessible (HAL-17883).
+ */
+const unseenRepository = /Could not resolve to a Repository|Resource not accessible by/;
 
 /**
  * One snapshot of every repository. A failed call fails the whole snapshot:
