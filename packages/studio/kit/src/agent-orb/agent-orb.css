@@ -85,10 +85,20 @@
     opacity: 0.4;
   }
 
-  /* High contrast drops gradients: the orb is drawn in the text colour, the ring in its own. */
+  /*
+   * High contrast drops gradients and draws every border, a transparent one too, so left alone an
+   * idle orb would wear a ring and look busy. The orb draws itself in system colours instead: the
+   * orb and any ring in the text colour, no ring when idle or asleep. The words carry the state.
+   */
   @media (forced-colors: active) {
+    forced-color-adjust: none;
+
     &::before {
       background: CanvasText;
+    }
+
+    &:not([data-state="idle"], [data-state="sleep"])::after {
+      border-color: CanvasText;
     }
   }
 }
