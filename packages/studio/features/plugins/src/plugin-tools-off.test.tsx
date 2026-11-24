@@ -51,12 +51,13 @@ async function studioWhere(toolsInThisBuild: PluginsHost["toolsInThisBuild"]) {
   });
   shell.services.instantiate(workspace);
   const context = shell.services.contextFor("plugins", workspace);
-  // Lets the app's answer arrive.
-  await act(async () => {});
   const commands = () =>
     shell.contributions.commands
       .list(() => context)
       .filter(({ id }) => id.startsWith("plugins.commands."));
+  // The first read asks the app; this lets its answer arrive.
+  commands();
+  await act(async () => {});
   const showHome = async () => {
     const [cards] = shell.contributions.home.cards();
     if (cards === undefined) throw new Error("No Cards section");
@@ -82,6 +83,26 @@ function timesIn(view: HTMLElement, text: string): number {
 }
 
 verifies("plugins.plugin-tools-off", () => {
+  it("asks the app nothing until Ctrl K, Home or the Plugins page reads it", async () => {
+    const ask = vi.fn(async () => false);
+    const shell = createShell({ features: [pluginsFeature], hostServices: [PluginsHostService] });
+    const workspace = new WorkspaceServices();
+    workspace.provide(PluginsHostService, {
+      feed: feedOf([weather()]).feed,
+      caller: { call: async () => "" },
+      ...noSettings(),
+      ...noActions(),
+      toolsInThisBuild: ask,
+    });
+    shell.services.instantiate(workspace);
+    await act(async () => {});
+    expect(ask).not.toHaveBeenCalled();
+
+    shell.contributions.commands.list(() => shell.services.contextFor("plugins", workspace));
+    shell.contributions.commands.list(() => shell.services.contextFor("plugins", workspace));
+    expect(ask).toHaveBeenCalledTimes(1);
+  });
+
   describe("a build without plugin tools", () => {
     const off = async () => false;
 

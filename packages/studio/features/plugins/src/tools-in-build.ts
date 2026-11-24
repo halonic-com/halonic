@@ -22,8 +22,9 @@ export interface PluginToolsState {
 }
 
 /**
- * The state for `ask`, which is asked once, now. Without `ask` (an app that can't tell, such as
- * the CLI's served Studio), plugin tools stay on.
+ * The state for `ask`, which is asked once, the first time Ctrl K, Home or Settings › Plugins
+ * reads the state, so opening a folder (an untrusted one too) asks the agent host nothing. Without
+ * `ask` (an app that can't tell, such as the CLI's served Studio), plugin tools stay on.
  *
  * @example
  * const tools = pluginToolsState(() => new AgentHostPluginTools(transport).inThisBuild());
@@ -31,19 +32,28 @@ export interface PluginToolsState {
  */
 export function pluginToolsState(ask: PluginToolsInBuild | undefined): PluginToolsState {
   let off = false;
+  let asked = false;
   const listeners = new Set<() => void>();
-  ask?.().then(
-    (inThisBuild) => {
-      if (inThisBuild) return;
-      off = true;
-      for (const listener of listeners) listener();
-    },
-    // A host that can't say leaves the tools on: each card then says why its call failed.
-    () => undefined,
-  );
+  const askOnce = () => {
+    if (asked || ask === undefined) return;
+    asked = true;
+    ask().then(
+      (inThisBuild) => {
+        if (inThisBuild) return;
+        off = true;
+        for (const listener of listeners) listener();
+      },
+      // A host that can't say leaves the tools on: each card then says why its call failed.
+      () => undefined,
+    );
+  };
   return {
-    off: () => off,
+    off: () => {
+      askOnce();
+      return off;
+    },
     subscribe: (listener) => {
+      askOnce();
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
