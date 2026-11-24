@@ -3,6 +3,7 @@ import { buildWorkerBundle } from "@halonicjs/tooling-publish";
 import { createCloudflareRest } from "../src/cloudflare-rest.ts";
 import { deployWebhookFixture } from "../src/fixture.ts";
 import { targetVariables } from "../src/live-target.ts";
+import { retryTransient } from "../src/transient.ts";
 import { workerSource } from "../src/worker-source.ts";
 
 /** Names the missing variables, never a value. */
@@ -26,8 +27,8 @@ export default async function setup(): Promise<() => Promise<void>> {
   const { entry, compatibilityDate } = workerSource();
 
   const fixture = await deployWebhookFixture({
-    api: createCloudflareClient({ token }),
-    rest: createCloudflareRest({ token }),
+    api: createCloudflareClient({ token, fetch: retryTransient() }),
+    rest: createCloudflareRest({ token, fetch: retryTransient() }),
     accountId: required("CLOUDFLARE_LIVE_ACCOUNT_ID"),
     prefix: required("HALONIC_LIVE_PREFIX"),
     bundle: await buildWorkerBundle(entry),

@@ -7,6 +7,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { eventually } from "../src/eventually.ts";
 import { fixtureWorkerName } from "../src/fixture.ts";
 import { roundTrip, UnexpectedStatus, workerChecks } from "../src/transfer-checks.ts";
+import { retryTransient } from "../src/transient.ts";
 import { EdgeNotRouted } from "../src/worker-call.ts";
 
 // Run by `pnpm test:live`, never by `pnpm test`: it calls a Worker deployed in the CI Cloudflare
@@ -56,7 +57,10 @@ describe("the deployed Worker's admin routes", () => {
   it(
     "refuses bad keys, takes an export in and gives it back, and is closed again afterwards",
     async () => {
-      const api = createCloudflareClient({ token: required("CLOUDFLARE_LIVE_API_TOKEN") });
+      const api = createCloudflareClient({
+        token: required("CLOUDFLARE_LIVE_API_TOKEN"),
+        fetch: retryTransient(),
+      });
       const work = await mkdtemp(join(tmpdir(), "hlt-export-"));
       folders.push(work);
       let used = "";
