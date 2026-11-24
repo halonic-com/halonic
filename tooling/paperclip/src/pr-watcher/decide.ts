@@ -34,6 +34,12 @@ export interface PullFacts {
     /** The head Liam approved, when this is a re-approval after a rebase-only push. */
     readonly rebaseOf?: string;
   }[];
+  /**
+   * Open only, on a repository whose base branch needs it (`githubReviewRepos`):
+   * an approving GitHub review on the head by an account other than the
+   * agents' shared one. It is also in `approvals`.
+   */
+  readonly githubApproval?: { readonly by: string; readonly head: string };
   /** Merged only: `ci-ok` passed on the merge commit, or a later base-branch commit is green. */
   readonly landed: boolean;
   /** Merged only: when it merged. */
@@ -54,7 +60,7 @@ export interface WatchedTask {
 /** One state the author should hear about. `key` says when it is the same state again. */
 export interface Reason {
   readonly pull: PullFacts;
-  readonly kind: "ci-red" | "conflict" | "retargeted" | "review" | "merged";
+  readonly kind: "ci-red" | "conflict" | "retargeted" | "review" | "approved" | "merged";
   readonly key: string;
 }
 
@@ -120,6 +126,10 @@ export function candidates(pulls: readonly PullFacts[]): Reason[] {
     }
     if (pull.latestReview !== undefined) {
       found.push({ pull, kind: "review", key: `${at} review ${pull.latestReview.id}` });
+    }
+    // Nobody queues on such a repository: whoever holds the task merges it.
+    if (pull.githubApproval !== undefined && !pull.draft && !pull.inQueue) {
+      found.push({ pull, kind: "approved", key: `${at} approved on GitHub` });
     }
   }
   return found;

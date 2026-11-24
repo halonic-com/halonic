@@ -49,7 +49,28 @@ export function pullKey(ref: { readonly repo: string; readonly number: number })
 /** The facts of some pull requests, keyed by `pullKey`. */
 export type PullFactsReader = (refs: readonly PullRef[]) => Promise<ReadonlyMap<string, PullFacts>>;
 
+/**
+ * The repositories whose base branch rule asks for an approving GitHub review
+ * from an account other than the agents' shared one: `cloud`'s `main`
+ * ("extra approval for unattributed changes", HAL-16864). There such a review
+ * on the head is the approval the watcher counts, next to the signed ones.
+ * On `halonic` only signed approvals count (HAL-14809).
+ */
+export const githubReviewRepos: ReadonlySet<string> = new Set(["halonic-com/cloud"]);
+
+/** The newest standing GitHub approval on the head, on a repository that needs one. */
+function githubApprovalOnHead(ref: PullRef, pull: SnapshotPull, open: OpenFacts) {
+  if (!githubReviewRepos.has(ref.repo.toLowerCase())) {
+    return undefined;
+  }
+  return (open.githubApprovals ?? []).findLast(({ head }) => head === pull.head);
+}
+
 function openPullFacts(ref: PullRef, pull: SnapshotPull, open: OpenFacts): PullFacts {
+  const githubApproval = githubApprovalOnHead(ref, pull, open);
+  const signed = open.approvals.map(({ by, head, rebaseOf }) =>
+    rebaseOf === undefined ? { by, head } : { by, head, rebaseOf },
+  );
   return {
     ...ref,
     url: pull.url,
@@ -62,9 +83,8 @@ function openPullFacts(ref: PullRef, pull: SnapshotPull, open: OpenFacts): PullF
     inQueue: open.inQueue,
     retargeted: open.baseChangedSincePush === true,
     latestReview: open.finding ?? undefined,
-    approvals: open.approvals.map(({ by, head, rebaseOf }) =>
-      rebaseOf === undefined ? { by, head } : { by, head, rebaseOf },
-    ),
+    approvals: githubApproval === undefined ? signed : [...signed, githubApproval],
+    ...(githubApproval === undefined ? {} : { githubApproval }),
     landed: false,
     mergedAt: undefined,
   };

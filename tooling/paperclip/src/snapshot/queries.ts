@@ -29,6 +29,7 @@ const checkRuns = `contexts(first: 100) {
 export const openPullsQuery = `query OpenPulls($owner: String!, $name: String!, $after: String, $withQueue: Boolean!) {
   repository(owner: $owner, name: $name) {
     defaultBranchRef { name }
+    isPrivate
     mergeQueue @include(if: $withQueue) {
       entries(first: 100) {
         nodes {
@@ -62,7 +63,7 @@ export const openPullsQuery = `query OpenPulls($owner: String!, $name: String!, 
         commits(last: 1) { nodes { commit { committedDate statusCheckRollup { ${checkRuns} } } } }
         reviews(last: 50) {
           nodes {
-            databaseId state body submittedAt authorAssociation commit { oid }
+            databaseId state body submittedAt authorAssociation commit { oid } author { login }
             comments(last: 20) {
               nodes { databaseId createdAt authorAssociation commit { oid } originalCommit { oid } }
             }

@@ -8,6 +8,7 @@ import {
   newestFinding,
   type Review,
 } from "../pr-watcher/github.ts";
+import { githubApprovals } from "./github-approvals.ts";
 import type { GitHubQuery } from "./graphql.ts";
 import { closedPullsQuery, commitBatchSize, commitChecksQuery, openPullsQuery } from "./queries.ts";
 import { capped, severityCounts } from "./severity.ts";
@@ -104,6 +105,8 @@ interface OpenNode extends PullNode {
     readonly nodes: readonly (Comment & {
       readonly state: string;
       readonly submittedAt: string | null;
+      /** Null when the account is gone. Absent in recordings made before the field. */
+      readonly author?: { readonly login: string } | null;
       readonly comments: { readonly nodes: readonly Comment[] };
     })[];
   };
@@ -124,6 +127,8 @@ interface QueueNode {
 interface OpenPage {
   readonly repository: {
     readonly defaultBranchRef: { readonly name: string } | null;
+    /** Absent in recordings made before the field. */
+    readonly isPrivate?: boolean;
     /** Only on the first page, which asks for it. */
     readonly mergeQueue?: { readonly entries: { readonly nodes: readonly QueueNode[] } } | null;
     readonly pullRequests: Page<OpenNode>;
@@ -270,6 +275,7 @@ async function openFacts(
         node.headRefOid,
       ) ?? null,
     approvals: signedApprovals(conversation),
+    githubApprovals: githubApprovals(reviews),
     baseChangedSincePush: baseChangedSincePush(node, defaultBranch),
     ...(node.author === undefined ? {} : { author: node.author?.login ?? null }),
     ...checksOf(rollup),
@@ -279,7 +285,11 @@ async function openFacts(
   };
 }
 
-function pullOf(node: PullNode, open: OpenFacts | null): SnapshotPull {
+/**
+ * A pull request's facts. A private repository's titles are left out: no text
+ * of its pull requests leaves it (Julian's condition for `cloud`, HAL-17743).
+ */
+function pullOf(node: PullNode, open: OpenFacts | null, keepTitle: boolean): SnapshotPull {
   let state: SnapshotPull["state"] = node.state === "MERGED" ? "merged" : "closed";
   if (open !== null) {
     state = "open";
@@ -287,7 +297,7 @@ function pullOf(node: PullNode, open: OpenFacts | null): SnapshotPull {
   return {
     number: node.number,
     url: node.url,
-    ...(node.title === undefined ? {} : { title: capped(node.title, titleCap) }),
+    ...(node.title === undefined || !keepTitle ? {} : { title: capped(node.title, titleCap) }),
     state,
     branch: node.headRefName,
     headRepo: node.headRepository?.nameWithOwner ?? null,
@@ -352,14 +362,16 @@ async function readRepo(
   const pulls: SnapshotPull[] = [];
   let defaultBranch = "main";
   let queue: QueueEntry[] = [];
+  let keepTitles = true;
   for (let after: string | null = null, first = true; first || after !== null; first = false) {
     const page = (await query(openPullsQuery, { ...names, after, withQueue: first })) as OpenPage;
     if (first) {
       defaultBranch = page.repository.defaultBranchRef?.name ?? defaultBranch;
       queue = await queueOf(page, repo, fallback);
+      keepTitles = page.repository.isPrivate !== true;
     }
     for (const node of page.repository.pullRequests.nodes) {
-      pulls.push(pullOf(node, await openFacts(node, repo, defaultBranch, fallback)));
+      pulls.push(pullOf(node, await openFacts(node, repo, defaultBranch, fallback), keepTitles));
     }
     const { hasNextPage, endCursor } = page.repository.pullRequests.pageInfo;
     after = hasNextPage ? endCursor : null;
@@ -370,24 +382,42 @@ async function readRepo(
     };
     const { nodes, pageInfo } = page.repository.pullRequests;
     const recent = nodes.filter((node) => Date.parse(node.updatedAt) >= since);
-    pulls.push(...recent.map((node) => pullOf(node, null)));
+    pulls.push(...recent.map((node) => pullOf(node, null, keepTitles)));
     more = pageInfo.hasNextPage && recent.length === nodes.length;
     after = pageInfo.endCursor;
   }
   return { repo, defaultBranch, queue, pulls };
 }
 
-/** One snapshot of every repository. A failed call fails the whole snapshot: no partial views. */
+/** GitHub's answer for a repository the token doesn't reach: it says the repository doesn't exist. */
+const unseenRepository = /Could not resolve to a Repository/;
+
+/**
+ * One snapshot of every repository. A failed call fails the whole snapshot:
+ * no partial views. The one exception is a repository after the first that
+ * the token doesn't reach (`cloud` was added before the token covered it,
+ * HAL-17730): it is left out and reported to `unread`, so the others are
+ * still watched.
+ */
 export async function takeSnapshot(options: {
   query: GitHubQuery;
   repos: readonly string[];
   now: Date;
   fallback: CheckFallback;
+  unread?: (repo: string, reason: string) => void;
 }): Promise<Snapshot> {
   const since = options.now.getTime() - closedWindowDays * 24 * 60 * 60 * 1000;
   const repos: SnapshotRepo[] = [];
-  for (const repo of options.repos) {
-    repos.push(await readRepo(options.query, repo, since, options.fallback));
+  for (const [index, repo] of options.repos.entries()) {
+    try {
+      repos.push(await readRepo(options.query, repo, since, options.fallback));
+    } catch (error) {
+      const reason = (error as Error).message;
+      if (index === 0 || !unseenRepository.test(reason)) {
+        throw error;
+      }
+      options.unread?.(repo, reason);
+    }
   }
   return {
     version: snapshotVersion,

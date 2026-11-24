@@ -169,7 +169,7 @@ describe("the job", () => {
   test("reads settings with safe defaults", () => {
     expect(readSettings({})).toEqual({
       token: undefined,
-      repos: ["halonic-com/halonic"],
+      repos: ["halonic-com/halonic", "halonic-com/cloud"],
       dryRun: true,
       fastTrackUnblocks: new Set(),
       fastTrackLabelAdder: "",

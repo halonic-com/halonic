@@ -94,7 +94,7 @@ verifies("paperclip.pr-tools", () => {
     test("refuses a pull request on a repository it doesn't watch, before any request", async () => {
       const { call, sent } = fakeTools({ githubToken: token }, {});
       expect(await call("pr_status", { pr: "https://github.com/someone/else/pull/7" })).toEqual({
-        error: "pr_status: repo must be one of: halonic-com/halonic.",
+        error: "pr_status: repo must be one of: halonic-com/halonic, halonic-com/cloud.",
       });
       expect(sent).toEqual([]);
     });

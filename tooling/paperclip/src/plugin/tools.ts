@@ -174,8 +174,9 @@ export function registerTools(ctx: ToolsApi): void {
       if (agent === null) {
         return { error: "my_prs: the calling agent wasn't found." };
       }
-      const prs = await myPrs(get, repos, agent.urlKey);
-      return { content: myPrsText(agent.urlKey, prs), data: prs };
+      const unread: string[] = [];
+      const prs = await myPrs(get, repos, agent.urlKey, unread);
+      return { content: myPrsText(agent.urlKey, prs, unread), data: prs };
     }),
   );
 

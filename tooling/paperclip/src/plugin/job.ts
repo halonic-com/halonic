@@ -47,7 +47,8 @@ export interface WatcherSettings {
   readonly fastTrackLabelAdder: string;
 }
 
-const defaultRepos = ["halonic-com/halonic"];
+/** `halonic` first: tools without a `repo` argument answer for the first one. */
+export const defaultRepos = ["halonic-com/halonic", "halonic-com/cloud"];
 
 /** How long one GitHub request may take. The worker has no resource limits of its own. */
 export const requestTimeoutMs = 15_000;
@@ -204,7 +205,16 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
   const query = gitHubQueryReader({ fetch, token });
   const fallback = (repo: string, sha: string, name: string) => ciOk(get, repo, sha, name);
   const started = Date.now();
-  const snapshot = await takeSnapshot({ query, repos: settings.repos, now, fallback });
+  const snapshot = await takeSnapshot({
+    query,
+    repos: settings.repos,
+    now,
+    fallback,
+    unread: (repo, reason) =>
+      ctx.logger.error(`PR watcher: left ${repo} out, the token doesn't reach it: ${reason}`, {
+        companyId,
+      }),
+  });
   // The watcher works from the snapshot in memory; only its later readers miss a failed save.
   await saveSnapshot(ctx, companyId, snapshot).catch((error: unknown) => {
     ctx.logger.error(`PR watcher: couldn't save the GitHub snapshot: ${(error as Error).message}`, {

@@ -9,7 +9,11 @@
  * quoting can't hide a call or make one up.
  */
 
-/** The repositories whose status reads go to the tools: the plugin's default `repos`. */
+/**
+ * The repositories whose status reads go to the tools: `halonic` only.
+ * The plugin also watches `cloud` (HAL-17730), but `pr_status` doesn't show
+ * its GitHub-review approvals, so `gh` keeps answering for it.
+ */
 export const guardedRepos: readonly string[] = ["halonic-com/halonic"];
 
 /** The calls the guard answers, as `<group> <command>`; also the metric's `subcommand` tag. */

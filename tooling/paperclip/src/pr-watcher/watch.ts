@@ -135,6 +135,8 @@ const reasonText: Record<Reason["kind"], (head: string) => string> = {
   retargeted: (head) =>
     `its base changed after its last reopen or push, so GitHub keeps it blocked even with green checks. Close and reopen it (or push a commit) to run the check against the new base. Reopening keeps head \`${head}\`, so approvals on it still count.`,
   review: (head) => `there's a new review comment on its head \`${head}\`.`,
+  approved: (head) =>
+    `it has an approving GitHub review on its head \`${head}\`, which its base branch needs. Merge it on that head once \`ci-ok\` is green (\`--match-head-commit\`); nobody queues it for you.`,
   merged: () =>
     "it merged and `ci-ok` is green, but the task has comments since. Mark it done if nothing else is left.",
 };
