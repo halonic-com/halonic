@@ -31,6 +31,7 @@ verifies("paperclip.pr-watcher-plugin", () => {
       "githubToken",
       "paperclipApiKey",
       "taggerAnthropicKey",
+      "trialResultsTokenRef",
     ]);
     for (const [, schema] of secrets) {
       expect(schema).toMatchObject({ type: "string" });

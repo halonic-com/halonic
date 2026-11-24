@@ -15,6 +15,7 @@ import { taskEffort } from "./task-effort.ts";
 import { registerTaskTools } from "./task-tools.ts";
 import { thinSpecCheck } from "./thin-spec-check.ts";
 import { registerTools } from "./tools.ts";
+import { registerTrialResults } from "./trial-results.ts";
 import {
   handleWorkerAgentsRequest,
   registerWorkerAgentsData,
@@ -82,6 +83,7 @@ export const plugin = definePlugin({
     registerBoardTools(ctx);
     registerTaskTools(ctx);
     registerNextStepTools(ctx);
+    registerTrialResults(ctx);
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
   },
   async onApiRequest(input) {

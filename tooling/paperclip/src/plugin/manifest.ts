@@ -2,6 +2,10 @@ import type { PaperclipPluginManifestV1, PluginCapability } from "@paperclipai/p
 import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { workerReadTables } from "../worker-agents/tables.ts";
 import { taskToolDeclarations } from "./task-tool-declarations.ts";
+import {
+  trialResultsConfigProperties,
+  trialResultsDeclaration,
+} from "./trial-results-declaration.ts";
 
 /**
  * The capability of our local server patch (HAL-16413). Paperclip's shared
@@ -28,7 +32,7 @@ const dispositionWrite = "issues.disposition.write" as PluginCapability;
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.agent-tools",
   apiVersion: 1,
-  version: "0.8.0",
+  version: "0.9.0",
   displayName: "Agent tools",
   description:
     "Halonic's tools beside Paperclip. The PR watcher marks a task done once its pull requests merged with a green ci-ok, and wakes the author for a red ci-ok, a conflict or a new review finding.",
@@ -56,6 +60,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     // reads the company's labels from Paperclip's API. The thin-spec check sends one POST to
     // api.anthropic.com/v1/messages per new code task, and for a flagged one creates the clarify
     // task and sets the task's blocker through Paperclip's API (src/plugin/thin-spec-calls.ts).
+    // trial_results sends GET requests to the trial results service at the address in the
+    // settings (src/plugin/trial-results.ts).
     "http.outbound",
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
@@ -249,6 +255,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         items: { type: "string" },
         default: ["liam", "julian"],
       },
+      ...trialResultsConfigProperties,
     },
   },
   jobs: [
@@ -407,6 +414,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       },
     },
     ...taskToolDeclarations,
+    trialResultsDeclaration,
   ],
 };
 
