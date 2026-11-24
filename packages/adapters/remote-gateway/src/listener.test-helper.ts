@@ -44,6 +44,8 @@ export interface HandshakeOptions {
   version?: string;
   key?: string;
   upgrade?: boolean;
+  /** Further header lines, such as `Tailscale-Funnel-Request: ?1`. */
+  headers?: string[];
 }
 
 /** The handshake request, as text; options change one thing about it. */
@@ -60,6 +62,7 @@ export function handshakeRequest(
     `Sec-WebSocket-Key: ${key}`,
     `Sec-WebSocket-Version: ${options.version ?? "13"}`,
     ...(options.origin === undefined ? [] : [`Origin: ${options.origin}`]),
+    ...(options.headers ?? []),
   ];
   return { text: `${lines.join("\r\n")}\r\n\r\n`, key };
 }
@@ -177,6 +180,7 @@ export async function openListener(
   options: {
     allowRisky?: boolean;
     extraHosts?: string[];
+    publicHeaders?: string[];
     maxConnections?: number;
     heartbeatMs?: number;
     helloTimeoutMs?: number;
@@ -195,6 +199,7 @@ export async function openListener(
     onError: (error) => errors.push(error),
     policy: { allowRiskyRemotely: () => options.allowRisky === true },
     ...(options.extraHosts === undefined ? {} : { extraHosts: options.extraHosts }),
+    ...(options.publicHeaders === undefined ? {} : { publicHeaders: options.publicHeaders }),
     ...(options.maxConnections === undefined ? {} : { maxConnections: options.maxConnections }),
     ...(options.heartbeatMs === undefined ? {} : { heartbeatMs: options.heartbeatMs }),
     ...(options.helloTimeoutMs === undefined ? {} : { helloTimeoutMs: options.helloTimeoutMs }),
