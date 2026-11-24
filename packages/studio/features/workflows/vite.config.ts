@@ -28,6 +28,7 @@ export default defineConfig({
         "agent-map": `${import.meta.dirname}/e2e/pages/agent-map.html`,
         configuration: `${import.meta.dirname}/e2e/pages/configuration.html`,
         "allow-address": `${import.meta.dirname}/e2e/pages/allow-address.html`,
+        "spend-and-seats": `${import.meta.dirname}/e2e/pages/spend-and-seats.html`,
       },
     },
   },

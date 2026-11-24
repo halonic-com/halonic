@@ -1,4 +1,5 @@
 import type { SpendSummary } from "@halonicjs/ports";
+import { AlertIcon, Button, Card, WarningIcon } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import {
   allTokens,
@@ -9,25 +10,64 @@ import {
   type TeamClock,
 } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
+import { UsageMeter } from "./usage-meter.tsx";
 
 const dayMs = 24 * 60 * 60 * 1000;
 
-/** A tile of the Spend and seats screen: its title, then its lines. */
+/**
+ * A tile of the Spend and seats screen: a Card with its title as the caption, then its lines. The
+ * Card fills the tile, so every tile in a row ends at the same height (s01).
+ */
 export function Tile({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section aria-label={title} className="flex-1 rounded-lg border border-border p-3">
-      <h2 className="text-small text-fg-muted">{title}</h2>
-      {children}
-    </section>
+    <div className="flex min-w-0 flex-1 *:min-w-0 *:flex-1">
+      <Card label={title} headingLevel={2}>
+        <div className="flex flex-col gap-1">{children}</div>
+      </Card>
+    </div>
   );
 }
 
-/** A button that opens a page outside the app, or the connection flow. */
-export function LinkButton({ link, onLink }: { link: TeamLink; onLink: (link: TeamLink) => void }) {
+/** A tile's headline: the amount, large and in tabular figures, with muted words after it. */
+export function Amount({ value, after }: { value: string; after?: string }) {
   return (
-    <button type="button" className="text-small text-accent" onClick={() => onLink(link)}>
+    <p className="wrap-anywhere">
+      <span className="text-title tabular-nums">{value}</span>
+      {after === undefined ? null : <span className="text-body text-fg-muted"> {after}</span>}
+    </p>
+  );
+}
+
+/** A secondary line under a tile's headline. */
+export function SmallLine({ children }: { children: ReactNode }) {
+  return <p className="text-small text-fg-muted">{children}</p>;
+}
+
+/** A line that warns (amber) or says something stopped (red), with the tone's icon before it. */
+export function ToneLine({ tone, children }: { tone: "warning" | "danger"; children: ReactNode }) {
+  const colour = tone === "danger" ? "text-danger" : "text-warning";
+  return (
+    <p className={`flex items-start gap-1.5 text-small ${colour}`}>
+      <span aria-hidden="true" className="mt-0.5 inline-grid size-icon-sm shrink-0 *:size-full">
+        {tone === "danger" ? <AlertIcon /> : <WarningIcon />}
+      </span>
+      <span className="min-w-0">{children}</span>
+    </p>
+  );
+}
+
+/** A button that opens a page outside the app, or the connection flow; ↗ marks a page outside. */
+export function LinkButton({ link, onLink }: { link: TeamLink; onLink: (link: TeamLink) => void }) {
+  const leaves = link !== "connect-again";
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      icon={leaves ? <span className="leading-none">↗</span> : undefined}
+      onClick={() => onLink(link)}
+    >
       {teamWords.links[link]}
-    </button>
+    </Button>
   );
 }
 
@@ -39,18 +79,14 @@ export function LinkButton({ link, onLink }: { link: TeamLink; onLink: (link: Te
 export function SpentTodayTile({ today }: { today: SpendSummary | undefined }) {
   if (today === undefined) return null;
   const money = formatMoney(today.paid);
+  const unpriced = today.unpricedRuns > 0;
   return (
     <Tile title={teamWords.spentToday}>
-      {today.unpricedRuns > 0 ? (
-        <p>
-          {teamWords.atLeast(money)} · {teamWords.notPriced(today.unpricedRuns)}
-        </p>
-      ) : (
-        <p>{money}</p>
-      )}
-      <p className="text-small text-fg-muted">
-        {teamWords.tokensToday(formatTokens(allTokens(today.tokens)))}
-      </p>
+      <Amount value={unpriced ? teamWords.atLeast(money) : money} />
+      {unpriced ? (
+        <ToneLine tone="warning">{teamWords.notPriced(today.unpricedRuns)}</ToneLine>
+      ) : null}
+      <SmallLine>{teamWords.tokensToday(formatTokens(allTokens(today.tokens)))}</SmallLine>
     </Tile>
   );
 }
@@ -67,46 +103,63 @@ export function ThisMonthTile(props: {
   if (month.budget === undefined) {
     return (
       <Tile title={teamWords.thisMonth}>
-        <p>
-          {teamWords.monthNoBudget(spent)} · {teamWords.noBudget}
-        </p>
-        <LinkButton link="set-budget" onLink={onLink} />
+        <Amount value={spent} after={teamWords.thisMonthAfter} />
+        <SmallLine>{teamWords.noBudget}</SmallLine>
+        <div className="mt-1">
+          <LinkButton link="set-budget" onLink={onLink} />
+        </div>
       </Tile>
     );
   }
   const budget = month.budget;
-  const percent = Math.round((month.paid.cents / budget.cents) * 100);
-  const head = `${teamWords.monthOfBudget(spent, formatMoney(budget, true))} · ${teamWords.percent(percent)}`;
+  const percent = (month.paid.cents / budget.cents) * 100;
+  const head = (
+    <>
+      <Amount value={spent} after={teamWords.ofBudget(formatMoney(budget, true))} />
+      <UsageMeter percent={percent} />
+    </>
+  );
   if (month.paid.cents >= budget.cents) {
     return (
       <Tile title={teamWords.thisMonth}>
-        <p>{head}</p>
-        <p>{teamWords.budgetUsedUp}</p>
+        {head}
+        <ToneLine tone="danger">{teamWords.budgetUsedUp}</ToneLine>
       </Tile>
     );
   }
   const { day, daysInMonth } = monthDay(clock);
   const left = formatMoney({ ...budget, cents: budget.cents - month.paid.cents }, true);
+  const pace = paceLine(month, day, daysInMonth, clock);
   return (
     <Tile title={teamWords.thisMonth}>
-      <p>{head}</p>
-      <p>
+      {head}
+      <SmallLine>
         {teamWords.left(left)} · {teamWords.daysToGo(daysInMonth - day)}
-      </p>
-      <p>{paceLine(month, day, daysInMonth, clock)}</p>
+      </SmallLine>
+      {pace.passes ? (
+        <ToneLine tone="warning">{pace.words}</ToneLine>
+      ) : (
+        <SmallLine>{pace.words}</SmallLine>
+      )}
     </Tile>
   );
 }
 
 /** Where this month's daily pace leads: a total, or the day it passes the budget. */
-function paceLine(month: SpendSummary, day: number, daysInMonth: number, clock: TeamClock): string {
+function paceLine(
+  month: SpendSummary,
+  day: number,
+  daysInMonth: number,
+  clock: TeamClock,
+): { words: string; passes: boolean } {
   const perDay = month.paid.cents / day;
   const projected = perDay * daysInMonth;
   const budget = month.budget?.cents ?? Number.POSITIVE_INFINITY;
   if (projected <= budget) {
-    return teamWords.atThisPace(formatMoney({ ...month.paid, cents: projected }, true));
+    const words = teamWords.atThisPace(formatMoney({ ...month.paid, cents: projected }, true));
+    return { words, passes: false };
   }
   const daysToBudget = Math.ceil((budget - month.paid.cents) / perDay);
   const passes = new Date(clock.now().getTime() + daysToBudget * dayMs);
-  return teamWords.passesBudget(formatDate(passes, clock));
+  return { words: teamWords.passesBudget(formatDate(passes, clock)), passes: true };
 }

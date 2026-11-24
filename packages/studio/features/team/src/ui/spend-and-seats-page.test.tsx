@@ -46,8 +46,15 @@ async function pressAndSettle(page: HTMLElement, label: string): Promise<void> {
 
 const text = (page: HTMLElement) => page.textContent ?? "";
 
+/** A button's visible words without its icon, which is hidden from screen readers. */
+function wordsOf(button: HTMLButtonElement): string {
+  const copy = button.cloneNode(true) as HTMLElement;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent ?? "";
+}
+
 function press(page: HTMLElement, label: string): void {
-  const button = [...page.querySelectorAll("button")].find((each) => each.textContent === label);
+  const button = [...page.querySelectorAll("button")].find((each) => wordsOf(each) === label);
   if (button === undefined) throw new Error(`no button ${label}`);
   act(() => button.click());
 }
@@ -68,8 +75,9 @@ verifies("team.spend-and-seats", () => {
       fake.team.setSpend(fake.source, { range: "month", paid: usd(977) });
       const opened: TeamLink[] = [];
       const page = await open(fake, opened);
-      expect(text(page)).toContain("$977 this month · No monthly budget set");
-      press(page, "Set one in Paperclip ↗");
+      expect(text(page)).toContain("$977 this month");
+      expect(text(page)).toContain("No monthly budget set");
+      press(page, "Set one in Paperclip");
       expect(opened).toEqual(["set-budget"]);
     });
 
@@ -82,7 +90,8 @@ verifies("team.spend-and-seats", () => {
         tokens: { input: 30_000_000, cached: 10_000_000, output: 1_000_000 },
       });
       const page = await open(fake);
-      expect(text(page)).toContain("At least $41.20 · 560 runs not priced yet");
+      expect(text(page)).toContain("At least $41.20");
+      expect(text(page)).toContain("560 runs not priced yet");
       expect(text(page)).toContain("Subscription seats used 41M tokens today.");
     });
 
@@ -90,7 +99,8 @@ verifies("team.spend-and-seats", () => {
       const fake = acme();
       fake.team.setSpend(fake.source, { range: "month", paid: usd(1380), budget: usd(1500) });
       const page = await open(fake);
-      expect(text(page)).toContain("$1,380 of $1,500 · 92%");
+      expect(text(page)).toContain("$1,380 of $1,500");
+      expect(text(page)).toContain("92%");
       expect(text(page)).toContain("$120 left · 6 days to go");
       expect(text(page)).toContain("At this pace you pass the budget around 27 Nov.");
     });
@@ -99,7 +109,8 @@ verifies("team.spend-and-seats", () => {
       const fake = acme();
       fake.team.setSpend(fake.source, { range: "month", paid: usd(1500), budget: usd(1500) });
       const page = await open(fake);
-      expect(text(page)).toContain("$1,500 of $1,500 · 100%");
+      expect(text(page)).toContain("$1,500 of $1,500");
+      expect(text(page)).toContain("100%");
       expect(text(page)).toContain(
         "This month's budget is used up. Paperclip stops agents whose budget is used up.",
       );
@@ -112,14 +123,14 @@ verifies("team.spend-and-seats", () => {
       const page = await open(fake, opened);
       expect(text(page)).toContain("Seat use isn't available on this Paperclip yet.");
       expect(text(page)).toContain("$41.20");
-      press(page, "Open Paperclip ↗");
+      press(page, "Open Paperclip");
       expect(opened).toEqual(["paperclip"]);
     });
 
     it("says no seats are set up, with Open AI seats", async () => {
       const page = await open(acme());
       expect(text(page)).toContain("No seats are set up in Paperclip's AI seats page.");
-      expect(text(page)).toContain("Open AI seats ↗");
+      expect(page.querySelector("button")?.textContent).toContain("Open AI seats");
     });
 
     it("shows a seat whose read failed as not read, with its last good time", async () => {
@@ -140,7 +151,15 @@ verifies("team.spend-and-seats", () => {
       const page = await open(fake);
       expect(text(page)).toContain("Signed out · since 09:40");
       expect(text(page)).not.toContain("last read");
-      expect(text(page)).toContain("Seat D is signed out / Since 09:40 · 2 agents on it");
+      expect(text(page)).toContain("Seat D is signed out");
+      expect(text(page)).toContain("Since 09:40 · 2 agents on it");
+      // Signed out stops the seat's agents, as full does: the chip and the Needs you icon are both red.
+      const chip = [...page.querySelectorAll("span.text-caption")].find(
+        (each) => each.textContent === "Signed out · since 09:40",
+      );
+      expect(chip?.className).toContain("bg-danger-soft");
+      const problem = page.querySelector('[aria-label="Needs you"] li span.text-danger');
+      expect(problem?.querySelector("svg")).not.toBeNull();
     });
 
     it("warns when every seat reading is older than 30 minutes", async () => {
@@ -152,7 +171,7 @@ verifies("team.spend-and-seats", () => {
       const page = await open(fake, opened);
       expect(text(page)).toContain("Seat readings are 42 min old. The seats job may have stopped.");
       expect(text(page)).toContain("⚠ As of 12:18 · 42 min ago");
-      press(page, "Open AI seats ↗");
+      press(page, "Open AI seats");
       expect(opened).toEqual(["ai-seats"]);
     });
 
@@ -173,11 +192,12 @@ verifies("team.spend-and-seats", () => {
         ],
       });
       const page = await open(fake);
-      expect(text(page)).toContain("Needs you · 1 problem");
-      expect(text(page)).toContain(
-        "Seat B reaches 90% of its week around 13:40 / Resets Thu 09:00 · 4 agents on it",
-      );
-      expect(text(page)).toContain("Near limit · ↗ 90% around 13:40");
+      const heading = page.querySelector('[aria-label="Needs you"] h2')?.textContent;
+      expect(heading).toMatch(/^Needs you.*1 problem$/);
+      expect(text(page)).toContain("Seat B reaches 90% of its week around 13:40");
+      expect(text(page)).toContain("Resets Thu 09:00 · 4 agents on it");
+      expect(text(page)).toContain("Near limit");
+      expect(text(page)).toContain("↗ 90% around 13:40");
       expect(text(page)).toContain("1 near its limit");
     });
 
@@ -196,9 +216,8 @@ verifies("team.spend-and-seats", () => {
       });
       const page = await open(fake);
       expect(text(page)).toContain("Nothing needs you. All seats are under 80%.");
-      expect(text(page)).toContain(
-        "52% of pool left · None near their limit · Next refill Wed 06:00",
-      );
+      expect(text(page)).toContain("52% of pool left");
+      expect(text(page)).toContain("None near their limit · Next refill Wed 06:00");
     });
 
     it("says the connection can't read spend, with Connect again", async () => {
@@ -250,6 +269,58 @@ verifies("team.spend-and-seats", () => {
       errors.mockRestore();
     });
 
+    it('writes a Needs you row as its two lines, never with the table\'s " / " mark', async () => {
+      const fake = acme();
+      fake.team.addSeat(fake.source, { label: "Seat D", state: "signed-out", agents: ["a"] });
+      fake.team.addSeat(fake.source, {
+        label: "Seat A",
+        windows: [{ kind: "week", label: "This week", usedPercent: 94 }],
+      });
+      const page = await open(fake);
+      const rows = [...page.querySelectorAll('[aria-label="Needs you"] li')];
+      expect(rows).toHaveLength(2);
+      for (const row of rows) expect(row.textContent).not.toContain(" / ");
+    });
+
+    it("leaves out Needs you when no seats are set up", async () => {
+      const page = await open(acme());
+      expect(page.querySelector('[aria-label="Needs you"]')).toBeNull();
+      expect(text(page)).not.toContain("Nothing needs you.");
+    });
+
+    it("shows a seat's State as a status chip in its tone, with the state's words", async () => {
+      const fake = acme();
+      fake.team.addSeat(fake.source, {
+        label: "Seat B",
+        state: "near-limit",
+        windows: [
+          {
+            kind: "week",
+            label: "This week",
+            usedPercent: 84,
+            reaches90At: "2026-11-24T13:40:00.000Z",
+          },
+        ],
+      });
+      const page = await open(fake);
+      const chip = [...page.querySelectorAll("span.text-caption")].find(
+        (each) => each.textContent === "Near limit",
+      );
+      expect(chip?.className).toContain("bg-attention-soft");
+      // The state's symbol sits in the chip, and the forecast stays out of it.
+      expect(chip?.querySelector("svg")).not.toBeNull();
+    });
+
+    it("keeps a seat's role whole when its name wraps", async () => {
+      const fake = acme();
+      fake.team.addSeat(fake.source, { label: "Seat C" });
+      const page = await open(fake);
+      const role = [...page.querySelectorAll("li span.whitespace-nowrap")].map(
+        (each) => each.textContent,
+      );
+      expect(role).toContain("· pool");
+    });
+
     it("dates freshness and the offline banner from readings, not a signed-out seat's since", async () => {
       const fake = acme();
       fake.setNow("2026-11-24T09:40:00.000Z");
@@ -281,7 +352,8 @@ verifies("team.spend-and-seats", () => {
         });
       }
       const page = await open(fake);
-      expect(text(page)).toContain("Needs you · 2 problems");
+      const heading = page.querySelector('[aria-label="Needs you"] h2')?.textContent;
+      expect(heading).toMatch(/^Needs you.*2 problems$/);
       expect(text(page)).not.toContain("None near their limit");
       expect(text(page)).toContain("2 near their limit");
     });

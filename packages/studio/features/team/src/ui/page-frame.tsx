@@ -1,0 +1,82 @@
+import { Button, Card, SkeletonBar } from "@halonicjs/studio-kit";
+import type { ReactNode } from "react";
+import { teamWords } from "../team-words.ts";
+
+/**
+ * The page's frame in every state: its padding, the title in the page-title style, and the
+ * freshness slot on the right ("As of 13:00 · 2 min ago", or "Loading…"). On a phone the slot
+ * wraps under the title.
+ */
+export function PageFrame(props: { freshness?: ReactNode; busy?: boolean; children: ReactNode }) {
+  return (
+    <main
+      aria-busy={props.busy === true ? "true" : undefined}
+      aria-label={props.busy === true ? teamWords.loadingSpoken : undefined}
+      className="flex w-full flex-col gap-4 px-6 py-5 phone:px-4"
+    >
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h1 className="text-title">{teamWords.title}</h1>
+        {props.freshness === undefined ? null : (
+          <p className="text-small text-fg-muted">{props.freshness}</p>
+        )}
+      </header>
+      {props.children}
+    </main>
+  );
+}
+
+/** The bordered Try again button of the failed and offline states. */
+export function TryAgain({ onPress }: { onPress: () => void }) {
+  return (
+    <Button variant="secondary" size="sm" onClick={onPress}>
+      {teamWords.tryAgain}
+    </Button>
+  );
+}
+
+/** One tile's skeleton: its caption, its headline value, and a line under it. */
+function TileSkeleton() {
+  return (
+    <div className="min-w-0 flex-1">
+      <Card>
+        <span className="flex flex-col gap-3">
+          <SkeletonBar kind="meta" width="1/3" />
+          <SkeletonBar kind="value" />
+          <SkeletonBar kind="meta" width="2/3" />
+        </span>
+      </Card>
+    </div>
+  );
+}
+
+/** One seat row's skeleton: its name and its state. */
+function RowSkeleton() {
+  return (
+    <Card>
+      <span className="flex items-center gap-3">
+        <span className="min-w-0 flex-1">
+          <SkeletonBar kind="title" width="2/5" />
+        </span>
+        <SkeletonBar kind="trailing" />
+      </span>
+    </Card>
+  );
+}
+
+/** Loading (HAL-17515 s08): the page's frame, with skeleton tiles and rows where the numbers go. */
+export function LoadingPage() {
+  return (
+    <PageFrame busy freshness={teamWords.loading}>
+      <div className="flex gap-3 phone:flex-col">
+        <TileSkeleton />
+        <TileSkeleton />
+        <TileSkeleton />
+      </div>
+      <div className="flex flex-col gap-2">
+        <RowSkeleton />
+        <RowSkeleton />
+        <RowSkeleton />
+      </div>
+    </PageFrame>
+  );
+}

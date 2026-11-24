@@ -75,6 +75,14 @@ edges 3:1 too, as the kit promises there. It measures the colours the browser dr
 (`e2e/contrast.ts`). At both narrow sizes nothing scrolls sideways, no text is cut and both
 buttons can be reached.
 
+## Spend and seats
+
+`spend-and-seats-<glance|loading>-<1440|390>-<light|dark|high-contrast>.png` is the Team feature's
+Spend and seats screen from a made-up team: a budget at 92 %, runs not priced yet, and a seat in
+each state, at a glance and while its first read is loading (HAL-17853). The spec also checks that
+nothing scrolls sideways on the 390 px phone. The page loads the screen through
+`loadSpendAndSeatsScreen` in the team feature's `api.ts`.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a

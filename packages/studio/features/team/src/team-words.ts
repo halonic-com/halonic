@@ -7,7 +7,7 @@ export type TeamLink = "set-budget" | "ai-seats" | "paperclip" | "connect-again"
  * The Spend and seats screen's words, as Noah's HAL-17515 `wording` table has
  * them (revision 2, Nina's check on HAL-17547). The tokens line under Spent
  * today is Nina's, for the board's S1 choice on HAL-17544. A button that leaves
- * the app ends with "↗".
+ * the app shows an ↗ icon beside its name, not in it.
  */
 export const teamWords = {
   title: "Spend and seats",
@@ -32,9 +32,11 @@ export const teamWords = {
     runs === 1 ? "1 run not priced yet" : `${runs} runs not priced yet`,
   tokensToday: (tokens: string) => `Subscription seats used ${tokens} tokens today.`,
   thisMonth: "This month",
-  monthNoBudget: (money: string) => `${money} this month`,
+  /** After the month's money when no budget is set: "$977 this month". */
+  thisMonthAfter: "this month",
   noBudget: "No monthly budget set",
-  monthOfBudget: (spent: string, budget: string) => `${spent} of ${budget}`,
+  /** After the month's money, in the muted colour: "$1,380 of $1,500". */
+  ofBudget: (budget: string) => `of ${budget}`,
   percent: (value: number) => `${value}%`,
   left: (money: string) => `${money} left`,
   daysToGo: (days: number) => (days === 1 ? "1 day to go" : `${days} days to go`),
@@ -43,25 +45,33 @@ export const teamWords = {
   budgetUsedUp: "This month's budget is used up. Paperclip stops agents whose budget is used up.",
   cantReadSpend: "This connection can't read spend yet. Connect again to allow it.",
   seatsThisWeek: "Seats this week",
-  poolLeft: (percent: number) => `${percent}% of pool left`,
+  /** After the pool's percent, in the muted colour: "38% of pool left". */
+  ofPoolLeft: "of pool left",
   nearLimit: (count: number) => {
     if (count === 0) return "None near their limit";
     return count === 1 ? "1 near its limit" : `${count} near their limit`;
   },
   signedOutCount: (count: number) => `${count} signed out`,
   nextRefill: (at: string) => `Next refill ${at}`,
-  seatsHeading: "Seats · worst first",
+  /** The seats' heading, "Seats · worst first", as a List heading's name and detail. */
+  seatsHeading: "Seats",
+  worstFirst: "worst first",
   seatColumns: ["Seat", "State", "This week", "5 hours", "Agents"],
   /** "Seat A · pool"; a paid-API seat and one of no known role show their label alone. */
-  seatName: (seat: Seat) =>
-    seat.role === "pool" || seat.role === "reserve" ? `${seat.label} · ${seat.role}` : seat.label,
+  seatName: (seat: Seat): string => {
+    const role = teamWords.seatRole(seat);
+    return role === undefined ? seat.label : `${seat.label} ${role}`;
+  },
+  /** The role after a seat's label, "· pool", kept whole when a name wraps; none for other roles. */
+  seatRole: (seat: Seat): string | undefined =>
+    seat.role === "pool" || seat.role === "reserve" ? `· ${seat.role}` : undefined,
   paidApi: "Money, not a weekly limit",
   seatsMissing: "Seat use isn't available on this Paperclip yet.",
   noSeats: "No seats are set up in Paperclip's AI seats page.",
   links: {
-    "set-budget": "Set one in Paperclip ↗",
-    "ai-seats": "Open AI seats ↗",
-    paperclip: "Open Paperclip ↗",
+    "set-budget": "Set one in Paperclip",
+    "ai-seats": "Open AI seats",
+    paperclip: "Open Paperclip",
     "connect-again": "Connect again",
   } satisfies Record<TeamLink, string>,
   openAiSeatsInPaperclip: "Open AI seats in Paperclip ↗",
@@ -87,10 +97,11 @@ export const teamWords = {
     used: (seat: string, percent: number) => `${seat} has used ${percent}% of its week`,
     resets: (at: string) => `Resets ${at}`,
   },
+  /** Under a near-limit seat's week meter, not in its chip: "↗ 90% around 13:40". */
+  forecast90: (time: string) => `↗ 90% around ${time}`,
   state: {
     ok: () => "OK",
-    "near-limit": (forecast?: string) =>
-      forecast === undefined ? "Near limit" : `Near limit · ↗ 90% around ${forecast}`,
+    "near-limit": () => "Near limit",
     full: (until?: string) => (until === undefined ? "Full" : `Full · until ${until}`),
     // Only "since": the port has one time, `asOf`, so a separate "last read" would repeat it.
     "signed-out": (since?: string) =>

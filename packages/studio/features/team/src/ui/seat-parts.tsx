@@ -1,64 +1,11 @@
 import type { Seat } from "@halonicjs/ports";
+import { Card, ChevronRightIcon, ListHeading, StatusChip } from "@halonicjs/studio-kit";
 import type { SeatProblem, SeatProblemKind } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
-import { teamWords } from "../team-words.ts";
-import { Tile } from "./money-tiles.tsx";
-
-/** A Needs you row's two lines: what is wrong, then when and who it affects. */
-function problemLines(problem: SeatProblem, clock: TeamClock): [string, string] {
-  const { seat, week } = problem;
-  const words = teamWords.problem;
-  const agents = teamWords.agentsOn(seat.agents.length);
-  const resets = week?.resetsAt === undefined ? undefined : formatDayTime(week.resetsAt, clock);
-  const withResets = resets === undefined ? agents : `${words.resets(resets)} · ${agents}`;
-  const lastRead = formatTime(seat.asOf, clock);
-  switch (problem.kind) {
-    case "full":
-      // With no reset time known, the row says only the state, never "full until" nothing.
-      return [
-        resets === undefined
-          ? `${seat.label} · ${teamWords.state.full()}`
-          : words.full(seat.label, resets),
-        agents,
-      ];
-    case "signed-out":
-      return [words.signedOut(seat.label), `${words.since(lastRead)} · ${agents}`];
-    case "not-read":
-      return [words.notRead(seat.label), `${words.lastGood(lastRead)} · ${agents}`];
-    case "reaches-90-soon":
-      return [words.reaches90(seat.label, formatTime(week?.reaches90At ?? "", clock)), withResets];
-    case "at-90":
-    case "at-80":
-      return [words.used(seat.label, Math.round(week?.usedPercent ?? 0)), withResets];
-  }
-}
-
-/** Needs you: one row per seat problem, worst first, or one line when nothing needs the board. */
-export function NeedsYou(props: { problems: readonly SeatProblem[]; clock: TeamClock }) {
-  const { problems, clock } = props;
-  return (
-    <section aria-label={teamWords.needsYou}>
-      <h2>
-        {teamWords.needsYou}
-        {problems.length > 0 ? ` · ${teamWords.problemCount(problems.length)}` : ""}
-      </h2>
-      {problems.length === 0 ? (
-        <p>{teamWords.nothingNeedsYou}</p>
-      ) : (
-        <ul>
-          {problems.map((problem) => {
-            const [title, line] = problemLines(problem, clock);
-            return (
-              <li key={problem.seat.id}>
-                <strong>{title}</strong> / {line}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
-  );
-}
+import { type TeamLink, teamWords } from "../team-words.ts";
+import { Amount, SmallLine, Tile } from "./money-tiles.tsx";
+import { StateIcon, stateTones } from "./seat-state.tsx";
+import { UsageMeter } from "./usage-meter.tsx";
 
 /** The problems that count as near the limit: the tile uses Needs you's words, not the seat's state. */
 const nearLimitKinds: readonly SeatProblemKind[] = ["reaches-90-soon", "at-90", "at-80"];
@@ -82,71 +29,196 @@ export function SeatsTile(props: {
     .flatMap((week) => (week.resetsAt === undefined ? [] : [week.resetsAt]))
     .sort()[0];
   const lines = [
-    teamWords.poolLeft(Math.round(100 - used)),
     teamWords.nearLimit(near),
     ...(signedOut > 0 ? [teamWords.signedOutCount(signedOut)] : []),
     ...(refill === undefined ? [] : [teamWords.nextRefill(formatDayTime(refill, props.clock))]),
   ];
   return (
     <Tile title={teamWords.seatsThisWeek}>
-      <p>{lines.join(" · ")}</p>
+      <Amount value={teamWords.percent(Math.round(100 - used))} after={teamWords.ofPoolLeft} />
+      <SmallLine>{lines.join(" · ")}</SmallLine>
     </Tile>
   );
 }
 
-/** A seat's state in words, with the time that goes with it. */
+/** A seat's state in words, with the time that goes with it. A forecast goes under the meter. */
 function stateWords(seat: Seat, clock: TeamClock): string {
   const week = seat.windows.find((window) => window.kind === "week");
-  const timeOf = (at: string | undefined) => (at === undefined ? undefined : formatTime(at, clock));
   switch (seat.state) {
-    case "near-limit":
-      return teamWords.state["near-limit"](timeOf(week?.reaches90At));
     case "full":
       return teamWords.state.full(
         week?.resetsAt === undefined ? undefined : formatDayTime(week.resetsAt, clock),
       );
     case "signed-out":
     case "not-read":
-      return teamWords.state[seat.state](timeOf(seat.asOf));
+      return teamWords.state[seat.state](formatTime(seat.asOf, clock));
     default:
       return teamWords.state[seat.state]();
   }
 }
 
-/** One window's use, such as "84%", or a dash when the seat has no such window. */
-function usedIn(seat: Seat, kind: "week" | "five-hour"): string {
-  const window = seat.windows.find((each) => each.kind === kind);
+/** A seat's State: a StatusChip in the state's tone, with its symbol and always its words. */
+export function SeatStateChip({ seat, clock }: { seat: Seat; clock: TeamClock }) {
+  return (
+    <StatusChip tone={stateTones[seat.state]} dot={seat.state === "ok"}>
+      <span className="inline-flex items-center gap-1">
+        <StateIcon state={seat.state} />
+        {stateWords(seat, clock)}
+      </span>
+    </StatusChip>
+  );
+}
+
+/**
+ * A column's name before its value, for screen readers only: the heading row shows the names to
+ * the eye, and on a phone the row shows only the name, State and week, as S24 does.
+ */
+function Spoken({ column }: { column: string }) {
+  return <span className="sr-only">{column} </span>;
+}
+
+const [seatColumn, stateColumn, weekColumn, fiveHourColumn, agentsColumn] = teamWords.seatColumns;
+
+/**
+ * One row's grid, shared by the heading row and every seat row so the columns line up (s01): Seat
+ * and State fixed shares, This week the flexible space. On a phone every row is the same one line,
+ * as S24: name, State, the week's percent and ›; a long name wraps within its own cell.
+ */
+const rowGrid =
+  "grid items-center gap-x-3 gap-y-1 grid-cols-[minmax(10rem,1fr)_minmax(13rem,1.2fr)_minmax(12rem,2fr)_6rem_5rem_1rem] phone:grid-cols-[minmax(0,1fr)_auto_3rem_1rem]";
+const numberCell = "text-right text-small tabular-nums";
+const desktopNumberCell = `${numberCell} phone:hidden`;
+
+/**
+ * The week: on a desktop a meter, with a near-limit seat's forecast under it; on a phone only the
+ * percent. A seat with no week shows a dash.
+ */
+function WeekCell({ seat, clock }: { seat: Seat; clock: TeamClock }) {
+  const week = seat.windows.find((each) => each.kind === "week");
+  if (week === undefined) return <span className={numberCell}>—</span>;
+  const forecast =
+    seat.state === "near-limit" && week.reaches90At !== undefined
+      ? teamWords.forecast90(formatTime(week.reaches90At, clock))
+      : undefined;
+  return (
+    <span className="block min-w-0">
+      <span className="block phone:hidden">
+        <UsageMeter percent={week.usedPercent} />
+        {forecast === undefined ? null : (
+          <span className="block text-small text-attention">{forecast}</span>
+        )}
+      </span>
+      <span className={`hidden phone:block ${numberCell}`}>
+        {teamWords.percent(Math.round(week.usedPercent))}
+      </span>
+    </span>
+  );
+}
+
+function fiveHours(seat: Seat): string {
+  const window = seat.windows.find((each) => each.kind === "five-hour");
   return window === undefined ? "—" : teamWords.percent(Math.round(window.usedPercent));
 }
 
-/** The seats, worst first. A paid-API seat shows money's words instead of a weekly limit. */
-export function SeatTable(props: { seats: readonly Seat[]; clock: TeamClock }) {
+/** A pool seat's State, week and five hours; a paid-API seat has money's words there instead. */
+function SeatMiddle({ seat, clock }: { seat: Seat; clock: TeamClock }) {
+  if (seat.role === "paid-api") {
+    return (
+      <span className="col-span-3 text-small text-fg-muted phone:col-span-2">
+        {teamWords.paidApi}
+      </span>
+    );
+  }
   return (
-    <table>
-      <thead>
-        <tr>
-          {teamWords.seatColumns.map((column) => (
-            <th key={column}>{column}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {props.seats.map((seat) => (
-          <tr key={seat.id}>
-            <td>{teamWords.seatName(seat)}</td>
-            {seat.role === "paid-api" ? (
-              <td colSpan={3}>{teamWords.paidApi}</td>
-            ) : (
-              <>
-                <td>{stateWords(seat, props.clock)}</td>
-                <td>{usedIn(seat, "week")}</td>
-                <td>{usedIn(seat, "five-hour")}</td>
-              </>
-            )}
-            <td>{seat.agents.length}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <>
+      <span className="min-w-0">
+        <Spoken column={stateColumn ?? ""} />
+        <SeatStateChip seat={seat} clock={clock} />
+      </span>
+      <span className="min-w-0">
+        <Spoken column={weekColumn ?? ""} />
+        <WeekCell seat={seat} clock={clock} />
+      </span>
+      <span className={desktopNumberCell}>
+        <Spoken column={fiveHourColumn ?? ""} />
+        {fiveHours(seat)}
+      </span>
+    </>
   );
+}
+
+/**
+ * A seat's name, "Seat C · pool": when it wraps, "· pool" moves under the label whole, so a line
+ * never starts or ends with the separator.
+ */
+function SeatName({ seat }: { seat: Seat }) {
+  const role = teamWords.seatRole(seat);
+  if (role === undefined) return seat.label;
+  return (
+    <>
+      {seat.label} <span className="whitespace-nowrap">{role}</span>
+    </>
+  );
+}
+
+/** A seat's row: its name, State chip, week meter, five hours and agents, then ›. */
+function SeatRow(props: { seat: Seat; clock: TeamClock; onLink: (link: TeamLink) => void }) {
+  const { seat, clock, onLink } = props;
+  return (
+    <Card onClick={() => onLink("ai-seats")}>
+      <span className={rowGrid}>
+        <span className="min-w-0 w-full wrap-anywhere text-body-strong">
+          <Spoken column={seatColumn ?? ""} />
+          <SeatName seat={seat} />
+        </span>
+        <SeatMiddle seat={seat} clock={clock} />
+        <span className={desktopNumberCell}>
+          <Spoken column={agentsColumn ?? ""} />
+          {seat.agents.length}
+        </span>
+        <span aria-hidden="true" className="inline-grid size-icon-sm text-fg-muted *:size-full">
+          <ChevronRightIcon />
+        </span>
+      </span>
+    </Card>
+  );
+}
+
+/**
+ * The seats, worst first, under the "Seats · worst first" heading, with the column names above
+ * them on a desktop. Each row opens AI seats in Paperclip. A paid-API seat shows money's words
+ * instead of a weekly limit.
+ */
+export function SeatList(props: {
+  seats: readonly Seat[];
+  clock: TeamClock;
+  onLink: (link: TeamLink) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {/* The rows say each column's name to screen readers, so the heading row is for eyes only. */}
+      <div
+        aria-hidden="true"
+        className={`${rowGrid} px-4 text-label uppercase text-fg-muted phone:hidden`}
+      >
+        {teamWords.seatColumns.map((column, index) => (
+          <span key={column} className={index >= 3 ? "text-right" : undefined}>
+            {column}
+          </span>
+        ))}
+      </div>
+      <ul className="flex flex-col gap-2">
+        {props.seats.map((seat) => (
+          <li key={seat.id}>
+            <SeatRow seat={seat} clock={props.clock} onLink={props.onLink} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The heading over the seats: "Seats · worst first". */
+export function SeatsHeading() {
+  return <ListHeading name={teamWords.seatsHeading} detail={teamWords.worstFirst} />;
 }
