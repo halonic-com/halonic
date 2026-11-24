@@ -36,6 +36,7 @@ function setup(answer: () => Promise<CodeExchangeOutcome> = async () => goodSess
       return answer();
     },
     refresh: unusedPort("refresh"),
+    signOut: unusedPort("signOut"),
     now: () => nowMs,
   };
   const server = testServer({
@@ -237,6 +238,7 @@ describe("cloud sign-in routes", () => {
         product,
         exchange: unusedPort("exchange"),
         refresh: unusedPort("refresh"),
+        signOut: unusedPort("signOut"),
       };
       const errorLog = { record: () => undefined };
       const build = (signIn: string, cookieName: string) => () =>

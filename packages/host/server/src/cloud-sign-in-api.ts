@@ -49,6 +49,13 @@ export interface CloudSignInPorts {
    * nothing up, so the cookies stay.
    */
   refresh(refreshCredential: string): Promise<RefreshOutcome>;
+  /**
+   * Ends the session of a refresh credential at Cloud, server to server, signed with the
+   * deployment's key, when its customer signs out here. It resolves once Cloud answered that the
+   * session is over or that it says nothing about the credential, and throws when Cloud can't be
+   * reached or answers anything else.
+   */
+  signOut(refreshCredential: string): Promise<void>;
   /** The current time in milliseconds; tests pass a fixed clock. */
   readonly now?: () => number;
 }

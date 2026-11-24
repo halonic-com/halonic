@@ -25,9 +25,16 @@ const nextSession: RefreshOutcome = {
   },
 };
 
-/** A many-user server with Cloud sign-in, whose refresh answers `answer` and records each call. */
-function setup(answer: () => Promise<RefreshOutcome> = async () => nextSession) {
+/**
+ * A many-user server with Cloud sign-in, whose refresh answers `answer` and whose sign-out runs
+ * `signOutAnswer`, recording each call.
+ */
+function setup(
+  answer: () => Promise<RefreshOutcome> = async () => nextSession,
+  signOutAnswer: () => Promise<void> = async () => undefined,
+) {
   const refreshes: string[] = [];
+  const signOuts: string[] = [];
   const errors: unknown[] = [];
   const cloudSignIn: CloudSignInPorts = {
     signInOrigin: "https://signin.acme.example",
@@ -36,6 +43,10 @@ function setup(answer: () => Promise<RefreshOutcome> = async () => nextSession) 
     refresh: async (credential) => {
       refreshes.push(credential);
       return answer();
+    },
+    signOut: async (credential) => {
+      signOuts.push(credential);
+      return signOutAnswer();
     },
     now: () => nowMs,
   };
@@ -54,7 +65,7 @@ function setup(answer: () => Promise<RefreshOutcome> = async () => nextSession) 
       cloudSignIn,
     },
   });
-  return { server, refreshes, errors };
+  return { server, refreshes, signOuts, errors };
 }
 
 function post(
@@ -160,7 +171,7 @@ describe("cloud session routes", () => {
     });
 
     it("refuses both routes from another site, and answers only POST", async () => {
-      const { server, refreshes } = setup();
+      const { server, refreshes, signOuts } = setup();
       for (const path of ["/api/session/refresh", "/api/sign-out"]) {
         const response = await post(server, path, {
           cookie: `${refreshCookieName}=rc_old`,
@@ -174,6 +185,7 @@ describe("cloud session routes", () => {
         expect(get.status).toBe(404);
       }
       expect(refreshes).toEqual([]);
+      expect(signOuts).toEqual([]);
     });
 
     it("carries a well-formed sid as the session id, and never refuses claims for it", () => {
@@ -181,6 +193,57 @@ describe("cloud session routes", () => {
       expect(checkClaims(personalClaims(ids.alice))?.sessionId).toBeNull();
       expect(checkClaims(personalClaims(ids.alice, { sid: 42 }))?.sessionId).toBeNull();
       expect(checkClaims(personalClaims(ids.alice, { sid: "a b" }))?.sessionId).toBeNull();
+    });
+  });
+
+  verifies("server.cloud-sign-out", () => {
+    it("ends the session at Cloud with the refresh cookie, so its next refresh is `signed_out`", async () => {
+      // Stands in for Cloud: after its sign-out, a refresh with the credential answers the end.
+      let signedOut = false;
+      const { server, signOuts } = setup(
+        async () => (signedOut ? { ok: false, ended: "signed_out" } : nextSession),
+        async () => {
+          signedOut = true;
+        },
+      );
+      const cookie = `${refreshCookieName}=rc_old`;
+      const response = await post(server, "/api/sign-out", { cookie });
+      expect(signOuts).toEqual(["rc_old"]);
+      expect(response.status).toBe(204);
+      expect(response.headers.getSetCookie()).toEqual(cleared);
+      const copy = await refreshWith(server, cookie);
+      expect(await copy.json()).toMatchObject({ code: "session_ended", ended: "signed_out" });
+    });
+
+    it("still clears both cookies, and logs the failure, when Cloud can't be reached", async () => {
+      const { server, errors } = setup(undefined, async () => {
+        throw new Error("Cloud unavailable");
+      });
+      const response = await post(server, "/api/sign-out", {
+        cookie: `${refreshCookieName}=rc_old`,
+      });
+      expect(response.status).toBe(204);
+      expect(response.headers.getSetCookie()).toEqual(cleared);
+      expect(errors).toEqual([new Error("Cloud unavailable")]);
+    });
+
+    it("clears both cookies without asking Cloud when there is no single refresh cookie", async () => {
+      const cookies = [
+        undefined,
+        `${refreshCookieName}=`,
+        `${refreshCookieName}=a; ${refreshCookieName}=b`,
+      ];
+      for (const cookie of cookies) {
+        const { server, signOuts } = setup();
+        const response = await post(
+          server,
+          "/api/sign-out",
+          cookie === undefined ? {} : { cookie },
+        );
+        expect(response.status).toBe(204);
+        expect(response.headers.getSetCookie()).toEqual(cleared);
+        expect(signOuts).toEqual([]);
+      }
     });
   });
 });
