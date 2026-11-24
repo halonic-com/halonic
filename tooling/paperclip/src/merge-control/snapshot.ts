@@ -137,6 +137,16 @@ export interface RunFact {
   readonly branch: string;
 }
 
+/** Runner capacity, from the CI live metrics and the CI server's status file; null where unreadable. */
+export interface RunnerCapacity {
+  /** Free merge-queue (large) runner slots. */
+  readonly freeQueueSlots: number | null;
+  /** Jobs waiting for a runner, by runner label; a missing label has none waiting. */
+  readonly waitingByLabel: Readonly<Record<string, number>> | null;
+  /** Merge groups cancelled in the last hour. */
+  readonly cancelledGroupsLastHour: number | null;
+}
+
 /** Everything one pass reads. */
 export interface MergeSnapshot {
   readonly takenAt: string;
@@ -168,6 +178,8 @@ export interface MergeSnapshot {
   readonly queuedPullRuns: readonly RunFact[];
   /** The longest wait of a queued merge-group job for a runner, in minutes; null when unreadable. */
   readonly runnerWaitMinutes: number | null;
+  /** Null when the reader couldn't read it at all; counts as short. */
+  readonly capacity: RunnerCapacity | null;
   /** Newest `CI` push runs on `main`. */
   readonly mainRuns: readonly RunFact[];
 }

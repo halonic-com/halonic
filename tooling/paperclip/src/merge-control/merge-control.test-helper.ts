@@ -125,6 +125,7 @@ export function snapshot(changes: Partial<MergeSnapshot> = {}): MergeSnapshot {
     mergeGroupRuns: [],
     queuedPullRuns: [],
     runnerWaitMinutes: 0,
+    capacity: { freeQueueSlots: 4, waitingByLabel: {}, cancelledGroupsLastHour: 0 },
     mainRuns: [],
     ...changes,
   };

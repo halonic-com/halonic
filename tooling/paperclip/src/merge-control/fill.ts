@@ -1,5 +1,6 @@
 import { fastTrackLabel } from "../pr-tools/queue-state.ts";
 import { queuePrio } from "../rules/queue-prio.ts";
+import { capacityShort, jumpCost, noCost } from "./capacity.ts";
 import { liveCloudOf } from "./checks.ts";
 import { commentOnce, logLine, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
@@ -145,11 +146,22 @@ function excluded(row: GateRow, limits: FillLimits): boolean {
 }
 
 /** Sends the enqueue and its carry-over note, and logs it. */
-function enqueue(context: PassContext, row: GateRow, jump: boolean, isFast: boolean): void {
+function enqueue(
+  context: PassContext,
+  row: GateRow,
+  jump: boolean,
+  isFast: boolean,
+  queued: readonly number[],
+): void {
   const { number, head } = row.pull;
-  context.actions.push({ kind: "enqueue", number, pullId: row.pull.id, head, jump });
+  const cost = jump ? jumpCost(context, queued) : noCost;
+  context.actions.push({ kind: "enqueue", number, pullId: row.pull.id, head, jump, cost });
   if (jump) {
-    logLine(context, "fill", `JUMPED #${number}${isFast ? " (fast-track)" : " (fix)"}`);
+    logLine(
+      context,
+      "fill",
+      `JUMPED #${number}${isFast ? " (fast-track)" : " (fix)"} cancels=${cost.groupsCancelled} runnerMinutes=${cost.runnerMinutes}`,
+    );
   }
   const carried = row.approval?.carried;
   if (carried !== undefined) {
@@ -164,12 +176,27 @@ function enqueue(context: PassContext, row: GateRow, jump: boolean, isFast: bool
   }
 }
 
+/** A wanted jump goes only while runner capacity isn't short; a held one is logged. */
+function jumps(
+  context: PassContext,
+  row: GateRow,
+  wantsJump: boolean,
+  short: string | undefined,
+): boolean {
+  if (wantsJump && short !== undefined) {
+    logLine(context, "fill", `NO_JUMP #${row.pull.number} (${short})`);
+    return false;
+  }
+  return wantsJump;
+}
+
 /**
  * Enqueues candidates in order up to the target. A fast-track pull request
  * isn't held back by the target, so every ready one goes in during the same
  * pass. It jumps only with more than `jumpAhead` entries queued and no
  * fast-track pull request in the queue (HAL-17697); a queued one is never
- * taken out to jump again. A fix under a main-red freeze jumps too.
+ * taken out to jump again. A fix under a main-red freeze jumps too. No
+ * pull request jumps while runner capacity is short or unknown (ADR).
  */
 export function fill(
   context: PassContext,
@@ -184,6 +211,8 @@ export function fill(
   const added: number[] = [];
   const waiting: string[] = [];
   let fastQueued = still.some((row) => fast.has(row.pull.number));
+  const short = capacityShort(context);
+  const queued = still.map((row) => row.pull.number);
   for (const row of ordered) {
     const isFast = fast.has(row.pull.number);
     // Fast-track rows sort first, so the first other row at the target ends the fill.
@@ -198,10 +227,10 @@ export function fill(
       waiting.push(`#${row.pull.number}(${why})`);
       continue;
     }
-    const jump =
+    const wantsJump =
       (limits.freeze !== null && matches(limits.freeze, row)) ||
       (isFast && still.length + added.length > settings.jumpAhead && !fastQueued);
-    enqueue(context, row, jump, isFast);
+    enqueue(context, row, jumps(context, row, wantsJump, short), isFast, queued);
     fastQueued ||= isFast;
     for (const path of row.pull.files) {
       held.add(path);

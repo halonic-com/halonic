@@ -92,6 +92,10 @@ export interface MergeSettings {
   readonly jumpAhead: number;
   readonly rerunsPerPass: number;
   readonly fileSizeLimit: number;
+  /** The runner label merge groups run on, for the capacity check. */
+  readonly queueRunnerLabel: string;
+  /** Runner-minutes to rebuild one merge group: about 16 jobs of about 15 minutes. */
+  readonly groupRunnerMinutes: number;
 }
 
 /** Today's settings (board, 22–24 Nov). */
@@ -103,6 +107,8 @@ export const defaultSettings: MergeSettings = {
   jumpAhead: 8,
   rerunsPerPass: 8,
   fileSizeLimit: 500,
+  queueRunnerLabel: "large",
+  groupRunnerMinutes: 240,
 };
 
 /** Why a queued pull request comes out (MERGER.md §4, a–e and the board's additions). */
@@ -115,7 +121,17 @@ export type RemovalReason =
   | "head-moved"
   | "no-signed-approval";
 
-/** One write for the action layer, the only kinds there are. */
+/** What a jump or dequeue throws away: the merge groups it cancels and their runner-minutes. */
+export interface ActionCost {
+  readonly groupsCancelled: number;
+  readonly runnerMinutes: number;
+}
+
+/**
+ * One write for the action layer, the only kinds there are. `wake` and
+ * `update-branch` aren't decided yet: the PR watcher's task rules and the
+ * proactive rebase move into this core in later pull requests (ADR).
+ */
 export type MergeAction =
   | {
       readonly kind: "enqueue";
@@ -123,6 +139,8 @@ export type MergeAction =
       readonly pullId: string;
       readonly head: string;
       readonly jump: boolean;
+      /** Zero unless it jumps. */
+      readonly cost: ActionCost;
     }
   | {
       readonly kind: "dequeue";
@@ -132,6 +150,26 @@ export type MergeAction =
       readonly reason: RemovalReason;
       /** Posted after the dequeue; for a conflict also when GitHub already took it out. */
       readonly comment: string;
+      readonly cost: ActionCost;
+    }
+  | {
+      readonly kind: "update-branch";
+      readonly number: number;
+      readonly pullId: string;
+      /** The head it rebases, so a stale action fails instead of moving a newer head. */
+      readonly head: string;
+      readonly why: string;
+    }
+  | {
+      readonly kind: "wake";
+      /** The agent to wake, by name. */
+      readonly agent: string;
+      /** The task to wake them on, such as `HAL-42`. */
+      readonly task: string;
+      /** Once per event and head, like the comment keys. */
+      readonly key: string;
+      /** What happened, for the wake comment. */
+      readonly facts: readonly string[];
     }
   | { readonly kind: "rerun"; readonly runId: number; readonly why: string }
   | { readonly kind: "rerun-failed-jobs"; readonly runId: number; readonly why: string }

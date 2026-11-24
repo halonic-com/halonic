@@ -1,3 +1,4 @@
+import { dequeueCost } from "./capacity.ts";
 import { minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
 import type { RemovalReason } from "./state.ts";
@@ -92,6 +93,7 @@ export function removals(context: PassContext, rows: readonly GateRow[]): GateRo
       continue;
     }
     const key = String(row.pull.number);
+    const position = row.entry?.position ?? 0;
     context.actions.push({
       kind: "dequeue",
       number: row.pull.number,
@@ -99,9 +101,9 @@ export function removals(context: PassContext, rows: readonly GateRow[]): GateRo
       head: row.pull.head,
       reason,
       comment: commentOf(context, row, reason),
+      cost: dequeueCost(context, position),
     });
     if (reason === "unmergeable") {
-      const position = row.entry?.position ?? 0;
       context.state.cooldown[key] = {
         head: row.pull.head,
         ahead: queued

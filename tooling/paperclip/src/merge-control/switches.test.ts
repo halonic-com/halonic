@@ -87,7 +87,14 @@ verifies("paperclip.merge-control-main-red", () => {
   test("while main is red only the fix goes in, with a jump", () => {
     const decision = pass(snapshot({ pulls: [pull(1), pull(2)] }), withBoard({ mainRed: freeze }));
     expect(decision.actions).toEqual([
-      { kind: "enqueue", number: 2, pullId: "PR_2", head: pull(2).head, jump: true },
+      {
+        kind: "enqueue",
+        number: 2,
+        pullId: "PR_2",
+        head: pull(2).head,
+        jump: true,
+        cost: { groupsCancelled: 0, runnerMinutes: 0 },
+      },
     ]);
     expect(logText(decision)).toContain("JUMPED #2 (fix)");
   });
