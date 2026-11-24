@@ -1,5 +1,6 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
+import { AgentMessagingService } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
   HeldAgentsService,
@@ -40,6 +41,8 @@ export const inboxFeature = defineFeature({
     ProposalDecisionsService,
     // The page reads each run's workflow and starter from the Runs list for the card and row.
     RunsListService,
+    // The agents' cards and questions, from every AgentMessaging source (inbox.agent-inbox-items).
+    AgentMessagingService,
   ],
   provides: [InboxService],
   register(studio) {

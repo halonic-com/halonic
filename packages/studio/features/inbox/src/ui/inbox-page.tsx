@@ -1,5 +1,7 @@
+import type { AgentMessaging } from "@halonicjs/ports";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
+import { AgentMessagingService } from "@halonicjs/studio-services";
 import {
   type EngineWords,
   engineWords,
@@ -18,6 +20,7 @@ import {
 } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
 import { waitingCount } from "../inbox-count.ts";
+import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
@@ -32,7 +35,9 @@ import { NoticesSection } from "./notices-section.tsx";
 import { OpenCard } from "./open-card.tsx";
 import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
+import { type AgentItems, useAgentItems } from "./use-agent-items.tsx";
 import { useOpenItem } from "./use-open-item.ts";
+import { useProjectFilter } from "./use-project-filter.tsx";
 import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
 import { useRunReview } from "./use-run-review.ts";
@@ -68,6 +73,7 @@ export function InboxPage({ context }: PlaceViewProps) {
       announce={(line) => context.announcer.announce(line)}
       requests={context.services.find(InboxRequestsService)}
       proposals={context.services.find(ProposalDecisionsService)}
+      agentMessaging={context.services.find(AgentMessagingService)}
       notices={notices}
       {...(context.runCommand === undefined
         ? {}
@@ -125,6 +131,8 @@ export interface InboxViewProps {
   readonly runs?: RunsList | undefined;
   /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
   readonly announce?: ((line: string) => void) | undefined;
+  /** The agents' cards and questions, listed after the Inbox's own items; without it there are none. */
+  readonly agentMessaging?: AgentMessaging | undefined;
 }
 
 /**
@@ -165,11 +173,19 @@ export function InboxView({
   runFacts,
   runs,
   announce,
+  agentMessaging,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
+  const agent = useAgentItems(agentMessaging);
+  // An item of the Inbox's own that opens, by hand or on request, takes the pane from an agent's.
+  const closeAgent = agent.close;
+  useEffect(() => {
+    if (open !== null) closeAgent();
+  }, [open, closeAgent]);
   const listed = needsYouListed(state.items, state.decided, open, openAt.current);
+  const project = useProjectFilter(agent.waitingItems, listed.length > 0);
   const retry = () => void inbox.refresh();
   useSettleLeftOver(state.leftOver, proposals, retry);
   // A list that opens over a failed load checks again at once, so it doesn't say the last poll's
@@ -220,6 +236,8 @@ export function InboxView({
       <div data-pane="list" className={listPaneClass(phone, itemPage)}>
         <ListHeader phone={phone} newRequest={request.newRequest} />
         <StaleLine error={state.loaded ? state.error : undefined} words={words} phone={phone} />
+        {agent.lines(now())}
+        {project.chips}
         <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
           {failedFirst ? (
             <EmptyState
@@ -234,11 +252,17 @@ export function InboxView({
               heading={{
                 name: "Needs you",
                 headingRef: needsYouHeading,
-                ...countDetail(waitingCount(state.items), lateCount(state.items, now())),
+                ...countDetail(
+                  waitingCount(state.items) + agent.waiting,
+                  lateCount(state.items, now()),
+                ),
               }}
-              rows={listed.map((item) => inboxRow(item, now(), runFacts))}
-              onOpen={(key) => openItem(listed.find((item) => item.key === key) ?? null)}
-              {...(open === null ? {} : { current: open.key })}
+              rows={[
+                ...project.own(listed).map((item) => inboxRow(item, now(), runFacts)),
+                ...agent.rows(now(), project.filter),
+              ]}
+              onOpen={(key) => openRow(key, agent, listed, openItem)}
+              {...currentRow(open?.key ?? agent.openKey)}
               empty={
                 phone
                   ? { title: nothingWaiting.title, description: nothingWaiting.description }
@@ -283,9 +307,12 @@ export function InboxView({
         <div className="flex w-full max-w-190 flex-col">
           {itemPage ? <ItemPageBar open={open} items={state.items} close={close} /> : null}
           {open === null ? (
-            <NothingOpen loaded={state.loaded} waiting={state.items.length}>
-              {request.form}
-            </NothingOpen>
+            agent.card(
+              now,
+              <NothingOpen loaded={state.loaded} waiting={state.items.length}>
+                {request.form}
+              </NothingOpen>,
+            )
           ) : (
             <OpenCard
               key={open.key}
@@ -313,4 +340,20 @@ export function InboxView({
       </div>
     </div>
   );
+}
+
+/** Opens a row's item: an agent's in its own card, else the Inbox's own item of that key. */
+function openRow(
+  key: string,
+  agent: AgentItems,
+  listed: readonly InboxItem[],
+  openItem: (item: InboxItem | null) => void,
+): void {
+  if (agent.open(key)) openItem(null);
+  else openItem(listed.find((item) => item.key === key) ?? null);
+}
+
+/** The List's current row, when one is open. */
+function currentRow(key: string | undefined): { current?: string } {
+  return key === undefined ? {} : { current: key };
 }
