@@ -24,8 +24,18 @@ function decodeOnce(path: string): string | undefined {
   }
 }
 
+/**
+ * Anything but printable ASCII. Browsers drop tabs and line breaks from an
+ * address, so `.<TAB>.` would open as `..` after the checks passed.
+ */
+const unprintable = /[^\x21-\x7e]/;
+
 function hasPathTrick(decoded: string): boolean {
+  // The browser removes `.` and `..` segments, which would step outside the prefix.
+  const dotSegment = decoded.split("/").some((segment) => segment === "." || segment === "..");
   return (
+    dotSegment ||
+    unprintable.test(decoded) ||
     decoded.includes("..") ||
     decoded.includes("//") ||
     decoded.includes("\\") ||
@@ -36,9 +46,10 @@ function hasPathTrick(decoded: string): boolean {
 /**
  * Checks a `browser` block's address against the catalog's web origins and
  * their path prefixes (architecture note on HAL-17491, 7.1): `https` only, no
- * user name, password or port, a host on the allow-list, no query or fragment,
- * and a path that, decoded once, holds no `..`, `//`, `\` or `%2F` and starts
- * with one of the origin's prefixes. Returns the page it touches, or why not.
+ * user name, password or port, only printable characters, a host on the
+ * allow-list, no query or fragment, and a path that, decoded once, holds no
+ * `.` or `..` segment, `..`, `//`, `\`, `%2F` or unprintable character and
+ * starts with one of the origin's prefixes. Returns the page it touches, or why not.
  *
  * @example
  * checkBrowserAddress("https://github.com/acme/app/settings/variables/actions", origins);
@@ -48,6 +59,9 @@ export function checkBrowserAddress(
   address: string,
   origins: readonly BrowserOrigin[],
 ): Result<StepperTarget, string> {
+  if (unprintable.test(address)) {
+    return err("the address holds a space, tab, line break or other unprintable character");
+  }
   const parts = addressParts.exec(address);
   if (parts === null) return err(`\`${address}\` isn't a web address`);
   const [, scheme = "", authority = "", path = "", rest] = parts;

@@ -8,6 +8,7 @@ export {
   defaultRequesterPolicy,
   type RequesterPolicy,
 } from "./requester-policy.ts";
+export { compileResultPattern, maxResultLength, type ResultPattern } from "./result-pattern.ts";
 export {
   maxBrowserInstructionLength,
   maxBrowserInstructions,

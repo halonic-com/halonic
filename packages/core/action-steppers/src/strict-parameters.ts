@@ -42,15 +42,30 @@ function isAnchored(pattern: RegExp): boolean {
   return pattern.source.startsWith("^") && pattern.source.endsWith("$");
 }
 
+/** Only flags that don't change where a match starts or ends; `g` and `y` keep state between tests. */
+const allowedFlags = /^[iu]*$/;
+
+/**
+ * Anchors the whole pattern, so a top-level alternation such as `^a|b$`
+ * can't match `b` anywhere in the value.
+ */
+function wholeValue(pattern: RegExp): RegExp {
+  return new RegExp(`^(?:${pattern.source.slice(1, -1)})$`, pattern.flags);
+}
+
 function textSchema(name: string, field: TextParameter): Schema<string> {
   // A definition with an unanchored pattern is a bug in reviewed code, not a bad request.
   assert(
     isAnchored(field.pattern),
     `parameter ${name}: the pattern must start with ^ and end with $`,
   );
+  assert(
+    allowedFlags.test(field.pattern.flags),
+    `parameter ${name}: only the i and u flags are allowed`,
+  );
   return s
     .string()
-    .regex(field.pattern, `must match ${field.pattern.source}`)
+    .regex(wholeValue(field.pattern), `must match ${field.pattern.source}`)
     .refine(isSafeSegment, "must be one path segment: no /, \\, ?, #, %, @, :, spaces, . or ..");
 }
 

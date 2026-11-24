@@ -84,6 +84,13 @@ verifies("action-steppers.stepper-request", () => {
       ["https://github.com/acme/app/settings/access", "isn't a page browser steps may open"],
       ["https://github.com/acme/app/settings/", "isn't a page browser steps may open"],
       ["javascript:alert(1)", "isn't a web address"],
+      ["https://github.com/acme/app/settings/variables/.\t./access", "unprintable"],
+      ["https://github.com/acme/app/settings/variables/.\n./access", "unprintable"],
+      ["https://github.com/acme/app/settings/variables/%09", "path trick"],
+      ["https://github.com/acme/./settings/variables/", "path trick"],
+      ["https://github.com/acme/app/settings/variables/./x", "path trick"],
+      ["https://github.com/acme/app/settings/variables/%2e/x", "path trick"],
+      ["https://github.com/acme/%2E/settings/variables/", "path trick"],
     ])("refuses the browser address %s", (url, reason) => {
       const found = reasons(request(setVariable, browser(url)));
       expect(found).toHaveLength(1);
@@ -107,7 +114,12 @@ verifies("action-steppers.stepper-request", () => {
         ...browser(variablesPage),
         result: { label: "Project id", pattern: "^([a-z]$" },
       };
-      expect(reasons(request(broken))[0]).toContain("isn't a valid pattern");
+      expect(reasons(request(broken))[0]).toContain("the result pattern isn't allowed");
+      const backtracking = {
+        ...browser(variablesPage),
+        result: { label: "Id", pattern: "^(a+)+$" },
+      };
+      expect(reasons(request(backtracking))[0]).toContain("the result pattern isn't allowed");
     });
 
     it("refuses more than 20 blocks, a document over 16 KB and text that isn't JSON", () => {

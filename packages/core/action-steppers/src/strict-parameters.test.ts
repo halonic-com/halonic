@@ -43,6 +43,21 @@ verifies("action-steppers.strict-parameters", () => {
       expect(parse(parameters, { owner: "acme", repo: "app", runs: 11 }).ok).toBe(false);
     });
 
+    it("anchors a top-level alternation to the whole value", () => {
+      const either = strictParameters({ repo: { kind: "text", pattern: /^app|docs$/ } });
+      expect(parse(either, { repo: "app" }).ok).toBe(true);
+      expect(parse(either, { repo: "apps-evil" }).ok).toBe(false);
+    });
+
+    it("refuses a definition whose pattern has the g or y flag", () => {
+      expect(() => strictParameters({ repo: { kind: "text", pattern: /^[a-z]+$/g } })).toThrow(
+        /flags/,
+      );
+      expect(() => strictParameters({ repo: { kind: "text", pattern: /^[a-z]+$/y } })).toThrow(
+        /flags/,
+      );
+    });
+
     it("refuses a definition whose pattern isn't anchored", () => {
       expect(() => strictParameters({ repo: { kind: "text", pattern: /[a-z]+/ } })).toThrow(
         /must start with \^/,

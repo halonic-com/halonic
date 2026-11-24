@@ -1,6 +1,7 @@
 import { formatPath, type Issue, parse } from "@halonicjs/schema-kit";
 import { encodeUtf8, err, ok, type Result } from "@halonicjs/std";
 import { checkBrowserAddress } from "./browser-address.ts";
+import { compileResultPattern } from "./result-pattern.ts";
 import {
   maxStepperRequestBytes,
   type StepperBlock,
@@ -83,25 +84,15 @@ function checkStep(
   );
 }
 
-function isPattern(pattern: string): boolean {
-  try {
-    new RegExp(pattern);
-    return true;
-  } catch {
-    // The requester wrote the pattern; a broken one is a reason, not a crash.
-    return false;
-  }
-}
-
 function checkBrowser(
   block: Extract<StepperBlock, { kind: "browser" }>,
   catalog: StepperCatalog,
 ): BlockCheck {
   const page = checkBrowserAddress(block.url, catalog.browserOrigins);
   if (!page.ok) return page;
-  if (block.result !== undefined && !isPattern(block.result.pattern)) {
-    return err(`the result pattern \`${block.result.pattern}\` isn't a valid pattern`);
-  }
+  const result =
+    block.result === undefined ? ok(undefined) : compileResultPattern(block.result.pattern);
+  if (!result.ok) return err(`the result pattern isn't allowed: ${result.error}`);
   // A browser block counts as admin: the user follows the requester's own words on a page where they have full rights.
   if (block.check === undefined) return ok({ risk: "admin", targets: [page.value] });
   const check = checkStep(block.check, catalog);

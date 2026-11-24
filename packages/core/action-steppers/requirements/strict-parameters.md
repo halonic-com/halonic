@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: stream HAL-17488 (user-only action steppers); architecture note on HAL-17491, sections 1.2 and 2.2; task HAL-17517
 
-When a stepper definition's parameters are parsed, the action-steppers package shall refuse a key the definition doesn't declare, a text that doesn't match its anchored pattern or enum, and any text that isn't one safe path segment (`.`, `..`, or a text holding `/`, `\`, `?`, `#`, `%`, `@`, `:` or a space), whatever the pattern says, so a parameter can't add a path segment, a query or another host.
+When a stepper definition's parameters are parsed, the action-steppers package shall refuse a key the definition doesn't declare, a text that doesn't match its pattern, anchored to the whole value, or its enum, and any text that isn't one safe path segment (`.`, `..`, or a text holding `/`, `\`, `?`, `#`, `%`, `@`, `:` or a space), whatever the pattern says, so a parameter can't add a path segment, a query or another host.
 
 ## Examples
 
