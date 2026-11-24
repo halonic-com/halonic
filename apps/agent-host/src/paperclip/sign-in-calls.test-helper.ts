@@ -28,6 +28,10 @@ export class FakeSignInCalls implements SignInCalls {
   statuses: ChallengeStatus[] = [];
   owner: KeyOwner = { userId: "user-ada", companyIds: ["acme"] };
   approvalPath = "/cli-auth/challenge-1?token=challenge-secret";
+  /** What a cancel answers: `approved` when the board approved before it. */
+  cancelAnswer: ChallengeStatus = "cancelled";
+  /** When set, the next cancel throws it. */
+  cancelFailsWith: Error | undefined;
   /** When set, the next poll waits until the test calls the function it is given. */
   holdNextPoll: ((answer: () => void) => void) | undefined;
 
@@ -52,9 +56,11 @@ export class FakeSignInCalls implements SignInCalls {
     return this.statuses.shift() ?? "pending";
   }
 
-  async cancelChallenge(challenge: ChallengeRef): Promise<void> {
+  async cancelChallenge(challenge: ChallengeRef): Promise<ChallengeStatus> {
     this.sent.push(signInRequests.cancelChallenge);
+    if (this.cancelFailsWith !== undefined) throw this.cancelFailsWith;
     this.cancelled.push(challenge);
+    return this.cancelAnswer;
   }
 
   async readMe(): Promise<KeyOwner> {

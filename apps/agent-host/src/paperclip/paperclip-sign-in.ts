@@ -108,8 +108,14 @@ export class PaperclipSignIn {
       await this.#options.scheduler.schedule(signInTimerKey, signInId, expiresAt);
     } catch (error) {
       // Without a page to open or a time limit the sign-in can't go on: drop the key and end the challenge.
-      this.#open.delete(signInId);
-      await this.#options.calls.cancelChallenge(challenge);
+      const open = this.#take(signInId);
+      if (open !== undefined) {
+        await cleanUpAfterFailure(
+          () => this.#endChallenge(open),
+          error,
+          "Paperclip sign-in couldn't start, and its challenge couldn't be cancelled",
+        );
+      }
       throw error;
     }
     return { signInId, phrase, approvalUrl, expiresAt };
@@ -136,14 +142,11 @@ export class PaperclipSignIn {
     }
     if (status === "pending") return { status: "pending" };
     // Taken out before any further wait, so a cancel that runs meanwhile finds nothing.
-    const stillOpen = this.#take(signInId) === open;
-    if (status === "approved" && !stillOpen) {
-      // Cancelled or timed out while this poll ran, yet approved: the key works now, so revoke it.
-      await this.#options.calls.revokeCurrent(open.key);
-      return { status: "cancelled" };
-    }
+    // Whoever takes a sign-in out owns its key: a cancel or time-out that took it
+    // first has ended the challenge and revoked the key if the board approved it.
+    if (this.#take(signInId) !== open) return { status: "cancelled" };
     if (status === "approved") return this.#finishApproved(signInId, open);
-    if (stillOpen) await this.#endTimer(signInId);
+    await this.#endTimer(signInId);
     return { status };
   }
 
@@ -151,7 +154,7 @@ export class PaperclipSignIn {
   async cancel(signInId: string): Promise<SignInState> {
     const open = this.#take(signInId);
     if (open === undefined) return { status: "unknown" };
-    await this.#options.calls.cancelChallenge(open.challenge);
+    await this.#endChallenge(open);
     await this.#endTimer(signInId);
     return { status: "cancelled" };
   }
@@ -166,9 +169,20 @@ export class PaperclipSignIn {
     const open = this.#take(signInId);
     if (open === undefined) return { status: "unknown" };
     // Paperclip ends the challenge too, but its clock may run behind ours.
-    await this.#options.calls.cancelChallenge(open.challenge);
+    await this.#endChallenge(open);
     await this.#endTimer(signInId);
     return { status: "expired" };
+  }
+
+  /**
+   * Cancels a challenge whose sign-in ended without a poll seeing `approved`.
+   * If the board approved it first anyway, the key works, so it is revoked:
+   * nobody holds it any more.
+   */
+  async #endChallenge(open: OpenSignIn): Promise<void> {
+    const { calls } = this.#options;
+    const endedAs = await calls.cancelChallenge(open.challenge);
+    if (endedAs === "approved") await calls.revokeCurrent(open.key);
   }
 
   async #finishApproved(signInId: string, open: OpenSignIn): Promise<SignInState> {
@@ -176,21 +190,27 @@ export class PaperclipSignIn {
     try {
       await this.#endTimer(signInId);
       const owner = await calls.readMe(open.key);
-      if (!owner.companyIds.includes(open.connection.companyId)) {
-        await calls.revokeCurrent(open.key);
-        return { status: "wrong-company" };
+      if (owner.companyIds.includes(open.connection.companyId)) {
+        await keyStore.save({
+          address: open.connection.address,
+          companyId: open.connection.companyId,
+          key: open.key,
+        });
+        return { status: "connected", userId: owner.userId };
       }
-      await keyStore.save({
-        address: open.connection.address,
-        companyId: open.connection.companyId,
-        key: open.key,
-      });
-      return { status: "connected", userId: owner.userId };
     } catch (error) {
       // The key works but isn't stored: revoke it so no working key is left anywhere.
-      await revokeAfterFailure(calls, open.key, error);
+      await cleanUpAfterFailure(
+        () => calls.revokeCurrent(open.key),
+        error,
+        "Paperclip sign-in failed after approval, and its key couldn't be revoked",
+      );
       throw error;
     }
+    // The key's user isn't in the connection's company: refuse the key. Outside
+    // the try, so a failed revoke is reported once and not retried.
+    await calls.revokeCurrent(open.key);
+    return { status: "wrong-company" };
   }
 
   /** Takes a sign-in out of memory, at once and without waiting, so only one caller gets it. */
@@ -206,14 +226,19 @@ export class PaperclipSignIn {
   }
 }
 
-async function revokeAfterFailure(calls: SignInCalls, key: string, cause: unknown): Promise<void> {
+/**
+ * Runs a clean-up after a failure. If the clean-up fails too, both errors are
+ * thrown together, so neither hides the other.
+ */
+async function cleanUpAfterFailure(
+  cleanUp: () => Promise<void>,
+  cause: unknown,
+  message: string,
+): Promise<void> {
   try {
-    await calls.revokeCurrent(key);
-  } catch (revokeError) {
-    throw new AggregateError(
-      [cause, revokeError],
-      "Paperclip sign-in failed after approval, and its key couldn't be revoked",
-    );
+    await cleanUp();
+  } catch (cleanUpError) {
+    throw new AggregateError([cause, cleanUpError], message);
   }
 }
 

@@ -57,8 +57,12 @@ export interface SignInCalls {
   createChallenge(request: ChallengeRequest): Promise<CreatedChallenge>;
   /** Reads a challenge's state. */
   pollChallenge(challenge: ChallengeRef): Promise<ChallengeStatus>;
-  /** Cancels a challenge, so a late approval makes no working key. */
-  cancelChallenge(challenge: ChallengeRef): Promise<void>;
+  /**
+   * Cancels a challenge, so a late approval makes no working key, and answers
+   * the state it ended in (Paperclip's `status`). `approved` means the board
+   * approved it first: the key works, and the caller must revoke it.
+   */
+  cancelChallenge(challenge: ChallengeRef): Promise<ChallengeStatus>;
   /** Reads who the key belongs to. */
   readMe(key: string): Promise<KeyOwner>;
   /** Revokes the key it is sent with. */

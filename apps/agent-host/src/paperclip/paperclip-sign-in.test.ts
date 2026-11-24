@@ -123,7 +123,7 @@ verifies("agent-host.paperclip-sign-in", () => {
       expect(flow.holdsKey(started.signInId)).toBe(false);
     });
 
-    it("revokes a key approved while Studio cancelled", async () => {
+    it("revokes a key approved while Studio cancelled, once", async () => {
       const { calls, keyStore, flow } = setUp();
       const started = await flow.start(connection);
       let answer: () => void = () => undefined;
@@ -131,12 +131,44 @@ verifies("agent-host.paperclip-sign-in", () => {
         answer = resolve;
       };
       calls.statuses = ["approved"];
+      calls.cancelAnswer = "approved";
       const polling = flow.poll(started.signInId);
       await flow.cancel(started.signInId);
       answer();
       expect(await polling).toEqual({ status: "cancelled" });
       expect(calls.revoked).toEqual([fakeBoardKey]);
       expect(keyStore.saved).toEqual([]);
+    });
+
+    it("revokes a key the board approved before Studio cancelled", async () => {
+      const { calls, keyStore, flow } = setUp();
+      const started = await flow.start(connection);
+      calls.cancelAnswer = "approved";
+      expect(await flow.cancel(started.signInId)).toEqual({ status: "cancelled" });
+      expect(calls.revoked).toEqual([fakeBoardKey]);
+      expect(flow.holdsKey(started.signInId)).toBe(false);
+      expect(keyStore.saved).toEqual([]);
+    });
+
+    it("revokes a key the board approved before the timer fired", async () => {
+      const { calls, keyStore, clock, scheduler, flow } = setUp();
+      const started = await flow.start(connection);
+      calls.cancelAnswer = "approved";
+      clock.advance(signInLimitMs);
+      await scheduler.runDue();
+      expect(calls.revoked).toEqual([fakeBoardKey]);
+      expect(flow.holdsKey(started.signInId)).toBe(false);
+      expect(keyStore.saved).toEqual([]);
+    });
+
+    it("doesn't revoke a key nobody approved when the sign-in ends", async () => {
+      const { calls, clock, scheduler, flow } = setUp();
+      await flow.cancel((await flow.start(connection)).signInId);
+      await flow.start(connection);
+      clock.advance(signInLimitMs);
+      await scheduler.runDue();
+      expect(calls.cancelled).toHaveLength(2);
+      expect(calls.revoked).toEqual([]);
     });
 
     it("polls once at a time, so an approved key is stored once", async () => {
@@ -170,6 +202,33 @@ verifies("agent-host.paperclip-sign-in", () => {
       calls.approvalPath = "//evil.test/cli-auth/challenge-1";
       await expect(flow.start(connection)).rejects.toThrow("outside /cli-auth/");
       expect(calls.cancelled).toHaveLength(1);
+    });
+
+    it("keeps the start's error when the challenge's cancel fails too", async () => {
+      const { calls, flow } = setUp();
+      calls.approvalPath = "//evil.test/cli-auth/challenge-1";
+      calls.cancelFailsWith = new Error("Paperclip unreachable");
+      const failure = await flow.start(connection).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(AggregateError);
+      const messages = (failure as AggregateError).errors.map((error: Error) => error.message);
+      expect(messages).toEqual([
+        "Paperclip answered with an approval path outside /cli-auth/",
+        "Paperclip unreachable",
+      ]);
+    });
+
+    it("reports a failed wrong-company revoke once, without retrying it", async () => {
+      const { calls, flow } = setUp();
+      const started = await flow.start(connection);
+      calls.statuses = ["approved"];
+      calls.owner = { userId: "user-ada", companyIds: ["globex"] };
+      calls.revokeCurrent = async () => {
+        calls.sent.push(signInRequests.revokeCurrent);
+        throw new Error("revoke refused");
+      };
+      await expect(flow.poll(started.signInId)).rejects.toThrow("revoke refused");
+      const revokes = calls.sent.filter((request) => request === signInRequests.revokeCurrent);
+      expect(revokes).toHaveLength(1);
     });
 
     it("sends only requests on its list, none of them to the key routes", async () => {
