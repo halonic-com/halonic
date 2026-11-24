@@ -136,12 +136,32 @@ describe("the API in workerd", () => {
     expect((await ask("/api/trust")).status).toBe(401);
   });
 
-  it("answers 429 past the daily ceiling, from the counter in the Durable Object", async () => {
+  it("answers 429 to signed-in requests past the daily ceiling, from the counter in the Durable Object", async () => {
     const scope = nextScope();
     const withCeiling = { HALONIC_DAILY_REQUESTS: "2" };
+    const configured = { ...(await deployment()), ...withCeiling } as RuntimeEnv;
+    const login = await ask("/api/login", {
+      method: "POST",
+      body: { password },
+      scope,
+      env: withCeiling,
+    });
+    const cookie = (login.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
+    const session = () =>
+      serveRequest(
+        new Request(`https://${host}/api/session`, {
+          headers: { host, cookie, "cf-connecting-ip": "203.0.113.7" },
+        }),
+        configured,
+        { scope },
+      );
+    // Requests without a session aren't counted, so they can't use up the day.
+    for (let call = 0; call < 3; call += 1) {
+      expect((await ask("/api/hello", { scope, env: withCeiling })).status).toBe(200);
+    }
     const statuses: number[] = [];
     for (let call = 0; call < 3; call += 1) {
-      statuses.push((await ask("/api/hello", { scope, env: withCeiling })).status);
+      statuses.push((await session()).status);
     }
     expect(statuses).toEqual([200, 200, 429]);
   });

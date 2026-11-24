@@ -2,6 +2,7 @@ import type { RoutineTrigger } from "@halonicjs/format";
 import { isAgentRunsNotAvailable, workspaceSecrets } from "@halonicjs/ports";
 import { type PlacedRoutine, type RoutineStart, webhookFacts } from "@halonicjs/routines";
 import type { ServerPorts } from "./api.ts";
+import type { CountRequest } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { routineStartOrRefusal, startRoutineRun } from "./routine-run-start.ts";
 import { refuseUnlessTrusted } from "./trust-routes.ts";
@@ -45,8 +46,14 @@ export interface WebhookRoutes {
    * webhook trigger at that address, for a request signed with its secret.
    *
    * @param address What follows {@link webhookPathPrefix}.
+   * @param countRequest Counts a delivery whose signature is proven against the daily ceiling.
    */
-  receive(request: Request, address: string, body: Uint8Array): Promise<Response>;
+  receive(
+    request: Request,
+    address: string,
+    body: Uint8Array,
+    countRequest: CountRequest,
+  ): Promise<Response>;
 }
 
 type WebhookPorts = Pick<
@@ -98,14 +105,54 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
     ) {
       return null;
     }
-    return { key, placed, trigger: webhookTrigger, signed, now };
+    return { key, placed, trigger: webhookTrigger, secret, signed, now };
+  }
+
+  /** Claims the delivery and starts its run, or answers 409 for a delivery already taken. */
+  async function startDelivery(
+    sender: ProvenSender,
+    start: { start: RoutineStart; hubId: string },
+  ): Promise<Response> {
+    const { key, signed, now } = sender;
+    const delivery = await sha256Hex(`${key}\n${signed.deliveryId}`);
+    // Kept per secret, not per address: the signature doesn't cover the address, so a delivery
+    // signed for one routine would otherwise be taken again by another routine with its secret.
+    const lease = await coordination.tryAcquire(
+      `webhook-delivery:${await deliveryMemoryName(sender.secret, signed.deliveryId)}`,
+      DELIVERY_MEMORY_MS,
+    );
+    if (lease === null) {
+      return errorResponse(serverErrors.webhookReplayed);
+    }
+    const runTrigger = {
+      type: "webhook",
+      routineId: key,
+      at: now.toISOString(),
+      deliveryId: signed.deliveryId,
+    } as const;
+    // The same delivery always gets the same run id, so the executor itself starts nothing twice.
+    const runId = `webhook-${delivery}`;
+    try {
+      const summary = await startRoutineRun(runs, start.hubId, start.start, runTrigger, runId);
+      return Response.json({ runId: summary.id }, { status: 202 });
+    } catch (error) {
+      // A start that failed must not use up the delivery: the sender's retry should get through.
+      await coordination.release(lease);
+      // Not built yet, not broken: the same 501 the run routes give.
+      if (isAgentRunsNotAvailable(error)) return errorResponse(serverErrors.notImplemented);
+      throw error;
+    }
   }
 
   return {
-    async receive(request, address, body) {
+    async receive(request, address, body, countRequest) {
       const sender = await proveSender(request, address, body);
       if (sender === null) {
         return rejected();
+      }
+      const overCeiling = await countRequest();
+      if (overCeiling !== null) {
+        return overCeiling;
       }
 
       // The sender is proven from here on, so the answers may say more.
@@ -113,41 +160,12 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
       if (untrusted !== null) {
         return untrusted;
       }
-      const { key, placed, signed, now } = sender;
       const start = webhookStart(request, sender, body);
       if (start instanceof Response) {
         return start;
       }
-      const busy = await overlapAnswer(runStore, key, placed.routine.overlap);
-      if (busy !== null) {
-        return busy;
-      }
-      const delivery = await sha256Hex(`${key}\n${signed.deliveryId}`);
-      const lease = await coordination.tryAcquire(
-        `webhook-delivery:${delivery}`,
-        DELIVERY_MEMORY_MS,
-      );
-      if (lease === null) {
-        return errorResponse(serverErrors.webhookReplayed);
-      }
-      const runTrigger = {
-        type: "webhook",
-        routineId: key,
-        at: now.toISOString(),
-        deliveryId: signed.deliveryId,
-      } as const;
-      // The same delivery always gets the same run id, so the executor itself starts nothing twice.
-      const runId = `webhook-${delivery}`;
-      try {
-        const summary = await startRoutineRun(runs, start.hubId, start.start, runTrigger, runId);
-        return Response.json({ runId: summary.id }, { status: 202 });
-      } catch (error) {
-        // A start that failed must not use up the delivery: the sender's retry should get through.
-        await coordination.release(lease);
-        // Not built yet, not broken: the same 501 the run routes give.
-        if (isAgentRunsNotAvailable(error)) return errorResponse(serverErrors.notImplemented);
-        throw error;
-      }
+      const busy = await overlapAnswer(runStore, sender.key, sender.placed.routine.overlap);
+      return busy ?? startDelivery(sender, start);
     },
   };
 }
@@ -241,6 +259,7 @@ interface ProvenSender {
   readonly key: string;
   readonly placed: PlacedRoutine;
   readonly trigger: RoutineTrigger;
+  readonly secret: string;
   readonly signed: SignedRequest;
   readonly now: Date;
 }
@@ -305,6 +324,22 @@ async function signatureMatches(
     ["verify"],
   );
   return crypto.subtle.verify("HMAC", key, signed.signature, message);
+}
+
+/**
+ * The name a delivery is remembered under: an HMAC of its id under the routine's secret, so every
+ * routine that shares the secret remembers it, and the stored name tells nothing about the secret.
+ */
+async function deliveryMemoryName(secret: string, deliveryId: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(deliveryId));
+  return Array.from(new Uint8Array(mac), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function sha256Hex(text: string): Promise<string> {

@@ -1,5 +1,6 @@
 import type { ServerConfig, ServerPorts } from "./api.ts";
 import { createCloudSignInRoutes } from "./cloud-sign-in-routes.ts";
+import type { CountRequest } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { helloResponse } from "./hello-route.ts";
 import type { ManyUserPorts, ScopedRunPorts } from "./many-users-api.ts";
@@ -37,9 +38,10 @@ type SignedInHandler = (
   scoped: ScopedRoutes,
 ) => Promise<Response>;
 
-/** The routes of a many-user server, after the `Host`, `Origin`, daily and body checks. */
+/** The routes of a many-user server, after the `Host`, `Origin` and body checks. */
 export interface ManyUserRoutes {
-  route(request: Request, body: Uint8Array): Promise<Response>;
+  /** Answers one request; `countRequest` counts it against the daily ceiling once its session is proven. */
+  route(request: Request, body: Uint8Array, countRequest: CountRequest): Promise<Response>;
 }
 
 /** `GET /api/session` for a signed-in caller: the scope and role, never the client. */
@@ -116,7 +118,7 @@ export function createManyUserRoutes(
   }
 
   return {
-    async route(request, body) {
+    async route(request, body, countRequest) {
       const { pathname } = new URL(request.url);
       if (request.method === "GET" && pathname === "/api/hello") {
         return helloResponse(config);
@@ -133,6 +135,10 @@ export function createManyUserRoutes(
       const session = await verifySession(request, manyUsers);
       if (!session.ok) {
         return errorResponse(serverErrors.notSignedIn);
+      }
+      const overCeiling = await countRequest();
+      if (overCeiling !== null) {
+        return overCeiling;
       }
       return handler(request, body, scopedRoutesOf(session.session.principal));
     },

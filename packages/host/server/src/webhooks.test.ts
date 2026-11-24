@@ -54,6 +54,8 @@ function setup(
     startFails?: boolean | Error;
     going?: { id: string; trigger?: { routineId: string } }[];
     passwordHash?: string | null;
+    /** Another address with its own routine, whose secret names `other-hook`. */
+    otherRoutineAt?: string;
   } = {},
 ) {
   const clock = new TestClock();
@@ -79,6 +81,12 @@ function setup(
   const webhooks: WebhookRoutines = {
     find: async (key) => {
       found.push(key);
+      if (key === options.otherRoutineAt) {
+        return routine({
+          id: "refunds",
+          trigger: { webhook: { secret: "other-hook", headers: ["x-event"] } },
+        });
+      }
       return placed !== null && key === "acme/orders" ? placed : null;
     },
   };
@@ -296,6 +304,29 @@ verifies("server.webhooks", () => {
       });
       expect([newId.status, newTime.status]).toEqual([401, 401]);
       expect(started).toEqual([]);
+    });
+
+    it("refuses a delivery taken by one routine when it is sent to another routine with the same secret", async () => {
+      const { send, started } = setup({
+        otherRoutineAt: "acme/refunds",
+        secrets: { "other-hook": secret },
+      });
+      expect((await send()).status).toBe(202);
+      const elsewhere = await send({ path: "/api/webhooks/acme/refunds" });
+      expect(elsewhere.status).toBe(409);
+      expect(await elsewhere.json()).toMatchObject({ code: "webhook_replayed" });
+      expect(started).toHaveLength(1);
+    });
+
+    it("takes the same delivery id at a routine with a different secret", async () => {
+      const { send, started } = setup({
+        otherRoutineAt: "acme/refunds",
+        secrets: { "other-hook": "whsec-other-value" },
+      });
+      expect((await send()).status).toBe(202);
+      const other = await send({ path: "/api/webhooks/acme/refunds", key: "whsec-other-value" });
+      expect(other.status).toBe(202);
+      expect(started).toHaveLength(2);
     });
 
     it("treats a different delivery id as a different delivery", async () => {
