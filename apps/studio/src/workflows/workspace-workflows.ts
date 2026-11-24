@@ -293,6 +293,11 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     this.#parts.files.change(label, { [path]: edited.value.text });
   }
 
+  /** The path of the workflow's file; throws `not_found` when the workflow isn't there. */
+  async filePath(ref: WorkflowRef): Promise<string> {
+    return (await this.#fileOf(ref)).file.path;
+  }
+
   /** The workflow's file, as read and as text; throws `not_found` when the hub has no such workflow. */
   async #fileOf({ hubId, id }: WorkflowRef) {
     const workspace = await this.#load();

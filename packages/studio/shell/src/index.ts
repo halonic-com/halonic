@@ -159,6 +159,13 @@ export {
   type ChangeMarkProps,
   changeMarkSelector,
 } from "./item-review/change-mark.tsx";
+export type {
+  ItemChangeToReview,
+  ItemReview,
+  ItemReviewDecision,
+  ItemReviewHost,
+  ItemReviewTarget,
+} from "./item-review/item-review-api.ts";
 export {
   ItemReviewBar,
   type ItemReviewBarProps,
