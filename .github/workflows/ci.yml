@@ -2226,9 +2226,17 @@ jobs:
         uses: $/.github/actions/setup
         with:
           cache: ${{ runner.os != 'Windows' }}
+      # On Windows, two tasks at a time and 30 s per test, as in "Test the
+      # Windows packages" below (HAL-11709): with the workflow's ten, the four
+      # packages' typechecks and tests loaded this four-core runner so much
+      # that small file steps in sandbox-srt's tests took 2 to 5 s and timed
+      # out, in a different test each time (HAL-17217).
       - name: Typecheck and test
         if: env.RUN_SANDBOX == 'true'
         shell: bash
+        env:
+          TURBO_CONCURRENCY: ${{ runner.os == 'Windows' && '2' || env.TURBO_CONCURRENCY }}
+          HALONIC_TEST_TIMEOUT: ${{ runner.os == 'Windows' && '30000' || '' }}
         run: >
           pnpm exec turbo run typecheck test --continue --env-mode=loose --output-logs=new-only
           --filter='@halonicjs/adapter-sandbox-*'
