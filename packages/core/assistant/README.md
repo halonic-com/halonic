@@ -28,7 +28,9 @@ anywhere `ChatService` runs: the desktop app, a served window and later the CLI.
   the Build chat is told before any message: the body of the workspace's own `halonic-authoring`
   skill (`library/skills/halonic-authoring/SKILL.md`, the root's over a hub's), else the built-in
   instructions. `builtInAuthoringSkill` is that text as a `SKILL.md`, which "customize skill"
-  writes at `authoringSkillPath` (`assistant.build.authoring-skill-override`).
+  writes at `authoringSkillPath` (`assistant.build.authoring-skill-override`). The Studio passes
+  the workspace as the person accepted it, so a skill the assistant proposed steers nothing until
+  it is accepted (`assistant.build.authoring-skill-accepted`).
 - **The session rules** (`sessions/session-rules.ts`), pure functions over the `ChatSessions`
   port's `SavedChat`: a draft (no message yet) is never saved, `titleFromFirstMessage` cuts at 57
   characters plus "…", `chatsToDrop` keeps each workspace's newest 40, `recentFirst` orders them,

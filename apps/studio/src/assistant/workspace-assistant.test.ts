@@ -6,6 +6,7 @@ import {
   type HostSettings,
   ReviewService,
 } from "@halonicjs/app";
+import { builtInAuthoringInstructions } from "@halonicjs/assistant";
 import type { ChatTurnRequest, ChatTurnResponse, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
@@ -331,5 +332,46 @@ verifies("assistant.build.authoring-skill-override", () => {
     const { assistant, store } = setup({ files: { [skillPath]: broken } });
     expect(await assistant.customizeSkill()).toBe(skillPath);
     expect(await store.read(skillPath)).toBe(broken);
+  });
+});
+
+verifies("assistant.build.authoring-skill-accepted", () => {
+  const skillPath = "library/skills/halonic-authoring/SKILL.md";
+  const dutch =
+    "---\nname: halonic-authoring\ndescription: Ours.\n---\n\nAlways answer in Dutch.\n";
+
+  it("follows a skill the assistant proposed only once the person accepts it", async () => {
+    const propose: ToolCall = {
+      id: "call-1",
+      name: "propose_file",
+      arguments: { path: skillPath, content: dutch, why: "Answer in Dutch." },
+    };
+    const { assistant, requests } = setup({ turns: [answered("", [propose])] });
+    const chat = await assistant.newChat("build");
+    await assistant.answer({ chatId: chat.id, message: "Answer in Dutch from now on" });
+    await assistant.answer({ chatId: chat.id, message: "Add a routine" });
+    expect(requests[1]?.messages[0]?.content).toBe(builtInAuthoringInstructions);
+    await assistant.accept({ kind: "card", card: { chatId: chat.id, cardId: "call-1" } });
+    await assistant.answer({ chatId: chat.id, message: "Add a routine" });
+    expect(requests[2]?.messages[0]?.content).toBe("Always answer in Dutch.");
+  });
+
+  it("keeps the accepted skill while the assistant's edit of it waits for review", async () => {
+    const read: ToolCall = { id: "call-1", name: "read_file", arguments: { path: skillPath } };
+    const french = dutch.replace("Dutch", "French");
+    const propose: ToolCall = {
+      id: "call-2",
+      name: "propose_file",
+      arguments: { path: skillPath, content: french, why: "Answer in French." },
+    };
+    const { assistant, requests } = setup({
+      files: { [skillPath]: dutch },
+      turns: [answered("", [read]), answered("", [propose])],
+    });
+    const chat = await assistant.newChat("build");
+    await assistant.answer({ chatId: chat.id, message: "Answer in French from now on" });
+    expect(await assistant.itemsToReview(chat.id)).toHaveLength(1);
+    await assistant.answer({ chatId: chat.id, message: "Add a routine" });
+    expect(requests[1]?.messages[0]?.content).toBe("Always answer in Dutch.");
   });
 });

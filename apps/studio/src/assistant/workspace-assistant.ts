@@ -34,6 +34,7 @@ import type {
 } from "@halonicjs/studio-feature-assistant/api";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { type LoadedWorkspace, loadWorkspace, modelAliases } from "@halonicjs/workspace";
+import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
 import { type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
   assistantModelOf,
@@ -253,12 +254,9 @@ export class WorkspaceAssistant implements AssistantHost {
       sent,
       request.notes ?? [],
     );
-    // The Build chat follows the workspace's own authoring skill, else the built-in one. It isn't
-    // kept in the chat, so an edited skill counts from the next answer on.
-    const skill: ChatMessage = { role: "system", content: authoringInstructions(loaded) };
     const answer = await this.#parts.answerChat({
       settings: chatSettingsOf(chat.model, loaded, this.#parts.settings) satisfies ChatSettings,
-      messages: chat.kind === "build" ? [skill, ...messages] : messages,
+      messages: chat.kind === "build" ? [await this.#skillOf(loaded), ...messages] : messages,
       tools: this.#toolsOf(chat.id),
       turnLimit: turnLimitOf(loaded, this.#parts.settings),
       signal,
@@ -279,6 +277,21 @@ export class WorkspaceAssistant implements AssistantHost {
     });
     keep();
     return answer;
+  }
+
+  /**
+   * The Build chat follows the workspace's own authoring skill as accepted, else the built-in one.
+   * A skill the assistant proposed steers nothing until the person accepts it (HAL-17357). It isn't
+   * kept in the chat, so an edited skill counts from the next answer on.
+   */
+  async #skillOf(loaded: LoadedWorkspace): Promise<ChatMessage> {
+    const items = await this.#parts.review.itemsWithChangesToReview();
+    const proposed = items.map((item) => item.path).filter(isAuthoringSkillPath);
+    const accepted =
+      proposed.length === 0
+        ? loaded
+        : await loadWorkspace(await acceptedFiles(this.#parts.files, this.#parts.review, proposed));
+    return { role: "system", content: authoringInstructions(accepted) };
   }
 
   /** The chat's tools, made once, so they remember what the model read in it. */
