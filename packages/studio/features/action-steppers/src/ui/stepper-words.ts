@@ -1,12 +1,15 @@
 /**
- * Every sentence the action stepper shows, in one place for the copy check (HAL-17527). The
- * request's own text (title, step previews, reason) comes from the view model and is never built here.
+ * Every sentence the action stepper shows, in one place for the copy check (HAL-17541). The
+ * request's own text (title, step previews, instructions, reason) comes from the view model and is
+ * never built here.
  */
 import type {
+  InstructionsSource,
   StepOutcome,
   StepperRequester,
   StepperService,
   StepperStage,
+  StepperTouch,
   StepRisk,
 } from "../stepper-view.ts";
 
@@ -26,27 +29,37 @@ export const riskWords: Record<StepRisk, string> = {
 /** The labels of the review's facts. */
 export const factLabels = {
   account: "Signed in as",
-  target: "Changes",
   risk: "Risk",
   expires: "Expires",
   requester: "Asked by",
   reason: "Their reason",
+  touches: "This stepper touches",
 } as const;
 
 /** The account fact before the user signs in. */
 export const notSignedIn = "Not signed in";
 
-/** Who asked, as the review says it. */
+/** Who asked, as the messaging source names them: "Chief on Paperclip · Acme". */
 export function requesterText(requester: StepperRequester): string {
-  return requester.kind === "link" ? "From a link, sender unknown" : `${requester.name} (agent)`;
+  return `${requester.name} on ${requester.source}`;
+}
+
+/** One line of the touches list. */
+export function touchText(touch: StepperTouch): string {
+  return touch.kind === "target" ? `${touch.service}: ${touch.target}` : `Opens ${touch.address}`;
 }
 
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+/** "24 Nov", in local time. */
+function dayText(at: Date): string {
+  return `${at.getDate()} ${months[at.getMonth()]}`;
+}
+
 /** "24 Nov at 14:05", in local time. */
 export function expiresText(at: Date): string {
   const time = `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
-  return `${at.getDate()} ${months[at.getMonth()]} at ${time}`;
+  return `${dayText(at)} at ${time}`;
 }
 
 /** The fold with the exact calls: its row while closed and while open. */
@@ -74,6 +87,8 @@ export function outcomeText(outcome: StepOutcome, service: StepperService): stri
       return `Failed with status ${outcome.status}. ${serviceNames[service]} said: “${outcome.message}”`;
     case "skipped":
       return "Done already";
+    case "by-hand":
+      return outcome.checked === null ? "Done by hand, not checked" : `Checked: ${outcome.checked}`;
   }
 }
 
@@ -83,7 +98,6 @@ export const runWords = {
   busy: (number: number) => `Running step ${number}…`,
   retry: (number: number) => `Try step ${number} again`,
   all: "Run all steps",
-  allBusy: "Running…",
   decline: "Decline",
 } as const;
 
@@ -95,19 +109,51 @@ export const confirmWords = {
   busy: "Running…",
 } as const;
 
+/** A browser step's label over its instructions. */
+export function sourceText(source: InstructionsSource, requester: StepperRequester): string {
+  return source.kind === "library"
+    ? `Checked on ${dayText(source.checkedOn)}`
+    : `Instructions from ${requesterText(requester)}, not checked by Halonic`;
+}
+
+/** What "Copy instructions" copies: the label for on-demand steps, the address, the numbered lines. */
+export function instructionsText(
+  label: string | null,
+  address: string,
+  lines: readonly string[],
+): string {
+  const numbered = lines.map((line, index) => `${index + 1}. ${line}`);
+  return [...(label === null ? [] : [label]), address, ...numbered].join("\n");
+}
+
+/** A browser step's controls. */
+export const browserWords = {
+  open: "Open the page",
+  copy: "Copy instructions",
+  done: (number: number) => `Step ${number} is done`,
+} as const;
+
+/** The manual guide and Done by hand (HAL-17491 7.8). */
+export const manualWords = {
+  stepper: "Do it all by hand",
+  step: "Do it by hand",
+  hide: "Hide the steps by hand",
+  open: "Open the page",
+  check: (check: string) => `To check: ${check}`,
+  markDone: "Mark done by hand",
+} as const;
+
 /** The sign-in panels. */
 export const signInWords = {
   githubHeading: "Sign in to GitHub",
-  githubText: "Open GitHub's sign-in page and enter this code.",
+  githubStart: "Sign in to GitHub",
+  githubText: "Enter this code on the GitHub page that opened.",
   githubCode: "Sign-in code",
-  githubOpen: "Open GitHub",
   githubWaiting: "Waiting for you to finish on GitHub…",
   cloudflareHeading: "Add a Cloudflare API token",
-  cloudflareText: "Create a token with these permissions, then paste it here.",
-  cloudflareOpen: "Open Cloudflare's token page",
-  tokenLabel: "API token",
-  tokenEmpty: "Paste the token first.",
-  save: "Save token",
+  cloudflareText:
+    "Create a token on Cloudflare's API tokens page with these permissions, then paste it into the secure field.",
+  cloudflarePaste: "Paste the token",
   kept: "Kept in your computer's keychain. Agents never see it.",
   signInAgain: "Sign in again",
 } as const;
@@ -118,7 +164,7 @@ export function missingPermissionText(
   account: string | null,
   permission: string,
 ): string {
-  const who = account === null ? `Your ${serviceNames[service]} account` : `${account}`;
+  const who = account ?? `Your ${serviceNames[service]} account`;
   return `${who} doesn't have the permission “${permission}”, which this request needs.`;
 }
 

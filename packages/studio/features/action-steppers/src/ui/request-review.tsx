@@ -1,6 +1,6 @@
 import { Disclosure, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
-import type { ReactNode } from "react";
-import type { StepperView, StepRisk, StepView } from "../stepper-view.ts";
+import { type ReactNode, useId } from "react";
+import type { StepAction, StepperView, StepRisk, StepView } from "../stepper-view.ts";
 import {
   expiresText,
   factLabels,
@@ -9,6 +9,7 @@ import {
   requesterText,
   riskWords,
   showRequest,
+  touchText,
 } from "./stepper-words.ts";
 
 /** A risk's chip colour: the higher the risk, the louder. */
@@ -24,16 +25,30 @@ export function RiskChip({ risk }: { readonly risk: StepRisk }) {
 }
 
 /**
- * The review's facts (`action-steppers.review`): the account, the target, the risk, the expiry and
- * who asked, then their reason as quoted plain text. React writes the reason as a text node, so
- * Markdown and links in it stay characters; it is never parsed.
+ * The review's facts (`action-steppers.review`): first what the stepper touches, each target and
+ * page, then the account, the risk, the expiry and who asked, then their reason as quoted plain
+ * text. React writes the reason as a text node, so Markdown and links in it stay characters.
  */
 export function RequestFacts({ view }: { readonly view: StepperView }) {
+  const touchesId = useId();
   return (
     <div className="flex flex-col gap-4">
+      {view.touches.length === 0 ? null : (
+        <section aria-labelledby={touchesId} className="flex flex-col gap-1">
+          <h3 id={touchesId} className="text-body-strong text-fg">
+            {factLabels.touches}
+          </h3>
+          <ul className="list-disc pl-5 text-body text-fg">
+            {view.touches.map((touch) => (
+              <li key={touchText(touch)} className="wrap-break-word">
+                {touchText(touch)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-body">
         <Fact label={factLabels.account}>{view.account ?? notSignedIn}</Fact>
-        <Fact label={factLabels.target}>{view.target}</Fact>
         <Fact label={factLabels.risk}>
           <RiskChip risk={view.risk} />
         </Fact>
@@ -59,6 +74,13 @@ function Fact({ label, children }: { readonly label: string; readonly children: 
   );
 }
 
+/** A step as "Show the request" writes it: the exact call, or the page a browser step opens. */
+function actionText(action: StepAction): string {
+  if (action.kind === "browser") return touchText({ kind: "page", address: action.address });
+  const { method, address, body } = action.call;
+  return body === undefined ? `${method} ${address}` : `${method} ${address}\n\n${body}`;
+}
+
 /** "Show the request": every step's method, address and body, exactly as they will be sent. */
 export function RequestCalls({ steps }: { readonly steps: readonly StepView[] }) {
   if (steps.length === 0) return null;
@@ -68,9 +90,7 @@ export function RequestCalls({ steps }: { readonly steps: readonly StepView[] })
         {steps.map((step) => (
           <li key={step.number}>
             <pre className="overflow-x-auto rounded-sm bg-surface-subtle p-3 font-mono text-small text-fg">
-              {[`${step.call.method} ${step.call.address}`, step.call.body]
-                .filter((line) => line !== undefined)
-                .join("\n\n")}
+              {actionText(step.action)}
             </pre>
           </li>
         ))}

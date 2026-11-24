@@ -19,8 +19,9 @@ export interface RunBarProps {
 
 /**
  * The bar under a ready request (`action-steppers.run`): **Run step 2 of 3** for the next step, or
- * **Try step 2 again** after it failed, **Run all steps** only when every step is routine, and
- * **Decline**. An irreversible step asks once more in a dialog before `runStep` is called.
+ * **Try step 2 again** after it failed, **Run all steps** only when every step is a routine call,
+ * and **Decline**. A browser step has its own controls in the list instead. An irreversible step
+ * asks once more in a dialog before `runStep` is called.
  */
 export function RunBar({ view, actions }: RunBarProps) {
   const [confirming, setConfirming] = useState<StepView | null>(null);
@@ -36,7 +37,7 @@ export function RunBar({ view, actions }: RunBarProps) {
 
   return (
     <div className="flex flex-wrap gap-2 border-t border-border p-4">
-      {step === undefined ? null : (
+      {step === undefined || step.action.kind !== "call" ? null : (
         <Button
           variant="primary"
           busy={step.outcome.kind === "running"}

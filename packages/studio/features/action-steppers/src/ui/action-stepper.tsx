@@ -6,6 +6,7 @@ import {
   type StepperStage,
   type StepperView,
 } from "../stepper-view.ts";
+import { ManualGuide } from "./manual-guide.tsx";
 import { RequestCalls, RequestFacts } from "./request-review.tsx";
 import { RunBar } from "./run-bar.tsx";
 import { MissingPermission, SignInPanel } from "./sign-in-panel.tsx";
@@ -26,7 +27,7 @@ const stageTones: Partial<Record<StepperStage["kind"], CalloutTone>> = {
 
 /**
  * One action request, from review to result (`action-steppers.review`, `.sign-in`, `.run`,
- * `.end`), drawn from its {@link StepperView} in the Inbox's one content panel. It holds no rules
+ * `.browser`, `.by-hand`, `.end`), drawn from its {@link StepperView} in the Inbox's one content panel. It holds no rules
  * of its own beyond the confirmation it asks for: the view model says what stage the request is
  * in, and every button calls one of `actions`. Opening it focuses the title, never a button.
  */
@@ -50,7 +51,7 @@ export function ActionStepper({ view, actions }: ActionStepperProps) {
         </h2>
         <RequestFacts view={view} />
         {stage.kind === "sign-in" ? (
-          <SignInPanel signIn={stage.signIn} saveToken={actions.saveToken} />
+          <SignInPanel signIn={stage.signIn} start={actions.signIn} />
         ) : null}
         {stage.kind === "missing-permission" ? (
           <MissingPermission
@@ -60,8 +61,9 @@ export function ActionStepper({ view, actions }: ActionStepperProps) {
             signInAgain={actions.signInAgain}
           />
         ) : null}
-        <StepList steps={view.steps} service={view.service} />
+        <StepList view={view} actions={actions} active={stage.kind === "ready"} />
         <RequestCalls steps={view.steps} />
+        {stage.kind === "ready" ? <ManualGuide view={view} actions={actions} /> : null}
         {line === null ? null : (
           <Callout tone={stageTones[stage.kind] ?? "info"} announce="polite">
             {line}

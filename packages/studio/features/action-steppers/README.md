@@ -18,8 +18,8 @@ service and adds the screen to the Inbox.
 
 | State | What the user sees |
 | --- | --- |
-| `ready` | the review, the steps, **Run step 2 of 3**, **Run all steps** when every step is routine, **Decline** |
-| `sign-in` | GitHub's device code, or the Cloudflare token field with the permissions it needs |
+| `ready` | what it touches, the review, the steps, **Run step 2 of 3**, **Run all steps** when every step is a routine API call, a browser step's page and instructions, **Do it by hand** and **Mark done by hand**, **Decline** |
+| `sign-in` | **Sign in to GitHub** and then GitHub's device code, or the permissions a Cloudflare token needs and **Paste the token** (the desktop app's secure field) |
 | `missing-permission` | the missing permission by name and **Sign in again** |
 | `declined`, `expired`, `finished` | one line, no buttons |
 | `not-available` | the request's definition isn't in this version; no steps |
@@ -30,5 +30,5 @@ Every sentence is in `src/ui/stepper-words.ts`.
 ## Example
 
 ```tsx
-<ActionStepper view={view} actions={{ runStep, runAll, decline, saveToken, signInAgain }} />
+<ActionStepper view={view} actions={stepperActions} />
 ```

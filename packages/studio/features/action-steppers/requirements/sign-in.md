@@ -2,15 +2,15 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17527 (approvals stream HAL-17488, PR 8); architecture note on HAL-17491, sections 1.3, 2.3 and 2.4; the board's decision on HAL-10 (24 Nov) that the screens follow the approved Inbox look, and section 3 (sign-in per service)
+- Source: HAL-17527 (approvals stream HAL-17488, PR 8); architecture note on HAL-17491; the board's decision on HAL-10 (24 Nov) that the screens follow the approved Inbox look, section 3 (sign-in per service)
 
-While the request's service has no sign-in, the stepper shall show how to sign in and no way to run a step: for GitHub, the device code and a link that opens GitHub's sign-in page; for Cloudflare, the permissions the token needs, a link to Cloudflare's token page and a field for the token, which it hands over as a secret and clears. When the signed-in account lacks a permission the request needs, the stepper shall name that permission and offer **Sign in again**.
+While the request's service has no sign-in, the stepper shall show how to sign in and no way to run a step. For GitHub, the sign-in shall start only from the user's click on **Sign in to GitHub**, after which the stepper shows the device code to enter on the page that opened. For Cloudflare, the stepper shall list the permissions the token needs and take the token only through **Paste the token**, which opens the desktop app's secure field; the page has no token field. When the signed-in account lacks a permission the request needs, the stepper shall name that permission and offer **Sign in again**.
 
 ## Examples
 
-- Given a GitHub request with the device code `WDJB-MJHT`,
-  when the user isn't signed in,
-  then the stepper shows the code and **Open GitHub**, and no **Run step** button.
+- Given a GitHub request and no sign-in,
+  when it opens,
+  then it shows **Sign in to GitHub** and no **Run step** button, and nothing starts until it is pressed.
 - Given the account `acme-admin` without "Administration (write)",
   when the request opens,
   then it says "acme-admin doesn't have the permission “Administration (write)”, which this request needs."

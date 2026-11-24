@@ -1,108 +1,72 @@
-import {
-  Button,
-  Callout,
-  CodeDisplay,
-  ExternalLink,
-  Field,
-  Input,
-  SecretText,
-} from "@halonicjs/studio-kit";
-import { useId, useState } from "react";
+import { Button, Callout, CodeDisplay } from "@halonicjs/studio-kit";
+import { useId } from "react";
 import type { StepperActions, StepperService, StepperSignIn } from "../stepper-view.ts";
 import { missingPermissionText, signInWords } from "./stepper-words.ts";
 
 /** Props for {@link SignInPanel}. */
 export interface SignInPanelProps {
   readonly signIn: StepperSignIn;
-  readonly saveToken: StepperActions["saveToken"];
+  readonly start: StepperActions["signIn"];
 }
 
 /**
- * Sign-in for the request's service (`action-steppers.sign-in`): GitHub's device code to type on
- * GitHub's own page, or a field for a Cloudflare API token with the permissions it needs. The
- * token goes to the desktop shell as a {@link SecretText}, so it never turns into text here.
+ * Sign-in for the request's service (`action-steppers.sign-in`). GitHub's device flow starts only
+ * from the user's click; the shell then opens GitHub's page and the code shows here. A Cloudflare
+ * token goes into the shell's native dialog, never into the page (HAL-17491 3.1, 3.2).
  */
-export function SignInPanel({ signIn, saveToken }: SignInPanelProps) {
+export function SignInPanel({ signIn, start }: SignInPanelProps) {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
+      <h3 id={headingId} className="text-body-strong text-fg">
+        {signIn.service === "github" ? signInWords.githubHeading : signInWords.cloudflareHeading}
+      </h3>
       {signIn.service === "github" ? (
-        <>
-          <h3 id={headingId} className="text-body-strong text-fg">
-            {signInWords.githubHeading}
-          </h3>
-          <p className="text-body text-fg">{signInWords.githubText}</p>
-          <CodeDisplay code={signIn.code} group={4} size="md" label={signInWords.githubCode} />
-          <p>
-            <ExternalLink href={signIn.address}>{signInWords.githubOpen}</ExternalLink>
-          </p>
-          <p role="status" className="text-small text-fg-muted">
-            {signInWords.githubWaiting}
-          </p>
-        </>
+        <GitHubSignIn code={signIn.code} start={start} />
       ) : (
         <>
-          <h3 id={headingId} className="text-body-strong text-fg">
-            {signInWords.cloudflareHeading}
-          </h3>
           <p className="text-body text-fg">{signInWords.cloudflareText}</p>
           <ul className="list-disc pl-5 text-body text-fg">
             {signIn.permissions.map((permission) => (
               <li key={permission}>{permission}</li>
             ))}
           </ul>
-          <p>
-            <ExternalLink href={signIn.tokenPage}>{signInWords.cloudflareOpen}</ExternalLink>
-          </p>
-          <TokenForm saveToken={saveToken} />
+          <p className="text-small text-fg-muted">{signInWords.kept}</p>
+          <div>
+            <Button variant="primary" onClick={start}>
+              {signInWords.cloudflarePaste}
+            </Button>
+          </div>
         </>
       )}
     </section>
   );
 }
 
-/**
- * The token field. What was typed lives only in the input until Save token. An empty field keeps
- * the button pressable and says what's missing (component specs 23 A1).
- */
-function TokenForm({ saveToken }: { readonly saveToken: StepperActions["saveToken"] }) {
-  const [typed, setTyped] = useState("");
-  const [empty, setEmpty] = useState(false);
-  const save = () => {
-    const token = new SecretText(typed.trim());
-    setEmpty(token.isEmpty);
-    if (token.isEmpty) return;
-    saveToken(token);
-    setTyped("");
-  };
-  return (
-    <form
-      className="flex flex-col gap-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        save();
-      }}
-    >
-      <Field
-        label={signInWords.tokenLabel}
-        hint={signInWords.kept}
-        error={empty ? signInWords.tokenEmpty : null}
-      >
-        <Input
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          mono
-          value={typed}
-          onChange={(event) => setTyped(event.target.value)}
-        />
-      </Field>
+function GitHubSignIn({
+  code,
+  start,
+}: {
+  readonly code: string | null;
+  readonly start: StepperActions["signIn"];
+}) {
+  if (code === null) {
+    return (
       <div>
-        <Button type="submit" variant="primary">
-          {signInWords.save}
+        <Button variant="primary" onClick={start}>
+          {signInWords.githubStart}
         </Button>
       </div>
-    </form>
+    );
+  }
+  return (
+    <>
+      <p className="text-body text-fg">{signInWords.githubText}</p>
+      <CodeDisplay code={code} group={4} size="md" label={signInWords.githubCode} />
+      <p role="status" className="text-small text-fg-muted">
+        {signInWords.githubWaiting}
+      </p>
+    </>
   );
 }
 
