@@ -4,6 +4,7 @@ import {
 } from "@halonicjs/format/runtime-export";
 import { parseScope, type Scope, scopeName } from "@halonicjs/host-server";
 import type { AdminHandler, AdminRoute } from "./admin.ts";
+import { deleteScopeRoutes } from "./delete-scope.ts";
 import type { RuntimeEnv } from "./env.ts";
 import { ConfigurationError } from "./env.ts";
 import {
@@ -226,7 +227,7 @@ function decodePath(raw: string): string | undefined {
 }
 
 /**
- * The export, import and session routes of the Worker, in the paths the contract names
+ * The export, import, session and scope delete routes of the Worker, in the paths the contract names
  * (see the package README).
  *
  * @param openExport - opens the stores an export reads; only a test passes its own
@@ -238,7 +239,12 @@ export function adminRoutesOf(
   openImport: OpenImport = openImportDeps,
   openSessions?: OpenSessions,
 ): readonly AdminRoute[] {
-  return [...exportRoutes(openExport), ...importRoutes(openImport), ...sessionRoutes(openSessions)];
+  return [
+    ...exportRoutes(openExport),
+    ...importRoutes(openImport),
+    ...sessionRoutes(openSessions),
+    ...deleteScopeRoutes(),
+  ];
 }
 
 export const adminRoutes: readonly AdminRoute[] = adminRoutesOf();
