@@ -24,7 +24,7 @@ export interface StepCall {
  * user marked done by hand, with what its check found, or `null` when it has no check.
  */
 export type StepOutcome =
-  | { readonly kind: "to-do" }
+  | { readonly kind: "pending" }
   | { readonly kind: "running" }
   | { readonly kind: "succeeded"; readonly result?: string | undefined }
   | { readonly kind: "failed"; readonly status: number; readonly message: string }
@@ -182,7 +182,7 @@ export function isRunning(view: StepperView): boolean {
  * browser step, and never when any step is `admin` or `irreversible` (HAL-17491 1.3).
  */
 export function canRunAll(view: StepperView): boolean {
-  const left = view.steps.filter((step) => step.outcome.kind === "to-do");
+  const left = view.steps.filter((step) => step.outcome.kind === "pending");
   return (
     left.length > 1 &&
     view.steps.every((step) => step.risk === "routine" && step.action.kind === "call")

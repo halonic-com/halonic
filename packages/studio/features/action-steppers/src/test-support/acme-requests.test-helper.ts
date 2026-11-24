@@ -15,7 +15,7 @@ import type {
 // Local time, so the dates read the same in every time zone. Tue 24 Nov 2026, 14:05.
 const expiresAt = new Date(2026, 10, 24, 14, 5);
 
-const toDo: StepOutcome = { kind: "to-do" };
+const toDo: StepOutcome = { kind: "pending" };
 
 function callAction(number: number): StepAction {
   return {

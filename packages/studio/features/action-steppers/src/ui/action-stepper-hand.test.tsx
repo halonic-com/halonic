@@ -156,7 +156,7 @@ verifies("action-steppers.by-hand", () => {
     it("says what the check found, or that it wasn't checked", () => {
       const view = withOutcomes(routineRequest(), [
         { kind: "by-hand", checked: "GitHub shows the re-run, started 1 minute ago" },
-        { kind: "to-do" },
+        { kind: "pending" },
         { kind: "by-hand", checked: null },
       ]);
       const { root } = show(view);

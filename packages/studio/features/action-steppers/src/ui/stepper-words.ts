@@ -77,7 +77,7 @@ export function stepLabel(number: number, total: number): string {
 /** The line under a step that has started. `null` while it is still to do. */
 export function outcomeText(outcome: StepOutcome, service: StepperService): string | null {
   switch (outcome.kind) {
-    case "to-do":
+    case "pending":
       return null;
     case "running":
       return "Running…";
